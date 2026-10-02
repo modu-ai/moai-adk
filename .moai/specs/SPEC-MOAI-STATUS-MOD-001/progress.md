@@ -2,7 +2,10 @@
 
 Status after plan phase: **draft**, plan-phase artifacts complete (spec.md, plan.md, acceptance.md, decision-index.md, this file). Owner of the next transition: manager-develop (run phase) after the plan audit and the Kickoff gate.
 
-## E.1 Plan-phase self-verification (this session, tree `58dad30551368349cbc8a81889135f818abdade9`, branch `WT-moai-status-mod`)
+## §E.1 Plan-phase Audit-Ready Signal (this session, tree `58dad30551368349cbc8a81889135f818abdade9`, branch `WT-moai-status-mod`)
+
+plan_status: audit-ready
+plan_complete_at: 2026-10-02 (iter2 verdict PASS-WITH-DEBT 0.82 + the verdict-recommended 0.2.1 touch-up applied)
 
 Each row: the command verbatim and its observed output. Builds in play: `claude 2.1.287`, `moai v3.2.0-rc.25`, `bun 1.4.2`.
 
@@ -61,14 +64,35 @@ Each row: the command verbatim and its observed output. Builds in play: `claude 
 - F-1 disposition: option (b) — the `fail` STATUS token dropped from REQ-MSM-012, reason recorded in the HISTORY row and the requirement itself (both asked checks assign only ok/warn in-tree; `internal/cli/doctor.go:629-679`, `internal/cli/doctor_mcp_version.go`). Precedence fixed row-first in REQ-MSM-009/012 and plan §B.4.
 - No file outside this SPEC directory and /tmp was written; no commit made (the lane commits).
 
-## E.2 Run-phase evidence
+### Post-audit touch-up 0.2.1 and Kickoff decision
+
+- Touch-up per the iter2 verdict's own recommendation, gate disposition decided via Jev consultation (`proceed_after_touchup`, confidence 0.89, gate 0.5): N-3 — `notice`'s writer pinned in plan §B.1 (the fail-soft guard writes it on a thrown hook or a persistently unknown source, clears on the next clean cycle); N-2 — env key corrected to `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (envkeys.go:622; D-3, G-12). Version 0.2.0 → 0.2.1. Lint after the touch-up: `moai spec lint SPEC-MOAI-STATUS-MOD-001` → exit 0, `✓ No findings — all SPEC documents are valid`.
+- Kickoff decision record: decided_by=lane+Jev evidence_refs=.moai/reports/t1437/plan-audit-iter2.md(PASS-WITH-DEBT 0.82 @ 3cf3d810c),.moai/reports/t1437/plan-audit-iter1.md(FAIL 0.75),.moai/reports/t1437/kickoff-decision.md ladder_path=gate-row:plan→run Kickoff AUTONOMOUS §9.1; audit-cache disposition — card-dir verdicts always miss the legacy `.moai/reports/plan-audit/` cache path, so iter2 is the audit of record and Phase 1 takes the documented skip (no re-audit); the 0.2.1 touch-up after the verdict is exactly the verdict's recommended edit, recorded here.
+- Heading fix: the §E.1/§E.2 headings originally carried no `§` token, which era.go's literal matching would have read as "no modern-era markers" (H-2 → V3R2-R4 misclassification); aligned to the canonical `§E.n` map this session (sibling t1436's progress.md is the working precedent).
+
+## §E.2 Run-phase Evidence
 
 (empty — filled by manager-develop at run phase; the Definition of Done of acceptance.md §F names the required shape)
 
-## E.3 Measurement notes carried for the run phase
+### Measurement notes carried into the run phase (authored at plan phase; the `## §E.3 Run-phase Audit-Ready Signal` section is manager-develop's, written at run completion)
 
 - The authority typings were laid by a **headless session load** (`claude -p` with `--plugin-dir` and an empty `CLAUDE_CONFIG_DIR`; spec.md M-4). `validate` and `plugin test` lay nothing. If C4 must re-lay them at run-phase entry, budget one headless model call.
 - The validate `calls:` line is a static listing with scope limits (spec.md M-2, M-11): it accepts fake nouns and misses top-level `$` calls. AC-MSM-001's allow-list pair is written knowing this; the behavioral checks are the engine tests.
 - The engine test environment stubs everything per test: `session.measure`, `session.receive`, `ui.status`, `ui.toast`, `process.run` — and the test `$` raises events at the mod's hooks (`$.session.measure(fixture)`; spec.md M-3).
 - The doctor single-check message spellings are pinned from the in-tree sources (`internal/cli/doctor.go:629-679`, `internal/cli/doctor_mcp_version.go:43-94`) and re-measured from the CLI (M-9); C5 re-checks both at run-phase entry.
 - This session is a lane: no queue-mutating command was run, no commit was made (the lane commits after the audit), and no file outside the worktree and /tmp was written.
+
+## §F Phase 4 Mode Selection
+
+Input parameters: tier M; scope ≈ 12 files (11 under `mods/moai-status/` + root `.gitignore`); domains = 1 (TypeScript mod under `mods/`); file language mix = 100% TypeScript/JSON/Markdown; concurrency benefit = LOW (coding-heavy, single-writer tree).
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | not selected | Multi-file new-code implementation, not a trivial edit |
+| serial | **selected** | Coding-heavy work — Anthropic's coding-task parallelism caveat; one writer per tree; milestones are sequential by dependency |
+| fanout | not selected | Not research-heavy; a write race in one tree would need isolation |
+| sweep | not selected | Not a mechanical uniform transform; new code |
+
+Decision: serial — one `manager-develop`-workflow implementation agent per milestone set, spawned by the lane session.
+
+Justification: the whole deliverable is new TypeScript in one plugin directory with strict internal invariants (single `$.` file, fixed argv table, render-hook discipline), so sequential TDD milestones under one agent preserve the invariants better than any concurrent shape; the lane's one-writer-per-tree rule independently forbids concurrent writers anyway.

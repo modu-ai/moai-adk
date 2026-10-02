@@ -30,7 +30,7 @@ mods/moai-status/
   README.md                    launch, test and validate commands; the additive-observer boundary
 ```
 
-`$.state` keys: `usage` (the strip classification), `health` (the last good health classification), `notice` (a one-line failure notice for the strip's degraded state). State refs are `{ plugin, key }` object literals — `$.state.get({ plugin: 'moai-status', key: 'usage' })` — the shape M-13 observed validate enforce and list on its `state writes:` line.
+`$.state` keys: `usage` (the strip classification), `health` (the last good health classification), `notice` (a one-line failure notice for the strip's degraded state — its only writer is the fail-soft guard: a hook that throws, or a health source that stays `unknown`, records what failed there and the next clean cycle clears it; REQ-MSM-009's degradation surface). State refs are `{ plugin, key }` object literals — `$.state.get({ plugin: 'moai-status', key: 'usage' })` — the shape M-13 observed validate enforce and list on its `state writes:` line.
 
 **The `$` rule (sibling M-17, unchanged contract).** `claude plugin validate` refuses `$` passed to a function imported from another file, so `$` never leaves `register.ts`: it builds `const runDiag = (argv: readonly string[]) => $.process.run(argv, { timeoutMs: CMD_TIMEOUT_MS })` per dispatch and hands `runDiag` to the helper modules, which stay pure and therefore bun-testable. All `$` uses sit inside `register`'s callback scope so the validate `calls:` line stays exhaustive (M-11).
 
