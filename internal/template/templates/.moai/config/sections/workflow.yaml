@@ -128,7 +128,7 @@ workflow:
     # any other non-empty value omits the reasoning directive while the model
     # pin still applies. Claude ships at claude-opus-5-5/high and Codex at
     # gpt-6.1-sol/high (deliberate non-empty pins; an earlier empty-pin
-    # neutrality default was superseded by operator directive 2026-09-30); the
+    # neutrality default was superseded by operator directive); the
     # GLM pin ships glm-5.3/max and may be set per project.
     audit:
         claude:
