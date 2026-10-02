@@ -228,7 +228,7 @@ m1_to_mN_commit_strategy: "G (guard, armed=false) then K (M2+M3 linked, armed=tr
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-10-02T07:11:51Z
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled by the following commit
+sync_commit_sha: 0757729f0   # the commit that carried this block (docs(SPEC-JEV-AUTO-EXCEPTION-001): sync-phase artifacts); backfilled by the following commit, since a commit cannot cite its own hash
 card: t1403
 tier: M
 ac_source: .moai/specs/SPEC-JEV-AUTO-EXCEPTION-001/acceptance.md   # tier M: acceptance.md is the AC source; resolver state: resolved
