@@ -1051,6 +1051,55 @@ Native-idiom check (the `moai-domain-humanize` skill was loaded; its locale modu
 - `plan.md` M4 (and design.md §3) say the notice is built from `leaderManual` and `entryGuide` with the count; on this tree `entryGuide` took the count as `%[1]d` and the entry token as `%[2]s`, and `leaderManual` took the count twice — both are now plain text. Design §3's line references (`session_start_factory.go:207,229`, `session_start_factory_i18n.go:139,184,229`, `session_stale_run.go:92,103,114,125`, `factory_card.go:95,98,101`) matched the tree before this milestone.
 - AC-010's command text names `TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide`, `TestFactoryGuideNamesWorkerJoinInEveryLocale` as "re-pinned"; both exist with those names and were re-pinned, and the five-name selector sweeps 5 top-level tests as the criterion states.
 
+### M5a evidence
+
+Recorded by the run-phase implementation worker (cycle_type tdd) for milestone M5a of card t1399 (launcher removal), branch `WT-launcher-entry-flags`. Start state, re-read before any change: `git rev-parse --short HEAD` printed `81f1f125b`, `git branch --show-current` printed `WT-launcher-entry-flags` (the session started on it), `git status --short` printed nothing. Output blocks are verbatim excerpts of commands run in this run on this tree; each says what it drops. Raw outputs were kept in `/tmp/m5a-*.txt` (outside the tree).
+
+#### RED-now and RED before the implementation (E8)
+
+RED-K1 re-observed on this tree (AC-011's own command, env unset in the same invocation, tool exit 0 — the tests PASS, which is the red: the `-k` launch is accepted):
+
+```text
+$ unset <MOAI_KANBAN* and MOAI_FACTORY_* axes> && go test ./internal/cli -run '^(TestCC_KanbanFlagStrippedBeforeLaunch|TestGLM_KanbanFlagParity)$' -v -count=1
+=== RUN   TestCC_KanbanFlagStrippedBeforeLaunch
+--- PASS: TestCC_KanbanFlagStrippedBeforeLaunch (0.02s)
+=== RUN   TestGLM_KanbanFlagParity
+--- PASS: TestGLM_KanbanFlagParity (0.02s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.151s
+```
+
+RED-K2 re-observed (`go run ./cmd/moai codex -k`, stdout 0 bytes, tool exit 1, stderr): `KANBAN_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead`.
+
+New tests written first (`internal/cli/launcher_retired_entries_test.go`, new; `TestSD_AC003_CodexRelaunchPerCard` in `factory_m5_test.go` re-pinned from "label present" to "label absent"). RED run on HEAD `81f1f125b` plus only those test edits, env unset, tool exit 1, `TestKanbanEntryRefused` swept 21 refusal subtests + 1 passthrough (`go test ... -run '^(TestKanbanEntryRefused|TestCodexLaneChildEnvOmitsLabelMarker|TestFactoryCardVerbsResolveLaneFromWorkerMarker)$' -v -count=1`, tail of the summary):
+
+```text
+--- FAIL: TestKanbanEntryRefused (72.96s)
+    --- FAIL: TestKanbanEntryRefused/cc_-k ... cc_-k=3          (7 of 7 FAIL)
+    --- FAIL: TestKanbanEntryRefused/glm_-k ... glm_-k=3        (7 of 7 FAIL)
+    --- FAIL: TestKanbanEntryRefused/codex_-k ... codex_-k=3    (7 of 7 FAIL)
+    --- PASS: TestKanbanEntryRefused/passthrough (0.00s)
+--- FAIL: TestCodexLaneChildEnvOmitsLabelMarker (10.24s)
+--- PASS: TestFactoryCardVerbsResolveLaneFromWorkerMarker (12.36s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	98.003s
+```
+
+Assertion lines (cc, glm): `launcher_retired_entries_test.go:51: [-k] launched a session; a refusal launches nothing` and `[-k] was accepted, want a refusal` (the same pair for every one of the 7 shapes on cc and on glm). Assertion lines (codex): `[-k] refusal "KANBAN_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead" lacks "retired"` (and lacks `-f`, `-l`, `moai codex -l`, `moai cc -f`, `moai glm -f`), repeated for the 7 shapes.
+
+Codex lane label pair, RED run (`-run '^(TestSD_AC003_CodexRelaunchPerCard|TestCodexLaneChildEnvOmitsLabelMarker|TestFactoryCardVerbsResolveLaneFromWorkerMarker)$' -v -count=1`, tool exit 1):
+
+```text
+    factory_m5_test.go:146: invocation 0: child env carries the retired MOAI_KANBAN_LABEL="lane-1"
+    factory_m5_test.go:146: invocation 1: child env carries the retired MOAI_KANBAN_LABEL="lane-1"
+--- FAIL: TestSD_AC003_CodexRelaunchPerCard (13.79s)
+    launcher_retired_entries_test.go:102: the Codex lane child carries MOAI_KANBAN_LABEL="lane-1"; the label marker is retired
+    launcher_retired_entries_test.go:113: Codex lane child lane-family keys = [MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_KANBAN_BACKEND MOAI_KANBAN_CARD MOAI_KANBAN_LABEL], want exactly [MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_KANBAN_BACKEND MOAI_KANBAN_CARD]
+--- FAIL: TestCodexLaneChildEnvOmitsLabelMarker (7.02s)
+--- PASS: TestFactoryCardVerbsResolveLaneFromWorkerMarker (7.72s)
+```
+
+`TestFactoryCardVerbsResolveLaneFromWorkerMarker` passes before the change by design: the card verbs already read `MOAI_FACTORY_WORKER` and `MOAI_FACTORY_ROLE` (`factory_card.go:50-52,89`), so the stamp is redundant for them; the test exists to reject the mutant that removes the stamp and also stops publishing the worker marker (AC-013's mutant clause), not to be red now.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
