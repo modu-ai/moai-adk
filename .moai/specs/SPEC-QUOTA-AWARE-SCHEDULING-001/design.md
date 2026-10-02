@@ -16,7 +16,7 @@ Claude Code ──stdin rate_limits──► statusline writer ──► per-ses
         CLI + MCP; Claude lane)      (text + JSON)                 (before each accept)     (stderr, warn-only)
                     │                       ▲                                ▲
                     │ hold line (stderr)    └──── lane inventory ────────────┘
-                    ▼                             (registry + liveness + newest session record per lane)
+                    ▼                             (registry rows: liveness + backend written at claim)
               exit status 3
 ```
 
@@ -57,7 +57,11 @@ Flow of `moai factory next` and the `factory_next` MCP tool for a Claude lane wi
 
 ## 5. Lane inventory (REQ-QAS-018)
 
-For each registered lane label (registry read), keep lanes whose registered pid is alive. For each, take the newest session record with role lane and the same lane number; its recorded backend decides: claude → excluded; glm or gpt → candidate; no record, an unresolved backend, or two newest records of the same instant that disagree → unknown. An unreadable registry or record store → no candidates. Read-only. (Source choice open: DO-12.)
+For each registered lane label (registry read), keep lanes whose registered pid is alive. The row's backend decides: `claude` → excluded; `glm` or `gpt` → candidate; empty (every row written before the claim write) or unrecognised → unknown. An unreadable registry → no candidates. Read-only; no session record is read (DO-12).
+
+## 5b. Backend recorded at claim (REQ-QAS-023)
+
+The claim engine gains a backend input and writes it in the row insert, inside the transaction that already selects the number and removes dead claims. Each launcher passes the value it already holds at its claim site: Claude `claude`, GLM `glm`, the Codex loop `gpt`, the Codex factory entry `codex` normalized to `gpt`. The existing exported claim entry points stay and pass the empty value, so the kanban companion and leader registries (separate files) and the existing tests are unaffected. The registry entry type and its reader carry the column; the registry rewrite round-trips it. The pid and heartbeat updates that follow (Codex re-stamp, card heartbeats) never touch it. No schema change, no migration: the column has existed since the table was created, and old rows read empty.
 
 ## 6. Steering output (REQ-QAS-019..022)
 
@@ -84,7 +88,8 @@ At `moai integration acquire`, after the window is recorded, a Claude lane under
 | Only stale records | unknown |
 | Reset time not after now | reset; never read as a stale high |
 | Config unreadable or out of range | defaults |
-| Registry or record store unreadable | no candidates; the warning prints with unknown count when pressure is on |
+| Registry unreadable | no candidates; the warning prints with unknown count when pressure is on |
+| Registry row from an older binary (empty backend) | unknown; never a candidate |
 | Backend token unrecognised | not a Claude lane; never held |
 | Selection pass lost a lease race | existing retry behaviour unchanged |
 
@@ -92,4 +97,4 @@ At `moai integration acquire`, after the window is recorded, a Claude lane under
 
 - Baselines (M0, own commit): window-less record bytes, `moai factory status --json`, `moai todo --auto` output of a fixed fixture; every pressure-off AC compares against them.
 - Template-First: template `workflow.yaml` (off) and local `workflow.yaml` (on) in the same change; config cache schema 10 → 11; shipped-key inventory rows.
-- Kanban: read-only API use only (`LoadFactoryRegistry`, `FactoryProcessAlive`, `ReadAll`); no file under `internal/kanban/` or the kanban launcher is edited (AC-QAS-016).
+- Kanban: the only file under `internal/kanban/` edited is the factory registry's claim cluster `factory_slots.go` (and its test); `internal/cli/kanban.go`, `kanban_settings.go`, and the kanban companion and leader registries are untouched (AC-QAS-016). The inventory reads the registry through `LoadFactoryRegistry` and `FactoryProcessAlive` only.

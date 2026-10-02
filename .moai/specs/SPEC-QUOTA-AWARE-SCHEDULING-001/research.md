@@ -41,8 +41,24 @@ The StopFailure hook decodes `error_type` and `error_message` only (`internal/ho
 
 - Registry table `workers(label, pid, backend, session_id, run_id, registered_at, heartbeat_at)` `internal/homestate/factory.go:24-32`; project-scoped roster shared by runs `internal/kanban/factory_slots.go:45-47`; loader reads label, pid, registered time only `:70`; the two inserts omit `backend` `:106,:329`. The `backend` column is therefore never written.
 - Liveness: `kanban.FactoryProcessAlive` (`factory_alive_unix.go:22`); the launcher exec's into Claude/GLM so the registered pid is the session's (`factory_slots.go:36-40`).
-- Backend per session lives in the kanban session record written by the session's own SessionStart hook for a lane (`session_start_record.go:60-116`; role and lane number from `kanbanRoleFromEnv` `:180-187`; backend from `MOAI_KANBAN_BACKEND`, or the launch provider for gateway sessions `:104-107`); fields `Role`, `Lane`, `Backend`, `EnteredAt`, `CardID` (`record.go`); `kanban.ReadAll` reads the directory skipping unreadable files (`:258-285`).
-- The web console already joins registry pid → session registry → record, refusing ambiguous or missing joins (`internal/web/factory_lanes.go:7-13,62-155`) — evidence that the join is non-unique on both sides and must fail toward "unknown".
+- Backend per session also lives in the kanban session record written by the session's own SessionStart hook for a lane (`session_start_record.go:60-116`; role and lane number from `kanbanRoleFromEnv` `:180-187`; backend from `MOAI_KANBAN_BACKEND`, or the launch provider for gateway sessions `:104-107`); `kanban.ReadAll` reads the directory (`record.go:258-285`). The web console joins registry pid → session registry → record and refuses ambiguous or missing joins (`internal/web/factory_lanes.go:7-13,62-155`). This route was the 0.3.0 design and is dropped at 0.4.0 (DO-12): it needs the SessionStart hook to have written a record, unobserved for Codex.
+
+### 6.1 The claim path verified for DO-12 (0.4.0)
+
+Every lane claim goes through one engine, `claimFactoryLane` (`internal/kanban/factory_slots.go:180-337`), entered by `ClaimFactoryLane` (`:155`), `ClaimFactoryLaneWithin` (`:173`) and the thin `ClaimFactoryLaneName` (`:115`). Production call sites (grep of `ClaimFactoryLane`, `claimFactoryLane(`, `resolveFactoryLaneName(` over non-test Go files):
+
+| Site | Entry | Backend known there |
+|---|---|---|
+| `internal/cli/cc.go:250` via `resolveFactoryLaneName` (`factory.go:790-809`, which calls `kanban.ClaimFactoryLane` at `:792`) | `moai cc -f lane` | the `backend` parameter of `runClaudeEntry` (`cc.go:146`), `kanban.BackendClaude` from `cc.go:143`; the same value is stamped at `cc.go:260` |
+| `internal/cli/glm.go:294` via `resolveFactoryLaneName` | `moai glm -f lane` | literal `kanban.BackendGLM` (stamped at `glm.go:304`) |
+| `internal/cli/codex_launcher.go:932` via `resolveFactoryLaneName` | `moai codex -f lane` supervising loop | literal `kanban.BackendGPT` (stamped at `:951`, after the claim, in the same function) |
+| `internal/cli/codex_factory.go:149` direct `kanban.ClaimFactoryLaneWithin`, reached from `codex_launcher.go:1161` | Codex factory entry | `BackendCodex` = `"codex"` (`mcp_convergence.go:65`), stamped at `codex_factory.go:144` before the claim; the loop path uses the token `gpt` — two spellings of one harness, so the claim normalizes to `gpt` |
+
+So the value is a launcher-local literal at each site, available before the claim; none of them reads the kanban launch-facts carrier (`exportKanbanLaunchFacts`, `kanban.go:543-567`). The kanban-mode registries (`claimName` over `companions.json` and `leads.json`, `kanban.go:357-422,467-497`) are separate files and the only production callers of `SaveFactoryRegistry`; they do not touch the project factory registry rows.
+
+Schema: `workers.backend TEXT NOT NULL DEFAULT ''` was introduced with the table itself (`git log -S` finds only commit `449b1c993`, "centralize home SQLite state (t591)"). `factorySchemaVersion` is 5 (`factory.go:20`); the migrations add columns only to `resume_handoffs`, `runs`, and `cards` (`factory.go:261-423`) and never to `workers`. Existing rows carry the empty default: the lane insert at `factory_slots.go:329`, the legacy `workers.json` import at `factory.go:540`, and the registry rewrite at `factory_slots.go:106` all omit the column. Other writers of `workers` after insert: heartbeat updates (`card_transition.go:400,445`) and the Codex pid re-stamp (`codex_factory.go:252`) touch pid and heartbeat only; `runtime_census.go:110` and `factory_run_retire.go:325-326` only read.
+
+Consequences: feasible without kanban-mode code and without a migration; the registry reader (`:70`) and the entry type (`:36-42`) need the column added; `SaveFactoryRegistry`'s delete-and-reinsert (`:98-110`) would reset a column it does not carry, so it must round-trip the backend (its production callers operate on other files, but the factory registry's tests call it on the project registry).
 
 ## 7. The `--auto` cycle and the leader surfaces
 
@@ -70,4 +86,4 @@ Searched Go code, rules, skills, docs, and the auto-memory store for `quota`, `r
 | Persisted hysteresis latch | the hold is evaluated per lease; an in-wait latch covers the only repeated evaluation |
 | Message to the leader on a hold | a message is a nudge, not state; new messaging use for a printed line's job |
 | Automatic re-dispatch or reassignment | excluded by the leader verdict |
-| Writing `workers.backend` at claim | changes the claim path and launchers; not needed if the record join suffices (`DO-12`) |
+| Joining registry pid → session → session record for the backend | needs the lane's SessionStart hook to have written a record (unobserved for Codex), ambiguous on both sides (`DO-12`, dropped at 0.4.0) |

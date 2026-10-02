@@ -1,6 +1,6 @@
 # decision-index.md — SPEC-QUOTA-AWARE-SCHEDULING-001 (card t1347)
 
-Decisions surfaced while planning. Each row states what was unresolved and why, carries no recommendation, and records the verdict that closed it. Resolutions: the lane resolved DO-1..DO-11 with the decision oracle (Jev; confidence quoted per row), and the leader's verdict then settled the three escalations (DO-3, DO-7, DO-8). Labels follow the routing in the manager-spec definition: DECIDED, POLICY-COVERED, EVIDENCE-NEEDED, FOUNDER. No row had a committed-tree authority that decides it, so none is DECIDED or POLICY-COVERED.
+Decisions surfaced while planning. Each row states what was unresolved and why, carries no recommendation, and records the verdict that closed it. Resolutions: the lane resolved DO-1..DO-11 with the decision oracle (Jev; confidence quoted per row), the leader's verdict then settled the three escalations (DO-3, DO-7, DO-8), and DO-12 was resolved by the oracle last, after its premise was verified in code. Labels follow the routing in the manager-spec definition: DECIDED, POLICY-COVERED, EVIDENCE-NEEDED, FOUNDER. No row had a committed-tree authority that decides it, so none is DECIDED or POLICY-COVERED.
 
 ### Q1: Should the StopFailure `rate_limit` turn-end also be stamped into the session record as an exhaustion time? (DO-1)
 
@@ -84,4 +84,4 @@ Operator verdict: Resolved by decision oracle — per-session record (confidence
 Label: EVIDENCE-NEEDED
 Authority anchor: none
 Why unresolved: the registry's `backend` column exists but is never written (the claim inserts omit it), while the web console already joins registry pid to session to session record; whether Codex lane sessions write a session record at all, and whether that record store survives the removal of kanban mode, were not observed. Writing the column at claim time changes the claim path and the launchers.
-Operator verdict:
+Operator verdict: Resolved by decision oracle — write the backend at claim (probability 0.78, confidence 0.55, above the 0.5 gate). Verified before applying: every claim site holds its backend as a launcher-local value, no kanban-mode code is needed, the column needs no migration, and old rows read as empty (unknown). The only kanban-package file edited is the factory registry's claim cluster. The session-record join is dropped.
