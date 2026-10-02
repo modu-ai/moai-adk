@@ -10,6 +10,7 @@ package hook
 import (
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
@@ -18,7 +19,32 @@ import (
 // recheckRuleTokens are locale-independent: the tool names, the watchdog skill
 // the recheck prompt must invoke, and the off-minute recurring cadence stay
 // verbatim in every locale the way the MCP tool names do.
-var recheckRuleTokens = [...]string{"CronCreate", "CronList", "moai-lane-watchdog", "7,27,47 * * * *"}
+var recheckRuleTokens = [...]string{"CronCreate", "CronList", "CronDelete", "moai-lane-watchdog", "7,27,47 * * * *"}
+
+// recheckLocaleScript is the script the appended recheck paragraph must be
+// written in per locale; a locale whose paragraph is still the English sentence
+// passes the token sweep alone, so the script count is its own check.
+var recheckLocaleScript = map[string]*unicode.RangeTable{
+	"ko": unicode.Hangul,
+	"ja": unicode.Hiragana,
+	"zh": unicode.Han,
+}
+
+// recheckParagraph returns the paragraph the lane rule appends after the
+// next-card or manual-dispatch rule.
+func recheckParagraph(rule string) string {
+	return rule[strings.LastIndex(rule, "\n\n")+2:]
+}
+
+func scriptRunes(s string, table *unicode.RangeTable) int {
+	n := 0
+	for _, r := range s {
+		if unicode.Is(table, r) {
+			n++
+		}
+	}
+	return n
+}
 
 func TestLaneRuleCarriesStandingRecheckCron(t *testing.T) {
 	for _, backend := range []string{kanban.BackendClaude, kanban.BackendGLM} {
@@ -35,6 +61,11 @@ func TestLaneRuleCarriesStandingRecheckCron(t *testing.T) {
 					for _, token := range recheckRuleTokens {
 						if !strings.Contains(rule, token) {
 							t.Errorf("backend %s dispatch %s source %s locale %s: lane rule lacks the recheck token %q:\n%s", backend, dispatch, source, lang, token, rule)
+						}
+					}
+					if table, ok := recheckLocaleScript[lang]; ok {
+						if n := scriptRunes(recheckParagraph(rule), table); n < 20 {
+							t.Errorf("locale %s: the recheck paragraph carries only %d runes of its own script, want at least 20 — it reads as the English text:\n%s", lang, n, recheckParagraph(rule))
 						}
 					}
 				}

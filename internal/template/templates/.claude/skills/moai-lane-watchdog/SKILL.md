@@ -149,11 +149,16 @@ its work.
   it; never wait for the report or the notice. An agent that went `available`
   sends nothing more unless it is messaged, so the report may never come.
 - Deliverable absent or partial and the delegate evidently ended (its idle or
-  completion notice arrived, or its process is gone) → resume it by name with
-  `SendMessage` carrying the partial state, or re-delegate with it; record
-  which.
+  completion notice arrived, or its process is gone) → re-delegate with the
+  partial state, or resume the delegate with `SendMessage` only while it is a
+  live teammate. Never address a teammate stopped with `TaskStop` by name — one
+  message revives it as an ownerless writer
+  (`cross-session-messaging.md` § Rules). Record which.
 - Deliverable absent and the evidence still moving (the delegate is working) →
   explicit wait whose recheck point is the next cron fire.
+- Deliverable absent, no sign the delegate ended, and the evidence unchanged
+  across two consecutive fires → structured blocker naming the delegate, what
+  was asked of it, and the evidence read; do not wait a third time.
 
 ## 4. Decision board protocol
 

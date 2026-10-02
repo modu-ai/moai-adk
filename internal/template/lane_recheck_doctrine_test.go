@@ -58,7 +58,7 @@ func TestLaneRecheckDoctrine(t *testing.T) {
 		{
 			file:    auto,
 			heading: "## 5. The awaken rule",
-			need:    []string{"standing", "CronCreate", "recurring", "before the first stage", "CronList"},
+			need:    []string{"standing", "CronCreate", "recurring", "7,27,47 * * * *", "before the first stage", "CronList", "CronDelete"},
 		},
 		{
 			file:    auto,
@@ -73,7 +73,7 @@ func TestLaneRecheckDoctrine(t *testing.T) {
 		{
 			file:    skill,
 			heading: "### 3.5 awaited-delegate",
-			need:    []string{"deliverable", "never wait for the report", "SendMessage"},
+			need:    []string{"deliverable", "never wait for the report", "SendMessage", "TaskStop", "two consecutive fires"},
 		},
 		{
 			file:    skill,

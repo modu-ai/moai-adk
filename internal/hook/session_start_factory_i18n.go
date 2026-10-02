@@ -134,7 +134,7 @@ var factoryLocales = map[string]factoryMessages{
 			"When a card is routed to you, work it in the current worktree and record its stages with `moai factory stage`.",
 		laneRecheckRule: "Stall recovery: before the first stage of a card, arm ONE recurring recheck with `CronCreate` (cron `7,27,47 * * * *`, recurring) " +
 			"whose prompt runs the lane stall watchdog first — invoke Skill(\"moai-lane-watchdog\") and follow it — and then resumes the card from its progress record; " +
-			"confirm it with `CronList` at card intake and after every clear, and re-arm it if it is missing or has expired. " +
+			"confirm it with `CronList` at card intake and after every clear, and re-arm it if it is missing or has expired; delete it with `CronDelete` when you send the completion report. " +
 			"The cron is what wakes a lane that stopped on an API error (such as a 429) or on a delegate's report that will never come, " +
 			"because a turn that has already ended cannot arm anything. " +
 			"Whatever wakes you — the cron, a leader message, an idle notice — read the disk evidence first " +
@@ -188,8 +188,8 @@ var factoryLocales = map[string]factoryMessages{
 			"배분받은 카드는 현재 워크트리에서 작업하고 각 단계를 `moai factory stage` 로 기록합니다.",
 		laneRecheckRule: "정지 복구: 카드의 첫 단계를 시작하기 전에 `CronCreate` 로 반복 재점검 크론 하나를 겁니다(cron `7,27,47 * * * *`, recurring). " +
 			"프롬프트는 먼저 레인 스톨 워치독을 실행하고 — Skill(\"moai-lane-watchdog\") 를 호출해 따릅니다 — 그다음 카드의 진행 기록에서 작업을 재개하도록 씁니다. " +
-			"카드를 넘겨받을 때와 `/clear` 뒤마다 `CronList` 로 확인하고, 없거나 만료됐으면 다시 겁니다. " +
-			"API 오류(429 등)로 멈췄거나 끝내 오지 않을 위임 대상의 보고를 기다리다 멈춘 레인을 깨우는 것은 이 크론뿐입니다 — 이미 끝난 턴은 아무것도 걸 수 없기 때문입니다. " +
+			"카드를 넘겨받을 때와 `/clear` 뒤마다 `CronList` 로 확인하고, 없거나 만료됐으면 다시 걸고, 완료 보고를 보낼 때 `CronDelete` 로 지웁니다. " +
+			"API 오류(429 등)로 멈췄거나 끝내 오지 않을 위임 대상의 보고를 기다리다 멈춘 레인은 이 크론이 깨웁니다 — 이미 끝난 턴은 아무것도 걸 수 없기 때문입니다. " +
 			"크론이든 리더 메시지든 idle 알림이든, 깨어나면 답하기 전에 디스크 증거(진행 기록·보고서·커밋·위임 대상의 산출물)를 먼저 읽으세요. " +
 			"메시지는 진행이 있다는 증거도, 없다는 증거도 아닙니다.",
 	},
@@ -238,10 +238,10 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "ファクトリーレーン手動ディスパッチ規則：このセッションは --no-auto-dispatch で起動しました — 手動ディスパッチモードです。 " +
 			"カードをリースするために `moai factory next` を実行しないでください：オペレーター（またはファクトリーリーダー）がカードを明示的に割り当てます。 " +
 			"割り当てられたカードは現在のワークツリーで作業し、各段階を `moai factory stage` で記録します。",
-		laneRecheckRule: "停止からの復旧：カードの最初の段階を始める前に、`CronCreate` で繰り返しの再点検クロンを1つ設定します（cron `7,27,47 * * * *`、recurring）。 " +
+		laneRecheckRule: "停止からの復旧：カードの最初の段階を始める前に、`CronCreate` で繰り返しの再点検用 cron を1つ設定します（cron `7,27,47 * * * *`、recurring）。 " +
 			"プロンプトは、まずレーン停滞ウォッチドッグを実行し — Skill(\"moai-lane-watchdog\") を呼び出して従います — そのあとカードの進捗記録から作業を再開する内容にします。 " +
-			"カードを引き継ぐときと `/clear` のたびに `CronList` で確認し、なければ、または期限切れなら設定し直します。 " +
-			"API エラー（429 など）で止まったレーンや、永久に届かない委任先の報告を待って止まったレーンを起こすのは、このクロンだけです — すでに終わったターンは何も設定できないためです。 " +
+			"カードを引き継ぐときと `/clear` のたびに `CronList` で確認し、なければ、または期限切れなら設定し直し、完了報告を送るときに `CronDelete` で削除します。 " +
+			"API エラー（429 など）で止まったレーンや、永久に届かない委任先の報告を待って止まったレーンは、この cron が起こします — すでに終わったターンは何も設定できないためです。 " +
 			"クロンでもリーダーのメッセージでも idle 通知でも、起こされたら返信の前にディスク上の証拠（進捗記録・レポート・コミット・委任先の成果物）を先に読みます。 " +
 			"メッセージは、進捗があることの証拠でも、ないことの証拠でもありません。",
 	},
@@ -291,9 +291,9 @@ var factoryLocales = map[string]factoryMessages{
 			"被分配的卡片在当前工作树中处理，各阶段用 `moai factory stage` 记录。",
 		laneRecheckRule: "停滞恢复：在开始卡片的第一个阶段之前，用 `CronCreate` 设置一个循环复查定时任务（cron `7,27,47 * * * *`，recurring）。 " +
 			"其提示词先运行泳道停滞看门狗 — 调用 Skill(\"moai-lane-watchdog\") 并按其执行 — 再依据卡片的进度记录继续工作。 " +
-			"接手卡片时以及每次 `/clear` 之后，用 `CronList` 确认；若缺失或已过期则重新设置。 " +
-			"能唤醒因 API 错误（如 429）而停下、或在等一个永远不会到来的委派方报告而停下的泳道，只有这个定时任务 — 因为已经结束的回合无法再设置任何东西。 " +
-			"无论是被定时任务、主导会话的消息还是 idle 通知唤醒，回复之前都先读取磁盘证据（进度记录、报告、提交、委派方的产出物）。 " +
+			"接手卡片时以及每次 `/clear` 之后，用 `CronList` 确认；若缺失或已过期则重新设置，发送完成报告时用 `CronDelete` 删除它。 " +
+			"因 API 错误（如 429）而停下、或在等一个永远不会到来的被委派方报告而停下的泳道，由这个定时任务唤醒 — 因为已经结束的回合无法再设置任何东西。 " +
+			"无论是被定时任务、主导会话的消息还是 idle 通知唤醒，回复之前都先读取磁盘证据（进度记录、报告、提交、被委派方的产出物）。 " +
 			"消息既不能证明有进展，也不能证明没有进展。",
 	},
 }

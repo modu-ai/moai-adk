@@ -113,15 +113,17 @@ kept until the completion report.
   longer than the N-minute stall window after the previous snapshot (§4).
 - **Keep.** `CronList` at card intake and after every `/clear`; re-arm when
   the entry is missing. A recurring job expires after 7 days — a card that
-  outlives that re-arms it.
+  outlives that re-arms it. Delete it (`CronDelete`) when the completion report
+  is sent; the next card arms its own.
 - **Read disk, not messages.** Every wake — the cron, a leader message, a
   teammate's idle notice — starts with the watchdog pass, which reads the
   evidence on disk (the three channels of §3, the card's progress record, the
   reports, the commits, a delegate's deliverable). A message says when to
   look; it is never evidence of progress or of its absence.
 - **Cost.** A fire after the cache window re-writes the prefix once. The
-  cadence trades that cost against a stall bounded by one period instead of
-  the 87 to 1606 minutes measured on cards t1393 and t1339.
+  cadence trades that cost against a stall bounded by about two periods (the
+  first observation after a wake yields no verdict, §4) instead of the 87 to
+  1606 minutes measured on cards t1393 and t1339.
 
 ## 6. The decision ladder
 
