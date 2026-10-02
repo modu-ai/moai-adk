@@ -91,6 +91,12 @@ const (
 	DefaultQuotaGateReleaseMarginPct = 5
 	DefaultQuotaGateMaxAge           = "30m"
 
+	// workflow.quota_gate.max_scan_dirs default (SPEC-QUOTA-RECORD-WORKTREES-001
+	// REQ-QWR-011): the bound on linked-worktree record directories examined per
+	// quota reading. UNMEASURED, like the values above; read through
+	// LoadQuotaScanBound, never carried by QuotaGateSettings.
+	DefaultQuotaGateMaxScanDirs = 128
+
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
 	DefaultMinCoveragePerCommit  = 80
@@ -1199,6 +1205,7 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			SevenDayHoldPct:  DefaultQuotaGateSevenDayHoldPct,
 			ReleaseMarginPct: DefaultQuotaGateReleaseMarginPct,
 			MaxAge:           DefaultQuotaGateMaxAge,
+			MaxScanDirs:      DefaultQuotaGateMaxScanDirs,
 		},
 		// The commit identity guard ships inert (SPEC-COMMIT-IDENTITY-GUARD-001
 		// REQ-CIG-006): when off, the pre-tool handler never invokes it, so no

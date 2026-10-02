@@ -35,6 +35,12 @@ const (
 	quotaGateHoldPctMax       = 100
 	quotaGateReleaseMarginMin = 0
 	quotaGateReleaseMarginMax = 50
+
+	// Valid range of max_scan_dirs (SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011);
+	// the upper bound keeps a mistyped value from making the scan unbounded.
+	// Both are unmeasured.
+	quotaGateScanDirsMin = 1
+	quotaGateScanDirsMax = 1024
 )
 
 // DefaultQuotaGate returns the shipped defaults: the gate off and the unmeasured
@@ -73,10 +79,23 @@ func LoadQuotaGate(projectRoot string) QuotaGateSettings {
 
 // LoadQuotaScanBound returns the bound on linked-worktree record directories the
 // quota reading examines per call (workflow.quota_gate.max_scan_dirs,
-// SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011). Signature-only stub: the body
-// lands with the configuration key.
+// SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011). It reads the same file through
+// the same decode path as LoadQuotaGate, but is a separate accessor so that
+// QuotaGateSettings carries no bound. A missing, unparseable, or mistyped file
+// (a decode failure) and a value outside 1-1024 yield the default; an absent key
+// keeps the default seeded into the wrapper.
 func LoadQuotaScanBound(projectRoot string) int {
-	return 0
+	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	wrapper := &workflowFileWrapper{Workflow: NewDefaultWorkflowConfig()}
+	loaded, err := loadYAMLFile(dir, "workflow.yaml", wrapper)
+	if err != nil || !loaded {
+		return DefaultQuotaGateMaxScanDirs
+	}
+	n := wrapper.Workflow.QuotaGate.MaxScanDirs
+	if n < quotaGateScanDirsMin || n > quotaGateScanDirsMax {
+		return DefaultQuotaGateMaxScanDirs
+	}
+	return n
 }
 
 // resolveQuotaGate replaces every out-of-range value of c with its default.

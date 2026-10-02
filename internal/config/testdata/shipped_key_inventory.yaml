@@ -2406,6 +2406,9 @@
 - path: "workflow.quota_gate.max_age"
   class: W
   evidence: reader
+- path: "workflow.quota_gate.max_scan_dirs"
+  class: W
+  evidence: reader
 - path: "workflow.quota_gate.release_margin_pct"
   class: W
   evidence: reader
