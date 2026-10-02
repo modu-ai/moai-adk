@@ -209,6 +209,17 @@ _<pending sync-phase>_
 
 리더 판정: 거부 문면이 "무엇을 설정하라"를 말하지 않으면 그 자체가 결함. 측정된 결함: done·sweep·goal approve 는 `(git_strategy workflow)` 만, `factory merge ready` 는 틀린 플래그(`--branch`, 대상 플래그는 `--develop`), `MERGE_NOT_ON_ORIGIN` 은 기준 출처 미표기, `moai doctor` 는 빈 목표를 ok 로 보고. 수리는 REQ-GFD-003(develop 폴백 없음)을 실효 있게 하는 M1 의 연장이며 AC-GFD-003 의 green-path 를 "거부는 설정 키와 해결 방법을 말한다"까지 확장한다.
 
+### §J.5 run 단계에서 측정으로 드러난 SPEC 정정 후보 (개정 A-2 로 묶어 sync 전에 한 번에 처리 — plan 산출물은 감사 해시 보존을 위해 그때까지 고치지 않는다)
+
+| # | 정정 후보 | 측정 근거 | 영향 |
+|---|---|---|---|
+| C1 | AC-GFD-002 F5 와 research.md §5 의 원인 서술이 틀림 — "squash 뒤에 main 이 같은 파일을 바꾸면 누적 patch-id 가 깨진다"가 아니다 | M2-A 가 git 2.54.0 에서 관측: squash 뒤의 main 변경은 squash 커밋의 patch-id 를 바꾸지 않아 층 2 가 여전히 landed 로 답한다. 깨지는 경우는 squash 이전에 카드 hunk 문맥 안을 main 이 바꿔 diff 문맥이 어긋난 때와 충돌 해결 squash 뿐이다(`TestLandingPredicateLaterChangeObservation`) | F5 를 "squash 이전 문맥 이동(+ 이후 변경)"으로 재서술하고 "세션 종료는 F5 에서 preserve" 는 그 구성에서만 성립함을 적는다. 층 3 의 필요성(이전 문맥 이동·충돌 해결)은 그대로 |
+| C2 | "기존 세션 정리 테스트는 무변경 green" 과 "빈 통합 목표 → 보존" 이 설정 없는 픽스처에서 동시에 성립하지 않는다 | M2-A: `realLandingRepo` 등 설정 없는 세 기존 테스트가 시드 없이는 실패 → 12줄 git-flow 설정 시드를 픽스처에 추가(M1 의 `newLandingFixture` 와 같은 처리, 단언 무변경) | AC-GFD-002 의 "무변경" 문구를 "단언 무변경, 설정 전제 시드 추가"로 정정 |
+
+#### M2-A 독립 재검증 (오케스트레이터, HEAD 6f713d42f, 레인 env 세척, 슬롯 임대 아래)
+
+`go test ./internal/cli/worktree -count=1` → `ok … 211.293s` (F1~F9·`TestLandingPredicateLaterChangeObservation`·`TestLandingPredicateCommitCap`·GH 읽기·fail-closed 포함, 한 번 `-v` 로 F1~F9 9/9 PASS 관측); `go test ./internal/cli -run 'TestCleanupSessionWorktree|TestSessionExitLanding|TestSessionWorktree' -count=1` → `ok … 46.555s`; `go build ./...` exit 0; `git grep -n "refs/remotes/origin/develop" -- internal/cli/session_worktree.go` → 주석 1줄뿐. `landing_predicate.go` 를 직접 읽어 층 3 의 세 조건(MERGED·`headRefOid == 로컬 tip`·병합 커밋이 ref 의 조상)과 10 s 한도·실패 시 보존을 확인했다. 미관측: 실제 `gh`·네트워크(`--json number,state,headRefOid,mergeCommit` 필드는 GitHub 응답으로 확인 못 함), 500 커밋 캡의 실측(변수를 낮춘 시험으로 대신), `internal/cli` 패키지 전체.
+
 ## §G.1 운영자가 직접 수행하는 단계 (런북, 이 카드의 레인은 실행하지 않는다)
 
 - `moai constitution amend` 두 번(`CONST-V3R5-027`, `CONST-V3R5-028`) — 5단째 인간 승인이 대화형 Y/N 이다(D-26).
