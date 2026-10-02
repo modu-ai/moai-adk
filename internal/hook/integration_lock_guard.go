@@ -21,7 +21,7 @@
 //     guard that blocked on uncertainty would wedge the batch it protects.
 //
 // One asymmetry with the branch guard is deliberate: an UNREADABLE record
-// allows here, while `kanban.ReadIntegrationLock` treats the same record as a
+// allows here, while `factory.ReadIntegrationLock` treats the same record as a
 // hard error for its CLI callers. The CLI is a lane asking "may I enter?",
 // where refusing to answer is the safe reply; the guard is on a hot tool path,
 // where the same refusal would deny every git merge in the repository until

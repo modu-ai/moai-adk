@@ -8,7 +8,7 @@ package web
 // X go". The badge is half of that decision, so it is asserted rather than
 // assumed.
 //
-// Every test here stubs kanban.HomeDirFn, which is process-global, so none run
+// Every test here stubs factory.HomeDirFn, which is process-global, so none run
 // in parallel.
 
 import (
@@ -110,7 +110,7 @@ func TestTodoSectionListsAllThreeStates(t *testing.T) {
 
 // TestTodoSectionRendersRelations — card t1309: recorded findings render as
 // relation lines under the rows they name, keeping the recorded direction.
-// The finding JSON mirrors kanban.BacklogFinding's serialization contract.
+// The finding JSON mirrors factory.BacklogFinding's serialization contract.
 func TestTodoSectionRendersRelations(t *testing.T) {
 	stubTodoHome(t)
 	root := t.TempDir()

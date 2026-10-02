@@ -5,8 +5,8 @@
 // spellings; the migration (REQ-TSP-050) relabels them, and this check is
 // the reproducible verdict that it happened: it counts the rows still
 // carrying a legacy spelling, using the SAME detectors the refusal and
-// stale-record paths use (kanban.IsLegacyLeaderSpelling /
-// kanban.IsLegacyFactoryRoleValue — no second detector), and reports zero
+// stale-record paths use (factory.IsLegacyLeaderSpelling /
+// factory.IsLegacyFactoryRoleValue — no second detector), and reports zero
 // rows as OK. Read-only: it judges, it never repairs.
 package cli
 

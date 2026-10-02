@@ -25,7 +25,7 @@
 // cwd, with no git common-dir step, so inside a linked worktree it names the
 // worktree — whose .moai/state holds no lease. Reading there would answer
 // "nobody holds it" and quietly allow. The root is therefore normalized with
-// kanban.ResolveSlotLeaseRoot, the same function the `moai slot` CLI uses.
+// factory.ResolveSlotLeaseRoot, the same function the `moai slot` CLI uses.
 package hook
 
 import (

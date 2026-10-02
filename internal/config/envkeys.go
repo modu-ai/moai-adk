@@ -196,7 +196,7 @@ const (
 	EnvFactoryLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
 	// EnvFactoryBackend names the backend the launcher opened the session
-	// on: kanban.BackendClaude, kanban.BackendGLM, or kanban.BackendGPT.
+	// on: factory.BackendClaude, factory.BackendGLM, or factory.BackendGPT.
 	//
 	// It exists because the backend is the one launch fact a session cannot
 	// observe for itself. Before this key the value reached the kanban record

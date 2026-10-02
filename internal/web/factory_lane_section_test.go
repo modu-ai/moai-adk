@@ -164,8 +164,8 @@ func TestKanbanNoteBannerCorrected(t *testing.T) {
 	}
 	for _, stale := range []string{
 		"are not recorded yet",
-		"kanban.Record is extended",
-		"kanban.Record extension required",
+		"factory.Record is extended",
+		"factory.Record extension required",
 	} {
 		for name, src := range sources {
 			if strings.Contains(src, stale) {

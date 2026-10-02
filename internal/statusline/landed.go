@@ -7,13 +7,13 @@
 // mechanism for the same job is how the same logic ends up written three times.
 //
 // The live form of this question is what must never reach a render:
-// kanban.GitLandedQuerier.Landed asks git ONCE PER CARD (measured 0.174s per
+// factory.GitLandedQuerier.Landed asks git ONCE PER CARD (measured 0.174s per
 // query — about fourteen seconds across eighty cards), and backlog.go's read is
 // contracted to stay constant-cost per render. The child therefore folds every
 // card into ONE subject-stream query — kanban's own landed scan
-// (kanban.LandedScanArgs) — and attributes in memory through kanban's own
-// predicate (kanban.LandedAttributions) and generation boundary
-// (kanban.AutoDoneSubjectFresh). The count is the same subject criterion
+// (factory.LandedScanArgs) — and attributes in memory through kanban's own
+// predicate (factory.LandedAttributions) and generation boundary
+// (factory.AutoDoneSubjectFresh). The count is the same subject criterion
 // `moai todo auto-done` evaluates; this file owns no matcher of its own.
 //
 // The count answers "a landing commit exists", not "this card may close": a
@@ -74,7 +74,7 @@ var landedCardToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 // stampede guard writes before any work has happened. Rendering "0 landed" for
 // either absence would assert a fact nobody measured — the same reason
 // GitHubCounts renders "-/-" instead of "0/0", and the same reason
-// kanban.LandingUnknown exists beside landed and not-landed.
+// factory.LandingUnknown exists beside landed and not-landed.
 type LandedCounts struct {
 	// Landed is how many picked cards Ref's subject stream attributes, through
 	// kanban's subject-attribution predicate, to a commit no older than the
@@ -186,7 +186,7 @@ var landedGitRunner = func(ctx context.Context, dir string, args ...string) (str
 }
 
 // landedScanRunner adapts landedGitRunner to kanban's CommandRunner contract,
-// so kanban.ScanLandedSubjects runs its one query through the same seam the
+// so factory.ScanLandedSubjects runs its one query through the same seam the
 // tests count. kanban's contract carries a command name; the adapter only
 // ever runs git and refuses anything else rather than silently running git in
 // its place.
@@ -205,7 +205,7 @@ func landedScanRunner(ctx context.Context, dir string) factory.CommandRunner {
 // called on the render path.
 //
 // ONE git query, whatever the card count. The per-card form
-// (kanban.GitLandedQuerier.Landed) is correct and is what `moai todo pr` uses;
+// (factory.GitLandedQuerier.Landed) is correct and is what `moai todo pr` uses;
 // it is simply the wrong shape behind a status bar.
 func RefreshLandedCounts(ctx context.Context, boardRoot string) error {
 	if boardRoot == "" {

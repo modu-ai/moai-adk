@@ -11,7 +11,7 @@
 // holds whoever the writer turns out to be (spec.md §A.3).
 //
 // The fact rides the EXISTING store-identity surface,
-// kanban.InspectBacklogArchiveVouch, which already measured it and threw it
+// factory.InspectBacklogArchiveVouch, which already measured it and threw it
 // away (REQ-BJD-006). There is no second inspector and no second probe.
 //
 // stderr only (REQ-BJD-004): stdout is a machine surface for these verbs —

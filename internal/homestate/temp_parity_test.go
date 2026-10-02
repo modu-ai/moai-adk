@@ -84,7 +84,7 @@ func TestTempDiscriminantParity(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_, factoryTemp := factory.TempOriginReason(tc.base)
 			if factoryTemp != tc.wantTmp {
-				t.Fatalf("premise: kanban.TempOriginReason(%s) = %v, want %v", tc.base, factoryTemp, tc.wantTmp)
+				t.Fatalf("premise: factory.TempOriginReason(%s) = %v, want %v", tc.base, factoryTemp, tc.wantTmp)
 			}
 			fdb, err := homestate.FactoryDBPath(tc.base)
 			if err != nil {

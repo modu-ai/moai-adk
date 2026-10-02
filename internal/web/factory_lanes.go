@@ -13,7 +13,7 @@
 // wrong lookup renders a confident wrong row, which is worse than an empty one.
 //
 // Read-only, like the rest of the console: nothing here writes, and the
-// registry is consumed through kanban.LoadFactoryRegistry, whose failure mode
+// registry is consumed through factory.LoadFactoryRegistry, whose failure mode
 // is an empty map rather than a mutation.
 package web
 

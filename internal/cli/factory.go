@@ -65,7 +65,7 @@ const (
 	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002), kept as the lane role's name
 	// for the Codex parse and the role pin; cc and glm no longer accept it
 	// as an `-f` value. The legacy `worker` / `agent` tokens survive only as
-	// detection values (kanban.IsLegacyFactoryRoleValue).
+	// detection values (factory.IsLegacyFactoryRoleValue).
 	factoryLaneRoleToken = "lane"
 
 	// clearPolicyFlag is the lane clear-policy selection token (REQ-SD-020):
@@ -668,7 +668,7 @@ func resolveFactoryBranch(factoryEnabled, isLane bool) factoryBranch {
 }
 
 // parseFactoryLaneLabel reports the canonical `lane-<n>` label in args, if
-// any. It matches only the lane SHAPE (kanban.SplitFactoryLaneLabel) because
+// any. It matches only the lane SHAPE (factory.SplitFactoryLaneLabel) because
 // treating every named session as a lane would silently change launch behavior
 // for unrelated work. A legacy `worker-<n>` / `agent-<n>` spelling never reaches
 // this parser — refuseLegacyEntryNames refuses it at the entry parse

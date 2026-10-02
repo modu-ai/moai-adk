@@ -66,7 +66,7 @@ type launcherEntryParse struct {
 // `leader-<run-id>` name the operator pasted, then a run id already standing in
 // the environment, then a fresh mint.
 //
-// The name is no longer where a run id lives (kanban.LeaderLabel is the bare
+// The name is no longer where a run id lives (factory.LeaderLabel is the bare
 // role now), so the first step only serves an operator naming the run
 // explicitly at launch. A bump number is not a run id and
 // must not be adopted as one, which is why an all-digit suffix is skipped —
@@ -412,7 +412,7 @@ func operatorSuppliedName(args []string) bool {
 // `moai cc -f`, would lose its identity on every clear and have to be renamed
 // by hand.
 //
-// The name is the bare role (kanban.LeaderLabel), so unlike its prior form this
+// The name is the bare role (factory.LeaderLabel), so unlike its prior form this
 // needs nothing from the environment and has one self-gate rather than two: the
 // operator's own name wins. The absent-run-id gate is gone with the run id it
 // guarded — there is no longer a `lead-` degenerate form to avoid emitting (the

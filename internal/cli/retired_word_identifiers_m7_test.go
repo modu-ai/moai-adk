@@ -68,7 +68,7 @@ func TestRetiredWordIdentifierScanHasTeeth(t *testing.T) {
 	src := "package x\n\n" +
 		"import \"github.com/modu-ai/moai-adk/internal/factory\"\n\n" +
 		"func " + oldName + "() {}\n\n" +
-		"var _ = kanban.Record{}\n\n" +
+		"var _ = factory.Record{}\n\n" +
 		"func Test" + "Kan" + "banEntryRefused() {}\n"
 	got := retiredWordIdentifiers(t, "control.go", src)
 	if len(got) != 1 || !strings.HasSuffix(got[0], " "+oldName) {

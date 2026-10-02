@@ -544,7 +544,7 @@ func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM
 }
 
 // loadKanbanRecords 는 프로젝트 상태 디렉터리의 세션 레코드(*.json)를 읽는다.
-// 디렉터리 이름은 kanban.RecordPath 로 해석한다 — 이름을 여기에 적어 두면
+// 디렉터리 이름은 factory.RecordPath 로 해석한다 — 이름을 여기에 적어 두면
 // 이름이 바뀐 뒤에도 조용히 옛 경로를 읽는다.
 func loadKanbanRecords(root string) []KanbanRecord {
 	dir := filepath.Dir(factory.RecordPath(root, "probe"))

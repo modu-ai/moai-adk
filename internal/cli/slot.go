@@ -6,7 +6,7 @@ package cli
 // A lane about to run a heavy command acquires the resource first; a second
 // lane's acquire is refused while the first holds it. The lease record lives
 // in the PRIMARY checkout's .moai/state/slot-leases, shared by every linked
-// worktree, and the root is resolved with kanban.ResolveSlotLeaseRoot — the
+// worktree, and the root is resolved with factory.ResolveSlotLeaseRoot — the
 // same function the opt-in PreToolUse guard uses, so the CLI never writes a
 // tree the guard does not read (plan-audit N1).
 //

@@ -57,7 +57,7 @@ const pushSerializerViolationPrefix = "PUSH_SERIALIZATION_VIOLATION:"
 const pushSerializerAdvisoryPrefix = "[moai:push-serializer] advisory:"
 
 // PushDevelopSlotResource is the slot resource the serializer acquires. It is
-// a valid resource name under kanban.ValidateSlotResourceName, and
+// a valid resource name under factory.ValidateSlotResourceName, and
 // `moai slot status --resource push-develop` reads the same record a lane
 // would read by hand (design.md §B Resource).
 const PushDevelopSlotResource = "push-develop"

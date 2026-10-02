@@ -63,12 +63,12 @@ func TestTodoSelectionPredicatesPositivelyEnumerateStates(t *testing.T) {
 		}
 		scanned++
 		for _, line := range strings.Split(string(raw), "\n") {
-			if strings.Contains(line, "State != kanban.BacklogState") {
+			if strings.Contains(line, "State != factory.BacklogState") {
 				t.Errorf("%s excludes states by a negated comparison (REQ-THS-012): %s",
 					name, strings.TrimSpace(line))
 			}
-			if strings.Contains(line, "State == kanban.BacklogState") ||
-				strings.Contains(line, "case kanban.BacklogState") {
+			if strings.Contains(line, "State == factory.BacklogState") ||
+				strings.Contains(line, "case factory.BacklogState") {
 				positives[name]++
 			}
 		}

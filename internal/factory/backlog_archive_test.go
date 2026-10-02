@@ -61,7 +61,7 @@ func TestBacklogArchive_StateEnumUnchanged(t *testing.T) {
 //     the stamp precedent; absence is nil/SQL NULL (REQ-TLE-006) and the
 //     JSON face renders through the lease-free projection (REQ-TCL-014).
 var permittedItemFieldAdditions = map[string]string{
-	"Landing":   "*kanban.LandingEvidence",
+	"Landing":   "*factory.LandingEvidence",
 	"CardUUID":  "*string",
 	"PickedAt":  "*string",
 	"DroppedAt": "*string",
@@ -70,7 +70,7 @@ var permittedItemFieldAdditions = map[string]string{
 	// identity, classified-at stamp, one-line reason — in one nullable
 	// struct, after the Landing precedent (omitempty pointer, absence as
 	// JSON null / SQL NULL).
-	"Classification": "*kanban.CardClassification",
+	"Classification": "*factory.CardClassification",
 	// SPEC-TODO-CLAIM-LEASE-001 (card t1342) REQ-TCL-001: the claim lease's
 	// holder label and RFC 3339 expiry — nullable TEXT, the claim-family
 	// operations are their only writers.
@@ -89,7 +89,7 @@ var frozenItemFields = []struct{ name, typ, tag string }{
 	{"Text", "string", "text"},
 	{"AddedAt", "string", "added_at"},
 	{"SpecID", "*string", "spec_id"},
-	{"State", "kanban.BacklogState", "state"},
+	{"State", "factory.BacklogState", "state"},
 }
 
 // AC-TDG-004 (half 2) — the per-item contract's frozen five are unchanged,

@@ -55,7 +55,7 @@ const todoPRLandingAbbrev = 7
 // todoPRLandingMarkerMalformed labels a record that is PRESENT but does not
 // read as a record. It is the third member of a set that must stay mutually
 // distinguishable by a machine reading only the marker — the other two are
-// kanban.LandingSHASourceOperator and kanban.LandingMarkerRefHead.
+// factory.LandingSHASourceOperator and factory.LandingMarkerRefHead.
 //
 // The distinction it carries is one absence cannot: an empty cell means no
 // record was ever made, which AC-TLE-006 asserts as a meaningful state.
@@ -304,7 +304,7 @@ func writeTodoPRRows(w io.Writer, rec *factory.BacklogRecord, rows []todoPRRow) 
 // todoPRRow is the RENDER-TIME shape: the resolver's outcome plus the stored
 // evidence, joined only for output.
 //
-// The evidence rides here rather than on kanban.PRLinkOutcome deliberately.
+// The evidence rides here rather than on factory.PRLinkOutcome deliberately.
 // PRLinkOutcome is the RESOLVER's own output type, and REQ-1.10 rules that the
 // resolver names no delivering commit — a `sha` field inside it would put an
 // operator's delivery claim in the same struct as a grep verdict, which is the

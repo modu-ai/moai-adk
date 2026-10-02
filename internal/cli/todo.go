@@ -39,7 +39,7 @@ import (
 )
 
 // init wires internal/cli's existing userHomeDirFn test-injection seam
-// through to kanban.HomeDirFn, the equivalent seam the relocated queue-root
+// through to factory.HomeDirFn, the equivalent seam the relocated queue-root
 // resolution owns (SPEC-WEB-TODO-QUEUE-001 M1). The closure closes over the
 // package-level var by reference, so a test that reassigns userHomeDirFn at
 // runtime is still observed by the resolution — the same pattern glm.go uses
@@ -408,7 +408,7 @@ func todoLaneMutationRefusalText(surface string) string {
 var todoVerbShaped = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,23}$`)
 
 // todoCardIDShaped matches the id form the queue issues (`t<decimal>`, see
-// kanban.BacklogStore). An explicit id in second position is an address at
+// factory.BacklogStore). An explicit id in second position is an address at
 // any arity.
 var todoCardIDShaped = regexp.MustCompile(`^t\d+$`)
 

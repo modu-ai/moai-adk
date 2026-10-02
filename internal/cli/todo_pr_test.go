@@ -132,7 +132,7 @@ func seedQueue(t *testing.T, store *factory.BacklogStore, texts ...string) []str
 // The scope is the whole root, not the queue directory
 // (SPEC-TODO-LANDING-STATE-001 AC-TLS-008). The narrower form was porous in a
 // way that mattered: the read-only ruling prohibits a write BY THE VERB
-// anywhere, and a criterion scoped to `kanban.StateDirForRoot(root)` cannot
+// anywhere, and a criterion scoped to `factory.StateDirForRoot(root)` cannot
 // fail on the "no cache" clause at all — a landing cache written to
 // `<root>/.moai/cache/` on every invocation left it fully green. The
 // assertion is therefore drawn at the verb's reach.

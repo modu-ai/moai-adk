@@ -4,7 +4,7 @@ package cli
 // SPEC-FACTORY-LANE-AUTONOMY-001 fragment 3 (design.md D3): the check
 // sequence a lane executes before entering the integration window, and the
 // window gate the merge act itself sits behind. It consumes the EXISTING
-// `moai integration` window (kanban.AcquireIntegrationLock and the recorded
+// `moai integration` window (factory.AcquireIntegrationLock and the recorded
 // hold) — no new serialization mechanism (REQ-FLA-010/011) and no F3
 // controller machinery (spec.md §F exclusion): no write-ahead start events,
 // no trial merges, no tick loop. This file never performs a merge.

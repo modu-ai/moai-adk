@@ -116,7 +116,7 @@ func TestT621_HomeBranchRootIsNotReKeyed(t *testing.T) {
 // Not every surface goes through this file's resolvers. The statusline reads
 // the queue under the STATE ANCHOR — the project root itself
 // (internal/statusline/backlog.go resolveBoardRoot → BacklogCountsForRoot), and
-// the console's file watch registers kanban.StateDirForRoot(projectRoot)
+// the console's file watch registers factory.StateDirForRoot(projectRoot)
 // (internal/web/events.go). A resolver root that carries a different project
 // key therefore does not merely name an odd directory: it forks the queue
 // between the command path and every anchor-based surface, which is the failure

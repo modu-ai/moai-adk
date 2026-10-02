@@ -129,6 +129,6 @@ func TestFactoryCardOwnerWriterUsesLeaderConstant(t *testing.T) {
 	// recordFactoryCardState falls back to the leader role constant when the
 	// session carries no lane label (REQ-RNC-010: factory card owner).
 	if factory.RoleLeader != "leader" {
-		t.Fatalf("kanban.RoleLeader = %q, want leader", factory.RoleLeader)
+		t.Fatalf("factory.RoleLeader = %q, want leader", factory.RoleLeader)
 	}
 }

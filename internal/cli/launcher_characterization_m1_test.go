@@ -177,10 +177,10 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 
 	records, err := factory.ReadAll(root)
 	if err != nil {
-		t.Fatalf("kanban.ReadAll over the pre-existing records: %v", err)
+		t.Fatalf("factory.ReadAll over the pre-existing records: %v", err)
 	}
 	if len(records) < 3 {
-		t.Errorf("kanban.ReadAll returned %d record(s), want the three role records readable (positive control)", len(records))
+		t.Errorf("factory.ReadAll returned %d record(s), want the three role records readable (positive control)", len(records))
 	}
 
 	for _, check := range []DiagnosticCheck{

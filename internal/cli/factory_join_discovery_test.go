@@ -286,7 +286,7 @@ func TestFactoryLaneJoinLeadTargeting(t *testing.T) {
 			t.Fatalf("default-target join: %v", err)
 		}
 		if len(*asked) != 1 || (*asked)[0] != "leader" {
-			t.Errorf("discovery asked = %v, want [leader] (kanban.LeaderLabel default)", *asked)
+			t.Errorf("discovery asked = %v, want [leader] (factory.LeaderLabel default)", *asked)
 		}
 		if c.leadName != "leader" {
 			t.Errorf("lead name at launch = %q, want leader", c.leadName)

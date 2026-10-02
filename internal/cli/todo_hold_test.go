@@ -279,7 +279,7 @@ func TestTodoHold_ActorBoundaryLeasePathsCannotHold(t *testing.T) {
 		"gtd.go",
 		"todo_autodone.go",
 	}
-	assignment := "= kanban.BacklogStateHold"
+	assignment := "= factory.BacklogStateHold"
 	holdImplementations := 0
 	for _, name := range leasePathFiles {
 		body := readCliSource(t, name)

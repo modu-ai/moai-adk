@@ -1,8 +1,8 @@
 // todo_queue_read.go — the console's SINGLE read seam onto the backlog queue.
 //
 // This is the only file in internal/web that names a backlog-store symbol
-// (`kanban.ResolveTodoQueueRoot`, `kanban.NewBacklogStore`,
-// `kanban.BacklogPathForRoot`, `kanban.BacklogItem`); `todo_queue_read_test.go`
+// (`factory.ResolveTodoQueueRoot`, `factory.NewBacklogStore`,
+// `factory.BacklogPathForRoot`, `factory.BacklogItem`); `todo_queue_read_test.go`
 // asserts that mechanically. The view model calls readTodoQueue and never the
 // store, so the queue's SQLite storage and legacy read-through are swapped
 // by changing this function and nothing else.

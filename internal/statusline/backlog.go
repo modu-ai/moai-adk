@@ -33,7 +33,7 @@ func resolveBoardRoot(input *StdinData) string {
 
 // resolveBacklogCounts counts the backlog by state under boardRoot.
 //
-// It delegates to kanban.BacklogCountsForRoot rather than reading a file
+// It delegates to factory.BacklogCountsForRoot rather than reading a file
 // itself: the queue's storage is a database now, and a second reader here
 // would have to be kept in step with the store by hand — the exact drift the
 // single-seam rule exists to prevent. The two properties this render depends
