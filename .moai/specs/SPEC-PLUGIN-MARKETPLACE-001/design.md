@@ -250,7 +250,8 @@ doctor ──► checkPluginVersion(homes, probe, binaryVersion)
   starts the child through the refusing runner of §3.4. Two independent guards keep a test off the real Codex: the runner refusal
   (no process starts) and `TestMain` wrapping `codexUserHomeDir` with the existing `homeRedirectingFn` and clearing `CODEX_HOME`
   (no read of the real home; `main_test.go:269-299` redirects `userHomeDirFn` only today, P-43). A canary directory standing in for
-  a real home, hashed before and after a registry-wide run, and a recording `codex` shim first on PATH pin both; a check that
+  a real home, hashed before and after a registry-wide run, and recording `codex` and `claude` shims first on PATH pin both (with
+  `CLAUDE_CODE_VERSION` pinned, because the existing `Claude Code` check execs `claude --version` itself when it is unset, P-48); a check that
   resolved the home with `os.UserHomeDir()` itself, or a runner that started a process, turns `TestCheckPluginVersion_HomeIsolation`
   red (AC-021 (c)).
 - The `v` strip matters: the binary prints `v3.2.0-rc.26` and the manifests carry `3.2.0-rc.26`. A development build
@@ -293,6 +294,27 @@ it. Isolation is the scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `MOAI_HOME` (
 cannot cover is the real binary's `init`, which writes `$HOME/.claude/settings.json` and for which `HOME` is the only seam (P-42):
 that is OD-14, and at its default (a) no harness case runs it (G-8).
 
+Two scripts, two contracts (plan-audit iteration 3, ND-3). `scripts/test-plugin-install-step.sh` is the stub harness: `claude`, `codex`
+and `go` resolve to stubs it installed, so it cannot start a real tool. `scripts/check-plugin-discoverable.sh` is **not** under the stub
+rule, on purpose: its subject is the real Claude runtime's inventory of an installed plugin (P-30 measured the nested layout invisible
+only there), and a stub that replayed a recorded `details` output would test the parser and not the layout. It keeps every other
+control of the harness and names the three verbs it may start (last paragraph of this section); the carve-out is measured, not
+assumed (P-49: the same three verbs under an empty scratch home left the real roots equal before and after). Both scripts sit inside
+the same protected-set bracket from M3 on, when the hash script exists; before that the scratch home, the scrub and the canary are
+the controls.
+
+The installer is the other place a harness could write outside its scratch (plan-audit iteration 3, ND-2). Without `--install-dir`,
+`install.sh` installs into `go env GOBIN`, else `$GOPATH/bin`, else `$HOME/.local/bin` (P-47; on this machine the first target is
+`/Users/goos/go/bin`, which holds a real `moai`), and none of the three is in the protected set. The rule is therefore **prevention,
+asserted per case**: every `installer-*` case passes `--install-dir <scratch>/inst-<case>/bin`, a stub `go` returns two decoy
+directories inside the scratch for `go env GOBIN` and `go env GOPATH`, and each case fails unless the installed binary's resolved path
+lies under its own directory and neither decoy holds a `moai`. `$HOME/.local/bin` is reached only when both decoys are absent, which
+the harness never arranges. The hash route was considered and not taken: the protected set is **not** extended to the three install
+roots, because an entry hash cannot see the overwrite of a `moai` file that a real `$GOBIN` already holds (control in R-31: equal
+listing hash across a content change) and a content hash of that file would count the repository's own rc-install procedure
+(`gitflow-lane-protocol.md` §9, `cp bin/moai ~/go/bin/moai`) as a leak. `install.ps1` and `install.bat` take the same option (P-47)
+and run in no harness case (G-3).
+
 Isolation mechanism, in order (REQ-025, AC-025):
 
 1. **Capture the protected roots** before anything is changed: `sh scripts/protected-set-hash.sh --save-roots <file>` writes the
@@ -306,8 +328,10 @@ Isolation mechanism, in order (REQ-025, AC-025):
    measured session this removes 37 names: the session's own 29, the five fixed poison names and the three pid-named ones (R-28). `ANTHROPIC_*` and the rest are left alone: the
    rule is the three families the audit named.
 4. **Set what the run needs**: `PATH` of `<shim>:/usr/bin:/bin`; stub `claude` and `codex` that append their argv to a log; a stub
+   `go` that answers `go env GOBIN` and `go env GOPATH` with two decoy directories inside the scratch (created before the run); a stub
    `curl` serving a pinned archive and failing for `checksums.txt`; scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `MOAI_HOME`; a scratch
-   working directory. Each case that needs an opt-out sets `MOAI_SKIP_PLUGIN_INSTALL` for itself after the scrub.
+   working directory. Each case that needs an opt-out sets `MOAI_SKIP_PLUGIN_INSTALL` for itself after the scrub; each installer case
+   passes `--install-dir` for itself.
 5. **Judge** five isolation cases, then the product cases, then take the after hash from the same roots file.
 
 Why the working directory matters as much as the scrub: the Claude resolver tries `MOAI_CLAUDE_BIN`, then `llm.claude_bin` from the
@@ -320,7 +344,10 @@ fails on any `.moai`; the negative controls plant the pin both ways.
 cases (12): `isolation-env-scrubbed`, `isolation-cwd-has-no-project`, `isolation-resolves-to-stubs`,
 `isolation-poisoned-pin-never-executed`, `isolation-real-home-unchanged`; `verb-install-all-tools`, `verb-no-tools-exit-0`,
 `verb-optout-zero-calls`; `installer-calls-verb-by-installed-path`, `installer-optout`, `installer-set-e-guard`,
-`installer-old-binary-unknown-verb`. The archive holds the `moai` binary under test, or a stub for the failure cases. A case counts
+`installer-old-binary-unknown-verb`. The archive holds the `moai` binary under test, or a stub for the failure cases. **Every
+`installer-*` case passes `--install-dir <scratch>/inst-<case>/bin` and asserts the installed path under the scratch root**: it fails
+unless `go` resolves to the stub, `realpath <install dir>/moai` exists and lies under that case's own directory, and neither decoy
+default root holds a `moai` (AC-018 (a)). A case counts
 only logged calls whose first argument is `plugin`, so a tool invoked for another reason does not pollute it. Nine more cases exist
 only under OD-14 (b) or (c): `init-claude-harness`, `init-gpt-harness`, `init-both-harness`, `init-config-home-printed`,
 `init-add-fails-skips-install`, `init-tool-fails-exit-0`, `init-no-tools-one-skip-line`, `init-flag-optout-zero-calls`,
@@ -328,7 +355,9 @@ only under OD-14 (b) or (c): `init-claude-harness`, `init-gpt-harness`, `init-bo
 
 Negative controls. `--negative-control` disables the scrub and starts in a project whose `llm.yaml` pins the recorder;
 `--negative-control-cwd` keeps the scrub and starts in that project; `--typed-list-mutant` replaces the scrub with a typed list of
-the fixed poison names. Each runs the isolation cases and judges them against an expected set: the cases the break affects must go
+the fixed poison names; `--negative-control-install-dir` runs the four installer cases without `--install-dir` (the omitted flag
+installs into a decoy, so all four go red through the installed-path and decoy-root assertions, and the five isolation cases stay
+green). Each runs its cases and judges them against an expected set: the cases the break affects must go
 red, the ones it does not affect must stay green (`isolation-resolves-to-stubs` does not depend on the scrub, so it is the control that
 shows the negative mode does not simply fail everything). The exit status is 0 only when the red set and the green set are exactly the
 expected ones; a harness whose scrub removal turned nothing red would exit 1. The negative runs aim only at the canary directory and
@@ -346,9 +375,16 @@ change on their own, `<claude>/plugins/synced`, `<claude>/plugins/.trash` and `<
 differing entries. Blind spots, stated: `tmp/arg0` under the real Codex home, entries deeper than the declared depth inside an existing
 clone or cache, and the content of `known_marketplaces.json` (G-9).
 
-`scripts/check-plugin-discoverable.sh <empty-claude-home>`: refuses any argument that is not an existing empty directory (exit 2);
-with `CLAUDE_CONFIG_DIR` set to it, adds the repository root as a marketplace, installs `moai@moai-adk` and reads
-`claude plugin details`; the expected names are the directory names under `plugins/moai/skills` plus the command stems of the
+`scripts/check-plugin-discoverable.sh <empty-claude-home>`: the one script that runs the real `claude` (REQ-025 carve-out). Contract:
+it refuses any argument that is not an existing empty directory (exit 2) before anything starts; it applies the live-enumerated scrub
+of every `MOAI_*`, `CLAUDE_*` and `CODEX_*` name between the marker comments `# scrub:begin` and `# scrub:end` (so a mutant copy
+without it can be made mechanically), moves to a scratch working directory and sets `CLAUDE_CONFIG_DIR` to its argument; it starts
+no `codex`, takes a local path as its only source (no network source), and runs exactly three verbs, `claude plugin marketplace add
+<repository root> --json`, `claude plugin install moai@moai-adk --json` and `claude plugin details moai@moai-adk`. The scrub is not
+decoration: `CLAUDE_CODE_PLUGIN_CACHE_DIR`, a variable the real `claude` honors, moves the whole plugin tree out of
+`CLAUDE_CONFIG_DIR` (P-49: 391 entries landed in the named directory, none under the scratch home, and the inventory line still read
+`ok`), so AC-006 (d) plants that variable and a poison pin aimed at a canary and requires the canary unchanged. The script reads the
+inventory, and the expected names are the directory names under `plugins/moai/skills` plus the command stems of the
 template tree, so the payload cannot define its own expectation, and the `MCP servers` line must match the keys of
 `plugins/moai/.mcp.json`. `claude plugin details` has no JSON form, so the script parses the `Skills (N)  a, b, …` and
 `MCP servers (K)  …` lines and fails on a shape it cannot parse (RK-18).

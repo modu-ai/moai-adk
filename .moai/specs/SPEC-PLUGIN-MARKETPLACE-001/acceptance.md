@@ -13,8 +13,9 @@ criterion here is a binary-testable Given/When/Then with the same number.
   this directory). Every entry not named here or below was measured in the iteration-1 revision at tree `3766cef05` and
   carries that pin. L-10, L-37, L-38 and L-39 were measured in the iteration-3 revision at tree `b6a0522a0` (L-10 is the
   iteration-0 cell re-measured with AC-007's own commands, N10); that tree differs from the one plan-audit iteration 2
-  audited, `d6987e59c`, in this directory's `progress.md` only (`git diff --name-only d6987e59c b6a0522a0`). A pin is never
-  re-quoted at a later tree without re-measuring.
+  audited, `d6987e59c`, in this directory's `progress.md` only (`git diff --name-only d6987e59c b6a0522a0`). L-41, L-42 and L-43
+  were measured in the final delta at tree `cc46749d9`, which differs from the tree plan-audit iteration 3 audited, `a0c8ad7cb`, in
+  `progress.md` only (`git diff --name-only a0c8ad7cb cc46749d9`). A pin is never re-quoted at a later tree without re-measuring.
 - **Scratch homes, one per criterion.** `<claude-home:AC-nnn>` and `<codex-home:AC-nnn>` name empty directories
   under the session scratchpad, created by `mkdir -p` and shown empty by `ls -A` before the first command, **for
   that criterion alone**: the same placeholder never appears under two criteria, so no criterion reads state that
@@ -43,12 +44,17 @@ criterion here is a binary-testable Given/When/Then with the same number.
   tree and invoked by path (`verification-claim-integrity.md` §2.2). The script plants a poison in its own environment (a
   `MOAI_CLAUDE_BIN` naming a recording script, and one variable of each of the `MOAI_*`, `CLAUDE_*` and `CODEX_*`
   families), then scrubs by live enumeration of those three name families (`awk` over `ENVIRON`, never a typed list),
-  then sets a `PATH` of its own, stub `claude` and `codex` that record their argv, a stub `curl` serving a pinned local
+  then sets a `PATH` of its own, stub `claude` and `codex` that record their argv, a stub `go` that names two decoy directories
+  inside the scratch as `install.sh`'s default install roots (P-47), a stub `curl` serving a pinned local
   archive, and scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `MOAI_HOME` and working directory (no `.moai` in it or above
   it); it sets no `HOME`. It counts only recorded calls whose first argument is `plugin`. Its isolation cases
   (`isolation-env-scrubbed`, `isolation-cwd-has-no-project`, `isolation-resolves-to-stubs`,
   `isolation-poisoned-pin-never-executed`, `isolation-real-home-unchanged`) are the verdict of AC-025, and
-  `scripts/protected-set-hash.sh` is the hash they share with the run-phase procedure.
+  `scripts/protected-set-hash.sh` is the hash they share with the run-phase procedure. **Every `installer-*` case passes
+  `--install-dir <scratch>/inst-<case>/bin` and asserts the installed path under that directory** (AC-018 (a), AC-025 (f));
+  `install.ps1` and `install.bat` run in no harness case (static only, G-3). `scripts/check-plugin-discoverable.sh` is the one
+  script outside the stub rule: it runs the real `claude` for three named verbs under a scratch home, behind the same scrub
+  (REQ-025, AC-006 (b) and (d)).
 - **Static checks are labelled static.** A check that reads text (a grep, a source scan) proves a token or shape is
   present, not that behavior holds; where a criterion carries one it says so, and a behavior check sits beside it.
 - **Defaults.** A criterion bound to an Open Decision carries `default pending OD-n` and an `Alternate` line stating
@@ -61,7 +67,7 @@ criterion here is a binary-testable Given/When/Then with the same number.
 | AC-003 | REQ-003 dual plugin manifests, version from the SSOT | M1 | L-03, L-04 |
 | AC-004 | REQ-004 derivation, rename independence | M2 | L-05, L-06, L-38 |
 | AC-005 | REQ-005 copy, render and mode fidelity | M2 | L-07, L-37 |
-| AC-006 | REQ-006 flat command layout, discoverable inventory | M2 | L-08, L-09 |
+| AC-006 | REQ-006 flat command layout, discoverable inventory | M2 | L-08, L-09, L-43 (stand-in) |
 | AC-007 | REQ-007 MCP entry derived (derivation unit and its test M1, payload file M2) | M2 | L-10 |
 | AC-008 | REQ-008 scaffold-only exclusions | M2 | L-11 |
 | AC-009 | REQ-009 drift gate | M2 | L-12 |
@@ -73,14 +79,14 @@ criterion here is a binary-testable Given/When/Then with the same number.
 | AC-015 | REQ-015 opt-out | M3 | L-19, L-20 |
 | AC-016 | REQ-016 automated callers set the opt-out | M3 | L-21 |
 | AC-017 | REQ-017 test-binary inertness | M3 | L-22 |
-| AC-018 | REQ-018 install scripts | M3 | L-23, L-24, L-25, L-26 |
+| AC-018 | REQ-018 install scripts | M3 | L-23, L-24, L-25, L-26, L-41 (stand-in) |
 | AC-019 | REQ-019 the install verb | M3 | L-27, L-28 |
 | AC-020 | REQ-020 doctor Claude read | M4 | L-29 |
-| AC-021 | REQ-021 doctor Codex read | M4 | L-30 |
+| AC-021 | REQ-021 doctor Codex read | M4 | L-30, L-42 (scoping control) |
 | AC-022 | REQ-022 doctor comparison and outcomes | M4 | L-31 |
 | AC-023 | REQ-023 doctor registration and bounded output | M4 | L-32, L-33 |
 | AC-024 | REQ-024 release tag check and runbook | M4 | L-34, L-35, L-36 (L-40 is a guard control) |
-| AC-025 | REQ-025 hermetic verification, negative controls | M3 | L-39 (stand-in, see the ledger) |
+| AC-025 | REQ-025 hermetic verification, negative controls | M3 | L-39, L-41 (stand-ins, see the ledger) |
 
 ## Acceptance Criteria
 
@@ -240,9 +246,14 @@ criterion here is a binary-testable Given/When/Then with the same number.
   (the expected set is read from `internal/template/templates/.claude/commands/moai/`, `.tmpl` and `.md` dropped), and
   no directory under `commands/`.
 - **Verify (b):** `sh scripts/check-plugin-discoverable.sh <claude-home:AC-006>` — expected exit 0 and a last line
-  `ok: <N> names listed, 0 missing`. The script, with `CLAUDE_CONFIG_DIR` set to its argument, runs
-  `claude plugin marketplace add <repo-root> --json`, `claude plugin install moai@moai-adk --json` and
-  `claude plugin details moai@moai-adk`, and requires the `Skills (N)` line to carry `N` equal to the expected count
+  `ok: <N> names listed, 0 missing`. This script is the one exception to the stubs of REQ-025, on purpose: the thing under test
+  is the real Claude runtime's inventory (P-30 measured the nested layout invisible only there), and a stub that replayed a
+  recorded `details` output would test the parser and not the layout. Its contract: it applies, in its own text, the same scrub as
+  the harness (AC-025 (a): every `MOAI_*`, `CLAUDE_*` and `CODEX_*` name unset by live enumeration, between the marker comments
+  `# scrub:begin` and `# scrub:end`), moves to a scratch working directory, sets `CLAUDE_CONFIG_DIR` to its argument, starts no `codex`, takes a
+  local path as its only source, and runs exactly three real verbs, `claude plugin marketplace add <repo-root> --json`,
+  `claude plugin install moai@moai-adk --json` and `claude plugin details moai@moai-adk` (no other `claude` verb is
+  permitted). It requires the `Skills (N)` line to carry `N` equal to the expected count
   and every expected name, and the `MCP servers (K)` line to match the keys of `plugins/moai/.mcp.json`. The expected
   names are the directory names under `plugins/moai/skills` plus the command stems of the **template** tree, never a
   literal and never read from `plugins/moai/commands`, so a payload that nests or omits its commands cannot define its
@@ -250,18 +261,38 @@ criterion here is a binary-testable Given/When/Then with the same number.
 - **Verify (c):** `sh scripts/check-plugin-discoverable.sh internal` — expected exit 2, a line beginning
   `refused:` naming the argument, and no write: the script refuses an argument that is not an existing empty
   directory, which keeps it away from a real profile.
+- **Verify (d) — poison canary and scrub:** `MOAI_CLAUDE_BIN=<recorder> CLAUDE_CODE_PLUGIN_CACHE_DIR=<canary> sh scripts/check-plugin-discoverable.sh <claude-home:AC-006-poison>`
+  — expected exit 0 and the `ok:` last line, the recorder's log absent or empty, the canary still empty (`find <canary> -mindepth 1
+  -print` prints nothing, directory entries included), and `<claude-home:AC-006-poison>/plugins/installed_plugins.json` present (the
+  install landed in the scratch home). `<recorder>` is a script that appends its argv to a log and `<canary>` an empty
+  scratch directory that stands in for a real plugins tree. `CLAUDE_CODE_PLUGIN_CACHE_DIR` is a variable the real `claude` honors
+  (P-49: with it set, the registry, the cache and the marketplaces landed in the named directory and the scratch home held no
+  `plugins` directory), so a caller that carries it would redirect the install out of the scratch home unless the script scrubs it.
+  From M3 on, when `scripts/protected-set-hash.sh` exists, the run also sits inside the protected-set bracket of AC-025 (d); in
+  M2 the scratch home, the scrub and this canary are its controls.
+- **Verify (e) — static:** `grep -nE 'claude +[a-z]' scripts/check-plugin-discoverable.sh` — expected exactly three lines, naming
+  `plugin marketplace add`, `plugin install` and `plugin details` (a comment or message that spells a `claude` command would add
+  one, so the script keeps none); and `grep -c codex scripts/check-plugin-discoverable.sh` — expected `0` (a comment that names
+  the tool would match, so the script keeps none). Labelled static: it proves the verb set the text names, not what runs; (d) is
+  the behavior check beside it.
 - **Observed basis (P-30):** the same 17 command files flat produced `Skills (41)`; nested at `commands/moai/` the
   inventory printed `Skills (24)` and listed none of them. The nested form passes every other criterion of this
   file, so (a) and (b) are the only guards against it.
-- **RED-now:** L-08 — the script is absent, exit 127; L-09 — the layout test's package is absent, exit 1. The base
-  tree has no payload to inspect, and the observation behind the criterion is P-30, not a cell of this ledger.
-- **Green path:** M2 emits flat commands and the script; (b) needs a Claude CLI on PATH and runs on demand
-  (Gap G-7 states its continued-firing answer).
+- **RED-now:** L-08 — the script is absent, exit 127, and (d) and (e) share that red; L-09 — the layout test's package is
+  absent, exit 1. The base tree has no payload to inspect, and the observation behind the criterion is P-30, not a cell of this
+  ledger. L-43 is a stand-in, labelled as one, that shows (d) able to fail on a script whose scrub is removed (the canary grows
+  from 1 to 391 entries while the script's own inventory line still reads `ok`) and able to pass on one that scrubs; the first
+  run-phase RED record must show the real script failing at an assertion.
+- **Green path:** M2 emits flat commands and the script; (b) and (d) need a Claude CLI on PATH and run on demand
+  (Gap G-7 states its continued-firing answer); after M2, (d) prints the `ok:` line with the canary unchanged.
 - **Alternate (OD-11 c):** no commands ship, and REQ-006 is void; (a) and the command half of (b) do not apply, the skills
   half of (b) and (c) stay. This is the one reading shared by the `spec.md` §5 marker table, the Definition of Done and
   AC-005 (c) (plan-audit iteration 2, N7).
 - **Mutant probe:** a generator that mirrors the template tree (`commands/moai/<name>.md`) fails (a) and, on a machine
-  with a Claude CLI, (b); a generator that drops one command fails (a) and (b).
+  with a Claude CLI, (b); a generator that drops one command fails (a) and (b); a script whose scrub is deleted (a copy made in the
+  scratchpad by removing the lines between the two marker comments) keeps passing (b) and fails (d) on the canary alone
+  (L-43: the inventory still read `ok`), so (d) is the check that sees it; a script that runs a fourth `claude` verb or names
+  `codex` fails (e).
 
 ### AC-007 — MCP entry copied from the template (REQ-007)
 
@@ -506,12 +537,22 @@ criterion here is a binary-testable Given/When/Then with the same number.
   failing or missing verb leave the installer successful, and the copies are identical (default pending OD-6: the
   scripts call a verb).
 - **Verify (a):** `sh scripts/test-plugin-install-step.sh bin/moai` — expected the lines
-  `PASS installer-calls-verb-by-installed-path` (`install.sh --install-dir <dir not on PATH>` records the four tool
+  `PASS installer-calls-verb-by-installed-path` (`install.sh --install-dir <scratch>/inst-<case>/bin`, a directory not on PATH,
+  records the four tool
   vectors through the real binary's verb, and the call's argv0 is the installed path),
   `PASS installer-optout` (zero recorded calls, installer exit 0), `PASS installer-set-e-guard` (a pinned `moai` whose
   verb exits 1: `install.sh` exits 0 and prints `Installation complete!` although it runs under `set -e`) and
   `PASS installer-old-binary-unknown-verb` (a pinned `moai` that prints `Unknown command "plugin" for "moai".` and exits
   1: the same outcome).
+  **Every `installer-*` case passes `--install-dir <scratch>/inst-<case>/bin` and asserts the installed path under the scratch
+  root** (plan-audit iteration 3, ND-2; P-47 says why). Each case fails unless all three hold: (1) `go` resolves to the harness
+  stub; (2) `realpath <install dir>/moai` exists and lies under that case's own directory, which is under the scratch root and is
+  not a decoy default root; (3) neither decoy default root (the directories the stub `go` returns for `go env GOBIN` and
+  `go env GOPATH`) holds a `moai`. A case that forgot the flag would otherwise install into `$GOBIN`, `$GOPATH/bin` or
+  `$HOME/.local/bin`, which the protected-set hash does not cover (`design.md` §6 says why the hash was not widened to them); with
+  the stub `go` the first two are decoys inside the scratch, and the third is reached only when both are absent, which the
+  harness never arranges. `install.ps1` and `install.bat` take the same option (P-47) and run in no harness case: they are static
+  here and in CI only (Verify (c), G-3).
 - **Verify (b):** `bash -n install.sh` — expected exit 0.
 - **Verify (c) — static:** `go test ./internal/cli -run '^TestInstallScriptsPluginStepGuarded$' -count=1 -v` —
   expected `--- PASS`. Labelled static: it reads `install.ps1` and `install.bat` text. For `install.ps1` the verb call
@@ -524,13 +565,16 @@ criterion here is a binary-testable Given/When/Then with the same number.
 - **RED-now:** L-23 — the harness script is absent, exit 127; L-25 — `[no tests to run]`; L-26 — the base `install.sh`
   driven offline makes no plugin call, the red the `installer-calls-verb-by-installed-path` case would show. L-24
   (`grep -c MOAI_SKIP_PLUGIN_INSTALL install.sh` prints `0`) is a surrogate from iteration 0: no Verify clause of this
-  criterion runs it (plan-audit iteration 2, N10).
+  criterion runs it (plan-audit iteration 2, N10). L-41 is a stand-in, labelled as one, for the install-directory assertion: the
+  real `install.sh` of this tree driven offline by four stand-in cases printed four `PASS` with `--install-dir` and four `FAIL`
+  without it (assertion failures, not a tool failure), the real install roots unchanged in both runs.
 - **Green path:** M3.
 - **Alternate (OD-6 b):** the scripts inline the two tool commands; (a)'s first, third and fourth lines are replaced by
   cases on the inline form and (c) greps the inline commands.
 - **Mutant probe:** an unguarded call fails `installer-set-e-guard`; a call through a bare `moai` fails
   `installer-calls-verb-by-installed-path` (the install directory is not on PATH); editing only the root `install.sh`
-  fails the first `cmp`; two comment lines that mention the verb fail (a).
+  fails the first `cmp`; two comment lines that mention the verb fail (a); an installer case written without `--install-dir`
+  fails its installed-path and decoy-root assertions in all four cases (AC-025 (f)), so the omission is a red and not a leak.
 - **Stated limit (G-3):** `pwsh` exists at `/usr/local/bin/pwsh` but the worktree guard refuses it (P-36), so no
   PowerShell run backs this criterion; CI runs `install.bat` end to end on Windows and tokenises `install.ps1` under
   pwsh (`test-install.yml`), which neither executes the step.
@@ -594,12 +638,20 @@ criterion here is a binary-testable Given/When/Then with the same number.
   a real home and holds a fixture `.codex` tree; a whole `runDiagnosticChecks(false, "")` run leaves the canary's hash
   unchanged, the hash covering directory entries as well as files, and the seam was called at least once, so the check did
   resolve through it), `registry-wide-starts-nothing` (recording `codex` and `claude` shims sit first on PATH,
-  `codexWiringLookPath` is not stubbed and no runner is injected, so the default runner of REQ-017 is the one in play;
-  a registry-wide run leaves the record empty) and `testmain-sandbox-redirects-codex-home` (with no test override,
+  `CLAUDE_CODE_VERSION` is pinned the way `doctor_golden_test.go:177` pins it, `codexWiringLookPath` is not stubbed and no runner
+  is injected, so the default runner of REQ-017 is the one in play; a registry-wide run leaves the record empty, which means no
+  `codex` start, no `claude plugin` verb and no other `claude` start. The pin is there because the existing check `Claude Code`
+  execs `claude --version` directly whenever the variable is unset (`doctor.go:445-452`, P-48): that probe is status quo and goes
+  through no runner, and an unpinned run of the unmodified registry leaves exactly that one line in the record, which no correct
+  implementation could remove. With the pin the same unmodified run leaves no record at all, so the assertion stays the
+  strongest one, any start of either tool, instead of an allow-list that would also admit a new check's own `claude --version`.
+  The direct probes of `git`, `gh` and `sg` are not shimmed and are status quo as well) and `testmain-sandbox-redirects-codex-home` (with no test override,
   `codexUserHomeDir()` returns the `TestMain` sandbox directory and not `os.UserHomeDir()`, and `CODEX_HOME` is unset at
   the start of the test run — the guard of the `main_test.go` change that plan §3 M4 names, parallel to
   `TestUserHomeDirFnSandboxesRealHome`).
-- **RED-now:** L-30 — `[no tests to run]`, and the same output for (c) (ledger "also").
+- **RED-now:** L-30 — `[no tests to run]`, and the same output for (c) (ledger "also"). L-42 is a scoping control, not a RED:
+  it records what `registry-wide-starts-nothing` may assert (unpinned, the unmodified registry leaves `claude --version`; pinned, it
+  leaves nothing), and a stand-in of the restated subtest that passes on the unmodified registry and fails on two mutants.
 - **Green path:** M4; (b) needs M1 and M2.
 - **Alternate (OD-13 b):** subtests read a `config.toml` stanza and the cache directory, and `cache-without-registration`
   is decided by the stanza; `child-env-carries-resolved-home` and `registry-wide-starts-nothing` become `reads-only-under-the-resolved-home`
@@ -648,9 +700,10 @@ criterion here is a binary-testable Given/When/Then with the same number.
   `TestBinaryLag_AllowlistKeysAreLiveNames`, which binds the key to a name `doctor.go` really registers);
   `go test ./internal/cli -run '^TestRunDiagnosticChecks.*$' -count=1` (`ok`);
   `go test ./internal/cli -run '^TestDoctorGolden_.*$' -count=1` (`ok`). The registry-wide tests among them
-  (`TestRunDiagnosticChecks_All` and its two siblings) run unmodified and unpinned; that is safe because the default
+  (`TestRunDiagnosticChecks_All` and its two siblings) run unmodified and unpinned; that is safe for the new check because the default
   command runner refuses under a test binary (REQ-017) and `TestMain` redirects the Codex home, and AC-021 (c) pins both
-  with a canary (plan-audit iteration 2, N2).
+  with a canary (plan-audit iteration 2, N2). The registry's own `claude --version` probe still runs in them when
+  `CLAUDE_CODE_VERSION` is unset: status quo, and the reason AC-021 (c) pins the variable (P-48).
 - **Verify (c):** `go test ./internal/cli -run '^TestCheckPluginVersion_OutputBounded$' -count=1 -v` — expected
   `--- PASS`: the default run emits one summary line and an empty detail, `--verbose` adds detail.
 - **Verify (d):** `go test ./internal/cli -run '^TestDoctorGolden_IgnoresCallerCodexHome$' -count=1 -v` — expected
@@ -702,8 +755,9 @@ criterion here is a binary-testable Given/When/Then with the same number.
 ### AC-025 — Hermetic verification, shown able to fail (REQ-025)
 
 - **Given** the harness after M3 and a canary directory that stands in for a real profile, **When** the harness runs
-  normally, with its scrub disabled, with a typed-list scrub, and from inside a project that pins a recording binary,
-  **Then** the normal run passes every isolation case with `LEAK=0`, and each broken run turns exactly the cases the
+  normally, with its scrub disabled, with a typed-list scrub, from inside a project that pins a recording binary, and with
+  the installers' `--install-dir` omitted,
+  **Then** the normal run passes every isolation case and every installer case with `LEAK=0`, and each broken run turns exactly the cases the
   breakage affects red while the cases it does not affect stay green (default pending OD-14: no harness case runs the
   real binary's `init`).
 - **Verify (a) — normal:** `sh scripts/test-plugin-install-step.sh bin/moai` — expected exit 0, the lines
@@ -714,7 +768,8 @@ criterion here is a binary-testable Given/When/Then with the same number.
   The harness plants its own poison first — `MOAI_CLAUDE_BIN` naming a recording script, a variable of each of the
   `MOAI_*`, `CLAUDE_*` and `CODEX_*` families whose name carries the process id (so that no typed list can name it), and a
   `MOAI_*` variable that names the canary directory — and only then scrubs, so the check does not depend on what the
-  caller's shell happens to hold.
+  caller's shell happens to hold. The four `PASS installer-*` lines of AC-018 (a) belong to the same normal run, each with its
+  install-directory assertions.
 - **Verify (b) — scrub disabled:** `sh scripts/test-plugin-install-step.sh --negative-control bin/moai` — expected exit 0
   and the lines `RED isolation-env-scrubbed`, `RED isolation-cwd-has-no-project`,
   `RED isolation-poisoned-pin-never-executed`, `RED isolation-real-home-unchanged`, `green isolation-resolves-to-stubs`,
@@ -736,18 +791,34 @@ criterion here is a binary-testable Given/When/Then with the same number.
   `<codex home>/.tmp/marketplaces/.staging`), and `<codex home>/tmp` is not a root, P-46. `<claude home>` and
   `<codex home>` are resolved from the caller's environment before any scrub. The hash covers directory entries because
   the t1434 leak was four empty directories that a files-only manifest cannot see (R-28: the same canary gains two empty
-  directories and the entry hash changes while a files-only listing prints nothing both times).
+  directories and the entry hash changes while a files-only listing prints nothing both times). The set does **not** take in
+  the three directories `install.sh` falls back to (`go env GOBIN`, `$GOPATH/bin`, `$HOME/.local/bin`, P-47): an entry hash cannot
+  see an overwrite of the `moai` file a real `$GOBIN` already holds (control, R-31: the listing hash was equal before and after a
+  content change), and a content hash of that file would read the repository's own rc-install procedure
+  (`.claude/rules/local/gitflow-lane-protocol.md` §9) as a leak. Those roots are closed by prevention instead, the stub `go` and
+  the `--install-dir` of (f): with the flag omitted the install still landed in a decoy and the real roots read unchanged (L-41), and
+  the installer cases fail on that omission.
 - **Verify (e) — static:** `grep -nE '(^|[^A-Za-z_])HOME=|(^|[^A-Za-z_])export HOME' scripts/test-plugin-install-step.sh scripts/check-plugin-discoverable.sh scripts/protected-set-hash.sh`
   — expected no line, exit 1 (no script assigns `HOME`; a comment that spells an assignment would match, and (a) is the
   check that does not rest on text); control: `grep -c 'CODEX_HOME' scripts/test-plugin-install-step.sh` — expected at
   least `1`, so an empty first result is not an absent file.
+- **Verify (f) — installer install directory omitted:** `sh scripts/test-plugin-install-step.sh --negative-control-install-dir bin/moai`
+  — expected exit 0 and the lines `RED installer-calls-verb-by-installed-path`, `RED installer-optout`, `RED installer-set-e-guard`
+  and `RED installer-old-binary-unknown-verb`, `green` for the five isolation cases, then
+  `RESULT negative-control-install-dir: red set and green set are exactly the expected ones` and a `LEAK=0` line. The mutant runs
+  the four installer cases without `--install-dir`. It cannot write into a real install root: the stub `go` makes the default roots
+  of `install.sh` decoys inside the scratch, so the omitted flag installs into a decoy, and the installed-path and decoy-root
+  assertions of AC-018 (a) turn that red. Exit 0 here means the omission was detected; a harness whose installer cases stayed
+  green with the flag omitted would exit 1.
 - **RED-now:** L-39 — the harness, its three flags and `scripts/protected-set-hash.sh` do not exist, so the criterion's own
   commands fail with `sh: scripts/test-plugin-install-step.sh: No such file or directory`, exit 127 (L-23, tool-failure
   class). The ledger cell is therefore a stand-in, labelled as one: `research.md` R-28 observed a stand-in of the
   isolation part print `RESULT pass=5 fail=0` normally, four `RED` and one `green` with the scrub disabled, two `RED` and
   three `green` from the pinning project, one `RED` and four `green` for a typed-list scrub, with the recorder executed
   twice and the canary growing from three to five entries in the broken runs, and `LEAK=0` on the real roots in all four.
-  The first run-phase RED record must show the real harness failing at an assertion.
+  The first run-phase RED record must show the real harness failing at an assertion. The installer part, (f), has its own
+  stand-in, L-41: the real `install.sh` of this tree driven by four stand-in installer cases printed four `PASS` with
+  `--install-dir` and four `FAIL` without it, with the real install roots unchanged both times.
 - **Green path:** M3, when the harness and the hash script land; (d) is part of the run procedure of every milestone
   from M3 on.
 - **Alternate (OD-14 b):** the harness sets `HOME` to a scratch directory inside itself for the `init-*` cases, and (e)
@@ -758,7 +829,9 @@ criterion here is a binary-testable Given/When/Then with the same number.
   `isolation-resolves-to-stubs`; a harness started from a directory under a `.moai` fails
   `isolation-cwd-has-no-project`; a hash that lists files only leaves `isolation-real-home-unchanged` green in the
   negative control, so the control's expected `RED` fails and `--negative-control` exits 1; a negative control that makes
-  every case red instead of the expected set exits 1 too, because the green set is part of the expectation.
+  every case red instead of the expected set exits 1 too, because the green set is part of the expectation; an installer case
+  that omits `--install-dir` is red in all four cases (f), and a `PATH` that lets `go` resolve to the real tool fails assertion (1)
+  of every installer case.
 
 ## Edge Cases
 
@@ -1268,6 +1341,115 @@ reason: this is a control, not a red: the test requires exactly seven entries af
         version_sync_list_test.go:30-60) and must still pass after M4 adds its group under a bold label of its own
 ```
 
+```
+L-41   AC-018 (a), AC-025 (f)   [STAND-IN, labelled as one: the harness does not exist, the real install.sh of this tree is driven; tree cc46749d9]
+        `<s>` is the session scratchpad /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/2f10c8c5-67ea-41c2-9b61-6242acc465c3/scratchpad;
+        `<n4>` is `<s>/n4`. The stand-in `<n4>/inst/installer-cases.sh` runs four cases against /bin/bash install.sh --version 9.9.9
+        offline: stub curl serving a pinned archive, stub go answering `go env GOBIN` and `go env GOPATH` with decoy directories in
+        its scratch, PATH = <shim>:/usr/bin:/bin, no HOME assignment; it lists the real install roots read-only before and after.
+cmd:    sh <n4>/inst/installer-cases.sh normal                (every case: --install-dir <scratch>/inst-<case>/bin)
+exit:   0
+stdout: real go env: GOBIN='' GOPATH='/Users/goos/go'  (install.sh default target without --install-dir: /Users/goos/go/bin)
+        REAL-INSTALL-ROOTS before:
+        /Users/goos/go/bin entries=185 listing=63e981bd837e moai=08fb8046e077
+        /Users/goos/.local/bin entries=44 listing=2d3e241dce21 moai=none
+        PASS installer-calls-verb-by-installed-path  (install.sh exit 0)
+        PASS installer-optout  (install.sh exit 0)
+        PASS installer-set-e-guard  (install.sh exit 0)
+        PASS installer-old-binary-unknown-verb  (install.sh exit 0)
+        REAL-INSTALL-ROOTS after:   (the same two lines)
+        LEAK=0 (real install roots unchanged)
+        RESULT mode=normal pass=4 fail=0
+cmd:    sh <n4>/inst/installer-cases.sh omit-flag             (the same four cases without --install-dir: the negative control)
+exit:   0
+stdout: FAIL installer-calls-verb-by-installed-path:  installed-path-not-under-install-dir(resolved=''); a-default-install-root-holds-moai(default-roots/gobin/moai); (install.sh exit 0)
+        FAIL installer-optout:  (the same two reasons)   FAIL installer-set-e-guard:  (the same)   FAIL installer-old-binary-unknown-verb:  (the same)
+        REAL-INSTALL-ROOTS after:   (the same two lines as before)
+        LEAK=0 (real install roots unchanged)
+        RESULT mode=omit-flag pass=0 fail=4
+        RESULT negative-control: all four installer cases red, as expected
+reason: the omitted flag turns each case red through its installed-path assertion (no `moai` under the case's own directory) and
+        its decoy-root assertion (`moai` in the decoy GOBIN), and the install still landed in the decoy, so neither run touched a
+        real root. The green path of the same command, with the flag, prints four PASS.
+control (why the hash was not widened to the install roots, AC-025 (d)): a scratch directory holding a file `moai`, listed with
+        `find <root> -maxdepth 1 -print | sort | shasum`:
+        before: entries=2 listing=7da953f4599d content=01d09d19c213
+        after the file was overwritten: entries=2 listing=7da953f4599d content=8a7bfaefd046
+        the entry listing is equal across an overwrite; only the content hash differs
+```
+
+```
+L-42   AC-021 (c)   [SCOPING CONTROL, not a RED; tree cc46749d9; `<n4>` as in L-41; CLAUDE_CONFIG_DIR, CODEX_HOME and MOAI_HOME are
+        three empty scratch directories (`ls -A` printed only `total 0`, `.`, `..`); PATH = <n4>/shim first, holding recording `claude` and
+        `codex` shims that append their argv to <n4>/record.log]
+cmd:    go test ./internal/cli -run '^TestRunDiagnosticChecks_All$' -count=1 -v        (the unmodified registry-wide test, unpinned)
+exit:   0
+stdout: --- PASS: TestRunDiagnosticChecks_All (9.69s)
+        PASS
+        ok  	github.com/modu-ai/moai-adk/internal/cli	11.037s
+record: cat <n4>/record-nd1a-unpinned.log  ->  claude --version          (exactly one line; no codex line)
+cmd:    the same command with CLAUDE_CODE_VERSION=test-claude-99 added to the environment
+stdout: --- PASS: TestRunDiagnosticChecks_All (6.61s)
+        PASS
+        ok  	github.com/modu-ai/moai-adk/internal/cli	7.775s
+record: ls <n4>/record.log  ->  No such file or directory (exit 1: neither shim was started)
+reason: the existing check `Claude Code` execs `claude --version` when the variable is unset (doctor.go:445-452), so an unpinned
+        "record empty" subtest is red on correct work; pinned, the record is empty. The subtest therefore pins the variable.
+stand-in of the restated subtest (a Go test overlaid into package cli with `go test -overlay`; nothing was written to the tree; it sets
+the shims, the pin and scratch homes with t.Setenv, starts each shim once and requires the record to read `claude control` and
+`codex control` before the run, then runs runDiagnosticChecks(false, "") and requires 5 or more checks and an empty record):
+cmd:    go test -overlay <n4>/ov/overlay-correct.json ./internal/cli -run '^TestND1Standin_RegistryWideStartsNothing$' -count=1 -v
+stdout: zz_nd1_standin_test.go:55: registry-wide run swept 41 checks; record empty (read error: open …/record.log: no such file or directory)
+        --- PASS: TestND1Standin_RegistryWideStartsNothing (1.48s)
+mutant 1 (overlay-mutant-codex.json replaces doctor.go with a copy carrying one more check that runs `codex plugin list --json`):
+exit:   1
+stdout: zz_nd1_standin_test.go:53: registry-wide run started a recorded tool; record:
+            codex plugin list --json
+        --- FAIL: TestND1Standin_RegistryWideStartsNothing (1.49s)
+mutant 2 (overlay-mutant-claude.json, the same with `claude plugin list --json`):
+exit:   1
+stdout: zz_nd1_standin_test.go:53: registry-wide run started a recorded tool; record:
+            claude plugin list --json
+        --- FAIL: TestND1Standin_RegistryWideStartsNothing (1.60s)
+```
+
+```
+L-43   AC-006 (b), (d)   [STAND-IN script plus the real `claude` 2.1.287 under scratch homes; tree cc46749d9; `<s>`, `<n4>` as in L-41; fixture
+        `<s>/s2/fx-core-flat` (core-only flat payload, P-30); the stand-in `<n4>/disc/check-plugin-discoverable.sh` accepts a
+        fixture root as its second argument and a `--no-scrub` mutant switch, neither of which the real script has]
+real verbs under an empty scratch home `<n4>/h/c-nd3a`, with the protected-set hash of the real roots taken before the first verb
+(`sh <s>/i3/h/protected-set-hash.sh --dump <file> --roots-file <roots>`, the roots saved from the caller's environment first: the real
+profile's `plugins:3`, `settings.json`, `~/.claude/settings.json`, `~/.codex/plugins:3`, `~/.codex/.tmp/marketplaces:2`,
+`~/.codex/config.toml`, `~/.moai:1`):
+cmd:    CLAUDE_CONFIG_DIR=<n4>/h/c-nd3a claude plugin marketplace add <s>/s2/fx-core-flat --json
+stdout: {"command":"marketplace-add","outcome":"ok","marketplace":"moai-adk","message":"Successfully added marketplace: moai-adk (declared in user settings)"}
+cmd:    CLAUDE_CONFIG_DIR=<n4>/h/c-nd3a claude plugin install moai@moai-adk --json
+stdout: {"command":"install","outcome":"ok","plugin":"moai@moai-adk","pluginId":"moai@moai-adk","scope":"user","message":"Successfully installed plugin: moai@moai-adk (scope: user)"}
+cmd:    CLAUDE_CONFIG_DIR=<n4>/h/c-nd3a claude plugin details moai@moai-adk
+stdout: (excerpt) moai 3.1.3 / Component inventory / Skills (41)  clean, codemaps, e2e, … todo / Agents (0) / Hooks (0) / MCP servers (1)  moai
+real roots: PROTECTED-SET a245f41a…cf5f entries=193 before; the same line after the three verbs; `cmp` of the two dumps: DUMPS-IDENTICAL;
+        the same line again after every run below (the dump of the last read is also identical to the first)
+scratch home after the verbs: .claude.json, backups/, plugins/ (cache, installed_plugins.json, known_marketplaces.json, marketplaces),
+        settings.json: everything the three verbs wrote is under the scratch home
+poison canary, scrub on (a poisoned caller environment: MOAI_CLAUDE_BIN names a recorder, CLAUDE_CODE_PLUGIN_CACHE_DIR names an empty canary):
+cmd:    MOAI_CLAUDE_BIN=<n4>/disc/recorder CLAUDE_CODE_PLUGIN_CACHE_DIR=<n4>/canary-n2 sh <n4>/disc/check-plugin-discoverable.sh <n4>/h/c-nd3e <s>/s2/fx-core-flat
+exit:   0
+stdout: scrub: enumerated and unset 31 names
+        ok: 41 names listed, 0 missing
+canary: PROTECTED-SET 8a78f5cf…23fd2 entries=1 before and after (identical); <n4>/disc/poison.log was never created (the recorder never ran);
+        the scratch home holds plugins/
+mutant, scrub removed (the same poison, canary `<n4>/canary-m2`):
+cmd:    MOAI_CLAUDE_BIN=<n4>/disc/recorder CLAUDE_CODE_PLUGIN_CACHE_DIR=<n4>/canary-m2 sh <n4>/disc/check-plugin-discoverable.sh --no-scrub <n4>/h/c-nd3f <s>/s2/fx-core-flat
+exit:   0
+stdout: scrub: DISABLED (stand-in mutant)
+        ok: 41 names listed, 0 missing
+canary: before PROTECTED-SET d943cc9c…d3a0e entries=1; after PROTECTED-SET 61306c45…ebfe7 entries=391 (cache/moai-adk/moai/3.1.3,
+        installed_plugins.json, known_marketplaces.json, marketplaces); the scratch home holds no plugins/ (.claude.json, backups/, settings.json only)
+reason: with the scrub removed the plugin tree went to the poison target and the inventory line still read `ok`: only the canary sees it,
+        which is why (d) exists beside (b). Pointed at a real plugins tree, the same redirect would have written into the real profile.
+refusal control: sh <n4>/disc/check-plugin-discoverable.sh <n4>/shim  ->  refused: <n4>/shim is not an existing empty directory   exit=2
+```
+
 Gaps in this ledger: L-05, L-06, L-09 and the `pluginemit` entries marked "also" are package-absent reds (tool-failure class);
 the first run-phase RED record must show an assertion failure. The Go-test reds of `internal/cli` read `[no tests to run]`
 with exit 0, which establishes absence of the tests and nothing about whether a runner would later select them; the named
@@ -1280,3 +1462,5 @@ because the package and the harness they stand for do not exist: they show that 
 broken input, and the run phase's first RED record must show the real tests and the real harness failing at an assertion. L-37 runs
 the criterion's own check form on trees that exist; L-40 is a control, not a red. Scratch fixtures (marketplaces, homes, stub
 tools, the pinned archive, the scan, the stand-in harness) were built by the author in the scratchpad and are not part of the repository.
+L-41 and L-43 (final delta) are stand-ins and L-42 is a scoping control, each labelled in its cell; their scripts, shims, overlays and
+canaries are in the scratchpad directory `n4` and not in the repository. The real roots were read, never written, in all three.

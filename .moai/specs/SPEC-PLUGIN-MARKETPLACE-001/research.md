@@ -595,6 +595,128 @@ deeper than the declared depth inside an existing marketplace clone or plugin ca
 `known_marketplaces.json` is not hashed (the runtime rewrites it), only its name. A non-zero `LEAK` prints the differing entries, so an
 ambient change is attributed to its writer rather than assumed.
 
+### R-30 — What a registry-wide doctor run may be asked to leave unstarted (P-48; ND-1)
+
+Tree `cc46749d9`. `<s>` is the session scratchpad `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/2f10c8c5-67ea-41c2-9b61-6242acc465c3/scratchpad`,
+`<n4>` is `<s>/n4`. Two recording shims, `<n4>/shim/claude` and `<n4>/shim/codex`, append `claude <argv>` or `codex <argv>` to
+`<n4>/record.log`; `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `MOAI_HOME` are empty scratch directories; PATH starts with `<n4>/shim`.
+
+```
+read:  internal/cli/doctor.go:445-452    checkClaudeCode: cv := uikit.ClaudeVersion(); if cv == "claude" { exec.Command("claude", "--version").Output() ... }
+read:  internal/cli/uikit/banner.go:42-47  ClaudeVersion(): the CLAUDE_CODE_VERSION value, else the literal "claude"
+read:  internal/cli/doctor_golden_test.go:177   t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+$ go test ./internal/cli -run '^TestRunDiagnosticChecks_All$' -count=1 -v        (unpinned)
+--- PASS: TestRunDiagnosticChecks_All (9.69s)        ok  github.com/modu-ai/moai-adk/internal/cli  11.037s
+$ cat <n4>/record-nd1a-unpinned.log
+claude --version
+$ (the same command with CLAUDE_CODE_VERSION=test-claude-99)
+--- PASS: TestRunDiagnosticChecks_All (6.61s)        ok  github.com/modu-ai/moai-adk/internal/cli  7.775s
+$ ls <n4>/record.log
+ls: <n4>/record.log: No such file or directory                               (exit 1: neither shim started)
+```
+
+The iteration-3 audit measured the same one line (`claude --version`, run 7.13 s). So the iteration-3 wording of `registry-wide-starts-nothing`
+(no pin, "record empty") cannot be satisfied by correct work, and the registry's own pre-existing probe is the reason; with the pin the
+assertion can be the strongest one. Stand-in of the restated subtest, a Go test overlaid with `go test -overlay` (nothing in the tree):
+
+```
+$ go test -overlay <n4>/ov/overlay-correct.json ./internal/cli -run '^TestND1Standin_RegistryWideStartsNothing$' -count=1 -v
+    zz_nd1_standin_test.go:55: registry-wide run swept 41 checks; record empty (read error: open …/record.log: no such file or directory)
+--- PASS: TestND1Standin_RegistryWideStartsNothing (1.48s)
+$ go test -overlay <n4>/ov/overlay-mutant-codex.json … (doctor.go replaced by a copy with one more check running `codex plugin list --json`)
+    zz_nd1_standin_test.go:53: registry-wide run started a recorded tool; record:
+        codex plugin list --json
+--- FAIL: TestND1Standin_RegistryWideStartsNothing (1.49s)
+$ go test -overlay <n4>/ov/overlay-mutant-claude.json … (the same with `claude plugin list --json`)
+    zz_nd1_standin_test.go:53: registry-wide run started a recorded tool; record:
+        claude plugin list --json
+--- FAIL: TestND1Standin_RegistryWideStartsNothing (1.60s)
+```
+
+The stand-in test starts each shim once before the run and requires the record to read `claude control` then `codex control`
+(its positive control), requires 5 or more swept checks (the sweep is not empty; 41 were swept), and removes the record before the
+run. After all runs `git status --short` listed no file of the tree.
+
+### R-31 — Where `install.sh` writes when no directory is named, and a harness that cannot reach those roots (P-47; ND-2)
+
+Tree `cc46749d9`. Read: `install.sh:244-264` (`INSTALL_DIR`, else `command -v go` then `go env GOBIN` if that directory exists, else
+`go env GOPATH`'s `bin` if it exists, else `$HOME/.local/bin`), `:269-279` (`mkdir -p`, `mv`), `:330-341` (`--install-dir`, a variable of
+`main`, not read from the environment); `install.ps1:307-317` (`$env:MOAI_INSTALL_DIR`, else `%LOCALAPPDATA%\Programs\moai`, on a Unix
+PowerShell `$HOME/.local/bin`), `:419-420` and `:459-461` (`--install-dir` and `-install-dir` set that variable); `install.bat:20-21`,
+`:134-136` (`--install-dir`, default `%LOCALAPPDATA%\Programs\moai`). The real roots on this machine, read only:
+
+```
+real go env: GOBIN='' GOPATH='/Users/goos/go'  (install.sh default target without --install-dir: /Users/goos/go/bin)
+/Users/goos/go/bin entries=185 listing=63e981bd837e moai=08fb8046e077
+/Users/goos/.local/bin entries=44 listing=2d3e241dce21 moai=none
+```
+
+The stand-in `<n4>/inst/installer-cases.sh` drives the real `install.sh` of the tree, offline (stub `curl` serving a pinned archive, a
+stub `go` returning two decoy directories in its scratch, PATH `<shim>:/usr/bin:/bin`, no `HOME` assignment). With `--install-dir` in
+every case: four `PASS`, `LEAK=0`, `RESULT mode=normal pass=4 fail=0`. Without it: four `FAIL`, each
+`installed-path-not-under-install-dir(resolved=''); a-default-install-root-holds-moai(default-roots/gobin/moai)`, the real roots'
+three lines unchanged (the install went to the decoy), `RESULT mode=omit-flag pass=0 fail=4` and
+`RESULT negative-control: all four installer cases red, as expected` (full text: `acceptance.md` L-41).
+
+Why the protected-set hash was not widened to the install roots. A scratch directory holding a file `moai`:
+
+```
+before: entries=2 listing=7da953f4599d content=01d09d19c213
+after the file was overwritten: entries=2 listing=7da953f4599d content=8a7bfaefd046
+```
+
+The entry listing, which is what the hash covers for directories, is equal across an overwrite; a real `$GOBIN` already holds a `moai`
+(`08fb8046e077…` here), so an overwrite would be invisible to it. A content hash of that file would instead read the repository's own
+documented rc-install procedure (`rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai`, `.claude/rules/local/gitflow-lane-protocol.md` §9) as
+a leak (read, not measured as churn). Prevention (a flag every case passes, decoys the stub `go` names, a per-case assertion, a negative
+control that omits the flag) closes the three roots instead.
+
+### R-32 — The real `claude` under a scratch home, and the variable that moves the plugin tree out of it (P-49; ND-3)
+
+Tree `cc46749d9`; `claude` 2.1.287. Fixture `<s>/s2/fx-core-flat` (the core-only flat payload of R-01). The real roots were saved from the
+caller's environment (`<n4>/real-roots.txt`: the real profile's `plugins:3` and `settings.json`, `~/.claude/settings.json`,
+`~/.codex/plugins:3`, `~/.codex/.tmp/marketplaces:2`, `~/.codex/config.toml`, `~/.moai:1`) and hashed with the R-28 script.
+
+```
+before:  PROTECTED-SET a245f41ac9cfed9029f2c1d27b75acc08d26492774227775f2407fbef777cf5f entries=193
+$ CLAUDE_CONFIG_DIR=<n4>/h/c-nd3a claude plugin marketplace add <s>/s2/fx-core-flat --json
+{"command":"marketplace-add","outcome":"ok","marketplace":"moai-adk","message":"Successfully added marketplace: moai-adk (declared in user settings)"}
+$ CLAUDE_CONFIG_DIR=<n4>/h/c-nd3a claude plugin install moai@moai-adk --json
+{"command":"install","outcome":"ok","plugin":"moai@moai-adk","pluginId":"moai@moai-adk","scope":"user","message":"Successfully installed plugin: moai@moai-adk (scope: user)"}
+$ CLAUDE_CONFIG_DIR=<n4>/h/c-nd3a claude plugin details moai@moai-adk
+moai 3.1.3 / Component inventory / Skills (41)  clean, codemaps, … todo / Agents (0) / Hooks (0) / MCP servers (1)  moai  (tool schemas resolved at runtime; not counted)
+after:   PROTECTED-SET a245f41ac9cfed9029f2c1d27b75acc08d26492774227775f2407fbef777cf5f entries=193      cmp of the two dumps: DUMPS-IDENTICAL
+```
+
+The scratch home held `.claude.json`, `backups/`, `plugins/` and `settings.json` afterwards (the `.claude.json` file lands inside the config
+directory when `CLAUDE_CONFIG_DIR` is set). The same two write verbs with `CLAUDE_CODE_PLUGIN_CACHE_DIR` naming an empty canary directory
+(home `<n4>/h/c-nd3b`, canary `<n4>/canary-cache`) printed the same two `"outcome":"ok"` lines, and:
+
+```
+<n4>/canary-cache/cache/moai-adk/moai/3.1.3   <n4>/canary-cache/installed_plugins.json   <n4>/canary-cache/known_marketplaces.json   <n4>/canary-cache/marketplaces
+$ find <n4>/h/c-nd3b/plugins -maxdepth 3
+bfs: error: …/h/c-nd3b/plugins: No such file or directory.
+```
+
+So the variable is honored, the whole plugin tree followed it, and the scratch `CLAUDE_CONFIG_DIR` held none of it: a caller that carries
+`CLAUDE_CODE_PLUGIN_CACHE_DIR` and sets only `CLAUDE_CONFIG_DIR` writes the plugin tree wherever the variable points. The session that made
+this measurement did not carry it (names listed with `env | grep -E '^(CLAUDE|CODEX|MOAI)_' | cut -d= -f1`: no `CLAUDE_CODE_PLUGIN_CACHE_DIR`).
+The stand-in script `<n4>/disc/check-plugin-discoverable.sh` (live-enumerated scrub, three verbs, refusal of a non-empty argument) with a
+poisoned caller environment (`MOAI_CLAUDE_BIN` naming a recorder, `CLAUDE_CODE_PLUGIN_CACHE_DIR` naming a fresh canary):
+
+```
+scrub on   (canary-n2): scrub: enumerated and unset 31 names / ok: 41 names listed, 0 missing   exit 0
+                        canary PROTECTED-SET 8a78f5cf…23fd2 entries=1 before and after; no recorder log; scratch home holds plugins/
+scrub off  (canary-m2): scrub: DISABLED (stand-in mutant) / ok: 41 names listed, 0 missing   exit 0
+                        canary before PROTECTED-SET d943cc9c…d3a0e entries=1, after PROTECTED-SET 61306c45…ebfe7 entries=391; scratch home holds no plugins/
+refusal:  sh <n4>/disc/check-plugin-discoverable.sh <n4>/shim -> refused: <n4>/shim is not an existing empty directory   exit=2
+final:   PROTECTED-SET a245f41ac9cfed9029f2c1d27b75acc08d26492774227775f2407fbef777cf5f entries=193 after every run above
+```
+
+The unscrubbed run's own inventory line still read `ok`, because `details` reads the redirected tree: only a canary can see the redirect.
+Why the carve-out and not a recorded stub: P-30 measured the nested layout invisible only in the real runtime, so a stub replaying
+recorded `details` output would test the parser, not the layout.
+
 ## 4. Sources
 
 - `claude` 2.1.287 and `codex` 0.160.0 command output (above); `claude plugin --help` family.
@@ -614,4 +736,10 @@ marketplace entry. From the iteration-3 revision: the real `moai` binary was not
 resolver order and one out-of-scratch write, R-28), so whether the real binary writes anything under the real `~/.moai` or home with the
 scrub applied is for the first run of `scripts/test-plugin-install-step.sh`; a real `moai init` was never run (R-23); the real-root hash was
 read, never written; no command of this revision wrote to a real profile or home (its only reads of them are the entry hash and the
-entry lists dumped from it, R-29).
+entry lists dumped from it, R-29). From the final delta (R-30 to R-32): the real harness and the real `check-plugin-discoverable.sh`
+do not exist, so the installer cases, the discoverable script and the `registry-wide-starts-nothing` subtest are shown only through
+stand-ins (the real `install.sh` and the real `claude` were driven, the harness and the script were not); `install.ps1` and
+`install.bat` were read and not run; which `CLAUDE_*` variables other than `CLAUDE_CODE_PLUGIN_CACHE_DIR` move what `claude` writes
+was not enumerated (the scrub removes the whole family, so the carve-out does not depend on that list); the `.claude.json` file of
+the real `~/.claude` is not a root of the protected set, so a write there would not be seen by the hash (the scratch runs put it
+inside the scratch config directory, as observed).

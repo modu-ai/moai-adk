@@ -104,7 +104,11 @@ New files:
 - Tests: `payload_test.go` (synthetic-tree derivation, fidelity including modes, layout, the name scan, allow-list), `drift_test.go` (mutants).
 - `scripts/check-plugin-discoverable.sh` — installs the emitted marketplace from its local path under a caller-given empty
   scratch home and checks the `claude plugin details` inventory against names derived from the template tree (AC-006);
-  refuses a non-empty argument.
+  refuses a non-empty argument. It is the one script outside REQ-025's stub rule: it runs the real `claude`, for exactly three verbs
+  (`plugin marketplace add <repo root> --json`, `plugin install moai@moai-adk --json`, `plugin details moai@moai-adk`), starts no
+  `codex`, and applies the live-enumerated scrub between the marker comments `# scrub:begin` and `# scrub:end`, from a scratch working
+  directory (and, from M3 on, inside the protected-set bracket); AC-006 (d) shows the scrub able to fail (poison pin and
+  `CLAUDE_CODE_PLUGIN_CACHE_DIR` aimed at a canary, P-49) and (e) checks the verb set statically.
 
 Generated and committed: `plugins/moai/skills/**`, `plugins/moai/commands/*.md`, `plugins/moai/.mcp.json`.
 
@@ -159,11 +163,18 @@ New files:
 - `scripts/test-plugin-install-step.sh` — the harness of the conventions block in `acceptance.md`. It plants a poison in its own
   environment (a `MOAI_CLAUDE_BIN` naming a recording script, a variable of each of the `MOAI_*`, `CLAUDE_*` and `CODEX_*` families
   with a pid-carrying name, a `MOAI_*` variable naming a canary directory), scrubs every `MOAI_*`, `CLAUDE_*` and `CODEX_*` name by live
-  enumeration, sets its own `PATH`, stub tools, a stub `curl`, a pinned local archive, scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME`,
+  enumeration, sets its own `PATH`, stub tools (`claude`, `codex` and a `go` whose `go env GOBIN` and `go env GOPATH` answers are two
+  decoy directories inside the scratch), a stub `curl`, a pinned local archive, scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME`,
   `MOAI_HOME` and working directory, and sets no `HOME`. Default cases (12): the five `isolation-*` cases of AC-025, the three
-  `verb-*` cases, the four `installer-*` cases. The nine `init-*` cases exist only under OD-14 (b) or (c). Flags
-  `--negative-control`, `--negative-control-cwd` and `--typed-list-mutant` run the isolation cases under a deliberate break and exit 0
-  only when exactly the expected cases go red (AC-025 (b), (c)).
+  `verb-*` cases, the four `installer-*` cases. **Every `installer-*` case passes `--install-dir <scratch>/inst-<case>/bin` and
+  asserts the installed path under the scratch root** (`go` resolves to the stub, `realpath <install dir>/moai` lies under the
+  case's own directory, no decoy default root holds a `moai`; `install.sh` would otherwise install into `$GOBIN`, `$GOPATH/bin` or
+  `$HOME/.local/bin`, P-47). The protected set is **not** extended to those three roots (an entry hash cannot see the overwrite of the
+  `moai` a real `$GOBIN` holds, and a content hash would read the rc-install procedure as a leak, `design.md` §6): they are closed
+  by prevention and by this per-case assertion. The nine `init-*` cases exist only under OD-14 (b) or (c). Flags
+  `--negative-control`, `--negative-control-cwd`, `--typed-list-mutant` and `--negative-control-install-dir` (the four installer
+  cases without `--install-dir`, all four expected red) run their cases under a deliberate break and exit 0
+  only when exactly the expected cases go red (AC-025 (b), (c), (f)).
 - `scripts/protected-set-hash.sh` — read-only hash of the protected real set (entries and registry or settings file content,
   depth-limited roots, three declared exclusions, AC-025 (d)); `--save-roots` and `--roots-file` let the harness capture the roots
   before the scrub and hash exactly them after; a non-zero difference prints the differing entries.
@@ -228,7 +239,8 @@ New files:
   `resolveCodexHomeDir()` (`mcp_codex.go:2143-2152`, which rides the `codexUserHomeDir` seam) and never from a path the check
   computes itself; the probe started through the runner variable of `plugin_install.go` (default refuses under a test binary,
   REQ-017) with the parent's environment plus `CODEX_HOME=<that home>`. `TestCheckPluginVersion_HomeIsolation` (AC-021 (c)) lives
-  here.
+  here; its registry-wide subtest pins `CLAUDE_CODE_VERSION` (the existing `Claude Code` check execs `claude --version` itself when it
+  is unset, P-48) and then requires an empty record of recording `claude` and `codex` shims.
 - `scripts/check-plugin-version.sh` — reads `plugins/moai/.claude-plugin/plugin.json` and compares with the
   tag argument minus a leading `v`; exit 0 equal, exit 1 with both values on mismatch, exit 2 without an argument.
 - `internal/template/pluginemit/releasecheck_test.go` — `TestPluginVersionScript` and
@@ -290,11 +302,21 @@ Rules for every acceptance command and every harness script (REQ-025):
   `acceptance.md`: `<claude-home:AC-nnn>`, `<codex-home:AC-nnn>`. Neither a command nor a script sets `HOME` (the worktree guard
   refuses it, P-36, and a script file is not a way round that, `kanban-dispatch-mechanics.md:105`); `MOAI_HOME` and the two homes
   are the explicit seams, and the one case they cannot cover, the real binary's `init` (P-42), is OD-14 and G-8.
-- A harness script scrubs by live enumeration: every `MOAI_*`, `CLAUDE_*` and `CODEX_*` name in its environment is unset, found at run
+- The install-step harness (`scripts/test-plugin-install-step.sh`) scrubs by live enumeration: every `MOAI_*`, `CLAUDE_*` and
+  `CODEX_*` name in its environment is unset, found at run
   time and never from a typed list, after the script has planted its own poison (including names that carry the process id); it then
-  sets its own `PATH`, stubs and scratch directories, and runs from a scratch directory with no `.moai` in it or above it. A pinned
+  sets its own `PATH`, stubs (`claude`, `codex`, `go`, `curl`) and scratch directories, and runs from a scratch directory with no
+  `.moai` in it or above it. A pinned
   real `claude` can come from `MOAI_CLAUDE_BIN` or from the working directory's `llm.claude_bin` (P-44), and a `PATH` shim outranks
-  neither, so the scrub and the working directory are both required.
+  neither, so the scrub and the working directory are both required. Every installer case passes `--install-dir <scratch>` and
+  asserts the installed path under it (REQ-025, AC-018 (a), AC-025 (f)).
+- `scripts/check-plugin-discoverable.sh` is the one script that runs the real `claude` instead of a stub (REQ-025 carve-out, AC-006): it
+  may start exactly `claude plugin marketplace add <local repo path>`, `claude plugin install moai@moai-adk` and
+  `claude plugin details moai@moai-adk`, under a scratch `CLAUDE_CONFIG_DIR` that it refuses unless it is an existing empty
+  directory, behind the same live-enumerated scrub, from a scratch working directory, starting no `codex`, with no network source and
+  no `HOME` assignment, inside the same protected-set bracket (from M3 on, when the hash script exists). The scrub matters beyond
+  the config home: the real `claude` honors
+  `CLAUDE_CODE_PLUGIN_CACHE_DIR`, which moves the plugin tree out of the config home (P-49).
 - The whole run is bracketed by `sh scripts/protected-set-hash.sh` before and after, the two lines equal (AC-025 (d)). The
   hash covers directory entries because the t1434 leak was four empty directories.
 - Forbidden against any real home, as in t1434: install, uninstall, marketplace add, remove, update, enable,
@@ -385,6 +407,11 @@ past that refusal: moving a command into a script file is not a workaround (`kan
 needs it is OD-14 and G-8.
 Required: Conventional Commits with the card id in every commit message; stage by explicit pathspec; cite
 `worktree-integration-ops.md` form rules when an acceptance command is refused.
+Required for the harness (binding run-phase instruction, plan-audit iteration 3, ND-2): **every `installer-*` case passes
+`--install-dir <scratch>/inst-<case>/bin` and asserts the installed path under the scratch root**, with a stub `go` that makes
+`install.sh`'s default install roots decoys inside the scratch; a case written without the flag is a red (AC-025 (f)), not a
+write into `$GOBIN`, `$GOPATH/bin` or the real `$HOME/.local/bin`. Required for the discoverable script: it keeps the real `claude`, the
+three named verbs and the scrub of the carve-out in REQ-025, and nothing else starts.
 
 ## 7. Anti-patterns
 

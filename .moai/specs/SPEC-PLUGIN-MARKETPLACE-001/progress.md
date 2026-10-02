@@ -3,11 +3,11 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
-plan_complete_at: 2026-10-03 (delta revision for plan-audit iteration 3, after iteration 2 FAIL 0.84; the revised artifacts are not yet audited)
+plan_complete_at: 2026-10-03 (final delta for ND-1 to ND-3 after plan-audit iteration 3, FAIL 0.86 at a0c8ad7cb; the final delta is not yet audited)
 tier: L
 artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, decision-index.md (progress.md not counted; decision-index.md is authored because `interview.decision_gate` is `on`)
 budget: 25 requirements, 25 acceptance criteria (Tier L ceilings 25 and 25: both at the ceiling, so any further requirement means splitting the SPEC)
-plan_base_sha: 7109e0900 (branch WT-marketplace-core-plugin, base develop); the iteration-3 delta was made on tree b6a0522a0, which differs from the tree plan-audit iteration 2 audited (d6987e59c) in this file only
+plan_base_sha: 7109e0900 (branch WT-marketplace-core-plugin, base develop); the iteration-3 delta was made on tree b6a0522a0, which differs from the tree plan-audit iteration 2 audited (d6987e59c) in this file only; the final delta (ND-1 to ND-3) was made on tree cc46749d9, which differs from the tree plan-audit iteration 3 audited (a0c8ad7cb) in this file only (`git diff --name-only a0c8ad7cb cc46749d9`)
 run_start_sha: pending — set by the orchestrator to the commit that carries the final plan-phase revision of the artifacts
 open_decisions: OD-1 to OD-14 in spec.md §5, mirrored as Q1 to Q14 in decision-index.md; verdict lines empty; every default-bound clause carries a `default pending OD-n` marker and spec.md §5 holds the marker table (checked both ways, see "Verification of the iteration-3 revision")
 inputs: .moai/reports/t1435/inputs/t1434-verdict.md (local-only, `.gitignore:235`); the committed carrier of the same verdict is .moai/specs/SPEC-PLUGIN-LOAD-SCOPE-001/progress.md section E.2; .moai/reports/t1435/plan-audit-iter1.md (iteration 1 verdict, FAIL 0.72); .moai/reports/t1435/plan-audit-iter2.md (iteration 2 verdict, FAIL 0.84; local-only like the first)
@@ -30,6 +30,16 @@ un-packed.
   surface on `origin/develop` CI after the leader's batch push and t1399 is told nothing. Required leader line at dispatch, to the lane that
   lands second: "run `make plugin-emit` inside your merge and commit the delta (`plugins/moai/**` and the four manifests)". Owner: the lane
   landing second. This line is a recorded requirement; it has not been delivered to any lane by this revision.
+- **Installer cases and install directory (plan-audit iteration 3, ND-2; binding for the run-phase delegation).** Every `installer-*` case
+  of `scripts/test-plugin-install-step.sh` passes `--install-dir <scratch>/inst-<case>/bin` and asserts the installed path under the
+  scratch root (`go` resolves to the harness stub, `realpath <install dir>/moai` lies under the case's own directory, no decoy default
+  root holds a `moai`); the harness's stub `go` returns two decoy directories inside the scratch for `go env GOBIN` and
+  `go env GOPATH`. Without the flag `install.sh` installs into `$GOBIN`, `$GOPATH/bin` or the real `$HOME/.local/bin`, none of which the
+  protected-set hash covers (REQ-025, AC-018 (a), AC-025 (f), design §6, plan M3 and §6). A case written without the flag must be a red.
+- **Discoverable script (ND-3).** `scripts/check-plugin-discoverable.sh` is the one script that runs the real `claude`; it starts exactly
+  `plugin marketplace add <local repo path>`, `plugin install moai@moai-adk` and `plugin details moai@moai-adk`, behind the same scrub
+  (marker comments `# scrub:begin` / `# scrub:end`), from a scratch directory, with a scratch home it refuses unless empty (REQ-025,
+  AC-006 (b), (d), (e)).
 
 ### Verification of this revision
 
@@ -193,8 +203,79 @@ suggested.
 - Iteration-2 open items: 12 fixed (D3 residue, N1, N3..N11, N13), N2 partial (ND-1), N12 skipped by the author (optional).
 - Open blocking-class defects: ND-1 (AC-021 (c) subtest `registry-wide-starts-nothing` fails on correct work — existing `checkClaudeCode` runs `claude --version` when `CLAUDE_CODE_VERSION` is unset, reproduced with a recording shim), ND-2 (only one of four installer harness cases names `--install-dir <scratch>`; without it install.sh installs into `$GOBIN`/`$GOPATH/bin`/real `$HOME/.local/bin`, which the protected-set hash does not cover), ND-3 (REQ-025 requires stubs for `claude`/`codex` in every harness script; AC-006 (b) requires `check-plugin-discoverable.sh` to run the real `claude`). ND-4..ND-11 are minor and none can produce a false green.
 - The lane has NOT started an iteration 4 (ceiling reached). WAIT: reason = ceiling reached with open blocking-class defects; whom = leader; recheck = leader reply or a re-read of this section. Options sent to the leader: (1) PASS-with-debt, carrying ND-1..ND-3 into the run phase as explicit debt with the auditor's conditions (ND-2 only if the run-phase delegation requires every `installer-*` case to pass `--install-dir <scratch>` and a case asserts the installed path lies under the scratch root), (2) one more delta round by explicit leader extension of the ceiling (the three fixes are one-clause text changes), (3) split at the M2/M3 boundary (removes ND-3 only; ND-1 and ND-2 sit in the M3/M4 half).
+- WAIT, resolved (2026-10-03): the leader chose option (2), one more delta round, by an explicit ceiling extension (next section). The
+  lane then applied the final delta below; it did not start a fourth audit.
 
-## §E.2 Run-phase Evidence
+### 운영자 일괄 수용 10-03
+
+On 2026-10-03 the operator accepted, in one batch, the "default if unanswered" value of every open decision OD-1 to OD-14. **The source
+is the leader's relay, by a cross-session message; it is not an answer typed in this session**, and this lane received the leader's
+statement, not the operator's own words. `decision-index.md` records it in its own section of the same heading, and each of Q1 to Q14
+carries `accepted default (operator batch 10-03, via leader relay)` followed by the accepted value, copied from that row's default in the
+`spec.md` §5 table (checked: `grep -c '^- Operator verdict: accepted default (operator batch 10-03, via leader relay)' decision-index.md`
+printed `14`, and `grep -c '^- Operator verdict:$' decision-index.md` printed `0`). No default changed, so no clause of the marker table
+moved; no recommendation was added and no option text was edited. The relay is not a committed artifact and is not used as an authority
+anchor: no row's label changed.
+
+### Ceiling extension for ND-1 to ND-3 (recorded by the lane)
+
+The leader granted one explicit ceiling extension, once, on 2026-10-03, for ND-1, ND-2 and ND-3 only, after the Tier L plan-audit
+ceiling of 3 was reached at iteration 3. Scope held: the three defects plus the bookkeeping above; no requirement, criterion or Open
+Decision added or renumbered (25 / 25 / 14); ND-4 to ND-11 and N12 not touched; no unaffected section rewritten; no feature added. The
+follow-up audit looks at the three defects and a regression check only.
+
+### Audit-iteration-3 disposition
+
+Source: `.moai/reports/t1435/plan-audit-iter3.md` (FAIL 0.86 at audited_sha a0c8ad7cb; the score meets the 0.85 threshold, the FAIL rests on
+ND-1 to ND-3). Evidence ids: P-nn in `spec.md` §1.3, R-nn in `research.md`, L-nn in `acceptance.md`; tree `cc46749d9` (it differs from the
+audited tree in this file only); every real-`claude` and real-`go` command ran under empty scratch homes or read-only, and the real roots
+were hashed before and after.
+
+| Id | Disposition | Fixed where | Evidence |
+|----|-------------|-------------|----------|
+| ND-1 `registry-wide-starts-nothing` fails on correct work | **fixed**, option (ii): the subtest pins `CLAUDE_CODE_VERSION` (as `doctor_golden_test.go:177` does) and keeps "record empty" over both shims. Option (i), scoping the record to `codex` and `plugin`-first calls, was not taken because it would have to allow `claude --version`, which would also admit a new check's own `claude --version` | acceptance.md AC-021 (c) subtest text, RED-now line, ledger L-42; spec.md REQ-017 (scope clause) and P-48; design §4; plan M4 | R-30. Unmodified `TestRunDiagnosticChecks_All` under recording `claude` and `codex` shims, empty scratch homes: unpinned, `--- PASS … (9.69s)` and the record is `claude --version` (the auditor's line reproduced); pinned: `--- PASS … (6.61s)` and no record file. Stand-in of the restated subtest (Go test overlaid with `go test -overlay`, no repository write): PASS on the unmodified registry with 41 checks swept and an empty record; FAIL on a mutant that runs `codex plugin list --json` (record `codex plugin list --json`) and on one that runs `claude plugin list --json`. The `os.UserHomeDir()` mutant of the same bullet is unchanged and still attributed to `canary-home-not-touched` and `child-env-carries-resolved-home` (ND-8 untouched) |
+| ND-2 installer cases not required to pass `--install-dir`, no check would see a write | **fixed**, prevention plus a per-case assertion, not the hash route. Every `installer-*` case passes `--install-dir <scratch>/inst-<case>/bin` and fails unless `go` resolves to the stub, the resolved installed path lies under the case's own directory, and neither decoy default root holds a `moai`; a stub `go` makes `install.sh`'s default roots decoys in the scratch; new negative control `--negative-control-install-dir`. The protected set is **not** extended to `$GOBIN`, `$GOPATH/bin`, `$HOME/.local/bin`, and design §6, plan M3 and AC-025 (d) say why | spec.md REQ-025 (clause and negative control), P-47; acceptance.md Conventions, AC-018 (a) with RED-now and mutant probe, AC-025 Given/Then, (a), (d), new (f), RED-now and mutant probe, ledger L-41; design §6 (new paragraph, step 4, case list, negative controls); plan M3 harness bullet, §4, §6 "Required for the harness"; this file's dispatch instructions | R-31. `install.sh:244-264` read: `--install-dir`, else `go env GOBIN`, else `$GOPATH/bin`, else `$HOME/.local/bin`; on this machine the bare target is `/Users/goos/go/bin`, which holds a real `moai`. The real `install.sh` driven offline by four stand-in cases: with the flag `PASS` x4, `LEAK=0`; without it `FAIL` x4 (`installed-path-not-under-install-dir`, `a-default-install-root-holds-moai`), real roots unchanged (`/Users/goos/go/bin entries=185 … moai=08fb8046e077`, `/Users/goos/.local/bin entries=44 … moai=none`). Control: an entry listing is equal across an overwrite of an existing `moai` (listing `7da953f4599d` both times, content `01d09d19c213` then `8a7bfaefd046`), which is why a listing hash cannot guard a real `$GOBIN`. `install.ps1` and `install.bat` both take `--install-dir` (P-47) and run in no harness case: static only (G-3) |
+| ND-3 REQ-025 stubs vs AC-006 (b) real `claude` | **fixed**, carve-out, not a recorded stub: REQ-025 scopes the stub rule to `scripts/test-plugin-install-step.sh` and names `scripts/check-plugin-discoverable.sh` as the one script that runs the real `claude`, for exactly three verbs, behind the same scrub, from a scratch directory, with a scratch home it refuses unless empty, starting no `codex`. A recorded-output stub was rejected: P-30 measured the nested layout invisible only in the real runtime, so a replay would test the parser | spec.md REQ-025, P-49; acceptance.md Conventions, AC-006 (b) rewritten and new (d), (e), RED-now, green path and mutant probe, ledger L-43; design §6 (intro paragraph and the discoverable paragraph); plan M2 bullet, §4, §6 | R-32. Real `marketplace add <fixture> --json`, `install moai@moai-adk --json`, `details` under an empty scratch home: `"outcome":"ok"` twice and `Skills (41)`; the real roots read `PROTECTED-SET a245f41ac9cfed9029f2c1d27b75acc08d26492774227775f2407fbef777cf5f entries=193` before and after, dumps identical. Stand-in script with a poisoned caller environment (recorder pin, `CLAUDE_CODE_PLUGIN_CACHE_DIR` naming a canary): scrub on, canary `entries=1` before and after, recorder never ran, `ok: 41 names listed, 0 missing`; scrub off, canary `entries=1` then `entries=391` and no `plugins/` in the scratch home while the inventory line still read `ok`; refusal control exit 2 |
+| ND-4 to ND-11 | untouched by design | none | the auditor's own statement (`plan-audit-iter3.md`, "Disposition if the operator elects PASS-with-debt"): "The minor items ND-4 to ND-11 are optional and safe to carry: each is a wording, count or cross-reference error, or a non-default option's consequence, and none can produce a false green." Known open at this revision, unchanged: the "six test files" count (ND-4), the harness poison set stated three ways (ND-5), the bracket starting at M3 (ND-6), OD-14 (b) and (c) consequences (ND-7), the AC-021 (c) mutant attribution (ND-8), the three safety claims (ND-9), the stale Tier paragraph above (ND-10), the exact-mode and scratch-cwd fragilities (ND-11) |
+| N12 | untouched (skipped since iteration 2, optional) | none | both counts are at the Tier L ceiling 25 / 25; the iteration-3 audit classed it "NOT FIXED (skipped, disclosed)" and "Not counted against the verdict" |
+
+Totals: ND-1, ND-2, ND-3 fixed; ND-4 to ND-11 and N12 untouched by design. Counts after the delta: 25 requirements, 25 acceptance criteria,
+14 Open Decisions. New premise rows P-47 to P-49; new research rows R-30 to R-32; new ledger cells L-41 (stand-in), L-42 (scoping
+control, not a RED) and L-43 (stand-in); no new gap row in plan §4, and the one observation below.
+
+### Final delta: verification, gaps, and one observation beyond the three defects
+
+`<s>` is the session scratchpad `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/2f10c8c5-67ea-41c2-9b61-6242acc465c3/scratchpad`
+and `<n4>` is `<s>/n4`.
+
+- Lint: `CLAUDE_CONFIG_DIR=<n4>/h/c-lint CODEX_HOME=<n4>/h/x-lint MOAI_HOME=<n4>/h/m-lint <n4>/moai spec lint SPEC-PLUGIN-MARKETPLACE-001 --strict`
+  printed `✓ No findings — all SPEC documents are valid`. Judging build: `go build -o <n4>/moai ./cmd/moai` at HEAD
+  `cc46749d99512f43751f2e4de7f72cee431b863b` (the same value before and after the build), built without ldflags, so it self-reports
+  `moai-adk v3.1.3` and `v3.1.3   none   built unknown`: its commit is attributed by build procedure, not self-attested. The installed
+  `moai` was not used. The same command was run again after the last edit of the delta and printed the same line.
+- Counts: `grep -c '^- REQ-0' spec.md` printed `25`; `grep -c '^### AC-0' acceptance.md` printed `25`; `grep -o 'OD-[0-9][0-9]*' spec.md | sort -u |
+  wc -l` printed `14`, the section-5 question table holds 14 rows, and `grep -c '^## Q[0-9]*:' decision-index.md` printed `14`.
+- Real roots: `sh <s>/i3/h/protected-set-hash.sh --dump <file> --roots-file <n4>/real-roots.txt` (roots saved from the caller's environment before any
+  command) printed `PROTECTED-SET a245f41ac9cfed9029f2c1d27b75acc08d26492774227775f2407fbef777cf5f entries=193` before the first real-tool
+  command, after the ND-3 verbs, after the stand-in script runs, and after the last experiment; `cmp` of the first and last dumps:
+  identical.
+- Tree: `git rev-parse --short HEAD` printed `cc46749d9` and the branch is `WT-marketplace-core-plugin` at the start and at the end; `git status
+  --short` lists only files of this SPEC directory; nothing was staged or committed; no agent-memory file was written. Scratch files (shims,
+  stand-in scripts, overlays, canaries, fixtures) are under `<n4>` and not in the repository. No command of this delta wrote to a real
+  profile or home; no marketplace add, install or uninstall ran against a real profile; no acceptance command used the network (the
+  marketplace source was a local fixture path).
+- Gaps: the real harness, the real `check-plugin-discoverable.sh` and every new Go test still do not exist, so the three fixes are shown
+  through stand-ins (the real `install.sh`, the real `claude` and the real registry-wide test were driven; the harness cases, the script and
+  the new subtests were not), and the first run-phase RED record must show the real ones failing at an assertion. The stand-in installer
+  cases model the install-directory property only: the base `install.sh` makes no verb call, so the verb assertions of the four cases
+  are not exercised. `install.ps1` and `install.bat` were read, not run. The registry-wide runs read real files through pre-existing checks
+  (status quo, read-only, as in iteration 3). In this shell `ls -A` of an empty directory prints `total 0`, `.` and `..` (three lines), which is
+  how emptiness was shown. The worktree guard refused no command of this delta.
+- Observation beyond the three defects, reported and not fixed (outside the delta's scope): P-49 shows `CLAUDE_CODE_PLUGIN_CACHE_DIR`
+  moves the plugin tree out of a scratch `CLAUDE_CONFIG_DIR`. Acceptance commands that run a registry-writing tool inline set only
+  `CLAUDE_CONFIG_DIR` or `CODEX_HOME` (the `claude` ones are read-only `validate`; the Codex write verbs of AC-002 and AC-021 (b) are
+  inline, and which `CODEX_*` variables move Codex's writes was not measured). This session did not carry the variable. It is the class
+  of ND-9 (i), the protected roots following the caller's environment; the discoverable script's scrub closes it for that script only.
 
 _<pending run-phase>_
 
