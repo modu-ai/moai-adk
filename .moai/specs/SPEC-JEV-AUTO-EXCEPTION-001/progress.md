@@ -86,7 +86,7 @@ Spawn shape: `general-purpose` carrying the manager-develop role charter for M1,
 
 ### M1 — the guard, armed=false (commit G)
 
-Attribution: measured in this run on tree HEAD `5f8c6e051` plus the M1 files (the new test file, the `spec.md` frontmatter flip, this section); go1.26.8 darwin/arm64; golangci-lint v2.1.6, the CI-pinned version of `.github/workflows/ci.yml`; every Go command ran with the eleven lane variables unset in the same compound invocation. Machine load average was about 300, so wall times are inflated. Commit G: `pending-backfill` (a commit cannot cite its own SHA; AC-JAE-013 records G and K at M4).
+Attribution: measured in this run on tree HEAD `5f8c6e051` plus the M1 files (the new test file, the `spec.md` frontmatter flip, this section); go1.26.8 darwin/arm64; golangci-lint v2.1.6, the CI-pinned version of `.github/workflows/ci.yml`; every Go command ran with the eleven lane variables unset in the same compound invocation. Machine load average was about 300, so wall times are inflated. Commit G: `6d012fd4d` (backfilled after M4; a commit cannot cite its own SHA, and AC-JAE-013 records G and K at M4).
 
 | Check | Command (scrub prefix omitted) | Deciding output | Exit |
 |---|---|---|---|
