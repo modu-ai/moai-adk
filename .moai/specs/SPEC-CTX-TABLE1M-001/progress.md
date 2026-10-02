@@ -103,3 +103,68 @@ transition), the lane records the Kickoff decision:
   Selection). Delegation: per-spawn general-type worker executing the
   manager-develop role (worktree-pinned card work; manager-develop-type
   spawns auto-isolate to their own L1 tree and are not used for pinned work).
+
+## §E.2 Run-phase Evidence
+
+All commands below are single-invocation, run 2026-10-02 on worktree
+t1415 against the tree they name. RED-now cells are the §E.1 ledger
+(tree `c50da9c2f`); each row below is that pair's GREEN observation.
+Final verification tree: HEAD `6b961a333` (working tree clean).
+
+Commits (branch `WT-ctx-table-1m-fix`, base `c50da9c2f`):
+
+| Commit | Subject | Files |
+|---|---|---|
+| `2153b2c39` | feat(SPEC-CTX-TABLE1M-001): plan-phase artifacts (Tier S scope, 3 artifacts per dispatch) | 6 SPEC artifacts |
+| `d3c5d5829` | docs(SPEC-CTX-TABLE1M-001): correct 200K-sessions row for CC 2.1.285/2.1.287 gateway and provider defaults | spec.md status flip + cwm live/mirror |
+| `6b961a333` | docs(SPEC-CTX-TABLE1M-001): correct gateway/provider 200K claims in model-policy | model-policy live/mirror |
+
+No separate M3 commit: `make build` produced zero tracked-file delta
+(`git status --short` → empty immediately after), so per plan §D the
+embed refresh folds into M2.
+
+AC matrix (GREEN cells; every value verbatim from this run):
+
+| AC | Claim | Command (one row per distinct form; live/mirror pairs grouped) | Verbatim stdout | exit |
+|---|---|---|---|---|
+| AC-CTM-001 | PASS — cwm pair corrected | `grep -c "Opus 4.8+ running with a 200K window"` on cwm live and mirror | `0` / `0` | 1 / 1 |
+| AC-CTM-001 | PASS | `grep -c "unless \`sonnet\[1m\]\` is selected"` on cwm live and mirror | `0` / `0` | 1 / 1 |
+| AC-CTM-001 | PASS — new fact present | `grep -c "CC 2.1.285"` on cwm live and mirror | `1` / `1` | 0 / 0 |
+| AC-CTM-001/005 | PASS — anchors intact | `grep -c "CLAUDE_CODE_DISABLE_1M_CONTEXT=1"` and `grep -c "takes the 200K row"` on cwm live | `1` / `1` | 0 / 0 |
+| AC-CTM-002 | PASS — model-policy pair corrected | `grep -c "or with \`CLAUDE_CODE_DISABLE_1M_CONTEXT=1\`, \`sonnet\` budgets 200K"`, `grep -c "run with a 200K window on some providers"`, `grep -c "Opus on a 200K provider such as Amazon Bedrock"` on live and mirror (6 invocations) | `0` ×6 | 1 ×6 |
+| AC-CTM-002 | PASS — expected 3 citations (lines 22/66/90) | `grep -c "CC 2.1.285"` on model-policy live and mirror | `3` / `3` | 0 / 0 |
+| AC-CTM-002 | PASS — flag anchor intact | `grep -c "CLAUDE_CODE_DISABLE_1M_CONTEXT"` on model-policy live | `3` | 0 |
+| AC-CTM-003 | PASS — byte parity ×2 | `cmp` live vs mirror, cwm pair and model-policy pair | (no output) ×2 | 0 / 0 |
+| AC-CTM-004 | PASS — 7,098 ≤ 7,099 (baseline 6,999) | `LC_ALL=C wc -c .claude/rules/moai/workflow/context-window-management.md` | `    7098 .claude/rules/moai/workflow/context-window-management.md` | 0 |
+| AC-CTM-004 | recorded, no duty (`paths:`-scoped) | `LC_ALL=C wc -c .claude/rules/moai/development/model-policy.md` | `   27688 .claude/rules/moai/development/model-policy.md` | 0 |
+| AC-CTM-006 | PASS — embed refresh | `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && make build` (single compound invocation; output redirected, bounded tail) | `exit=0`; build stamp `Commit=6b961a333` (built FROM this tree); `catalog.yaml updated successfully (13900 bytes)` | 0 |
+| AC-CTM-007 | PASS — neutrality ×8 | `grep -c "t1415"` and `grep -c "SPEC-CTX-TABLE"` on all 4 files | `0` ×8 | 1 ×8 |
+| AC-CTM-008 | PASS — docs-only scope | `git status --short` (post-build); `git diff --name-only c50da9c2f..HEAD` | (empty); exactly 10 files — the 4 targets + 6 SPEC artifacts, zero `.go` paths | 0 / 0 |
+
+Procedure note (honest deviation from the dispatch ORDER summary): the
+dispatch ORDER sketched M3 as `cp` mirror→live, but plan §A/§F R1
+("apply the identical Edit so the diff stays reviewable — do not fix by
+copying the mirror over the live file") is the authoritative edit
+mechanics the mission mandates, so both copies received the identical
+Edit-tool replacements and `cmp` proves the same byte-identical end
+state the cp path would have produced. No `moai update` was run.
+
+Baseline-attribution: every GREEN value above was observed in this run
+against this worktree's tree (`6b961a333` for the final batch; the M1
+batch at `2153b2c39`+working, the M2 batch pre-commit at `d3c5d5829`
++working — same content that then landed in the cited commits; the
+final batch re-ran every form on the committed tree and matched).
+
+## §E.3 Run-phase Audit-Ready Signal
+
+- run_complete_at: 2026-10-02T06:24:31Z
+- run_status: audit-ready
+- run_evidence: this §E.2 (all 8 ACs PASS; 2 release-blocking ACs
+  flipped RED→GREEN with the §E.1 pairs complete; 6 guards held)
+- run_commits: 2153b2c39 (plan artifacts) · d3c5d5829 (M1 + status
+  transition, Authored-By-Agent: manager-develop) · 6b961a333 (M2;
+  M3 embed refresh folded — no tracked delta)
+- open_blockers: none
+- sync handoff: manager-docs owns CHANGELOG/README/docs-site sync and
+  the `implemented → completed` transition on the single sync commit
+  (§E.4 `sync_commit_sha` remains manager-docs' field — untouched here).
