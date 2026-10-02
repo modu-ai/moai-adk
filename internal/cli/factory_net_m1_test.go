@@ -12,8 +12,8 @@ package cli
 // scratch mutants (acceptance.md AC-015 (a)-(h)) whose reds are recorded in
 // progress.md.
 //
-// The lane entry is `-l` on cc and glm (re-pinned from the removed `-f lane` by M2);
-// the Codex lane child is still launched through `-f lane` until M3 re-pins it. The marker
+// The lane entry is `-l` on cc and glm (re-pinned from the removed `-f lane` by M2)
+// and on codex (re-pinned by M3). The marker
 // names asserted here go through the internal/config constants for the
 // factory-owned names; AC-016's frozen-value test owns the literals.
 //
@@ -135,11 +135,17 @@ type netCodexLane struct {
 	env  map[string]string
 }
 
-// netCodexLaneChild runs `moai codex -f lane` over a one-card queue with the
+// netCodexLaneChild runs `moai codex -l` over a one-card queue with the
 // codex binary and child launch substituted, and returns the first child's
 // full environment. The substituted session moves its own card to merge-ready
 // and exits 0, so the supervising loop ends.
 func netCodexLaneChild(t *testing.T) netCodexLane {
+	t.Helper()
+	return netCodexLaneChildFor(t, "-l")
+}
+
+// netCodexLaneChildFor is netCodexLaneChild for one lane entry spelling.
+func netCodexLaneChildFor(t *testing.T, args ...string) netCodexLane {
 	t.Helper()
 	root, store := fcFixture(t)
 	fcQueue(t, store, kanban.BacklogStatePicked)
@@ -159,8 +165,8 @@ func netCodexLaneChild(t *testing.T) netCodexLane {
 	}
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
 
-	if _, _, err := runCodexCmd(t, "-f", "lane"); err != nil {
-		t.Fatalf("codex lane launch: %v", err)
+	if _, _, err := runCodexCmd(t, args...); err != nil {
+		t.Fatalf("codex %v lane launch: %v", args, err)
 	}
 	if childEnv == nil {
 		t.Fatal("the substituted codex child was never launched")
@@ -420,7 +426,7 @@ func containsEntry(env []string, entry string) bool {
 
 // TestFactoryEntryMatrix is the enterable-pair matrix (AC-015): every
 // backend/role pair that is enterable today still launches — Claude and GLM
-// as leader (`-f`), Claude, GLM and Codex as lane (`-l`; the codex row still uses `-f lane` until M3 re-pins it)
+// as leader (`-f`), Claude, GLM and Codex as lane (`-l`)
 // — and the Codex leader stays refused with one line,
 // exit 1, and no child, no run record.
 func TestFactoryEntryMatrix(t *testing.T) {

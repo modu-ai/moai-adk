@@ -56,15 +56,13 @@ const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
 // ENTRY-FLAGS-001). `--leader` names the leader session a lane join's
 // discovery targets (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-008) and composes
 // with the lane entry only. The former `-l` short of `--leader` is retired on
-// cc and glm; leadFlagShort survives only because the Codex entry parse
-// (codex_factory.go) still reads it until M3 replaces that parse.
+// every launcher: `-l` is the lane entry.
 const (
 	factoryFlagLong  = "--factory"
 	factoryFlagShort = "-f"
 	laneFlagLong     = "--lane"
 	laneFlagShort    = "-l"
 	leadFlagLong     = "--leader"
-	leadFlagShort    = "-l"
 
 	// factoryLaneRoleToken is the canonical lane role value
 	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002), kept as the lane role's name
@@ -121,8 +119,8 @@ const (
 type factoryFlagParse struct {
 	Enabled     bool   // -f or -l present (either entry token)
 	Lanes       int    // always 0 post-N-removal; kept for the merge contract
-	LaneNumber  int    // set by the Codex entry parse only (`-f lane-<n>`); 0 on cc/glm
-	LaneLabel   string // set by the Codex entry parse only; empty on cc/glm
+	LaneNumber  int    // no entry sets it any more (the numbered `-f lane-<n>` form is gone); 0
+	LaneLabel   string // no entry sets it any more; empty
 	LaneRole    bool   // -l/--lane: join as the next free lane
 	RunID       string // explicit --factory-run selector (MoAI-owned, pre--- only)
 	ClearPolicy string // --clear-policy value; a lane-only selection (REQ-SD-020)

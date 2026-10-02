@@ -90,8 +90,7 @@ func netEnvMap() map[string]string {
 	return m
 }
 
-// captureLaneEnvToday launches a lane on each backend (`-l` on cc and glm, today's
-// `-f lane` on codex until M3 re-pins it) and
+// captureLaneEnvToday launches a lane on each backend through `-l` and
 // returns the marker environment each launch published, keyed by row name.
 func captureLaneEnvToday(t *testing.T) map[string]map[string]string {
 	t.Helper()

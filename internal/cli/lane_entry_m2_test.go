@@ -5,7 +5,8 @@ package cli
 // next free lane through the shared lane-slot claim; the removed spellings
 // (`-f lane`, `-f lane-<n>`, the explicit lane `--name` under `-f`, the `-l`
 // short of `--leader`) are refused at the parser, one line, nothing launched
-// and nothing written. The codex rows of AC-002/003/005/007 land at M3.
+// and nothing written. The codex rows of AC-003/004/005 joined these tests at
+// M3 (lane_entry_m3_test.go carries the codex-only AC-002 and AC-007 tests).
 //
 // Every test sets or clears every env axis it reads (netScrubLaneEnv) and runs
 // through the launch seam (netDriveLaunch), so no session starts and no real
@@ -183,8 +184,24 @@ var laneRefusalShapes = []struct {
 	{[]string{"--lane", "--name", "lane-2"}, "name"},
 }
 
+// requireLaneRefusalTokens asserts the line a refused lane shape carries: an
+// argument names `-l` as taking none and `--leader <name>` as the selector, a
+// combination names the one-entry-token rule, a --name names the role clash.
+func requireLaneRefusalTokens(t *testing.T, args []string, kind, msg string) {
+	t.Helper()
+	switch kind {
+	case "argument":
+		requireTokens(t, args, msg, "-l", "no argument", "--leader <name>")
+	case "tokens":
+		requireTokens(t, args, msg, "entry token")
+	case "name":
+		requireTokens(t, args, msg, "-l", "already names the role")
+	}
+}
+
 // TestLaneEntryRefusals — AC-003: `-l` / `--lane` with any argument, or with
-// another entry token, or with an operator --name, is refused with one line.
+// another entry token, or with an operator --name, is refused with one line —
+// on cc and glm (M2) and on codex (M3).
 func TestLaneEntryRefusals(t *testing.T) {
 	for _, verb := range laneVerbs {
 		for _, shape := range laneRefusalShapes {
@@ -193,22 +210,20 @@ func TestLaneEntryRefusals(t *testing.T) {
 				if err == nil {
 					return
 				}
-				switch shape.kind {
-				case "argument":
-					requireTokens(t, shape.args, err.Error(), "-l", "no argument", "--leader <name>")
-				case "tokens":
-					requireTokens(t, shape.args, err.Error(), "entry token")
-				case "name":
-					requireTokens(t, shape.args, err.Error(), "-l", "already names the role")
-				}
+				requireLaneRefusalTokens(t, shape.args, shape.kind, err.Error())
 			})
 		}
 	}
+	for _, shape := range laneRefusalShapes {
+		t.Run("codex_"+strings.Join(shape.args, "_"), func(t *testing.T) {
+			requireLaneRefusalTokens(t, shape.args, shape.kind, m3CodexRefusal(t, shape.args))
+		})
+	}
 }
 
-// TestLaneEntryEnvParity — AC-004 (cc, glm): a `-l` / `--lane` launch publishes
+// TestLaneEntryEnvParity — AC-004 (cc, glm, codex): a `-l` / `--lane` launch publishes
 // the marker set the golden captured from today's `-f lane`, label aside, and no
-// name outside the constants of envkeys.go. The codex row joins at M3.
+// name outside the constants of envkeys.go. The codex row joined at M3.
 func TestLaneEntryEnvParity(t *testing.T) {
 	raw, err := os.ReadFile("../config/envkeys.go")
 	if err != nil {
@@ -243,6 +258,28 @@ func TestLaneEntryEnvParity(t *testing.T) {
 				if !known[key] {
 					t.Errorf("%s %s published %s, which is no constant of internal/config/envkeys.go", verb.name, spelling, key)
 				}
+			}
+		}
+	}
+
+	// The codex row (M3): the per-card child environment of the relaunch loop
+	// `-l` / `--lane` starts. The golden row carries MOAI_KANBAN_LABEL (today's
+	// child stamps it); the comparison excludes exactly that key.
+	for _, spelling := range []string{"-l", "--lane"} {
+		got := laneMarkerEnv(netCodexLaneChildFor(t, spelling).env)
+		delete(got, config.EnvMoaiKanbanLabel)
+		want := map[string]string{}
+		for k, v := range golden["codex"] {
+			if k != config.EnvMoaiKanbanLabel {
+				want[k] = v
+			}
+		}
+		if formatMarkerRow(got) != formatMarkerRow(want) {
+			t.Errorf("codex %s markers differ from the `-f lane` golden\n got: %s\nwant: %s", spelling, formatMarkerRow(got), formatMarkerRow(want))
+		}
+		for key := range got {
+			if !known[key] {
+				t.Errorf("codex %s published %s, which is no constant of internal/config/envkeys.go", spelling, key)
 			}
 		}
 	}
@@ -337,7 +374,7 @@ func wantString(field, got, want string) string {
 
 // TestLeaderSelectorRefusedWithoutLaneEntry — AC-005: `--leader` composes with
 // the lane entry only; without it the launch is refused, naming `-l` and
-// `--lane`. The codex rows join at M3.
+// `--lane`, on cc and glm (M2) and on codex (M3).
 func TestLeaderSelectorRefusedWithoutLaneEntry(t *testing.T) {
 	for _, verb := range laneVerbs {
 		for _, args := range [][]string{
@@ -352,6 +389,14 @@ func TestLeaderSelectorRefusedWithoutLaneEntry(t *testing.T) {
 				}
 			})
 		}
+	}
+	for _, args := range [][]string{
+		{"--leader", "leader-2"},
+		{"-f", "--leader", "leader-2"},
+	} {
+		t.Run("codex_"+strings.Join(args, "_"), func(t *testing.T) {
+			requireTokens(t, args, m3CodexRefusal(t, args), "-l", "--lane")
+		})
 	}
 }
 

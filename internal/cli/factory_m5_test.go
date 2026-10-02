@@ -1,5 +1,5 @@
 // factory_m5_test.go — SPEC-FACTORY-SELF-DISPATCH-001 M5 AC tests (card
-// t1240): the Codex per-card relaunch (`moai codex -f lane`, REQ-SD-003 /
+// t1240): the Codex per-card relaunch (`moai codex -l`, REQ-SD-003 /
 // AC-SD-003) and the refusal of every other Codex factory entry shape
 // (REQ-SD-004 / AC-SD-004). The AC-SD-007 enumeration extension lives with
 // the walk it extends (factory_m4_test.go).
@@ -79,7 +79,7 @@ func sdCodexSessionWork(t *testing.T, root, cardID string) {
 	}
 }
 
-// AC-SD-003 — `moai codex -f lane` is a supervising loop: two operator-picked
+// AC-SD-003 — `moai codex -l` is a supervising loop: two operator-picked
 // cards, a substituted Codex session that exits 0 after moving its card to
 // merge-ready, then one more invocation per card with that card's worktree as
 // the child's working directory and the marker, the lane label, the Codex
@@ -111,7 +111,7 @@ func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 	}
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
 
-	if _, _, err := runCodexCmd(t, "-f", "lane"); err != nil {
+	if _, _, err := runCodexCmd(t, "-l"); err != nil {
 		t.Fatalf("codex lane: %v", err)
 	}
 
@@ -169,14 +169,20 @@ func containsPair(argv []string, flag, value string) bool {
 
 // AC-SD-004 — every other Codex factory entry shape is refused with ONE line,
 // defined once: it carries FACTORY_MODE_UNSUPPORTED_BACKEND, names
-// `moai codex -f lane` as the only Codex factory entry and `moai cc -f` /
-// `moai glm -f` for the leader, exits 1, and starts no child.
+// `moai codex -l` as the Codex lane entry and `moai cc -f` / `moai glm -f` for
+// the leader, exits 1, and starts no child. M3 (SPEC-LAUNCHER-ENTRY-FLAGS-001)
+// re-pinned the line: `-f` is no Codex entry in any shape, `-f lane` included.
 func TestSD_AC004_CodexOtherFactoryShapesRefused(t *testing.T) {
 	for _, shape := range [][]string{
 		{"-f"},
 		{"--factory"},
 		{"--factory-run", "x"},
+		{"-f", "lane"},
 		{"-f", "lane-2"},
+		{"-f", "3"},
+		{"--factory", "lane"},
+		{"-f="},
+		{"--factory="},
 	} {
 		prevDirect, prevSpawn := codexDirectLaunchFn, codexSpawnLaunchFn
 		codexDirectLaunchFn = func(*exec.Cmd) error {
@@ -196,13 +202,16 @@ func TestSD_AC004_CodexOtherFactoryShapesRefused(t *testing.T) {
 		}
 		for _, want := range []string{
 			factoryUnsupportedBackendSentinel,
-			"moai codex -f lane",
+			"moai codex -l",
 			"moai cc -f",
 			"moai glm -f",
 		} {
 			if !strings.Contains(codexFactoryRefusalDiag, want) {
 				t.Errorf("the refusal line does not name %q: %q", want, codexFactoryRefusalDiag)
 			}
+		}
+		if loc := removedFormPattern.FindString(codexFactoryRefusalDiag); loc != "" {
+			t.Errorf("the refusal line names the removed form %q: %q", loc, codexFactoryRefusalDiag)
 		}
 		code, ok := ResolveExitCode(err)
 		if !ok || code != 1 {

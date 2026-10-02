@@ -385,10 +385,10 @@ func TestSD_AC007_NoHeadlessEngineArgv(t *testing.T) {
 			return nil
 		}
 		t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
-		if _, _, err := runCodexCmd(t, "-f", "lane"); err != nil {
+		if _, _, err := runCodexCmd(t, "-l"); err != nil {
 			t.Fatalf("codex lane: %v", err)
 		}
-		return sdLaunchPathArgv{name: "codex -f lane", binary: "codex", argv: argv}
+		return sdLaunchPathArgv{name: "codex -l", binary: "codex", argv: argv}
 	}
 	paths := []sdLaunchPathArgv{
 		capture(t, "cc -l", sdCCEntry),

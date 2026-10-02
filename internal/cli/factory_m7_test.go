@@ -81,11 +81,11 @@ func TestSD_AC021_LegacySpellingsRefused(t *testing.T) {
 			value   string
 			wantMsg []string
 		}{
-			{value: "worker", wantMsg: []string{"legacy role token", "moai codex -f lane"}},
-			{value: "agent", wantMsg: []string{"legacy role token", "moai codex -f lane"}},
-			{value: "WORKER", wantMsg: []string{"legacy role token", "moai codex -f lane"}},
-			{value: "worker-1", wantMsg: []string{"legacy lane label", "moai codex -f lane"}},
-			{value: "agent-1", wantMsg: []string{"legacy lane label", "moai codex -f lane"}},
+			{value: "worker", wantMsg: []string{"legacy role token", "moai codex -l"}},
+			{value: "agent", wantMsg: []string{"legacy role token", "moai codex -l"}},
+			{value: "WORKER", wantMsg: []string{"legacy role token", "moai codex -l"}},
+			{value: "worker-1", wantMsg: []string{"legacy lane label", "moai codex -l"}},
+			{value: "agent-1", wantMsg: []string{"legacy lane label", "moai codex -l"}},
 			{value: "lead", wantMsg: []string{"legacy leader spelling", "moai cc -f"}},
 			{value: "lead-1", wantMsg: []string{"legacy leader spelling", "moai cc -f"}},
 		}

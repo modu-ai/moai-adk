@@ -130,13 +130,14 @@ func TestCodexKanbanEntryIsRefused(t *testing.T) {
 	codexWantLaunches(t, cap, 0, 0, 0)
 }
 
-// Legacy role names remain refused; the canonical lane forms are supported.
+// Legacy role names remain refused, and the refusal names the Codex lane entry
+// `moai codex -l` (SPEC-LAUNCHER-ENTRY-FLAGS-001 M3 re-pinned the line).
 func TestCodexFactoryLegacyEntryIsRefused(t *testing.T) {
 	cap := withCodexLaunchCapture(t)
 	pinCodexRefusalRoot(t)
 	for _, args := range codexRefusalCases("factory") {
 		stdout, stderr, err := runCodexCmd(t, args...)
-		if err == nil || stdout != "" || !strings.Contains(stderr+err.Error(), "lane") {
+		if err == nil || stdout != "" || !strings.Contains(stderr+err.Error(), "moai codex -l") {
 			t.Fatalf("codex %v: stdout=%q stderr=%q err=%v", args, stdout, stderr, err)
 		}
 	}
@@ -145,26 +146,25 @@ func TestCodexFactoryLegacyEntryIsRefused(t *testing.T) {
 
 // codex factory entry shapes are pinned by AC-SD-004 (REQ-SD-004); the
 // interim lane-join restoration was superseded by SPEC-FACTORY-SELF-DISPATCH-001.
-
+// The one entry the Codex parse consumes is the lane entry `-l` / `--lane`
+// (SPEC-LAUNCHER-ENTRY-FLAGS-001 M3): the `-f` / `--factory` forms are no
+// entry any more — the classification refuses them before the parse runs, so
+// the parse leaves them in the rest and sets no entry for them.
 func TestCodexFactoryEntryParsingUsesLaneOnly(t *testing.T) {
 	for _, tc := range []struct {
-		args  []string
-		lane  bool
-		label string
-		verb  string
+		args []string
+		lane bool
+		rest []string
 	}{
-		{[]string{"-f", "cli"}, false, "", "cli"},
-		{[]string{"-f", "lane", "cli"}, true, "", "cli"},
-		{[]string{"--factory=lane-2", "app"}, false, "lane-2", "app"},
+		{[]string{"-l", "cli"}, true, []string{"cli"}},
+		{[]string{"--lane", "app"}, true, []string{"app"}},
+		{[]string{"-f", "cli"}, false, []string{"-f", "cli"}},
+		{[]string{"-f", "lane", "cli"}, false, []string{"-f", "lane", "cli"}},
+		{[]string{"--factory=lane-2", "app"}, false, []string{"--factory=lane-2", "app"}},
 	} {
 		rest, entry, err := parseCodexFactoryEntry(tc.args)
-		if err != nil || !entry.Enabled || entry.LaneRole != tc.lane || entry.LaneLabel != tc.label || len(rest) != 1 || rest[0] != tc.verb {
+		if err != nil || entry.Enabled != tc.lane || entry.LaneRole != tc.lane || entry.LaneLabel != "" || entry.LaneNumber != 0 || strings.Join(rest, " ") != strings.Join(tc.rest, " ") {
 			t.Fatalf("parse %q: rest=%q entry=%+v err=%v", tc.args, rest, entry, err)
-		}
-	}
-	for _, args := range [][]string{{"-f", "agent"}, {"-f", "worker-1"}, {"-f=agent"}} {
-		if _, _, err := parseCodexFactoryEntry(args); err == nil || !strings.Contains(err.Error(), "lane") {
-			t.Fatalf("legacy %q: err=%v, want lane guidance", args, err)
 		}
 	}
 }

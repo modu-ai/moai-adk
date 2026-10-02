@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -12,8 +13,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// parseCodexFactoryEntry consumes only MoAI's tokens before --. A bare -f
-// leaves the next Codex verb in place; a lane value selects a factory lane.
+// parseCodexFactoryEntry consumes only MoAI's tokens before --: the lane entry
+// `-l` / `--lane` (it takes no argument, so the next Codex verb stays in place),
+// `--leader`, and `--factory-run`. `-f` / `--factory` is no Codex entry; the
+// classification (codexFactoryEntryClassify) refuses every shape of it before
+// this parse runs, so the parse leaves those tokens in the rest.
 func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagParse, err error) {
 	rest = make([]string, 0, len(head))
 	for i := 0; i < len(head); i++ {
@@ -39,16 +43,13 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 		// Same surface as the cc/glm parse (REQ-008, mirror parity): the
 		// legacy leader spelling refuses with the canonical form, and the
 		// post-loop gates keep --leader a lane-join-only, single-selector flag.
-		if token == leadFlagLong || token == leadFlagShort ||
-			strings.HasPrefix(token, leadFlagLong+"=") || strings.HasPrefix(token, leadFlagShort+"=") {
+		if token == leadFlagLong || strings.HasPrefix(token, leadFlagLong+"=") {
 			if entry.Lead != "" {
 				return nil, entry, fmt.Errorf("%s may appear only once", leadFlagLong)
 			}
 			switch {
 			case strings.HasPrefix(token, leadFlagLong+"="):
 				entry.Lead = strings.TrimPrefix(token, leadFlagLong+"=")
-			case strings.HasPrefix(token, leadFlagShort+"="):
-				entry.Lead = strings.TrimPrefix(token, leadFlagShort+"=")
 			case i+1 < len(head) && !strings.HasPrefix(head[i+1], "-"):
 				i++
 				entry.Lead = head[i]
@@ -61,59 +62,24 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 			}
 			continue
 		}
-		value, hasValue := "", false
-		switch {
-		case token == factoryFlagShort || token == factoryFlagLong:
-			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") && !codexHeadTokenIsVerb(head[i+1]) {
-				i++
-				value, hasValue = head[i], true
-			}
-		case strings.HasPrefix(token, factoryFlagShort+"="):
-			value, hasValue = strings.TrimPrefix(token, factoryFlagShort+"="), true
-		case strings.HasPrefix(token, factoryFlagLong+"="):
-			value, hasValue = strings.TrimPrefix(token, factoryFlagLong+"="), true
-		default:
-			rest = append(rest, token)
+		// The lane entry: it names the role and takes no argument (the
+		// classification refused any argument or second entry token already).
+		if token == laneFlagShort || token == laneFlagLong {
+			entry.Enabled, entry.LaneRole = true, true
 			continue
 		}
-		if entry.Enabled {
-			return nil, entry, fmt.Errorf("-f/--factory may appear only once")
-		}
-		entry.Enabled = true
-		if !hasValue {
-			continue
-		}
-		if value == factoryLaneRoleToken {
-			entry.LaneRole = true
-			continue
-		}
-		if n, ok := kanban.SplitFactoryLaneLabel(value); ok {
-			entry.LaneNumber, entry.LaneLabel = n, value
-			continue
-		}
-		if kanban.IsLegacyFactoryRoleValue(strings.ToLower(value)) {
-			return nil, entry, fmt.Errorf("%q is a legacy factory role; use -f lane", value)
-		}
-		return nil, entry, fmt.Errorf("%s, got %q", factoryFlagUsageError, value)
+		rest = append(rest, token)
 	}
 	if entry.RunID != "" && !entry.Enabled {
-		return nil, entry, fmt.Errorf("--factory-run requires -f/--factory")
-	}
-	if entry.RunID != "" && !entry.LaneRole && entry.LaneNumber == 0 {
-		return nil, entry, fmt.Errorf("--factory-run applies to a factory lane")
+		return nil, entry, fmt.Errorf("--factory-run requires -l/--lane")
 	}
 	if entry.Lead != "" && entry.RunID != "" {
 		return nil, entry, fmt.Errorf("%s and --factory-run name two different selectors; carry one", leadFlagLong)
 	}
-	if entry.Lead != "" && !entry.LaneRole && entry.LaneNumber == 0 {
-		return nil, entry, fmt.Errorf("%s applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target", leadFlagLong)
+	if entry.Lead != "" && !entry.Enabled {
+		return nil, entry, errors.New(leaderNeedsLaneEntry)
 	}
 	return rest, entry, nil
-}
-
-func codexHeadTokenIsVerb(token string) bool {
-	_, ok := codexVerbRouting[token]
-	return ok
 }
 
 // enterCodexFactory resolves the codex twin's factory entry. timing, when

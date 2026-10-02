@@ -421,9 +421,9 @@ func TestCodexFactoryLaneJoinsDiscoveredLeader(t *testing.T) {
 // The codex parse carries the same --leader surface as cc/glm (REQ-008 mirror
 // parity).
 func TestCodexFactoryLeadFlagSurface(t *testing.T) {
-	rest, entry, err := parseCodexFactoryEntry([]string{"-f", "lane", "--leader", "leader"})
+	rest, entry, err := parseCodexFactoryEntry([]string{"-l", "--leader", "leader"})
 	if err != nil {
-		t.Fatalf("parseCodexFactoryEntry(-f lane --leader leader): %v", err)
+		t.Fatalf("parseCodexFactoryEntry(-l --leader leader): %v", err)
 	}
 	if entry.Lead != "leader" {
 		t.Errorf("entry.Lead = %q, want leader", entry.Lead)
@@ -431,13 +431,13 @@ func TestCodexFactoryLeadFlagSurface(t *testing.T) {
 	if len(rest) != 0 {
 		t.Errorf("rest = %v, want the flags consumed", rest)
 	}
-	if _, _, err := parseCodexFactoryEntry([]string{"-f", "lane", "--leader", "lead"}); err == nil || !strings.Contains(err.Error(), "legacy leader spelling") {
+	if _, _, err := parseCodexFactoryEntry([]string{"-l", "--leader", "lead"}); err == nil || !strings.Contains(err.Error(), "legacy leader spelling") {
 		t.Errorf("codex legacy --leader = %v, want the canonical-form refusal", err)
 	}
-	if _, _, err := parseCodexFactoryEntry([]string{"-f", "--leader", "leader"}); err == nil || !strings.Contains(err.Error(), "lane") {
-		t.Errorf("codex leader-entry --leader = %v, want the lane-only surface error", err)
+	if _, _, err := parseCodexFactoryEntry([]string{"--leader", "leader"}); err == nil || !strings.Contains(err.Error(), "-l") || !strings.Contains(err.Error(), "--lane") {
+		t.Errorf("codex selector without a lane entry = %v, want the lane-entry-only surface error", err)
 	}
-	if _, _, err := parseCodexFactoryEntry([]string{"-f", "lane", "--factory-run", "runx0001", "--leader", "leader"}); err == nil || !strings.Contains(err.Error(), "--factory-run") {
+	if _, _, err := parseCodexFactoryEntry([]string{"-l", "--factory-run", "runx0001", "--leader", "leader"}); err == nil || !strings.Contains(err.Error(), "--factory-run") {
 		t.Errorf("codex --leader with --factory-run = %v, want the selector-conflict error", err)
 	}
 }

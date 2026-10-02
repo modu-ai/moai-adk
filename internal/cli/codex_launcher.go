@@ -25,10 +25,11 @@ package cli
 // launch replaces moai with Codex (the -w lock names that one pid); Windows
 // retains the child Start/wait path. The kanban entry (-k) stays refused
 // (SPEC-CODEX-FACTORY-RETIRE-001). The factory surface narrowed to exactly
-// `-f lane` (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003): a supervising loop
-// that leases each card on the parent checkout and starts one interactive
-// Codex session in the card's own worktree; every other factory shape keeps
-// its refusal (REQ-SD-004).
+// the lane entry `-l` / `--lane` (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003,
+// whose trigger SPEC-LAUNCHER-ENTRY-FLAGS-001 renamed from `-f lane`): a
+// supervising loop that leases each card on the parent checkout and starts one
+// interactive Codex session in the card's own worktree; `-f` in every shape
+// keeps its refusal (REQ-SD-004).
 
 import (
 	"context"
@@ -57,7 +58,7 @@ const (
 	// codexUsageDiag is the one-line usage diagnostic every unknown token
 	// receives (AC-CL-002). Byte-identical for all six probe tokens so the
 	// rejection cannot leak which token was seen.
-	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app"
+	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w <worktree>] [-l] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app"
 
 	// Codex only enters an already-created worktree; -w needs its name or path.
 	codexWorktreeValueDiag = "-w requires an existing worktree name or path"
@@ -633,9 +634,7 @@ var codexCmd = &cobra.Command{
 		"  moai codex status     print the readiness readout (starts nothing)\n" +
 		"  moai codex app        launch the Codex desktop app (codex app)\n" +
 		"  -w <worktree>         launch in an existing worktree (never creates one)\n" +
-		"  -f                   start a factory run as leader (CLI only)\n" +
-		"  -f lane              join the active factory as the next lane (CLI only)\n" +
-		"  -f lane-<n>          join as a numbered lane (CLI only)\n" +
+		"  -l, --lane            join the active factory as the next lane (CLI only)\n" +
 		"  Factory sessions show launch_pending until their first prompt binds a session UUID.\n" +
 		"  --spawn               open the launch in a new tmux window\n" +
 		"  -d, --debug           launcher debug: trace the pre-exec path to stderr\n" +
@@ -697,9 +696,9 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	head, debugRequested := stripCodexDebugFlag(head)
 	// The factory entries classify before anything else is read or written
 	// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003/-004, narrowing
-	// REQ-CFR-001..005): `-f lane` routes to the per-card relaunch, every
-	// other factory shape prints its one refusal line. Tokens after -- are
-	// codex's own.
+	// REQ-CFR-001..005, SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-001/002/006): `-l` /
+	// `--lane` routes to the per-card relaunch, every other factory shape
+	// prints its one refusal line. Tokens after -- are codex's own.
 	entry, diag := codexFactoryEntryClassify(head)
 	if diag != "" {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), diag)
@@ -765,25 +764,27 @@ func runCodex(cmd *cobra.Command, args []string) error {
 
 // The refusal lines. They carry the same sentinels as the `moai cg` refusals
 // (D2), so one grep finds both. The factory line is the ONE wording source
-// REQ-SD-004 names: every Codex factory shape except `-f lane` prints it
-// byte-identically (AC-SD-004 compares stderr against this constant).
+// REQ-SD-004 names: every `-f` shape (and `--factory-run`) prints it
+// byte-identically (AC-SD-004 compares stderr against this constant). Since
+// SPEC-LAUNCHER-ENTRY-FLAGS-001 the lane entry is `-l`, so no `-f` shape is an
+// entry on moai codex, `-f lane` included.
 const (
 	codexKanbanRefusalDiag = kanbanUnsupportedBackendSentinel +
 		": moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead"
 	codexFactoryRefusalDiag = factoryUnsupportedBackendSentinel +
-		": moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader"
+		": moai codex has no -f entry; the lane entry is 'moai codex -l'; use 'moai cc -f' or 'moai glm -f' for the factory leader"
 )
 
 // codexFactoryLegacyEntryCanonical is the canonical-form clause shared by the
 // lane-shape legacy refusals: on moai codex the only factory entry is the
-// `-f lane` relaunch.
-const codexFactoryLegacyEntryCanonical = "'moai codex -f lane' is the only Codex factory entry"
+// `-l` relaunch.
+const codexFactoryLegacyEntryCanonical = "'moai codex -l' is the only Codex factory entry"
 
 // codexFactoryLegacyRefusalDiag builds the REQ-RNC-003/-005/-007 refusal for
 // a legacy role spelling at the codex -f value position (AC-SD-021). The
 // message mirrors the REQ-RNC producer shapes (%q is the legacy …; <the
 // canonical form>) and names the canonical form for this surface: `moai
-// codex -f lane` for the lane shapes, `moai cc -f` / `moai glm -f` for the
+// codex -l` for the lane shapes, `moai cc -f` / `moai glm -f` for the
 // leader (codex launches no leader). ok is false for any non-legacy value —
 // the caller falls through to the REQ-SD-004 line.
 func codexFactoryLegacyRefusalDiag(value string) (diag string, ok bool) {
@@ -810,7 +811,7 @@ type codexFactoryEntry int
 
 const (
 	codexFactoryEntryAbsent codexFactoryEntry = iota // no factory token in the head
-	codexFactoryEntryLane                            // -f lane / --factory lane: the per-card relaunch
+	codexFactoryEntryLane                            // -l / --lane: the per-card relaunch
 	codexFactoryEntryOther                           // every other factory shape: refused
 )
 
@@ -820,22 +821,49 @@ const (
 // scan, not a parser: the value tokens it consumes mirror parseFactoryFlag's
 // spellings — a following token that looks like a flag is never a value, and
 // the `=` forms are read in place. A refused shape fires before anything else
-// is read or written (REQ-SD-004). Legacy role tokens (`worker` / `agent`,
-// their numbered labels, and `lead`) refuse with the REQ-RNC-003/-005/-007
-// message naming the canonical form (AC-SD-021) — the REQ-SD-004 line is
-// reserved for non-legacy shapes.
+// is read or written (REQ-SD-004).
+//
+// The lane entry is `-l` / `--lane` (SPEC-LAUNCHER-ENTRY-FLAGS-001): it takes
+// no argument, composes with no other entry token (`-f`, `-k`) and no operator
+// --name, and the leader selector composes with it only. `-f` is no Codex
+// entry in any shape — `-f lane` included. Legacy role tokens (`worker` /
+// `agent`, their numbered labels, and `lead`) refuse with the
+// REQ-RNC-003/-005/-007 message naming the canonical form (AC-SD-021) — the
+// REQ-SD-004 line is reserved for non-legacy shapes.
 func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
-	entry := codexFactoryEntryAbsent
+	var (
+		lane, kanbanSeen, leadSeen bool
+		other                      string // the first non-lane entry token, which a lane token collides with
+		refusal                    string // the first refusal line a factory token earns, in token order
+	)
 	for i := 0; i < len(head); i++ {
 		token := head[i]
 		var value string
 		hasValue := false
 		switch {
+		case token == laneFlagShort || token == laneFlagLong:
+			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
+				return codexFactoryEntryOther, laneFlagArgumentError
+			}
+			lane = true
+			continue
+		case strings.HasPrefix(token, laneFlagShort+"="), strings.HasPrefix(token, laneFlagLong+"="):
+			return codexFactoryEntryOther, laneFlagArgumentError
+		case token == leadFlagLong || strings.HasPrefix(token, leadFlagLong+"="):
+			leadSeen = true
+			continue
 		case token == kanbanFlagShort || token == kanbanFlagLong ||
 			strings.HasPrefix(token, kanbanFlagShort+"=") || strings.HasPrefix(token, kanbanFlagLong+"="):
-			return codexFactoryEntryOther, codexKanbanRefusalDiag
+			kanbanSeen = true
+			if other == "" {
+				other = "-k/--kanban"
+			}
+			continue
 		case token == codexFactoryRunFlag || strings.HasPrefix(token, codexFactoryRunFlag+"="):
-			return codexFactoryEntryOther, codexFactoryRefusalDiag
+			if refusal == "" {
+				refusal = codexFactoryRefusalDiag
+			}
+			continue
 		case token == factoryFlagLong || token == factoryFlagShort:
 			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
 				value, hasValue = head[i+1], true
@@ -847,22 +875,38 @@ func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
 		default:
 			continue
 		}
+		if other == "" {
+			other = "-f/--factory"
+		}
+		if refusal != "" {
+			continue
+		}
+		refusal = codexFactoryRefusalDiag
 		if hasValue {
-			if value == factoryLaneRoleToken {
-				entry = codexFactoryEntryLane
-				continue
-			}
 			// AC-SD-021: legacy role spellings refuse with the
 			// REQ-RNC-003/-005/-007 message naming the canonical form — on
 			// moai codex too, not the REQ-SD-004 line. This is the check the
 			// M5 classification left one branch away.
 			if diag, isLegacy := codexFactoryLegacyRefusalDiag(value); isLegacy {
-				return codexFactoryEntryOther, diag
+				refusal = diag
 			}
 		}
-		return codexFactoryEntryOther, codexFactoryRefusalDiag
 	}
-	return entry, ""
+	switch {
+	case lane && other != "":
+		return codexFactoryEntryOther, fmt.Sprintf(entryTokenConflict, other, "-l/--lane")
+	case kanbanSeen:
+		return codexFactoryEntryOther, codexKanbanRefusalDiag
+	case leadSeen && !lane:
+		return codexFactoryEntryOther, leaderNeedsLaneEntry
+	case refusal != "":
+		return codexFactoryEntryOther, refusal
+	case lane && operatorSuppliedName(head):
+		return codexFactoryEntryOther, laneFlagNameError
+	case lane:
+		return codexFactoryEntryLane, ""
+	}
+	return codexFactoryEntryAbsent, ""
 }
 
 // stripCodexFactoryTokens removes the `-f`/`--factory` token and its lane
