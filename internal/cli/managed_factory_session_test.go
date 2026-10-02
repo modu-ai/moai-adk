@@ -88,29 +88,47 @@ func seedManagedInbox(t *testing.T, root, run, body string) (*factorymsg.Store, 
 	return store, lane, env
 }
 
-// The test arranges operator-before-inbox arrival and asserts the
-// serialization contract (one turn at a time, arrival order, no claim while
-// busy); the queue is FIFO, so it does not assert a priority.
+// The queue is arrival-order FIFO, one turn at a time (REQ-MS-006). Each
+// arrangement is proven both ways — operator arriving first and inbox
+// arriving first — at the queue and at the driver, so a queue that prefers
+// either source (or picks the last turn) fails this test.
 func TestManagedQueueSerializesOperatorAndInbox(t *testing.T) {
-	t.Run("queue orders operator before inbox", func(t *testing.T) {
+	t.Run("queue serves arrival order: operator then inbox", func(t *testing.T) {
 		q := &managedTurnQueue{}
 		q.PushOperator("operator-asks")
 		q.PushOperator("   ") // blank operator lines are dropped, never delivered
 		q.PushInboxBatch("inbox-batch-prompt")
 		first, ok := q.Next()
 		if !ok || first.prompt != "operator-asks" || first.fromInbox {
-			t.Fatalf("first turn=%+v ok=%v, want the operator line first", first, ok)
+			t.Fatalf("first turn=%+v ok=%v, want the first-arrived turn (operator) first", first, ok)
 		}
 		second, ok := q.Next()
 		if !ok || second.prompt != "inbox-batch-prompt" || !second.fromInbox {
-			t.Fatalf("second turn=%+v ok=%v, want the inbox batch second", second, ok)
+			t.Fatalf("second turn=%+v ok=%v, want the later-arrived turn (inbox) second", second, ok)
 		}
 		if _, ok := q.Next(); ok {
 			t.Fatal("queue still holds a turn after both were delivered")
 		}
 	})
 
-	t.Run("driver claims only when idle", func(t *testing.T) {
+	t.Run("queue serves arrival order: inbox then operator", func(t *testing.T) {
+		q := &managedTurnQueue{}
+		q.PushInboxBatch("inbox-batch-prompt")
+		q.PushOperator("operator-asks")
+		first, ok := q.Next()
+		if !ok || first.prompt != "inbox-batch-prompt" || !first.fromInbox {
+			t.Fatalf("first turn=%+v ok=%v, want the first-arrived turn (inbox) first", first, ok)
+		}
+		second, ok := q.Next()
+		if !ok || second.prompt != "operator-asks" || second.fromInbox {
+			t.Fatalf("second turn=%+v ok=%v, want the later-arrived turn (operator) second", second, ok)
+		}
+		if _, ok := q.Next(); ok {
+			t.Fatal("queue still holds a turn after both were delivered")
+		}
+	})
+
+	t.Run("driver claims only when idle and serves operator then inbox in arrival order", func(t *testing.T) {
 		sess := &fakeManagedSession{began: make(chan fakeTurnSignal, 8)}
 		pr, pw := io.Pipe()
 		t.Cleanup(func() { _ = pw.Close() })
@@ -146,7 +164,7 @@ func TestManagedQueueSerializesOperatorAndInbox(t *testing.T) {
 		}
 		idle <- time.Time{}
 		if got := sess.waitBegan(t); got != "operator-asks" {
-			t.Fatalf("turn after input=%q, want the operator line", got)
+			t.Fatalf("turn after input=%q, want the first-arrived operator line", got)
 		}
 		// Busy: the driver is blocked inside DeliverTurn, so idle ticks must
 		// not produce a claim. The baseline is the count at hold entry — an
@@ -189,7 +207,68 @@ func TestManagedQueueSerializesOperatorAndInbox(t *testing.T) {
 		turns := append([]string(nil), sess.turns...)
 		sess.mu.Unlock()
 		if len(turns) != 3 || turns[0] != managedPrimingPrompt || turns[1] != "operator-asks" || !strings.Contains(turns[2], "m1") {
-			t.Fatalf("turn order=%q, want operator before inbox after the priming turn", turns)
+			t.Fatalf("turn order=%q, want arrival order (operator, then inbox) after the priming turn", turns)
+		}
+	})
+	t.Run("driver serves inbox then operator when the claim returns with an operator line already waiting", func(t *testing.T) {
+		sess := &fakeManagedSession{began: make(chan fakeTurnSignal, 8)}
+		pr, pw := io.Pipe()
+		t.Cleanup(func() { _ = pw.Close() })
+		idle := make(chan time.Time, 8)
+		var calls atomic.Int64
+		claim := func() ([]factorymsg.Claim, error) {
+			if calls.Add(1) != 1 {
+				return nil, nil
+			}
+			// The operator line reaches the driver's input channel while the
+			// claim is still running, then the claim returns its batch: the
+			// batch (claimed first) is queued before the line is absorbed.
+			if _, err := pw.Write([]byte("operator-late\n")); err != nil {
+				return nil, err
+			}
+			time.Sleep(150 * time.Millisecond)
+			return []factorymsg.Claim{{
+				Envelope:   factorymsg.Envelope{ID: "m2", Kind: factorymsg.KindStatusRequest, SenderSlot: kanban.FactoryLaneLabel(1), TaskRef: "t1"},
+				ClaimToken: "tok-2",
+			}}, nil
+		}
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- driveManagedFactorySession(sess, pr, idle, claim, func(c []factorymsg.Claim) string { return managedFactoryInboxPrompt("managed-driver-fifo", c) })
+		}()
+		if got := sess.waitBegan(t); got != managedPrimingPrompt {
+			t.Fatalf("priming turn=%q", got)
+		}
+		sess.release()
+		idle <- time.Time{}
+
+		first := sess.waitBegan(t)
+		if !strings.Contains(first, "m2") {
+			t.Fatalf("first turn after priming = %q, want the first-arrived inbox batch", first)
+		}
+		// Busy: no new claim while the inbox turn is in flight.
+		claimsAtHold := calls.Load()
+		for i := 0; i < 3; i++ {
+			idle <- time.Time{}
+		}
+		if n := calls.Load(); n != claimsAtHold {
+			t.Fatalf("claim ran while the session was busy: %d -> %d", claimsAtHold, n)
+		}
+		sess.release()
+		if second := sess.waitBegan(t); second != "operator-late" {
+			t.Fatalf("second turn = %q, want the later-arrived operator line", second)
+		}
+		sess.release()
+		if _, err := pw.Write([]byte("/exit\n")); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case err := <-errCh:
+			if err != nil {
+				t.Fatalf("driver: %v", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("driver did not exit on /exit within 5s")
 		}
 	})
 }
