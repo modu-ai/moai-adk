@@ -127,9 +127,64 @@ Scope check: `git diff --numstat` over the four product files before the commit 
 
 Lexical-only checks in M5: every token check of the new test is a substring or regular-expression match on the sentence line (a sentence with the pointer but the opposite meaning would pass, spec limit G-7); the forbidden-token checks run on the line that carries the name token, not on a parsed sentence; the card-id shape is a letter t followed by three to five digits.
 
+### M3 — pointers (run last, third manager-develop role spawn, card t1344)
+
+Base tree 193da0e05 (M0, M1, M2, M4, M5 committed, working tree clean at start). Edited exactly two documents, each in the template copy first and then the live copy with the same `old_string` (never copied onto each other): `kanban-dispatch.md` (the Boundaries "No gate bypass." bullet) and `workflows/run.md` (line 137). The preserved span of `kanban-dispatch.md` from "Promotion is the operator's act, always." through "The self-dispatch lane exception." was not touched, and the pre-existing live-versus-mirror difference at line 177 was left as it was (`diff` of the two copies after the edit prints only that one hunk, `177c177`).
+
+Pointer wording. `kanban-dispatch.md`: the clause "keep-set gates (...) still require the operator" now continues ", and operator-form Kickoff rows that wait together are presented through the batch gate summary (`.claude/rules/moai/workflow/auto-semantics.md` §9.2)." `run.md`: the citation "(`.../auto-semantics.md` §9.1)" became "(`.../auto-semantics.md` §9.1 and §9.2)". Neither edit restates the 9.2 format or carries the canonical-only tokens.
+
+"RED" reading, pre-edit tree 193da0e05 (observed before any edit): `grep -c "§9.2"` over the four pointer files printed `kanban-dispatch.md:0` (live and mirror), `run.md:0` (live and mirror). Pre-edit sizes: `wc -c` live 26807, mirror 26485 (equal to the merge-base blobs, so M3 starts from the unmodified baseline).
+
+AC-016 readings, post-edit (each its own command; merge-base read at measurement time with `git merge-base develop HEAD` = c50da9c2f8aa1227073bd77caa07ca1c75b8d81b):
+
+- (a) `grep -rlF "counter_refs=" .claude/rules .claude/skills internal/template/templates/.claude/rules internal/template/templates/.claude/skills internal/hook --exclude='*_test.go'` printed exactly the two `auto-semantics.md` copies; the same command with `searched=` printed the same two. Lexical.
+- (b) `grep -c "§9.2"`: `kanban-dispatch.md` 1 (live) and 1 (mirror), `run.md` 1 (live) and 1 (mirror). The M4 and M5 pointer surfaces were measured in their own sections and were not re-read here. Lexical.
+- (c) `git show c50da9c2f:<path> | wc -c` versus `wc -c`: live 26807 to 26959 (growth 152 bytes), mirror 26485 to 26637 (growth 152 bytes), both under 1000.
+- (d) `git diff --numstat c50da9c2f..HEAD` after the commit: `1 1` for `run.md` live, `1 1` for `run.md` mirror (additions equal deletions, 199 lines unchanged), `1 1` for `kanban-dispatch.md` live and mirror (one added line each, at most 3). Before the commit the working-tree form read the same.
+- Non-vacuity control: `git diff --name-only c50da9c2f..HEAD` printed 27 lines after the M3 commit (23 before it; at least one either way), so the readings above are measurements, not "unmeasurable". This reading is valid only before the card merges into develop: after the merge the merge-base becomes the card tip, the range empties, and (c) and (d) would pass vacuously.
+
+`make build` exit 0 (no error output; the final line is the `go build` invocation). It regenerated one tracked file, `internal/template/catalog.yaml` (one hash line, the `moai` skill entry, derived from the `run.md` edit); it is part of the M3 commit.
+
+Named tests, each its own command with output redirected to a scratch file, exit code observed as its own field, counts from `grep -c`:
+
+- `TestAlwaysLoadedTokenBudget` (`./internal/config/`): exit 0, `always-loaded surface = 64265 tokens (budget 77600, headroom 13335, 16 entries)`; before M3 the M2 reading was 64227 tokens, headroom 13373 (so M3 costs 38 tokens). `--- PASS` 1, `--- FAIL` 0.
+- `TestRuleTemplateMirrorDrift` (`./internal/template/`): exit 0, `--- PASS` 10 including subtests (1 top level), `=== RUN` 10, `--- FAIL` 0.
+- `TestSubSkillLOCCeiling`, `TestEntryRouterLOCCeiling` (`./internal/skills/`): exit 0, `--- PASS` 2, `--- FAIL` 0.
+- `TestAutoRankDoctrineAmendment`, `TestAutoRankMirrorParity`, `TestSpecAssembly_RewrittenToCLIPath`, `TestSpecAssembly_NoNewInternalTokens` (`./internal/cli/`): exit 0, `--- PASS` 4 top level (34 with subtests), `=== RUN` 34, `--- FAIL` 0.
+- `TestImplementationKickoffApprovalPreservedBeforeGoal`, `TestTemplateNoInternalContentLeak`, `TestBatchGateSummaryDoctrine` (`./internal/template/`): exit 0, `--- PASS` 3 top level (49 with subtests), `=== RUN` 49, `--- FAIL` 0, `no tests to run` 0.
+- Contract-mode block tests of `contract_mode_blocks_test.go` (`TestContractModeBlocksWellFormed`, `TestContractModeLocalTemplateParity`, `TestContractModeSSOTSections`, `TestContractModeLifecycleOrder`, `TestContractModeLifecycleEvidence`, `TestContractModeBlockCondition`, `TestContractModeAuditRetryBlocks`, `TestContractModeSyncBlocks`, `TestContractModeSigningBlocks`, `TestJevDoctrineAmendment`): exit 0, `--- PASS` 10 top level (36 with subtests), `=== RUN` 36, `--- FAIL` 0, `no tests to run` 0.
+
+Lexical-only checks in M3: every pointer count and the canonical-token sweeps are text matches. Whether the two pointer sentences agree in meaning with section 9.2 is a reading for the sync audit.
+
+M3 commit: 658cffa52.
+
+### End checks (after M3; tree 658cffa52, branch WT-batch-approval-gate)
+
+Each command was run as its own invocation.
+
+- AC-008 V1: `ls .moai/specs/SPEC-AUTONOMY-BATCH-GATE-001/baseline-gate-rounds.md` printed the path, exit 0. V2: `git check-ignore -v <path>` printed nothing, exit 1. V3: the four `grep -c "^<Label>: [^ ]"` commands printed 1, 1, 1, 1 (Command, Observed output, Classification method, Limits). V4: `git log --format=%h --diff-filter=A -- <path>` printed `61801e166` (one line). V5: `git diff-tree --no-commit-id --name-only -r 61801e166` printed one line, the baseline path. V6: `git log --format=%h -- <path>` printed `61801e166` (exactly one line, equal to B). V7: `git log --format=%h -S"### 9.2 The batch gate summary" -- internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md` printed `4e0a60bc1` (exactly one line, equal to D). V8: `git merge-base --is-ancestor 61801e166 4e0a60bc1` exit 0. The V6 to V8 ordering evidence is the commit graph itself (B 61801e166 before D 4e0a60bc1).
+- AC-009: `git diff --name-only develop...HEAD -- '*.go'` printed exactly seven paths: `internal/hook/session_start_factory.go`, `internal/hook/session_start_factory_i18n.go`, `internal/hook/session_start_kanban.go`, `internal/hook/session_start_kanban_i18n.go`, `internal/hook/session_start_kanban_i18n_test.go`, `internal/hook/session_start_leader_gate_notice_test.go`, `internal/template/batch_gate_summary_doctrine_test.go`. `git diff --numstat develop...HEAD` over the four product files: `1 1` (factory.go), `5 0` (factory_i18n.go), `1 0` (kanban.go), `5 0` (kanban_i18n.go). The check that the product changes are limited to the notice sentence field and its merge line is a reading for the sync audit (spec limit G-8). The `develop...HEAD` merge-base at measurement time was c50da9c2f; valid only before the merge.
+- AC-010: the guard commands are the M3 runs above (budget headroom 13335, which is at least 0). `wc -l` of `run.md`: 199 live, 199 mirror. The 63-name leader notice command was not re-run in the end check (no Go file changed after M5, where it measured 63 `--- PASS` and 0 `--- FAIL`).
+- Tier recount (spec.md section A.5): `git diff --name-only develop...HEAD -- . ':(exclude).moai/specs' ':(exclude).moai/reports'` printed 18 lines against the enumerated 17. The 17 enumerated files are all present (10 rule and skill documents as 5 live and mirror pairs, the new template guard test, 4 product Go files, 2 hook tests). The one extra path is `internal/template/catalog.yaml`, a derived artifact that `make build` regenerates (`gen-catalog-hashes --all`; the `moai` skill hash changed because the `moai.md`, `spec-assembly.md` and `run.md` skill files changed); it is not in the plan's list and nothing was edited to force the count to 17.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-10-02
+tier: L; mode: serial; development mode: tdd; operator-form Kickoff, Phase 1 plan-audit gate BYPASSED by operator decision (section F).
+
+Run-phase commits (branch WT-batch-approval-gate, base develop merge-base c50da9c2f):
+
+- M0 baseline of question-tool gate rounds: 61801e166
+- M1 guard test, RED: 5936aeb32
+- M2 canonical section 9.2, GREEN: 4e0a60bc1
+- M4 stale Kickoff wording alignment: d196a9de4
+- M5 leader notice pointer sentence: 193da0e05
+- M3 pointers (kanban-dispatch, run): 658cffa52
+
+The commit that carries this section and the end-check evidence above is the run-phase evidence commit and is not listed (a commit cannot cite its own hash).
+
+Known debts carried: open decision-index rows Q1-Q3, Q6-Q10, Q12 and Q13 are implemented as draft readings (spec.md section B.8); the doctrine section is about twice the 3 KB target (5986 bytes); `TestContractModeEmitterSites` gives no baseline signal because it skips without its environment variable (and fails when run with `MOAI_GR_BASE` set, for documents not attributable to this card); the guard tests are lexical matchers with the limits G-4, G-7 and G-10 of spec.md (a body that keeps an anchor next to a contradicting sentence, a pointer sentence with the opposite meaning, and one-character baseline bodies can pass); the Tier recount reads 18, not the enumerated 17, because the derived artifact `internal/template/catalog.yaml` is regenerated by `make build`.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
