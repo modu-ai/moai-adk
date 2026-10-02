@@ -148,6 +148,32 @@ test('health-cycle: run carries the 20s timeout', async ($, on) => {
 
 // ---- fail-soft (AC-MSM-010) -------------------------------------------------------------
 
+test('failsoft: the health cycle survives a fully broken state (F-1 regression guard)', async ($, on) => {
+  const stub = setup(on)
+  // Every state access fails — the cycle's own state write AND the catch's
+  // notice write. soft() swallows the nested failure; the cycle's catch must
+  // too, or the discarded timer promise surfaces as an unhandled rejection.
+  // The sandbox has no `process` global, so the escaped-rejection surface
+  // itself is observed at the host level — the sync-audit's fault injection
+  // is the observed failure on record, and the guard's shape is pinned by
+  // tests/pure/guards.spec.ts (the discriminating check). Here: the broken
+  // state cycle completes, the single-flight gate resets, later ticks run.
+  on('state.get', () => {
+    throw new Error('state plumbing broken')
+  })
+  on('state.set', () => {
+    throw new Error('state plumbing broken')
+  })
+  await $.session.start(START)
+  await stub.clock.advance(HEALTH_POLL_MS)
+  await stub.clock.settle()
+  const afterFirst = stub.calls.length
+  expect(afterFirst).toBeGreaterThanOrEqual(3)
+  await stub.clock.advance(HEALTH_POLL_MS)
+  await stub.clock.settle()
+  expect(stub.calls.length).toBeGreaterThan(afterFirst)
+})
+
 test('failsoft: a rejected source shows unknown and keeps last good', async ($, on) => {
   const stub = setup(on)
   await $.session.start(START)

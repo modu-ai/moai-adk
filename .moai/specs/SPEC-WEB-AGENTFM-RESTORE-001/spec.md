@@ -1,10 +1,10 @@
 ---
 id: SPEC-WEB-AGENTFM-RESTORE-001
 title: "moai web 서브 에이전트 설정 표면 복원 — agentfm 오버라이드 · llm.profile · 저장 경로 · UI 노출"
-version: "0.1.0"
-status: completed
+version: "0.2.0"
+status: in-progress
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "web-console, agentfm, agent-overrides, llm-profile, restore, i18n, t1246-reversal"
 tier: M
 related_specs: [SPEC-AGENT-MODEL-INHERIT-001, SPEC-AGENT-TIER-001, SPEC-WEB-CONSOLE-011, SPEC-MODEL-PROFILE-MATRIX-002]
+amendment_of: SPEC-WEB-AGENTFM-RESTORE-001
 ---
 
 ## HISTORY
@@ -20,6 +21,24 @@ related_specs: [SPEC-AGENT-MODEL-INHERIT-001, SPEC-AGENT-TIER-001, SPEC-WEB-CONS
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-10-02 | manager-spec | 최초 작성 (카드 t1411, Class C, 운영자 지시 2026-10-02). 삭제 커밋 `384eb3460`(card t1246, SPEC-AGENT-MODEL-INHERIT-001 M2/REQ-AMI-011)의 역방향 복원 SPEC. 블루프린트: `.moai/reports/t1411/removed-commit-384eb3460.diff` (7,922행). |
+| 0.2.0 | 2026-10-03 | manager-spec | **In-place amendment of the `completed` SPEC (card t1446 — t1411 sync-audit round-2 N1; manager-spec 재위임).** REQ-AFR-007 축소: 영속-오류 원자 복원을 llm.yaml agent-overrides write pair(`llm.profile` + `llm.agent_overrides`)로 한정. 검증-오류 원자 거절은 의미 불변. pair 밖 선행 단계는 문서화된 best-effort 동작 유지 + 한계를 본문에 명시. §D 원자성 제약 행 동기화. 요구사항 삭제 없음, id 재번호 없음, AC 매핑 무변경 (14 REQ / 13 AC); progress.md §E.4 `sync_commit_sha` 불변. 상태 축은 SSOT 수정 전이 `completed → in-progress`를 따르며 구조 기록은 `## Amendments`. |
+
+## Amendments
+
+**2026-10-03 — v0.2.0 — in-place amendment of the prior `completed` SPEC (card t1446).**
+
+- Transition: `completed → in-progress` per the SSOT amendment contract (`.claude/rules/moai/development/spec-frontmatter-schema.md` § completed → in-progress (amendment)); `amendment_of: SPEC-WEB-AGENTFM-RESTORE-001` (self-referential). Authorized by the orchestrator's re-delegation to manager-spec (card t1446, N1 — the t1411 M6-repair F3 disposition had already scoped this body edit to manager-spec).
+- Prior completed version: **0.1.0** — closed 2026-10-02 (card t1411 sync lane).
+- `prior_completed_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3` — the prior close's `sync_commit_sha` (this SPEC's progress.md §E.4); that field is left unmodified. The last commit that touched this spec.md body before the amendment is `422524f5d` (2026-10-02 — card t1411 sync-audit F5/F7 dispositions).
+- Rationale: t1411 sync-audit round-2 finding N1 — the prior REQ-AFR-007 wording ("any validation or persistence error … all section files remain byte-identical") was broader than the implemented repair. The implemented guarantee (internal/web/handlers.go, the llm.yaml write pair) is exactly the llm.yaml agent-overrides write pair: `SnapshotLLMYAML` before step 7 (`applyPerfTierEdits`, writes llm.profile), restored on a step-8 failure (`patchAgentFM`, writes llm.agent_overrides). Validation errors reject before any write (the merge gate precedes persistence), so validation-error atomicity is real and unchanged. Out-of-pair earlier-step partial persistence (e.g. a step-6 schema edit persisting after a step-8 rollback) is real and predates the repaired card — stated as a limitation rather than claimed as a guarantee.
+- Scope — one requirement's wording narrowed; no requirement deleted, no id renumbered, no AC mapping changed:
+
+  | # | Surface | Disposition |
+  |---|---|---|
+  | 1 | REQ-AFR-007 body | Amended here — persistence-error atomic restore scoped to the llm.yaml agent-overrides write pair (`llm.profile` + `llm.agent_overrides`); validation-error rejection unchanged; out-of-pair best-effort behavior + limitation stated |
+  | 2 | §D 비기능 제약 원자성 행 | Amended here — mirrors the narrowed wording (the same claim stated at constraint level) |
+  | 3 | acceptance.md AC-AFR-004 (REQ-AFR-006/007) | Unchanged — its scenarios are validation-error rejections, which keep full atomicity under the narrowed wording; no criterion pins the broad persistence-error claim |
+  | 4 | progress.md | Dated amendment note appended at the tail; §E.2/§E.3/§E.4 evidence untouched |
 
 ## §A 배경과 복원 대상
 
@@ -50,7 +69,7 @@ related_specs: [SPEC-AGENT-MODEL-INHERIT-001, SPEC-AGENT-TIER-001, SPEC-WEB-CONS
 - **REQ-AFR-004** (Event-driven): **When** the operator submits per-agent edits, the console shall persist to `llm.agent_overrides` exactly the submitted matrix-member agents whose (model, effort) differs from the profile default under the target tier, shall clear submitted overrides that equal the profile default, shall skip non-matrix agents, shall backfill an unsubmitted effort with the resolved value, and shall leave llm.yaml byte-identical when nothing changes.
 - **REQ-AFR-005** (Ubiquitous): The console shall not write agent frontmatter — `.claude/agents/**/*.md` is a read-only scan surface, and every save path shall leave it byte-identical (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-040 계약 승계).
 - **REQ-AFR-006** (Ubiquitous): Validation closed sets shall be model ∈ {inherit, haiku, sonnet, opus, fable} and effort ∈ {low, medium, high, xhigh, max}, reusing the surviving v4manifest closed-set constants (`inherit`/`haiku`/`sonnet`/`opus` — `schema.go:62-73`) plus the config-level `Fable` constant (`internal/config/types.go:367` — v4manifest에는 fable 상수가 없다); the out-of-set rejection shall join the existing atomic-reject flow.
-- **REQ-AFR-007** (Event-detected): **When** any validation or persistence error exists in a save request, the console shall reject atomically — llm.yaml, agent frontmatter, and all section files remain byte-identical — and shall re-render with per-field errors.
+- **REQ-AFR-007** (Event-detected): **When** any validation error exists in a save request, the console shall reject before any write — llm.yaml, agent frontmatter, and all section files remain byte-identical — and shall re-render with per-field errors. **When** a persistence error occurs inside the llm.yaml agent-overrides write pair (llm.profile + llm.agent_overrides), the console shall restore llm.yaml byte-identical to its pre-pair snapshot, and a best-effort rollback failure shall surface in the rendered error. Persistence failures outside that pair (earlier steps — profile config, project config, nested config, section schema edits) keep the documented best-effort behavior: earlier successful writes may persist, and the failure names the failed step. Limitation (t1411 sync-audit round-2 N1): the atomic restore guarantee is scoped to exactly this write pair — partial persistence from an earlier step (e.g. section schema edits, which also edit llm.yaml sections) is a stated limitation, not a covered guarantee.
 - **REQ-AFR-012** (Ubiquitous): The restored save path shall expose injectable seams (list / parse / persist) so tests substitute each step without touching default wiring, matching the console's existing seam convention (`glmcredSave` / `jevcredSave` pattern).
 
 ### B.3 설정 스키마
@@ -77,7 +96,7 @@ REQ 총수 14 ≤ Tier M 상한 16.
 ## §D 비기능 제약
 
 - 방법론: TDD(quality.yaml `constitution.development_mode: tdd`) — 각 마일스톤 RED→GREEN→REFACTOR, 최소 커버리지 커밋당 80%.
-- 원자성: 저장 실패 시 모든 영속 표면 byte-identical (기존 atomic-reject 흐름 재사용).
+- 원자성: 검증 오류는 쓰기 전 원자 거절 — llm.yaml·agent frontmatter·전체 섹션 파일 byte-identical (기존 atomic-reject 흐름 재사용). 영속 오류 복원은 llm.yaml agent-overrides write pair(`llm.profile` + `llm.agent_overrides`)로 한정 — 사전 스냅숏 복원, 롤백 실패는 오류에 병기. pair 밖 선행 단계는 기존 best-effort 동작 유지 — 선행 성공 쓰기는 잔존할 수 있고 실패는 실패 단계를 명명한다 (REQ-AFR-007 한계 명시, 카드 t1446).
 - i18n: 신규 사용자 노출 문자열 4-locale(ko/en/ja/zh) 필수, i18n 거버넌스·미번역 허용목록 테스트 통과.
 - TRUST 5 전 영역 + LSP 게이트(quality.yaml `lsp_quality_gates`: plan 기준선 필수, run 오류 0).
 - 탭 계약: 13탭 유지 — `wantTabOrder`·`>13<` 어설션 무변경 통과.
