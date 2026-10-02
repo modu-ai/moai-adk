@@ -1293,6 +1293,163 @@ FAIL	github.com/modu-ai/moai-adk/internal/hook	9.499s
 
 Why the three passing subtests pass now (read, not hidden): `no_marker` is the control that the assertion does not fire on a clean session; `leader_marker_alone` (`MOAI_KANBAN=1` with no run id) passes because the leader notice builder returns the empty string for an empty run id, so the notice test cannot see that marker alone (the record test does: `kanbanRoleFromEnv` returns `("leader", 0, true)` for it); the two factory subtests are the unchanged-notice half of AC-014. A first run of the same tests reported a false red on `no_marker`: the session id contained the word the assertion greps for, and the attribution line of the context echoes the session id; the ids were renamed (`retired-marker-…`) and the RED above is the second run.
 
+#### Claim
+
+- SessionStart emits no kanban notice. Deleted: `internal/hook/session_start_kanban.go`, `session_start_kanban_i18n.go` and their four tests (`session_start_kanban_i18n_test.go`, `_surface_test.go`, `_test.go`, `_todo_test.go`); the notice block and the `kanban_notice` stage lap in `session_start.go` (the factory block stays, and the lap that follows the factory rule block is kept under its existing name `factory_notice`); the companion and kanban-leader branches of `kanbanRoleFromEnv` and its `MOAI_KANBAN_SPEC` read in `session_start_record.go` (the record's SPEC field is the empty string); the three constants `EnvMoaiKanban`, `EnvMoaiKanbanSpec`, `EnvMoaiKanbanLabel` from `internal/config/envkeys.go` and their entries in `kanbanVars` of `internal/cli/ptycaptest/harness.go`.
+- `langEnglish` and `operatorLang` moved to `internal/hook/session_start_lang.go` and `clearKanbanEnv` to `session_start_env_helper_test.go` first, as their own commit `c10194abc`, with the build, the vet, and the net green on that tree. `TestOperatorLangFailsOpen` and its helper `configWithLang` moved to `session_start_lang_test.go` because `operatorLang` is retained.
+- Frozen and untouched: the six factory-read marker constants (`MOAI_KANBAN_ID`, `_LEAD_ADDR`, `_LEAD_NAME`, `_SETTINGS_INJECTED`, `_BACKEND`, `_CARD`), the factory notice block, `internal/kanban`, `internal/web`.
+- What `TestPreexistingKanbanArtifactsTolerated` (hook half of AC-017) pins now: the pre-existing `plan` record is left byte-identical and stays readable, the hook returns no error, and (new at M5b) neither channel carries the word "kanban" for the sessions `old-plan` and `new-session` under `MOAI_KANBAN=1` and `MOAI_KANBAN_LABEL=plan`, and the session with a fresh id writes NO record (before M5b it wrote a companion record, because the role reader mapped the label to the role `plan`).
+- Commits (HEAD at start `7e8087f40`): `c10194abc` (helper moves), `20b33e997` (docs: RED-now and RED, committed ahead of the change), `1d0c64ef4` (deletions, constants, tests), then this record as the fourth.
+
+#### Evidence
+
+AC matrix, each row a command run in this run on the committed tree `1d0c64ef4` (exit is the shell exit read with `echo`, or the tool's no-error report for `go test`; env unset in one compound invocation for every `go test`):
+
+| AC | Part | Status | Command | Exit | Swept / observed |
+|---|---|---|---|---|---|
+| AC-012 | M5b share: hook identifiers and the three constants | PASS | `grep -rlE 'enterKanbanMode\|enterKanbanCompanionMode\|parseKanbanFlag\|rejectKanbanOnCG\|EnvMoaiKanban\b\|EnvMoaiKanbanSpec\|CompanionRoles\|SplitCompanionLabel\|kanbanLeaderNotice\|kanbanCompanionNotice\|kanbanBootstrapNotice' internal cmd --exclude='*_test.go'` | 0 | 2 files: `internal/kanban/role.go`, `internal/kanban/bootstrap.go` (exactly the two AC-012 names for after M5b; empty only after M6) |
+| AC-012 | build | PASS | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...` | 0, 0 | no output |
+| AC-013 | grep half | PASS | `grep -rl 'MOAI_KANBAN_LABEL' internal cmd --include='*.go' --exclude='*_test.go'` | 1 | empty (RED-now listed `internal/config/envkeys.go`) |
+| AC-013 | test half (re-read) | PASS | `go test ./internal/cli -run '^(TestSD_AC003_CodexRelaunchPerCard\|TestCodexLaneChildEnvOmitsLabelMarker\|TestFactoryCardVerbsResolveLaneFromWorkerMarker)$' -v -count=1` (run with `TestPreexistingKanbanArtifactsTolerated`) | 0 | 3 PASS of 3 (+1 PASS), `ok … internal/cli 12.440s` |
+| AC-014 | notice call gone | PASS | `grep -c 'kanbanBootstrapNotice' internal/hook/session_start.go` | 1 | `0` (RED-now `2`) |
+| AC-014 | files gone | PASS | `find internal/hook -name 'session_start_kanban*'` | 0 | empty (RED-now six paths) |
+| AC-014 | tests | PASS | `go test ./internal/hook -run '^(TestSessionStartEmitsNoKanbanNotice\|TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide\|TestFactoryNetSessionRecord\|TestFactoryNetSessionStartNotices\|TestSessionRecordIgnoresRetiredKanbanMarkers\|TestPreexistingKanbanArtifactsTolerated)$' -v -count=1` (the AC's two names plus four) | 0 | 6 PASS of 6; both AC-014 names among them; the new notice test passes its 7 subtests (block below) |
+| AC-016 | frozen values | PASS | `go test ./internal/config -run '^TestFactoryMarkerValuesFrozen$' -v -count=1` | 0 | 1 PASS |
+| AC-016 | discovery | PASS | `go test ./internal/discovery -run '^(TestDiscoverLeaderVerifiesLiveLeader\|TestDiscoverLeaderDeclinesUnparseableRunID)$' -v -count=1` | 0 | 2 PASS |
+| AC-016 | Codex allowlist | PASS | `go test ./internal/codexwiring -run '^TestMCPServerEnvVarsKeepFactoryMarkers$' -v -count=1` | 0 | 1 PASS |
+| AC-016 | legacy state dir | PASS | `go test ./internal/kanban -run '^TestLegacyStateDirStillRead$' -v -count=1` | 0 | 1 PASS |
+| AC-017 | tolerance | PASS | `go test ./internal/cli ./internal/hook ./internal/web ./internal/statusline -run '^TestPreexistingKanbanArtifactsTolerated$' -v -count=1` (cli run in one invocation, the other three in a second) | 0, 0 | 1 PASS in each of the four packages |
+| AC-015 | the net | PASS | the three selectors | 0 each | 8 cli, 2 hook, 2 discovery (block below) |
+
+Net re-run on the committed tree `1d0c64ef4`, env unset, tool exit 0 each:
+
+```text
+--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (4.16s)
+--- PASS: TestGLMFactoryLaneJoinsDiscoveredLeader (3.49s)
+--- PASS: TestFactoryNetLeaderLaunch (1.59s)
+--- PASS: TestFactoryNetLaneLaunch (3.51s)
+--- PASS: TestFactoryNetBlockCap (1.54s)
+--- PASS: TestFactoryEntryMatrix (5.19s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (0.52s)
+--- PASS: TestPrepareKanbanSettingsWritesTransientFile (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	21.045s            (8 of 8; the second settings-test name does not exist until M7)
+--- PASS: TestFactoryNetSessionRecord (0.00s)
+--- PASS: TestFactoryNetSessionStartNotices (0.71s)
+--- PASS: TestPreexistingKanbanArtifactsTolerated (0.41s)
+--- PASS: TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide (0.00s)
+--- PASS: TestSessionStartEmitsNoKanbanNotice (1.44s)
+--- PASS: TestSessionRecordIgnoresRetiredKanbanMarkers (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	3.223s              (the hook net is the first two names; the other four are AC-014/AC-017's)
+--- PASS: TestDiscoverLeaderVerifiesLiveLeader (0.14s)
+--- PASS: TestDiscoverLeaderDeclinesUnparseableRunID (0.11s)
+ok  	github.com/modu-ai/moai-adk/internal/discovery	0.571s         (2 of 2)
+```
+
+The net was also green at commit 1 (`c10194abc`, block in the RED section above) and, for the same three selectors, on the tree of commit 3 before its three comment-only edits (cli `ok … 21.762s`, hook `ok … 1.389s`, discovery `ok … 0.688s`).
+
+Mutants (e) and (f), the two the net must reject because M5b edits their neighbourhoods. Mutated copies kept outside the tree (scratchpad `m5b/`), applied with `go test -overlay <scratch>/m5b/overlay_{e,f}.json ./internal/hook -run '^(TestFactoryNetSessionRecord|TestFactoryNetSessionStartNotices)$' -v -count=1`, tool exit 1 each:
+
+```text
+mutant e (kanbanRoleFromEnv returns ("", 0, false) for a lane label and for the fan-out marker, session_start_record.go)
+    factory_net_m1_test.go:68: the lane wrote no session record: read kanban record: open …/001/.moai/state/todo/net-lane-sess.json
+    factory_net_m1_test.go:91: the factory leader wrote no session record: read kanban record: open …
+--- FAIL: TestFactoryNetSessionRecord (0.00s)
+    --- FAIL: TestFactoryNetSessionRecord/lane (0.00s)
+    --- FAIL: TestFactoryNetSessionRecord/leader_signalled_by_the_factory_variable_alone (0.00s)
+    --- PASS: TestFactoryNetSessionRecord/ordinary_session_writes_nothing (0.00s)
+--- PASS: TestFactoryNetSessionStartNotices (0.60s)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.196s
+
+mutant f (the factory notice block's condition made `false && notice != ""`, session_start.go)
+--- PASS: TestFactoryNetSessionRecord (0.00s)
+    factory_net_m1_test.go:153: leader notice on additionalContext lacks "netrun01":
+    factory_net_m1_test.go:153: leader notice on additionalContext lacks "/tmp/moai-socket-factory/netrun01":
+    factory_net_m1_test.go:173: lane notice on additionalContext does not name the lane label "lane-2":
+    (and the same lines on systemMessage)
+--- FAIL: TestFactoryNetSessionStartNotices (0.74s)
+    --- FAIL: TestFactoryNetSessionStartNotices/leader (0.27s)
+    --- FAIL: TestFactoryNetSessionStartNotices/lane (0.26s)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.373s
+```
+
+Each mutant is rejected by exactly the net test that guards its neighbourhood, and the other net test stays green, so neither red is a general breakage.
+
+GREEN of the new tests, same conditions as the RED run above (the notice test, the record test, and the AC-017 hook half; `exit=0`, `ok … internal/hook 3.939s`): `TestSessionStartEmitsNoKanbanNotice` PASS with its seven subtests (`no_marker`, `leader_marker_alone`, `companion_label_alone`, `leader_marker_with_run_id,_socket,_and_SPEC`, `both_markers`, `factory_leader_still_receives_its_notice`, `factory_lane_still_receives_its_notice`), `TestSessionRecordIgnoresRetiredKanbanMarkers` PASS with four (`leader_marker`, `companion_label`, `companion_bumped`, `factory_leader_record_carries_no_SPEC`), `TestPreexistingKanbanArtifactsTolerated` PASS.
+
+Suites (under `moai slot acquire --resource t1399-run --max-duration 60m`, released: `slot t1399-run released (was 0dcdf2d5-df5c-4da1-8870-24c2a5861303)`), env unset in each invocation:
+
+| Scope | Result |
+|---|---|
+| whole `internal/config`, `go test ./internal/config -v -count=1` | exit 0, `ok … 3.927s`, 488 top-level PASS, 0 FAIL, 0 SKIP |
+| whole `internal/hook`, first attempt, `go test ./internal/hook -count=1 -timeout 540s` | exit 1: `panic: test timed out after 9m0s`, running `TestSyncGateFailState_AC007_NoPathLooserThanToday`; before the timeout 2 FAIL lines: `TestNoNewEnvLiteralsInDiff` (below) and `TestInboundClaimIndependentOfEnvLabel` (`stale_run_gate_test.go:247: claim delivery altered under a stale env label: msg="" state=degraded: context deadline exceeded`) |
+| `TestInboundClaimIndependentOfEnvLabel` alone | PASS (`--- PASS … (0.66s)`); it did not fail in the second whole run either: a load-sensitive deadline, not a result of this change |
+| whole `internal/hook` except the 14 `TestSyncGate*` functions, `go test ./internal/hook -skip '^TestSyncGate' -v -count=1 -timeout 560s` | exit 1, `FAIL … 356.614s`: 1253 top-level PASS, 2 FAIL, 6 SKIP; the two FAIL are `TestNoNewEnvLiteralsInDiff` and `TestHookWrapperCopiesStayIdentical` (both pre-existing, below) |
+| cli families by file-derived names: the 179 distinct `Test` functions of 24 files (the 7 `internal/cli` files edited here, the 12 further files that call `clearFactoryTestEnv` and so depend on the list this milestone edited — `codex_factory_retire_test.go`, `glm_task_test.go`, `kanban_autonomy_test.go`, `kanban_bootstrap_test.go`, `factory_mixed_test.go`, `factory_join_discovery_test.go`, `launch_session_pid_exec_posix_test.go`, `codex_worktree_anchor_test.go`, `kanban_lead_name_test.go`, `factory_role_refusal_m2_test.go`, `codex_debug_composition_test.go`, `mcp_served_model_test.go` — and the plan's five others that exist, `cc_test.go`, `codex_debug_trace_test.go`, `factory_m5_test.go`, `glm_test.go`, `kanban_launch_facts_test.go`), in three `-run '^(A|B|…)$'` invocations of 60, 60, 59 names | chunk 1: exit 0, 60 PASS, `ok … 56.616s`; chunk 2: exit 0, 60 PASS, `ok … 82.823s`; chunk 3: exit 0, 58 PASS 1 SKIP (`TestSessionPIDStampExecHelper`, a helper process by design), `ok … 127.076s` |
+| `go vet ./...` (host, whole module) | exit 0, 0 lines |
+
+The two pre-existing reds, attributed:
+
+- `TestNoNewEnvLiteralsInDiff` (REQ-SRL-009's guard, `env_literal_diff_test.go`) sweeps `git diff <merge-base with develop>` over `internal/hook`, `internal/factorymsg`, `internal/cli` non-test files and fails on any `MOAI_FACTORY*` / `MOAI_KANBAN*` literal in an added line. Its base is `a6d3e6fd4` (the base this branch was cut from), so it measures the whole branch, not M5b. Measured: `git diff a6d3e6fd4f21f9c04fbcb7ca7507e87571f9b2c2 HEAD -- internal/hook internal/factorymsg internal/cli ':!*envkeys.go' ':!*_test.go'` at the tree of commit 2 (`20b33e997`, before any M5b production edit) lists the same ten literals with the same counts as the working tree of commit 3 (`MOAI_FACTORY_AUTO_DISPATCH` 3, `_CLEAR_POLICY` 3, `_ROLE` 3, `_WORKER` 5, `_WORKERS` 2, `MOAI_KANBAN_BACKEND` 3, `_CARD` 1, `_ID` 3, `_LABEL` 1, `_SETTINGS_INJECTED` 2). M5b added none.
+- `TestHookWrapperCopiesStayIdentical`: `wrapper_copies_contract_test.go:92: internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh differs from .claude/hooks/moai/sync-phase-quality-gate.sh`. Neither file is in `git diff --stat 7e8087f40 HEAD`.
+
+Edited, deleted, and added files against the plan's list (re-measured: `go vet -gcflags=-e` of the four packages on the tree after the deletions, before any test edit, named 16 test files with compile errors):
+
+- Plan's nine hook files: all nine changed (`gateway_guard_test.go`, `lane_spawn_authority_test.go`, `role_naming_m3_notice_test.go`, `session_start_factory_test.go`, `session_start_factory_worker_test.go`, `session_start_prune_test.go`, `session_start_record_test.go`, `stale_run_m1_test.go`, `subdir_cwd_write_root_test.go`).
+- Plan's eleven cli files: only four needed an edit at M5b (`factory_test.go`, `factory_m4_test.go`, `launcher_blockcap_infinite_test.go`, `update_version_downgrade_test.go`); `cc_test.go`, `codex_debug_trace_test.go`, `codex_factory_retire_test.go`, `factory_m5_test.go`, `glm_test.go`, `kanban_launch_facts_test.go` already compile after M5a and `kanban_dispatch_test.go` was deleted at M5a. Two cli files outside the plan's list needed one (`factory_net_m1_test.go`, `lane_entry_m2_test.go`, authored at M1 and M2) and `launcher_retired_entries_test.go` gained the constant `retiredLeaderMarker`. The measured set is 16 test files, not 20.
+- Also changed, outside the plan's list: hook `session_start_env_helper_test.go` (the three keys left its list), `factory_net_m1_test.go` (the AC-017 assertions), `session_start_additional_context_test.go` and `session_start_test.go` (comments only), new `session_start_lang_test.go` and `session_start_no_kanban_notice_test.go`.
+- Production: `session_start.go`, `session_start_record.go`, `session_start_factory.go` (comments), `session_start_factory_i18n.go` (comments), `session_stale_run.go` (one comment), new `session_start_lang.go`, `internal/config/envkeys.go`, `internal/cli/ptycaptest/harness.go`.
+- Tests deleted by function inside retained files: `TestKanbanCompanionNoticeCarriesSpawnAuthority` (and the companion half of `TestLaneSpawnAuthorityFailOpenPreserved`), `TestKanbanNoticeSuppressedUnderFactoryEnv`, `TestKanbanNameChoicesUseLaneNotation`, the `kanban-leader` row of `TestRoleNamingM3NoticesCarryLeaderLaneTerms`, the `kanbanMessagesFor` part of the newline-hygiene test, `TestCompanionLabelResolvesToItsBareRole` (replaced by `TestMalformedLaneLabelYieldsNoRole`, the malformed-label half on the lane path).
+- Retargeted: every `MOAI_KANBAN=1` trigger in the record, prune, stale-run, and subdir tests became the factory fan-out marker (`MOAI_FACTORY_WORKERS=2`, the record reader's surviving leader branch), the `run` companion in two record tests became a lane label. In the cli tests the written-out retired names (`retiredLeaderMarker`, `retiredSpecMarker`, `retiredLaneLabelMarker`, strings, since the constants are gone) stay in the ambient scrub lists, so a surviving session's value cannot reach the assertions that a factory session carries none of them.
+
+Grep proof for the deleted symbols and constants, on the committed tree (output of the command, and exit):
+
+```text
+$ grep -rnE 'kanbanBootstrapNotice|kanbanLeaderNotice|kanbanCompanionNotice|kanbanMessagesFor|kanbanLocales|kanbanMessages\b|queuedBacklogCount|EnvMoaiKanban\b|EnvMoaiKanbanSpec|EnvMoaiKanbanLabel' internal cmd --include='*.go'
+exit=1                                   (empty output, taken on the committed tree 1d0c64ef4)
+$ grep -rln 'session_start_kanban' internal cmd --include='*.go'
+internal/hook/session_start_env_helper_test.go
+internal/hook/session_start_lang.go
+internal/hook/session_start_lang_test.go
+exit=0                                   (three comments naming the origin of the moved helpers; no code)
+```
+
+`git diff --stat 7e8087f40 HEAD` (taken at commit 3, before this record): `37 files changed, 465 insertions(+), 1904 deletions(-)`; it includes the 64 lines of this section's RED part from commit 2.
+
+Kanban-named symbols that remain in `internal/hook` and `internal/config` after M5b (baseline for M6/M7), from `grep -rhoE '[A-Za-z_]*[Kk][Aa][Nn][Bb][Aa][Nn][A-Za-z_]*' internal/hook internal/config --include='*.go' --exclude='*_test.go'`: the package name `kanban` (99 uses: the `internal/kanban` import and its qualifiers, M8), the six frozen marker constants and their literals (`EnvMoaiKanbanID` 9, `EnvMoaiKanbanBackend` 6, `EnvMoaiKanbanLeadName` 4, `EnvMoaiKanbanLeadAddr` 4, `EnvMoaiKanbanCard` 4, `EnvMoaiKanbanSettingsInjected` 3; M7 renames the Go names, AC-016 freezes the values), `writeKanbanSessionRecord` (3) and `kanbanRoleFromEnv` (3) in `session_start_record.go` (both factory-path functions, renamed at M7), the stage lap name `kanban_record` in `session_start.go`, and comment mentions (`session_start_kanban_i18n.go` named as the origin of the moved helpers in `session_start_lang.go`).
+
+#### Baseline-attribution
+
+- Trees: `7e8087f40` for the RED-now greps (before any edit); `c10194abc` for the step-1 measurements; `c10194abc` plus only the new and re-pinned tests for the RED run; the working tree that became `1d0c64ef4` for the GREEN runs, the mutants, the suites, and the cli families (HEAD stayed `20b33e997` through every one of those measurements); the committed tree `1d0c64ef4` for the final net, the AC-014 tests, build, windows build, vet and gofmt. Re-read before the last commit: `git rev-parse --short HEAD` printed `20b33e997`, `git branch --show-current` printed `WT-launcher-entry-flags`.
+- Judging build: every `go test`, `go build`, `go vet`, and `gofmt` ran from the Go toolchain on this tree; no installed `moai` binary produced any measurement cited here, except `moai slot acquire` and `moai slot release` (lease lines only).
+- The whole-hook, whole-config, `go vet ./...` and cli-family runs preceded the three comment-only edits of commit 3 (`session_start_additional_context_test.go`, `session_start_test.go`, `session_start_factory_i18n.go`); the build, vet (host and windows), gofmt, net, AC-014 and AC-017 runs were repeated after them.
+
+#### Gaps
+
+1. The whole `internal/cli` suite was NOT run (4,635 tests; it cannot finish in the foreground): the 179 named tests of 25 files above ran, nothing broader.
+2. The 14 `TestSyncGate*` functions of `internal/hook` were skipped (`-skip '^TestSyncGate'`) after the first whole-package attempt hit the 9-minute test timeout inside `TestSyncGateFailState_AC007_NoPathLooserThanToday`; they exercise the sync-gate shell script and read none of the files M5b edited, but they were not observed.
+3. `TestInboundClaimIndependentOfEnvLabel` failed once under whole-suite load (`context deadline exceeded`) and passed alone and in the second whole run; it is a flake candidate, not attributed.
+4. `TestNoNewEnvLiteralsInDiff` and `TestHookWrapperCopiesStayIdentical` are red on this tree for reasons outside M5b (above); they were neither fixed nor suppressed.
+5. `go vet ./...` on windows over the whole module was not run (baseline PV-73 records a pre-existing failure outside this SPEC); windows vet ran on the four touched packages (exit 0), `GOOS=windows GOARCH=amd64 go build ./...` ran whole-module (exit 0).
+6. `gofmt -l` over the files touched here printed nothing; over whole directories it also lists `internal/config/slice.go` and `internal/cli/mcp_claude.go`, which are untouched by this card.
+7. The probe runner `probe.go` was not re-run for comparison, and the probe's `M5b.patch` was used as a model only (divergences below).
+8. Mutants (e) and (f) were re-observed against the hook net only; the cli net does not read the two files they mutate.
+9. The behavior change in Findings 3 below is read from the call sites (`grep` over non-test Go), not observed at runtime on the pre-M5b tree.
+10. Ordering (verification-claim-integrity §2.3): the new tests and the production change share commit `1d0c64ef4`; the RED output is committed ahead of it (`20b33e997`) and was measured on `c10194abc` plus the test edits.
+11. Worktree-guard refusal, one: a `for` loop whose body ran `git show HEAD:<computed file>` ("names git in a form too complex to verify"); re-issued as four plain `git show` commands, same measurement, nothing replaced by reading source. No other command was refused; a scratchpad edit that failed did so on my mistyped path, not on the guard.
+
+#### Residual-risk
+
+- Removing the three names from `kanbanVars` means a pty capture child launched from a shell that still exports one of them now receives the value; no reader of the three names remains in the repository, so nothing branches on it.
+- A session that outlived the upgrade and still carries `MOAI_KANBAN` or `MOAI_KANBAN_LABEL` is a plain session for the hook: no notice, no record. `TestPreexistingKanbanArtifactsTolerated` and `TestSessionStartEmitsNoKanbanNotice` pin that.
+- The long rationale comment that sat on the deleted kanban block (why the launcher cannot deliver the notice, why two channels, why startup-only) is now carried, shortened, by the comment on the factory block in `session_start.go`; the startup-only allowlist reasoning (a new source stays silent by default, an empty source reads as startup) is carried by `factoryBootstrapNoticeForSource`.
+
+#### Findings (statements the tree contradicts, no SPEC file edited)
+
+1. acceptance.md AC-014's command names `TestSessionStartEmitsNoKanbanNotice`, which did not exist on the tree before this milestone (the hook half of AC-017 in `factory_net_m1_test.go` says so in its own comment); it is authored here (`session_start_no_kanban_notice_test.go`). Its sub-case `leader_marker_alone` (`MOAI_KANBAN=1`, no run id) is green before the change by design: the leader notice builder returned the empty string for an empty run id, so only the record test sees that marker.
+2. plan.md M5b lists 20 retained test files from the probe; on this tree 16 test files needed an edit (above), because the plan was measured before M5a retargeted `cc_test.go`, `codex_debug_trace_test.go`, `codex_factory_retire_test.go`, `factory_m5_test.go`, `glm_test.go`, and `kanban_launch_facts_test.go`, and before M1 and M2 authored `factory_net_m1_test.go` and `lane_entry_m2_test.go`.
+3. The deleted kanban notice builder was also the SessionStart carrier of the stale-run notice for a session that is not a factory session: `kanbanBootstrapNotice` called `staleRunNoticeFor` before it read any kanban marker, so a surviving session whose launch label is a legacy leader spelling (`MOAI_KANBAN_LEAD_NAME=lead`, no `MOAI_FACTORY_WORKERS`) and a session whose existing record carries a legacy role got the stale-run relaunch notice there. After M5b the only non-test caller of `staleRunNoticeFor` is `factoryBootstrapNotice` (`session_start_factory.go:61`, which needs `MOAI_FACTORY_WORKERS`), so that session gets no stale-run notice at SessionStart (the factory message hook still calls `staleRunNotice` through `legacyFactoryHookNotice`). AC-014 says the stale-run notices are "emitted as before" for factory sessions, which holds (the factory stale-run tests pass); a non-factory legacy session is outside AC-014's wording and plan.md M5b's list, so this is a behavior change the SPEC does not name. `roleValueRelaunch` ("the kanban branch" in `session_stale_run.go`) stays reachable through the factory hook with an empty run id.
+4. Divergences from the probe's `M5b.patch`: the probe removed both `clock.lap("factory_notice")` and `clock.lap("kanban_notice")`; this milestone keeps one lap, `factory_notice`, in the place before the lineage banner, because a lap times the work since the previous lap and the factory rule block would otherwise fall into the `chain_banner` lap (no test asserts lap names: `grep -rn 'kanban_notice\|factory_notice' internal --include='*.go'` finds `clock.lap("factory_notice")` at `session_start.go:566` and a file-name comment in the new test). The probe retargeted the removed constants to other factory markers as a compile model; this milestone keeps the retired names as written-out strings in the cli scrub lists and uses factory markers only where a test needs a trigger. The probe's `envkeys.go` hunk rewrote one comment (the `MOAI_FACTORY_WORKERS` documentation, plan `:284`); this milestone also rewords the `EnvMoaiFactoryWorker` documentation (plan `:301`, which named the deleted label as its counterpart) and the `EnvMoaiKanbanLeadAddr` comment that names `enterKanbanMode` (the M5a leftover at `:220`).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
