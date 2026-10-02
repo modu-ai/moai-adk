@@ -166,3 +166,55 @@ Per-mode font application is handled by overriding `--sans`, `--serif`, `--mono`
 
 Always include `&display=swap` in Google Fonts URLs.
 Pretendard (jsdelivr CSS) and KoPubWorld (direct woff) use `font-display: swap` via `@font-face`.
+
+---
+
+## Artifact-Format Font Mapping (`report.format=artifact`)
+
+When the report is delivered as a Claude Artifact, Korean type loads
+**exclusively from Google Fonts** — the artifact page contract restricts
+stylesheet hosts to Google Fonts, and Pretendard is not in the Google Fonts
+catalog, so the jsdelivr Pretendard load above never ships in an artifact
+(it remains an html-file-format exception and is unchanged there). An inline
+`@font-face` with `data:` URIs is rejected as well: a full Korean family is
+multi-megabyte against the artifact's 16MB ceiling, which data URIs count
+toward.
+
+| Role | Family | Source |
+|------|--------|--------|
+| sans (body) — all modes | Noto Sans KR | Google Fonts |
+| serif (headings) — `plan` / `explainer` | Noto Serif KR | Google Fonts |
+| serif (headings) — `status` / `financial` / `pr` / `incident` | Noto Sans KR 700 (sans-bold, as in the html mapping) | Google Fonts |
+| mono (code/tag) — all modes | JetBrains Mono | Google Fonts |
+
+### Artifact link set — `status` / `financial` / `pr` / `incident`
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+```
+
+### Artifact link set — `plan` / `explainer` (serif modes)
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+```
+
+### Artifact CSS variable override
+
+```css
+/* artifact delivery — all modes; serif modes swap --serif to Noto Serif KR */
+:root {
+  --sans:  "Noto Sans KR", system-ui, -apple-system, sans-serif;
+  --serif: "Noto Sans KR", ui-serif, Georgia, serif;
+  --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+```
+
+The per-mode artifact blocks in
+[`references/templates/`](templates/) carry these links and the override;
+the publication contract itself lives in
+[`references/artifact-contract.md`](artifact-contract.md) § 6.

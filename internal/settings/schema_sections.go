@@ -526,12 +526,15 @@ func cacheFields() []FieldDef {
 	}
 }
 
-// reportFormatValues는 report.format의 닫힌 집합이다 (html+md / md).
-// moai-domain-html-report skill이 읽어 출력 포맷을 결정한다.
-var reportFormatValues = []string{"html+md", "md"}
+// reportFormatValues는 report.format의 닫힌 집합이다 (html+md / md / artifact).
+// moai-domain-html-report skill이 읽어 출력 포맷을 결정한다. artifact는
+// Claude Artifact 게시 경로이며 Artifact 도구가 없는 세션(Codex·GLM·API-key)에서는
+// html+md로 자동 폴백한다 (SPEC-REPORT-ARTIFACT-DELIVERY-001 REQ-001/002). 기본값
+// html+md는 불변이고 기존 두 값의 순서·의미는 보존된다.
+var reportFormatValues = []string{"html+md", "md", "artifact"}
 
-// reportFields는 report 섹션의 편집 FieldDef를 반환한다: format(radio). 2-옵션
-// 닫힌 집합(html+md / md)이라 select-minimization으로 라디오 버튼 그룹으로 렌더한다
+// reportFields는 report 섹션의 편집 FieldDef를 반환한다: format(radio). 3-옵션
+// 닫힌 집합(html+md / md / artifact)이라 select-minimization으로 라디오 버튼 그룹으로 렌더한다
 // (withRadio). report tab에서 제네릭 schemaFieldWidget(→ schemaRadioRow)로 렌더되며,
 // seam 경로(report.yaml)로 영속화된다.
 //
@@ -557,6 +560,8 @@ func reportFields() []FieldDef {
 			f.Options[i].OptionDesc = "f.report.format.option.html_md.desc"
 		case "md":
 			f.Options[i].OptionDesc = "f.report.format.option.md.desc"
+		case "artifact":
+			f.Options[i].OptionDesc = "f.report.format.option.artifact.desc"
 		}
 	}
 	return []FieldDef{f}
