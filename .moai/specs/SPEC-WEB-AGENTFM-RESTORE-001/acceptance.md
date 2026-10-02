@@ -60,7 +60,7 @@ grep -rn 'still renders' internal/web/*_test.go
 - **Given** 동일 에이전트에 override가 있는 상태 **When** 프로필 기본값과 동일한 쌍을 제출 **Then** 해당 override가 제거되고 다른 에이전트의 override는 보존된다.
 - **Given** 제출에 변화가 없는 상태 **When** 저장 **Then** llm.yaml은 byte-identical이다 (no-op 스킵).
 - **Given** 매트릭스 비멤버 이름 제출 **When** 저장 **Then** override가 생기지 않는다.
-- **Given** `llm.agent_overrides`에 항목이 없는 에이전트 **When** 행 해상(렌더·저장 모두) **Then** 세션 model/effort로 해상된다 — 상속 기본 유지, 스폰 경로 변경 없음 (REQ-AFR-002).
+- **Given** `llm.agent_overrides`에 항목이 없는 에이전트 **When** 행 해상 **Then** 렌더는 프로필-매트릭스 셀 값으로 해상한다(REQ-AFR-001) — pin/clear 대비 기준도 동일한 프로필-매트릭스 해상이다(REQ-AFR-004, no-op byte-identical 보존). REQ-AFR-002의 세션 model/effort 해상은 스폰 경로 한정이며(런타임 소비는 Out of Scope — decision-index Q2, 후속 카드 t1421) 콘솔 표시와 혼동하지 않는다.
 - **Given** 복원된 저장 경로 **When** `go test ./internal/cli/ -run 'TestCodexResolution_IgnoresPerAgentLLMCells'` (`internal/cli/model_backend_default_test.go:28`) **Then** 스폰-경로 무시 계약이 green으로 유지된다 — 본 SPEC이 스폰 경로를 바꾸지 않음을 관측 (REQ-AFR-002, regression-guard; `[no tests to run]`은 실패).
 
 ## §D.4 AC-AFR-004 — 원자 거절
@@ -76,7 +76,7 @@ grep -rn 'still renders' internal/web/*_test.go
 
 검증 커맨드: EV-AFR-006 레저 (4커맨드, 빈 스윕 금지 — 실행 테스트 ≥ 4).
 
-- **Given** 수재된 템플릿 llm.yaml이 `profile`·`agent_overrides`를 운반 **When** `template.ShippedRetiredModelKeys()` **Then** 반환 집합에 `llm.profile`·`llm.agent_overrides`가 없다 (strip 대상 제외).
+- **Given** 수재된 템플릿 llm.yaml이 `profile`·`agent_overrides`를 운반 **When** `template.ShippedRetiredModelKeys()` **Then** 반환 집합에 두 키가 **포함**된다(멤버십 = strip 제외 — `retired_model_keys.go:87-98`은 템플릿에서 발견된 키의 집합을 반환한다; plan-audit iter2 D16 극성 교정) **그리고** strip 실행 결과에서 두 키는 제거되지 않는다. 음(역)측 절반은 다음 bullet: 미수재 은퇴 키는 반환 집합에 있으면서 strip 대상이다.
 - **Given** `llm.performance_tier: high`만 지닌 사용자 llm.yaml **When** strip 단계 실행 **Then** 해당 키는 제거되고 백업에 원본이 남는다 (여전히 은퇴 키).
 - **Given** `agent_overrides`에 사용자 값 **When** (미래의) strip이 실행되는 경우 **Then** `UserValues` 플래그 동작은 기존 계약 유지.
 
