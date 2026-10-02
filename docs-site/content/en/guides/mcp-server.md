@@ -165,13 +165,13 @@ The single-backend audit mode is determined by the project's `audit_model` setti
 
 | Tool | Purpose | Consumer agent | CLI equivalent |
 |------|---------|----------------|----------------|
-| `mcp__moai__codex_task` | Delegate a coding/investigation task to codex (sync or background) | super-advisor | `moai codex task` |
+| `mcp__moai__codex_task` | Delegate a coding/investigation task to codex (sync or background) | manager-develop, super-advisor | `moai codex task` |
 | `mcp__moai__codex_setup` | Probe local codex install (LookPath + version + auth) | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | Read a background codex job's status/record | super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | Read a background codex job's output | super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | Stop a running background codex job | super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_job_status` | Read a background codex job's status/record | manager-develop, super-advisor | `moai codex job status` |
+| `mcp__moai__codex_job_result` | Read a background codex job's output | manager-develop, super-advisor | `moai codex job result` |
+| `mcp__moai__codex_job_cancel` | Stop a running background codex job | manager-develop, super-advisor | `moai codex job cancel` |
 
-The codex delegation family is wired into super-advisor — because the on-demand high-reasoning consultation agent is the natural consumer of background cross-model delegation. It delegates a task with `codex_task`, polls completion with `codex_job_status` / `codex_job_result`, and cancels with `codex_job_cancel`. codex is optional — if it is missing or unavailable, it returns fail-open `inconclusive`, never a hard error.
+The codex delegation family is wired into super-advisor and manager-develop. super-advisor, the on-demand high-reasoning consultation agent, is the natural consumer of background cross-model delegation: it delegates a task with `codex_task`, polls completion with `codex_job_status` / `codex_job_result`, and cancels with `codex_job_cancel`. manager-develop carries the family except `codex_setup`; it delegates bounded mechanical subtasks with `codex_task` only as the External Model Delegation section of the run workflow allows, and a delegated codex turn stays read-only. codex is optional — if it is missing or unavailable, it returns fail-open `inconclusive`, never a hard error.
 
 ### codex read-only roles
 
@@ -187,12 +187,12 @@ A Codex session starts read-only roles such as `plan-auditor` and `sync-auditor`
 
 | Tool | Purpose | Consumer agent | CLI equivalent |
 |------|---------|----------------|----------------|
-| `mcp__moai__glm_task` | Delegate a task (arbitrary prompt) to GLM (z.ai) (sync or background) | super-advisor | — (no such CLI) |
-| `mcp__moai__glm_job_status` | Read a background GLM job's status/record | super-advisor | — |
-| `mcp__moai__glm_job_result` | Read a background GLM job's output | super-advisor | — |
-| `mcp__moai__glm_job_cancel` | Stop a running background GLM job | super-advisor | — |
+| `mcp__moai__glm_task` | Delegate a task (arbitrary prompt) to GLM (z.ai) (sync or background) | manager-develop, super-advisor | — (no such CLI) |
+| `mcp__moai__glm_job_status` | Read a background GLM job's status/record | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_result` | Read a background GLM job's output | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_cancel` | Stop a running background GLM job | manager-develop, super-advisor | — |
 
-The GLM delegation family is wired into super-advisor in the same shape as the codex delegation family. `glm_task` returns the completed text as-is when `background` is false, and returns a job ID immediately when true (observed and cancelled afterwards with `glm_job_status` · `glm_job_result` · `glm_job_cancel`). The response token ceiling can be overridden with `max_tokens`; a default ceiling is set on the server side. Background jobs live inside the server process, so they end with it. GLM is optional too — a missing key or an unreachable z.ai returns a structured fail-open result, never a tool error.
+The GLM delegation family is wired into super-advisor and manager-develop in the same shape as the codex delegation family. manager-develop carries the whole family; it delegates bounded mechanical subtasks with `glm_task` only as the External Model Delegation section of the run workflow allows, and a GLM job sends its prompt to an external provider. `glm_task` returns the completed text as-is when `background` is false, and returns a job ID immediately when true (observed and cancelled afterwards with `glm_job_status` · `glm_job_result` · `glm_job_cancel`). The response token ceiling can be overridden with `max_tokens`; a default ceiling is set on the server side. Background jobs live inside the server process, so they end with it. GLM is optional too — a missing key or an unreachable z.ai returns a structured fail-open result, never a tool error.
 
 ### Code queries
 

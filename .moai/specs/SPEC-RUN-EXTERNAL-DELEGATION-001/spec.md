@@ -2,7 +2,7 @@
 id: SPEC-RUN-EXTERNAL-DELEGATION-001
 title: "Run-phase external-model delegation — manager-develop hands bounded mechanical subtasks to codex_task and glm_task, applies the returned patch itself, and stays the only writer"
 version: "0.4.1"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec (card t1424)

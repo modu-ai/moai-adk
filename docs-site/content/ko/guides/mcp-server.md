@@ -165,13 +165,13 @@ manager-develop가 run-phase 자가 검증(이음매 §E)에서 쓰며, sync-aud
 
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | 코딩/조사 작업을 codex에 위임 (동기 또는 백그라운드) | super-advisor | `moai codex task` |
+| `mcp__moai__codex_task` | 코딩/조사 작업을 codex에 위임 (동기 또는 백그라운드) | manager-develop, super-advisor | `moai codex task` |
 | `mcp__moai__codex_setup` | 로컬 codex 설치 탐지 (LookPath + 버전 + 인증) | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | 백그라운드 codex 작업 상태/기록 읽기 | super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | 백그라운드 codex 작업 출력 읽기 | super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | 실행 중인 백그라운드 codex 작업 중단 | super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_job_status` | 백그라운드 codex 작업 상태/기록 읽기 | manager-develop, super-advisor | `moai codex job status` |
+| `mcp__moai__codex_job_result` | 백그라운드 codex 작업 출력 읽기 | manager-develop, super-advisor | `moai codex job result` |
+| `mcp__moai__codex_job_cancel` | 실행 중인 백그라운드 codex 작업 중단 | manager-develop, super-advisor | `moai codex job cancel` |
 
-codex 위임 도구군은 super-advisor에 배선되어 있습니다 — 수시 고추론 자문 에이전트가 백그라운드 교차 모델 위임의 자연스러운 소비자이기 때문입니다. `codex_task`로 작업을 위임하고, `codex_job_status` / `codex_job_result`로 완료를 폴링하고, `codex_job_cancel`로 중단합니다. codex는 선택적(optional)입니다 — 누락되거나 사용 불가면 fail-open `inconclusive`를 반환하며, hard error가 아닙니다.
+codex 위임 도구군은 super-advisor와 manager-develop에 배선되어 있습니다. 수시 고추론 자문 에이전트인 super-advisor는 백그라운드 교차 모델 위임의 자연스러운 소비자입니다. `codex_task`로 작업을 위임하고, `codex_job_status` / `codex_job_result`로 완료를 폴링하고, `codex_job_cancel`로 중단합니다. manager-develop은 `codex_setup`을 뺀 나머지를 가지며, 범위가 좁은 기계적 하위 작업을 맡길 때에만, 그것도 run 워크플로의 `External Model Delegation` 절이 허용하는 범위에서 `codex_task`를 씁니다. 위임된 codex 턴은 읽기 전용으로 남습니다. codex는 선택적(optional)입니다 — 누락되거나 사용 불가면 fail-open `inconclusive`를 반환하며, hard error가 아닙니다.
 
 ### codex 읽기 전용 역할
 
@@ -187,12 +187,12 @@ Codex 세션은 `plan-auditor`, `sync-auditor` 같은 읽기 전용 역할을 `s
 
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
-| `mcp__moai__glm_task` | 작업(임의 프롬프트)을 GLM(z.ai)에 위임 (동기 또는 백그라운드) | super-advisor | — (해당 CLI 없음) |
-| `mcp__moai__glm_job_status` | 백그라운드 GLM 작업 상태/기록 읽기 | super-advisor | — |
-| `mcp__moai__glm_job_result` | 백그라운드 GLM 작업 출력 읽기 | super-advisor | — |
-| `mcp__moai__glm_job_cancel` | 실행 중인 백그라운드 GLM 작업 중단 | super-advisor | — |
+| `mcp__moai__glm_task` | 작업(임의 프롬프트)을 GLM(z.ai)에 위임 (동기 또는 백그라운드) | manager-develop, super-advisor | — (해당 CLI 없음) |
+| `mcp__moai__glm_job_status` | 백그라운드 GLM 작업 상태/기록 읽기 | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_result` | 백그라운드 GLM 작업 출력 읽기 | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_cancel` | 실행 중인 백그라운드 GLM 작업 중단 | manager-develop, super-advisor | — |
 
-GLM 위임 도구군은 codex 위임과 같은 모양으로 super-advisor에 배선되어 있습니다. `glm_task`는 `background`가 거짓이면 완료된 텍스트를 그대로 돌려주고, 참이면 즉시 작업 ID를 돌려줍니다(이후 `glm_job_status`·`glm_job_result`·`glm_job_cancel`로 관찰·중단). 응답 토큰 상한은 `max_tokens`로 덮을 수 있고, 기본 상한값이 서버 쪽에 정해져 있습니다. 백그라운드 작업은 서버 프로세스 안에 살므로 프로세스가 끝나면 함께 끝납니다. GLM도 선택적입니다 — 키가 없거나 z.ai에 닿지 않으면 구조화된 fail-open 결과를 반환할 뿐, 도구 에러가 아닙니다.
+GLM 위임 도구군은 codex 위임과 같은 모양으로 super-advisor와 manager-develop에 배선되어 있습니다. manager-develop은 이 도구군을 전부 가지며, 범위가 좁은 기계적 하위 작업에 한해 run 워크플로의 `External Model Delegation` 절이 허용하는 범위에서 `glm_task`를 씁니다. GLM 작업은 프롬프트를 외부 제공자에게 보냅니다. `glm_task`는 `background`가 거짓이면 완료된 텍스트를 그대로 돌려주고, 참이면 즉시 작업 ID를 돌려줍니다(이후 `glm_job_status`·`glm_job_result`·`glm_job_cancel`로 관찰·중단). 응답 토큰 상한은 `max_tokens`로 덮을 수 있고, 기본 상한값이 서버 쪽에 정해져 있습니다. 백그라운드 작업은 서버 프로세스 안에 살므로 프로세스가 끝나면 함께 끝납니다. GLM도 선택적입니다 — 키가 없거나 z.ai에 닿지 않으면 구조화된 fail-open 결과를 반환할 뿐, 도구 에러가 아닙니다.
 
 ### 코드 질의
 

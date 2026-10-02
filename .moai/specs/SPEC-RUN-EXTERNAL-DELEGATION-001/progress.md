@@ -4,7 +4,7 @@
 
 ```yaml
 plan_status: audit-ready
-plan_revision: 3                          # revision 3 of the plan, written after plan-audit iteration 2 (iteration 3 of max 3 is the final audit)
+plan_revision: 4                          # revision 4 of the plan: the run-phase errata (plan.md header; spec.md HISTORY 0.4.0). Revision 3 was written after plan-audit iteration 2 and audited in iteration 3 (the final audit, PASS-WITH-DEBT 0.88)
 plan_complete_at: 2026-10-02T07:10:00Z    # revision-1 signal was 2026-10-02T05:53:41Z, revision-2 06:32:52Z; this value is the measured time (date -u) taken after the last evidence command and the strict lint of revision 3
 card: t1424
 tier: M
@@ -178,4 +178,58 @@ pushed: false                                # the run phase does not push
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+Written by manager-docs on the single sync commit (the 3-phase close). Every measurement below ran in this sync run, in the worktree `.moai/worktrees/t1424`, against tree HEAD `9d8e8d02c` (the SPEC-errata commit, version 0.4.1) before the sync edits; the judging `moai` build for `moai spec lint` is `v3.2.0-rc.24 moai_cp/20260925_122548-1896-gc50da9c2f` (its commit `c50da9c2f` is a strict ancestor of HEAD).
+
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-10-02T08:00:05Z     # date -u, taken after the last evidence command of this sync run
+sync_commit_sha: pending-backfill           # a commit cannot cite its own hash; the next commit backfills the real SHA (D3 window)
+card: t1424
+head_measured: 9d8e8d02c
+b12_self_test_a: PASS                       # grep -c 'SPEC-RUN-EXTERNAL-DELEGATION-001' CHANGELOG.md printed 0 before the entry was written
+b12_self_test_b: PASS                       # ac_source=.moai/specs/SPEC-RUN-EXTERNAL-DELEGATION-001/acceptance.md, tier M; counter printed live=16 excluded=0 ambiguous=0 and 16 (exit 0); the CHANGELOG entry states 16
+b12_self_test_c: PASS                       # every path named in the CHANGELOG entry was checked with ls (21 paths, all present)
+changelog_entry_position: "[Unreleased] > ### Added, first entry"
+frontmatter_status_transitions:
+  spec.md: "in-progress -> implemented -> completed (one commit), updated: 2026-10-02 (unchanged, equals the commit date)"
+  plan.md: "no status frontmatter (stateless artifact per spec-frontmatter-schema.md Artifact Statelessness); body untouched"
+  acceptance.md: "no status frontmatter (stateless artifact); body untouched"
+  progress.md: "no frontmatter; this section and the §E.1 plan_revision field (3 to 4) are the only edits"
+canary_compliance_check: N/A                # this SPEC defines no forward-looking policy that its own sync tests
+mx_tag_validation: "no @MX annotation required (see below)"
+codemaps_readme: N/A                        # see below
+docs_site: "four-locale guides/mcp-server.md updated; hugo build clean (see below)"
+sync_audit: pending                         # the independent sync-audit is the next step and is not this agent's to perform
+pushed: false
+```
+
+**B12 counter run (the attributable count).** The first sync attempt halted: at HEAD `c5aa54abb` the counter printed `live=24 excluded=0 ambiguous=0` because eight bare short-form cross-references (`AC-001`, `AC-002`, `AC-003`, `AC-009`, `AC-010`, `AC-011`, `AC-012`, `AC-016`) sat unmarked next to the sixteen canonical `AC-RXD-NNN` identifiers. The orchestrator had manager-spec normalize those to the canonical spelling (commit `9d8e8d02c`, SPEC version 0.4.1). The count in the CHANGELOG entry is from this agent's own re-run at `9d8e8d02c`: command `sh <scratchpad>/run-counter.sh .moai/specs/SPEC-RUN-EXTERNAL-DELEGATION-001/acceptance.md` (the verbatim counter program of `manager-docs.md` § B12, run through a wrapper because the worktree guard refuses a bare `awk -f`), output `live=16 excluded=0 ambiguous=0`, `16`, `counter_exit=0`. Cross-check: `grep -c -E "^## AC-RXD-0(0[1-9]|1[0-6])"` printed `16` at `c5aa54abb`.
+
+**Carried-debt dispositions (plan-audit iteration 3, via the Jev decision record).**
+
+| Debt | Disposition at sync |
+|---|---|
+| D-1 (write-regex false positives; failure message must print the matching line) | Done with a note: the `request` subtest failure message prints the file label, a section-relative line number and the matching text (`<file> (section):<line>: <text>`), so a false positive is diagnosable from the message; the line number is relative to the section slice, not to the file (the `pointers` subtest prints file-relative lines). Source: §E.2.6 and mutants 9 and 10 of §E.2.5. |
+| D-2 (family-table `codex_setup` clause unprobed) | Closed in the run phase by ledger probe E4g (`grep -c -F "manager-develop (all but codex_setup)"` on the catalogue printed `1`, §E.2.4). |
+| D-3 (the " to true" mutant not scheduled) | Closed in the run phase by running ten guard mutants (§E.2.5); the plan's nine-versus-ten count was corrected in the errata. |
+| D-4 (HISTORY 0.3.0 understated the REQ-RXD-002 change) | Closed by the errata commit `c5aa54abb` (spec.md HISTORY 0.4.0 item (a) names the REQ-RXD-002 pointer-forbidden set and the two-line, forty-word cap). |
+| D-5 (the Claude-harness-only sentence in the agent-body pointer has no test) | Residual, kept explicit: the sentence `it applies to Claude Code sessions only.` sits in the pointer paragraph of `manager-develop.md` and is decided by no requirement, criterion or subtest. |
+| D-6 (accepted lexical residuals, R-3) | Unchanged: a short pointer paraphrase inside the caps and a write instruction without `true`/`enabled`/`on` are decided by the plan-auditor and sync-auditor reading, as the SPEC states. |
+
+**Observed by the run and not fixable inside this SPEC.** (1) `TestTemplateNoInternalContentLeak` does not flag a bare card id (a pasted `(card t1424)` produced no failure from the leak test itself; only the plain `grep -rn -E "t1424|SPEC-RUN-EXTERNAL-DELEGATION"` of AC-RXD-012 caught it): a gap in a generic guard, reported to the leader as a follow-up candidate. (2) The IDE's `itoa` redeclaration diagnostic comes from two pre-existing files in different test packages and is unrelated to this change (as reported by the run phase and the leader; not re-measured in this sync run).
+
+**MX tag validation (sync sub-step).** `.claude/rules/moai/workflow/mx-tag-protocol.md` was read in full. The only Go file this card added is `internal/template/run_external_delegation_test.go`. Observed in this run: `grep -n -E "^func [A-Z]|^func Test|goroutine|go func|sync\.|chan "` found exactly one exported function, `TestRunExternalDelegationDoctrine` (a test entry point, no callers); no goroutine, channel or `sync` use; `grep -c "@MX"` printed `0`. None of the protocol's add-triggers applies (no fan_in of 3 or more, no goroutine or channel, no global-state mutation, no exported function lacking a test, no magic constant needing a NOTE), so no annotation is required and none was added; no code edit was made in this phase. Not measured: cyclomatic complexity (no `gocyclo` or `gocognit` binary is installed), so the protocol's complexity-15 WARN trigger is unobserved for the 12-subtest function.
+
+**Codemaps and README.** N/A. `grep -rln -E "codex_task|glm_task|codex_job_status|glm_job"` over `README*.md` and `.moai/project` found the four README files (a tool list with no consumer column) and `.moai/project/codemaps/modules.md` (unrelated prose); none names which agent consumes the delegation tools, so no codemap or README sentence became false. Not edited.
+
+**docs-site verification (hns-oss-docs-verify).** Edited only the four `docs-site/content/{ko,en,ja,zh}/guides/mcp-server.md` pages: `manager-develop` joins the consumer cell of the eight codex and GLM delegation rows (not `codex_setup`, not the read-only role rows) and both family paragraphs now name `manager-develop` and the `External Model Delegation` section of the run workflow. Results: hugo `v0.160.1+extended` build with `--minify --gc` to a scratch directory printed no WARN or ERROR line, `sitemap.xml` present; URL-blacklist grep no match; Mermaid LR/RL grep no match; 4-locale file-existence parity no MISSING line; section-count parity against `docs-site/.locale-parity-baseline`: no NEW divergence (and no converged page); the changed page has 26 headings of level 2 or deeper in each of the four locales; README H2 counts 12/12/12/12; body-emoji scan of the four changed pages no hit (positive control hit); version displays: `hugo.toml` `v3.1.3` equals the four README badges, no `🗿 v` display on the changed pages. Other pages: `grep -rln "manager-develop" docs-site/content` lists many pages, but a grep for the delegation tool names, for the `manager-develop` tool-list names (`verify_snapshot`, `goal_status`) and for sole-consumer wording about `super-advisor` matched only `guides/mcp-server.md` (and, for the tool names alone, `advanced/config-sections.md`, which names `codex_task` and `glm_task` without a consumer claim); those pages were left unchanged. This is a grep-based finding, not a full read of every page that mentions `manager-develop`.
+
+**Gaps (not observed).**
+- The independent sync-audit has not run; this signal states what the sync phase produced, not a verdict.
+- The repository-wide test verdict belongs to CI on the integration branch (DoD-5, still PENDING); `go test ./...` was not run, and no Go test was re-run in this sync run (no Go file changed in this phase; `moai spec lint --strict` printed `✓ No findings — all SPEC documents are valid` at `9d8e8d02c`).
+- A bare `awk -f` and a bare `grep -P` were not usable here (guard refusal; macOS grep has no `-P`): the counter ran through a `sh` wrapper (same program, executed) and the emoji scan ran with `perl -CSD` instead, with a positive control.
+- The body-emoji scan, the blacklist grep and the Mermaid grep were scoped as the recipe states; the emoji scan covered the four changed pages only, not the whole docs-site tree.
+- The three non-Korean locale wordings are derived in this commit from the Korean page; no native-speaker review was available.
+- Cyclomatic complexity of the new test function (see the MX paragraph).
+
+**Residual-risk.** A delegated codex turn stays read-only only through the prose and its lexical guard while the `allow_write` opt-in is open on the maintainer machine; the eight added tool schemas raise each `manager-develop` spawn's tool-listing cost (unmeasured); D-5 and the R-3 lexical residuals are accepted and read by the auditors, not by a probe.
