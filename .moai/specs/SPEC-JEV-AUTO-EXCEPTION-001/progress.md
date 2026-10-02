@@ -37,6 +37,14 @@ artifact_sha256: pending   # computed by the orchestrator at audit time, after t
   date: 2026-10-02
   decision: plan-audit D8 / assumptions A-2 and A-3 — both completed SPECs (SPEC-JEV-CORE-001, SPEC-MANAGER-TODO-001) are amended in place with a HISTORY row and keep status completed; the completed-to-in-progress amendment path is not used
   decided_by: orchestrator, following the precedent commit 185569ef3 and the audit's own check that moai spec lint and moai spec audit stay clean in that state
+- id: OD-5
+  date: 2026-10-02
+  decision: assumption A-3 — the jev_ask tool description string (mcp_jev.go:48) and the internal/mcp catalog comment stay unchanged; the --auto ranking calls the client directly, never through handleJevAsk
+  decided_by: orchestrator, on the author's measured reachability evidence and the iteration-1 audit's check of handleJevAsk call sites
+- id: OD-6
+  date: 2026-10-02
+  decision: tier classification (Tier M kept by the author with 19 files against the tier table's 5-15 guidance) is not settled by the orchestrator; plan-audit iteration 2 judges it independently and states which threshold applies
+  decided_by: orchestrator (deferral to the independent auditor)
 ```
 
 ## §E.2 Run-phase Evidence
