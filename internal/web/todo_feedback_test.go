@@ -108,7 +108,7 @@ func TestTodoCommitsStillRefresh(t *testing.T) {
 			}
 			select {
 			case ev := <-events:
-				if ev != "kanban" {
+				if ev != "factory" {
 					t.Fatalf("commit event=%s", ev)
 				}
 			case <-time.After(3 * time.Second):
@@ -153,7 +153,7 @@ func TestTodoCreatedWALRefreshesOnlyWhenPopulated(t *testing.T) {
 				if !tc.want {
 					t.Fatalf("empty WAL creation emitted %s", ev)
 				}
-				if ev != "kanban" {
+				if ev != "factory" {
 					t.Fatalf("created WAL event=%s", ev)
 				}
 			case <-time.After(wait):

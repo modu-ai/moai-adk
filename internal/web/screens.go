@@ -1,4 +1,4 @@
-// 재설계본 화면 핸들러 — 개요 · 칸반 · SPEC · 모니터.
+// 재설계본 화면 핸들러 — 개요 · 팩토리 · SPEC · 모니터.
 //
 // 넷 다 읽기 전용이다. GET 이외 메서드는 405 로 거부하며, 쓰기 경로도 SPEC
 // status 전이도 없다 — 상태 전이의 소유자는 각 phase 의 manager 에이전트이지
@@ -129,22 +129,22 @@ func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
 	a.renderPage(w, Overview(vm, o, a.buildTodo(todoSortDefault, "")))
 }
 
-func (a *app) handleKanban(w http.ResponseWriter, r *http.Request) {
+func (a *app) handleFactory(w http.ResponseWriter, r *http.Request) {
 	if !a.readOnly(w, r) {
 		return
 	}
-	k, err := a.buildKanban(time.Now())
+	k, err := a.buildFactory(time.Now())
 	if err != nil {
-		http.Error(w, "kanban unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "factory unavailable: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	vm := a.shellVM(r, "kanban", "Kanban", "chain + pipeline")
-	a.renderPage(w, Kanban(vm, k))
+	vm := a.shellVM(r, "factory", "Factory", "chain + pipeline")
+	a.renderPage(w, Factory(vm, k))
 }
 
 // handleTodo serves the read-only backlog queue at its own top-level route
 // (SPEC-WEB-TODO-QUEUE-001 REQ-WTQ-002). The queue is an operator surface in
-// its own right — addressable and shareable as a URL, which a panel on /kanban
+// its own right — addressable and shareable as a URL, which a panel on /factory
 // would not be.
 //
 // Read-only like the other four screens: GET only, no mutation, no lock. The

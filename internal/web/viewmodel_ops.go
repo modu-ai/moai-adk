@@ -1,5 +1,5 @@
-// 개요 · 칸반 · SPEC · 모니터 뷰모델.
-// internal/spec · session · goal · verify · kanban 을 읽기만 한다 — 쓰기 없음.
+// 개요 · 팩토리 · SPEC · 모니터 뷰모델.
+// internal/spec · session · goal · verify · factory 을 읽기만 한다 — 쓰기 없음.
 //
 // 이 파일의 규율: 모르는 것을 아는 것처럼 쓰지 않는다.
 //   - 세션 활성은 PID 생존을 확인한 것만 StateLive 로 올린다.
@@ -43,24 +43,8 @@ const (
 	maxVerifyRows   = 10
 )
 
-// ChainRoles 는 kanban-dispatch.md 의 역할 순서를 그대로 따른다. 리더 역할
-// 값은 `leader` 다 (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009/-010) — 레거시
-// `lead` 레코드는 리더로 매핑되지 않고, legacyLeaderLabel 로 렌더된다.
-var ChainRoles = []string{"leader", "plan", "run", "sync"}
-
-const (
-	// legacyLeaderRole 는 개칭 이전 바이너리가 쓴 리더 역할 값이다. 감지 전용 —
-	// 리더 슬롯으로 편입되지 않는다 (REQ-RNC-009).
-	legacyLeaderRole = "lead"
-
-	// legacyLeaderLabel 은 레거시 리더 기록이 리더 슬롯에서 렌더될 때의 역할
-	// 라벨이다 (AC-RNC-013): 리더는 부재로 보고되고, 라벨이 재시동 치료법을
-	// 말한다.
-	legacyLeaderLabel = "legacy run: relaunch required"
-)
-
-// KanbanRecord 는 디스크에 있는 칸반 세션 기록이다.
-type KanbanRecord = factory.Record
+// FactoryRecord 는 디스크에 있는 팩토리 세션 기록이다.
+type FactoryRecord = factory.Record
 
 // StatVM 의 Note 는 영어 baseline("4 in-progress")이고 NoteKey 가 실제 표시
 // 언어를 바꾼다. 개수가 문장 안에 박힌 부제는 평평한 키 하나로 담을 수 없어
@@ -72,14 +56,9 @@ type StatVM struct {
 }
 
 type AttentionVM struct {
-	Icon   string // alert | clock
-	Source string
-	Text   string
-	// Role 는 이 행이 칸반 미기동 역할 알림일 때 그 역할 이름이다. 비어 있으면
-	// Text 를 그대로 렌더하고, 차 있으면 Text 대신 Role + i18n 키 조각으로
-	// 렌더한다 — 같은 안내가 체인 띠와 여기 두 경로로 나오는데 번역 키를
-	// 공유해야 한쪽만 한국어가 되는 일이 없다.
-	Role      string
+	Icon      string // alert | clock
+	Source    string
+	Text      string
 	Badge     string
 	BadgeKind string // danger | outline
 	Href      string
@@ -100,26 +79,6 @@ type SessionVM struct {
 	PID int
 }
 
-type RoleVM struct {
-	Role           string
-	Session        string
-	Backend        string
-	Model          string // from the session's telemetry record; "" = not recorded
-	Effort         string // as above
-	ContextPct     int    // -1 = not recorded; 0 means "recorded as 0%", a different fact
-	State          string
-	Stage          string
-	StageEstimated bool
-	Heartbeat      string
-}
-
-type ChainVM struct {
-	Present  bool
-	CardID   string
-	IdleRole string // 가장 앞선 미기동 역할 — 체인이 멈춘 지점
-	Roles    []RoleVM
-}
-
 type SpecRowVM struct {
 	ID, Title, Status, Tier, Era, Updated, Drift, Session string
 }
@@ -132,18 +91,14 @@ type PipeColumnVM struct {
 
 type OverviewVM struct {
 	Stats      []StatVM
-	Chain      ChainVM
 	InProgress []SpecRowVM
 	Attention  []AttentionVM
 	Sessions   []SessionVM
 }
 
-type KanbanVM struct {
-	CardID   string
-	IdleRole string
-	Roles    []RoleVM
-	Columns  []PipeColumnVM
-	Total    int
+type FactoryVM struct {
+	Columns []PipeColumnVM
+	Total   int
 
 	// Lanes are the factory lanes. They stand beside Roles rather than inside it:
 	// a lane is not a chain role, and widening ChainRoles would make every chain
@@ -252,51 +207,6 @@ func processAlive(pid int) bool {
 	return session.IsProcessAlive(pid)
 }
 
-// roleOf 는 칸반 기록에서 역할을 읽는다. 기록이 없으면 빈 문자열을 돌려주고,
-// 화면은 그 칸을 미기동으로 정직하게 그린다 — 그럴듯한 값을 채우지 않는다.
-func roleOf(r KanbanRecord) string { return strings.ToLower(strings.TrimSpace(r.Role)) }
-
-// chainRoleRecords keeps only the records whose role is one of the four fixed
-// chain roles, plus a legacy `lead` record — a pre-rename leader record is
-// evidence the chain exists (it renders as legacyLeaderLabel, never as a
-// present leader). A factory lane's record carries role "lane", which is
-// neither: buildChain treats any record as proof the chain is present but
-// renders only ChainRoles, so passing one through makes a lanes-only project
-// render an idle chain it does not have.
-func chainRoleRecords(records []KanbanRecord) []KanbanRecord {
-	isChainRole := make(map[string]bool, len(ChainRoles)+1)
-	for _, role := range ChainRoles {
-		isChainRole[role] = true
-	}
-	isChainRole[legacyLeaderRole] = true
-	out := make([]KanbanRecord, 0, len(records))
-	for _, r := range records {
-		if isChainRole[roleOf(r)] {
-			out = append(out, r)
-		}
-	}
-	return out
-}
-
-// readTelemetry reads one session's telemetry record through the single reader
-// SPEC-SESSION-TELEMETRY-001 exports, and builds the path with that SPEC's own
-// helper: this package restates neither the record's location nor its schema,
-// because one on-disk format declared in two places is a format that forks.
-//
-// Unreadable yields nil. "No record" and "the value is zero" are different
-// facts, and the view draws the difference.
-func readTelemetry(root, sessionID string) *statusline.SessionTelemetryRecord {
-	path := statusline.SessionTelemetryPath(filepath.Join(root, ".moai", "state"), sessionID)
-	if path == "" {
-		return nil
-	}
-	rec, err := statusline.ReadSessionTelemetry(path)
-	if err != nil {
-		return nil
-	}
-	return rec
-}
-
 // telemetryCells returns one session's model, effort and context percentage.
 // 기록이 없으면 빈 문자열과 -1 — 화면이 "기록 없음"으로 그리는 값이다.
 // 기록이 있어도 model/effort 가 비어 있으면(의존 SPEC 이전에 쓰인 기록) 그
@@ -310,61 +220,6 @@ func telemetryCells(rec *statusline.SessionTelemetryRecord) (model, effort strin
 		pct = clampPct(int(rec.RawPct))
 	}
 	return rec.Model, rec.Effort, pct
-}
-
-// buildChain 은 칸반 세션 기록과 활성 세션을 역할 5칸에 배치한다.
-// root 는 세션별 텔레메트리 기록을 찾는 데만 쓴다.
-func buildChain(root string, records []KanbanRecord, sessions map[string]SessionVM, cardID string) ChainVM {
-	byRole := map[string]KanbanRecord{}
-	for _, r := range records {
-		if role := roleOf(r); role != "" {
-			byRole[role] = r
-		}
-	}
-	out := ChainVM{Present: len(records) > 0, CardID: cardID}
-	// A legacy `lead` record is detection evidence only (REQ-RNC-009): the
-	// leader slot renders the relaunch label instead of adopting the record,
-	// so the view never reports a present leader for a pre-rename run.
-	legacyLeader := false
-	for _, r := range records {
-		if roleOf(r) == legacyLeaderRole {
-			legacyLeader = true
-			break
-		}
-	}
-	for _, role := range ChainRoles {
-		rec, ok := byRole[role]
-		if !ok {
-			slot := RoleVM{Role: role, State: StateIdle, Stage: StageBlocked, ContextPct: -1}
-			if role == "leader" && legacyLeader {
-				slot.Role = legacyLeaderLabel
-			}
-			out.Roles = append(out.Roles, slot)
-			if out.IdleRole == "" {
-				out.IdleRole = role
-			}
-			continue
-		}
-		s := sessions[rec.SessionID]
-		if s.State == "" {
-			s.State = StateStale
-		}
-		stage, estimated := estimateStage(s)
-		model, effort, pct := telemetryCells(readTelemetry(root, rec.SessionID))
-		out.Roles = append(out.Roles, RoleVM{
-			Role:           role,
-			Session:        rec.SessionID,
-			Backend:        rec.Backend,
-			Model:          model,
-			Effort:         effort,
-			ContextPct:     pct,
-			State:          s.State,
-			Stage:          stage,
-			StageEstimated: estimated,
-			Heartbeat:      s.Heartbeat,
-		})
-	}
-	return out
 }
 
 // estimateStage — 하트비트 추정. 전이 기록이 생기면 estimated=false 로 바뀐다.
@@ -543,16 +398,16 @@ func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM
 	return out, byID
 }
 
-// loadKanbanRecords 는 프로젝트 상태 디렉터리의 세션 레코드(*.json)를 읽는다.
+// loadFactoryRecords 는 프로젝트 상태 디렉터리의 세션 레코드(*.json)를 읽는다.
 // 디렉터리 이름은 factory.RecordPath 로 해석한다 — 이름을 여기에 적어 두면
 // 이름이 바뀐 뒤에도 조용히 옛 경로를 읽는다.
-func loadKanbanRecords(root string) []KanbanRecord {
+func loadFactoryRecords(root string) []FactoryRecord {
 	dir := filepath.Dir(factory.RecordPath(root, "probe"))
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
-	var out []KanbanRecord
+	var out []FactoryRecord
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
@@ -561,7 +416,7 @@ func loadKanbanRecords(root string) []KanbanRecord {
 		if err != nil {
 			continue
 		}
-		var rec KanbanRecord
+		var rec FactoryRecord
 		if err := json.Unmarshal(data, &rec); err != nil {
 			continue
 		}
@@ -674,8 +529,7 @@ func (a *app) buildOverview(now time.Time) (OverviewVM, error) {
 	if err != nil {
 		return OverviewVM{}, err
 	}
-	sessions, byID := loadSessions(root, now)
-	records := loadKanbanRecords(root)
+	sessions, _ := loadSessions(root, now)
 
 	var inProgress []SpecRowVM
 	mustFix := 0
@@ -714,32 +568,20 @@ func (a *app) buildOverview(now time.Time) (OverviewVM, error) {
 			{Label: "session", Value: itoa(live) + "/" + itoa(len(sessions)), Note: "PID confirmed / registry", NoteKey: "statNote.pid-confirmed-registry"},
 			{Label: "verify", Value: lastVerify, Note: itoa(verifyKeys) + " keys", NoteKey: "statNote.keys", NoteParams: itoa(verifyKeys)},
 		},
-		Chain:    buildChain(root, records, byID, chainCardID(records)),
 		Sessions: sessions,
 	}
 	if len(inProgress) > maxOverviewRows {
 		inProgress = inProgress[:maxOverviewRows]
 	}
 	vm.InProgress = inProgress
-	vm.Attention = buildAttention(rows, findings, vm.Chain)
+	vm.Attention = buildAttention(rows, findings)
 	return vm, nil
 }
 
 // buildAttention 은 사람이 손대야 하는 것만 모은다 — MUST-FIX 드리프트와
 // 미기동 역할. 정상 상태를 나열하지 않는다.
-func buildAttention(rows []SpecRowVM, findings map[string][]FindingVM, chain ChainVM) []AttentionVM {
+func buildAttention(rows []SpecRowVM, findings map[string][]FindingVM) []AttentionVM {
 	var out []AttentionVM
-	if chain.Present && chain.IdleRole != "" {
-		out = append(out, AttentionVM{
-			Icon:      "alert",
-			Source:    "kanban",
-			Text:      chain.IdleRole + " session not started — the chain stops here",
-			Role:      chain.IdleRole,
-			Badge:     "idle",
-			BadgeKind: "danger",
-			Href:      "/kanban",
-		})
-	}
 	for _, r := range rows {
 		for _, f := range findings[r.ID] {
 			if !strings.HasPrefix(f.Severity, "MUST") {
@@ -761,41 +603,19 @@ func buildAttention(rows []SpecRowVM, findings map[string][]FindingVM, chain Cha
 	return out
 }
 
-// chainCardID 는 기록된 SPEC 이 있으면 그것을 카드로 본다. 없으면 빈 문자열 —
-// plan 단계부터 시작한 체인은 아직 카드 식별자가 없다.
-func chainCardID(records []KanbanRecord) string {
-	for _, r := range records {
-		if r.SpecID != "" {
-			return r.SpecID
-		}
-	}
-	return ""
-}
-
-func (a *app) buildKanban(now time.Time) (KanbanVM, error) {
+func (a *app) buildFactory(now time.Time) (FactoryVM, error) {
 	root := a.cfg.ProjectRoot
 	rows, _, err := loadSpecRows(root)
 	if err != nil {
-		return KanbanVM{}, err
+		return FactoryVM{}, err
 	}
 	_, byID := loadSessions(root, now)
-	records := loadKanbanRecords(root)
-	// The chain is built from chain-role records only. buildChain reads
-	// `len(records) > 0` as proof a chain exists but renders only ChainRoles, so
-	// feeding it a factory lane's record makes a project that runs lanes and no
-	// chain report a present chain stopped at an idle `lead` — a confident wrong
-	// answer on a supported configuration. loadFactoryLanes still receives the
-	// complete set; it is the half that needs the lane records.
-	chainRecords := chainRoleRecords(records)
-	chain := buildChain(root, chainRecords, byID, chainCardID(chainRecords))
+	records := loadFactoryRecords(root)
 
-	return KanbanVM{
-		CardID:   chain.CardID,
-		IdleRole: chain.IdleRole,
-		Roles:    chain.Roles,
-		Columns:  pipelineColumns(rows),
-		Total:    len(rows),
-		Lanes:    loadFactoryLanes(root, byID, records),
+	return FactoryVM{
+		Columns: pipelineColumns(rows),
+		Total:   len(rows),
+		Lanes:   loadFactoryLanes(root, byID, records),
 	}, nil
 }
 

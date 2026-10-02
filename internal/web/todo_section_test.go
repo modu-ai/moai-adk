@@ -185,19 +185,19 @@ func TestTodoSectionEmptyStates(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 
-// TestTodoSectionCarriesExistingKanbanMarker — AC-WTQ-010 first half: the
-// section sits inside an element carrying the EXISTING data-live="kanban"
+// TestTodoSectionCarriesExistingFactoryMarker — AC-WTQ-010 first half: the
+// section sits inside an element carrying the EXISTING data-live="factory"
 // attribute that refresh() keys on. No new event name is introduced.
-func TestTodoSectionCarriesExistingKanbanMarker(t *testing.T) {
+func TestTodoSectionCarriesExistingFactoryMarker(t *testing.T) {
 	stubTodoHome(t)
 	root := t.TempDir()
 	writeBacklog(t, root, threeStateQueue)
 
 	body := todoBodyFor(t, root)
 
-	marker := strings.Index(body, `data-live="kanban"`)
+	marker := strings.Index(body, `data-live="factory"`)
 	if marker < 0 {
-		t.Fatal("the todo section carries no data-live=\"kanban\" marker")
+		t.Fatal("the todo section carries no data-live=\"factory\" marker")
 	}
 	if row := strings.Index(body, "data-todo-row"); row < marker {
 		t.Fatalf("a todo row (at %d) sits outside the data-live marker (at %d)", row, marker)
@@ -285,7 +285,7 @@ func TestConsoleRoutesLeaveBacklogUntouched(t *testing.T) {
 	a.recordLastProfile = func(string) error { return nil }
 	h := a.routes()
 	time.Sleep(10 * time.Millisecond)
-	for _, p := range []string{"/", "/kanban", "/specs", "/monitor", "/settings", "/todo"} {
+	for _, p := range []string{"/", "/factory", "/specs", "/monitor", "/settings", "/todo"} {
 		serveGet(t, h, p)
 	}
 

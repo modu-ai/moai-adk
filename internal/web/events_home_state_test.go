@@ -19,14 +19,14 @@ func TestResolvedWatchPathsIncludeHomeTodoAndFactory(t *testing.T) {
 	}
 
 	paths := resolvedWatchPaths(root)
-	if got := paths[factory.StateDirForRoot(root)]; got != "kanban" {
-		t.Fatalf("todo watch event = %q, want kanban", got)
+	if got := paths[factory.StateDirForRoot(root)]; got != "factory" {
+		t.Fatalf("todo watch event = %q, want factory", got)
 	}
 	factoryDir, err := homestate.FactoryDir(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := paths[factoryDir]; got != "kanban" {
-		t.Fatalf("factory watch event = %q, want kanban", got)
+	if got := paths[factoryDir]; got != "factory" {
+		t.Fatalf("factory watch event = %q, want factory", got)
 	}
 }

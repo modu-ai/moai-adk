@@ -50,8 +50,8 @@ func writeActiveSessions(t *testing.T, root string, entries []session.Entry) {
 	}
 }
 
-// writeKanbanRecord writes one kanban record keyed by its session id.
-func writeKanbanRecord(t *testing.T, root string, rec factory.Record) {
+// writeFactoryRecord writes one factory record keyed by its session id.
+func writeFactoryRecord(t *testing.T, root string, rec factory.Record) {
 	t.Helper()
 	if err := factory.Write(root, &rec); err != nil {
 		t.Fatalf("write record: %v", err)
@@ -88,7 +88,7 @@ func TestFactoryLanesResolveCompleteJoin(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-2": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-lane-2", pid)})
-	writeKanbanRecord(t, root, factory.Record{
+	writeFactoryRecord(t, root, factory.Record{
 		SessionID: "sess-lane-2",
 		SpecID:    "SPEC-EXAMPLE-001",
 		Role:      "lane",
@@ -98,7 +98,7 @@ func TestFactoryLanesResolveCompleteJoin(t *testing.T) {
 	})
 
 	_, byID := loadSessions(root, time.Now())
-	lanes := loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	lanes := loadFactoryLanes(root, byID, loadFactoryRecords(root))
 
 	row := laneByNumber(t, lanes, 2)
 	if row.Unresolved {
@@ -135,7 +135,7 @@ func TestFactoryLanesPresentsUnresolvedLanes(t *testing.T) {
 	// No record for sess-lane-6, and no session at all for lane-4's pid.
 
 	_, byID := loadSessions(root, time.Now())
-	lanes := loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	lanes := loadFactoryLanes(root, byID, loadFactoryRecords(root))
 
 	for _, n := range []int{4, 6} {
 		row := laneByNumber(t, lanes, n)
@@ -155,13 +155,13 @@ func TestFactoryLanesDuplicatePIDFactorySide(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-1": pid, "lane-5": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-dup", pid)})
-	writeKanbanRecord(t, root, factory.Record{
+	writeFactoryRecord(t, root, factory.Record{
 		SessionID: "sess-dup", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
 		Backend: factory.BackendClaude, Lane: 1, CardID: "t999",
 	})
 
 	_, byID := loadSessions(root, time.Now())
-	lanes := loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	lanes := loadFactoryLanes(root, byID, loadFactoryRecords(root))
 
 	for _, n := range []int{1, 5} {
 		row := laneByNumber(t, lanes, n)
@@ -185,13 +185,13 @@ func TestFactoryLanesDuplicatePIDSessionSide(t *testing.T) {
 		liveEntry("sess-stale", pid),
 		liveEntry("sess-live", pid),
 	})
-	writeKanbanRecord(t, root, factory.Record{
+	writeFactoryRecord(t, root, factory.Record{
 		SessionID: "sess-live", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
 		Backend: factory.BackendClaude, Lane: 1, CardID: "t888",
 	})
 
 	_, byID := loadSessions(root, time.Now())
-	lanes := loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	lanes := loadFactoryLanes(root, byID, loadFactoryRecords(root))
 
 	row := laneByNumber(t, lanes, 1)
 	if !row.Unresolved {
@@ -235,11 +235,11 @@ func TestFactoryLanesJoinWritesNothing(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-3": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-3", pid)})
-	writeKanbanRecord(t, root, factory.Record{SessionID: "sess-3", Role: "lane", Lane: 3, CardID: "t3"})
+	writeFactoryRecord(t, root, factory.Record{SessionID: "sess-3", Role: "lane", Lane: 3, CardID: "t3"})
 
 	before := listStateTree(t, root)
 	_, byID := loadSessions(root, time.Now())
-	_ = loadFactoryLanes(root, byID, loadKanbanRecords(root))
+	_ = loadFactoryLanes(root, byID, loadFactoryRecords(root))
 	after := listStateTree(t, root)
 
 	if len(before) != len(after) {

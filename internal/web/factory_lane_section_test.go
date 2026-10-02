@@ -21,14 +21,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
-// kanbanBodyFor renders GET /kanban for a console served from projectRoot.
-func kanbanBodyFor(t *testing.T, projectRoot string) string {
+// factoryBodyFor renders GET /factory for a console served from projectRoot.
+func factoryBodyFor(t *testing.T, projectRoot string) string {
 	t.Helper()
 	a := newApp(Config{ProjectRoot: projectRoot, ProfileName: "default"})
 	a.recordLastProfile = func(string) error { return nil }
-	rec := serveGet(t, a.routes(), "/kanban")
+	rec := serveGet(t, a.routes(), "/factory")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /kanban status = %d, want 200\nbody:\n%s", rec.Code, rec.Body.String())
+		t.Fatalf("GET /factory status = %d, want 200\nbody:\n%s", rec.Code, rec.Body.String())
 	}
 	return rec.Body.String()
 }
@@ -40,12 +40,12 @@ func TestLaneSectionRendersCompleteRow(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-2": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-lane-2", pid)})
-	writeKanbanRecord(t, root, factory.Record{
+	writeFactoryRecord(t, root, factory.Record{
 		SessionID: "sess-lane-2", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
 		Backend: factory.BackendGLM, Lane: 2, CardID: "t207",
 	})
 
-	body := kanbanBodyFor(t, root)
+	body := factoryBodyFor(t, root)
 	for _, want := range []string{`data-lane="2"`, "t207", "SPEC-EXAMPLE-001", "state--live", "stage--active"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("lane row missing %q", want)
@@ -75,9 +75,9 @@ func TestLaneSectionMarksEstimatedStageOnlyWhenEstimated(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-1": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-1", pid)})
-	writeKanbanRecord(t, root, factory.Record{SessionID: "sess-1", Role: "lane", Lane: 1, CardID: "t1"})
+	writeFactoryRecord(t, root, factory.Record{SessionID: "sess-1", Role: "lane", Lane: 1, CardID: "t1"})
 
-	if body := kanbanBodyFor(t, root); !strings.Contains(body, `data-i18n="mark.estimated"`) {
+	if body := factoryBodyFor(t, root); !strings.Contains(body, `data-i18n="mark.estimated"`) {
 		t.Error("estimated lane row carries no estimated marker")
 	}
 
@@ -85,7 +85,7 @@ func TestLaneSectionMarksEstimatedStageOnlyWhenEstimated(t *testing.T) {
 	// to mislabel — the row shows the unresolved marker instead.
 	bare := t.TempDir()
 	writeFactoryRegistry(t, bare, map[string]int{"lane-1": 999101})
-	body := kanbanBodyFor(t, bare)
+	body := factoryBodyFor(t, bare)
 	if !strings.Contains(body, "lane-unresolved") {
 		t.Error("unresolved lane row carries no unresolved marker")
 	}
@@ -100,11 +100,11 @@ func TestLaneSectionMarksEstimatedStageOnlyWhenEstimated(t *testing.T) {
 // is the new half.
 func TestLaneSectionPresentWithNoRegistry(t *testing.T) {
 	t.Run("absent", func(t *testing.T) {
-		body := kanbanBodyFor(t, t.TempDir())
-		if !strings.Contains(body, `data-i18n="kanban.lanes"`) {
+		body := factoryBodyFor(t, t.TempDir())
+		if !strings.Contains(body, `data-i18n="factory.lanes"`) {
 			t.Error("factory section absent from the markup")
 		}
-		if !strings.Contains(body, `data-i18n="kanban.noLanes"`) {
+		if !strings.Contains(body, `data-i18n="factory.noLanes"`) {
 			t.Error("zero-lane state not rendered")
 		}
 	})
@@ -117,11 +117,11 @@ func TestLaneSectionPresentWithNoRegistry(t *testing.T) {
 		if err := os.WriteFile(path, []byte("{not json"), 0o600); err != nil {
 			t.Fatalf("write: %v", err)
 		}
-		body := kanbanBodyFor(t, root)
-		if !strings.Contains(body, `data-i18n="kanban.lanes"`) {
+		body := factoryBodyFor(t, root)
+		if !strings.Contains(body, `data-i18n="factory.lanes"`) {
 			t.Error("factory section absent from the markup")
 		}
-		if !strings.Contains(body, `data-i18n="kanban.noLanes"`) {
+		if !strings.Contains(body, `data-i18n="factory.noLanes"`) {
 			t.Error("zero-lane state not rendered")
 		}
 	})
@@ -135,12 +135,12 @@ func TestLaneSectionRendersUnresolvedRows(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-1": pid, "lane-5": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-dup", pid)})
-	writeKanbanRecord(t, root, factory.Record{
+	writeFactoryRecord(t, root, factory.Record{
 		SessionID: "sess-dup", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
 		Lane: 1, CardID: "t999",
 	})
 
-	body := kanbanBodyFor(t, root)
+	body := factoryBodyFor(t, root)
 	for _, want := range []string{`data-lane="1"`, `data-lane="5"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("ambiguous lane row %q dropped from the markup", want)
@@ -154,10 +154,10 @@ func TestLaneSectionRendersUnresolvedRows(t *testing.T) {
 	}
 }
 
-// TestKanbanNoteBannerCorrected — AC-WC15-052 removal + survival + translation.
+// TestFactoryNoteBannerCorrected — AC-WC15-052 removal + survival + translation.
 // The removal half alone is satisfiable by deletion, which the requirement
 // forbids, so survival and the translation key are asserted beside it.
-func TestKanbanNoteBannerCorrected(t *testing.T) {
+func TestFactoryNoteBannerCorrected(t *testing.T) {
 	sources := map[string]string{
 		"screens.templ": readSource(t, "screens.templ"),
 		"widgets.templ": readSource(t, "widgets.templ"),
@@ -175,9 +175,9 @@ func TestKanbanNoteBannerCorrected(t *testing.T) {
 	}
 
 	// Survival: the banner is present in the rendered page and carries a key.
-	body := kanbanBodyFor(t, t.TempDir())
-	if !strings.Contains(body, `data-i18n="kanban.note"`) {
-		t.Error("the kanban note banner is absent or carries no translation key")
+	body := factoryBodyFor(t, t.TempDir())
+	if !strings.Contains(body, `data-i18n="factory.note"`) {
+		t.Error("the factory note banner is absent or carries no translation key")
 	}
 
 	// Survival: the not-recorded marker still carries non-empty hover text, and
@@ -208,16 +208,16 @@ func readSource(t *testing.T, name string) string {
 // empty set would mean the strings were hard-coded in English instead.
 func TestSPECIntroducedKeysResolveInEveryLocale(t *testing.T) {
 	introduced := []string{
-		"kanban.lanes",
-		"kanban.noLanes",
-		"kanban.lane",
-		"kanban.laneCard",
-		"kanban.laneSpec",
-		"kanban.laneUnresolved",
-		"kanban.laneUnresolved.no-session",
-		"kanban.laneUnresolved.ambiguous",
-		"kanban.laneUnresolved.no-record",
-		"kanban.note",
+		"factory.lanes",
+		"factory.noLanes",
+		"factory.lane",
+		"factory.laneCard",
+		"factory.laneSpec",
+		"factory.laneUnresolved",
+		"factory.laneUnresolved.no-session",
+		"factory.laneUnresolved.ambiguous",
+		"factory.laneUnresolved.no-record",
+		"factory.note",
 		"mark.notRecorded",
 	}
 	if len(introduced) == 0 {
@@ -243,15 +243,15 @@ func TestSPECIntroducedKeysResolveInEveryLocale(t *testing.T) {
 }
 
 // TestLaneSectionAddsNoTransportSurface — REQ-WC15-001 at the markup level: the
-// lane section rides the kanban area the page already declares; it introduces
+// lane section rides the factory area the page already declares; it introduces
 // no second live area and therefore no new event name.
 func TestLaneSectionAddsNoTransportSurface(t *testing.T) {
 	root := t.TempDir()
 	writeFactoryRegistry(t, root, map[string]int{"lane-1": 999102})
-	body := kanbanBodyFor(t, root)
+	body := factoryBodyFor(t, root)
 
 	areas := strings.Count(body, `data-live="`)
-	plain := kanbanBodyFor(t, t.TempDir())
+	plain := factoryBodyFor(t, t.TempDir())
 	if areas != strings.Count(plain, `data-live="`) {
 		t.Errorf("live-area count changed with lanes present: %d vs %d",
 			areas, strings.Count(plain, `data-live="`))

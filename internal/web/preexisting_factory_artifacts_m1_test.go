@@ -46,7 +46,7 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	t.Setenv("MOAI_KANBAN", "1")
 	t.Setenv("MOAI_KANBAN_LABEL", "plan")
 
-	if got := len(loadKanbanRecords(root)); got < 3 {
+	if got := len(loadFactoryRecords(root)); got < 3 {
 		t.Fatalf("loadKanbanRecords returned %d record(s), want the three role records readable (positive control)", got)
 	}
 
@@ -55,7 +55,7 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	if _, err := a.buildOverview(time.Now()); err != nil {
 		t.Errorf("buildOverview failed on pre-existing kanban artifacts: %v", err)
 	}
-	if _, err := a.buildKanban(time.Now()); err != nil {
+	if _, err := a.buildFactory(time.Now()); err != nil {
 		t.Errorf("buildKanban failed on pre-existing kanban artifacts: %v", err)
 	}
 }

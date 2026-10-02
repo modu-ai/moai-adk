@@ -4,7 +4,7 @@
 // widening it: the four-role chain is a fixed dispatch vocabulary, and a
 // variable-length role list would make every chain consumer defend against it.
 //
-// The join is `factory.db workers[lane-N].PID → active-sessions entry → kanban
+// The join is `factory.db workers[lane-N].PID → active-sessions entry → factory
 // record`, and it is non-unique on BOTH sides. The factory registry's loader is
 // fail-open and pruning dead claims is a separate call this console does not
 // make, so one pid can sit on two lanes; and session.Registry.Register
@@ -54,12 +54,12 @@ type LaneVM struct {
 }
 
 // loadFactoryLanes builds the lane rows from the factory registry, the session
-// registry index (keyed by full session id) and the kanban records already read
+// registry index (keyed by full session id) and the factory records already read
 // for this render — no additional read of active-sessions.json, and no write.
 //
 // An absent or malformed registry yields zero lanes and no error: the section
 // then renders as carrying no registered lanes (REQ-WC15-046).
-func loadFactoryLanes(root string, sessions map[string]SessionVM, records []KanbanRecord) []LaneVM {
+func loadFactoryLanes(root string, sessions map[string]SessionVM, records []FactoryRecord) []LaneVM {
 	reg := factory.LoadFactoryRegistry(factory.FactoryRegistryPath(root))
 	if len(reg) == 0 {
 		return nil
@@ -84,7 +84,7 @@ func loadFactoryLanes(root string, sessions map[string]SessionVM, records []Kanb
 		}
 	}
 
-	recordBySession := make(map[string]KanbanRecord, len(records))
+	recordBySession := make(map[string]FactoryRecord, len(records))
 	for _, rec := range records {
 		if rec.SessionID != "" {
 			recordBySession[rec.SessionID] = rec
@@ -110,7 +110,7 @@ func resolveLane(
 	laneClaims map[int]int,
 	sessionsByPID map[int][]string,
 	sessions map[string]SessionVM,
-	recordBySession map[string]KanbanRecord,
+	recordBySession map[string]FactoryRecord,
 ) LaneVM {
 	row := LaneVM{Lane: lane}
 

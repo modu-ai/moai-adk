@@ -22,76 +22,23 @@ func tg2ShellVM(area string) ShellVM {
 	}
 }
 
-// tg2PopulatedRole is a chain role with a live session and full telemetry.
-func tg2PopulatedRole(role string) RoleVM {
-	return RoleVM{Role: role, Session: "sess-" + role, Backend: "claude", Model: "opus", Effort: "high",
-		ContextPct: 42, State: StateLive, Stage: StageActive, StageEstimated: true, Heartbeat: "1m"}
-}
-
-// TestKanbanChainRoleStates pins the chain board: an idle role renders the
-// idle/blocked branch with the "not started" vocabulary, a populated role
-// renders its telemetry, and an unrecorded model/effort/context renders the
-// missing glyph instead of a plausible substitute.
-func TestKanbanChainRoleStates(t *testing.T) {
-	k := KanbanVM{
-		CardID: "t1079", IdleRole: "sync",
-		Roles: []RoleVM{
-			tg2PopulatedRole("leader"), tg2PopulatedRole("plan"), tg2PopulatedRole("run"),
-			{Role: "sync", State: StateIdle, Stage: StageBlocked, ContextPct: -1},
-		},
-	}
-	html := renderTempl(t, Kanban(tg2ShellVM("kanban"), k))
-
-	for _, want := range []string{
-		`t1079`,                      // the chain card id
-		`chain.stopped`,              // the idle-role warning branch fired
-		`role--idle`,                 // idle role marked on the card
-		`state--live`, `state--idle`, // both state marks present
-		`stage--active`, `stage--blocked`, // both stages drawn
-		`mark.estimated`,          // estimated stages carry the estimate tag
-		`sess-lead`, `opus`, `42`, // telemetry flows into the row
-		`No session`, // ...and the missing-session branch is absent here
-	} {
-		if !strings.Contains(html, want) {
-			t.Errorf("kanban chain board missing %q:\n%s", want, html)
-		}
-	}
-	if !strings.Contains(html, `data-i18n="kanban.noSession"`) {
-		t.Errorf("a missing session must draw the no-session branch:\n%s", html)
-	}
-	if !strings.Contains(html, `class="missing"`) {
-		t.Errorf("the sync row's unrecorded values must draw the missing glyph:\n%s", html)
-	}
-}
-
-// TestKanbanRoleWithNoTelemetryRecord pins the "no start record" branch: a role
-// whose session exists but carries no heartbeat renders the warn instead of a
-// blank footer.
-func TestKanbanRoleWithNoTelemetryRecord(t *testing.T) {
-	k := KanbanVM{Roles: []RoleVM{{Role: "lead", State: StateStale, Stage: StageWait, StageEstimated: true, ContextPct: -1}}}
-	html := renderTempl(t, Kanban(tg2ShellVM("kanban"), k))
-	if !strings.Contains(html, `data-i18n="kanban.noStart"`) {
-		t.Errorf("a role with no heartbeat lost its no-start-record warn:\n%s", html)
-	}
-}
-
-// TestKanbanLaneStates pins the factory lanes beside the chain: a resolved lane
+// TestFactoryLaneStates pins the factory lanes beside the chain: a resolved lane
 // renders its own card/spec rows, an unresolved lane renders the
 // lane-unresolved warning with its reason (never another lane's record), and an
 // empty lane list renders the no-lanes banner rather than a silent nothing.
-func TestKanbanLaneStates(t *testing.T) {
-	resolved := KanbanVM{Lanes: []LaneVM{{Lane: 1, State: StateLive, Stage: StageActive, StageEstimated: true,
+func TestFactoryLaneStates(t *testing.T) {
+	resolved := FactoryVM{Lanes: []LaneVM{{Lane: 1, State: StateLive, Stage: StageActive, StageEstimated: true,
 		Session: "sess-lane1", CardID: "t999", SpecID: "SPEC-X-001", Backend: "glm"}}}
-	html := renderTempl(t, Kanban(tg2ShellVM("kanban"), resolved))
+	html := renderTempl(t, Factory(tg2ShellVM("factory"), resolved))
 	for _, want := range []string{`data-lane="1"`, `t999`, `SPEC-X-001`, `backend--metered`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("resolved lane missing %q:\n%s", want, html)
 		}
 	}
 
-	unresolved := KanbanVM{Lanes: []LaneVM{{Lane: 2, Unresolved: true, UnresolvedReason: "no-session"}}}
-	html = renderTempl(t, Kanban(tg2ShellVM("kanban"), unresolved))
-	for _, want := range []string{`data-lane="2"`, `data-lane-unresolved="no-session"`, `kanban.laneUnresolved`} {
+	unresolved := FactoryVM{Lanes: []LaneVM{{Lane: 2, Unresolved: true, UnresolvedReason: "no-session"}}}
+	html = renderTempl(t, Factory(tg2ShellVM("factory"), unresolved))
+	for _, want := range []string{`data-lane="2"`, `data-lane-unresolved="no-session"`, `factory.laneUnresolved`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("unresolved lane missing %q:\n%s", want, html)
 		}
@@ -100,17 +47,17 @@ func TestKanbanLaneStates(t *testing.T) {
 		t.Errorf("an unresolved lane must not render a foreign record:\n%s", html)
 	}
 
-	empty := renderTempl(t, Kanban(tg2ShellVM("kanban"), KanbanVM{}))
-	if !strings.Contains(empty, `data-i18n="kanban.noLanes"`) {
+	empty := renderTempl(t, Factory(tg2ShellVM("factory"), FactoryVM{}))
+	if !strings.Contains(empty, `data-i18n="factory.noLanes"`) {
 		t.Errorf("an empty lane list lost the no-lanes banner:\n%s", empty)
 	}
 }
 
-// TestKanbanPipelineColumns pins view B: each SPEC routes to the column its
+// TestFactoryPipelineColumns pins view B: each SPEC routes to the column its
 // status selects, terminal statuses stay off the board, and a card's link keeps
 // its target with tier/drift badges following the row's state.
-func TestKanbanPipelineColumns(t *testing.T) {
-	k := KanbanVM{
+func TestFactoryPipelineColumns(t *testing.T) {
+	k := FactoryVM{
 		Total: 3,
 		Columns: []PipeColumnVM{
 			{ID: "plan", Status: "draft", Cards: []SpecRowVM{{ID: "SPEC-A-001", Title: "Alpha", Tier: "M", Updated: "2026-09-01"}}},
@@ -119,7 +66,7 @@ func TestKanbanPipelineColumns(t *testing.T) {
 			{ID: "done", Status: "completed", Cards: []SpecRowVM{{ID: "SPEC-C-003", Title: "Gamma", Updated: "2026-09-03"}}},
 		},
 	}
-	html := renderTempl(t, Kanban(tg2ShellVM("kanban"), k))
+	html := renderTempl(t, Factory(tg2ShellVM("factory"), k))
 	for _, want := range []string{
 		`4 status columns · 3`,
 		`SPEC-A-001`, `SPEC-B-002`, `SPEC-C-003`,

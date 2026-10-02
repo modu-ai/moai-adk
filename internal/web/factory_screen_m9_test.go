@@ -45,7 +45,7 @@ func TestFactoryScreenOmitsChainBoard(t *testing.T) {
 
 	root := t.TempDir()
 	for _, role := range []string{"leader", "plan", "run", "sync"} {
-		writeKanbanRecord(t, root, factory.Record{
+		writeFactoryRecord(t, root, factory.Record{
 			SessionID: "sess-chain-" + role, SpecID: "SPEC-CHAIN-001", Role: role, Backend: factory.BackendClaude,
 		})
 	}
@@ -67,7 +67,7 @@ func TestFactoryScreenStillShowsFactoryLanes(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-2": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-lane-2", pid)})
-	writeKanbanRecord(t, root, factory.Record{
+	writeFactoryRecord(t, root, factory.Record{
 		SessionID: "sess-lane-2", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
 		Backend: factory.BackendGLM, Lane: 2, CardID: "t207",
 	})
