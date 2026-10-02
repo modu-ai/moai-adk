@@ -111,7 +111,7 @@ This setting is written to your user-level Claude Code settings (`defaultMode`),
 
 ### Jev typed judgments
 
-Jev answers a typed question about supplied state and returns a probability; it decides nothing.
+Jev answers a typed question about supplied state and returns a probability; it makes no decision itself. A person reads its answer; the only automatic uses are as a signal — the order in which `moai todo --auto` considers queued cards, and an optional Kickoff cross-check that can only confirm or hand over to a person — never to approve, merge, or change a card on its own.
 
 ```bash
 ? Enable Jev typed judgments? (optional, off by default)

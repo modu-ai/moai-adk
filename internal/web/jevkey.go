@@ -39,7 +39,7 @@ const jevPrivacyNoteKey = "sec.jev.note"
 // jevPrivacyNoteBaseline is the inline English fallback rendered alongside the
 // data-i18n key. It is what a reader sees before the catalogue loads, so the
 // privacy statement does not depend on client-side i18n having run.
-const jevPrivacyNoteBaseline = "Jev answers a typed question about supplied state and returns a probability; it decides nothing. While it is enabled, card text or request text is sent to a third-party server."
+const jevPrivacyNoteBaseline = "Jev answers a typed question about supplied state and returns a probability; it makes no decision itself. A person reads its answer; the only automatic uses are as a signal — the order in which moai todo --auto considers queued cards, and an optional Kickoff cross-check that can only confirm or hand over to a person — never to approve, merge, or change a card on its own. While it is enabled, card text or request text is sent to a third-party server."
 
 // jevKeyViewHint carries the redacted disclosure the Jev section may surface
 // about a stored credential. The full value NEVER crosses into the view model
