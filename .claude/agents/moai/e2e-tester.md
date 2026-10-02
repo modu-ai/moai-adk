@@ -40,6 +40,8 @@ The e2e workflow delegates the following phases to this agent by name:
 
 Toolchain and journey SELECTION is out of scope: the orchestrator collects all selections via its own user-question channel and injects them into this agent's spawn prompt. This agent never prompts the user — a missing input produces a blocker report (§ Blocker Report Protocol).
 
+A subagent never invokes Aside (the `aside` CLI or the Aside MCP tools); a task that needs Aside returns a blocker report to the orchestrator.
+
 ## Toolchain Execution Recipes
 
 ### Web — Playwright CLI (default)

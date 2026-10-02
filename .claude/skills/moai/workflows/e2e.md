@@ -33,11 +33,11 @@ Purpose: Create and run end-to-end tests that validate complete user flows throu
 
 Flow: Detection → Selection → Journey Mapping → Script Creation → Execution → Recording (optional) → Report
 
-Execution owner: the **e2e-tester** subagent performs detection probes, journey mapping, script creation, execution, and recording. The ORCHESTRATOR owns every user-facing question in this workflow — the e2e-tester receives all selections via its spawn prompt and never prompts the user.
+Execution owner: the **e2e-tester** subagent performs detection probes, journey mapping, script creation, execution, and recording. The ORCHESTRATOR owns every user-facing question in this workflow — the e2e-tester receives all selections via its spawn prompt and never prompts the user. (except Aside: the ORCHESTRATOR runs every Aside step itself, see Phase 0.5.)
 
 ## Supported Flags
 
-- `--tool TOOL`: Force toolchain selection, skipping the selection question. Options: playwright, agent-browser, chrome-devtools-mcp, claude-in-chrome, maestro, appium, detox, playwright-electron, wdio-tauri, axcli, appium-mac2, flaui-webdriver, pywinauto, dogtail (default: ask via the orchestrator's AskUserQuestion)
+- `--tool TOOL`: Force toolchain selection, skipping the selection question. Options: playwright, agent-browser, chrome-devtools-mcp, claude-in-chrome, maestro, appium, detox, playwright-electron, wdio-tauri, axcli, appium-mac2, flaui-webdriver, pywinauto, dogtail, aside (default: ask via the orchestrator's AskUserQuestion). `aside` is an optional browser agent selectable only when `--tool aside` is passed explicitly: it is never auto-detected, never offered, and never recommended (see Phase 0.5)
 - `--platform web|mobile|desktop|desktop-native`: Force the platform classification when markers are ambiguous
 - `--record`: Record runs via the selected toolchain's NATIVE trace/recording facility
 - `--url URL`: Target URL for web testing (default: auto-detect from project config)
@@ -51,7 +51,7 @@ Execution owner: the **e2e-tester** subagent performs detection probes, journey 
 ## Hard Rules — Token Minimization
 
 - [HARD] **CLI-first**: every capability achievable via CLI invocation uses the CLI path. MCP tools are used ONLY for capabilities the selected CLI cannot provide (see the Tool Matrix token-cost column).
-- [HARD] **Bounded output**: the e2e-tester redirects verbose run output to files under `e2e/.runs/` and surfaces only exit code + bounded tail in context, citing the file path.
+- [HARD] **Bounded output**: the e2e-tester redirects verbose run output to files under `e2e/.runs/` and surfaces only exit code + bounded tail in context, citing the file path. (except Aside: the ORCHESTRATOR redirects verbose `aside repl` output to files under `e2e/.runs/`, takes only the exit code and a bounded tail into context, and cites screenshots by path.)
 - [HARD] **No MCP hard dependency**: every default platform path is fully executable with CLI-only tools. MCP-tier tools are conditional additions, never prerequisites.
 - [HARD] **Artifacts by path**: reports, traces, screenshots, and recordings are persisted under project-local `e2e/` directories and cited by path — never inlined into context.
 
@@ -87,7 +87,7 @@ The desktop-native lane documents recipes for all three OSes (macOS, Windows, Li
 
 ### Toolchain Probe + Installation
 
-After classification, the e2e-tester probes the DEFAULT toolchain for each detected platform:
+After classification, the e2e-tester probes the DEFAULT toolchain for each detected platform: (except Aside: the Aside probe is run by the orchestrator, see Phase 0.5.)
 
 | Toolchain | Version probe | Install command |
 |-----------|---------------|-----------------|
@@ -105,7 +105,7 @@ After classification, the e2e-tester probes the DEFAULT toolchain for each detec
 | dogtail (desktop-native Linux) | `python -c "import dogtail"` | `pip install dogtail` (requires distribution at-spi2 packages) |
 | ydotool (desktop-native Linux fallback) | `ydotool --version` | Install via the distribution package manager (Wayland); `xdotool` for X11 |
 
-Missing-toolchain sequence (per selected toolchain):
+Missing-toolchain sequence (per selected toolchain): (except Aside: an absent or excluded Aside is never a missing toolchain, see Phase 0.5.)
 
 1. **Probe**: run the version probe. On success, proceed.
 2. **Surface**: on failure, the ORCHESTRATOR presents the exact install command(s) to the user for approval via AskUserQuestion.
@@ -116,13 +116,22 @@ Mobile probes must distinguish "CLI missing" from "no booted device/simulator" �
 
 ## Phase 0.5: Toolchain Selection
 
-If `--tool` is provided: bypass the selection question entirely and use the named toolchain directly (verify with a version probe; run the missing-toolchain sequence if absent). Skip to Phase 1.
+If `--tool` is provided: bypass the selection question entirely and use the named toolchain directly (verify with a version probe; run the missing-toolchain sequence if absent). Skip to Phase 1. (except Aside: for `--tool aside` the Aside rules below apply instead of the version probe and the sequence.)
+
+Aside (optional, explicit-only):
+- Entry: Aside is used only when `--tool aside` is passed explicitly; it is never auto-detected, never offered, and never recommended. It applies to a `web` surface.
+- Execution: the ORCHESTRATOR runs every Aside step itself, after loading `Skill("moai-ref-aside-browser")` first; the e2e-tester keeps Phases 0 and 1 and never invokes Aside. The orchestrator checks availability with `aside --version` (a sentence here, not a row of the probe table above), and this workflow never installs Aside.
+- Output: verbose `aside repl` output goes to a file under `e2e/.runs/`; only the exit code and a bounded tail enter context, and screenshots are cited by path, never inlined.
+- Evidence: a screenshot captured through `aside repl`, saved under `e2e/` by path and cited by path in the report; this workflow does not assert which side writes the bytes.
+- Exclusion: when `CI=true`, Aside is unavailable and the default toolchain is used.
+- An absent or excluded Aside is not a missing toolchain: continue silently on the platform default, with no Aside-specific message, prompt, install attempt, or failure; this rule takes precedence over the Surface and Install steps and over the `--tool` bypass.
 
 If `--tool` is NOT provided: the ORCHESTRATOR presents the toolchain options for the detected platform via AskUserQuestion — one question per platform surface when the classification is `mixed` (never one global toolchain forced across surfaces). Option rules:
 
 - The first option carries the locale-appropriate Recommended label per the defaults in the Tool Matrix below
 - Every option description states install status (from the Phase 0 probe) + factual trade-offs in neutral language (bias-prevention rule)
 - The e2e-tester NEVER presents these questions; it receives the final selection via its spawn prompt
+- Aside is never offered, never recommended, and never auto-detected: it does not appear among the options, in the Recommended label, or in the Phase 0 probe results
 
 Recommendation modifiers:
 
@@ -140,6 +149,7 @@ Recommendation modifiers:
 | web | agent-browser | CLI | Low (accessibility-tree snapshots with deterministic element refs) | AI-exploratory journeys where selectors are unknown; Chromium-family only |
 | web | chrome-devtools-mcp | MCP (conditional) | High (per-call round-trips) | ONLY live performance traces/insights, Lighthouse-class audits — capabilities with no CLI equivalent |
 | web | Claude in Chrome | MCP (conditional) | High (requires visible Chrome; no CI path) | ONLY interactive visual debugging when the user explicitly asks |
+| web | Aside (explicit-only) | CLI via `aside repl`, orchestrator-run | Mid (output to a file, exit code + bounded tail in context) | ONLY when `--tool aside` is passed explicitly: pages behind the operator's own login; evidence = a screenshot captured through `aside repl`, saved under `e2e/` by path and cited by path |
 | mobile | **Maestro** (default) | CLI | Low (declarative YAML flows; plain CLI output) | iOS/Android/Flutter flows; deterministic single-binary execution |
 | mobile | Appium 3.x | CLI + server | Mid (session-based scripts; more verbose output) | Fallback: widest device/driver matrix (W3C WebDriver) when Maestro's declarative surface cannot express a flow |
 | mobile | Detox | CLI | Low-mid | React Native ONLY (gray-box RN synchronization); offered when RN markers detected |
@@ -194,7 +204,7 @@ Steps:
 
 ## Phase 2: Script Creation
 
-[HARD] Delegate test script creation to the **e2e-tester** subagent.
+[HARD] Delegate test script creation to the **e2e-tester** subagent. (except Aside: the ORCHESTRATOR runs every Aside step itself; no script is delegated.)
 
 Per-toolchain file conventions:
 
@@ -216,7 +226,7 @@ Script quality expectations:
 
 ## Phase 3: Execution
 
-[HARD] Delegate test execution to the **e2e-tester** subagent — CLI-first, bounded output.
+[HARD] Delegate test execution to the **e2e-tester** subagent — CLI-first, bounded output. (except Aside: the ORCHESTRATOR runs every Aside step itself.)
 
 Execution pattern (Rung 1, all CLI toolchains):
 
@@ -274,7 +284,7 @@ Max 3 iterations mirrors `ci-autofix-protocol.md`. On exhaustion the orchestrato
 
 ## Phase 4: Recording (optional)
 
-Applies when `--record` is set. [HARD] Delegate recording to the **e2e-tester** subagent using the selected toolchain's NATIVE facility — never MCP screenshot loops:
+Applies when `--record` is set. [HARD] Delegate recording to the **e2e-tester** subagent using the selected toolchain's NATIVE facility — never MCP screenshot loops: (except Aside: the ORCHESTRATOR runs any Aside recording step itself; Aside has no row in this table.)
 
 | Toolchain | Native facility | Output |
 |-----------|-----------------|--------|
@@ -325,13 +335,13 @@ Next steps (ORCHESTRATOR AskUserQuestion): Fix failing tests (Recommended) / Rer
 
 ## Agent Chain Summary
 
-- Phase 0: e2e-tester (detection probes + toolchain probe/install)
+- Phase 0: e2e-tester (detection probes + toolchain probe/install) (except Aside: the Aside probe is run by the orchestrator)
 - Phase 0.5: MoAI orchestrator (AskUserQuestion selection; `--tool` bypass)
 - Phase 1: e2e-tester (journey mapping)
-- Phase 2: e2e-tester (script creation)
-- Phase 3: e2e-tester (CLI-first execution)
+- Phase 2: e2e-tester (script creation) (except Aside: orchestrator-run)
+- Phase 3: e2e-tester (CLI-first execution) (except Aside: orchestrator-run)
 - Phase 3.5 (--autofix only): orchestrator (grouping + Kickoff Approval) → manager-develop autofix (parallel-where-safe)
-- Phase 4: e2e-tester (native-facility recording)
+- Phase 4: e2e-tester (native-facility recording) (except Aside: orchestrator-run)
 - Phase 5: MoAI orchestrator (report + next-step question)
 
 ## Execution Summary
@@ -339,10 +349,10 @@ Next steps (ORCHESTRATOR AskUserQuestion): Fix failing tests (Recommended) / Rer
 1. Parse arguments (--tool, --platform, --record, --url, --journey, --headless, --browser, --timeout, --retry)
 2. Phase 0: delegate detection to the e2e-tester; classify platform; probe defaults (host OS only for `desktop-native`); graceful exit when no target
 3. Phase 0.5: orchestrator AskUserQuestion selection (per-surface on `mixed`); `--tool` bypasses
-4. Missing toolchain: probe → surface install command for approval → install → re-probe
+4. Missing toolchain: probe → surface install command for approval → install → re-probe (except Aside: an absent or excluded Aside is never a missing toolchain; continue on the platform default)
 5. Phase 1: delegate journey mapping; orchestrator presents journey options
-6. Phase 2: delegate script creation per toolchain conventions
-7. Phase 3: delegate execution — CLI-first, bounded tail, file-redirect, selective JSON triage
+6. Phase 2: delegate script creation per toolchain conventions (except Aside: orchestrator-run)
+7. Phase 3: delegate execution — CLI-first, bounded tail, file-redirect, selective JSON triage (except Aside: orchestrator-run)
 7.5. (if --autofix and Phase 3 not green) Phase 3.5: group findings → Kickoff Approval (1회) → manager-develop autofix (parallel independent / sequential dependent) → re-run; max 3 iterations or green; else escalate
 8. Phase 4: if --record, native-facility recording only
 9. TaskCreate/TaskUpdate for all journeys
