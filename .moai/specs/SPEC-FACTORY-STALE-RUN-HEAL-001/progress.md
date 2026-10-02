@@ -157,7 +157,19 @@ Open items for audit and sync: A4 (UserPromptSubmit firing on an autonomous lane
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+sync_status: audit-ready
+sync_complete_at: 2026-10-02
+sync_commit_sha: pending-backfill
+cycle: 3-phase close (plan, run, sync); the sync commit carries `in-progress -> implemented -> completed`
+
+- b12_self_test_a (pre-emission grep): `grep -c 'SPEC-FACTORY-STALE-RUN-HEAL-001' CHANGELOG.md` read 0 before the entry was written (this run, tree 48c9ca6e0).
+- b12_self_test_b (AC count): the B12 counter on `acceptance.md` (tier M, `ac_source=.moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/acceptance.md`) printed `live=16 excluded=0 ambiguous=0`; the CHANGELOG entry states 16.
+- b12_self_test_c (paths): every implementation path cited in the CHANGELOG entry exists (`ls` of the ten files, exit 0).
+- changelog_entry_position: first entry under `### Added` of the first `## [Unreleased]` block of `CHANGELOG.md`.
+- frontmatter_status_transitions: `spec.md` `status: in-progress -> completed` in this commit (`updated: 2026-10-02` already current); `plan.md` and `acceptance.md` carry no status field (stateless artifacts) and are untouched.
+- docs changed: `CHANGELOG.md`, `README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md` (one passage each, 4-locale same commit; the passage extends the lane paragraph that already documents `moai factory runs --retire`). No docs-site page names the touched behaviour (search over `docs-site`, the READMEs and `.moai/docs` for the retire, clear-policy, lane and relaunch vocabulary hit only the READMEs and two unrelated docs-site sentences).
+- MX validation (sync sub-step, report only): `moai mx scan --dry` on `internal/hook` (106 tags) and `internal/kanban` (44 tags) completes with no warning; the new implementation files carry tags where they apply (`factory_lane_relaunch.go` 4, `factory_rebind.go` 1, `factory_relaunch_cmd.go` 1, `run_state.go` 4) and `internal/cli/factory_relaunch.go` carries none (a leaf command builder: one caller, no goroutine, low complexity). No tag was added or removed in the sync phase.
+- Gaps: the whole-package suites remain unrun (CI); the 4-locale README passages were verified for presence and shared literals by reading, not by a locale-parity tool (none exists for READMEs); A4 and the Codex per-card loop stay as disclosed in §E.3.
 
 ## §F Phase 4 Mode Selection (2026-10-02, lane-11, orchestrator)
 
