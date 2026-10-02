@@ -13,9 +13,10 @@ package cli
 // new entry publishes the identical set (label aside), and so a milestone that
 // removes the kanban surface can prove it dropped no lane marker.
 //
-// The codex row carries MOAI_KANBAN_LABEL because today's lane child does; the
-// stamp is removed at M5a and the parity comparison excludes exactly that key
-// from M2 on (REQ-003's one exception), so the golden needs no re-pin.
+// The codex row carries MOAI_KANBAN_LABEL because today's lane child did; the
+// stamp was removed at M5a (REQ-012) and the comparison excludes exactly that
+// key from both sides (REQ-003's one exception, withoutRetiredLabel), so the
+// golden needs no re-pin and stays byte-unchanged.
 //
 // Capture: MOAI_LANE_GOLDEN_WRITE=<path> go test ./internal/cli -run
 // '^TestLaneMarkerGoldenMatchesFLane$' -count=1 rewrites the golden at <path>
@@ -159,14 +160,30 @@ func TestLaneMarkerGoldenMatchesFLane(t *testing.T) {
 		t.Fatalf("parse golden: %v", err)
 	}
 	for _, name := range []string{"cc", "glm", "codex"} {
-		if reflect.DeepEqual(got[name], want[name]) {
+		gotRow, wantRow := withoutRetiredLabel(got[name]), withoutRetiredLabel(want[name])
+		if reflect.DeepEqual(gotRow, wantRow) {
 			continue
 		}
-		t.Errorf("row %q differs from the golden\n got: %s\nwant: %s", name, formatMarkerRow(got[name]), formatMarkerRow(want[name]))
+		t.Errorf("row %q differs from the golden\n got: %s\nwant: %s", name, formatMarkerRow(gotRow), formatMarkerRow(wantRow))
 	}
 	if len(want) != 3 {
 		t.Errorf("golden holds %d rows, want exactly cc, glm, codex", len(want))
 	}
+}
+
+// withoutRetiredLabel returns a copy of a marker row without exactly one key,
+// MOAI_KANBAN_LABEL: the Codex lane child no longer carries it (REQ-012, M5a),
+// while the committed golden keeps it as captured, so AC-004 / REQ-003 compare
+// the rows with that key excluded from both sides. Every other key, present or
+// absent, still has to match.
+func withoutRetiredLabel(row map[string]string) map[string]string {
+	out := make(map[string]string, len(row))
+	for k, v := range row {
+		if k != retiredLaneLabelMarker {
+			out[k] = v
+		}
+	}
+	return out
 }
 
 func formatMarkerRow(row map[string]string) string {
