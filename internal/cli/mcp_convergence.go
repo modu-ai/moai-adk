@@ -620,7 +620,19 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	if root := strings.TrimSpace(projectRoot); root != "" {
 		params["cwd"] = root
 	}
-	out, _ := codexReviewRPC(ctx, binaryPath, codexMethodTurnStart, params) // fail-open inside
+	// The leg ends within a bound derived from the codex audit bound: the process
+	// is killed at the deadline, its stream closes, and the turn reader returns
+	// the inconclusive review. Only this leg is bounded; codex_audit keeps the
+	// request context.
+	legCtx, cancel := context.WithTimeout(ctx, config.DefaultCodexAuditLegTimeout)
+	defer cancel()
+	out, _ := codexReviewRPC(legCtx, binaryPath, codexMethodTurnStart, params) // fail-open inside
+	// Reword the summary only when the leg's OWN deadline ended an inconclusive
+	// turn: a verdict that arrived is never replaced, and a caller that gave up
+	// first keeps the reader's cause.
+	if out.Verdict == VerdictInconclusive && errors.Is(legCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
+		return inconclusiveReviewWithSummary("codex leg timed out after " + config.DefaultCodexAuditLegTimeout.String())
+	}
 	return out
 }
 

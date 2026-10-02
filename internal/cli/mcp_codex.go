@@ -1260,12 +1260,16 @@ func coerceCodexReviewTarget(v any, root string) (map[string]any, error) {
 func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, onTurnStarted func(string)) (string, error) {
 	reviewText, agentText := "", ""
 	for {
+		// Only turn/completed ends a turn that produced a verdict. A context that
+		// ended or a stream that closed first leaves whatever text was collected
+		// as a partial review, which must never reach the synthesizer — runTurn
+		// maps this error to the inconclusive review and drops the text.
 		if err := ctx.Err(); err != nil {
-			return bestCodexReviewText(reviewText, agentText), nil
+			return "", fmt.Errorf("codex review turn ended by context: %w", err)
 		}
 		line, ok := conn.recv()
 		if !ok {
-			return bestCodexReviewText(reviewText, agentText), nil
+			return "", errors.New("codex stream closed before the turn completed")
 		}
 		var msg rpcMessage
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
