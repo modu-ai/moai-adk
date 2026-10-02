@@ -1,6 +1,6 @@
 # SPEC-GITHUB-FLOW-DEFAULT-001 — 인수 기준
 
-> 문서 수준 트리 핀: 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2`. 이 핀은 자체 핀이 없는 모든 기준에 적용되고, 기준 수준 핀이 있으면 그것이 이긴다. 브랜치 이름은 핀으로 쓰지 않는다. 개정 0.1.1 에서 더하거나 바꾼 원장 항목(E-26 이후)과 측정 행(M-1~M-7)은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에서 측정했다 — 그 항목을 인용하는 기준은 그 핀을 자기 핀으로 적는다. 두 트리의 차이는 SPEC 디렉터리의 6개 파일뿐이다(`git diff --stat 4bf547bcad7c155b1e91485921569db709ec3ac2 855563dba79da74528e0f01560efe80f1016cc11` 이 6개 파일을 나열했다). **개정 0.1.2 에서 더하거나 다시 잰 원장 항목(E-36 이후)과 측정 행(M-1·M-3·M-6·M-9)은 계획 개정 2 커밋 `6c2277295d9ddeaa92e83c0225910445f83cc1c2` 에서 측정했다** — 이 커밋과 위 두 트리의 차이도 SPEC 디렉터리의 6개 파일뿐이다(`git diff --name-only 855563dba79da74528e0f01560efe80f1016cc11 6c2277295d9ddeaa92e83c0225910445f83cc1c2` 가 같은 6개 파일을 나열했다). 그 항목을 인용하는 기준은 그 핀을 자기 핀으로 적는다.
+> 문서 수준 트리 핀: 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2`. 이 핀은 자체 핀이 없는 모든 기준에 적용되고, 기준 수준 핀이 있으면 그것이 이긴다. 브랜치 이름은 핀으로 쓰지 않는다. 개정 0.1.1 에서 더하거나 바꾼 원장 항목(E-26 이후)과 측정 행(M-1~M-7)은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에서 측정했다 — 그 항목을 인용하는 기준은 그 핀을 자기 핀으로 적는다. 두 트리의 차이는 SPEC 디렉터리의 6개 파일뿐이다(`git diff --stat 4bf547bcad7c155b1e91485921569db709ec3ac2 855563dba79da74528e0f01560efe80f1016cc11` 이 6개 파일을 나열했다). **개정 0.1.2 에서 더하거나 다시 잰 원장 항목(E-36 이후)과 측정 행(M-1·M-3·M-6·M-9)은 계획 개정 2 커밋 `6c2277295d9ddeaa92e83c0225910445f83cc1c2` 에서 측정했다** — 이 커밋과 위 두 트리의 차이도 SPEC 디렉터리의 6개 파일뿐이다(`git diff --name-only 855563dba79da74528e0f01560efe80f1016cc11 6c2277295d9ddeaa92e83c0225910445f83cc1c2` 가 같은 6개 파일을 나열했다). 그 항목을 인용하는 기준은 그 핀을 자기 핀으로 적는다. **개정 0.1.3 에서 더한 원장 항목(E-46~E-55)과 측정 행(M-11)은 카드 트리 HEAD `eda61419564296892b41d0e7608c8b136e52c04c` 에서 이 회차에 쟀다** — 이 트리는 run-phase M1 커밋과 develop 흡수를 담고 있어 앞 세 트리와 같다고 주장하지 않으며, 그 항목을 인용하는 기준(AC-GFD-024)은 이 핀을 자기 핀으로 적는다.
 
 ## §A 측정 규약과 분류
 
@@ -479,6 +479,108 @@ tree: 6c2277295d9ddeaa92e83c0225910445f83cc1c2
 note: 맥락 행이다 — 대문자 `Develop` 은 동사·제목·다이어그램 라벨 열여섯 줄뿐이고 브랜치 서술은 없다(design D-9 의 대소문자 한계의 근거)
 ```
 
+### 개정 0.1.3 에서 더한 원장 항목 (트리 `eda61419564296892b41d0e7608c8b136e52c04c`)
+
+개정 A-1(spec.md `## Amendments`)이 더한 항목이다. 아래 명령은 모두 이 트리에서 읽기 전용 단일 호출로 한 번씩 실행했고 종료 코드는 호출 직후 따로 관측한 값이다(셀의 명령에는 붙이지 않는다). E-46·E-47 이 AC-GFD-024 의 RED 셀이고 나머지는 범위 경계와 동결 표면을 보이는 맥락 행·가드 행이다.
+
+```
+E-46
+command: git grep -n -F '"develop"' -- internal/contract/projection_mission.go
+stdout:
+internal/contract/projection_mission.go:82:	missionMergeTarget        = "develop"
+exit: 0
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: 이 줄의 상수가 같은 파일 222 줄에서 `MergeTarget: missionMergeTarget` 으로 투영된 미션 계약의 병합 목표가 된다(`git grep -n -F missionMergeTarget -- internal/contract/projection_mission.go` 가 82·222 두 줄을 냈다)
+```
+
+```
+E-47
+command: git grep -l -F 'TestProjectionMergeTarget' -- internal
+stdout:
+exit: 1
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+```
+
+```
+E-48
+command: git grep -n -F 'ProjectToMission(' -- '*.go' ':!*_test.go'
+stdout:
+internal/contract/projection_mission.go:173:func ProjectToMission(c *Contract) (mission.MissionContract, error) {
+exit: 0
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: 맥락 행이다 — 비테스트 호출자가 없다(정의 한 줄뿐). 호출 지점은 시험 파일 하나의 네 곳이다(`git grep -c -F 'ProjectToMission(' -- internal/contract/projection_mission_test.go` 가 `internal/contract/projection_mission_test.go:4`, 종료 코드 0). 그래서 인자를 더해도 운영 호출 경로가 움직이지 않는다
+```
+
+```
+E-49
+command: git grep -n -F '.MergeTarget' -- '*.go' ':!*_test.go'
+stdout:
+internal/mission/contract.go:58:		strings.TrimSpace(c.MergeTarget) != "" && c.ResourceLimits.MaxOperations > 0 && c.ResourceLimits.MaxRetries >= 0 &&
+exit: 0
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: 맥락 행이다 — 비테스트 코드에서 `MergeTarget` 을 읽는 곳은 봉인 전 완결성 검사의 비어 있지 않음 확인 한 줄뿐이다. 값은 계약 해시에 들어가지만(`internal/mission/contract.go` 의 `SealMissionContract` 가 정규화한 계약 JSON 을 해시한다) 어떤 브랜치 이름과도 비교되지 않는다. 구성 쪽 생산자는 둘이다 — `internal/cli/goal.go` 의 approve(M1 이 `IntegrationTarget` 으로 옮겼다, 원장 E-29)와 이 투영. 서로의 값을 받지 않는 별개의 생산 지점이다
+```
+
+```
+E-50
+command: git grep -n -F 'branch != "develop"' -- internal/mission/git_owner.go
+stdout:
+internal/mission/git_owner.go:201:		if branch != "develop" || !strings.HasPrefix(o.Effect.WorktreeBranch, "WT-") || o.Effect.CardSHA == "" || o.Effect.BaseSHA == "" {
+exit: 0
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: 맥락 행이다 — 이 줄은 `ActionLocalMerge`(동결된 행동 식별자 `local_develop_merge`)의 로컬 병합 경계이며 현재 브랜치가 리터럴 `develop` 이 아니면 `merge boundary invalid` 로 거부한다. 읽기만 했고 실행해 관측하지 않았다. 범위 밖이다(design D-30)
+```
+
+```
+E-51
+command: git grep -n 'develop' -- internal/contract/testdata/mission_surface_baseline.txt
+stdout:
+internal/contract/testdata/mission_surface_baseline.txt:45:	ActionLocalMerge    Action = "local_develop_merge"
+exit: 0
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: 가드 행(도착 시점에 이미 참)이다 — 고정된 스냅숏에서 `develop` 이 든 줄은 동결된 행동 식별자 값 한 줄뿐이고, `MergeTarget` 은 줄 347 에 필드 선언(`MergeTarget        string         `json:"merge_target"``)으로만 있다. 그래서 투영의 병합 목표 값 변경은 이 스냅숏을 바꾸지 않는다(`go doc -all ./internal/mission` 은 선언과 문서 주석만 담는다). 변경 뒤에도 이 출력은 바이트 단위로 같아야 한다
+```
+
+```
+E-52
+command: git grep -n -F 'moai-adk/internal/config"' -- internal/contract
+stdout:
+exit: 1
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: 가드 행이다 — 계약 코어는 `internal/config` 를 import 하지 않는다(`internal/contract/projection_mission.go` 가 import 하는 내부 패키지는 `internal/mission` 하나다, `git grep -n 'moai-adk/internal/' -- internal/contract/projection_mission.go` 가 `projection_mission.go:10` 의 `internal/mission` 한 줄만 냈고 종료 코드 0 이었다). 구성은 호출자가 읽어 인자로 넘긴다 — design D-30 의 인자 방식의 근거
+```
+
+```
+E-53
+command: git grep -n -F -e 'local-merge-develop' -e 'push-develop' -- internal/contract/rules.go internal/contract/projection_mission.go
+stdout:
+internal/contract/projection_mission.go:76:	"local-merge-develop": mission.ActionLocalMerge,
+internal/contract/rules.go:13:const ActionPushDevelop = "push-develop"
+internal/contract/rules.go:16:	allowedActions   = []string{"commit", "worktree", "local-merge-develop", ActionPushDevelop}
+exit: 0
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: 가드 행이다 — 동결된 계약 쪽 행동 식별자의 사용 줄 셋이다. 변경 뒤에도 줄 문언은 같아야 한다(줄 번호는 편집이 옮기므로 인용은 문언으로 한다)
+```
+
+```
+E-54
+command: git diff --name-only 4bf547bcad7c155b1e91485921569db709ec3ac2 eda61419564296892b41d0e7608c8b136e52c04c -- internal/mission internal/contract
+stdout:
+exit: 0
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: 가드 행이다 — 카드 트리에서 이 HEAD 까지(M1 커밋과 develop 흡수 포함) `internal/mission` 과 `internal/contract`(스냅숏 포함)의 어느 파일도 바뀌지 않았다. 빈 출력이 종료 코드 0 과 함께 나왔으므로 명령 형태가 차이를 보이는지는 E-55 가 양성 대조로 확인한다
+```
+
+```
+E-55
+command: git diff --name-only 4bf547bcad7c155b1e91485921569db709ec3ac2 eda61419564296892b41d0e7608c8b136e52c04c -- internal/cli/goal.go
+stdout:
+internal/cli/goal.go
+exit: 0
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: E-54 의 양성 대조다 — 같은 형태의 명령이 M1 이 고친 파일은 보인다
+```
+
 ### 측정 행 (맥락 행 — RED 셀이 아니다, 날짜와 방법을 적는다)
 
 개정 0.1.2 는 CI 행을 **변하지 않는 식별자로 고정한 값**으로 바꿨다(design D-28). 같은 `gh run list` 명령이 호출마다 다른 창을 돌려주는 것이 관측됐으므로 목록 호출의 출력은 인용하지 않는다.
@@ -662,6 +764,22 @@ stdout (잘라 낸 첫 줄은 YAML 의 `run: |` 가 섞인 프로브 잡음이�
   Releases must be produced by the /harness:release maintainer harness.
   exit=1
 note: 이것이 AC-GFD-008 의 (6)·(4)·(5) 가 변경 후 스크립트에서 같아야 하는 판정 줄과 종료 코드의 기준선이다(커밋 SHA 는 픽스처마다 다르다). 이 관측은 스크래치 저장소에서 한 번 한 것이고 소스 파일은 커밋하지 않았다
+```
+
+```
+M-11  (AC-GFD-024 의 기준선 — 변경 전 이 트리에서 계약→미션 투영 시험이 초록이고 스냅숏 비교(limb 5)가 포함돼 있음을 한 번 관측. 트리 eda61419564296892b41d0e7608c8b136e52c04c)
+command: go test -count=1 -v -run '^TestContractProjectsOntoMissionValidator$' ./internal/contract/
+stdout (`--- PASS` 줄과 마지막 줄만 옮겼다, 전체 출력은 스크래치에 있다):
+--- PASS: TestContractProjectsOntoMissionValidator (0.15s)
+    --- PASS: TestContractProjectsOntoMissionValidator/limb_1_signed-valid_contract_is_not_refused_incomplete_contract (0.00s)
+    --- PASS: TestContractProjectsOntoMissionValidator/limb_2_five_refusal_reasons_are_produced_by_mission.ValidateMissionDecision (0.00s)
+    --- PASS: TestContractProjectsOntoMissionValidator/limb_3_slash-star-star_translates_to_a_prefix_that_neither_narrows_nor_widens (0.00s)
+    --- PASS: TestContractProjectsOntoMissionValidator/limb_4_inner_wildcard_and_unmapped_fields_fail_closed_naming_the_field;_card_does_not_trigger (0.00s)
+    --- PASS: TestContractProjectsOntoMissionValidator/limb_5_internal/mission_exported_surface_unchanged_from_the_M4-start_baseline (0.14s)
+ok  	github.com/modu-ai/moai-adk/internal/contract	0.308s
+exit: 0 (환경변수 정리 뒤 한 번의 복합 호출 `unset MOAI_KANBAN … && go test …`; limb 2 의 하위 시험 다섯은 위에서 줄였다)
+tree: eda61419564296892b41d0e7608c8b136e52c04c
+note: 이 시험은 `ProjectToMission` 을 한 인자로 부르는 현행 시그니처를 쓰므로 M2a 가 그 호출 지점 넷을 고친 뒤에도 같은 이름·같은 limb 다섯으로 초록이어야 한다 — 시험의 호출 지점 편집은 그 변경 하나로 한정한다. 이 관측은 도착 시점의 가드 행이다
 ```
 
 ## §C 인수 기준
@@ -1056,6 +1174,22 @@ note: 이것이 AC-GFD-008 의 (6)·(4)·(5) 가 변경 후 스크립트에서 �
 | 통과 출력 | `go test -v -run '^TestCutoverRunbookShape$' ./internal/template/` 하위 시험 5개(위 (1)~(5)) `--- PASS`. E-32 명령이 시험 파일 경로를 출력(종료 코드 0) |
 | 트리 핀 | `855563dba79da74528e0f01560efe80f1016cc11` (E-32) |
 
+### AC-GFD-024 — 계약에서 미션으로의 투영이 쓰는 병합 목표는 구성에서 나온다 (maps REQ-GFD-023)
+
+- **분류**: release-blocking (M2a 종료 게이트)
+- **Given** 서명 유효 계약 픽스처(`signedValidMissionFixture`)와 병합 목표 인자 행 다섯 — `develop`(git-flow 구성의 통합 목표), `main`(github-flow), `staging`(gitlab-flow 처럼 `main` 도 `develop` 도 아닌 값), 빈 문자열(목표 없음), 공백뿐인 문자열
+- **When** 투영 `ProjectToMission(contract, mergeTarget)` 을 각 행에서 실행하고 비어 있지 않은 행은 `mission.SealMissionContract` 로 봉인하면
+- **Then** (1) 비어 있지 않은 행은 투영된 계약의 `MergeTarget` 이 인자와 같다(`develop`→`develop`, `main`→`main`, `staging`→`staging`) — 어떤 행에서도 인자와 다른 리터럴이 나오지 않는다. (2) 빈 행과 공백뿐인 행은 `errors.Is(err, ErrNotProjectable)` 가 참이고 메시지가 `merge_target` 을 이름으로 대며 쓸 수 있는 미션 계약을 돌려주지 않는다 — `develop` 대체값도 `main` 기본값도 없다. (3) git-flow 행(`develop`)의 봉인 해시가 변경 전 투영이 같은 픽스처에 냈던 해시 리터럴과 같다(변경 전 트리에서 특성화 시험이 먼저 고정한다 — 아래 녹색 경로) — 투영 결과가 바이트 단위로 현행과 같다는 증명이 이것이다. (4) 동결 표면이 그대로다 — 스냅숏 비교(`TestContractProjectsOntoMissionValidator` 의 limb 5)가 초록이고, 원장 E-51·E-53 의 명령이 변경 전과 같은 출력(E-53 은 줄 문언 기준)을 내며, 스냅숏 파일과 `internal/mission` 의 어느 파일도 편집되지 않았다. (5) 계약 코어는 `internal/config` 를 import 하지 않는다(원장 E-52 가 종료 코드 1 과 빈 출력). 이 기준은 스냅숏 파일을 **편집하지 않는다** — 편집이 필요해 보이면 그 편집은 이 기준이 허용하는 일이 아니라 마일스톤을 멈추고 리더에게 올리는 사유다(design D-30)
+
+| 셀 | 내용 |
+|---|---|
+| RED-now | 원장 E-46 (종료 코드 0, 투영의 병합 목표가 리터럴 `develop` 상수 한 줄 — 82 줄) 과 E-47 (종료 코드 1, 이 기준을 관측하는 `TestProjectionMergeTarget…` 시험이 없다). 맥락 행: E-48(비테스트 호출자 없음, 호출 지점은 시험의 네 곳), E-49(`MergeTarget` 은 비어 있지 않음만 검사되고 어떤 브랜치와도 비교되지 않는다), M-11(변경 전 투영 시험과 스냅숏 비교가 초록) |
+| RED 인 이유 | 투영의 병합 목표가 구성과 무관하게 리터럴 `develop` 이라 `main`·`staging` 행의 기대와 빈 목표 거부가 거짓이고(E-46), 인자를 바꿔 보는 시험도 아직 없다(E-47). 이 두 사실은 이 마일스톤 자신의 편집(상수 한 줄을 지우고 인자를 받는 시그니처와 그 시험을 쓰는 일)만이 바꾼다 — 투영과 무관한 파일을 고쳐서 뒤집히는 적색이 아니다. 불가능한 기준도 아니다: 인자를 받는 투영은 E-46 을 종료 코드 1 로 뒤집고 위 행 다섯을 모두 통과시킨다 |
+| 돌연변이 프로브 | (1) 인자가 비었을 때 `develop` 으로 되돌리는 변이는 E-46 의 `"develop"` 리터럴이 남아 종료 코드 0 이라 grep 에서 죽고, 리터럴을 쪼개 grep 을 피하는 변이(`"dev"+"elop"`)는 빈 행·공백 행의 거부 단언(`ErrNotProjectable`, `merge_target`)에서 죽는다. (2) 리터럴을 `"main"` 으로만 바꾼 변이는 `develop`·`staging` 행에서 죽는다. (3) 인자를 받지만 값에 쓰지 않는 변이는 `main`·`staging` 행에서 죽는다. (4) 빈 목표를 거부하되 `ErrNotProjectable` 로 감싸지 않거나 필드 이름을 대지 않는 변이는 (2) 의 `errors.Is`·부분 문자열 단언에서 죽는다. (5) 공백뿐인 목표를 걸러 내지 않는 변이는 공백 행에서 죽는다(봉인 단계의 `incomplete_contract` 가 아니라 투영에서 거부돼야 한다). (6) 계약 코어가 `internal/config` 를 직접 읽게 하는 변이는 E-52 가 종료 코드 0 이 돼 죽는다 — 그 변이는 인자 행에 영향이 없으므로 grep 만이 잡는 변이이고 시험이 보는 것은 값이다. (7) 동결된 행동 식별자를 개명하는 변이(`local-merge-develop`→다른 이름, `local_develop_merge` 변경)는 E-53 의 줄 문언 비교와 limb 5(스냅숏 45 줄)에서 죽는다. (8) 스냅숏을 손으로 다시 생성해 미션 표면 변경을 숨기는 변이는 `git diff --name-only 4bf547bca… <M2a 종료 트리> -- internal/mission internal/contract/testdata` 가 비어 있어야 한다는 범위 가드에서 죽는다(E-54 가 도착 시점에 빈 출력, E-55 가 같은 형태의 양성 대조). (9) `internal/mission/git_owner.go:201` 의 `branch != "develop"` 까지 `main` 으로 옮기는 변이는 같은 범위 가드에서 죽는다 — 그 변이는 github-flow 에서 `main` 으로의 로컬 병합을 켜므로 REQ-GFD-004·006 과도 충돌한다. 양방향 입력(거부 행 둘, 통과 행 셋)을 함께 두므로 전부-통과 변이는 빈·공백 행에서, 전부-거부 변이는 `develop`·`main`·`staging` 행에서 죽는다 |
+| 녹색 경로 | M2a. 순서: (1) 변경 전 트리에서 git-flow 행의 봉인 해시를 특성화 시험으로 고정하고(리터럴 `develop` 과 같은 값이므로 도착 시점에 초록), (2) 다섯 행의 표 기반 RED 를 쓰고(상수가 있는 동안 `main`·`staging` 행과 거부 행이 적색), (3) `ProjectToMission` 이 병합 목표를 인자로 받게 하고 상수를 지운다, (4) 시험의 호출 지점 네 곳을 같은 변경으로 고친다 |
+| 통과 출력 | `go test -v -run '^TestProjectionMergeTargetFollowsIntegrationTarget$' ./internal/contract/` 가 하위 시험 6개(통과 행 셋·거부 행 둘·git-flow 해시 동일) `--- PASS`, 방문 수 6, `--- SKIP` 없음. `go test -v -run '^TestContractProjectsOntoMissionValidator$' ./internal/contract/` 가 limb 다섯 `--- PASS`(M-11 과 같은 모양). E-46 명령은 종료 코드 1 과 빈 출력, E-52 는 종료 코드 1 과 빈 출력, E-51 은 변경 전과 같은 한 줄 |
+| 트리 핀 | `eda61419564296892b41d0e7608c8b136e52c04c` (E-46~E-55·M-11) |
+
 ## §D 추적표
 
 | AC | 대응 REQ | 분류 | 마일스톤 |
@@ -1083,6 +1217,7 @@ note: 이것이 AC-GFD-008 의 (6)·(4)·(5) 가 변경 후 스크립트에서 �
 | AC-GFD-021 | REQ-GFD-021 | release-blocking | M4 |
 | AC-GFD-022 | REQ-GFD-022 | regression-guard | M6 |
 | AC-GFD-023 | REQ-GFD-019 | release-blocking | M6 |
+| AC-GFD-024 | REQ-GFD-023 | release-blocking | M2a |
 
 ## §E 이 SPEC 이 통과로 기록하지 않는 것
 
@@ -1095,6 +1230,7 @@ note: 이것이 AC-GFD-008 의 (6)·(4)·(5) 가 변경 후 스크립트에서 �
 | 운영자가 수행하는 `constitution amend` 의 실제 실행 | 5단째 인간 승인이 대화형이라 레인이 실행하지 않는다. 레인은 입력과 `--dry-run`(가능하면)과 사후 `validate` 만 관측한다 |
 | main 필수 체크 목록에서 `Release PR Multi-OS Gate` 제거 | 운영자 수행 단계(외부 공유 시스템). 레인은 런북에 적을 뿐이고 이 SPEC 은 제거 후 상태를 관측하지 않는다 |
 | 병합 큐 후속 측정 카드의 id | 카드 발행은 리더의 일이다. 이 SPEC 은 권고를 `progress.md` 에 기록하고 id 는 발행 뒤에 적힌다(AC-GFD-022) |
+| 계약→미션 투영의 운영 호출 경로, `internal/mission/git_owner.go:201` 의 실행 동작 | 투영에 비테스트 호출자가 없고(원장 E-48) `git_owner.go:201` 은 읽기만 했다(원장 E-50). 이 SPEC 은 투영의 값과 동결 표면을 단위 수준에서 판정하고, 투영이 운영에 연결될 때의 호출 쪽 구성 읽기는 그 연결을 만드는 카드의 몫이다(design D-30) |
 | 설치된 `moai` 로 낸 판정 | 설치본(v3.2.0-rc.25, 커밋 802a72235)은 이 트리의 엄격한 조상이라 판정에 쓰지 않았고 이 트리에서 빌드한 `moai` 를 경로로 호출했다 |
 | rc 태그의 실제 릴리스 | 태그는 불변 규칙셋으로 되돌릴 수 없어 이 카드에서 만들지 않는다 |
 | 상시로드 비용의 토큰 환산 | 호스트가 관측을 노출하지 않으면 바이트만 보고한다 |

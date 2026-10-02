@@ -1,7 +1,7 @@
 ---
 id: SPEC-GITHUB-FLOW-DEFAULT-001
 title: "github-flow 기본 개발 흐름 전환 — main 단일 기준·카드 PR 전달·main 태그 릴리스"
-version: "0.1.2"
+version: "0.1.3"
 status: in-progress
 created: 2026-10-02
 updated: 2026-10-03
@@ -23,6 +23,21 @@ tier: L
 | 0.1.0 | 2026-10-02 | manager-spec (카드 t1453) | plan-phase 산출물 최초 작성 (Tier L, 5 artifacts) |
 | 0.1.1 | 2026-10-02 | manager-spec (카드 t1453) | plan-audit 1회차(0.74, FAIL) 반영. 미해소 질문 7건을 결정 D-16~D-22 로 기록하고 표지 문자열을 제거. 절체 순서 충돌(AC-016·AC-019·push 트리거)을 D-17·D-25 로 해소. REQ-GFD-008·010·013·016·019·020·021·022 문언 정정, M2(d)·M3(f) 범위 삭제, AC-023(런북 내용) 추가로 AC 23개. REQ 는 22개 그대로 |
 | 0.1.2 | 2026-10-02 | manager-spec (카드 t1453) | plan-audit 2회차(0.84, FAIL) 반영. REQ-GFD-002 를 `done`·`sweep` 의 세 층과 세션 종료 정리의 두 층(네트워크 호출 없음)으로 분리(N-04). AC-008 에 `release.yml` 배선 단언과 접미사 없는 태그 동치 시험 추가(N-01). Frozen 줄 분류와 미등재 줄의 일반 편집 취급을 REQ-GFD-013·AC-GFD-013·AC-GFD-017 에 명시(N-03). 스윕 가드의 약한 적중을 허용 목록 외에는 위반으로 승격하고 픽스처 21→25(N-05, D-27). CI 증거를 실행 id 로 고정하거나 Gaps 로 이동(N-07, D-28). 런북 행당 주체 하나(N-02, D-29). 선택 항목 D7~D12 도 반영. REQ 22개·AC 23개 그대로 |
+| 0.1.3 | 2026-10-03 | manager-spec (카드 t1453) | run 단계 중 리더 결정으로 in-run 개정 A-1 을 더했다 — `internal/contract/projection_mission.go` 의 `missionMergeTarget = "develop"` 을 구성된 통합 목표에서 오는 값으로 옮긴다. REQ-GFD-023·AC-GFD-024·마일스톤 M2a·결정 D-30 신설, REQ 22→23개·AC 23→24개(상한 25·25). plan-audit 3회차 PASS(0.91, `95811b2d4`) 뒤의 개정이라 plan 산출물 해시가 달라졌고 델타 plan-audit 가 따른다 |
+
+## Amendments
+
+### A-1 — 계약에서 미션으로의 투영이 쓰는 병합 목표 (2026-10-03, 개정 0.1.3)
+
+| 항목 | 내용 |
+|---|---|
+| id·날짜 | A-1 · 2026-10-03 |
+| 종류 | run 단계 중의 in-run 개정. 이 SPEC 은 `completed` 가 된 적이 없어(`status: in-progress` 그대로) `amendment_of`·`prior_completed_sha` 는 해당 없다 |
+| 근거 | `internal/contract/projection_mission.go` 82줄의 `missionMergeTarget = "develop"` 이 222줄에서 서명된 계약을 자율 미션 계약으로 투영할 때 `MergeTarget` 으로 들어간다. plan.md M1 의 원장(E-01·E-02·E-28·E-29) 밖에 있던 리터럴 `develop` 기준 브랜치 자리다. 절체 뒤에는 github-flow 구성의 자율 미션 계약이 틀린 브랜치를 병합 목표로 봉인한다. 이 카드의 목적이 develop 에 고정된 표면을 모두 찾아 옮기는 일이므로 이 자리는 범위 안이다 |
+| 범위 | REQ-GFD-023 과 AC-GFD-024 를 더한다(REQ 23개·AC 24개). 마일스톤은 plan.md 의 M2a, 결정은 design.md 의 D-30, 측정은 acceptance.md 원장 E-46~E-55 와 측정 행 M-11 이다. run 단계의 코드 변경은 `ProjectToMission` 이 병합 목표를 인자로 받게 하는 일과 그 시험의 호출 지점 네 곳으로 한정한다 |
+| 출처 | 리더 결정 — 이 자리를 후속 권고로 남기지 않고 카드에 포함한다(카드 t1453 run 단계, 2026-10-03, 이 개정을 위임한 메시지). plan-audit 의 판정 대상이 아니라 리더가 정한 입장이다 |
+| 동결 유지 | 와이어 식별자(`push-develop`·`local-merge-develop`·`push_develop`·`--develop-worktree`, 미션 쪽 `local_develop_merge`)와 `contract/testdata/mission_surface_baseline.txt` 는 바꾸지 않는다(design D-12). 그 스냅숏에서 `develop` 이 든 줄은 동결된 행동 식별자 한 줄(`ActionLocalMerge … "local_develop_merge"`)뿐이고 병합 목표 값으로 든 줄은 없으며(원장 E-51) 이 개정은 그 파일을 편집하지 않는다. `internal/mission/git_owner.go:201` 의 `branch != "develop"` 도 이번 범위 밖이다(design D-30, 원장 E-50) |
+| plan 산출물 해시 | spec.md 가 바뀌므로 plan-audit 3회차 PASS(0.91, audited_sha `95811b2d4c9cd40f53e841f5faa54a901cd7df09`)가 본 plan 산출물 해시와 더는 맞지 않는다. 감사 이후의 in-run 개정이므로 **델타 plan-audit 가 따른다** — 그 감사 전에는 이 개정을 포함한 plan 산출물에 대한 PASS 를 주장하지 않는다 |
 
 ## §A 배경
 
@@ -47,7 +62,7 @@ tier: L
 
 | 항목 | 내용 | 마일스톤 |
 |---|---|---|
-| 카드 항목 ① | 설정·코드의 기준 브랜치 해석을 구성된 통합 목표로 옮기고 이 저장소의 값을 절체 시 github-flow 로 | M1, M5 |
+| 카드 항목 ① | 설정·코드의 기준 브랜치 해석을 구성된 통합 목표로 옮기고(계약에서 미션으로의 투영이 쓰는 병합 목표 포함, 개정 A-1) 이 저장소의 값을 절체 시 github-flow 로 | M1, M2a, M5 |
 | 카드 항목 ② | 카드 전달 경로 재정의(카드 브랜치 push·PR·CI 재측정·GitHub 병합), 병합 큐 판정(보류), 로컬 병합 창 처분 | M2 |
 | 카드 항목 ③ | rc 와 정식 릴리스를 main 태그 기준으로, 3-OS 매트릭스 게이트의 위치(옵션 B: 태그 전 `workflow_dispatch` 와 스크립트 강제) | M3, M5(스위치 켜기) |
 | 카드 항목 ④ | 지침·문서 전면 갱신(AGENTS·CLAUDE·규칙·에이전트·스킬·README 4종·docs-site 4로케일·템플릿 사본), Frozen 조항 정규 개정 | M4 |
@@ -93,7 +108,7 @@ tier: L
 
 ## §C 요구사항
 
-> 요구사항은 GEARS 형식이며 한 개 이상의 인수 기준이 `acceptance.md` 에서 `maps REQ-…` 로 이를 덮는다. 상한은 Tier L 의 25개이며 이 SPEC 은 22개를 둔다.
+> 요구사항은 GEARS 형식이며 한 개 이상의 인수 기준이 `acceptance.md` 에서 `maps REQ-…` 로 이를 덮는다. 상한은 Tier L 의 25개이며 이 SPEC 은 23개를 둔다.
 
 ### REQ-GFD-001 — 구성된 통합 목표로의 기준 해석
 
@@ -183,6 +198,10 @@ tier: L
 
 **Where** 병합 큐의 채택을 판정할 때, 결정은 다시 측정되어 재현된 CI 사용량·필수 체크 `strict` 설정·병합 PR 대상 분포를 증거 표로 기록해야 하고(shall), 재현되지 않았거나 측정하지 못한 항목은 후속 측정 항목으로 Gaps 에 남겨야 한다(shall). 로컬 병합 창의 은퇴로 무의미해지는 t1452 항목과 유효하게 남는 항목은 명시돼야 한다(shall).
 
+### REQ-GFD-023 — 계약에서 미션으로의 투영이 쓰는 병합 목표
+
+**When** 서명된 계약을 자율 미션 계약으로 투영할 때(`ProjectToMission`), 투영된 계약의 `MergeTarget` 은 호출자가 넘긴 구성된 통합 목표여야 하고(shall) 리터럴 `develop` 기본값이나 `develop` 대체값을 담지 않아야 하며(shall not), 넘겨받은 목표가 비었거나 공백뿐이면 투영은 필드 `merge_target` 을 이름으로 대는 `ErrNotProjectable` 거부로 답해야 한다(shall). **Where** `workflow` 가 `git-flow` 이면 투영 결과는 현행과 바이트 단위로 같아야 하고(shall), 와이어 식별자(`local-merge-develop`·`push-develop`·`local_develop_merge`)와 `contract/testdata/mission_surface_baseline.txt` 는 바뀌지 않아야 한다(shall not).
+
 ## §D 결정 요약
 
 각 결정의 근거·기각된 대안은 `design.md`, 측정은 `research.md` 에 있다. 아래는 plan-auditor 가 반박할 수 있는 입장이며, 리더 소관 표시(L)는 plan-audit 의 판정 대상이 아니라 리더가 정한다.
@@ -199,6 +218,7 @@ tier: L
 | P8 | 스윕 가드는 `internal/template` 패키지에 두고 패턴·허용 목록·돌연변이 프로브를 갖는다 | |
 | P9 | 4로케일은 의도 기준으로 갱신하고 zh 추가 문장은 doc 마일스톤의 zh 담당이 해소한다 | |
 | P10 | 상시로드 증가는 진술과 전후 측정을 doc 마일스톤의 인수 기준으로 둔다 | |
+| P11 | 계약에서 미션으로의 투영의 병합 목표 리터럴 `develop` 도 구성된 통합 목표로 옮긴다. 목표는 호출자가 인자로 넘기고 빈 목표는 거부한다. 와이어 식별자와 `mission_surface_baseline.txt`·`internal/mission/git_owner.go:201` 은 건드리지 않는다. 리더 결정(D-30, 개정 A-1) | L |
 
 ## §E 인접 카드와의 관계
 
@@ -208,7 +228,7 @@ tier: L
 
 ## §F 측정 핀
 
-모든 측정은 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2` 와 원격 팁 `284e09c44023598affe486f17701717ca173e6ca`(develop)·`4755c5e506225ba90b7a303c5763fa303c699492`(main)에 핀한다. 원격 팁은 2026-10-02 에 가져온 값이며 움직이는 참조다. 이 SPEC 의 어떤 판정도 팁이 움직인 뒤에 다시 인용하지 않는다 — 인용하려면 다시 측정하고 다시 핀한다. 증거 원장 E-01~E-25 는 위 카드 트리에, 개정 0.1.1 에서 더한 E-26~E-35 와 측정 행 M-n 은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에, 개정 0.1.2 에서 더하거나 다시 잰 E-36 이후와 M-1·M-3·M-6·M-9 는 계획 개정 2 커밋 `6c2277295d9ddeaa92e83c0225910445f83cc1c2` 에 핀한다. 세 트리는 SPEC 디렉터리의 6개 파일만 다르다(`acceptance.md` §B 머리말의 관측).
+모든 측정은 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2` 와 원격 팁 `284e09c44023598affe486f17701717ca173e6ca`(develop)·`4755c5e506225ba90b7a303c5763fa303c699492`(main)에 핀한다. 원격 팁은 2026-10-02 에 가져온 값이며 움직이는 참조다. 이 SPEC 의 어떤 판정도 팁이 움직인 뒤에 다시 인용하지 않는다 — 인용하려면 다시 측정하고 다시 핀한다. 증거 원장 E-01~E-25 는 위 카드 트리에, 개정 0.1.1 에서 더한 E-26~E-35 와 측정 행 M-n 은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에, 개정 0.1.2 에서 더하거나 다시 잰 E-36 이후와 M-1·M-3·M-6·M-9 는 계획 개정 2 커밋 `6c2277295d9ddeaa92e83c0225910445f83cc1c2` 에 핀한다. 세 트리는 SPEC 디렉터리의 6개 파일만 다르다(`acceptance.md` §B 머리말의 관측). 개정 0.1.3 에서 더한 원장 E-46 이후와 측정 행 M-11 은 카드 트리 HEAD `eda61419564296892b41d0e7608c8b136e52c04c` 에서 이 회차에 쟀다 — 이 트리는 run-phase M1 커밋과 develop 흡수를 담고 있어 앞 세 트리와 같다고 주장하지 않으며, 그 항목을 인용하는 기준은 이 핀을 자기 핀으로 적는다.
 
 ---
 

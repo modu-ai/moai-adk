@@ -8,7 +8,7 @@
 
 | 계층 | 마일스톤 | 병합 경로 |
 |---|---|---|
-| PRE-CUTOVER-SAFE | M1, M2, M3, 스윕 가드의 픽스처 자가 시험(M4 의 일부) | 현 git-flow 경로로 develop 에 병합 — 이 경로를 마지막으로 쓴다 |
+| PRE-CUTOVER-SAFE | M1, M2, M2a, M3, 스윕 가드의 픽스처 자가 시험(M4 의 일부) | 현 git-flow 경로로 develop 에 병합 — 이 경로를 마지막으로 쓴다 |
 | CUTOVER-TIME | M4(가드 트리 단언 포함), M5 | 카드 브랜치에서 준비·검증하고 병합 가능 상태로 보류, 런북 2단계에서 한 묶음으로 develop 에 마지막으로 병합 |
 | 절체 절차 | M6 | 문서·점검 스크립트·리허설 증거는 카드 산출물, 실행은 리더·운영자 |
 | 퇴역 뒤 정리 | (이 카드 밖) | 워크플로 push 트리거의 `develop` 제거는 develop 삭제 뒤 리더가 정하는 정리 카드의 몫. 이 카드는 런북에 점검 문구만 남긴다(design D-13 단계 4) |
@@ -30,6 +30,7 @@ plan-auditor 와 리더의 검토 시간은 아래 순서에 쓰는 것이 효�
 | 순서 | 결정 | 이유 | 위치 |
 |---|---|---|---|
 | 1 | D-4 카드 전달 상태 모델 | 카드 기록의 상태·전이가 바뀌는 데이터 모델 변경 | design §D-4 |
+| 1a | D-30 투영 병합 목표의 인자 방식(개정 A-1) | 공개 함수 시그니처가 바뀌는 인터페이스 변경, 호출자가 없는 함수라 영향은 시험 호출 지점에 한정 | design §D-30 |
 | 2 | D-3 병합 큐 보류 | 사용자(리더)에게 보이는 흐름 결정, 측정 부족 | design §D-3 |
 | 3 | D-7·D-22·D-24 3-OS 게이트 위치와 스위치, D-6·D-16 rc 규칙 | 릴리스 흐름과 되돌릴 수 없는 태그에 닿는다 | design §D-7, §D-6, §D-16~D-24 |
 | 4 | D-8·D-17·D-25 수렴 방식과 선행 조건, D-13 develop 퇴역 단계 | 외부 공유 시스템, 되돌리기 어려움 | design §D-8, §D-13, §D-17, §D-25 |
@@ -65,6 +66,18 @@ Exit: AC-GFD-001, AC-GFD-003
 Exit: AC-GFD-002, AC-GFD-004, AC-GFD-005, AC-GFD-006
 - 되돌리기: 커밋 되돌리기. 새 카드 상태 값이 기록 스키마에 들어가므로 되돌린 뒤 이미 기록된 새 상태가 남지 않았음을 확인한다(design §D-4).
 
+### M2a — 계약에서 미션으로의 투영이 쓰는 병합 목표 (개정 A-1, M2 뒤 — M1 의 원장 밖에 있던 자리)
+
+**범위(RENAME 계열)**: `internal/contract/projection_mission.go` 의 상수 `missionMergeTarget = "develop"`(원장 E-46)을 지우고, `ProjectToMission` 이 구성된 통합 목표를 인자로 받아 투영된 미션 계약의 `MergeTarget` 으로 쓴다(design D-30). 인자가 비었거나 공백뿐이면 필드 `merge_target` 을 이름으로 대는 `ErrNotProjectable` 거부이고 `develop` 대체값은 없다(M1 이 기록한 옵션 A 와 같은 결정). 같은 변경에 그 함수를 부르는 시험 파일 `internal/contract/projection_mission_test.go` 의 호출 지점 네 곳(원장 E-48)과 새 표 기반 시험 `TestProjectionMergeTargetFollowsIntegrationTarget` 이 든다. **건드리지 않는다**: 와이어 식별자(`local-merge-develop`·`push-develop`·`push_develop`·`--develop-worktree`·`local_develop_merge`), `contract/testdata/mission_surface_baseline.txt`, `internal/mission` 전체(`git_owner.go:201` 의 `branch != "develop"` 포함 — design D-30), 그리고 계약 코어가 `internal/config` 를 import 하는 일(원장 E-52 — 구성은 호출자가 읽는다).
+
+- 착수 증거: M2 종료 증거가 관측됨(단일 작성자 직렬). 원장 E-46·E-47·E-48·E-51·E-52·E-54 를 재실행해 기록과 같음을 확인한다 — HEAD 가 `eda61419…` 와 다르면 재측정하고 다시 핀한다(원장 E-46 이후의 핀은 그 트리다).
+- 순서: AC-GFD-024 의 녹색 경로 — (1) 변경 전 트리에서 git-flow 행의 봉인 해시를 특성화 시험으로 고정 → (2) 다섯 행의 표 기반 RED → (3) 시그니처와 상수 교체 → (4) 시험 호출 지점 네 곳 갱신 → (5) 두 시험 `TestProjectionMergeTargetFollowsIntegrationTarget`·`TestContractProjectsOntoMissionValidator` 초록.
+- 종료 증거: AC-GFD-024. 스냅숏 파일과 `internal/mission` 이 편집되지 않았음은 같은 기준의 범위 가드(E-54 형태, 종료 트리 기준)가 판정한다.
+- 계층: **PRE-CUTOVER-SAFE, 단 현 git-flow 구성에서 동작이 바이트 단위로 같을 때에 한한다.** 증명은 네 가지가 함께 서야 한다 — (a) 투영에 비테스트 호출자가 없다(E-48) 그래서 어느 바이너리의 운영 경로도 움직이지 않고, (b) git-flow 행(`develop`)의 봉인 해시가 변경 전 해시 리터럴과 같으며(AC-GFD-024 (3)), (c) 스냅숏 비교(limb 5)가 초록이고 스냅숏·`internal/mission` 이 무편집이며(E-51·E-54), (d) 동결 식별자 줄 문언이 같다(E-53). 넷 중 하나라도 어긋나면 PRE-CUTOVER-SAFE 로 병합하지 않고 마일스톤을 멈춰 리더에게 올린다 — 스냅숏을 손으로 다시 생성하는 길은 이 마일스톤의 선택지가 아니다.
+
+Exit: AC-GFD-024
+- 되돌리기: 커밋 되돌리기. 투영에 비테스트 호출자가 없으므로(E-48) 이 투영이 낸 계약이 운영에서 저장되는 경로가 코드에 없고, 되돌려도 남는 기록 상태가 없다. 되돌린 뒤에는 시험 호출 지점이 한 인자 시그니처로 돌아갔는지 `go vet ./internal/contract/` 로 확인한다.
+
 ### M3 — 릴리스 기구
 
 **범위**: (a) 출처 검증 로직을 `scripts/verify-release-provenance.sh` 로 옮겨 `release.yml` 이 호출(design §D-6 — M3 은 `release.yml`·`.goreleaser.yml`·`scripts/` 를 바꿀 수 있다, 태그 push 에서만 도는 파일이고 접미사 없는 태그의 동작은 같다. `release.yml` 은 인라인 검사 1~7 의 본문을 지우고 `bash scripts/verify-release-provenance.sh "${TAG}"` 한 줄 호출로 바뀌며, 그 배선과 접미사 없는 태그의 동치는 AC-GFD-008 이 스크립트와 함께 판정한다), (b) rc 규칙 R-a(design §D-6 의 규칙문), (c) `.goreleaser.yml` 의 `release.prerelease: auto`, (d) `scripts/release.sh` 의 detached HEAD 허용과 rc 태그의 CHANGELOG 검증 건너뛰기, (e) 태그 전 매트릭스 확인(옵션 B, 운영자 결정 D-22)을 `--require-matrix-run` 옵션 뒤에 둔다(기본 꺼짐, design §D-24). 켜는 일은 M5 가 한다.
@@ -93,7 +106,7 @@ Exit: AC-GFD-012, AC-GFD-013, AC-GFD-014, AC-GFD-017, AC-GFD-021
 
 **범위**: 이 저장소의 `git-strategy.yaml`(워크플로·`develop_branch`·`worktree_base_branch`)·`workflow.yaml`(`deny_commits_on`·`push_develop` 의 값 처분)·`.coderabbit.yaml`·`spec-lint.yml` 의 develop 의존(가져오기와 릴리스 스냅숏 논리)·릴리스 하네스(`hns-release-specialist` 재작성과 `--require-matrix-run` 호출로 M3 의 매트릭스 확인 켜기)·`AGENTS.local.md`·`.claude/rules/local/**`·`.moai/docs/*doctrine*`. **워크플로 push 트리거 목록(ci·codeql·graph-freshness·judgment-first-consistency·lsel-leak-guard·template-neutrality-check·test-install·workflow-parse-guard·docs-i18n-check)은 이 묶음에 넣지 않는다** — develop 팁 CI 가 절체 내내 관측되도록 develop 이 퇴역할 때까지 남기고, 퇴역 뒤 정리 단계에서 뺀다(design D-17·D-13 단계 4).
 
-- 착수 증거: M1·M2·M3 병합 완료, M4 준비 완료.
+- 착수 증거: M1·M2·M2a·M3 병합 완료, M4 준비 완료.
 - 종료 증거: AC-GFD-016, **AC-GFD-011**(M4+M5 묶음에서 무장한 가드 본체가 녹색 — 가드 픽스처 시험 AC-GFD-021 은 M4 종료 증거), AC-GFD-015 의 mirror guard 네 시험 초록.
 - 계층: CUTOVER-TIME. 이 묶음은 develop 이 main 으로 수렴하기 전에 develop 에 병합되는 마지막 CUTOVER-TIME 변경이며(런북 2단계) M4 와 함께 한 묶음으로 병합된다. M6 의 산출물(스크립트·시험·런북)은 기준 브랜치를 바꾸지 않는 새 파일이라 같은 병합이거나 그 앞 병합으로 develop 에 들어간다. 이 카드 자신의 브랜치는 이 병합과 push 뒤에 사전 점검에서 제외된다(design D-25).
 - 순서 제약: `spec-lint.yml` 의 develop 가져오기 제거는 develop 브랜치 삭제보다 앞선다(design §D-13).
@@ -117,13 +130,14 @@ Exit: AC-GFD-018, AC-GFD-019, AC-GFD-020, AC-GFD-022, AC-GFD-023
 |---|---|---|---|
 | M1 | 없음 | 즉시 가능 | 없음 |
 | M2 | M1 | M1 뒤 | 없음 |
-| M3 | 없음(M1·M2 와 독립) | 즉시 가능 | 없음(옵션 B 는 운영자 결정으로 확정, D-22) |
+| M2a | M2(단일 작성자 직렬. 기술적으로는 M1 과 같은 구성 해석을 쓰지만 투영에 운영 호출자가 없어 M2 와 독립) | M2 뒤, 즉시 가능 | 없음 |
+| M3 | 없음(M1·M2·M2a 와 독립) | 즉시 가능 | 없음(옵션 B 는 운영자 결정으로 확정, D-22) |
 | M4 | M2, t1448 착지 | 런북 2단계(가드 픽스처만 선행) | t1448 |
-| M5 | M1, M2, M3 | 런북 2단계 | 없음 |
+| M5 | M1, M2, M2a, M3 | 런북 2단계 | 없음 |
 | M6 | M1~M5 준비 | 런북 2단계 이전(추가 파일) | 리더·운영자의 보류 단계 확인 |
 | 절체 | M6 + 리더 확인 + origin/develop 팁 CI 녹색(D-17) | 배치 경계 | 운영자 |
 
-단일 작성자 원칙에 따라 M1~M3 은 직렬이다. 논리적 독립은 순서를 자유롭게 하는 것이지 병렬 write 를 허용하는 것이 아니다.
+단일 작성자 원칙에 따라 M1~M3(M2a 포함)은 직렬이다. 논리적 독립은 순서를 자유롭게 하는 것이지 병렬 write 를 허용하는 것이 아니다.
 
 ## §E 이 카드가 하는 일과 하지 않는 일
 
@@ -160,6 +174,7 @@ Exit: AC-GFD-018, AC-GFD-019, AC-GFD-020, AC-GFD-022, AC-GFD-023
 | develop 퇴역 뒤 push 트리거의 `develop` 이 조용히 죽은 설정으로 남는다 | 런북 9b 단계의 잔존 점검(`git grep -n -w develop -- .github/workflows`)과 CI 런의 전진 정지 확인(AC-GFD-023) |
 | 불변 태그를 잘못 만든다 | 이 카드는 태그를 만들지 않는다. 게이트는 태그 전에 건다(design §D-7) |
 | 레인이 절체 이전 기준으로 작업하다 낡은 기준에 착지한다 | 절체 전 레인 정지·`/clear`·정리, 절체 후 새 기준에서 재기동하는 절차(design §D-8) |
+| 투영을 운영에 연결하는 후속 변경이 구성을 읽지 않고 리터럴 목표를 인자로 넘긴다 | 계약 코어가 `internal/config` 를 import 하지 않는 가드(원장 E-52)는 코어 쪽만 지키고 호출 쪽은 지키지 못한다. 연결하는 카드가 `config.LoadGitFlowIntegrationConfig(root).IntegrationTarget` 을 읽도록 design D-30 이 호출 규약을 적어 두었고, 그 연결의 시험은 그 카드의 몫이다(acceptance §E) |
 
 ## §G 인접 카드
 

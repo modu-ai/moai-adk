@@ -126,6 +126,8 @@ GitHub 가 7.7천 개 파일·1.07백만 줄 규모(`git diff --shortstat origin
 | `.coderabbit.yaml:69` | `auto_review.base_branches` 에 `develop` |
 | `.moai/config/sections/git-strategy.yaml:5,9,16` | `worktree_base_branch: develop`, `workflow: git-flow`, `develop_branch: develop` |
 | `.moai/config/sections/workflow.yaml:170,283` | `deny_commits_on: [main]`, `push_develop: true` |
+| `internal/contract/projection_mission.go:82,222` | `missionMergeTarget = "develop"` 이 `MergeTarget: missionMergeTarget` 으로 투영된 미션 계약에 들어간다(개정 A-1, §12, 원장 E-46) |
+| `internal/mission/git_owner.go:201` | `ActionLocalMerge` 경계가 현재 브랜치가 리터럴 `develop` 이 아니면 거부한다(개정 A-1 범위 밖, §12, 원장 E-50) |
 | `AGENTS.md` | `-w develop` 5줄(:76, :145-150) |
 | `README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md` | 네 파일 모두 `-w develop` 적중 |
 | docs-site `workflow-commands/moai-sync.md` | `-w develop` 적중 en 6·ja 5·ko 5·zh 5 |
@@ -170,6 +172,7 @@ GitHub 가 7.7천 개 파일·1.07백만 줄 규모(`git diff --shortstat origin
   - `moai constitution amend` 는 실행하지 않았고 `--dry-run` 도 실행하지 않았다(`--dry-run` 이 대화형 층을 건너뛰는지 확인하지 못했다).
   - 허용 목록 상한(40)의 근거가 되는 class N 줄 수는 이 회차에 다시 세지 않았다.
   - 판정 도구 빌드: 설치된 `moai`(v3.2.0-rc.25, 커밋 802a72235)는 이 트리 HEAD 의 엄격한 조상이며 178 커밋 뒤처져 있다(`git merge-base --is-ancestor` 종료 코드 0). `moai constitution validate`·`moai spec lint` 의 인용은 이 트리 HEAD 에서 빌드한 `moai` 를 경로로 호출한 결과이고 설치본은 쓰지 않았다(verification-claim-integrity §2.2). 개정 0.1.2 회차의 `moai constitution list`·`moai spec lint` 는 HEAD `6c2277295d9ddeaa92e83c0225910445f83cc1c2` 에서 `go build -o <스크래치>/bin/moai ./cmd/moai` 로 새로 빌드한 바이너리를 경로로 불렀다(종료 코드 0). ldflags 없이 빌드해 `moai version` 이 `v3.1.3`·커밋 `none` 을 찍으므로 빌드 커밋은 바이너리가 아니라 빌드한 트리의 HEAD 로 귀속한다.
+- **개정 0.1.3 에서 더한 Gaps**: §12.3.
 - 이전 회차의 열린 질문은 모두 결정이 되었다 — §11.
 
 ## §10 상시로드 기준선 (REQ-GFD-014)
@@ -187,6 +190,39 @@ GitHub 가 7.7천 개 파일·1.07백만 줄 규모(`git diff --shortstat origin
 - D-20(병합 큐 보류): §2 의 `strict: false` 와 §4.
 - D-21(와이어 식별자): §7.1.
 - D-22(필수 체크 `Release PR Multi-OS Gate`): §8 — 비릴리스 PR 에서 무동작 성공이라는 구조.
+
+## §12 개정 0.1.3 (A-1)에서 측정한 사실 — 계약에서 미션으로의 투영의 병합 목표
+
+핀: 카드 트리 HEAD `eda61419564296892b41d0e7608c8b136e52c04c`(이 회차에 쟀다). 명령·종료 코드·출력 전문은 `acceptance.md` §B 원장 E-46~E-55 와 측정 행 M-11 에 있고 아래 표는 그 요지다. 이 트리는 앞 회차의 세 트리와 같다고 주장하지 않는다.
+
+### 12.1 측정한 사실
+
+| 사실 | 원장 | 관측 |
+|---|---|---|
+| 투영의 병합 목표는 리터럴 `develop` 상수다 | E-46 | `projection_mission.go:82` 한 줄, 같은 파일 222 줄이 `MergeTarget` 에 쓴다 |
+| 이 기준을 관측하는 시험이 없다 | E-47 | `TestProjectionMergeTarget` 이 `internal` 어디에도 없다(종료 코드 1) |
+| 투영에 비테스트 호출자가 없다 | E-48 | 정의 한 줄뿐. 시험 파일의 호출 지점은 넷(`:4`) |
+| `MergeTarget` 을 읽는 비테스트 코드는 하나다 | E-49 | `internal/mission/contract.go:58` 의 봉인 전 비어 있지 않음 검사. 값은 계약 해시에 들어가지만 브랜치 이름과 비교되는 곳이 없다 |
+| 로컬 병합 경계는 리터럴 `develop` 을 요구한다 | E-50 | `internal/mission/git_owner.go:201`, 읽기만 했다 |
+| 고정된 스냅숏의 `develop` 은 동결된 행동 식별자 한 줄이다 | E-51 | `mission_surface_baseline.txt:45` 의 `ActionLocalMerge … "local_develop_merge"`. `MergeTarget` 은 필드 선언(:347)뿐 |
+| 계약 코어는 `internal/config` 를 import 하지 않는다 | E-52 | 종료 코드 1 과 빈 출력. 코어의 내부 import 는 `projection_mission.go:10` 의 `internal/mission` 하나 |
+| 동결된 계약 쪽 행동 식별자의 사용 줄 | E-53 | `projection_mission.go`·`rules.go` 에 세 줄 |
+| 카드 트리에서 이 HEAD 까지 `internal/mission`·`internal/contract` 는 무변경이다 | E-54·E-55 | 빈 출력, 같은 형태의 양성 대조가 `internal/cli/goal.go` 를 보인다 |
+| 변경 전 투영 시험과 스냅숏 비교가 초록이다 | M-11 | `TestContractProjectsOntoMissionValidator` 다섯 limb 모두 `--- PASS`, `ok … 0.308s` |
+
+### 12.2 읽어서 알게 된 것 (실행 관측 아님)
+
+- `mission.MissionContract.MergeTarget` 의 생산 지점은 둘이다 — `internal/cli/goal.go` 의 approve(M1 이 `IntegrationTarget` 으로 옮김)와 이 투영. 서로의 값을 받지 않는다.
+- 통합 목표 해석기(`config.LoadGitFlowIntegrationConfig(root).IntegrationTarget`)는 git-flow 면 `develop_branch`(manual 프로필 게이트), github-flow 면 `main`, gitlab-flow 면 환경 값, release-flow 면 릴리스 접두를 돌려주고 모르는 워크플로는 빈 문자열이다(`loader_integration_branch.go`, `loader_workflow_disposition.go` 를 읽었다).
+- 투영의 설계 표(`SPEC-AUTONOMY-PRECONDITION-001` `design.md` §D)는 `MergeTarget` 을 `develop` 으로 적었다. 그 SPEC 은 `completed` 이고 이 개정은 그 파일을 고치지 않는다 — 코드가 바뀐 뒤 그 행은 역사적 기록이 된다.
+
+### 12.3 이 회차에 관측하지 않은 것 (개정 0.1.3 의 Gaps)
+
+- `internal/mission/git_owner.go:201` 경계가 github-flow 구성에서 어떻게 동작하는지 실행해 관측하지 않았다 — 줄을 읽었을 뿐이다. 이 개정은 그 줄을 범위 밖에 둔다(design D-30).
+- github-flow 구성에서 `local-merge-develop` 행동을 가진 계약의 처분(투영에서 거르기, 허용하되 휴면)은 정해지지 않았고 실행해 관측하지 않았다. `progress.md` §G 의 권고 8.
+- 변경 전 투영이 픽스처에 낸 봉인 해시 리터럴은 이 회차에 구하지 않았다. M2a 의 첫 단계(특성화 시험)가 변경 전 트리에서 구한다(AC-GFD-024 (3)).
+- `internal/contract` 패키지 전체 시험은 돌리지 않았다 — M-11 은 지정한 시험 하나다.
+- 도구 거부(verification-claim-integrity §3.1): 워크트리 가드가 `git ls-files` 와 `git grep` 을 파일 반복문으로 이은 복합 호출을 "too complex" 로 거부했다. 같은 일을 단순한 개별 호출(`git grep -n 'moai-adk/internal/' -- internal/contract/projection_mission.go` 와 `git grep -n -F 'moai-adk/internal/config"' -- internal/contract`)로 나눠 다시 쟀고 E-52 는 그 개별 호출의 출력이다. 거부된 호출의 결과는 어디에도 인용하지 않았다.
 
 ---
 

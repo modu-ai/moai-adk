@@ -83,6 +83,7 @@ _<pending sync-phase>_
 | 5 | develop 적색 CI 수리 카드들(절체의 선행 조건, D-17). 측정된 적색 집합은 `.moai/reports/t1453/m0-develop-ci-red.md` — 수리 여부와 분할은 리더의 판단 | design D-17 | (발행 전) |
 | 6 | t1452 카드 본문을 (c) 동일 테스트 명령 재실행 억제와 PR 전 병합 준비 점검으로 좁히는 편집(리더 결정 D-11, 본문 편집은 리더 몫) | design D-11 | 해당 없음(기존 카드) |
 | 7 | t810 의 닫는 처분: t1453 이 t810 을 흡수했으므로(D-19) 이 카드가 닫힐 때 운영자에게 처분을 올린다. t810 의 카드·워크트리·`SPEC-LATE-BRANCH-REDESIGN-001` 은 이 카드가 건드리지 않았다 | design D-19 | 해당 없음(기존 카드) |
+| 8 | github-flow 구성의 미션 계약에서 `local-merge-develop` 행동의 처분: 투영에서 거르거나 허용하되 휴면으로 둔다. `internal/mission/git_owner.go:201` 의 로컬 병합 경계는 리터럴 `develop` 을 요구하는데(읽기 결과, 실행 관측 없음) 개정 A-1 은 그 줄과 행동 어휘를 건드리지 않는다. 3번 권고(에스컬레이션 분류기)와 함께 다루는 것이 자연스럽다 | design D-30 보충, `research.md` §12.3 | (발행 전) |
 
 ## §J plan-audit 3회차 이월 항목 (blocking 없음 — run-phase 테스트 설계 입력)
 
@@ -107,6 +108,13 @@ _<pending sync-phase>_
 - **재측정 의무(M4 시작·M1 시작)**: plan 산출물의 증거 장부가 인용하는 `internal/kanban/*` 좌표와 `kanban-dispatch*.md` 경로는 개명 뒤 stale 이다. 개명 착지 뒤에는 해당 장부 행을 개명 후 경로로 재측정하고, 스윕 가드(AC-GFD-011/021)의 표면 집합과 허용 목록 파일 경로도 개명 후 경로로 도출한다. 개명 전에 쓴 가드가 옛 경로를 보게 두지 않는다.
 - **develop 원격 push**: 리더 공지에 따르면 origin/develop 이 `7109e0900` 까지 push 됐다(t1451·t1442·t1423 포함). 이 SPEC 의 발산 수치(`7614 1`, 트리 `4bf547bca`·`284e09c44` 기준)는 그 시점 측정이고 지금은 stale 일 수 있다 — run 단계 진입 시 develop 을 흡수하고, 발산 수치를 인용하는 모든 판정은 재측정한 SHA 로 다시 적는다. t1451 이 `auto-semantics.md`·`kanban-dispatch.md`·워치독 스킬을 고쳤으므로 M4 의 해당 파일 편집은 흡수 뒤 본문 기준이다.
 - 위 사실들은 리더 공지에서 온 것이며 이 레인이 직접 관측한 값이 아니다(Gap).
+
+### §J.2 개정 A-1(spec 0.1.3) — 감사 이후의 in-run 개정 (2026-10-03)
+
+- **감사 이후에 작성됐고 델타 plan-audit 가 필요하다.** A-1(`spec.md` `## Amendments`)은 plan-audit 3회차 PASS(0.91, audited_sha `95811b2d4c9cd40f53e841f5faa54a901cd7df09`)와 run 단계 M1 종료 뒤에 리더 결정으로 더했다. spec.md·plan.md·acceptance.md·design.md·research.md 다섯 plan 산출물이 모두 바뀌었으므로 plan-artifact 해시는 그 감사 때와 다르고, 그 PASS 는 이 개정을 덮지 않는다. 델타 감사의 대상은 REQ-GFD-023·AC-GFD-024·M2a·D-30 과 원장 E-46~E-55·M-11 이며 회귀 확인(REQ 23개·AC 24개, 기존 기준의 문언 무변경)이 따른다. 델타 감사가 PASS 하기 전의 M2a 착수 여부는 이 기록이 정하지 않는다(리더 소관).
+- **후속 목록의 `missionMergeTarget` 은 이제 범위 안이다.** §E.2 의 M1 기록은 이 자리를 "Follow-up finding, not touched" 로 적었다. A-1 이 그것을 M2a 로 가져왔으므로 후속이 아니다. §E.2 의 문장은 그 시점의 기록이라 고치지 않았다.
+- 범위 경계: `internal/mission/git_owner.go:201`·동결 식별자·`mission_surface_baseline.txt` 는 범위 밖(design D-30). 그 줄 때문에 남는 처분 문제는 §G 권고 8.
+- §E.1·§E.2·§E.3 은 이 개정이 건드리지 않았다.
 
 ## §G.1 운영자가 직접 수행하는 단계 (런북, 이 카드의 레인은 실행하지 않는다)
 
