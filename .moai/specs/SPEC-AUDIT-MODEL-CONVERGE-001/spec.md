@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-MODEL-CONVERGE-001
 title: "Make workflow.audit.model real — one resolver turns the audit model token and gates into a backend plan, audit_multi and the plan/sync auditors follow it, and a required cross-model backend that cannot answer fails the gate by name"
-version: "0.1.5"
+version: "0.1.6"
 status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
@@ -21,6 +21,9 @@ related_specs: [SPEC-MOAI-MCP-SERVER-001, SPEC-V3R6-AUDIT-MODEL-PIN-001, SPEC-MC
 
 ## HISTORY
 
+- 0.1.6 — 2026-10-02 — leader-approved final extension 10-02: NEW-3 sentence on
+  supplied gates at enforcement (REQ-ACV-006, design.md §D.2); NEW-1 receipt-gate
+  repair is code only. No requirement or criterion added, none renumbered.
 - 0.1.5 — 2026-10-02 — leader-approved amendment 10-02 after the audit ceiling;
   checker input is `--result-file`; inline `--result` removed (the worktree
   isolation guard refuses every command carrying braces or quotes, so an inline
@@ -242,7 +245,11 @@ requirement states one behaviour.
 - **REQ-ACV-006** (When) — **When** an `audit_multi` call omits the `gates`
   argument, or omits the key for a backend, the handler shall apply, for each
   omitted backend, the gate the resolver assigns for the audited tree; a gate the
-  call supplies shall win over the tree's configuration for that backend.
+  call supplies shall win over the tree's configuration for that backend; at
+  enforcement a supplied `off` or `advisory` replaces the gate the tree configured
+  (the entry's gate and the enforcement agree), while a supplied `required` neither
+  adds an opt-in where the tree wrote none (it stays fail-open) nor cancels one
+  where the tree wrote `required` (it still enforces).
 
 - **REQ-ACV-007** (Where) — **Where** the audited tree sets neither `audit.model`
   nor `audit.gates` — including a `workflow.yaml` whose `audit` block carries

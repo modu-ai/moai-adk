@@ -56,7 +56,11 @@ rule and widens "wrote" from "wrote `audit.gates`" to "wrote `audit.gates` or an
 `audit.model` token". Only a `required` explicit gate enforces anything; an
 explicit `off` or `advisory` never blocks. A caller-supplied `required` (source
 `argument`) is NOT explicit: today it is not enforced either, and changing that
-would alter existing callers (plan.md §B OQ-3).
+would alter existing callers (plan.md §B OQ-3). At enforcement a supplied `off` or
+`advisory` replaces the gate the tree configured (the entry's gate and the
+enforcement agree), while a supplied `required` neither adds an opt-in where the
+tree wrote none (it stays fail-open) nor cancels one where the tree wrote
+`required` (it still enforces).
 
 ## §D.3 Where it lives, what feeds it, who calls it (REQ-ACV-004, REQ-ACV-005)
 
