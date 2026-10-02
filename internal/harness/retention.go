@@ -7,14 +7,28 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
 // pruneSkipDuration is the duration within which pruning is skipped since last prune.
 const pruneSkipDuration = time.Hour
+
+// pruneStateSuffix is appended to the log path to name the prune state file.
+// The state file is both the flock target and the carrier of the last prune
+// ATTEMPT time (RFC3339Nano text from nowFn, not a file mtime, so tests that
+// inject a mock clock stay deterministic).
+const pruneStateSuffix = ".prune-state"
+
+// maxStampBytes bounds how much of the state file is read; a stamp is ~35 bytes.
+//
+// @MX:NOTE: [AUTO] Anything longer than this is not a stamp we wrote, so it parses as "no stamp".
+const maxStampBytes = 128
 
 // Retention archives and cleans up old entries in usage-log.jsonl.
 // REQ-HL-011: Lazy pruning on every RecordEvent call, skip if within 1 hour of last prune.
@@ -51,16 +65,24 @@ func NewRetention(logPath, archiveDir string, nowFn func() time.Time) *Retention
 
 // PruneStaleEntries removes events older than retentionDays from log
 // and adds them to archive file (<YYYY-MM>.jsonl.gz).
-// REQ-HL-011: Skips if within 1 hour of last prune.
+// REQ-HL-011: Skips if within 1 hour of the last prune attempt, tracked in memory and on
+// disk (<log>.prune-state) so that every new hook process shares one interval.
 //
-// @MX:WARN: [AUTO] Non-atomic operation of reading and overwriting files, use caution with concurrent calls.
-// @MX:REASON: [AUTO] Called sequentially within the same process as RecordEvent,
-// but race condition possible if external processes record simultaneously.
+// @MX:WARN: [AUTO] The pruner reads the whole log and replaces it by rename; events other hooks append in that window are lost.
+// @MX:REASON: [AUTO] The state-file flock admits a single pruner per interval (it was N concurrent rewriters),
+// but appenders never take that lock. On Windows the lock is in-process only, so there the stamp alone bounds the rewrites.
 func (r *Retention) PruneStaleEntries(retentionDays int) error {
 	now := r.nowFn()
 
-	// Skip prune if within 1 hour
+	// Skip prune if within 1 hour (this process)
 	if !r.lastPruneAt.IsZero() && now.Sub(r.lastPruneAt) < pruneSkipDuration {
+		return nil
+	}
+
+	// Skip prune if another process pruned within 1 hour: one tiny read, no lock, no log read.
+	statePath := r.logPath + pruneStateSuffix
+	if stampIsFresh(readStampFile(statePath), now) {
+		r.lastPruneAt = now
 		return nil
 	}
 
@@ -70,6 +92,93 @@ func (r *Retention) PruneStaleEntries(retentionDays int) error {
 		return nil
 	}
 
+	return r.pruneExclusive(statePath, retentionDays)
+}
+
+// pruneExclusive runs the prune while holding an exclusive lock on the state file.
+//
+// If the state file cannot be created or locked the prune is SKIPPED and the error
+// returned (the observer ignores it): pruning without the lock would let every hook
+// process rewrite the log again, which is the storm this guard exists to stop.
+//
+// @MX:NOTE: [AUTO] Double-checked locking: the stamp is read again after the lock is won, with a fresh
+// clock reading, because the previous holder may have pruned while this process waited.
+func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
+	sf, err := os.OpenFile(statePath, os.O_RDWR|os.O_CREATE, 0o644)
+	if err != nil {
+		return fmt.Errorf("retention: prune state open failed: %w", err)
+	}
+	defer func() { _ = sf.Close() }()
+
+	if err := lockfile.Lock(sf); err != nil {
+		return fmt.Errorf("retention: prune state lock failed: %w", err)
+	}
+	defer func() { _ = lockfile.Unlock(sf) }()
+
+	// Fresh reading: a stale pre-lock "now" would make the holder's newer stamp look like the future.
+	now := r.nowFn()
+	if stampIsFresh(readStamp(sf), now) {
+		r.lastPruneAt = now
+		return nil
+	}
+
+	pruneErr := r.prune(retentionDays, now)
+
+	// Stamp the ATTEMPT, also after a failed prune, so a persistent failure is not retried by every hook.
+	stampErr := writeStamp(sf, now)
+
+	if pruneErr != nil {
+		return pruneErr
+	}
+	if stampErr != nil {
+		return fmt.Errorf("retention: prune state write failed: %w", stampErr)
+	}
+	return nil
+}
+
+// readStamp returns the (bounded) content of an open state file.
+func readStamp(rd io.Reader) []byte {
+	raw, err := io.ReadAll(io.LimitReader(rd, maxStampBytes))
+	if err != nil {
+		return nil
+	}
+	return raw
+}
+
+// readStampFile reads the state file without locking; a missing or unreadable file is "no stamp".
+func readStampFile(path string) []byte {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = f.Close() }()
+	return readStamp(f)
+}
+
+// stampIsFresh reports whether raw holds a prune time younger than pruneSkipDuration.
+// An empty, partial, or unparsable stamp is "no stamp", and a stamp in the future
+// (clock skew, restored file) counts as expired so it can never suppress pruning for long.
+func stampIsFresh(raw []byte, now time.Time) bool {
+	t, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(string(raw)))
+	if err != nil {
+		return false
+	}
+	age := now.Sub(t)
+	return age >= 0 && age < pruneSkipDuration
+}
+
+// writeStamp replaces the content of the locked state file with now.
+func writeStamp(sf *os.File, now time.Time) error {
+	if err := sf.Truncate(0); err != nil {
+		return err
+	}
+	_, err := sf.WriteAt([]byte(now.UTC().Format(time.RFC3339Nano)), 0)
+	return err
+}
+
+// prune partitions the log at the retention cutoff, archives the stale events, and
+// rewrites the log with the kept ones. The caller holds the state-file lock.
+func (r *Retention) prune(retentionDays int, now time.Time) error {
 	cutoff := now.AddDate(0, 0, -retentionDays)
 
 	// Read log file
