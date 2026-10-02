@@ -159,7 +159,68 @@ FAIL
 FAIL	github.com/modu-ai/moai-adk/internal/template	0.382s
 ```
 
-(`<worktree>` abbreviates the absolute worktree path in this record.) Static checks on the RED tree: `gofmt -l internal/template/aside_skill_policy_test.go` printed nothing, exit 0; `go vet ./internal/template/` printed nothing, exit 0.
+(`<worktree>` abbreviates the absolute worktree path in this record.) Static checks on the RED tree: `gofmt -l internal/template/aside_skill_policy_test.go` printed nothing, exit 0; `go vet ./internal/template/` printed nothing, exit 0. The M2 RED commit (subject `test(SPEC-ASIDE-BROWSER-001): M2 RED - ...`) carries only the test file and this record, and precedes the GREEN commit in `git log`.
+
+#### M2.2 (M2 GREEN) the skill, `internal/template/templates/.claude/skills/moai-ref-aside-browser/SKILL.md`
+
+Authored per plan.md M2.2: frontmatter `name: moai-ref-aside-browser`, folded `description` and `when_to_use`, `user-invocable: false`, no `CLAUDE_SKILL_DIR` token; body sections: purpose, when to use and not, who operates it (orchestrator alone plus the subagent sentence), seven safe-use rules (no unrestricted permission, Guard by omission, repl read-only limit stated as discipline, write confirmation through the question channel, advise-only install, no secrets in outputs, bounded output), the optional registration command, and the relation to `/moai e2e`. Facts pinned are only those the orchestrator read from `aside --help`, `aside mcp --help`, `aside repl --help` and `aside skills --help` (see Pre-flight); the skill states that flag and tool names reflect one observed version and that a failed probe or call means Aside is treated as absent. The skill never spells the unrestricted permission value outside the two allow-listed literals. The skill is not added to `delegation.yaml` `domain_skills` (`grep -n 'aside' .moai/config/sections/delegation.yaml` printed nothing, exit 1) and has no command wrapper.
+
+Observed mutant against the real file (not only the in-test controls): the line `never forget to run aside --permission full-access` inserted before the last section, `go test ./internal/template/ -run '^TestAsideSkillPolicyAnchors$' -v -count=1` exit 1, decisive lines `aside_skill_policy_test.go:234: line 57 mentions full-access outside the allow-list: "never forget to run aside --permission full-access"` and `--- FAIL: TestAsideSkillPolicyAnchors/full_access_prohibited`; the line was then removed (`grep -c 'never forget'` over the skill printed `0`) and the green run below ran after the revert.
+
+Green run, `go test ./internal/template/ -run '^(TestAsideSkillPolicyAnchors|TestSkillTreeHasNoClaudeSkillDirToken|TestMCPDefaultExcludesAside|TestMCPNeutralityTemplateShape)$' -v -count=1`, exit 0, verbatim decisive lines:
+
+```
+--- PASS: TestAsideSkillPolicyAnchors (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/description_within_listing_cap (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/full_access_prohibited (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/guard_by_omission (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/repl_read_only_limit (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/write_confirmation_via_orchestrator (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/orchestrator_only_operation (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/subagent_never_invokes_skill (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/no_auto_install_advise_only (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/no_credentials_in_outputs (0.00s)
+    --- PASS: TestAsideSkillPolicyAnchors/negative_controls (0.00s)
+--- PASS: TestMCPNeutralityTemplateShape (0.00s)
+--- PASS: TestMCPDefaultExcludesAside (0.00s)
+--- PASS: TestSkillTreeHasNoClaudeSkillDirToken (0.01s)
+ok  	github.com/modu-ai/moai-adk/internal/template	0.255s
+```
+
+The `negative_controls` group ran 18 control subtests (counted in a separate full run: `grep -c` over its `--- PASS: .../negative_controls/` lines printed `18`): 12 anchor removals (every required literal of every rule), 4 bad lines (unqualified `aside --permission full-access`, `never forget to run aside --permission full-access`, `npm i -g aside`, the install command without the word `operator`), an oversize description, and frontmatter removal.
+
+The `subagent_never_invokes_tester` subtest and the `checkAsideE2E` rows are left to M3 by design (the e2e-tester definition and `e2e.md` do not carry Aside yet).
+
+#### M2.3 catalog, build, mirror
+
+- Catalog entry added by hand under `catalog.core.skills` (`tier: core`, `path: templates/.claude/skills/moai-ref-aside-browser/`, `version: 1.0.0`, placeholder hash of 64 zeros), placed alphabetically before `moai-ref-git-workflow`. `make build` (agents-emit-check, commands-emit-check, tool-policy-drift-check, templ-generate, gen-catalog-hashes --all, go build) exit 0; its log ends `catalog.yaml updated successfully (14151 bytes)` followed by the `go build` line. Immediately after it, plain `git status --short` listed ` M internal/template/catalog.yaml` and the two untracked new-skill directories only: `make build` regenerated no unrelated file.
+- Catalog diff reading, `git diff -U4 -- internal/template/catalog.yaml`: exactly one hunk, `@@ -52,8 +52,13 @@`, adding the entry `moai-ref-aside-browser` with `hash: 653940540ae35059faa4dcdd7d4f2bf4d7b4960de023f6da405e9632c0030b5f`. No other `hash:` line changed (`moai` and `e2e-tester` are untouched in M2, as expected: no file under the core `moai` skill directory and no e2e-tester definition changed), and no `generated_at` hunk appeared. The changed hash set is therefore exactly `{moai-ref-aside-browser}`.
+- Mirror: `mkdir -p .claude/skills/moai-ref-aside-browser`, then `cp` from the template to `.claude/skills/moai-ref-aside-browser/SKILL.md`; `cmp internal/template/templates/.claude/skills/moai-ref-aside-browser/SKILL.md .claude/skills/moai-ref-aside-browser/SKILL.md` printed nothing, exit 0.
+- `.agents/skills` is a derived, gitignored mirror and was not hand-edited: `git check-ignore -v .agents/skills/moai-ref-aside-browser/SKILL.md` printed `.gitignore:154:.agents/skills/moai*` (exit 0), and the two mirror guards are part of the 13-selector run below.
+- The 13-selector command of AC-ASB-003 after the change, redirected to a file, exit 0, `grep -c '^--- PASS'` printed `13`, and the verbatim PASS lines were `TestGitignore_IgnoresSkillMirrorOnly`, `TestPublishedSkillsNamesMatchTree`, `TestSkillMirror_SetIsDerivedNotConstant`, `TestEmbeddedMoaiSkillNames`, `TestCatalogReferencesValid`, `TestCatalogNoDuplicateEntries`, `TestSlimFS_HidesNonCoreEntries`, `TestSlimFS_PreservesCoreEntries`, `TestCatalogTierValid`, `TestAllSkillsInCatalog`, `TestWorkflowTriggerCoverage`, `TestCatalogHashCoversSkillSubfiles`, `TestManifestHashFormat`; last line `ok  	github.com/modu-ai/moai-adk/internal/template	0.412s`.
+- AC-ASB-003 reader checks: `grep -n 'user-invocable: false' <skill>` printed `14:user-invocable: false`; `grep -n -A3 'name: moai-ref-aside-browser' internal/template/catalog.yaml` printed the `tier: core` entry with the 64-hex hash above; `grep -c -F 'moai mcp add aside --command aside --args mcp --scope user' <skill>` printed `1` (AC-ASB-002 skill-side check); `grep -c 'CLAUDE_SKILL_DIR' <skill>` printed `0`.
+- Neutrality grep of AC-ASB-013 over the skill, `grep -n -E 'SPEC-[A-Z]|t1439|[0-9]{4}-[0-9]{2}-[0-9]{2}|\b[0-9a-f]{40}\b|\b[0-9a-f]{7,8}\b' <skill>`: no output, exit 1.
+
+#### M2 static checks (tree HEAD `5b932b06c` plus the uncommitted M2 GREEN changes)
+
+- `go vet ./internal/template/` printed nothing, exit 0. `gofmt -l internal/template/aside_skill_policy_test.go` printed nothing, exit 0.
+- `golangci-lint run --timeout=5m --new-from-rev=1fa6e31ba ./internal/template/` printed `0 issues.`, exit 0 (linter `v2.1.6`, built with go1.26.8).
+- `moai spec lint SPEC-ASIDE-BROWSER-001 --strict` with a binary built by `go build -o <scratch>/moai ./cmd/moai` from this tree (exit 0; no commit stamp, built without the Makefile `LDFLAGS`, so its judging-build coordinate is "tree HEAD `5b932b06c` plus uncommitted M2 GREEN changes"): exit 0, output `✓ No findings — all SPEC documents are valid`. The installed `moai` on PATH was not used.
+
+#### Gaps (M2)
+
+- Not run: the full `internal/template` and `internal/cli` package suites (minutes-long); the repository-wide verdict is owned by the CI run on the project's integration branch and is PENDING at report time. Only named selectors were run, each with its `--- PASS:` line observed. In particular the neutrality and leak audits (`TestTemplate*Neutrality*`, internal content leak) were not run as whole tests; the skill was checked by the AC-ASB-013 grep above and by `TestSkillTreeHasNoClaudeSkillDirToken` only.
+- AC-ASB-004 to AC-ASB-007 are carried by `TestAsideSkillPolicyAnchors` on the template copy; the root mirror is covered by `cmp` only.
+- AC-ASB-006 is only half observed in M2 (the skill sentence); the e2e-tester sentence and the Codex TOML belong to M3. AC-ASB-008 to AC-ASB-012 (e2e wiring), AC-ASB-014 (docs-site) and the e2e-tester catalog hash are M3.
+- No `aside` command or Aside MCP tool was run by this agent (the skill text rests on the orchestrator-supplied observation).
+- Behavior of the MCP `exec` tool's own permission argument is unmeasured; the skill therefore treats every `exec` run as state-changing and requires the same operator confirmation (a policy choice, not a measured limit).
+
+#### Residual risk (M2)
+
+- The checker is lexical: it proves the text says what the anchors require and instructs nothing the forbidden patterns name; it cannot prove what a model does at run time, and no hook enforces the orchestrator-only boundary.
+- The closed allow-list for the unrestricted permission value is line-level, so a line that carries an allow-listed literal and an additional bad mention would pass; the checker's stated rule (acceptance.md § Checker anchors) is line-level and was kept literal.
+- `aside repl` has no permission flag, so the read-only limit is discipline only.
+- The core tier puts the skill's `description` plus `when_to_use` into every install's listing; the measured cap is the `description_within_listing_cap` subtest (a character count, not a token count).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

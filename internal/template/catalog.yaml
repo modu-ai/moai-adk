@@ -53,6 +53,11 @@ catalog:
               path: templates/.claude/skills/moai-meta-harness/
               hash: f98fa6a48bd3db2427c2a12b51a63f1e30b9f2dddf2919b045c5f2d011ac358d
               version: 1.0.0
+            - name: moai-ref-aside-browser
+              tier: core
+              path: templates/.claude/skills/moai-ref-aside-browser/
+              hash: 653940540ae35059faa4dcdd7d4f2bf4d7b4960de023f6da405e9632c0030b5f
+              version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
               path: templates/.claude/skills/moai-ref-git-workflow/
