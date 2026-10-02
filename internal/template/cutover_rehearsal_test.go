@@ -250,6 +250,10 @@ func TestCutoverRehearsalRefusals(t *testing.T) {
 		if res.exit != 2 {
 			t.Errorf("a workdir inside the source must be refused (exit 2), got %d\n%s", res.exit, rlsNorm(res.out))
 		}
+		// A refusal leaves nothing behind, least of all inside the source.
+		if _, err := os.Stat(filepath.Join(src, "m6")); err == nil {
+			t.Errorf("the refused rehearsal created %s inside the source", filepath.Join(src, "m6"))
+		}
 	})
 
 	t.Run("a_source_without_the_remote_tracking_refs_is_refused", func(t *testing.T) {
