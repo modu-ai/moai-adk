@@ -341,10 +341,10 @@ Run by a fourth manager-develop worker (`cycle_type=tdd`) on the same worktree. 
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-**Scope of this signal: M1, M2, M3 and M4 (a partial run).** M5 (CHANGELOG, optional docs, hand-off) is not started, so the run phase of the SPEC as a whole is NOT complete and this is not the final run-phase signal; a later run-phase worker replaces this paragraph when M5 closes. What is ready to be audited now:
+**Scope of this signal: M1 through M5 — the run phase is complete.** M1-M4 are the implementation milestones below; M5 (CHANGELOG, optional docs, hand-off) closed in the single sync commit, whose evidence is §E.4. This paragraph was updated by the sync-phase worker at the leader's dispatch (the earlier text said a later run-phase worker would replace it when M5 closed; M5 is documentation and hand-off only, so no further run-phase code worker exists). The claims below are unchanged from the M4 run. What was ready to be audited at M4 and remains the audited subject:
 
 - M4 (a later commit on the same branch, parent = M3's commit, not pushed): AC-012, AC-013, AC-014 and the template half of AC-015 PASS on the evidence in §E.2 M4 (7 new tests green, whole `internal/template/...` green, 19 `internal/cli` guards green, lint 0 issues, `make build` exit 0).
-- `run_milestones_done: M1, M2, M3, M4` · cycle: tdd (RED → GREEN → REFACTOR; the REFACTOR step found nothing to simplify — one policy file of 53 code lines, a one-line wiring on each path, and the single config normaliser; no second discriminator, no new dependency).
+- `run_milestones_done: M1, M2, M3, M4, M5` (M5 = CHANGELOG + hand-off, closed in the sync commit) · cycle: tdd (RED → GREEN → REFACTOR; the REFACTOR step found nothing to simplify — one policy file of 53 code lines, a one-line wiring on each path, and the single config normaliser; no second discriminator, no new dependency).
 - Commits on `WT-codex-review-lane-scope` (parent `984d64957`): M1 `fdb4932eb` (a deliberately RED commit — tests, declaration stub, config field, SPEC `status: in-progress`); M2 = the commit that follows it in `git log` (policy file, the two wirings, config test, this evidence). Not pushed.
 - M3 (a later commit on the same branch, parent = M2's commit, not pushed): AC-007, AC-008, AC-009, AC-010, AC-011, AC-016 and the M3 slice of AC-015 PASS on the evidence in §E.2 M3 (109-test union run: 0 FAIL, 0 SKIP; whole `internal/web`, `internal/mcp`, `internal/settings` packages green; eight mutants killed; coverage of the new file 94.3%). AC-012, AC-013, AC-014 and the template half of AC-015 were done in M4 (first bullet above).
 - ACs owned by M1/M2 — AC-001, AC-002, AC-003, AC-004, AC-005, AC-006: PASS on the evidence in §E.2 (final union run: 64 top-level PASS, no FAIL/SKIP; three mutants killed). AC-004 (b) became a regression line only after its own pre-change PASS was observed (M1).
@@ -355,7 +355,72 @@ Run by a fourth manager-develop worker (`cycle_type=tdd`) on the same worktree. 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync base `f586579c3` (M4 commit) on branch `WT-codex-review-lane-scope`, card worktree `.moai/worktrees/t1422`, nothing pushed. Sync scope (manager-docs role): the `CHANGELOG.md` `[Unreleased]` `### Added` entry (first bullet, newest-first), this signal, the M5 hand-off list, the §E.3 closing sentence, and the `spec.md` frontmatter `status` and `updated` fields on the single sync commit. No Go, agent, rule or template file is touched by this commit.
+
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-10-02
+card: t1422
+sync_commit_sha: pending-backfill
+changelog_path: CHANGELOG.md
+changelog_entry_position: "[Unreleased] > ### Added, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged, single sync commit); updated: 2026-10-02"
+  plan_md_acceptance_md: "stateless on the status axis per spec-frontmatter-schema.md (no status field to transition)"
+  progress_md: "no frontmatter; this section is the sync signal"
+b12_self_test_a: "PASS — `grep -c 'SPEC-CODEX-REVIEW-OWNERSHIP-001' CHANGELOG.md` = 0 before the entry landed; = 1 after"
+b12_self_test_b: "PASS — ac_source=.moai/specs/SPEC-CODEX-REVIEW-OWNERSHIP-001/acceptance.md (tier M, resolved, non-empty). The MOAI-AC-COUNTER (default AC prefix) printed 16 on stdout and `live=16 excluded=0 ambiguous=0` on stderr, exit 0; `grep -c '^### AC-' acceptance.md` = 16; the CHANGELOG entry states 16 acceptance criteria AC-001..016"
+b12_self_test_c: "PASS — every path named in the CHANGELOG entry was checked present with ls (the two new Go files and their tests, the changed Go files, the catalogue file, i18n.js, the four docs-site guides, the three agent definitions and mirrors, the two rule-file pairs and mirrors, the template workflow.yaml and catalog.yaml, the new template test); the diffstat 984d64957..f586579c3 lists defaults.go, types.go, catalog.yaml, i18n.js, codex_review_gate.go, codex_stop_chain.go and mcp_selfreview_fixture_test.go"
+public_docs_judgment: "docs-site: the four guides/mcp-server.md pages were updated in M3 (tool table, project_root inventory) and no page in README*.md or docs-site/content carries a stale 45-tool count (`grep -rn -E '\\b45 (MCP )?tools|45-tool|forty-five'` over README*.md and docs-site/content: no match). No further page is owed: tree_scope is a commented template example, not a console field, and the card-review stage is lane doctrine."
+m5_optional_items:
+  readme_x4: "skipped — the README files name codex_audit but carry no tool-count or review-tool inventory to correct; a new line would need the four-locale heading/emoji/parity checks for no stale claim removed"
+  multi_model_audit_x4: "skipped — advanced/multi-model-audit pages describe audit convergence, which this SPEC did not change; adding a self-review paragraph would touch four locales and their parity guards for a non-audit surface"
+  moai_ref_cross_model_audit_skill_one_liner: "skipped — touching a skill body changes internal/template/catalog.yaml skill hashes and the skill mirror pair, and card t1423 edits the auditor/cross-model documents; recorded, not dropped"
+mx_validation: "read-only; no tag owed in sync. The run phase already placed @MX:NOTE on runSelfReview, glmSelfReview and treeScopeSkipApplies, and @MX:SPEC on the two new Go files; this commit edits no Go file"
+read_during_sync: "spec.md, plan.md (§F, §G, §I M5, §J), acceptance.md (AC-014..016, DoD), progress.md §E.1-§E.3 and the Decision Log, manager-docs.md §B12, internal/cli/mcp_selfreview.go, internal/cli/codex_review_tree_scope.go, the template workflow.yaml diff, the mcp_server.go and catalog.go diffs, CHANGELOG.md [Unreleased] head"
+not_run_in_sync: "no whole-package ./internal/cli or ./internal/template run (AGENTS.md section 4; moai slot status showed a held lease); no CI; no sync-audit; no make build"
+```
+
+### Sync verification batch (this run, this tree, HEAD `f586579c3` plus the uncommitted CHANGELOG.md and progress.md edits)
+
+Every Go test ran as one env-scrubbed compound call (`unset MOAI_KANBAN … MOAI_PROFILE_LEASE_TOKEN && go test … -count=1 -v`); logs under `.moai/reports/t1422/sync/` (gitignored, local evidence — the lines below are the citable part).
+
+| Check | Command (abbreviated) | Observed |
+|---|---|---|
+| SPEC lint | `moai spec lint SPEC-CODEX-REVIEW-OWNERSHIP-001` | exit 0, `✓ No findings — all SPEC documents are valid` |
+| `internal/cli` guard set | `go test ./internal/cli/ -run '^(<73 exact names>)$' -count=1 -v` — names from `go test ./internal/cli/ -list` filtered to the TreeScope, CodexReviewGate, CodexStopChain_TreeScopeSkip, CodexReviewScope, SelfReview, MCPToolCatalogue, ProjectRootDoc, DocsSiteProjectRoot, ReviewGateReaders, required-gate and registration/annotation guards | exit 0; 73 names, 73 top-level `--- PASS`, 0 FAIL/SKIP, 259 `=== RUN` (subtests included); `ok github.com/modu-ai/moai-adk/internal/cli 179.401s` |
+| `internal/template` M4 set | `go test ./internal/template/ -run '^(TestReviewOwnership_…7 names)$' -count=1 -v` | exit 0; 7 listed, 7 top-level `--- PASS`, 0 FAIL/SKIP, 28 `=== RUN`; `ok …/internal/template 0.296s` |
+| `internal/mcp`, `internal/web` | `go test ./internal/mcp/ ./internal/web/ -count=1` (whole packages) | exit 0; `ok …/internal/mcp 0.275s`, `ok …/internal/web 75.289s` |
+| `internal/config` | `go test ./internal/config/ -run '^(TestNormalizeCodexReviewGateTreeScope|TestDefaultConfig_CodexReviewGateTreeScopeIsReview|TestTemplateWorkflowYAML_JevShipsOff|TestShippedConfigKeysHaveReaders)$' -count=1 -v` | exit 0; 4 names, 4 top-level `--- PASS`, 8 `=== RUN`; `ok …/internal/config 5.295s` |
+| Build | `go build ./...` ; `GOOS=windows GOARCH=amd64 go build ./...` | `build-exit=0` ; `winbuild-exit=0` |
+| Lint | `golangci-lint run --timeout=5m ./internal/cli/... ./internal/template/... ./internal/mcp/... ./internal/web/... ./internal/config/...` (golangci-lint v2.1.6) | `lint-exit=0`, `0 issues.` |
+
+### Hand-off list (the leader's, outside this SPEC's code — none of these is a satisfied requirement)
+
+1. **`tree_scope: skip` in the primary checkout.** After landing, the leader decides whether the primary `workflow.yaml` (tracked file, local modification) needs `workflow.codex.review_gate.tree_scope: skip`. As of the 2026-10-02 16:39 KST observation that file read `codex.review_gate.enabled: false` (an operator-approved temporary measure, modified 15:32), so the gate was already off and `skip` is needed only if the gate is turned back on there. It is a moving operator state: re-read the file at landing. Persistence across a release sync is unresolved (plan.md O-3; first release sync is when to check).
+2. **t1404** — edit it down to its residual items (T2, T4, T5, T8) after this SPEC lands; do not close it beforehand (plan.md §D, Q4).
+3. **Card t1426** — the audit tools' `baseBranch` resolution (`resolveReviewBaseBranchName`, `resolveReviewMergeBase`); this SPEC leaves it unchanged by design. Issuing the card is the leader's.
+4. **Sibling SPEC-CODEX-REVIEW-ASYNC-001** — lands after this one; it needs one amendment and a final re-audit first (see its own progress.md). Its insertion points in `HandleCodexReviewGate` do not overlap this SPEC's (spec.md §E).
+5. **Decision to read — GLM empty material (M3, I3-2 (a)).** A `glm_review` call on a tree whose diff is empty returns `inconclusive` with zero HTTP calls even when untracked files exist (they are named in `excluded_untracked`). That departs from the literal wording of spec.md REQ-CRO-010's empty-material definition ("no untracked non-runtime files either"); Q14 delegated the case to the first run milestone. codex keeps the literal definition (untracked-only is still reviewed). Recorded in §E.2 M3; reverting is one condition in `runSelfReview`.
+6. **Merge-conflict risk on card t1424.** t1424 edits the `tools:` line of `manager-develop.md`. M4 only appended `mcp__moai__codex_review, mcp__moai__glm_review` at the end of that line without moving any line number: local (C1) `.claude/agents/moai/manager-develop.md:9`, distributed mirror (C2) `internal/template/templates/.claude/agents/moai/manager-develop.md:10` (manager-docs C1 `:9`/C2 `:9`, manager-lead C1 `:10`/C2 `:10`; line numbers per §E.2 M4). Whichever card lands second merges that one line in both copies; the emitted `.codex/agents/moai/*.toml` files did not change, and `internal/template/catalog.yaml` agent-hash lines will need regenerating (`make build`).
+7. **Risk with card t1399.** `reviewGateEnvContext` in `internal/cli/codex_review_scope.go` references `config.EnvMoaiFactoryWorker`; if t1399 deletes that constant, the file stops compiling (not a change of this SPEC). `TestTreeScopePolicy_EnvMatrix` derives its key list from `internal/config/envkeys.go`, so a deleted key moves the matrix rather than failing it silently.
+8. **The session MCP server runs an older build.** It reports `v3.2.0-rc.23 (commit d194083fb)` and does not list `codex_review` / `glm_review`. After the leader rebuilds and installs the rc, the MCP server must be reconnected before a lane can call the new tools; until then the card-review stage's codex leg uses `moai verify codex-review --project-root <tree>` and the GLM leg is unavailable.
+
+### Gaps
+
+- No whole-package `./internal/cli` or `./internal/template` run in this sync (`moai slot status` showed a held lease; AGENTS.md section 4); the 73 + 7 named tests are the measurement, and the leader's batch CI covers the rest. `internal/hook` was not run (no file there changed in this SPEC).
+- Which working-tree files codex reads for a `baseBranch` target is unobserved (the live probe was cut at `turn/started`); the CHANGELOG makes no claim about it.
+- Hugo build of the docs-site was not run; docs-site parity rests on the Go guards that read the markdown.
+- The `go test` exit codes were taken from the tool result and from `echo "exit=$?"` after redirected runs; the per-run logs are local scratch.
+- `moai spec audit` result: see the Close-out section, appended by the backfill commit.
+
+### Residual risk
+
+- The card-review stage has no hook: a lane that stops running it is caught only if the leader's completion read lists `card-review.md` (by design; the gap sentence covers it).
+- Both tools are synchronous; a host tool timeout shorter than the 900 s review budget loses a call, and `glm_review` has no fallback.
+- Under `tree_scope: skip`, a card worktree on a detached HEAD resolves as having no `WT-` branch and is not reviewed by the turn-end gate (plan.md §G risk 11).
+- `scope: uncommitted` in the primary checkout reviews the shared working tree, which may hold another session's work.
+- The persistence of a primary-checkout `tree_scope: skip` across a release sync is unresolved (hand-off item 1).
 
 ## §F Phase 4 Mode Selection
 

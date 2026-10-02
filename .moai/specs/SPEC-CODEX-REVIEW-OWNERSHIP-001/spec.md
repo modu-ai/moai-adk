@@ -2,7 +2,7 @@
 id: SPEC-CODEX-REVIEW-OWNERSHIP-001
 title: "codex 리뷰의 소유권을 재배치한다 — 카드 리뷰는 레인의 단계, 비카드 세션은 설정으로 제외, 모든 세션에 온디맨드 자기 리뷰"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
