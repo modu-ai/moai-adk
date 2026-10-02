@@ -18,7 +18,21 @@ import (
 )
 
 const factoryHookContextLimit = 2048
-const factoryHookInspectionDeadline = 200 * time.Millisecond
+
+// factoryHookInspectionDeadline bounds the inbox claim. It is a variable only
+// so tests can pin it generously or exhaust it deterministically
+// (SPEC-FACTORY-STALE-RUN-HEAL-001 plan §B seams); production never assigns it.
+var factoryHookInspectionDeadline = 200 * time.Millisecond
+
+// Measurement seams of the registration path (SPEC-FACTORY-STALE-RUN-HEAL-001
+// REQ-SRH-009): the factory database path is resolved ONCE per invocation and
+// the run state is read with ONE query, so tests count both. Production never
+// assigns them.
+var (
+	factoryHookDBPath     = homestate.FactoryDBPath
+	factoryHookProbeRun   = factorymsg.ProbeRunStateAt
+	factoryHookActiveRuns = factorymsg.ActiveRunIDsAt
+)
 
 type factoryPeerBindMode uint8
 
@@ -52,10 +66,19 @@ func registerFactoryUserPromptPeer(ctx context.Context, input *HookInput) string
 }
 
 func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factoryPeerBindMode) string {
+	notice, _ := registerFactoryHookPeerRun(ctx, input, mode)
+	return notice
+}
+
+// registerFactoryHookPeerRun is registerFactoryHookPeer plus the run a
+// UserPromptSubmit registration rebound the session into ("" for every other
+// outcome). The prompt handler hands that run to the same invocation's inbox
+// claim (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-008).
+func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode factoryPeerBindMode) (notice, reboundRun string) {
 	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
 	root := factoryHookRoot(input)
 	if runID == "" || root == "" || input.SessionID == "" {
-		return ""
+		return "", ""
 	}
 	// The persisted vocabulary is `leader` for the run's leader and
 	// `lane`/`lane-<n>` for a lane (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-010).
@@ -66,10 +89,10 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if label != "" {
 		if kanban.IsLegacyFactoryRoleValue(label) {
-			return staleRunPrescriptionGate(ctx, root, input.SessionID, label, runID, langEnglish)
+			return staleRunPrescriptionGate(ctx, root, input.SessionID, label, runID, langEnglish), ""
 		}
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
-		return ""
+		return "", ""
 	}
 	role, slot := kanban.RoleLeader, kanban.RoleLeader
 	if label != "" {
@@ -81,58 +104,102 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	}
 	ownerPID, resolved := session.ResolveOwnerPID()
 	if !resolved {
-		return "factory messaging degraded: session owner identity unavailable"
+		return "factory messaging degraded: session owner identity unavailable", ""
 	}
 	start, state := homestate.ProbeProcessIdentity(ownerPID)
 	if state != homestate.ProcessIdentityLive || start == "" {
-		return "factory messaging degraded: process-start identity unavailable"
+		return "factory messaging degraded: process-start identity unavailable", ""
 	}
-	if err := factorymsg.ValidateActiveRun(ctx, root, runID); err != nil {
-		return "factory messaging degraded: " + err.Error()
+	// ONE measurement of the named run: the database path is resolved once and
+	// the run state is read with one query (REQ-SRH-009 — the same count as the
+	// ValidateActiveRun call this replaces, but a tri-state verdict that tells a
+	// measured not-active run from a failed measurement).
+	if !factorymsg.ValidRunID(runID) {
+		return "factory messaging degraded: invalid factory run id", ""
+	}
+	dbPath, err := factoryHookDBPath(root)
+	if err != nil {
+		return "factory messaging degraded: " + err.Error(), ""
+	}
+	runState, _, probeErr := factoryHookProbeRun(ctx, dbPath, runID)
+	switch runState {
+	case factorymsg.RunStateUnavailable:
+		if probeErr == nil {
+			probeErr = errors.New("factory state unmeasurable")
+		}
+		return "factory messaging degraded: " + probeErr.Error(), ""
+	case factorymsg.RunStateNotActive:
+		if role != kanban.RoleLane {
+			// A leader is not a lane: its answer on a not-active run is the one
+			// it always had.
+			return "factory messaging degraded: NO_ACTIVE_FACTORY", ""
+		}
+		if mode == factoryPeerBindSessionStart {
+			// The first prompt measures the state and carries the rebound,
+			// unbound, ambiguity or refusal notice (REQ-SRH-005, DP6).
+			return "", ""
+		}
+		want := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), Backend: backend, Role: role, Slot: slot, SessionUUID: input.SessionID, Generation: 1, PID: ownerPID, ProcessStart: start}
+		return rebindFactoryLane(ctx, laneRebindRequest{root: root, dbPath: dbPath, sessionID: input.SessionID, envRun: runID, slot: slot, want: want})
 	}
 	s, err := factorymsg.Open(root, runID)
 	if err != nil {
-		return "factory messaging degraded: " + err.Error()
+		return "factory messaging degraded: " + err.Error(), ""
 	}
 	defer closeFactoryHookStore(s)
 	want := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: runID, Backend: backend, Role: role, Slot: slot, SessionUUID: input.SessionID, Generation: 1, PID: ownerPID, ProcessStart: start}
 	if current, peerErr := s.Peer(ctx, input.SessionID); peerErr == nil {
 		if current.ProjectKey == want.ProjectKey && current.RunID == want.RunID && current.Backend == want.Backend && current.Role == want.Role && current.Slot == want.Slot && current.PID == want.PID && current.ProcessStart == want.ProcessStart {
-			return ""
+			return "", ""
 		}
 	} else if !errors.Is(peerErr, sql.ErrNoRows) {
-		return "factory messaging degraded: " + peerErr.Error()
+		return "factory messaging degraded: " + peerErr.Error(), ""
 	}
 	if mode == factoryPeerBindSessionStart {
 		if notice, handled := bindFactoryInteractiveHandoff(ctx, s, input, want); handled {
-			return notice
+			return notice, ""
 		}
 		p, bound, bindErr := s.BindLaunchPending(ctx, want)
 		if bindErr != nil {
 			if notice, ok := factoryHandoffRegistrationNotice(bindErr, slot); ok {
-				return notice
+				return notice, ""
 			}
-			return "factory messaging degraded: " + bindErr.Error()
+			return "factory messaging degraded: " + bindErr.Error(), ""
 		}
 		if !bound {
-			return ""
+			return "", ""
 		}
-		return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation)
+		return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation), ""
 	}
 	p, err := s.RegisterPeer(ctx, want)
 	if err != nil {
 		if notice, ok := factoryHandoffRegistrationNotice(err, slot); ok {
-			return notice
+			return notice, ""
 		}
-		return "factory messaging degraded: " + err.Error()
+		return "factory messaging degraded: " + err.Error(), ""
 	}
-	return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation)
+	return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation), ""
 }
 
+// factoryHookBatch is the inbox claim keyed on the run the launch environment
+// names. Stop calls it and rebinds nothing (SPEC-FACTORY-STALE-RUN-HEAL-001
+// REQ-SRH-008).
 func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (string, bool, string) {
+	return factoryHookBatchForRun(ctx, input, event, "")
+}
+
+// factoryHookBatchForRun is the inbox claim of one invocation. A non-empty
+// runOverride is the run a UserPromptSubmit registration just rebound the
+// session into (REQ-SRH-008): the claim opens that run's broker and never the
+// environment run's. An empty override is the environment run — the claim
+// sequence for every non-rebound session is untouched.
+func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventType, runOverride string) (string, bool, string) {
 	ctx, cancel := context.WithTimeout(ctx, factoryHookInspectionDeadline)
 	defer cancel()
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(runOverride)
+	if runID == "" {
+		runID = strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	}
 	root := factoryHookRoot(input)
 	if runID == "" || root == "" || input.SessionID == "" {
 		return "", false, "disabled"

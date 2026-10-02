@@ -54,6 +54,22 @@ var ErrEndpointLaunchPending = errors.New("factory endpoint is launch-pending")
 // launch-pending endpoint is awaiting its first bind, not superseded.
 var ErrStalePeer = errors.New("stale or unregistered peer")
 
+// liveOwnerError is the refusal RegisterPeer returns when a different live
+// process still owns the slot or the session UUID. The messages are unchanged
+// (the MCP and hook surfaces print them); the type lets a caller tell a
+// live-owner refusal from any other registration failure without matching text
+// (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-007).
+type liveOwnerError struct{ msg string }
+
+func (e liveOwnerError) Error() string { return e.msg }
+
+// IsLiveOwnerRefusal reports whether err is RegisterPeer's refusal to displace
+// a live owner of the slot or the session UUID.
+func IsLiveOwnerRefusal(err error) bool {
+	var e liveOwnerError
+	return errors.As(err, &e)
+}
+
 // queryer is the single-row query surface shared by *sql.DB, *sql.Tx, and
 // *sql.Conn, so a check can run on whichever handle the caller holds.
 type queryer interface {
@@ -434,7 +450,7 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 		if oldSession == p.SessionUUID {
 			if oldPID != p.PID || oldStart != p.ProcessStart {
 				if s.ownerCurrent(oldPID, oldStart) {
-					return Peer{}, errors.New("factory session UUID has a live owner")
+					return Peer{}, liveOwnerError{"factory session UUID has a live owner"}
 				}
 				if p.Generation <= oldGen {
 					p.Generation = oldGen + 1
@@ -444,7 +460,7 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 			}
 		} else {
 			if (oldPID != p.PID || oldStart != p.ProcessStart) && s.ownerCurrent(oldPID, oldStart) {
-				return Peer{}, errors.New("factory logical lane has a live owner")
+				return Peer{}, liveOwnerError{"factory logical lane has a live owner"}
 			}
 			if p.Generation <= oldGen {
 				p.Generation = oldGen + 1

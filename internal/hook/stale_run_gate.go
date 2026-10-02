@@ -67,9 +67,16 @@ const (
 // two kinds are recorded independently: the prescription (REQ-SRL-002, at
 // most once) and the unbind notice (REQ-SRL-005, exactly one and final —
 // after it nothing emits for the identity again).
+//
+// State is the third, independent carrier: the last emitted state key of a
+// current-vocabulary lane session (`rebound:Y`, `unbound:X`, `ambiguous:<ids>`,
+// `refused:Y` — SPEC-FACTORY-STALE-RUN-HEAL-001 DP12). The two legacy fields
+// are never read or written by that path, so the legacy cadence — and the
+// finality of the legacy unbind notice — is untouched.
 type factoryNoticeMarker struct {
 	PrescriptionEmittedAt string `json:"prescription_emitted_at,omitempty"`
 	UnbindEmittedAt       string `json:"unbind_emitted_at,omitempty"`
+	State                 string `json:"state,omitempty"`
 }
 
 func (m factoryNoticeMarker) emitted(kind string) bool {
@@ -132,6 +139,13 @@ func readFactoryNoticeMarker(dbPath, sessionID string) factoryNoticeMarker {
 }
 
 func markFactoryNotice(dbPath, sessionID, kind string) {
+	updateFactoryNoticeMarker(dbPath, sessionID, func(m *factoryNoticeMarker) { m.mark(kind, time.Now()) })
+}
+
+// updateFactoryNoticeMarker reads the session identity's marker, applies edit
+// and writes it back; fields edit does not touch are preserved. Failures fail
+// open exactly as markFactoryNotice documents.
+func updateFactoryNoticeMarker(dbPath, sessionID string, edit func(*factoryNoticeMarker)) {
 	if sessionID == "" || dbPath == "" {
 		// A session without an identity cannot own a carrier; fail open to
 		// over-informing (emit unmarked). Degenerate input — production hook
@@ -146,7 +160,7 @@ func markFactoryNotice(dbPath, sessionID, kind string) {
 		return
 	}
 	m := readFactoryNoticeMarker(dbPath, sessionID)
-	m.mark(kind, time.Now())
+	edit(&m)
 	data, err := json.Marshal(m)
 	if err != nil {
 		return
