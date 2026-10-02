@@ -2,7 +2,7 @@
 
 > 이 문서는 plan-phase 에서 이 SPEC 의 입장이 의지하는 사실을 한곳에 모은다. 각 사실은 **명령, 관측 출력, 측정한 트리**로 귀속된다. 입력 보고서 두 건(`.moai/reports/t1453/m0-measurement.md`, `m0-research-synthesis.md`)에서 가져온 수치는 "인용"으로 표시하고 이 회차에 다시 측정하지 못한 것은 §9 Gaps 에 올린다.
 >
-> 측정 트리: 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2`. 원격 팁은 2026-10-02 에 `git fetch origin develop main` 으로 가져왔고(종료 코드 0) 해석값은 develop `284e09c44023598affe486f17701717ca173e6ca`, main `4755c5e506225ba90b7a303c5763fa303c699492` 다. 원격 팁은 움직이는 참조이므로 아래 수치를 팁이 움직인 뒤 다시 인용하지 않는다.
+> 측정 트리: 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2`. 원격 팁은 2026-10-02 에 `git fetch origin develop main` 으로 가져왔고(종료 코드 0) 해석값은 develop `284e09c44023598affe486f17701717ca173e6ca`, main `4755c5e506225ba90b7a303c5763fa303c699492` 다. 원격 팁은 움직이는 참조이므로 아래 수치를 팁이 움직인 뒤 다시 인용하지 않는다. 개정 0.1.1(2026-10-02)에서 다시 잰 값은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에서 측정했고 GitHub 쪽 값은 같은 날 `gh` 로 읽은 것이다(원장 M-n).
 
 ## §1 이 회차에 직접 측정한 것과 그 방법
 
@@ -37,19 +37,20 @@ GitHub 가 7.7천 개 파일·1.07백만 줄 규모(`git diff --shortstat origin
 
 ## §4 CI 사용량
 
+아래 표는 **2026-10-02 의 이 개정 회차에서 다시 측정해 재현된 것**만 담는다. `gh` 목록 응답은 움직이는 데이터이고 창을 고정하지 않은 `--limit` 표본은 같은 명령이 다른 구성을 돌려주는 것이 관측됐다(아래 마지막 항목). 그래서 가능한 곳은 `--created` 로 창을 고정했다. 평균은 모두 평균이며 중앙값은 이 문서·`design.md` 어디에도 쓰지 않는다.
+
 | 관측 | 명령 | 결과 |
 |---|---|---|
-| 최근 12회 CI 런 (모두 `event: push`, `headBranch: develop`, 2026-10-01T13:38:32Z ~ 2026-10-02T09:27:17Z) | `gh run list --workflow=CI --limit 12 --json event,conclusion,createdAt,headBranch,startedAt,updatedAt` | failure 7회, cancelled 5회, success 0회. failure 7회의 `startedAt`→`updatedAt` 은 1046·1223·1413·1484·1517·1551·1443 초(평균 1382 초) |
-| PR 이벤트 CI 60회 표본 | `gh run list --workflow=CI --event pull_request --limit 60 --json status,conclusion,startedAt,updatedAt,headBranch,createdAt` | `createdAt` 2026-04-09 ~ 2026-07-06, success 29·failure 28·cancelled 3. success 평균 190 초, 600 초를 넘는 9회의 평균 976 초 |
-| main push CI 30회 | `gh run list --workflow=CI --event push --branch main --limit 30 --json conclusion,createdAt,startedAt,updatedAt` | success 21·cancelled 8·startup_failure 1. success 평균 594 초 |
-| CI 트리거 | `git grep -n -E "branches: \[main" -- .github/workflows/ci.yml` | `:18 branches: [main, develop]`(push), `:20 branches: [main]`(pull_request) |
-| 최근 병합 PR 20건의 대상 | `gh pr list --state merged --limit 20 --json number,baseRefName,headRefName,mergedAt` | develop 17건·main 3건 |
+| develop push CI 최근 12회 (원장 M-1) | `gh run list --workflow=CI --branch develop --limit 12 --json conclusion,createdAt,startedAt,updatedAt --jq …` | failure 7·cancelled 5·success 0, `createdAt` 2026-10-01T13:38:32Z ~ 2026-10-02T09:27:17Z. failure 7회의 `startedAt`→`updatedAt` 은 1046·1223·1413·1484·1517·1551·1443 초(평균 1382 초). 같은 구성을 이 회차에 세 번 관측 |
+| main push CI, 창 고정 (원장 M-2) | `gh run list --workflow=CI --event push --branch main --created '2026-07-01..2026-10-02' --limit 200 --json conclusion,createdAt,startedAt,updatedAt --jq …` | n=200(한도에 닿았으므로 창 안의 최근 200회), success 146·cancelled 43·failure 10·startup_failure 1, `createdAt` 2026-07-16T21:58:31Z ~ 2026-09-10T01:46:49Z, success 평균 438 초. 같은 결과를 두 번 관측 |
+| 최근 병합 PR 20건의 대상 (원장 M-3) | `gh pr list --state merged --limit 20 --json baseRefName,mergedAt --jq …` | develop 17건·main 3건, `mergedAt` 2026-09-09T20:10:46Z ~ 2026-10-01T16:45:43Z. 두 번 관측 |
+| CI 트리거 | `git grep -n -E "branches: \[main" -- .github/workflows/ci.yml` | `:18 branches: [main, develop]`(push), `:20 branches: [main]`(pull_request) (원장 E-21) |
 
 해석(관측에서 나온 것만):
 
-- `ci.yml` 의 PR 트리거가 main 대상 PR 만 포함하고 최근 PR 이 대부분 develop 대상이므로 PR 이벤트 표본이 04~07월에서 끝난다. 카드 PR 이 main 을 향하면 별도 트리거 변경 없이 PR 마다 CI 가 돈다.
-- develop push CI 의 최근 12회에 success 가 없다는 사실은 절체 경계의 전제(녹색 팁)에 영향을 준다(NC-2).
-- 입력 보고서가 인용한 "CI 1런 평균 1786 초(n=9)"는 이 회차의 어느 표본에서도 같은 선택 기준으로 재현하지 못했다. 이 SPEC 은 그 수치를 입력으로 쓰지 않고 위 관측 범위(failure 런 1046~1551 초, PR 이벤트 success 중앙값 173 초)를 쓴다.
+- `ci.yml` 의 PR 트리거가 main 대상 PR 만 포함하고 최근 병합 PR 이 대부분 develop 대상이므로 카드 PR 이 main 을 향하면 별도 트리거 변경 없이 PR 마다 CI 가 돈다.
+- develop push CI 의 최근 12회에 success 가 없다는 사실은 절체 경계의 전제(녹색 팁)가 된다 — 운영자가 origin/develop 팁 CI 녹색을 선행 조건으로 정했다(design D-17).
+- **1회차 기록에서 뺀 항목**: (1) "PR 이벤트 CI 60회 표본"(success 29·failure 28·cancelled 3, 평균 190 초)은 감사가 같은 명령을 다시 돌렸을 때 다른 값(46/8/6, 평균 470 초)이 나와 재현되지 않으므로 표와 설계의 증거 표에서 뺐다. (2) "main push CI 30회"(success 21·평균 594 초)는 창을 고정하지 않은 `--limit 30` 표본이었고, 이 회차에 같은 명령이 success 7·failure 8·cancelled 15, `createdAt` 2026-07-09 ~ 2026-08-08 이라는 다른 구성을 돌려주었다 — 재현되지 않아 위의 창 고정 표본으로 대체했다. (3) 입력 보고서가 인용한 "CI 1런 평균 1786 초(n=9)"는 어느 표본에서도 같은 선택 기준으로 재현하지 못했다. 이 SPEC 은 그 수치들을 입력으로 쓰지 않는다.
 - 비용 사실(질적): 지금은 약 `lead_push_threshold`(20)장의 카드가 develop push CI 한 번으로 검증된다. 카드 PR 체제는 카드마다 PR CI 를 한 번 돌리고 병합 뒤 main push CI 가 또 돈다. 청구 분은 측정하지 못했다. 저장소가 공개(`private: false`)이므로 호스티드 러너 분이 청구 대상인지는 GitHub 정책 확인이 필요하며 이 회차에는 확인하지 않았다.
 - `ci.yml` 의 `concurrency` 는 ref 단위로 `cancel-in-progress: true` 다. cancelled 런의 개별 원인은 런별로 확인하지 않았다.
 
@@ -70,7 +71,7 @@ GitHub 가 7.7천 개 파일·1.07백만 줄 규모(`git diff --shortstat origin
 
 - t810 — 상태 `picked`. 줄 아래에 `↳ absorbs t1453 (agent)` 가 기록돼 있다.
 - t1453 — 상태 `picked`. 줄 아래에 `↳ absorbs t810 (agent)` 가 기록돼 있다.
-- 두 카드가 서로를 흡수한다고 적혀 있어 관계 기록만으로는 어느 쪽이 대체되는지 정해지지 않는다. 카드 본문 t1453 은 "t810: 흡수/대체 판정"을 요구한다. 판정은 리더 소관(NC-4)이다.
+- 두 카드가 서로를 흡수한다고 적혀 있어 관계 기록만으로는 어느 쪽이 대체되는지 정해지지 않았다. 카드 본문 t1453 은 "t810: 흡수/대체 판정"을 요구했고, 리더가 t1453 이 t810 을 흡수하기로 정했다(design D-19).
 - t1452 — 상태 `queued`. 범위 (a) 지명 없는 acquire, (b) 흡수 트리 재측정을 창 획득 전에, (c) 동일 테스트 명령 재실행 억제.
 - t1448 — 상태 `picked`. 이 카드의 트리 `4bf547bca` 의 최근 병합 목록에 착지 흔적은 보이지 않는다(착지 여부 자체는 읽지 않았다).
 
@@ -129,23 +130,31 @@ GitHub 가 7.7천 개 파일·1.07백만 줄 규모(`git diff --shortstat origin
 - detached 워크트리에서 `scripts/release.sh --dry-run` 을 직접 실행하지 않았다(브랜치 이름 검사 소스와 `rev-parse` 관측으로 추론).
 - 도구 거부: `git ls-files` 를 쓴 파이썬 일회성 스크립트가 워크트리 가드에 거부돼, 상시로드 기준선은 `git` 을 이름에 담지 않는 파일 순회 스크립트로 다시 측정했다. 측정값은 거부된 호출에 의존하지 않는다(§10 의 상시로드 기준선).
 - 상시로드 기준선: 이 트리에서 `.claude/rules`+`.claude/output-styles` 의 `.md` 중 선두 frontmatter 에 최상위 `paths:` 가 없는 파일 16개, 합계 285,543 바이트, `paths:` 가 있는 파일 100개. `CLAUDE.md` 15,658·`AGENTS.md` 20,252·`AGENTS.local.md` 38,073 바이트. 순회 스크립트 방식이라 `acceptance.md` 의 RED-now 셀(단일 호출)이 아니라 회귀 방지 기준선이다.
-- 해소 전에는 확정할 수 없는 항목은 아래 §11 에 둔다.
+- **개정 0.1.1 에서 더한 Gaps**:
+  - 창을 고정하지 않은 `gh run list --limit N` 표본은 같은 명령이 다른 구성을 돌려주는 것이 관측됐다(§4). 1회차의 PR 이벤트 표본과 main push 30회 표본은 재현되지 않아 표에서 뺐다. 이 SPEC 의 CI 사용량 근거는 §4 의 재현된 세 행뿐이다.
+  - **병합 큐의 후속 측정 항목**(카드 발행은 리더 소관, 이 SPEC 은 카드 id 를 적지 않는다): 호스티드 러너 청구 분, CodeRabbit 한도 이력(3회 표본 "Review completed" 는 인용이며 재측정하지 않았다), 녹색 PR 뒤 적색 main 의 빈도.
+  - 이 회차의 도구 거부(verification-claim-integrity §3.1) 둘: (1) 워크트리 가드가 스크래치 프로브를 만드는 복합 셸 한 번(`mkdir` 과 `cat` 과 `go run` 을 이은 호출)을 "too complex" 로 거부했다. 같은 일을 `Write` 도구로 파일을 만든 뒤 `go -C <dir> run .` 한 번으로 다시 했고 프로브 결과는 그 두 번째 경로에서만 왔다. (2) `for` 반복문으로 네 파일의 `status:` 를 훑는 복합 호출을 거부했고 파일마다 단순한 `grep` 으로 다시 했다. 두 거부 모두 인용한 수치는 거부되지 않은 재호출에서 왔다.
+  - 스윕 가드 프로브(원장 M-5)의 소스는 저장소 밖 스크래치에 있고 커밋하지 않았다. 반복 가능한 형태는 AC-GFD-021 의 가드 자체 시험이다.
+  - `moai constitution amend` 는 실행하지 않았고 `--dry-run` 도 실행하지 않았다(`--dry-run` 이 대화형 층을 건너뛰는지 확인하지 못했다).
+  - 허용 목록 상한(40)의 근거가 되는 class N 줄 수는 이 회차에 다시 세지 않았다.
+  - 판정 도구 빌드: 설치된 `moai`(v3.2.0-rc.25, 커밋 802a72235)는 이 트리 HEAD 의 엄격한 조상이며 178 커밋 뒤처져 있다(`git merge-base --is-ancestor` 종료 코드 0). `moai constitution validate`·`moai spec lint` 의 인용은 이 트리 HEAD 에서 빌드한 `moai` 를 경로로 호출한 결과이고 설치본은 쓰지 않았다(verification-claim-integrity §2.2).
+- 이전 회차의 열린 질문은 모두 결정이 되었다 — §11.
 
 ## §10 상시로드 기준선 (REQ-GFD-014)
 
 위 §9 마지막에서 두 번째 항목의 수치를 그대로 쓴다. M4 착수 시 다시 측정해 "전" 값으로 삼고 M4 종료 때 "후" 값을 잰다. 호스트가 `InstructionsLoaded` 관측을 노출하면 함께 기록하고, 노출하지 않으면 그 사실을 보고한다(`.claude/rules/moai/workflow/rule-loading-budget.md`).
 
-## §11 미해소 질문
+## §11 이전 회차 질문 7건의 처분
 
-`plan.md` §I 와 같은 일곱 항목이다. 모두 권고 기본값이 있고 M1~M3 착수와 plan-audit 를 막지 않는다.
+1회차에 열려 있던 일곱 질문은 모두 번호 붙은 결정이 되었다. 표는 `plan.md` §I 에 있고 결정의 본문·출처·뒤집기 여부는 `design.md` 의 D-16 ~ D-22 에 있다. 이 문서의 사실이 그 결정을 지지하는 곳은 다음과 같다.
 
-- [NEEDS CLARIFICATION: NC-1 — rc 태그의 검사 5·6 대체 검사 필요 여부. 권고: 필요 없음(검사 1~4·7 이 출처를 보장)]
-- [NEEDS CLARIFICATION: NC-2 — develop push CI 가 최근 12회 success 없이 failure/cancelled 다. 절체 경계의 전제로 develop 팁 CI 녹색을 요구할 것인가(리더)]
-- [NEEDS CLARIFICATION: NC-3 — develop→main 수렴 PR 이 GitHub 대형 diff 한계에 걸리면 분할 PR 폴백과 보호 일시 완화 중 무엇을 쓸 것인가(운영자, 보호 변경 포함)]
-- [NEEDS CLARIFICATION: NC-4 — t810 과 t1453 이 큐에서 서로를 흡수한다고 기록돼 있다. 방향과 `SPEC-LATE-BRANCH-REDESIGN-001` 의 `superseded` 전환 시점·소유(리더)]
-- [NEEDS CLARIFICATION: NC-5 — 병합 큐 후속 측정 카드의 채택 임계(예: 녹색 PR 뒤 적색 main 의 허용 빈도)(리더)]
-- [NEEDS CLARIFICATION: NC-6 — 와이어 식별자(`push_develop` 등) 개명을 후속 카드로 발행할 것인가(리더)]
-- [NEEDS CLARIFICATION: NC-7 — 필수 체크 `Release PR Multi-OS Gate` 는 옵션 B 채택 뒤에도 비릴리스 PR 에서 항상 성공하는 무동작이다. 필수 체크 목록에서 뺄 것인가 두고 의미를 문서화할 것인가(보호 변경이므로 운영자)]
+- D-16(rc 규칙 R-a): §8 — `scripts/release.sh` 와 `release.yml` 의 검사 구조.
+- D-17(절체 선행 조건): §4 — develop push CI 12회에 success 가 없다는 관측, 그리고 `.moai/reports/t1453/m0-develop-ci-red.md` 의 적색 원인.
+- D-18(수렴 PR 폴백): §3 — 대형 diff 의 PR 가능 여부는 측정하지 못했다(Gap).
+- D-19(t810 흡수): §6.
+- D-20(병합 큐 보류): §2 의 `strict: false` 와 §4.
+- D-21(와이어 식별자): §7.1.
+- D-22(필수 체크 `Release PR Multi-OS Gate`): §8 — 비릴리스 PR 에서 무동작 성공이라는 구조.
 
 ---
 

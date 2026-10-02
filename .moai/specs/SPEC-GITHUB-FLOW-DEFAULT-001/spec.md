@@ -1,7 +1,7 @@
 ---
 id: SPEC-GITHUB-FLOW-DEFAULT-001
 title: "github-flow 기본 개발 흐름 전환 — main 단일 기준·카드 PR 전달·main 태그 릴리스"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-02
 updated: 2026-10-02
@@ -21,6 +21,7 @@ tier: L
 | 버전 | 날짜 | 작성 | 변경 |
 |---|---|---|---|
 | 0.1.0 | 2026-10-02 | manager-spec (카드 t1453) | plan-phase 산출물 최초 작성 (Tier L, 5 artifacts) |
+| 0.1.1 | 2026-10-02 | manager-spec (카드 t1453) | plan-audit 1회차(0.74, FAIL) 반영. 미해소 질문 7건을 결정 D-16~D-22 로 기록하고 표지 문자열을 제거. 절체 순서 충돌(AC-016·AC-019·push 트리거)을 D-17·D-25 로 해소. REQ-008·010·013·016·019·020·021·022 문언 정정, M2(d)·M3(f) 범위 삭제, AC-023(런북 내용) 추가로 AC 23개. REQ 는 22개 그대로 |
 
 ## §A 배경
 
@@ -30,9 +31,9 @@ tier: L
 
 ### A.2 현황 (실측 — 좌표는 `acceptance.md` 증거 원장과 `research.md`)
 
-- **배포 기본값은 이미 github-flow 다.** 이 저장소가 추적하는 설정만 manual 프로필에서 git-flow 값을 든다(원장 E-08: `worktree_base_branch: develop`, `workflow: git-flow`, `develop_branch: develop`). 같은 파일의 다른 두 프로필은 이미 `workflow: github-flow` 다.
-- **main 과 develop 은 크게 갈라져 있다.** 두 팁 사이 발산은 `7614 1` 이다(원장 E-26). main 에만 있는 커밋은 하나(`4755c5e50`, PR #1740)이고 develop 에는 그 내용이 없다. develop 이 main 을 흡수하는 병합은 충돌 없이 끝난다(`research.md` §3).
-- **develop 위의 통합은 로컬 병합 창과 리더 일괄 push 로 돌아간다.** 카드마다 PR 이 없고, 원격 CI 는 develop push 마다 한 번 돈다. 이 CI 의 최근 12회는 7회 failure·5회 cancelled 였다(`research.md` §4).
+- **배포 기본값은 이미 github-flow 다.** 배포 템플릿은 세 프로필 모두 `workflow: github-flow` 이고 `worktree_base_branch` 는 비어 있다(원장 E-30, `git-strategy.yaml.tmpl`). 이 저장소가 추적하는 설정만 manual 프로필에서 git-flow 값을 든다(원장 E-08, 이 저장소의 파일: `worktree_base_branch: develop`, `workflow: git-flow`, `develop_branch: develop`).
+- **main 과 develop 은 크게 갈라져 있다.** 두 팁 사이 발산은 `7614 1` 이다(원장 E-22). main 에만 있는 커밋은 하나(`4755c5e50`, PR #1740)이고 develop 에는 그 내용이 없다. develop 이 main 을 흡수하는 병합은 충돌 없이 끝난다(`research.md` §3).
+- **develop 위의 통합은 로컬 병합 창과 리더 일괄 push 로 돌아간다.** 카드마다 PR 이 없고, 원격 CI 는 develop push 마다 한 번 돈다. 이 CI 의 최근 12회는 7회 failure·5회 cancelled 였다(`research.md` §4). 운영자가 정한 절체 선행 조건은 origin/develop 팁의 CI 녹색이다(design D-17).
 - **main 은 보호돼 있다.** PR 필수·force-push 불가·관리자 포함(`enforce_admins`)이고 필수 체크 다섯 개가 `strict: false` 로 걸려 있다. `v*` 태그는 불변 규칙셋으로 삭제도 이동도 막혀 있다.
 
 ### A.3 이 SPEC 의 성격
@@ -46,12 +47,12 @@ tier: L
 | 항목 | 내용 | 마일스톤 |
 |---|---|---|
 | 카드 항목 ① | 설정·코드의 기준 브랜치 해석을 구성된 통합 목표로 옮기고 이 저장소의 값을 절체 시 github-flow 로 | M1, M5 |
-| 카드 항목 ② | 카드 전달 경로 재정의(카드 브랜치 push·PR·CI 재측정·GitHub 병합), 병합 큐 판정, 로컬 병합 창 처분 | M2 |
-| 카드 항목 ③ | rc 와 정식 릴리스를 main 태그 기준으로, 3-OS 매트릭스 게이트의 위치 | M3 |
+| 카드 항목 ② | 카드 전달 경로 재정의(카드 브랜치 push·PR·CI 재측정·GitHub 병합), 병합 큐 판정(보류), 로컬 병합 창 처분 | M2 |
+| 카드 항목 ③ | rc 와 정식 릴리스를 main 태그 기준으로, 3-OS 매트릭스 게이트의 위치(옵션 B: 태그 전 `workflow_dispatch` 와 스크립트 강제) | M3, M5(스위치 켜기) |
 | 카드 항목 ④ | 지침·문서 전면 갱신(AGENTS·CLAUDE·규칙·에이전트·스킬·README 4종·docs-site 4로케일·템플릿 사본), Frozen 조항 정규 개정 | M4 |
 | 카드 항목 ⑤ | 낡은 develop 서술 잔존 0 을 스윕 가드 테스트로 고정 | M4 |
 | 절체 절차 | 수렴 병합·트리 항등 검증·되돌리기·레인 재기동 절차와 스크래치 클론 리허설 | M6 |
-| 흡수·조정 | t810(`SPEC-LATE-BRANCH-REDESIGN-001`) 흡수 판정, t1452 조정, t1448 후 규칙 편집 | M4, plan.md §G |
+| 흡수·조정 | t810(`SPEC-LATE-BRANCH-REDESIGN-001`) 흡수(리더 결정, design D-19), t1452 조정(리더 결정, D-11), t1448 후 규칙 편집 | M4, plan.md §G |
 
 ### B.2 Out of Scope
 
@@ -61,11 +62,16 @@ tier: L
 
 ### Out of Scope — 절체의 실행
 
-- main 보호 규칙·develop 보호·develop 삭제·기준 브랜치 절체 자체(이 저장소의 `git-strategy.yaml` 값을 main 기준으로 확정하는 병합과 레인 재기동)는 리더·운영자 소관이며 이 카드가 확인 기록 없이 실행하지 않는다. 런북 문서와 리허설은 범위 안이다.
+- main 보호 규칙(필수 체크 목록 변경 포함)·develop 보호·develop 삭제·기준 브랜치 절체 자체(이 저장소의 `git-strategy.yaml` 값을 main 기준으로 확정하는 병합과 레인 재기동)는 리더·운영자 소관이며 이 카드가 확인 기록 없이 실행하지 않는다. 런북 문서와 리허설은 범위 안이다.
+- `Release PR Multi-OS Gate` 를 main 의 필수 체크에서 빼는 일은 운영자가 직접 수행하는 런북 단계다(외부 공유 시스템, 되돌리기 어려움). 이 카드는 그 단계를 런북에 적을 뿐 실행하지 않는다(design D-22).
 
 ### Out of Scope — 병합 큐 도입
 
-- 병합 큐의 도입은 이 SPEC 이 판정(보류)하되 구현하지 않는다. 미측정 입력(청구 분, CodeRabbit 한도 이력, 의미 충돌 빈도)은 후속 측정 카드가 소유한다.
+- 병합 큐의 도입은 이 SPEC 이 판정(보류)하되 구현하지 않는다(운영자 결정: 카드마다 PR 로 전달, 병합 큐는 보류 — design D-20). 미측정 입력(청구 분, CodeRabbit 한도 이력, 의미 충돌 빈도)은 후속 측정 항목으로 `research.md` §9 에 남기며 그 항목의 카드 발행은 리더 소관이다.
+
+### Out of Scope — 계약 모드 에스컬레이션 분류기
+
+- `internal/escalation` 의 계약 모드 에스컬레이션 분류(`pushWhy` 류)는 이 카드가 바꾸지 않는다. 계약 모드 레인은 PR 전달의 카드 브랜치 push 에서 에스컬레이션을 만나며, 이를 푸는 후속은 리더에게 권고로 남긴다(design D-23, `progress.md` §G).
 
 ### Out of Scope — 와이어 식별자의 개명
 
@@ -76,12 +82,13 @@ tier: L
 - t1448(레인-4)이 편집하는 `kanban-dispatch*.md`·`gtd.md`·`auto-semantics.md`·`manager-todo.md` 는 t1448 이 develop 에 착지한 뒤에만 이 카드의 규칙 편집이 흡수한다.
 - t1452 의 카드 본문과 `SPEC-LATE-BRANCH-REDESIGN-001` 의 파일은 이 SPEC 이 수정하지 않는다. 처분은 권고로만 남긴다(`plan.md` §G).
 
-### B.3 두 변경 계층
+### B.3 변경 계층 (두 계층과 퇴역 뒤 정리)
 
 | 계층 | 정의 | 예 | 병합 시점 |
 |---|---|---|---|
 | **PRE-CUTOVER-SAFE** | 현 git-flow 구성에서 동작이 바뀌지 않고 github-flow 구성에서만 새 동작을 켜는 가산·설정 게이트 변경 | 기준 브랜치 해석 이름 교체, 새 PR 전달 간선, 착지 판정의 squash 대응, rc 릴리스 스크립트 기구, 스윕 가드의 픽스처 자가 시험 | 언제든 develop 에 병합 |
-| **CUTOVER-TIME** | 일찍 병합하면 거짓이 되는 문장과 설정 | 규칙·문서·에이전트·스킬·README·docs-site·템플릿 산문, 이 저장소의 `git-strategy.yaml`·`workflow.yaml` 값, 워크플로 push 트리거 목록, `.coderabbit.yaml`, `spec-lint.yml`, `hns-release-specialist`, `AGENTS.local.md`, 스윕 가드의 트리 단언 | 카드 브랜치에서 준비·검증하고 병합 가능 상태로 보류, 절체 경계에서 한 묶음으로 적용 |
+| **CUTOVER-TIME** | 일찍 병합하면 거짓이 되는 문장과 설정 | 규칙·문서·에이전트·스킬·README·docs-site·템플릿 산문, 이 저장소의 `git-strategy.yaml`·`workflow.yaml` 값, `.coderabbit.yaml`, `spec-lint.yml` 의 develop 논리, `hns-release-specialist`(매트릭스 스위치 호출), `AGENTS.local.md`, 스윕 가드의 트리 단언 | 카드 브랜치에서 준비·검증하고 병합 가능 상태로 보류, 절체 경계에서 한 묶음으로 적용 |
+| **퇴역 뒤 정리** | develop 이 사라진 뒤에야 거짓이 되는 설정 | 워크플로 push 트리거 목록의 `develop` | develop 퇴역 이후 런북의 정리 단계(design D-13·D-17). 그때까지 develop 팁 CI 가 계속 돌아야 한다 |
 
 ## §C 요구사항
 
@@ -117,7 +124,7 @@ tier: L
 
 ### REQ-GFD-008 — rc 태그의 출처 검증 규칙
 
-**When** 태그가 prerelease 접미사(`-rc.N`)를 가질 때, 릴리스 출처 검증은 CHANGELOG 절 검사와 `system.yaml` 버전 검사를 명시된 rc 규칙으로 대체해야 하고(shall), 주석 태그·트레일러·커밋 결속·main 조상 검사는 유지해야 한다(shall). 접미사 없는 태그의 7개 검사는 바뀌지 않아야 한다(shall).
+**When** 태그가 prerelease 접미사(`-rc.N`)를 가질 때, 릴리스 출처 검증은 검사 5(CHANGELOG 절)와 검사 6(`system.yaml` 버전)을 건너뛰어야 하고(shall) 그 자리를 채우는 대체 검사는 두지 않아야 하며(shall not), 검사 1~4(주석 태그·트레일러·트레일러 버전 일치·커밋 결속)와 검사 7(main 조상)은 유지해야 한다(shall). 접미사 없는 태그의 7개 검사는 바뀌지 않아야 한다(shall). 이 규칙(R-a)의 문언은 design D-6 에 한 번만 적는다.
 
 ### REQ-GFD-009 — prerelease 표시
 
@@ -125,11 +132,11 @@ tier: L
 
 ### REQ-GFD-010 — 태그 전 3-OS 매트릭스
 
-**When** rc 또는 정식 태그 생성이 시도될 때, 태그 대상 SHA 에 대한 3-OS race 매트릭스의 통과 기록이 있어야 하고(shall), 기록이 없으면 릴리스 스크립트는 태그를 만들지 않아야 한다(shall not).
+**Where** 릴리스 하네스가 `scripts/release.sh` 를 `--require-matrix-run` 옵션과 함께 호출할 때, 태그 대상 SHA 에서 `workflow_dispatch` 로 돌린 워크플로 `Release PR Multi-OS Verification` 실행의 세 OS 레그 성공 기록이 있어야 하고(shall), 기록이 없으면 릴리스 스크립트는 태그를 만들지 않아야 한다(shall not). 옵션이 없으면 스크립트의 현행 동작은 바뀌지 않아야 한다(shall). 하네스 본문이 그 옵션을 넘기도록 바꾸는 일은 절체 묶음(REQ-GFD-016)이 맡는다.
 
 ### REQ-GFD-011 — 낡은 develop 기준 서술 잔존 0
 
-**When** 절체 변경 묶음이 적용된 뒤, 범위 표면에는 develop 을 기준·통합 브랜치로 서술하는 살아 있는 문장이 남지 않아야 한다(shall not). 역사적 서술은 폐기 표지를, git-flow 옵션 서술은 검토된 허용 목록 항목을 가져야 한다(shall).
+**When** 절체 변경 묶음이 적용된 뒤, 범위 표면(design D-9 가 하위 트리 열 곳과 파일 수 바닥값으로 열거한다)에는 develop 을 기준·통합 브랜치로 서술하는 살아 있는 문장이 남지 않아야 한다(shall not). 역사적 서술은 날짜나 카드·SPEC 식별자를 곁들인 폐기 표지를, git-flow 옵션 서술은 줄 전체를 지목하는 검토된 허용 목록 항목을 가져야 한다(shall).
 
 ### REQ-GFD-012 — 전달 경로 서술의 일치
 
@@ -137,7 +144,7 @@ tier: L
 
 ### REQ-GFD-013 — Frozen 조항의 정규 개정
 
-**Where** 변경이 `[ZONE:Frozen]` 조항의 문언(zone-registry 의 `CONST-V3R5-027`·`-028` 과 worktree-integration 의 Frozen 두 줄)을 바꿀 때, 개정은 `moai constitution amend` 의 5단 게이트를 통과해야 하고(shall) 등재 문언과 본문은 일치해야 한다(shall).
+**Where** 변경이 zone-registry 에 등재된 `[ZONE:Frozen]` 조항 `CONST-V3R5-027`·`-028` 의 문언을 바꿀 때, 개정은 조항마다 `moai constitution amend --rule <ID> --evidence …` 한 번씩, 정확히 두 번의 실행으로 5단 게이트를 통과해야 하고(shall — 마지막 인간 승인 층은 대화형 Y/N 이므로 운영자가 수행한다), 개정 뒤 `moai constitution validate` 가 종료 코드 0 이며 등재 문언과 `spec-workflow.md` 본문이 일치해야 한다(shall). `worktree-integration.md` 의 Frozen 표지 두 줄은 등재되어 있지 않으므로 일반 편집으로 바꾸되 개정된 `spec-workflow.md` 문언과 같은 방향이어야 한다(shall).
 
 ### REQ-GFD-014 — 상시로드 증가의 진술과 측정
 
@@ -149,7 +156,7 @@ tier: L
 
 ### REQ-GFD-016 — 저장소 설정과 CI 의 절체 시점 동반
 
-**When** 절체 변경 묶음이 적용될 때, 이 저장소의 `git-strategy.yaml`·`workflow.yaml` 값, 워크플로 push 트리거 목록, `.coderabbit.yaml` 의 `base_branches`, `spec-lint.yml` 의 develop 의존은 함께 github-flow 기준으로 바뀌어야 하고(shall), 절체 전에는 어느 것도 바뀌지 않아야 한다(shall not).
+**When** 절체 변경 묶음이 적용될 때, 이 저장소의 `git-strategy.yaml`·`workflow.yaml` 값, `.coderabbit.yaml` 의 `base_branches`, `spec-lint.yml` 의 develop 의존, 릴리스 하네스 본문의 `--require-matrix-run` 호출은 함께 github-flow 기준으로 바뀌어야 하고(shall), 워크플로 push 트리거 목록의 `develop` 은 develop 이 퇴역할 때까지 남아 develop 팁 CI 가 계속 관측되어야 하며(shall), 이 모두는 절체 전에는 바뀌지 않아야 한다(shall not).
 
 ### REQ-GFD-017 — t810 범위의 흡수
 
@@ -161,19 +168,19 @@ tier: L
 
 ### REQ-GFD-019 — 배치 경계와 레인 재기동
 
-**While** 진행 중 카드가 하나라도 develop 에 병합되고 push 되지 않은 동안, 기준 브랜치 절체는 시작되지 않아야 하고(shall not), 절체 절차는 절체 전후의 레인 재기동 순서를 담아야 한다(shall).
+**While** 병합되지 않았거나 병합됐어도 push 되지 않은 picked 카드, 살아 있는 통합 창·슬롯 보유자, 활성 레인 세션 중 하나라도 남아 있는 동안, 기준 브랜치 절체는 시작되지 않아야 하고(shall not), 절체 절차는 레인 정지·`/clear`·정리, 재기동, 첫 카드 관측의 순서와 단계마다의 실행 주체(카드·리더·운영자) 및 외부 공유 시스템 여부, develop 퇴역 뒤 워크플로 push 트리거 잔존 점검을 담아야 한다(shall). 이 카드 자신(M4·M5 묶음을 런북 2단계에서 마지막으로 병합하는 절체 카드)은 사전 점검의 picked 카드 조건에서 그 병합·push 뒤에 제외되며, 점검은 그 병합 뒤 수렴 병합(런북 4단계) 앞에서 실행된다(design D-25).
 
 ### REQ-GFD-020 — 외부 공유 시스템 변경의 확인 경계
 
-이 카드의 작업은 외부 공유 시스템을 바꾸는 런북 단계(main 보호 규칙 변경, develop 보호·삭제, 기준 브랜치 절체의 실행)를 리더의 확인 기록 없이 실행하지 않아야 한다(shall not).
+**When** 런북이 외부 공유 시스템을 바꾸는 단계(main 보호 규칙과 필수 체크 목록 변경, develop 보호·삭제, 기준 브랜치 절체의 실행)를 담을 때, 이 카드를 수행하는 레인은 그 단계를 리더의 확인 기록 없이 실행하지 않아야 한다(shall not).
 
 ### REQ-GFD-021 — 스윕 가드의 관측된 실패
 
-**When** develop 기준 서술 스윕 가드가 실행될 때, 가드는 알려진 실패 입력(살아 있는 develop 문장)에서 적색이어야 하고(shall), 폐기 표지 문장에서는 녹색이어야 하며(shall), CJK 인접 표기(`develop에서`)를 포착해야 하고(shall), 빈 스윕이 통과로 읽히지 않도록 방문 수를 단언해야 한다(shall).
+**When** develop 기준 서술 스윕 가드가 실행될 때, 가드는 알려진 실패 입력(살아 있는 develop 문장)에서 적색이어야 하고(shall), 폐기 표지 문장에서는 녹색이어야 하며(shall), CJK 인접 표기(`develop에서`)와 접두 표기(`origin/develop`, `develop-based`)를 포착해야 하고(shall), 빈 스윕이 통과로 읽히지 않도록 방문 수가 하위 트리별·전체 바닥값(design D-9 가 수로 정한다) 이상임을 단언해야 한다(shall).
 
 ### REQ-GFD-022 — 병합 큐 판정의 기록과 t1452 조정
 
-**Where** 병합 큐의 채택을 판정할 때, 결정은 측정된 CI 사용량·필수 체크 `strict` 설정·CodeRabbit 상태를 증거 표로 기록해야 하고(shall), 미측정 항목은 후속 측정 카드로 넘겨야 한다(shall). 로컬 병합 창의 은퇴로 무의미해지는 t1452 항목과 유효하게 남는 항목은 명시돼야 한다(shall).
+**Where** 병합 큐의 채택을 판정할 때, 결정은 다시 측정되어 재현된 CI 사용량·필수 체크 `strict` 설정·병합 PR 대상 분포를 증거 표로 기록해야 하고(shall), 재현되지 않았거나 측정하지 못한 항목은 후속 측정 항목으로 Gaps 에 남겨야 한다(shall). 로컬 병합 창의 은퇴로 무의미해지는 t1452 항목과 유효하게 남는 항목은 명시돼야 한다(shall).
 
 ## §D 결정 요약
 
@@ -183,24 +190,24 @@ tier: L
 |---|---|---|
 | P1 | git-flow 는 기본값에서만 은퇴한다. 선택 가능한 워크플로로 남고, 휴면 코드 삭제는 후속 인벤토리다 | |
 | P2 | 변경을 PRE-CUTOVER-SAFE 와 CUTOVER-TIME 두 계층으로 나눈다 | |
-| P3 | 병합 큐는 보류한다(후속 측정 카드) | L |
-| P4 | 카드 전달에서 로컬 병합 창은 은퇴, `moai slot` 은 유지. t1452 는 (c) 와 PR 전 병합 준비 점검으로 좁힌다 | L |
-| P5 | t810 은 흡수하고 이 SPEC 이 `SPEC-LATE-BRANCH-REDESIGN-001` 을 대체한다 | L |
-| P6 | 릴리스는 main HEAD 에서 태그, rc 규칙은 검사 5·6 대체, 3-OS 게이트는 옵션 B | L (옵션 B) |
-| P7 | 수렴은 develop 이 main 을 흡수한 뒤 병합 커밋 PR, 트리 항등 검증, develop 퇴역은 단계화 | L (퇴역 시점) |
+| P3 | 카드는 카드마다 PR 로 전달하고 병합 큐는 보류한다(측정 후속 항목은 리더가 카드로 발행). 운영자 결정(D-20) | L |
+| P4 | 카드 전달에서 로컬 병합 창은 은퇴, `moai slot` 은 유지. t1452 는 (c) 와 PR 전 병합 준비 점검으로 좁힌다. 리더 결정(D-11) | L |
+| P5 | t1453 이 t810 을 흡수한다. t810 의 카드·워크트리와 `SPEC-LATE-BRANCH-REDESIGN-001` 은 건드리지 않고, t810 의 종결 처분은 이 카드가 닫힐 때 운영자에게 올린다. 리더 결정(D-19) | L |
+| P6 | 릴리스는 main HEAD 에서 태그한다. rc 태그는 검사 5·6 을 건너뛰고 1~4·7 을 유지한다(R-a, 기본값, 리더가 뒤집을 수 있음, D-16). 3-OS 게이트는 옵션 B — `Release PR Multi-OS Gate` 는 main 필수 체크에서 빼고(운영자 수행) 태그 직전 `workflow_dispatch` 를 `release.sh --require-matrix-run` 이 강제한다. 운영자 결정(D-22·D-24) | L (옵션 B 와 R-a) |
+| P7 | 수렴은 develop 이 main 을 흡수한 뒤 병합 커밋 PR, 트리 항등 검증, develop 퇴역은 단계화. 절체의 선행 조건은 origin/develop 팁 CI 녹색이며 push 트리거의 develop 은 퇴역 뒤 정리한다. 수렴 PR 은 하나로 먼저 시도한다(D-17·D-18) | L (퇴역 시점, 분할 폴백 선택) |
 | P8 | 스윕 가드는 `internal/template` 패키지에 두고 패턴·허용 목록·돌연변이 프로브를 갖는다 | |
 | P9 | 4로케일은 의도 기준으로 갱신하고 zh 추가 문장은 doc 마일스톤의 zh 담당이 해소한다 | |
 | P10 | 상시로드 증가는 진술과 전후 측정을 doc 마일스톤의 인수 기준으로 둔다 | |
 
 ## §E 인접 카드와의 관계
 
-- **t810** — `SPEC-LATE-BRANCH-REDESIGN-001` 의 B1~B6 와 REQ-LBR-001..006 이 이 SPEC 의 문서 마일스톤(M4)에 인수 기준으로 들어온다. 큐는 두 카드가 서로를 흡수한다고 기록하고 있어 기록만으로는 방향이 정해지지 않는다(`research.md` §6). 상태 전환은 리더 결정이다.
-- **t1452** — 병합 창 단축 카드. (a)·(b)는 로컬 창 은퇴로 무의미, (c)는 유효. 편집은 하지 않고 권고만 한다.
+- **t810** — `SPEC-LATE-BRANCH-REDESIGN-001` 의 B1~B6 와 REQ-LBR-001..006 이 이 SPEC 의 문서 마일스톤(M4)에 인수 기준으로 들어온다. 큐 기록은 두 카드가 서로를 흡수한다고 적고 있었으나(`research.md` §6) 리더가 방향을 정했다 — t1453 이 t810 을 흡수한다(D-19). t810 의 카드·워크트리·SPEC 파일은 건드리지 않고, 닫는 처분은 이 카드가 닫힐 때 운영자에게 올린다.
+- **t1452** — 병합 창 단축 카드. (a)·(b)는 로컬 창 은퇴로 무의미, (c)는 유효. 리더가 t1452 를 (c) 와 PR 전 병합 준비 점검으로 좁히기로 했고, 카드 본문 수정은 리더 몫이다. 이 SPEC 은 그 전제로 진행한다(D-11).
 - **t1448** — 같은 규칙 파일을 편집한다. M4 의 규칙 편집은 그 착지 뒤에 흡수한다.
 
 ## §F 측정 핀
 
-모든 측정은 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2` 와 원격 팁 `284e09c44023598affe486f17701717ca173e6ca`(develop)·`4755c5e506225ba90b7a303c5763fa303c699492`(main)에 핀한다. 원격 팁은 2026-10-02 에 가져온 값이며 움직이는 참조다. 이 SPEC 의 어떤 판정도 팁이 움직인 뒤에 다시 인용하지 않는다 — 인용하려면 다시 측정하고 다시 핀한다.
+모든 측정은 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2` 와 원격 팁 `284e09c44023598affe486f17701717ca173e6ca`(develop)·`4755c5e506225ba90b7a303c5763fa303c699492`(main)에 핀한다. 원격 팁은 2026-10-02 에 가져온 값이며 움직이는 참조다. 이 SPEC 의 어떤 판정도 팁이 움직인 뒤에 다시 인용하지 않는다 — 인용하려면 다시 측정하고 다시 핀한다. 증거 원장 E-01~E-25 는 위 카드 트리에, 개정 0.1.1 에서 더한 E-26 이후와 측정 행 M-n 은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에 핀한다. 두 트리는 SPEC 디렉터리의 6개 파일만 다르다(`acceptance.md` §B 머리말의 관측).
 
 ---
 
