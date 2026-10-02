@@ -57,6 +57,10 @@ type GitFlowIntegrationConfig struct {
 	// Disposition is the three-way classification of Workflow
 	// (loader_workflow_disposition.go). The zero value means unknown.
 	Disposition WorkflowDisposition
+	// Mode is the raw git_strategy.mode value (card t1453 M1b), set whenever
+	// the file loaded; it names the profile a refusal tells the reader to fix
+	// (EmptyTargetGuidance). Empty only when the file is unreadable or sets none.
+	Mode string
 	// IntegrationTarget is the flow-scoped integration target projected from
 	// the D2 interpretation table: github-flow → "main", git-flow → the
 	// gated DevelopBranch, gitlab-flow → environment, release-flow →
@@ -93,6 +97,7 @@ func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 	cfg := GitFlowIntegrationConfig{
 		Manual:          wrapper.GitStrategy.Mode == "manual",
 		GitFlowWorkflow: ok && profile.Workflow == gitFlowWorkflow,
+		Mode:            wrapper.GitStrategy.Mode,
 	}
 	if ok {
 		// Card t656: carry the raw value and its three-way disposition.

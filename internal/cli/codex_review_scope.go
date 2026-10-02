@@ -122,9 +122,10 @@ func reviewScopeGit(dir string, args ...string) (string, error) {
 // pinned SHA (REQ-CGS-002, gitflow-lane-protocol §8: an absorption must move
 // the base, and only a recompute follows it); the ref is the integration target.
 func cardMergeBase(dir string) (string, error) {
-	target := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(dir).IntegrationTarget)
+	cfg := config.LoadGitFlowIntegrationConfig(dir)
+	target := strings.TrimSpace(cfg.IntegrationTarget)
 	if target == "" {
-		return "", fmt.Errorf("card merge base: no integration target configured (git_strategy workflow)")
+		return "", fmt.Errorf("card merge base: no integration target configured: %s", cfg.EmptyTargetGuidance(dir, ""))
 	}
 	// The ONE ancestry read in this file — the card-diff base measurement, not
 	// a binary-lag comparison (REQ-ABI-006: binlag.Evaluate stays the only

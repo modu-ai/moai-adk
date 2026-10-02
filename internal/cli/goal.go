@@ -326,9 +326,10 @@ func runGoalMissionApprove(cmd *cobra.Command, sessionID string, jsonOutput bool
 	}
 	// The contract names the configured integration target as its merge target;
 	// none configured means the contract cannot be sealed, never a default.
-	mergeTarget := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).IntegrationTarget)
+	targetCfg := config.LoadGitFlowIntegrationConfig(root)
+	mergeTarget := strings.TrimSpace(targetCfg.IntegrationTarget)
 	if mergeTarget == "" {
-		return fmt.Errorf("goal approve: no integration target configured in %s (git_strategy workflow)", root)
+		return fmt.Errorf("goal approve: no integration target configured in %s: %s", root, targetCfg.EmptyTargetGuidance(root, ""))
 	}
 	contract := mission.MissionContract{MissionID: sessionID, Goal: state.Text, CompletionEvidence: evidence, Scope: scope, AllowedActions: allowed, MergeTarget: mergeTarget, ResourceLimits: mission.ResourceLimits{MaxOperations: maxOperations, MaxRetries: 2}, ProhibitedActions: []mission.Action{mission.ActionForcePush}, StopConditions: []string{"revoked", "policy_denied"}, RecoveryConditions: []string{"authoritative_readback"}, RevocationBehavior: "stop_new_and_reconcile", PolicyVersion: "gtd-auto-v1", Approved: true}
 	sealed, err := mission.SealMissionContract(contract)

@@ -238,9 +238,10 @@ var sweepConfigRoot = func() string { return WorktreeProvider.Root() }
 // config.LoadGitFlowIntegrationConfig). With no target the answer is an error,
 // never a substituted branch: the sweep cannot name what it compares against.
 func sweepDefaultBase(root string) (string, error) {
-	target := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).IntegrationTarget)
+	cfg := config.LoadGitFlowIntegrationConfig(root)
+	target := strings.TrimSpace(cfg.IntegrationTarget)
 	if target == "" {
-		return "", fmt.Errorf("sweep: no integration target configured under %s (git_strategy workflow) — pass --base origin/<branch>", root)
+		return "", fmt.Errorf("sweep: no integration target configured under %s: %s", root, cfg.EmptyTargetGuidance(root, "pass --base origin/<branch>"))
 	}
 	return "origin/" + target, nil
 }

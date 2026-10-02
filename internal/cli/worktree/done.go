@@ -282,17 +282,19 @@ const cardBranchPrefix = "WT-"
 // interpretation table behind config.LoadGitFlowIntegrationConfig — develop
 // under git-flow, main under github-flow), read from the project root of the
 // tree being disposed. An unresolvable root or an empty target is an error:
-// the caller refuses, it never substitutes a branch.
-func landingBase(targetPath string) (string, error) {
+// the caller refuses, it never substitutes a branch. The second result names
+// the config value the base came from, for the MERGE_NOT_ON_ORIGIN refusal.
+func landingBase(targetPath string) (base, provenance string, err error) {
 	root, err := gitMainRootFromTargetFunc(targetPath)
 	if err != nil {
-		return "", fmt.Errorf("cannot resolve the project root: %w", err)
+		return "", "", fmt.Errorf("cannot resolve the project root: %w", err)
 	}
-	base := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).IntegrationTarget)
+	cfg := config.LoadGitFlowIntegrationConfig(root)
+	base = strings.TrimSpace(cfg.IntegrationTarget)
 	if base == "" {
-		return "", fmt.Errorf("no integration target configured under %s (git_strategy workflow)", root)
+		return "", "", fmt.Errorf("no integration target configured under %s: %s", root, cfg.EmptyTargetGuidance(root, ""))
 	}
-	return base, nil
+	return base, cfg.TargetProvenance(), nil
 }
 
 // landingGitCmd is the git execution seam for the origin-landing machine
@@ -344,7 +346,7 @@ func parseLeftRightCounts(out string) (left, right int, err error) {
 // is not a confirmed one. No flag bypasses the refusal (REQ-FLA-015), and
 // no CI status is consulted: CI judgment stays leader-side (design D4).
 func originLandingRefusal(branchName, targetPath string) error {
-	landingBaseBranch, err := landingBase(targetPath)
+	landingBaseBranch, baseProvenance, err := landingBase(targetPath)
 	if err != nil {
 		return landingRefusalError("ORIGIN_LANDING_UNCONFIRMED",
 			fmt.Sprintf("%v — the landing cannot be confirmed; disposal refused fail-closed", err))
@@ -367,9 +369,9 @@ func originLandingRefusal(branchName, targetPath string) error {
 	}
 	if right > 0 {
 		return landingRefusalError("MERGE_NOT_ON_ORIGIN",
-			fmt.Sprintf("%s carries %d commit(s) not on origin/%s — disposal refused until the card merge lands on the remote\n"+
+			fmt.Sprintf("%s carries %d commit(s) not on origin/%s (landing base origin/%s from %s) — disposal refused until the card merge lands on the remote\n"+
 				"  git rev-list --count --left-right origin/%s...%s => %q (%d left-only / %d right-only commits)",
-				branchName, right, landingBaseBranch, landingBaseBranch, branchName, strings.TrimSpace(out), left, right))
+				branchName, right, landingBaseBranch, landingBaseBranch, baseProvenance, landingBaseBranch, branchName, strings.TrimSpace(out), left, right))
 	}
 	return nil
 }

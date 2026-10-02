@@ -909,7 +909,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// tree, which for a lane is its card worktree — never an integration
 	// branch. The remedy is acquire's --branch.
 	if source == kanban.BranchSourceCaller {
-		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); re-acquire with --branch <integration-target> (a card's own tree is not its integration branch)", branch, kanban.BranchSourceCaller)
+		fix := "re-acquire with --branch <integration-target>"
+		if g := config.LoadGitFlowIntegrationConfig(root).EmptyTargetGuidance(root, fix); g != "" {
+			fix = g
+		}
+		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s; a card's own tree is not its integration branch); %s", branch, kanban.BranchSourceCaller, fix)
 	}
 	// (2) A card's own branch never serves as its integration branch.
 	cardBranch := factoryBranchOfWorktree(card.WorktreePath)

@@ -90,9 +90,11 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 				// with NO caller fallback: a merge-readiness check must not
 				// guess its target — the caller's own card branch is never a
 				// merge target.
-				developRef = config.LoadGitFlowIntegrationConfig(integrationLockRoot()).IntegrationTarget
+				targetRoot := integrationLockRoot()
+				targetCfg := config.LoadGitFlowIntegrationConfig(targetRoot)
+				developRef = targetCfg.IntegrationTarget
 				if developRef == "" {
-					return fmt.Errorf("factory merge ready: no integration branch configured (git_strategy.manual.develop_branch) and no --branch given — the merge target would be a guess")
+					return fmt.Errorf("factory merge ready: no integration branch configured — the merge target would be a guess: %s", targetCfg.EmptyTargetGuidance(targetRoot, "pass --develop <branch>"))
 				}
 			}
 
