@@ -28,6 +28,13 @@ import (
 // to drive lease expiry without sleeping.
 var factoryCardNow = time.Now
 
+// factoryNominateBeforeRecord is the test seam of the nominated lease
+// (SPEC-TODO-AUTO-PICK-001 plan N1/N2): the nomination path calls it after it
+// has promoted the nominee to `picked` and before the first record write
+// (RecordPicked), so a test can inject a claim failure or a competing lease at
+// the one point the compensation can undo. The default is inert.
+var factoryNominateBeforeRecord = func(cardID string) error { return nil }
+
 // factoryCardRoot is the project root the factory record and the queue share.
 func factoryCardRoot() string { return resolveTodoQueueRoot() }
 
@@ -207,6 +214,23 @@ func factorySerialSlotFree(state string) bool {
 	default:
 		return false
 	}
+}
+
+// factorySerialInFlightExcluding reports whether a serial card OTHER than
+// cardID sits in the record in a state that still holds the serial slot. The
+// candidate's own row is excluded by identity: the exclusivity holds against
+// DISTINCT cards (REQ-TCD-008). The unnominated arms and the nominated lease
+// read the slot through this one function.
+func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) kanban.CardClassification, cardID string) bool {
+	for _, c := range cards {
+		if c.CardID == cardID {
+			continue
+		}
+		if !factorySerialSlotFree(c.State) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
+			return true
+		}
+	}
+	return false
 }
 
 // factoryQueueClassification reads one card's classification from a queue
@@ -425,15 +449,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	// holds against DISTINCT cards (REQ-TCD-008), and a self-blocked
 	// candidate would wedge every lease of a legacy serial row.
 	serialInFlightExcluding := func(cardID string) bool {
-		for _, c := range cards {
-			if c.CardID == cardID {
-				continue
-			}
-			if !factorySerialSlotFree(c.State) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
-				return true
-			}
-		}
-		return false
+		return factorySerialInFlightExcluding(cards, classOf, cardID)
 	}
 	modeEligible := func(cardID string) bool {
 		if classOf(cardID).Mode != kanban.ClassModeSerial {
@@ -510,6 +526,13 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 			// falls through.
 			if it.State == kanban.BacklogStateQueued {
 				sawQueued++
+				// The hold marker keeps a card out of the lease path, and the
+				// skipped card still counts as seen, so a queue of marker cards
+				// alone ends on the no-card answer (SPEC-TODO-AUTO-PICK-001
+				// REQ-TAU-007; the nominated lease applies the same predicate).
+				if factoryQueuedHoldMarked(*it) {
+					continue
+				}
 				cls := kanban.EffectiveCardClassification(*it)
 				if cls.Blocked {
 					continue
@@ -599,6 +622,348 @@ func factoryNextClaimRefused(err error) (homestate.Card, bool, bool, error) {
 	return homestate.Card{}, false, false, err
 }
 
+// factoryNextRefusedExit is the status `next --card` reports when the nominee
+// is refused (SPEC-TODO-AUTO-PICK-001 REQ-TAU-005): 4, distinct from the
+// no-card status (3) and from an ordinary failure (1), so a session that
+// nominated can tell "re-select" from "nothing to take" from "something broke".
+const factoryNextRefusedExit = 4
+
+// The closed set of refusal tokens of the nominated lease (spec § C.2). Every
+// refusal of the nominee carries exactly one; an infrastructure failure
+// carries none.
+const (
+	factoryRefuseUnknownCard    = "unknown-card"
+	factoryRefuseDropped        = "dropped"
+	factoryRefuseHeld           = "held"
+	factoryRefuseOwned          = "owned"
+	factoryRefuseRecorded       = "recorded"
+	factoryTokenForeignWorktree = "foreign-worktree"
+	factoryRefuseHoldMarker     = "hold-marker"
+	factoryRefuseBlocked        = "blocked"
+	factoryRefuseSerialSlot     = "serial-slot"
+	factoryRefuseQuotaHold      = "quota-hold"
+	factoryRefuseBackendSkip    = "backend-skip"
+	factoryRefuseRaced          = "raced"
+)
+
+// factoryNominateRefusal is the refusal of a nominated card: a token from the
+// closed set plus a one-line detail. It carries the refusal status itself, so
+// both surfaces (the cobra verb and the MCP tool) report it identically.
+type factoryNominateRefusal struct {
+	Token  string
+	Detail string
+}
+
+// Error renders the one-line form both surfaces print.
+func (r *factoryNominateRefusal) Error() string {
+	return "factory next: refused " + r.Token + ": " + r.Detail
+}
+
+// ExitCode satisfies ExitCoder: a refusal exits with factoryNextRefusedExit.
+func (r *factoryNominateRefusal) ExitCode() int { return factoryNextRefusedExit }
+
+// waitable reports whether `--wait` keeps waiting through the refusal: the
+// three states a bare `--wait` also waits through (another lane's claim, a
+// held serial slot, a quota hold). Any other refusal is permanent.
+func (r *factoryNominateRefusal) waitable() bool {
+	switch r.Token {
+	case factoryRefuseRaced, factoryRefuseSerialSlot, factoryRefuseQuotaHold:
+		return true
+	}
+	return false
+}
+
+func factoryRefusal(token, format string, args ...any) *factoryNominateRefusal {
+	return &factoryNominateRefusal{Token: token, Detail: fmt.Sprintf(format, args...)}
+}
+
+// factoryQueuedHoldMarked reports whether a QUEUED card's text, trimmed, opens
+// with the hold marker — the one predicate the nominated lease and the
+// unnominated promotion arm share (the serial cycle demotes the same cards
+// through autoRankHoldMarked). A card in any other queue state is not a
+// marker card: the marker parks a card the lease would otherwise promote.
+func factoryQueuedHoldMarked(it kanban.BacklogItem) bool {
+	return it.State == kanban.BacklogStateQueued && autoRankHoldMarked(it.Text)
+}
+
+// factoryRecordRefusal maps a factory-record row to the refusal it earns for
+// a lane that nominates the card (spec § C.2), nil when the row is leasable by
+// that lane: a row at `picked` with no owner (an operator pick) or a row
+// `assigned` to this lane (arm (a)). Every in-flight state is `owned` for any
+// holder, this lane included; the terminal and parked states — and any value
+// outside the nineteen — are `recorded`.
+func factoryRecordRefusal(row homestate.Card, lane string) *factoryNominateRefusal {
+	switch row.State {
+	case homestate.CardPicked:
+		if strings.TrimSpace(row.OwnerLabel) == "" {
+			return nil
+		}
+		return factoryRefusal(factoryRefuseOwned, "the factory record holds the card at picked for %s", row.OwnerLabel)
+	case homestate.CardAssigned:
+		if row.OwnerLabel == lane {
+			return nil
+		}
+		return factoryRefusal(factoryRefuseOwned, "the factory record assigns the card to %s", dash(row.OwnerLabel))
+	case homestate.CardLeased, homestate.CardPlan, homestate.CardPlanAudit, homestate.CardKickoff, homestate.CardRun,
+		homestate.CardSync, homestate.CardSyncAudit, homestate.CardMergeReady, homestate.CardMerging,
+		homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen:
+		return factoryRefusal(factoryRefuseOwned, "the card is in flight at %s (holder %s)", row.State, dash(factoryRowHolder(row)))
+	default:
+		return factoryRefusal(factoryRefuseRecorded, "the factory record has the card at %s; only an operator unblock or re-pick moves it", row.State)
+	}
+}
+
+// factoryRowHolder names who holds a record row: the lease holder, else the owner.
+func factoryRowHolder(row homestate.Card) string {
+	if h := strings.TrimSpace(row.LeaseHolder); h != "" {
+		return h
+	}
+	return strings.TrimSpace(row.OwnerLabel)
+}
+
+// factoryKeepSetRefusal is the one keep-set predicate of the nominated lease
+// (SPEC-TODO-AUTO-PICK-001 REQ-TAU-009): it returns the § C.2 refusal for a
+// card the lease must not take, nil for a card that passes. It reads only the
+// queue item (state, text marker, classification), the factory-record row,
+// and the serial slot — never a relation store (REQ-TAU-013). The same
+// function runs at validation and again inside the queue lock at promotion.
+// The unnominated promotion arm applies only its marker clause, through
+// factoryQueuedHoldMarked.
+//
+// @MX:NOTE: [AUTO] The shared keep-set predicate of the nominated lease; positive enumeration of the leasable queue states, so a state added later is refused, never leased. Fan-in 2 (validation and the in-lock re-validation) — a NOTE because factory_card.go is at its 3-anchor limit.
+// @MX:SPEC: SPEC-TODO-AUTO-PICK-001
+func factoryKeepSetRefusal(it kanban.BacklogItem, row *homestate.Card, lane string, serialHeld bool) *factoryNominateRefusal {
+	switch it.State {
+	case kanban.BacklogStateQueued, kanban.BacklogStatePicked:
+	case kanban.BacklogStateDropped:
+		return factoryRefusal(factoryRefuseDropped, "the card was dropped from the queue")
+	case kanban.BacklogStateHold:
+		return factoryRefusal(factoryRefuseHeld, "the card is held (moai gtd hold); only the operator releases it")
+	default:
+		return factoryRefusal(factoryRefuseHeld, "the card's queue state is %s, which no lease path takes", it.State)
+	}
+	if row != nil {
+		if r := factoryRecordRefusal(*row, lane); r != nil {
+			return r
+		}
+	}
+	if factoryQueuedHoldMarked(it) {
+		return factoryRefusal(factoryRefuseHoldMarker, "the card's text opens with the hold marker %s; the operator parked it", autoRankHoldMarker)
+	}
+	if kanban.EffectiveCardClassification(it).Blocked {
+		return factoryRefusal(factoryRefuseBlocked, "the card's classification is blocked; the nominated lease refuses it, the operator decides it")
+	}
+	if serialHeld {
+		return factoryRefusal(factoryRefuseSerialSlot, "another serial card is in flight and holds the serial slot")
+	}
+	return nil
+}
+
+// factoryNominee is what the read-only validation read about the nominee.
+type factoryNominee struct {
+	item       kanban.BacklogItem
+	row        *homestate.Card // nil when the factory record has no row for the card
+	serialHeld bool
+}
+
+// factoryNextValidate is step 1 of the nominated lease: one pure queue read,
+// one factory-record read, and the read-only foreign-worktree precheck decide
+// every § C.2 token that can be decided before a write. It writes nothing.
+func factoryNextValidate(ctx context.Context, db *homestate.FactoryDB, root, runID, lane, cardID, quotaHold string) (factoryNominee, *factoryNominateRefusal, error) {
+	var nom factoryNominee
+	queueRec, err := todoReadStoreAt(root).LoadPure()
+	if err != nil {
+		return nom, nil, fmt.Errorf("read the queue: %w", err)
+	}
+	found := false
+	for _, it := range queueRec.Items {
+		if it.ID == cardID {
+			nom.item, found = it, true
+			break
+		}
+	}
+	if !found {
+		return nom, factoryRefusal(factoryRefuseUnknownCard, "%s is in no live queue row", cardID), nil
+	}
+	cards, err := db.ListCards(ctx, runID)
+	if err != nil {
+		return nom, nil, err
+	}
+	for i := range cards {
+		if cards[i].CardID == cardID {
+			row := cards[i]
+			nom.row = &row
+			break
+		}
+	}
+	classOf := func(id string) kanban.CardClassification { return factoryQueueClassification(queueRec, id) }
+	nom.serialHeld = classOf(cardID).Mode == kanban.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID)
+	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
+		return nom, r, nil
+	}
+	// The claim would refuse a foreign tree only after the promotion; deciding
+	// it here keeps the refusal write-free.
+	if nom.row == nil || strings.TrimSpace(nom.row.WorktreePath) == "" {
+		if err := factoryRefuseForeignWorktree(root, cardID); err != nil {
+			return nom, factoryRefusal(factoryTokenForeignWorktree, "%s", strings.TrimPrefix(err.Error(), "factory next: refused — ")), nil
+		}
+	}
+	// The quota hold leaves only a card already assigned to this lane leasable
+	// (arm (a) is not a new lease).
+	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
+	if quotaHold != "" && !assignedHere {
+		return nom, factoryRefusal(factoryRefuseQuotaHold, "%s", quotaHold), nil
+	}
+	if nom.row != nil && factoryNextSkipForBackend()(*nom.row) {
+		return nom, factoryRefusal(factoryRefuseBackendSkip, "a Codex lane cannot advance a card recorded at %s", dash(nom.row.Stage)), nil
+	}
+	return nom, nil, nil
+}
+
+// factoryNextNominate is the nominated lease (SPEC-TODO-AUTO-PICK-001
+// REQ-TAU-004/-005/-006): four steps in order.
+//
+//  1. Validate, read-only — every readable refusal is decided before the first
+//     write (factoryNextValidate).
+//  2. Promote a `queued` nominee to `picked` inside the queue lock, re-validating
+//     there; a nominee that is no longer `queued` was taken by another lane
+//     first (`raced`, nothing written). An operator-picked nominee skips this.
+//  3. Call the nomination seam, then claim through the version-checked
+//     record edges the unnominated arms use (factoryNextRecordAndClaim /
+//     factoryNextClaim) — no second lease route.
+//  4. Compensate: when the claim fails, undo only the promotion this
+//     invocation made, and only while the record shows no row, or a row at
+//     `picked` with no owner, and the queue item is still `picked`.
+//
+// The factory record has no delete: a failure AFTER RecordPicked leaves its
+// `picked`, unowned row (spec § B.8); the queue item is still restored. The
+// returned error is a *factoryNominateRefusal for a refusal of the card and a
+// plain error for anything else (a compensation that itself failed included).
+//
+// @MX:NOTE: [AUTO] The nominated lease entry point — shared by the `next --card` verb and the factory_next MCP handler (one implementation per verb, design.md §3); the single seam factoryNominateBeforeRecord sits between the promotion and RecordPicked. Fan-in 2 — a NOTE because factory_card.go is at its 3-anchor limit.
+// @MX:SPEC: SPEC-TODO-AUTO-PICK-001
+func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHold string) (homestate.Card, error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return homestate.Card{}, fmt.Errorf("open factory record: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	nom, refusal, err := factoryNextValidate(ctx, db, root, runID, lane, cardID, quotaHold)
+	if err != nil {
+		return homestate.Card{}, err
+	}
+	if refusal != nil {
+		return homestate.Card{}, refusal
+	}
+
+	promoted := false
+	if nom.item.State == kanban.BacklogStateQueued {
+		var lost *factoryNominateRefusal
+		if err := todoStoreAt(root).Mutate(func(r *kanban.BacklogRecord) error {
+			for i := range r.Items {
+				it := &r.Items[i]
+				if it.ID != cardID {
+					continue
+				}
+				if it.State != kanban.BacklogStateQueued {
+					lost = factoryRefusal(factoryRefuseRaced, "another lane moved %s out of queued first", cardID)
+					return nil
+				}
+				if ref := factoryKeepSetRefusal(*it, nom.row, lane, nom.serialHeld); ref != nil {
+					lost = ref
+					return nil
+				}
+				it.State = kanban.BacklogStatePicked
+				promoted = true
+				return nil
+			}
+			lost = factoryRefusal(factoryRefuseRaced, "%s left the queue first", cardID)
+			return nil
+		}); err != nil {
+			return homestate.Card{}, fmt.Errorf("promote the nominee: %w", err)
+		}
+		if lost != nil {
+			return homestate.Card{}, lost
+		}
+	}
+
+	// A claim that neither leased nor errored lost a race (the same signal the
+	// unnominated arms re-select on); an error is a failure of the claim.
+	card, leased, _, claimErr := factoryNextNominatedClaim(ctx, db, root, runID, lane, nom)
+	if claimErr == nil && leased {
+		return card, nil
+	}
+	otherHolder, cerr := factoryNominateCompensate(ctx, db, root, runID, lane, cardID, promoted)
+	switch {
+	case cerr != nil:
+		return homestate.Card{}, cerr
+	case otherHolder || claimErr == nil:
+		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "another lane leased or claimed %s first", cardID)
+	default:
+		return homestate.Card{}, claimErr
+	}
+}
+
+// factoryNextNominatedClaim is step 3: the seam, then the claim. A row
+// already `assigned` to this lane is arm (a)'s lease edge; every other leasable
+// shape (no row, or an unowned `picked` row) records the card and claims it,
+// which re-reads the row fresh.
+func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, nom factoryNominee) (homestate.Card, bool, bool, error) {
+	if err := factoryNominateBeforeRecord(nom.item.ID); err != nil {
+		return homestate.Card{}, false, false, err
+	}
+	if nom.row != nil && nom.row.State == homestate.CardAssigned {
+		return factoryNextClaim(ctx, db, root, runID, *nom.row, lane)
+	}
+	return factoryNextRecordAndClaim(ctx, db, root, runID, nom.item.ID, lane)
+}
+
+// factoryNominateCompensate is step 4. It acts only on a promotion this
+// invocation made (promoted), and restores the queue item from `picked` to
+// `queued` in one write that does nothing when the item is no longer `picked`,
+// only while the record shows no row, or a row at `picked` with no owner. It
+// reports whether another holder owns the card (their queue state is left
+// alone). The record row is read INSIDE the queue lock, so a lease that lands
+// while the compensation waits for that lock is seen and the queue item is
+// left `picked` under it (a restored `queued` item could be claimed a second
+// time); a lease landing after that read, before the write, is the two-store
+// window the spec accepts. A failure of the restoring write — or of the
+// record read — is returned as a non-token error naming the card; the card
+// then stays `picked` and unowned.
+func factoryNominateCompensate(ctx context.Context, db *homestate.FactoryDB, root, runID, lane, cardID string, promoted bool) (bool, error) {
+	if !promoted {
+		return false, nil
+	}
+	otherHolder := false
+	if err := todoStoreAt(root).Mutate(func(r *kanban.BacklogRecord) error {
+		var row *homestate.Card
+		cur, err := db.LoadCard(ctx, runID, cardID)
+		switch {
+		case errors.Is(err, homestate.ErrCardNotFound):
+		case err != nil:
+			return fmt.Errorf("read the factory record: %w", err)
+		default:
+			row = &cur
+		}
+		if row != nil && (row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
+			// Another holder (or this lane's own assigned row): the queue state is
+			// theirs and is left alone.
+			otherHolder = row.OwnerLabel != lane && row.LeaseHolder != lane
+			return nil
+		}
+		for i := range r.Items {
+			if r.Items[i].ID == cardID && r.Items[i].State == kanban.BacklogStatePicked {
+				r.Items[i].State = kanban.BacklogStateQueued
+			}
+		}
+		return nil
+	}); err != nil {
+		return false, fmt.Errorf("compensation failed: card %s stays picked and unowned: %w", cardID, err)
+	}
+	return otherHolder, nil
+}
+
 // factoryNextSkipForBackend is the REQ-SD-025 selection half: a Codex lane
 // never selects a card whose recorded stage or state it cannot advance —
 // `merge-ready` or later, including a card returned to `assigned` by lease
@@ -623,13 +988,16 @@ func cardStageAtOrAfterMergeReady(s string) bool {
 	return false
 }
 
-// newFactoryNextCommand — `moai factory next [--wait] [--wait-bound <d>]`
-// (REQ-SD-008/-009/-010): a lane session's self-dispatch verb, run from the
-// parent checkout.
+// newFactoryNextCommand — `moai factory next [--card <id>] [--wait]
+// [--wait-bound <d>]` (REQ-SD-008/-009/-010): a lane session's self-dispatch
+// verb, run from the parent checkout. Bare, it takes the CLI's priority-order
+// choice; with --card it leases exactly the nominated card or refuses it
+// (SPEC-TODO-AUTO-PICK-001: exit status 4, one line
+// `factory next: refused <token>: <detail>` on the error stream).
 func newFactoryNextCommand() *cobra.Command {
 	var wait bool
 	var waitBound time.Duration
-	var run string
+	var run, nominee string
 	cmd := &cobra.Command{
 		Use:   "next",
 		Short: "Lease the lane's next card through the factory record (lane session, parent checkout)",
@@ -654,6 +1022,12 @@ func newFactoryNextCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("factory next: %w", err)
 			}
+			// An explicit --card with a blank value is an error, never a silent
+			// fall-back to the priority-order choice the session did not make.
+			nominee = strings.TrimSpace(nominee)
+			if cmd.Flags().Changed("card") && nominee == "" {
+				return errors.New("factory next: --card needs a card id")
+			}
 			deadline := factoryCardNow().Add(waitBound)
 			// The quota gate (SPEC-QUOTA-AWARE-SCHEDULING-001): evaluated once per
 			// pass, outside the selection arms, and carried across the --wait
@@ -661,9 +1035,35 @@ func newFactoryNextCommand() *cobra.Command {
 			quotaLatch := &factoryQuotaLatch{}
 			for {
 				held, holdLine := quotaLatch.evaluate(root)
-				card, leased, err := factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
-				if err != nil {
-					return fmt.Errorf("factory next: %w", err)
+				var card homestate.Card
+				leased := false
+				if nominee != "" {
+					quotaHold := ""
+					if held {
+						quotaHold = holdLine
+					}
+					card, err = factoryNextNominate(ctx, root, runID, lane, nominee, quotaHold)
+					var refusal *factoryNominateRefusal
+					switch {
+					case err == nil:
+						leased = true
+					case errors.As(err, &refusal):
+						// --wait keeps waiting through the refusals a bare --wait also
+						// waits through; a permanent refusal ends it at once.
+						if wait && refusal.waitable() && factoryCardNow().Before(deadline) {
+							factoryNextWaitSleep(factoryNextWaitInterval)
+							continue
+						}
+						_, _ = fmt.Fprintln(cmd.ErrOrStderr(), refusal.Error())
+						return refusal
+					default:
+						return fmt.Errorf("factory next: %w", err)
+					}
+				} else {
+					card, leased, err = factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
+					if err != nil {
+						return fmt.Errorf("factory next: %w", err)
+					}
 				}
 				if leased {
 					wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, lane, cmd.OutOrStdout())
@@ -693,6 +1093,8 @@ func newFactoryNextCommand() *cobra.Command {
 	cmd.Flags().DurationVar(&waitBound, "wait-bound", factoryNextWaitBoundDefault,
 		"How long --wait re-checks before reporting no card")
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().StringVar(&nominee, "card", "",
+		"Lease exactly this card (the session's own judged pick) or refuse it: exit 4 with one line `factory next: refused <token>: <detail>`; the quota hold and the Codex skip apply as to any new card")
 	return cmd
 }
 
