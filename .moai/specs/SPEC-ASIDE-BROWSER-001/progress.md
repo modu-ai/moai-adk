@@ -448,8 +448,8 @@ Two of my commands were refused by the worktree guard before running: a `go test
 
 sync_status: audit-ready (documentation and lifecycle close done; the Gaps below are unobserved, not passes)
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill
-sync_head_before_commit: 76a004377 (branch WT-aside-browser-cli, base develop 4bf547bca); the sync commit cannot cite its own hash, so the lane backfills the real SHA in a following commit
+sync_commit_sha: aec39c0ca
+sync_head_before_commit: 76a004377 (branch WT-aside-browser-cli, base develop 4bf547bca); the sync commit could not cite its own hash, so it carried the pending-backfill placeholder and this following commit backfills the real SHA (the sanctioned backfill)
 b12_self_test_a: pass (pre-emission grep printed 0; no earlier entry)
 b12_self_test_b: pass (14 live AC identifiers in acceptance.md, tier M; entry states 14)
 b12_self_test_c: pass (every path cited in the entry exists per `ls`)
@@ -500,6 +500,13 @@ The final `spec lint --strict` run after this section was written is recorded in
 - The docs-site paragraph and the skill are two copies of the same statements; only grep guards tie them, so they can drift.
 - `sync_commit_sha` is a placeholder until the lane backfills it; until then a lint run reads the recognized placeholder, not a SHA.
 - The Aside CLI flag and tool names reflect one observed version (`1.26.916.1741` per spec.md § 3, not re-read here, because this role never invokes `aside`).
+
+### Post-audit
+
+- Independent sync audit: `.moai/reports/t1439/sync-audit.md` (local, gitignored). Verdict PASS-WITH-DEBT 86.4, eight P3 findings, no open P1 or P2; the audit edited nothing in the tree.
+- Fixed in the commit that backfills `sync_commit_sha`: F3 (the CHANGELOG clause about the README ref-skill count, reworded to say the README list and count were already behind the catalog and do not list `moai-ref-aside-browser`), F5 (the ko docs-site paragraph now says `툴체인`, as the page family does), F6 (all four docs-site Aside paragraphs now state that `aside repl` has no permission flag, so read-only use of the REPL is an operating rule, not something the tool enforces).
+- Open, accepted debt: F1 (every checker is lexical), F2 (`e2e.md` Phase 3.5 is not carved out for Aside), F4 (the plan commits lack the `Authored-By-Agent` trailer), F7 (the Kickoff rested on a PASS-WITH-DEBT verdict), F8 (the size of the new test file).
+- Still unconfirmed: whether `aside repl` can persist a screenshot to a path.
 
 ## §F Phase 4 Mode Selection and Kickoff record
 
