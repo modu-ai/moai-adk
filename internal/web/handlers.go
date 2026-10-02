@@ -373,6 +373,11 @@ func applyNestedForm(view *pageView, nested projectNestedCurrent, form projectNe
 // 두 검증기(validatePrefs + validateProjectConfig)를 모두 실행하고 FieldErrors를 병합한 뒤 하나라도 실패하면 영속 상태를
 // 변경하지 않고 폼을 per-field 에러와 함께 재렌더한다 — atomic reject(REQ-WC-008/REQ-WC3-001/002, EC-2).
 func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
+	// Card t1446 N2: serialize whole save requests — a second save must not
+	// interleave its persistence steps with a first save still mid-handler
+	// (a rollback here could revert another request's successful write).
+	a.saveMu.Lock()
+	defer a.saveMu.Unlock()
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -572,11 +577,12 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// tier's baseline (its comparison already ran against this tier).
 	//
 	// F3 (sync-audit, card t1411): steps 7 and 8 both write llm.yaml — one
-	// logical persistence unit under REQ-AFR-007, which covers persistence
-	// errors. Snapshot before step 7; a step-8 failure rolls step 7's write
-	// back (best-effort) before the error re-render. Step 7 itself is a
-	// single atomic splice (temp+rename), so a step-7 failure needs no
-	// restore — nothing landed.
+	// logical persistence unit under REQ-AFR-007. Card t1446 N1 narrowed the
+	// requirement's persistence-atomicity guarantee to exactly THIS pair (the
+	// snapshot cannot cover step-6 schema edits, which persist): snapshot
+	// before step 7; a step-8 failure rolls step 7's write back (best-effort)
+	// before the error re-render. Step 7 itself is a single atomic splice
+	// (temp+rename), so a step-7 failure needs no restore — nothing landed.
 	llmSnapshot, llmExisted, snapErr := settings.SnapshotLLMYAML(a.cfg.ProjectRoot)
 	if snapErr != nil {
 		logSaveFailure("snapshotLLMYAML", "could not snapshot llm.yaml before the agent-overrides writes")
@@ -598,9 +604,13 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		if rerr := settings.RestoreLLMYAML(a.cfg.ProjectRoot, llmSnapshot, llmExisted); rerr != nil {
 			err = fmt.Errorf("%v (llm.yaml ROLLBACK FAILED — the profile write may remain without the overrides: %v)", err, rerr)
 		}
-		logSaveFailure("patchAgentFM", "settings saved, but agent override write failed — llm.yaml rolled back")
+		// Card t1446 N1: the rollback restores the PRE-PAIR snapshot, so the
+		// message names the pair (llm.profile + llm.agent_overrides) — a
+		// whole-file "llm.yaml rolled back" would overstate: section-schema
+		// edits persisted earlier in this request remain.
+		logSaveFailure("patchAgentFM", "settings saved, but agent override write failed — the llm.yaml agent-overrides write pair rolled back")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
-			"settings saved, but agent override write failed (llm.yaml rolled back): "+err.Error())
+			"settings saved, but agent override write failed (the llm.yaml agent-overrides write pair rolled back): "+err.Error())
 		return
 	}
 
