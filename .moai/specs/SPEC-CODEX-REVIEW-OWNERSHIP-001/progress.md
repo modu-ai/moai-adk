@@ -16,7 +16,7 @@
 
 | # | Question | Resolution | Confidence | Disposition |
 |---|----------|-----------|------------|-------------|
-| Q1 | `tree_scope` 배포 형태 | `comment_example` | 0.74 | 템플릿에 주석 예시로만. 구조체는 파싱. 인벤토리·스키마·콘솔·i18n 불변(AC-CRO-015) |
+| Q1 | `tree_scope` 배포 형태 | `comment_example` | 0.74 | 템플릿에 주석 예시로만. 구조체는 파싱. 인벤토리·스키마·콘솔·i18n 불변(AC-015) |
 | Q2 | 키 이름·값 | `workflow.codex.review_gate.tree_scope` = review\|skip | 1.00 | 최종 |
 | Q3 | D2 자기 리뷰 표면 | 전용 도구 | (리더 조건부 승인) | 조건(비교 표·결함 (b) 수리·advisory) 충족: plan.md §B.1, REQ-CRO-008/010. Jev D2 intake 0.44 |
 | Q4 | t1404 처분 | `edit_to_residual` | 0.92 | 착지 뒤 리더가 잔여(T2·T4·T5·T8)로 편집, 착지 전 닫지 않음. sync 인계 항목(코드 변경 아님) |
@@ -38,6 +38,7 @@
 | B2-5 | `tree_scope: skip` 기록 시점·주체 | 착지 **뒤** 리더가 primary 에 기록 | 리더 | SPEC 요구가 아니라 인계 항목(아래) |
 | B2-6 | t1399 충돌 | plan.md 위험으로 명시 | 리더 | `reviewGateEnvContext`(`codex_review_scope.go:328-334`)가 참조하는 `config.EnvMoaiFactoryWorker` 가 t1399 의 `MOAI_KANBAN*` 삭제로 사라지면 컴파일 불가 — plan.md §G 위험 2 |
 | PA-1 | **plan-audit 1회차 = FAIL 0.76** (Tier M 임계 0.80; must-fix D1-D3, should-fix D4-D14, notes D15-D17) | 개정 | — | 보고서 `.moai/reports/t1422/plan-audit.md`(로컬). 반영: D1 파리티 편집 M3 로 이동·§F 마일스톤 열; D2 AC-004 회귀 칸 전환·RED 이유 열; D3 AC-010 두 백엔드×세 verdict; D4 REQ-CRO-004·AC-004; D5 추적 파일의 로컬 수정본·인계 항목; D6 AC 15·REQ 14·파일 수 재추정·O-1; D7 REQ-CRO-008 축소·라이브 프로브 기록 단계·AC-008 픽스처 확장; D8 REQ-CRO-010·AC-009; D9 AC-005; D10 AC-001·AC-008; D11 plan.md §B.1 (다)·권한 범위 행·§H 기준선; D12 위험 6·7; D13 REQ-CRO-012·013·AC-013·014; D14 `focus` 삭제·`model` 입력 AC-011·i18n 강제 테스트 식별; D15 핸들러 배선 결정(시그니처 불변·트리 클래스일 때 루트 재해상); D16 좌표 정정; D17 양성 대조 추가/문구 완화 |
+| PA-2 | **plan-audit 2회차 = FAIL 0.79** (Tier M 임계 0.80, 마지막 허용 반복; 필수 R1, 권고 R2·N1-N5, 노트 N6-N11; D3·D9 부분 해결) | 개정 | — | 보고서 `.moai/reports/t1422/plan-audit-iter2.md`(로컬, 감사 트리 `a0d801409`, 점수 0.78/0.80/0.70/0.88 평균). 반영: R1 AC-010 을 모든 경로(`card`·`uncommitted`·비카드 조기 반환·빈 자료)·세 verdict·두 백엔드에서 `advisory`/`scope`/`base`/`backend`/`tree` 값으로 단정하고 `base == git merge-base develop HEAD`·`tree ==` 정규 루트를 값 비교, 빈 자료 픽스처 추가, AC-016 으로 분할(REQ-CRO-010 에 정의 문단); R2 AC-005 에 런처의 실제 값(`leader`·`worker-1`·`lane-1`·`1`·빈 값·부재) 행과 정책 파일 환경 미참조 정적 가드(`codex_review_tree_scope.go` 신규 파일); N1 두 MCP 규칙 사본 쌍은 바이트 동일·두 가드 시험을 목록과 AC-015 에·"Four of the twenty-two" grep; N2 게이트 수준 보존 시험을 M1 에서 먼저 작성·AC-004 (b) 를 그때까지 미측정으로; N3 primary 설정은 이동하는 상태 — 시각 표기 관측으로 낮춤; N4 감사 도구 스키마 스냅숏을 M1·DoD·AC-007 (f) 에; N5 리더 문장 조건부; N6 번호 단정 수 공개; N7 AC id 정정; N8 detached HEAD 위험 11; N9 heartbeat 미사용 명시; N10 P6-P8 verbatim; N11 형제 SPEC 존재·경계 교차 확인 |
 
 ### 3차 결정 배치 — O-1~O-3 (2026-10-02, Jev `jev-1.13.0` + 리더 판정)
 
@@ -49,7 +50,7 @@
 
 ### 인계 항목 (이 SPEC 의 코드 밖 — 만족된 요구가 아니다)
 
-1. **리더 제외의 전달(D5).** 착지 **뒤** 리더가 primary 체크아웃의 `/Users/goos/MoAI/moai-adk-go/.moai/config/sections/workflow.yaml`(추적 파일의 로컬 수정본; main 커밋본과 429 줄 차이, primary HEAD 는 `ref: refs/heads/main`)에 `workflow.codex.review_gate.tree_scope: skip` 을 쓴다. 운영자 소유 파일이며 이 SPEC·run 은 편집하지 않는다. **지속성은 미해결(plan.md O-3)** — `main` 이 릴리스 PR 로만 전진하므로 릴리스가 이 파일을 바꿀 때 로컬 수정과 부딪힐 수 있다. `moai update` 가 old-only 키를 유지한다는 것은 문서 주석으로만 관측했고(`internal/cli/update/backup/merge.go:20-22`) 병합/풀 흐름은 시도하지 않았다.
+1. **리더 제외의 전달(D5, N3 갱신).** primary 체크아웃의 `/Users/goos/MoAI/moai-adk-go/.moai/config/sections/workflow.yaml`(추적 파일의 로컬 수정본; primary HEAD 는 `ref: refs/heads/main`)은 **이동하는 운영자 상태**다. 2026-10-02 16:39 KST 관측: `codex.review_gate.enabled: false`(수정 15:32, 누가 바꿨는지는 관측하지 않음) — 이 시각에는 게이트가 이미 꺼져 있어 리더 제외에 `tree_scope: skip` 이 필요하지 않다. **`enabled: true` 로 다시 켤 때** 착지 뒤 리더가 `workflow.codex.review_gate.tree_scope: skip` 을 함께 쓴다(착지 시점에 파일을 다시 읽는다). 이 SPEC 은 그 값에 의존하지 않는다. 운영자 소유 파일이며 이 SPEC·run 은 편집하지 않는다. **지속성은 미해결(plan.md O-3)** — `main` 이 릴리스 PR 로만 전진하므로 릴리스가 이 파일을 바꿀 때 로컬 수정과 부딪힐 수 있다. `moai update` 가 old-only 키를 유지한다는 것은 문서 주석으로만 관측했고(`internal/cli/update/backup/merge.go:20-22`) 병합/풀 흐름은 시도하지 않았다.
 2. **t1404 편집.** 착지 뒤 리더가 t1404 를 잔여(T2·T4·T5·T8)로 편집한다. 착지 전에는 닫지 않는다(Q4). sync 단계 인계 항목.
 3. **t1426.** 감사 도구 `baseBranch` 정렬 카드는 리더가 소유한다(Q8). 이 레인·run 은 카드를 발행하지 않는다.
 4. **형제 SPEC.** Claude Stop 게이트 asyncRewake 전환 SPEC 은 오케스트레이터가 이 개정 뒤 작성하며 이 SPEC 은 그 결정을 선취하지 않는다.
@@ -67,15 +68,21 @@
 
 ### 이 레인의 전제 점검 기록
 
-- 설정 루트와 출처: spec.md §A.3 — 추적 확인(`ls-files --error-unmatch`), main 커밋본에 `review_gate` 0, primary HEAD `refs/heads/main`, primary 작업 사본은 main 커밋본과 429 줄 차이(이 레인이 읽기 전용 명령으로 실행; 이전 Gap 은 닫힘). 레인 Stop 게이트는 이 저장소에서 설정상 off 로 읽힌다는 귀결은 코드 판독이며 라이브 관측이 아니다.
-- 밀어붙임: 리더의 당면 문제는 primary 로컬 `enabled: false` 로도 풀린다. `tree_scope` 의 가치는 repo 전체 `enabled: true` 아래의 스코프 분리다(plan.md §G).
+- 설정 루트와 출처: spec.md §A.3 — 추적 확인(`ls-files --error-unmatch`), main 커밋본에 `review_gate` 0, primary HEAD `refs/heads/main`, primary 작업 사본은 main 커밋본과 429 줄 차이(최초 측정). **primary 로컬 값은 이동하는 상태**라 2026-10-02 16:39 KST 관측(`enabled: false`, 수정 15:32)으로만 인용하며 이 SPEC 은 그 값에 의존하지 않는다(N3). 레인 Stop 게이트는 이 저장소에서 설정상 off 로 읽힌다는 귀결은 코드 판독이며 라이브 관측이 아니다.
+- 밀어붙임: 리더의 당면 문제는 primary 로컬 `enabled: false` 로 이미 풀려 있다(위 관측). `tree_scope` 의 가치는 repo 전체 `enabled: true` 아래의 스코프 분리다(plan.md §G).
 - 미관측: 카드 본문의 9~12분·282파일(리더 제공), t1395 처분 보고서 5건(경로 부재), 메인 세션의 도구 목록, codex 가 `baseBranch` 의 `branch` 필드에 SHA 를 받는지(라이브), primary 의 로컬 수정이 릴리스 병합을 견디는지(O-3), 웹 i18n 테스트의 빨간 상태(추론만).
+
+## 변이 점검 결과 (이 개정의 자체 스윕 — 작성 시점 판독, 마지막 허용 감사 반복 전)
+
+acceptance.md §C 표가 16개 AC 모두에 대해 요구를 어기면서 기준을 만족하는 가장 값싼 변이와 그것을 죽이는 단정 칸을 적는다. 행 수: AC-001 5 · AC-002 5 · AC-003 2 · AC-004 3 · AC-005 5 · AC-006 3 · AC-007 6 · AC-008 6 · AC-009 5 · AC-010 6 · AC-011 2 · AC-012 3 · AC-013 5 · AC-014 3 · AC-015 5 · AC-016 3 = **67 개 변이 행, 죽임 67 / 열림 0**(감사 보고서 2회차의 10개에서 확장; 생존 7개 — AC-010 두 건·AC-005 `MOAI_KANBAN_LABEL == "leader"`·AC-015 두 건·AC-007 스키마·REQ-CRO-010 빈 자료 — 는 각각 AC-010 (a)-(f)·AC-005 (a) R-leader 행·AC-015 (ii) L12 및 가드 두 시험·AC-007 (f)·AC-010 (e) 로 죽는다). "죽임"은 구현이 없는 plan 단계의 판독이며 실행 관측이 아니다. 변이 하나가 다른 칸으로 옮겨 가는 경우(예: AC-005 의 환경 읽기를 다른 파일 도우미로 옮김)는 행동 행렬과 정적 가드가 서로의 대조로 짝지어져 있다. 한 가지 정직한 한계: AC-004 (b) 는 M1 의 게이트 수준 시험이 변경 전 트리에서 초록으로 관측되기 전까지 회귀 칸이 아니라 미측정이다(L11).
+
+**검증 Gap(감사 보고서 인용).** 감사 도구 환경에서 Grep 도구가 쓸 수 없었고 verb 스크립트를 셸 here-document 로 쓰는 시도가 격리 가드에 거부되어 Write 도구로 만든 스크립트를 평범한 `sh <script>` 로 돌렸다. CN-4 verb 는 한국어 순서어를 보지 못하고 plan 에 `Exit:` 줄이 없어 MP-9 는 손 판독으로 판정했다고 감사가 적었다. 이 레인은 같은 verb 를 돌리지 않았고 헤딩 개수와 `moai spec lint` 로만 점검했다.
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - 산출: `spec.md` · `plan.md` · `acceptance.md` · `progress.md` · `decision-index.md` (Tier M 산출 집합 + progress + decision gate `interview.decision_gate: on`).
-- Tier: **M**(O-1 로 올림). 개수 규칙: 요구 = `### REQ-` 제목 수 14, 수락 기준 = `### AC-` 제목 수 15(하위 ID 없음) — 둘 다 상한 16 이하. 파일: 코드+테스트 ≈15(M 대역 상단), 미러·문서 ≈25, 합 ≈40(plan.md §H).
-- plan_status: **audit-ready (개정 2판)** — plan_complete_at: 2026-10-02. plan-audit 1회차 = FAIL 0.76(PA-1, 보고서 `.moai/reports/t1422/plan-audit.md`, 감사 트리 `3ae43ed8e78ffa673ca238227df6ca7202c1ce70`). 이 개정이 D1-D17 을 반영했고 **2회차 감사는 아직 수행되지 않았다**(이 줄은 작성 레인의 준비 신호이지 감사 판정이 아니다).
+- Tier: **M**(O-1 로 올림). 개수 규칙: 요구 = `### REQ-` 제목 수 14, 수락 기준 = `### AC-` 제목 수 16(하위 ID 없음; R1 분할로 AC-016 추가) — 둘 다 상한 16 이하이고 AC 는 상한에 닿았다. 번호 단정 62개(acceptance.md §E). 파일: 코드+테스트 ≈15(M 대역 상단), 미러·문서 ≈25, 합 ≈40(plan.md §H).
+- plan_status: **audit-ready (개정 3판)** — plan_complete_at: 2026-10-02. plan-audit 1회차 = FAIL 0.76(PA-1), **2회차 = FAIL 0.79**(PA-2, 보고서 `.moai/reports/t1422/plan-audit-iter2.md`, 감사 트리 `a0d801409`; 마지막 허용 반복). 이 개정이 R1·R2·N1-N11 을 반영했고 **3회차 감사는 아직 수행되지 않았다**(이 줄은 작성 레인의 준비 신호이지 감사 판정이 아니다).
 - 측정 원천: 본 트리(`.moai/worktrees/t1422`, 브랜치 `WT-codex-review-lane-scope`, 2026-10-02) 코드 좌표 직접 판독 — spec.md §A, plan.md §B·§D·§F. 리더 제공(미독립 재현): 9~12분·282파일(카드 본문), t1404 본문 3건 오탐.
 - 결정: Q1-Q9 해결(plan.md §G, decision-index.md, 위 Decision Log). 잠정 1건 — Q6(0.22, 리더 수용). O-1(Tier M 유지)·O-2(현 크기 리더 수용)는 해결, O-3(리더 제외의 지속성)은 코드로 미해결인 채 리더가 인계를 수용(B3-1~3, decision-index Q10–Q12). 남은 점검 항목: `baseBranch` 의 SHA 수용·미커밋 파일 포함 여부(미관측 — M3 기록 관측 단계).
 - 충돌 사전 검사: SPEC-CODEX-GATE-SCOPE-001(completed) REQ-CGS-003 만 개정(후속 개정, `amendment_of`). 인접 진행 카드: t1424(manager-develop `tools:` 줄 편집 — 병합 충돌 위험), t1399(`MOAI_KANBAN*` 삭제), t1423(감사관 문서) — plan.md §G.

@@ -26,6 +26,8 @@ tags: "codex, glm, review-gate, self-review, mcp, lane, kanban, scoping, t1422, 
 - 2026-10-02 · v0.1.0 · manager-spec · 결정 확정 반영(제자리 갱신, 버전 불변). 오픈 결정 Q1-Q8 이 운영자 위임(Jev `jev-1.13.0`)·리더 승인으로 해결됐다. 해결 표는 plan.md §G.
 - 2026-10-02 · v0.1.0 · manager-spec · plan-audit 1회차(FAIL 0.76, `.moai/reports/t1422/plan-audit.md`) 반영(제자리 갱신, 버전 불변). CLI 거울(구 REQ-CRO-011)을 이 SPEC 에서 **삭제**했고(Jev 0.83), 요구를 14건으로 재번호했다. D4(skip 이 `WT-` 접두 세션을 삼키는 경로 차단)·D5(리더 제외는 SPEC 밖 운영자 행위; 설정 파일은 추적 파일의 로컬 수정본)·D7(REQ-CRO-008 을 검증 가능한 범위로 축소)·D8(비추적 경로 목록·`truncated`)·D13(리더 측 GAP 규칙)을 요구에 반영했다. Claude Stop 게이트의 asyncRewake 전환은 같은 카드의 **형제 SPEC**으로 분리됐다(§E).
 
+- 2026-10-02 · v0.1.0 · manager-spec · plan-audit 2회차(FAIL 0.79, `.moai/reports/t1422/plan-audit-iter2.md`, 감사 트리 `a0d801409`; 마지막 허용 반복) 반영(제자리 갱신, 버전 불변). R1: advisory·범위 메타데이터를 두 스코프·비카드 조기 반환 전부에서 값으로 단정하고 빈 자료 경로를 정의했다(REQ-CRO-010, AC-010 확장 + AC-016 분리). R2: env 행렬에 런처가 실제로 쓰는 값을 넣고 정책 파일의 환경 참조 정적 가드를 더했다(AC-005). N1: 두 MCP 규칙 사본은 바이트 동일이어야 한다(문장 정정)와 두 가드 시험을 목록에 올렸다(REQ-CRO-014). N3: primary 로컬 설정은 이동하는 운영자 상태다 — 시각 표기 관측으로 낮추고 이 SPEC 이 그 값에 의존하지 않음을 명시(§A.3). N5: 리더 문장을 조건부로(REQ-CRO-013). N9: 진행 알림을 호출하지 않음을 범위 밖에 명시. N11: 형제 SPEC 이 이미 존재하므로 §E 서술을 고치고 핸들러 배선 경계를 교차 확인했다.
+
 ### Amendments
 
 - 2026-10-02 — 후속 개정(successor amendment). 대상: `SPEC-CODEX-GATE-SCOPE-001` **REQ-CGS-003**("카드 세션이 아닌 세션의 대상은 변하지 않는다"). prior_completed_version: `0.1.0`. prior_completed_sha: `3f4000bbe`(본 트리 `git log -- .moai/specs/SPEC-CODEX-GATE-SCOPE-001/spec.md` 실측 — 그 SPEC의 3-phase close 커밋. 부모 progress.md §E.4 의 `sync_commit_sha` 는 측정 시점에 `pending-backfill-sync` 로 남아 있다). 근거: REQ-CGS-003 은 비카드 세션 전부를 "트리 전체 미커밋 리뷰"로 못 박아, 설정으로 그 리뷰를 끌 길이 없었다(§A.2). 범위: 적용 조건 한 줄만 좁힌다 — REQ-CGS-003 의 "카드 스코프가 아닌 세션"이 **"카드 스코프가 아니고 `WT-` 접두 브랜치도 아니며 `tree_scope` 가 `skip` 이 아닌 세션"** 이 된다(REQ-CRO-003). `skip` 이 아닐 때의 요청 형태·fail-open·REQ-CRT-006 회귀선은 그대로이고, REQ-CGS-001·002·004~010 은 건드리지 않는다. 부모 SPEC 본문은 수정하지 않는다(완료 SPEC 본문 불변 — 개정은 이 SPEC이 선언한다).
@@ -62,8 +64,9 @@ SPEC-CODEX-GATE-SCOPE-001 REQ-CGS-003 은 비카드 세션의 대상을 "해상 
 - 셸 래퍼 `.claude/hooks/moai/handle-codex-review-gate.sh` 는 `CLAUDE_PROJECT_DIR`(없으면 `$PWD`)의 `.moai/config/sections/workflow.yaml` 에서 `workflow.codex.review_gate.enabled` 를 순수 셸로 읽고, off 면 exit 0 한다.
 - Go 핸들러는 `runCodexReviewGate`(`codex_review_gate.go:192-211`)에서 `resolveProjectDirFromInput`(`:260-270` — ProjectDir → CWD → `CLAUDE_PROJECT_DIR`)으로 projectDir 를 정하고, `reviewGateConfigRoot`(`:220-226`, `auditreceipt.StoreRoot`)가 돌려준 루트의 `workflow.yaml` 로 `readCodexReviewGateEnabled`(`internal/cli/mcp_codex.go:2385`)를 호출한다(`:200`). 설정 루트는 `.moai` 를 추적하지 않는 저장소의 연결 워크트리일 때만 primary 로 바뀌고, 그 외에는 projectDir 그 자체다(SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-008). `HandleCodexReviewGate` 자체는 설정 루트가 아니라 `projectDir` 를 받는다(`:69`).
 - Codex 체인 멤버 6은 `readCodexReviewGateEnabled(c.root)`(`codex_stop_chain.go:618`)로 **세션 트리를 그대로** 설정 루트로 쓴다 — `reviewGateConfigRoot` 를 거치지 않는다(기존 비대칭, 이 SPEC은 고치지 않는다).
-- **설정 파일의 출처(관측, 본 트리, 이 레인이 실행).** `git ls-files --error-unmatch .moai/config/sections/workflow.yaml` → `.moai/config/sections/workflow.yaml` — **추적 파일**이다. `git show main:.moai/config/sections/workflow.yaml` 에서 `review_gate` 는 0 건(`grep -c` → 0, exit 1) — main 의 커밋본에는 게이트 키가 없다. primary 체크아웃의 HEAD 는 `cat /Users/goos/MoAI/moai-adk-go/.git/HEAD` → `ref: refs/heads/main` 이고, 그 작업 사본(`/Users/goos/MoAI/moai-adk-go/.moai/config/sections/workflow.yaml`, `codex.review_gate.enabled: true` 가 :132-134)은 main 의 커밋본과 `diff … | grep -c '^[<>]'` → **429 줄** 다르다. 즉 primary 의 설정은 "비추적 로컬 파일"이 아니라 **추적 파일의 대폭 로컬 수정본**이다. 본 트리(develop 계열)의 추적본에도 `review_gate` 키가 없다(`grep -c review_gate .moai/config/sections/workflow.yaml` → 0).
-- 코드 판독에 따른 귀결(라이브 레인 미관측): 카드 워크트리에 cwd 를 둔 레인 세션의 Go 측 `enabled` 는 그 워크트리의 추적 사본에서 읽혀 이 저장소에서는 off 로 읽힌다. 즉 현재 이 저장소에서 게이트가 도는 곳은 `enabled: true` 가 있는 primary 에 앉은 세션(리더 포함)이다.
+- **설정 파일의 출처(관측, 본 트리, 이 레인이 실행).** `git ls-files --error-unmatch .moai/config/sections/workflow.yaml` → `.moai/config/sections/workflow.yaml` — **추적 파일**이다. `git show main:.moai/config/sections/workflow.yaml` 에서 `review_gate` 는 0 건(`grep -c` → 0, exit 1) — main 의 커밋본에는 게이트 키가 없다. primary 체크아웃의 HEAD 는 `cat /Users/goos/MoAI/moai-adk-go/.git/HEAD` → `ref: refs/heads/main` 이고, 그 작업 사본(`/Users/goos/MoAI/moai-adk-go/.moai/config/sections/workflow.yaml`)은 main 의 커밋본과 **대폭 다른 로컬 수정본**이다(최초 측정 `diff … | grep -c '^[<>]'` → 429 줄). 즉 primary 의 설정은 "비추적 로컬 파일"이 아니라 **추적 파일의 로컬 수정본**이다. 본 트리(develop 계열)의 추적본에도 `review_gate` 키가 없다(`grep -c review_gate .moai/config/sections/workflow.yaml` → 0).
+- **이동하는 좌표 — 값에 의존하지 않는다.** 그 로컬 수정본의 `codex.review_gate.enabled` 값은 운영자 상태라 시간에 따라 바뀐다. 이 SPEC 의 이전 판은 `enabled: true`(`:132-134`)를 서술했으나 **2026-10-02 16:39 KST 재관측**에서는 `codex:\n    review_gate:\n      enabled: false` 였고 파일 수정 시각은 같은 날 15:32 였다(`sed -n 127,137p`, `ls -l`; 누가 바꿨는지는 관측하지 않았다). 이 관측은 그 시각의 값일 뿐 표준 사실이 아니며 이 SPEC 의 어떤 요구도 그 값에 의존하지 않는다: `enabled` 가 `false` 면 게이트가 꺼져 `tree_scope` 가 필요 없고, `true` 면 `tree_scope: skip` 이 리더를 가른다. `tree_scope` 의 가치는 저장소 전체에 `enabled: true` 가 걸린 배포에서 비카드 세션을 가르는 것이다.
+- 코드 판독에 따른 귀결(라이브 레인 미관측): 카드 워크트리에 cwd 를 둔 레인 세션의 Go 측 `enabled` 는 그 워크트리의 추적 사본에서 읽혀 이 저장소에서는 off 로 읽힌다. primary 에 앉은 세션(리더 포함)의 `enabled` 는 위 로컬 수정본의 그때그때 값에 따른다.
 - **리더 제외의 전달 경로(솔직한 서술).** 이 SPEC 이 넣는 것은 `tree_scope` 키와 그 판독·적용이다. 리더 세션이 게이트에서 빠지려면 누군가 primary 의 `workflow.yaml` 에 `tree_scope: skip`(또는 `enabled: false`)을 써야 한다. 그 쓰기는 **착지 뒤 리더가 하는 운영자 행위이며 이 SPEC 의 요구가 아니다.** 지속성: `moai update` 는 새 템플릿에 없는 기존 키를 유지한다(`internal/cli/update/backup/merge.go:20-22` 문서 주석 실측). 그러나 primary 는 `main` 에 있고 `main` 은 릴리스 PR 로만 전진하므로, 릴리스가 이 파일을 바꾸는 순간 로컬 수정 429 줄과 부딪힐 수 있다 — 이 충돌에서 키가 살아남는지는 **시도하지 않았고 미해결**이다. 인계 항목은 progress.md 에 둔다.
 
 ### A.4 리뷰 도구 보유 현황
@@ -153,6 +156,10 @@ Every self-review result, whatever its verdict, shall carry a machine-readable `
 
 판정(verdict) 값은 `codex_audit` 와 같은 어휘(`pass`/`fail`/`inconclusive`)를 쓰되 **구속력이 없다** — 도구 설명·출력 스키마·교리 세 곳에 "advisory(non-binding)"로 적는다. 감사 영수증을 만들지도 소비하지도 않으므로 PASS 근거로 인용될 수 없다(`store.go:596-601` 가드의 입력에 들어가지 않는다). `required` 게이트의 `fail`+`gate_unmet` 변환(§A.4)을 받지 않는다 — codex 부재는 언제나 `inconclusive` 다. 모델은 호출자의 `model` 입력이 있으면 그것, 없으면 백엔드 기본이다(Q6 잠정 — 감사 핀 미적용; 되돌림 비용은 해상기 호출 한 번). `codex_review` 의 `truncated` 는 이 도구가 자료를 만들지 않으므로 항상 false 이고 `excluded_untracked` 는 비어 있다.
 
+**메타데이터는 모든 경로에서 값으로 정해진다(plan-audit 2회차 R1).** 위 필드는 pass·fail·inconclusive 어느 verdict 에서도, `card`·`uncommitted` 어느 스코프에서도, 그리고 카드 스코프를 요청받았으나 카드 트리가 아니어서 리뷰어를 부르지 않고 돌려주는 조기 `inconclusive` 에서도 채워진다. 값의 정의: `advisory` 는 true; `scope` 는 요청 값; `backend` 는 `codex`|`glm`; `base` 는 카드 스코프에서 호출 시점의 `git merge-base develop HEAD` 출력(SHA)이고 그 밖의 모든 경로(미커밋 스코프, 비카드 조기 반환, 빈 자료)에서 빈 문자열; `tree` 는 `project_root` 인자의 철자가 아니라 심볼릭 링크를 해소한 정규 루트다. 상수 문자열이나 인자 그대로의 값은 위반이다.
+
+**빈 자료(empty material)의 정의.** 요청한 스코프에 리뷰할 변경이 없는 경우다 — 카드 스코프는 `git diff <merge-base> -- . <런타임 접두 exclude>` 가 비어 있고 비추적 비런타임 파일이 없을 때, 미커밋 스코프는 `git diff HEAD -- . <exclude>` 가 비어 있고 비추적 비런타임 파일이 없을 때. 두 백엔드 모두 이 경우 리뷰어를 부르지 않고(`codex_review` 는 리뷰 RPC 0 회, `glm_review` 는 HTTP 0 회) verdict `inconclusive` 와 변경이 없다는 요약을 위 메타데이터와 함께 돌려준다.
+
 ### C. 보유·교리·정합
 
 ### REQ-CRO-011 — 도구 보유 (Ubiquitous + shall not)
@@ -169,15 +176,15 @@ The kanban lane doctrine shall name a `card-review` stage in an ordered stage li
 
 ### REQ-CRO-013 — 리더 측 규칙 (Ubiquitous)
 
-The kanban lane doctrine shall state that the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools, and that a card whose progress record neither cites a readable `.moai/reports/<card-id>/card-review.md` nor records a reason for its absence is a gap in the leader's completion read and stays in its column; the leader's declared evidence list for a card shall include that path, so a stage that stopped being run surfaces at the leader's read.
+The kanban lane doctrine shall state that, with `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools, and that a card whose progress record neither cites a readable `.moai/reports/<card-id>/card-review.md` nor records a reason for its absence is a gap in the leader's completion read and stays in its column; the leader's declared evidence list for a card shall include that path, so a stage that stopped being run surfaces at the leader's read.
 
-연속 발화(continued firing) 답: 단계가 조용히 멈춰도 리더의 완료 판독이 증거 경로 목록에서 `card-review.md` 부재를 gap 으로 읽는다 — 별도 훅은 없다(§E). "리더 세션에 게이트가 없다"는 문장은 교리 진술이며 실제 제외는 §A.3 의 운영자 행위가 전달한다.
+연속 발화(continued firing) 답: 단계가 조용히 멈춰도 리더의 완료 판독이 증거 경로 목록에서 `card-review.md` 부재를 gap 으로 읽는다 — 별도 훅은 없다(§E). 교리 문장은 **조건부**다 — 배포된 교리가 모든 저장소에서 "리더 세션에 게이트가 없다"고 단정하면 `enabled: true` 이고 `tree_scope: skip` 이 없는 저장소에서는 거짓이다(plan-audit 2회차 N5). 조건절에 `tree_scope: skip` 토큰이 있고, 같은 문장에 L9 의 앵커 `turn-end codex review gate` 가 들어 있다. 실제 제외는 §A.3 의 운영자 행위가 전달한다.
 
 ### REQ-CRO-014 — 목록·문서·템플릿 정합 (Ubiquitous)
 
 The tool catalogue, the server registration, the `project_root` inventory in both rule-file copies and in the four-locale docs-site pages, the console's per-tool i18n entries, and the MCP tool counts in doctrine shall describe the two new tools identically, each verified by the parity test that already guards it, and the distributed template shall carry `tree_scope` only as a commented example while the shipped-key inventory, the settings schema, the console fields, and the i18n entries for it remain unchanged.
 
-도구 수 45→47, `project_root` 선언 도구 20→22, 쓰기 가능 도구 집합은 불변(두 도구 모두 읽기 전용). 템플릿 형태는 decision-index.md Q1 확정(주석 예시)이다. 정합 대상 전수와 마일스톤 배정은 plan.md §F.
+도구 수 45→47, `project_root` 선언 도구 20→22, 쓰기 가능 도구 집합은 불변(두 도구 모두 읽기 전용). 템플릿 형태는 decision-index.md Q1 확정(주석 예시)이다. 정합 대상 전수와 마일스톤 배정은 plan.md §F. **카탈로그 문서 사본 두 쌍은 바이트 동일이어야 한다**(`moai-mcp-tools.md`·`moai-mcp-tools-catalogue.md` 의 로컬 사본과 배포 미러 — `TestMCPToolCatalogueDocsStayMirrorIdentical`)이고, 카탈로그의 모든 개수 수치(총 도구 수 문장·`Tool families (N of the M tools` 머리의 41→43 / 45→47·`(\d+)-tool`·`of the N tools` 계열)는 레지스트리와 일치해야 하며(`TestMCPToolCatalogueFiguresMatchRegistry`), `moai-mcp-tools.md` 의 "Four of the twenty REQUIRE it" 문장은 "Four of the twenty-two" 로 고친다. 이 두 시험이 이 문서 쌍의 유일한 기계 강제다.
 
 ---
 
@@ -203,7 +210,7 @@ The tool catalogue, the server registration, the `project_root` inventory in bot
 
 ### Out of Scope — 형제 SPEC: Claude Stop 게이트의 asyncRewake 전환
 
-- 같은 카드(t1422)의 형제 SPEC 이 Claude Stop 게이트를 asyncRewake 방식으로 바꾸는 일을 다룬다. 그 SPEC 은 이 개정 뒤 오케스트레이터가 별도로 작성한다. 형제는 `HandleCodexReviewGate` 의 시그니처·설정 루트 배선을 바꿀 수 있으므로, 이 SPEC 이 먼저 착지하고 형제의 결정을 선취하지 않는다 — 이 SPEC 은 핸들러 시그니처를 바꾸지 않고(REQ-CRO-006) 스코프 클래스가 트리일 때만 핸들러 안에서 설정 루트를 다시 구한다.
+- 같은 카드(t1422)의 형제 SPEC `SPEC-CODEX-REVIEW-ASYNC-001`(draft, 이 SPEC 에 `depends_on`)이 Claude Stop 게이트를 asyncRewake 방식으로 바꾸는 일을 다룬다. 그 SPEC 은 이미 작성돼 있다(plan-audit 2회차 N11). **핸들러 배선 경계 교차 확인(형제 plan.md §B.1·§G 위험 2 판독):** 두 SPEC 모두 `HandleCodexReviewGate` 의 시그니처를 바꾸지 않는다. 이 SPEC 의 삽입은 스코프 해상 직후·셀프게이트 앞(스코프 클래스가 트리일 때 설정 루트 재해상+`tree_scope` 판독+skip)이고, 형제의 삽입은 codex 조회 뒤(트리 루트·git 디렉터리·락·상태 키·기록)이며 실행기(`runCodexReviewGate`)의 출력 매핑을 바꾼다 — 삽입 위치가 겹치지 않고 skip 이 락보다 앞선다(형제 REQ-CRA-010). 이 SPEC 이 먼저 착지하며 형제의 결정을 선취하지 않는다.
 
 ### Out of Scope — t1404 의 잔여 항목
 
@@ -225,6 +232,7 @@ The tool catalogue, the server registration, the `project_root` inventory in bot
 - 자기 리뷰의 **CLI 거울은 이 SPEC 에서 삭제됐다**(Jev 0.83). 결과: 호스트 도구 타임아웃과 오래된 MCP 서버 프로세스(새 도구가 `tools/list` 에 없음)에 대해 **GLM 쪽 우회로가 없다.** codex 쪽 대체 경로는 기존 `moai verify codex-review --project-root <tree>` 뿐이다(plan.md §G 잔여 위험).
 - 레인의 카드 리뷰 단계를 훅으로 기계 강제하는 일, 카드 리뷰 증거 파일의 존재를 검사하는 게이트를 만드는 일은 하지 않는다(교리로만 규정한다).
 - Claude 백엔드 자기 리뷰(`claude_review`), 경로 제한(pathspec) 입력, 백그라운드 잡 모델은 만들지 않는다.
+- **진행 알림(heartbeat)은 새 도구에 넣지 않는다(plan-audit 2회차 N9).** 감사 도구는 긴 호출 중 `notifyMCPProgress`(`internal/cli/mcp_progress.go`)로 Claude Code 의 idle watchdog(stdio 기본 30분)을 재설정한다. 새 도구는 이 알림을 호출하지 않는다 — 한 호출은 동기식이고 상한이 900s 로 그 watchdog 창보다 짧다. 호스트 도구 타임아웃(별개 층)이 이 알림으로 늘어나는지는 관측하지 않았다 — 잔여 위험(plan.md §G 위험 6). 알림을 넣으려면 두 백엔드 호출 지점에 한 줄씩이며, 넣는다면 REQ 와 AC 가 늘어난다(decision-index Q13).
 
 ---
 
