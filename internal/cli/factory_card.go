@@ -186,8 +186,9 @@ const factoryNextNoCardExit = 3
 // serial card is recorded until its implementation pipeline ends — every
 // state at or after merge-ready (cardStageAtOrAfterMergeReady: the card's
 // implementation is finished and what remains is the integration pipeline,
-// which the integration window serializes on its own) plus abandoned, the
-// one irreversible exit. A state added later keeps the slot held — the
+// which the integration window serializes on its own) plus failed and
+// abandoned, the terminal exits no transition ever leaves (homestate
+// IsTerminalCardState). A state added later keeps the slot held — the
 // enumeration names the RELEASING states and never the holding ones (plan
 // G2): a negative check (`state != done && ...`) would silently release the
 // slot for every state added after it was written. The state is not the whole
@@ -204,7 +205,8 @@ const factoryNextNoCardExit = 3
 func factorySerialSlotFree(state string) bool {
 	switch state {
 	case homestate.CardMergeReady, homestate.CardMerging, homestate.CardMergedLocal,
-		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone, homestate.CardAbandoned:
+		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone, homestate.CardFailed,
+		homestate.CardAbandoned:
 		return true
 	default:
 		return false
