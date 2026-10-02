@@ -30,7 +30,7 @@ Deviation recorded: the delegation for this write named a general-purpose spawn 
 stamp: claude=2.1.287 codex=0.160.0 fixture_sha256=55c65baabdd8289833863b5da15e20e9c5ef3cb9181264fde3bdd83adc9f11ab date=2026-10-02
 versions: the start readings (evidence/version-start.txt, real home, CMD-IDs 3 and 4) and the end readings (evidence/version-end.txt, home=scratch, CMD-IDs 170 and 171) of claude --version and codex --version are equal.
 verdict file: .moai/reports/t1434/verdict.md (local-only)
-verdict_sha256: a5ac9549f47a9d7f61c673899230c8c1b6b9bf9baf2f5129f49ff566d01a8d4b
+verdict_sha256: 5f287888a651c1c5566ca465d7e555c01748a7d9f8d6d33faa2d1e361b16a9e4
 
 | ID | Component | Claude plugin | Codex plugin | Recommended home | Consequence |
 |----|-----------|---------------|--------------|------------------|-------------|
@@ -320,7 +320,7 @@ a6d470ff2315fab8a6c40119eba4b8215ac1fa95f08966b36620aad9f57b48c6  evidence/scrat
 27db28475d07c03fd03e89a688568a2915187c13ba5f25e65f4cbe73ae9c8fe7  evidence/version-start.txt
 d0ebb77654447979cc3bb173dbb3f7b16fb293ecc4c146aee176c940786e2c96  probe.sh
 12009162895aa5ab175ec89369682013713007f180d9d4febad4cd7929fd81dd  run-checks.sh
-a5ac9549f47a9d7f61c673899230c8c1b6b9bf9baf2f5129f49ff566d01a8d4b  verdict.md
+5f287888a651c1c5566ca465d7e555c01748a7d9f8d6d33faa2d1e361b16a9e4  verdict.md
 not indexed (derived after the index or rewritten by each checker run): evidence/carrier-e2.txt, evidence/carrier-e3.txt, evidence/check-results.txt
 aggregates (directories not listed file by file; each hash is over the sorted per-file listing produced by the same hash tool):
 abbadcbf760b4889eec61de321bc35efbd41aa604017df963879cf796244615a  evidence/manifest/ (94 files, *.sha256 only; aggregate = sha256 of the sorted per-file listing)
@@ -335,7 +335,7 @@ run_status: audit-ready with open items (a checker reads RESULT=FAIL; see the li
 run_complete_at: 2026-10-02
 phase: run, milestones M1-M5 of plan.md (measurement and synthesis; no product code, no cycle_type implementation)
 executor: the lane orchestrator and general-purpose agents standing in for manager-develop (see the deviation in section E.2)
-verdict: .moai/reports/t1434/verdict.md (local-only), verdict_sha256: a5ac9549f47a9d7f61c673899230c8c1b6b9bf9baf2f5129f49ff566d01a8d4b
+verdict: .moai/reports/t1434/verdict.md (local-only), verdict_sha256: 5f287888a651c1c5566ca465d7e555c01748a7d9f8d6d33faa2d1e361b16a9e4
 checker results on this tree (verbatim counters from .moai/reports/t1434/evidence/check-results.txt, produced by run-checks.sh; the exit code follows each line):
 - AC-002 commands: CMDS=171 SCRUB-MATCH=171 ENV-NAMES-MATCH=1 CMD-COUNT-MATCH=1 SECRET-VALUES=0 RESULT=PASS (EXIT=0)
 - AC-003 isolation: TOOLS=2 ISOLATED=2 FAILED=0 BEFORE-EMPTY=2 BEFORE-NONEMPTY=0 AFTER-NONEMPTY=2 CRED-FILES=0 RESULT=PASS (EXIT=0)
