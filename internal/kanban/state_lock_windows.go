@@ -1,6 +1,6 @@
 //go:build windows
 
-// board_lock_windows.go — Windows substrate of the board-wide lock:
+// state_lock_windows.go — Windows substrate of the board-wide lock:
 // atomic-create (O_CREATE|O_EXCL), mirroring internal/spec/lock_windows.go's
 // pattern. Windows lacks fcntl-style advisory flock, so the artifact IS the
 // lock: a holder killed mid-mutation leaves an artifact that blocks every
@@ -25,14 +25,14 @@ const (
 	boardLockTransientDelay   = 5 * time.Millisecond
 )
 
-// atomicFileBoardLock holds an exclusively-created lock file; releasing means
+// atomicFileStateLock holds an exclusively-created lock file; releasing means
 // closing and removing it.
-type atomicFileBoardLock struct {
+type atomicFileStateLock struct {
 	lockPath string
 	file     *os.File
 }
 
-func (f *atomicFileBoardLock) release() error {
+func (f *atomicFileStateLock) release() error {
 	if f == nil {
 		return nil
 	}
@@ -50,9 +50,9 @@ func (f *atomicFileBoardLock) release() error {
 	return nil
 }
 
-// acquireBoardLockImpl creates lockPath with O_CREATE|O_EXCL — atomic on
+// acquireStateLockImpl creates lockPath with O_CREATE|O_EXCL — atomic on
 // NTFS — and records this process's identity IN the artifact (REQ-KB-023).
-func acquireBoardLockImpl(lockPath string) (boardLockImpl, error) {
+func acquireStateLockImpl(lockPath string) (stateLockImpl, error) {
 	transientLeft := boardLockTransientRetries
 	for {
 		file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o644)
@@ -62,11 +62,11 @@ func acquireBoardLockImpl(lockPath string) (boardLockImpl, error) {
 				_ = os.Remove(lockPath)
 				return nil, fmt.Errorf("record board lock owner %s: %w", lockPath, werr)
 			}
-			return &atomicFileBoardLock{lockPath: lockPath, file: file}, nil
+			return &atomicFileStateLock{lockPath: lockPath, file: file}, nil
 		}
 		switch {
 		case os.IsExist(err):
-			return nil, ErrBoardLockHeld
+			return nil, ErrStateLockHeld
 		case errors.Is(err, os.ErrPermission):
 			if transientLeft--; transientLeft <= 0 {
 				return nil, fmt.Errorf("open board lock %s: %w", lockPath, err)

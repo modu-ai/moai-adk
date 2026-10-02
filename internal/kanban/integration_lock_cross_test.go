@@ -51,8 +51,8 @@ const (
 	//
 	// Its size is load-bearing and is stated with margin rather than as a bare
 	// strict inequality (audit finding N3). The mutation-lock wait budget is
-	// boardLockWaitBudget = boardLockSupportedWriters × boardLockCIMutationCost
-	// × boardLockHeadroom = 10 × 33ms × 5 = 1.65s (board_store.go:96-117).
+	// stateLockWaitBudget = stateLockSupportedWriters × stateLockCIMutationCost
+	// × stateLockHeadroom = 10 × 33ms × 5 = 1.65s (board_store.go:96-117).
 	// 500ms is 30.3% of that budget — inside the "at most a third" headroom the
 	// audit asked for — so after A is released B still has ~1.15s (69.7%) of
 	// budget left to win the lock. A timeout merely SHORTER than the budget
@@ -348,7 +348,7 @@ func TestIntegrationLockAcquire_ConcurrencyPositiveControl(t *testing.T) {
 // own; a lane told "busy" retries. Conflating them makes the tool say a false
 // thing about the board, so the two predicates must not answer for each other.
 func TestIntegrationLockBusy_IsNotHeld(t *testing.T) {
-	busy := fmt.Errorf("%w (waited %s): %v", ErrIntegrationLockBusy, boardLockWaitBudget, ErrBoardLockHeld)
+	busy := fmt.Errorf("%w (waited %s): %v", ErrIntegrationLockBusy, stateLockWaitBudget, ErrStateLockHeld)
 
 	if !IsIntegrationLockBusy(busy) {
 		t.Fatalf("IsIntegrationLockBusy(busy) = false, want true")
@@ -357,10 +357,10 @@ func TestIntegrationLockBusy_IsNotHeld(t *testing.T) {
 		t.Fatalf("IsIntegrationLockHeld(busy) = true — a transient mutation timeout would be reported to a lane as another session owning the window, which is false")
 	}
 	// The board's own sentinel must not travel out of this scope either: a
-	// caller seeing ErrBoardLockHeld from an integration verb would conclude
+	// caller seeing ErrStateLockHeld from an integration verb would conclude
 	// the kanban board is locked, which is a different subsystem.
-	if IsBoardLockHeld(busy) {
-		t.Fatalf("IsBoardLockHeld(busy) = true — the board sentinel leaked across the scope boundary; wrap the cause with %%v, not %%w")
+	if IsStateLockHeld(busy) {
+		t.Fatalf("IsStateLockHeld(busy) = true — the board sentinel leaked across the scope boundary; wrap the cause with %%v, not %%w")
 	}
 
 	held := fmt.Errorf("%w: peer (pid 1) since t on b", ErrIntegrationLockHeld)

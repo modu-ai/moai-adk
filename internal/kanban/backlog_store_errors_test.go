@@ -73,7 +73,7 @@ func TestBacklogMutate_LockPathIsDirectorySurfacesNonLockError(t *testing.T) {
 
 	if _, _, err := store.Add("blocked by dir"); err == nil {
 		t.Fatal("Add(lock path is a directory) err = nil, want acquisition error")
-	} else if IsBoardLockHeld(err) {
+	} else if IsStateLockHeld(err) {
 		t.Fatalf("err = %v, want a non-contention acquisition failure", err)
 	}
 }
@@ -321,7 +321,7 @@ func TestMutateLockErrorsNameAnArtifactThatExists(t *testing.T) {
 	if err == nil {
 		t.Fatal("Mutate(lock path is a directory) err = nil, want acquisition error")
 	}
-	if IsBoardLockHeld(err) {
+	if IsStateLockHeld(err) {
 		t.Fatalf("err = %v, want a non-contention acquisition failure", err)
 	}
 	msg := err.Error()

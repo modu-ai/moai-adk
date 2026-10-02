@@ -277,7 +277,7 @@ func TestSlotLeaseBusy_IsNotHeld(t *testing.T) {
 	recordPath := slotRecordPath(root, slotTestResource)
 	before := fileSHA(t, recordPath)
 
-	impl, err := acquireBoardLockImpl(slotMutationLockPath(root, slotTestResource))
+	impl, err := acquireStateLockImpl(slotMutationLockPath(root, slotTestResource))
 	if err != nil {
 		t.Fatalf("taking the per-resource mutation lock at the pinned path: %v", err)
 	}
@@ -296,11 +296,11 @@ func TestSlotLeaseBusy_IsNotHeld(t *testing.T) {
 		if IsSlotLeaseHeld(err) {
 			t.Fatalf("%s: busy error also answers the held predicate — a transient contention would be reported as another session holding the resource", op)
 		}
-		if IsBoardLockHeld(err) {
+		if IsStateLockHeld(err) {
 			t.Fatalf("%s: the board-lock sentinel leaked across the scope boundary", op)
 		}
-		if elapsed < boardLockWaitBudget {
-			t.Errorf("%s returned busy after %s, before the %s wait budget was spent", op, elapsed, boardLockWaitBudget)
+		if elapsed < stateLockWaitBudget {
+			t.Errorf("%s returned busy after %s, before the %s wait budget was spent", op, elapsed, stateLockWaitBudget)
 		}
 		if after := fileSHA(t, recordPath); after != before {
 			t.Fatalf("%s changed the record while busy", op)

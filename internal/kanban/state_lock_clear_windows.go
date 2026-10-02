@@ -1,6 +1,6 @@
 //go:build windows
 
-// board_lock_clear_windows.go — the Windows stale-lock clear
+// state_lock_clear_windows.go — the Windows stale-lock clear
 // (SPEC-KANBAN-BOARD-001 REQ-KB-023). The Windows substrate is atomic-create:
 // the artifact IS the lock, so a killed holder leaves a blocker and the
 // clear is the bounded exit. The pre-removal re-read mitigates the
@@ -40,8 +40,8 @@ func isEmptyLockArtifact(raw []byte) bool {
 var processAlive = defaultProcessAlive
 
 // parseLockOwner decodes a lock artifact's recorded owner identity.
-func parseLockOwner(raw []byte) (*BoardLockOwner, error) {
-	var owner BoardLockOwner
+func parseLockOwner(raw []byte) (*StateLockOwner, error) {
+	var owner StateLockOwner
 	if err := json.Unmarshal(raw, &owner); err != nil {
 		return nil, fmt.Errorf("parsing lock owner identity: %w", err)
 	}
@@ -122,7 +122,7 @@ func clearStaleLockAtPath(path, label string) (*ClearStaleReport, error) {
 			return nil, fmt.Errorf("clear stale %s: re-reading empty artifact: %w", label, rerr)
 		}
 		if !isEmptyLockArtifact(rawSecond) {
-			return nil, fmt.Errorf("%w: an identity appeared in the empty artifact during the grace — a live acquirer is publishing", ErrBoardLockChangedHands)
+			return nil, fmt.Errorf("%w: an identity appeared in the empty artifact during the grace — a live acquirer is publishing", ErrStateLockChangedHands)
 		}
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			return nil, fmt.Errorf("clear stale %s: removing interrupted-acquisition artifact: %w", label, err)
@@ -155,7 +155,7 @@ func clearStaleLockAtPath(path, label string) (*ClearStaleReport, error) {
 	}
 	ownerSecond, err := parseLockOwner(rawSecond)
 	if err != nil || *ownerSecond != *ownerFirst {
-		return nil, fmt.Errorf("%w: recorded identity changed between inspection and removal", ErrBoardLockChangedHands)
+		return nil, fmt.Errorf("%w: recorded identity changed between inspection and removal", ErrStateLockChangedHands)
 	}
 
 	if err := os.Remove(path); err != nil {

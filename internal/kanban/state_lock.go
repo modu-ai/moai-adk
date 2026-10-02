@@ -1,4 +1,4 @@
-// board_lock.go — the board-wide advisory lock and its bounded stale clear
+// state_lock.go — the board-wide advisory lock and its bounded stale clear
 // (SPEC-KANBAN-BOARD-001 REQ-KB-019/023, M1).
 //
 // The lock spans the ENTIRE read-modify-write of the WHOLE board, not a card:
@@ -20,73 +20,73 @@ import (
 	"time"
 )
 
-// ErrBoardLockHeld is returned by AcquireBoardLock when another process holds
+// ErrStateLockHeld is returned by AcquireBoardLock when another process holds
 // the board-wide lock.
-var ErrBoardLockHeld = errors.New("kanban board lock held")
+var ErrStateLockHeld = errors.New("kanban board lock held")
 
-// IsBoardLockHeld reports whether err is the contention sentinel.
-func IsBoardLockHeld(err error) bool {
-	return errors.Is(err, ErrBoardLockHeld)
+// IsStateLockHeld reports whether err is the contention sentinel.
+func IsStateLockHeld(err error) bool {
+	return errors.Is(err, ErrStateLockHeld)
 }
 
-// ErrBoardLockChangedHands is returned by ClearStaleBoardLock when the
+// ErrStateLockChangedHands is returned by ClearStaleBoardLock when the
 // pre-removal re-read observes a different recorded identity than the
 // inspection did — the artifact was released and re-acquired inside the
 // window, and the clear aborts rather than unlinking a valid lock.
-var ErrBoardLockChangedHands = errors.New("kanban board lock changed hands between inspection and removal")
+var ErrStateLockChangedHands = errors.New("kanban board lock changed hands between inspection and removal")
 
-// IsBoardLockChangedHands reports whether err is the changed-hands abort.
-func IsBoardLockChangedHands(err error) bool {
-	return errors.Is(err, ErrBoardLockChangedHands)
+// IsStateLockChangedHands reports whether err is the changed-hands abort.
+func IsStateLockChangedHands(err error) bool {
+	return errors.Is(err, ErrStateLockChangedHands)
 }
 
 // boardLockFileName names the lock artifact inside the board directory.
 const boardLockFileName = "board.lock"
 
-// BoardLockOwner is the creating process's identity recorded IN the lock
+// StateLockOwner is the creating process's identity recorded IN the lock
 // artifact (REQ-KB-023). The identity is what makes a stale artifact
 // distinguishable from a live holder's: without it, "the holder is gone" is a
 // guess, and clearing on a guess unlinks a lock a live process may hold.
-type BoardLockOwner struct {
+type StateLockOwner struct {
 	PID       int    `json:"pid"`
 	CreatedAt string `json:"created_at"`
 }
 
-// BoardLock represents an acquired board-wide lock. Callers MUST call
+// StateLock represents an acquired board-wide lock. Callers MUST call
 // Release when the read-modify-write completes.
-type BoardLock struct {
+type StateLock struct {
 	path string
-	impl boardLockImpl
+	impl stateLockImpl
 }
 
-// boardLockImpl is the platform-specific lock implementation (flock on Unix,
+// stateLockImpl is the platform-specific lock implementation (flock on Unix,
 // atomic-create on Windows — mirroring internal/spec's substrate split).
-type boardLockImpl interface {
+type stateLockImpl interface {
 	release() error
 }
 
 // AcquireBoardLock acquires the board-wide lock at
 // <root>/.moai/state/kanban-board/board.lock, creating the board directory if
-// absent. Returns ErrBoardLockHeld on contention; the caller retries or
+// absent. Returns ErrStateLockHeld on contention; the caller retries or
 // reports, never blocks.
 //
 // The acquiring process records its identity in the artifact as part of the
 // acquisition, so an artifact always names its current owner.
-func AcquireBoardLock(root string) (*BoardLock, error) {
+func AcquireBoardLock(root string) (*StateLock, error) {
 	dir := BoardDir(root)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("acquire board lock: creating board dir: %w", err)
 	}
 	path := boardLockPath(root)
-	impl, err := acquireBoardLockImpl(path)
+	impl, err := acquireStateLockImpl(path)
 	if err != nil {
 		return nil, err
 	}
-	return &BoardLock{path: path, impl: impl}, nil
+	return &StateLock{path: path, impl: impl}, nil
 }
 
 // Release releases the board-wide lock. Safe to call multiple times.
-func (l *BoardLock) Release() error {
+func (l *StateLock) Release() error {
 	if l == nil || l.impl == nil {
 		return nil
 	}
@@ -96,7 +96,7 @@ func (l *BoardLock) Release() error {
 }
 
 // Path returns the lock artifact's path (diagnostics).
-func (l *BoardLock) Path() string {
+func (l *StateLock) Path() string {
 	if l == nil {
 		return ""
 	}
@@ -122,7 +122,7 @@ type ClearStaleReport struct {
 
 // newLockOwnerRecord builds the owner identity block written at acquisition.
 func newLockOwnerRecord() []byte {
-	owner := BoardLockOwner{
+	owner := StateLockOwner{
 		PID:       os.Getpid(),
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}

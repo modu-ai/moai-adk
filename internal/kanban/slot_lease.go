@@ -16,7 +16,7 @@
 //
 // The record, the mutation lock, and every name here are separate from the
 // integration window (integration_lock.go). Only the lock SUBSTRATE
-// (acquireBoardLockImpl, flock on Unix / atomic-create on Windows) and its
+// (acquireStateLockImpl, flock on Unix / atomic-create on Windows) and its
 // jittered wait budget are shared.
 //
 // Two lifetimes, as in the integration window: the LEASE is a record that
@@ -457,31 +457,31 @@ func withSlotLeaseMutation(projectRoot, resource string, fn func() error) error 
 }
 
 // acquireSlotLeaseMutationLock takes the per-resource mutation lock, retrying
-// contention within the shared elapsed budget (boardLockWaitBudget) with the
+// contention within the shared elapsed budget (stateLockWaitBudget) with the
 // board's jittered backoff. On budget exhaustion the Windows wedge clear runs
 // once (a no-op on Unix), then the caller gets ErrSlotLeaseBusy.
-func acquireSlotLeaseMutationLock(path string) (boardLockImpl, error) {
+func acquireSlotLeaseMutationLock(path string) (stateLockImpl, error) {
 	var lastErr error
-	deadline := time.Now().Add(boardLockWaitBudget)
+	deadline := time.Now().Add(stateLockWaitBudget)
 	for attempt := 0; ; attempt++ {
-		impl, err := acquireBoardLockImpl(path)
+		impl, err := acquireStateLockImpl(path)
 		if err == nil {
 			return impl, nil
 		}
-		if !IsBoardLockHeld(err) {
+		if !IsStateLockHeld(err) {
 			return nil, fmt.Errorf("slot lease: taking the mutation lock at %s: %w", path, err)
 		}
 		lastErr = err
 		if !time.Now().Before(deadline) {
 			if report, clearErr := clearWedgedSlotLeaseMutationLock(path); clearErr == nil && report != nil && report.Removed {
-				if impl, retryErr := acquireBoardLockImpl(path); retryErr == nil {
+				if impl, retryErr := acquireStateLockImpl(path); retryErr == nil {
 					return impl, nil
 				}
 			}
 			// %v, never %w: the board sentinel must not leak out of this scope.
-			return nil, fmt.Errorf("%w (waited %s): %v", ErrSlotLeaseBusy, boardLockWaitBudget, lastErr)
+			return nil, fmt.Errorf("%w (waited %s): %v", ErrSlotLeaseBusy, stateLockWaitBudget, lastErr)
 		}
-		time.Sleep(boardLockRetryWait(attempt))
+		time.Sleep(stateLockRetryWait(attempt))
 	}
 }
 

@@ -1,9 +1,9 @@
 //go:build !windows
 
-// board_lock_clear_unix.go — the Unix stale-lock clear is gated out
+// state_lock_clear_unix.go — the Unix stale-lock clear is gated out
 // (SPEC-KANBAN-BOARD-001 REQ-KB-023, review finding F5 containment).
 //
-// board_lock_unix.go's own header records that the Unix substrate holds
+// state_lock_unix.go's own header records that the Unix substrate holds
 // flock(2) on an open descriptor which the kernel releases on process exit,
 // so a killed holder leaves an inert artifact — the fourteen orphaned
 // spec-close-*.lock files in this repository's .moai/state/ are the worked

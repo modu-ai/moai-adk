@@ -10,7 +10,7 @@
 // result may be cited for it; `GOOS=windows go vet ./internal/kanban/...`
 // verifies compilation only, and CI's windows job is the behavioural verdict,
 // running these alongside the board's pre-existing clear criteria
-// (board_lock_clear_windows_test.go), which must not regress.
+// (state_lock_clear_windows_test.go), which must not regress.
 package kanban
 
 import (
@@ -29,7 +29,7 @@ func writeMutationArtifact(t *testing.T, root string, pid int) string {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir state dir: %v", err)
 	}
-	raw, err := json.MarshalIndent(BoardLockOwner{
+	raw, err := json.MarshalIndent(StateLockOwner{
 		PID:       pid,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}, "", "  ")

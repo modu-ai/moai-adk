@@ -3,7 +3,7 @@
 // integration_lock_mutation_windows.go — the Windows side of the mutation
 // lock's wedge recovery.
 //
-// On Windows the artifact IS the lock (atomic-create; board_lock_windows.go),
+// On Windows the artifact IS the lock (atomic-create; state_lock_windows.go),
 // so a process killed inside the critical section leaves a file that blocks
 // every subsequent mutation of the record — permanently, and for a lock whose
 // whole lifetime is meant to be one CLI invocation. That asymmetry is why this

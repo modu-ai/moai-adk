@@ -1245,31 +1245,31 @@ func derefOr(s *string, fallback string) string {
 
 // acquireBacklogLockSerialized acquires the backlog's sibling lock, retrying
 // contention against the SAME shared wait policy as the board lock
-// (boardLockWaitBudget and boardLockRetryWait, board_store.go — REQ-BLB-006:
+// (stateLockWaitBudget and stateLockRetryWait, board_store.go — REQ-BLB-006:
 // one policy, both call sites, so a change to either the budget or the
 // backoff applies here without a second edit): a mutation racing a
 // short-lived holder serializes behind it instead of failing, while a
 // genuinely stuck holder surfaces as an error rather than a hang. The timeout
 // error names the lock artifact so the operator can act on the right file.
-func (s *BacklogStore) acquireLock() (*BoardLock, error) {
+func (s *BacklogStore) acquireLock() (*StateLock, error) {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
 		return nil, fmt.Errorf("mutate backlog %s: creating dir: %w", s.EnginePath(), err)
 	}
 	var lastErr error
-	deadline := time.Now().Add(boardLockWaitBudget)
+	deadline := time.Now().Add(stateLockWaitBudget)
 	for attempt := 0; ; attempt++ {
-		impl, err := acquireBoardLockImpl(s.LockPath())
+		impl, err := acquireStateLockImpl(s.LockPath())
 		if err == nil {
-			return &BoardLock{path: s.LockPath(), impl: impl}, nil
+			return &StateLock{path: s.LockPath(), impl: impl}, nil
 		}
-		if !IsBoardLockHeld(err) {
+		if !IsStateLockHeld(err) {
 			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), err)
 		}
 		lastErr = err
 		if !time.Now().Before(deadline) {
 			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), lastErr)
 		}
-		time.Sleep(boardLockRetryWait(attempt))
+		time.Sleep(stateLockRetryWait(attempt))
 	}
 }
 

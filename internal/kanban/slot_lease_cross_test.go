@@ -174,8 +174,8 @@ func TestSlotLease_ControlGroupTwoSessions(t *testing.T) {
 	if runtimeIsWindows() {
 		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
 	}
-	if slotStallReleaseTimeout*3 > boardLockWaitBudget {
-		t.Fatalf("stall-release timeout %s exceeds a third of the %s wait budget — B would be left retrying for most of its budget and busy would re-enter as flakiness", slotStallReleaseTimeout, boardLockWaitBudget)
+	if slotStallReleaseTimeout*3 > stateLockWaitBudget {
+		t.Fatalf("stall-release timeout %s exceeds a third of the %s wait budget — B would be left retrying for most of its budget and busy would re-enter as flakiness", slotStallReleaseTimeout, stateLockWaitBudget)
 	}
 	ownerPID := strconv.Itoa(os.Getpid())
 

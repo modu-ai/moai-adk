@@ -16,7 +16,7 @@
 // conflation this file exists to keep apart.
 //
 // NO NEW PRIMITIVE. The platform substrate is the board lock's, taken as it is:
-// acquireBoardLockImpl (flock on Unix, atomic-create on Windows) is already
+// acquireStateLockImpl (flock on Unix, atomic-create on Windows) is already
 // path-parameterized, and the bounded jittered contention policy is
 // board_store.go's. What is added is a second SCOPE over the same substrate,
 // not a second mechanism.
@@ -92,15 +92,15 @@ func withIntegrationLockMutation(projectRoot string, fn func() error) error {
 // 33ms CI mutation cost × 5 headroom = 1.65s) using the same jittered backoff.
 // The budget is inherited rather than re-derived by guess; if integration-window
 // mutations turn out to be slower in practice, it is re-derived in a later card.
-func acquireIntegrationMutationLock(path string) (boardLockImpl, error) {
+func acquireIntegrationMutationLock(path string) (stateLockImpl, error) {
 	var lastErr error
-	deadline := time.Now().Add(boardLockWaitBudget)
+	deadline := time.Now().Add(stateLockWaitBudget)
 	for attempt := 0; ; attempt++ {
-		impl, err := acquireBoardLockImpl(path)
+		impl, err := acquireStateLockImpl(path)
 		if err == nil {
 			return impl, nil
 		}
-		if !IsBoardLockHeld(err) {
+		if !IsStateLockHeld(err) {
 			return nil, fmt.Errorf("integration lock: taking the mutation lock at %s: %w", path, err)
 		}
 		lastErr = err
@@ -116,15 +116,15 @@ func acquireIntegrationMutationLock(path string) (boardLockImpl, error) {
 			// any failure of the single retry all fall through to busy —
 			// uncertainty resolves toward leaving the artifact alone.
 			if report, clearErr := clearWedgedIntegrationMutationLock(path); clearErr == nil && report != nil && report.Removed {
-				if impl, retryErr := acquireBoardLockImpl(path); retryErr == nil {
+				if impl, retryErr := acquireStateLockImpl(path); retryErr == nil {
 					return impl, nil
 				}
 			}
 			// %v, never %w: the board's sentinel must not travel out of this
-			// scope, or a caller's IsBoardLockHeld would report true for a
+			// scope, or a caller's IsStateLockHeld would report true for a
 			// lock that has nothing to do with the board.
-			return nil, fmt.Errorf("%w (waited %s): %v", ErrIntegrationLockBusy, boardLockWaitBudget, lastErr)
+			return nil, fmt.Errorf("%w (waited %s): %v", ErrIntegrationLockBusy, stateLockWaitBudget, lastErr)
 		}
-		time.Sleep(boardLockRetryWait(attempt))
+		time.Sleep(stateLockRetryWait(attempt))
 	}
 }

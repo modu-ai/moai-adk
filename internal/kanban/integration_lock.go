@@ -11,7 +11,7 @@
 // absent while another lane is mid-resolution.
 //
 // This file is the mechanical layer under that rule. It is deliberately NOT
-// the board lock next door (board_lock.go), and the difference is lifetime:
+// the board lock next door (state_lock.go), and the difference is lifetime:
 // the board lock spans one process's read-modify-write and is an flock, so it
 // dies with the process that took it. An integration window spans many CLI
 // invocations, many turns, and minutes of human-paced work — an fd cannot

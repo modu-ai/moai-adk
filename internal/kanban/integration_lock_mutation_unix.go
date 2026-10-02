@@ -5,10 +5,10 @@
 //
 // The Unix substrate holds flock(2) on an open descriptor and the kernel
 // releases it when the descriptor closes, which it does on process exit
-// (board_lock_unix.go's own header). A holder killed mid-mutation therefore
+// (state_lock_unix.go's own header). A holder killed mid-mutation therefore
 // leaves an INERT artifact: the next acquirer takes a fresh flock on the same
 // path and proceeds. There is no wedge here to clear, so no clear is added —
-// mirroring board_lock_clear_unix.go's gate and its stated reason.
+// mirroring state_lock_clear_unix.go's gate and its stated reason.
 package kanban
 
 // clearWedgedIntegrationMutationLock on Unix reports the platform gate and

@@ -186,11 +186,11 @@ func TestBacklogLock_TimeoutNamesLockPath(t *testing.T) {
 	t.Parallel()
 	store := newTestBacklogStore(t)
 
-	impl, err := acquireBoardLockImpl(store.LockPath())
+	impl, err := acquireStateLockImpl(store.LockPath())
 	if err != nil {
 		t.Fatalf("hold foreign lock: %v", err)
 	}
-	foreign := &BoardLock{path: store.LockPath(), impl: impl}
+	foreign := &StateLock{path: store.LockPath(), impl: impl}
 	defer func() { _ = foreign.Release() }()
 
 	start := time.Now()
@@ -199,7 +199,7 @@ func TestBacklogLock_TimeoutNamesLockPath(t *testing.T) {
 	if err == nil {
 		t.Fatal("Add under a held lock err = nil, want bounded-retry timeout")
 	}
-	if !IsBoardLockHeld(err) {
+	if !IsStateLockHeld(err) {
 		t.Fatalf("err = %v, want the lock-held sentinel", err)
 	}
 	if !strings.Contains(err.Error(), store.LockPath()) {
@@ -221,11 +221,11 @@ func TestBacklogMutate_LoserSerializedNotFailed(t *testing.T) {
 	t.Parallel()
 	store := newTestBacklogStore(t)
 
-	impl, err := acquireBoardLockImpl(store.LockPath())
+	impl, err := acquireStateLockImpl(store.LockPath())
 	if err != nil {
 		t.Fatalf("hold foreign lock: %v", err)
 	}
-	foreign := &BoardLock{path: store.LockPath(), impl: impl}
+	foreign := &StateLock{path: store.LockPath(), impl: impl}
 	go func() {
 		time.Sleep(80 * time.Millisecond)
 		_ = foreign.Release()

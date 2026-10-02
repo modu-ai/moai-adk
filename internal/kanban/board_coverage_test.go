@@ -101,7 +101,7 @@ func TestBoardLock_PathDiagnostics(t *testing.T) {
 	if err := lock.Release(); err != nil {
 		t.Fatalf("second Release: %v", err)
 	}
-	var nilLock *BoardLock
+	var nilLock *StateLock
 	if nilLock.Path() != "" || nilLock.Release() != nil {
 		t.Fatal("nil receiver safety broken")
 	}

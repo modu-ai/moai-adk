@@ -1,4 +1,4 @@
-// board_lock_cross_test.go — AC-KB-019 (REQ-KB-019 + REQ-KB-009's bound,
+// state_lock_cross_test.go — AC-KB-019 (REQ-KB-019 + REQ-KB-009's bound,
 // M1 minimal form): the board-wide lock serializes concurrent mutations of
 // two DIFFERENT cards in SEPARATE OS PROCESSES.
 //

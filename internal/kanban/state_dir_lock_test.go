@@ -32,7 +32,7 @@ func TestStateDirRelocationUnderHeldLock(t *testing.T) {
 	// A foreign holder takes the queue lock where it currently lives.
 	legacyQueue := filepath.Join(LegacyStateDirForRoot(root), backlogFileName)
 	legacyStore := NewBacklogStore(legacyQueue)
-	held, err := acquireBoardLockImpl(legacyStore.LockPath())
+	held, err := acquireStateLockImpl(legacyStore.LockPath())
 	if err != nil {
 		t.Fatalf("take the foreign lock: %v", err)
 	}

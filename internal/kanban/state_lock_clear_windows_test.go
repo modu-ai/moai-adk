@@ -1,6 +1,6 @@
 //go:build windows
 
-// board_lock_clear_windows_test.go — the Windows stale-lock clear suite
+// state_lock_clear_windows_test.go — the Windows stale-lock clear suite
 // (SPEC-KANBAN-BOARD-001 AC-KB-023). On Unix these tests are inert: the clear
 // is gated to Windows (finding F5), and the Unix kernel drops flock on exit
 // so observation 1 is trivially satisfied there without a clear at all.
@@ -158,8 +158,8 @@ func TestClearStaleBoardLock_ReacquireRaceAborts(t *testing.T) {
 	if err == nil {
 		t.Fatalf("ClearStaleBoardLock() err = nil with report %+v — the clear completed through a changed identity: the defect AP-25 names", report)
 	}
-	if !IsBoardLockChangedHands(err) {
-		t.Fatalf("err = %v, want ErrBoardLockChangedHands", err)
+	if !IsStateLockChangedHands(err) {
+		t.Fatalf("err = %v, want ErrStateLockChangedHands", err)
 	}
 	if _, statErr := os.Stat(boardLockPath(root)); statErr != nil {
 		t.Fatalf("artifact did not survive the aborted clear: %v", statErr)
@@ -212,7 +212,7 @@ func writeLockArtifactWin(t *testing.T, root string, pid int) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir board dir: %v", err)
 	}
-	owner := BoardLockOwner{PID: pid, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
+	owner := StateLockOwner{PID: pid, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
 	body, err := json.MarshalIndent(owner, "", "  ")
 	if err != nil {
 		t.Fatalf("marshal owner: %v", err)

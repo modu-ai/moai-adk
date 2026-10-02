@@ -1,4 +1,4 @@
-// board_lock_wait_test.go — the queue lock-wait policy's guards
+// state_lock_wait_test.go — the queue lock-wait policy's guards
 // (SPEC-BACKLOG-LOCK-BUDGET-001, card t354).
 //
 // The policy under test is the shared budget-and-backoff both queue-lock
@@ -20,21 +20,21 @@ import (
 //
 // The mutant this catches: replacing the derivation with a numeric literal,
 // or lowering an input without the derivation following it.
-func TestBoardLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
+func TestStateLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
 	t.Parallel()
 
-	recomputed := time.Duration(boardLockSupportedWriters) *
-		boardLockCIMutationCost * boardLockHeadroom
-	if boardLockWaitBudget != recomputed {
+	recomputed := time.Duration(stateLockSupportedWriters) *
+		stateLockCIMutationCost * stateLockHeadroom
+	if stateLockWaitBudget != recomputed {
 		t.Fatalf("budget %v is not the product of its named inputs (%d writers x %v x %d headroom = %v) — "+
 			"a bare literal with no derivable inputs fails REQ-BLB-001",
-			boardLockWaitBudget, boardLockSupportedWriters, boardLockCIMutationCost,
-			boardLockHeadroom, recomputed)
+			stateLockWaitBudget, stateLockSupportedWriters, stateLockCIMutationCost,
+			stateLockHeadroom, recomputed)
 	}
 
 	// Where REQ-BLB-002's floor is enforced: INPUT-WISE, by the equality
 	// above plus the three assertions below — never by a comparison against
-	// boardLockWaitBudget.
+	// stateLockWaitBudget.
 	//
 	//	budget == writers * cost * headroom   (the equality above, t.Fatalf)
 	//	writers  == 10                        (below)
@@ -47,7 +47,7 @@ func TestBoardLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
 	//
 	// Why no floor-versus-budget comparison appears here, and why
 	// reinstating one is a regression rather than an improvement:
-	// boardLockWaitBudget IS declared as that same three-constant product
+	// stateLockWaitBudget IS declared as that same three-constant product
 	// (board_store.go), and the equality above is a t.Fatalf hard stop, so
 	// any floor built from those terms is the identical expression to the
 	// budget and evaluates false on every assignment — an identity wearing
@@ -56,28 +56,28 @@ func TestBoardLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
 	// (SPEC-VACUOUS-FLOOR-GUARD-001, card t378).
 	//
 	// The file's one legitimate floor comparison is
-	// TestBoardLockWaitBudgetCoversSerializedMutations below: it derives its
+	// TestStateLockWaitBudgetCoversSerializedMutations below: it derives its
 	// floor from the stress constants, terms the budget expression does not
 	// supply, so it is a real comparison (REQ-SIV-010).
 
 	// The supported contender count is the ten-lane figure of record in
 	// backlog_concurrency_test.go's header comment (REQ-BLB-002).
-	if boardLockSupportedWriters != 10 {
+	if stateLockSupportedWriters != 10 {
 		t.Errorf("supported writers = %d, want 10 (Factory mode's ten lanes against one queue)",
-			boardLockSupportedWriters)
+			stateLockSupportedWriters)
 	}
 
 	// The per-mutation cost is sized from the CI-class observation
 	// (1.57s / 48 mutations ~= 33ms), never from the faster isolated local
 	// figure (~14ms) — sizing to the fast machine is what made the retired
 	// budget thin.
-	if boardLockCIMutationCost < 33*time.Millisecond {
+	if stateLockCIMutationCost < 33*time.Millisecond {
 		t.Errorf("per-mutation cost %v is below the CI-class observation of 33ms",
-			boardLockCIMutationCost)
+			stateLockCIMutationCost)
 	}
 
-	if boardLockHeadroom < 2 {
-		t.Errorf("headroom factor %d states no headroom", boardLockHeadroom)
+	if stateLockHeadroom < 2 {
+		t.Errorf("headroom factor %d states no headroom", stateLockHeadroom)
 	}
 }
 
@@ -86,22 +86,22 @@ func TestBoardLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
 // with the mutation count TestConcurrencyStress serializes through one flock.
 //
 // What kind of guard this is. It is a CONSTANT-COHERENCE GUARD, NOT A RUNTIME
-// BUDGET GUARD. boardLockCIMutationCost appears on both sides of the
+// BUDGET GUARD. stateLockCIMutationCost appears on both sides of the
 // inequality and cancels, so what is actually enforced is a relation between
 // compile-time constants alone:
 //
-//	boardLockSupportedWriters * boardLockHeadroom >= stressWriters * stressAddsPerWriter
+//	stateLockSupportedWriters * stateLockHeadroom >= stressWriters * stressAddsPerWriter
 //	                      10  *                 5  = 50  >=  8 * 6 = 48
 //
 // What it catches, stated exhaustively: a constant-axis regression — someone
-// lowering boardLockSupportedWriters or boardLockHeadroom, or raising
+// lowering stateLockSupportedWriters or stateLockHeadroom, or raising
 // stressWriters / stressAddsPerWriter past their product. 48 and 50 are two
 // independently-authored figures, so the inequality binds a real coupling
 // between the stress test and the lock policy. Execution time, machine speed,
 // and contention level are NOT inputs to this guard.
 //
 // What it does NOT catch, from the same cancellation: no change to
-// boardLockCIMutationCost, and no per-mutation cost regression of any size,
+// stateLockCIMutationCost, and no per-mutation cost regression of any size,
 // can ever make it fire. It asserts nothing about the wait any real machine
 // needs — t370 back-derived the CI -race per-mutation cost at 42-105ms against
 // the declared 33ms, so the wait actually required there is 2.0-5.0s against a
@@ -109,34 +109,34 @@ func TestBoardLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
 //
 // It also must not reproduce the vacuity next door: the floor below is built
 // from the two stress constants, which the budget expression
-// (boardLockSupportedWriters * boardLockCIMutationCost * boardLockHeadroom)
+// (stateLockSupportedWriters * stateLockCIMutationCost * stateLockHeadroom)
 // does not itself supply, so this is a real comparison rather than a value
 // against itself (REQ-SIV-010).
-func TestBoardLockWaitBudgetCoversSerializedMutations(t *testing.T) {
+func TestStateLockWaitBudgetCoversSerializedMutations(t *testing.T) {
 	t.Parallel()
 
 	const serialized = stressWriters * stressAddsPerWriter
-	const policyBudgetedMutations = boardLockSupportedWriters * boardLockHeadroom
-	floor := time.Duration(serialized) * boardLockCIMutationCost
+	const policyBudgetedMutations = stateLockSupportedWriters * stateLockHeadroom
+	floor := time.Duration(serialized) * stateLockCIMutationCost
 
-	if boardLockWaitBudget < floor {
+	if stateLockWaitBudget < floor {
 		t.Fatalf("constant coherence broken: the lock policy budgets %d supported writers x %d headroom = %d "+
 			"serialized mutations, while the stress test serializes %d x %d = %d (%v budget < %v floor). "+
 			"Lowering either policy constant, or raising either stress constant past that product, fails this "+
 			"guard. The per-mutation cost cancels on both sides, so the relation is cost-independent and "+
 			"asserts nothing about the wait any real machine needs — the CI -race per-mutation cost observed "+
 			"by t370 was 42-105ms against the declared %v.",
-			boardLockSupportedWriters, boardLockHeadroom, policyBudgetedMutations,
+			stateLockSupportedWriters, stateLockHeadroom, policyBudgetedMutations,
 			stressWriters, stressAddsPerWriter, serialized,
-			boardLockWaitBudget, floor, boardLockCIMutationCost)
+			stateLockWaitBudget, floor, stateLockCIMutationCost)
 	}
 
 	t.Logf("constant coherence: the lock policy budgets %d supported writers x %d headroom = %d serialized "+
 		"mutations; the stress test serializes %d x %d = %d. The per-mutation cost cancels on both sides, so "+
 		"this relation is cost-independent — it states nothing about the wait any real machine needs, and a "+
-		"change to boardLockCIMutationCost (declared %v) would not be caught here.",
-		boardLockSupportedWriters, boardLockHeadroom, policyBudgetedMutations,
-		stressWriters, stressAddsPerWriter, serialized, boardLockCIMutationCost)
+		"change to stateLockCIMutationCost (declared %v) would not be caught here.",
+		stateLockSupportedWriters, stateLockHeadroom, policyBudgetedMutations,
+		stressWriters, stressAddsPerWriter, serialized, stateLockCIMutationCost)
 }
 
 // AC-BLB-002 / REQ-BLB-003, REQ-BLB-004: the retry wait varies per contender,
@@ -145,17 +145,17 @@ func TestBoardLockWaitBudgetCoversSerializedMutations(t *testing.T) {
 //
 // The assertions are distinctness and bounds — never a specific sampled
 // value, which would pin the test to a draw.
-func TestBoardLockRetryWaitIsNotLockstep(t *testing.T) {
+func TestStateLockRetryWaitIsNotLockstep(t *testing.T) {
 	t.Parallel()
 
 	const contenders = 32
 	for attempt := 0; attempt < 6; attempt++ {
 		seen := make(map[time.Duration]struct{}, contenders)
 		for c := 0; c < contenders; c++ {
-			d := boardLockRetryWait(attempt)
-			if d < boardLockWaitMin || d > boardLockWaitMax {
+			d := stateLockRetryWait(attempt)
+			if d < stateLockWaitMin || d > stateLockWaitMax {
 				t.Fatalf("attempt %d contender %d: wait %v outside declared bounds [%v, %v]",
-					attempt, c, d, boardLockWaitMin, boardLockWaitMax)
+					attempt, c, d, stateLockWaitMin, stateLockWaitMax)
 			}
 			seen[d] = struct{}{}
 		}
@@ -169,7 +169,7 @@ func TestBoardLockRetryWaitIsNotLockstep(t *testing.T) {
 	// identical across the run is what REQ-BLB-004 forbids.
 	consecutive := make(map[time.Duration]struct{}, 16)
 	for attempt := 0; attempt < 16; attempt++ {
-		consecutive[boardLockRetryWait(attempt)] = struct{}{}
+		consecutive[stateLockRetryWait(attempt)] = struct{}{}
 	}
 	if len(consecutive) < 2 {
 		t.Errorf("one contender drew the identical wait across 16 consecutive attempts — fixed delay")
@@ -192,7 +192,7 @@ func TestBacklogLockStuckHolderSurfacesBoundedNamedError(t *testing.T) {
 	t.Parallel()
 
 	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
-	held, err := acquireBoardLockImpl(store.LockPath())
+	held, err := acquireStateLockImpl(store.LockPath())
 	if err != nil {
 		t.Fatalf("seeding the stuck holder: %v", err)
 	}
@@ -212,8 +212,8 @@ func TestBacklogLockStuckHolderSurfacesBoundedNamedError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("the mutation succeeded while the lock was held by a stuck holder")
 	}
-	if !IsBoardLockHeld(err) {
-		t.Errorf("error is not recognized by IsBoardLockHeld: %v", err)
+	if !IsStateLockHeld(err) {
+		t.Errorf("error is not recognized by IsStateLockHeld: %v", err)
 	}
 	if !strings.Contains(err.Error(), store.EnginePath()) {
 		t.Errorf("error does not name the queue artifact %s: %v", store.EnginePath(), err)
@@ -221,8 +221,8 @@ func TestBacklogLockStuckHolderSurfacesBoundedNamedError(t *testing.T) {
 	if !strings.Contains(err.Error(), store.LockPath()) {
 		t.Errorf("error does not name the lock artifact %s: %v", store.LockPath(), err)
 	}
-	if bound := 2 * boardLockWaitBudget; elapsed > bound {
+	if bound := 2 * stateLockWaitBudget; elapsed > bound {
 		t.Errorf("the mutation blocked %v, past the bound of %v (budget %v)",
-			elapsed, bound, boardLockWaitBudget)
+			elapsed, bound, stateLockWaitBudget)
 	}
 }

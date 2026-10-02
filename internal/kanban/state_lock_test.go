@@ -1,4 +1,4 @@
-// board_lock_test.go — the board-wide advisory lock and its bounded stale
+// state_lock_test.go — the board-wide advisory lock and its bounded stale
 // clear (SPEC-KANBAN-BOARD-001 REQ-KB-019/023, M1).
 //
 // Every board mutation is serialized beneath a lock scoped to the WHOLE
@@ -70,7 +70,7 @@ func readHelperLine(t *testing.T, cmd *exec.Cmd, scanner *bufio.Scanner) string 
 
 // TestBoardLock_ExcludesAcrossProcesses — REQ-KB-019's substrate property, in
 // separate processes: while one OS process holds the board lock, another OS
-// process's acquisition attempt is refused with ErrBoardLockHeld; after the
+// process's acquisition attempt is refused with ErrStateLockHeld; after the
 // holder releases, re-acquisition succeeds.
 func TestBoardLock_ExcludesAcrossProcesses(t *testing.T) {
 	if runtimeIsWindows() {
@@ -142,7 +142,7 @@ func writeLockArtifact(t *testing.T, root string, pid int) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir board dir: %v", err)
 	}
-	owner := BoardLockOwner{PID: pid, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
+	owner := StateLockOwner{PID: pid, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
 	body, err := json.MarshalIndent(owner, "", "  ")
 	if err != nil {
 		t.Fatalf("marshal owner: %v", err)
@@ -158,7 +158,7 @@ func writeLockArtifact(t *testing.T, root string, pid int) {
 // M1 implementation opened — acquire flock, then record identity — cannot
 // arise). On Unix the operation is a no-op reporting the platform gate and
 // touches nothing. The Windows clear logic (dead-owner cleared, live-owner
-// refused, re-acquire race abort) lives in board_lock_clear_windows_test.go
+// refused, re-acquire race abort) lives in state_lock_clear_windows_test.go
 // behind a build tag and is exercised on a Windows runner / GOOS=windows
 // build.
 func TestClearStaleBoardLock_UnixGatedOut(t *testing.T) {

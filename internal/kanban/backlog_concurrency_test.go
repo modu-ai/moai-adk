@@ -20,7 +20,7 @@ import (
 
 // stressWriters and stressAddsPerWriter bound this file's stress fan-out. They
 // are package-level with a SINGLE definition so the lock-wait budget guard
-// (TestBoardLockWaitBudgetCoversSerializedMutations, board_lock_wait_test.go)
+// (TestStateLockWaitBudgetCoversSerializedMutations, state_lock_wait_test.go)
 // reads the very figures TestConcurrencyStress serializes, rather than a
 // hand-copied second pair (SPEC-STRESS-INVARIANT-VERDICT-001 REQ-SIV-011).
 const (
@@ -29,7 +29,7 @@ const (
 )
 
 // stressAddClass names the class one Add attempt's outcome falls into. The
-// class is decided SOLELY by IsBoardLockHeld (board_lock.go) — never by
+// class is decided SOLELY by IsStateLockHeld (state_lock.go) — never by
 // matching error text, by an error count, or by elapsed time
 // (SPEC-STRESS-INVARIANT-VERDICT-001 REQ-SIV-003).
 type stressAddClass int
@@ -56,7 +56,7 @@ func classifyStressAdd(err error) stressAddClass {
 	switch {
 	case err == nil:
 		return stressAddSucceeded
-	case IsBoardLockHeld(err):
+	case IsStateLockHeld(err):
 		return stressAddStarved
 	default:
 		return stressAddHardFailed
@@ -120,7 +120,7 @@ func zeroProgressVerdict(s *stressTally) string {
 // The verdict criterion (SPEC-STRESS-INVARIANT-VERDICT-001, card t372). This
 // test used ONE criterion for TWO unrelated properties: it failed when the
 // queue invariants broke — correct — and failed identically when a contender
-// exhausted the machine-speed-sensitive boardLockWaitBudget, which measures the
+// exhausted the machine-speed-sensitive stateLockWaitBudget, which measures the
 // runner rather than the code. Card t370 measured the consequence: 12 of 14
 // non-cancelled CI runs red, every one of them at the lock-acquisition gate,
 // and the invariants themselves broken in NONE of them.
@@ -131,7 +131,7 @@ func zeroProgressVerdict(s *stressTally) string {
 // are anchored to the ids actually issued rather than to a static 48, and NONE
 // of them is conditional on the starved count (REQ-SIV-006). Acquisition
 // latency moved to its own machine-independent guard,
-// TestBoardLockWaitBudgetCoversSerializedMutations (board_lock_wait_test.go).
+// TestStateLockWaitBudgetCoversSerializedMutations (state_lock_wait_test.go).
 func TestConcurrencyStress(t *testing.T) {
 	t.Parallel()
 	const attempted = stressWriters * stressAddsPerWriter
@@ -275,7 +275,7 @@ func TestConcurrencyStress(t *testing.T) {
 			switch {
 			case err == nil:
 				claimWins++
-			case IsBoardLockHeld(err):
+			case IsStateLockHeld(err):
 				claimStarved++
 			case errors.Is(err, ErrClaimRaced):
 				claimRaced = append(claimRaced, err)
@@ -344,13 +344,13 @@ func TestConcurrencyStress(t *testing.T) {
 // function — the pattern already in the tree at
 // TestBacklogLockStuckHolderSurfacesBoundedNamedError. No background process is
 // spawned, no machine load is generated, and no CI run is needed. Only two adds
-// are attempted, so the bounded boardLockWaitBudget wait is paid twice rather
+// are attempted, so the bounded stateLockWaitBudget wait is paid twice rather
 // than 48 times.
 func TestStressAddClassificationToleratesStarvation(t *testing.T) {
 	t.Parallel()
 
 	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
-	held, err := acquireBoardLockImpl(store.LockPath())
+	held, err := acquireStateLockImpl(store.LockPath())
 	if err != nil {
 		t.Fatalf("seeding the stuck holder: %v", err)
 	}
@@ -367,8 +367,8 @@ func TestStressAddClassificationToleratesStarvation(t *testing.T) {
 		if addErr == nil {
 			t.Fatalf("attempt %d succeeded while the lock was held by the seeded holder", i)
 		}
-		if !IsBoardLockHeld(addErr) {
-			t.Fatalf("attempt %d error does not satisfy IsBoardLockHeld: %v", i, addErr)
+		if !IsStateLockHeld(addErr) {
+			t.Fatalf("attempt %d error does not satisfy IsStateLockHeld: %v", i, addErr)
 		}
 		if class := tally.record(addErr); class != stressAddStarved {
 			t.Fatalf("attempt %d classified as %s, want starved", i, class)
@@ -394,7 +394,7 @@ func TestStressAddClassificationToleratesStarvation(t *testing.T) {
 	if class := classifyStressAdd(errors.New("some other failure")); class != stressAddHardFailed {
 		t.Errorf("a non-sentinel error classified as %s, want hard-failed", class)
 	}
-	t.Logf("AC-SIV-001: %d/%d adds starved under a seeded holder, all satisfying IsBoardLockHeld, 0 hard failures",
+	t.Logf("AC-SIV-001: %d/%d adds starved under a seeded holder, all satisfying IsStateLockHeld, 0 hard failures",
 		tally.starved, attempts)
 }
 
@@ -408,7 +408,7 @@ func TestStressZeroProgressFloorFailsTotalStarvation(t *testing.T) {
 	t.Parallel()
 
 	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
-	held, err := acquireBoardLockImpl(store.LockPath())
+	held, err := acquireStateLockImpl(store.LockPath())
 	if err != nil {
 		t.Fatalf("seeding the stuck holder: %v", err)
 	}

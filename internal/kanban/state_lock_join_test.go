@@ -1,4 +1,4 @@
-// board_lock_join_test.go — regression coverage for the board-store lock
+// state_lock_join_test.go — regression coverage for the board-store lock
 // release fold (joinBoardReleaseErr). The two guarded board entry points
 // (WriteBoardState, RecoverBoard) share the fold, so its four-combination
 // contract is exercised directly here rather than through the entry points —

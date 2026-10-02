@@ -1,6 +1,6 @@
 //go:build !windows
 
-// board_lock_errno_test.go — bidirectional contract for the Unix board-lock
+// state_lock_errno_test.go — bidirectional contract for the Unix board-lock
 // flock(2) failure classification (SPEC-BOARDLOCK-ERRNO-001, card t379).
 //
 // The pair is load-bearing: the positive direction alone admits an
@@ -38,7 +38,7 @@ var nonContentionErrnos = []unix.Errno{
 
 // TestBoardFlockErrnoContentionRemainsHeld covers AC-BLE-001a (REQ-BLE-001).
 // It runs the REAL acquisition path — the wiring detector: under the M-narrow
-// mutant this reddens only if acquireBoardLockImpl returns the classifier's
+// mutant this reddens only if acquireStateLockImpl returns the classifier's
 // result rather than a hardcoded sentinel.
 func TestBoardFlockErrnoContentionRemainsHeld(t *testing.T) {
 	root := t.TempDir()
@@ -54,11 +54,11 @@ func TestBoardFlockErrnoContentionRemainsHeld(t *testing.T) {
 		_ = second.Release()
 		t.Fatal("second AcquireBoardLock: expected contention, got nil error")
 	}
-	if !IsBoardLockHeld(err) {
-		t.Fatalf("IsBoardLockHeld(%v) = false, want true", err)
+	if !IsStateLockHeld(err) {
+		t.Fatalf("IsStateLockHeld(%v) = false, want true", err)
 	}
-	if !errors.Is(err, ErrBoardLockHeld) {
-		t.Fatalf("errors.Is(%v, ErrBoardLockHeld) = false, want true", err)
+	if !errors.Is(err, ErrStateLockHeld) {
+		t.Fatalf("errors.Is(%v, ErrStateLockHeld) = false, want true", err)
 	}
 }
 
@@ -72,12 +72,12 @@ func TestBoardFlockErrnoNonContentionIsNotHeld(t *testing.T) {
 
 	for _, errno := range nonContentionErrnos {
 		t.Run(errno.Error(), func(t *testing.T) {
-			got := classifyBoardFlockErr(errno, lockPath)
+			got := classifyStateFlockErr(errno, lockPath)
 			if got == nil {
-				t.Fatal("classifyBoardFlockErr returned nil; the error must not be swallowed")
+				t.Fatal("classifyStateFlockErr returned nil; the error must not be swallowed")
 			}
-			if IsBoardLockHeld(got) {
-				t.Fatalf("IsBoardLockHeld(%v) = true, want false", got)
+			if IsStateLockHeld(got) {
+				t.Fatalf("IsStateLockHeld(%v) = true, want false", got)
 			}
 		})
 	}
@@ -92,9 +92,9 @@ func TestBoardFlockErrnoPreservesErrnoAndPath(t *testing.T) {
 
 	for _, errno := range nonContentionErrnos {
 		t.Run(errno.Error(), func(t *testing.T) {
-			got := classifyBoardFlockErr(errno, lockPath)
+			got := classifyStateFlockErr(errno, lockPath)
 			if got == nil {
-				t.Fatal("classifyBoardFlockErr returned nil")
+				t.Fatal("classifyStateFlockErr returned nil")
 			}
 			if !errors.Is(got, errno) {
 				t.Fatalf("errors.Is(%v, %v) = false, want true", got, errno)
@@ -123,7 +123,7 @@ func TestBoardFlockErrnoPreservesErrnoAndPath(t *testing.T) {
 // the induced-failure count is asserted equal to N, so a sweep that induced
 // nothing fails rather than reporting ok.
 //
-// The single unix.Close(fd) in acquireBoardLockImpl serves BOTH the
+// The single unix.Close(fd) in acquireStateLockImpl serves BOTH the
 // contention and the non-contention return path, so removing it (the M-leak
 // mutant, re-laid against the shape actually built) reddens this test even
 // though only contention is inducible here.
@@ -163,7 +163,7 @@ func TestBoardFlockErrnoFailurePathClosesDescriptor(t *testing.T) {
 			_ = contender.Release()
 			t.Fatalf("attempt %d: expected contention, got nil error", i)
 		}
-		if !IsBoardLockHeld(err) {
+		if !IsStateLockHeld(err) {
 			t.Fatalf("attempt %d: expected contention sentinel, got %v", i, err)
 		}
 		induced++
