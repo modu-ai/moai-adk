@@ -183,6 +183,40 @@ func rewritePath(s string) (string, int) {
 	return s, total
 }
 
+// rewriteQualified rewrites each spelling of a package-qualified exported name, kanban.Name, in s to
+// factory.Name: the text a source-scanning test searches for, a reflect type name, a message that names a
+// symbol. The identifier after the dot must start with an upper-case letter (an i18n key such as
+// kanban.noSession and a file name such as kanban.go stay) and the character before kanban must not be a
+// word character.
+func rewriteQualified(s string) (string, int) {
+	var sb strings.Builder
+	n, last := 0, 0
+	for i := 0; ; {
+		j := strings.Index(s[i:], "kanban.")
+		if j < 0 {
+			break
+		}
+		a := i + j
+		b := a + len("kanban.")
+		i = b
+		if a > 0 && (isWordByte(s[a-1]) || s[a-1] == '.') {
+			continue
+		}
+		if b >= len(s) || s[b] < 'A' || s[b] > 'Z' {
+			continue
+		}
+		sb.WriteString(s[last:a])
+		sb.WriteString("factory.")
+		last = b
+		n++
+	}
+	if n == 0 {
+		return s, 0
+	}
+	sb.WriteString(s[last:])
+	return sb.String(), n
+}
+
 func applyEdits(src []byte, es []edit) []byte {
 	sort.Slice(es, func(i, j int) bool { return es[i].a > es[j].a })
 	out := append([]byte(nil), src...)
@@ -495,7 +529,9 @@ func rewriteFile(rel string, src []byte, st *stats) ([]byte, bool) {
 				note("literal", rel, fset.Position(x.Pos()).Line, x.Value, `"factory"`)
 				return true
 			}
-			if nv, n := rewritePath(x.Value); n > 0 {
+			nv, n1 := rewritePath(x.Value)
+			nv, n2 := rewriteQualified(nv)
+			if n1+n2 > 0 {
 				es = append(es, edit{a, a + len(x.Value), nv})
 				st.literals++
 				note("literal", rel, fset.Position(x.Pos()).Line, x.Value, nv)
@@ -509,6 +545,8 @@ func rewriteFile(rel string, src []byte, st *stats) ([]byte, bool) {
 		for _, cg := range f.Comments {
 			for _, c := range cg.List {
 				nv, n := rewritePath(c.Text)
+				nv, n2 := rewriteQualified(nv)
+				n += n2
 				if inFactory && cg == f.Doc && strings.HasPrefix(nv, "// Package kanban ") {
 					nv = "// Package factory " + strings.TrimPrefix(nv, "// Package kanban ")
 					n++
