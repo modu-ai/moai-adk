@@ -91,6 +91,28 @@ const (
 	DefaultQuotaGateReleaseMarginPct = 5
 	DefaultQuotaGateMaxAge           = "30m"
 
+	// DefaultManagedSessionPollInterval is how often an idle managed factory
+	// session polls the broker for claimable inbox messages
+	// (SPEC-FACTORY-MANAGED-SESSION-001 REQ-MS-003).
+	DefaultManagedSessionPollInterval = 500 * time.Millisecond
+	// DefaultManagedSessionClaimTimeout bounds one broker claim round so a
+	// busy SQLite lock delays the poll loop instead of stalling the session
+	// owner.
+	DefaultManagedSessionClaimTimeout = 300 * time.Millisecond
+	// DefaultManagedSessionClaimLease is the claim lease a managed session
+	// hands the store: the message stays claim-locked for one turn's worth of
+	// processing before the store's own lease policy may reclaim it.
+	DefaultManagedSessionClaimLease = 2 * time.Minute
+	// DefaultManagedCodexReadyTimeout bounds one Codex App Server handshake —
+	// process spawn, /readyz wait, loopback WS dial, initialize, thread start
+	// (SPEC-FACTORY-MANAGED-SESSION-001 AC-MS-001). It also bounds the WS
+	// handshake itself.
+	DefaultManagedCodexReadyTimeout = 10 * time.Second
+	// DefaultManagedCodexTurnTimeout bounds one injected turn: a turn that
+	// never completes fails the delivery instead of holding the serial queue
+	// forever; the store's claim lease owns redelivery afterwards.
+	DefaultManagedCodexTurnTimeout = 10 * time.Minute
+
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
 	DefaultMinCoveragePerCommit  = 80
