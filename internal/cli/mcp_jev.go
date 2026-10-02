@@ -7,7 +7,13 @@
 // default — it constructs no request, makes no network call, and reports
 // gated-unavailable. The capability is display-only: an answer is a labelled
 // model signal a person reads, never a completion verdict, a merge approval,
-// a queue mutation, or any other decision that is hard to undo.
+// a queue mutation, or any other decision that is hard to undo. One exception
+// lives outside this wrapper: the todo --auto cycle's own candidate ranking,
+// the auto-scoped ranking exception, which sets selection order only, behind
+// the same default-off workflow.jev.enabled gate and with the candidate set
+// fixed by mechanical filters before any answer is read. That ranking is an
+// in-process consumer of internal/jev and does not reach this tool, which
+// stays display-only for every caller.
 package cli
 
 import (

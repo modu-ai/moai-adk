@@ -62,7 +62,7 @@ const (
 
 // jevAutoExceptionAmended arms the guard: false while no surface carries the
 // amendment, flipped to true in the single linked commit.
-const jevAutoExceptionAmended = false
+const jevAutoExceptionAmended = true
 
 // jaeMarker is one location the amendment touches and the token that shows it
 // amended.
