@@ -72,7 +72,21 @@ Each row: the command verbatim and its observed output. Builds in play: `claude 
 
 ## §E.2 Run-phase Evidence
 
-(empty — filled by manager-develop at run phase; the Definition of Done of acceptance.md §F names the required shape)
+Builds in play at run phase (re-measured at entry): `claude 2.1.287`, `moai v3.2.0-rc.25`, `bun 1.4.2`. Tree at run start: `c7b72b430` (branch `WT-moai-status-mod`). Engine runner profile: `/tmp/msm-cfg-empty-fresh` (fresh empty dir created this session); the temp-config runner check exited 0 with usage text. The plan-session's laid typings (build 2.1.287, `/tmp/msm-stub/.claude-plugin/types/claude-code/index.d.ts`) are the §4 authority; no re-lay was needed (same build observed at C1).
+
+### M1 — contracts and skeleton (commits of this milestone)
+
+- **RED (pure, bun)** — `rm -f /tmp/msm-junit.xml; bun test mods/moai-status/tests/pure/ --reporter=junit --reporter-outfile=/tmp/msm-junit.xml` before `hooks/data.ts` existed: exit **1**, verbatim `error: Cannot find module '../../hooks/data' from '.../mods/moai-status/tests/pure/data.spec.ts'`, ` 0 pass / 1 fail`. Red for the stated reason: the module under test did not exist.
+- **GREEN (pure, bun)** — same command after `data.ts` (M1 slice: argv table, run-signature types, §G constants): exit **0**, ` 1 pass / 0 fail`; junit `argv:` → 1, `<failure` → 0, `<skipped` → 0.
+- **validate (engine surface, temp profile)** — `CLAUDE_CONFIG_DIR=/tmp/msm-cfg-empty-fresh claude plugin validate mods/moai-status`: exit **0**; verbatim lines:
+  - `❯ types ./types/index.d.ts declares state: moai-status.usage, moai-status.health, moai-status.notice`
+  - `❯ ./register.ts hooks: session.start, session.end, session.measure, session.receive, ui.render{component=AbovePrompt}, ui.render{component=Spinner}` (five events, six registrations)
+  - `❯ ./register.ts calls: $.state.get, $.state.set` (`$.process.run` joins when M4 wires `runDiag` into a handler)
+  - `❯ ./register.ts state writes: moai-status.health, moai-status.notice, moai-status.usage` (sorted; AC-MSM-011's set)
+  - `❯ ./register.ts state reads: moai-status.health, moai-status.notice, moai-status.usage`
+  - `✔ Validation passed`
+  - One validate-caught defect fixed during M1: the first-write initialization loop passed the state ref through a loop variable; validate refused non-literal refs (`takes a reference whose plugin and key are string literals`). Unrolled to three literal-ref calls.
+- Pre-flight C5 re-measure (live CLI): `moai doctor --check "Binary Freshness"` → one box row `warn    Binary Freshness  binary is behind source tree (binary: 802a72235, HEAD: c7b72b430)` exit 0; `--check "MCP Server Version"` → `ok      MCP Server Version  no running moai MCP server recorded` exit 0. `moai memory doctor --json` → exit 0, 186,726 bytes, array of stores (findings may be `null`). The spellings M-9 pinned are unchanged.
 
 ### Measurement notes carried into the run phase (authored at plan phase; the `## §E.3 Run-phase Audit-Ready Signal` section is manager-develop's, written at run completion)
 
