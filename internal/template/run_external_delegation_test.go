@@ -139,13 +139,15 @@ var rxdSubsections = []rxdSubsection{
 // plan-auditor and sync-auditor reading owns what it cannot decide.
 var rxdWriteInstruction = regexp.MustCompile(`(?i)\bwrite\b[^.\n]{0,40}\b(true|enabled|on)\b|allow_write[^.\n]{0,20}\btrue\b`)
 
-// rxdWholeWordWrite matches the bare word `write` only: `allow_write` (the
-// underscore is a word character) and `writes` do not match.
-var rxdWholeWordWrite = regexp.MustCompile(`\bwrite\b`)
+// rxdWholeWordWrite matches the bare word `write` in any capitalisation:
+// `allow_write` (the underscore is a word character) and `writes` do not match.
+var rxdWholeWordWrite = regexp.MustCompile(`(?i)\bwrite\b`)
 
-// rxdNeverSets is the phrase the sentence carrying the one whole-word `write`
-// must contain.
-const rxdNeverSets = "never sets"
+// rxdReadOnlySentence is the one sentence of the delegation section that keeps a
+// delegated codex turn read-only where the project opt-in is on. The control is
+// lexical, so the sentence is pinned whole: any qualifier, rewording or
+// replacement fails the guard and needs review.
+const rxdReadOnlySentence = "The agent never sets the write argument, so a delegated turn stays read-only."
 
 var rxdListMarker = regexp.MustCompile(`^\s*([-*]|[0-9]+\.)\s`)
 
@@ -279,6 +281,28 @@ func rxdSentenceWithWrite(line string) []string {
 		}
 	}
 	return out
+}
+
+// rxdReadOnlyControlDefects checks the one mechanical control that keeps a
+// delegated codex turn read-only where the project opt-in is on: the whole word
+// `write` occurs exactly once in the section, and the sentence holding it is
+// rxdReadOnlySentence. It returns one message per defect; nil means the control
+// holds.
+func rxdReadOnlyControlDefects(section string) []string {
+	const writeReason = "a second whole-word `write` in the section needs review: this is the only mechanical control that keeps a delegated codex turn read-only where the project opt-in is on"
+	hits, total := rxdWholeWordWriteLines(section)
+	if total != 1 {
+		return []string{"whole-word `write` occurs " + strconv.Itoa(total) + " times in the delegation section, want exactly 1; matching lines: " + strings.Join(hits, " | ") + "; " + writeReason}
+	}
+	var defects []string
+	for _, l := range strings.Split(section, "\n") {
+		for _, sentence := range rxdSentenceWithWrite(l) {
+			if strings.TrimSuffix(sentence, ".") != strings.TrimSuffix(rxdReadOnlySentence, ".") {
+				defects = append(defects, "the sentence holding the one whole-word `write` is not the pinned read-only sentence "+strconv.Quote(rxdReadOnlySentence)+": "+hits[0]+"; "+writeReason)
+			}
+		}
+	}
+	return defects
 }
 
 // rxdMultisetDelta is the multiset line difference between two texts: the sum,
@@ -500,18 +524,8 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 					// once in the section and its sentence says `never sets`.
 					// The lexical negative check above cannot see a spelling
 					// such as "the agent enables the write argument".
-					const writeReason = "a second whole-word `write` in the section needs review: this is the only mechanical control that keeps a delegated codex turn read-only where the project opt-in is on"
-					hits, total := rxdWholeWordWriteLines(section)
-					if total != 1 {
-						t.Errorf("%s: whole-word `write` occurs %d times in the delegation section, want exactly 1; matching lines: %s; %s", where, total, strings.Join(hits, " | "), writeReason)
-					} else {
-						for _, l := range strings.Split(section, "\n") {
-							for _, sentence := range rxdSentenceWithWrite(l) {
-								if !strings.Contains(sentence, rxdNeverSets) {
-									t.Errorf("%s: the sentence holding the one whole-word `write` does not contain %q: %s; %s", where, rxdNeverSets, hits[0], writeReason)
-								}
-							}
-						}
+					for _, defect := range rxdReadOnlyControlDefects(section) {
+						t.Errorf("%s: %s", where, defect)
 					}
 				}
 			}
