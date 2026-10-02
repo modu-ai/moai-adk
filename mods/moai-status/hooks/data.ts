@@ -115,3 +115,20 @@ export const suffixMarker = (usage: MoaiStatusUsage | undefined): string => {
   }
   return ''
 }
+
+// The toast line (REQ-MSM-006): the origin kind, then the first kept code
+// points of the text's first line, control characters dropped — one line,
+// always.
+export const toastLine = (originKind: string, text: string): string => {
+  const first = text.split('\n', 1)[0] ?? ''
+  let excerpt = ''
+  let kept = 0
+  for (const ch of first) {
+    const cp = ch.codePointAt(0) ?? 0
+    if (cp < 0x20 || cp === 0x7f) continue
+    if (kept >= TOAST_EXCERPT_CP) break
+    excerpt += ch
+    kept++
+  }
+  return `${originKind}: ${excerpt}`
+}

@@ -37,3 +37,32 @@ test('measure: next(e) is always returned', async ($, on) => {
   const quiet = await $.session.measure({ context: { window: 200_000, percent: 31 }, rateLimits: [], changed: ['context'] })
   expect(quiet).toEqual({ changed: ['context'] })
 })
+
+// ---- toast: a pure observer of the inbound delivery (AC-MSM-007) -------------------
+
+test('toast: delivery is toasted before passing', async ($, on) => {
+  const { toasts } = setup(on)
+  const result = await $.session.receive({ origin: { kind: 'peer' }, text: 'lane says hi\nsecond line' })
+  // One line: the origin kind plus the bounded first-line excerpt.
+  expect(toasts.lines).toEqual(['peer: lane says hi'])
+  expect(result).toEqual({ text: 'lane says hi\nsecond line' })
+})
+
+test('toast: toast failure still passes the delivery', async ($, on) => {
+  const stub = setup(on)
+  stub.toastThrows.value = true
+  const result = await $.session.receive({ origin: { kind: 'coordinator' }, text: 'urgent dispatch' })
+  expect(result).toEqual({ text: 'urgent dispatch' })
+})
+
+test('toast: consumed is never produced', async ($, on) => {
+  const stub = setup(on)
+  const first = await $.session.receive({ origin: { kind: 'peer' }, text: 'one' })
+  stub.toastThrows.value = true
+  const second = await $.session.receive({ origin: { kind: 'task-notification' }, text: 'two' })
+  // No path answers the delivery: every result is the queued shape, `{ text }`.
+  expect('consumed' in first).toBe(false)
+  expect('consumed' in second).toBe(false)
+  expect(first).toEqual({ text: 'one' })
+  expect(second).toEqual({ text: 'two' })
+})

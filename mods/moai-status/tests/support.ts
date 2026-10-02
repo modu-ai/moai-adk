@@ -33,6 +33,8 @@ export type Stub = {
   clock: ReturnType<typeof mock.clock>
   status: { lines: (string | undefined)[] }
   toasts: { lines: string[] }
+  /** When set, the `ui.toast` stub throws (the mod must still pass the delivery). */
+  toastThrows: { value: boolean }
   /** What the next process answers: 'ok' (fixtures), 'reject' (cannot start), 'exit2', 'garbage'. */
   mode: { value: 'ok' | 'reject' | 'exit2' | 'garbage' }
   /** The next `Binary Freshness` check blocks on this promise; one use only. */
@@ -44,6 +46,7 @@ export const setup = (on: On): Stub => {
   const inits: (number | undefined)[] = []
   const status = { lines: [] as (string | undefined)[] }
   const toasts = { lines: [] as string[] }
+  const toastThrows = { value: false }
   const mode = { value: 'ok' } as Stub['mode']
   const hold: Stub['hold'] = { wait: undefined }
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
@@ -56,6 +59,7 @@ export const setup = (on: On): Stub => {
     return { value: undefined }
   })
   on('ui.toast', (_$, e) => {
+    if (toastThrows.value) throw new Error('toast plumbing broken')
     toasts.lines.push(e.text)
     return { value: undefined }
   })
@@ -81,7 +85,7 @@ export const setup = (on: On): Stub => {
     if (joined === 'moai memory doctor --json') return ran(MEMORY_OK)
     return ran('')
   })
-  return { calls, inits, clock: mock.clock(on), status, toasts, mode, hold }
+  return { calls, inits, clock: mock.clock(on), status, toasts, toastThrows, mode, hold }
 }
 
 /** A warned context measure on a 200K window (soft 90): 91% warns. */

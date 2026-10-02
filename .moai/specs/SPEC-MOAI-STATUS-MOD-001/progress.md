@@ -98,6 +98,13 @@ Builds in play at run phase (re-measured at entry): `claude 2.1.287`, `moai v3.2
 - One GREEN-phase defect found and fixed: the strip Text carried the `key`, but find matches Box keys only (sibling craft note: "Text takes no key") — the findable line now sits in a keyed Box. Diagnosed by temporarily removing the hook's fail-soft catch (no error surfaced; the hook ran clean) and restored after the fix.
 - validate after M2: `calls: $.state.get, $.state.set, $.ui.resolve` (grows with the render hooks); hooks/state lines unchanged from M1.
 
+### M3 — lane toast (TDD; commits of this milestone)
+
+- **RED (pure, bun)** — `toast-pure:` ×2 re-added to `tests/pure/data.spec.ts` before the builder existed: exit **1** (`Export named 'toastLine' not found` — the load-error shape; the builder was absent).
+- **RED (engine, temp profile)** — `toast:` ×3 in `tests/engine.test.ts` against the M2 tree: exit **1**, `9 pass / 1 fail` — `toast: delivery is toasted before passing` (Expected `["peer: lane says hi"]`, Received `[]`). The two guards (`toast failure still passes`, `consumed is never produced`) passed against the pass-through handler; their shared RED-now is the pre-work no-mod cell of acceptance.md §D.
+- **GREEN (pure, bun)** — exit **0**, `13 pass / 0 fail`; junit counts: `classify:` → 6, `strip-pure:` → 2, `suffix-pure:` → 2, `toast-pure:` → 2, `argv:` → 1; `<failure` → 0; `<skipped` → 0.
+- **GREEN (engine)** — exit **0**, `10 pass / 0 fail`; `(pass) toast:` → 3.
+
 ### Measurement notes carried into the run phase (authored at plan phase; the `## §E.3 Run-phase Audit-Ready Signal` section is manager-develop's, written at run completion)
 
 - The authority typings were laid by a **headless session load** (`claude -p` with `--plugin-dir` and an empty `CLAUDE_CONFIG_DIR`; spec.md M-4). `validate` and `plugin test` lay nothing. If C4 must re-lay them at run-phase entry, budget one headless model call.

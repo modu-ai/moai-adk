@@ -1,7 +1,7 @@
 // Pure tests for hooks/data.ts, run with `bun test` (developer-local evidence,
 // spec.md G-11). Named *.spec.ts so the engine runner's *.test.ts glob skips them.
 import { expect, test } from 'bun:test'
-import { ARGV, DEFAULT_BAND, classifyMeasure, sameUsage, stripLine, suffixMarker } from '../../hooks/data'
+import { ARGV, DEFAULT_BAND, classifyMeasure, sameUsage, stripLine, suffixMarker, toastLine } from '../../hooks/data'
 import type { MoaiStatusBand, MoaiStatusMeasureInput, MoaiStatusUsage } from '../../types'
 
 test('argv: table carries the three diagnostic commands only', () => {
@@ -134,5 +134,20 @@ test('suffix-pure: warn context yields ctx marker', () => {
 test('suffix-pure: nothing to say yields no marker', () => {
   expect(suffixMarker({ figures: [] })).toBe('')
   expect(suffixMarker(undefined)).toBe('')
+})
+
+// ---- toast line (AC-MSM-007 pure) ---------------------------------------------------
+
+test('toast-pure: one line from origin and excerpt', () => {
+  const line = toastLine('peer', 'first line\nsecond line')
+  expect(line).toBe('peer: first line')
+  expect(line.includes('\n')).toBe(false)
+  const long = toastLine('task-notification', 'x'.repeat(200))
+  expect(Array.from(long).length).toBe('task-notification: '.length + 80)
+  expect(toastLine('peer', '')).toBe('peer: ')
+})
+
+test('toast-pure: control characters stripped', () => {
+  expect(toastLine('peer', 'a\tb\rc\x07d')).toBe('peer: abcd')
 })
 

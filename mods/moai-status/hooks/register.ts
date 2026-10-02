@@ -5,7 +5,7 @@
 // every handler passes its event through with next(e), every hook fails soft,
 // and the only child-process calls are the fixed argv table's three diagnostics.
 import type { EngineInterface, Register } from 'claude-code'
-import { CMD_TIMEOUT_MS, DEFAULT_BAND, classifyMeasure, sameUsage, stripLine, suffixMarker, type MoaiStatusHealth, type MoaiStatusUsage, type RunResult } from './data'
+import { CMD_TIMEOUT_MS, DEFAULT_BAND, classifyMeasure, sameUsage, stripLine, suffixMarker, toastLine, type MoaiStatusHealth, type MoaiStatusUsage, type RunResult } from './data'
 
 // Typed references: plugin and key are literals (the shape validate enforces, M-13).
 const usageRef = { plugin: 'moai-status', key: 'usage' } as const
@@ -72,6 +72,15 @@ export const register: Register = on => {
   })
 
   on('session.receive', async ($, e, next) => {
+    try {
+      // The toast is attempted before the delivery passes; its failure never
+      // holds, rewrites or consumes the delivery (REQ-MSM-006). The handler
+      // returns next(e) on every path — the `{ consumed }` shape is never
+      // produced.
+      $.ui.toast(toastLine(e.origin.kind, e.text))
+    } catch {
+      // the delivery passes regardless
+    }
     return next(e)
   })
 
