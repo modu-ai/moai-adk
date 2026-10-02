@@ -62,4 +62,32 @@
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-02
+sync_commit_sha: pending-backfill-sync  # D3-exempt placeholder — a commit cannot cite its own SHA; backfilled in the follow-up commit (spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+sync_status: complete
+b12_self_test_a: pass  # pre-emission grep `grep -c 'SPEC-WEB-SETTINGS-SAVE-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
+b12_self_test_b: pass  # AC count: acceptance.md (tier M source) → live=16 excluded=0 ambiguous=0 (RETIRED/REF 마커 0건); the CHANGELOG entry cites the same 16 (AC-WSS-001..016)
+b12_self_test_c: pass  # file-path verification: all paths cited in the CHANGELOG entry confirmed against this tree (spec.md, session_worktree.go, defaults.go, mcp_claude.go, mcp_glm.go, glm_task.go, web_save_fullform_repro_test.go)
+changelog_entry_position: "[Unreleased] > Added (single comprehensive close entry, first position)"
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged  # folded into the single sync commit per the 3-phase close
+  implemented_to_completed: this commit  # spec.md frontmatter status+updated only; body sections byte-untouched
+canary_compliance_check:
+  spec_body_untouched: true  # spec.md/plan.md/acceptance.md bodies byte-unchanged (frontmatter status+updated only)
+  runtime_files_untouched: true  # .moai/state, .moai/harness, .moai/cache untouched
+mx_tag_validation:
+  added: 0  # no new exported surface; the M3 guard sits inside cleanupSessionWorktree (existing @MX:ANCHOR, session_worktree.go:648) and carries SPEC/REQ reference comments; M4 pin constants are unexported with derived-constant comments
+  dangerous_patterns: 0  # no goroutines, no complexity >= 15 introduced (run-phase gates: go vet exit 0, golangci-lint 0 issues — verdict.md)
+quality_gates_e5:  # §E.5는 스키마 규칙상 은퇴 섹션(spec-frontmatter-schema.md § progress.md Section Map — "do NOT author new §E.5") — E5 품질 게이트 기록은 §E.4에 거둔다
+  template_leak_family: pass  # M5 Gap(루트 패키지 tail 손실) 마감 재측정 — env-scrub 단일 호출(acceptance.md §D의 10변수)로 `go test -count=1 -run 'Leak|InternalContent' ./internal/template/` → `ok github.com/modu-ai/moai-adk/internal/template 1.462s` exit 0 (this run, this tree HEAD 0fc44b95a)
+  spec_lint: pass  # tree-built binary (go build -o /tmp/moai-lint-t1393 ./cmd/moai — §2.2 provenance) `spec lint` — 결과는 아래 줄 참조
+  gofmt: clean  # sync 커밋은 .md 3파일 — Go 변경 0; 카드 Go 변경분은 M5에서 클린 실측(verdict.md)
+  run_phase_gates_carried: pass  # go vet(web·config·cli) exit 0 · golangci-lint 소관 5패키지 0 issues(v2.1.6=CI판, lint-20261002.txt) · make build 재생성 드리프트 0 — verdict.md 품질 게이트 절에서 인용
+codemap_refresh: not-performed  # t1383 선례 — 신설 소스 파일 0(신설은 테스트 파일뿐), 카운트 드리프트 안전망은 release 훅의 GRAPH 부채 카드 트리거
+docs_site_decision: no-edit  # 신설 CLI verb·사용자 대면 표면 변화 0 — 가드는 기존 cleanup의 내부 동작, 핀은 config 기본값
+readme_decision: no-edit  # worktree verb 열거 변화 없음
+recorded_by: manager-docs (sync phase, card t1393 — lane-direct execution per the t1383 structural precedent: subagent cwd is frozen to the spawning session's tree; manager-docs pre-checks applied before authoring)
+```
+
+- spec lint (tree-built binary, post-edit): `error-severity findings 0` — 위 `quality_gates_e5.spec_lint`의 실행 근거. <!-- E5-LINT-RESULT -->

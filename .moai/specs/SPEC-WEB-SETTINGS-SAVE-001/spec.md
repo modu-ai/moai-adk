@@ -2,7 +2,7 @@
 id: SPEC-WEB-SETTINGS-SAVE-001
 title: "moai web 설정 저장 불가 수리 · 감사 pin 기본값 확정 반영 · 세션 워크트리 원격병합 가드"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-01
 updated: 2026-10-02
 author: GOOS
