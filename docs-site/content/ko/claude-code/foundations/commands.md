@@ -76,7 +76,7 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 - [v2.1.154 변경 기록](https://github.com/anthropics/claude-code/blob/v2.1.154/CHANGELOG.md)은 다이내믹 워크플로우와 `/workflows` 도입을 명시합니다. [v2.1.141 변경 기록](https://github.com/anthropics/claude-code/blob/v2.1.141/CHANGELOG.md)의 `/bg` 수정 항목은 당시 명령이 있었음을 보여 주지만, 도입 버전을 특정하지는 못합니다.
 - 같은 기능을 여러 이름으로 부를 수 있는 경우가 많습니다 (별칭).
 - 일부 명령은 플랫폼, 플랜, 환경에 따라 노출 여부가 달라집니다.
-- `ultracode`는 현재 워크플로우 트리거 키워드(pre-v2.1.160에는 `workflow`였음)이면서 동시에 `/effort` 레벨입니다.
+- `ultracode`는 현재 워크플로우 트리거 키워드(pre-v2.1.160에는 `workflow`였음)이면서, v2.1.284부터는 `/effort`에서 켜고 끄는 독립 토글이기도 합니다. effort 레벨이 아니므로 켜고 꺼도 레벨은 바뀌지 않습니다.
 
 ## 핵심 명령을 깊이 파보기
 
@@ -134,7 +134,7 @@ flowchart TD
 
 ### /effort와 ultrathink — 추론 깊이 조절
 
-`/effort`로 모델의 추론 강도를 정합니다. `low` · `medium` · `high` · `xhigh` · `max`의 단계와 `auto`, 그리고 워크플로우 오케스트레이션을 켜는 `ultracode`가 있습니다. 코딩처럼 생각이 깊이 필요한 작업에서는 보통 `xhigh`를 권합니다.
+`/effort`로 모델의 추론 강도를 정합니다. `low` · `medium` · `high` · `xhigh` · `max`의 단계와 `auto`가 있습니다. 워크플로우 오케스트레이션을 켜는 `ultracode`는 레벨과 별개인 토글이며 `/effort ultracode off`로 끕니다. 코딩처럼 생각이 깊이 필요한 작업에서는 보통 `xhigh`를 권합니다.
 
 대화창에 `ultrathink`라는 키워드를 적는 것도 같은 효과를 냅니다. `ultrathink`는 `effort`를 `xhigh`로 올리는 동시에 **Adaptive Thinking** (모델이 스스로 추론에 쓸 토큰 양을 정하는 방식)을 켭니다. 고정된 사고 예산인 `budget_tokens`를 직접 지정하던 옛 방식은 더 이상 권장하지 않습니다 — Opus 4.7 이상에서는 고정 예산이 거부됩니다.
 
