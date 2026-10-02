@@ -1634,6 +1634,93 @@ Kanban- and board-named symbols that remain in `internal/kanban` after M6 (basel
 3. Comment-only mentions of the renamed lock files outside `internal/kanban`, found by `grep -rn 'board_lock' internal cmd --include='*.go'` after step 1 and left alone (the stage data shows no edit outside `internal/kanban`): `internal/cli/todo_test.go:564`, `internal/cli/gate_lock_unix.go:6`, `internal/cli/gate_lock_windows.go:7` and `:26`, `internal/cli/gate_lock.go:14`. They now name files that do not exist.
 4. acceptance.md AC-012's third `find` command lists "18 paths" today and "empty output, exit 0" after: both hold (18 measured at `5aa03a393`, empty at `09bd28037`).
 
+### M7 evidence
+
+Recorded by the run-phase implementation worker (cycle_type ddd: the milestone is a behavior-preserving mechanical rename; characterization is the factory net and the whole-package suites) for milestone M7 of card t1399 (Go identifiers and Go file names outside `internal/web`), branch `WT-launcher-entry-flags`. Start state, re-read before any change: `pwd` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1399`, `git rev-parse --short HEAD` printed `d206491f3`, `git branch --show-current` printed `WT-launcher-entry-flags`, `git status --short` printed nothing. Output blocks are verbatim excerpts of commands run in this run on this tree; each says what it drops. The sections below grow in four commits: this sizing and baseline record first (commit A), then the re-runnable rename program, the rename itself, and the comment rewording, and the closing evidence last.
+
+#### Sizing of AC-018's sweeps on this tree (J.5 item 1, measured before any change)
+
+The auditor's 123 files / 502 lines were measured on the modeled FINAL tree; these are the real counts on the tree `d206491f3`, before M7 (RED-N1, RED-N2, RED-N3 style baselines):
+
+```text
+$ grep -rlP '(?i)(?<!moai_)kanban|moai_kanban(?!_(id|lead_addr|lead_name|settings_injected|backend|card)\b)|칸반|かんばん|カンバン|看板' internal cmd --include='*.go' --include='*.templ' --include='*.js' --exclude='*_test.go' --exclude-dir=testdata --exclude-dir=node_modules      (the AC-018 word grep, files)
+exit=0 files=183
+$ the same pattern with grep -rhP (matching lines)
+1207
+$ the same pattern restricted to --include='*.go' --exclude-dir=web (files, then lines)
+167 files, 998 lines
+files per directory (the 183): internal/cli 65, internal/kanban 59, internal/hook 16, internal/web 14, internal/statusline 5, internal/config 4, internal/discovery 3, internal/web/assets 2, internal/spec 2, internal/graph 2, internal/factorymsg 2, and one each in internal/stateanchor, internal/session, internal/homestate, internal/feedback, internal/factorylane, internal/core/git, internal/cli/ptycaptest, internal/cli/agentlint, cmd/t657-merge
+$ find internal cmd -iname '*kanban*'      (RED-N2: 15 names; the four template paths and the web test file are not Go-source M7 names)
+internal/cli/kanban_autonomy_test.go
+internal/cli/kanban_bootstrap_test.go
+internal/cli/kanban_launch_facts_test.go
+internal/cli/kanban_lead_name_test.go
+internal/cli/kanban_settings_test.go
+internal/cli/kanban_settings.go
+internal/cli/kanban.go
+internal/hook/session_start_no_kanban_notice_test.go
+internal/kanban
+internal/kanban/kanban_helper_test.go
+internal/statusline/preexisting_kanban_artifacts_m1_test.go
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-mechanics.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md
+internal/template/templates/.claude/skills/moai-kanban-foreman
+internal/web/preexisting_kanban_artifacts_m1_test.go
+$ grep -rl '"github.com/modu-ai/moai-adk/internal/kanban"' internal cmd --include='*.go' | wc -l      (RED-N3, tests included)
+183
+```
+
+Identifier occurrences outside `internal/web`, counted from the syntax tree (a scratch program kept outside the tree: every identifier token whose lower-case text contains `kanban`, files under `internal` and `cmd` outside `internal/web`, `testdata`, and the template tree): 2,527 occurrences of 40 distinct names, of which 1,980 are the bare package qualifier `kanban` (M8's) and 547 are not. The 547 are the six marker constants (EnvMoaiKanbanBackend 118, EnvMoaiKanbanCard 31, EnvMoaiKanbanID 143, EnvMoaiKanbanLeadAddr 34, EnvMoaiKanbanLeadName 31, EnvMoaiKanbanSettingsInjected 25: 382), the entry-parse type (`kanbanEntryParse` 14, field `KanbanEnabled` 1), the launch-facts function (`exportKanbanLaunchFacts` 7), `prepareKanbanSettings` 20, `kanbanRoleFromEnv` 8, `scrubKanbanEnv` 23, `writeKanbanSessionRecord` 31, `clearKanbanEnv` 13, `clearKanbanLauncherEnv` 6, `downgradeKanbanVars` 2, `kanbanVars` 9, `kanbanDirDB` 4, `kanbanTemp` 3, `seedKanbanRecord` 3, and 19 distinct test function names (21 occurrences: `TestPreexistingKanbanArtifactsTolerated` is declared in three packages). The plan's 515 was measured on the modeled tree (PV-79); this count is on the real tree. Four of the test names are named by acceptance commands and so stay (decision recorded under Findings below): `TestKanbanEntryRefused` (AC-011), `TestSessionStartEmitsNoKanbanNotice` (AC-014), `TestPreexistingKanbanArtifactsTolerated` (AC-017, three packages here), `TestLegacyKanbanRouteRedirects` (AC-019, `internal/web`, M9).
+
+String literals outside `internal/web` that carry the word, by kind (scratch program, same scope; 401 distinct file-and-literal lines in its output): import paths and `./internal/kanban` path strings (M8); the six frozen marker values and the Codex allowlist literal (frozen); the transient prefix `moai-kanban`; error texts in `internal/kanban` (`kanban backlog …` 7 and `kanban: …` 22 in the five files design 4.7 names, `read/write/prune kanban record(s)` 10 and `kanban board lock …` 2 in files it does not name); two launcher diagnostics in `internal/cli/kanban.go` and one in `doctor_factory_run.go`; the timing lap `kanban_record`; help texts in `todo.go` (2), `gtd.go`, `mcp_todo.go`, `tokens.go`; the retired-entry refusal (`launcher_retired_entries.go`, an allowed file); and test fixtures.
+
+#### Baseline before any change (characterization)
+
+Factory net on `d206491f3`, env unset in one compound invocation (AC-015 selectors, `-v -count=1`, output to a file):
+
+```text
+--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (3.56s)
+--- PASS: TestGLMFactoryLaneJoinsDiscoveredLeader (3.35s)
+--- PASS: TestFactoryNetLeaderLaunch (1.41s)
+--- PASS: TestFactoryNetLaneLaunch (3.04s)
+--- PASS: TestFactoryNetBlockCap (1.16s)
+--- PASS: TestFactoryEntryMatrix (5.78s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (0.54s)
+--- PASS: TestPrepareKanbanSettingsWritesTransientFile (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	19.599s            (8 of 8)
+--- PASS: TestFactoryNetSessionRecord (0.00s)
+--- PASS: TestFactoryNetSessionStartNotices (0.57s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.159s             (2 of 2)
+--- PASS: TestDiscoverLeaderVerifiesLiveLeader (0.13s)
+--- PASS: TestDiscoverLeaderDeclinesUnparseableRunID (0.09s)
+ok  	github.com/modu-ai/moai-adk/internal/discovery	0.539s         (2 of 2)
+```
+
+Whole-package suites, under `moai slot acquire --resource t1399-run --max-duration 60m` (`slot t1399-run acquired by 0dcdf2d5-df5c-4da1-8870-24c2a5861303 until 2026-10-02T16:25:19Z`), `go test -p 2 -v -count=1 ./internal/config ./internal/kanban ./internal/hook ./internal/discovery ./internal/codexwiring ./internal/statusline ./internal/factorymsg ./internal/factorylane` to a file (tool exit 1, the one failure named below), per-package result lines and top-level / subtest counts (`awk` over the file):
+
+```text
+ok  	github.com/modu-ai/moai-adk/internal/config	3.957s
+ok  	github.com/modu-ai/moai-adk/internal/kanban	217.653s
+--- FAIL: TestHookWrapperCopiesStayIdentical (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	435.972s
+ok  	github.com/modu-ai/moai-adk/internal/discovery	3.056s
+ok  	github.com/modu-ai/moai-adk/internal/codexwiring	1.005s
+ok  	github.com/modu-ai/moai-adk/internal/statusline	28.883s
+ok  	github.com/modu-ai/moai-adk/internal/factorymsg	71.796s
+ok  	github.com/modu-ai/moai-adk/internal/factorylane	2.466s
+internal/config top: pass=488 fail=0 skip=0 sub=412
+internal/kanban top: pass=514 fail=0 skip=0 sub=228
+internal/hook top: pass=1269 fail=1 skip=6 sub=1934
+internal/discovery top: pass=14 fail=0 skip=1 sub=0
+internal/codexwiring top: pass=91 fail=0 skip=0 sub=71
+internal/statusline top: pass=333 fail=0 skip=2 sub=460
+internal/factorymsg top: pass=70 fail=0 skip=1 sub=122
+internal/factorylane top: pass=53 fail=0 skip=0 sub=8
+```
+
+The one failure, `TestHookWrapperCopiesStayIdentical`, is the known red on the base for a reason outside this SPEC (named in the delegation); it is the only test ignored anywhere in this record.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
