@@ -222,6 +222,65 @@ The `subagent_never_invokes_tester` subtest and the `checkAsideE2E` rows are lef
 - `aside repl` has no permission flag, so the read-only limit is discipline only.
 - The core tier puts the skill's `description` plus `when_to_use` into every install's listing; the measured cap is the `description_within_listing_cap` subtest (a character count, not a token count).
 
+### M3 (e2e wiring, e2e-tester sentence, Codex emit; docs-site is a later milestone) — commit subjects `test(SPEC-ASIDE-BROWSER-001): M3 RED - ...` then `feat(SPEC-ASIDE-BROWSER-001): M3 GREEN - ...`
+
+All measurements below were taken by manager-develop (cycle_type=tdd, run as a general-purpose agent because the manager-develop agent type auto-isolates into its own tree) in this run, branch `WT-aside-browser-cli`, worktree t1439, unless a line names another measurer. A commit cannot cite its own hash; commit SHAs of M3 are listed in the final report. No `aside` command or Aside MCP tool was run by this agent.
+
+#### Pre-flight (plan.md § C)
+
+- `git rev-parse --short HEAD` printed `1c023f7ba` (M2 GREEN); `git branch --show-current` printed `WT-aside-browser-cli`; `git status --short` printed nothing before any edit; `pwd` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1439`.
+- `go build ./...` exit 0 (no output).
+- E16 site enumeration on the unedited template `e2e.md`: `grep -c -E '<role pattern>' internal/template/templates/.claude/skills/moai/workflows/e2e.md` printed `15` (exit 0); the same pattern with `-n` printed lines 36, 54, 90, 108, 119, 197, 219, 277, 328, 331, 332, 334, 342, 344, 345 (re-read before editing: unchanged from the plan's list).
+- `cmp internal/template/templates/.claude/skills/moai/workflows/e2e.md .claude/skills/moai/workflows/e2e.md` printed nothing, exit 0.
+- `diff internal/template/templates/.claude/agents/moai/e2e-tester.md .claude/agents/moai/e2e-tester.md` printed hunks `2d1` (`< isolation: worktree`) and `144c143` (the task-tracking line), exit 1: 3 changed lines, the baseline, preserved untouched.
+- `grep -c 'except Aside' internal/template/templates/.claude/skills/moai/workflows/e2e.md` printed `0`, exit 1.
+- Size budget: `wc -c` printed `25391` for the template `e2e.md` and `10516` for the template `e2e-tester.md` (budget 40,000 characters per instruction file).
+
+#### M3.0 orchestrator-measured input (measurer: the orchestrator, not manager-develop)
+
+The orchestrator ran one operator-approved measurement on a blank tab, on tree HEAD `1c023f7ba`, with the skill `moai-ref-aside-browser` loaded first, no `--permission` flag, aside `1.26.916.1741`. Reported verbatim by the orchestrator:
+
+- `aside repl "const page = await openTab('about:blank'); const r = await page.screenshot({path: '<scratch>/shot.png'}); ..."` printed `✔︎ Opened a new tab and set it active: tabs[0], page → (about:blank)` and then `Error: page.screenshot: browser CDP command timed out while capturing viewport screenshot before the default screenshot timeout completed` after about 35 s (`[error | 35475ms]`). The exit status of the shell command was 0. No file was written at the target path (the directory listing showed only the log).
+- A second `aside repl` call using `getTabs()` printed `ReferenceError: 'getTabs' is not defined` (the help text names it; this version does not define it).
+- Orchestrator's conclusion, adopted here: screenshot persistence to a path is UNCONFIRMED (one capture failure with a CDP timeout, not a "path unsupported" error). Per AC-ASB-011 the evidence wording stays at the hedged form: a screenshot captured through `aside repl`, saved under `e2e/` by path and cited by path, without asserting which side writes the bytes. No SPEC text was amended.
+
+#### M3.1 (M3 RED) `internal/template/aside_skill_policy_test.go`
+
+The test file gains `checkAsideE2E(text)` (every e2e-side anchor of acceptance.md § Checker anchors), `checkAsideTester(text)` (the e2e-tester half of the subagent anchor, subtest `subagent_never_invokes_tester`), eleven e2e rule subtests named exactly as acceptance.md names them (`e2e_explicit_only`, `e2e_ci_excluded`, `e2e_orchestrator_executes_aside`, `e2e_execution_owner_carveout`, `e2e_aside_output_bounded`, `e2e_silent_fallback_no_aside_message`, `e2e_missing_toolchain_carveout`, `e2e_tool_bypass_line_carveout`, `e2e_every_site_carved_out`, `e2e_no_install_command`, `e2e_repl_screenshot_evidence`), and an `e2e_negative_controls` group of 36 control subtests. Audit debts owned by M3 and implemented here:
+
+- NF1: the site rule accepts `silently` only on the exact precedence-sentence line (a line equal to the sentence, optionally as a list item); every other matching line must carry `except Aside`. Controls: `add/silently_site_line`, `swap/silently_for_carve_out`, `append/precedence_sentence_to_site_line`.
+- N3: the silence rule also forbids `tell the operator`, `inform the operator`, `let the operator know` (and the `user` forms) on any line that mentions Aside, beside `warn`, `fallback note`, `notify`, `report that Aside`. Controls: seven `add/note_line_N` mutants.
+- N4: the CI clause (a line carrying `CI=true`, `Aside`, and `unavailable`) must sit inside the Aside paragraph (the run of non-blank lines around the `Skill("moai-ref-aside-browser")` load) or on the `--tool` bypass line, not only in the no-flag branch. Controls: `remove/ci_line`, `move/ci_line_to_no_flag_branch` (moves the clause under the existing `environment detected` line).
+- N5: the evidence-ledger commands E11/E15 are run without the table-escape backslashes (the enumeration regexp in the test and in this record has plain `|`).
+- Per-site strip mutants: `strip/execution_owner`, `strip/bounded_output`, `strip/missing_toolchain_header`, `strip/bypass_sentence_line`, the named `strip/chain_phase2_line`, `strip/chain_phase3_line`, `strip/summary_step4_line`, and `strip/every_enumerated_site`, which strips the appended carve-out from every enumerated line in turn and requires the sites rule to name that line. The minimum-count guard (at least 15 matched lines) is `delete/sites_below_minimum`.
+- The bounded-output carve-out must itself carry `e2e/.runs/` (the original line already does, so the check reads only the text after `except Aside`): `mutate/bounded_tail_without_runs_dir`.
+
+Observed RED, run on the unedited `e2e.md` and `e2e-tester.md` (tree HEAD `1c023f7ba` plus the uncommitted test change), `go test ./internal/template/ -run '^TestAsideSkillPolicyAnchors$' -v -count=1` redirected to a file, exit 1. Verbatim decisive lines:
+
+```
+--- FAIL: TestAsideSkillPolicyAnchors (0.04s)
+    --- FAIL: TestAsideSkillPolicyAnchors/subagent_never_invokes_tester (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_explicit_only (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_ci_excluded (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_orchestrator_executes_aside (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_execution_owner_carveout (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_aside_output_bounded (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_silent_fallback_no_aside_message (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_missing_toolchain_carveout (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_tool_bypass_line_carveout (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_every_site_carved_out (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_repl_screenshot_evidence (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/e2e_negative_controls (0.04s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.416s
+```
+
+Failure texts on the unedited files, verbatim: `required literal "never invokes Aside" is missing`; `required literal "only when `--tool aside` is passed explicitly" is missing`; `no line carries "CI=true", Aside, and "unavailable"`; `required literal "the ORCHESTRATOR runs every Aside step" is missing`; `line 36 (the execution-owner statement) lacks "except Aside": ...`; `line 54 (the bounded-output rule) lacks "except Aside": ...`; `required literal "no Aside-specific message" is missing` and `the precedence sentence is not present as a line of its own`; `line 108 (the missing-toolchain sequence header) lacks "except Aside": "Missing-toolchain sequence (per selected toolchain):"`; `line 119 (the --tool bypass sentence) lacks "except Aside": ...`; and one `line N matches the site pattern without "except Aside"` per site (N = 36, 54, 90, 108, 119, 197, 219, 277, 328, 331, 332, 334, 342, 344, 345).
+
+Observed state of the 36 `e2e_negative_controls` subtests on the unedited files: 22 FAIL and 14 PASS. FAIL (control cannot run because the real text does not yet carry the anchor or the carve-out, reported by the control as vacuous): `move/ci_line_to_no_flag_branch`, `mutate/bounded_tail_without_runs_dir`, `remove/ci_line`, `remove/e2e_explicit_only/0..3`, `remove/e2e_orchestrator_executes_aside/0..1`, `remove/e2e_repl_screenshot_evidence/0`, `remove/e2e_silent_fallback_no_aside_message/1`, `remove/screenshot_evidence_lines`, `remove/tester_sentence`, `strip/bounded_output`, `strip/bypass_sentence_line`, `strip/chain_phase2_line`, `strip/chain_phase3_line`, `strip/every_enumerated_site`, `strip/execution_owner`, `strip/missing_toolchain_header`, `strip/summary_step4_line`, `swap/silently_for_carve_out`. PASS (the control adds a bad line or removes a literal the baseline already carries, so it does not depend on the e2e edit): `add/install_line_0..2`, `add/note_line_0..6`, `add/silently_site_line`, `append/precedence_sentence_to_site_line`, `delete/sites_below_minimum`, `remove/e2e_silent_fallback_no_aside_message/0` (the word `silently` already occurs elsewhere in the unedited workflow, in the retry rule; the precedence-line requirement of the silence rule is what the unedited text fails). The skill-side subtests (the nine M2 rules and the M2 `negative_controls` group) still PASS; `e2e_no_install_command` PASSes at birth because the unedited workflow has no Aside line (an invariant, like the M1 guards).
+
+Static checks on the RED tree: `gofmt -l internal/template/aside_skill_policy_test.go` printed nothing, exit 0; `go vet ./internal/template/` printed nothing, exit 0. The M3 RED commit (subject `test(SPEC-ASIDE-BROWSER-001): M3 RED - ...`) carries only the test file and this record, and precedes the GREEN commit in `git log`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
