@@ -207,6 +207,7 @@ func TestSyncGateGoRootsSurviveWholeModuleDeletion(t *testing.T) {
 	for rel, body := range map[string]string{
 		"modules/b/go.mod": "module example.com/b\n\ngo 1.21\n",
 		"modules/b/b.go":   "package b\n",
+		"modules/c/go.mod": "module example.com/c\n\ngo 1.21\n",
 	} {
 		p := filepath.Join(root, rel)
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
@@ -240,9 +241,9 @@ func TestSyncGateGoRootsSurviveWholeModuleDeletion(t *testing.T) {
 		payload := `source "$1"
 PROJECT_ROOT=$2
 SYNC_DELTA_FILES=$3
-printf 'walk=[%s]\n' "$(find_go_module_roots)"
-printf 'surviving=[%s]\n' "$(find_surviving_go_module_roots)"
-printf 'resolved=[%s]\n' "$(resolve_go_roots)"
+printf 'walk=[%s]\n' "$(find_go_module_roots | sort)"
+printf 'surviving=[%s]\n' "$(find_surviving_go_module_roots | sort)"
+printf 'resolved=[%s]\n' "$(resolve_go_roots | sort)"
 `
 		out, err := exec.Command("bash", "-c", payload, "_", frag, projectRoot, delta).Output()
 		if err != nil {
@@ -251,16 +252,20 @@ printf 'resolved=[%s]\n' "$(resolve_go_roots)"
 		return string(out)
 	}
 	// Deletion scenario: the delta holds only the deleted module's paths, so
-	// the walk resolves nothing, surviving discovery finds modules/b, and the
-	// ladder picks it — pre-fix this fell to the root anchor and blocked
-	// "does not contain main module" on a healthy tree.
-	wantMod := filepath.Join(root, "modules/b")
-	if got := probe(root, "modules/a/a.go\nmodules/a/go.mod"); got != fmt.Sprintf("walk=[]\nsurviving=[%s]\nresolved=[%s]\n", wantMod, wantMod) {
-		t.Fatalf("deletion ladder: got %q, want walk=[] surviving/resolved=%s", got, wantMod)
+	// the walk resolves nothing, surviving discovery finds modules/b and
+	// modules/c, and the ladder checks both — pre-fix this fell to the root
+	// anchor and blocked "does not contain main module" on a healthy tree.
+	wantB := filepath.Join(root, "modules/b")
+	wantC := filepath.Join(root, "modules/c")
+	wantBoth := wantB + "\n" + wantC
+	if got := probe(root, "modules/a/a.go\nmodules/a/go.mod"); got != fmt.Sprintf("walk=[]\nsurviving=[%s]\nresolved=[%s]\n", wantBoth, wantBoth) {
+		t.Fatalf("deletion ladder: got %q, want walk=[] surviving/resolved=%s", got, wantBoth)
 	}
-	// Delta rooted in the surviving module: the walk still wins.
-	if got := probe(root, "modules/b/b.go"); got != fmt.Sprintf("walk=[%s]\nsurviving=[%s]\nresolved=[%s]\n", wantMod, wantMod, wantMod) {
-		t.Fatalf("delta ladder: got %q, want walk/surviving/resolved=%s", got, wantMod)
+	// Delta rooted in modules/b while modules/c also survives: the WALK wins —
+	// resolved is modules/b alone even though discovery has both. This pins
+	// the ladder ORDER; swapping walk and surviving would fail here (audit F2).
+	if got := probe(root, "modules/b/b.go"); got != fmt.Sprintf("walk=[%s]\nsurviving=[%s]\nresolved=[%s]\n", wantB, wantBoth, wantB) {
+		t.Fatalf("delta ladder: got %q, want walk/resolved=%s surviving=%s", got, wantB, wantBoth)
 	}
 	// No go.mod anywhere: the bare root anchor survives as the final fallback
 	// — its failure there is a real one (design intent, unchanged).
