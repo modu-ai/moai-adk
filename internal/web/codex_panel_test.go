@@ -29,12 +29,12 @@ import (
 // helper: a test that asks the implementation where a field lives cannot
 // detect the implementation putting it in the wrong place.
 var codexMirrorOwningPanel = map[string]string{
-	"workflow.audit.gates.codex":                "audit",
-	"workflow.audit.codex.model":                "audit",
-	"workflow.audit.codex.effort":               "audit",
-	"workflow.audit.model":                      "audit", // the one declared exception
-	"workflow.codex.review_gate.enabled":        "mcp",
-	"workflow.codex.task.allow_write":           "mcp",
+	"workflow.audit.gates.codex":         "audit",
+	"workflow.audit.codex.model":         "audit",
+	"workflow.audit.codex.effort":        "audit",
+	"workflow.audit.model":               "audit", // the one declared exception
+	"workflow.codex.review_gate.enabled": "mcp",
+	"workflow.codex.task.allow_write":    "mcp",
 }
 
 // wantCodexTokenFields is the INDEPENDENT ORACLE for AC-WCP-006: the 14

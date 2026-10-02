@@ -144,3 +144,46 @@ func TestMCPNeutralityTemplateShape(t *testing.T) {
 		}
 	}
 }
+
+// TestMCPDefaultExcludesAside pins the Aside safety constraint by name: the
+// optional Aside browser MCP server is never part of the distributed default.
+// Two halves:
+//
+//   - the template .mcp.json has no mcpServers key naming `aside`. This half
+//     deliberately overlaps TestMCPNeutralityTemplateShape (which already fails
+//     on any key outside the allow-list); it exists so the constraint is
+//     greppable by name and so the failure message says Aside.
+//   - the settings template carries no `aside` token at all (no permission
+//     entry, hook argument, or env value mentioning it). This half is the
+//     non-duplicate part of the guard.
+//
+// Both files are read from disk, so a constructed failing input needs no
+// rebuild.
+func TestMCPDefaultExcludesAside(t *testing.T) {
+	t.Parallel()
+	root := findNeutralityRoot(t) // .../internal/template/templates
+
+	mcpData, err := os.ReadFile(filepath.Join(root, ".mcp.json"))
+	if err != nil {
+		t.Fatalf("read template .mcp.json: %v", err)
+	}
+	var doc struct {
+		McpServers map[string]any `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(mcpData, &doc); err != nil {
+		t.Fatalf("template .mcp.json is not valid JSON: %v", err)
+	}
+	for name := range doc.McpServers {
+		if strings.Contains(strings.ToLower(name), "aside") {
+			t.Errorf("template .mcp.json registers the optional Aside server %q in the default; Aside is activated only by an explicit operator command, never by the distributed default", name)
+		}
+	}
+
+	settingsData, err := os.ReadFile(filepath.Join(root, ".claude", "settings.json.tmpl"))
+	if err != nil {
+		t.Fatalf("read settings.json.tmpl: %v", err)
+	}
+	if strings.Contains(strings.ToLower(string(settingsData)), "aside") {
+		t.Errorf("settings.json.tmpl mentions Aside; the distributed settings must not enable, permit, or wire the optional Aside server")
+	}
+}
