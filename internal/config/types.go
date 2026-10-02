@@ -301,6 +301,24 @@ type LLMConfig struct {
 	// fallback — a pin that silently fell back would re-expose the
 	// broken-release blast radius the pin exists to stop.
 	ClaudeBin string `yaml:"claude_bin,omitempty"`
+	// Profile selects the active per-agent model+effort column for the
+	// console's agent-overrides surface, one of {high, medium, low}
+	// (REQ-AFR-003; restored under SPEC-WEB-AGENTFM-RESTORE-001 M1). The
+	// superseded top-column name "max" is accepted as a read-time alias.
+	// Absent/empty resolves via EffectiveProfile to the default column and
+	// means plain inheritance: an agent without an llm.agent_overrides entry
+	// resolves to the session model/effort (REQ-AFR-002 — the console surface
+	// is an override layer, never a spawn-path behavior change). Closed-set
+	// validated by validateProfile. This is NOT the retired
+	// llm.performance_tier — that key stays retired and stripped.
+	Profile string `yaml:"profile"`
+	// AgentOverrides is an optional per-agent {model, effort} override keyed
+	// by canonical agent name, applied on top of the active profile's cell
+	// (REQ-AFR-004; restored under SPEC-WEB-AGENTFM-RESTORE-001 M1).
+	// Validated by validateAgentOverrides. Runtime spawn-path consumption
+	// remains Out of Scope (decision-index Q2 — the follow-up card owns it);
+	// today only the console reads and writes this map.
+	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration

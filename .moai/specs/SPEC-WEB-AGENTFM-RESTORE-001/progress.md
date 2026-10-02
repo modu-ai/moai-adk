@@ -8,20 +8,19 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Pre-flight (2026-10-02, HEAD a48216da1)
 
-## §E.3 Run-phase Audit-Ready Signal
+- branch/HEAD: `WT-web-subagent-config` / `a48216da1` — 기대값과 일치.
+- baseline build: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- baseline lint: `golangci-lint run --timeout=2m` → `0 issues.` (exit 0) — /tmp/t1411-lint-baseline.txt.
+- baseline scope tests: `go test ./internal/web/ ./internal/settings/... ./internal/template/ ./internal/config/ ./internal/cli/ -run 'AgentSettings|RetiredModelKey|UpdateLLMYAML|ConsoleTabs|PrimarySurface|I18n|ShippedConfigKeys'` — GREEN (M1 커밋 전 재측정 기록은 아래 각 마일스톤 행).
+- **원자성 실패-주입 프로브 (plan §C / plan-audit D9)**: 관측 결과 **원자(atomic)** — 실패 주입점 3곳(stepApplySchema·stepGlmcredSave·stepJevcredSave)에서 실제 섹션 쓰기 seam(writeProjectConfig·writeProjectNestedConfig·applySchemaEdits)을 실구동한 뒤 관측: 무관 섹션 파일(quality.yaml, no-op 제출)은 3케이스 전부 byte-identical, 대상 파일(feedback.yaml)은 제어군 대로 실패 이전 단계에서만 기록. codex 1차 관측(quality.yaml 비원자)은 본 트리에서 미재현 — SPEC-WEB-SAVE-LOSSLESS-001 라인-스플라이스 seam(no-op 게이트 포함)이 그 결함 기제를 제거한 뒤다. **M3 조건부 staging/rollback 설계 단계 불요 — REQ-AFR-007은 기존 흐름이 실증 보호.** 주입 차량: recordingSeams 확장 임시 프루브(커밋 대상 아님 — 관측 후 삭제, §D.5의 partial_apply 확장은 M3가 정식으로 수행).
 
-_<pending run-phase>_
+### M1 (2026-10-02) — 데이터 모델·해상 기계 복원
 
-## §E.4 Sync-phase Audit-Ready Signal
-
-_<pending sync-phase>_
-
-## §F Phase 4 Mode Selection
-
-- 입력: tier=M · scope=약 15-20파일(internal/template·config·cli·web + assets) · 도메인=Go/templ/JS/i18n 4종 · 언어 혼합=코드+생성물+마크다운 · 동시성 이점=LOW(coding-heavy) · agent-team 전제=미충족(명시 요청 없음)
-- 모드 평가: direct=미선정(단순 수정 아님) · fanout=미선정(coding-heavy — Anthropic 병렬화 주의) · sweep=미선정(기계적 균일 변환 아님) · agent-team=미선정(명시 요청 없음)
-- Decision: serial
-- 근거: 마일스톤 M1→M2→M3→M4→M5→M5b→M6가 순차 의존(데이터 모델→락 반전→저장→UI→i18n→개정→검증)하는 coding-heavy 재포트 — 단일 구현 에이전트 순차 위임이 기본 선택(Anthropic coding-task 병렬화 경고). M5b는 소유권 매트릭스상 별도 manager-spec 재위임으로 직렬 삽입.
-- Kickoff decision record (2026-10-02, 자율형 — auto-semantics §9.1): plan→run 진입 승인. 증거: 감사 교차(상기 판정 파일 4종, 최종 PASS-delta) + 증거 기준(점수 0.90 ≥ Tier M 0.80·아티팩트 해시 ccac1f555 기준 불변 — iter3-delta 직접 기록) + 운영자 판정 3건 기록(decision-index Q1·Q2·Q3) + 차단 결함 0건. keep-set 해당 없음(환경 불가·운영자 보유·외부 공유 시스템 조작 없음 — 후속 카드 t1421은 리드 큐 발행 완료). 구현 배차는 일반 타입 에이전트(manager-develop 타입 스폰 자체 L1 격리 회피 — t1318 교훈).
+- RED (구현 전 관측, HEAD a48216da1 트리): 신규 테스트 4파일 컴파일 실패 — `internal/config` (`undefined: DefaultProfile / unknown field Profile / EffectiveProfile undefined / IsValidProfile...`), `internal/template` (`undefined: ProfileHigh / ProfileMatrixAgents / DefaultProfileMatrix / IsGLMCodingMaxOverrideAgent / GLMCodingMaxOverrideAgents / ResolveGLMReasoning / ResolveGLMReasoningForModel`).
+- GREEN: config 신규 테스트 5종 + template 신규 테스트 10종 전부 PASS (TestEffectiveProfile·TestProfileClosedSet·TestValidateProfileRule·TestValidateAgentOverridesRule·TestValidateWiresProfileRules / TestDefaultProfileMatrix_CellsAreCurrentConfigDefaults·TestDefaultProfileMatrix_RowMonotonicityAndNoSentinels·TestProfileMatrixAgents_CurrentRoster·TestResolveAgentModelEffort_Precedence·TestValidPerformanceTiers_SelectorVocabulary·TestAgentGroup_CurrentMembership·TestIsGLMCodingMaxOverrideAgent·TestResolveGLMReasoning·TestResolveGLMReasoningForModel·TestShippedRetiredModelKeys_IncludesReshippedConsoleKeys).
+- **셀 재유도 설계 기록 (plan §B-1(b)/§F M1)**: 1차 시도(config.DefaultClaudeTier* 페어를 셀로)는 REQ-AFR-004 계약과 충돌을 확인하고 기각 — 티어 페어의 model 값은 전체 세대 id("sonnet-5-5")라 override 폐쇄집합 {inherit, haiku, sonnet, opus, fable} 밖이므로, "제출=기본값 → clear" 비교가 UI 경유로는 성립 불가(행 select도 일치 옵션 없음). 최종 채택: model 축=config claude_models 기본값({high: opus, medium: sonnet, low: haiku})의 High/Medium 열(No-Haiku 정책 승계 — Low는 셀에 진입 안 함), effort 축=구 매트릭스의 judgment-weighted 정책 레벨(EffortLevel* 상수). 셀 테스트가 이 단일 원천을 단언(TestDefaultProfileMatrix_CellsAreCurrentConfigDefaults).
+- 수재 키 seam 실측: 템플릿 llm.yaml에 profile: ""·agent_overrides: {} 재수재 → `ShippedRetiredModelKeys()`가 두 키를 집합에 포함(멤버십=strip 제외) 실측 PASS · performance_tier/profiles/harness_agents는 계속 strip 대상 (TestStripRetiredModelConfig_ReshippedConsoleKeysSurvive — 신설, 실제 임베디드 템플릿 대상 실측).
+- 인벤토리 등록: llm.agent_overrides·llm.profile → internal/config/testdata/shipped_key_inventory.yaml (R) — TestShippedConfigKeysHaveReaders GREEN.
+- 유출 가드 수정: 템플릿 llm.yaml 주석에서 내부 SPEC ID 제거 (TestTemplateNoInternalContentLeak C1-spec-id-prefix 적중 → 재기술 후 GREEN).

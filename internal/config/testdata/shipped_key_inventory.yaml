@@ -891,6 +891,9 @@
 - path: "language.git_commit_messages"
   class: R
   evidence: none
+- path: "llm.agent_overrides"
+  class: R
+  evidence: none
 - path: "llm.claude_bin"
   class: W
   evidence: reader
@@ -918,6 +921,9 @@
 - path: "llm.mode"
   class: W
   evidence: reader
+- path: "llm.profile"
+  class: R
+  evidence: none
 - path: "llm.team_mode"
   class: W
   evidence: reader
