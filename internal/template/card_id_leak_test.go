@@ -17,9 +17,11 @@ import (
 const cardIDClassName = "C9-card-id"
 
 // cardIDBaselineEntry pins one (file, card id literal) pair that predates the
-// C9 class. The baseline is removal-only: a card id added to any template
-// surface — including a second id in a listed file — is flagged, and an entry
-// whose literal has left its file fails TestCardIDBaselineHasNoStaleEntries.
+// C9 class. The baseline is removal-only by convention: a new literal, or a
+// listed literal in an unlisted file, is flagged, and an entry whose literal has
+// left its file fails TestCardIDBaselineHasNoStaleEntries. It is per (file,
+// literal), not per occurrence: a repeated citation of a listed id in its listed
+// file is not seen, and nothing caps the length of the list.
 // Measured on base 7109e0900: 19 pairs in 9 files. The mirrored rule files are
 // byte-parity-enforced with their .claude/ source, so stripping a template copy
 // alone would break mirror parity; cleaning a pair means editing both trees.
