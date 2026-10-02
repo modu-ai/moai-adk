@@ -2,7 +2,7 @@
 id: SPEC-CTX-TABLE1M-001
 title: "Context-window 1M-default correction — CC 2.1.285/2.1.287 gateway and cloud-provider defaults"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec

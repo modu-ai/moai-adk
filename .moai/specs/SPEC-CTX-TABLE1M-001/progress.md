@@ -168,3 +168,25 @@ final batch re-ran every form on the committed tree and matched).
 - sync handoff: manager-docs owns CHANGELOG/README/docs-site sync and
   the `implemented → completed` transition on the single sync commit
   (§E.4 `sync_commit_sha` remains manager-docs' field — untouched here).
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+- sync_complete_at: 2026-10-02T06:33:43Z
+- sync_status: audit-ready
+- sync_commit_sha: "pending-backfill-sync" — placeholder (a commit cannot cite
+  its own hash); backfilled to the real sync commit SHA in the immediately
+  following commit (sanctioned D3 backfill window,
+  `.claude/rules/moai/development/spec-frontmatter-schema.md` § SHA placeholder
+  backfill exemption)
+- sync scope (single sync commit): CHANGELOG.md `### Fixed` entry (card t1415,
+  B12 duplicate pre-check measured 0) + spec.md frontmatter
+  `in-progress → implemented → completed` merged transition (status + updated
+  only — SPEC body untouched) + this §E.4 signal
+- No-op dispositions (Step 4, recorded): MX tag validation is a no-op —
+  doc-only change, zero code symbols touched (4 markdown files: 2 rule files +
+  2 byte-identical template mirrors), so no @MX annotation surface exists.
+  Codemaps rotation is a no-op for the same reason — no Go source, no package
+  structure change. README/docs-site sync is out of scope: the corrected files
+  are internal dev-facing rule files under `.claude/rules/` (+ their
+  `go:embed` template mirrors); user-facing product docs are unaffected.
+- open_blockers: none
