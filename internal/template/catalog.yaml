@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 8babafa4b8e62dc003c1b0822030d240c3f3a260ac80b1446b7d8fe776263b2a
+              hash: dca6a22468062ad683bbb3f586d9e72658a6e867fc2a00dbdc0fcadda35a25d8
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -61,7 +61,7 @@ catalog:
             - name: moai-ref-jev-question-design
               tier: core
               path: templates/.claude/skills/moai-ref-jev-question-design/
-              hash: 72576ef82f76ea062d2492889d5dc7e485d6d24145463b4de678545157a0ae7b
+              hash: 8921b54c4752ddcd83b995c69d0c6261ac610266e8d4d717700ee973272c2490
               version: 1.0.0
             - name: moai-ref-testing-pyramid
               tier: core
