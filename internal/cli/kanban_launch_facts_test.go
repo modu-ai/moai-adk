@@ -60,20 +60,17 @@ func TestLauncherWritesNoKanbanRecord(t *testing.T) {
 }
 
 // AC-KRS-006(a): the backend travels through the launch environment rather
-// than as a literal argument to a record write, and the SPEC identifier is
-// exported on every launch path (not only the kanban lead's).
+// than as a literal argument to a record write. The backend marker is the one
+// launch fact this function publishes (SPEC-LAUNCHER-ENTRY-FLAGS-001 M5a
+// dropped the SPEC identifier with its last launcher).
 func TestLaunchFactsAreExportedForTheSessionToRead(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	t.Setenv(config.EnvMoaiKanbanBackend, "")
-	t.Setenv(config.EnvMoaiKanbanSpec, "")
 
-	restore := exportKanbanLaunchFacts("SPEC-EXAMPLE-001", kanban.BackendGLM)
+	restore := exportKanbanLaunchFacts("", kanban.BackendGLM)
 
 	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != kanban.BackendGLM {
 		t.Fatalf("%s = %q, want %q", config.EnvMoaiKanbanBackend, got, kanban.BackendGLM)
-	}
-	if got := os.Getenv(config.EnvMoaiKanbanSpec); got != "SPEC-EXAMPLE-001" {
-		t.Fatalf("%s = %q, want SPEC-EXAMPLE-001", config.EnvMoaiKanbanSpec, got)
 	}
 
 	restore()
@@ -81,24 +78,23 @@ func TestLaunchFactsAreExportedForTheSessionToRead(t *testing.T) {
 	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != "" {
 		t.Fatalf("after restore %s = %q, want empty", config.EnvMoaiKanbanBackend, got)
 	}
-	if got := os.Getenv(config.EnvMoaiKanbanSpec); got != "" {
-		t.Fatalf("after restore %s = %q, want empty", config.EnvMoaiKanbanSpec, got)
-	}
 }
 
-// An absent SPEC identifier is not exported as an empty value — the session
-// reads presence, and an empty export would be a SPEC that is not there.
-func TestEmptySpecIsNotExported(t *testing.T) {
+// No launcher publishes the retired SPEC marker (REQ-011): the function the
+// factory entries share exports the backend and nothing else, whatever
+// identifier the caller's entry parse carries.
+func TestLaunchFactsPublishNoSpecMarker(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
-	if err := os.Unsetenv(config.EnvMoaiKanbanSpec); err != nil {
+	t.Setenv(retiredSpecMarker, "")
+	if err := os.Unsetenv(retiredSpecMarker); err != nil {
 		t.Fatalf("Unsetenv: %v", err)
 	}
 
-	restore := exportKanbanLaunchFacts("", kanban.BackendClaude)
+	restore := exportKanbanLaunchFacts("SPEC-EXAMPLE-001", kanban.BackendClaude)
 	defer restore()
 
-	if _, present := os.LookupEnv(config.EnvMoaiKanbanSpec); present {
-		t.Fatalf("%s was exported though no SPEC was supplied", config.EnvMoaiKanbanSpec)
+	if _, present := os.LookupEnv(retiredSpecMarker); present {
+		t.Fatalf("%s was exported by the launch facts", retiredSpecMarker)
 	}
 }
 

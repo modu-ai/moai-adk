@@ -7,25 +7,33 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// The tier seed is the difference between a board that advances on its own and
+// The tier seed is the difference between a factory that advances on its own and
 // one that stops at every commit. These tests are deliberately NOT parallel:
 // they read and write a process-global variable, and t.Setenv forbids it anyway.
+//
+// They drive the two factory entry helpers that call seedAutonomyTier — the
+// leader and the lane — because those are the only launch paths that seed it
+// (SPEC-LAUNCHER-ENTRY-FLAGS-001 M5a re-pinned them from the removed kanban
+// entries).
 
-// TestKanbanModeSeedsFullyAutonomousTier is the load-bearing property of -k.
-// Without the seed the variable stays unset, config.AutonomyTier fails safe to
-// semi-auto, and every commit pays the synchronous vet+lint+test gate — the
-// most-interrupted tier, reached by launching the mode built to avoid it.
-func TestKanbanModeSeedsFullyAutonomousTier(t *testing.T) {
-	cases := []struct {
-		name  string
-		enter func() func()
-	}{
-		{"lead", func() func() { return enterKanbanMode("SPEC-KANBAN-001", "") }},
-		{"companion", func() func() { return enterKanbanCompanionMode("plan-tjlgt1") }},
-	}
+// factoryTierEntries are the two launch helpers that seed the tier.
+var factoryTierEntries = []struct {
+	name  string
+	enter func() func()
+}{
+	{"leader", func() func() { return enterFactoryLeaderMode(1, "") }},
+	{"lane", func() func() { return enterFactoryLaneMode("lane-1", 0, "", config.FactoryDispatchAuto) }},
+}
 
-	for _, c := range cases {
+// TestFactoryModeSeedsFullyAutonomousTier is the load-bearing property of the
+// factory entry. Without the seed the variable stays unset, config.AutonomyTier
+// fails safe to semi-auto, and every commit pays the synchronous vet+lint+test
+// gate — the most-interrupted tier, reached by launching the mode built to
+// avoid it.
+func TestFactoryModeSeedsFullyAutonomousTier(t *testing.T) {
+	for _, c := range factoryTierEntries {
 		t.Run(c.name, func(t *testing.T) {
+			clearFactoryTestEnv(t)
 			t.Setenv(config.EnvAutonomyTier, "placeholder")
 			if err := os.Unsetenv(config.EnvAutonomyTier); err != nil {
 				t.Fatalf("unsetenv: %v", err)
@@ -49,45 +57,52 @@ func TestKanbanModeSeedsFullyAutonomousTier(t *testing.T) {
 	}
 }
 
-// TestKanbanModePreservesExplicitTier: an operator who names a tier has made a
-// choice, and -k is not entitled to overrule it. Someone running the board at
-// semi-auto on purpose — to watch a risky card go through — must get semi-auto.
-func TestKanbanModePreservesExplicitTier(t *testing.T) {
-	for _, tier := range []string{config.AutonomyTierSemiAuto, config.AutonomyTierAutomatic} {
-		t.Run(tier, func(t *testing.T) {
-			t.Setenv(config.EnvAutonomyTier, tier)
+// TestFactoryModePreservesExplicitTier: an operator who names a tier has made a
+// choice, and the factory entry is not entitled to overrule it. Someone running
+// the factory at semi-auto on purpose — to watch a risky card go through — must
+// get semi-auto.
+func TestFactoryModePreservesExplicitTier(t *testing.T) {
+	for _, c := range factoryTierEntries {
+		for _, tier := range []string{config.AutonomyTierSemiAuto, config.AutonomyTierAutomatic} {
+			t.Run(c.name+"_"+tier, func(t *testing.T) {
+				clearFactoryTestEnv(t)
+				t.Setenv(config.EnvAutonomyTier, tier)
 
-			restore := enterKanbanMode("", "")
-			if got := os.Getenv(config.EnvAutonomyTier); got != tier {
-				t.Errorf("explicit tier %q was overwritten with %q", tier, got)
-			}
-			restore()
+				restore := c.enter()
+				if got := os.Getenv(config.EnvAutonomyTier); got != tier {
+					t.Errorf("explicit tier %q was overwritten with %q", tier, got)
+				}
+				restore()
 
-			if got := os.Getenv(config.EnvAutonomyTier); got != tier {
-				t.Errorf("after restore tier = %q, want the operator's %q", got, tier)
-			}
-		})
+				if got := os.Getenv(config.EnvAutonomyTier); got != tier {
+					t.Errorf("after restore tier = %q, want the operator's %q", got, tier)
+				}
+			})
+		}
 	}
 }
 
-// TestKanbanModeTreatsBlankTierAsUnset: a wrapper that exports the name with no
+// TestFactoryModeTreatsBlankTierAsUnset: a wrapper that exports the name with no
 // value has not made a choice, and config.AutonomyTier already reads blank as
-// semi-auto. Honoring the blank would hand -k the most-interrupted tier through
-// an empty string nobody typed on purpose.
-func TestKanbanModeTreatsBlankTierAsUnset(t *testing.T) {
-	for _, blank := range []string{"", "   "} {
-		t.Run("blank="+blank, func(t *testing.T) {
-			t.Setenv(config.EnvAutonomyTier, blank)
+// semi-auto. Honoring the blank would hand the factory the most-interrupted tier
+// through an empty string nobody typed on purpose.
+func TestFactoryModeTreatsBlankTierAsUnset(t *testing.T) {
+	for _, c := range factoryTierEntries {
+		for _, blank := range []string{"", "   "} {
+			t.Run(c.name+"_blank="+blank, func(t *testing.T) {
+				clearFactoryTestEnv(t)
+				t.Setenv(config.EnvAutonomyTier, blank)
 
-			restore := enterKanbanMode("", "")
-			if got := os.Getenv(config.EnvAutonomyTier); got != config.AutonomyTierFullyAutonomous {
-				t.Errorf("blank tier %q left as %q, want it filled in with %q", blank, got, config.AutonomyTierFullyAutonomous)
-			}
-			restore()
+				restore := c.enter()
+				if got := os.Getenv(config.EnvAutonomyTier); got != config.AutonomyTierFullyAutonomous {
+					t.Errorf("blank tier %q left as %q, want it filled in with %q", blank, got, config.AutonomyTierFullyAutonomous)
+				}
+				restore()
 
-			if got := os.Getenv(config.EnvAutonomyTier); got != blank {
-				t.Errorf("after restore tier = %q, want the prior blank %q", got, blank)
-			}
-		})
+				if got := os.Getenv(config.EnvAutonomyTier); got != blank {
+					t.Errorf("after restore tier = %q, want the prior blank %q", got, blank)
+				}
+			})
+		}
 	}
 }

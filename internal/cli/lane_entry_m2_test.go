@@ -165,7 +165,7 @@ func TestLaneEntryJoinsNextFreeSlot(t *testing.T) {
 // `--lane`. kind selects the contract a refusal line must meet.
 var laneRefusalShapes = []struct {
 	args []string
-	kind string // "argument", "tokens", "name"
+	kind string // "argument", "tokens", "name", "retired"
 }{
 	{[]string{"-l", "lane-2"}, "argument"},
 	{[]string{"-l", "3"}, "argument"},
@@ -173,23 +173,27 @@ var laneRefusalShapes = []struct {
 	{[]string{"-l", "leader-2"}, "argument"},
 	{[]string{"-l", "-f"}, "tokens"},
 	{[]string{"-f", "-l"}, "tokens"},
-	{[]string{"-l", "-k"}, "tokens"},
+	{[]string{"-l", "-k"}, "retired"},
 	{[]string{"-l", "--name", "lane-2"}, "name"},
 	{[]string{"--lane", "lane-2"}, "argument"},
 	{[]string{"--lane=lane-2"}, "argument"},
 	{[]string{"--lane", "3"}, "argument"},
 	{[]string{"--lane", "leader-2"}, "argument"},
 	{[]string{"--lane", "-f"}, "tokens"},
-	{[]string{"--lane", "-k"}, "tokens"},
+	{[]string{"--lane", "-k"}, "retired"},
 	{[]string{"--lane", "--name", "lane-2"}, "name"},
 }
 
 // requireLaneRefusalTokens asserts the line a refused lane shape carries: an
 // argument names `-l` as taking none and `--leader <name>` as the selector, a
-// combination names the one-entry-token rule, a --name names the role clash.
+// combination names the one-entry-token rule, a --name names the role clash. A
+// `-k` beside the lane entry earns the retired-entry line instead (M5a: the
+// retired spelling is refused before the one-entry-token rule runs).
 func requireLaneRefusalTokens(t *testing.T, args []string, kind, msg string) {
 	t.Helper()
 	switch kind {
+	case "retired":
+		requireTokens(t, args, msg, "retired", "-f", "-l")
 	case "argument":
 		requireTokens(t, args, msg, "-l", "no argument", "--leader <name>")
 	case "tokens":

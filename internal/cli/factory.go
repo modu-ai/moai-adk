@@ -3,30 +3,27 @@ package cli
 // factory.go is the Factory Mode machinery behind the dedicated entry
 // surface (`moai cc -f` starts the leader, `moai cc -l` joins as a lane, and
 // likewise on glm; t118 launcher axis, v3.1.1, with the lane entry added by
-// SPEC-LAUNCHER-ENTRY-FLAGS-001) and the factory shapes of the unified -k token
-// (v1.2.0, kept for compat until its removal).
+// SPEC-LAUNCHER-ENTRY-FLAGS-001).
 // A factory run is a leader session plus numbered lanes: the leader routes
 // cards to the lanes over cross-session messages, and everything in this
 // file exists to get that signal into the session and to keep the lane
-// names unique. The -k shapes of the entry parse live in parseKanbanFlag
-// (kanban.go); this file owns the -f/-l parse (parseFactoryFlag), the merge of
-// the two (parseLauncherEntry), and everything after the factory shape is
-// selected.
+// names unique. This file owns the -f/-l parse (parseFactoryFlag), the entry
+// parse that refuses the retired -k spelling first and then runs it
+// (parseLauncherEntry), and everything after the factory shape is selected.
 //
 // GENEALOGY (binding): the pre-3.1 "factory" flag (-f/--factory) was RENAMED
-// to -k/--kanban in #1513 (7f61332ef) and drove the three-role kanban chain.
+// to -k/--kanban in #1513 (7f61332ef) and drove a three-role chain.
 // -f briefly returned as the factory lane fan-out flag (v1.0.0, 2026-08-17)
 // and was RETIRED the same day (v1.2.0) in favor of `-k <N>`. t118 (v3.1.1)
-// REVIVED it as the dedicated factory entry — one entry flag per mode: the
-// kanban chain keeps -k, the factory gets -f. This is where the retirement
+// REVIVED it as the dedicated factory entry, and SPEC-LAUNCHER-ENTRY-FLAGS-001
+// retired -k itself (launcher_retired_entries.go). This is where the retirement
 // error (rejectRetiredFactoryFlag, v1.2.0) used to live; the #1513 rename
 // history stays recorded here and in both launchers' help text.
 //
-// Like the kanban signal, the factory signal travels through the PROCESS
-// environment rather than a threaded parameter, for the same reason: the
-// consumers (block-cap inject, SessionStart hook) are reached with the flag
-// already stripped from args, and the child process needs the variables
-// anyway.
+// The factory signal travels through the PROCESS environment rather than a
+// threaded parameter: the consumers (block-cap inject, SessionStart hook) are
+// reached with the flag already stripped from args, and the child process needs
+// the variables anyway.
 
 import (
 	"context"
@@ -46,9 +43,9 @@ import (
 )
 
 // factoryUnsupportedBackendSentinel is the machine-greppable marker on the
-// `moai cg` rejection, mirroring kanbanUnsupportedBackendSentinel: a mixed
-// leader/teammate backend contradicts factory mode's one-session /
-// one-backend premise, so the invocation is rejected rather than adapted.
+// `moai cg` rejection: a mixed leader/teammate backend contradicts factory
+// mode's one-session / one-backend premise, so the invocation is rejected
+// rather than adapted.
 const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
 
 // The entry tokens. `-f` / `--factory` start the factory leader; `-l` /
@@ -113,9 +110,9 @@ const (
 // role spellings (`worker`, `agent`, any letter case) keep their own refusal
 // line, which also names -l (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-003/-005).
 //
-// The factory carries no SPEC identifier (that is the kanban chain's -k
-// SPEC-ID shape), so there is no second interpretation for a supplied value
-// to silently fall into, and hiding a typo would be worse than naming it.
+// The factory carries no SPEC identifier, so there is no second interpretation
+// for a supplied value to silently fall into, and hiding a typo would be worse
+// than naming it.
 type factoryFlagParse struct {
 	Enabled     bool   // -f or -l present (either entry token)
 	Lanes       int    // always 0 post-N-removal; kept for the merge contract
@@ -133,11 +130,11 @@ type factoryFlagParse struct {
 
 // parseFactoryFlag extracts --factory / -f and its optional value from args.
 //
-// The value-consumption and `--` discipline match parseKanbanFlag exactly:
-// a following token that looks like a flag is never consumed as the value,
-// everything from the pass-through marker onward is forwarded verbatim, and
-// both commands set DisableFlagParsing so this manual parser is the only
-// mechanism available.
+// The value-consumption and `--` discipline match the other launcher parsers
+// (stripSpawnFlag, parseProfileFlag): a following token that looks like a flag
+// is never consumed as the value, everything from the pass-through marker onward
+// is forwarded verbatim, and both commands set DisableFlagParsing so this
+// manual parser is the only mechanism available.
 func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 	p.Rest = make([]string, 0, len(args))
 	sawFactoryFlag := false
@@ -343,12 +340,10 @@ func refuseLegacyEntryNames(args []string) error {
 	return nil
 }
 
-// parseLauncherEntry is the unified -k + -f/-l entry parse (t118):
-// parseKanbanFlag for the -k shapes, parseFactoryFlag on what remains, then
-// merge. The merge enforces the one-entry-token rule (-k beside -f or -l is an
-// error — each names a different mode, and a launch that carried both would
-// have to silently drop one) and resolves the factory shapes into the same
-// kanbanEntryParse the dispatch branches already read:
+// parseLauncherEntry is the launcher entry parse (t118): the retired -k
+// spelling is refused first, before any branch resolves
+// (launcher_retired_entries.go), then parseFactoryFlag runs on the args and the
+// factory shapes resolve into the kanbanEntryParse the dispatch branches read:
 //
 //   - bare `-f` sets FactoryEnabled with the leader's one-lane default
 //     (DefaultFactoryLeaderLanes); a lane-shaped --name beside it is refused
@@ -356,20 +351,19 @@ func refuseLegacyEntryNames(args []string) error {
 //   - `-l` / `--lane` sets FactoryEnabled and appends the next free
 //     `--name lane-<n>` to Rest, desugaring into the existing lane branch
 //     (registry bump, replaceNamedLabel, settings injection, per-lane agent
-//     cap) so the lane entry and the `-k N --name lane-<i>` form share one
-//     implementation. The run's count is NOT fabricated — a lane joined
-//     incrementally carries 0 ("unknown"), which the lane notice degrades
-//     from. -l plus an operator-supplied --name is a conflict error: the
-//     entry token already names the role.
+//     cap) so every lane launch shares one implementation. The run's count is
+//     NOT fabricated — a lane joined incrementally carries 0 ("unknown"), which
+//     the lane notice degrades from. -l plus an operator-supplied --name is a
+//     conflict error: the entry token already names the role.
 //
 // Legacy spellings of an operator --name (`worker-<n>`, `agent-<n>`, bare
 // legacy roles, and `lead` / `lead-<suffix>` leader names) are refused before
 // any branch resolves (REQ-RNC-004/-005/-007).
 func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
-	entry, err := parseKanbanFlag(args)
-	if err != nil {
-		return entry, err
+	if err := refuseRetiredEntry(args); err != nil {
+		return kanbanEntryParse{}, err
 	}
+	entry := kanbanEntryParse{Rest: append(make([]string, 0, len(args)), args...)}
 	if err := refuseLegacyEntryNames(args); err != nil {
 		return entry, err
 	}
@@ -379,13 +373,6 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	}
 	if !fp.Enabled {
 		return entry, nil
-	}
-	if entry.KanbanEnabled {
-		token := "-f/--factory"
-		if fp.LaneRole {
-			token = "-l/--lane"
-		}
-		return entry, fmt.Errorf(entryTokenConflict, "-k/--kanban", token)
 	}
 
 	entry.FactoryEnabled = true
@@ -638,10 +625,10 @@ func recordFactoryRunStart(root, runID, backend, specID string, declaredLanes in
 
 // factoryDeclaredLanes resolves a leader start's declared lane capacity from
 // the entry parse (SPEC-CODEX-LANE-SLOTS-001 REQ-004): the operator-supplied
-// count when one was typed (`-k N`), the derived-capacity marker when the
-// count is a parse default (`-f` bare — the count-less leader). The
-// distinction is the whole policy: a defaulted count never becomes a declared
-// bound.
+// count when the parse recorded one as declared, the derived-capacity marker
+// when the count is a parse default (`-f` bare — the count-less leader, the
+// only leader entry now). The distinction is the whole policy: a defaulted
+// count never becomes a declared bound.
 func factoryDeclaredLanes(entry kanbanEntryParse) int {
 	if entry.FactoryLanesDeclared && entry.FactoryLanes >= 1 {
 		return entry.FactoryLanes
@@ -649,7 +636,7 @@ func factoryDeclaredLanes(entry kanbanEntryParse) int {
 	return homestate.LaneCapacityDerived
 }
 
-// factoryBranch enumerates the dispatch outcomes, mirroring kanbanBranch.
+// factoryBranch enumerates the dispatch outcomes of a launch.
 type factoryBranch int
 
 const (
@@ -659,11 +646,10 @@ const (
 )
 
 // resolveFactoryBranch selects the dispatch branch from a factory entry
-// present and lane-shape --name present — the factory counterpart of
-// resolveKanbanBranch's truth table. The lane-shape name is not typed by the
-// operator on the -f/-l surface: -l desugars it from the claim, and a
+// present and lane-shape --name present. The lane-shape name is not typed by
+// the operator on the -f/-l surface: -l desugars it from the claim, and a
 // lane-shaped --name beside -f is refused at the parse, so the lane row is
-// reached by -l (and, until M5a removes it, by `-k N --name lane-<i>`):
+// reached by -l alone:
 //
 //	factoryEnabled | isLane   || branch
 //	----------------++--------------
@@ -682,10 +668,9 @@ func resolveFactoryBranch(factoryEnabled, isLane bool) factoryBranch {
 }
 
 // parseFactoryLaneLabel reports the canonical `lane-<n>` label in args, if
-// any. It matches only the lane SHAPE (kanban.SplitFactoryLaneLabel) for the
-// same reason parseCompanionLabel matches only the companion shape: treating
-// every named session as a lane would silently change launch behavior for
-// unrelated work. A legacy `worker-<n>` / `agent-<n>` spelling never reaches
+// any. It matches only the lane SHAPE (kanban.SplitFactoryLaneLabel) because
+// treating every named session as a lane would silently change launch behavior
+// for unrelated work. A legacy `worker-<n>` / `agent-<n>` spelling never reaches
 // this parser — refuseLegacyEntryNames refuses it at the entry parse
 // (REQ-RNC-005); the claim keeps its own legacy refusal as the library-level
 // defense for direct callers.
@@ -698,12 +683,10 @@ func parseFactoryLaneLabel(args []string) (label string, ok bool) {
 
 // enterFactoryLeaderMode publishes the factory leader signal into the process
 // environment and returns the function that puts the environment back, on the
-// same prior-presence contract as enterKanbanMode.
+// same prior-presence contract as the other enter*Mode helpers.
 //
-// It reuses the kanban leader's run-id and leader-socket env surfaces — the run
-// id names the run (and the injected `leader-<run-id>` session name) — while
-// deliberately NOT setting EnvMoaiKanban or EnvMoaiKanbanLabel: those seed the
-// three-role kanban chain, which a factory leader never drives. The factory
+// It publishes the run-id and leader-socket env surfaces — the run id names the
+// run (and the injected `leader-<run-id>` session name). The factory
 // discriminator the hook and the block-cap inject read is
 // EnvMoaiFactoryWorkers.
 //
@@ -722,7 +705,7 @@ func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 	// The conventional path-shaped address, from the factory's own socket
 	// directory (t118 scheme): the actual messaging-substrate address is a run
 	// concern, and this value gives the notice a non-empty, grep-friendly
-	// address line that never collides with a concurrent kanban run's.
+	// address line that never collides with another run's.
 	_ = os.Setenv(config.EnvMoaiKanbanLeadAddr, kanban.FactoryLeaderSocketPath(runID))
 
 	return func() {
@@ -735,9 +718,7 @@ func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 
 // enterFactoryLaneMode publishes the factory lane signal for a `lane-<n>`
 // label and returns the function that puts the environment back, on the same
-// prior-presence contract. It is enterKanbanCompanionMode's factory
-// counterpart: no chain is seeded (no factory analogue of EnvMoaiKanban
-// exists to seed one), the raised Stop-hook block cap reaches the session
+// prior-presence contract. The raised Stop-hook block cap reaches the session
 // through EnvMoaiFactoryWorkers, and the autonomy tier and the per-lane
 // agent cap are seeded because the lane is where dispatched cards are
 // actually implemented. It also stamps the factory ROLE MARKER
@@ -746,10 +727,9 @@ func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 // arms lane admission and the contract guard's widened role gate in the
 // launched session, and it is restored on return like the other keys.
 //
-// lanes is the run's fan-out size from the lane's own entry token —
-// `-k <N>` carries it explicitly, and the incremental `-l` lane entry
-// carries 0 ("unknown"), which the lane notice degrades from rather than
-// fabricating a count.
+// lanes is the run's fan-out size from the lane's own entry token — the
+// incremental `-l` lane entry carries 0 ("unknown"), which the lane notice
+// degrades from rather than fabricating a count.
 //
 // clearPolicy is the lane's --clear-policy selection (REQ-SD-020): the
 // value stamped into config.EnvFactoryClearPolicy for the SessionStart rule
@@ -881,12 +861,10 @@ func replaceNamedLabel(args []string, oldLabel, newLabel string) []string {
 }
 
 // rejectFactoryOnCG returns the sentinel-bearing error when a FACTORY shape
-// appears in a `moai cg` invocation — a lane count or lane label on
-// the -k token (v1.2.0 shapes), the -f leader, or the -l lane entry — and nil
-// otherwise. Parse errors (an invalid count, an invalid -f value, the -f+-k
-// conflict) surface here too, because the unified parse runs in this
-// function. The plain kanban shapes of -k are rejectKanbanOnCG's to answer —
-// the two rejections split the entry surface's shapes between them.
+// appears in a `moai cg` invocation — the -f leader or the -l lane entry — and
+// nil otherwise. Parse errors (an invalid -f value, a second entry token, the
+// retired -k spelling) surface here too, because the unified parse runs in this
+// function.
 func rejectFactoryOnCG(args []string) error {
 	p, err := parseLauncherEntry(args)
 	if err != nil {

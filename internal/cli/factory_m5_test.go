@@ -140,10 +140,10 @@ func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 			t.Errorf("invocation %d: child env %s = %q, want the lane label %q", i, config.EnvMoaiFactoryWorker, rec.env[config.EnvMoaiFactoryWorker], wantLabel)
 		}
 		// The factory card verbs the owned-card session runs read the lane
-		// label from MOAI_KANBAN_LABEL; a child without it could not stage
-		// its own card.
-		if rec.env[config.EnvMoaiKanbanLabel] != wantLabel {
-			t.Errorf("invocation %d: child env %s = %q, want the lane label %q (the carrier the factory card verbs read)", i, config.EnvMoaiKanbanLabel, rec.env[config.EnvMoaiKanbanLabel], wantLabel)
+		// label from MOAI_FACTORY_WORKER alone; the retired MOAI_KANBAN_LABEL
+		// carrier is no longer stamped (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-012).
+		if v := rec.env[retiredLaneLabelMarker]; v != "" {
+			t.Errorf("invocation %d: child env carries the retired %s=%q", i, retiredLaneLabelMarker, v)
 		}
 		if rec.env[config.EnvMoaiKanbanBackend] != kanban.BackendGPT {
 			t.Errorf("invocation %d: child env %s = %q, want the Codex harness value %q", i, config.EnvMoaiKanbanBackend, rec.env[config.EnvMoaiKanbanBackend], kanban.BackendGPT)

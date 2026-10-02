@@ -1,7 +1,7 @@
 package cli
 
 // kanban_settings.go implements the transient --settings injection that lets
-// cross-session messages flow between kanban companions without the operator
+// cross-session messages flow between factory sessions without the operator
 // having to relax their project/local settings.
 //
 // The accept/hold/refuse ladder for `crossSessionInbound` cannot be satisfied
@@ -31,9 +31,9 @@ const settingsFlagLong = "--settings"
 // <file> on the command line (before the pass-through marker). The operator's
 // intent wins: moai does NOT inject its own settings file in that case.
 //
-// The `--` discipline matches parseKanbanFlag and parseCompanionLabel: nothing
-// past the marker is read — a `--settings` after `--` is a passthrough arg to
-// the backend, not a moai-level flag.
+// The `--` discipline matches the launcher entry parse: nothing past the
+// marker is read — a `--settings` after `--` is a passthrough arg to the
+// backend, not a moai-level flag.
 func operatorSuppliedSettings(args []string) bool {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -66,7 +66,7 @@ func operatorSuppliedSettings(args []string) bool {
 // the auto-accept notice.
 //
 // The signal env var is set via os.Setenv (restored on cleanup) so it reaches
-// the child process through os.Environ(), matching the enterKanbanMode pattern.
+// the child process through os.Environ(), matching the enter*Mode helpers.
 func prepareKanbanSettings(profileName string, args []string) (flag []string, cleanup func()) {
 	if operatorSuppliedSettings(args) {
 		return nil, func() {}

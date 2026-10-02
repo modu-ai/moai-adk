@@ -43,13 +43,12 @@ func laneKeyFixtureValues() map[string]string {
 
 // TestCodexLaneLaunchEnvKeys pins the scrub list to the
 // factory identity keys, so a list that loses or gains a key fails here
-// and not only in the per-key assertions below.
+// and not only in the per-key assertions below. The chain, SPEC and
+// lane-label markers left the list with their last publisher
+// (SPEC-LAUNCHER-ENTRY-FLAGS-001 M5a).
 func TestCodexLaneLaunchEnvKeys(t *testing.T) {
 	want := []string{
-		config.EnvMoaiKanban,
 		config.EnvMoaiKanbanID,
-		config.EnvMoaiKanbanSpec,
-		config.EnvMoaiKanbanLabel,
 		config.EnvMoaiKanbanLeadAddr,
 		config.EnvMoaiKanbanLeadName,
 		config.EnvMoaiKanbanBackend,
@@ -113,19 +112,21 @@ func assertCodexRefused(t *testing.T, args []string, stdout, stderr string, err 
 	}
 }
 
-// AC-CFR-001 — every kanban entry shape is refused with the kanban sentinel.
+// AC-CFR-001 — every retired `-k` entry shape is refused with the retired-entry
+// line (re-pinned by SPEC-LAUNCHER-ENTRY-FLAGS-001 M5a from the removed
+// unsupported-backend sentinel).
 func TestCodexKanbanEntryIsRefused(t *testing.T) {
 	cap := withCodexLaunchCapture(t)
 	pinCodexRefusalRoot(t)
 	for _, args := range codexRefusalCases("kanban") {
 		stdout, stderr, err := runCodexCmd(t, args...)
-		assertCodexRefused(t, args, stdout, stderr, err, kanbanUnsupportedBackendSentinel, "moai cc -k")
+		assertCodexRefused(t, args, stdout, stderr, err, retiredEntryRefusal)
 	}
 	// Edge (acceptance §D.1): --name without -k stays the plain usage error.
 	stdout, stderr, err := runCodexCmd(t, "--name", "plan")
 	assertCodexRefused(t, []string{"--name", "plan"}, stdout, stderr, err, codexUsageDiag)
-	if strings.Contains(stderr, kanbanUnsupportedBackendSentinel) {
-		t.Errorf("--name plan carried the kanban sentinel: %q", stderr)
+	if strings.Contains(stderr, retiredEntryRefusal) {
+		t.Errorf("--name plan carried the retired-entry line: %q", stderr)
 	}
 	codexWantLaunches(t, cap, 0, 0, 0)
 }

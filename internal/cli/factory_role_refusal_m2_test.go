@@ -100,7 +100,7 @@ func TestFactoryEntryRefusesLegacyLaneNameTyped(t *testing.T) {
 	}{
 		{name: "-f --name agent-5", args: []string{"-f", "--name", "agent-5"}, want: "lane-5"},
 		{name: "-f -n=worker-3", args: []string{"-f", "-n=worker-3"}, want: "lane-3"},
-		{name: "-k --name worker-3", args: []string{"-k", "--name", "worker-3"}, want: "lane-3"},
+		{name: "--name worker-3", args: []string{"--name", "worker-3"}, want: "lane-3"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -127,8 +127,8 @@ func TestLauncherEntryRefusesLegacyLeaderName(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "-k --name lead", args: []string{"-k", "--name", "lead"}, want: "leader"},
-		{name: "-k --name lead-7", args: []string{"-k", "--name", "lead-7"}, want: "leader-7"},
+		{name: "--name lead", args: []string{"--name", "lead"}, want: "leader"},
+		{name: "--name lead-7", args: []string{"--name", "lead-7"}, want: "leader-7"},
 		{name: "-f --name lead", args: []string{"-f", "--name", "lead"}, want: "leader"},
 		{name: "-n=lead-abc123", args: []string{"-n=lead-abc123"}, want: "leader-abc123"},
 	}
@@ -149,10 +149,10 @@ func TestLauncherEntryRefusesLegacyLeaderName(t *testing.T) {
 		name string
 		args []string
 	}{
-		{name: "bare -k (leader, no name)", args: []string{"-k"}},
-		{name: "-k --name leader-abc123 (composed run id)", args: []string{"-k", "--name", "leader-abc123"}},
+		{name: "bare -f (leader, no name)", args: []string{"-f"}},
+		{name: "--name leader-abc123 (composed run id)", args: []string{"--name", "leader-abc123"}},
 		{name: "-f --name leader-r7", args: []string{"-f", "--name", "leader-r7"}},
-		{name: "companion plan unaffected", args: []string{"-k", "--name", "plan"}},
+		{name: "non-role name unaffected", args: []string{"--name", "plan"}},
 	}
 	for _, c := range valid {
 		t.Run(c.name, func(t *testing.T) {
@@ -209,8 +209,8 @@ func TestRunCCRefusesLegacySpellingsNothingWritten(t *testing.T) {
 		{name: "-f worker-2", args: []string{"-f", "worker-2"}, want: []string{"-l"}},
 		{name: "-f Worker-4", args: []string{"-f", "Worker-4"}, want: []string{"-l"}},
 		{name: "-f --name agent-5", args: []string{"-f", "--name", "agent-5"}, want: []string{"lane-5"}},
-		{name: "-k --name lead", args: []string{"-k", "--name", "lead"}, want: []string{"leader"}},
-		{name: "-k --name lead-7", args: []string{"-k", "--name", "lead-7"}, want: []string{"leader-7"}},
+		{name: "--name lead", args: []string{"--name", "lead"}, want: []string{"leader"}},
+		{name: "--name lead-7", args: []string{"--name", "lead-7"}, want: []string{"leader-7"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -273,8 +273,8 @@ func TestRunCCRefusesLegacyLeaderNameLeadsJSONSeeded(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	if err := runCC(ccCmd, []string{"-k", "--name", "lead"}); err == nil {
-		t.Fatal("runCC(-k --name lead) = nil error, want the refusal")
+	if err := runCC(ccCmd, []string{"-f", "--name", "lead"}); err == nil {
+		t.Fatal("runCC(-f --name lead) = nil error, want the refusal")
 	} else if !strings.Contains(err.Error(), "leader") {
 		t.Errorf("refusal %q does not name leader", err.Error())
 	}

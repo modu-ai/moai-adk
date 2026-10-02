@@ -1,13 +1,13 @@
 package cli
 
-// kanban.go is the Kanban Mode entry surface on the two single-backend
-// launchers. Kanban Mode adds no runtime: it seeds a session whose
-// orchestrator drives a plan -> run -> sync chain, and everything in
-// this file exists to get that signal into the session.
+// kanban.go holds the launcher helpers the factory entry shares across cc, glm
+// and codex: the entry parse type, the leader run id and name resolution, the
+// lane autonomy seeds, the launch facts, and the session-name parsers. The
+// retired `-k` entry lives in launcher_retired_entries.go.
 //
-// @MX:NOTE: [AUTO] the kanban signal travels through the PROCESS environment, not a threaded parameter
+// @MX:NOTE: [AUTO] the factory signal travels through the PROCESS environment, not a threaded parameter
 // The one production consumer of the signal is the block-cap inject, five hops
-// below runCC and reached with the kanban token already stripped from args.
+// below runCC and reached with the entry token already stripped from args.
 // Threading a parameter there would change four signatures plus two test seams
 // to carry something the environment already delivers to the same line — and
 // the child process needs the variables anyway.
@@ -25,52 +25,19 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// The entry tokens. `-k` is unbound on cc / glm / cg; the commands that do bind
-// it (`doctor config dump`, `state`) are distinct and unaffected.
-const (
-	kanbanFlagLong  = "--kanban"
-	kanbanFlagShort = "-k"
-)
-
-// kanbanFlagUsageError names every accepted -k shape. It is the error text for
-// an invalid SUPPLIED value and the reference the help texts paraphrase.
-const kanbanFlagUsageError = "-k/--kanban takes a SPEC identifier (e.g. -k SPEC-X-001), " +
-	"a lane count of 1 or more (e.g. -k 4) for Factory Mode, " +
-	"or no argument for the plain kanban leader"
-
-// kanbanUnsupportedBackendSentinel is the machine-greppable marker on the
-// `moai cg` rejection. A mixed leader/teammate backend contradicts the
-// one-session / one-backend / one-chain premise, so the invocation is rejected
-// rather than adapted.
-const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
-
-// kanbanEntryParse is the unified -k/--kanban entry parse (v1.2.0): ONE flag
-// token selects one of two session shapes —
-//
-//	-k                  → the three-role kanban chain (leader branch)
-//	-k SPEC-ID          → the kanban chain tied to a SPEC
-//	-k N (N ≥ 1)        → Factory Mode with N numbered lanes
-//	-k --name lane-<n>   → Factory Mode as lane n; the count defaults to
-//	                       config.DefaultFactoryLanes because the
-//	                       lane-shape name selected the factory with no
-//	                       count supplied (a bare -k alone is the kanban
-//	                       leader, so a count-less FACTORY leader does not
-//	                       exist)
-//
-// The numeric-positional discriminator is unambiguous in both directions: a
-// SPEC identifier is never a bare integer, and a bare integer is never a
-// meaningful SPEC identifier. FactoryEnabled implies KanbanEnabled (the -k
-// token was present); the launcher branches on FactoryEnabled first.
+// kanbanEntryParse is the launcher entry parse: the factory entry the `-f`
+// leader and `-l` lane tokens select, plus the arguments left for the backend.
+// The retired `-k` entry never reaches it — parseLauncherEntry refuses that
+// spelling first (launcher_retired_entries.go).
 type kanbanEntryParse struct {
-	Spec           string // non-numeric positional — the kanban SPEC identifier
-	KanbanEnabled  bool   // -k present (any shape)
-	FactoryEnabled bool   // -k selected the factory (numeric count or lane-shape name)
+	Spec           string // the SPEC identifier a factory run records; empty on every current entry
+	KanbanEnabled  bool   // set by no current entry; deleted with the entry-parse rename
+	FactoryEnabled bool   // -f selected the factory leader
 	FactoryLanes   int    // the factory count (explicit or the default)
-	// FactoryLanesDeclared records that the count was operator-supplied
-	// (numeric `-k N`), not a parse default (SPEC-CODEX-LANE-SLOTS-001
-	// REQ-004): the leader start records the count as the run's declared
-	// capacity only when this is true, and the derived-capacity marker
-	// otherwise.
+	// FactoryLanesDeclared records that the count was operator-supplied, not a
+	// parse default (SPEC-CODEX-LANE-SLOTS-001 REQ-004): the leader start
+	// records the count as the run's declared capacity only when this is true,
+	// and the derived-capacity marker otherwise.
 	FactoryLanesDeclared bool
 	FactoryRun           string // explicit --factory-run selector for mixed factory joins
 	// FactoryLead is the raw `--leader <name>` target a lane join's leader
@@ -81,8 +48,8 @@ type kanbanEntryParse struct {
 	// run by the time a non-empty value reaches the gate.
 	FactoryLead string
 	// FactoryAutoNumber marks a lane number the launcher chose itself
-	// (`-l`), as opposed to one the operator typed (`-k N --name lane-<n>`);
-	// the claim reports legacy collisions differently.
+	// (`-l`), as opposed to one the operator typed; the claim reports legacy
+	// collisions differently.
 	FactoryAutoNumber bool
 	// ClearPolicy carries the lane's --clear-policy selection (REQ-SD-020,
 	// factory entry only): "" when none was given, which the lane reads as
@@ -93,130 +60,7 @@ type kanbanEntryParse struct {
 	// false (the code default) launches a self-dispatch lane, true launches
 	// a manual-mode lane.
 	AutoDispatchManual bool
-	Rest               []string // args with -k and its consumed value removed
-}
-
-// parseKanbanFlag extracts --kanban / -k and its optional value from args.
-//
-// The SPEC identifier is optional: its absence means the chain begins at
-// plan-phase from the operator's first prompt, which is a valid entry, not an
-// error. A token that looks like a flag is never consumed as the identifier.
-// A SUPPLIED value that is numeric but invalid (zero/negative) is an error —
-// it names a count the operator clearly intended, and silently treating it as
-// a kanban SPEC identifier would hide the typo.
-//
-// The `--` discipline matches stripSpawnFlag, parseProfileFlag, and
-// normalizeWorktreeFlag exactly: iterate, break at the pass-through marker, and
-// forward everything from that marker onward verbatim. Both commands set
-// DisableFlagParsing, so a cobra flag registration would be silently inert —
-// this manual parser is the only mechanism available.
-func parseKanbanFlag(args []string) (p kanbanEntryParse, err error) {
-	p.Rest = make([]string, 0, len(args))
-
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
-			p.Rest = append(p.Rest, args[i:]...)
-			break
-		}
-
-		var value string
-		hasValue := false
-		joined := false
-		switch {
-		case arg == kanbanFlagLong || arg == kanbanFlagShort:
-			// Consume a following positional token as the value. A flag or
-			// the pass-through marker belongs to someone else.
-			if next := i + 1; next < len(args) && args[next] != "--" && !strings.HasPrefix(args[next], "-") {
-				value, hasValue = args[next], true
-				i = next
-			}
-		case strings.HasPrefix(arg, kanbanFlagLong+"="), strings.HasPrefix(arg, kanbanFlagShort+"="):
-			// The `=`-joined form exists for the FACTORY COUNT only (v1.2.0);
-			// the kanban SPEC identifier never had one.
-			value = strings.TrimPrefix(strings.TrimPrefix(arg, kanbanFlagShort+"="), kanbanFlagLong+"=")
-			hasValue, joined = true, true
-		default:
-			p.Rest = append(p.Rest, arg)
-			continue
-		}
-
-		p.KanbanEnabled = true
-		if !hasValue {
-			continue
-		}
-		if n, perr := strconv.Atoi(value); perr == nil {
-			if n < 1 {
-				return p, fmt.Errorf("%s, got %q", kanbanFlagUsageError, value)
-			}
-			p.FactoryEnabled = true
-			p.FactoryLanes = n
-			p.FactoryLanesDeclared = true
-			continue
-		}
-		if joined {
-			return p, fmt.Errorf("%s, got %q", kanbanFlagUsageError, value)
-		}
-		p.Spec = value
-	}
-
-	// A bare -k plus a lane-shape --name selected the factory with no count
-	// supplied — the count-less factory entry, resolved to the default here.
-	// parseFactoryLaneLabel stops at the pass-through marker like this
-	// parser does, so a `-- --name lane-1` passthrough never selects it.
-	if p.KanbanEnabled && !p.FactoryEnabled {
-		if _, isLane := parseFactoryLaneLabel(args); isLane {
-			p.FactoryEnabled = true
-			p.FactoryLanes = config.DefaultFactoryLanes
-		}
-	}
-
-	return p, nil
-}
-
-// @MX:ANCHOR: [AUTO] the deferred restore is a correctness requirement, not hygiene
-// @MX:REASON: os.Setenv is process-global; an unrestored mutation leaves MOAI_KANBAN set for every later test in the internal/cli binary (making the block-cap negative control pass or fail by execution order) and lets a later production re-exec inherit kanban semantics it was never given
-//
-// enterKanbanMode publishes the kanban signal into the process environment
-// and returns the function that puts the environment back.
-//
-// The restore returns each variable to its PRIOR PRESENCE, not merely its prior
-// value: a variable that was unset is unset again rather than set to "". The
-// distinction is observable — os.Getenv cannot see it but os.LookupEnv can, and
-// downstream readers treat presence as the signal.
-//
-// Callers must defer the returned function so it also runs on the error path; a
-// restore that only runs on success is the same leak with a narrower trigger.
-// leaderLabel is the operator-supplied `leader-<run-id>` name for this session when
-// there is one, and "" otherwise. Its run id is ADOPTED rather than replaced —
-// see leaderRunID.
-func enterKanbanMode(specID, leaderLabel string) func() {
-	restoreKanban := captureEnvState(config.EnvMoaiKanban)
-	restoreSpec := captureEnvState(config.EnvMoaiKanbanSpec)
-	restoreID := captureEnvState(config.EnvMoaiKanbanID)
-	restoreAddr := captureEnvState(config.EnvMoaiKanbanLeadAddr)
-	restoreTier := seedAutonomyTier()
-
-	_ = os.Setenv(config.EnvMoaiKanban, "1")
-	runID := leaderRunID(leaderLabel)
-	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
-	if specID != "" {
-		_ = os.Setenv(config.EnvMoaiKanbanSpec, specID)
-	}
-	// SPEC-FACTORY-BOOTSTRAP-001 M3: surface a leader socket path for the
-	// SessionStart hook to print. The actual messaging-substrate address is a
-	// run-phase concern; this conventional path-shaped value gives the notice
-	// a non-empty, grep-friendly address line. t118 socket scheme: the kanban
-	// run's address lives under its own directory, never the factory's.
-	_ = os.Setenv(config.EnvMoaiKanbanLeadAddr, kanban.LeaderSocketPath(runID))
-
-	return func() {
-		restoreTier()
-		restoreAddr()
-		restoreID()
-		restoreSpec()
-		restoreKanban()
-	}
+	Rest               []string // args with the entry tokens and their consumed values removed
 }
 
 // leaderRunID resolves the run id a leader session publishes, in three steps: a
@@ -230,12 +74,11 @@ func enterKanbanMode(specID, leaderLabel string) func() {
 // `leader-1` is the second live leader on this machine, not run 1.
 //
 // The environment step is what replaces the name round-trip. Nothing
-// functional was ever downstream of that round-trip — the board and the
-// per-session records key on the Claude session id, and companion names stopped
-// carrying the run id at t56 — so the id now survives a relaunch exactly as far
-// as MOAI_KANBAN_ID does, and no new state file is introduced to carry a value
-// that is only ever displayed. It is read BEFORE enterKanbanMode publishes this
-// launch's id, so what it sees is the prior value or nothing.
+// functional was ever downstream of that round-trip — the per-session records
+// key on the Claude session id — so the id now survives a relaunch exactly as
+// far as MOAI_KANBAN_ID does, and no new state file is introduced to carry a
+// value that is only ever displayed. It is read BEFORE enterFactoryLeaderMode
+// publishes this launch's id, so what it sees is the prior value or nothing.
 func leaderRunID(leaderLabel string) string {
 	if suffix, ok := kanban.SplitLeaderLabel(leaderLabel); ok && suffix != "" && !allDigits(suffix) {
 		return suffix
@@ -261,18 +104,18 @@ func allDigits(s string) bool {
 	return true
 }
 
-// seedAutonomyTier publishes the autonomy tier Kanban Mode runs at, and returns
-// the function that puts it back on the same prior-presence contract as the
-// other kanban variables.
+// seedAutonomyTier publishes the autonomy tier a factory session runs at, and
+// returns the function that puts it back on the same prior-presence contract as
+// the other launch variables.
 //
-// Kanban Mode exists to run unattended: the operator launches the sessions once
-// and the board advances without being asked at every step. The tier is what
+// A factory run exists to run unattended: the operator launches the sessions
+// once and the cards advance without being asked at every step. The tier is what
 // makes that true. At fully-autonomous the synchronous vet+lint+test commit gate
 // and the SubagentStop / TeammateIdle / TaskCompleted lifecycle hooks stand
-// down, so a card crosses a column without stopping for a verification tax the
-// operator already accepted when they launched the board. Leaving the variable
+// down, so a card advances without stopping for a verification tax the operator
+// already accepted when they launched the factory. Leaving the variable
 // unset resolves to semi-auto — config.AutonomyTier fails safe — which is the
-// most-interrupted tier and the opposite of what -k asks for.
+// most-interrupted tier and the opposite of what a factory entry asks for.
 //
 // What the tier does NOT reach: the destructive-pattern denylist in
 // internal/hook/pre_tool.go is tier-invariant, and Implementation Kickoff
@@ -294,11 +137,11 @@ func seedAutonomyTier() func() {
 // seedLaneAgentCap publishes the per-lane concurrent-subagent cap and returns
 // the function that puts it back, on the same prior-presence contract as
 // seedAutonomyTier (t118 launcher axis, operator-confirmed architecture: each
-// lane — kanban companion or factory lane — runs up to
-// DefaultLaneMaxConcurrentSubagents agents in parallel).
+// factory lane runs up to DefaultLaneMaxConcurrentSubagents agents in
+// parallel).
 //
-// A lane, not the leader: the cap is seeded on the companion / lane branches
-// only, where dispatched cards are implemented and fanned out to subagents.
+// A lane, not the leader: the cap is seeded on the lane branch only, where
+// dispatched cards are implemented and fanned out to subagents.
 // The leader keeps the runtime default, which already bounds its own turns.
 //
 // An operator who set the variable themselves keeps it, on the same contract
@@ -313,85 +156,12 @@ func seedLaneAgentCap() func() {
 	return restore
 }
 
-// enterKanbanCompanionMode publishes the companion signal for a label — the
-// bare role under the naming policy, or a bumped `<role>-<n>` — and returns
-// the function that puts the environment back, on the same prior-presence
-// contract as enterKanbanMode.
-//
-// It deliberately does NOT set config.EnvMoaiKanban: that variable seeds the
-// chain, and only the leader drives the chain. What the companion shares with the
-// leader is the raised Stop-hook block cap, which the inject reads from either
-// variable.
-//
-// It also deliberately does NOT set config.EnvMoaiKanbanID: the run id is
-// leader-owned state, and publishing one on the companion side — historically
-// derived from the label suffix — is the root of the t21 incident class (a
-// leader's MOAI_KANBAN_ID disagreeing with a live companion's suffix produced
-// announcements for a run id no live session carried). Under the bare-role
-// policy no companion surface carries a run id at all, so the disagreement has
-// nothing to disagree about. Nothing on the companion path reads the variable.
-func enterKanbanCompanionMode(label string) func() {
-	restoreLabel := captureEnvState(config.EnvMoaiKanbanLabel)
-	// A companion is where the work actually lands — it plans, implements,
-	// reviews, and commits. Seeding the tier on the leader alone would leave every
-	// interruption exactly where it already was, because the leader does not
-	// commit code. The same reasoning seeds the per-lane agent cap: the
-	// companion's subagent fan-out is what the cap bounds.
-	restoreTier := seedAutonomyTier()
-	restoreCap := seedLaneAgentCap()
-
-	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
-
-	return func() {
-		restoreCap()
-		restoreTier()
-		restoreLabel()
-	}
-}
-
-// companionRegistryPath returns the liveness-checked companion-name registry's
-// home, the sibling of the factory lane registry it shares its machinery
-// with. A project's kanban companions claim names here so the bump has
-// something to consult — Claude Code owns the session-name namespace but
-// offers moai no query into it, so the claim set is moai's own state.
-func companionRegistryPath(root string) string {
-	return filepath.Join(kanban.RuntimeStateDirForRoot(root), "companions.json")
-}
-
-// resolveCompanionName returns the label this companion session should launch
-// under: label itself when it is free, or the next free number for its role
-// (the "bump a conflicting name up" rule, the companion sibling of
-// resolveFactoryLaneName).
-//
-// A label is taken when the registry maps it to a pid that is alive right now
-// — a crashed or exited companion leaves a dead pid behind, and a dead claim
-// frees the name so a relaunch reuses it instead of counting up forever. Dead
-// entries are pruned on the way through. The bumped candidates are
-// `<role>-<n>` regardless of the label's own suffix shape, so a held legacy
-// `plan-abc123` bumps to `plan-1` (never a second hyphen). The final label is
-// registered to this process's pid before returning.
-//
-// label MUST have the companion shape (kanban.SplitCompanionLabel); the caller
-// has already branched on it. Best-effort throughout: an unreadable or
-// unwritable registry degrades to using the label as supplied, exactly like
-// every other launch-path state write — the launch must never block on it.
-// notes, when non-nil, receives the operator-visible bump line.
-func resolveCompanionName(root, label string, notes io.Writer) string {
-	role, _, ok := kanban.SplitCompanionLabel(label)
-	if !ok {
-		return claimName(companionRegistryPath(root), label, nil, notes)
-	}
-	return claimName(companionRegistryPath(root), label, func(n int) string {
-		return kanban.CompanionNumberLabel(role, n)
-	}, notes)
-}
-
 // leaderRegistryPath returns the liveness-checked leader-name registry's home.
 //
-// It is a SEPARATE file from the companion registry because the two namespaces
-// are separate: a leader and a companion named `plan` can never
-// collide, and sharing one file would make each mode's launches contend on the
-// other's writes for no benefit. The shape and the machinery are identical.
+// It is a SEPARATE file from the factory lane registry because the two
+// namespaces are separate: a leader name and a lane label can never collide,
+// and sharing one file would make each role's launches contend on the other's
+// writes for no benefit. The shape and the machinery are identical.
 func leaderRegistryPath(root string) string {
 	return filepath.Join(kanban.RuntimeStateDirForRoot(root), "leads.json")
 }
@@ -399,7 +169,7 @@ func leaderRegistryPath(root string) string {
 // resolveLeaderName returns the label this leader session should launch under:
 // label itself when it is free, or the next free number (`leader-1`,
 // `leader-2`, ...) when a live session already holds it — the leader sibling
-// of resolveCompanionName, on the same registry machinery.
+// of resolveFactoryLaneName, on the same registry machinery.
 //
 // The bump is what the one-machine-one-run policy costs and what makes it
 // survivable. Two runs on one machine both want the name `leader`, and the
@@ -414,9 +184,9 @@ func leaderRegistryPath(root string) string {
 // launch proceeds under `leader` (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-025). A
 // dead legacy entry is pruned by the claim like any dead claim.
 //
-// Best-effort throughout, like its companion sibling: an unreadable or
-// unwritable registry degrades to using the label as supplied. The launch must
-// never block on a name claim.
+// Best-effort throughout, like the lane claim: an unreadable or unwritable
+// registry degrades to using the label as supplied. The launch must never block
+// on a name claim.
 func resolveLeaderName(root, label string, notes io.Writer) string {
 	noteLegacyLeaderRegistryEntries(root, notes)
 	return claimName(leaderRegistryPath(root), label, kanban.LeaderNumberLabel, notes)
@@ -460,10 +230,9 @@ func noteLegacyLeaderRegistryEntries(root string, notes io.Writer) {
 // rather than tightened: the launch path is not where a malformed name should
 // start failing.
 //
-// The loop is shared by the companion and leader resolvers because they differ
-// only in which registry they consult and how they render a number. Keeping one
-// copy is how the two avoid drifting apart — the same reasoning parseNamedLabel
-// records for its own side.
+// The loop is a single copy so that its callers differ only in which registry
+// they consult and how they render a number. Keeping one copy is how they avoid
+// drifting apart — the same reasoning parseNamedLabel records for its own side.
 func claimName(path, label string, bump func(int) string, notes io.Writer) string {
 	reg := loadFactoryRegistry(path)
 
@@ -515,7 +284,7 @@ func captureEnvState(key string) func() {
 // observe for itself, and returns the function that puts the environment back
 // on the same prior-presence contract the other enter*Mode helpers use.
 //
-// It does NOT write the kanban record, and that absence is the point. The
+// It does NOT write a session record, and that absence is the point. The
 // launcher cannot key a record correctly under any implementation: the
 // identifier it would need belongs to a process that does not exist yet, so
 // the pre-change write landed under whichever session last wrote the
@@ -527,36 +296,27 @@ func captureEnvState(key string) func() {
 // REQ-KRS-001/002, decision D-6). There is exactly one writer, and it is the
 // session.
 //
-// Two facts travel here. The BACKEND, because nothing in the session's
+// One fact travels here: the BACKEND, because nothing in the session's
 // environment names it and inferring it from ANTHROPIC_BASE_URL would be a
 // guess dressed as a measurement — that variable is set by the GLM path but is
-// settable by anyone. The SPEC identifier, because enterKanbanMode publishes it
-// for the kanban leader alone, so a companion or a factory lane had no way to
-// learn it. Re-exporting it on the leader path is harmless: the value is the same
-// one enterKanbanMode set, and the restores unwind in reverse order.
+// settable by anyone. The first parameter is the SPEC identifier the entry
+// parse carries; it is no longer exported (no launcher publishes it), and the
+// parameter stays only so the call sites keep their shape until the launch-facts
+// functions collapse into one.
 //
 // The card-identifier override is deliberately NOT exported here. It is the
 // operator's or the leader's to set, and the launch environment carries it
 // through unchanged (config.EnvMoaiKanbanCard); the session reads it directly.
 //
 // Callers must defer the returned function so it also runs on the error path.
-func exportKanbanLaunchFacts(specID, backend string) func() {
+func exportKanbanLaunchFacts(_, backend string) func() {
 	restoreBackend := captureEnvState(config.EnvMoaiKanbanBackend)
-	restoreSpec := captureEnvState(config.EnvMoaiKanbanSpec)
 
 	if backend != "" {
 		_ = os.Setenv(config.EnvMoaiKanbanBackend, backend)
 	}
-	// An absent SPEC is not exported as an empty value: the session reads
-	// PRESENCE, and an empty export would announce a SPEC that is not there.
-	if specID != "" {
-		_ = os.Setenv(config.EnvMoaiKanbanSpec, specID)
-	}
 
-	return func() {
-		restoreSpec()
-		restoreBackend()
-	}
+	return restoreBackend
 }
 
 // exportFactoryLaunchFacts preserves the established env carriers for the
@@ -573,35 +333,11 @@ const (
 	nameFlagShort = "-n"
 )
 
-// parseCompanionLabel reports the companion label in args, if any.
-//
-// It matches only the companion SHAPE (kanban.SplitCompanionLabel) because the
-// alternative discriminators are worse. Treating every named session as a
-// companion would
-// silently raise the Stop-hook block cap from 8 to 200 for unrelated work, and a
-// state file the leader writes and companions read buys nothing here beyond one
-// more file to keep consistent.
-//
-// The `--` discipline matches parseKanbanFlag, stripSpawnFlag, parseProfileFlag
-// and normalizeWorktreeFlag: iterate, break at the pass-through marker, and read
-// nothing beyond it. args is returned to the caller untouched.
-func parseCompanionLabel(args []string) (label string, ok bool) {
-	return parseNamedLabel(args, func(candidate string) bool {
-		_, _, isCompanion := kanban.SplitCompanionLabel(candidate)
-		return isCompanion
-	})
-}
-
 // parseLeaderLabel reports the `leader-<run-id>` label in args, if any.
 //
-// It is parseCompanionLabel's counterpart and exists for the launcher to read
-// back a run id the operator embedded in the session name, so the leader branch
-// can adopt it instead of minting a second one (see leaderRunID).
-//
-// A leader label never satisfies the companion discriminator — RoleLeader is absent
-// from kanban.CompanionRoles — so the two parsers can never both match the same
-// name, and recognizing a leader name here cannot reroute the session down the
-// companion branch.
+// It exists for the launcher to read back a run id the operator embedded in the
+// session name, so the leader branch can adopt it instead of minting a second
+// one (see leaderRunID).
 func parseLeaderLabel(args []string) (label string, ok bool) {
 	return parseNamedLabel(args, func(candidate string) bool {
 		_, isLeader := kanban.SplitLeaderLabel(candidate)
@@ -612,10 +348,10 @@ func parseLeaderLabel(args []string) (label string, ok bool) {
 // parseNamedLabel returns the first `--name` / `-n` value before the
 // pass-through marker that accept admits.
 //
-// The scan is shared by parseCompanionLabel and parseLeaderLabel because the two
-// differ only in which shape they admit. The four name forms claude accepts and
-// the `--` discipline are identical for both, and keeping one copy per role is
-// how the two would drift — which is the class of defect this whole change is
+// The scan is shared by parseLeaderLabel and parseFactoryLaneLabel because the
+// two differ only in which shape they admit. The four name forms claude accepts
+// and the `--` discipline are identical for both, and keeping one copy per role
+// is how the two would drift — which is the class of defect this whole change is
 // repairing.
 func parseNamedLabel(args []string, accept func(candidate string) bool) (label string, ok bool) {
 	for i := 0; i < len(args); i++ {
@@ -650,14 +386,14 @@ func parseNamedLabel(args []string, accept func(candidate string) bool) (label s
 // themselves, in any of the four forms claude accepts (`--name v`, `--name=v`,
 // `-n v`, `-n=v`), before the pass-through marker.
 //
-// It is deliberately NOT parseCompanionLabel: that function matches the
-// companion SHAPE, so a leader the operator named `board-watch` reads as "no
-// name present" there. The question here is only whether a name exists at all,
-// because the operator's choice wins over any moai-supplied one.
+// It is deliberately NOT a shape match: a leader the operator named
+// `board-watch` must read as "a name is present". The question here is only
+// whether a name exists at all, because the operator's choice wins over any
+// moai-supplied one.
 //
-// The `--` discipline matches operatorSuppliedSettings and parseKanbanFlag:
-// nothing past the marker is read — a `--name` after `--` is the backend's
-// argument, already destined for claude unchanged.
+// The `--` discipline matches operatorSuppliedSettings and the launcher entry
+// parse: nothing past the marker is read — a `--name` after `--` is the
+// backend's argument, already destined for claude unchanged.
 func operatorSuppliedName(args []string) bool {
 	for _, arg := range args {
 		switch {
@@ -678,10 +414,10 @@ func operatorSuppliedName(args []string) bool {
 // argv, or nil when the operator named the session themselves.
 //
 // The injection exists because claude keeps an EXPLICIT name across /clear and
-// discards an AI-generated title. A companion is already explicitly named — the
-// SessionStart notice prints `--name <role>` and the operator pastes it — so
-// only the leader, launched as a bare `moai cc -k`, loses its identity on every
-// clear and has to be renamed by hand.
+// discards an AI-generated title. A lane is already explicitly named — the
+// launcher claims its `lane-<n>` label — so only the leader, launched as a bare
+// `moai cc -f`, would lose its identity on every clear and have to be renamed
+// by hand.
 //
 // The name is the bare role (kanban.LeaderLabel), so unlike its prior form this
 // needs nothing from the environment and has one self-gate rather than two: the
@@ -702,11 +438,11 @@ func leaderNameArgs(args []string) []string {
 // any live claim, and returns the result unchanged when the operator supplied a
 // name of their own.
 //
-// It is the leader's counterpart to the companion branch's
-// resolveCompanionName + replaceNamedLabel pair, and exists as one helper
-// because all four leader branches (kanban and factory, on cc and on glm) need
-// exactly this and would otherwise carry four copies of it — the class of
-// drift the shared parseNamedLabel already exists to prevent.
+// It is the leader's counterpart to the lane branch's
+// resolveFactoryLaneName + replaceNamedLabel pair, and exists as one helper
+// because both leader branches (cc and glm) need exactly this and would
+// otherwise carry two copies of it — the class of drift the shared
+// parseNamedLabel already exists to prevent.
 //
 // The bumped value must reach the backend argv: the session name is the address
 // the operator and the peers dispatch to, so a name resolved but not injected
@@ -743,59 +479,4 @@ func exportLeaderSessionName(name string) func() {
 	restore := captureEnvState(config.EnvMoaiKanbanLeadName)
 	_ = os.Setenv(config.EnvMoaiKanbanLeadName, name)
 	return restore
-}
-
-// rejectKanbanOnCG returns the sentinel-bearing error when a kanban token
-// appears in a `moai cg` invocation, and nil otherwise.
-func rejectKanbanOnCG(args []string) error {
-	p, err := parseKanbanFlag(args)
-	if err != nil {
-		return err
-	}
-	// v1.2.0: the FACTORY shapes of -k (a numeric count, or a lane-shape
-	// name) are the factory rejection's to answer (rejectFactoryOnCG fires
-	// right after this one); only the plain kanban shapes carry the kanban
-	// sentinel here.
-	if !p.KanbanEnabled || p.FactoryEnabled {
-		return nil
-	}
-	return fmt.Errorf("%s: moai cg runs a mixed backend (CG leader Claude, CG teammates GLM), "+
-		"which contradicts Kanban Mode's one-session / one-backend / one-chain premise; "+
-		"use 'moai cc --kanban' or 'moai glm --kanban' instead", kanbanUnsupportedBackendSentinel)
-}
-
-// kanbanBranch enumerates the three dispatch outcomes of the §A.2 truth table.
-type kanbanBranch int
-
-const (
-	kanbanBranchNone      kanbanBranch = iota // no-op — -k absent (regardless of --name shape)
-	kanbanBranchLeader                        // -k present, --name is NOT companion-shape
-	kanbanBranchCompanion                     // -k present, --name IS companion-shape
-)
-
-// resolveKanbanBranch selects the dispatch branch from the combination of -k
-// present and companion-shape --name present.
-//
-// This is the four-row truth table at spec.md §A.2 (REQ-FB-001, REQ-FB-002):
-//
-//	kanbanEnabled | isCompanion || branch
-//	---------------++--------------
-//	      true      |    false     || leader     (-k alone, or -k --name <non-companion>)
-//	      true      |    true      || companion  (-k --name <role>, or a bumped <role>-<n>)
-//	      false     |    false     || no-op      (--name <non-companion>, or no --name)
-//	      false     |    true      || no-op      (--name <companion-shape> alone — BREAKING from 94025ce0a)
-//
-// The two !kanbanEnabled rows collapse to no-op because `isCompanion` is
-// consulted only when -k is present (spec.md §A.2.1 / AC-FB-027): a companion-
-// shape --name alone, which entered companion mode under 94025ce0a, is
-// reclassified as a no-op by REQ-FB-001's no-`-k` clause.
-func resolveKanbanBranch(kanbanEnabled, isCompanion bool) kanbanBranch {
-	switch {
-	case kanbanEnabled && isCompanion:
-		return kanbanBranchCompanion
-	case kanbanEnabled && !isCompanion:
-		return kanbanBranchLeader
-	default:
-		return kanbanBranchNone
-	}
 }

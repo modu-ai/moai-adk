@@ -111,13 +111,12 @@ func TestCodexDebugTraceStepLines(t *testing.T) {
 // AC-009: the trace names environment keys with their presence and never
 // emits a value. Every lane axis the trace reads is pinned with a sentinel
 // value (t1350: a test reading lane env pins every axis); the sentinel
-// strings must appear nowhere in the captured stderr.
+// strings must appear nowhere in the captured stderr. The chain, SPEC and
+// lane-label markers are no longer lane keys: they left the scrub list with
+// their last publisher (SPEC-LAUNCHER-ENTRY-FLAGS-001 M5a).
 func TestCodexDebugTraceEnvKeysOnly(t *testing.T) {
 	sentinels := map[string]string{
-		config.EnvMoaiKanban:                 "kanban-sentinel",
 		config.EnvMoaiKanbanID:               "run-sentinel",
-		config.EnvMoaiKanbanSpec:             "spec-sentinel",
-		config.EnvMoaiKanbanLabel:            "label-sentinel",
 		config.EnvMoaiKanbanLeadAddr:         "leader-secret-sentinel",
 		config.EnvMoaiKanbanLeadName:         "leadname-sentinel",
 		config.EnvMoaiKanbanBackend:          "backend-sentinel",

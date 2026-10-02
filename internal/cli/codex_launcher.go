@@ -315,10 +315,7 @@ func defaultCodexSpawnPaneIdentity(paneID string) (int, string, error) {
 // export. A plain Codex launch scrubs them. An explicit -f launch supplies a
 // freshly selected factory identity after the scrub.
 var codexLaneLaunchEnvKeys = []string{
-	config.EnvMoaiKanban,
 	config.EnvMoaiKanbanID,
-	config.EnvMoaiKanbanSpec,
-	config.EnvMoaiKanbanLabel,
 	config.EnvMoaiKanbanLeadAddr,
 	config.EnvMoaiKanbanLeadName,
 	config.EnvMoaiKanbanBackend,
@@ -762,18 +759,15 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	return runCodexReadout(cmd)
 }
 
-// The refusal lines. They carry the same sentinels as the `moai cg` refusals
-// (D2), so one grep finds both. The factory line is the ONE wording source
-// REQ-SD-004 names: every `-f` shape (and `--factory-run`) prints it
-// byte-identically (AC-SD-004 compares stderr against this constant). Since
+// The factory refusal line. It carries the same sentinel as the `moai cg`
+// refusal (D2), so one grep finds both. It is the ONE wording source REQ-SD-004
+// names: every `-f` shape (and `--factory-run`) prints it byte-identically
+// (AC-SD-004 compares stderr against this constant). Since
 // SPEC-LAUNCHER-ENTRY-FLAGS-001 the lane entry is `-l`, so no `-f` shape is an
-// entry on moai codex, `-f lane` included.
-const (
-	codexKanbanRefusalDiag = kanbanUnsupportedBackendSentinel +
-		": moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead"
-	codexFactoryRefusalDiag = factoryUnsupportedBackendSentinel +
-		": moai codex has no -f entry; the lane entry is 'moai codex -l'; use 'moai cc -f' or 'moai glm -f' for the factory leader"
-)
+// entry on moai codex, `-f lane` included. The retired `-k` entry prints
+// retiredEntryRefusal instead (launcher_retired_entries.go).
+const codexFactoryRefusalDiag = factoryUnsupportedBackendSentinel +
+	": moai codex has no -f entry; the lane entry is 'moai codex -l'; use 'moai cc -f' or 'moai glm -f' for the factory leader"
 
 // codexFactoryLegacyEntryCanonical is the canonical-form clause shared by the
 // lane-shape legacy refusals: on moai codex the only factory entry is the
@@ -823,18 +817,25 @@ const (
 // the `=` forms are read in place. A refused shape fires before anything else
 // is read or written (REQ-SD-004).
 //
+// The retired `-k` spelling is refused first, in any position and beside any
+// other token, with retiredEntryRefusal (SPEC-LAUNCHER-ENTRY-FLAGS-001
+// REQ-010) — the same priority the cc and glm entry parse gives it.
+//
 // The lane entry is `-l` / `--lane` (SPEC-LAUNCHER-ENTRY-FLAGS-001): it takes
-// no argument, composes with no other entry token (`-f`, `-k`) and no operator
+// no argument, composes with no other entry token (`-f`) and no operator
 // --name, and the leader selector composes with it only. `-f` is no Codex
 // entry in any shape — `-f lane` included. Legacy role tokens (`worker` /
 // `agent`, their numbered labels, and `lead`) refuse with the
 // REQ-RNC-003/-005/-007 message naming the canonical form (AC-SD-021) — the
 // REQ-SD-004 line is reserved for non-legacy shapes.
 func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
+	if refuseRetiredEntry(head) != nil {
+		return codexFactoryEntryOther, retiredEntryRefusal
+	}
 	var (
-		lane, kanbanSeen, leadSeen bool
-		other                      string // the first non-lane entry token, which a lane token collides with
-		refusal                    string // the first refusal line a factory token earns, in token order
+		lane, leadSeen bool
+		other          string // the first non-lane entry token, which a lane token collides with
+		refusal        string // the first refusal line a factory token earns, in token order
 	)
 	for i := 0; i < len(head); i++ {
 		token := head[i]
@@ -851,13 +852,6 @@ func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
 			return codexFactoryEntryOther, laneFlagArgumentError
 		case token == leadFlagLong || strings.HasPrefix(token, leadFlagLong+"="):
 			leadSeen = true
-			continue
-		case token == kanbanFlagShort || token == kanbanFlagLong ||
-			strings.HasPrefix(token, kanbanFlagShort+"=") || strings.HasPrefix(token, kanbanFlagLong+"="):
-			kanbanSeen = true
-			if other == "" {
-				other = "-k/--kanban"
-			}
 			continue
 		case token == codexFactoryRunFlag || strings.HasPrefix(token, codexFactoryRunFlag+"="):
 			if refusal == "" {
@@ -895,8 +889,6 @@ func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
 	switch {
 	case lane && other != "":
 		return codexFactoryEntryOther, fmt.Sprintf(entryTokenConflict, other, "-l/--lane")
-	case kanbanSeen:
-		return codexFactoryEntryOther, codexKanbanRefusalDiag
 	case leadSeen && !lane:
 		return codexFactoryEntryOther, leaderNeedsLaneEntry
 	case refusal != "":
@@ -989,20 +981,14 @@ func runCodexFactoryLane(cmd *cobra.Command, debug bool) error {
 	}
 	// The stamps arm the loop's own next calls (lane admission, the
 	// merge-ready skip) and identify the lane; the backend value rides the
-	// same export the cc/glm launches use (REQ-SD-002's stamp set, gpt).
+	// same export the cc/glm launches use (REQ-SD-002's stamp set, gpt). The
+	// factory card verbs (next/stage/complete) and the factory notices read the
+	// lane label from MOAI_FACTORY_WORKER alone (REQ-RNC-011's kept name), and
+	// the child environment carries the same marker.
 	restoreLane := enterFactoryLaneMode(label, 0, "", config.FactoryDispatchAuto)
 	defer restoreLane()
 	restoreBackend := exportFactoryLaunchFacts("", kanban.BackendGPT)
 	defer restoreBackend()
-	// The factory card verbs (next/stage/complete) read the lane label from
-	// MOAI_KANBAN_LABEL — the carrier their refusal predicates and the
-	// widened role guard read — while the launcher stamp and the factory
-	// notices read MOAI_FACTORY_WORKER (REQ-RNC-011's kept name). One label,
-	// both carriers, stamped together so no reader of either sees an empty
-	// one; the child environment carries the same pair.
-	restoreKanbanLabel := captureEnvState(config.EnvMoaiKanbanLabel)
-	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
-	defer restoreKanbanLabel()
 
 	ctx := cmd.Context()
 	if ctx == nil {
@@ -1064,10 +1050,10 @@ func launchCodexCardSession(binaryPath, wt, label, cardID string, debug bool) er
 
 // codexCardLaunchEnv is the per-card child environment (design.md §4): the
 // eleven-key scrub of codexChildEnv, then the entries the owned-card session
-// reads — the role marker, the lane label (both carriers: the factory card
-// verbs read MOAI_KANBAN_LABEL, the factory notices read
-// MOAI_FACTORY_WORKER), the Codex backend value, and the leased card's id in
-// the card-identifier variable (REQ-SD-003, -019). Appending after the scrub
+// reads — the role marker, the lane label (MOAI_FACTORY_WORKER, the one carrier
+// the factory card verbs and the factory notices read), the Codex backend
+// value, and the leased card's id in the card-identifier variable
+// (REQ-SD-003, -019). Appending after the scrub
 // is what keeps them authoritative: the inherited environment lost every
 // lane key before the lane values land. The factory fan-out signal
 // (MOAI_FACTORY_WORKERS) is deliberately not carried — it feeds the Stop-hook
@@ -1078,7 +1064,6 @@ func codexCardLaunchEnv(label, cardID string) []string {
 	return append(env,
 		config.EnvFactoryRole+"="+config.FactoryRoleLane,
 		config.EnvMoaiFactoryWorker+"="+label,
-		config.EnvMoaiKanbanLabel+"="+label,
 		config.EnvMoaiKanbanBackend+"="+kanban.BackendGPT,
 		config.EnvMoaiKanbanCard+"="+cardID,
 	)
