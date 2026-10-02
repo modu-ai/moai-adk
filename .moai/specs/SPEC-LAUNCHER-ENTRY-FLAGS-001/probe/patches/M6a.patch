@@ -1,0 +1,2263 @@
+diff --git a/internal/kanban/backlog_concurrency_test.go b/internal/kanban/backlog_concurrency_test.go
+--- a/internal/kanban/backlog_concurrency_test.go
++++ b/internal/kanban/backlog_concurrency_test.go
+@@ -29,7 +29,7 @@
+ )
+ 
+ // stressAddClass names the class one Add attempt's outcome falls into. The
+-// class is decided SOLELY by IsBoardLockHeld (board_lock.go) — never by
++// class is decided SOLELY by IsStateLockHeld (board_lock.go) — never by
+ // matching error text, by an error count, or by elapsed time
+ // (SPEC-STRESS-INVARIANT-VERDICT-001 REQ-SIV-003).
+ type stressAddClass int
+@@ -56,7 +56,7 @@
+ 	switch {
+ 	case err == nil:
+ 		return stressAddSucceeded
+-	case IsBoardLockHeld(err):
++	case IsStateLockHeld(err):
+ 		return stressAddStarved
+ 	default:
+ 		return stressAddHardFailed
+@@ -120,7 +120,7 @@
+ // The verdict criterion (SPEC-STRESS-INVARIANT-VERDICT-001, card t372). This
+ // test used ONE criterion for TWO unrelated properties: it failed when the
+ // queue invariants broke — correct — and failed identically when a contender
+-// exhausted the machine-speed-sensitive boardLockWaitBudget, which measures the
++// exhausted the machine-speed-sensitive stateLockWaitBudget, which measures the
+ // runner rather than the code. Card t370 measured the consequence: 12 of 14
+ // non-cancelled CI runs red, every one of them at the lock-acquisition gate,
+ // and the invariants themselves broken in NONE of them.
+@@ -275,7 +275,7 @@
+ 			switch {
+ 			case err == nil:
+ 				claimWins++
+-			case IsBoardLockHeld(err):
++			case IsStateLockHeld(err):
+ 				claimStarved++
+ 			case errors.Is(err, ErrClaimRaced):
+ 				claimRaced = append(claimRaced, err)
+@@ -344,13 +344,13 @@
+ // function — the pattern already in the tree at
+ // TestBacklogLockStuckHolderSurfacesBoundedNamedError. No background process is
+ // spawned, no machine load is generated, and no CI run is needed. Only two adds
+-// are attempted, so the bounded boardLockWaitBudget wait is paid twice rather
++// are attempted, so the bounded stateLockWaitBudget wait is paid twice rather
+ // than 48 times.
+ func TestStressAddClassificationToleratesStarvation(t *testing.T) {
+ 	t.Parallel()
+ 
+ 	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+-	held, err := acquireBoardLockImpl(store.LockPath())
++	held, err := acquireStateLockImpl(store.LockPath())
+ 	if err != nil {
+ 		t.Fatalf("seeding the stuck holder: %v", err)
+ 	}
+@@ -367,8 +367,8 @@
+ 		if addErr == nil {
+ 			t.Fatalf("attempt %d succeeded while the lock was held by the seeded holder", i)
+ 		}
+-		if !IsBoardLockHeld(addErr) {
+-			t.Fatalf("attempt %d error does not satisfy IsBoardLockHeld: %v", i, addErr)
++		if !IsStateLockHeld(addErr) {
++			t.Fatalf("attempt %d error does not satisfy IsStateLockHeld: %v", i, addErr)
+ 		}
+ 		if class := tally.record(addErr); class != stressAddStarved {
+ 			t.Fatalf("attempt %d classified as %s, want starved", i, class)
+@@ -394,7 +394,7 @@
+ 	if class := classifyStressAdd(errors.New("some other failure")); class != stressAddHardFailed {
+ 		t.Errorf("a non-sentinel error classified as %s, want hard-failed", class)
+ 	}
+-	t.Logf("AC-SIV-001: %d/%d adds starved under a seeded holder, all satisfying IsBoardLockHeld, 0 hard failures",
++	t.Logf("AC-SIV-001: %d/%d adds starved under a seeded holder, all satisfying IsStateLockHeld, 0 hard failures",
+ 		tally.starved, attempts)
+ }
+ 
+@@ -408,7 +408,7 @@
+ 	t.Parallel()
+ 
+ 	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+-	held, err := acquireBoardLockImpl(store.LockPath())
++	held, err := acquireStateLockImpl(store.LockPath())
+ 	if err != nil {
+ 		t.Fatalf("seeding the stuck holder: %v", err)
+ 	}
+diff --git a/internal/kanban/backlog_store.go b/internal/kanban/backlog_store.go
+--- a/internal/kanban/backlog_store.go
++++ b/internal/kanban/backlog_store.go
+@@ -1245,31 +1245,31 @@
+ 
+ // acquireBacklogLockSerialized acquires the backlog's sibling lock, retrying
+ // contention against the SAME shared wait policy as the board lock
+-// (boardLockWaitBudget and boardLockRetryWait, board_store.go — REQ-BLB-006:
++// (stateLockWaitBudget and stateLockRetryWait, board_store.go — REQ-BLB-006:
+ // one policy, both call sites, so a change to either the budget or the
+ // backoff applies here without a second edit): a mutation racing a
+ // short-lived holder serializes behind it instead of failing, while a
+ // genuinely stuck holder surfaces as an error rather than a hang. The timeout
+ // error names the lock artifact so the operator can act on the right file.
+-func (s *BacklogStore) acquireLock() (*BoardLock, error) {
++func (s *BacklogStore) acquireLock() (*StateLock, error) {
+ 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
+ 		return nil, fmt.Errorf("mutate backlog %s: creating dir: %w", s.EnginePath(), err)
+ 	}
+ 	var lastErr error
+-	deadline := time.Now().Add(boardLockWaitBudget)
++	deadline := time.Now().Add(stateLockWaitBudget)
+ 	for attempt := 0; ; attempt++ {
+-		impl, err := acquireBoardLockImpl(s.LockPath())
++		impl, err := acquireStateLockImpl(s.LockPath())
+ 		if err == nil {
+-			return &BoardLock{path: s.LockPath(), impl: impl}, nil
++			return &StateLock{path: s.LockPath(), impl: impl}, nil
+ 		}
+-		if !IsBoardLockHeld(err) {
++		if !IsStateLockHeld(err) {
+ 			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), err)
+ 		}
+ 		lastErr = err
+ 		if !time.Now().Before(deadline) {
+ 			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), lastErr)
+ 		}
+-		time.Sleep(boardLockRetryWait(attempt))
++		time.Sleep(stateLockRetryWait(attempt))
+ 	}
+ }
+ 
+diff --git a/internal/kanban/backlog_store_errors_test.go b/internal/kanban/backlog_store_errors_test.go
+--- a/internal/kanban/backlog_store_errors_test.go
++++ b/internal/kanban/backlog_store_errors_test.go
+@@ -73,7 +73,7 @@
+ 
+ 	if _, _, err := store.Add("blocked by dir"); err == nil {
+ 		t.Fatal("Add(lock path is a directory) err = nil, want acquisition error")
+-	} else if IsBoardLockHeld(err) {
++	} else if IsStateLockHeld(err) {
+ 		t.Fatalf("err = %v, want a non-contention acquisition failure", err)
+ 	}
+ }
+@@ -321,7 +321,7 @@
+ 	if err == nil {
+ 		t.Fatal("Mutate(lock path is a directory) err = nil, want acquisition error")
+ 	}
+-	if IsBoardLockHeld(err) {
++	if IsStateLockHeld(err) {
+ 		t.Fatalf("err = %v, want a non-contention acquisition failure", err)
+ 	}
+ 	msg := err.Error()
+diff --git a/internal/kanban/backlog_store_test.go b/internal/kanban/backlog_store_test.go
+--- a/internal/kanban/backlog_store_test.go
++++ b/internal/kanban/backlog_store_test.go
+@@ -186,11 +186,11 @@
+ 	t.Parallel()
+ 	store := newTestBacklogStore(t)
+ 
+-	impl, err := acquireBoardLockImpl(store.LockPath())
++	impl, err := acquireStateLockImpl(store.LockPath())
+ 	if err != nil {
+ 		t.Fatalf("hold foreign lock: %v", err)
+ 	}
+-	foreign := &BoardLock{path: store.LockPath(), impl: impl}
++	foreign := &StateLock{path: store.LockPath(), impl: impl}
+ 	defer func() { _ = foreign.Release() }()
+ 
+ 	start := time.Now()
+@@ -199,7 +199,7 @@
+ 	if err == nil {
+ 		t.Fatal("Add under a held lock err = nil, want bounded-retry timeout")
+ 	}
+-	if !IsBoardLockHeld(err) {
++	if !IsStateLockHeld(err) {
+ 		t.Fatalf("err = %v, want the lock-held sentinel", err)
+ 	}
+ 	if !strings.Contains(err.Error(), store.LockPath()) {
+@@ -221,11 +221,11 @@
+ 	t.Parallel()
+ 	store := newTestBacklogStore(t)
+ 
+-	impl, err := acquireBoardLockImpl(store.LockPath())
++	impl, err := acquireStateLockImpl(store.LockPath())
+ 	if err != nil {
+ 		t.Fatalf("hold foreign lock: %v", err)
+ 	}
+-	foreign := &BoardLock{path: store.LockPath(), impl: impl}
++	foreign := &StateLock{path: store.LockPath(), impl: impl}
+ 	go func() {
+ 		time.Sleep(80 * time.Millisecond)
+ 		_ = foreign.Release()
+diff --git a/internal/kanban/board_coverage_test.go b/internal/kanban/board_coverage_test.go
+--- a/internal/kanban/board_coverage_test.go
++++ b/internal/kanban/board_coverage_test.go
+@@ -101,7 +101,7 @@
+ 	if err := lock.Release(); err != nil {
+ 		t.Fatalf("second Release: %v", err)
+ 	}
+-	var nilLock *BoardLock
++	var nilLock *StateLock
+ 	if nilLock.Path() != "" || nilLock.Release() != nil {
+ 		t.Fatal("nil receiver safety broken")
+ 	}
+diff --git a/internal/kanban/board_store.go b/internal/kanban/board_store.go
+--- a/internal/kanban/board_store.go
++++ b/internal/kanban/board_store.go
+@@ -14,7 +14,6 @@
+ 	"encoding/json"
+ 	"errors"
+ 	"fmt"
+-	"math/rand/v2"
+ 	"os"
+ 	"time"
+ 
+@@ -69,124 +68,24 @@
+ 	return runWIPLimitDefault
+ }
+ 
+-// Board-lock acquisition is non-blocking at the substrate, so a mutation
+-// racing the current holder retries for a bounded window rather than failing
+-// the mutation: two concurrent transitions must BOTH reach the admission
+-// decision in turn (exactly one succeeding on the WIP bound), not have one
+-// bounce off the lock. The window is bounded so a genuinely stuck holder
+-// surfaces as an error instead of a hang.
+-//
+-// The queue lock-wait policy below is the SHARED budget-and-backoff both
+-// queue-lock acquisition paths consume — this one and (*BacklogStore).acquireLock
+-// (backlog_store.go). A change here applies to both without a second edit
+-// (SPEC-BACKLOG-LOCK-BUDGET-001 REQ-BLB-006).
+-//
+-// What the derivation is NOT. The substrate acquire is
+-// flock(LOCK_EX|LOCK_NB) (board_lock_unix.go) and the callers poll, so the
+-// lock provides no queue and no fairness: a contender that loses a race gains
+-// no priority for the next round, and flock guarantees no ordering between
+-// waiters. A contender's maximum wait is therefore the tail of a run of lost
+-// races, not a queue position, and it is unbounded in principle — no
+-// closed-form worst case exists. The product below is a SIZING HEURISTIC WITH
+-// STATED HEADROOM, NOT a worst-case bound, and must not be read as one. It is
+-// sized to survive a bounded run of lost races at the supported contender
+-// count on a CI-class machine; it is not sized for FIFO queue depth, which
+-// does not describe this lock.
+-const (
+-	// boardLockSupportedWriters is the concurrent lane count the product
+-	// supports against one queue: Factory mode runs up to ten lanes, the
+-	// figure of record in backlog_concurrency_test.go's header comment.
+-	boardLockSupportedWriters = 10
+-
+-	// boardLockCIMutationCost is the per-mutation cost observed on a
+-	// CI-class machine under -race: 1.57s across 48 serialized mutations,
+-	// or ~33ms each. The isolated local figure (~14ms) is deliberately NOT
+-	// the input — sizing the budget to the faster machine is what left the
+-	// retired 1.025s window 87% consumed on a machine where the guard
+-	// passed.
+-	boardLockCIMutationCost = 33 * time.Millisecond
+-
+-	// boardLockHeadroom is the stated headroom factor over the product
+-	// above. Ten means: survive roughly ten consecutive rounds of losing
+-	// to every peer before a stuck holder is declared.
+-	//
+-	// The product boardLockSupportedWriters * boardLockHeadroom = 100 is the
+-	// serialized-mutation count this policy budgets for, comfortably above
+-	// the 8 x 6 = 48 mutations TestConcurrencyStress serializes through
+-	// one flock. That near-coincidence used to be accidental;
+-	// TestBoardLockWaitBudgetCoversSerializedMutations (board_lock_wait_test.go,
+-	// SPEC-STRESS-INVARIANT-VERDICT-001) now pins it, so lowering either
+-	// constant here fails that guard. It is a constant-coherence relation and
+-	// asserts nothing about the wait a real machine needs.
+-	//
+-	// Headroom history: 5 budgeted 1.65s, and CI run 36475337568 (9cc3fdc4d)
+-	// starved a contender past it — TestBacklogConcurrentAdd_UniqueIDs lost
+-	// the flock for the whole window under -race load with 8 contenders
+-	// (flock is not FIFO-fair, so a descheduled goroutine can lose the
+-	// wake-up race repeatedly). This is the second exhaustion of this class:
+-	// the retired 1.025s window was the first. 10 doubles the window; if a
+-	// third exhaustion lands, the fix is lock fairness (a real queue), not
+-	// another raise.
+-	boardLockHeadroom = 10
+-
+-	// boardLockWaitBudget is the derived elapsed window a contender polls
+-	// before giving up. Bounding by elapsed time rather than by an attempt
+-	// count is what makes the window a duration the derivation can state.
+-	boardLockWaitBudget = boardLockSupportedWriters * boardLockCIMutationCost * boardLockHeadroom
+-
+-	// boardLockWaitMin and boardLockWaitMax bound every per-attempt wait the
+-	// policy produces. They are the policy's declared contract; tests assert
+-	// against these rather than against a sampled value.
+-	boardLockWaitMin = 5 * time.Millisecond
+-	boardLockWaitMax = 50 * time.Millisecond
+-
+-	// boardLockWaitStep grows the jitter band per attempt, so early retries
+-	// poll tightly and a long wait backs off toward the ceiling.
+-	boardLockWaitStep = 10 * time.Millisecond
+-)
+-
+-// boardLockRetryWait returns the wait before retry number attempt (0-based).
+-//
+-// It is jitter applied over a modest linear backoff, and both halves are
+-// load-bearing. Backoff alone would NOT break the lockstep: contenders
+-// released together grow their delays identically and keep arriving at the
+-// same bad moment relative to the holder's release. Jitter is what makes two
+-// contenders at the same attempt index diverge, so no contender is
+-// systematically beaten by the same peers (REQ-BLB-003/004).
+-//
+-// The randomness comes from math/rand/v2's per-call top-level source: no
+-// package-level seeding, and no global generator a test would have to
+-// control.
+-func boardLockRetryWait(attempt int) time.Duration {
+-	ceil := boardLockWaitMin + time.Duration(attempt+1)*boardLockWaitStep
+-	if ceil > boardLockWaitMax {
+-		ceil = boardLockWaitMax
+-	}
+-	span := ceil - boardLockWaitMin
+-	if span <= 0 {
+-		return boardLockWaitMin
+-	}
+-	return boardLockWaitMin + time.Duration(rand.Int64N(int64(span)+1))
+-}
+-
+ // acquireBoardLockSerialized acquires the board-wide lock, retrying contention
+-// until the shared wait budget elapses. Returns ErrBoardLockHeld if it does.
+-func acquireBoardLockSerialized(root string) (*BoardLock, error) {
++// until the shared wait budget elapses. Returns ErrStateLockHeld if it does.
++func acquireBoardLockSerialized(root string) (*StateLock, error) {
+ 	var lastErr error
+-	deadline := time.Now().Add(boardLockWaitBudget)
++	deadline := time.Now().Add(stateLockWaitBudget)
+ 	for attempt := 0; ; attempt++ {
+ 		lock, err := AcquireBoardLock(root)
+ 		if err == nil {
+ 			return lock, nil
+ 		}
+-		if !IsBoardLockHeld(err) {
++		if !IsStateLockHeld(err) {
+ 			return nil, err
+ 		}
+ 		lastErr = err
+ 		if !time.Now().Before(deadline) {
+ 			return nil, lastErr
+ 		}
+-		time.Sleep(boardLockRetryWait(attempt))
++		time.Sleep(stateLockRetryWait(attempt))
+ 	}
+ }
+ 
+diff --git a/internal/kanban/integration_lock_cross_test.go b/internal/kanban/integration_lock_cross_test.go
+--- a/internal/kanban/integration_lock_cross_test.go
++++ b/internal/kanban/integration_lock_cross_test.go
+@@ -51,8 +51,8 @@
+ 	//
+ 	// Its size is load-bearing and is stated with margin rather than as a bare
+ 	// strict inequality (audit finding N3). The mutation-lock wait budget is
+-	// boardLockWaitBudget = boardLockSupportedWriters × boardLockCIMutationCost
+-	// × boardLockHeadroom = 10 × 33ms × 5 = 1.65s (board_store.go:96-117).
++	// stateLockWaitBudget = stateLockSupportedWriters × stateLockCIMutationCost
++	// × stateLockHeadroom = 10 × 33ms × 5 = 1.65s (board_store.go:96-117).
+ 	// 500ms is 30.3% of that budget — inside the "at most a third" headroom the
+ 	// audit asked for — so after A is released B still has ~1.15s (69.7%) of
+ 	// budget left to win the lock. A timeout merely SHORTER than the budget
+@@ -348,7 +348,7 @@
+ // own; a lane told "busy" retries. Conflating them makes the tool say a false
+ // thing about the board, so the two predicates must not answer for each other.
+ func TestIntegrationLockBusy_IsNotHeld(t *testing.T) {
+-	busy := fmt.Errorf("%w (waited %s): %v", ErrIntegrationLockBusy, boardLockWaitBudget, ErrBoardLockHeld)
++	busy := fmt.Errorf("%w (waited %s): %v", ErrIntegrationLockBusy, stateLockWaitBudget, ErrStateLockHeld)
+ 
+ 	if !IsIntegrationLockBusy(busy) {
+ 		t.Fatalf("IsIntegrationLockBusy(busy) = false, want true")
+@@ -357,10 +357,10 @@
+ 		t.Fatalf("IsIntegrationLockHeld(busy) = true — a transient mutation timeout would be reported to a lane as another session owning the window, which is false")
+ 	}
+ 	// The board's own sentinel must not travel out of this scope either: a
+-	// caller seeing ErrBoardLockHeld from an integration verb would conclude
++	// caller seeing ErrStateLockHeld from an integration verb would conclude
+ 	// the kanban board is locked, which is a different subsystem.
+-	if IsBoardLockHeld(busy) {
+-		t.Fatalf("IsBoardLockHeld(busy) = true — the board sentinel leaked across the scope boundary; wrap the cause with %%v, not %%w")
++	if IsStateLockHeld(busy) {
++		t.Fatalf("IsStateLockHeld(busy) = true — the board sentinel leaked across the scope boundary; wrap the cause with %%v, not %%w")
+ 	}
+ 
+ 	held := fmt.Errorf("%w: peer (pid 1) since t on b", ErrIntegrationLockHeld)
+diff --git a/internal/kanban/integration_lock_mutation.go b/internal/kanban/integration_lock_mutation.go
+--- a/internal/kanban/integration_lock_mutation.go
++++ b/internal/kanban/integration_lock_mutation.go
+@@ -16,7 +16,7 @@
+ // conflation this file exists to keep apart.
+ //
+ // NO NEW PRIMITIVE. The platform substrate is the board lock's, taken as it is:
+-// acquireBoardLockImpl (flock on Unix, atomic-create on Windows) is already
++// acquireStateLockImpl (flock on Unix, atomic-create on Windows) is already
+ // path-parameterized, and the bounded jittered contention policy is
+ // board_store.go's. What is added is a second SCOPE over the same substrate,
+ // not a second mechanism.
+@@ -92,15 +92,15 @@
+ // 33ms CI mutation cost × 5 headroom = 1.65s) using the same jittered backoff.
+ // The budget is inherited rather than re-derived by guess; if integration-window
+ // mutations turn out to be slower in practice, it is re-derived in a later card.
+-func acquireIntegrationMutationLock(path string) (boardLockImpl, error) {
++func acquireIntegrationMutationLock(path string) (stateLockImpl, error) {
+ 	var lastErr error
+-	deadline := time.Now().Add(boardLockWaitBudget)
++	deadline := time.Now().Add(stateLockWaitBudget)
+ 	for attempt := 0; ; attempt++ {
+-		impl, err := acquireBoardLockImpl(path)
++		impl, err := acquireStateLockImpl(path)
+ 		if err == nil {
+ 			return impl, nil
+ 		}
+-		if !IsBoardLockHeld(err) {
++		if !IsStateLockHeld(err) {
+ 			return nil, fmt.Errorf("integration lock: taking the mutation lock at %s: %w", path, err)
+ 		}
+ 		lastErr = err
+@@ -116,15 +116,15 @@
+ 			// any failure of the single retry all fall through to busy —
+ 			// uncertainty resolves toward leaving the artifact alone.
+ 			if report, clearErr := clearWedgedIntegrationMutationLock(path); clearErr == nil && report != nil && report.Removed {
+-				if impl, retryErr := acquireBoardLockImpl(path); retryErr == nil {
++				if impl, retryErr := acquireStateLockImpl(path); retryErr == nil {
+ 					return impl, nil
+ 				}
+ 			}
+ 			// %v, never %w: the board's sentinel must not travel out of this
+-			// scope, or a caller's IsBoardLockHeld would report true for a
++			// scope, or a caller's IsStateLockHeld would report true for a
+ 			// lock that has nothing to do with the board.
+-			return nil, fmt.Errorf("%w (waited %s): %v", ErrIntegrationLockBusy, boardLockWaitBudget, lastErr)
++			return nil, fmt.Errorf("%w (waited %s): %v", ErrIntegrationLockBusy, stateLockWaitBudget, lastErr)
+ 		}
+-		time.Sleep(boardLockRetryWait(attempt))
++		time.Sleep(stateLockRetryWait(attempt))
+ 	}
+ }
+diff --git a/internal/kanban/integration_lock_mutation_windows_test.go b/internal/kanban/integration_lock_mutation_windows_test.go
+--- a/internal/kanban/integration_lock_mutation_windows_test.go
++++ b/internal/kanban/integration_lock_mutation_windows_test.go
+@@ -29,7 +29,7 @@
+ 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+ 		t.Fatalf("mkdir state dir: %v", err)
+ 	}
+-	raw, err := json.MarshalIndent(BoardLockOwner{
++	raw, err := json.MarshalIndent(StateLockOwner{
+ 		PID:       pid,
+ 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+ 	}, "", "  ")
+diff --git a/internal/kanban/slot_lease.go b/internal/kanban/slot_lease.go
+--- a/internal/kanban/slot_lease.go
++++ b/internal/kanban/slot_lease.go
+@@ -16,7 +16,7 @@
+ //
+ // The record, the mutation lock, and every name here are separate from the
+ // integration window (integration_lock.go). Only the lock SUBSTRATE
+-// (acquireBoardLockImpl, flock on Unix / atomic-create on Windows) and its
++// (acquireStateLockImpl, flock on Unix / atomic-create on Windows) and its
+ // jittered wait budget are shared.
+ //
+ // Two lifetimes, as in the integration window: the LEASE is a record that
+@@ -457,31 +457,31 @@
+ }
+ 
+ // acquireSlotLeaseMutationLock takes the per-resource mutation lock, retrying
+-// contention within the shared elapsed budget (boardLockWaitBudget) with the
++// contention within the shared elapsed budget (stateLockWaitBudget) with the
+ // board's jittered backoff. On budget exhaustion the Windows wedge clear runs
+ // once (a no-op on Unix), then the caller gets ErrSlotLeaseBusy.
+-func acquireSlotLeaseMutationLock(path string) (boardLockImpl, error) {
++func acquireSlotLeaseMutationLock(path string) (stateLockImpl, error) {
+ 	var lastErr error
+-	deadline := time.Now().Add(boardLockWaitBudget)
++	deadline := time.Now().Add(stateLockWaitBudget)
+ 	for attempt := 0; ; attempt++ {
+-		impl, err := acquireBoardLockImpl(path)
++		impl, err := acquireStateLockImpl(path)
+ 		if err == nil {
+ 			return impl, nil
+ 		}
+-		if !IsBoardLockHeld(err) {
++		if !IsStateLockHeld(err) {
+ 			return nil, fmt.Errorf("slot lease: taking the mutation lock at %s: %w", path, err)
+ 		}
+ 		lastErr = err
+ 		if !time.Now().Before(deadline) {
+ 			if report, clearErr := clearWedgedSlotLeaseMutationLock(path); clearErr == nil && report != nil && report.Removed {
+-				if impl, retryErr := acquireBoardLockImpl(path); retryErr == nil {
++				if impl, retryErr := acquireStateLockImpl(path); retryErr == nil {
+ 					return impl, nil
+ 				}
+ 			}
+ 			// %v, never %w: the board sentinel must not leak out of this scope.
+-			return nil, fmt.Errorf("%w (waited %s): %v", ErrSlotLeaseBusy, boardLockWaitBudget, lastErr)
++			return nil, fmt.Errorf("%w (waited %s): %v", ErrSlotLeaseBusy, stateLockWaitBudget, lastErr)
+ 		}
+-		time.Sleep(boardLockRetryWait(attempt))
++		time.Sleep(stateLockRetryWait(attempt))
+ 	}
+ }
+ 
+diff --git a/internal/kanban/slot_lease_cross_test.go b/internal/kanban/slot_lease_cross_test.go
+--- a/internal/kanban/slot_lease_cross_test.go
++++ b/internal/kanban/slot_lease_cross_test.go
+@@ -174,8 +174,8 @@
+ 	if runtimeIsWindows() {
+ 		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
+ 	}
+-	if slotStallReleaseTimeout*3 > boardLockWaitBudget {
+-		t.Fatalf("stall-release timeout %s exceeds a third of the %s wait budget — B would be left retrying for most of its budget and busy would re-enter as flakiness", slotStallReleaseTimeout, boardLockWaitBudget)
++	if slotStallReleaseTimeout*3 > stateLockWaitBudget {
++		t.Fatalf("stall-release timeout %s exceeds a third of the %s wait budget — B would be left retrying for most of its budget and busy would re-enter as flakiness", slotStallReleaseTimeout, stateLockWaitBudget)
+ 	}
+ 	ownerPID := strconv.Itoa(os.Getpid())
+ 
+diff --git a/internal/kanban/slot_lease_test.go b/internal/kanban/slot_lease_test.go
+--- a/internal/kanban/slot_lease_test.go
++++ b/internal/kanban/slot_lease_test.go
+@@ -277,7 +277,7 @@
+ 	recordPath := slotRecordPath(root, slotTestResource)
+ 	before := fileSHA(t, recordPath)
+ 
+-	impl, err := acquireBoardLockImpl(slotMutationLockPath(root, slotTestResource))
++	impl, err := acquireStateLockImpl(slotMutationLockPath(root, slotTestResource))
+ 	if err != nil {
+ 		t.Fatalf("taking the per-resource mutation lock at the pinned path: %v", err)
+ 	}
+@@ -296,11 +296,11 @@
+ 		if IsSlotLeaseHeld(err) {
+ 			t.Fatalf("%s: busy error also answers the held predicate — a transient contention would be reported as another session holding the resource", op)
+ 		}
+-		if IsBoardLockHeld(err) {
++		if IsStateLockHeld(err) {
+ 			t.Fatalf("%s: the board-lock sentinel leaked across the scope boundary", op)
+ 		}
+-		if elapsed < boardLockWaitBudget {
+-			t.Errorf("%s returned busy after %s, before the %s wait budget was spent", op, elapsed, boardLockWaitBudget)
++		if elapsed < stateLockWaitBudget {
++			t.Errorf("%s returned busy after %s, before the %s wait budget was spent", op, elapsed, stateLockWaitBudget)
+ 		}
+ 		if after := fileSHA(t, recordPath); after != before {
+ 			t.Fatalf("%s changed the record while busy", op)
+diff --git a/internal/kanban/state_dir_lock_test.go b/internal/kanban/state_dir_lock_test.go
+--- a/internal/kanban/state_dir_lock_test.go
++++ b/internal/kanban/state_dir_lock_test.go
+@@ -32,7 +32,7 @@
+ 	// A foreign holder takes the queue lock where it currently lives.
+ 	legacyQueue := filepath.Join(LegacyStateDirForRoot(root), backlogFileName)
+ 	legacyStore := NewBacklogStore(legacyQueue)
+-	held, err := acquireBoardLockImpl(legacyStore.LockPath())
++	held, err := acquireStateLockImpl(legacyStore.LockPath())
+ 	if err != nil {
+ 		t.Fatalf("take the foreign lock: %v", err)
+ 	}
+diff --git a/internal/kanban/state_lock.go b/internal/kanban/state_lock.go
+--- /dev/null
++++ b/internal/kanban/state_lock.go
+@@ -0,0 +1,136 @@
++// board_lock.go — the board-wide advisory lock and its bounded stale clear
++// (SPEC-KANBAN-BOARD-001 REQ-KB-019/023, M1).
++//
++// The lock spans the ENTIRE read-modify-write of the WHOLE board, not a card:
++// with WIP 2, two concurrent transitions of two different cards each holding
++// only their own card's lock would each observe the bound satisfied and each
++// write, landing at WIP 3 — the bound is only sound beneath board-wide
++// exclusion. The substrate reuses the repository's existing cross-process
++// per-scope lock PATTERN (internal/spec/lock.go and its platform
++// counterparts: flock on Unix, atomic-create on Windows); internal/lockfile's
++// in-process mutex is neither used nor upgraded.
++package kanban
++
++import (
++	"encoding/json"
++	"errors"
++	"fmt"
++	"os"
++	"path/filepath"
++	"time"
++)
++
++// ErrStateLockHeld is returned by AcquireBoardLock when another process holds
++// the board-wide lock.
++var ErrStateLockHeld = errors.New("kanban board lock held")
++
++// IsStateLockHeld reports whether err is the contention sentinel.
++func IsStateLockHeld(err error) bool {
++	return errors.Is(err, ErrStateLockHeld)
++}
++
++// ErrStateLockChangedHands is returned by ClearStaleBoardLock when the
++// pre-removal re-read observes a different recorded identity than the
++// inspection did — the artifact was released and re-acquired inside the
++// window, and the clear aborts rather than unlinking a valid lock.
++var ErrStateLockChangedHands = errors.New("kanban board lock changed hands between inspection and removal")
++
++// IsStateLockChangedHands reports whether err is the changed-hands abort.
++func IsStateLockChangedHands(err error) bool {
++	return errors.Is(err, ErrStateLockChangedHands)
++}
++
++// boardLockFileName names the lock artifact inside the board directory.
++const boardLockFileName = "board.lock"
++
++// StateLockOwner is the creating process's identity recorded IN the lock
++// artifact (REQ-KB-023). The identity is what makes a stale artifact
++// distinguishable from a live holder's: without it, "the holder is gone" is a
++// guess, and clearing on a guess unlinks a lock a live process may hold.
++type StateLockOwner struct {
++	PID       int    `json:"pid"`
++	CreatedAt string `json:"created_at"`
++}
++
++// StateLock represents an acquired board-wide lock. Callers MUST call
++// Release when the read-modify-write completes.
++type StateLock struct {
++	path string
++	impl stateLockImpl
++}
++
++// stateLockImpl is the platform-specific lock implementation (flock on Unix,
++// atomic-create on Windows — mirroring internal/spec's substrate split).
++type stateLockImpl interface {
++	release() error
++}
++
++// AcquireBoardLock acquires the board-wide lock at
++// <root>/.moai/state/kanban-board/board.lock, creating the board directory if
++// absent. Returns ErrStateLockHeld on contention; the caller retries or
++// reports, never blocks.
++//
++// The acquiring process records its identity in the artifact as part of the
++// acquisition, so an artifact always names its current owner.
++func AcquireBoardLock(root string) (*StateLock, error) {
++	dir := BoardDir(root)
++	if err := os.MkdirAll(dir, 0o755); err != nil {
++		return nil, fmt.Errorf("acquire board lock: creating board dir: %w", err)
++	}
++	path := boardLockPath(root)
++	impl, err := acquireStateLockImpl(path)
++	if err != nil {
++		return nil, err
++	}
++	return &StateLock{path: path, impl: impl}, nil
++}
++
++// Release releases the board-wide lock. Safe to call multiple times.
++func (l *StateLock) Release() error {
++	if l == nil || l.impl == nil {
++		return nil
++	}
++	err := l.impl.release()
++	l.impl = nil
++	return err
++}
++
++// Path returns the lock artifact's path (diagnostics).
++func (l *StateLock) Path() string {
++	if l == nil {
++		return ""
++	}
++	return l.path
++}
++
++// boardLockPath returns the lock artifact's path beneath root.
++func boardLockPath(root string) string {
++	return filepath.Join(BoardDir(root), boardLockFileName)
++}
++
++// ClearStaleReport is what a clear operation observed and did — the operation
++// is explicit and operator-visible, so it REPORTS rather than acting silently
++// (REQ-KB-023).
++type ClearStaleReport struct {
++	// Removed is true only when the artifact was unlinked by this call.
++	Removed bool
++	// PID names the recorded owner the decision was made about.
++	PID int
++	// Reason names the observation that decided the outcome.
++	Reason string
++}
++
++// newLockOwnerRecord builds the owner identity block written at acquisition.
++func newLockOwnerRecord() []byte {
++	owner := StateLockOwner{
++		PID:       os.Getpid(),
++		CreatedAt: time.Now().UTC().Format(time.RFC3339),
++	}
++	encoded, err := json.MarshalIndent(owner, "", "  ")
++	if err != nil {
++		// Marshalling a two-field struct cannot fail; fall back to the
++		// minimal record rather than failing the acquisition.
++		return []byte(fmt.Sprintf("{\"pid\":%d}\n", owner.PID))
++	}
++	return append(encoded, '\n')
++}
+diff --git a/internal/kanban/state_lock_clear_unix.go b/internal/kanban/state_lock_clear_unix.go
+--- /dev/null
++++ b/internal/kanban/state_lock_clear_unix.go
+@@ -0,0 +1,28 @@
++//go:build !windows
++
++// board_lock_clear_unix.go — the Unix stale-lock clear is gated out
++// (SPEC-KANBAN-BOARD-001 REQ-KB-023, review finding F5 containment).
++//
++// board_lock_unix.go's own header records that the Unix substrate holds
++// flock(2) on an open descriptor which the kernel releases on process exit,
++// so a killed holder leaves an inert artifact — the fourteen orphaned
++// spec-close-*.lock files in this repository's .moai/state/ are the worked
++// example. The clear therefore exists for the Windows substrate, where the
++// artifact IS the lock and a killed holder blocks every subsequent mutation
++// permanently. Gating the clear to Windows removes the Unix-side window the
++// M1 implementation opened (acquire flock, THEN record owner identity) —
++// that gap is unreachable when the kernel drops the lock on exit — and
++// touches the documented AP-29 residual not at all (it is a Windows-substrate
++// residual and the Windows clear keeps its re-read mitigation).
++package kanban
++
++// ClearStaleBoardLock on Unix is a no-op reporting the platform gate: the
++// stale-clear window does not arise here. The lock artifact is inert and a
++// subsequent AcquireBoardLock succeeds by taking a fresh flock on the same
++// path.
++func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
++	return &ClearStaleReport{
++		Removed: false,
++		Reason:  "stale-lock clear is gated to windows; the unix substrate releases flock on process exit and an orphaned artifact blocks nothing here",
++	}, nil
++}
+diff --git a/internal/kanban/state_lock_clear_windows.go b/internal/kanban/state_lock_clear_windows.go
+--- /dev/null
++++ b/internal/kanban/state_lock_clear_windows.go
+@@ -0,0 +1,176 @@
++//go:build windows
++
++// board_lock_clear_windows.go — the Windows stale-lock clear
++// (SPEC-KANBAN-BOARD-001 REQ-KB-023). The Windows substrate is atomic-create:
++// the artifact IS the lock, so a killed holder leaves a blocker and the
++// clear is the bounded exit. The pre-removal re-read mitigates the
++// check-then-unlink race (AP-29 residual stated in the doc comment below,
++// not closed at this layer).
++package kanban
++
++import (
++	"encoding/json"
++	"fmt"
++	"os"
++	"strings"
++	"time"
++)
++
++// interruptedAcquisitionGrace is how long the clear waits, when it finds an
++// EMPTY lock artifact, before the pre-removal re-read — long enough to
++// cover the create-to-write interval of a live acquirer mid-publication, so
++// emptiness observed twice across the grace is evidence the writer is gone
++// rather than merely slow (sync-audit F3).
++const interruptedAcquisitionGrace = 100 * time.Millisecond
++
++// isEmptyLockArtifact reports whether the artifact carries no bytes at all
++// (whitespace aside): the shape a process killed between the O_EXCL create
++// and the owner-write leaves behind — an identity that was never published.
++func isEmptyLockArtifact(raw []byte) bool {
++	return len(strings.TrimSpace(string(raw))) == 0
++}
++
++// processAlive is the liveness probe the Windows clear conditions on. It is
++// a package-level indirection so the release-and-reacquire interleaving can
++// be constructed in tests AT THE PROBE — the step the clear runs immediately
++// before its pre-removal re-read (AC-KB-023 observation 3). It lives behind
++// the windows tag with its only consumer: the unix clear is gated out (the
++// kernel drops flock on exit), so a unix-side probe would be dead code
++// (re-review ITEM 4).
++var processAlive = defaultProcessAlive
++
++// parseLockOwner decodes a lock artifact's recorded owner identity.
++func parseLockOwner(raw []byte) (*StateLockOwner, error) {
++	var owner StateLockOwner
++	if err := json.Unmarshal(raw, &owner); err != nil {
++		return nil, fmt.Errorf("parsing lock owner identity: %w", err)
++	}
++	if owner.PID <= 0 {
++		return nil, fmt.Errorf("parsing lock owner identity: pid %d is not a process identity", owner.PID)
++	}
++	return &owner, nil
++}
++
++// ClearStaleBoardLock removes a stale board-wide lock artifact — an explicit,
++// operator-visible, bounded act; never a step the acquire path takes on its
++// own, and never conditioned on the artifact's age.
++//
++// The removal happens ONLY when the recorded process is positively observed
++// absent, and a RE-READ of the recorded identity runs immediately before the
++// unlink, aborting on any mismatch: between the inspection and the removal
++// the lock can be legitimately released by its owner and re-acquired by a
++// live process, and unlinking then would admit two writers to the critical
++// section — the clearing operation causing precisely the concurrency the lock
++// exists to prevent.
++//
++// TOCTOU RESIDUAL, stated rather than engineered away (AP-29): the re-read
++// NARROWS the inspection-to-removal window, it does not close it. The removal
++// primitive takes a PATH, resolves it at call time, and no portable
++// handle-based unlink exists at this layer — a lock re-acquired in the
++// residual interval between the re-read and the unlink can still be removed.
++// The window is entered only by a clear already running against an artifact
++// whose recorded owner was observed dead, and the operation is explicit and
++// reports what it removed, so a rare bad outcome is attributable rather than
++// silent.
++func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
++	return clearStaleLockAtPath(boardLockPath(root), "board lock")
++}
++
++// clearStaleLockAtPath is the path-keyed core of the clear above, extracted so
++// a SECOND short-lived lock over the same atomic-create substrate — the
++// integration-window mutation lock (integration_lock_mutation.go) — reuses this
++// discipline rather than growing a subtly different copy of it: probe first,
++// remove only a positively-dead owner, re-read the identity immediately before
++// the unlink, abort on any mismatch, and give an empty artifact the
++// interrupted-acquisition grace.
++//
++// label names the lock in the error text, so the board caller's messages stay
++// byte-identical to what they were before the extraction. Nothing else changes:
++// ClearStaleBoardLock keeps its exact signature and behaviour and is now a
++// caller of this function. The TOCTOU residual documented above is inherited
++// unchanged and is not narrowed further here.
++func clearStaleLockAtPath(path, label string) (*ClearStaleReport, error) {
++	rawFirst, err := os.ReadFile(path)
++	if err != nil {
++		if os.IsNotExist(err) {
++			return &ClearStaleReport{Removed: false, Reason: "no lock artifact present"}, nil
++		}
++		return nil, fmt.Errorf("clear stale %s: reading artifact: %w", label, err)
++	}
++	ownerFirst, err := parseLockOwner(rawFirst)
++	if err != nil {
++		// A PUBLISHED-but-broken identity cannot be proven absent — refuse.
++		// An EMPTY artifact is different: it is the interrupted-acquisition
++		// shape (the creating process died between the O_EXCL create and the
++		// owner-write), no identity was ever published, and there is no pid
++		// to probe. AC-KB-023 observation 1 governs the shape — an artifact
++		// left behind by a terminated process is removed — and the
++		// pre-removal re-read provides the observation: after a grace
++		// covering the create-to-write interval, emptiness observed AGAIN
++		// means no live acquirer is publishing; content appearing in the
++		// meantime means one is, and the clear aborts as changed hands
++		// (sync-audit F3).
++		if !isEmptyLockArtifact(rawFirst) {
++			return nil, fmt.Errorf("clear stale %s: artifact identity unparseable — cannot positively observe an unknown owner absent: %w", label, err)
++		}
++		time.Sleep(interruptedAcquisitionGrace)
++		rawSecond, rerr := os.ReadFile(path)
++		if rerr != nil {
++			if os.IsNotExist(rerr) {
++				return &ClearStaleReport{Removed: false, Reason: "artifact disappeared before removal"}, nil
++			}
++			return nil, fmt.Errorf("clear stale %s: re-reading empty artifact: %w", label, rerr)
++		}
++		if !isEmptyLockArtifact(rawSecond) {
++			return nil, fmt.Errorf("%w: an identity appeared in the empty artifact during the grace — a live acquirer is publishing", ErrStateLockChangedHands)
++		}
++		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
++			return nil, fmt.Errorf("clear stale %s: removing interrupted-acquisition artifact: %w", label, err)
++		}
++		return &ClearStaleReport{
++			Removed: true,
++			Reason:  "removed empty lock artifact of an interrupted acquisition (no identity was ever published)",
++		}, nil
++	}
++
++	if processAlive(ownerFirst.PID) {
++		return &ClearStaleReport{
++			Removed: false,
++			PID:     ownerFirst.PID,
++			Reason:  fmt.Sprintf("recorded owner pid %d is live; nothing removed", ownerFirst.PID),
++		}, nil
++	}
++
++	// Re-read immediately before the removal; abort on any change of hands.
++	rawSecond, err := os.ReadFile(path)
++	if err != nil {
++		if os.IsNotExist(err) {
++			return &ClearStaleReport{
++				Removed: false,
++				PID:     ownerFirst.PID,
++				Reason:  "artifact disappeared before removal",
++			}, nil
++		}
++		return nil, fmt.Errorf("clear stale %s: re-reading artifact: %w", label, err)
++	}
++	ownerSecond, err := parseLockOwner(rawSecond)
++	if err != nil || *ownerSecond != *ownerFirst {
++		return nil, fmt.Errorf("%w: recorded identity changed between inspection and removal", ErrStateLockChangedHands)
++	}
++
++	if err := os.Remove(path); err != nil {
++		if os.IsNotExist(err) {
++			return &ClearStaleReport{
++				Removed: false,
++				PID:     ownerFirst.PID,
++				Reason:  "artifact disappeared before removal",
++			}, nil
++		}
++		return nil, fmt.Errorf("clear stale %s: removing artifact: %w", label, err)
++	}
++	return &ClearStaleReport{
++		Removed: true,
++		PID:     ownerFirst.PID,
++		Reason:  fmt.Sprintf("removed stale lock artifact of terminated pid %d", ownerFirst.PID),
++	}, nil
++}
+diff --git a/internal/kanban/state_lock_clear_windows_test.go b/internal/kanban/state_lock_clear_windows_test.go
+--- /dev/null
++++ b/internal/kanban/state_lock_clear_windows_test.go
+@@ -0,0 +1,223 @@
++//go:build windows
++
++// board_lock_clear_windows_test.go — the Windows stale-lock clear suite
++// (SPEC-KANBAN-BOARD-001 AC-KB-023). On Unix these tests are inert: the clear
++// is gated to Windows (finding F5), and the Unix kernel drops flock on exit
++// so observation 1 is trivially satisfied there without a clear at all.
++// These cases run on a Windows runner; on other hosts they are excluded by
++// the build tag and the GOOS=windows build verifies they still compile.
++package kanban
++
++import (
++	"encoding/json"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"testing"
++	"time"
++)
++
++// deadPIDWin returns the PID of a process that has positively terminated, by
++// spawning and reaping a Windows child (cmd.exe exits immediately). This
++// file compiles only under GOOS=windows, so the helper is a Windows
++// implementation, not a skip: the clear suite is exercised on a Windows
++// runner, and GOOS=windows go vet verifies it compiles here.
++func deadPIDWin(t *testing.T) int {
++	t.Helper()
++	cmd := exec.Command("cmd", "/c", "exit 0")
++	if err := cmd.Start(); err != nil {
++		t.Fatalf("spawn sacrificial process: %v", err)
++	}
++	pid := cmd.Process.Pid
++	if err := cmd.Wait(); err != nil {
++		t.Fatalf("wait sacrificial process: %v", err)
++	}
++	if !defaultProcessAlive(-1) {
++		_ = pid // sanity shape only; the real probe check follows
++	}
++	if processAlive(pid) {
++		t.Fatalf("sacrificial pid %d still observed live; cannot construct a dead owner", pid)
++	}
++	return pid
++}
++
++// TestClearStaleBoardLock_DeadOwnerCleared — AC-KB-023 observation 1: an
++// artifact left by a terminated process is removed, the removal is reported,
++// and a subsequent mutation acquires the lock. Platform note: on Unix the
++// substrate releases flock on process exit, so an orphaned artifact blocks
++// nothing here — the requirement exists for the Windows substrate, and a
++// result obtained only on Unix is recorded as such.
++func TestClearStaleBoardLock_DeadOwnerCleared(t *testing.T) {
++	if runtimeIsWindows() {
++		t.Skip("posix dead-PID probe; windows substrate covered by GOOS=windows build")
++	}
++	t.Logf("platform: %s — Unix substrate releases flock(2) on exit, so this observation is trivially satisfiable here; the Windows substrate is the reason REQ-KB-023 exists", "darwin-or-linux")
++	root := t.TempDir()
++	dir := BoardDir(root)
++	if err := os.MkdirAll(dir, 0o755); err != nil {
++		t.Fatalf("mkdir board dir: %v", err)
++	}
++	pid := deadPIDWin(t)
++	writeLockArtifactWin(t, root, pid)
++
++	report, err := ClearStaleBoardLock(root)
++	if err != nil {
++		t.Fatalf("ClearStaleBoardLock(dead owner) error = %v", err)
++	}
++	if !report.Removed {
++		t.Fatalf("report.Removed = false (%s); want removal of a dead owner's artifact", report.Reason)
++	}
++	if report.PID != pid {
++		t.Errorf("report.PID = %d, want %d — the clear must report what it removed", report.PID, pid)
++	}
++	if _, err := os.Stat(boardLockPath(root)); !os.IsNotExist(err) {
++		t.Fatalf("artifact still present after clear: %v", err)
++	}
++
++	// A subsequent mutation acquires the lock cleanly.
++	lock, err := AcquireBoardLock(root)
++	if err != nil {
++		t.Fatalf("acquire after clear: %v", err)
++	}
++	_ = lock.Release()
++}
++
++// TestClearStaleBoardLock_LiveOwnerRefused — AC-KB-023 observation 2: an
++// artifact whose recorded process is LIVE and holding the lock is not
++// removed; the operation reports the refusal. The age of the artifact has no
++// bearing (a freshly created artifact is refused exactly like an old one).
++func TestClearStaleBoardLock_LiveOwnerRefused(t *testing.T) {
++	if runtimeIsWindows() {
++		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
++	}
++	root := t.TempDir()
++	releaseFile := filepath.Join(root, "release-flag")
++
++	holder, scanner, stdout := startLockHoldHelper(t, root, releaseFile)
++	defer func() { _ = stdout.Close() }()
++	if got := readHelperLine(t, holder, scanner); got != "ACQUIRED" {
++		t.Fatalf("holder output = %q, want ACQUIRED", got)
++	}
++
++	report, err := ClearStaleBoardLock(root)
++	if err != nil {
++		t.Fatalf("ClearStaleBoardLock(live owner) error = %v — a refusal must be a report, not a failure", err)
++	}
++	if report.Removed {
++		t.Fatalf("report.Removed = true (%s); a live owner's artifact must not be removed", report.Reason)
++	}
++	if _, err := os.Stat(boardLockPath(root)); err != nil {
++		t.Fatalf("artifact vanished despite live owner: %v", err)
++	}
++
++	if err := os.WriteFile(releaseFile, []byte("go"), 0o644); err != nil {
++		t.Fatalf("release flag: %v", err)
++	}
++	if err := holder.Wait(); err != nil {
++		t.Fatalf("holder wait: %v", err)
++	}
++}
++
++// TestClearStaleBoardLock_ReacquireRaceAborts — AC-KB-023 observation 3, the
++// one that decides the criterion: between the clear's inspection and its
++// pre-removal re-read, the artifact is re-acquired by a live process. The
++// re-read must observe the changed identity and the clear must abort — a
++// clear that completes through this interleaving would unlink a valid lock
++// and admit two writers to the critical section (AP-25).
++//
++// The interleaving is constructed at the liveness probe, which the clear runs
++// immediately before the re-read: the probe's side effect re-acquires the
++// lock in a separate live process, overwriting the recorded identity. The
++// re-read therefore observes a different owner than the inspection did.
++func TestClearStaleBoardLock_ReacquireRaceAborts(t *testing.T) {
++	if runtimeIsWindows() {
++		t.Skip("posix probe swap; windows substrate covered by GOOS=windows build")
++	}
++	root := t.TempDir()
++	if err := os.MkdirAll(BoardDir(root), 0o755); err != nil {
++		t.Fatalf("mkdir board dir: %v", err)
++	}
++	pid := deadPIDWin(t)
++	writeLockArtifactWin(t, root, pid)
++
++	orig := processAlive
++	t.Cleanup(func() { processAlive = orig })
++	reacquired := false
++	processAlive = func(candidate int) bool {
++		if !reacquired {
++			reacquired = true
++			// The re-acquisition, ahead of the pre-removal re-read: a
++			// separate live process takes the lock and records ITS identity
++			// in the artifact.
++			runHelperProcess(t, "reacquire-lock", map[string]string{"HELPER_ROOT": root})
++		}
++		return false // the ORIGINAL owner is positively absent
++	}
++
++	report, err := ClearStaleBoardLock(root)
++	if err == nil {
++		t.Fatalf("ClearStaleBoardLock() err = nil with report %+v — the clear completed through a changed identity: the defect AP-25 names", report)
++	}
++	if !IsStateLockChangedHands(err) {
++		t.Fatalf("err = %v, want ErrStateLockChangedHands", err)
++	}
++	if _, statErr := os.Stat(boardLockPath(root)); statErr != nil {
++		t.Fatalf("artifact did not survive the aborted clear: %v", statErr)
++	}
++	if !reacquired {
++		t.Fatal("interleaving never fired — the probe was not consulted")
++	}
++}
++
++// TestClearStaleBoardLock_NoArtifactAndUnparseable — the remaining bounds: no
++// artifact is a no-op report, and an artifact whose identity cannot be parsed
++// is refused (an unknown owner cannot be positively observed absent, and
++// removing on parse failure would be an unconditional clear).
++func TestClearStaleBoardLock_NoArtifactAndUnparseable(t *testing.T) {
++	t.Parallel()
++	root := t.TempDir()
++
++	report, err := ClearStaleBoardLock(root)
++	if err != nil {
++		t.Fatalf("ClearStaleBoardLock(no artifact) error = %v", err)
++	}
++	if report.Removed {
++		t.Fatalf("report.Removed = true with no artifact present")
++	}
++
++	dir := BoardDir(root)
++	if err := os.MkdirAll(dir, 0o755); err != nil {
++		t.Fatalf("mkdir: %v", err)
++	}
++	if err := os.WriteFile(boardLockPath(root), []byte("not json"), 0o644); err != nil {
++		t.Fatalf("write unparseable artifact: %v", err)
++	}
++	report, err = ClearStaleBoardLock(root)
++	if err == nil {
++		t.Fatalf("ClearStaleBoardLock(unparseable) err = nil, want refusal — cannot prove an unparseable owner absent")
++	}
++	if report != nil && report.Removed {
++		t.Fatal("unparseable artifact was removed; the clear must be conditional on positive absence")
++	}
++	if _, statErr := os.Stat(boardLockPath(root)); statErr != nil {
++		t.Fatalf("unparseable artifact did not survive: %v", statErr)
++	}
++}
++
++// writeLockArtifact seeds a lock artifact recording the given owner identity,
++// as a killed holder would leave behind.
++func writeLockArtifactWin(t *testing.T, root string, pid int) {
++	t.Helper()
++	dir := BoardDir(root)
++	if err := os.MkdirAll(dir, 0o755); err != nil {
++		t.Fatalf("mkdir board dir: %v", err)
++	}
++	owner := StateLockOwner{PID: pid, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
++	body, err := json.MarshalIndent(owner, "", "  ")
++	if err != nil {
++		t.Fatalf("marshal owner: %v", err)
++	}
++	if err := os.WriteFile(boardLockPath(root), body, 0o644); err != nil {
++		t.Fatalf("write lock artifact: %v", err)
++	}
++}
+diff --git a/internal/kanban/state_lock_cross_test.go b/internal/kanban/state_lock_cross_test.go
+--- /dev/null
++++ b/internal/kanban/state_lock_cross_test.go
+@@ -0,0 +1,173 @@
++// board_lock_cross_test.go — AC-KB-019 (REQ-KB-019 + REQ-KB-009's bound,
++// M1 minimal form): the board-wide lock serializes concurrent mutations of
++// two DIFFERENT cards in SEPARATE OS PROCESSES.
++//
++// The scenario is §D.6's, run for real: two processes concurrently transition
++// two different cards into `run` against a board already holding one. Exactly
++// one must succeed; the final board must hold two cards in `run`, never
++// three. A card-scoped lock passes nothing here — both processes take
++// different locks — which is what makes this the criterion distinguishing
++// board scope from card scope. The positive control (zero cards in run, same
++// two concurrent transitions, both succeed) proves the refusal is conditional
++// on the bound rather than on concurrency itself.
++package kanban
++
++import (
++	"os"
++	"os/exec"
++	"strings"
++	"testing"
++	"time"
++)
++
++// countRunCards loads the board and counts cards in the run column.
++func countRunCards(t *testing.T, root string) int {
++	t.Helper()
++	st, err := LoadBoard(root)
++	if err != nil {
++		t.Fatalf("LoadBoard: %v", err)
++	}
++	n := 0
++	for _, c := range st.Cards {
++		if c.Column == ColumnRun {
++			n++
++		}
++	}
++	return n
++}
++
++// TestBoardMutation_SerializedAcrossProcesses — with one card already in run,
++// two separate processes concurrently transition two DIFFERENT cards into
++// run: exactly one succeeds, the other is refused with the named WIP error,
++// and the final board holds two in run — never three.
++func TestBoardMutation_SerializedAcrossProcesses(t *testing.T) {
++	if runtimeIsWindows() {
++		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
++	}
++	root := t.TempDir()
++	seedLead(t, root, "lead-sess")
++	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{
++		{SpecID: "SPEC-KB-0030", Column: "run", Holder: "run-sess-1", LastMovedAt: "2026-08-14T00:00:00Z"},
++	}})
++
++	// Fire both processes without waiting for the first — the lock, not the
++	// spawn order, must serialize the read-modify-write.
++	results := make(chan error, 2)
++	go func() { results <- runTransitionHelperUnfatal(t, root, "lead-sess", "SPEC-KB-0031") }()
++	go func() { results <- runTransitionHelperUnfatal(t, root, "lead-sess", "SPEC-KB-0032") }()
++	first := <-results
++	second := <-results
++
++	successes := 0
++	refusals := 0
++	for _, r := range []error{first, second} {
++		switch {
++		case r == nil:
++			successes++
++		case IsWipLimitExceeded(r):
++			refusals++
++		default:
++			t.Fatalf("unexpected transition error: %v", r)
++		}
++	}
++	if successes != 1 || refusals != 1 {
++		t.Fatalf("successes=%d refusals=%d, want exactly 1 and 1 — two different cards under a board-wide lock must serialize to the WIP bound", successes, refusals)
++	}
++	if got := countRunCards(t, root); got != 2 {
++		t.Fatalf("cards in run = %d, want 2 — never three", got)
++	}
++}
++
++// TestBoardMutation_ConcurrencyPositiveControl — with ZERO cards in run, the
++// same two concurrent transitions BOTH succeed and the board holds two: the
++// refusal above is conditional on the bound, not on concurrency itself.
++func TestBoardMutation_ConcurrencyPositiveControl(t *testing.T) {
++	if runtimeIsWindows() {
++		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
++	}
++	root := t.TempDir()
++	seedLead(t, root, "lead-sess")
++	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{}})
++
++	results := make(chan error, 2)
++	go func() { results <- runTransitionHelperUnfatal(t, root, "lead-sess", "SPEC-KB-0041") }()
++	go func() { results <- runTransitionHelperUnfatal(t, root, "lead-sess", "SPEC-KB-0042") }()
++	if err := <-results; err != nil {
++		t.Fatalf("first zero-baseline transition failed: %v", err)
++	}
++	if err := <-results; err != nil {
++		t.Fatalf("second zero-baseline transition failed: %v", err)
++	}
++	if got := countRunCards(t, root); got != 2 {
++		t.Fatalf("cards in run = %d, want 2 (both succeed from an empty run column)", got)
++	}
++}
++
++// runTransitionHelperUnfatal is runTransitionHelper without the Fatal on
++// unexpected errors, so both concurrent processes' outcomes can be collected.
++func runTransitionHelperUnfatal(t *testing.T, root, session, spec string) error {
++	t.Helper()
++	cmd := exec.Command(os.Args[0], "-test.run=TestKanbanHelperProcess", "--")
++	cmd.Env = append(os.Environ(),
++		"MOAI_KANBAN_HELPER=transition-run",
++		"HELPER_ROOT="+root,
++		"HELPER_SESSION="+session,
++		"HELPER_SPEC="+spec,
++	)
++	out, err := cmd.CombinedOutput()
++	if err == nil {
++		return nil
++	}
++	if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 3 {
++		return ErrWipLimitExceeded
++	}
++	t.Logf("transition-run helper for %s: %v: %s", spec, err, string(out))
++	return err
++}
++
++// TestWriteBoardState_ConcurrentReaderSeparateProcess — AC-KB-018's dynamic
++// half in the §A.4 form the Definition of Done names: the READER is a
++// separate OS process observing writes this process performs. Every read
++// must yield a whole board — a parse failure or an unknown result inside the
++// reader is a torn write; the writer cannot observe its own.
++func TestWriteBoardState_ConcurrentReaderSeparateProcess(t *testing.T) {
++	if runtimeIsWindows() {
++		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
++	}
++	root := t.TempDir()
++	seedLead(t, root, "lead-sess")
++	// A prior well-formed board so the reader's first observations are whole.
++	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{}})
++
++	readerDone := make(chan string, 1)
++	go func() {
++		readerDone <- runHelperProcess(t, "reader-loop", map[string]string{
++			"HELPER_ROOT":     root,
++			"HELPER_DURATION": "3",
++		})
++	}()
++
++	// Writes proceed while the subprocess reads.
++	deadline := time.Now().Add(3 * time.Second)
++	i := 0
++	for time.Now().Before(deadline) {
++		spec := "SPEC-RD-" + string(rune('A'+i%26)) + time.Now().Format("150405.000000000")
++		if err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {
++			st.Cards = append(st.Cards, Card{SpecID: spec, Column: ColumnPlan})
++			return nil
++		}); err != nil {
++			t.Fatalf("concurrent write %d: %v", i, err)
++		}
++		i++
++	}
++
++	out := <-readerDone
++	// The helper prints "READS=<n> FAILURES=<m>"; m must be 0 and n > 0.
++	if !strings.Contains(out, "FAILURES=0") {
++		t.Fatalf("separate-process reader observed torn boards: %s", strings.TrimSpace(out))
++	}
++	if strings.Fields(strings.TrimSpace(out))[0] == "READS=0" {
++		t.Fatalf("separate-process reader performed no reads: %s", strings.TrimSpace(out))
++	}
++	t.Logf("reader report: %s (writes=%d)", strings.TrimSpace(out), i)
++}
+diff --git a/internal/kanban/state_lock_errno_test.go b/internal/kanban/state_lock_errno_test.go
+--- /dev/null
++++ b/internal/kanban/state_lock_errno_test.go
+@@ -0,0 +1,181 @@
++//go:build !windows
++
++// board_lock_errno_test.go — bidirectional contract for the Unix board-lock
++// flock(2) failure classification (SPEC-BOARDLOCK-ERRNO-001, card t379).
++//
++// The pair is load-bearing: the positive direction alone admits an
++// always-contention predicate (the pre-repair defect), and the negative
++// direction alone admits an always-hard-error predicate (the rule switched
++// off). Neither test asserts the other's direction, so a mutant that inverts
++// the classification reddens exactly one of them.
++package kanban
++
++import (
++	"errors"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++
++	"golang.org/x/sys/unix"
++)
++
++// nonContentionErrnos are the synthetic inputs for the negative direction.
++// EBADF and EOPNOTSUPP are NOT reachable through the real acquisition path
++// (the call site flocks a descriptor a just-succeeded unix.Open returned, and
++// passes compile-time-constant flags); they are valid inputs to the
++// classification predicate regardless. Unreachable and out-of-scope-for-
++// classification are different propositions. EINTR is included deliberately:
++// SPEC §1.3.1 records its reclassification from contention-equivalent to hard
++// error as an ACCEPTED, UNMEASURED behaviour change, and this row is what
++// stops that decision being silently reverted.
++var nonContentionErrnos = []unix.Errno{
++	unix.ENOLCK,
++	unix.EBADF,
++	unix.EOPNOTSUPP,
++	unix.EINTR,
++}
++
++// TestBoardFlockErrnoContentionRemainsHeld covers AC-BLE-001a (REQ-BLE-001).
++// It runs the REAL acquisition path — the wiring detector: under the M-narrow
++// mutant this reddens only if acquireStateLockImpl returns the classifier's
++// result rather than a hardcoded sentinel.
++func TestBoardFlockErrnoContentionRemainsHeld(t *testing.T) {
++	root := t.TempDir()
++
++	held, err := AcquireBoardLock(root)
++	if err != nil {
++		t.Fatalf("first AcquireBoardLock: unexpected error: %v", err)
++	}
++	t.Cleanup(func() { _ = held.Release() })
++
++	second, err := AcquireBoardLock(root)
++	if err == nil {
++		_ = second.Release()
++		t.Fatal("second AcquireBoardLock: expected contention, got nil error")
++	}
++	if !IsStateLockHeld(err) {
++		t.Fatalf("IsStateLockHeld(%v) = false, want true", err)
++	}
++	if !errors.Is(err, ErrStateLockHeld) {
++		t.Fatalf("errors.Is(%v, ErrStateLockHeld) = false, want true", err)
++	}
++}
++
++// TestBoardFlockErrnoNonContentionIsNotHeld covers AC-BLE-001b (REQ-BLE-002).
++// It feeds synthetic errnos to the classification predicate directly. It
++// asserts NOTHING about the contention direction — that belongs to
++// TestBoardFlockErrnoContentionRemainsHeld, so the two mutants redden
++// different tests.
++func TestBoardFlockErrnoNonContentionIsNotHeld(t *testing.T) {
++	lockPath := filepath.Join(t.TempDir(), "board.lock")
++
++	for _, errno := range nonContentionErrnos {
++		t.Run(errno.Error(), func(t *testing.T) {
++			got := classifyStateFlockErr(errno, lockPath)
++			if got == nil {
++				t.Fatal("classifyStateFlockErr returned nil; the error must not be swallowed")
++			}
++			if IsStateLockHeld(got) {
++				t.Fatalf("IsStateLockHeld(%v) = true, want false", got)
++			}
++		})
++	}
++}
++
++// TestBoardFlockErrnoPreservesErrnoAndPath covers AC-BLE-002 (REQ-BLE-003).
++// Preserving the errno for errors.Is inspection is the substance of this
++// SPEC: an implementation that keeps only the errno TEXT in the message while
++// breaking errors.Is fails here.
++func TestBoardFlockErrnoPreservesErrnoAndPath(t *testing.T) {
++	lockPath := filepath.Join(t.TempDir(), "board.lock")
++
++	for _, errno := range nonContentionErrnos {
++		t.Run(errno.Error(), func(t *testing.T) {
++			got := classifyStateFlockErr(errno, lockPath)
++			if got == nil {
++				t.Fatal("classifyStateFlockErr returned nil")
++			}
++			if !errors.Is(got, errno) {
++				t.Fatalf("errors.Is(%v, %v) = false, want true", got, errno)
++			}
++			if !strings.Contains(got.Error(), lockPath) {
++				t.Fatalf("error message %q does not name the lock path %q", got.Error(), lockPath)
++			}
++		})
++	}
++}
++
++// TestBoardFlockErrnoFailurePathClosesDescriptor covers AC-BLE-003
++// (REQ-BLE-004).
++//
++// Mechanism: POSIX open(2) guarantees "the lowest-numbered file descriptor
++// not currently open for the process". A probe descriptor opened before and
++// after N failed acquisitions therefore lands on the same number when nothing
++// leaked, and on a number ~N higher when every attempt leaked one. This
++// replaces the plan's /dev/fd entry-count mechanism, whose availability was
++// asserted for darwin and linux without being measured on either and which is
++// /proc-dependent on the ubuntu CI runner. The guarantee used here is a
++// documented syscall contract, is identical on both platforms, and needs no
++// filesystem to be readable.
++//
++// The check cannot pass vacuously: a probe that fails to open is fatal, and
++// the induced-failure count is asserted equal to N, so a sweep that induced
++// nothing fails rather than reporting ok.
++//
++// The single unix.Close(fd) in acquireStateLockImpl serves BOTH the
++// contention and the non-contention return path, so removing it (the M-leak
++// mutant, re-laid against the shape actually built) reddens this test even
++// though only contention is inducible here.
++func TestBoardFlockErrnoFailurePathClosesDescriptor(t *testing.T) {
++	root := t.TempDir()
++
++	held, err := AcquireBoardLock(root)
++	if err != nil {
++		t.Fatalf("first AcquireBoardLock: unexpected error: %v", err)
++	}
++	t.Cleanup(func() { _ = held.Release() })
++
++	probeFD := func(label string) int {
++		fd, err := unix.Open(os.DevNull, unix.O_RDONLY|unix.O_CLOEXEC, 0)
++		if err != nil {
++			t.Fatalf("%s probe: unix.Open(%s): %v", label, os.DevNull, err)
++		}
++		if cerr := unix.Close(fd); cerr != nil {
++			t.Fatalf("%s probe: unix.Close(%d): %v", label, fd, cerr)
++		}
++		return fd
++	}
++
++	// attempts is large enough that a per-attempt leak dwarfs slack.
++	const attempts = 200
++	// slack absorbs descriptors the Go runtime may open during the loop
++	// (netpoll, /dev/urandom). It is 8% of attempts, so a leak on even a
++	// tenth of the attempts is still caught.
++	const slack = 16
++
++	before := probeFD("before")
++
++	induced := 0
++	for i := 0; i < attempts; i++ {
++		contender, err := AcquireBoardLock(root)
++		if err == nil {
++			_ = contender.Release()
++			t.Fatalf("attempt %d: expected contention, got nil error", i)
++		}
++		if !IsStateLockHeld(err) {
++			t.Fatalf("attempt %d: expected contention sentinel, got %v", i, err)
++		}
++		induced++
++	}
++	if induced != attempts {
++		t.Fatalf("induced %d failed acquisitions, want %d — an empty sweep asserts nothing", induced, attempts)
++	}
++
++	after := probeFD("after")
++
++	if after > before+slack {
++		t.Fatalf("descriptor leak: probe fd %d before, %d after %d failed acquisitions (slack %d)",
++			before, after, attempts, slack)
++	}
++}
+diff --git a/internal/kanban/state_lock_join_test.go b/internal/kanban/state_lock_join_test.go
+--- /dev/null
++++ b/internal/kanban/state_lock_join_test.go
+@@ -0,0 +1,64 @@
++// board_lock_join_test.go — regression coverage for the board-store lock
++// release fold (joinBoardReleaseErr). The two guarded board entry points
++// (WriteBoardState, RecoverBoard) share the fold, so its four-combination
++// contract is exercised directly here rather than through the entry points —
++// the release path closes a file descriptor, which a test cannot fail on
++// demand (same constraint that shaped the backlog_store precedent).
++package kanban
++
++import (
++	"errors"
++	"strings"
++	"testing"
++)
++
++// TestJoinBoardReleaseErr_BothFailuresSurvive — the regression this exists
++// for: when the mutation fails AND the lock release fails, BOTH must reach the
++// caller. The prior guard (`relErr != nil && err == nil`) dropped the release
++// error in exactly that case, so a wedged lock — the artifact that blocks
++// every later writer on Windows — surfaced as an ordinary mutation fault.
++// Both guarded entry points share the fold, so both op prefixes are checked.
++func TestJoinBoardReleaseErr_BothFailuresSurvive(t *testing.T) {
++	t.Parallel()
++	mutErr := errors.New("mutation refused")
++	relErr := errors.New("close: bad file descriptor")
++
++	for _, op := range []string{"write board state", "recover board"} {
++		got := joinBoardReleaseErr(mutErr, relErr, op)
++		if got == nil {
++			t.Fatalf("joinBoardReleaseErr(mut, rel, %q) = nil; want both errors", op)
++		}
++		if !errors.Is(got, mutErr) {
++			t.Errorf("%s: mutation error did not survive the join: %v", op, got)
++		}
++		if !errors.Is(got, relErr) {
++			t.Errorf("%s: release error did not survive the join: %v", op, got)
++		}
++		if !strings.Contains(got.Error(), op+": lock release failed") {
++			t.Errorf("%s: joined error does not name the entry point and release failure: %v", op, got)
++		}
++	}
++}
++
++// TestJoinBoardReleaseErr_SingleAndCleanPaths — the other three combinations.
++// A clean release must not manufacture an error, and either failure alone must
++// pass through identifiably.
++func TestJoinBoardReleaseErr_SingleAndCleanPaths(t *testing.T) {
++	t.Parallel()
++	mutErr := errors.New("mutation refused")
++	relErr := errors.New("close: bad file descriptor")
++
++	if got := joinBoardReleaseErr(nil, nil, "write board state"); got != nil {
++		t.Errorf("both-clean returned %v; want nil", got)
++	}
++	if got := joinBoardReleaseErr(mutErr, nil, "write board state"); !errors.Is(got, mutErr) {
++		t.Errorf("mutation-only returned %v; want the mutation error", got)
++	}
++	got := joinBoardReleaseErr(nil, relErr, "recover board")
++	if !errors.Is(got, relErr) {
++		t.Errorf("release-only returned %v; want the release error", got)
++	}
++	if !strings.Contains(got.Error(), "recover board: lock release failed") {
++		t.Errorf("release-only error does not name the entry point: %v", got)
++	}
++}
+diff --git a/internal/kanban/state_lock_test.go b/internal/kanban/state_lock_test.go
+--- /dev/null
++++ b/internal/kanban/state_lock_test.go
+@@ -0,0 +1,186 @@
++// board_lock_test.go — the board-wide advisory lock and its bounded stale
++// clear (SPEC-KANBAN-BOARD-001 REQ-KB-019/023, M1).
++//
++// Every board mutation is serialized beneath a lock scoped to the WHOLE
++// board, and the exclusion is exercised by SEPARATE OS PROCESSES — sessions
++// are distinct processes, and a goroutine test would measure the harness, not
++// the requirement (AP-19; internal/lockfile's in-process mutex is the
++// repository's own worked example of that gap).
++//
++// The stale-lock clear is judged on what it REFUSES (acceptance.md §D.12):
++// three observations, of which the third — the release-and-re-acquire
++// interleaving ahead of the pre-removal re-read — is the one that decides
++// whether the clear aborts on a changed identity instead of unlinking a
++// re-acquired lock.
++package kanban
++
++import (
++	"bufio"
++	"encoding/json"
++	"io"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"testing"
++	"time"
++)
++
++// startLockHoldHelper spawns a subprocess that acquires the board lock,
++// prints ACQUIRED (or HELD), waits for the release file, then releases.
++// Returns the command and its stdout scanner.
++func startLockHoldHelper(t *testing.T, root, releaseFile string) (*exec.Cmd, *bufio.Scanner, io.ReadCloser) {
++	t.Helper()
++	cmd := exec.Command(os.Args[0], "-test.run=TestKanbanHelperProcess", "--")
++	cmd.Env = append(os.Environ(),
++		"MOAI_KANBAN_HELPER=lock-hold",
++		"HELPER_ROOT="+root,
++		"HELPER_RELEASE_FILE="+releaseFile,
++	)
++	stdout, err := cmd.StdoutPipe()
++	if err != nil {
++		t.Fatalf("stdout pipe: %v", err)
++	}
++	if err := cmd.Start(); err != nil {
++		t.Fatalf("start lock-hold helper: %v", err)
++	}
++	scanner := bufio.NewScanner(stdout)
++	return cmd, scanner, stdout
++}
++
++// readHelperLine reads one stdout line from a started helper with a deadline.
++func readHelperLine(t *testing.T, cmd *exec.Cmd, scanner *bufio.Scanner) string {
++	t.Helper()
++	lineCh := make(chan string, 1)
++	go func() {
++		if scanner.Scan() {
++			lineCh <- scanner.Text()
++		} else {
++			lineCh <- ""
++		}
++	}()
++	select {
++	case line := <-lineCh:
++		return line
++	case <-time.After(30 * time.Second):
++		_ = cmd.Process.Kill()
++		t.Fatal("helper produced no output within 30s")
++		return ""
++	}
++}
++
++// TestBoardLock_ExcludesAcrossProcesses — REQ-KB-019's substrate property, in
++// separate processes: while one OS process holds the board lock, another OS
++// process's acquisition attempt is refused with ErrStateLockHeld; after the
++// holder releases, re-acquisition succeeds.
++func TestBoardLock_ExcludesAcrossProcesses(t *testing.T) {
++	if runtimeIsWindows() {
++		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
++	}
++	root := t.TempDir()
++	releaseFile := filepath.Join(root, "release-flag")
++
++	holder, scanner, stdout := startLockHoldHelper(t, root, releaseFile)
++	defer func() { _ = stdout.Close() }()
++
++	first := readHelperLine(t, holder, scanner)
++	if first != "ACQUIRED" {
++		t.Fatalf("first holder output = %q, want ACQUIRED", first)
++	}
++
++	// A second OS process must observe contention while the first holds.
++	contender, scanner2, stdout2 := startLockHoldHelper(t, root, releaseFile)
++	defer func() { _ = stdout2.Close() }()
++	second := readHelperLine(t, contender, scanner2)
++	if second != "HELD" {
++		t.Fatalf("second process output = %q, want HELD — the lock excluded nothing across processes", second)
++	}
++	if err := contender.Wait(); err == nil {
++		t.Log("contender exited 0 on HELD; helper contract is exit-non-zero, tolerated here")
++	}
++
++	// Release the holder, then a fresh acquisition must succeed.
++	if err := os.WriteFile(releaseFile, []byte("go"), 0o644); err != nil {
++		t.Fatalf("write release flag: %v", err)
++	}
++	if err := holder.Wait(); err != nil {
++		t.Fatalf("holder wait: %v", err)
++	}
++
++	lock, err := AcquireBoardLock(root)
++	if err != nil {
++		t.Fatalf("re-acquisition after release failed: %v", err)
++	}
++	if err := lock.Release(); err != nil {
++		t.Fatalf("release: %v", err)
++	}
++}
++
++// deadPID returns the PID of a process that has positively terminated, by
++// spawning and reaping a child.
++func deadPID(t *testing.T) int {
++	t.Helper()
++	if runtimeIsWindows() {
++		t.Skip("posix dead-PID probe")
++	}
++	cmd := exec.Command("true")
++	if err := cmd.Start(); err != nil {
++		t.Fatalf("spawn sacrificial process: %v", err)
++	}
++	pid := cmd.Process.Pid
++	if err := cmd.Wait(); err != nil {
++		t.Fatalf("wait sacrificial process: %v", err)
++	}
++	// Wait reaped the child, so the pid is positively terminated (the
++	// liveness probe itself now lives behind the windows tag with the clear).
++	return pid
++}
++
++// writeLockArtifact seeds a lock artifact recording the given owner identity.
++func writeLockArtifact(t *testing.T, root string, pid int) {
++	t.Helper()
++	dir := BoardDir(root)
++	if err := os.MkdirAll(dir, 0o755); err != nil {
++		t.Fatalf("mkdir board dir: %v", err)
++	}
++	owner := StateLockOwner{PID: pid, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
++	body, err := json.MarshalIndent(owner, "", "  ")
++	if err != nil {
++		t.Fatalf("marshal owner: %v", err)
++	}
++	if err := os.WriteFile(boardLockPath(root), body, 0o644); err != nil {
++		t.Fatalf("write lock artifact: %v", err)
++	}
++}
++
++// TestClearStaleBoardLock_UnixGatedOut — review finding F5: the stale-lock
++// clear is gated to Windows (the Unix substrate releases flock on process
++// exit, so an orphaned artifact blocks nothing here and the clear window the
++// M1 implementation opened — acquire flock, then record identity — cannot
++// arise). On Unix the operation is a no-op reporting the platform gate and
++// touches nothing. The Windows clear logic (dead-owner cleared, live-owner
++// refused, re-acquire race abort) lives in board_lock_clear_windows_test.go
++// behind a build tag and is exercised on a Windows runner / GOOS=windows
++// build.
++func TestClearStaleBoardLock_UnixGatedOut(t *testing.T) {
++	if runtimeIsWindows() {
++		t.Skip("unix-only gate observation")
++	}
++	root := t.TempDir()
++	if err := os.MkdirAll(BoardDir(root), 0o755); err != nil {
++		t.Fatalf("mkdir board dir: %v", err)
++	}
++	// A stale-looking artifact is present; on Unix it is inert and the clear
++	// does not remove it.
++	writeLockArtifact(t, root, deadPID(t))
++
++	report, err := ClearStaleBoardLock(root)
++	if err != nil {
++		t.Fatalf("ClearStaleBoardLock(unix) error = %v, want nil no-op", err)
++	}
++	if report == nil || report.Removed {
++		t.Fatalf("report = %+v, want Removed=false not-applicable on unix", report)
++	}
++	if _, statErr := os.Stat(boardLockPath(root)); statErr != nil {
++		t.Fatalf("artifact vanished on unix: %v — the clear must be a no-op here", statErr)
++	}
++}
+diff --git a/internal/kanban/state_lock_unix.go b/internal/kanban/state_lock_unix.go
+--- /dev/null
++++ b/internal/kanban/state_lock_unix.go
+@@ -0,0 +1,85 @@
++//go:build !windows
++
++// board_lock_unix.go — Unix substrate of the board-wide lock: flock(2) on an
++// open descriptor, mirroring internal/spec/lock_unix.go's pattern. The kernel
++// releases the flock when the descriptor closes, which it does on process
++// exit — so a killed holder leaves an artifact that blocks nothing on this
++// platform; the stale-lock requirement exists for the Windows substrate.
++package kanban
++
++import (
++	"errors"
++	"fmt"
++
++	"golang.org/x/sys/unix"
++)
++
++// classifyStateFlockErr maps a flock(2) failure to the board-lock error
++// contract: EWOULDBLOCK/EAGAIN is contention, every other errno is a hard
++// error that preserves the underlying errno for errors.Is inspection and
++// names the lock path (SPEC-BOARDLOCK-ERRNO-001 REQ-BLE-001/002/003).
++//
++// This is defensive narrowing, NOT a repair of an observed misclassification:
++// the measured misclassification count at the sole call site is ZERO. Of the
++// three cases the plan-phase probe induced, only EWOULDBLOCK/EAGAIN was
++// reachable through the real path, and it was already classified correctly.
++//
++// Both EWOULDBLOCK and EAGAIN are named although they share a value on linux
++// and darwin — that is portability notation, not redundancy.
++//
++// EINTR falls on the non-contention side. Today it is absorbed by the
++// contention retry budget in acquireBoardLockSerialized; here it becomes an
++// immediate hard error. That is an accepted behaviour change on an input
++// whose reachability is UNMEASURED, recorded as such in spec.md §1.3.1, and
++// it sits outside REQ-BLE-005's measured-reachable scope.
++func classifyStateFlockErr(err error, lockPath string) error {
++	if err == nil {
++		return nil
++	}
++	if errors.Is(err, unix.EWOULDBLOCK) || errors.Is(err, unix.EAGAIN) {
++		return ErrStateLockHeld
++	}
++	return fmt.Errorf("lock board lock %s: %w", lockPath, err)
++}
++
++// flockStateLock holds an open descriptor with flock(LOCK_EX|LOCK_NB) held.
++type flockStateLock struct {
++	fd int
++}
++
++func (f *flockStateLock) release() error {
++	if f == nil || f.fd == 0 {
++		return nil
++	}
++	// Close releases the flock atomically.
++	err := unix.Close(f.fd)
++	f.fd = 0
++	return err
++}
++
++// acquireStateLockImpl opens lockPath O_CREAT|O_RDWR and applies a
++// non-blocking exclusive flock, then records this process's identity IN the
++// artifact (REQ-KB-023). Only the lock holder writes, so the recorded
++// identity always names the current owner; a contender that fails the flock
++// writes nothing and the previous owner's record stands.
++func acquireStateLockImpl(lockPath string) (stateLockImpl, error) {
++	fd, err := unix.Open(lockPath, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC, 0o644)
++	if err != nil {
++		return nil, fmt.Errorf("open board lock %s: %w", lockPath, err)
++	}
++	if err := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); err != nil {
++		_ = unix.Close(fd)
++		return nil, classifyStateFlockErr(err, lockPath)
++	}
++
++	record := newLockOwnerRecord()
++	if err := unix.Ftruncate(fd, 0); err != nil {
++		_ = unix.Close(fd)
++		return nil, fmt.Errorf("record board lock owner (truncate) %s: %w", lockPath, err)
++	}
++	if _, err := unix.Write(fd, record); err != nil {
++		_ = unix.Close(fd)
++		return nil, fmt.Errorf("record board lock owner %s: %w", lockPath, err)
++	}
++	return &flockStateLock{fd: fd}, nil
++}
+diff --git a/internal/kanban/state_lock_wait.go b/internal/kanban/state_lock_wait.go
+--- /dev/null
++++ b/internal/kanban/state_lock_wait.go
+@@ -0,0 +1,110 @@
++package kanban
++
++// state_lock_wait.go - the shared queue lock-wait budget and jittered backoff, moved verbatim
++// out of board_store.go (SPEC-LAUNCHER-ENTRY-FLAGS-001 M6 head step) so the board family can be
++// deleted without taking the queue, integration-lock, and slot-lease acquire paths with it.
++
++import (
++	"math/rand/v2"
++	"time"
++)
++
++// Board-lock acquisition is non-blocking at the substrate, so a mutation
++// racing the current holder retries for a bounded window rather than failing
++// the mutation: two concurrent transitions must BOTH reach the admission
++// decision in turn (exactly one succeeding on the WIP bound), not have one
++// bounce off the lock. The window is bounded so a genuinely stuck holder
++// surfaces as an error instead of a hang.
++//
++// The queue lock-wait policy below is the SHARED budget-and-backoff both
++// queue-lock acquisition paths consume — this one and (*BacklogStore).acquireLock
++// (backlog_store.go). A change here applies to both without a second edit
++// (SPEC-BACKLOG-LOCK-BUDGET-001 REQ-BLB-006).
++//
++// What the derivation is NOT. The substrate acquire is
++// flock(LOCK_EX|LOCK_NB) (board_lock_unix.go) and the callers poll, so the
++// lock provides no queue and no fairness: a contender that loses a race gains
++// no priority for the next round, and flock guarantees no ordering between
++// waiters. A contender's maximum wait is therefore the tail of a run of lost
++// races, not a queue position, and it is unbounded in principle — no
++// closed-form worst case exists. The product below is a SIZING HEURISTIC WITH
++// STATED HEADROOM, NOT a worst-case bound, and must not be read as one. It is
++// sized to survive a bounded run of lost races at the supported contender
++// count on a CI-class machine; it is not sized for FIFO queue depth, which
++// does not describe this lock.
++const (
++	// stateLockSupportedWriters is the concurrent lane count the product
++	// supports against one queue: Factory mode runs up to ten lanes, the
++	// figure of record in backlog_concurrency_test.go's header comment.
++	stateLockSupportedWriters = 10
++
++	// stateLockCIMutationCost is the per-mutation cost observed on a
++	// CI-class machine under -race: 1.57s across 48 serialized mutations,
++	// or ~33ms each. The isolated local figure (~14ms) is deliberately NOT
++	// the input — sizing the budget to the faster machine is what left the
++	// retired 1.025s window 87% consumed on a machine where the guard
++	// passed.
++	stateLockCIMutationCost = 33 * time.Millisecond
++
++	// stateLockHeadroom is the stated headroom factor over the product
++	// above. Ten means: survive roughly ten consecutive rounds of losing
++	// to every peer before a stuck holder is declared.
++	//
++	// The product stateLockSupportedWriters * stateLockHeadroom = 100 is the
++	// serialized-mutation count this policy budgets for, comfortably above
++	// the 8 x 6 = 48 mutations TestConcurrencyStress serializes through
++	// one flock. That near-coincidence used to be accidental;
++	// TestBoardLockWaitBudgetCoversSerializedMutations (board_lock_wait_test.go,
++	// SPEC-STRESS-INVARIANT-VERDICT-001) now pins it, so lowering either
++	// constant here fails that guard. It is a constant-coherence relation and
++	// asserts nothing about the wait a real machine needs.
++	//
++	// Headroom history: 5 budgeted 1.65s, and CI run 36475337568 (9cc3fdc4d)
++	// starved a contender past it — TestBacklogConcurrentAdd_UniqueIDs lost
++	// the flock for the whole window under -race load with 8 contenders
++	// (flock is not FIFO-fair, so a descheduled goroutine can lose the
++	// wake-up race repeatedly). This is the second exhaustion of this class:
++	// the retired 1.025s window was the first. 10 doubles the window; if a
++	// third exhaustion lands, the fix is lock fairness (a real queue), not
++	// another raise.
++	stateLockHeadroom = 10
++
++	// stateLockWaitBudget is the derived elapsed window a contender polls
++	// before giving up. Bounding by elapsed time rather than by an attempt
++	// count is what makes the window a duration the derivation can state.
++	stateLockWaitBudget = stateLockSupportedWriters * stateLockCIMutationCost * stateLockHeadroom
++
++	// stateLockWaitMin and stateLockWaitMax bound every per-attempt wait the
++	// policy produces. They are the policy's declared contract; tests assert
++	// against these rather than against a sampled value.
++	stateLockWaitMin = 5 * time.Millisecond
++	stateLockWaitMax = 50 * time.Millisecond
++
++	// stateLockWaitStep grows the jitter band per attempt, so early retries
++	// poll tightly and a long wait backs off toward the ceiling.
++	stateLockWaitStep = 10 * time.Millisecond
++)
++
++// stateLockRetryWait returns the wait before retry number attempt (0-based).
++//
++// It is jitter applied over a modest linear backoff, and both halves are
++// load-bearing. Backoff alone would NOT break the lockstep: contenders
++// released together grow their delays identically and keep arriving at the
++// same bad moment relative to the holder's release. Jitter is what makes two
++// contenders at the same attempt index diverge, so no contender is
++// systematically beaten by the same peers (REQ-BLB-003/004).
++//
++// The randomness comes from math/rand/v2's per-call top-level source: no
++// package-level seeding, and no global generator a test would have to
++// control.
++func stateLockRetryWait(attempt int) time.Duration {
++	ceil := stateLockWaitMin + time.Duration(attempt+1)*stateLockWaitStep
++	if ceil > stateLockWaitMax {
++		ceil = stateLockWaitMax
++	}
++	span := ceil - stateLockWaitMin
++	if span <= 0 {
++		return stateLockWaitMin
++	}
++	return stateLockWaitMin + time.Duration(rand.Int64N(int64(span)+1))
++}
+diff --git a/internal/kanban/state_lock_wait_test.go b/internal/kanban/state_lock_wait_test.go
+--- /dev/null
++++ b/internal/kanban/state_lock_wait_test.go
+@@ -0,0 +1,228 @@
++// board_lock_wait_test.go — the queue lock-wait policy's guards
++// (SPEC-BACKLOG-LOCK-BUDGET-001, card t354).
++//
++// The policy under test is the shared budget-and-backoff both queue-lock
++// acquisition paths consume. The lock's substrate acquire is non-blocking and
++// the callers poll, so there is no queue and no fairness underneath: these
++// tests assert the derivation is visible and the wait is not lockstep, NOT
++// that any budget is sufficient. Sufficiency is only evidenced by CI.
++package kanban
++
++import (
++	"path/filepath"
++	"strings"
++	"testing"
++	"time"
++)
++
++// AC-BLB-001 / REQ-BLB-001, REQ-BLB-002: the budget is derived from named
++// inputs with a stated headroom factor, not declared as a bare constant.
++//
++// The mutant this catches: replacing the derivation with a numeric literal,
++// or lowering an input without the derivation following it.
++func TestBoardLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
++	t.Parallel()
++
++	recomputed := time.Duration(stateLockSupportedWriters) *
++		stateLockCIMutationCost * stateLockHeadroom
++	if stateLockWaitBudget != recomputed {
++		t.Fatalf("budget %v is not the product of its named inputs (%d writers x %v x %d headroom = %v) — "+
++			"a bare literal with no derivable inputs fails REQ-BLB-001",
++			stateLockWaitBudget, stateLockSupportedWriters, stateLockCIMutationCost,
++			stateLockHeadroom, recomputed)
++	}
++
++	// Where REQ-BLB-002's floor is enforced: INPUT-WISE, by the equality
++	// above plus the three assertions below — never by a comparison against
++	// stateLockWaitBudget.
++	//
++	//	budget == writers * cost * headroom   (the equality above, t.Fatalf)
++	//	writers  == 10                        (below)
++	//	cost     >= 33ms                      (below)
++	//	headroom >= 2                         (below)
++	//	==> budget >= 10 * 33ms * 2 = 660ms
++	//
++	// Each conjunct is falsifiable by a change to exactly one constant, so
++	// the composed floor is real.
++	//
++	// Why no floor-versus-budget comparison appears here, and why
++	// reinstating one is a regression rather than an improvement:
++	// stateLockWaitBudget IS declared as that same three-constant product
++	// (board_store.go), and the equality above is a t.Fatalf hard stop, so
++	// any floor built from those terms is the identical expression to the
++	// budget and evaluates false on every assignment — an identity wearing
++	// an inequality's clothing, which reads as coverage and can never fire.
++	// Exactly such a branch was removed here for that reason
++	// (SPEC-VACUOUS-FLOOR-GUARD-001, card t378).
++	//
++	// The file's one legitimate floor comparison is
++	// TestBoardLockWaitBudgetCoversSerializedMutations below: it derives its
++	// floor from the stress constants, terms the budget expression does not
++	// supply, so it is a real comparison (REQ-SIV-010).
++
++	// The supported contender count is the ten-lane figure of record in
++	// backlog_concurrency_test.go's header comment (REQ-BLB-002).
++	if stateLockSupportedWriters != 10 {
++		t.Errorf("supported writers = %d, want 10 (Factory mode's ten lanes against one queue)",
++			stateLockSupportedWriters)
++	}
++
++	// The per-mutation cost is sized from the CI-class observation
++	// (1.57s / 48 mutations ~= 33ms), never from the faster isolated local
++	// figure (~14ms) — sizing to the fast machine is what made the retired
++	// budget thin.
++	if stateLockCIMutationCost < 33*time.Millisecond {
++		t.Errorf("per-mutation cost %v is below the CI-class observation of 33ms",
++			stateLockCIMutationCost)
++	}
++
++	if stateLockHeadroom < 2 {
++		t.Errorf("headroom factor %d states no headroom", stateLockHeadroom)
++	}
++}
++
++// AC-SIV-006 / REQ-SIV-009, REQ-SIV-010, REQ-SIV-011
++// (SPEC-STRESS-INVARIANT-VERDICT-001, card t372): the wait budget is COHERENT
++// with the mutation count TestConcurrencyStress serializes through one flock.
++//
++// What kind of guard this is. It is a CONSTANT-COHERENCE GUARD, NOT A RUNTIME
++// BUDGET GUARD. stateLockCIMutationCost appears on both sides of the
++// inequality and cancels, so what is actually enforced is a relation between
++// compile-time constants alone:
++//
++//	stateLockSupportedWriters * stateLockHeadroom >= stressWriters * stressAddsPerWriter
++//	                      10  *                 5  = 50  >=  8 * 6 = 48
++//
++// What it catches, stated exhaustively: a constant-axis regression — someone
++// lowering stateLockSupportedWriters or stateLockHeadroom, or raising
++// stressWriters / stressAddsPerWriter past their product. 48 and 50 are two
++// independently-authored figures, so the inequality binds a real coupling
++// between the stress test and the lock policy. Execution time, machine speed,
++// and contention level are NOT inputs to this guard.
++//
++// What it does NOT catch, from the same cancellation: no change to
++// stateLockCIMutationCost, and no per-mutation cost regression of any size,
++// can ever make it fire. It asserts nothing about the wait any real machine
++// needs — t370 back-derived the CI -race per-mutation cost at 42-105ms against
++// the declared 33ms, so the wait actually required there is 2.0-5.0s against a
++// 1.65s budget.
++//
++// It also must not reproduce the vacuity next door: the floor below is built
++// from the two stress constants, which the budget expression
++// (stateLockSupportedWriters * stateLockCIMutationCost * stateLockHeadroom)
++// does not itself supply, so this is a real comparison rather than a value
++// against itself (REQ-SIV-010).
++func TestBoardLockWaitBudgetCoversSerializedMutations(t *testing.T) {
++	t.Parallel()
++
++	const serialized = stressWriters * stressAddsPerWriter
++	const policyBudgetedMutations = stateLockSupportedWriters * stateLockHeadroom
++	floor := time.Duration(serialized) * stateLockCIMutationCost
++
++	if stateLockWaitBudget < floor {
++		t.Fatalf("constant coherence broken: the lock policy budgets %d supported writers x %d headroom = %d "+
++			"serialized mutations, while the stress test serializes %d x %d = %d (%v budget < %v floor). "+
++			"Lowering either policy constant, or raising either stress constant past that product, fails this "+
++			"guard. The per-mutation cost cancels on both sides, so the relation is cost-independent and "+
++			"asserts nothing about the wait any real machine needs — the CI -race per-mutation cost observed "+
++			"by t370 was 42-105ms against the declared %v.",
++			stateLockSupportedWriters, stateLockHeadroom, policyBudgetedMutations,
++			stressWriters, stressAddsPerWriter, serialized,
++			stateLockWaitBudget, floor, stateLockCIMutationCost)
++	}
++
++	t.Logf("constant coherence: the lock policy budgets %d supported writers x %d headroom = %d serialized "+
++		"mutations; the stress test serializes %d x %d = %d. The per-mutation cost cancels on both sides, so "+
++		"this relation is cost-independent — it states nothing about the wait any real machine needs, and a "+
++		"change to stateLockCIMutationCost (declared %v) would not be caught here.",
++		stateLockSupportedWriters, stateLockHeadroom, policyBudgetedMutations,
++		stressWriters, stressAddsPerWriter, serialized, stateLockCIMutationCost)
++}
++
++// AC-BLB-002 / REQ-BLB-003, REQ-BLB-004: the retry wait varies per contender,
++// so no contender is systematically beaten by the same peers, and every value
++// stays inside the policy's declared bounds.
++//
++// The assertions are distinctness and bounds — never a specific sampled
++// value, which would pin the test to a draw.
++func TestBoardLockRetryWaitIsNotLockstep(t *testing.T) {
++	t.Parallel()
++
++	const contenders = 32
++	for attempt := 0; attempt < 6; attempt++ {
++		seen := make(map[time.Duration]struct{}, contenders)
++		for c := 0; c < contenders; c++ {
++			d := stateLockRetryWait(attempt)
++			if d < stateLockWaitMin || d > stateLockWaitMax {
++				t.Fatalf("attempt %d contender %d: wait %v outside declared bounds [%v, %v]",
++					attempt, c, d, stateLockWaitMin, stateLockWaitMax)
++			}
++			seen[d] = struct{}{}
++		}
++		if len(seen) < 2 {
++			t.Errorf("attempt %d: all %d contenders drew the identical wait — the retry loop is lockstep",
++				attempt, contenders)
++		}
++	}
++
++	// One contender across consecutive attempts also varies: a fixed delay
++	// identical across the run is what REQ-BLB-004 forbids.
++	consecutive := make(map[time.Duration]struct{}, 16)
++	for attempt := 0; attempt < 16; attempt++ {
++		consecutive[stateLockRetryWait(attempt)] = struct{}{}
++	}
++	if len(consecutive) < 2 {
++		t.Errorf("one contender drew the identical wait across 16 consecutive attempts — fixed delay")
++	}
++}
++
++// AC-BLB-003 / REQ-BLB-005: a stuck holder still surfaces a bounded error
++// naming both the queue's own artifact and the lock artifact. This is a
++// regression guard on a property that exists today, not a new behaviour.
++//
++// The first of those two was asserted against Path() until card t910. That
++// reading satisfied the AC's letter and defeated its purpose: Path() is the
++// legacy `backlog.json` document the engine never writes, so the error named
++// a file the operator could not act on — absent in the steady state. The
++// assertion now names EnginePath(), which is what REQ-BLB-005 was protecting.
++//
++// The holder is a value in this test's own scope, released by a
++// t.Cleanup-registered function. No background process is spawned.
++func TestBacklogLockStuckHolderSurfacesBoundedNamedError(t *testing.T) {
++	t.Parallel()
++
++	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
++	held, err := acquireStateLockImpl(store.LockPath())
++	if err != nil {
++		t.Fatalf("seeding the stuck holder: %v", err)
++	}
++	t.Cleanup(func() {
++		if rerr := held.release(); rerr != nil {
++			t.Logf("releasing the seeded holder: %v", rerr)
++		}
++	})
++
++	start := time.Now()
++	err = store.Mutate(func(rec *BacklogRecord) error {
++		rec.LastSeq++
++		return nil
++	})
++	elapsed := time.Since(start)
++
++	if err == nil {
++		t.Fatalf("the mutation succeeded while the lock was held by a stuck holder")
++	}
++	if !IsStateLockHeld(err) {
++		t.Errorf("error is not recognized by IsStateLockHeld: %v", err)
++	}
++	if !strings.Contains(err.Error(), store.EnginePath()) {
++		t.Errorf("error does not name the queue artifact %s: %v", store.EnginePath(), err)
++	}
++	if !strings.Contains(err.Error(), store.LockPath()) {
++		t.Errorf("error does not name the lock artifact %s: %v", store.LockPath(), err)
++	}
++	if bound := 2 * stateLockWaitBudget; elapsed > bound {
++		t.Errorf("the mutation blocked %v, past the bound of %v (budget %v)",
++			elapsed, bound, stateLockWaitBudget)
++	}
++}
+diff --git a/internal/kanban/state_lock_windows.go b/internal/kanban/state_lock_windows.go
+--- /dev/null
++++ b/internal/kanban/state_lock_windows.go
+@@ -0,0 +1,79 @@
++//go:build windows
++
++// board_lock_windows.go — Windows substrate of the board-wide lock:
++// atomic-create (O_CREATE|O_EXCL), mirroring internal/spec/lock_windows.go's
++// pattern. Windows lacks fcntl-style advisory flock, so the artifact IS the
++// lock: a holder killed mid-mutation leaves an artifact that blocks every
++// subsequent board mutation permanently — which is why REQ-KB-023 records
++// the owner identity and provides the bounded clear.
++package kanban
++
++import (
++	"errors"
++	"fmt"
++	"os"
++	"time"
++)
++
++const (
++	// Transient delete-pending / sharing-violation budget, mirroring
++	// internal/spec/lock_windows.go's classification: genuine contention is
++	// reported as held immediately and NEVER retried; only short-lived
++	// Windows conditions (a just-released holder's delete-pending name, an
++	// indexer/scanner sharing conflict) consume this budget.
++	boardLockTransientRetries = 10
++	boardLockTransientDelay   = 5 * time.Millisecond
++)
++
++// atomicFileStateLock holds an exclusively-created lock file; releasing means
++// closing and removing it.
++type atomicFileStateLock struct {
++	lockPath string
++	file     *os.File
++}
++
++func (f *atomicFileStateLock) release() error {
++	if f == nil {
++		return nil
++	}
++	if f.file != nil {
++		_ = f.file.Close()
++		f.file = nil
++	}
++	if f.lockPath != "" {
++		err := os.Remove(f.lockPath)
++		f.lockPath = ""
++		if err != nil && !os.IsNotExist(err) {
++			return err
++		}
++	}
++	return nil
++}
++
++// acquireStateLockImpl creates lockPath with O_CREATE|O_EXCL — atomic on
++// NTFS — and records this process's identity IN the artifact (REQ-KB-023).
++func acquireStateLockImpl(lockPath string) (stateLockImpl, error) {
++	transientLeft := boardLockTransientRetries
++	for {
++		file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o644)
++		if err == nil {
++			if _, werr := file.Write(newLockOwnerRecord()); werr != nil {
++				_ = file.Close()
++				_ = os.Remove(lockPath)
++				return nil, fmt.Errorf("record board lock owner %s: %w", lockPath, werr)
++			}
++			return &atomicFileStateLock{lockPath: lockPath, file: file}, nil
++		}
++		switch {
++		case os.IsExist(err):
++			return nil, ErrStateLockHeld
++		case errors.Is(err, os.ErrPermission):
++			if transientLeft--; transientLeft <= 0 {
++				return nil, fmt.Errorf("open board lock %s: %w", lockPath, err)
++			}
++			time.Sleep(boardLockTransientDelay)
++		default:
++			return nil, fmt.Errorf("open board lock %s: %w", lockPath, err)
++		}
++	}
++}

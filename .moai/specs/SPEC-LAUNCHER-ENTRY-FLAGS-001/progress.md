@@ -5,22 +5,22 @@
 ```yaml
 plan_status: audit-ready
 plan_complete_at: 2026-10-02
-spec_version: "0.7.0"   # plan-audit iteration 1 (FAIL 0.72) findings D1-D28 addressed; Q20-Q22 open and non-gating; Tier L
+spec_version: "0.8.0"   # plan-audit iteration 2 (FAIL 0.79) findings D29-D45 addressed on top of v0.7.0 (D1-D28); Q20-Q22 and Q24 open and non-gating; Tier L
 tier: L
 artifacts: [spec.md, plan.md, acceptance.md, design.md, research.md, progress.md, decision-index.md]
-operator_verdicts_recorded: 19  # decision-index Q1-Q6, Q8-Q15, Q17-Q19 (Q1 superseded by Q10; Q9 count sentence superseded by Q17); Q7 closed as moot
+operator_verdicts_recorded: 20  # decision-index Q1-Q6, Q8-Q15, Q17-Q19, Q23 (Q1 superseded by Q10; Q9 count sentence superseded by Q17); Q7 closed as moot; Q23 (role-declaration carrier) answered after plan-audit iteration 2
 orchestrator_rulings_recorded: 1   # Q16 (OD-15): raised as a ruling, CONFIRMED by the operator
-open_questions: 3               # Q20-Q22, raised by the plan audit, non-gating (smallest-footprint reading written); Q18 (OD-17) settled earlier as Option X
+open_questions: 4               # Q20-Q22 raised by the plan audit and Q24 raised by the compile proof, all non-gating (smallest-footprint reading written); Q18 (OD-17) settled earlier as Option X
 author_choices_listed: 12       # spec.md §D, decision-index Q19 — all accepted (two steps)
-requirements: 24                # Tier L ceiling 25
+requirements: 25                # Tier L ceiling 25 (at the ceiling; REQ-019 split into REQ-019 and REQ-025 in v0.8.0)
 criteria: 25                    # Tier L ceiling 25 (at the ceiling)
 milestones: 13                  # M0-M11 with M5 split into M5a/M5b; integration units: M0-M1, M2+M3+M4, then M5a, M5b, M6, M7, M8, M9, M10, M11 each alone
 tree_measured: a6d3e6fd4f21f9c04fbcb7ca7507e87571f9b2c2
-audited_head: b9242da00ce489c4f26efb5f6d447ccafef08c54   # plan-audit iteration 1; content outside this SPEC directory equals tree_measured (PV-71)
+audited_head: 5445e296caa48e6ab9821afe808eac2e7385e897   # plan-audit iteration 2; content outside this SPEC directory equals tree_measured (PV-73); iteration 1 audited b9242da00ce489c4f26efb5f6d447ccafef08c54 (PV-71)
 branch: WT-launcher-entry-flags
 ```
 
-Plan-phase signal: plan-audit iteration 1 returned FAIL (0.72, audited at `b9242da00ce489c4f26efb5f6d447ccafef08c54`; report `.moai/reports/t1399/plan-audit-iter1.md`, local and gitignored); v0.7.0 re-measures and addresses findings D1-D28 on the same tree content; iteration 2 has not run. Every operator verdict is recorded and confirmed; Q20-Q22 (raised by the audit) are open and non-gating.
+Plan-phase signal: plan-audit iteration 1 returned FAIL (0.72, audited at `b9242da00ce489c4f26efb5f6d447ccafef08c54`; report `.moai/reports/t1399/plan-audit-iter1.md`) and iteration 2 returned FAIL (0.79, audited at `5445e296caa48e6ab9821afe808eac2e7385e897`; report `.moai/reports/t1399/plan-audit-iter2.md`; both local and gitignored); v0.8.0 addresses findings D29-D45 and replaces the caller-grep deletion-order table with a committed cumulative compile proof (PV-73 to PV-90); iteration 3 is the last audit allowed and has not run. Every operator verdict is recorded and confirmed (Q23, the role-declaration carrier, was added after iteration 2); Q20-Q22 (raised by iteration 1) and Q24 (raised by the compile proof) are open and non-gating.
 
 ## §E.2 Run-phase Evidence
 
@@ -63,7 +63,7 @@ Every row is a measurement taken in this plan run against tree `a6d3e6fd4` (bran
 | PV-21 | `grep -rIlE` of the removed-lane-form pattern over the whole tree excluding `.git`, worktrees, reports, node_modules, specs, testdata | 136 paths: `.moai/specs` 68, docs/instruction 29, Go 14, tests 18, frozen fixtures 3, CHANGELOG and generated codemaps 4 | 0 |
 | PV-22 | `go test ./internal/cli -run '^(TestCC_KanbanFlagStrippedBeforeLaunch\|TestGLM_KanbanFlagParity\|TestPrepareKanbanSettingsWritesTransientFile)$' -v -count=1` | three PASS results, `ok ... 0.921s` | 0 |
 | PV-23 | `go test ./internal/template -run '^(TestWorkflowRulePathsPinned\|TestContractModeAlwaysLoadedBudget\|TestContractModeConstitutionDriftNotIncreased\|TestContractModeLocalTemplateParity\|TestRuleTemplateMirrorDrift\|TestDeclaredRuleMirrorForks\|TestAllSkillsInCatalog\|TestCatalogHashCoversSkillSubfiles)$' -v -count=1` | six PASS, TWO SKIP (`TestContractModeConstitutionDriftNotIncreased`, `TestContractModeAlwaysLoadedBudget`; reason unobserved — a skip is not a pass), `ok ... 0.254s` | 0 |
-| PV-24 | `grep -rlE` per marker constant over `internal` and `cmd`, non-test files | `MOAI_KANBAN_ID` 22; `_LEAD_ADDR` 9; `_LEAD_NAME` 8; `_SETTINGS_INJECTED` 6; `_BACKEND` 12; `_CARD` 7; `MOAI_KANBAN` 8; `_SPEC` 6; `_LABEL` 8. Union of the six factory-read markers by name or constant: 95 files (34 non-test). `internal/discovery` reads `MOAI_KANBAN_ID` from a live leader process's environment. | 0 |
+| PV-24 | `grep -rlE` per marker constant over `internal` and `cmd`, non-test files | `MOAI_KANBAN_ID` 22; `_LEAD_ADDR` 9; `_LEAD_NAME` 8; `_SETTINGS_INJECTED` 6; `_BACKEND` 12; `_CARD` 7; `MOAI_KANBAN` 8; `_SPEC` 6; `_LABEL` 8. Union of the six factory-read markers by name or constant: 95 files (34 non-test) — SUPERSEDED in v0.8.0 by PV-87: 92 files (31 production, 61 test). `internal/discovery` reads `MOAI_KANBAN_ID` from a live leader process's environment. | 0 |
 | PV-25 | `grep -rln` of the board-family symbols outside `internal/kanban`, non-test | only `todo_autodone.go:306` and `todo_landed.go:337`, both `ReadPrimarySpecStatus` (not board); the board state store has no non-test caller outside the package | 0 |
 | PV-26 | `moai constitution validate` (tree-built binary) | `constitution validate: OK — no drift or violations detected (97 of 101 entries checked)`; `4 retired entry/entries skipped` | 0 |
 | PV-27 | `grep -c` over `zone-registry.md` for `orchestrator-class\|kanban companion\|Selection Decision Tree\|manager-lead` and `grep -n -i 'companion\|lane\|factory\|foreman\|kanban'`; `grep -c 'ZONE:Frozen'` over the three kanban rules | 0 hits in the registry for each; 0 `[ZONE:Frozen]` in `kanban-dispatch.md`, `-detail.md`, `-mechanics.md` | 0 |
@@ -91,7 +91,7 @@ Every row is a measurement taken in this plan run against tree `a6d3e6fd4` (bran
 | PV-48 | `grep -n 'Env.* = "MOAI_KANBAN' internal/config/envkeys.go`; `grep -rn '"MOAI_KANBAN' internal cmd --include='*.go' --exclude='*_test.go'` | literals at `envkeys.go:182` `MOAI_KANBAN`, `:187` `_SPEC`, `:195` `_ID`, `:205` `_LABEL`, `:216` `_SETTINGS_INJECTED`, `:225` `_LEAD_ADDR`, `:238` `_BACKEND`, `:253` `_CARD`, `:273` `_LEAD_NAME`; and `internal/codexwiring/configtoml.go:21` (the MCP env allowlist naming `MOAI_KANBAN_ID` and `MOAI_KANBAN_BACKEND`); no other non-test string literal carries a marker name | 0 |
 | PV-49 | `grep -n -i 'kanban\|factory-mode' docs-site/vercel.json`; read of `vercel.json:170-212`; `grep -n -i kanban docs-site/data/menu/main.yaml docs-site/layouts/index.html docs-site/i18n/en.yaml`; `grep -rn -i kanban docs-site/content/en/{advanced,multi-llm,core-concepts}/_meta.yaml`; `ls docs-site/content/*/advanced/factory-mode.md` | rules `:183-201` redirect `/advanced/factory-mode` and `/multi-llm/factory-mode` (locale and bare forms) to the kanban pages; `:202-211` `manager-kanban` → `manager-lead`; menu `main.yaml:159-162,493-496,725-728`; banner `layouts/index.html:56-76` and `i18n/en.yaml:83-85`; `_meta.yaml` listings; `advanced/factory-mode.md` exists in en (11,173 B), ko, ja, zh — so the factory-mode page is shadowed by the redirect today | 0 |
 | PV-50 | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0, no output | 0 |
-| PV-51 | `grep -n '/loop' internal/hook/session_start_factory_i18n.go`; `grep -c` of notice string-table fields | the queue sentence at `:89` (en: "the kanban foreman loop (bare `/loop`)"), `:139` (ko), `:184` (ja), `:229` (zh); 28 references to `leaderFreeSlots`, `leaderSlotsNone`, `laneJoin`, `laneJoinNoCount`, `leaderManual`, `entryGuide`; `session_start_factory.go:229` builds `FactoryFreeSlots`, `:240` `leaderFreeSlots` | 0 |
+| PV-51 | `grep -n '/loop' internal/hook/session_start_factory_i18n.go`; `grep -c` of notice string-table fields | the queue sentence at `:89` (en: "the kanban foreman loop (bare `/loop`)"), `:139` (ko), `:184` (ja), `:229` (zh); 34 references to `leaderFreeSlots`, `leaderSlotsNone`, `laneJoin`, `laneJoinNoCount`, `leaderManual`, `entryGuide` (this row first read 28; that figure did not reproduce and PV-68 measured 34); `session_start_factory.go:229` builds `FactoryFreeSlots`, `:240` `leaderFreeSlots` | 0 |
 | PV-52 | `wc -c` of the rule files; read of `update_archive.go:25-70`; bounded search `grep -rniE 'legacyRule\|obsolete\|removedFiles\|deprecatedFiles\|staleRule\|retiredRule\|legacyRuleFiles' internal/cli internal/template --include='*.go' --exclude='*_test.go' -l` | `kanban-dispatch.md` 26,352 B local and 26,030 B template, `-detail.md` 39,965 B, `-mechanics.md` 18,909 B; `legacySkillIDs` archives retired skills to `.moai/archive/skills/v2.16/` and its guard test `TestLegacySkillIDsNotEmbedded` keeps the list disjoint from the embedded skills; the rule-file search found only `internal/cli/memory.go` (unrelated) — **SUPERSEDED in v0.5.0 by PV-54..PV-59: that search used the wrong terms and missed the managed-root clean, so the conclusion "no stale-rule cleanup exists" was wrong** | 0 |
 | PV-53 | `grep -rn '"kanban' internal cmd --include='*.go' --exclude='*_test.go'`; `find internal cmd docs-site/content -iname '*kanban*'`; `grep -rnwE 'factory( :=\|,\| =)' internal cmd --include='*.go'` | the string-literal lines beginning with "kanban" (the generated web templates, the web events and screens, error texts in `internal/kanban`, two hook timing laps, a coverage key — summarized in research.md §R3; not counted); the file/directory names listed in RED-N2 plus 12 docs pages; four non-LSP/TUI local identifiers named `factory` (`factory_handoff_recover.go:20`, `role_naming_m3_notice_test.go:129`, `stale_run_m1_test.go:118`, `runtime_census_test.go:75`) | 0 |
 
@@ -120,8 +120,586 @@ Rows PV-60 to PV-72 are the v0.7.0 re-measurements of the plan-audit iteration 1
 | PV-71 | `git rev-parse a6d3e6fd4`; `git rev-parse HEAD`; `git diff --quiet a6d3e6fd4f21f9c04fbcb7ca7507e87571f9b2c2 HEAD -- . ':!.moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001'` | `a6d3e6fd4f21f9c04fbcb7ca7507e87571f9b2c2`; `b9242da00ce489c4f26efb5f6d447ccafef08c54`; exit 0 — no content differs outside this SPEC directory | 0 |
 | PV-72 | read of `internal/kanban/bootstrap.go:236-395` (`NextFactoryLaneNumber` at `:370-384`), `internal/kanban/factory_slots.go:100-210`, `internal/cli/factory.go:374-395`; `grep -n 'never backfills' README.md` | the lane label is one past the highest LIVE canonical claim after `PruneFactoryDeadClaims`, 1 when nothing is claimed; the `-f lane` parse computes it at `factory.go:386` and the branch claims it in one IMMEDIATE SQLite transaction (`ClaimFactoryLane`, dead claims removed first); `README.md:80` states the same rule (a dead lane's claim no longer blocks its number; auto-assignment never backfills a gap) | 0 |
 
+
+Rows PV-73 to PV-90 are the v0.8.0 evidence for plan-audit iteration 2 (FAIL 0.79; findings D29-D45). Every measurement was taken in this revision on HEAD `5445e296caa48e6ab9821afe808eac2e7385e897` (the commit iteration 2 audited), whose content outside this SPEC directory equals tree `a6d3e6fd4` (PV-73), with Go `go1.26.8` (the toolchain the module selects). The compile proof builds only a SCRATCH COPY of the Go tree; `git status --short` after the first probe run showed only the new untracked `probe/` directory. Where a command was refused rather than run, the Gaps paragraph says so.
+
+| ID | Command | Observed | Exit |
+|----|---------|----------|------|
+| PV-73 | `git rev-parse HEAD`; `git diff --quiet a6d3e6fd4f21f9c04fbcb7ca7507e87571f9b2c2 HEAD -- . ':!.moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001'`; `go version` in the tree; `diff -rq` of the pristine scratch copy P0 (the tree the stage data was derived from) against the checkout for `internal`, `cmd`, `e2e`, `pkg`, `scripts`, `test`, and `diff -q` for `go.mod` and `go.sum`; baselines on P0: `go build -gcflags=-e ./...`, `GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...`, `go vet ./...`, `GOOS=windows GOARCH=amd64 go vet ./...` | HEAD `5445e296caa48e6ab9821afe808eac2e7385e897`; `git diff --quiet` exit 0 (nothing differs outside this SPEC directory); `go version go1.26.8 darwin/arm64`; every `diff` empty; baselines: host build exit 0 and empty, windows build exit 0 and empty, host vet exit 0 and empty, windows vet exit 1 with exactly three lines — `# github.com/modu-ai/moai-adk/internal/cli/worktree`, `# [github.com/modu-ai/moai-adk/internal/cli/worktree]`, `vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs` — a failure that predates this SPEC and is the baseline of every windows vet block below | 0 / 0 / 0 / 0 / 0 / 0 / 1 (baseline) |
+| PV-74 | the committed runner, one invocation: `go run probe.go -src <checkout> -work <scratch>/replay-final -data .moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe -from M0 -to M11` (run from the probe directory; vet on) — it copies the Go tree to the scratch directory, applies M2, M3, M4, M5a, M5b, M6a, M6b from `probe/patches/` and M7, M8, M9, M10 programmatically, and after every stage runs host and windows `go build -gcflags=-e ./...` and `go vet ./...` | every stage prints four blocks that are empty with exit 0, except the windows vet block, which prints exactly the baseline of PV-73 (exit 1); the stage table and the verbatim output follow this table. The header comment of `probe.go` was reworded after this run started (no code line changed). | 0 (the runner) |
+| PV-75 | negative control for the lock substrate: on the M5b tree of the committed stage data, delete the ten files the v0.7.0 plan listed as the board family (`board.go`, `board_store.go`, `board_recover.go`, `board_lock.go`, `board_lock_unix.go`, `board_lock_windows.go`, `board_lock_clear_unix.go`, `board_lock_clear_windows.go`, `column.go`, `reconcile.go`) and run `go build -gcflags=-e ./...` on the host and on `GOOS=windows` | 25 compile errors on each OS (listings below the table): `backlog_store.go` 6, `integration_lock_mutation.go` 7, `slot_lease.go` 7, `role.go` 1 (`BoardDir`), and 4 in the per-OS mutation files — `integration_lock_mutation_unix.go` and `slot_lease_mutation_unix.go` (`ClearStaleReport`) on the host, `integration_lock_mutation_windows.go` and `slot_lease_mutation_windows.go` (`ClearStaleReport` and `clearStaleLockAtPath`) on windows | 1 / 1 |
+| PV-76 | negative control for the locale helpers: on the M5b tree, delete `internal/hook/session_start_lang.go` (the file that holds `langEnglish` and `operatorLang`) and run `go build -gcflags=-e ./internal/hook/` | 8 compile errors (listing below the table): `session_stale_run.go`, `session_start_factory_i18n.go`, `factory_messages.go`, `session_start.go` | 1 |
+| PV-77 | negative control for the `-l` short: on the tree of stage M2 (pristine P0 plus `probe/patches/M2.patch`), delete the constant `leadFlagShort` and run `go build -gcflags=-e ./...`; the alias and socket-directory collisions of rows 5 and 6 of design.md §7.1 were observed as redeclaration errors in an interim replay of the same stage data before the corrections entered it (`internal/cli/codex_launcher.go:769:2: codexFactoryRefusalDiag redeclared in this block`; `internal/kanban/bootstrap.go:309:2: factorySocketDir redeclared in this block`) | 4 compile errors, all `internal/cli/codex_factory.go` lines 42, 43, 50, 51: `undefined: leadFlagShort` (the Codex entry parse still reads it until M3); the two interim redeclaration errors as quoted; deleting the nine `kanban.go` declarations alone (interim tree, before the retired-entry file existed) failed with `internal/cli/codex_launcher.go:771:27: undefined: kanbanUnsupportedBackendSentinel` and `:834:17`, `:834:45`, `:835:29`, `:835:78` `undefined: kanbanFlagShort` / `kanbanFlagLong`, plus the callers in `cc.go`, `glm.go`, and `factory.go` (the tokens therefore move to the retired-entry file in M5a) | 1 |
+| PV-78 | negative controls for the test helpers: on the M5b tree, delete `internal/hook/session_start_env_helper_test.go` and run `go vet ./internal/hook/`; on the M6b tree, delete `internal/kanban/test_helpers_test.go` and `test_helpers_windows_test.go` and run `go test -c -o /dev/null -gcflags=-e ./internal/kanban/` on the host and on `GOOS=windows` (the test compile lists every error; `go vet` stops at the first) | `clearKanbanEnv` is called by `session_start_additional_context_test.go`, `session_start_factory_provider_test.go`, `session_start_factory_test.go`, and more (first ten errors listed below); `runtimeIsWindows` by `f3_f4_probe_test.go`, `integration_lock_cross_test.go`, `slot_lease_cross_test.go`, `status_read_test.go`; `runGitAt` by `f3_f4_probe_test.go`; `deadPID` by `integration_lock_rotation_test.go`; windows only, `deadPIDWin` by `integration_lock_mutation_windows_test.go:52`; `readFileBytes` is called by no retained test once the board cases are gone, so it is not needed | 1 / 1 / 1 |
+| PV-79 | the M7 stage of PV-74; the interim collision list from the replay of the same data before the corrections: `bootstrap.go:309:2: factorySocketDir redeclared` (`kanbanSocketDir` left alive by M6), `codex_launcher.go:769:2: codexFactoryRefusalDiag redeclared` (alias `codexKanbanRefusalDiag` left alive by M5a), file-name collision `kanban_dispatch_test.go` to `factory_dispatch_test.go` (already exists) | the M7 runner note in the stage table; after the corrections no collision remains and the stage is clean | 0 |
+| PV-80 | negative control for `role.go`: on the M6b tree, delete the whole file `internal/kanban/role.go` and run `go build -gcflags=-e ./...` | 10 compile errors in the first failing package (listing below the table): `bootstrap.go` 4 uses of `RoleLeader`, `record.go:151` `RoleLeader` and `RoleLane`, `todo_owner_label.go` `IsLegacyLeaderSpelling`, `RoleLeader`, `legacyLeaderSpelling`, `RoleLane` — the four symbols that stay | 1 |
+| PV-81 | the M8 stage of PV-74 | the M8 runner note in the stage table: package clauses renamed, qualified references renamed, shadowing local occurrences renamed; the single shadowing site is `internal/hook/stale_run_m1_test.go:118` (`factoryRun`, four occurrences); the three other design.md §4.7 sites are in files that do not import the package, so the Gap of design.md §4.7 is closed | 0 |
+| PV-82 | the M9 stage of PV-74; interim prototype of the same edits on the M9 tree before the view-model edits entered the stage: delete `ChainRoles`, then delete `ChainVM`, `RoleVM`, `buildChain`, `chainRoleRecords`, `chainCardID`, and `go build -gcflags=-e ./internal/web/` | deleting `ChainRoles` alone: `viewmodel_ops.go:262:43`, `:263:23` (in `chainRoleRecords`) and `:330:23` (in `buildChain`) undefined; deleting the model: `viewmodel_ops.go:110:13` (`OverviewVM.Chain`), `:119:13` (the screen model's `Roles`), `:615:13` and `:677:11` (`buildChain` in the Overview and factory builders), `:615:45` and `:677:48` (`chainCardID`), `:628:78` (`buildAttention`'s parameter), `:676:18` (`chainRoleRecords`) — the Overview builder and `buildAttention` are the second reader; after the view-model edits the stage is clean and five web test files lose the cases that use the model | 1 |
+| PV-83 | `go run .moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe/entry_probe.go -root .` (the committed program; one invocation from the repository root; it writes the committed probe test into a temporary directory outside the tree and runs `go test -overlay`) | the verbatim output is below the table (the same rows as RED-11 to RED-14); `git status --short` after the first run listed only the new untracked `probe/` directory, so the probe wrote nothing into the tree | 0 |
+| PV-84 | `moai spec lint SPEC-LAUNCHER-ENTRY-FLAGS-001 --strict` (scratch binary `moai-v8`, built by `go build -o ... ./cmd/moai` from this tree; its `version` prints `moai-adk v3.1.3` and no commit, so its judging build is identified by the tree it was built from, HEAD `5445e296caa48e6ab9821afe808eac2e7385e897`, per verification-claim-integrity §2.2); the plan-auditor traceability verb (`plan-auditor.md` Group 4, saved verbatim as `scratchpad/probe7/trace.sh`) on `spec.md` and `acceptance.md`; hand counts; the plan-auditor CN-4 ordering verb (Group 6, extracted verbatim from `plan-auditor.md` into a scratch script) on `plan.md` and `acceptance.md` | lint: `✓ No findings — all SPEC documents are valid`, exit 0; collection verb: `COLLECTED: 25 REQ definitions (acceptance input: read)`, no `UNCOVERED` and no `ORPHAN` line, exit 0; positive control on a coverage-scrubbed scratch copy (every `REQ-025` outside its definition line rewritten to `REQ-0XX` in `spec.md` and `acceptance.md`): `COLLECTED: 25 REQ definitions`, `ORPHAN: REQ-0`, `UNCOVERED: REQ-025`, so the silence on the real files is measured and not blind; hand counts: 25 criteria, 25 `Verifies` lines, 25 `Command` lines, 25 requirement lines (ceilings 25 and 25, both at the ceiling); `Verifies` lines naming each requirement: REQ-001:2 REQ-002:1 REQ-003:1 REQ-004:1 REQ-005:1 REQ-006:1 REQ-007:1 REQ-008:1 REQ-009:1 REQ-010:1 REQ-011:1 REQ-012:1 REQ-013:1 REQ-014:1 REQ-015:1 REQ-016:1 REQ-017:1 REQ-018:1 REQ-019:1 REQ-020:1 REQ-021:1 REQ-022:2 REQ-023:2 REQ-024:1 REQ-025:1 (every REQ-001..REQ-025 at least once; REQ-001, REQ-022, REQ-023 twice by design); CN-4 verb: `COLLECTED: 12 milestones in plan order (M0 M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M11), 35 exit bindings, 46 ordering candidates` — no `CONFLICT`, no `GAP` (the verb reads M5a and M5b as the one label M5, so it collects 12 labels for the 13 milestones; its 46 candidates were read one by one and none orders an acceptance criterion across the plan order, PV-88) | 0 |
+| PV-85 | the RED-now commands of every criterion this revision changed (AC-003, AC-004, AC-005, AC-012, AC-018, AC-020, AC-023), re-run on this tree: the launcher cells with the tree binary, the grep and `find` cells through a script that prints exit codes and line counts (the shell's `grep` is a function that supports `-P`; the two PCRE cells were re-run in that shell) | listing below the table: every cell reproduces its ledger value (RED-1, RED-2, RED-3, RED-5, RED-6, RED-10, RED-K2 exit 1 with the ledger stderr; RED-K3 15; RED-K4 27 (new pattern); the RED-K4 board-family `find` 18 and its positive control 4; RED-N1 189; RED-N2 22; RED-N3 179; RED-C1 exit 1 three lines; RED-C2 two lines; RED-C3 39965, 18909, 26030; RED-C4 three counts of 1; RED-D1 157; RED-D2 4; RED-D3 0 exit 1; RED-D5 46 with the new pattern and 46 with the old (unchanged union); RED-D8 16; RED-D7 19; RED-S1 16) | 1 (RED-1, RED-2, RED-3, RED-5, RED-6, RED-10, RED-K2) / 0 (the grep and `find` cells) / 1 (RED-C1, RED-D3) |
+| PV-86 | baselines on the pre-change tree: `go test ./internal/kanban -run '^(TestBoardLockWaitBudgetDerivedFromNamedInputs\|TestBoardLockWaitBudgetCoversSerializedMutations\|TestBoardLockRetryWaitIsNotLockstep\|TestBacklogLockStuckHolderSurfacesBoundedNamedError)$' -v -count=1`; `go test ./internal/kanban -run 'Foreman' -v -count=1`; `go test ./internal/template -run '^TestBacklogJSONDisclosure_' -v -count=1` | the four wait-budget tests PASS (0.00 s, 0.00 s, 0.00 s, 3.32 s, `ok ... 4.318s`); the seven foreman tests PASS (`TestForemanQueueWatchResolvesCanonicalStateDir`, `TestForemanQueueWatch_FiresOnMutation`, `_ShippedJSONTargetIsSilent`, `_FiresWithStaleJSONPresent`, `_WatchTargetsAgree`, `_DBOnlyTargetMissesWALDeferral`, `_SeesWALDeferredCommit`; `ok ... 129.305s`); the two template tests PASS (`ok ... 0.989s`); the tests that read the foreman skill by path are `foreman_queue_watch_test.go:66-67`, `foreman_queue_statement_test.go:36`, and `backlog_json_disclosure_mirror_test.go:26`; the three catalog tests name the id in comments only | 0 / 0 / 0 |
+| PV-87 | `grep -rlE 'EnvMoaiKanban(ID\|LeadAddr\|LeadName\|SettingsInjected\|Backend\|Card)\b\|MOAI_KANBAN_(ID\|LEAD_ADDR\|LEAD_NAME\|SETTINGS_INJECTED\|BACKEND\|CARD)\b' internal cmd --include='*.go'` (each count by a separate `wc -l`, tests by `grep -c '_test.go'`); the constants-only variant; the literals-only variant | union 92 files, 61 test, 31 production; constants only 85 files, 56 test, 29 production; literals only 27 files; so seven files (two production, five test) spell only the literal | 0 |
+| PV-88 | the cross-artifact ordering check by hand (table below): every ordering obligation in the acceptance surface against the milestone order of plan.md §D | every obligation is on the correct side; the CN-4 verb prints no `CONFLICT` | 0 |
+| PV-89 | stale-label sweep over the seven artifacts (commands and results below the table) | swept all seven artifacts and the probe directory for the old counts (24 requirements, 95/34 files), the old M5a/M5b/M6 deletion lists (ten board files, 13 tests, the four-constant budget), and the stale milestone flips (RED-N2 at M7, AC-018 flips at M7 and M8); results in the list below the table; the historical evidence rows PV-24, PV-44, PV-46b, PV-47, PV-51, PV-70 keep their original figures and carry a superseded note where a figure changed | 0 |
+| PV-90 | green-path observations of the acceptance commands that name deletions and renames, run on the scratch tree the committed runner leaves after stage M11 (`replay-final/tree`; the paths read `internal/factory` there): AC-012's identifier grep, symbol grep, board file-name `find`, kept-file `find`, and substrate consumers; AC-018's file-name `find`, old-import grep, and package directory; AC-019's panel string and legacy-route file; AC-020's renamed rule paths, old rule path, catalog counts, archive-list count, and skill directories | listing below the table: the board file names are absent (0 lines), the ten kept files are present (10 lines), the substrate consumers carry the re-homed names (`backlog_store.go` 2, `integration_lock_mutation.go` 2, `slot_lease.go` 3), `role.go` keeps `RoleLeader`, no file name carries the word, the old import path and `internal/kanban` are gone, `Chain session board` is gone from `screens.templ` and `legacy_routes.go` exists, the three renamed rule files exist and the old one does not, the catalog has 0 old and 2 new entries, the archive list carries the old id once, and the skill directory is renamed; two greps are NOT empty on this tree because the probe rewords no comment: AC-012's identifier grep still lists 7 files and its symbol grep 2 files, every match a comment (26 comment lines in `envkeys.go`, `factory_launch_helpers.go`, `factory.go`, `factory_settings.go`, `session_start_factory.go`, `factory/role.go`, `factory/bootstrap.go`, plus `state_lock.go:22` and `integration_lock_mutation.go:24`), which the plan assigns to M5a, M5b, and M6 | 0 |
+
+### PV-74 — per-stage result and verbatim runner output
+
+Stage table (read from the runner output below by `build_progress.py`-style parsing: a cell says `clean` only for an empty block with exit 0; the windows vet column says `baseline failure only` where the block equals the three baseline lines of PV-73 and nothing else):
+
+| Stage | host build | windows build | host vet | windows vet | runner note |
+|---|---|---|---|---|---|
+| M0 | clean | clean | clean | baseline failure only | no Go change (printed by the runner) |
+| M1 | clean | clean | clean | baseline failure only | no Go change (printed by the runner) |
+| M2 | clean | clean | clean | baseline failure only |  |
+| M3 | clean | clean | clean | baseline failure only |  |
+| M4 | clean | clean | clean | baseline failure only |  |
+| M5a | clean | clean | clean | baseline failure only |  |
+| M5b | clean | clean | clean | baseline failure only |  |
+| M6a | clean | clean | clean | baseline failure only |  |
+| M6b | clean | clean | clean | baseline failure only |  |
+| M7 | clean | clean | clean | baseline failure only | identifiers renamed: 515 |
+| M8 | clean | clean | clean | baseline failure only | package clauses renamed: 156, qualifiers renamed: 1830, shadowing locals renamed: 4 |
+| M9 | clean | clean | clean | baseline failure only | web identifiers renamed: 91 (14 distinct) |
+| M10 | clean | clean | clean | baseline failure only |  |
+| M11 | clean | clean | clean | baseline failure only | no Go change (printed by the runner) |
+
+The windows vet block of every stage is identical to the baseline of PV-73 (a failure in `internal/cli/worktree`, a package this SPEC does not touch); no block names a package this SPEC changes. Stages M0, M1, and M11 print no Go change by design. The runner's own output, verbatim:
+
+```
+##### stage M0
+(no Go change: no code, baseline only)
+=== [M0] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M0] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M0] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M0] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M1
+(no Go change: adds test files only; the additions are not authored by this probe)
+=== [M1] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M1] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M1] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M1] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M2
+=== [M2] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M2] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M2] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M2] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M3
+=== [M3] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M3] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M3] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M3] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M4
+=== [M4] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M4] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M4] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M4] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M5a
+=== [M5a] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M5a] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M5a] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M5a] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M5b
+=== [M5b] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M5b] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M5b] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M5b] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M6a
+=== [M6a] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M6a] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M6a] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M6a] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M6b
+=== [M6b] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M6b] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M6b] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M6b] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M7
+identifiers renamed: 515
+=== [M7] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M7] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M7] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M7] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M8
+package clauses renamed: 156, qualifiers renamed: 1830, shadowing locals renamed: 4
+=== [M8] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M8] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M8] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M8] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M9
+web identifiers renamed: 91 (14 distinct)
+templ generate exit 0
+(✓) Post-generation event received, processing... [ updates=0 needsRestart=true needsBrowserReload=true ]
+(✓) Post-generation event received, processing... [ updates=1 needsRestart=false needsBrowserReload=false ]
+(✓) Complete [ updates=1 duration=111.639958ms ]
+=== [M9] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M9] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M9] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M9] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M10
+=== [M10] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M10] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M10] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M10] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+##### stage M11
+(no Go change: documentation only)
+=== [M11] go build -gcflags=-e ./...  (darwin/host)
+
+--- exit 0
+=== [M11] GOOS=windows GOARCH=amd64 go build -gcflags=-e ./...
+
+--- exit 0
+=== [M11] go vet ./...  (darwin/host; typechecks every test file)
+
+--- exit 0
+=== [M11] GOOS=windows GOARCH=amd64 go vet ./...
+# github.com/modu-ai/moai-adk/internal/cli/worktree
+# [github.com/modu-ai/moai-adk/internal/cli/worktree]
+vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs
+--- exit 1
+runner-exit=0
+```
+
+### PV-75 — 25 compile errors when the ten files are deleted without the re-home
+
+Host build:
+
+```
+# github.com/modu-ai/moai-adk/internal/kanban
+internal/kanban/backlog_store.go:1254:40: undefined: BoardLock
+internal/kanban/backlog_store.go:1259:29: undefined: boardLockWaitBudget
+internal/kanban/backlog_store.go:1261:16: undefined: acquireBoardLockImpl
+internal/kanban/backlog_store.go:1263:12: undefined: BoardLock
+internal/kanban/backlog_store.go:1265:7: undefined: IsBoardLockHeld
+internal/kanban/backlog_store.go:1272:14: undefined: boardLockRetryWait
+internal/kanban/integration_lock_mutation.go:95:51: undefined: boardLockImpl
+internal/kanban/integration_lock_mutation.go:97:29: undefined: boardLockWaitBudget
+internal/kanban/integration_lock_mutation.go:99:16: undefined: acquireBoardLockImpl
+internal/kanban/integration_lock_mutation.go:103:7: undefined: IsBoardLockHeld
+internal/kanban/integration_lock_mutation.go:119:26: undefined: acquireBoardLockImpl
+internal/kanban/integration_lock_mutation.go:126:73: undefined: boardLockWaitBudget
+internal/kanban/integration_lock_mutation.go:128:14: undefined: boardLockRetryWait
+internal/kanban/integration_lock_mutation_unix.go:18:53: undefined: ClearStaleReport
+internal/kanban/integration_lock_mutation_unix.go:19:10: undefined: ClearStaleReport
+internal/kanban/slot_lease.go:463:49: undefined: boardLockImpl
+internal/kanban/slot_lease.go:465:29: undefined: boardLockWaitBudget
+internal/kanban/slot_lease.go:467:16: undefined: acquireBoardLockImpl
+internal/kanban/slot_lease.go:471:7: undefined: IsBoardLockHeld
+internal/kanban/slot_lease.go:477:26: undefined: acquireBoardLockImpl
+internal/kanban/slot_lease.go:482:67: undefined: boardLockWaitBudget
+internal/kanban/slot_lease.go:484:14: undefined: boardLockRetryWait
+internal/kanban/slot_lease_mutation_unix.go:9:51: undefined: ClearStaleReport
+internal/kanban/slot_lease_mutation_unix.go:10:10: undefined: ClearStaleReport
+internal/kanban/role.go:86:23: undefined: BoardDir
+```
+
+`GOOS=windows GOARCH=amd64` build:
+
+```
+# github.com/modu-ai/moai-adk/internal/kanban
+internal/kanban/backlog_store.go:1254:40: undefined: BoardLock
+internal/kanban/backlog_store.go:1259:29: undefined: boardLockWaitBudget
+internal/kanban/backlog_store.go:1261:16: undefined: acquireBoardLockImpl
+internal/kanban/backlog_store.go:1263:12: undefined: BoardLock
+internal/kanban/backlog_store.go:1265:7: undefined: IsBoardLockHeld
+internal/kanban/backlog_store.go:1272:14: undefined: boardLockRetryWait
+internal/kanban/integration_lock_mutation.go:95:51: undefined: boardLockImpl
+internal/kanban/integration_lock_mutation.go:97:29: undefined: boardLockWaitBudget
+internal/kanban/integration_lock_mutation.go:99:16: undefined: acquireBoardLockImpl
+internal/kanban/integration_lock_mutation.go:103:7: undefined: IsBoardLockHeld
+internal/kanban/integration_lock_mutation.go:119:26: undefined: acquireBoardLockImpl
+internal/kanban/integration_lock_mutation.go:126:73: undefined: boardLockWaitBudget
+internal/kanban/integration_lock_mutation.go:128:14: undefined: boardLockRetryWait
+internal/kanban/integration_lock_mutation_windows.go:24:56: undefined: ClearStaleReport
+internal/kanban/integration_lock_mutation_windows.go:25:9: undefined: clearStaleLockAtPath
+internal/kanban/slot_lease.go:463:49: undefined: boardLockImpl
+internal/kanban/slot_lease.go:465:29: undefined: boardLockWaitBudget
+internal/kanban/slot_lease.go:467:16: undefined: acquireBoardLockImpl
+internal/kanban/slot_lease.go:471:7: undefined: IsBoardLockHeld
+internal/kanban/slot_lease.go:477:26: undefined: acquireBoardLockImpl
+internal/kanban/slot_lease.go:482:67: undefined: boardLockWaitBudget
+internal/kanban/slot_lease.go:484:14: undefined: boardLockRetryWait
+internal/kanban/slot_lease_mutation_windows.go:14:54: undefined: ClearStaleReport
+internal/kanban/slot_lease_mutation_windows.go:15:9: undefined: clearStaleLockAtPath
+internal/kanban/role.go:86:23: undefined: BoardDir
+```
+
+### PV-76 — 8 compile errors when `langEnglish` and `operatorLang` are not moved first
+
+```
+# github.com/modu-ai/moai-adk/internal/hook
+internal/hook/session_stale_run.go:83:2: undefined: langEnglish
+internal/hook/session_stale_run.go:136:25: undefined: langEnglish
+internal/hook/session_start_factory_i18n.go:72:2: undefined: langEnglish
+internal/hook/session_start_factory_i18n.go:258:24: undefined: langEnglish
+internal/hook/factory_messages.go:69:78: undefined: langEnglish
+internal/hook/session_start.go:511:91: undefined: langEnglish
+internal/hook/session_start.go:523:74: undefined: operatorLang
+internal/hook/session_start.go:542:52: undefined: operatorLang
+```
+
+### PV-78 — test-helper controls
+
+`internal/hook` without `session_start_env_helper_test.go` (`go vet ./internal/hook/`, first errors):
+
+```
+# github.com/modu-ai/moai-adk/internal/hook [github.com/modu-ai/moai-adk/internal/hook.test]
+internal/hook/session_start_additional_context_test.go:147:2: undefined: clearKanbanEnv
+internal/hook/session_start_factory_provider_test.go:24:5: undefined: clearKanbanEnv
+internal/hook/session_start_factory_test.go:32:2: undefined: clearKanbanEnv
+internal/hook/session_start_factory_test.go:46:2: undefined: clearKanbanEnv
+internal/hook/session_start_factory_test.go:89:2: undefined: clearKanbanEnv
+internal/hook/session_start_factory_test.go:103:2: undefined: clearKanbanEnv
+internal/hook/session_start_factory_test.go:120:2: undefined: clearKanbanEnv
+internal/hook/session_start_factory_test.go:157:2: undefined: clearKanbanEnv
+internal/hook/session_start_factory_test.go:200:2: undefined: clearKanbanEnv
+internal/hook/session_start_factory_test.go:244:2: undefined: clearKanbanEnv
+internal/hook/session_start_factory_test.go:244:2: too many errors
+```
+
+`internal/kanban` without `test_helpers_test.go` and `test_helpers_windows_test.go`, host test compile:
+
+```
+# github.com/modu-ai/moai-adk/internal/kanban [github.com/modu-ai/moai-adk/internal/kanban.test]
+internal/kanban/f3_f4_probe_test.go:18:5: undefined: runtimeIsWindows
+internal/kanban/f3_f4_probe_test.go:22:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:23:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:24:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:29:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:30:21: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:63:5: undefined: runtimeIsWindows
+internal/kanban/f3_f4_probe_test.go:67:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:68:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:69:2: undefined: runGitAt
+internal/kanban/integration_lock_cross_test.go:174:5: undefined: runtimeIsWindows
+internal/kanban/integration_lock_cross_test.go:311:5: undefined: runtimeIsWindows
+internal/kanban/integration_lock_rotation_test.go:113:10: undefined: deadPID
+internal/kanban/slot_lease_cross_test.go:174:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:109:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:139:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:162:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:196:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:224:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:288:5: undefined: runtimeIsWindows
+```
+
+the same on `GOOS=windows` (the extra error is `deadPIDWin`):
+
+```
+# github.com/modu-ai/moai-adk/internal/kanban [github.com/modu-ai/moai-adk/internal/kanban.test]
+internal/kanban/f3_f4_probe_test.go:18:5: undefined: runtimeIsWindows
+internal/kanban/f3_f4_probe_test.go:22:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:23:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:24:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:29:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:30:21: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:63:5: undefined: runtimeIsWindows
+internal/kanban/f3_f4_probe_test.go:67:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:68:2: undefined: runGitAt
+internal/kanban/f3_f4_probe_test.go:69:2: undefined: runGitAt
+internal/kanban/integration_lock_cross_test.go:174:5: undefined: runtimeIsWindows
+internal/kanban/integration_lock_cross_test.go:311:5: undefined: runtimeIsWindows
+internal/kanban/integration_lock_mutation_windows_test.go:52:41: undefined: deadPIDWin
+internal/kanban/integration_lock_rotation_test.go:113:10: undefined: deadPID
+internal/kanban/slot_lease_cross_test.go:174:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:109:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:139:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:162:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:196:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:224:5: undefined: runtimeIsWindows
+internal/kanban/status_read_test.go:288:5: undefined: runtimeIsWindows
+```
+
+### PV-80 — deleting the whole file `role.go` on the M6b tree
+
+```
+# github.com/modu-ai/moai-adk/internal/kanban
+internal/kanban/bootstrap.go:89:9: undefined: RoleLeader
+internal/kanban/bootstrap.go:97:9: undefined: RoleLeader
+internal/kanban/bootstrap.go:119:14: undefined: RoleLeader
+internal/kanban/bootstrap.go:123:23: undefined: RoleLeader
+internal/kanban/record.go:151:13: undefined: RoleLeader
+internal/kanban/record.go:151:35: undefined: RoleLane
+internal/kanban/todo_owner_label.go:35:7: undefined: IsLegacyLeaderSpelling
+internal/kanban/todo_owner_label.go:38:10: undefined: RoleLeader
+internal/kanban/todo_owner_label.go:38:49: undefined: legacyLeaderSpelling
+internal/kanban/todo_owner_label.go:47:10: undefined: RoleLane
+```
+
+### PV-83 — the entry-parse probe, verbatim
+
+```
+=== RUN   TestZZT1399EntryProbe
+CCPARSE args=["-f" "--name" "lane-2"] factoryEnabled=true rest=["--name" "lane-2"] laneLabel="lane-2" isLane=true branch=2
+CCPARSE args=["-f" "-n" "lane-2"] factoryEnabled=true rest=["-n" "lane-2"] laneLabel="lane-2" isLane=true branch=2
+CCPARSE args=["--factory" "--name=lane-2"] factoryEnabled=true rest=["--name=lane-2"] laneLabel="lane-2" isLane=true branch=2
+CCPARSE args=["-f" "--name" "leader-r7"] factoryEnabled=true rest=["--name" "leader-r7"] laneLabel="" isLane=false branch=1
+CCPARSE args=["--lane"] factoryEnabled=false rest=["--lane"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "lane-2"] factoryEnabled=false rest=["--lane" "lane-2"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane=lane-2"] factoryEnabled=false rest=["--lane=lane-2"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "3"] factoryEnabled=false rest=["--lane" "3"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "leader-2"] factoryEnabled=false rest=["--lane" "leader-2"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "-f"] factoryEnabled=true rest=["--lane"] laneLabel="" isLane=false branch=1
+CCPARSE args=["-l"] parseErr="--leader requires a leader label"
+CCPARSE args=["-l" "lane-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-l" "3"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-l=lane-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-l" "leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-l" "-f"] parseErr="--leader requires a leader label"
+CCPARSE args=["-l" "-k"] parseErr="--leader requires a leader label"
+CCPARSE args=["-l" "--name" "lane-2"] parseErr="--leader requires a leader label"
+CCPARSE args=["-f" "-l"] parseErr="--leader requires a leader label"
+CCPARSE args=["--lane" "-k"] factoryEnabled=false rest=["--lane"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "--name" "lane-2"] factoryEnabled=false rest=["--lane" "--name" "lane-2"] laneLabel="lane-2" isLane=true branch=0
+CCPARSE args=["--leader" "leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["--leader=leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-f" "--leader" "leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-f" "--leader=leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CODEX args=["--lane"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane" "lane-2"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane=lane-2"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane" "3"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane" "leader-2"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane" "-f"] err= exitCode=1 stderr="FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader\n" stdoutLen=0
+CODEX args=["--lane" "-k"] err= exitCode=1 stderr="KANBAN_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead\n" stdoutLen=0
+CODEX args=["--lane" "--name" "lane-2"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["-f" "-l"] err= exitCode=1 stderr="FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader\n" stdoutLen=0
+CODEX args=["--leader" "leader-2"] err=--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target exitCode=-1 stderr="" stdoutLen=0
+CODEX args=["-f" "--leader" "leader-2"] err= exitCode=1 stderr="FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader\n" stdoutLen=0
+--- PASS: TestZZT1399EntryProbe (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.196s
+exit 0
+```
+
+### PV-85 — RED-now re-runs of the changed criteria, verbatim
+
+Launcher cells (tree binary):
+
+```
+RED-1 moai cc -l: exit=1 stdout-bytes=0 stderr=ERROR --Leader requires a leader label.
+RED-2 moai codex -l: exit=1 stdout-bytes=0 stderr=ERROR --Leader requires a leader label.
+RED-3 moai cc -l lane-2: exit=1 stdout-bytes=0 stderr=ERROR --Leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target.
+RED-5 moai codex -f 3: exit=1 stdout-bytes=0 stderr=FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader
+RED-6 moai cc -f 3: exit=1 stdout-bytes=0 stderr=ERROR -F/--Factory takes no argument (the factory leader), the role token -f lane, which joins this session to a running factory as the next free lane, or a lane label (e.g. -f lane-2) that launches exactly that one lane, got "3".
+RED-10 moai cc -f -l: exit=1 stdout-bytes=0 stderr=ERROR --Leader requires a leader label.
+RED-K2 moai codex -k: exit=1 stdout-bytes=0 stderr=KANBAN_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead
+```
+
+Grep and `find` cells (script output: exit code and stdout line count; the two PCRE cells RED-N1 and RED-D1 printed `exit=0` with 189 and 157 lines in the interactive shell):
+
+```
+RED-K3: exit=0 stdout-lines=15 
+RED-K4: exit=0 stdout-lines=27 
+RED-K4-find: exit=0 stdout-lines=18 
+AC-012-positive-control-find(today): exit=0 stdout-lines=4 
+RED-N1: exit=2 stdout-lines=0 
+RED-N2: exit=0 stdout-lines=22 
+RED-N3: exit=0 stdout-lines=179 
+RED-C1: exit=1 stdout-lines=3 
+RED-C2: exit=0 stdout-lines=2 internal/template/catalog.yaml:41:            - name: moai-kanban-foreman | internal/template/catalog.yaml:43:              path: templates/.claude/skills/moai-kanban-foreman/
+RED-C3: exit=0 stdout-lines=3 39965 | 18909 | 26030
+RED-C4: exit=0 stdout-lines=3 .claude/rules/moai/workflow/kanban-dispatch-detail.md:1 | .claude/rules/moai/workflow/kanban-dispatch-mechanics.md:1 | .claude/rules/moai/workflow/cross-session-messaging-detail.md:1
+RED-D1: exit=2 stdout-lines=0 
+RED-D2: exit=0 stdout-lines=1 4
+RED-D3: exit=1 stdout-lines=1 0
+RED-D5: exit=0 stdout-lines=46 
+RED-D5-old-pattern: exit=0 stdout-lines=46 
+RED-D8: exit=0 stdout-lines=16 
+RED-D7: exit=0 stdout-lines=19 
+RED-S1: exit=0 stdout-lines=16 
+docs-line-cites: exit=0 stdout-lines=2 38:| `-l, --lead <name>` | With `-f lane` / `-f lane-<n>`: which leader session the record-absence verification targets (default `leader`; the former spelling `lead` is refused). When the run's record is missing or retired while a live leader exists, the join verifies that leader (pid + process-start) and restores its run | | 80:Grow a run one lane at a time with `moai cc -f lane` (auto-join the next free number) or `moai cc -f lane-<n>` (that number exactly). Both forms already name the lane, so passing `--name`/`-n` alongside them is an error. An explicitly-picked number that collides with a live lane bumps to the next free number. A number is otherwise skipped only while a live session holds it — a dead lane's claim no longer blocks its number (an explicit pick reuses it right away), but `-f lane` auto-assignment always takes one past the highest live number and never backfills a gap. Lane ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db` — or, when the launch directory is a temporary one (no absolute `MOAI_HOME` override), project-local under `<base>/.moai/db/<project-key>/factory/`, the same exception the backlog queue follows; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices. A factory run now records the process identity of the session that owns it, so a run whose leader has died is retired automatically the next time a lane joins instead of leaving that join stuck on `AMBIGUOUS_FACTORY`. The inverse is covered too: when a lane joins and the run's record is missing or retired while a live leader session exists, the join verifies that leader (pid plus process-start fingerprint, targeted with `-l/--lead`, default `leader`), restores its run record, and joins anyway — two or more verified leaders fail closed naming each candidate. `moai factory runs` lists every run with its owner's liveness, and `moai factory runs --retire <run-id>` retires one by hand — refused unless that run's owner is actually dead.
+```
+
+### PV-90 — green-path observations on the modeled final tree, verbatim
+
+```
+AC-012 chain/companion identifiers (non-test): exit=0 stdout-lines=7
+AC-012 board API and carrier symbols: exit=0 stdout-lines=2
+AC-012 board file names: exit=0 stdout-lines=0
+AC-012 kept files: exit=0 stdout-lines=10
+AC-012 substrate consumers: exit=0 stdout-lines=3 | internal/factory/backlog_store.go:2 | internal/factory/integration_lock_mutation.go:2 | internal/factory/slot_lease.go:3
+AC-012 role.go keeps RoleLeader: exit=0 stdout-lines=1 | 2
+AC-018 file names: exit=0 stdout-lines=0
+AC-018 old import path: exit=1 stdout-lines=0
+AC-018 package directory: exit=1 stdout-lines=2 | ls: internal/kanban: No such file or directory | internal/factory
+AC-019 panel string: exit=1 stdout-lines=1 | 0
+AC-019 legacy route file: exit=0 stdout-lines=1 | internal/web/legacy_routes.go
+AC-020 renamed rules (template): exit=0 stdout-lines=3
+AC-020 old rule path: exit=1 stdout-lines=1 | ls: internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md: No such file or directory
+AC-020 catalog old/new: exit=0 stdout-lines=2 | 0 | 2
+AC-020 archive list: exit=0 stdout-lines=1 | 1
+AC-020 skill dir: exit=1 stdout-lines=2 | ls: internal/template/templates/.claude/skills/moai-kanban-foreman: No such file or directory | internal/template/templates/.claude/skills/moai-factory-foreman
+```
+
+### PV-88 — cross-artifact ordering check, by hand
+
+Every clause that orders work in the acceptance surface (the Definition of Done, and each criterion's Given, When, and Then), read against the order of plan.md §D and, where the clause concerns a deletion or a rename, against the compile proof of PV-74. The CN-4 verb (PV-84) flags candidate records mechanically; this table is the by-hand reading of each obligation, including the ones the verb cannot see (a clause spread across two sentences, or a milestone bound by prose).
+
+| # | Obligation (where it is stated) | Plan binding | Satisfied |
+|---|---------------------------------|--------------|-----------|
+| 1 | The AC-004 golden is committed alone BEFORE any change (AC-004 Given; Definition of Done 6) | M1 commits the golden alone; M2 is the first milestone that changes a parse | yes |
+| 2 | AC-015's eight mutant reds (a)-(h) and AC-017's mutant red are recorded BEFORE M5a starts (AC-015, AC-017, Definition of Done 2) | M1 authors the net and the tolerance test and records the reds; M5a is the first removal | yes |
+| 3 | Mutants (g) and (h) are re-observed red AFTER the M2 re-pin of the lane tests (AC-015, Definition of Done 2) | M2 states the re-observation as its closing step | yes |
+| 4 | RED-11, RED-12, RED-14 are re-observed on the milestone tree BEFORE the cc/glm parse changes; RED-13 and the codex rows of RED-14 BEFORE the codex parse changes (AC-006, AC-003, AC-005, Definition of Done 1) | M2 and M3 each open with that observation as their first act (the M3 first act was added in v0.8.0) | yes |
+| 5 | The update fixture of AC-020 is observed RED on the pre-rename template BEFORE the rename commit (AC-020, Definition of Done 3) | M10 commit 1 is the fixture test alone, commit 2 the rename; the commit graph is the witness | yes |
+| 6 | `moai constitution validate` runs BEFORE the first constitution edit and AFTER each of the four (AC-022) | M10 commit 2 | yes |
+| 7 | The three constants `MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_LABEL` are deleted only AFTER their last readers (AC-012, AC-013, Definition of Done 7) | M5a removes the launcher readers, M5b removes the hook readers and then the constants; compile proof PV-74 stages M5a and M5b | yes |
+| 8 | `leadFlagShort` is deleted only AFTER the Codex parse stops reading it (Definition of Done 7) | M3 deletes it with its last reader; PV-77 is the negative control for M2 | yes |
+| 9 | The shared lock substrate is re-homed BEFORE the board is deleted (AC-012, Definition of Done 7) | M6 step 1 (stage M6a), then step 2 (stage M6b); PV-75 is the negative control | yes |
+| 10 | `langEnglish` and `operatorLang` move BEFORE the kanban notice file is deleted; the test helpers move BEFORE the test files that define them (AC-012, AC-014) | M5b step 1; M5b and M6 helper moves; PV-76 and PV-78 are the negative controls | yes |
+| 11 | Renames come AFTER removals so nothing is renamed and then deleted (design.md §1) | M7 to M10 follow M6; `internal/web` is renamed at M9, after the Go-wide M7 and M8, and its view model is deleted in the same stage; no symbol renamed at M7 is deleted later (the chain view model is not renamed at M7) | yes |
+| 12 | The package path is `internal/kanban` through M7 and `internal/factory` from M8 on (AC-012, AC-016, AC-020) | M8 renames the package; M9 imports it | yes |
+| 13 | The web sources carry the word until M9 lands, the template mirror paths until M10 lands, so AC-018's full command closes at M10 (AC-018) | M7, M8, M9, M10 each clear their part; AC-018 is bound to M10 | yes |
+| 14 | AC-013's grep half is read AFTER the hook readers are gone (AC-013) | M5a test half, M5b grep half | yes |
+| 15 | The foreman path-pinned tests are re-pointed in the SAME commit as the skill rename (AC-020) | M10 commit 2 | yes |
+| 16 | The net runs at every milestone from M2 through M9 and the windows build at every Go milestone (AC-015, AC-018) | the verification gate of plan.md §D | yes |
+| 17 | The four locales and each page land in ONE commit; AC-023 and AC-025 close at sync-audit (AC-023, AC-025) | M11 | yes |
+| 18 | M2, M3, and M4 merge as one integration unit; M6 and M10 hold two commits in the stated order (spec.md §E, plan.md §D) | plan.md §D integration units | yes |
+
+Sweep results:
+
+- old counts and labels: `grep -rnE '24 requirements\|24 of 25\|REQ-001\.\.REQ-024\|M11 scope\|95 files\|34 production\|M7 flips RED-N2\|flips at M7, M8\|28 references' *.md \| grep -v '^progress.md:\(66\\|94\\|90\\|89\\|125\)' \| cut -c1-80` -> progress.md:119:| PV-70 | `moai spec lint SPEC-LAUNCHER-ENTRY-FLAGS-001 --strict / spec.md:31:- 2026-10-02 (v0.7.0): Plan-audit iteration 1 (FAIL, 0.72; findings D
+- old deletion lists: `grep -rnE '10 board files and 13 tests\|13 board tests\|four-constant budget\|board family \(10 files\)' *.md \| cut -c1-80` -> no output (exit 0)
+- requirement count lines: `grep -n 'this SPEC carries' acceptance.md spec.md \| cut -c1-150` -> acceptance.md:3:All criteria are mechanically verifiable. Tier L ceiling: 25 requirements and 25 criteria; this SPEC carries 25 requirements and 25 cr / spec.md:156:Full Given-When-Then scenarios, the RED-now evidence ledger, and the Definition of Done live in `acceptance.md`. Tier L ceiling: 25 requir
+
+Reading of the sweep: the two hits of the first command are the v0.7.0 history line of `spec.md` (line 31) and the historical row PV-70, which record the v0.7.0 counts and stay as history; the second command is empty (the old M5a/M5b/M6 deletion lists are gone); the third shows both ceiling statements at 25 requirements and 25 criteria.
+
 Re-run of the RED-now cells of the criteria this revision changed, on HEAD `b9242da00ce489c4f26efb5f6d447ccafef08c54` (this run): RED-1, RED-3, RED-10 (`cc -l`, `cc -l lane-2`, `cc -f -l`: exit 1, the same stderr lines as the ledger), RED-2, RED-5 (`codex -l` exit 1 `--Leader requires a leader label.`; `codex -f 3` exit 1 with the `FACTORY_MODE_UNSUPPORTED_BACKEND` line), RED-6, RED-4 (`--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (2.92s)`), RED-K3 (the same 15 files), RED-K4 (24), RED-8 (4), RED-8b (`envkeys.go`, `codex_launcher.go`), RED-N1 (189), RED-N2 (22), RED-N3 (179), RED-C1 (three `No such file`, exit 1), RED-C2 (`catalog.yaml:41,43`), RED-C3 (39965, 18909, 26030 bytes), RED-D1 (157), RED-D2 (4), RED-D3 (0, exit 1), RED-D4 (four zeros, exit 1), RED-D5 (46), RED-D6 (four `No such file`, exit 1), RED-D7 (19), RED-C4 (three counts of 1, exit 0), RED-11 to RED-13 (PV-60), RED-S1 (the same 16 files), BASE-4 (windows build exit 0), BASE-5 (2). The AC-015 cli selector with both settings-test names swept 4 tests today (`TestCCFactoryEntryRecordsFailOpenRunMetadata`, `TestCCFactoryLaneJoinsDiscoveredLeader`, `TestGLMFactoryLaneJoinsDiscoveredLeader`, `TestPrepareKanbanSettingsWritesTransientFile`) and sweeps 8 once the four net tests of M1 exist. The cells of AC-009, AC-010, AC-011, AC-014, AC-019, AC-021 were not changed in this revision and were not re-run.
 
 Reading of PV-46/PV-47 (and PV-70, which supersedes them for v0.7.0): REQ-to-AC coverage is established by PV-47, not by the lint. Counts at authoring: 24 requirements (Tier L ceiling 25) and 25 criteria (Tier L ceiling 25 — at the ceiling; no further criterion without merging or splitting the SPEC).
 
-Gaps: see `plan.md` §G (eleven plan-level items) and `research.md` §R14 (twenty-one items) — none is asserted as fact in `spec.md`. Gaps recorded by this revision specifically: one compound shell command (a heredoc that also wrote two scratch files) was refused by the worktree guard and re-run as separate plain commands and Write calls, with no measurement replaced by source reading; the scratch binary reports no commit in `version`, so its judging build is identified by the tree it was built from (PV-71) rather than by a printed commit; the AC-015 mutants (e)–(h), the new net tests, the update fixture, and every "new test" of acceptance.md were not run (they do not exist yet); the plan-audit report is a local gitignored file and was read, not edited.
+Reading of PV-84 (supersedes PV-70 for v0.8.0): REQ-to-AC coverage is again established by the hand count, not by the lint; the lint reports `No findings` and the collection verb reports 25 definitions with no `UNCOVERED` line, and the verb's `mapped` is generous (it counts any line that names both an AC and the REQ), so the per-requirement `Verifies` counts of PV-84 are the evidence. Counts at authoring: 25 requirements (Tier L ceiling 25, at the ceiling after the REQ-019 split) and 25 criteria (ceiling 25, at the ceiling; the new `-l` and `--leader` shapes were folded into AC-003 and AC-005).
+
+Gaps: see `plan.md` §G (sixteen plan-level items) and `research.md` §R14 (twenty-one items) — none is asserted as fact in `spec.md`. Gaps recorded by the v0.8.0 revision specifically: (1) the compile proof models each milestone's DELETIONS and the edits that keep the build, not the added code, and prints M0, M1, and M11 as stages with no Go change; (2) the semantic re-pin of every test the probe retargets (the removed constants are mapped to surviving factory markers as a compile model) and the per-function classification of the cases the probe deleted are the run phase's; (3) the five lock-coupled tests of `internal/kanban` are modeled by deletion although two of them (the errno classification and the cross-process exclusion) are to be re-pointed, and whether retained tests already cover the substrate was not measured; (4) the runtime effects of the M10 renames (embedded template paths, catalog hash, foreman path pins) are not compile effects and are gated by AC-018 to AC-022, not by the probe; (5) PV-77 and PV-79 quote two redeclaration errors and one file-name collision from an interim replay of the stage data before the corrections entered it, and PV-82 quotes the view-model reader errors from the M9 prototype tree, so those rows are attributable to the same edit set but not to the committed stage data end to end; (6) the committed runner's own run (PV-74) began before the header comment of `probe.go` was reworded; no code line changed, and the file was deliberately left as run (it is not gofmt-aligned in its `var` block) so that the recorded run stays attributable to it; (7) the plan-audit reports `.moai/reports/t1399/plan-audit-iter1.md` and `plan-audit-iter2.md` are local gitignored files; both were read and neither was edited; (8) the worktree guard refused several compound shell commands and the runs were re-issued as plain commands or scripts written with the Write tool, with no measurement replaced by source reading; (9) the Overview attention row (Q24) and the file `role.go` (verdict 20) are findings of the compile proof that the verdicts did not state — they are written to the smallest-footprint reading and returned for acknowledgement.
