@@ -18,7 +18,9 @@
 //     design.md section 4.7 (their STRING VALUES are never touched: only identifiers and the comments and
 //     string literals that spell an identifier are rewritten), and kanbanEntryParse becomes launcherEntryParse;
 //  4. in comments and string literals, rewrites tokens that spell a renamed identifier (camel case with the
-//     capital-K form, or kanbanXxx), so a message or comment naming a renamed function stays true;
+//     capital-K form, or kanbanXxx), so a message or comment naming a renamed function stays true; in
+//     comments only, it also follows the file renames of step 6 (a comment that says kanban.go says
+//     factory_launch_helpers.go afterwards);
 //  5. applies the literal rewrites of design.md section 4.7 "Names that are strings or texts" that M7 owns:
 //     the transient settings prefix moai-kanban to moai-factory (not the skill id moai-kanban-foreman), the error
 //     text prefixes of the five landing and backlog files, the timing lap kanban_record, and the CLI/MCP help
@@ -113,6 +115,57 @@ func isCamelKanban(tok string) bool {
 		return (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 	}
 	return false
+}
+
+// renamedFiles maps the base names of the files this program renames (its own moves, listed here so a re-run
+// still converts a comment another lane wrote after the move) to their new base names.
+var renamedFiles = func() map[string]string {
+	m := map[string]string{}
+	for _, old := range []string{
+		"kanban.go", "kanban_settings.go", "kanban_dispatch_test.go", "kanban_autonomy_test.go",
+		"kanban_bootstrap_test.go", "kanban_launch_facts_test.go", "kanban_lead_name_test.go",
+		"kanban_settings_test.go", "kanban_helper_test.go", "session_start_no_kanban_notice_test.go",
+		"preexisting_kanban_artifacts_m1_test.go",
+	} {
+		m[old] = fileName("internal/cli", old)
+	}
+	return m
+}()
+
+var oldFileRe = func() *regexp.Regexp {
+	names := make([]string, 0, len(renamedFiles))
+	for k := range renamedFiles {
+		names = append(names, k)
+	}
+	sort.Slice(names, func(i, j int) bool { return len(names[i]) > len(names[j]) })
+	for i, n := range names {
+		names[i] = regexp.QuoteMeta(n)
+	}
+	return regexp.MustCompile(strings.Join(names, "|"))
+}()
+
+func isWordByte(c byte) bool {
+	return c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+// replaceFileNames rewrites whole-name mentions of the renamed files in a comment.
+func replaceFileNames(s string) (string, int) {
+	var sb strings.Builder
+	last, n := 0, 0
+	for _, m := range oldFileRe.FindAllStringIndex(s, -1) {
+		if m[0] > 0 && isWordByte(s[m[0]-1]) || m[1] < len(s) && isWordByte(s[m[1]]) {
+			continue
+		}
+		sb.WriteString(s[last:m[0]])
+		sb.WriteString(renamedFiles[s[m[0]:m[1]]])
+		last = m[1]
+		n++
+	}
+	if n == 0 {
+		return s, 0
+	}
+	sb.WriteString(s[last:])
+	return sb.String(), n
 }
 
 type edit struct {
@@ -325,6 +378,10 @@ func main() {
 					}
 					return tok
 				})
+				// a comment that names one of the files this program renames follows the file
+				var nf int
+				nv, nf = replaceFileNames(nv)
+				nt += nf
 				if nv != c.Text {
 					a := off(c.Slash)
 					es = append(es, edit{a, a + len(c.Text), nv})
