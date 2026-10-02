@@ -336,8 +336,23 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 	case 1:
 		return rec.Remaining[0].RunID, nil
 	default:
-		return "", errors.New("AMBIGUOUS_FACTORY: " + describeRunOwners(rec.Remaining))
+		return "", &AmbiguousRunsError{Owners: rec.Remaining}
 	}
+}
+
+// AmbiguousRunsError is the fail-closed answer when more than one active run
+// survives reconciliation (card t1444 ③): the message carries every
+// candidate with the facts that distinguish it — owner classification, lead
+// pid, and start time — and the typed Owners field lets the CLI layer append
+// selection commands without reparsing the text. The string form keeps the
+// bare AMBIGUOUS_FACTORY prefix, so callers that match the sentinel keep
+// working.
+type AmbiguousRunsError struct {
+	Owners []homestate.RunOwner
+}
+
+func (e *AmbiguousRunsError) Error() string {
+	return "AMBIGUOUS_FACTORY: " + describeRunOwners(e.Owners)
 }
 
 // describeRunOwners renders the surviving runs with their owner
@@ -346,7 +361,15 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 func describeRunOwners(owners []homestate.RunOwner) string {
 	parts := make([]string, 0, len(owners))
 	for _, o := range owners {
-		parts = append(parts, fmt.Sprintf("%s (owner %s)", o.RunID, o.Classification))
+		detail := fmt.Sprintf("%s (owner %s", o.RunID, o.Classification)
+		if o.LeadPID > 0 {
+			detail += fmt.Sprintf(", lead pid %d", o.LeadPID)
+		}
+		if o.CreatedAt != "" {
+			detail += fmt.Sprintf(", started %s", o.CreatedAt)
+		}
+		detail += ")"
+		parts = append(parts, detail)
 	}
 	return strings.Join(parts, ", ")
 }
