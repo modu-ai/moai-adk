@@ -145,9 +145,15 @@ workflow:
     # the review comes back failing. Requires the optional `codex` binary.
     # Ships OFF: set enabled to true to turn it on. While it is off the hook
     # short-circuits in shell and costs nothing per turn.
+    # tree_scope (optional, shown below as a commented example only): what a
+    # session with no card-branch evidence does while the gate is on. `review`
+    # (the default) reviews the tree's uncommitted changes; `skip` lets such a
+    # session end its turn without a review. A session on a `WT-` card branch
+    # is reviewed either way.
     codex:
         review_gate:
             enabled: false
+            # tree_scope: review  # review | skip
     # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
     # It reads the most recent convergence result of the configured review
     # backends and keeps the turn going only when a required backend failed;

@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 43fceeadccfccfb4fe90b68e0af345b09104c77b1bf38f0e4319aec986fa0fbe
+              hash: ae8aa96cd0bab5b00c3160b99285a18de969eeff2db6f17bd47816335473edf8
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -111,7 +111,7 @@ catalog:
             - name: moai-domain-html-report
               tier: core
               path: templates/.claude/skills/moai-domain-html-report/
-              hash: b19cb8061d2116d5feb8ff280e0cd057969a451cd3df8e1f4d300a73f2dae949
+              hash: a7f209bad14101bbaccfa09f3b808b7d6f2237f7732facfe2109ef8a5be56974
               version: 1.0.0
             - name: moai-domain-svg-infographic
               tier: core
@@ -132,12 +132,12 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 43fb4731c75de45b130b3f6a7fad62064e5d42adcfc6d61b0092b4a664f2b9f8
+              hash: d852e816c7af90aacf2ca8b1f40cf5bbc7d29b35a5687457c5e1db1ab782dc0a
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: fe3b2e075f011a845d8cddd80d06de729f518069aa8eca896d8d1b77a1437ce9
+              hash: 51ec7b26f7dbb741dea9f9fe9924ddcdc1d2d476f5872aea58cf1d192ad1ff33
               version: 1.0.0
             - name: manager-git
               tier: core
@@ -147,7 +147,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: d1a3fa8d7a8c7d43d85c388f0dfed84968567ae217208ed9aee1579cd16f16ca
+              hash: 48e617b09550a044546ac30fb1f12ad39a2596af56458e897a8442a8544ee007
               version: 1.0.0
             - name: manager-spec
               tier: core

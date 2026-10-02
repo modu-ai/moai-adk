@@ -1,6 +1,9 @@
 package wizard
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TestReportFormatQuestion verifies the report_format question is present and valid.
 func TestReportFormatQuestion(t *testing.T) {
@@ -16,15 +19,21 @@ func TestReportFormatQuestion(t *testing.T) {
 		t.Errorf("report_format should be QuestionTypeSelect, got %v", q.Type)
 	}
 
-	if len(q.Options) != 2 {
-		t.Fatalf("report_format should have 2 options, got %d", len(q.Options))
+	if len(q.Options) != 3 {
+		t.Fatalf("report_format should have 3 options, got %d", len(q.Options))
 	}
 
-	// The closed value set mirrors internal/settings reportFormatValues.
-	expectedValues := []string{"html+md", "md"}
+	// The closed value set mirrors internal/settings reportFormatValues
+	// (SPEC-REPORT-ARTIFACT-DELIVERY-001 REQ-001 — artifact appended, order preserved).
+	expectedValues := []string{"html+md", "md", "artifact"}
 	for i, expected := range expectedValues {
 		if q.Options[i].Value != expected {
 			t.Errorf("option %d value = %q, want %q", i, q.Options[i].Value, expected)
+		}
+	}
+	for _, opt := range q.Options {
+		if strings.TrimSpace(opt.Desc) == "" {
+			t.Errorf("report_format option %q carries an empty Desc", opt.Value)
 		}
 	}
 

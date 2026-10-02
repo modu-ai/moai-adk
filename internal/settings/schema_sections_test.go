@@ -1017,3 +1017,40 @@ func collectScalarLeaves(node *yaml.Node, prefix string, out *[]string) {
 		}
 	}
 }
+
+// TestReportFormatClosedSetArtifact는 report.format 폐쇄 집합이 3값(html+md / md /
+// artifact)임을 단언한다 (SPEC-REPORT-ARTIFACT-DELIVERY-001 REQ-001). 기존 두 값의
+// 순서와 의미는 보존되고 artifact는 추가만 된다(기본값 html+md 불변 — AC-RAD-013).
+// 라디오 필드는 3옵션을 노출하며 artifact 옵션은 세로 라디오 레이아웃의 필수
+// 요소인 OptionDesc 키를 지니고, 그 키는 G1-2 가드(".opt." 영어 사전 강제)를
+// 피해야 한다.
+func TestReportFormatClosedSetArtifact(t *testing.T) {
+	t.Parallel()
+	want := []string{"html+md", "md", "artifact"}
+	if !reflect.DeepEqual(reportFormatValues, want) {
+		t.Fatalf("reportFormatValues = %v, want %v (existing values preserved, artifact appended)", reportFormatValues, want)
+	}
+	f := reportFields()[0]
+	if f.Type != TypeRadio {
+		t.Fatalf("report.format type = %q, want radio", f.Type)
+	}
+	if len(f.Options) != 3 {
+		t.Fatalf("report.format radio options = %d, want 3", len(f.Options))
+	}
+	var artifactOpt *OptionDef
+	for i := range f.Options {
+		if f.Options[i].Value == "artifact" {
+			artifactOpt = &f.Options[i]
+			break
+		}
+	}
+	if artifactOpt == nil {
+		t.Fatal("artifact option missing from report.format radio")
+	}
+	if artifactOpt.OptionDesc == "" {
+		t.Error("artifact option carries no OptionDesc key (vertical radio layout requires it)")
+	}
+	if strings.Contains(artifactOpt.OptionDesc, ".opt.") {
+		t.Errorf("artifact OptionDesc %q contains \".opt.\" — the G1-2 guard resolves it against the English dictionary, so its ko/ja/zh translation never renders", artifactOpt.OptionDesc)
+	}
+}

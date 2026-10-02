@@ -82,3 +82,25 @@ func TestEnsureMCPTableIdempotent(t *testing.T) {
 		t.Errorf("mcp table merge not idempotent:\nonce:  %q\ntwice: %q", once, twice)
 	}
 }
+
+// TestStaleApprovalOverride covers REQ-MS-010 detection: the canonical table
+// is quiet, a global approve default or a per-tool approve is stale, and an
+// override under another server is not ours to report.
+func TestStaleApprovalOverride(t *testing.T) {
+	cases := []struct {
+		name  string
+		body  string
+		stale bool
+	}{
+		{"canonical", string(EnsureMCPTable(nil)), false},
+		{"global approve", "[mcp_servers.moai]\ndefault_tools_approval_mode = \"approve\"\n", true},
+		{"per-tool approve", "[mcp_servers.moai]\ndefault_tools_approval_mode = \"writes\"\n[mcp_servers.moai.tools.factory_msg_send]\napproval_mode = \"approve\"\n", true},
+		{"other server", "[mcp_servers.other]\ndefault_tools_approval_mode = \"approve\"\n", false},
+		{"empty", "", false},
+	}
+	for _, tc := range cases {
+		if _, got := StaleApprovalOverride([]byte(tc.body)); got != tc.stale {
+			t.Errorf("%s: stale=%v, want %v", tc.name, got, tc.stale)
+		}
+	}
+}
