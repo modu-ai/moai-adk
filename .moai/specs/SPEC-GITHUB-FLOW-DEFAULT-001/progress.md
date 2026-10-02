@@ -116,6 +116,24 @@ _<pending sync-phase>_
 - 범위 경계: `internal/mission/git_owner.go:201`·동결 식별자·`mission_surface_baseline.txt` 는 범위 밖(design D-30). 그 줄 때문에 남는 처분 문제는 §G 권고 8.
 - §E.1·§E.2·§E.3 은 이 개정이 건드리지 않았다.
 
+### §J.3 Amendment A-1 변경분 감사(PASS 0.91, audited 49c8d6a55) 이월 항목 — M2a 입력, plan 산출물은 다시 고치지 않는다(감사 해시 보존)
+
+출처: `.moai/reports/t1453/plan-audit-amendment-a1.md` (blocking 없음, 선택 D1~D7). 감사 기록 한 줄: `decision record: decided_by=lane-5/orchestrator evidence_refs=.moai/reports/t1453/plan-audit-amendment-a1.md+AUDIT-VERDICT:PASS@49c8d6a55 ladder_path=gate:in-run amendment delta audit (auto-semantics §9.1: verdict PASS, plan artifacts hash recorded at the audited SHA)`.
+
+| # | 항목 | 반영 시점 |
+|---|---|---|
+| D1 | Amendments 근거문이 "봉인된 계약이 절체 뒤 틀린 브랜치를 싣는다"고 하나 E-48 이 호출자 0 을 보임 — 장차 연결될 때를 조건으로 한 서술로 정리 | M2a 판정서에 현실 서술(휴면 리터럴) 기록 |
+| D2 | REQ-023 "git-flow 에서 byte-identical" 은 목표가 `develop` 일 때만 성립 — 판정서에 그렇게 적는다 | M2a |
+| D3 | plan.md M2a 의존 칸이 M1 의 설정 해석을 공유한다고 적었으나 투영은 설정을 안 읽음 — 의존은 M1 의 "빈 목표 거부" 결정이다 | M2a 판정서 |
+| D4 | Out-of-Scope 에 `git_owner.go:201`·`mission_surface_baseline.txt` 명시 | 다음 SPEC 개정 기회 |
+| D5 | "쓸 수 있는 계약 없음" 을 영값 `mission.MissionContract{}` 로 고정 | M2a 테스트 작성 시 |
+| D6 | 범위 가드 증거에 움직이는 기준 `4bf547bca` 대신 M2a 시작 커밋 기준 + 프로브 8 의 경로(`internal/mission internal/contract/testdata`) | M2a |
+| D7 | 특성화 테스트는 서명 변경보다 앞선 별도 커밋으로 | M2a |
+
+### §J.4 M1b — 빈 통합 목표 거부 문면 수리 (리더 요청 ①, 측정 `.moai/reports/t1453/m1-empty-target-impact.md`)
+
+리더 판정: 거부 문면이 "무엇을 설정하라"를 말하지 않으면 그 자체가 결함. 측정된 결함: done·sweep·goal approve 는 `(git_strategy workflow)` 만, `factory merge ready` 는 틀린 플래그(`--branch`, 대상 플래그는 `--develop`), `MERGE_NOT_ON_ORIGIN` 은 기준 출처 미표기, `moai doctor` 는 빈 목표를 ok 로 보고. 수리는 REQ-GFD-003(develop 폴백 없음)을 실효 있게 하는 M1 의 연장이며 AC-GFD-003 의 green-path 를 "거부는 설정 키와 해결 방법을 말한다"까지 확장한다.
+
 ## §G.1 운영자가 직접 수행하는 단계 (런북, 이 카드의 레인은 실행하지 않는다)
 
 - `moai constitution amend` 두 번(`CONST-V3R5-027`, `CONST-V3R5-028`) — 5단째 인간 승인이 대화형 Y/N 이다(D-26).
