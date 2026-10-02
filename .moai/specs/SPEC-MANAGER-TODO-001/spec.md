@@ -1,10 +1,10 @@
 ---
 id: SPEC-MANAGER-TODO-001
 title: "Rename and repurpose mission-governor into manager-todo — todo-queue management, Jev decision wiring, dispatch ownership, and /moai:todo --auto serial mode"
-version: "0.1.0"
+version: "0.2.0"
 status: completed
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-10-02
 author: manager-spec
 priority: P1
 phase: "v3.3.0 target"
@@ -21,6 +21,7 @@ tier: L
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 0.1.0 | 2026-09-29 | Initial plan-phase draft. Operator directive 2026-09-29: rename and repurpose the `mission-governor` agent into `manager-todo`; add `/moai:todo --auto` serial processing; codify the Jev decision boundary; absorb the GTD auto-mission judgment as a sub-role; full live-reference refresh. | manager-spec |
+| 0.2.0 | 2026-10-02 | Narrow amendment to a `completed` SPEC, card t1403 (`SPEC-JEV-AUTO-EXCEPTION-001`). `SPEC-TODO-AUTO-PRIORITY-001` gave the `--auto` cycle an auto-scoped ranking exception — it may rank the queued candidates it is about to accept, selection order only — so REQ-MT-014 and REQ-MT-015 gain one scope sentence each: each governs consultation of the local Jev scripts, which stays display-only, and the cycle's own Jev ranking is the one `--auto` exception. No requirement removed or renumbered; `status` stays `completed` (in-place amendment, `SPEC-JEV-AUTO-EXCEPTION-001` `progress.md` §G OD-4). | manager-spec |
 
 ## A. Summary
 
@@ -66,9 +67,9 @@ Requirement domain prefixes: REN (rename/repurpose), REF (reference sweep refres
 
 ### B.4 Jev decision boundary (M4)
 
-- **REQ-MT-014** (Ubiquitous): Where the Jev local scripts (`scripts/jev/`) are available, `manager-todo` and the `--auto` cycle shall treat Jev consultation (`triage.sh`, `route.sh`) as a permitted display-only signal for dispatch order and priority judgment, and shall treat Jev output as judgment input for the lead — never as authority.
+- **REQ-MT-014** (Ubiquitous): Where the Jev local scripts (`scripts/jev/`) are available, `manager-todo` and the `--auto` cycle shall treat Jev consultation (`triage.sh`, `route.sh`) as a permitted display-only signal for dispatch order and priority judgment, and shall treat Jev output as judgment input for the lead — never as authority. **Scope (v0.2.0):** this requirement governs consultation of the local Jev scripts, which stays display-only; the cycle's own Jev ranking of the queued candidates it is about to accept is the one `--auto` exception (the auto-scoped ranking exception under `SPEC-TODO-AUTO-PRIORITY-001`), it covers the cycle's own candidate selection order only (selection order only), and everything else stays display-only and never as authority.
 
-- **REQ-MT-015** (Ubiquitous — prohibition): Jev output shall never be the basis of a queue mutation, a completion verdict, a merge approval, or any third-grade decision (operator/lead owned); a Jev absent-key or absent-network degradation shall exit the consultation as a labelled non-finding and the cycle shall proceed on lead judgment alone.
+- **REQ-MT-015** (Ubiquitous — prohibition): Jev output shall never be the basis of a queue mutation, a completion verdict, a merge approval, or any third-grade decision (operator/lead owned); a Jev absent-key or absent-network degradation shall exit the consultation as a labelled non-finding and the cycle shall proceed on lead judgment alone. **Scope (v0.2.0):** this prohibition governs consultation of the local Jev scripts and keeps its force for every queue mutation, completion verdict, merge approval and third-grade decision; the one `--auto` exception is the cycle's own Jev ranking (the auto-scoped ranking exception under `SPEC-TODO-AUTO-PRIORITY-001`), which covers the cycle's own candidate selection order only (selection order only) and adds, removes or edits no card.
 
 ### B.5 GTD auto-mission absorption (M4)
 

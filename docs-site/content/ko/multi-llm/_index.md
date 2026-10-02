@@ -93,7 +93,7 @@ effort는 슬래시 명령으로 바꿀 수 있습니다.
 /effort low       # 속도 우선
 /effort high      # 깊은 추론
 /effort xhigh     # 고난도
-/effort ultracode # xhigh + 워크플로우 자동 편성
+/effort ultracode # 워크플로우 자동 편성 토글
 /effort auto      # 모델이 맥락에 맞춰 선택
 ```
 
