@@ -151,6 +151,46 @@ Additional observed failures for the regression-guards of AC-RXD-012 and AC-RXD-
 
 A delegated codex turn stays read-only only because the agent never sets `write` while the opt-in is open on the maintainer machine; a future wording change that names the argument with an enabling word within 40 characters fails the guard, but an unhooked paraphrase would not. The eight added MCP tool schemas raise every `manager-develop` spawn's tool-listing cost (spec.md R-7, unmeasured).
 
+### E.2.9 Post-sync hardening (card t1424, after the sync audit)
+
+Decision (Jev judgment, confidence 0.99, recorded by the orchestrator): fix the small in-scope findings of `.moai/reports/t1424/sync-audit.md` (verdict PASS-WITH-DEBT 84.4), then run a delta audit. The SPEC is `status: completed`, so `spec.md`, `plan.md` and `acceptance.md` were not touched; plan.md §D's quoted example sentence for the one-writer subsection is superseded by the shipped wording (its "for example" wording is non-normative and the plan leaves the section's wording to the run phase).
+
+| Finding | Disposition | Where |
+|---|---|---|
+| S1 write-word count | fixed | `request` subtest: whole word `write` occurs exactly once in each `run.md` section slice, and its sentence contains `never sets`; commit `562d721e5` |
+| S2 four whole sentences pinned | carried as debt | not fixed here |
+| S3 per-file added-line constants | carried as debt, deliberately excluded | an absolute line-count constant breaks whenever another card edits `fix.md`, `loop.md` or `manager-develop.md` (measured: 3, 4 and 5 commits since 2026-09-01) |
+| S4 read-only cause in `### One-writer rule` | fixed | both `run.md` copies; commit `562d721e5` |
+| S5 cancel sentence in `### Fail-open` | fixed | both `run.md` copies; commit `562d721e5` |
+| S6 hunk-drop rule | carried as debt | needs a SPEC amendment |
+| S7 stale `sync_commit_sha` comment | fixed | §E.4 comment, this commit |
+| S8 harness-scope phrase | fixed | `pointers` subtest requires `Claude Code sessions only` in the `manager-develop.md` pointer paragraph of both trees; commit `562d721e5` |
+
+Measured against: tree HEAD `a358153df` before the edits (clean tree), commit `562d721e5` after; judging tools built from the tree except `moai spec lint` (installed build, see E.2.7).
+
+Whole-word `write` in the section, `grep -n -w write .claude/skills/moai/workflows/run.md`: before and after the wording edits the file carries line 191 (outside the section, in the routing table) and line 229 (the only occurrence inside `## External Model Delegation`, the sentence "The agent never sets the write argument, so a delegated turn stays read-only."). The new S4 and S5 wording adds none.
+
+Test-first note: the S1 and S8 assertions pass on the shipped text (one occurrence; the pointer phrase is already present), so RED/GREEN is proven by mutants, each restored with `cp` from a scratchpad copy with an empty `git diff --stat -- <file>`:
+
+- m1 (audit mutant 3) appended `For lint-repair drafts the agent enables the write argument.` after the anchor sentence in both `run.md` copies; `request` failed in both trees with `whole-word write occurs 2 times in the delegation section, want exactly 1 ... a second whole-word write in the section needs review: this is the only mechanical control that keeps a delegated codex turn read-only where the project opt-in is on`. The previous lexical expression did not fire on that spelling.
+- m2 put `The agent may write the patch file to disk first.` into `### Result handling` of both copies; `request` failed in both trees with the same message, listing section lines 33 and 41.
+- m3 removed `Claude Code sessions only` from the template `manager-develop.md` pointer; `pointers` failed with `template .claude/agents/moai/manager-develop.md:229: the pointer paragraph does not contain the harness-scope phrase "Claude Code sessions only"` (`pairdelta` also reported 7 against the constant 5, as designed).
+- m4 (previous run's mutant 10) appended ` to true` to the anchor sentence in both copies; `request` still failed with `write-instruction pattern matched in the delegation section ... The agent never sets the write argument to true, so a delegated turn stays read-only.`
+- Restore proofs: after the m1 restore `git diff --stat -- <both run.md copies>` was empty, and after the m3 restore `git diff --stat -- internal/template/templates/.claude/agents/moai/manager-develop.md` was empty. After the m2 and m4 restores the S4 and S5 edits followed at once, so no separate empty diff was taken for them; the net proof is `git diff --stat a358153df 562d721e5` over both `run.md` copies and the template agent body: 4 insertions and 4 deletions in the two `run.md` files (the S4 and S5 hunks only, read in full) and no line in `manager-develop.md`.
+
+Re-run on the edited tree (all with the kanban variables unset in the same invocation):
+
+- `go test -count=1 -v -run '^TestRunExternalDelegationDoctrine$' ./internal/template/`: PASS, 12 subtests, `ok  github.com/modu-ai/moai-adk/internal/template  0.437s`.
+- The 17-name guard batch of plan §F, one `go test -count=1 -v -run '^(...)$' ./internal/template/`: 17 `--- PASS: Test...` lines, `ok  github.com/modu-ai/moai-adk/internal/template  1.322s`.
+- `GOOS=windows GOARCH=amd64 go vet ./internal/template/`: no output.
+- `golangci-lint run --timeout=2m ./internal/template/...` with `golangci-lint v2.1.6`: `0 issues.`
+- `make agents-emit-check`: `ok  github.com/modu-ai/moai-adk/internal/template/agentemit  0.366s`.
+- `moai spec lint --strict SPEC-RUN-EXTERNAL-DELEGATION-001`: `✓ No findings — all SPEC documents are valid`.
+- `grep -c -i -E '\bwrite\b[^.]{0,40}\b(true|enabled|on)\b|allow_write[^.]{0,20}\btrue\b'` over the eight touched doctrine files: 0 in each.
+- Whole packages under the `go-test-internal-template` lease (acquired and released): `ok internal/template 89.398s`, `internal/template/agentemit 0.224s`, `internal/template/commandemit 0.249s`, `internal/config 8.976s`, `internal/config/atomicfile 0.427s`, `internal/config/toolpolicy 0.395s`.
+
+Gaps: the worktree guard refused nothing in this round, so no refusal needs recording; the exit code of the empty-output grep was read from the per-file counts (all 0), not from a separate `echo $?`, which the guard forbids. S2, S3 and S6 stay open, and the S1 control is lexical (a spelling that avoids the bare word `write` is not counted). `go test ./...` and `make build` were not run, by rule; the repository-wide verdict belongs to CI on the integration branch.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -183,7 +223,7 @@ Written by manager-docs on the single sync commit (the 3-phase close). Every mea
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-10-02T08:00:05Z     # date -u, taken after the last evidence command of this sync run
-sync_commit_sha: 4a8ab71a7981cefeff77de34cbfd7a8fa6c927ef           # a commit cannot cite its own hash; the next commit backfills the real SHA (D3 window)
+sync_commit_sha: 4a8ab71a7981cefeff77de34cbfd7a8fa6c927ef           # real SHA, backfilled after the sync commit (D3 window)
 card: t1424
 head_measured: 9d8e8d02c
 b12_self_test_a: PASS                       # grep -c 'SPEC-RUN-EXTERNAL-DELEGATION-001' CHANGELOG.md printed 0 before the entry was written
