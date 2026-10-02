@@ -63,6 +63,32 @@ Other commands, each its own run, exit 0:
 
 AC-016 (a) pre-check: `grep -rlF "counter_refs=" ...` and the same for `searched=` over the rule, skill and hook sources (test files excluded) each print exactly the two auto-semantics copies.
 
+### M4 — stale Kickoff wording alignment (milestones M4 and M5 run by a second manager-develop role spawn, card t1344)
+
+Measured at tree 4e0a60bc1 plus the uncommitted M4 edits. Edited exactly two documents, each in the template copy first and then the live copy: `workflows/plan/spec-assembly.md` (7 lines rewritten as 7 lines) and `workflows/moai.md` (the pipeline gate 2 line and the Step 11.3 line, one line each; the two copies were edited separately with the same `old_string`, never copied onto each other).
+
+AC-014 readings (each a separate command, run on both the live and the template path):
+
+- `grep -c "stays MANDATORY"` and `grep -c "does NOT substitute for the gate"` on both `spec-assembly.md` copies: `0`, `0`. `grep -c "never bypasses it"` on both `moai.md` copies: `0`. `grep -ci "score-independent"` on all four files: `0` each.
+- `grep -c "§9.2"`: `moai.md` live 2 and template 2, `spec-assembly.md` live 1 and template 1. `grep -c "§9.1"`: 2 in every one of the four files.
+- `wc -l`: `spec-assembly.md` 597 and 597, `moai.md` live 284 and template 282.
+- `diff` live `moai.md` against the template copy, hunk headers only: `215c215`, `245c245`, `253d252`, `283,284c282` (exactly the four pre-existing ones).
+- Preserved: `[HARD] The Implementation Kickoff Approval` opening, `moai plan render-html` step, `Fail-open` paragraph, and the statement that the HTML report enriches the review surface and does not replace the gate, in `spec-assembly.md`; the merged-round sentence and the derived-completion-condition sentence in `moai.md`. The contract-mode blocks that follow in `moai.md` are untouched.
+- Orphan scan: `git diff -U0 | grep -c "manager-tdd\|manager-ddd"` printed `0`.
+
+`HUMAN GATE` label decision: kept unchanged on both lines. Reason: the rewritten sentences now qualify the gate as the operator form with the default autonomous transition of section 9.1, so the label no longer stands alone; renaming it would diverge from the same label in the sibling files the plan leaves unedited (decision-index Q12), and the requirement scope is the two stale phrases only.
+
+Named tests, each its own command with output redirected to a file, exit code observed as its own field:
+
+- `go test -count=1 -v -run '^(TestSpecAssembly_RewrittenToCLIPath|TestSpecAssembly_NoNewInternalTokens)$' ./internal/cli/` exit 0, 2 `--- PASS`, `ok  github.com/modu-ai/moai-adk/internal/cli 1.521s`.
+- `go test -count=1 -v -run '^(TestSubSkillLOCCeiling|TestEntryRouterLOCCeiling)$' ./internal/skills/` exit 0, 2 `--- PASS`.
+- `go test -count=1 -v -run '^(TestImplementationKickoffApprovalPreservedBeforeGoal|TestTemplateNoInternalContentLeak)$' ./internal/template/` exit 0, 2 `--- PASS`.
+- Contract-mode block tests (`TestContractModeBlocksWellFormed`, `TestContractModeLocalTemplateParity`, `TestContractModeSSOTSections`, `TestContractModeLifecycleOrder`, `TestContractModeLifecycleEvidence`, `TestContractModeBlockCondition`, `TestContractModeAuditRetryBlocks`, `TestContractModeSyncBlocks`, `TestContractModeSigningBlocks`, plus `TestJevDoctrineAmendment` from the same file) exit 0, 10 `--- PASS`, no `--- FAIL`.
+
+`make build` exit 0. It regenerated one tracked file, `internal/template/catalog.yaml` (one hash line); that file is part of the M4 commit.
+
+Lexical-only checks: every grep above is a text match; whether the rewritten sentences agree with section 9.1 in meaning is a reading for the sync audit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
