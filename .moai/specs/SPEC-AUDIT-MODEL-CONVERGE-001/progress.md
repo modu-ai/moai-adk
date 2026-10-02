@@ -268,7 +268,48 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-10-02T14:50:22Z
+sync_commit_sha: pending-backfill        # a commit cannot cite its own SHA; backfilled in a following commit
+card: t1423
+tier: L
+run_commit_range: 25e6e9737..4ae90d62f   # M1 dd44df3cf .. M9 4ae90d62f; 25e6e9737 is the parent of M1 (git log --oneline)
+spec_amendments: { "0.1.5": 8ed87e9e7, "0.1.6": 6074d7f48 }
+frontmatter_status_transitions: { spec_md: "in-progress -> implemented -> completed (one sync commit)" }
+changelog_entry_position: "[Unreleased] / Added, first entry"
+b12_self_test_a: "grep -c SPEC-AUDIT-MODEL-CONVERGE-001 CHANGELOG.md -> 0 before the entry (no duplicate)"
+b12_self_test_b: "20 live AC-ACV identifiers in acceptance.md (unique-id count, no reserved tokens present); the entry says 20"
+b12_self_test_c: "every implementation file the entry names was Read, and its path exists (ls)"
+plan_audit:
+  iteration_1: { verdict: FAIL, score: 0.81, report: .moai/reports/t1423/plan-audit-iter1.md }
+  iteration_2: { verdict: FAIL, score: 0.81, report: .moai/reports/t1423/plan-audit-iter2.md }
+  iteration_3: { verdict: FAIL, score: 0.84, report: .moai/reports/t1423/plan-audit-iter3.md }
+  iteration_4: { verdict: PASS-WITH-DEBT, score: 0.91, report: .moai/reports/t1423/plan-audit-iter4.md, audited_sha: 259fbd697 }
+  iteration_5_delta_0_1_5: { verdict: PASS-WITH-DEBT, score: 0.89, report: .moai/reports/t1423/plan-audit-iter5.md, audited_sha: 8ed87e9e7 }
+sync_audit:
+  full: { verdict: PASS-WITH-DEBT, score: 85, report: .moai/reports/t1423/sync-audit.md, audited_sha: 6393b49fe }
+  delta_m8: { verdict: PASS-WITH-DEBT, score: 88, report: .moai/reports/t1423/sync-audit-delta.md, audited_sha: 513ba5660 }
+  delta_m9: { verdict: PASS-WITH-DEBT, score: 91, report: .moai/reports/t1423/sync-audit-delta2.md, audited_sha: 4ae90d62f }
+cross_model_note: "GLM answered HTTP 401 in every sync-audit round (advisory); the codex leg answered; the MCP server of the auditing session predates the card, so the plan_source check reads ok:false pre-rollout — the enforcement is proved by unit tests, not by a live post-rollout run"
+carried_debt:          # all carried, none edited in this sync commit; owner = the leader's follow-up
+  - { id: NEW-2, owner: leader-follow-up, title: "on a config-orphaned root with an unidentifiable primary, a supplied advisory relaxes the assumed-required codex gate (internal/cli/mcp_audit_multi.go callStartEnforcement)" }
+  - { id: F5, owner: leader-follow-up, title: "the real binary writes .moai/state/config-cache.json on a cache miss, against the SPEC's start-up 'directories only' claim (design.md D.5, spec.md R-33)" }
+  - { id: DB1, owner: leader-follow-up, title: "legacy-window-fail-open-by-design (sync-audit: CARRIED, owner leader rollout, plan.md section J)" }
+  - { id: DB2, owner: leader-follow-up, title: "full-result-form-invites-shell-injection (sync-audit: RESOLVED, the input is a file path via --result-file, never inline JSON)" }
+  - { id: DB3, owner: leader-follow-up, title: "reader-fix-reaches-review-gate-and-codex_task (sync-audit: CARRIED, disclosed in the CHANGELOG entry)" }
+  - { id: DB4, owner: leader-follow-up, title: "instruction-text-criteria-are-shallow (sync-audit: CARRIED as tests-of-record, mechanical backstops verified)" }
+  - { id: DB5, owner: leader-follow-up, title: "signature-brittleness (sync-audit: CARRIED with a pin, TestAuditPlanDocSurface asserts the literal in all eight copies)" }
+  - { id: DB6, owner: leader-follow-up, title: "startup-regular-file-effects-unmeasured (measured and refined into F5)" }
+  - { id: DB7, owner: leader-follow-up, title: "codex-hosted-auditor-cannot-run-the-verb (sync-audit: UNOBSERVED, CARRIED, owner leader smoke)" }
+  - { id: DB8, owner: leader-follow-up, title: "req-014-vs-design-d8-sync-legacy-wording (sync-audit: RESOLVED in the instruction text, the SPEC clause is still unedited)" }
+  - { id: iter5-D1, owner: leader-follow-up, title: "design.md:216 says the verb reads nothing under .moai/state beside an instructed file under .moai/state (doc wording)" }
+  - { id: iter5-D2, owner: leader-follow-up, title: "acceptance.md:572 green path is labelled (M4) and should read (M4b) (doc wording)" }
+  - { id: iter5-D3, owner: leader-follow-up, title: "stale 'seven milestones' prose beside a plan table with an M4b row (doc wording)" }
+  - { id: delta2-N1, owner: leader-follow-up, title: "with a supplied advisory over a configured required, the receipt is stored but its id is not exposed" }
+  - { id: delta2-N2, owner: leader-follow-up, title: "design.md section D.3 receipts bullet still words the exposure as the re-read of the tree configuration" }
+  - { id: M5-stale-comment, owner: leader-follow-up, title: "internal/config/mcp_audit_config_test.go:114 still carries the AP-8 deferral wording" }
+```
 
 ## §F Phase 4 Mode Selection
 
