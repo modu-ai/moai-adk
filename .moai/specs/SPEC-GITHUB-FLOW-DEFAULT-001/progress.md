@@ -247,6 +247,13 @@ _<pending sync-phase>_
 |---|---|---|---|
 | C1 | AC-GFD-002 F5 와 research.md §5 의 원인 서술이 틀림 — "squash 뒤에 main 이 같은 파일을 바꾸면 누적 patch-id 가 깨진다"가 아니다 | M2-A 가 git 2.54.0 에서 관측: squash 뒤의 main 변경은 squash 커밋의 patch-id 를 바꾸지 않아 층 2 가 여전히 landed 로 답한다. 깨지는 경우는 squash 이전에 카드 hunk 문맥 안을 main 이 바꿔 diff 문맥이 어긋난 때와 충돌 해결 squash 뿐이다(`TestLandingPredicateLaterChangeObservation`) | F5 를 "squash 이전 문맥 이동(+ 이후 변경)"으로 재서술하고 "세션 종료는 F5 에서 preserve" 는 그 구성에서만 성립함을 적는다. 층 3 의 필요성(이전 문맥 이동·충돌 해결)은 그대로 |
 | C2 | "기존 세션 정리 테스트는 무변경 green" 과 "빈 통합 목표 → 보존" 이 설정 없는 픽스처에서 동시에 성립하지 않는다 | M2-A: `realLandingRepo` 등 설정 없는 세 기존 테스트가 시드 없이는 실패 → 12줄 git-flow 설정 시드를 픽스처에 추가(M1 의 `newLandingFixture` 와 같은 처리, 단언 무변경) | AC-GFD-002 의 "무변경" 문구를 "단언 무변경, 설정 전제 시드 추가"로 정정 |
+| C3 | AC-GFD-004 의 "기존 시험 단언 무변경" 은 전이표를 고정 핀하는 홈스테이트 시험 둘(`TestFR_StateHelpersAndResumeTarget`, `TestFR_AC005_TransitionTableEdgeCount`)에서 성립할 수 없다 | M2-B: S-a 가 상태 둘을 추가해 상태 수 19→21, 허용 쌍 65→70, 거부 쌍 296→371 로 핀 값이 바뀜(design D-4 가 이미 표가 커진다고 적었다) | 해당 시험의 핀 값 갱신을 AC 문구에 "표 크기 핀은 S-a 와 함께 갱신" 으로 명시 |
+| C4 | AC-GFD-005 가 병합 준비 점검 동사로 `factory merge ready` 를 지명하나 그 동사는 CLEARED 시 통합 창을 잡는다 — REQ-GFD-006(github-flow 에서 창 선행 조건 아님)과 충돌 | M2-B: `complete` 안에서 같은 삼중 점검을 돌리고 `merge ready` 는 github-flow 에서 창을 잡지 않도록 바꿈 | AC-GFD-005 의 지명 동사를 "삼중 점검(동사 무관)"으로 정정 |
+| C5 | SPEC 없는 카드(`spec_id` 빈 값)는 삼중 점검 중 sync-audit 조건이 SPEC `progress.md` 를 읽어 github-flow 에서 PASS 못 함 | M2-B 보고: `merge ready --spec` 로도 현재 불가한 기존 제약 | AC/REQ 에 "SPEC 없는 카드는 PR 경로 전에 별도 증거를 제시" 규칙 필요 여부를 리더 판정 |
+
+#### M2-B 독립 재검증 (오케스트레이터, HEAD f6a62645a, 레인 env 세척, 슬롯 임대 아래)
+
+`go test ./internal/homestate ./internal/factorylane ./internal/config ./internal/mcp -count=1` → 4 패키지 `ok`(homestate 64.8 s); `go test ./internal/cli -run 'TestFactory|TestSD_|TestMerge|TestAcquire|TestIntegration|TestMergeReadinessBeforePR' -count=1` → `ok 237.588 s`; 새 시험을 `-v` 로: `TestFactoryCompleteGitHubFlowPR`·`TestMergeReadinessBeforePR`·`TestFactoryCompleteNoWindowGitHubFlow`·`TestFactoryCompleteWindowGitFlowUnchanged`·`TestFactoryGHDefaultDoubleIsFailing` 와 M1/M1b 이름 시험 전부 PASS; `./internal/template` `ok 92.674 s`; `./internal/guardstate` 는 베이스라인과 동일한 단일 기존 실패(`census_test.go:80/89`); `GOOS=windows GOARCH=amd64 go build ./...` exit 0. 미관측: 실제 `gh`(pr create/merge --auto/view 필드·JSON)·GitHub 보호 설정·`internal/cli` 전체 패키지. 새 상태가 needs-decision/resume 행이 없어 PR 이 병합 없이 닫히면 운영자가 포기 처리해야 한다(후속 후보).
 
 #### M2-A 독립 재검증 (오케스트레이터, HEAD 6f713d42f, 레인 env 세척, 슬롯 임대 아래)
 
