@@ -11,29 +11,42 @@
 > §2.1), its verbatim stdout, and its exit code as a separate field. Green-path Go
 > commands carry the scrub prefix `<SCRUB>`, which unsets the eleven lane variables of
 > `plan.md` §C inside one compound invocation (`unset … && go test …`); that prefix
-> contains `&&`, so a ledger row that carries it (L7) is informational and no
-> criterion's RED-now rests on it alone. `-run` patterns are anchored (`^…$`); an
+> contains `&&`, so the one ledger row that carries it (L7) is informational: its
+> stdout also carries a wall-clock figure that differs between runs, and **no
+> criterion cites L7 as its RED-now**. `-run` patterns are anchored (`^…$`); an
 > unanchored pattern also selects longer names, which is a vacuous-pass shape.
 > Commands that need the card's base use `CARD_BASE` from `git merge-base develop HEAD`
 > evaluated at run time, never a literal SHA, and only before the card merges.
 >
-> **Classification.** **release-blocking**: a RED-now ledger row exists and reproduces
-> at tree `c50da9c2f` (11 criteria: AC-JAE-001..007, 011..014). **regression-guard**:
-> no RED-now, GREEN from arrival (3 criteria: AC-JAE-008, 009, 010), each with a
-> mutant probe instead.
+> **Classification.** **release-blocking**: a conforming RED-now ledger row exists and
+> reproduces at the pinned tree `c50da9c2f` (11 criteria: AC-JAE-001..007, 011..014).
+> **regression-guard**: no RED-now, GREEN from arrival (3 criteria: AC-JAE-008, 009,
+> 010), each with a mutant probe instead.
 >
 > **RED-now / green-path pairing.** Every release-blocking criterion pairs the
 > ledger row that shows why it is red now with the milestone that flips it
 > (`plan.md` §E). Surfaces whose RED is "the literal is absent" are red for the right
 > stated reason: the exception is unwritten there, and only this SPEC's work can
-> write it. The behavior-bearing criteria (AC-JAE-011, 012) are red because the test
-> does not exist (L7); the failing output of each falsifier before its implementation
-> is captured verbatim at M1 (manager-develop §E8), not in this ledger.
+> write it. The behavior-bearing criteria are red because the test does not exist:
+> AC-JAE-011 (L12, the arming constant is absent), AC-JAE-012 (L16, the wording test
+> name is absent) and AC-JAE-013 (L17, the guard file is absent, so no ancestor
+> relation can hold) — each a single-invocation `git grep` with its own stdout and
+> exit code. The failing output of each falsifier before its implementation is
+> captured verbatim at M1 (manager-develop §E8), not in this ledger.
+>
+> **Swept-set controls.** Every ledger row whose RED-now is an empty stdout is paired
+> with a control row that runs a probe known to hit on the same pathspec (rows C1-C5
+> and L8, L9, L18), so an empty stdout is a measured absence on a non-empty swept set
+> and not a broken probe (`verification-completeness.md` §1.1).
 
-## Evidence ledger (RED-now observations, tree `c50da9c2f`)
+## Evidence ledger (RED-now observations, pinned tree `c50da9c2f`)
 
-Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row ids are
-`L<n>` so they do not collide with manager-develop's self-verification items E1-E8.
+Whole-ledger pin: tree `c50da9c2f`, branch `WT-jev-auto-exception`. The ledger was
+re-executed at the revision tree `1eef55dd9`; `git diff --name-only c50da9c2f 1eef55dd9`
+lists only this SPEC's own five files, none under any pathspec below, so every row
+reproduces unchanged (re-run table: `research.md` §R5). Row ids are `L<n>` (RED-now and
+context rows) and `C<n>` (swept-set controls) so they do not collide with
+manager-develop's self-verification items E1-E8.
 
 | Id | Command | Verbatim stdout | Exit | Why it is red |
 |---|---|---|---|---|
@@ -44,7 +57,7 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
 | L5 | `git grep -c -F "auto-scoped ranking exception" -- .moai/docs/jev-local-operations.md` | (empty) | 1 | the doctrine guide says "one place only" |
 | L6 | `git grep -c -F "auto-scoped ranking exception" -- .claude/rules/moai/development/agent-authoring.md .claude/skills/moai/SKILL.md CLAUDE.md` | (empty) | 1 | the three live extension surfaces lack it |
 | L6b | `git grep -c -F "auto-scoped ranking exception" -- internal/template/templates/.claude/rules/moai/development/agent-authoring.md internal/template/templates/.claude/skills/moai/SKILL.md internal/template/templates/CLAUDE.md` | (empty) | 1 | and so do their template mirrors |
-| L7 | `<SCRUB> go test -count=1 -list '^(TestJevAutoExceptionLinkage\|TestJevAutoExceptionWording)$' ./internal/template/` | `ok  	github.com/modu-ai/moai-adk/internal/template	0.292s` | 0 | zero test names: neither guard exists (informational row) |
+| L7 | `<SCRUB> go test -count=1 -list '^(TestJevAutoExceptionLinkage\|TestJevAutoExceptionWording)$' ./internal/template/` | `ok  	github.com/modu-ai/moai-adk/internal/template	<elapsed>s` (no test name listed; `<elapsed>` is a wall-clock figure that differs per run — 0.292s and 0.169s were observed) | 0 | zero test names: neither guard exists. **Informational only** — the command carries the scrub prefix (`&&`), so it is outside the single-invocation form, and no criterion cites it as RED-now |
 | L8 | `git grep -c -F "auto-scoped ranking exception" -- .claude/rules/moai/workflow/kanban-dispatch.md .claude/skills/moai/workflows/gtd.md .claude/agents/moai/manager-todo.md` | `.claude/agents/moai/manager-todo.md:2` · `.claude/rules/moai/workflow/kanban-dispatch.md:1` · `.claude/skills/moai/workflows/gtd.md:1` | 0 | **positive control**: the landed anchors do carry the token, so the zero rows above are about the Jev side, not about a broken probe |
 | L9 | `git grep -n -F "The capability is display-only" -- .moai/config/sections/workflow.yaml internal/template/templates/.moai/config/sections/workflow.yaml` | `.moai/config/sections/workflow.yaml:227:    # The capability is display-only: an answer is a labelled model-produced` · `internal/template/templates/.moai/config/sections/workflow.yaml:229:    # The capability is display-only: an answer is a labelled model-produced` | 0 | the not-yet-amended side, live and mirror (interim split evidence) |
 | L10 | `git grep -n -F "as a display-only signal for dispatch order and priority, except for" -- .claude/agents/moai/manager-todo.md` | `.claude/agents/moai/manager-todo.md:7:  Jev as a display-only signal for dispatch order and priority, except for` | 0 | the landed side states the exception (interim split evidence) |
@@ -53,21 +66,33 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
 | L13 | `git grep -c -F "v0.4.0" -- .moai/specs/SPEC-JEV-CORE-001/spec.md` | (empty) | 1 | no v0.4.0 marker |
 | L14 | `git grep -n -F "version: \"0.3.0\"" -- .moai/specs/SPEC-JEV-CORE-001/spec.md` | `.moai/specs/SPEC-JEV-CORE-001/spec.md:4:version: "0.3.0"` | 0 | version still 0.3.0 |
 | L15 | `git grep -c -F "doc_display_only_test" -- internal/jev/jev.go` | `internal/jev/jev.go:1` | 0 | `jev.go:27` names a test file that does not exist (`display_only_test.go` does) |
+| L16 | `git grep -c -F "TestJevAutoExceptionWording" -- internal/template` | (empty) | 1 | the wording guard does not exist yet (AC-JAE-012) |
+| L17 | `git grep -c -F "jev_auto_exception_test" -- internal/template` | (empty) | 1 | the guard file is not named anywhere in the package, so no commit `G` can be an ancestor of any `K` (AC-JAE-013) |
+| L18 | `git grep -c -F "TestJevDoctrineAmendment" -- internal/template` | `internal/template/contract_mode_blocks_test.go:2` | 0 | **positive control** for L12, L16, L17: the same pathspec and the same kind of probe hit a test that does exist, so the empty rows are measured absences, not a broken probe |
+| L19 | `git grep -c -F "auto-scoped ranking exception" -- .claude/skills/moai-ref-jev-question-design/SKILL.md internal/template/templates/.claude/skills/moai-ref-jev-question-design/SKILL.md` | (empty) | 1 | the reference skill pair (X5) states the "queue mutation" sentence with no exception |
+| C1 | `git grep -c -F "display-only" -- internal/jev/jev.go internal/cli/mcp_jev.go` | `internal/cli/mcp_jev.go:1` · `internal/jev/jev.go:1` | 0 | control for L1: the probe's sibling literal is live on this pathspec |
+| C2 | `git grep -c -F "display-only" -- .claude/rules/moai/core/moai-mcp-tools-catalogue.md internal/template/templates/.claude/rules/moai/core/moai-mcp-tools-catalogue.md .moai/specs/SPEC-JEV-CORE-001/spec.md .moai/specs/SPEC-MANAGER-TODO-001/spec.md` | `.claude/rules/moai/core/moai-mcp-tools-catalogue.md:2` · `.moai/specs/SPEC-JEV-CORE-001/spec.md:4` · `.moai/specs/SPEC-MANAGER-TODO-001/spec.md:1` · `internal/template/templates/.claude/rules/moai/core/moai-mcp-tools-catalogue.md:2` | 0 | control for L3 and L4 (L2 is controlled by L9) |
+| C3 | `git grep -c -F "한 곳뿐" -- .moai/docs/jev-local-operations.md` | `.moai/docs/jev-local-operations.md:1` | 0 | control for L5 |
+| C4 | `git grep -c -e "display-only" -e "never reorder by inferred priority" -- .claude/rules/moai/development/agent-authoring.md .claude/skills/moai/SKILL.md CLAUDE.md internal/template/templates/.claude/rules/moai/development/agent-authoring.md internal/template/templates/.claude/skills/moai/SKILL.md internal/template/templates/CLAUDE.md` | `.claude/rules/moai/development/agent-authoring.md:1` · `.claude/skills/moai/SKILL.md:1` · `CLAUDE.md:1` · `internal/template/templates/.claude/rules/moai/development/agent-authoring.md:1` · `internal/template/templates/.claude/skills/moai/SKILL.md:1` · `internal/template/templates/CLAUDE.md:1` | 0 | control for L6 and L6b |
+| C5 | `git grep -c -F "a labelled model signal a person reads" -- .claude/skills/moai-ref-jev-question-design/SKILL.md internal/template/templates/.claude/skills/moai-ref-jev-question-design/SKILL.md` | `.claude/skills/moai-ref-jev-question-design/SKILL.md:1` · `internal/template/templates/.claude/skills/moai-ref-jev-question-design/SKILL.md:1` | 0 | control for L19 |
 
 ## AC-JAE-001 — The two Go comments name the exception and stay comments
 
 **Covers**: maps REQ-JAE-001, REQ-JAE-002, REQ-JAE-003, REQ-JAE-008
 
-- **Class**: release-blocking (RED-now: L1, L15).
+- **Class**: release-blocking (RED-now: L1, L15; control C1).
 - **Given** the tree after M3, **When** the two files are read with `git grep` and the
   wording guard runs, **Then** `internal/jev/jev.go` and `internal/cli/mcp_jev.go` each
-  carry `auto-scoped ranking exception` and `selection order only` in the comment block
-  that says "display-only"; `mcp_jev.go` also says the exception does not reach "this
-  tool"; `jev.go` no longer names `doc_display_only_test.go`; neither file contains
-  `NearDuplicateMark`, `LaneQuestionRoute` or `SkillSuggest`.
+  carry `auto-scoped ranking exception`, `selection order only`, `workflow.jev.enabled`
+  and `mechanical filters` in the comment block that says "display-only" (long-form),
+  contain no claim phrasing and no over-reach phrasing; `mcp_jev.go` also says the
+  exception does not reach "this tool"; `jev.go` no longer names
+  `doc_display_only_test.go`; neither file contains `NearDuplicateMark`,
+  `LaneQuestionRoute` or `SkillSuggest`.
 - **Green** (M3):
   `git grep -c -F "auto-scoped ranking exception" -- internal/jev/jev.go internal/cli/mcp_jev.go`
-  → `…jev.go:` and `…mcp_jev.go:` each ≥ 1, exit 0; the same with `"selection order only"`;
+  → `…jev.go:` and `…mcp_jev.go:` each ≥ 1, exit 0; the same with `"selection order only"`
+  and with `"mechanical filters"`;
   `git grep -c -F "doc_display_only_test" -- internal/jev/jev.go` → empty, exit 1;
   `git grep -c -E "NearDuplicateMark|LaneQuestionRoute|SkillSuggest" -- internal/jev/jev.go internal/cli/mcp_jev.go`
   → empty, exit 1; and
@@ -75,7 +100,11 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
   → `--- PASS: TestJevAutoExceptionWording/go-comments `.
 - **Mutant probe.** A comment that carries both literals in a *different* paragraph from
   "display-only" passes the greps and fails the same-passage assertion. A comment that
-  also drops "a queue mutation" from `mcp_jev.go` fails the closed-target assertion.
+  also drops "a queue mutation" from `mcp_jev.go` fails the closed-target assertion. A
+  comment with both literals and no gate clause (`workflow.jev.enabled`) fails the
+  required-literal assertion (`falsifier/long-form-literal-missing`'s shape). A comment
+  ending "…selection order only, and the ordering is accurate" fails the claim-phrasing
+  assertion.
 
 ## AC-JAE-002 — The `workflow.yaml` jev comment, live and mirror
 
@@ -83,23 +112,27 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
 
 - **Class**: release-blocking (RED-now: L2; context: L9).
 - **Given** the tree after M3, **When** the grep and both guards run, **Then** both
-  `workflow.yaml` copies carry the two literals inside the `# jev: ` comment run; the run
+  `workflow.yaml` copies carry the two literals, `workflow.jev.enabled` and
+  `mechanical filters` inside the `# jev: ` comment run (long-form); the run
   still names `contract-mode Kickoff` exactly once, `llm+jev`, `never decides alone`,
-  `completion verdict`, `merge` and `queue mutation`; and the added block is identical in
-  the two copies.
+  `completion verdict`, `merge` and `queue mutation`; it contains no claim or over-reach
+  phrasing; and the added block is identical in the two copies.
 - **Green** (M3): `git grep -c -F "auto-scoped ranking exception" -- .moai/config/sections/workflow.yaml internal/template/templates/.moai/config/sections/workflow.yaml`
-  → one line per file, each ≥ 1, exit 0; `<SCRUB> go test -count=1 -v -run '^TestJevDoctrineAmendment$' ./internal/template/`
+  → one line per file, each ≥ 1, exit 0; the same with `"mechanical filters"` → one line
+  per file, each ≥ 1; `<SCRUB> go test -count=1 -v -run '^TestJevDoctrineAmendment$' ./internal/template/`
   → `--- PASS: TestJevDoctrineAmendment/rules-and-config `; and
   `<SCRUB> go test -count=1 -v -run '^TestJevAutoExceptionWording$' ./internal/template/`
   → `--- PASS` for `config-comment` and `mirror-parity`.
 - **Mutant probe.** Repeating `contract-mode Kickoff` in the new block fails the
   existing "exactly once" assertion. Editing only the live copy fails `mirror-parity`.
+  A new block without the gate or filter literal fails the `config-comment` required
+  literals.
 
 ## AC-JAE-003 — The catalogue rows, both copies, byte-identical
 
 **Covers**: maps REQ-JAE-001, REQ-JAE-002, REQ-JAE-003, REQ-JAE-004, REQ-JAE-005
 
-- **Class**: release-blocking (RED-now: L3).
+- **Class**: release-blocking (RED-now: L3; control C2).
 - **Given** the tree after M3, **When** the grep, the mirror test and the guards run,
   **Then** the `| \`mcp__moai__jev_ask\` |` row and the `| Judgment (gated) |` row of each
   copy carry the two literals and the words `never through this tool`, keep
@@ -118,10 +151,11 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
 
 **Covers**: maps REQ-JAE-001, REQ-JAE-002, REQ-JAE-005, REQ-JAE-006
 
-- **Class**: release-blocking (RED-now: L4, L13, L14).
+- **Class**: release-blocking (RED-now: L4, L13, L14; control C2).
 - **Given** the tree after M2-M3, **When** the greps, the guards and the linter run,
   **Then** `spec.md` carries `version: "0.4.0"`, a v0.4.0 marker and an exception paragraph
-  on REQ-JEVC-011 and REQ-JEVC-012 (both containing the two literals), both
+  on REQ-JEVC-011 and REQ-JEVC-012 (both containing the two literals,
+  `workflow.jev.enabled` and `mechanical filters`; the paragraph is long-form), both
   `Out of Scope — authority` bullets still two in number and each naming `contract-mode
   Kickoff`, `llm+jev` and the new exception, a HISTORY row for v0.4.0, `status: completed`,
   and its `progress.md` unchanged.
@@ -129,6 +163,8 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
   `git grep -n -F "version: \"0.4.0\"" -- .moai/specs/SPEC-JEV-CORE-001/spec.md` → line `4`,
   exit 0; `git grep -c -F "v0.4.0" -- .moai/specs/SPEC-JEV-CORE-001/spec.md` → ≥ 3 (a marker
   line on each of the two requirements plus the HISTORY row), exit 0;
+  `git grep -c -F "mechanical filters" -- .moai/specs/SPEC-JEV-CORE-001/spec.md` → ≥ 2
+  (one in each requirement's exception paragraph), exit 0;
   `<SCRUB> go test -count=1 -v -run '^TestJevDoctrineAmendment$' ./internal/template/` →
   `--- PASS: TestJevDoctrineAmendment/spec `; the wording guard's `spec-core` → `--- PASS`;
   `<scratchpad>/moai spec lint SPEC-JEV-CORE-001` → `✓ No findings — all SPEC documents are
@@ -143,11 +179,12 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
 
 **Covers**: maps REQ-JAE-001, REQ-JAE-002, REQ-JAE-007
 
-- **Class**: release-blocking (RED-now: L4).
+- **Class**: release-blocking (RED-now: L4; control C2).
 - **Given** the tree after M2-M3, **When** the grep, the wording guard and the linter
   run, **Then** REQ-MT-014 and REQ-MT-015 each state that they govern the local Jev
   scripts (display-only unchanged) and that the `--auto` cycle's own ranking is the one
-  `auto-scoped ranking exception` with `selection order only`; REQ-MT-015 still contains
+  `--auto` exception — the `auto-scoped ranking exception` with
+  `selection order only` (short-form scope sentences); REQ-MT-015 still contains
   `queue mutation`; the HISTORY has a new row; `status: completed`; no requirement id
   removed or renumbered.
 - **Green** (M2, verified at M3):
@@ -164,13 +201,15 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
 
 **Covers**: maps REQ-JAE-001, REQ-JAE-002, REQ-JAE-005
 
-- **Class**: release-blocking (RED-now: L5).
+- **Class**: release-blocking (RED-now: L5; control C3).
 - **Given** the tree after M3, **When** the grep and the guards run, **Then**
-  `.moai/docs/jev-local-operations.md` carries a new paragraph with the two literals that
+  `.moai/docs/jev-local-operations.md` carries a new paragraph with the two literals,
+  `workflow.jev.enabled` and the Korean filter literal `기계적 필터` (long-form) that
   scopes the earlier "한 곳뿐" sentence to the Kickoff cross-check and keeps the other
   grade-3 prohibitions, while the pinned paragraph is byte-for-byte unchanged and
   `AGENTS.local.md` is untouched.
 - **Green** (M3): `git grep -c -F "auto-scoped ranking exception" -- .moai/docs/jev-local-operations.md`
+  → `:1` or more, exit 0; `git grep -c -F "기계적 필터" -- .moai/docs/jev-local-operations.md`
   → `:1` or more, exit 0; `git grep -c -F "예외는 한 곳뿐이다" -- .moai/docs/jev-local-operations.md`
   → `:1`, exit 0 (the pinned sentence still present);
   `<SCRUB> go test -count=1 -v -run '^TestJevDoctrineAmendment$' ./internal/template/` →
@@ -179,28 +218,38 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
 - **Mutant probe.** Rewording the pinned paragraph ("한 곳" → "두 곳") fails
   `TestJevDoctrineAmendment/local-guide` ("lacks the design.md §11.1 amendment text").
 
-## AC-JAE-007 — The confirmed extension surfaces (X2, X3, X4), live and mirror
+## AC-JAE-007 — The confirmed extension surfaces (X2, X3, X4, X5), live and mirror
 
-**Covers**: maps REQ-JAE-001, REQ-JAE-002, REQ-JAE-004
+**Covers**: maps REQ-JAE-001, REQ-JAE-002, REQ-JAE-004, REQ-JAE-005
 
-- **Class**: release-blocking (RED-now: L6, L6b). Applies per confirmed surface; a surface
-  the operator cuts is recorded in `progress.md` and its row is removed from this
-  criterion and from the marker registry (plan.md D-3).
+- **Class**: release-blocking (RED-now: L6, L6b, L19; controls C4, C5). Applies per
+  confirmed surface; a surface the operator cuts is recorded in `progress.md` and its
+  row is removed from this criterion and from the marker registry (plan.md D-3).
 - **Given** the tree after M3, **When** the greps and the wording guard run, **Then**
-  `agent-authoring.md:147`, `SKILL.md:180` and `CLAUDE.md:63` and their template mirrors
-  carry both literals in the same sentence as the original wording; `CLAUDE.md` and its
-  mirror are byte-identical and grew by at most 160 bytes; the rest of each file is
-  unchanged.
+  `agent-authoring.md:147`, `SKILL.md:180`, `CLAUDE.md:63` and the reference-skill
+  sentence (X5) and their template mirrors carry both literals in the same sentence as
+  the original wording (short-form); `CLAUDE.md` and its mirror are byte-identical and
+  grew by at most 160 bytes; the two reference-skill copies are byte-identical and
+  carry none of `internal/jev`, `mcp__moai__jev`, `jev_ask`, `moai jev`; the rest of
+  each file is unchanged.
 - **Green** (M3):
   `git grep -c -F "auto-scoped ranking exception" -- .claude/rules/moai/development/agent-authoring.md .claude/skills/moai/SKILL.md CLAUDE.md`
   → three lines, each `:1`, exit 0, and the same for the three template paths;
+  `git grep -c -F "auto-scoped ranking exception" -- .claude/skills/moai-ref-jev-question-design/SKILL.md internal/template/templates/.claude/skills/moai-ref-jev-question-design/SKILL.md`
+  → two lines, each `:1`, exit 0 (flipped from L19);
   `wc -c CLAUDE.md internal/template/templates/CLAUDE.md` → two equal sizes ≤ `15733`;
-  `diff -q CLAUDE.md internal/template/templates/CLAUDE.md` → no output, exit 0; the
-  wording guard's `extension-rows` → `--- PASS`; if X3 survives,
-  `git diff --stat <CARD_BASE> -- internal/template/catalog.yaml` shows the file changed
-  and `make build` leaves no further diff.
+  `diff -q CLAUDE.md internal/template/templates/CLAUDE.md` → no output, exit 0;
+  `diff -q .claude/skills/moai-ref-jev-question-design/SKILL.md internal/template/templates/.claude/skills/moai-ref-jev-question-design/SKILL.md`
+  → no output, exit 0; the wording guard's `extension-rows` → `--- PASS`; V13 (the two
+  reference-skill guards, two `--- PASS`) and V14 (`TestCatalogHashParity`, `0 drift`);
+  if X3 or X5 survives, `git diff --stat <CARD_BASE> -- internal/template/catalog.yaml`
+  shows the file changed and `make build` leaves no further diff.
 - **Mutant probe.** Editing the live `SKILL.md` line only fails `mirror-parity`. A
   parenthetical that omits `selection order only` fails the bound-literal assertion.
+  Naming the wrapper tool in the reference-skill sentence fails
+  `TestJevQuestionDesignSkillCarriesNoCallPath`; editing one reference-skill copy only
+  fails `TestJevQuestionDesignSkillCopiesStayIdentical`; editing both and not
+  regenerating `catalog.yaml` fails `TestCatalogHashParity`.
 
 ## AC-JAE-008 — Mirrors agree and carry nothing internal
 
@@ -225,10 +274,11 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
 - **Class**: regression-guard (baseline PASS at `c50da9c2f`, research.md §R3).
 - **Given** the tree after M3, **When** the pinned guards of `spec.md` §B.8 run,
   **Then** all PASS and none of their source files differs from `CARD_BASE`.
-- **Green** (M3): the commands V3-V7 of `plan.md` §F — `TestJevDoctrineAmendment`
-  (6 subtests PASS), `TestJevAmendmentLinkage` (6 subtests PASS),
-  `TestMCPToolCatalogueDocsStayMirrorIdentical` and the five `--auto` doc guards (six
-  `--- PASS`), `TestNoConsumerCallPathShips`, and the two `internal/jev` import tests;
+- **Green** (M3): the commands V3-V7, V13 and V14 of `plan.md` §F —
+  `TestJevDoctrineAmendment` (6 subtests PASS), `TestJevAmendmentLinkage` (6 subtests
+  PASS), `TestMCPToolCatalogueDocsStayMirrorIdentical` and the five `--auto` doc guards
+  (six `--- PASS`), `TestNoConsumerCallPathShips`, the two `internal/jev` import tests,
+  the two reference-skill guards and `TestCatalogHashParity`;
   and `git diff --stat <CARD_BASE> -- internal/contract/kickoff/activation_test.go internal/template/contract_mode_blocks_test.go internal/contract/kickoff/kickoff.go AGENTS.local.md`
   → empty.
 - **Mutant probe.** Removing `contract-mode Kickoff` from any `workflow.yaml` copy turns
@@ -265,7 +315,8 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
 
 **Covers**: maps REQ-JAE-009
 
-- **Class**: release-blocking (RED-now: L7, L12).
+- **Class**: release-blocking (RED-now: L12, with the positive control L18; L7 is
+  informational context only).
 - **Given** M1 landed, **When** the guard runs, **Then** every `falsifier/*` subtest
   PASSes because the checker returned a finding for its fixture, `all-in-one-commit`
   PASSes because the checker returned none, and `tree` PASSes with the logged state
@@ -276,80 +327,116 @@ Whole-ledger pin: tree `c50da9c2f` (HEAD, branch `WT-jev-auto-exception`). Row i
   (sweep control; RED-now L7 printed no name); then
   `<SCRUB> go test -count=1 -v -run '^TestJevAutoExceptionLinkage$' ./internal/template/`
   → `--- PASS: TestJevAutoExceptionLinkage ` with PASS lines for `falsifier/partial/*`
-  (one per registry row), `falsifier/arming-only`, `falsifier/split-commits`,
-  `falsifier/dangling-anchor`, `all-in-one-commit` and `tree`; after M3 the `tree` line
-  logs `armed=true`; the `falsifier/*` logs contain `partial amendment`, `first appears
-  in` and `dangling` respectively.
-- **Mutant probe.** Delete the first-commit comparison from the checker: `falsifier/
+  (one per registry row), `falsifier/arming-only`, `falsifier/self-match`,
+  `falsifier/split-commits`, `falsifier/dangling-anchor`, `all-in-one-commit` and
+  `tree`; after M3 the `tree` line logs `armed=true`; the `falsifier/*` logs contain
+  `partial amendment`, `first appears in` and `dangling` respectively; and
+  `git grep -c -F "jevAutoExceptionAmended = true" -- internal/template/jev_auto_exception_test.go`
+  at the guard's own commit prints nothing, exit 1 (the token is built by parts, so
+  it is absent from the file before the amendment — D1 control; the post-amendment
+  value is AC-JAE-013's).
+- **Mutant probe.** Delete the comparison of marker commits from the checker: `falsifier/
   split-commits` turns red. Delete the anchor check: `falsifier/dangling-anchor` turns
   red. Make the checker return nothing when the arming constant is absent from the
-  registry: `falsifier/arming-only` turns red. Each deletion is made once at M1 and the
-  red output is kept (manager-develop §E8).
+  registry: `falsifier/arming-only` turns red. Write the registry row as a literal
+  `jevAutoExceptionAmended = true` inside the test file: the guard's own `tree` subtest
+  turns red at `armed=false` (a `partial amendment` finding) and `falsifier/self-match`
+  names the defect — the mutant the plan-audit constructed. Each deletion is made once
+  at M1 and the red output is kept (manager-develop §E8).
 
-## AC-JAE-012 — The wording guard bites on a missing literal, a dropped target, a stray bound
+## AC-JAE-012 — The wording guard bites on a missing literal, a dropped target, a stray bound, a missing long-form literal, a claim, an over-reach
 
-**Covers**: maps REQ-JAE-010
+**Covers**: maps REQ-JAE-001, REQ-JAE-002, REQ-JAE-010
 
-- **Class**: release-blocking (RED-now: L7).
+- **Class**: release-blocking (RED-now: L16, with the positive control L18; L7 is
+  informational context only).
 - **Given** M1 landed, **When** the guard runs, **Then** `falsifier/literal-missing`,
-  `falsifier/closed-target-dropped` and `falsifier/bound-in-other-paragraph` each PASS
-  because the checker rejected a planted passage, and the seven group subtests PASS
-  after M3 (and skip with a logged reason before it).
+  `falsifier/closed-target-dropped`, `falsifier/bound-in-other-paragraph`,
+  `falsifier/long-form-literal-missing`, `falsifier/claim-phrasing` and
+  `falsifier/over-reach-phrasing` each PASS because the checker rejected a planted
+  passage; `disclaimer-not-flagged` PASSes because the checker accepted a passage
+  carrying `no ordering accuracy is claimed` and `is not claimed to be accurate`; and
+  the seven group subtests PASS after M3 (and skip with a logged reason before it).
 - **Green** (M1, groups at M3):
   `<SCRUB> go test -count=1 -v -run '^TestJevAutoExceptionWording$' ./internal/template/`
-  → `--- PASS: TestJevAutoExceptionWording ` with PASS lines for the three falsifiers,
-  `mirror-parity`, and `go-comments`, `config-comment`, `catalogue-rows`, `spec-core`,
-  `spec-manager-todo`, `local-guide`, `extension-rows`; a `--- SKIP` line for a group is
-  acceptable only before M3 and never in the final run.
+  → `--- PASS: TestJevAutoExceptionWording ` with PASS lines for the six falsifiers,
+  `disclaimer-not-flagged`, `mirror-parity`, and `go-comments`, `config-comment`,
+  `catalogue-rows`, `spec-core`, `spec-manager-todo`, `local-guide`, `extension-rows`; a
+  `--- SKIP` line for a group is acceptable only before M3 and never in the final run.
+  The planted phrases are those of `plan.md` §E (flagged: `…and the ordering is
+  accurate`, `…the ordering beats the fallback`, `…with a measured accuracy of 80%`,
+  `…applies to every moai todo pick`; accepted: `no ordering accuracy is claimed`, `and
+  is not claimed to be accurate`, `any other decision that is hard to undo`).
 - **Mutant probe.** A checker that accepts any passage containing the literal anywhere in
   the file turns `falsifier/bound-in-other-paragraph` red. A checker that ignores closed
-  targets turns `falsifier/closed-target-dropped` red.
+  targets turns `falsifier/closed-target-dropped` red. A checker that skips the
+  long-form literals turns `falsifier/long-form-literal-missing` red. A checker with the
+  claim and over-reach sets removed turns `falsifier/claim-phrasing` and
+  `falsifier/over-reach-phrasing` red; one whose claim set is so broad that it matches
+  the word `accurate` anywhere turns `disclaimer-not-flagged` red — the paired rule
+  that catches the nothing-matching direction (`verification-completeness.md` §2).
 
 ## AC-JAE-013 — The guard lands first; the markers land together
 
 **Covers**: maps REQ-JAE-011
 
-- **Class**: release-blocking (RED-now: L7 — no guard exists, so no ancestor relation can
-  hold).
+- **Class**: release-blocking (RED-now: L17 — the guard file is named nowhere in the
+  package, so no ancestor relation can hold; positive control L18).
 - **Given** the run-phase commits, with the guard commit `G` and the linked commit `K`
   recorded in `progress.md` §E.2, **When** the commit graph is read, **Then** `G` is an
-  ancestor of `K`; `G` contains `jevAutoExceptionAmended = false`; `K` is the first
-  commit in which the arming constant reads `true` and the first commit in which
-  `auto-scoped ranking exception` appears in any registry file other than the anchors;
-  and `K` was staged by explicit pathspec.
+  ancestor of, and different from, `K`; the text `jevAutoExceptionAmended = true` is
+  **absent** from the guard file at `G` and occurs exactly once at `K`; `G` contains
+  `jevAutoExceptionAmended = false`; `K` is the only commit that adds the arming text
+  and the first commit in which `auto-scoped ranking exception` appears in any registry
+  file other than the anchors.
 - **Green** (M4, SHAs from `progress.md`): `git merge-base --is-ancestor <G> <K>` →
-  exit 0; `git grep -c -F "jevAutoExceptionAmended = false" <G> -- internal/template/jev_auto_exception_test.go`
-  → `…:1`; `git grep -c -F "jevAutoExceptionAmended = true" <K> -- internal/template/jev_auto_exception_test.go`
-  → `…:1`; `<SCRUB> go test -count=1 -v -run '^TestJevAutoExceptionLinkage$' ./internal/template/`
-  → `tree` PASS with `armed=true` (that subtest is the mechanical first-commit check over
-  the whole registry); `git show --stat <K>` lists the M2 and M3 files and no file
+  exit 0; `git rev-parse <G>` and `git rev-parse <K>` print two different SHAs;
+  `git grep -c -F "jevAutoExceptionAmended = false" <G> -- internal/template/jev_auto_exception_test.go`
+  → `<G>:internal/template/jev_auto_exception_test.go:1`;
+  `git grep -c -F "jevAutoExceptionAmended = true" <G> -- internal/template/jev_auto_exception_test.go`
+  → empty, exit 1 (**D1 control: the token is absent at `G`**);
+  `git grep -c -F "jevAutoExceptionAmended = true" <K> -- internal/template/jev_auto_exception_test.go`
+  → `<K>:internal/template/jev_auto_exception_test.go:1`;
+  `git log --reverse --format=%H -S"jevAutoExceptionAmended = true" -- internal/template/jev_auto_exception_test.go`
+  → exactly one line, `<K>`; `<SCRUB> go test -count=1 -v -run '^TestJevAutoExceptionLinkage$' ./internal/template/`
+  → `tree` PASS with `armed=true` (that subtest is the mechanical one-commit check over
+  the whole registry); `git show --stat <K>` lists the files of M2 and M3 and no file
   outside them.
 - **Mutant probe.** Committing the guard and the markers together makes `G` equal `K`, so
-  the ancestor check is trivially true: the criterion therefore also requires `G` ≠ `K`
-  (`git rev-parse <G>` differs from `git rev-parse <K>`), which the single-commit mutant
-  fails.
+  the ancestor check is trivially true: the criterion therefore also requires `G` ≠ `K`,
+  which the single-commit mutant fails. A registry row spelled as the literal in the
+  test file makes the `<G>` token control print `…:1` instead of staying empty, and the
+  `-S` log list two commits; either fails the criterion.
 
-## AC-JAE-014 — The inventory is closed: no unamended class-(i) passage remains
+## AC-JAE-014 — No unamended class-(i) passage remains over the three stated sweeps
 
 **Covers**: maps REQ-JAE-001, REQ-JAE-012
 
-- **Class**: release-blocking (RED-now: L1-L6b — every class-(i) passage lacks the literal).
-- **Given** the tree after M3, **When** the two sweeps of `plan.md` §F V12 run, **Then**
-  every hit's file appears in the `research.md` §R1 table with a class and a reason; each
-  class-(i) hit's passage carries both literals; and a planted fixture hits the same
-  command's output (positive control: a known unchanged hit, `internal/mcp/catalog.go:97`,
-  is present in the primary sweep).
-- **Green** (M4): `git grep -n -i -E "display-only|display only" -- . ":!.moai/specs" ":!.moai/reports" ":!CHANGELOG.md"`
+- **Class**: release-blocking (RED-now: L1-L6b and L19 — every class-(i) passage lacks
+  the literal; controls C1-C5, L8, L9). The criterion claims closure **over the three
+  stated patterns only** (spec.md §G R-8): the first two patterns missed X5, which the
+  third found, so a fourth phrasing could still hide a passage.
+- **Given** the tree after M3, **When** the three sweeps of `plan.md` §F V12 run,
+  **Then** every hit's file appears in a `research.md` §R1 table with a class and a
+  reason; each class-(i) hit's passage carries both literals; and each sweep's control
+  hit is present in its output.
+- **Green** (M4): primary —
+  `git grep -n -i -E "display-only|display only" -- . ":!.moai/specs" ":!.moai/reports" ":!CHANGELOG.md"`
   → the baseline of research.md §R1 (69 hits in 43 files) plus the added literals and no
-  new file; `git grep -n -E "never reorder by inferred priority|판단 자료|모델 답을 입력으로도" -- . ":!.moai/specs" ":!.moai/reports" ":!CHANGELOG.md"`
-  → each hit classified; for every class-(i) file
-  `git grep -c -F "auto-scoped ranking exception" -- <file>` is ≥ 1 (L1-L6b flipped); and
-  the control: the primary sweep's output contains the line
-  `internal/mcp/catalog.go:97:` (a class-(iii) hit this SPEC does not touch), so a sweep
-  that returns nothing cannot be read as a closed inventory.
+  new file, and the control line `internal/mcp/catalog.go:97:` present; synonym —
+  `git grep -n -E "never reorder by inferred priority|판단 자료|모델 답을 입력으로도" -- . ":!.moai/specs" ":!.moai/reports" ":!CHANGELOG.md"`
+  → each hit classified (baseline 5 hits); closed-target phrases —
+  `git grep -n -i -E "a person reads|labelled model|queue mutation|hard to undo" -- . ":!.moai/specs" ":!.moai/reports" ":!CHANGELOG.md"`
+  → the baseline of research.md §R1.5 (84 hits in 47 files) with no new file, each
+  hit's file classified, and the control line
+  `internal/cli/todo_triage.go:14:` (class iii, untouched) present; for every class-(i)
+  file `git grep -c -F "auto-scoped ranking exception" -- <file>` is ≥ 1 (L1-L6b and L19
+  flipped), the class-(i) list now including the reference-skill pair (X5).
 - **Mutant probe.** Deleting the literal from any one class-(i) file turns that file's
   `git grep -c` back to exit 1 and, independently, turns `TestJevAutoExceptionLinkage/tree`
-  red as a partial amendment.
+  red as a partial amendment. The mutant "every surface amended except the reference-skill
+  pair" is caught by the third sweep's class-(i) file list (the pair is in it) and by the
+  `git grep -c` over X5; before the third sweep existed it passed this criterion.
 
 ## Sweep control (precondition for every green reading of the new tests)
 
@@ -371,9 +458,9 @@ of both names, written to a file and counted with `grep -c "^--- PASS: "`, must 
 - **The guard lands with `armed=false` and the markers are absent.** The group
   subtests skip with a logged reason, the `tree` subtest passes; this is the intended
   M1 state and the only one in which a skip is acceptable.
-- **X3 survives.** `internal/template/catalog.yaml` changes in the linked commit; a
-  catalog hash left unregenerated is caught by the catalog hash test, not by this SPEC's
-  guard.
+- **X3 or X5 survives.** `internal/template/catalog.yaml` changes in the linked commit;
+  a catalog hash left unregenerated is caught by `TestCatalogHashParity` (V14), not by
+  this SPEC's guard.
 - **`jev.enabled` differs between live and template `workflow.yaml`** (live `true`,
   template `false`) by design; the mirror-parity check compares the exception block only.
 - **A landed anchor loses the literal** (someone edits `kanban-dispatch.md`): the
@@ -382,7 +469,7 @@ of both names, written to a file and counted with `grep -c "^--- PASS: "`, must 
 
 ## Quality gates
 
-- The §F scoped tests all pass; `go vet ./internal/template/` exits 0.
+- The §F scoped tests (V1-V9, V13, V14) all pass; `go vet ./internal/template/` exits 0.
 - `GOOS=windows GOARCH=amd64 go build ./...` exits 0.
 - `golangci-lint run` over the changed packages (`./internal/jev/...`, `./internal/cli/...`,
   `./internal/template/...`) reports no new finding against the CI version of the tool.
@@ -398,11 +485,15 @@ of both names, written to a file and counted with `grep -c "^--- PASS: "`, must 
    stub or its deleted check) before GREEN (manager-develop §E8).
 3. None of the files named in AC-JAE-009's `git diff --stat` differs from `CARD_BASE`.
 4. The guard commit `G` and the linked commit `K` are recorded in `progress.md` and
-   satisfy AC-JAE-013; the linked commit was assembled `manager-spec` first, then
-   `manager-develop`, staged by explicit pathspec.
+   satisfy AC-JAE-013. **Process attestation** (not observable in the commit graph, so
+   not a criterion — REQ-JAE-011 was trimmed to the graph-checkable part): the two
+   completed-SPEC edits were written by `manager-spec` and every other surface by
+   `manager-develop`, one writer at a time, and `K` was staged by explicit pathspec;
+   the lane records this in `progress.md` §E.2, and the `Authored-By-Agent` trailers of
+   the commits (`git log --format=%b -n 1 <K>`) are the nearest readable witness.
 5. The completion report states that this SPEC claims no Jev ordering accuracy
    (decision 6), that `REQ-JEVO-009` and the labelled accuracy set are out of scope with
-   the reason, and which of X1-X4 the operator kept or cut.
+   the reason, and which of X1-X5 the operator kept or cut.
 6. `moai spec lint SPEC-JEV-CORE-001`, `SPEC-MANAGER-TODO-001` and
    `SPEC-JEV-AUTO-EXCEPTION-001` each report no findings with a build made from the tree
    under measurement, and the report names that build's tree HEAD next to each result.

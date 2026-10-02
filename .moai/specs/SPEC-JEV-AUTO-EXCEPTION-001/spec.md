@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-AUTO-EXCEPTION-001
 title: "Linked amendment of the Jev display-only principle for the todo --auto selection-order exception — Jev-side surfaces, two completed SPECs, and a linkage guard"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-02
 updated: 2026-10-02
@@ -21,8 +21,27 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-MANAGER-TODO-001, SPEC-AUTONOMY-GATE-REW
 
 ## HISTORY
 
+- 0.1.1 — 2026-10-02 — plan-audit iteration 1 revision (card t1403; FAIL 0.82, four
+  blocking defects D1-D4 and optional D5-D10; revision base HEAD `1eef55dd9`).
+  D1: the arming token is assembled from two string pieces so its literal never sits
+  in the guard's own source before the amendment (§B.5, REQ-JAE-009, REQ-JAE-011).
+  D2: operator decision OD-3 adds surface X5 (the `moai-ref-jev-question-design`
+  skill pair) and the inventory gains a third, closed-target-phrase sweep (§B.2,
+  §B.3, REQ-JAE-012). D3: AC-JAE-012 and AC-JAE-013 now cite conforming
+  single-invocation RED-now rows. D4: REQ-JAE-001 and REQ-JAE-002 are machine-checked
+  per passage group (required literals, a claim-phrasing check, over-reach
+  phrasing) and R-5 states what stays unchecked; S6 scope sentences move to the
+  short-form class, which REQ-JAE-007 already fixes. D5: REQ-JAE-011 is trimmed to the
+  commit-graph-checkable part and the process clauses move to the Definition of Done.
+  D6: `plan.md` milestones become `###` headings with `Exit:` lines. D7: the label
+  "HEAD `c50da9c2f`" becomes "pinned tree" and each swept set gets an in-ledger
+  control. D8: operator decisions OD-1/OD-3 and orchestrator decision OD-4 are
+  recorded in `progress.md` §G and applied (§B.7). D9: REQ-JAE-001 now carries the
+  `doc_display_only_test.go` correction; REQ-JAE-007 says "the one `--auto`
+  exception". D10: §B.8 gains P10 (excluded, env-gated), P11 and P12. Requirement
+  count stays 12, criterion count stays 14.
 - 0.1.0 — 2026-10-02 — plan-phase artifact set authored (card t1403; worktree
-  `.moai/worktrees/t1403`, branch `WT-jev-auto-exception`, HEAD `c50da9c2f`).
+  `.moai/worktrees/t1403`, branch `WT-jev-auto-exception`, plan-start HEAD `c50da9c2f`).
   Tier M: spec.md + plan.md + acceptance.md, plus research.md carrying the
   inventory and baseline evidence (verbatim output above 50 lines). Operator
   decisions 5 and 6 of `SPEC-TODO-AUTO-PRIORITY-001` §B.1 are inherited as
@@ -68,23 +87,29 @@ take a Jev answer as input, while the code and three documents say it can, for
 ordering. **This SPEC removes that split** by amending the Jev-side surfaces in one
 linked change and adding a guard that fails if they ever diverge again.
 
-### A.2 Verified basis (this tree, HEAD `c50da9c2f`)
+### A.2 Verified basis (pinned tree `c50da9c2f`; re-run on `1eef55dd9`)
 
-Full evidence with commands and verbatim output is in `research.md`; the facts the
-requirements stand on:
+The measurements below were taken at the pinned tree `c50da9c2f`. HEAD has since
+moved to `1eef55dd9`; `git diff --name-only c50da9c2f HEAD` lists only files inside
+this SPEC's own directory, and no ledger pathspec lies there, so every ledger row
+reproduces unchanged (re-run recorded in `acceptance.md`). Full evidence with
+commands and verbatim output is in `research.md`; the facts the requirements stand
+on:
 
-- **Six surfaces named by the card, four more found.** The card lists S1-S6
-  (§B.2). A repository sweep (69 `display-only` hits in 43 tracked files outside
-  `.moai/specs/`, `.moai/reports/` and `CHANGELOG.md`, plus a synonym sweep) found
-  four further class-(i) surfaces, X1-X4, none on the card (§B.3).
+- **Six surfaces named by the card, five more found.** The card lists S1-S6
+  (§B.2). Three repository sweeps found five further class-(i) surfaces, X1-X5,
+  none on the card (§B.3): the `display-only` sweep (69 hits in 43 tracked files
+  outside `.moai/specs/`, `.moai/reports/` and `CHANGELOG.md`), a synonym sweep (5
+  hits), and a closed-target-phrase sweep (84 hits in 47 files) that surfaced the
+  `moai-ref-jev-question-design` skill pair (X5) which neither earlier sweep matched.
 - **Four guards already pin the first amendment's text and must stay green
   unmodified** (§B.8): `TestJevAmendmentLinkage`, `TestJevDoctrineAmendment`,
   `TestMCPToolCatalogueDocsStayMirrorIdentical`, and the consumer-set guards.
-  Baseline at this HEAD: all PASS (research.md §R3).
+  Baseline at the pinned tree: all PASS (research.md §R3).
 - **The shipping-gate guard does not touch the ranking path.**
   `TestNoConsumerCallPathShips` scans non-test Go files under `internal/` for the
   literals `NearDuplicateMark`, `LaneQuestionRoute`, `SkillSuggest`; it PASSes at
-  this HEAD with the ranking consumer present (§B.6).
+  the pinned tree with the ranking consumer present (§B.6).
 - **The exception is not reachable through the MCP tool.** The ranking consumer
   calls the client directly (`todo_auto_rank.go:474-481`); the tool handler
   `handleJevAsk` (`mcp_jev.go:67`) is referenced from `mcp_jev.go` only (§B.4).
@@ -103,7 +128,7 @@ by mechanical filters before any answer is read, and a Jev answer can only permu
 it. That is the property that separates this exception from a Jev answer deciding a
 queue change, and it is the property the amended text names. This SPEC cites those
 requirements and does not re-derive them; eight behavior tests that evidence them
-were re-run at this HEAD and PASS (research.md §R3).
+were re-run at the pinned tree and PASS (research.md §R3).
 
 ### A.4 Why the first exception's guard cannot simply be extended
 
@@ -143,7 +168,7 @@ Every restatement of the principle found in the repository is classified:
 entry, a report, a generated map) — left untouched; **(iii)** already compatible,
 or a statement about a different object — left untouched, with the reason.
 
-| ID | Surface (verified line, this tree) | Class | Disposition |
+| ID | Surface (verified line, pinned tree `c50da9c2f`) | Class | Disposition |
 |---|---|---|---|
 | S1 | `internal/jev/jev.go:24-28` package comment (also `:27`, a reference to a test file that does not exist) | (i) card | amend, comment only |
 | S2 | `.moai/config/sections/workflow.yaml:227-232`; template `:229-234` — the `workflow.jev` comment | (i) card | amend both |
@@ -155,15 +180,17 @@ or a statement about a different object — left untouched, with the reason.
 | X2 | `.claude/rules/moai/development/agent-authoring.md:147`; template `:147` — "consults Jev as a display-only signal" | (i) **extension** | amend both |
 | X3 | `.claude/skills/moai/SKILL.md:180`; template `:180` — "never reorder by inferred priority" | (i) **extension** | amend both; regenerates the skill's catalog hash |
 | X4 | `CLAUDE.md:63`; template `:63` — "Jev display-only consultation" | (i) **extension, weakest** | amend both, bounded growth |
+| X5 | `.claude/skills/moai-ref-jev-question-design/SKILL.md:25-29`; template, same lines — "the answer is a labelled model signal a person reads, never a completion predicate, a merge approval, a queue mutation, or any other decision that is hard to undo" | (i) **extension, operator-confirmed (OD-3)** | amend both, byte-identical; regenerates the skill's catalog hash |
 
 The (ii) and (iii) hits and the reason each is left alone are enumerated in
 §D and in `research.md` §R1.
 
 ### B.3 Scope extensions beyond the six card-named surfaces
 
-The card names S1-S6. X1-X4 are included because the instruction for this SPEC is
-to include class-(i) hits in the same doctrine family; each is **marked as a scope
-extension for confirmation** and the SPEC is written so cutting one removes its
+The card names S1-S6. X1-X5 are included because the instruction for this SPEC is
+to include class-(i) hits in the same doctrine family. X1-X4 were confirmed by the
+operator (`progress.md` §G OD-1) and X5 by the operator after plan-audit
+iteration 1 (`progress.md` §G OD-3). The SPEC is written so cutting one removes its
 row and nothing else (the guard's marker registry is derived from the confirmed
 surface list, `plan.md` §B D-3).
 
@@ -176,6 +203,18 @@ surface list, `plan.md` §B D-3).
   `internal/template/catalog.yaml`, which then belongs to the same commit; X4 edits
   the always-loaded instruction file (15,573 bytes in both copies), so growth is
   bounded in `plan.md` §D. X3 and X4 are the first cut candidates.
+- **X5** is the reference skill for question design. It states the capability-level
+  sentence S3 and S4 carry ("decides nothing … never a completion predicate, a merge
+  approval, a queue mutation …"), so by the §B.2 rule it is class (i); it was missed by
+  the first two sweeps because it contains neither `display-only` nor the synonym
+  phrases, and was found by the closed-target-phrase sweep (§A.2, `research.md`
+  §R1.5). It edits a skill directory, so — like X3 — `make build` regenerates its
+  `internal/template/catalog.yaml` hash into the same commit, and
+  `TestCatalogHashParity` (`internal/spec/catalog_hash_test.go`) is the mechanical
+  backstop. Its own guard (`internal/cli/jev_question_design_skill_test.go`) forbids
+  the call-path tokens `internal/jev`, `mcp__moai__jev`, `jev_ask` and `moai jev` in
+  both copies and requires them byte-identical (§B.8 P11), so the amended wording
+  names the exception without any of those tokens and is written identically in both.
 
 ### B.4 The tool is not widened: capability versus call path
 
@@ -204,17 +243,31 @@ existing `template_test` package, reusing its helpers `grRoot`, `grRead`, `grGit
 
 - `TestJevAutoExceptionLinkage` — the analogue of `TestJevAmendmentLinkage`.
   **Marker registry:** the universal token `auto-scoped ranking exception` in every
-  confirmed surface file (S1-S6, X1-X4, live and mirror) plus the arming constant
-  `jevAutoExceptionAmended = true` in the test file itself. **Anchors:** the three
+  confirmed surface file (S1-S6, X1-X5, live and mirror) plus the arming token
+  `jevAutoExceptionAmended = true` in the test file itself — a token the registry
+  **assembles at run time from two string pieces** (`"jevAutoExceptionAmended"` and
+  `" = true"`), never as a literal, so that the text `jevAutoExceptionAmended = true`
+  occurs in the guard's source only as the declaration written in the linked commit.
+  (Why: the predecessor's presence check is `strings.Contains` over the file bytes and
+  its first-commit check is `git log -S<token> -- <path>`; a registry row spelling the
+  literal inside the file under test would make the marker present, and first-appearing,
+  in the guard's own commit. The predecessor avoids this by keying its constant to a
+  different file. Measured on a throwaway draft with the predecessor's mechanics
+  re-implemented: assembled-by-parts passes at `false` and at the linked commit, and
+  the self-match variant fails, `research.md` §R6.) **Anchors:** the three
   landed documents (`kanban-dispatch.md`, `gtd.md`, `manager-todo.md`) carry the same
   token but predate this amendment, so they are *presence-only* anchors and are kept
   out of the first-commit comparison. The checks: markers all present or all absent;
   all first appearing in one commit; and no dangling amendment (a marker present
   while an anchor lacks the token).
 - `TestJevAutoExceptionWording` — the analogue of `TestJevDoctrineAmendment`:
-  per surface group, every passage that says "display-only" carries both literals in
-  the same passage, keeps its closed targets, and a fixture without the literal is
-  rejected.
+  per surface group, every passage that restates the principle carries both literals
+  in the same passage, keeps its closed targets, carries its group's required
+  literals (the long-form groups also `workflow.jev.enabled` and a filter literal),
+  and contains none of the claim or over-reach phrasings of `plan.md` §E; a fixture
+  that drops a literal, drops a closed target, moves the bound literal to another
+  paragraph, or adds a claim or over-reach phrasing is rejected. What this check
+  cannot see is stated in §G R-5.
 
 Why a sibling and why here. Appending to `linkageMarkers` fails (§A.4). Refactoring
 `linkageFindings` to take a marker set would modify a guard that must stay
@@ -227,11 +280,13 @@ mirrors; SPEC files carry it in the same paragraph as their version marker.
 
 **Staged landing is resolved by an arming constant, not by a weaker rule.**
 `jevAutoExceptionAmended` ships `false` in the guard's own commit (M1), when every
-other marker is absent, so the tree check passes; the single linked commit flips it
-to `true` and, being a marker, fails the guard if it lands without the others. This
-is the same device `JevDoctrineAmended` is for the first guard. The guard commit
-precedes the marker commit in the commit graph (REQ-JAE-011), which is the only
-witness of ordering (`verification-claim-integrity.md` §2.3).
+other marker is absent — including its own token, which is absent because it is
+assembled by parts — so the tree check passes; the single linked commit flips it
+to `true` (a standalone `const` line, so `gofmt` leaves one space around `=`) and,
+being a marker, fails the guard if it lands without the others. This is the same
+device `JevDoctrineAmended` is for the first guard. The guard commit precedes the
+marker commit in the commit graph (REQ-JAE-011), which is the only witness of
+ordering (`verification-claim-integrity.md` §2.3).
 
 ### B.6 `REQ-JEVO-009` accuracy-label set — excluded, with the interaction measured
 
@@ -242,7 +297,7 @@ measurement runs. The labelled accuracy set for an ordering question does not
 exist. **Default taken: out of scope.** It is a measurement and shipping-gate axis,
 not a doctrine-text axis, and decision 6 already fixed that no accuracy is claimed.
 
-Interaction checked, not inferred: at this HEAD
+Interaction checked, not inferred: at the pinned tree
 `go test -count=1 -v -run '^TestNoConsumerCallPathShips$' ./internal/jevmeasure/`
 prints `--- PASS: TestNoConsumerCallPathShips (0.19s)`. The test walks non-test Go
 files under `internal/` for `NearDuplicateMark`, `LaneQuestionRoute` and
@@ -262,8 +317,14 @@ authority bullets (their count stays two), a new HISTORY row, a version bump, an
 `status: completed` unchanged. It does **not** use the heavier `completed →
 in-progress (amendment)` transition with `amendment_of:` that the frontmatter schema
 describes: the v0.2.0 and v0.3.0 amendments set the precedent for narrow in-place
-amendments of this SPEC without it. Flagged for confirmation (plan.md §B A-2).
-Authoring ownership: SPEC bodies belong to `manager-spec`, so the run phase
+amendments of this SPEC without it. **Decided** (`progress.md` §G OD-4, orchestrator,
+2026-10-02): both completed SPECs — `SPEC-JEV-CORE-001` and `SPEC-MANAGER-TODO-001` —
+are amended in place with a HISTORY row and keep `status: completed`; the heavier
+transition is not used. The decision rests on the precedent commit `185569ef3` and on
+the audit's own check that `moai spec lint` and `moai spec audit --filter-spec` stay
+clean in that state (plan-audit iteration 1, D8). Only `SPEC-JEV-CORE-001`'s
+`status: completed` is pinned by a test (§B.8 P1); `SPEC-MANAGER-TODO-001` is covered
+by the decision, not by a guard. Authoring ownership: SPEC bodies belong to `manager-spec`, so the run phase
 re-delegates those two files to it (the D-NEW-1 pattern), then `manager-develop`
 writes everything else; the first amendment was assembled the same way
 (`SPEC-AUTONOMY-GATE-REWIRE-001/design.md` §11.2).
@@ -281,30 +342,41 @@ writes everything else; the first amendment was assembled the same way
 | P7 | `TestPackageImports_AreStandardLibraryOnly` (`internal/jev`) | `jev.go` imports stay standard library |
 | P8 | `TestAutoRankDoctrineAmendment`, `TestAutoRankMirrorParity`, `TestAutoRankAgentDoctrine` (`internal/cli`) | the three landed documents are not edited |
 | P9 | `TestTemplateNoInternalContentLeak` and the neutrality tests (`internal/template`) | template mirrors carry no SPEC id, requirement token, ISO date or commit hash |
+| P10 | base-ref guards in `internal/template/contract_mode_guided_test.go` (the gate `:29-36`; the change-set allowlist naming `SPEC-JEV-CORE-001/spec.md` `:260`; the always-loaded growth cap 1,500 characters `:617`; the catalogue-file growth cap 600 characters `:633`), gated on `MOAI_GR_BASE` | **excluded — env-gated, stale base.** They `t.Skipf` when the variable is unset (the CI and lane state), so they pin nothing here; the plan-audit measured the catalogue file already over the 600-character cap against base `7fe658815` before this SPEC (iteration 1, D10; a reported measurement, not re-run here), so they are not a usable pin either. Seen and set aside, not overlooked |
+| P11 | `TestJevQuestionDesignSkillCarriesNoCallPath` and `TestJevQuestionDesignSkillCopiesStayIdentical` (`internal/cli`) | both skill copies stay byte-identical and carry none of `internal/jev`, `mcp__moai__jev`, `jev_ask`, `moai jev` (X5) |
+| P12 | `TestCatalogHashParity` (`internal/spec/catalog_hash_test.go`) | every skill-directory hash in `internal/template/catalog.yaml` matches the directory on disk — the mechanical backstop for X3 and X5 hash regeneration |
 
 ## §C Requirements
 
 Verification layer: `acceptance.md`. The requirement layer below is GEARS.
 
-- **REQ-JAE-001** (Ubiquitous) — Every in-scope surface that states a Jev answer is
-  display-only (inventory S1-S6 and the confirmed extensions X1-X4, §B.2-B.3) shall,
-  in the same passage, name the `todo --auto` exception with the literal
-  `auto-scoped ranking exception` and bound it with the literal
-  `selection order only`, and shall identify it as the `--auto` cycle's own ranking
-  of the queued candidates it is about to accept. A long-form passage (S1, S2, S3,
-  S5, S6, X1) shall also state that mechanical filters fix the candidate set before
-  any Jev answer is read and that the capability sits behind the default-off
-  `workflow.jev.enabled` gate; a short-form passage (an S4 table row, X2, X3, X4)
-  need not. A passage is the unit the surface's existing guard already scopes: a
-  comment block, a table row, a requirement paragraph, or a doctrine paragraph.
+- **REQ-JAE-001** (Ubiquitous) — Every in-scope passage that restates the principle
+  that a Jev answer is display-only (inventory S1-S6 and the confirmed extensions
+  X1-X5, §B.2-B.3) shall, in the same passage, name the `todo --auto` exception with
+  the literal `auto-scoped ranking exception`, bound it with the literal
+  `selection order only`, and identify it as the `--auto` cycle's own ranking of the
+  queued candidates it is about to accept. A long-form passage (the S1, S2 and S3
+  comment blocks, the two S5 requirement paragraphs, X1) shall also carry, in the
+  same passage, the literal `workflow.jev.enabled` (the default-off gate) and a
+  filter literal stating that mechanical filters fix the candidate set before any
+  answer is read — `mechanical filters`, or `기계적 필터` in X1, which is written in
+  Korean; a short-form passage (an S4 table row, the two S5 authority bullets, an S6
+  scope sentence, X2, X3, X4, X5) need not. The amended `internal/jev/jev.go` comment
+  shall also no longer name `doc_display_only_test.go`, a file that does not exist
+  (`display_only_test.go` does). A passage is the unit the surface's existing guard
+  already scopes: a comment block, a table row, a requirement paragraph, or a
+  doctrine paragraph.
 
-- **REQ-JAE-002** (Ubiquitous) — Every amended passage shall keep each prohibition it
-  carried before the amendment on every other surface (completion verdict or
-  predicate, merge approval, operator gate, user-surface behaviour change,
-  CodeRabbit slot-wait adjudication, and any change to a card other than the
-  cycle's own existing pick, unpick and done transitions), shall not state or imply
-  that the Jev display-only principle is amended anywhere outside the `--auto`
-  cycle, and shall not claim or imply that the Jev ordering is accurate or measured.
+- **REQ-JAE-002** (Ubiquitous) — Every amended passage shall keep each closed target
+  its group's tuple in `plan.md` §E lists (completion verdict or predicate, merge
+  approval, queue mutation, and for the Kickoff-bearing groups `contract-mode
+  Kickoff`, `llm+jev` and `never decides alone`), shall contain no claim phrasing
+  that the Jev ordering is accurate, measured, reliable or validated (the claim set
+  of `plan.md` §E), and shall contain no over-reach phrasing that extends the
+  exception to every, any or all `moai todo` picks (the over-reach set of `plan.md`
+  §E). The exception is bounded by `selection order only` and by REQ-JAE-001's
+  `--auto` scope; whether a sentence in other words or another language generalizes
+  it is outside what the check sees (§G R-5).
 
 - **REQ-JAE-003** (Unwanted) — No amended passage shall state or imply that the
   exception is reachable through the `jev_ask` MCP tool; the tool's registered name,
@@ -319,9 +391,9 @@ Verification layer: `acceptance.md`. The requirement layer below is GEARS.
   date or commit hash.
 
 - **REQ-JAE-005** (Where) — **Where** an existing guard pins text in a passage this
-  amendment touches (§B.8 P1-P9), the amendment shall keep the pinned text, counts
-  and file identities, so that every one of those guards passes without being
-  modified.
+  amendment touches (§B.8 P1-P9, P11, P12; P10 is env-gated and excluded), the
+  amendment shall keep the pinned text, counts and file identities, so that every one
+  of those guards passes without being modified.
 
 - **REQ-JAE-006** (Event-driven) — **When** the linked amendment lands,
   `SPEC-JEV-CORE-001` shall carry version `"0.4.0"` with a refreshed `updated`, an
@@ -334,9 +406,11 @@ Verification layer: `acceptance.md`. The requirement layer below is GEARS.
 - **REQ-JAE-007** (Event-driven) — **When** the linked amendment lands,
   `SPEC-MANAGER-TODO-001` shall carry on REQ-MT-014 and on REQ-MT-015 a scope
   sentence stating that each governs consultation of the local Jev scripts, which
-  stays display-only, and that the `--auto` cycle's own Jev ranking is the single
-  exception under `SPEC-TODO-AUTO-PRIORITY-001`; plus a HISTORY row, a version
-  bump, `status: completed`, and no requirement removed or renumbered.
+  stays display-only, and that the `--auto` cycle's own Jev ranking is the one
+  `--auto` exception (`auto-scoped ranking exception`, `selection order only`) under
+  `SPEC-TODO-AUTO-PRIORITY-001`; plus a HISTORY row, a version bump,
+  `status: completed` (the in-place path decided in `progress.md` §G OD-4), and no
+  requirement removed or renumbered.
 
 - **REQ-JAE-008** (Unwanted) — The amendment shall not change shipped behavior:
   every changed line of a non-test Go file shall be a comment line; the gate default
@@ -348,42 +422,53 @@ Verification layer: `acceptance.md`. The requirement layer below is GEARS.
 - **REQ-JAE-009** (Ubiquitous) — A new automated check, `TestJevAutoExceptionLinkage`,
   shall fail when (a) the marker registry is partially present, (b) its tokens first
   appear in more than one commit, or (c) a marker is present while a landed anchor
-  lacks the token; it shall carry a falsifier subtest for each failure, a passing
-  all-in-one-commit subtest and a tree subtest, shall include the arming constant
-  `jevAutoExceptionAmended` in the registry, and shall leave `TestJevAmendmentLinkage`
-  and its marker list unmodified.
+  lacks the token; it shall carry a falsifier subtest for each failure — and one for
+  an arming token spelled as a literal inside the file under test — a passing
+  all-in-one-commit subtest and a tree subtest; it shall include the arming constant
+  `jevAutoExceptionAmended` in the registry through a token assembled at run time
+  from two string pieces, so that the text `jevAutoExceptionAmended = true` is absent
+  from the guard's source at the guard's own commit and present, once, only in the
+  linked commit; and it shall leave `TestJevAmendmentLinkage` and its marker list
+  unmodified.
 
 - **REQ-JAE-010** (Ubiquitous) — A new automated check, `TestJevAutoExceptionWording`,
-  shall verify per surface group that every passage stating a Jev answer is
-  display-only also carries both literals and its closed targets, and shall carry a
-  falsifier subtest that rejects a passage lacking the literal, one that drops a
-  closed target, and one whose bound literal sits in another paragraph.
+  shall verify per surface group that every passage restating the principle also
+  carries both literals, its closed targets and its group's required literals
+  (REQ-JAE-001), and contains neither a claim phrasing nor an over-reach phrasing
+  (REQ-JAE-002); it shall carry a falsifier subtest that rejects a passage lacking
+  the literal, one that drops a closed target, one whose bound literal sits in another
+  paragraph, one that omits a long-form required literal, one that adds a claim
+  phrasing, and one that adds an over-reach phrasing, and shall pass a passage that
+  carries the required disclaimers (`no ordering accuracy is claimed`, `is not claimed
+  to be accurate`) without flagging it.
 
 - **REQ-JAE-011** (Event-driven) — **When** the amendment is implemented, the guard
-  (with `jevAutoExceptionAmended = false`) shall land in a commit that is an ancestor
-  of the commit that first adds any marker token; every marker token, including
-  `jevAutoExceptionAmended = true`, shall first appear in one commit; the two
-  completed-SPEC edits shall be written by `manager-spec` and every other surface by
-  `manager-develop`, one writer at a time; and the commit shall be staged by explicit
-  pathspec.
+  (with `jevAutoExceptionAmended = false`) shall land in a commit `G` that is an
+  ancestor of, and different from, the single commit `K` in which every marker token
+  — including `jevAutoExceptionAmended = true` — first appears, so that the commit
+  graph witnesses the order. (Who writes each file, one writer at a time, and staging
+  by explicit pathspec are process obligations, attested in `acceptance.md`
+  Definition of Done item 4; they are not observable in the commit graph.)
 
-- **REQ-JAE-012** (Event-driven) — **When** the linked commit has landed, a sweep of
-  tracked files outside `.moai/specs/`, `.moai/reports/` and `CHANGELOG.md` for
-  display-only restatements (the two patterns in `plan.md` §F) shall return no
-  passage that states a Jev answer is display-only without the exception unless
-  `research.md` classifies it (ii) or (iii), and the sweep shall be accompanied by a
-  positive-control hit.
+- **REQ-JAE-012** (Event-driven) — **When** the linked commit has landed, three
+  sweeps of tracked files outside `.moai/specs/`, `.moai/reports/` and `CHANGELOG.md`
+  — for `display-only` restatements, for the synonym phrases, and for the
+  closed-target phrases (the three patterns in `plan.md` §F) — shall return no passage
+  that restates the principle without the exception unless `research.md` classifies
+  it (ii) or (iii), and each sweep shall be accompanied by a positive-control hit.
+  The closure claimed is over those three stated patterns only (§G R-8).
 
 ### C.1 Traceability
 
 REQ-JAE-001 → AC-JAE-001 + AC-JAE-002 + AC-JAE-003 + AC-JAE-004 + AC-JAE-005 +
-AC-JAE-006 + AC-JAE-007 + AC-JAE-014 · REQ-JAE-002 → AC-JAE-001 .. AC-JAE-007 ·
-REQ-JAE-003 → AC-JAE-001 + AC-JAE-003 + AC-JAE-010 · REQ-JAE-004 → AC-JAE-002 +
-AC-JAE-003 + AC-JAE-007 + AC-JAE-008 · REQ-JAE-005 → AC-JAE-002 + AC-JAE-003 +
-AC-JAE-004 + AC-JAE-006 + AC-JAE-009 · REQ-JAE-006 → AC-JAE-004 · REQ-JAE-007 →
-AC-JAE-005 · REQ-JAE-008 → AC-JAE-001 + AC-JAE-010 · REQ-JAE-009 → AC-JAE-011 ·
-REQ-JAE-010 → AC-JAE-012 · REQ-JAE-011 → AC-JAE-013 · REQ-JAE-012 → AC-JAE-014
-(bodies and `**Covers**` clauses in `acceptance.md`).
+AC-JAE-006 + AC-JAE-007 + AC-JAE-012 + AC-JAE-014 · REQ-JAE-002 → AC-JAE-001 ..
+AC-JAE-007 + AC-JAE-012 · REQ-JAE-003 → AC-JAE-001 + AC-JAE-003 + AC-JAE-010 ·
+REQ-JAE-004 → AC-JAE-002 + AC-JAE-003 + AC-JAE-007 + AC-JAE-008 · REQ-JAE-005 →
+AC-JAE-002 + AC-JAE-003 + AC-JAE-004 + AC-JAE-006 + AC-JAE-007 + AC-JAE-009 ·
+REQ-JAE-006 → AC-JAE-004 · REQ-JAE-007 → AC-JAE-005 · REQ-JAE-008 → AC-JAE-001 +
+AC-JAE-010 · REQ-JAE-009 → AC-JAE-011 · REQ-JAE-010 → AC-JAE-012 · REQ-JAE-011 →
+AC-JAE-013 · REQ-JAE-012 → AC-JAE-014 (bodies and `**Covers**` clauses in
+`acceptance.md`).
 
 ## §D Out of Scope
 
@@ -420,6 +505,10 @@ REQ-JAE-010 → AC-JAE-012 · REQ-JAE-011 → AC-JAE-013 · REQ-JAE-012 → AC-J
   present. Tracked `.moai/reports/` content is likewise a record.
 - `.moai/project/codemaps/docs-truth.md:43`, a generated map that follows
   `CLAUDE.md` on regeneration.
+- The five fixtures under `internal/cli/testdata/codex-rollouts-t1171/` (a captured
+  rollout and four captured role definitions): frozen test inputs carrying a snapshot
+  of older agent text; they are data for a different test, not live doctrine
+  (`research.md` §R1.5).
 
 ### Out of Scope — surfaces already compatible (class iii)
 
@@ -441,6 +530,15 @@ REQ-JAE-010 → AC-JAE-012 · REQ-JAE-011 → AC-JAE-013 · REQ-JAE-012 → AC-J
 - `.claude/skills/moai-kanban-foreman/SKILL.md:69` ("serial consumption in queue
   order is authorized"): states what the batch approval grants, not the cycle's pick
   order; observed, not changed.
+- The 34 further files the closed-target-phrase sweep returned (`research.md`
+  §R1.5), each classified there with its reason: the predecessor-amended documents;
+  statements about "queue mutation" that concern a different object (the queue
+  lock, lane-queue writes, the foreman watch); the `moai-jev-skill-suggestion`
+  contract and the finding-mark record, which are other consumers' contracts;
+  the first amendment's tests and failure messages; the user-facing docs-site tool
+  page; the output style `moai-easy.md:40` ("hard to undo", unrelated to Jev); and
+  an archived skill. None restates that a Jev answer is barred from the `--auto`
+  cycle's ordering.
 
 ### Out of Scope — the first exception's guards
 
@@ -458,22 +556,35 @@ REQ-JAE-010 → AC-JAE-012 · REQ-JAE-011 → AC-JAE-013 · REQ-JAE-012 → AC-J
   while the landed anchors again contradict the Jev side. `TestJevAmendmentLinkage`
   has the same property. Not mitigated here.
 - **R-3 — Behavior claims are cited, not re-derived.** The amended text rests on
-  REQ-TAP-001/-002/-003/-006/-010/-011. Eight behavior tests were re-run at this
-  HEAD and PASS; the remainder of the 15-name ranking suite was not re-run.
+  REQ-TAP-001/-002/-003/-006/-010/-011. Eight behavior tests were re-run at the
+  pinned tree and PASS; the remainder of the 15-name ranking suite was not re-run.
 - **R-4 — The pinned guide paragraph still reads "one place".** P3 forbids editing
   it, so X1 adds a following paragraph that scopes the old sentence to the Kickoff
   cross-check. A reader who stops after the old sentence is still misled; the full
   fix edits `SPEC-AUTONOMY-GATE-REWIRE-001/design.md` and the guide together and is
   not in scope.
-- **R-5 — Literal check, not a semantic one.** The wording guard proves two literals
-  share a passage; it cannot detect a sentence that generalizes the exception in
-  other words (inherited from the predecessor's R-6).
-- **R-6 — Extensions may be cut.** X3 costs a catalog-hash regeneration and X4 adds
-  bytes to an always-loaded file; both are cut candidates and neither is required by
-  a guard.
+- **R-5 — What the wording guard checks, and what it does not.** It checks, per
+  passage: the two literals in the same passage; the group's closed targets; for the
+  long-form groups the gate literal and the filter literal; and the absence of the
+  claim set (`is|are|was|were` followed by accurate/measured/reliable/validated,
+  `beats`, `outperform…`, `measured accuracy`, `accuracy of <digit>`) and of the
+  over-reach set (`every|any|all` followed by `moai todo` or `pick(s)`). It does not
+  check: a claim or over-reach in other words or in another language (X1's Korean
+  paragraph is held only to its literals), that the filter literal is used in a
+  sense that matches REQ-TAP-001/-002 (it proves the words are present, not that
+  they are true), or that a sentence in other words does not generalize the
+  exception (inherited from the predecessor's R-6). Those are judged by reading at
+  the sync audit.
+- **R-6 — Extensions may be cut.** X3 and X5 each cost a catalog-hash regeneration
+  (`TestCatalogHashParity` is the mechanical backstop for a missed one) and X4 adds
+  bytes to an always-loaded file; all three are cut candidates and none is required
+  by a guard. X5 was added by the operator (OD-3), so cutting it is the operator's
+  act.
 - **R-7 — Tool-level docs-site pages keep saying "display-only".** Accurate for the
   tool; a reader of the pages alone is not told the capability has an in-process
   exception (§D).
-- **R-8 — The sweep is a pattern, not a proof.** Two regexes bound the inventory;
-  restatements in other words would be missed (`research.md` §R1 records the two
-  sweeps and the one hit the synonym sweep added).
+- **R-8 — The sweep is a pattern, not a proof.** Three patterns bound the inventory;
+  a restatement in words none of them match would be missed. The third pattern was
+  added because the first two missed X5, so the inventory has already been wrong once
+  in exactly this way; `research.md` §R1 records the three sweeps and what each one
+  added. AC-JAE-014 claims closure over the three stated patterns only.

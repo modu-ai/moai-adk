@@ -4,12 +4,12 @@
 
 ```yaml
 plan_status: audit-ready
-plan_complete_at: 2026-10-02T04:32:41Z
+plan_complete_at: 2026-10-02T05:11:55Z   # revision 0.1.1 (iteration 1 delta); first plan completion was 2026-10-02T04:32:41Z
 card: t1403
 tier: M
-plan_head: c50da9c2f
-plan_audit: pending   # no independent audit has been run; the orchestrator records the verdict
-artifact_sha256: pending   # computed by the orchestrator at audit time, after the plan commit
+plan_head: 1eef55dd9   # revision base HEAD (the revision commit follows it); first plan was authored at c50da9c2f
+plan_audit: "iteration 1 of 2: FAIL 0.82 (audited_sha df226fe66; .moai/reports/t1403/plan-audit-iter1.md); revision 0.1.1 addresses D1-D10, iteration 2 pending"
+artifact_sha256: pending   # computed by the orchestrator at audit time, after the revision commit
 ```
 
 ## §G Operator Decisions
