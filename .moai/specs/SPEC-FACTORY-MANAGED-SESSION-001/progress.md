@@ -425,3 +425,46 @@ The managed layer is now an explicit opt-in: `MOAI_FACTORY_MANAGED` (`config.Env
 - Limitation proven by `TestManagedCodexLaunchSkipsLaterDebugSteps`: a managed Codex launch (switch + stamps) leaves before the child-env assembly and exec-handoff steps, so under `-d` those two trace lines appear 0 times (the control run traces each once) and no RUST_LOG injection reaches the owner.
 - Mutants (`go test -overlay`, repo untouched): dropping the switch in `launcher.go` fails `…/stamps_without_the_switch_reach_the_exec_door`; dropping it in `codex_launcher.go` fails `TestCodexDebugTraceEnvKeysOnly` and `…/stamps_in_the_process_env_without_the_switch_reach_the_direct_door`; dropping the stamps requirement fails `…/the_switch_without_stamps_reaches_the_exec_door` (Claude) and `…/the_switch_without_stamps_reaches_the_direct_door` (Codex).
 - Verification: managed slice `ok … 12.921s`, managed-file coverage 352/394 = 89.3%; launcher families `ok … 164.497s`, 0 `--- FAIL`; `go build ./...` and the windows cross-build ok; vet ok; lint `0 issues.`; store.go diff 0, vocabulary 0, syscall 0, go.mod/go.sum untouched.
+
+### E.2 re-measurement at d308ee2a7 (after the opt-in)
+
+Measured at HEAD `d308ee2a7`, clean tree, merge-base with develop `c50da9c2f`, original card base `f22e2d7ac`. Every command ran in this tree in this run with all `MOAI_*` / `CLAUDE_CODE_*` variables unset by literal name. Verbose `go test` top-level lines quoted.
+
+| AC | Status | Command | Verbatim result |
+|----|--------|---------|-----------------|
+| AC-MS-001 | PASS | `go test ./internal/cli -run '^TestManagedCodexAppServerHandshake$'` | `--- PASS: TestManagedCodexAppServerHandshake (0.31s)` |
+| AC-MS-002 | PASS | `go test ./internal/cli -run '^TestManagedCodexRegistersBoundPeer$'` | `--- PASS: TestManagedCodexRegistersBoundPeer (0.77s)` |
+| AC-MS-003 | PASS | `go test ./internal/cli -run '^TestManagedLaunchPendingRollback$'` | `--- PASS: TestManagedLaunchPendingRollback (0.60s)` |
+| AC-MS-004 | PASS | `go test ./internal/cli -run '^TestManagedInboxPromptMetadataOnly$'` | `--- PASS: TestManagedInboxPromptMetadataOnly (0.33s)` |
+| AC-MS-005 | PASS | `go test ./internal/factorymsg -run '^TestReadBodyClaimToken$'` | `--- PASS: TestReadBodyClaimToken (0.05s)` |
+| AC-MS-006 | PASS | `go test ./internal/cli -run '^TestManagedReceiptAcknowledges$'` | `--- PASS: TestManagedReceiptAcknowledges (0.31s)` |
+| AC-MS-007 | PASS | `go test ./internal/cli -run '^TestManagedSessionOwnsStreamFlags$'` | `--- PASS: TestManagedSessionOwnsStreamFlags (0.00s)` |
+| AC-MS-008 | PASS | `go test ./internal/cli -run '^TestManagedQueueSerializesOperatorAndInbox$'` | `--- PASS: TestManagedQueueSerializesOperatorAndInbox (0.15s)` |
+| AC-MS-009 | PASS | `grep -rnE 'fmt\.Sprintf\("(agent\|worker)-' internal/cli/managed_*.go \| wc -l` | `0` |
+| AC-MS-010 | PASS | `grep -rnE 'merge-window\|Decider\|T29b\|T29c\|handover' internal/cli/managed_*.go \| wc -l` | `0` |
+| AC-MS-011 | PASS | `go test ./internal/cli -run '^TestFactoryMsgSendRejectsClaudeOnlyRun$'` | `--- PASS: TestFactoryMsgSendRejectsClaudeOnlyRun (0.78s)` |
+| AC-MS-012 | PASS | `go test ./internal/codexwiring ./internal/cli -run '^(TestMoAIMCPApprovalArgsOnlyTargetMoAI\|TestConfigTomlWritesUnchanged)$'` | `--- PASS: TestMoAIMCPApprovalArgsOnlyTargetMoAI (0.00s)`, `--- PASS: TestConfigTomlWritesUnchanged (0.00s)` (codexwiring: `[no tests to run]`, both tests live in `internal/cli`) |
+| AC-MS-013 | PASS | `go test ./internal/cli -run '^TestDoctorCodexWarnsStaleGlobalApproval$'` | `--- PASS: TestDoctorCodexWarnsStaleGlobalApproval (0.00s)` |
+| AC-MS-014 | PASS | `GOOS=windows GOARCH=amd64 go build ./...` + `grep -n 'syscall\.' internal/cli/managed_*.go \| wc -l` | build output empty (exit 0), `0` |
+| AC-MS-015 | PASS | `go test ./internal/cli -run '^TestManagedSessionLoopbackRoundTrip$'` | `--- PASS: TestManagedSessionLoopbackRoundTrip (2.69s)` |
+| AC-MS-016 | PASS (SKIP) | `go test -v ./internal/cli -run '^TestManagedCodexFactoryBrokerLive$'` | `--- SKIP: TestManagedCodexFactoryBrokerLive (0.00s)`; live Codex round trip is a Gap |
+| AC-MS-017 | PASS | `git diff c50da9c2f..HEAD -- internal/factorymsg/store.go \| wc -l` / `git diff f22e2d7ac..HEAD -- internal/factorymsg/store.go \| wc -l` / `git log --oneline c50da9c2f..HEAD -- internal/factorymsg/store.go \| wc -l` | `0` / `0` / `0` |
+
+Note on AC-MS-001 and AC-MS-007: the amended Given prose says the opt-in is active. Those two tests exercise the owners directly (`newManagedCodexSession`, `newManagedStreamSession`), below the launcher divert, so they do not set or read the switch (`grep -n "managedOptIn\|EnvMoaiFactoryManaged"` over `managed_codex_factory_test.go` and `managed_factory_session_test.go` returns no rows). The switch is set through the `managedOptIn(t)` helper only in the divert-level tests (`managed_launcher_wiring_test.go`, 9 call sites; `managed_optin_test.go`, 6 call sites).
+
+Gates measured now:
+- Coverage (`go test -count=1 -run '^TestManaged|^TestClaimManagedFactoryInbox|^TestMoAIMCP' -coverprofile=… ./internal/cli`, `ok … 11.849s`): `managed_factory_session.go` 92.8% (154/166), `managed_codex_factory.go` 86.8% (198/228), combined 89.3% (352/394) against the 85.0% target.
+- `go vet ./internal/cli ./internal/config ./internal/codexwiring ./internal/factorymsg` → empty output, exit 0.
+- `gofmt -l` over the 19 Go files in `git diff --name-only c50da9c2f..HEAD` → 0 files listed.
+- `golangci-lint run --timeout=8m` on the same four package trees → `0 issues.`; binary `golangci-lint has version v2.1.6` (the version the lane noted CI uses; this is the local install, CI config and plugins not compared).
+- Boundary greps: vocabulary 0, `syscall.` 0, decider/T29/handover 0.
+- `go run ./cmd/moai spec lint SPEC-FACTORY-MANAGED-SESSION-001` → `✓ No findings — all SPEC documents are valid`.
+
+Develop-facing regression slices (the merge with develop `c50da9c2f`):
+- `TestCodexDebugTraceEnvKeysOnly`: `--- PASS` (unchanged develop test).
+- Opt-in tests, all `--- PASS` with their subtests: `TestFactoryManagedRequested`, `TestManagedLaunchRequiresOptIn` (3), `TestManagedCodexLaunchRequiresOptIn` (3), `TestManagedCodexLaunchSkipsLaterDebugSteps` (2), `TestManagedSwitchDoesNotReachCodexLaneLoop`.
+- Launcher families `-run '^TestSD_AC|^TestCodexDebug|^TestCodexLaunch|^TestCodexVerbRouting|^TestCodexFactory|^TestCodexEntry|^TestFactoryLaunchTiming|^TestCodexChildEnv|^TestCodexWorktree|Launch'` → `ok  github.com/modu-ai/moai-adk/internal/cli	118.100s`, `grep -c '^--- FAIL'` → `0`.
+
+Lane-measured facts (measurer = lane, NOT re-run here): the clean-env full `./internal/cli` run at `623e4b15a` had exactly two top-level FAILs, `TestStopChainEffectParityGolden` and `TestSyncGateLanguageDetectionMatchesScript`, identical on an exported copy of base `f22e2d7ac`; owner cards t1390 / t1402 per the leader's message, not this agent's observation. A full-suite re-run at the final tree is not part of this task.
+
+Gaps: live Codex round trip (live gate env unset, AC-MS-016 is a SKIP); a real `claude` stream backend (tests use sh and re-exec fakes); whole-package `internal/cli` suite at this HEAD; `internal/kanban`, `internal/hook`, `internal/template` suites; the launcher families regex covers launch-related tests only. Residual-risk: a real-session protocol drift (App Server methods, stream-json events) has no signal without the live gate; card children of `moai codex -f lane` stay unmanaged under any switch value (measured earlier, §H); the two pre-existing reds remain red until t1390 / t1402 reach the base.
