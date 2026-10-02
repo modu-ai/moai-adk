@@ -33,7 +33,7 @@ import (
 func sdScrubLauncherEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
-		config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel,
+		retiredLeaderMarker, config.EnvMoaiKanbanID, retiredLaneLabelMarker,
 		config.EnvMoaiKanbanLeadAddr, config.EnvMoaiKanbanSettingsInjected,
 		config.EnvFactoryRole, config.EnvMoaiFactoryWorker, config.EnvMoaiFactoryWorkers,
 		config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanCard,

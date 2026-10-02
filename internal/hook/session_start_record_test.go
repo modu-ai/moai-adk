@@ -17,7 +17,7 @@ import (
 // ones it means to exercise.
 //
 // It is load-bearing rather than tidy: these tests frequently RUN INSIDE a
-// kanban or factory session, whose own launch variables are inherited by
+// factory session, whose own launch variables are inherited by
 // `go test`. Without the scrub a lane-8 session's MOAI_FACTORY_WORKER makes
 // every case here read as lane 8, and its MOAI_LAUNCH_PROVIDER makes every
 // case read as that lane's backend — failures that reproduce only on the
@@ -32,9 +32,6 @@ func scrubKanbanEnv(t *testing.T) {
 	for _, key := range []string{
 		config.EnvMoaiFactoryWorker,
 		config.EnvMoaiFactoryWorkers,
-		config.EnvMoaiKanban,
-		config.EnvMoaiKanbanLabel,
-		config.EnvMoaiKanbanSpec,
 		config.EnvMoaiKanbanBackend,
 		config.EnvMoaiKanbanCard,
 		config.EnvMoaiLaunchProvider,
@@ -61,9 +58,9 @@ func TestRecordIsKeyedByTheRuntimeSessionIDNotTheSidecar(t *testing.T) {
 	}
 
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "run")
+	t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(2))
+	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
-	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-EXAMPLE-001")
 
 	const own = "S-99999999-8888-7777-6666-555555555555"
 	writeKanbanSessionRecord(&HookInput{
@@ -80,14 +77,11 @@ func TestRecordIsKeyedByTheRuntimeSessionIDNotTheSidecar(t *testing.T) {
 	if rec.SessionID != own {
 		t.Fatalf("session_id = %q, want %q", rec.SessionID, own)
 	}
-	if rec.Role != "run" {
-		t.Fatalf("role = %q, want %q", rec.Role, "run")
+	if rec.Role != kanban.RoleLane || rec.Lane != 2 {
+		t.Fatalf("role = %q lane = %d, want %q lane 2", rec.Role, rec.Lane, kanban.RoleLane)
 	}
 	if rec.Backend != kanban.BackendClaude {
 		t.Fatalf("backend = %q, want %q", rec.Backend, kanban.BackendClaude)
-	}
-	if rec.SpecID != "SPEC-EXAMPLE-001" {
-		t.Fatalf("spec_id = %q, want SPEC-EXAMPLE-001", rec.SpecID)
 	}
 	if _, statErr := os.Stat(kanban.RecordPath(root, other)); statErr == nil {
 		t.Fatalf("a record was created under the sidecar's identifier %q", other)
@@ -121,10 +115,10 @@ func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 		}
 	})
 
-	t.Run("kanban lead", func(t *testing.T) {
+	t.Run("factory leader", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		scrubKanbanEnv(t)
-		t.Setenv(config.EnvMoaiKanban, "1")
+		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 		writeKanbanSessionRecord(&HookInput{SessionID: "lead-sess", ProjectDir: root, CWD: root})
@@ -151,7 +145,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 	t.Run("(a) card worktree, no override", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		scrubKanbanEnv(t)
-		t.Setenv(config.EnvMoaiKanban, "1")
+		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 		t.Setenv(config.EnvMoaiKanbanCard, "")
 
 		writeKanbanSessionRecord(&HookInput{SessionID: "a", ProjectDir: root, CWD: cardWorktree})
@@ -168,7 +162,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 	t.Run("(b) override wins", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		scrubKanbanEnv(t)
-		t.Setenv(config.EnvMoaiKanban, "1")
+		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 		t.Setenv(config.EnvMoaiKanbanCard, "t999")
 
 		writeKanbanSessionRecord(&HookInput{SessionID: "b", ProjectDir: root, CWD: cardWorktree})
@@ -185,7 +179,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 	t.Run("(c) primary checkout yields no card", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		scrubKanbanEnv(t)
-		t.Setenv(config.EnvMoaiKanban, "1")
+		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 		t.Setenv(config.EnvMoaiKanbanCard, "")
 
 		writeKanbanSessionRecord(&HookInput{SessionID: "c", ProjectDir: root, CWD: primaryCheckout})
@@ -212,7 +206,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 // of testing the cwd's own parent.
 func TestCardIdentifierFromADeepCwdInsideACardWorktree(t *testing.T) {
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 
 	base := t.TempDir()
 	deep := filepath.Join(base, ".claude", "worktrees", "t207", "internal", "hook")
@@ -315,24 +309,15 @@ func TestFactoryLaneJoinClosesOnTheThirdHop(t *testing.T) {
 	}
 }
 
-// The label-to-role parse that moved here from the launcher when the launcher
-// stopped writing the record: a bare label and its bumped `<role>-<n>` form
-// both resolve to the bare role, and a malformed label yields no record at all
-// rather than a guessed role.
-func TestCompanionLabelResolvesToItsBareRole(t *testing.T) {
-	for label, want := range map[string]string{"plan": "plan", "plan-2": "plan"} {
-		scrubKanbanEnv(t)
-		t.Setenv(config.EnvMoaiKanbanLabel, label)
-		role, lane, ok := kanbanRoleFromEnv()
-		if !ok || role != want || lane != 0 {
-			t.Fatalf("kanbanRoleFromEnv() for label %q = (%q, %d, %v), want (%q, 0, true)", label, role, lane, ok, want)
-		}
-	}
-
+// A malformed launch label yields no record at all rather than a guessed role.
+// (A well-formed lane label resolving to the lane role is pinned in
+// TestKanbanRoleFromEnvReadsOnlyLaneLabels; the retired companion label
+// resolving to no role in TestSessionRecordIgnoresRetiredKanbanMarkers.)
+func TestMalformedLaneLabelYieldsNoRole(t *testing.T) {
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "not a role at all")
+	t.Setenv(config.EnvMoaiFactoryWorker, "not a role at all")
 	if _, _, ok := kanbanRoleFromEnv(); ok {
-		t.Fatalf("a malformed companion label resolved to a role")
+		t.Fatalf("a malformed lane label resolved to a role")
 	}
 }
 
@@ -360,13 +345,11 @@ func TestCardIDFromPathRequiresAWorktreesParent(t *testing.T) {
 	}
 }
 
-// §E edge case: a session that is neither a kanban nor a factory session gets
-// no record. The absence is the correct answer, not a degraded one.
+// §E edge case: a session that is not a factory session gets no record. The
+// absence is the correct answer, not a degraded one.
 func TestNonKanbanSessionWritesNoRecord(t *testing.T) {
 	root := newMoaiProjectRoot(t)
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "")
-	t.Setenv(config.EnvMoaiKanbanLabel, "")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "")
 
@@ -385,7 +368,7 @@ func TestReEntrySourcesDoNotWriteOrOverwrite(t *testing.T) {
 		t.Run(source, func(t *testing.T) {
 			root := newMoaiProjectRoot(t)
 			scrubKanbanEnv(t)
-			t.Setenv(config.EnvMoaiKanban, "1")
+			t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 			t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 			writeKanbanSessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: source})
@@ -400,7 +383,7 @@ func TestReEntrySourcesDoNotWriteOrOverwrite(t *testing.T) {
 func TestExistingRecordIsNotClobbered(t *testing.T) {
 	root := t.TempDir()
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 	seeded := kanban.NewRecord("s", "SPEC-SEED", kanban.BackendGLM).WithRole(kanban.RoleLeader)
@@ -442,7 +425,7 @@ func TestRecordWriteFailsOpenOnUnwritableStateDirectory(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(stateDir, 0o755) })
 
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 	// The path is reached (the environment marks a kanban session) and the

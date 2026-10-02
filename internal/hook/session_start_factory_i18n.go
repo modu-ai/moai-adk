@@ -1,21 +1,18 @@
 package hook
 
 // session_start_factory_i18n.go holds the operator-facing prose of the
-// Factory Mode bootstrap notice, one message set per locale — the factory
-// sibling of session_start_kanban_i18n.go.
+// Factory Mode bootstrap notice, one message set per locale.
 //
-// The same two invariants govern it. Only the prose lives here: the launch
+// Two invariants govern it. Only the prose lives here: the launch
 // commands, the run id, the socket path, and the lane labels are protocol
 // tokens the operator copies verbatim, so they stay in the builder and never
 // enter this table. And no field carries a leading or trailing newline: the
 // builder joins lines within a block and blank-separates the blocks, so the
 // notice is laid out identically in every locale by construction.
 //
-// The settingsAuto / settingsVerify / leaderSocket fields carry the same
-// wording as their kanban counterparts — the sentences describe the same
-// injected-settings mechanism and the same socket surface, and keeping them
-// in this table (rather than referencing kanbanLocales) keeps each notice
-// self-contained and free to drift when one mode's mechanism does.
+// The settingsAuto / settingsVerify / leaderSocket fields describe the
+// injected-settings mechanism and the socket surface; they live in this table
+// so the notice is self-contained and free to drift when the mechanism does.
 
 // factoryMessages is the operator-facing prose of one locale.
 //
@@ -66,8 +63,7 @@ type factoryMessages struct {
 
 // factoryLocales is the conversation-language table; its four entries are the
 // complete set of conversation languages, falling back to English for
-// anything the table does not carry (kanbanMessagesFor holds the same
-// contract).
+// anything the table does not carry (factoryMessagesFor holds the contract).
 var factoryLocales = map[string]factoryMessages{
 	langEnglish: {
 		leaderHeader:   "Factory Mode: run %s, leader session.",

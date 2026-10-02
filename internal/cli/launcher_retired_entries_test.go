@@ -33,6 +33,12 @@ const retiredLaneLabelMarker = "MOAI_KANBAN_LABEL"
 // out for the same reason.
 const retiredSpecMarker = "MOAI_KANBAN_SPEC"
 
+// retiredLeaderMarker is the kanban-leader signal, deleted from internal/config
+// at M5b with its last reader. It is written out for the same reason, so the
+// tests that assert a factory session never carries it, and the ambient
+// scrub that gives them a clean slate, keep the name after the constant is gone.
+const retiredLeaderMarker = "MOAI_KANBAN"
+
 // retiredEntryShapes are AC-011's seven `-k` shapes.
 var retiredEntryShapes = [][]string{
 	{"-k"},

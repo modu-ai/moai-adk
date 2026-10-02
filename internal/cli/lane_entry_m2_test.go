@@ -248,10 +248,10 @@ func TestLaneEntryEnvParity(t *testing.T) {
 				continue
 			}
 			got := laneMarkerEnv(launch.env)
-			delete(got, config.EnvMoaiKanbanLabel) // REQ-003's one exception (the Codex lane child stamp)
+			delete(got, retiredLaneLabelMarker) // REQ-003's one exception (the Codex lane child stamp)
 			want := map[string]string{}
 			for k, v := range golden[verb.name] {
-				if k != config.EnvMoaiKanbanLabel {
+				if k != retiredLaneLabelMarker {
 					want[k] = v
 				}
 			}
@@ -271,10 +271,10 @@ func TestLaneEntryEnvParity(t *testing.T) {
 	// child stamps it); the comparison excludes exactly that key.
 	for _, spelling := range []string{"-l", "--lane"} {
 		got := laneMarkerEnv(netCodexLaneChildFor(t, spelling).env)
-		delete(got, config.EnvMoaiKanbanLabel)
+		delete(got, retiredLaneLabelMarker)
 		want := map[string]string{}
 		for k, v := range golden["codex"] {
-			if k != config.EnvMoaiKanbanLabel {
+			if k != retiredLaneLabelMarker {
 				want[k] = v
 			}
 		}

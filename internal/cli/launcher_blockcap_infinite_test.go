@@ -55,14 +55,16 @@ func TestAC003_BlockCapDoctrineClauseSpecific(t *testing.T) {
 // "no signal → env unchanged" controls fail on the developer's own machine.
 // t.Setenv registers the restore, so the process env is returned to its prior
 // value when the test ends. Same pattern as clearKanbanEnv in
-// internal/hook/session_start_kanban_test.go.
+// internal/hook/session_start_env_helper_test.go. The three retired markers
+// stay in the list by their written-out names, so a surviving session's
+// ambient value cannot reach TestRetiredChainSignalsDoNotRaiseBlockCap.
 func clearKanbanLauncherEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
-		config.EnvMoaiKanban,
+		retiredLeaderMarker,
 		config.EnvMoaiKanbanID,
-		config.EnvMoaiKanbanSpec,
-		config.EnvMoaiKanbanLabel,
+		retiredSpecMarker,
+		retiredLaneLabelMarker,
 		config.EnvMoaiKanbanSettingsInjected,
 		config.EnvMoaiKanbanLeadAddr,
 		config.EnvMoaiFactoryWorkers,

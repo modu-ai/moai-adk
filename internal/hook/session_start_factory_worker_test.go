@@ -72,16 +72,3 @@ func TestKanbanRoleFromEnvReadsOnlyLaneLabels(t *testing.T) {
 		}
 	}
 }
-
-// TestKanbanNameChoicesUseLaneNotation: the kanban notice's name-options line
-// names the numbered factory shape as `lane-N` in every locale.
-func TestKanbanNameChoicesUseLaneNotation(t *testing.T) {
-	t.Parallel()
-
-	for _, lang := range []string{langEnglish, "ko", "ja", "zh"} {
-		m := kanbanMessagesFor(lang)
-		if !strings.Contains(m.nameChoices, "`lane-N`") || strings.Contains(m.nameChoices, "worker-N") {
-			t.Errorf("%s nameChoices does not name `lane-N` (or still names worker-N): %s", lang, m.nameChoices)
-		}
-	}
-}

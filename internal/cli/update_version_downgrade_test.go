@@ -29,8 +29,7 @@ const downgradeGoldenDir = "testdata/downgrade-confirm"
 
 // downgradeKanbanVars is every MOAI_KANBAN* variable in internal/config/envkeys.go.
 var downgradeKanbanVars = []string{
-	config.EnvMoaiKanban, config.EnvMoaiKanbanSpec, config.EnvMoaiKanbanID,
-	config.EnvMoaiKanbanLabel, config.EnvMoaiKanbanSettingsInjected, config.EnvMoaiKanbanLeadAddr,
+	config.EnvMoaiKanbanID, config.EnvMoaiKanbanSettingsInjected, config.EnvMoaiKanbanLeadAddr,
 	config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanCard, config.EnvMoaiKanbanLeadName,
 }
 

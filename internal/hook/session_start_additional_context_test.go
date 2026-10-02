@@ -139,11 +139,10 @@ func TestSessionStartAdditionalContextSkippedOnEmptySessionID(t *testing.T) {
 	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001 — the test isolates the env.
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 
-	// Isolate the kanban PROCESS env too: a session launched by the kanban
-	// launcher carries MOAI_KANBAN_* variables, and kanbanBootstrapNotice()
-	// would append its notice to AdditionalContext even with an empty
-	// SessionID. Same isolation as the kanban notice tests in
-	// session_start_kanban_test.go.
+	// Isolate the launch-marker PROCESS env too: a session launched by the
+	// factory launcher carries MOAI_KANBAN_* and MOAI_FACTORY_* variables, and
+	// the factory bootstrap notice would append itself to AdditionalContext
+	// even with an empty SessionID.
 	clearKanbanEnv(t)
 
 	projectDir := t.TempDir()

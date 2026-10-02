@@ -27,10 +27,10 @@ import (
 var factoryAmbientEnvKeys = []string{
 	config.EnvMoaiFactoryWorkers,
 	config.EnvMoaiFactoryWorker,
-	config.EnvMoaiKanban,
+	retiredLeaderMarker,
 	config.EnvMoaiKanbanID,
-	config.EnvMoaiKanbanSpec,
-	config.EnvMoaiKanbanLabel,
+	retiredSpecMarker,
+	retiredLaneLabelMarker,
 	config.EnvMoaiKanbanSettingsInjected,
 	config.EnvMoaiKanbanLeadAddr,
 	config.EnvMoaiKanbanBackend,
@@ -419,7 +419,7 @@ func TestEnterFactoryLeadModeEnv(t *testing.T) {
 	if got := os.Getenv(config.EnvMoaiKanbanLeadAddr); got != "/tmp/moai-socket-factory/abc123" {
 		t.Errorf("MOAI_KANBAN_LEAD_ADDR = %q, want /tmp/moai-socket-factory/abc123 (the factory socket directory)", got)
 	}
-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanLabel, config.EnvMoaiFactoryWorker} {
+	for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvMoaiFactoryWorker} {
 		if _, present := os.LookupEnv(key); present {
 			t.Errorf("%s must stay unset on a factory lead (no kanban chain is seeded), got a value", key)
 		}
@@ -470,7 +470,7 @@ func TestEnterFactoryWorkerModeEnv(t *testing.T) {
 	if got := os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents); got != "10" {
 		t.Errorf("%s = %q, want 10 (the per-lane cap)", config.EnvClaudeCodeMaxConcurrentSubagents, got)
 	}
-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanLabel, config.EnvMoaiKanbanID} {
+	for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvMoaiKanbanID} {
 		if _, present := os.LookupEnv(key); present {
 			t.Errorf("%s must stay unset on a factory lane, got a value", key)
 		}

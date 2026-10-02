@@ -275,7 +275,7 @@ func TestFactoryNetLeaderLaunch(t *testing.T) {
 				t.Errorf("%s at launch = %q, want %q", config.EnvMoaiKanbanBackend, got, tc.backend)
 			}
 			// A factory leader seeds no chain and is no lane.
-			for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanLabel, config.EnvMoaiFactoryWorker, config.EnvFactoryRole} {
+			for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvMoaiFactoryWorker, config.EnvFactoryRole} {
 				if got := launch.env[key]; got != "" {
 					t.Errorf("%s at a leader launch = %q, want unset (the marker belongs to another role)", key, got)
 				}
@@ -377,7 +377,7 @@ func TestFactoryNetBlockCap(t *testing.T) {
 
 	check := func(t *testing.T, role string) {
 		t.Helper()
-		for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanLabel} {
+		for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker} {
 			if v := os.Getenv(key); v != "" {
 				t.Fatalf("%s=%q at launch: the factory entry must publish no kanban signal for this net to isolate the factory clause", key, v)
 			}

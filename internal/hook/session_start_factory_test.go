@@ -184,16 +184,12 @@ func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
 				t.Errorf("factory %s for locale %q has a leading/trailing newline: %q", name, lang, field)
 			}
 		}
-		km := kanbanMessagesFor(lang)
-		if strings.HasPrefix(km.companionJoin, "\n") || strings.HasSuffix(km.companionJoin, "\n") {
-			t.Errorf("kanban companionJoin for locale %q has a leading/trailing newline: %q", lang, km.companionJoin)
-		}
 	}
 }
 
-// TestFactoryBootstrapNoticeStartupOnly asserts the re-entry gating shared
-// with the kanban notice: resume / clear / compact / fork re-emit nothing,
-// because the operator's lane terminals are already open by then.
+// TestFactoryBootstrapNoticeStartupOnly asserts the re-entry gating:
+// resume / clear / compact / fork re-emit nothing, because the operator's lane
+// terminals are already open by then.
 func TestFactoryBootstrapNoticeStartupOnly(t *testing.T) {
 	clearKanbanEnv(t)
 
@@ -210,21 +206,6 @@ func TestFactoryBootstrapNoticeStartupOnly(t *testing.T) {
 	}
 	if got := factoryBootstrapNoticeForSource("", "", "", langEnglish); got == "" {
 		t.Error("an empty source is treated as startup and must announce")
-	}
-}
-
-// TestKanbanNoticeSuppressedUnderFactoryEnv asserts the insurance guard: a
-// hand-exported kanban environment on top of a factory session must not stack
-// the three-role kanban notice under the factory one.
-func TestKanbanNoticeSuppressedUnderFactoryEnv(t *testing.T) {
-	clearKanbanEnv(t)
-
-	t.Setenv(config.EnvMoaiKanban, "1")
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
-	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-
-	if got := kanbanBootstrapNotice("", "", langEnglish); got != "" {
-		t.Errorf("kanban notice must yield to the factory notice, got:\n%s", got)
 	}
 }
 

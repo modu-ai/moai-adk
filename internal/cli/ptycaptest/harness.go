@@ -64,10 +64,7 @@ const (
 // reaches product code. TestPtycapScrubList_KanbanVarsMatchEnvKeys keeps this
 // list in step with envkeys.go.
 var kanbanVars = []string{
-	config.EnvMoaiKanban,
-	config.EnvMoaiKanbanSpec,
 	config.EnvMoaiKanbanID,
-	config.EnvMoaiKanbanLabel,
 	config.EnvMoaiKanbanSettingsInjected,
 	config.EnvMoaiKanbanLeadAddr,
 	config.EnvMoaiKanbanBackend,

@@ -51,7 +51,7 @@ func TestSessionStartPrunesExpiredRecordsByDefault(t *testing.T) {
 	stale := seedStaleRecord(t, root, "stale-sess")
 
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
@@ -72,7 +72,7 @@ func TestSessionStartPruneHonorsZeroRetentionOverride(t *testing.T) {
 	writeStateYAML(t, root, "state:\n  session_record_retention_days: 0\n")
 
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
@@ -99,7 +99,7 @@ func TestSessionStartPruneHonorsConfiguredWindow(t *testing.T) {
 	writeStateYAML(t, root, "state:\n  session_record_retention_days: 7\n")
 
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
@@ -118,7 +118,7 @@ func TestSessionStartPruneFailsOpenOnMalformedConfig(t *testing.T) {
 	writeStateYAML(t, root, "state: [not, a, mapping\n")
 
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
@@ -146,7 +146,7 @@ func TestSessionStartPruneFailsOpenOnUnreadableConfig(t *testing.T) {
 	}
 
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
@@ -176,7 +176,7 @@ func TestSessionStartPruneSparesRecentRecords(t *testing.T) {
 	path := kanban.RecordPath(root, "recent-sess")
 
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})

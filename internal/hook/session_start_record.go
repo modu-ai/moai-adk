@@ -107,7 +107,7 @@ func writeKanbanSessionRecord(input *HookInput) {
 	}
 	rec := kanban.NewRecord(
 		input.SessionID,
-		os.Getenv(config.EnvMoaiKanbanSpec),
+		"",
 		backend,
 	).WithRole(role).WithLane(lane).WithCard(resolveSessionCardID(dir))
 
@@ -162,17 +162,17 @@ func sessionRecordRetentionDays(root string) (days int, ok bool) {
 	return *wrapper.State.SessionRecordRetentionDays, true
 }
 
-// kanbanRoleFromEnv reports the chain role this session occupies and, for a
-// factory lane, its number. ok is false when the session is not part of a
-// kanban or factory run at all, and when a label is present but does not
-// parse — a malformed label yields no record rather than a guessed role.
-// A LEGACY label also yields no record: the caller's legacy gate (above)
-// stops it earlier, and this reader maps no legacy spelling to a role
-// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
+// kanbanRoleFromEnv reports the role this session occupies in a factory run
+// and, for a factory lane, its number. ok is false when the session is not part
+// of a factory run at all, and when a label is present but does not parse — a
+// malformed label yields no record rather than a guessed role. A LEGACY label
+// also yields no record: the caller's legacy gate (above) stops it earlier, and
+// this reader maps no legacy spelling to a role (SPEC-ROLE-NAMING-CODE-001
+// REQ-RNC-009). The markers of the retired kanban mode — the leader marker and
+// the companion label a surviving session may still carry — map to no role.
 //
-// The discriminators and their ORDER mirror the bootstrap notices
-// (session_start_factory.go, session_start_kanban.go): a factory session reads
-// as a factory session, never as a kanban one.
+// The discriminators and their ORDER mirror the factory bootstrap notice
+// (session_start_factory.go): the lane label first, then the fan-out size.
 //
 // The lane number is returned as its own datum and is set through WithLane,
 // never through WithRole — whose drop-unknown guard exists precisely so a
@@ -186,16 +186,6 @@ func kanbanRoleFromEnv() (role string, lane int, ok bool) {
 		return kanban.RoleLane, n, true
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-		return kanban.RoleLeader, 0, true
-	}
-	if label := os.Getenv(config.EnvMoaiKanbanLabel); label != "" {
-		companion, _, parsed := kanban.SplitCompanionLabel(label)
-		if !parsed {
-			return "", 0, false
-		}
-		return companion, 0, true
-	}
-	if os.Getenv(config.EnvMoaiKanban) != "" {
 		return kanban.RoleLeader, 0, true
 	}
 	return "", 0, false

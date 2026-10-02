@@ -194,10 +194,12 @@ func TestFactoryNetSessionStartNotices(t *testing.T) {
 // session environment carrying the two kanban markers does not make the
 // SessionStart hook fail, and the pre-existing record is left as it was.
 //
-// Measured at M1: the hook still emits its kanban bootstrap notice for a
-// surviving MOAI_KANBAN session (the notice is deleted at M5b, and AC-014's
-// TestSessionStartEmitsNoKanbanNotice pins its absence there), so this test
-// asserts tolerance only, not the absence of the notice.
+// Measured at M1: the hook still emitted its kanban bootstrap notice for a
+// surviving MOAI_KANBAN session, so the test then asserted tolerance only.
+// M5b deleted the notice and the record reader's companion branch, and the
+// test now also pins both: no notice on either channel, and no record for a
+// session that carries only the retired markers (AC-014 pins the notice
+// absence on its own in TestSessionStartEmitsNoKanbanNotice).
 func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	root := newMoaiProjectRoot(t)
 	netScrubFactoryEnv(t)
@@ -225,7 +227,18 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 
 	// The same session id as the pre-existing record, and a different one.
 	for _, sessionID := range []string{"old-plan", "new-session"} {
-		netSessionStart(t, root, sessionID)
+		ctx, sys := netSessionStart(t, root, sessionID)
+		// M5b: the surviving markers announce nothing on either channel.
+		for channel, text := range map[string]string{"additionalContext": ctx, "systemMessage": sys} {
+			if strings.Contains(strings.ToLower(text), "kanban") {
+				t.Errorf("session %s received a kanban notice on %s:\n%s", sessionID, channel, text)
+			}
+		}
+	}
+	// M5b: the record role reader has no companion branch, so the surviving
+	// markers give a session with a fresh id no record of its own.
+	if _, err := os.Stat(kanban.RecordPath(root, "new-session")); err == nil {
+		t.Error("a session carrying only the retired markers wrote a session record")
 	}
 
 	got, err := os.ReadFile(recPath)

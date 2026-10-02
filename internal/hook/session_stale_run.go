@@ -128,7 +128,7 @@ var staleRunLocales = map[string]staleRunMessages{
 
 // staleRunMessagesFor resolves a locale to its stale-run prose, falling back
 // to English for anything the table does not carry — the same contract as
-// kanbanMessagesFor and factoryMessagesFor.
+// factoryMessagesFor.
 func staleRunMessagesFor(lang string) staleRunMessages {
 	if m, ok := staleRunLocales[lang]; ok {
 		return m

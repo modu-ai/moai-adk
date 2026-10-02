@@ -59,7 +59,7 @@ func TestGatewayHooksPreserveRoutingSettings(t *testing.T) {
 func TestGatewayRecordUsesInitialProviderAndKeepsExistingRecord(t *testing.T) {
 	root := newMoaiProjectRoot(t)
 	scrubKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "run")
+	t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(1))
 	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
 	t.Setenv(config.EnvMoaiLaunchProvider, "glm")
 	input := &HookInput{SessionID: "gateway-initial", ProjectDir: root, CWD: root, Source: "startup"}

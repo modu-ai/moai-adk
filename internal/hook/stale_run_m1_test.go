@@ -28,7 +28,7 @@ func newStaleRunRoot(t *testing.T) string {
 
 func TestStaleRunNoticeLegacyLeaderSpelling(t *testing.T) { // AC-RNC-025 (a) + debt P4
 	root := newStaleRunRoot(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanLeadName, "lead")
 
 	input := &HookInput{SessionID: "stale-lead-session", Source: "startup", ProjectDir: root, CWD: root}
@@ -51,7 +51,7 @@ func TestStaleRunNoticeLegacyLeaderSpelling(t *testing.T) { // AC-RNC-025 (a) + 
 
 func TestStaleRunNoticeLegacySessionRecord(t *testing.T) { // AC-RNC-025 (b)
 	root := newStaleRunRoot(t)
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanLeadName, "leader")
 
 	// A pre-rename binary wrote this record with role "lead" — written as raw

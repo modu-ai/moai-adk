@@ -2,11 +2,11 @@ package hook
 
 // role_naming_m3_notice_test.go — SPEC-ROLE-NAMING-CODE-001 M3, AC-RNC-012
 // (REQ-RNC-015): one table-driven test over the four conversation locales ×
-// the factory leader notice, the factory lane notice, the kanban leader
-// notice, and the stale-run notice (both the factory retire variant and the
-// kanban relaunch variant). Each rendered notice must carry the design §3
-// leader and lane terms for its locale; the three bootstrap notices must
-// carry none of `worker-<n>`, `-f worker`, `-f agent`; the ko strings carry
+// the factory leader notice, the factory lane notice, and the stale-run notice
+// (both the factory retire variant and the relaunch variant). The kanban
+// leader notice left the table when M5b deleted it. Each rendered notice must
+// carry the design §3 leader and lane terms for its locale; the two bootstrap
+// notices must carry none of `worker-<n>`, `-f worker`, `-f agent`; the ko strings carry
 // no 리드; the en strings carry no (?i)\blead\b match. The locale fallback
 // for an unknown language resolves to the en table, which must itself pass
 // the same assertions (covered here by the "en-fallback" subtest).
@@ -33,9 +33,9 @@ var (
 func m3ScrubEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
-		config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel,
+		config.EnvMoaiKanbanID,
 		config.EnvMoaiKanbanLeadName, config.EnvMoaiKanbanLeadAddr,
-		config.EnvMoaiKanbanSpec, config.EnvMoaiKanbanSettingsInjected,
+		config.EnvMoaiKanbanSettingsInjected,
 		config.EnvMoaiKanbanBackend, config.EnvMoaiFactoryWorker,
 		config.EnvMoaiFactoryWorkers,
 	} {
@@ -57,8 +57,6 @@ func TestRoleNamingM3NoticesCarryLeaderLaneTerms(t *testing.T) {
 			if lang == "en-fallback" {
 				tableLang = "fr" // unknown language falls back to the en table
 			}
-			root := t.TempDir()
-
 			leaderTerm := m3LeaderTerm["en"]
 			laneTerm := m3LaneTerm["en"]
 			if lang != "en-fallback" {
@@ -67,10 +65,9 @@ func TestRoleNamingM3NoticesCarryLeaderLaneTerms(t *testing.T) {
 			}
 
 			notices := map[string]string{
-				// The three bootstrap notices (AC-RNC-012's named set).
+				// The two surviving bootstrap notices (AC-RNC-012's named set).
 				"factory-leader": factoryLeaderNotice("runX", 2, tableLang),
 				"factory-lane":   factoryLaneNotice("lane-1", 3, tableLang),
-				"kanban-leader":  kanbanLeaderNotice("runX", root, tableLang),
 				// The stale-run notice, both variants (plan.md §F M3).
 				"stale-factory": staleRunNotice("worker-2", tableLang),
 				"stale-kanban":  staleRunNotice("lead", tableLang),
@@ -90,7 +87,7 @@ func TestRoleNamingM3NoticesCarryLeaderLaneTerms(t *testing.T) {
 				// The stale-run notice names the legacy value it detected by
 				// design (REQ-RNC-022/025 — the notice must name `lead` /
 				// `worker-<n>`), so the legacy-literal forbiddens below bind
-				// only the three bootstrap notices. The stale rows still get
+				// only the bootstrap notices. The stale rows still get
 				// the ko-리드 check: the legacy value is quoted in the Latin
 				// alphabet in every locale.
 				if name == "stale-factory" || name == "stale-kanban" {
@@ -119,8 +116,8 @@ func TestRoleNamingM3NoticesCarryLeaderLaneTerms(t *testing.T) {
 }
 
 // TestRoleNamingM3StaleRunNoticeNamesRetireStep pins the retire step on the
-// factory variant and its absence on the kanban variant (a kanban run has no
-// factory run to retire), per REQ-RNC-022's discriminator.
+// factory variant and its absence on the relaunch variant (no factory run to
+// retire), per REQ-RNC-022's discriminator.
 func TestRoleNamingM3StaleRunNoticeNamesRetireStep(t *testing.T) {
 	m3ScrubEnv(t)
 	t.Setenv(config.EnvMoaiKanbanID, "runX")

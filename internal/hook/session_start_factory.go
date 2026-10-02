@@ -1,11 +1,10 @@
 // session_start_factory.go emits the Factory Mode bootstrap announcement into
-// the session — the factory sibling of session_start_kanban.go
-// (SPEC-FACTORY-WORKER-FANOUT-001).
+// the session (SPEC-FACTORY-WORKER-FANOUT-001).
 //
-// The announcement is emitted HERE rather than by the launcher for the same
-// reason as the kanban notice: the launcher syscall.Exec's into claude
-// (internal/cli/launch_exec_posix.go), so anything it writes to stdout is
-// overwritten the moment the TUI takes the screen.
+// The announcement is emitted HERE rather than by the launcher because the
+// launcher syscall.Exec's into claude (internal/cli/launch_exec_posix.go), so
+// anything it writes to stdout is overwritten the moment the TUI takes the
+// screen.
 //
 // The t85 leader loop is also injected here for the same reason: the launcher
 // cannot run a loop (it exec's in place and is gone), so the loop is a
@@ -42,10 +41,10 @@ import (
 // carries a legacy role value gets the stale-run notice instead of a leader
 // or lane notice (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-022, REQ-RNC-025).
 //
-// Fail-open throughout, matching kanbanBootstrapNotice: an unparseable lane
-// count degrades to omitting the count-dependent copy rather than failing the
-// session start, and an unknown lang degrades to English, never to an empty
-// notice.
+// Fail-open throughout, matching the surrounding hook code: an unparseable
+// lane count degrades to omitting the count-dependent copy rather than failing
+// the session start, and an unknown lang degrades to English, never to an
+// empty notice.
 func factoryBootstrapNotice(root, sessionID, lang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		if kanban.IsLegacyFactoryRoleValue(label) {
@@ -66,10 +65,12 @@ func factoryBootstrapNotice(root, sessionID, lang string) string {
 }
 
 // factoryBootstrapNoticeForSource returns the announcement only for a
-// genuinely new session, on the same startup-only allowlist and for the same
-// reason as kanbanBootstrapNoticeForSource: the factory environment survives
-// resume / clear / compact / fork, and re-announcing the bootstrap would tell
-// the operator to open lane terminals that are already open. The stale-run
+// genuinely new session, on a startup-only allowlist: the factory environment
+// survives resume / clear / compact / fork, and re-announcing the bootstrap
+// would tell the operator to open lane terminals that are already open. The
+// allowlist rather than a denylist of the re-entry sources keeps a newly added
+// source silent by default. An empty source is treated as startup (a caller
+// that predates the field, or a test building the input by hand). The stale-run
 // notice shares the same gate — a relaunch reminder repeated on every re-entry
 // is the same noise problem in reverse.
 func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) string {
@@ -191,7 +192,7 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	blocks = append(blocks, strings.Join([]string{m.leaderClasses, m.leaderStagger}, "\n"))
 
 	// (e) the operational-status query and the inbound-automation notice, on
-	// the same injected-settings discriminator as the kanban leader.
+	// the injected-settings discriminator the launcher publishes.
 	var context []string
 	context = append(context, fmt.Sprintf(m.operationalStatus, runID))
 	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
@@ -208,8 +209,8 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 // acknowledging the join, naming the label this session launched under (which
 // may be a bumped number — the registry note on stderr is gone by the time
 // the TUI takes the screen, so this line is where the operator reads the
-// final name). It does NOT print the launch block, for the same reason as
-// kanbanCompanionNotice.
+// final name). It does NOT print a launch block: a lane is already running,
+// and the operator has nothing left to paste.
 //
 // The incremental `-l` lane entry carries no run count (the launcher
 // publishes 0), and the count-less sentence names the label alone rather
