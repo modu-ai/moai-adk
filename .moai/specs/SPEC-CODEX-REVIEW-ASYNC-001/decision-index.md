@@ -1,6 +1,6 @@
 # decision-index.md — SPEC-CODEX-REVIEW-ASYNC-001
 
-`interview.decision_gate: on` — 카드 t1422(형제 SPEC `SPEC-CODEX-REVIEW-OWNERSHIP-001` 과 같은 카드) 조립 중 표면화된 결정 중 운영자가 인터뷰에서 확정하지 않은 것. 라벨 어휘: DECIDED / POLICY-COVERED / EVIDENCE-NEEDED / FOUNDER. Q1-Q3 과 Q9-Q18 은 2026-10-02 운영자 위임(Jev `jev-1.13.0`)·리더 판정으로 verdict 가 채워졌고(Q10 은 OPEN, Q17 은 프로브 결과 대기, Q9 는 Jev 선택을 오케스트레이터가 덮어씀), Q4-Q8(EVIDENCE-NEEDED 프로브 항목)은 프로브 결과 전까지 비어 있다. 각 행은 무엇이 미결인지와 왜인지만 적으며 권고를 싣지 않는다(권고는 plan.md §G; `O-*` 번호는 그 표의 ID).
+`interview.decision_gate: on` — 카드 t1422(형제 SPEC `SPEC-CODEX-REVIEW-OWNERSHIP-001` 과 같은 카드) 조립 중 표면화된 결정 중 운영자가 인터뷰에서 확정하지 않은 것. 라벨 어휘: DECIDED / POLICY-COVERED / EVIDENCE-NEEDED / FOUNDER. Q1-Q3 과 Q9-Q18 은 2026-10-02 운영자 위임(Jev `jev-1.13.0`)·리더 판정으로 verdict 가 채워졌고(Q10 은 OPEN, Q17 은 프로브 결과 대기, Q9 는 Jev 선택을 오케스트레이터가 덮어씀), Q4-Q8(EVIDENCE-NEEDED 프로브 항목)은 프로브 결과 전까지 비어 있다. Q19-Q23 은 plan-audit 1회차(`async-plan-audit.md`) 반응에서 새로 표면화된 결정이라 verdict 가 비어 있다 — 운영자·리더 확인 대기. 각 행은 무엇이 미결인지와 왜인지만 적으며 권고를 싣지 않는다(권고는 plan.md §G; `O-*` 번호는 그 표의 ID).
 
 **권위 등록부 점검.** 권위 인용은 커밋된 산출물만 쓴다. Jev 판정은 표시 전용 신호라 권위 등록부 밖이고, 공식 훅 레퍼런스(외부 문서)도 등록부 밖이다. 어느 행의 후보 권위도 커밋 트리에서 확인하지 못했으므로 DECIDED·POLICY-COVERED 로 라우팅한 행은 없다.
 
@@ -65,7 +65,7 @@
 - Label: FOUNDER
 - Authority anchor: 없음
 - Why unresolved: 값(후보 3)은 근거 없는 제안이다. 도달 뒤 침묵이 "통과"로 오독될 위험과 무한 깨움 루프 위험 사이의 균형이다.
-- Operator verdict: Jev (operator-delegated), cap3_silent, confidence 0.21 (약함), 2026-10-02 — **오케스트레이터가 cap3_notify_once_at_cap 으로 덮어씀**(사유: 상한 뒤 완전 침묵은 "통과"로 오독되므로 상한에서 마지막 알림 한 번이 필요하다). 상한 = 트리당 연속 실패 깨움 3회, 세 번째 깨움이 `이후 알림 없음, 상태는 미해결` 을 담은 마지막 알림이고 이후 같은 지문의 실패는 침묵. PROVISIONAL, 리더 수용(2026-10-02)
+- Operator verdict: Jev (operator-delegated), cap3_silent, confidence 0.21 (약함), 2026-10-02 — **오케스트레이터가 cap3_notify_once_at_cap 으로 덮어씀**(사유: 상한 뒤 완전 침묵은 "통과"로 오독되므로 상한에서 마지막 알림 한 번이 필요하다). 상한 = 트리당 연속 실패 깨움 3회, 세 번째 깨움이 `이후 알림 없음, 상태는 미해결` 을 담은 마지막 알림이고 이후 실패는 침묵(plan-audit 1회차 D1 뒤 "같은 지문" 조건을 버리고 pass 까지 모든 실패가 침묵 — 계수 규칙은 Q19). PROVISIONAL, 리더 수용(2026-10-02)
 
 ### Q10: [O-B] 등록 타임아웃 마진 값은?
 
@@ -129,3 +129,38 @@
 - Authority anchor: 없음
 - Why unresolved: 코드+테스트 ≈14·LOC 는 M 대역이고 합계만 L 대역이다. 상한을 조용히 풀지 않고 올린다.
 - Operator verdict: Jev (operator-delegated), keep_tier_m, confidence 0.70, 2026-10-02 — 코드+테스트 ≈14 파일과 미러·문서 ≈5 파일로 나누어 적는다(합 ≈19)
+
+### Q19: [O-A 계수 규칙] 연속 실패 상한은 무엇을 세고 무엇이 해제하는가?
+
+- Label: FOUNDER
+- Authority anchor: 없음 — 오케스트레이터 재정 문구("동일한 실패는 reviewed state 가 바뀔 때까지 억제")는 커밋된 산출물이 아니다.
+- Why unresolved: 문구를 문자 그대로 읽으면 같은 상태 재리뷰가 이미 REQ-CRA-005 로 막혀 있어 상한이 아무것도 제한하지 못하고, 마지막 알림의 고정 문구("이후 알림 없음")와도 모순된다. "동일"을 findings 지문으로 정의하는 읽기는 LLM 산문 제목에 의존해 재서술로 회피되고 findings 0건 fail 에서 충돌한다(감사 D1). 이 SPEC 은 연속 실패 깨움 횟수만 세고 pass 하나로 해제하는 읽기를 적었다.
+- Operator verdict:
+
+### Q20: [전달 확인] fail 기록은 언제 "전달됨"이 되고, 전달되지 않은 fail 은 어떻게 다시 전달되는가?
+
+- Label: FOUNDER
+- Authority anchor: 없음
+- Why unresolved: 기록을 전달 전에 쓰면 전달이 유실된 fail 이 같은 상태에서 영구히 침묵한다(감사 D2). 세션 id+`delivered` 표지+전달 창(30분)은 설계 하나이고, fail 에는 건너뜀을 적용하지 않고 연속 실패 상한만으로 묶는 안이 대안이다. 표지 구간의 한 번 더 전달 가능성은 잔여 위험이다.
+- Operator verdict:
+
+### Q21: [파일 위치] 락·재전달 기록·억제 로그를 어디에 두는가?
+
+- Label: FOUNDER
+- Authority anchor: `.gitignore:397-398`(`.moai/logs/`·`.moai/state/` 무시 줄 — 이 저장소 한정, 다른 저장소에는 없을 수 있음)
+- Why unresolved: 작업 트리 아래(`.moai/state`·`.moai/logs`)는 `.gitignore` 가 숨기는 저장소에서만 상태 키가 안정하고 그렇지 않으면 알려진 상태 건너뜀이 발화하지 않으며 Codex 경로 키가 바뀐다(감사 D6). git 디렉터리 아래는 `.gitignore` 와 무관하지만 로그 위치가 `.moai/logs/` 관례와 달라진다. `verify.Key` 에서 세 경로를 제외하는 안은 Codex 경로의 키 계산을 건드린다.
+- Operator verdict:
+
+### Q22: [래퍼 판정] 래퍼는 무엇을 보고 세션을 깨우는가?
+
+- Label: FOUNDER
+- Authority anchor: `internal/cli/CLAUDE.md:13`(종료 코드 2 = 시스템 오류 문서화)
+- Why unresolved: 종료 코드 2 는 판정 실패뿐 아니라 Go 패닉·시스템 오류도 낸다(감사 D3). 종료 코드 2 와 sentinel 줄(`codex review gate: FAIL`)을 함께 요구하고 래퍼가 stderr 를 캡처해 sentinel 줄부터만 전달하는 설계는 래퍼를 복잡하게 하고 `mktemp` 의존을 더한다.
+- Operator verdict:
+
+### Q23: [숫자] findings 10건·줄 300자·summary 1500자·전체 8000바이트·전달 창 30분·상태 계산 예산 60s×2 를 받아들이는가?
+
+- Label: EVIDENCE-NEEDED
+- Authority anchor: 없음
+- Why unresolved: 훅 출력 크기 상한과 상태 계산의 실제 비용 분포가 관측되지 않았다. 모두 보수적 시작값이며 `internal/config` 단일 원천에서 바꿀 수 있다.
+- Operator verdict:
