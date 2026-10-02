@@ -14,7 +14,27 @@ recorded_by: manager-spec (card t1344); 0.4.1 edits authored over HEAD 4dec6281c
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Owner: manager-develop role (cycle_type tdd), milestones M1 and M2, card t1344. Started on branch WT-batch-approval-gate at tree 61801e166.
+
+### M1 — guard test, RED first
+
+New file `internal/template/batch_gate_summary_doctrine_test.go` (test only), top-level test `TestBatchGateSummaryDoctrine`. It cuts `### 9.2 The batch gate summary` out of the template copy of `auto-semantics.md` through `EmbeddedTemplates()` and checks the 45 anchors A01..A45 of plan.md section F. Subtests: `real_section` (logs `real_section violations=<n>`) and one subtest per anchor, each running a mutant of the real section and requiring that exactly that anchor is reported (logs `mutant <ID> rejected: reported=<ID>`; a mutant that does not change the body fails the subtest).
+
+RED run (tree 61801e166, section absent):
+
+- Command: `go test -count=1 -v -run '^TestBatchGateSummaryDoctrine$' ./internal/template/` with output redirected to a scratch file; exit code 1 (observed as its own step).
+- Decisive lines, verbatim:
+
+```text
+=== RUN   TestBatchGateSummaryDoctrine
+    batch_gate_summary_doctrine_test.go:246: section "### 9.2 The batch gate summary" not found in the template copy of .claude/rules/moai/workflow/auto-semantics.md
+--- FAIL: TestBatchGateSummaryDoctrine (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.403s
+```
+
+- Classification per tdd-result-contract: EXPECTED_RED. The file compiled (a failure at line 246 is the intended assertion `section not found`, reached at run time), so this is not TOOL_FAILURE; it is not REGRESSION_FAILURE because the test is new.
+- Provenance note: the matchers were first validated for coherence against a draft of the section placed temporarily in the template copy (47 `--- PASS` including the top level, 45 mutant lines), then that draft was removed and the RED above was re-run on the final test file before this commit. The first RED run (same decisive failure) preceded any draft.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
