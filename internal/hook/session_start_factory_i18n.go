@@ -41,6 +41,7 @@ type factoryMessages struct {
 	leaderSocket      string // socket path
 	leaderClasses     string // whole-card routing: one lane runs the serial 3-stage path in-session
 	leaderStagger     string // fan-out-only staggered activation
+	gateSummary       string // one sentence: name token + pointer
 	leaderFreeSlots   string // free-slot label list
 	operationalStatus string // explicit run-bound read-only operational query
 	leaderSlotsNone   string // rendered when every slot is claimed
@@ -93,6 +94,7 @@ var factoryLocales = map[string]factoryMessages{
 			"free-slot lanes. Concurrent requests cannot read a cache entry still being written " +
 			"(cache-aware-execution directive 2). This rule governs FACTORY fan-out only — the workflow " +
 			"runtime staggers itself (CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS) and is not governed here.",
+		gateSummary:       "When two or more plan→run Kickoff decisions wait for the operator, present them as one batch gate summary instead of asking card by card — the format and its limits live in `.claude/rules/moai/workflow/auto-semantics.md` §9.2.",
 		leaderFreeSlots:   "Free lane slots right now: %s.",
 		operationalStatus: "Inspect operational lanes with factory_msg_status({\"run_id\":%q}); endpoint liveness does not establish task activity, which remains unknown without evidence.",
 		leaderSlotsNone:   "none — every slot is held by a live session",
@@ -141,6 +143,7 @@ var factoryLocales = map[string]factoryMessages{
 			"실제 출력을 내기 시작했다는 증거(첫 작업 수행 또는 진행 흔적)를 확인한 뒤 나머지 빈 슬롯의 레인을 활성화하세요. " +
 			"동시 요청은 아직 기록 중인 캐시 항목을 읽을 수 없습니다(cache-aware-execution directive 2). " +
 			"이 규칙은 팩토리 팬아웃에만 적용됩니다 — 워크플로 런타임은 스스로 스태거합니다(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS).",
+		gateSummary:       "plan→run Kickoff 결정이 둘 이상 운영자의 답을 기다리면 카드마다 따로 묻지 말고 batch gate summary 하나로 제시하세요 — 서식과 한계는 `.claude/rules/moai/workflow/auto-semantics.md` §9.2 에 있습니다.",
 		leaderFreeSlots:   "현재 빈 레인 슬롯: %s.",
 		operationalStatus: "factory_msg_status({\"run_id\":%q})로 운영 레인 상태를 조회하세요. 프로세스 생존 여부만으로 작업 중이라고 판단하지 않으며, 작업 관측이 없으면 unknown입니다.",
 		leaderSlotsNone:   "없음 — 모든 슬롯을 생존 세션이 사용 중입니다",
@@ -186,6 +189,7 @@ var factoryLocales = map[string]factoryMessages{
 			"(最初のジョブまたは進行の形跡)を確認してから、残りの空きスロットのレーンを起動してください。 " +
 			"同時リクエストは書き込み中のキャッシュエントリを読めません(cache-aware-execution directive 2)。 " +
 			"このルールはファクトリーファンアウトにのみ適用されます — ワークフローランタイムは自身でスタガーします(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
+		gateSummary:       "plan→run Kickoff の判断が 2 件以上オペレーターの回答を待っているときは、カードごとに個別に尋ねず batch gate summary 1 つにまとめて提示してください — 書式と制約は `.claude/rules/moai/workflow/auto-semantics.md` §9.2 にあります。",
 		leaderFreeSlots:   "現在の空きレーンスロット: %s。",
 		operationalStatus: "factory_msg_status({\"run_id\":%q}) でレーンの稼働状態を確認してください。プロセスの生存は作業中である証拠ではなく、作業の観測がなければ unknown です。",
 		leaderSlotsNone:   "なし — すべてのスロットを生存セッションが保持しています",
@@ -230,6 +234,7 @@ var factoryLocales = map[string]factoryMessages{
 		leaderStagger: "分批启动 — 必须: 绝不要同时激活所有泳道。先激活第一条泳道，等到它确实开始产出 " +
 			"(首个任务或可见进展)之后，再激活其余空闲槽位的泳道。 并发请求无法读取仍在写入的缓存条目 " +
 			"(cache-aware-execution directive 2)。本规则仅约束工厂分发 — 工作流运行时会自行错峰(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
+		gateSummary:       "当有两个及以上 plan→run Kickoff 决定在等待操作者答复时，不要逐张卡片提问，请合并为一份 batch gate summary 提交 —— 格式与限制见 `.claude/rules/moai/workflow/auto-semantics.md` §9.2。",
 		leaderFreeSlots:   "当前空闲泳道：%s。",
 		operationalStatus: "使用 factory_msg_status({\"run_id\":%q}) 查询运行通道状态。进程存活不代表正在执行任务；没有任务观测依据时，状态为 unknown。",
 		leaderSlotsNone:   "无 — 所有槽位均被存活会话占用",
