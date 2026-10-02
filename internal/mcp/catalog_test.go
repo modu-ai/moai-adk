@@ -15,8 +15,9 @@ import (
 // The factory message family contributes five further registered tools, and
 // the Codex read-only role launcher three (start, status, result).
 // SPEC-FACTORY-SELF-DISPATCH-001 M3 (REQ-SD-014) contributes the six
-// factory card + queue tools.
-const wantCatalogSize = 45
+// factory card + queue tools. The two on-demand self-review tools
+// (codex_review, glm_review) are read-only and bring the surface to 47.
+const wantCatalogSize = 47
 
 // TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
@@ -29,8 +30,8 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 }
 
 // TestMoaiMCPTools_WriteCapableSet asserts exactly the twenty write-capable
-// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 25 are
-// read-only. session_msg_list is read-only: it enumerates registered peers
+// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 27 are
+// read-only (the two self-review tools among them). session_msg_list is read-only: it enumerates registered peers
 // without touching the store, unlike register/send/poll which write an agent
 // record, append a message, and claim an inbox respectively.
 //

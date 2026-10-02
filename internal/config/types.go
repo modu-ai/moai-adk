@@ -945,6 +945,14 @@ type CodexTaskConfig struct {
 // the HOI opt-in precedent (isHookOptInEnabled), NOT the fail-open learning gate.
 type CodexReviewGateConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// TreeScope decides what the gate does for a session whose scope is the
+	// whole uncommitted tree and which carries no WT- branch evidence
+	// (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-001): "review" (default, the
+	// pre-existing behavior) or "skip". Read through
+	// NormalizeCodexReviewGateTreeScope — any other value means review. The
+	// template ships this key only as a commented example.
+	TreeScope string `yaml:"tree_scope"`
 }
 
 // MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate

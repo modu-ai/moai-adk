@@ -58,14 +58,19 @@ var reviewGateChangeDetector = hasReviewableChanges
 //  2. stop_hook_active (loop prevention)    → ALLOW (mandatory CC protocol)
 //  3. scope resolution (REQ-CGS-001)        → card | tree, from the session tree
 //     (REQ-CGS-005); class + basis logged (REQ-CGS-010), env context only
+//     3a. tree class, no WT- branch, tree_scope skip → ALLOW before the self-gate
+//     (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-002; one policy row logged)
 //  4. no reviewable change IN THE SCOPE     → ALLOW (self-gate; no false block)
 //  5. codex missing                         → ALLOW (fail-open; can't trap the session)
 //  6. codex review pass / inconclusive      → ALLOW
 //  7. codex review FAIL                     → BLOCK (the gate's only block path)
 //
 // `enabled` is read by the caller (runCodexReviewGate via
-// readCodexReviewGateEnabled) and passed in so this function stays free of
-// config I/O (testable as pure logic). It is re-checked here as defense-in-depth.
+// readCodexReviewGateEnabled) and passed in; it is re-checked here as
+// defense-in-depth. The only config I/O in this function is step 3a's read of
+// tree_scope, and only for a tree-class session: the root it reads is the one
+// the caller read `enabled` from (reviewGateConfigRoot(projectDir)), through an
+// injectable reader, so the logic stays testable without a real config tree.
 func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir string) (*hook.HookOutput, error) {
 	allow := &hook.HookOutput{}
 	if !enabled {
@@ -80,6 +85,12 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// serves both execution paths (REQ-CGS-009).
 	scope := reviewScopeResolver(reviewScopeSessionDir(input, projectDir))
 	reviewGateScopeLogger(scope, reviewGateEnvContext())
+	// (3a) The tree_scope policy: a tree-class session with no WT- evidence has
+	// no card to attribute its tree to. The read root is the one `enabled` came
+	// from (reviewGateConfigRoot), resolved only when the class is tree.
+	if treeScopeSkipApplies(scope, func() string { return reviewGateConfigRoot(projectDir) }) {
+		return allow, nil
+	}
 	if !reviewGateScopedChangeDetector(scope) {
 		return allow, nil // (4) scoped self-gate — nothing reviewable in the session's scope ⇒ no false block
 	}
@@ -97,9 +108,9 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	defer cancel()
 	// The review request carries the scope: tree scope stays shape-identical
 	// to its pre-SPEC form (REQ-CGS-003 / REQ-CRT-006), card scope names the
-	// card diff (REQ-CGS-002). projectDir remains the CONFIG root only —
-	// reviewGateConfigRoot above — never the review target when the session
-	// tree differs (REQ-CGS-005).
+	// card diff (REQ-CGS-002). projectDir is the CONFIG root only (it feeds
+	// reviewGateConfigRoot for the tree_scope read in step 3a) — never the
+	// review target when the session tree differs (REQ-CGS-005).
 	out, rpcErr := runCodexReviewRPC(ctx, binaryPath, codexMethodReviewStart, reviewRequestParams(scope))
 	if rpcErr != nil {
 		// (6) fail-open: an inconclusive or erroring reviewer ⇒ ALLOW. The error
