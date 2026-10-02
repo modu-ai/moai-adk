@@ -95,7 +95,7 @@ effort はスラッシュコマンドで変更できます。
 /effort low       # 速度優先
 /effort high      # 深い推論
 /effort xhigh     # 高難度
-/effort ultracode # xhigh + ワークフロー自動編成
+/effort ultracode # ワークフロー自動編成のトグル
 /effort auto      # モデルが文脈に合わせて選択
 ```
 

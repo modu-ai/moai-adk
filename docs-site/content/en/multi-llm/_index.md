@@ -98,7 +98,7 @@ effort can be changed with a slash command.
 /effort low       # speed first
 /effort high      # deep reasoning
 /effort xhigh     # high difficulty
-/effort ultracode # xhigh + automatic workflow orchestration
+/effort ultracode # toggle for automatic workflow orchestration
 /effort auto      # the model picks based on context
 ```
 

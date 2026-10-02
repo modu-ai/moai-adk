@@ -102,7 +102,7 @@ Run a workflow to audit every API endpoint under src/routes/ for missing auth ch
 | 条目 | 说明 |
 |------|------|
 | `/deep-research <问题>` | 捆绑工作流。多角度扇出网络搜索、交叉验证·投票来源，剔除验证未通过的主张后返回带引用的报告。需要 WebSearch 工具 |
-| `/effort ultracode` | `xhigh` 推理强度 + 自动工作流编排的组合。开启后 Claude 对所有实质工作都规划工作流。仅作用于当前会话，新会话重置。用 `/effort high` 回到日常工作 |
+| `/effort ultracode` | 可独立开启和关闭的开关。开启或关闭都不会改变推理强度（effort 等级），开启期间 Claude 会对所有实质工作规划工作流。用 `/effort ultracode off` 关闭。用该命令开启的状态仅作用于当前会话，新会话需要重新开启。若想让每个会话都默认开启，在设置文件中写入 `"ultracode": true`（需要 v2.1.284 或更高版本）。注意 `--effort ultracode` 启动参数会同时让会话以 `xhigh` 启动 |
 
 ### 如何关闭
 
