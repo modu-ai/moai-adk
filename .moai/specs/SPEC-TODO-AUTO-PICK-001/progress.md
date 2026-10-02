@@ -451,4 +451,99 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-02T17:06:53Z   # UTC; the sync commit date is 2026-10-03 local
+sync_commit_sha: pending-backfill        # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: docs-synced-audit-pending   # the independent sync audit has NOT run; this record asserts no verdict
+card: t1448
+tier: M
+tree_head_at_sync_start: 842369c77       # branch WT-todo-auto-pick-autonomy, clean at start
+b12_self_test_a: "grep -c 'SPEC-TODO-AUTO-PICK-001' CHANGELOG.md -> 0 before emission (exit 1), proceed"
+b12_self_test_b: "ac_source=.moai/specs/SPEC-TODO-AUTO-PICK-001/acceptance.md tier=M; canonical counter -> 14 (live=14 excluded=0 ambiguous=0, exit 0); live requirements REQ-TAU-001..016 = 16; CHANGELOG entry states 16 / 14"
+b12_self_test_c: "every path cited in the CHANGELOG entry verified with ls (exit 0): 4 changed Go files, 3 test files, 7 doctrine files, the Codex TOML, catalog.yaml, progress.md, 4 factory-mode pages; the 9 cited commit SHAs read from git log"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged close on the single sync commit); updated: 2026-10-03"
+  plan_md_acceptance_md: "no frontmatter block (stateless artifacts) - nothing to transition"
+  progress_md: "no frontmatter block; this section is the record"
+canary_compliance_check: "not applicable - this SPEC defines no forward-looking policy that its own sync tests"
+```
+
+Sync-phase notes (what a reader needs; every figure below was measured in this run on HEAD `842369c77`):
+
+- **User-facing documentation hits judged line by line** (fresh grep across README.md/.ko/.ja/.zh and
+  `docs-site/content/{en,ko,ja,zh}`; doctrine judged against `.claude/skills/moai/workflows/gtd.md` `--auto`
+  section and `.claude/rules/moai/workflow/kanban-dispatch.md` § Entry into the board):
+  - **EDITED** — `docs-site/content/{ko,en,ja,zh}/advanced/factory-mode.md` line 65: "the actor that picks a card
+    is always the operator" is no longer true, because a `/moai:todo --auto` invocation lets the invoked session
+    take cards on its own judgment through the lease. Rewritten at sentence level in all four locales (ko
+    canonical, en/ja/zh derived in the same commit): the operator picks in person (`moai todo next <n>`) or in
+    advance (`/moai:todo --auto`); the invoked session takes cards only through `moai factory next --card <id>`
+    and never a card the operator held or parked; queue admission stays the operator's; the factory leader still
+    does not scan the queue. No heading added or removed (9 per locale).
+  - **KEPT** — `README{,.ko,.ja,.zh}.md:161` (bare `/loop` foreman "picking them stay the operator's job"): a bare
+    `/loop` is not an `--auto` invocation, so the foreman never picks; still true.
+  - **KEPT** — `docs-site/content/{en,ko,ja,zh}/advanced/kanban-mode.md:287` ("picking the next one remain the
+    operator's acts. The foreman only moves an already-picked card"): same foreman-boundary reason; the amended
+    foreman skill still dispatches only `picked` cards outside a batch authorization.
+  - **KEPT** — `docs-site/content/{en,ko,ja,zh}/advanced/factory-mode.md:73` (mermaid label "the operator picks
+    the card"): the diagram depicts the leader routing operator-picked cards to a free lane, which is unchanged;
+    the lane lease path is not drawn there.
+  - **KEPT** — `docs-site/content/{en,ko,ja,zh}/advanced/factory-mode.md:117` ("never picks, only routes" for the
+    foreman) and `:115` (link blurb "the operator is the one who picks" for `/moai todo`): the foreman boundary is
+    unchanged; the blurb is a shorthand for the operator-picks-in-person path and the `--auto` nuance now sits in
+    line 65 of the same page.
+  - **KEPT** — `docs-site/content/{en,ko,ja,zh}/cli-reference/launchers.md:35` ("the leader deals the cards the
+    operator picks to free lanes"): describes leader routing of operator-picked cards; unchanged.
+  - **KEPT** — `docs-site/content/{en,ko,ja,zh}/utility-commands/moai-todo.md` (lines 57, 140-146: the pick is
+    made by a human through the leader session; approving several cards at once): documents the interactive
+    leader-session path and the leader-admits-in-approved-order batch, whose source paragraph in `gtd.md`
+    ("Picking the next card") is not in this card's diff; the page does not describe `--auto`.
+  - **KEPT** — `docs-site/content/{en,ko,ja,zh}/advanced/agent-guide.md:93` and `README{,.ko,.ja,.zh}.md` manager-todo
+    row (`/moai:todo --auto` serial cycle): still true for a non-lane session; the lane refusal is not stated there.
+  - **KEPT** — `docs-site/content/{ko,zh}/advanced/manager-lead.md:35` (factory leader hands the operator-picked
+    card to an idle lane) and `docs-site/content/en/core-concepts/kanban-board-terms.md:66` (an illustrative walk-through
+    sentence unrelated to `--auto`): unchanged by this card.
+  - No page in the four locales lists `moai factory next` flags or describes `moai todo --auto` beyond the
+    manager-todo rows above (grep for `factory next`, `moai factory`, `fallback declare`, `self-service`,
+    `self-dispatch` found nothing), so the new `--card` flag and the lane refusal have no other documented fact to
+    update.
+- **Quality reads (read-only):** `moai spec lint .moai/specs/SPEC-TODO-AUTO-PICK-001` exit 0, "No findings";
+  with `--strict` exit 0, "No findings". Judging build: `moai-adk v3.2.0-rc.26`, `archive/t1401-293-g45600e4ee`,
+  built 2026-10-02T14:42:32Z; `git merge-base --is-ancestor 45600e4ee HEAD` exit 0 (a strict ancestor), and
+  `git diff --name-only 45600e4ee HEAD -- internal/spec` lists 0 files, so the lint rules are identical to the
+  tree's. Docs recipe: `hugo --minify --gc --source docs-site --destination <scratchpad>` exit 0, 0 `WARN`/`ERROR`
+  lines, `sitemap.xml` present (hugo found at `/opt/homebrew/bin/hugo`); URL-blacklist grep exit 1 (no match);
+  Mermaid `LR`/`RL` grep exit 1 (no match); the four edited pages exist in all locales with 9 headings each;
+  README `^## ` counts 12/12/12/12; the tree-wide per-page heading-count ratchet printed no NEW divergence (51
+  baselined pages, none of them factory-mode); body-emoji scan of the four edited pages printed nothing.
+- **Drift audit after the transition:** MCP `spec_audit` (filter `SPEC-TODO-AUTO-PICK-001`, `project_root` this
+  worktree) returned `modern_era_clean: 1`, `total_specs: 1`, one `EraAutoDetected` INFO finding
+  (`H-4 (§E.2 + §E.4 + sync_commit_sha)`), no drift finding; `moai spec lint` re-run after the `status: completed`
+  edit exits 0 plain and `--strict`.
+- **MX check (read-only, nothing edited):** the four changed Go files carry the new tags `@MX:NOTE` on
+  `factoryKeepSetRefusal` and `factoryNextNominate` (with `@MX:SPEC`), `[AUTO]` prefixed and in English;
+  `factory_card.go` holds 3 `@MX:ANCHOR` (the per-file limit, as its own note states) and 3 `@MX:NOTE` (limit 10).
+  Non-test caller counts: `factoryNextNominate` 2, `factoryKeepSetRefusal` 2, `factoryQueuedHoldMarked` 2,
+  `factorySerialInFlightExcluding` 2, `todoLaneSession` 1 — none reaches the fan-in >= 3 anchor threshold; no
+  exported function and no goroutine was added. Complexity: `gocyclo` is not installed, so no cyclomatic figure was
+  measured; a keyword count (`if`/`for`/`case`/`&&`/`||`) over `factoryNextNominate` plus the head of its neighbour
+  gives 15, an over-wide upper bound — reported as a review item, not an established WARN trigger.
+
+Gaps (explicitly not observed in this sync run):
+
+- The independent sync audit (`sync-auditor`, or the orchestrator verification batch) has not run; nothing here
+  claims a verdict.
+- No Go test, build or lint was re-run in this sync phase (documentation-only scope); the run-phase results in §E.2
+  are cited, not re-measured here.
+- Cyclomatic complexity of the new functions was not measured (`gocyclo` is absent).
+- The `--minify` hugo build was measured on the four-locale site as a whole; per-page rendering of the edited
+  paragraph was not inspected visually.
+- The `§6` version-string sync of the verify recipe was not re-run: this card touches no version display.
+- Native-idiom review of the three derived-locale sentences was by the author only; the `moai-domain-humanize`
+  pass was not run (single-sentence edit).
+
+Residual risk: the KEPT judgments rest on reading the doctrine and the page context; a reader who takes the
+line-115 shorthand blurb or the diagram label as a statement about `--auto` would still read them as the operator
+being the only picker. The decision record a lane writes under the new doctrine has not yet been observed (AC-TAU-009
+is a regression-guard with no executing party, per §E.2).
