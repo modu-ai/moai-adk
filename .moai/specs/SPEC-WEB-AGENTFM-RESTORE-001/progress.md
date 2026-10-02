@@ -84,9 +84,10 @@ _<pending sync-phase>_
 
 ### §E.3 Run-phase Audit-Ready Signal
 
-- run_complete_at: 2026-10-02 (M1→M5 완료, 커밋 5종 — §E.2 마일스톤 행 각각)
-- run_status: audit-ready (커버리지·경계 grep·양방향 빌드·lint·web 전체 스위트 실측 — 아래 E-항목 행)
-- M5b 미착수(소유자: manager-spec 재위임 — plan §F M5b). M6 전체 검증은 오케스트레이터 몫.
+- run_complete_at: 2026-10-02 (M1→M5 완료 + M5b 착지 c8ec3becb + M6 전체 검증 — §E.2 마일스톤 행 각각)
+- run_status: audit-ready
+- 근거 요약: AC 13/13 PASS(§E.2 각 행 — AC-AFR-013은 M6 행에서 SSOT 수정안 4요소 + grep 계약 + TestJevAmendmentLinkage로 충족) · 양방향 빌드 exit 0 · LSP run 게이트 프록시(go vet) 오류 0 · 전 저장소 lint 0 issues · 스코프 스위트 전량 GREEN(web·settings/...·template·config·rosterguard·cli 선별) · 원자성 프로브 원자 실측 · 스폰-경로 무시 계약(TestCodexResolution_IgnoresPerAgentLLMCells) GREEN · 경계 grep 신규 0히트 · 커버리지 신규 패키지 94.4% ≥ 85%.
+- M5b: 착지 c8ec3becb(manager-spec 재위임분 — SSOT 수정안) + 53076b0ab(§D.13 불변 절 재기술 본문 반영). M6: 본 에이전트 수행(이 § 전체).
 
 ### M5 후행 (AC-AFR-011 보강 + 증거 수집)
 
@@ -96,3 +97,10 @@ _<pending sync-phase>_
 
 - 커버리지 실측(이 트리, 이 런): internal/settings/agentfm 94.4% · internal/settings 87.0% · internal/config 82.8% · internal/template 84.4% · internal/web 73.5%. acceptance.md 간접 검증이 이름하는 2패키지 중 agentfm ≥85% 충족; template은 84.4%로 0.6pt 미달 — 신규 파일 기여분과 기존 레거시 기여분의 구분은 -coverprofile 산출 후 보고(아래 행), 본 SPEC 범위 밖 레거시 코드의 기여분이 있으면 sync-auditor 판정 자료로 남긴다.
 - coverprofile 산출(이 트리, 이 런): 신규·재포트 함수 전부 100% — profile_matrix.go(ValidPerformanceTiers·IsValidPerformanceTier·AgentGroup·ProfileMatrixAgents·DefaultProfileMatrix·ResolveAgentModelEffort)와 glm_effort_overlay.go 재포트 4종(ResolveGLMReasoning·ResolveGLMReasoningForModel·IsGLMCodingMaxOverrideAgent·GLMCodingMaxOverrideAgents) 포함. 유일 0%는 GLMReasoningStateNames — 본 SPEC이 건드리지 않은 기존 함수(스키마 위젯 소비). template 패키지 84.4%의 미달분은 레거시 코드 기여로 확인 — 신규 코드 커버리지는 충족.
+
+### M6 (2026-10-02, HEAD 53076b0ab — M5b 착지 후) — 전체 검증·LSP
+
+- **AC-AFR-013 (M5b 착지분 검증, §D.13 재기술본 기준)**: (a) grep 계약 — `AGENTFM-RESTORE`가 수정 SPEC에 4히트(related_specs·HISTORY 0.7.0 행·## Amendments·REQ-AMI-011 예외 문단); (b) 불변 절 — c8ec3becb diff에 progress.md 미등장(실측 0), 수정 spec.md에 SSOT 4요소 존재(`status: in-progress` + `amendment_of: SPEC-AGENT-MODEL-INHERIT-001` + `## Amendments` + `prior_completed_sha: 770cb02a9` — 기존 close의 sync_commit_sha); (c) REQ-AMI-011 예외 문단 + REQ-AMI-013 축소 문단 존재(line 108/114 — profile/agent_overrides 재수재, harness_agents/performance_tier/workflow 키 금지 유지); (d) `TestJevAmendmentLinkage` PASS(본문·HISTORY·인용 3자 분열 없음). 13/13 AC 중 마지막 1건 PASS.
+- **M6 배치(환경 세척 복합형, 이 트리·이 런)**: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `go vet ./internal/web/ ./internal/cli/ ./internal/config/ ./internal/template/ ./internal/settings/...` exit 0(LSP run 게이트 프록시 — 타입 오류 0; quality.yaml run: max_errors 0 충족) · `golangci-lint run --timeout=2m` 전 저장소 `0 issues.` · 스코프 스위트: internal/web 전량 GREEN(E1 선별 38테스트 PASS 포함), internal/config `ok 5.8s`, internal/harness/rosterguard `ok 24.3s`, internal/cli 선별 `ok 6.2s`, internal/settings/...+internal/template+internal/web 전량 GREEN(아래 최종 행).
+- **DoD 체크리스트(acceptance.md)**: (1) AC 13/13 PASS — 증거는 §E.2 각 행; (2) decision-index Q1-Q3 운영자 확인 완료(2026-10-02); (3) Out of Scope 미침수 — 커밋 범위가 §A.1 파일 맵 내(43파일 + SPEC 아티팩트); (4) LSP run 게이트 오류 0(vet 프록시 실측). 커버리지: 신규 패키지 internal/settings/agentfm 94.4% ≥ 85% 충족.
+- 최종 행: `go test ./internal/web/ ./internal/settings/... ./internal/template/` → web ok(cached) · settings ok 0.648s · settings/agentfm ok(cached) · settings/yamlpatch ok(cached) · template ok 134.556s — 전량 GREEN, exit 0.
