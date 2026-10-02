@@ -213,7 +213,7 @@ together are presented through §9.2.
 
 ### 9.2 The batch gate summary
 
-The batch gate summary is a presentation form for operator-form decisions, not an approval method: it lowers no evidence standard of §9.1. It is distinct from the `--auto` batch authorization of the card pick row, which authorizes the invoked session to take cards on its own judgment, each only through a lease (§9.3).
+The batch gate summary is a presentation form for operator-form decisions, not an approval method: it lowers no evidence standard of §9.1. It is distinct from the `--auto` batch authorization of the card pick row, which authorizes the invoked session to take cards on its own judgment, a lane session only through a lease (§9.3).
 
 **Membership**
 
@@ -253,7 +253,7 @@ The batch gate summary is a presentation form for operator-form decisions, not a
 ### 9.3 The card-pick authorization
 
 The card pick row's `--auto` invocation authorizes the invoked session to take
-cards from the queue on its own judgment, each only through a lease
+cards from the queue on its own judgment, a lane session only through a lease
 (`moai factory next`, or `moai factory next --card <id>` for a judged pick;
 the lease is a lane's only pick path) and never a keep-set card. Queue
 ADMISSION stays the operator's, and Jev stays display-only.

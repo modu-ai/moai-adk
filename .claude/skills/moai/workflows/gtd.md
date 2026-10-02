@@ -332,8 +332,8 @@ judged on two channels — the session registry and an `lsof` working-directory
 probe — re-measured at every pickup decision, never cached.
 
 [HARD] `/moai:todo --auto` is the operator's batch approval: it authorizes the
-invoked session to take cards from the queue on its own judgment, each only
-through a lease and never a keep-set card, and nothing else. The cycle carries one
+invoked session to take cards from the queue on its own judgment, a lane session
+only through a lease and never a keep-set card, and nothing else. The cycle carries one
 auto-scoped ranking exception: once per invocation, before its first pickup,
 it may rank the queued candidates it is about to accept, and that changes the
 cycle's selection order only. The ranking source is a Jev signal when the

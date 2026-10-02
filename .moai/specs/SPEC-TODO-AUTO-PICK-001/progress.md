@@ -445,6 +445,98 @@ The line "No M5/M6 work was started" above is a statement as of M4 and is left a
 - The user-facing pages that still say the pick is always the operator's (README, docs-site pages) are sync-phase scope and untouched, as the plan requires.
 - Findings for the leader: (1) `kanban-dispatch-detail.md` was already over the 40,000-character instruction budget on develop (42,675 chars at the merge base; 43,138 after this card's +463-char paragraph); a follow-up card should split it. (2) The pre-existing live-only `moai worktree sweep …` sentence of `kanban-dispatch.md` is preserved and still differs between the copies; a follow-up card decides which is right. (3) The operator or leader must apply `moai gtd hold` or a leading `[보류` marker to t810 (`picked`), t1294 and t1383 (`queued`) before lanes exercise the doctrine (spec §B.3 handoff sentence; this card does not touch the queue).
 
+### sync-audit iteration 1 repair (findings F1, F2, F4, F3 part b, F5; this run, this tree)
+
+Carrier: a general-purpose agent carrying the manager-develop role (same ownership exception as M1-M6: a typed
+`manager-develop` spawn auto-isolates into its own agent worktree and cannot write the card tree). No spec.md,
+plan.md, acceptance.md or research.md body was edited; `docs-site/`, `CHANGELOG.md` and §E.4 are untouched (the sync
+phase owns them). Pre-flight: toplevel `…/.moai/worktrees/t1448`, branch `WT-todo-auto-pick-autonomy`, HEAD
+`8de769d81`, `git status --short` empty. Lane env scrubbed in the same compound invocation as every `internal/cli`
+run (`unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED
+MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER && go test …`); heavy-run lease `go-test-cli-t1448` held for the runs and
+released after them. Code and test commit `e55aaeb1b`; doctrine commit recorded by its own subject.
+
+- **R1 (F1, blocking) — `TestFactoryNextNominateConcurrentLanes` made deterministic.** RED (before any edit):
+  `go test ./internal/cli -run '^TestFactoryNextNominateConcurrentLanes$' -count=10 -v` → exit 1, 10 `=== RUN`, 1 PASS /
+  9 FAIL, failure line `factory_nominate_test.go:559: lane lane-1 nominating t1 errored: factory next: rename the card
+  worktree branch: exit status 128: error: unable to move logfile …/.git/logs/refs/.tmp-renamed…`. Cause (as the audit
+  found): both in-process lanes run the pre-existing `factoryEnsureCardWorktree` (`git branch -m`) at the same instant
+  in ONE repository and collide on git's reflog temp file. Fix (test only, no production change for the collision):
+  `nmIsolatedWorktrees` stubs `worktree.WorktreeCreator` for this test so each card gets its own independent git
+  repository (built up front on the test goroutine, restored by `t.Cleanup`); the queue promotion and the
+  version-checked record edges under test are untouched, and `TestFactoryNextNominateSameCardExactlyOne` is unchanged
+  (its loser is refused before any worktree step, so it never raced). The only other concurrent tests
+  (`factory_classify_test.go` ×2, `factory_self_dispatch_test.go`) call `factoryNextLeaseOnce`, which has no worktree
+  step, so they cannot hit it. GREEN: `… -count=30 -v` → exit 0, 30 `=== RUN`, 30 PASS, 0 FAIL, `ok … 68.290s`.
+  `go test -race ./internal/cli -run '^(TestFactoryNextNominateConcurrentLanes|TestFactoryNextNominateSameCardExactlyOne|TestFactoryNextNominatePromoteThenLose|TestFactoryNextNominateCompensateRechecksRecord)$' -count=5 -v`
+  → exit 0, 55 `=== RUN` (subtests included), 20 top-level PASS (5 each), 0 `DATA RACE`, `ok … 95.203s`.
+- **R3 (F3 part b) — compensation re-reads the record inside the queue lock.** RED: new
+  `TestFactoryNextNominateCompensateRechecksRecord/a_lease_landing_while_the_compensation_waits_for_the_queue_lock`
+  (the test holds the queue lock through `todoStoreAt(root).Mutate`, starts `factoryNominateCompensate`, lets lane-2
+  lease the card while the compensation waits, then releases the lock) against the unchanged code: `-count=3` → exit 1,
+  3 of 3 runs FAIL with `t1 queue state = queued, want picked`; the five direct-call subtests pass on the old code.
+  Fix: `factoryNominateCompensate` now performs the `LoadCard` read inside the single `Mutate` closure and restores
+  `queued` only when no row exists or the row is `picked` with no owner; otherwise it leaves the queue item untouched
+  and reports `otherHolder` exactly as before (`raced` refusal for another lane, the claim error for this lane's own
+  row). A read or write error is still the non-token `compensation failed: card <id> stays picked and unowned: …`.
+  GREEN: the same test passes `-count=5` under `-race` (above) and in the full selector below. Not closed, by design:
+  F3 (a) (serial slot snapshot reused inside the lock) and F3 (c) (operator `unpick`→`hold` between promotion and
+  claim) — same two-store non-atomicity class as the unnominated arm (c); a lease landing after the in-lock read and
+  before the restoring write is the same accepted window (spec §B.8). The sync phase records the three as residual
+  risk.
+- **R2 (F4) — mutants M1, M2, M5 now killed.** New tests: `TestFactoryNextNominateBlankCardIsAnError` (CLI `--card=`
+  and `--card=   `, MCP `card: ""` and `"   "`: error `--card needs a card id` / `card needs a card id`, not exit 4,
+  stores byte-identical, no lease), subtests `owned/picked-with-owner-lane-2` and `…-lane-1` in
+  `TestFactoryNextNominateRecordStateTokens` (a `picked` row with an owner is `owned` for any lane), and case
+  `blocked-picked` in `nmCases` (a `picked` nominee classified `blocked` is `blocked`; it also runs through
+  `TestFactoryNextNominateRefusesKeepSet` and `…RefusalLeavesStateUnchanged`). Mutation checks (production file copied
+  to the scratchpad first, one line reverted by `Edit`, test run, file restored with `cp` and compared with `cmp`):
+  M1a CLI guard disabled → `TestFactoryNextNominateBlankCardIsAnError/cli_""` and `/cli_"___"` FAIL (the bare lease
+  ran: output `t1 stage=- worktree=t1`); M1b MCP guard disabled → `/mcp_""` and `/mcp_"___"` FAIL (`err = <nil>`);
+  M2 `factoryRecordRefusal` made to lease an owned `picked` row → both `owned/picked-with-owner-*` subtests FAIL
+  (`want exit 4, token "owned"`); M5 `blocked` limited to `queued` → `RefusesKeepSet/blocked-picked` and
+  `RefusalLeavesStateUnchanged/blocked/blocked-picked` FAIL. After each restore `cmp` reported identical files and
+  `git diff -- internal/cli/mcp_factory_card.go` was empty (that file ends unchanged; `factory_card.go` differs from
+  HEAD only by the R3 and R5 edits). M3, M4, M6 were not pursued (the brief marked them lower value; M6 gained direct
+  coverage as a side effect of the R3 table: another lane's lease/assignment returns `true`, this lane's own lease
+  returns `false`).
+- **R5 (F5).** The `blocked` refusal detail now reads `the card's classification is blocked; no lane lease takes it,
+  the operator decides it`; no test pinned the old words (a `grep` for the phrase over `internal`, `.claude` and `.moai`
+  found it in `factory_card.go` only as a code comment and the detail line, and in an older SPEC's text).
+- **Anchored selector after R1-R5 (23 tests, 108 `=== RUN` lines):** `go test ./internal/cli -run
+  '^(TestFactoryNextNominateLeasesNominee|TestFactoryNextNominateUnknownCard|TestFactoryNextFlagSet|TestFactoryNextNominateMCPParity|TestFactoryNextNominateConcurrentLanes|TestFactoryNextNominateSameCardExactlyOne|TestFactoryNextNominateRefusesKeepSet|TestFactoryNextArmCSkipsHoldMarker|TestFactoryNextNominateQuotaHold|TestFactoryNextNominateBackendSkip|TestFactoryNextNominateRecordStateTokens|TestFactoryNextNominateRefusalLeavesStateUnchanged|TestFactoryNextNominatePromoteThenLose|TestFactoryNextNominateClaimRefusedRollsBack|TestFactoryNextNominateCompensationFailure|TestFactoryNextNominateCompensateRechecksRecord|TestFactoryNextNominateBlankCardIsAnError|TestFactoryNextAllMarkerQueueExitsNoCard|TestFactoryNextBareUnchanged|TestTodoLaneRefusesAutoCycle|TestTodoLaneAutoRefusalText|TestTodoNonLaneGPTSessionNotRefused|TestFactoryFallbackDeclarePrintsLeasePath)$'
+  -count=1 -v` → exit 0, 23 top-level PASS, 0 FAIL, `ok … 145.424s`. Static checks on the code commit tree:
+  `gofmt -l` on the three touched Go files empty; `go vet ./internal/cli` exit 0; `golangci-lint` v2.1.6 `run
+  --timeout=8m ./internal/cli/` → `0 issues.`, exit 0; `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build
+  ./...` exit 0.
+- **R4 (F2) — doctrine scoped to a lane session.** The two phrases (`each only through a lease`, `never a keep-set
+  card`) are now stated of a lane session in `kanban-dispatch.md` (the one-reconciliation paragraph), `gtd.md` (the
+  `--auto` authority clause) and `auto-semantics.md` (§9.2 sentence and §9.3 first paragraph), each in the live file
+  and its template mirror. The kanban-dispatch edit also trims `invocation event` to `invocation` (unpinned) to pay for
+  the added words. No doc pin asserted the over-broad wording, so no pin moved. `manager-todo.md` (and the generated
+  TOML) already scope the lease to a lane session and were not edited; the `moai-kanban-foreman` skill says only
+  "within the keep-set" and was not edited either. Measurements (this tree): `kanban-dispatch.md` live 28304 B / 28095
+  chars vs merge-base blob `7109e0900` 28308 B / 28099 chars (−4 / −4); mirror 27982 B / 27774 chars vs 27986 B /
+  27778 chars (−4 / −4). `cmp` of the seven pairs: `kanban-dispatch-detail.md`, `auto-semantics.md`, `gtd.md`,
+  `manager-todo.md`, `moai-kanban-foreman/SKILL.md`, `moai-mcp-tools-catalogue.md` → exit 0 each;
+  `kanban-dispatch.md` → `differ: char 25116, line 181` (the one pre-existing live-only `moai worktree sweep …`
+  sentence), `git diff --no-index --numstat` → `1 1`. `git diff --numstat 7109e0900` per file (cap in brackets):
+  kanban-dispatch 3/3 [3/3], detail 2/0 [12/0], auto-semantics 36/2 [45/2], gtd 43/9 [80/24], manager-todo 6/4
+  [12/12], foreman 5/3 [12/12], `catalog.yaml` 3/3 [3/3], manager-todo TOML 6/4 [12/12]; each mirror equals its live
+  numstat. `go run ./internal/template/scripts/gen-catalog-hashes.go --all` ran after the last template edit (exit 0;
+  catalog staged in the same commit). Guards: `TestAutoPickDocDoctrine`, `TestAutoPickMirrorParity`,
+  `TestAutoRankDoctrineAmendment`, `TestAutoRankMirrorParity` → 4 top-level PASS, 165 `=== RUN` lines, 0 FAIL, `ok`;
+  `go test ./internal/template -run '^(TestManifestHashFormat|TestCatalogHashCoversSkillSubfiles)$' -count=1 -v` → 2
+  PASS, `ok`; `go test ./internal/template/agentemit/... -run '^TestGoldenCommittedArtifactsMatchEmission$' -count=1 -v`
+  → PASS, `ok`; `go test ./internal/template -run '^(TestDeclaredRuleMirrorForks|TestRuleTemplateMirrorDrift)$' -count=1 -v`
+  → 2 PASS, `ok`.
+- **Gaps and residual risk of this repair.** The R3 race test is timing-assisted: it waits 400 ms for the compensation
+  to reach the queue lock before landing the lease, so on a heavily loaded machine it could pass on the OLD code (it
+  cannot fail on the new code, whose in-lock read is independent of the wait); the RED above was observed 3 of 3. The
+  `-count=30` evidence is for `TestFactoryNextNominateConcurrentLanes` only; the other tests were judged by
+  one run plus the `-race -count=5` above. Not re-measured: `moai spec lint`, the docs-site build, the heading-parity
+  ratchet, package-wide `internal/cli` coverage. The F8 base-ref guards were not re-run.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
