@@ -28,7 +28,7 @@ amendment_of: SPEC-FACTORY-MANAGED-SESSION-001
 | prior_completed_sha | 578e0d8896a6238d9d110aa55cf702f85d11446e |
 | prior_completed_record | progress.md §E.4 sync_commit_sha |
 | rationale | Independent sync audit (`.moai/reports/t1375/sync-audit.md`) found two spec-versus-implementation divergences; the operator chose to align the SPEC with the implementation. F2: the managed Codex launcher is a headless App Server owner and owns no TUI; TUI attach is owed to a follow-up card. F10: the managed turn queue is arrival-order FIFO, one turn at a time, and does not give operator input priority. |
-| scope | spec.md (§B item 2 managed Codex session sentence, REQ-MS-009 wording, frontmatter, this HISTORY, the Known debt section) + acceptance.md (AC-MS-008 and AC-MS-012 prose, the App Server early-exit edge case) + design.md (D-5 sentence and a debt note). REQ count (15) and AC count (17) unchanged; AC command cells unchanged. |
+| scope | spec.md (§B item 2 managed Codex session sentence, REQ-MS-009 wording, frontmatter, this HISTORY, the Known debt section) + acceptance.md (AC-MS-008 and AC-MS-012 prose, the App Server early-exit edge case) + design.md (the D-5 sentence). REQ count (15) and AC count (17) unchanged; AC command cells unchanged. |
 | re_close_path | SPEC returns to `completed` on a later sync commit owned by manager-docs, after a delta plan-audit (this amendment invalidates the cached plan-audit PASS). |
 
 | Version | Date | Author | Change |
@@ -135,8 +135,8 @@ PR의 gorilla/websocket 기반 전송은 채택하되 App Server 클라이언트
 
 Source: `.moai/reports/t1375/sync-audit.md` (findings F2 and F10) and the operator decisions recorded for card t1375.
 
-1. **Headless owner, TUI attach owed.** The managed Codex launcher owns the local Codex App Server only. No TUI is attached or owned, so a factory-environment `moai codex` launch shows no model output on screen and delivery is unattended. TUI attach is owed to a follow-up card (pending issuance by the leader; no card id is assigned here).
-2. **FIFO turn queue.** The managed turn queue is arrival-order FIFO, one turn at a time, gated on the previous turn's completion. Operator input does not take priority: it queues behind an inbox batch that is already claimed. This weakens the wording AC-MS-008 carried before this amendment.
+1. **Headless owner, TUI attach owed.** The managed Codex launcher owns the local Codex App Server only. No TUI is attached or owned. By the sync-audit F2 reading of the launcher source (not observed in a run of `moai codex` in a factory environment), a factory-environment launch therefore shows no model output on screen and delivery is unattended. TUI attach is owed to a follow-up card (pending issuance by the leader; no card id is assigned here).
+2. **FIFO turn queue.** The managed turn queue is arrival-order FIFO, one turn at a time, gated on the previous turn's completion. Operator input does not take priority: it queues behind an inbox batch that is already claimed. This weakens the wording AC-MS-008 carried before this amendment. The arrival-order claim is proved both ways by the four subtests of `TestManagedQueueSerializesOperatorAndInbox` (commit 15fa2f096): `queue serves arrival order: operator then inbox`, `queue serves arrival order: inbox then operator`, `driver claims only when idle and serves operator then inbox in arrival order`, and `driver serves inbox then operator when the claim returns with an operator line already waiting`.
 3. **Verdict file.** `.moai/reports/t1375/sync-audit.md`.
 
 ## §G. 교차 참조
