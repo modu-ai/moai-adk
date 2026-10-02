@@ -30,7 +30,7 @@ Amendment 2 (version 0.3.0):
 | prior_completed_sha | 35dbf356c4ca5e3cd9cb84cae2382c4908afef5e |
 | prior_completed_record | progress.md §E.4 sync_commit_sha (the re-close sync commit) |
 | rationale | The lane's merge attempt found the managed layer wired on factory environment stamps alone, and the hand-off had flagged the activation surface as ambiguous. The operator decided the managed layer is an explicit opt-in, default off. |
-| scope | spec.md (REQ-MS-001 and REQ-MS-005 activation wording, §B item 3, a §D constraint, frontmatter, this HISTORY, the Known debt section) + acceptance.md (AC-MS-001 and AC-MS-007 prose) + design.md (D-7 decision and consequences). REQ count (15) and AC count (17) unchanged; AC command cells unchanged. |
+| scope | spec.md (REQ-MS-001 and REQ-MS-005 activation wording, §B item 3, a §D constraint, frontmatter, this HISTORY, the Known debt section) + acceptance.md (new row AC-MS-018 deciding the opt-in gate; the AC-MS-001 and AC-MS-007 prose is kept as originally audited because their named tests call the owners directly, below the launcher divert, and never set or read the switch; the title and DoD range 001..018) + plan.md (the AC count references) + design.md (D-7 decision and consequences). REQ count stays 15; AC count becomes 18; every command cell of AC-MS-001..017 is unchanged. |
 | re_close_path | SPEC returns to `completed` on a later sync commit owned by manager-docs, after a delta plan-audit. |
 
 Amendment 1 (version 0.2.0):
@@ -46,7 +46,7 @@ Amendment 1 (version 0.2.0):
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
-| 0.3.0 | 2026-10-02 | manager-spec | Completed-SPEC amendment (card t1375) — explicit opt-in activation and reachability limits. The managed layer engages only with `MOAI_FACTORY_MANAGED=1\|true` plus the factory stamps; default off. |
+| 0.3.0 | 2026-10-02 | manager-spec | Completed-SPEC amendment (card t1375) — explicit opt-in activation and reachability limits. The managed layer engages only with `MOAI_FACTORY_MANAGED=1\|true` plus the factory stamps; default off. AC-MS-018 added to decide the gate; AC-MS-001/007 prose kept as originally audited because their tests are owner-level. AC count 17 -> 18. |
 | 0.2.0 | 2026-10-02 | manager-spec | Completed-SPEC amendment (card t1375) — headless Codex owner (audit F2) and arrival-order FIFO turn queue (audit F10). Weakening note: AC-MS-008 no longer promises operator priority, so operator input queues behind an already-claimed inbox batch. |
 | 0.1.0 | 2026-10-01 | manager-spec | Initial SPEC. |
 
@@ -114,7 +114,7 @@ PR의 gorilla/websocket 기반 전송은 채택하되 App Server 클라이언트
 
 ## §E. 성공 기준 요약
 
-`acceptance.md`의 AC-MS-001..017 전부 통과. 특히: (1) F3 비침범 grep이 0적중, (2) 어휘 grep이 `lane-<n>` 이외 라벨 생성 0적확인, (3) `GOOS=windows` 크로스빌드 + 신규 파일 zero-syscall, (4) 실제 제2호스트 없는 loopback 통합 테스트가 CI에서 녹색. 관리 계층 착지 후에도 기존 factory 어휘·조인·디스패치 테스트(`internal/cli`·`internal/kanban`·`internal/hook`의 Factory 스위트)가 회귀 없이 통과한다.
+`acceptance.md`의 AC-MS-001..018 전부 통과. 특히: (1) F3 비침범 grep이 0적중, (2) 어휘 grep이 `lane-<n>` 이외 라벨 생성 0적확인, (3) `GOOS=windows` 크로스빌드 + 신규 파일 zero-syscall, (4) 실제 제2호스트 없는 loopback 통합 테스트가 CI에서 녹색. 관리 계층 착지 후에도 기존 factory 어휘·조인·디스패치 테스트(`internal/cli`·`internal/kanban`·`internal/hook`의 Factory 스위트)가 회귀 없이 통과한다.
 
 ## §F. Exclusions
 
@@ -160,7 +160,7 @@ Source: `.moai/reports/t1375/sync-audit.md` (findings F2 and F10) and the operat
 ## §G. 교차 참조
 
 - `plan.md` — 마일스톤(M1..M6), 사전 점검, 운영자 게이트 자세.
-- `acceptance.md` — AC-MS-001..017, 에지 케이스, 품질 게이트, DoD.
+- `acceptance.md` — AC-MS-001..018, 에지 케이스, 품질 게이트, DoD.
 - `design.md` — D-1..D-7 설계 결정(F3 경계 인터페이스 테이블 포함)과 기각 대안.
 - `research.md` — 정찰 R1..R14(PR 브랜치 파일, develop 어휘·브로커 API, 충돌 맵) 인용.
 - `.moai/reports/t1365/verdict.md` — 재작성 경로 판정(병합 부적격 + 관리 세션 가치 인정).

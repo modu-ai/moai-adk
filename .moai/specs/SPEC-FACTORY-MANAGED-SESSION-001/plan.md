@@ -49,7 +49,7 @@ golangci-lint run --timeout=2m ./internal/cli/... 2>&1 | tail -5            # �
 
 ## §E. Self-Verification (run 종료 시)
 
-E1 AC 17행 PASS/FAIL 매트릭스(명령+verbatim 출력) / E2 `go build ./...` + `GOOS=windows` 크로스빌드 exit 코드 / E3 관리 파일 커버리지(`go test -cover ./internal/cli/...` 85%+) / E4 서브에이전트 경계 grep 0 / E5 lint 신규-vs-baseline 분리 보고 / E6 커밋 SHA 목록+push 상태(레인은 로컬 병합 SHA 보고) / E7 blocker 유무 / E8 TDD RED 실패 출력(구현 전 verbatim).
+E1 AC 18행 PASS/FAIL 매트릭스(명령+verbatim 출력) / E2 `go build ./...` + `GOOS=windows` 크로스빌드 exit 코드 / E3 관리 파일 커버리지(`go test -cover ./internal/cli/...` 85%+) / E4 서브에이전트 경계 grep 0 / E5 lint 신규-vs-baseline 분리 보고 / E6 커밋 SHA 목록+push 상태(레인은 로컬 병합 SHA 보고) / E7 blocker 유무 / E8 TDD RED 실패 출력(구현 전 verbatim).
 
 ## §F. Milestones (되돌릴 수 있는 결정 순 — 변화 가능성 높은 것 우선)
 
@@ -72,5 +72,5 @@ E1 AC 17행 PASS/FAIL 매트릭스(명령+verbatim 출력) / E2 `go build ./...`
 
 ## §H. Cross-References
 
-- `design.md` D-1..D-7 / `research.md` R1..R14 / `acceptance.md` AC-MS-001..017.
+- `design.md` D-1..D-7 / `research.md` R1..R14 / `acceptance.md` AC-MS-001..018.
 - `.moai/reports/t1365/verdict.md` — 경로 판정. `pr-1722` 참조물 보존.
