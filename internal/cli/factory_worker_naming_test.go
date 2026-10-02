@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"slices"
 	"strings"
 	"testing"
 
@@ -10,40 +9,34 @@ import (
 )
 
 // TestParseFactoryFlagLaneVocabulary pins the lane-axis entry tokens
-// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002): `-f lane` / `-f lane-<n>` are the
-// only accepted role shapes. The legacy spellings are refused — their
-// refusal matrix lives in factory_role_refusal_m2_test.go.
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002, re-pinned by SPEC-LAUNCHER-ENTRY-
+// FLAGS-001): `-l` / `--lane` are the only lane entry and `-f` takes no value,
+// so every `-f lane` spelling is refused. The legacy spellings are refused
+// too — their refusal matrix lives in factory_role_refusal_m2_test.go.
 func TestParseFactoryFlagLaneVocabulary(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		args      []string
-		wantRole  bool
-		wantNum   int
-		wantLabel string
-	}{
-		{args: []string{"-f", "lane"}, wantRole: true},
-		{args: []string{"-f=lane"}, wantRole: true},
-		{args: []string{"--factory=lane"}, wantRole: true},
-		{args: []string{"-f", "lane-3"}, wantNum: 3, wantLabel: "lane-3"},
-		{args: []string{"--factory=lane-7"}, wantNum: 7, wantLabel: "lane-7"},
-	}
-	for _, c := range cases {
-		p, err := parseFactoryFlag(c.args)
+	for _, args := range [][]string{{"-l"}, {"--lane"}} {
+		p, err := parseFactoryFlag(args)
 		if err != nil {
-			t.Fatalf("parseFactoryFlag(%v): %v", c.args, err)
+			t.Fatalf("parseFactoryFlag(%v): %v", args, err)
 		}
-		if !p.Enabled || p.LaneRole != c.wantRole ||
-			p.LaneNumber != c.wantNum || p.LaneLabel != c.wantLabel {
-			t.Errorf("parseFactoryFlag(%v) = %+v, want role=%v num=%d label=%q",
-				c.args, p, c.wantRole, c.wantNum, c.wantLabel)
+		if !p.Enabled || !p.LaneRole || p.LaneNumber != 0 || p.LaneLabel != "" {
+			t.Errorf("parseFactoryFlag(%v) = %+v, want a lane entry carrying no number", args, p)
+		}
+	}
+	for _, args := range [][]string{
+		{"-f", "lane"}, {"-f=lane"}, {"--factory=lane"}, {"-f", "lane-3"}, {"--factory=lane-7"},
+	} {
+		if _, err := parseFactoryFlag(args); err == nil {
+			t.Errorf("parseFactoryFlag(%v) = nil error, want the refusal naming -l", args)
 		}
 	}
 }
 
-// TestFactoryFlagUsageErrorAdvertisesLaneForms: the usage error names only
-// the lane-axis forms — the legacy spellings are refused, never taught
-// (REQ-RNC-001).
+// TestFactoryFlagUsageErrorAdvertisesLaneForms: the usage error names the lane
+// entry and the bare leader form — the legacy spellings and the removed lane
+// forms are refused, never taught (REQ-RNC-001).
 func TestFactoryFlagUsageErrorAdvertisesLaneForms(t *testing.T) {
 	t.Parallel()
 
@@ -52,37 +45,38 @@ func TestFactoryFlagUsageErrorAdvertisesLaneForms(t *testing.T) {
 		t.Fatal("want a usage error")
 	}
 	msg := err.Error()
-	for _, want := range []string{"-f lane", "-f lane-2"} {
+	for _, want := range []string{"-l", "--lane", "bare -f"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("usage error %q missing %q", msg, want)
 		}
 	}
-	for _, banned := range []string{"-f agent", "worker"} {
+	for _, banned := range []string{"-f agent", "worker", "-f lane", "lane-2"} {
 		if strings.Contains(msg, banned) {
 			t.Errorf("usage error %q still advertises %q", msg, banned)
 		}
 	}
 }
 
-// TestParseLauncherEntryDesugarsLaneLabel: `-f lane-<n>` desugars into the
-// --name channel the launch branches read, and a lane label plus an
-// operator --name is the naming conflict.
+// TestParseLauncherEntryDesugarsLaneLabel: `-l` desugars into the --name
+// channel the launch branches read (the next free lane-<n>), and an operator
+// --name beside it is the naming conflict.
 func TestParseLauncherEntryDesugarsLaneLabel(t *testing.T) {
-	t.Parallel()
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 
-	p, err := parseLauncherEntry([]string{"-f", "lane-2", "-b"})
+	p, err := parseLauncherEntry([]string{"-l", "-b"})
 	if err != nil {
-		t.Fatalf("parseLauncherEntry(-f lane-2): %v", err)
+		t.Fatalf("parseLauncherEntry(-l): %v", err)
 	}
-	if !slices.Equal(p.Rest, []string{"-b", "--name", "lane-2"}) {
-		t.Errorf("desugared rest = %v, want [-b --name lane-2]", p.Rest)
+	label, ok := parseFactoryLaneLabel(p.Rest)
+	if !ok {
+		t.Fatalf("lane label not recognised in %v", p.Rest)
 	}
-	if label, ok := parseFactoryLaneLabel(p.Rest); !ok || label != "lane-2" {
-		t.Errorf("lane label not recognised in %v: (%q, %v)", p.Rest, label, ok)
+	if len(p.Rest) != 3 || p.Rest[0] != "-b" || p.Rest[1] != "--name" || p.Rest[2] != label {
+		t.Errorf("desugared rest = %v, want [-b --name %s]", p.Rest, label)
 	}
-	if _, err := parseLauncherEntry([]string{"-f", "lane-2", "--name", "lane-3"}); err == nil ||
-		!strings.Contains(err.Error(), "-f lane-<n> already names the lane") {
-		t.Errorf("lane label plus --name = %v, want the naming conflict", err)
+	if _, err := parseLauncherEntry([]string{"-l", "--name", "lane-3"}); err == nil ||
+		!strings.Contains(err.Error(), "already names the role") {
+		t.Errorf("-l plus --name = %v, want the naming conflict", err)
 	}
 }
 

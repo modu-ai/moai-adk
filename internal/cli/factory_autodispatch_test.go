@@ -1,5 +1,5 @@
 // factory_autodispatch_test.go — SPEC-TODO-CLASSIFY-DISPATCH-001 M4
-// acceptance tests (AC-TCD-012): the -f lane's auto-dispatch is DEFAULT-ON,
+// acceptance tests (AC-TCD-012): the -l lane's auto-dispatch is DEFAULT-ON,
 // the launcher stamps the selection into the lane bootstrap carrier, and
 // --no-auto-dispatch selects the manual mode. The default is recorded in
 // code — no new config key (REQ-TCD-011).
@@ -12,26 +12,26 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestParseFactoryEntryAutoDispatchDefaultOn — a plain `-f lane` carries no
+// TestParseFactoryEntryAutoDispatchDefaultOn — a plain `-l` carries no
 // opt-out: the selection the launcher stamps is the code default (auto).
 func TestParseFactoryEntryAutoDispatchDefaultOn(t *testing.T) {
 	sdScrubLauncherEnv(t)
-	entry, err := parseLauncherEntry([]string{"-f", "lane"})
+	entry, err := parseLauncherEntry([]string{"-l"})
 	if err != nil {
-		t.Fatalf("parse -f lane: %v", err)
+		t.Fatalf("parse -l: %v", err)
 	}
 	if !entry.FactoryEnabled || entry.AutoDispatchManual {
-		t.Errorf("-f lane: enabled=%v autoDispatchManual=%v, want (true, false) — auto-dispatch is the default", entry.FactoryEnabled, entry.AutoDispatchManual)
+		t.Errorf("-l: enabled=%v autoDispatchManual=%v, want (true, false) — auto-dispatch is the default", entry.FactoryEnabled, entry.AutoDispatchManual)
 	}
 }
 
 // TestParseFactoryEntryNoAutoDispatchOptOut — `--no-auto-dispatch` selects
-// the manual mode on both lane shapes.
+// the manual mode on both lane spellings.
 func TestParseFactoryEntryNoAutoDispatchOptOut(t *testing.T) {
 	sdScrubLauncherEnv(t)
 	for _, args := range [][]string{
-		{"-f", "lane", "--no-auto-dispatch"},
-		{"-f", "lane-2", "--no-auto-dispatch"},
+		{"-l", "--no-auto-dispatch"},
+		{"--lane", "--no-auto-dispatch"},
 	} {
 		entry, err := parseLauncherEntry(args)
 		if err != nil {
@@ -49,9 +49,9 @@ func TestParseFactoryEntryNoAutoDispatchOptOut(t *testing.T) {
 func TestParseFactoryEntryNoAutoDispatchLaneOnly(t *testing.T) {
 	sdScrubLauncherEnv(t)
 	for _, args := range [][]string{
-		{"-f", "--no-auto-dispatch"},           // leader shape
-		{"--no-auto-dispatch"},                 // no factory entry at all
-		{"-f", "lane", "--no-auto-dispatch=1"}, // no value form exists
+		{"-f", "--no-auto-dispatch"},   // leader shape
+		{"--no-auto-dispatch"},         // no factory entry at all
+		{"-l", "--no-auto-dispatch=1"}, // no value form exists
 	} {
 		if _, err := parseLauncherEntry(args); err == nil {
 			t.Errorf("%v: parsed without refusal, want a lane-only usage error", args)

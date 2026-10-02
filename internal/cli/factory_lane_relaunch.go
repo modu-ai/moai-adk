@@ -14,7 +14,7 @@ import (
 
 // factory_lane_relaunch.go is the Claude-harness lane's supervising loop
 // (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-020, design.md §6): the relaunch
-// clear policy turns the `moai cc|glm -f lane --clear-policy relaunch`
+// clear policy turns the `moai cc|glm -l --clear-policy relaunch`
 // launcher into the parent that leases the next card, ensures its worktree,
 // starts ONE interactive session in that worktree, waits for the operator to
 // end it, and repeats — no process replacement happens on this path (the

@@ -22,7 +22,7 @@ import (
 
 // TestFactoryEntryRefusesLegacyRoleTokens (AC-RNC-002, parse level): every
 // letter case of the legacy role tokens is refused with an error naming the
-// canonical `-f lane`.
+// canonical `-l`.
 func TestFactoryEntryRefusesLegacyRoleTokens(t *testing.T) {
 	t.Parallel()
 
@@ -47,8 +47,8 @@ func TestFactoryEntryRefusesLegacyRoleTokens(t *testing.T) {
 				t.Fatalf("parseLauncherEntry(%v) = nil error, want the legacy-token refusal", c.args)
 			}
 			msg := err.Error()
-			if !strings.Contains(msg, "-f lane") {
-				t.Errorf("refusal %q does not name the canonical -f lane", msg)
+			if !strings.Contains(msg, "-l") {
+				t.Errorf("refusal %q does not name the canonical -l", msg)
 			}
 			if n := strings.Count(msg, "\n"); n != 0 {
 				t.Errorf("refusal is not one error line (%d newlines): %q", n, msg)
@@ -58,8 +58,8 @@ func TestFactoryEntryRefusesLegacyRoleTokens(t *testing.T) {
 }
 
 // TestFactoryEntryRefusesLegacyLaneLabels (AC-RNC-005, parse level): a legacy
-// lane label on the -f value path, any letter case, is refused with an error
-// naming the canonical lane-<n>.
+// lane label on the -f value path, any letter case, is refused with the one line
+// naming the canonical -l.
 func TestFactoryEntryRefusesLegacyLaneLabels(t *testing.T) {
 	t.Parallel()
 
@@ -68,10 +68,10 @@ func TestFactoryEntryRefusesLegacyLaneLabels(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "-f worker-2", args: []string{"-f", "worker-2"}, want: "lane-2"},
-		{name: "-f Worker-4", args: []string{"-f", "Worker-4"}, want: "lane-4"},
-		{name: "-f=agent-5", args: []string{"-f=agent-5"}, want: "lane-5"},
-		{name: "--factory AGENT-6", args: []string{"--factory", "AGENT-6"}, want: "lane-6"},
+		{name: "-f worker-2", args: []string{"-f", "worker-2"}, want: "-l"},
+		{name: "-f Worker-4", args: []string{"-f", "Worker-4"}, want: "-l"},
+		{name: "-f=agent-5", args: []string{"-f=agent-5"}, want: "-l"},
+		{name: "--factory AGENT-6", args: []string{"--factory", "AGENT-6"}, want: "-l"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -89,7 +89,7 @@ func TestFactoryEntryRefusesLegacyLaneLabels(t *testing.T) {
 
 // TestFactoryEntryRefusesLegacyLaneNameTyped (REQ-RNC-005, parse level): a
 // legacy label typed as an operator --name on any entry branch is refused
-// naming the canonical lane-<n>.
+// naming the canonical -l.
 func TestFactoryEntryRefusesLegacyLaneNameTyped(t *testing.T) {
 	t.Parallel()
 
@@ -203,11 +203,11 @@ func TestRunCCRefusesLegacySpellingsNothingWritten(t *testing.T) {
 		args []string
 		want []string
 	}{
-		{name: "-f worker", args: []string{"-f", "worker"}, want: []string{"-f lane"}},
-		{name: "-f agent", args: []string{"-f", "agent"}, want: []string{"-f lane"}},
-		{name: "-f WORKER", args: []string{"-f", "WORKER"}, want: []string{"-f lane"}},
-		{name: "-f worker-2", args: []string{"-f", "worker-2"}, want: []string{"lane-2"}},
-		{name: "-f Worker-4", args: []string{"-f", "Worker-4"}, want: []string{"lane-4"}},
+		{name: "-f worker", args: []string{"-f", "worker"}, want: []string{"-l"}},
+		{name: "-f agent", args: []string{"-f", "agent"}, want: []string{"-l"}},
+		{name: "-f WORKER", args: []string{"-f", "WORKER"}, want: []string{"-l"}},
+		{name: "-f worker-2", args: []string{"-f", "worker-2"}, want: []string{"-l"}},
+		{name: "-f Worker-4", args: []string{"-f", "Worker-4"}, want: []string{"-l"}},
 		{name: "-f --name agent-5", args: []string{"-f", "--name", "agent-5"}, want: []string{"lane-5"}},
 		{name: "-k --name lead", args: []string{"-k", "--name", "lead"}, want: []string{"leader"}},
 		{name: "-k --name lead-7", args: []string{"-k", "--name", "lead-7"}, want: []string{"leader-7"}},
@@ -290,7 +290,7 @@ func TestRunCCRefusesLegacyLeaderNameLeadsJSONSeeded(t *testing.T) {
 	}
 }
 
-// TestRunCCFactoriesEntryWritesLane1 (AC-RNC-001): `-f lane` joins as the
+// TestRunCCFactoriesEntryWritesLane1 (AC-RNC-001): `-l` joins as the
 // next free lane, the session is named lane-1, the factory registry row's
 // label is lane-1, and the command succeeds.
 func TestRunCCFactoriesEntryWritesLane1(t *testing.T) {
@@ -311,8 +311,8 @@ func TestRunCCFactoriesEntryWritesLane1(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	if err := runCC(ccCmd, []string{"-f", "lane"}); err != nil {
-		t.Fatalf("runCC(-f lane): %v", err)
+	if err := runCC(ccCmd, []string{"-l"}); err != nil {
+		t.Fatalf("runCC(-l): %v", err)
 	}
 	if cap.worker != "lane-1" {
 		t.Errorf("%s at launch = %q, want lane-1", config.EnvMoaiFactoryWorker, cap.worker)
@@ -347,7 +347,7 @@ func containsArg(args []string, flag, value string) bool {
 }
 
 // TestRunCCLiveLegacyClaimRefusedThroughCLI (AC-RNC-003, CLI path): a live
-// worker-3 claim from a pre-change binary refuses the `-f lane` join with the
+// worker-3 claim from a pre-change binary refuses the `-l` join with the
 // retire-and-relaunch message and no lane-<n> claim is written; a dead one is
 // stale and the join proceeds exactly as with no claim.
 func TestRunCCLiveLegacyClaimRefusedThroughCLI(t *testing.T) {
@@ -369,9 +369,9 @@ func TestRunCCLiveLegacyClaimRefusedThroughCLI(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	err := runCC(ccCmd, []string{"-f", "lane"})
+	err := runCC(ccCmd, []string{"-l"})
 	if err == nil {
-		t.Fatal("runCC(-f lane) with a live legacy claim = nil error, want the refusal")
+		t.Fatal("runCC(-l) with a live legacy claim = nil error, want the refusal")
 	}
 	msg := err.Error()
 	for _, want := range []string{"worker-3", run, "moai factory runs --retire " + run} {
@@ -406,8 +406,8 @@ func TestRunCCDeadLegacyClaimProceedsThroughCLI(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	if err := runCC(ccCmd, []string{"-f", "lane"}); err != nil {
-		t.Fatalf("runCC(-f lane) with a dead legacy claim: %v", err)
+	if err := runCC(ccCmd, []string{"-l"}); err != nil {
+		t.Fatalf("runCC(-l) with a dead legacy claim: %v", err)
 	}
 	if cap.worker != "lane-1" {
 		t.Errorf("%s at launch = %q, want lane-1 (dead legacy pruned as stale)", config.EnvMoaiFactoryWorker, cap.worker)
@@ -436,7 +436,7 @@ func TestFactoryFlagUsageErrorVocabulary(t *testing.T) {
 }
 
 // TestLauncherHelpLaneVocabulary (AC-RNC-016, help text): the cc and glm help
-// surfaces teach -f lane / -f lane-<n> and neither -f worker nor -f agent.
+// surfaces teach -l / --lane and neither -f worker nor -f agent.
 func TestLauncherHelpLaneVocabulary(t *testing.T) {
 	t.Parallel()
 
@@ -444,12 +444,12 @@ func TestLauncherHelpLaneVocabulary(t *testing.T) {
 		"cc":  ccCmd.Use + "\n" + ccCmd.Long,
 		"glm": glmCmd.Use + "\n" + glmCmd.Long,
 	} {
-		for _, want := range []string{"-f lane", "-f lane-<n>"} {
+		for _, want := range []string{"-l", "--lane"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("%s help missing %q", name, want)
 			}
 		}
-		for _, banned := range []string{"-f worker", "-f agent"} {
+		for _, banned := range []string{"-f worker", "-f agent", "-f lane"} {
 			if strings.Contains(text, banned) {
 				t.Errorf("%s help still advertises %q", name, banned)
 			}

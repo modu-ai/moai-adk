@@ -206,7 +206,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			findProjectRootFn, deps = prevRoot, prevDeps
 		})
 
-		if err := sdCCEntry([]string{"-f", "lane", "--clear-policy", "relaunch"}); err != nil {
+		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err != nil {
 			t.Fatalf("cc lane relaunch: %v", err)
 		}
 
@@ -283,7 +283,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			claudeLookPath, factoryLaneCardLaunchFn = prevLook, prevLaunch
 			findProjectRootFn, deps = prevRoot, prevDeps
 		})
-		if err := sdCCEntry([]string{"-f", "lane", "--clear-policy", "relaunch"}); err == nil {
+		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err == nil {
 			t.Fatal("relaunch without the claude binary succeeded, want a refusal")
 		}
 	})
@@ -320,7 +320,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			claudeLookPath, factoryLaneCardLaunchFn = prevLook, prevLaunch
 			findProjectRootFn, deps = prevRoot, prevDeps
 		})
-		if err := sdCCEntry([]string{"-f", "lane", "--clear-policy", "relaunch"}); err != nil {
+		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err != nil {
 			t.Fatalf("relaunch loop: %v", err)
 		}
 		if started != 2 {
@@ -362,7 +362,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		prevDeps := deps
 		deps = nil
 		t.Cleanup(func() { findProjectRootFn, deps = prevRoot, prevDeps })
-		err := sdCCEntry([]string{"-f", "lane", "--clear-policy", "never"})
+		err := sdCCEntry([]string{"-l", "--clear-policy", "never"})
 		if err == nil {
 			t.Fatal("invalid clear-policy value succeeded, want a refusal")
 		}

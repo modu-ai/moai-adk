@@ -43,7 +43,7 @@ func sdScrubLauncherEnv(t *testing.T) {
 	}
 }
 
-// sdRecordLeaderRun inserts the active factory run a `-f lane` join resolves
+// sdRecordLeaderRun inserts the active factory run a `-l` join resolves
 // (the leader's recording, as fixture).
 func sdRecordLeaderRun(t *testing.T, root, runID, backend string) {
 	t.Helper()
@@ -106,7 +106,7 @@ func sdDriveLaneLaunch(t *testing.T, root string, entry func([]string) error, du
 	deps = nil
 	t.Cleanup(func() { deps = prevDeps })
 
-	if err := entry([]string{"-f", "lane"}); err != nil {
+	if err := entry([]string{"-l"}); err != nil {
 		t.Fatalf("lane launch: %v", err)
 	}
 	return captured
@@ -192,7 +192,7 @@ func TestSD_AC005_LaneLaunchRequiresGitRepo(t *testing.T) {
 			deps = nil
 			t.Cleanup(func() { deps = prevDeps })
 
-			err := tc.entry([]string{"-f", "lane"})
+			err := tc.entry([]string{"-l"})
 			if err == nil {
 				t.Fatal("lane launch outside a git working tree succeeded; want the git-requirement refusal")
 			}
@@ -391,8 +391,8 @@ func TestSD_AC007_NoHeadlessEngineArgv(t *testing.T) {
 		return sdLaunchPathArgv{name: "codex -f lane", binary: "codex", argv: argv}
 	}
 	paths := []sdLaunchPathArgv{
-		capture(t, "cc -f lane", sdCCEntry),
-		capture(t, "glm -f lane", sdGLMEntry),
+		capture(t, "cc -l", sdCCEntry),
+		capture(t, "glm -l", sdGLMEntry),
 		captureCodex(t),
 	}
 	if len(paths) < 3 {

@@ -12,8 +12,8 @@ package cli
 // scratch mutants (acceptance.md AC-015 (a)-(h)) whose reds are recorded in
 // progress.md.
 //
-// Today's lane entry is `-f lane`; `-l` does not exist yet. M2 (cc, glm) and
-// M3 (codex) re-pin the lane launches below from `-f lane` to `-l`. The marker
+// The lane entry is `-l` on cc and glm (re-pinned from the removed `-f lane` by M2);
+// the Codex lane child is still launched through `-f lane` until M3 re-pins it. The marker
 // names asserted here go through the internal/config constants for the
 // factory-owned names; AC-016's frozen-value test owns the literals.
 //
@@ -107,7 +107,7 @@ func netDriveLaunch(t *testing.T, root string, entry func([]string) error, args 
 
 // netLaneFixture builds a project with one active factory run recorded by a
 // leader of the given backend, anchors the process in it, and scrubs the lane
-// marker environment — the fixture a `-f lane` launch needs.
+// marker environment — the fixture a `-l` launch needs.
 func netLaneFixture(t *testing.T, leaderBackend string) string {
 	t.Helper()
 	root, _ := fcFixture(t)
@@ -298,7 +298,7 @@ func TestFactoryNetLeaderLaunch(t *testing.T) {
 }
 
 // TestFactoryNetLaneLaunch is the lane half of the net (AC-015): a lane
-// launched through today's `-f lane` claims a registry slot under its own pid,
+// launched through `-l` claims a registry slot under its own pid,
 // stamps the lane markers, names itself with the claimed label, and receives
 // the settings injection; a second lane from the same process takes the next
 // label because the first claim is live.
@@ -314,9 +314,9 @@ func TestFactoryNetLaneLaunch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLaneFixture(t, tc.backend)
 
-			first := netDriveLaunch(t, root, tc.entry, []string{"-f", "lane"})
+			first := netDriveLaunch(t, root, tc.entry, []string{"-l"})
 			if first.err != nil || !first.launched {
-				t.Fatalf("%s -f lane: launched=%v err=%v", tc.name, first.launched, first.err)
+				t.Fatalf("%s -l: launched=%v err=%v", tc.name, first.launched, first.err)
 			}
 			label := kanban.FactoryLaneLabel(1)
 			for key, want := range map[string]string{
@@ -344,9 +344,9 @@ func TestFactoryNetLaneLaunch(t *testing.T) {
 			}
 
 			// A second lane while the first claim is live bumps to lane-2.
-			second := netDriveLaunch(t, root, tc.entry, []string{"-f", "lane"})
+			second := netDriveLaunch(t, root, tc.entry, []string{"-l"})
 			if second.err != nil || !second.launched {
-				t.Fatalf("%s second -f lane: launched=%v err=%v", tc.name, second.launched, second.err)
+				t.Fatalf("%s second -l: launched=%v err=%v", tc.name, second.launched, second.err)
 			}
 			if got, want := second.env[config.EnvMoaiFactoryWorker], kanban.FactoryLaneLabel(2); got != want {
 				t.Errorf("second lane %s = %q, want %q (the first claim is live)", config.EnvMoaiFactoryWorker, got, want)
@@ -402,9 +402,9 @@ func TestFactoryNetBlockCap(t *testing.T) {
 	})
 	t.Run("lane", func(t *testing.T) {
 		root := netLaneFixture(t, kanban.BackendClaude)
-		launch := netDriveLaunch(t, root, netCC, []string{"-f", "lane"}, func() { check(t, "lane") })
+		launch := netDriveLaunch(t, root, netCC, []string{"-l"}, func() { check(t, "lane") })
 		if launch.err != nil || !launch.launched {
-			t.Fatalf("cc -f lane: launched=%v err=%v", launch.launched, launch.err)
+			t.Fatalf("cc -l: launched=%v err=%v", launch.launched, launch.err)
 		}
 	})
 }
@@ -420,8 +420,8 @@ func containsEntry(env []string, entry string) bool {
 
 // TestFactoryEntryMatrix is the enterable-pair matrix (AC-015): every
 // backend/role pair that is enterable today still launches — Claude and GLM
-// as leader (`-f`), Claude, GLM and Codex as lane (today `-f lane`; re-pinned
-// to `-l` by M2 and M3) — and the Codex leader stays refused with one line,
+// as leader (`-f`), Claude, GLM and Codex as lane (`-l`; the codex row still uses `-f lane` until M3 re-pins it)
+// — and the Codex leader stays refused with one line,
 // exit 1, and no child, no run record.
 func TestFactoryEntryMatrix(t *testing.T) {
 	t.Run("claude leader", func(t *testing.T) {
@@ -454,7 +454,7 @@ func TestFactoryEntryMatrix(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLaneFixture(t, tc.backend)
-			launch := netDriveLaunch(t, root, tc.entry, []string{"-f", "lane"})
+			launch := netDriveLaunch(t, root, tc.entry, []string{"-l"})
 			if launch.err != nil || !launch.launched {
 				t.Fatalf("%s: launched=%v err=%v", tc.name, launch.launched, launch.err)
 			}

@@ -90,7 +90,8 @@ func netEnvMap() map[string]string {
 	return m
 }
 
-// captureLaneEnvToday launches a lane through `-f lane` on each backend and
+// captureLaneEnvToday launches a lane on each backend (`-l` on cc and glm, today's
+// `-f lane` on codex until M3 re-pins it) and
 // returns the marker environment each launch published, keyed by row name.
 func captureLaneEnvToday(t *testing.T) map[string]map[string]string {
 	t.Helper()
@@ -106,7 +107,7 @@ func captureLaneEnvToday(t *testing.T) map[string]map[string]string {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLaneFixture(t, tc.backend)
-			launch := netDriveLaunch(t, root, tc.entry, []string{"-f", "lane"})
+			launch := netDriveLaunch(t, root, tc.entry, []string{"-l"})
 			if !launch.launched || launch.err != nil {
 				t.Fatalf("%s lane launch: launched=%v err=%v", tc.name, launch.launched, launch.err)
 			}
@@ -120,7 +121,7 @@ func captureLaneEnvToday(t *testing.T) map[string]map[string]string {
 	return rows
 }
 
-// TestLaneMarkerGoldenMatchesFLane compares today's `-f lane` marker
+// TestLaneMarkerGoldenMatchesFLane compares the lane launch marker
 // environment, per backend, with the committed golden (AC-004 at M1). A key
 // that appears, disappears, or changes value fails here with the full diff of
 // the row.

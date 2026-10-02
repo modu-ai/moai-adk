@@ -112,8 +112,8 @@ func TestCCFactoryLaneJoinsDiscoveredLeader(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	if err := runCC(ccCmd, []string{"-f", "lane"}); err != nil {
-		t.Fatalf("runCC(-f lane) with one verified leader: %v", err)
+	if err := runCC(ccCmd, []string{"-l"}); err != nil {
+		t.Fatalf("runCC(-l) with one verified leader: %v", err)
 	}
 	if len(*asked) != 1 || (*asked)[0] != "leader" {
 		t.Errorf("discovery asked = %v, want exactly [leader]", *asked)
@@ -144,8 +144,8 @@ func TestGLMFactoryLaneJoinsDiscoveredLeader(t *testing.T) {
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
-	if err := runGLM(glmCmd, []string{"-f", "lane"}); err != nil {
-		t.Fatalf("runGLM(-f lane) with one verified leader: %v", err)
+	if err := runGLM(glmCmd, []string{"-l"}); err != nil {
+		t.Fatalf("runGLM(-l) with one verified leader: %v", err)
 	}
 	if c.runID != "runlead02" || c.leadName != "leader" {
 		t.Errorf("launch env = (run %q, lead %q), want (runlead02, leader)", c.runID, c.leadName)
@@ -166,9 +166,9 @@ func TestFactoryLaneJoinZeroLeadersRefuses(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	err := runCC(ccCmd, []string{"-f", "lane"})
+	err := runCC(ccCmd, []string{"-l"})
 	if err == nil || !strings.Contains(err.Error(), "NO_ACTIVE_FACTORY") {
-		t.Fatalf("runCC(-f lane) with zero leaders = %v, want NO_ACTIVE_FACTORY", err)
+		t.Fatalf("runCC(-l) with zero leaders = %v, want NO_ACTIVE_FACTORY", err)
 	}
 	if len(*asked) != 1 {
 		t.Errorf("discovery asked %d time(s), want exactly one probe before refusing (REQ-001)", len(*asked))
@@ -202,7 +202,7 @@ func TestFactoryLaneJoinExplicitRunSkipsDiscovery(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	err = runCC(ccCmd, []string{"-f", "lane", "--factory-run", "runold01"})
+	err = runCC(ccCmd, []string{"-l", "--factory-run", "runold01"})
 	if err == nil || !strings.Contains(err.Error(), "NO_ACTIVE_FACTORY") {
 		t.Fatalf("explicit non-active run join = %v, want NO_ACTIVE_FACTORY (REQ-006)", err)
 	}
@@ -229,7 +229,7 @@ func TestFactoryLaneJoinMultiLeaderFailsClosed(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	err := runCC(ccCmd, []string{"-f", "lane"})
+	err := runCC(ccCmd, []string{"-l"})
 	if err == nil || !strings.Contains(err.Error(), "AMBIGUOUS_FACTORY_LEADER") {
 		t.Fatalf("two-verified-leader join = %v, want the fail-closed leader ambiguity refusal (REQ-005)", err)
 	}
@@ -263,7 +263,7 @@ func TestFactoryLaneJoinAmbiguousRunsSkipDiscovery(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	err := runCC(ccCmd, []string{"-f", "lane"})
+	err := runCC(ccCmd, []string{"-l"})
 	if err == nil || !strings.Contains(err.Error(), "AMBIGUOUS_FACTORY") {
 		t.Fatalf("two-active-runs join = %v, want AMBIGUOUS_FACTORY (unchanged contract)", err)
 	}
@@ -282,7 +282,7 @@ func TestFactoryLaneJoinLeadTargeting(t *testing.T) {
 		c := installFactoryLaunchSeam(t)
 		asked := stageDiscoveredLeaders(t, []discovery.VerifiedLeader{verifiedTestLeader("runlead05")})
 
-		if err := runCC(ccCmd, []string{"-f", "lane"}); err != nil {
+		if err := runCC(ccCmd, []string{"-l"}); err != nil {
 			t.Fatalf("default-target join: %v", err)
 		}
 		if len(*asked) != 1 || (*asked)[0] != "leader" {
@@ -302,7 +302,7 @@ func TestFactoryLaneJoinLeadTargeting(t *testing.T) {
 			Name: "leader-2", Basis: "{}",
 		}})
 
-		if err := runCC(ccCmd, []string{"-f", "lane", "-l", "leader-2"}); err != nil {
+		if err := runCC(ccCmd, []string{"-l", "--leader", "leader-2"}); err != nil {
 			t.Fatalf("--leader leader-2 join: %v", err)
 		}
 		if len(*asked) != 1 || (*asked)[0] != "leader-2" {
@@ -319,7 +319,7 @@ func TestFactoryLaneJoinLeadTargeting(t *testing.T) {
 		installFactoryLaunchSeam(t)
 		stageDiscoveredLeaders(t, nil)
 
-		if err := runCC(ccCmd, []string{"-f", "lane", "--leader", "nobody"}); err == nil || !strings.Contains(err.Error(), "NO_ACTIVE_FACTORY") {
+		if err := runCC(ccCmd, []string{"-l", "--leader", "nobody"}); err == nil || !strings.Contains(err.Error(), "NO_ACTIVE_FACTORY") {
 			t.Fatalf("--leader nobody join = %v, want NO_ACTIVE_FACTORY", err)
 		}
 	})
@@ -332,9 +332,9 @@ func TestFactoryLeadFlagLegacyRefused(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"-f", "lane", "--leader", "lead"}, "legacy leader spelling"},
-		{[]string{"-f", "lane", "-l", "lead-2"}, "legacy leader spelling"},
-		{[]string{"-f", "lane", "--leader=lead"}, "legacy leader spelling"},
+		{[]string{"-l", "--leader", "lead"}, "legacy leader spelling"},
+		{[]string{"-l", "--leader", "lead-2"}, "legacy leader spelling"},
+		{[]string{"-l", "--leader=lead"}, "legacy leader spelling"},
 	} {
 		_, err := parseLauncherEntry(tc.args)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -357,7 +357,7 @@ func TestFactoryLeadFlagSurfaceGates(t *testing.T) {
 		}
 	})
 	t.Run("--leader with --factory-run is an error", func(t *testing.T) {
-		_, err := parseLauncherEntry([]string{"-f", "lane", "--factory-run", "runx0001", "--leader", "leader"})
+		_, err := parseLauncherEntry([]string{"-l", "--factory-run", "runx0001", "--leader", "leader"})
 		if err == nil || !strings.Contains(err.Error(), "--factory-run") {
 			t.Errorf("--leader with --factory-run = %v, want a selector-conflict error", err)
 		}
@@ -367,9 +367,9 @@ func TestFactoryLeadFlagSurfaceGates(t *testing.T) {
 			args []string
 			want string
 		}{
-			{[]string{"-f", "lane", "-l", "leader"}, "leader"},
-			{[]string{"-f", "lane", "--leader", "leader-2"}, "leader-2"},
-			{[]string{"-f", "lane-3", "--leader=leader"}, "leader"},
+			{[]string{"-l", "--leader", "leader"}, "leader"},
+			{[]string{"-l", "--leader", "leader-2"}, "leader-2"},
+			{[]string{"-l", "--leader=leader"}, "leader"},
 		} {
 			entry, err := parseLauncherEntry(tc.args)
 			if err != nil {
@@ -382,7 +382,7 @@ func TestFactoryLeadFlagSurfaceGates(t *testing.T) {
 		}
 	})
 	t.Run("absent --leader leaves the field empty", func(t *testing.T) {
-		entry, err := parseLauncherEntry([]string{"-f", "lane"})
+		entry, err := parseLauncherEntry([]string{"-l"})
 		if err != nil {
 			t.Fatal(err)
 		}

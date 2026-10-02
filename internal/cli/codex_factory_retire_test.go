@@ -483,9 +483,9 @@ func TestFactoryJoinAcceptsCodexLedRun(t *testing.T) {
 		launcher string
 		args     []string
 	}{
-		{"cc", []string{"-f", "lane"}},
-		{"cc", []string{"-f", "lane-2"}},
-		{"glm", []string{"-f", "lane"}},
+		{"cc", []string{"-l"}},
+		{"cc", []string{"--lane"}},
+		{"glm", []string{"-l"}},
 	} {
 		t.Run(tc.launcher+" "+strings.Join(tc.args, " "), func(t *testing.T) {
 			root := codexLedRun(t, "rc", "codex")
@@ -509,7 +509,7 @@ func TestFactoryJoinAndLeadAcceptNonCodexRun(t *testing.T) {
 	t.Run("lane", func(t *testing.T) {
 		root := codexLedRun(t, "rc", "claude")
 		rowsBefore := workerRows(t, root)
-		launches, err := driveFactoryEntry(t, "cc", "-f", "lane")
+		launches, err := driveFactoryEntry(t, "cc", "-l")
 		if err != nil {
 			t.Fatalf("join refused: %v", err)
 		}

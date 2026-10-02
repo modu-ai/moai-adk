@@ -21,7 +21,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f lane | -f lane-<n>] [-- claude-args...]",
+	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -l] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -64,40 +64,36 @@ Kanban Mode:
                                 held by a live session is bumped to the next
                                 free number (plan-1, plan-2, ...).
 
-Factory Mode (dedicated -f entry):
-  -f, --factory                Enter as the LEADER of a factory run. The
-                                numeric count form was retired (2026-09-16):
-                                lanes join one at a time via the lane role
-                                token or the incremental lane form below.
-                                The leader routes operator-picked cards to
-                                free lanes over cross-session messages —
-                                each card goes WHOLE to one lane, which
-                                carries it through plan -> run -> sync
+Factory Mode (dedicated -f and -l entries):
+  -f, --factory                Enter as the LEADER of a factory run. The flag
+                                takes no argument: lanes join one at a time
+                                with -l. The leader routes operator-picked
+                                cards to free lanes over cross-session
+                                messages — each card goes WHOLE to one lane,
+                                which carries it through plan -> run -> sync
                                 in-session.
-  -f lane                      Join the running factory as a LANE: the next
+  -l, --lane                   Join the running factory as a LANE: the next
                                 free lane-<n> label is claimed for this
-                                session. If the run's record is missing or
-                                retired while a live leader session exists,
-                                the join verifies that leader (pid +
-                                process-start) and restores its run, so the
-                                lane still lands on the live factory.
-  -f lane-<n>                  Launch exactly one additional lane — lane n —
-                                and connect it to the leader socket of the
-                                running factory. A number whose label is held by
-                                a live session is bumped to the next free number.
-  -l, --leader <name>            With -f lane / -f lane-<n>: which leader session
-                                the record-absence verification targets
+                                session. The flag takes no argument. If the
+                                run's record is missing or retired while a
+                                live leader session exists, the join verifies
+                                that leader (pid + process-start) and
+                                restores its run, so the lane still lands on
+                                the live factory.
+  --leader <name>              With -l: which leader session the
+                                record-absence verification targets
                                 (default: leader). A legacy spelling of the
                                 leader name is refused.
   -k <N> / -k <N> --name lane-<i>
                                 The v1.2.0 unified -k factory shapes, still
                                 valid: -k N is the leader of an N-lane run,
                                 -k N --name lane-<i> is lane i of it (a
-                                bare -k --name lane-<i> defaults to 8).
-                                One entry token per launch: -k and -f
-                                together is an error.
+                                bare -k --name lane-<i> defaults to 8). A lane
+                                number held by a live session is bumped to the next free number.
+                                One entry token per launch: -k beside -f or
+                                -l is an error.
   Legacy role and label spellings (the pre-rename nouns, any letter case)
-  are refused — the error names the canonical -f lane / lane-<n> form.
+  are refused — the error names the canonical lane-<n> label.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
   -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
@@ -126,9 +122,8 @@ Examples:
   moai cc -k SPEC-AUTH-001             # Kanban leader tied to SPEC-AUTH-001
   moai cc -k --name plan               # Kanban companion: joins as the plan lane
   moai cc -f                           # Factory leader: one lane (lane-1)
-  moai cc -f lane                      # Join the running factory as the next free lane
-  moai cc -f lane-2                    # Add lane 2 to the running factory
-  moai glm -f lane-3                   # Same lane on the GLM backend`,
+  moai cc -l                           # Join the running factory as the next free lane
+  moai glm -l                          # Same lane on the GLM backend`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,
@@ -187,8 +182,8 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// The unified entry parse (t118): parseLauncherEntry covers BOTH entry
 	// tokens — the -k shapes of SPEC-FACTORY-BOOTSTRAP-001 (kanban membership,
 	// role disambiguated by --name, per the §A.2 truth table REQ-FB-001 /
-	// REQ-FB-002) plus the v1.2.0 factory shapes (-k N), and the revived
-	// dedicated -f surface (bare -f / -f lane / -f lane-<n>). Parsed after
+	// REQ-FB-002) plus the v1.2.0 factory shapes (-k N), and the dedicated
+	// factory surface (-f for the leader, -l / --lane for a lane). Parsed after
 	// --spawn is stripped (a spawned session re-issues this command and must
 	// carry the token through) and before worktree handling (so an entry token
 	// can never be mistaken for a -w value). The environment mutation is

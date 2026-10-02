@@ -37,7 +37,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f lane | -f lane-<n>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -l] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -74,38 +74,36 @@ Kanban Mode:
                                 held by a live session is bumped to the next
                                 free number (plan-1, plan-2, ...).
 
-Factory Mode (dedicated -f entry):
+Factory Mode (dedicated -f and -l entries):
   -f, --factory                Enter as the LEADER of a factory run (one
-                                lane, lane-1, grown afterwards with the
-                                forms below). The leader routes
+                                lane, lane-1, grown afterwards with -l).
+                                The flag takes no argument. The leader routes
                                 operator-picked cards to free lanes over
                                 cross-session messages — each card goes
                                 WHOLE to one lane, which carries it through
                                 plan -> run -> sync in-session.
-  -f lane                      Join the running factory as a LANE: the next
+  -l, --lane                   Join the running factory as a LANE: the next
                                 free lane-<n> label is claimed for this
-                                session. If the run's record is missing or
-                                retired while a live leader session exists,
-                                the join verifies that leader (pid +
-                                process-start) and restores its run, so the
-                                lane still lands on the live factory.
-  -f lane-<n>                  Launch exactly one additional lane — lane n —
-                                and connect it to the leader socket of the
-                                running factory. A number whose label is held by
-                                a live session is bumped to the next free number.
-  -l, --leader <name>            With -f lane / -f lane-<n>: which leader session
-                                the record-absence verification targets
+                                session. The flag takes no argument. If the
+                                run's record is missing or retired while a
+                                live leader session exists, the join verifies
+                                that leader (pid + process-start) and
+                                restores its run, so the lane still lands on
+                                the live factory.
+  --leader <name>              With -l: which leader session the
+                                record-absence verification targets
                                 (default: leader). A legacy spelling of the
                                 leader name is refused.
   -k <N> / -k <N> --name lane-<i>
                                 The v1.2.0 unified -k factory shapes, still
                                 valid: -k N is the leader of an N-lane run,
                                 -k N --name lane-<i> is lane i of it (a
-                                bare -k --name lane-<i> defaults to 8).
-                                One entry token per launch: -k and -f
-                                together is an error.
+                                bare -k --name lane-<i> defaults to 8). A lane
+                                number held by a live session is bumped to the next free number.
+                                One entry token per launch: -k beside -f or
+                                -l is an error.
   Legacy role and label spellings (the pre-rename nouns, any letter case)
-  are refused — the error names the canonical -f lane / lane-<n> form.
+  are refused — the error names the canonical lane-<n> label.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
   -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
@@ -128,8 +126,7 @@ Examples:
   moai glm -k              # Kanban leader on GLM: seeds the chain
   moai glm -k --name run           # Kanban companion on GLM (the GLM-recommended role)
   moai glm -f              # Factory leader on GLM: one lane (lane-1)
-  moai glm -f lane         # Join the running factory as the next free lane (GLM backend)
-  moai glm -f lane-2       # Add lane 2 to the running factory (GLM backend)
+  moai glm -l              # Join the running factory as the next free lane (GLM backend)
 
 Mixed Claude/GLM teammate roles require verified teammate routing support.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -263,7 +260,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 		defer restoreRun()
 		// Same recording as the cc leader: the kanban store AND the factory state
-		// a lane's -f lane-<n> join resolves. Recording only the former left
+		// a lane's -l join resolves. Recording only the former left
 		// every GLM-led run unjoinable (NO_ACTIVE_FACTORY).
 		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
 			return fmt.Errorf("record factory run: %w", err)

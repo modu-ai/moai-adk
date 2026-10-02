@@ -34,9 +34,9 @@ func TestSD_AC021_LegacySpellingsRefused(t *testing.T) {
 			wantMsg  []string // substrings the RNC message must carry
 			anyError bool     // refused, message shape unchecked (position expects no such label)
 		}{
-			{args: []string{"-f", "worker"}, wantMsg: []string{"legacy role token", "-f lane"}},
-			{args: []string{"-f", "agent"}, wantMsg: []string{"legacy role token", "-f lane"}},
-			{args: []string{"-f", "Worker"}, wantMsg: []string{"legacy role token", "-f lane"}},
+			{args: []string{"-f", "worker"}, wantMsg: []string{"legacy role token", "-l"}},
+			{args: []string{"-f", "agent"}, wantMsg: []string{"legacy role token", "-l"}},
+			{args: []string{"-f", "Worker"}, wantMsg: []string{"legacy role token", "-l"}},
 			{args: []string{"-f", "worker-1"}, wantMsg: []string{"legacy lane label", "lane-1"}},
 			{args: []string{"-f", "agent-2"}, wantMsg: []string{"legacy lane label", "lane-2"}},
 			{args: []string{"-f", "Worker-1"}, wantMsg: []string{"legacy lane label", "lane-1"}},
