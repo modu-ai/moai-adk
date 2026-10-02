@@ -52,6 +52,11 @@ var rxdToolsTail = []string{
 	"mcp__moai__glm_job_cancel",
 }
 
+// rxdReviewToolsSuffix is the self-review pair a later card appended to the
+// manager-develop grant; the delegation line may carry it, in this order, and
+// nothing else.
+const rxdReviewToolsSuffix = ", mcp__moai__codex_review, mcp__moai__glm_review"
+
 // rxdSubsection is one H3 subsection of the section and the anchors it must
 // contain on single physical lines.
 type rxdSubsection struct {
@@ -346,7 +351,7 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 			}
 			if len(toolLines) != 1 {
 				t.Errorf("%s: want exactly one `tools:` line, found %d", where, len(toolLines))
-			} else if toolLines[0] != wantLine {
+			} else if toolLines[0] != wantLine && toolLines[0] != wantLine+rxdReviewToolsSuffix {
 				t.Errorf("%s: `tools:` line is not the existing prefix plus the eight delegation tools.\n got: %s\nwant: %s", where, toolLines[0], wantLine)
 			}
 			if strings.Contains(content, rxdSetupTool) {
