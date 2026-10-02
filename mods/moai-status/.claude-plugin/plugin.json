@@ -1,0 +1,7 @@
+{
+  "name": "moai-status",
+  "version": "0.1.0",
+  "description": "Usage/context warning strip, lane notification toast and health/status warning line. Strictly additive observer: draws only, never acts.",
+  "author": { "name": "MoAI-ADK" },
+  "types": "./types/index.d.ts"
+}
