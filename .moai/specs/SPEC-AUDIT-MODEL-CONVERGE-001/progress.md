@@ -271,7 +271,7 @@ _<pending run-phase>_
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-10-02T14:50:22Z
-sync_commit_sha: pending-backfill        # a commit cannot cite its own SHA; backfilled in a following commit
+sync_commit_sha: 6d2e3d4fce6be9d960091277a9c6d6b779d57fdf   # the sync commit; backfilled by the lane orchestrator in a following commit (mechanical placeholder completion, no trailer claim)
 card: t1423
 tier: L
 run_commit_range: 25e6e9737..4ae90d62f   # M1 dd44df3cf .. M9 4ae90d62f; 25e6e9737 is the parent of M1 (git log --oneline)
