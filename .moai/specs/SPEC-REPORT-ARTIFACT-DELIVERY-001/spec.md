@@ -22,6 +22,7 @@ related_specs: [SPEC-REPORTS-LIFECYCLE-001]
 | 날짜 | 변경 | 근거 |
 |------|------|------|
 | 2026-10-02 | 최초 작성 (Tier M, plan-phase) | 리더 배차 — 카드 t1427 (운영자 지시 2026-10-02, Class C) |
+| 2026-10-02 | plan-audit 1차(FAIL 0.875 · MP-8) 수리 — D1 RED-now 4요소 증거 장부(EV-01~18) plan 단계 완성·AC-005/008 재고정·AC-014 regression-guard 재분류·D4 추적성 정정·D5 마일스톤 정렬·D6 .agents 17종 정정·D7 Jev 해결 기재 | `.moai/reports/t1427/plan-audit.md` (런타임 기록 — 미커밋, 경로 참조 전용) |
 
 ---
 
@@ -43,7 +44,7 @@ moai-domain-html-report 스킬은 마크다운 보고서를 단일 HTML 파일�
 6. **템플릿**: `references/templates/*.html.mustache` 6종(pr 18,473B · status 17,927B · incident 17,042B · plan 15,514B · financial 14,161B · explainer 14,037B) — 자체 `<!doctype html>`·charset·viewport·`:root` 토큰·body 배경을 이미 보유. 다크모드 블록 0건(`prefers-color-scheme`/`data-theme` grep 0히트 실측), Pretendard jsdelivr 링크 보유.
 7. **폰트**: `references/fonts.md` — status/financial/pr/incident/plan = Pretendard(jsdelivr, pinned v1.3.9) + JetBrains Mono(Google), explainer = Noto Sans KR·Noto Serif KR·JetBrains Mono(전량 Google). **Pretendard는 Google Fonts 카탈로그에 없다.**
 8. **미러 패리티**: 라이브 스킬 디렉터리와 skill-routing.md 모두 `internal/template/templates/` 미러와 byte 동일(`diff -rq` 실측 2026-10-02 — SKILL-MIRROR-PARITY-OK·ROUTING-MIRROR-PARITY-OK).
-9. **Codex 배포 경로**: `internal/template/templates/.agents/skills/`와 라이브 `.agents/skills/` 모두 moai-* 커맨드 스킬 19종만 보유 — moai-domain-* 도메인 스킬의 `.agents` 미러는 존재하지 않는다(카드 ⑦의 동기 범위를 Claude 표면 + 템플릿 SSOT로 한정하는 근거).
+9. **Codex 배포 경로**: `internal/template/templates/.agents/skills/`와 라이브 `.agents/skills/` 모두 moai-* 커맨드 스킬 17종만 보유(`find -type d -name 'moai-*'` 재계측 — 1차 감사 D6 정정; 초판 "19종"은 ls 포맷 오독) — moai-domain-* 도메인 스킬의 `.agents` 미러는 존재하지 않는다(카드 ⑦의 동기 범위를 Claude 표면 + 템플릿 SSOT로 한정하는 근거).
 10. **전달 단계**: SKILL.md "## After rendering — report back to the user" — 요약 출력 + 브라우저 auto-open(platform opener)이 현재 유일한 전달 행위.
 11. **지침 예산**: `internal/hook/instructions_loaded.go:103` `charBudget = 40000`(rules 측정 기준). SKILL.md 현재 22,516B · 406행 — 증분 여유는 유한하다.
 

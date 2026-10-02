@@ -75,6 +75,7 @@ RED-now 기준(2026-10-02, 2e700a15e 실측 완료 — acceptance.md §D 표 참
   - mermaid 방침 주석: `pre.mermaid` 코드 블록 — CDN 스크립트 없음.
 - 블록 밖(html 파일 형식) 무변경 — Pretendard jsdelivr·기존 CDN 유지.
 - `references/fonts.md` — 아티팩트 형식 폰트 매핑 절 추가.
+- 블록 경계 주의 — explainer 템플릿의 기존 인라인 `<script>`(2곳, CDN 아님)는 아티팩트 블록으로 흡수하지 않는다(1차 감사 operational note). AC-RAD-008의 pretendard 보존 핀치(explainer 0 · plan 3 · financial/incident/pr/status 각 4 — acceptance.md §E EV-12)도 M3 편집이 지켜야 할 기준선이다.
 - **③ 폰트 최종 결정**: artifact 형식은 **Google Fonts Noto 계열**(Noto Sans KR/Noto Serif KR + JetBrains Mono)로 조달한다. 근거 — (1) 계약이 스타일시트 호스트를 Google Fonts로 제한하는데 Pretendard는 Google Fonts 카탈로그에 없다(fonts.md 실측); (2) @font-face 인라인은 `data:` URI로 16MB 상한을 소모하며 한국어 풀패밀리는 수 MB급으로 비현실적; (3) Noto Sans KR·Noto Serif KR·JetBrains Mono는 스킬이 이미 사용 중인 패밀리라 신규 CDN 관계가 0이다(fonts.md 매핑표 실측). 기각 — Pretendard 유지(jsdelivr 차단), Pretendard 자체호스팅 data: URI(용량).
 - 기각된 메커니즘 대안 — (a) 아티팩트 전용 템플릿 6종 신설: ~100KB 중복·이중 유지보수 드리프트 위험; (c) 단일 오버레이 문서만 추가: 모델의 심적 병합 오류 위험, 카드 문언("6개 모드 템플릿을 계약에 맞춤")과 검증 용이성에서 블록 방식이 우위.
 - 산출: AC-RAD-006, 008, 009(템플릿 축).
@@ -89,7 +90,7 @@ RED-now 기준(2026-10-02, 2e700a15e 실측 완료 — acceptance.md §D 표 참
 - 템플릿 중립성 grep(카드 토큰 0히트) + `go test ./internal/template/` + `TestHtmlReportOutputPathParity` 그린.
 - `wc -c` SKILL.md ≤ 26,000B 확인(대형 추가는 references/로 — §B 지침 예산).
 - `go build ./...` + `go test ./internal/settings/ ./internal/web/ ./internal/cli/...` 최종 그린.
-- 산출: AC-RAD-010, 011, 012, 013, 014.
+- 산출(최종 재검증): AC-RAD-010, 011, 013 — AC-RAD-012·014는 항시 유지 조건의 재입증. 전환 시점 귀속의 SSOT는 acceptance.md §D 표다(1차 감사 D5 정렬).
 
 ## §G Anti-Patterns
 
