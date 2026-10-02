@@ -204,6 +204,8 @@ func factorySerialSlotFree(state string) bool {
 	case homestate.CardMergeReady, homestate.CardMerging, homestate.CardMergedLocal,
 		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone, homestate.CardAbandoned:
 		return true
+	case homestate.CardPROpen, homestate.CardMergedPR: // github-flow delivery: the PR edge ended the lane's work on the card
+		return true
 	default:
 		return false
 	}
@@ -618,6 +620,8 @@ func cardStageAtOrAfterMergeReady(s string) bool {
 	switch s {
 	case homestate.CardMergeReady, homestate.CardMerging, homestate.CardMergedLocal,
 		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+		return true
+	case homestate.CardPROpen, homestate.CardMergedPR: // github-flow delivery states sit past merge-ready
 		return true
 	}
 	return false
@@ -1591,6 +1595,8 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, runID, cardID, gate
 		if choice == "reject" {
 			to = homestate.CardBlocked
 		}
+	case gate == "push" && cur.State == homestate.CardMergedPR:
+		to = homestate.CardDone // github-flow: the merge is already on the remote — the gate closes the card, nothing is pushed
 	case gate == "push":
 		if err := want(homestate.CardMergedLocal); err != nil {
 			return cur, err

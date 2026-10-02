@@ -649,3 +649,20 @@ func TestFactoryMergeReadyGitHubFlowTakesNoWindow(t *testing.T) {
 		t.Errorf("merge ready took the window under github-flow: %+v", lock)
 	}
 }
+
+// The two cli-side state consumers: a PR-delivered card has finished the lane's
+// implementation work (the serial slot re-admits selection), and both of its
+// states sit past merge-ready (a Codex lane never selects such a card).
+func TestFactoryGitHubFlowStatesAreConsumedAsPostMergeReady(t *testing.T) {
+	for _, s := range []string{homestate.CardPROpen, homestate.CardMergedPR} {
+		if !factorySerialSlotFree(s) {
+			t.Errorf("factorySerialSlotFree(%s) = false: an open PR must not hold the serial slot", s)
+		}
+		if !cardStageAtOrAfterMergeReady(s) {
+			t.Errorf("cardStageAtOrAfterMergeReady(%s) = false", s)
+		}
+	}
+	if factorySerialSlotFree(homestate.CardRun) {
+		t.Error("factorySerialSlotFree(run) = true: the slot must stay held while a card is being worked")
+	}
+}

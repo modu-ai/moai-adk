@@ -48,7 +48,7 @@ const DeciderHuman = "human"
 var cardStates = []string{
 	CardPicked, CardAssigned, CardLeased, CardPlan, CardPlanAudit, CardKickoff,
 	CardRun, CardSync, CardSyncAudit, CardMergeReady, CardMerging, CardMergedLocal,
-	CardPushed, CardCIGreen, CardDone, CardNeedsDecision, CardBlocked, CardFailed,
+	CardPROpen, CardMergedPR, CardPushed, CardCIGreen, CardDone, CardNeedsDecision, CardBlocked, CardFailed,
 	CardAbandoned,
 }
 
@@ -62,10 +62,11 @@ var resumableStages = []string{CardPlan, CardPlanAudit, CardRun, CardSync, CardS
 
 var terminalStates = []string{CardDone, CardFailed, CardAbandoned}
 
-// CardStates returns the 19 F1 states in pipeline order.
+// CardStates returns the 21 F1 states in pipeline order (19 plus the
+// github-flow delivery states pr-open and merged-pr, card_pr_states.go).
 func CardStates() []string { return slices.Clone(cardStates) }
 
-// IsCardState reports whether s is one of the 19 F1 states.
+// IsCardState reports whether s is one of the 21 F1 states.
 func IsCardState(s string) bool { return slices.Contains(cardStates, s) }
 
 // IsLeaseHoldingState reports whether a card in state s holds a worker lease.

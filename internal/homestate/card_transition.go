@@ -94,7 +94,7 @@ type transitionEdge struct {
 }
 
 // @MX:ANCHOR: [AUTO] the F1 card transition table — the complete set of requested edges the record accepts
-// @MX:REASON: AC-005 pins its size at 65 accepted pairs; adding, dropping, or re-guarding a row changes what every factory writer may do (REQ-FR-004)
+// @MX:REASON: AC-005 pins its size at 70 accepted pairs (65 plus the three github-flow delivery edges and the two abandons they bring); adding, dropping, or re-guarding a row changes what every factory writer may do (REQ-FR-004)
 var transitionTable = buildTransitionTable()
 
 func buildTransitionTable() []transitionEdge {
@@ -122,6 +122,7 @@ func buildTransitionTable() []transitionEdge {
 		{"T17", CardMergedLocal, CardPushed, guardPush},
 		{"T18", CardMergedLocal, CardDone, guardNoRemote},
 	}
+	t = append(t, prTransitionEdges()...) // github-flow delivery (card_pr_states.go)
 	t21 := append(append([]string{CardPicked, CardAssigned}, leaseHoldingStates...), CardMergedLocal, CardPushed, CardCIGreen)
 	for _, from := range t21 {
 		t = append(t, transitionEdge{"T21", from, CardNeedsDecision, guardQuestion})
@@ -555,6 +556,8 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		plan.next.DecisionGate = DecisionGateQuestion
 		plan.next.DecisionQuestion = q
 		plan.next.DecisionResume = cur.State
+	case guardPROpen, guardPRMerged, guardPRDone:
+		return planPREdge(ctx, cur, edge, req, plan, nowText)
 	case guardFail:
 		reason := strings.TrimSpace(req.Reason)
 		if reason == "" {
