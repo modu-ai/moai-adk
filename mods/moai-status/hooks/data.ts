@@ -4,7 +4,7 @@
 // shell strings; the table is the ONLY argv built anywhere.
 import type { MoaiStatusBand, MoaiStatusFigure, MoaiStatusMeasureInput, MoaiStatusUsage } from '../types'
 
-/** What `$.process.run` resolves with (the laid typings' ProcessRunResult). */
+/** What the engine's process.run resolves with (the laid typings' ProcessRunResult). */
 export type RunResult = {
   exitCode: number
   stdout: string
@@ -13,7 +13,7 @@ export type RunResult = {
   isStderrTruncated: boolean
 }
 
-/** The run function the hooks module hands the helpers; the single `$.process.run` site wraps it. */
+/** The run function the hooks module hands the helpers; the single process.run site wraps it. */
 export type Run = (argv: readonly string[]) => Promise<RunResult>
 
 // plan §G parameters. HEALTH_POLL_MS above the floor is Q3's provisional value;
@@ -24,12 +24,14 @@ export const CMD_TIMEOUT_MS = 20_000
 export const TOAST_EXCERPT_CP = 80
 export const STATUS_LINE_MAX = 200
 
-// The fixed argv table (plan §B.3). The check names are the in-tree check
-// identifiers (internal/cli/doctor.go:210, internal/cli/doctor_mcp_version.go).
+// The fixed argv table (plan §B.3) — the only argv built anywhere, pinned in
+// double quotes for the AC-MSM-002(ii) structural check. The check names are
+// the in-tree check identifiers (internal/cli/doctor.go:210,
+// internal/cli/doctor_mcp_version.go).
 export const ARGV = {
-  binary: ['moai', 'doctor', '--check', 'Binary Freshness'],
-  mcp: ['moai', 'doctor', '--check', 'MCP Server Version'],
-  memory: ['moai', 'memory', 'doctor', '--json'],
+  binary: ["moai", "doctor", "--check", "Binary Freshness"],
+  mcp: ["moai", "doctor", "--check", "MCP Server Version"],
+  memory: ["moai", "memory", "doctor", "--json"],
 } as const
 
 // The strip thresholds mirror the in-repo gates' DEFAULT configuration (M-7,

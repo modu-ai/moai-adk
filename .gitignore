@@ -439,3 +439,7 @@ main-fork/
 # to `git status` still sees a clean tree while the suite is running.
 /test-stream.json
 /test-stream.json.gz
+
+# Engine-laid Claude Code typings for mods (function-hook plugins); written by a
+# session load, never authored — the mods own sources stay tracked (REQ-MSM-011).
+mods/*/.claude-plugin/types/

@@ -113,6 +113,43 @@ Builds in play at run phase (re-measured at entry): `claude 2.1.287`, `moai v3.2
 - **GREEN (engine)** — exit **0**, `19 pass / 0 fail` (`health-cycle:` ×7, `failsoft:` ×2 among them).
 - Three GREEN-phase defects the engine caught, each fixed: (1) `runDiag`'s `$` was a free variable — it resolved to an environment-global `$` whose `process.run` bypassed the test stubs (every source read unknown while no argv was recorded); `$` threads from the handler now. (2) The engine's `$`-flow rule refuses `$` passed to a function declared inside `register` — `runDiag` moved to the top of the hooks module (the sibling's `runMoai` shape); validate's `calls:` line then completed to `$.clock.every (via startHealth), $.process.run (via runDiag), $.state.get, $.state.set, $.ui.resolve, $.ui.status (via runHealthCycle), $.ui.toast`. (3) The clock's cancel handle is `{ cancel }` at runtime (an object), not the bare function the laid typings name — the stop helper accepts both shapes defensively; `session.end` also needed a test-side answer (`{ sessionId }`).
 
+### M5 — packaging and handoff (commits of this milestone)
+
+- `.gitignore` gained exactly the one rule `mods/*/.claude-plugin/types/` (REQ-MSM-011); `git check-ignore -v mods/moai-status/.claude-plugin/types/claude-code/index.d.ts` now exits **0** naming `.gitignore:445:mods/*/.claude-plugin/types/` (AC-MSM-012a green; the RED-now exit-1/empty state was measured pre-work and re-confirmed at M1 pre-flight).
+- `README.md` written (launch, test/validate commands, the additive-observer boundary, the `$.`-single-file layout).
+- Two structural ACs repaired to their mechanical green at M5: AC-MSM-002(ii) — the argv table's three rows re-pinned in double quotes so `grep -rn -E '"(doctor|memory)"' hooks/data.ts` prints exactly 3 lines (the check names themselves are unchanged); AC-MSM-002(iii) — two doc comments in the helper modules mentioned `$.process.run` in backticks, tripping the "no `$.` in a helper module" grep; reworded (no code change — the single call site was always in `register.ts`).
+
+### AC matrix at run completion (E1; tree of the final M5 commit, branch `WT-moai-status-mod`)
+
+Builds: `claude 2.1.287`, `moai v3.2.0-rc.25`, `bun 1.4.2`. Engine profile: `/tmp/msm-cfg-empty-fresh`. Pure recipe per acceptance.md §A.3 (`rm -f /tmp/msm-junit.xml` → junit counts); engine recipe: `mkdir -p` done, `claude plugin test mods/moai-status` → exit 0, `(pass)` lines counted.
+
+| AC | Status | Command (decisive) | Decisive output |
+|---|---|---|---|
+| AC-MSM-001 | **PASS** | `CLAUDE_CONFIG_DIR=/tmp/msm-cfg-empty-fresh claude plugin validate mods/moai-status` | exit 0; `hooks:` names the five events' six registrations; token extraction `grep -o -E '\$\.[A-Za-z]+\.[A-Za-z]+' \| sort -u` → `$.clock.every, $.process.run, $.state.get, $.state.set, $.ui.resolve, $.ui.status, $.ui.toast` (subset of the eight); control `grep -c -F '$.process.run'` → **1** |
+| AC-MSM-002 | **PASS** | (i)–(iv) structural greps | (i) exactly 1 line: `hooks/register.ts:134:  $.process.run(argv, { timeoutMs: CMD_TIMEOUT_MS })`; (ii) exactly 3 lines (data.ts:32-34); (iii) no output, exit 1; (iv) `9` (≥ 2; weak guard — the consumed-shape authority is AC-MSM-007's engine test) |
+| AC-MSM-003 | **PASS** (pure) | bun junit | `classify:` → **6**, `<failure` → 0, `<skipped` → 0 |
+| AC-MSM-004 | **PASS** (pure+engine) | bun junit; engine | `strip-pure:` → **2**; `strip:` → **3** engine `(pass)` lines |
+| AC-MSM-005 | **PASS** (pure+engine) | bun junit; engine | `suffix-pure:` → **2**; `suffix:` → **2** |
+| AC-MSM-006 | **PASS** (engine) | engine | `measure:` → **2** |
+| AC-MSM-007 | **PASS** (pure+engine) | bun junit; engine | `toast-pure:` → **2**; `toast:` → **3** |
+| AC-MSM-008 | **PASS** (pure) | bun junit | `health:` → **8** (plus extras `health-rowfirst:` 1, `health-merge:` 1 — own prefixes, outside the AC count) |
+| AC-MSM-009 | **PASS** (engine) | engine | `health-cycle:` → **7** |
+| AC-MSM-010 | **PASS** (engine) | engine | `failsoft:` → **2** |
+| AC-MSM-011 | **PASS** | validate | exit 0; `state writes: moai-status.health, moai-status.notice, moai-status.usage` — set membership over the three declared keys (sorted, per M-13) |
+| AC-MSM-012 | **PASS** | (a)–(d) | (a) `git check-ignore -v …` exit 0 naming the rule; (b) exit 1 (authored sources not swallowed); (c) `git ls-files -- 'internal/template/templates/*moai-status*'` empty (control prints the zone-registry path); (d) `git diff --stat <base>..HEAD -- internal/ .github/ internal/template/templates/ .goreleaser.yml` empty (`<base>` = `git merge-base develop HEAD` = `58dad3055`, re-read at measurement) |
+| AC-MSM-013 | **UNOBSERVED** (Gap-class, not release-blocking) | manual | needs an operator in an interactive terminal with the mod loaded and a second session able to send a delivery; not performed in this lane |
+
+- Suite totals at completion: **pure (bun)** 23 pass / 0 fail / 0 skipped across `tests/pure/`; **engine** 19 pass / 0 fail across `tests/engine.test.ts` + `tests/status.test.tsx`. Engine parts of AC-MSM-004/-005/-006/-007/-009/-010 were each observed on executing engine runs under the temp config dir (acceptance.md §F DoD-2 met — no UNOBSERVED engine part).
+- DoD-3 (committed-diff path check): `git diff --name-only 58dad3055..HEAD` filtered against `mods/moai-status/`, `.gitignore`, and this SPEC directory leaves **nothing** — every committed path is in scope.
+- AC-MSM-013 checklist for the operator (recorded, not claimed): load with `claude --plugin-dir <abs path to mods/moai-status>`; work past the context thresholds and watch the strip/suffix; run with a behind binary and a second session sending one delivery; confirm the toast, the status line naming both SHAs, and otherwise-unchanged behavior. If the operator profile's rollout switch is off the mod will not load there (G-10).
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_status: audit-ready
+run_complete_at: 2026-10-03
+run_commits: 13bc02b29 (M1), c7dc6a860 (M2), 9d3df65f2 (M3), 319364815 (M4), and the M5 packaging commit of this section — all on `WT-moai-status-mod`, all carrying `t1437` and the `Authored-By-Agent: manager-develop` trailer
+push_state: not pushed — leader batch (git-flow lane protocol; the lane never pushes)
+
 ### Measurement notes carried into the run phase (authored at plan phase; the `## §E.3 Run-phase Audit-Ready Signal` section is manager-develop's, written at run completion)
 
 - The authority typings were laid by a **headless session load** (`claude -p` with `--plugin-dir` and an empty `CLAUDE_CONFIG_DIR`; spec.md M-4). `validate` and `plugin test` lay nothing. If C4 must re-lay them at run-phase entry, budget one headless model call.
