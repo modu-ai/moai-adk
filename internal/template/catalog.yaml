@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 354d897b789147ed15da687a9dc8dad6b453184458de392c0348a884641c5c69
+              hash: b08dd5fb0edeb5d3f5ad0f5a43c567040b59192befa82bd16af46a6c87c366c1
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -52,6 +52,11 @@ catalog:
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
               hash: f98fa6a48bd3db2427c2a12b51a63f1e30b9f2dddf2919b045c5f2d011ac358d
+              version: 1.0.0
+            - name: moai-ref-aside-browser
+              tier: core
+              path: templates/.claude/skills/moai-ref-aside-browser/
+              hash: 653940540ae35059faa4dcdd7d4f2bf4d7b4960de023f6da405e9632c0030b5f
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
@@ -177,7 +182,7 @@ catalog:
             - name: e2e-tester
               tier: core
               path: templates/.claude/agents/moai/e2e-tester.md
-              hash: c5bb26f262e8585b5af05d9bf0d48ba3ad970b2c00f211668d8e629b986fdb4d
+              hash: 2bcd5d661acbc37766d5e3c9b861097c025b7a6a586d4846cd5bc080d8cb10a2
               version: 1.0.0
     optional_packs:
         backend:
