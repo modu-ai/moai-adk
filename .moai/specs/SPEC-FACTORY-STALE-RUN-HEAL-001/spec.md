@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-STALE-RUN-HEAL-001
 title: "Factory stale-run self-healing — automatic lane re-registration on run switch, executable relaunch command in the stale-run notice, and the moai factory relaunch verb"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
