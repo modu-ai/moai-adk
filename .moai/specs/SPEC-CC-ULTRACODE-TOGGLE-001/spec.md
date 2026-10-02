@@ -2,7 +2,7 @@
 id: SPEC-CC-ULTRACODE-TOGGLE-001
 title: "ultracode wording correction — /effort ultracode is an independent on/off toggle, not an xhigh-coupled effort level (rule source + template mirror + docs-site 4 locales)"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
