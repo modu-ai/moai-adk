@@ -86,9 +86,74 @@ Deviations from the plan: (1) `registerFactoryUserPromptPeer` and `registerFacto
 
 Gaps: package-wide coverage not measured; scoped coverage of the new code from the named tests alone — `rebindFactoryLane` 100.0%, `emitReboundState` 100.0%, `emitFactoryLaneState` 100.0%, `registerReboundLane` 75.0% (the open-failure, peer-lookup-failure and handoff-notice branches are not driven), `registerFactoryHookPeerRun` 64.6% (the remaining branches are the existing non-rebind paths, driven by other existing tests), `factoryHookBatchForRun` 75.0%. A mutant that reads both brokers was not built (the claim is a single parameter; the single-run assertions kill the leak variants). RED-before-GREEN ordering is attested by the saved outputs, not witnessed by the commit graph (tests and implementation share one commit). The A4 assumption (UserPromptSubmit firing on autonomous lanes) remains unmeasured (spec §H).
 
+### M3 — the cc/glm relaunch loop follows the run (commit 16b650d7e on 63d573a57; this run, this tree; cycle tdd)
+
+Pre-flight (this tree `63d573a57`, clean): `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0. Plan §C item 5 (the loop's RED) was measured at the pre-change loop by the RED below. Observed behaviour of `enterFactoryLaneRun` called per iteration: it prints nothing and its only side effects are the `MOAI_KANBAN_ID` stamp (restored by the returned func), the `ResolveActiveRun` reconcile the launcher's own call already performs, and on the discovery path the leader-name stamp (also restored) — none breaks the loop, so no blocker.
+
+RED (scaffold first: the new signature `runFactoryLaneRelaunch(cmd, label, claudeArgs, explicit, leadTarget)`, the two call sites, and the `factoryLaneRunGateFn` / `factoryLaneLeaseFn` seams, with the loop's behaviour unchanged, so the test compiled and reached its assertions; `go test ./internal/cli/ -run '^(TestRelaunchLoopReResolvesRun)$' -count=1 -v`, exit 1):
+
+```text
+    factory_lane_relaunch_rerun_test.go:120: the join gate was called 0 times, want once per iteration (3: two cards plus the no-card iteration)
+    factory_lane_relaunch_rerun_test.go:123: leases were taken from runs [X X X], want [X Y Y] (iteration 2 must lease from the NEW run)
+    factory_lane_relaunch_rerun_test.go:126: children saw MOAI_KANBAN_ID=[X X], want [X Y] (iteration 2's child must carry the new run)
+    factory_lane_relaunch_rerun_test.go:136: loop error = <nil>, want one carrying the gate's NO_ACTIVE_FACTORY text
+    factory_lane_relaunch_rerun_test.go:149: loop error = <nil>, want the explicit selection's refusal
+--- FAIL: TestRelaunchLoopReResolvesRun (2.09s)
+```
+
+GREEN: each iteration is `factoryLaneRelaunchIteration`: it re-enters the gate (`factoryLaneRunGateFn(launchProjectRoot(), explicit, leadTarget, nil)`), defers the returned restore for the pass (the child launched inside the pass inherits the stamp the gate just set), reads the stamped run id, leases from it, and on a gate refusal returns `factory lane: re-join the factory run: <gate text>` leasing nothing. `TestRelaunchLoopReResolvesRun` 1 test, 3 subtests, `--- PASS`; the real-gate loop tests `TestSD_AC020_ClearPolicies` (relaunch subtests: one session per card, binary missing refused, failed child continues) PASS unchanged in the same run (this proves the unseamed gate path across iterations).
+
+Mutants of `acceptance.md` D.2 for AC-SRH-015 executed, each failure observed and the file restored (`cmp` against a saved copy empty, `git status --short` clean): (a) gate called once outside the loop, not per iteration killed by the iteration-2 assertions (`gate called 1 times`; `leases were taken from runs [X X X], want [X Y Y]`; `children saw MOAI_KANBAN_ID=[X X], want [X Y]`); (b) the gate's refusal ignored and the lease taken anyway killed (`loop error = <nil>`, plus `join gate called 3..6 times, the scenario scripts only 2 answers`); (c) the explicit selector dropped (`""`) killed (`gate calls = [{explicit: leadTarget:lead-9} ...], want [{explicit:X leadTarget:lead-9} ...]`); (d) the run id read before the gate (stale) killed (`leases were taken from runs [X X X], want [X Y Y]`).
+
+Deviations: (1) the gate is called with `launchProjectRoot()` (the launcher's own root: `resolveProjectDir()`), not the `factoryCardRoot()` the loop leases against, so every iteration resolves exactly the way the launcher's first call did; the plan names a bare `root`. (2) The refusal is wrapped (`factory lane: re-join the factory run: %w`), so the gate's text is carried, not replaced. (3) The re-stamp of `MOAI_KANBAN_ID` is performed by the gate itself (it stamps the resolved id), not by a second `os.Setenv` in the loop. No template mirror exists for `factory_lane_relaunch.go`, `cc.go` or `glm.go`.
+
+Gaps: scoped coverage from the two loop tests alone: `runFactoryLaneRelaunch` 93.8%, `factoryLaneRelaunchIteration` 88.2% (the lease-error and worktree-ensure-error branches are not driven), `launchFactoryLaneCardSession` 100.0%. The Codex loop `runCodexFactoryLane` is unchanged by decision (spec §F), so a Codex lane still reads its run once. RED-before-GREEN ordering is attested by the saved output, not witnessed by the commit graph (the test and the implementation share one commit).
+
+### M4 — preservation and mechanical sweeps (commits 585a61136 and 773bc3953 on 16b650d7e; this run, this tree; guards, green on arrival)
+
+Tests added (both guards, green at arrival, each with an observed mutant): `TestKanbanRelaunchProseUnchanged` (`internal/hook/kanban_relaunch_prose_test.go`: the four locales' `roleValueRelaunch` equal their pre-change bytes of tree `802a72235`, plus the rendered kanban notice; mutant: a full stop appended to the English prose FAILS with `roleValueRelaunch[en] changed`, file restored) and `TestStaleRunLocalesProtocolTokenParity` (`internal/hook/stale_run_i18n_parity_test.go`: per field the sorted format verbs with their explicit indices and the quoted commands, plus the interior newline count, equal across en/ko/ja/zh; mutant: the ja `laneLabelRetire` without its `\n%[3]s` command line FAILS with `protocol tokens = [%[1]q %[2]s], want [%[1]q %[2]s %[3]s]`, file restored). The golden is also confirmed against the base file: `git diff 802a72235 HEAD -- internal/hook/session_stale_run.go` has no `+`/`-` line touching the `roleValueRelaunch` strings.
+
+AC-SRH-016 diff command exactly as written in `acceptance.md`, run at HEAD `773bc3953`: stdout empty, exit 0. Positive controls: the same range with the same pathspec but without the two exclusions lists `internal/kanban/factory_relaunch_cmd.go` and `internal/kanban/factory_relaunch_cmd_test.go`; the same range without a pathspec lists 29 files (pre-merge reading only).
+
+Characterization and AC re-runs on a binary built from this tree (`./bin/moai-t1345 version` = `v3.1.3   773bc3953   built unknown`; `go build -ldflags "-X github.com/modu-ai/moai-adk/pkg/version.Commit=..." -o ./bin/moai-t1345 ./cmd/moai`): hook package, 19 named tests, 19 `--- PASS`, `ok internal/hook 86.358s` (the eight M2 AC tests, the seven AC-SRH-007 tests, `TestInboundClaimIndependentOfEnvLabel`, `TestCurrentVocabularyBindPathUnchanged`, `TestStaleNoticeCarriesExecutableRelaunch`, `TestKanbanRelaunchProseUnchanged` — the list in the E1 table); cli package, 11 named tests, 11 `--- PASS`, `ok internal/cli 31.998s` (the nine M1 tests, `TestRelaunchLoopReResolvesRun`, `TestSD_AC020_ClearPolicies`); kanban 3/3 PASS. All eight probe scenarios on that binary end `VERDICT: PASS`: `control-healthy`, `rebind`, `unbind-then-rebind`, `ambiguous`, `legacy-lines`, `session-start-silent`, `roundtrip`, `dry-run-nonmutation` (each PASS branch has now executed). Binary commands: `moai factory relaunch --dry-run` prints `moai cc -f lane-3`, `moai glm -f lane-3`, `moai cc -f lane-3 --factory-run runA`, `moai cc -f lane`, `moai codex -f lane` (exit 0); `--lane worker-3 --provider cc`, `--provider codex --lane lane-3`, `--provider codex --run runA` each exit 1 with the legacy/Codex-limitation text.
+
+Quality gates (this run, this tree `773bc3953`, binary commit the same): `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/kanban/... ./internal/hook/... ./internal/factorymsg/... ./internal/cli/...` exit 0, empty output; `golangci-lint run --timeout=10m` (v2.1.6) on the same four package trees `0 issues.` (the M1 baseline was `0 issues.`, so no issue was added); `moai spec lint SPEC-FACTORY-STALE-RUN-HEAL-001 --strict` on the tree-built binary (judging build `773bc3953`, tree HEAD `773bc3953`) `✓ No findings — all SPEC documents are valid`, exit 0; `AskUserQuestion` / `mcp__askuser` grep on the 13 changed non-test Go files empty (positive control: `grep -c 'package '` on three of them returns 1 each); no `"MOAI_*"` environment-name literal in the added non-test lines (positive control: `config.Env...` constants appear in 5 added lines); `git diff --name-only 802a72235 HEAD -- internal/template` empty and `internal/template/templates` holds no file named like any touched source (positive control: the same `find` reaches `CLAUDE.md` there). `git diff --stat 802a72235 HEAD` lists 28 files, all under `internal/cli`, `internal/factorymsg`, `internal/hook`, `internal/kanban` and this SPEC directory.
+
+Gaps: the whole-package suites of `internal/cli` and `internal/hook` were not run (scoped, per the lane rule); the pre-existing sensitivity of `TestSD_AC020_ClearPolicies` to a lane-stamped environment (it fails with `lane boundary: a lane session cannot mutate the queue` unless the full `unset MOAI_FACTORY_*` form is used) is unchanged and unrelated. Baseline lint for the later milestones was not re-measured on `63d573a57`; the current tree has 0 issues, so none is new. The A4 assumption (UserPromptSubmit firing on autonomous lanes) remains unmeasured (spec §H). RED-before-GREEN ordering is attested by saved outputs, not witnessed by the commit graph.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+run_status: audit-ready
+run_complete_at: 2026-10-02
+run_head: the commit carrying this section (code and tests complete at 773bc3953)
+cycle_type: tdd (M1 97115dd2c, M2 adc4a51c0, M3 16b650d7e, M4 585a61136 and 773bc3953; evidence commits ce5877450, 63d573a57 and this one)
+
+AC matrix (this run, this tree; every Go-test AC shows one `--- PASS` per named test; every probe ends `VERDICT: PASS`):
+
+| AC | Result | Instrument and observed output |
+|---|---|---|
+| AC-SRH-001 | PASS | five `moai factory relaunch --dry-run` lines equal the five required strings; `TestFactoryRelaunchDryRunMatrix` `--- PASS` (incl. launcher-classifier acceptance) |
+| AC-SRH-002 | PASS | `--lane worker-3`, `--provider codex --lane lane-3`, `--provider codex --run runA` exit 1; `TestFactoryRelaunchRefusesLegacyAndCodexPins` `--- PASS` (positive control inside) |
+| AC-SRH-003 | PASS | `TestFactoryRelaunchFromRunRetiresDeadOwnerOnly` `--- PASS` (plus `...UnavailableStateLeavesRunUntouched`) |
+| AC-SRH-004 | PASS | probe `dry-run-nonmutation` `VERDICT: PASS`; `TestFactoryRelaunchDoesNotMutateRunRecords`, `TestFactoryRelaunchHelpDistinguishesClearPolicy` `--- PASS` |
+| AC-SRH-005 | PASS | probe `legacy-lines` `VERDICT: PASS`; `TestStaleNoticeCarriesExecutableRelaunch` `--- PASS` |
+| AC-SRH-006 | PASS | probe `roundtrip` `VERDICT: PASS`; `TestRelaunchCommandRoundTrip` `--- PASS` |
+| AC-SRH-007 | PASS | the seven tests `--- PASS` (listed in the hook run: 19 of 19) |
+| AC-SRH-008 | PASS | probe `rebind` `VERDICT: PASS`; `TestLaneRebindsIntoSoleActiveRun` `--- PASS` |
+| AC-SRH-009 | PASS | probe `unbind-then-rebind` `VERDICT: PASS`; `TestUnboundThenRebound` `--- PASS` |
+| AC-SRH-010 | PASS | probe `ambiguous` `VERDICT: PASS`; `TestRebindAmbiguousActiveRuns` `--- PASS` |
+| AC-SRH-011 | PASS | `TestLegacyLabelNeverRebindsAndLiveOwnerNotDisplaced` `--- PASS` |
+| AC-SRH-012 | PASS | probe `session-start-silent` `VERDICT: PASS`; `TestRebindEligibleSessionStartSilent` `--- PASS` |
+| AC-SRH-013 | PASS | `TestReboundClaimReadsRebindRunOnly`, `TestInboundClaimIndependentOfEnvLabel` `--- PASS` |
+| AC-SRH-014 | PASS | `TestHealthyLanePathUnchangedAndFailOpen`, `TestRebindPathStaysInsideBindBudget`, `TestCurrentVocabularyBindPathUnchanged` `--- PASS`; probe `control-healthy` `VERDICT: PASS` |
+| AC-SRH-015 | PASS | `TestRelaunchLoopReResolvesRun` `--- PASS` (RED observed first, four mutants killed) |
+| AC-SRH-016 | PASS | the diff command prints nothing, exit 0, with positive controls; `TestKanbanRelaunchProseUnchanged` `--- PASS` (mutant killed) |
+
+Result: 16 of 16 PASS, 0 FAIL. Release-blocking ACs (001, 002, 004, 005, 006, 008, 009, 010, 012) all PASS with their probe or binary cell. Plan §E E1-E6 satisfied (E4 separation review: the claim sequence for non-rebound sessions and Stop is untouched, asserted by `TestInboundClaimIndependentOfEnvLabel` and `TestReboundClaimReadsRebindRunOnly`'s Stop half).
+
+Decision points DP1-DP12: none altered; the implementation deviations are listed per milestone in §E.2 (M1: gate budget seam moved to M1; M2: two-value register helper name, typed live-owner error; M3: gate called with the launcher's root, wrapped refusal, re-stamp performed by the gate).
+
+Open items for audit and sync: A4 (UserPromptSubmit firing on an autonomous lane) is unmeasured — spec §H states the consequence (such a lane stays unrebound); the Codex per-card loop reads its run once by decision (spec §F); plan-audit optional debt F2-F8 untouched; the "reads both brokers" mutant of AC-SRH-013 was not built (single-parameter claim, killed by the single-run assertions); RED-before-GREEN is attested by saved outputs, not by the commit graph (tests and implementation share a commit per milestone); the whole-package suites are left to CI. The `spec.md` frontmatter `status` was set to `in-progress` by M1 and is untouched by M3/M4 (manager-docs owns `implemented` and `completed` at sync).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
