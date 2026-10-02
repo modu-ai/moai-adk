@@ -315,9 +315,11 @@ const (
 	asideTesterRelPath = ".claude/agents/moai/e2e-tester.md"
 )
 
-// asideE2EMinSites is the number of site lines the role-based enumeration finds
-// in the unedited workflow. An enumeration that finds fewer is treated as emptied.
-const asideE2EMinSites = 15
+// asideE2EMinSites is the number of lines the role-based enumeration finds in the
+// workflow: the 15 baseline sites, the 6 autofix-delegation sites that hand a
+// repair to a subagent and could be read as handing it the re-run, and the one
+// precedence sentence. An enumeration that finds fewer is treated as emptied.
+const asideE2EMinSites = 22
 
 // e2e-side rule names. They double as subtest names of TestAsideSkillPolicyAnchors.
 const (
@@ -331,6 +333,7 @@ const (
 	asideRuleE2EHeader      = "e2e_missing_toolchain_carveout"
 	asideRuleE2EBypass      = "e2e_tool_bypass_line_carveout"
 	asideRuleE2ESites       = "e2e_every_site_carved_out"
+	asideRuleE2EAutofix     = "e2e_autofix_orchestrator_reverifies"
 	asideRuleE2ENoInstall   = "e2e_no_install_command"
 	asideRuleE2EScreenshot  = "e2e_repl_screenshot_evidence"
 )
@@ -346,6 +349,7 @@ var asideE2ERules = []string{
 	asideRuleE2EHeader,
 	asideRuleE2EBypass,
 	asideRuleE2ESites,
+	asideRuleE2EAutofix,
 	asideRuleE2ENoInstall,
 	asideRuleE2EScreenshot,
 }
@@ -361,6 +365,7 @@ const (
 	asideLitSilently          = "silently"
 	asideLitNoAsideMessage    = "no Aside-specific message"
 	asideLitExceptAside       = "except Aside"
+	asideLitOrchestratorCaps  = "ORCHESTRATOR"
 	asideLitExecutionOwner    = "Execution owner"
 	asideLitBoundedOutput     = "Bounded output"
 	asideLitRunsDir           = "e2e/.runs/"
@@ -389,9 +394,17 @@ var asideE2ERequiredLiterals = map[string][]string{
 
 // asideSiteRe is the role-based enumeration of the workflow lines that delegate
 // script creation, execution, or recording to the e2e-tester, run the
-// missing-toolchain sequence, or state who owns execution or output. Every such
-// line needs an Aside carve-out.
-var asideSiteRe = regexp.MustCompile(`[Dd]elegate .*(script creation|test execution|execution|recording)|Phase [234]: e2e-tester|[Mm]issing[- ]toolchain|Execution owner|Bounded output|toolchain probe/install|probes the DEFAULT toolchain`)
+// missing-toolchain sequence, state who owns execution or output, or hand an e2e
+// failure to the autofix subagent (the Input, Cycle, and Validate bullets of the
+// delegation contract, and every line that names the manager-develop autofix
+// delegation). Every such line needs an Aside carve-out.
+var asideSiteRe = regexp.MustCompile(`[Dd]elegate .*(script creation|test execution|execution|recording)|Phase [234]: e2e-tester|[Mm]issing[- ]toolchain|Execution owner|Bounded output|toolchain probe/install|probes the DEFAULT toolchain|^- \*\*(Input|Cycle|Validate)\*\*:|manager-develop autofix|manager-develop \(autofix\)`)
+
+// asideAutofixValidateLine reports whether the line is the Validate bullet of the
+// autofix delegation contract.
+func asideAutofixValidateLine(l string) bool {
+	return strings.HasPrefix(strings.TrimSpace(l), "- **Validate**:")
+}
 
 // asideCarveOutRe matches the appended parenthetical of a carved-out site. Removing
 // it restores the site's original text.
@@ -544,6 +557,13 @@ func checkAsideE2E(text string) []asideViolation {
 		func(l string) bool { return strings.HasPrefix(strings.TrimSpace(l), asideLitHeaderPrefix) }, "")
 	requireCarveOut(asideRuleE2EBypass, "the --tool bypass sentence",
 		func(l string) bool { return strings.Contains(l, asideLitBypassSentence) }, "")
+
+	// e2e_autofix_orchestrator_reverifies: the Validate bullet of the autofix
+	// delegation contract tells the subagent to re-run the e2e spec, so its carve-out
+	// must hand the re-verification to the orchestrator and keep Aside away from the
+	// subagent.
+	requireCarveOut(asideRuleE2EAutofix, "the autofix Validate bullet", asideAutofixValidateLine, asideLitOrchestratorCaps)
+	requireCarveOut(asideRuleE2EAutofix, "the autofix Validate bullet", asideAutofixValidateLine, asideLitNeverInvokes)
 
 	// e2e_ci_excluded: the CI exclusion must sit where the --tool path reads it,
 	// that is inside the Aside paragraph or on the --tool bypass line, and not only
@@ -737,6 +757,8 @@ func runAsideE2EControls(t *testing.T, e2eText, testerText string) {
 			[]string{asideRuleE2EHeader, asideRuleE2ESites}},
 		{"strip/bypass_sentence_line", func(l string) bool { return strings.Contains(l, asideLitBypassSentence) },
 			[]string{asideRuleE2EBypass, asideRuleE2ESites}},
+		{"strip/autofix_validate_line", asideAutofixValidateLine,
+			[]string{asideRuleE2EAutofix, asideRuleE2ESites}},
 	}
 	for _, c := range stripCases {
 		t.Run(c.name, func(t *testing.T) {
@@ -769,12 +791,41 @@ func runAsideE2EControls(t *testing.T, e2eText, testerText string) {
 		requireE2E(t, asideReplaceLine(lines, i, mutated), asideRuleE2EBounded)
 	})
 
+	// The autofix carve-out must hand the re-verification to the orchestrator and
+	// keep Aside away from the subagent, each part on its own.
+	for _, c := range []struct{ name, removed string }{
+		{"mutate/autofix_validate_without_orchestrator", asideLitOrchestratorCaps},
+		{"mutate/autofix_validate_without_subagent_prohibition", asideLitNeverInvokes},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			i := asideFindLine(lines, asideAutofixValidateLine)
+			if i < 0 {
+				t.Fatalf("no autofix Validate bullet in the real e2e.md; the control would be vacuous")
+			}
+			idx := strings.Index(lines[i], asideLitExceptAside)
+			if idx < 0 {
+				t.Fatalf("the autofix Validate bullet carries no carve-out; the control would be vacuous: %q", lines[i])
+			}
+			tail := strings.ReplaceAll(lines[i][idx:], c.removed, "")
+			if tail == lines[i][idx:] {
+				t.Fatalf("the carve-out of line %d does not carry %q; the control would be vacuous: %q", i+1, c.removed, lines[i])
+			}
+			requireE2E(t, asideReplaceLine(lines, i, lines[i][:idx]+tail), asideRuleE2EAutofix)
+		})
+	}
+
 	// The named chain and summary sites, stripped in turn: the Phase 2 and Phase 3
-	// chain lines, and Execution Summary step 4.
+	// chain lines, Execution Summary step 4, and the autofix sites (the Input and
+	// Cycle bullets, the loop line, the Phase 3.5 chain line, and step 7.5).
 	namedSites := []struct{ name, marker string }{
 		{"strip/chain_phase2_line", "Phase 2: e2e-tester (script creation)"},
 		{"strip/chain_phase3_line", "Phase 3: e2e-tester (CLI-first execution)"},
 		{"strip/summary_step4_line", "Missing toolchain: probe"},
+		{"strip/autofix_input_line", "- **Input**: failing journey"},
+		{"strip/autofix_cycle_line", "- **Cycle**: localize"},
+		{"strip/autofix_loop_line", "delegate grouped fixes"},
+		{"strip/chain_phase35_line", "Phase 3.5 (--autofix only)"},
+		{"strip/summary_step75_line", "7.5. (if --autofix"},
 	}
 	for _, s := range namedSites {
 		t.Run(s.name, func(t *testing.T) {
