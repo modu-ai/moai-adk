@@ -324,6 +324,70 @@ Superseding note (REQ-TAU-008, spec § B.4): in lane sessions REQ-FLA-001's refe
 by the lease path; the declare confirmation now prints `switch to self-service pickup through the lease: moai factory next [--card <id>]`
 and the comment above `newFactoryFallbackDeclareCommand` says so. The completed SPEC's body is not edited.
 
+### M4 — the MCP `card` parameter (GREEN)
+
+File: `internal/cli/mcp_factory_card.go` only. `factory_next` gains an optional `card` string; with it the handler calls
+the SAME `factoryNextNominate` the cobra verb calls (the quota hold is passed through the same shared evaluation) and a
+refusal returns the same one-line `factory next: refused <token>: <detail>` as an error result (the tool name prefixes it, as
+for every tool error); without it the handler is the unnominated lease exactly as before; a `card` argument that is
+present but blank is an error, not a silent fall-back. The tool's inputs are now exactly `run`, `project_root`, `card`
+(two inputs before; the CLI's `--wait`/`--wait-bound` have no MCP counterpart). `internal/mcp/catalog.go` carries only name
+and write-capability — no change was needed, confirmed by the catalog guards below.
+
+**GREEN, HEAD `f70fe64c7` (M3) + the M4 working tree.** `unset … && go test ./internal/cli -run
+'^(TestFactoryNextNominateMCPParity|TestSD_AC014_MCPMatchesCLIWithProjectRoot|TestSD_AC014_ProjectRootRequired|TestSD_AC010_MCPNextParentCheck|TestQAS_AC008b_MCPFactoryNextHeld|TestMoaiMCPServer_AnnotationsMatchCatalog|TestMoaiMCPServer_RegistrationMatchesCatalog)$'
+-count=1 -v` → exit 0, 21 `=== RUN` lines, 7 of 7 top-level tests `--- PASS`, `ok github.com/modu-ai/moai-adk/internal/cli  90.843s`;
+`TestFactoryNextNominateMCPParity` subtests `inputs`, `leases_the_nominee_and_refuses_an_unknown_card`, `refuses_quota-hold`,
+`refuses_backend-skip` each `--- PASS`. The M1 RED of the same test (recorded above): `factory_nominate_test.go:415:
+factory_next inputs = [project_root run], want exactly card,project_root,run` and `:426: factory_next card=t2 text = "t1 stage=- worktree=t1 …",
+want the leased t2 line` — the card input was ignored (MU-19). The internal/mcp catalog guards, anchored: `go test ./internal/mcp -run
+'^(TestMoaiMCPTools_CatalogSize|TestMoaiMCPTools_WriteCapableSet|TestMoaiMCPTools_NoDuplicateNames|TestMoaiMCPToolNames_MatchesCatalog)$' -count=1 -v`
+→ exit 0, 4 of 4 `--- PASS`, `ok github.com/modu-ai/moai-adk/internal/mcp  0.655s`.
+
+### Run-phase M1-M4 verification summary (this run, this tree; E1-E8 index)
+
+Tree measured for the closing evidence: HEAD `f70fe64c7` (the M3 commit) + the M4 working tree (committed as the M4 commit).
+
+- **E1 AC matrix for the criteria M1-M4 flip.** Command for all 21 tests: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER && go test ./internal/cli -coverprofile=<scratch>/cover.out
+  -run '^(TestFactoryNextNominateLeasesNominee|TestFactoryNextNominateUnknownCard|TestFactoryNextFlagSet|TestFactoryNextNominateMCPParity|TestFactoryNextNominateConcurrentLanes|TestFactoryNextNominateSameCardExactlyOne|TestFactoryNextNominateRefusesKeepSet|TestFactoryNextArmCSkipsHoldMarker|TestFactoryNextNominateQuotaHold|TestFactoryNextNominateBackendSkip|TestFactoryNextNominateRecordStateTokens|TestFactoryNextNominateRefusalLeavesStateUnchanged|TestFactoryNextNominatePromoteThenLose|TestFactoryNextNominateClaimRefusedRollsBack|TestFactoryNextNominateCompensationFailure|TestFactoryNextAllMarkerQueueExitsNoCard|TestFactoryNextBareUnchanged|TestTodoLaneRefusesAutoCycle|TestTodoLaneAutoRefusalText|TestTodoNonLaneGPTSessionNotRefused|TestFactoryFallbackDeclarePrintsLeasePath)$'
+  -count=1 -v` → exit 0, 91 `=== RUN` lines, **21 of 21 top-level tests `--- PASS`**, `ok github.com/modu-ai/moai-adk/internal/cli  396.072s  coverage: 8.1% of statements`
+  (a scoped run; the figure is the whole package's statements, so it is low by construction — see E3).
+
+  | AC | Status | Evidence (all `--- PASS` in the run above) |
+  |---|---|---|
+  | AC-TAU-001 | PASS | `TestFactoryNextNominateLeasesNominee`, `TestFactoryNextNominateUnknownCard`, `TestFactoryNextFlagSet`, `TestFactoryNextNominateMCPParity` |
+  | AC-TAU-002 | PASS | `TestFactoryNextNominateConcurrentLanes`, `TestFactoryNextNominateSameCardExactlyOne` (also clean under `-race`, M2 note) |
+  | AC-TAU-004 | PASS | `TestFactoryNextNominateRefusesKeepSet` (subtests `held`, `hold-marker`, `marker-leading-space`, `marker-mid-text`, `blocked`, `serial-slot`, `dropped`, `owned`), `TestFactoryNextArmCSkipsHoldMarker` |
+  | AC-TAU-005 (Go rows) | PASS | `TestTodoLaneRefusesAutoCycle`, `TestTodoLaneAutoRefusalText`, `TestTodoNonLaneGPTSessionNotRefused`, `TestFactoryFallbackDeclarePrintsLeasePath`; the routing-sentence row is M5 |
+  | AC-TAU-006 | PASS | `TestFactoryNextBareUnchanged` (golden, five subtests), `TestFactoryNextAllMarkerQueueExitsNoCard` |
+  | AC-TAU-014 | PASS | `TestFactoryNextNominateQuotaHold`, `TestFactoryNextNominateBackendSkip`, `TestFactoryNextNominateRecordStateTokens`, `TestFactoryNextNominateRefusalLeavesStateUnchanged`, `TestFactoryNextNominatePromoteThenLose`, `TestFactoryNextNominateClaimRefusedRollsBack`, `TestFactoryNextNominateCompensationFailure` |
+
+  Not flipped by M1-M4 and not claimed: AC-TAU-003, -007, -008, -010, -011, -013 (M5), -009 (the first lease taken under the doctrine), -012 (M6 reads the finished diff).
+- **E2 builds.** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (both re-run after M4; both also run before any change and after M2 and M3).
+- **E3 coverage of the changed code.** Measured with the profile of the run above, `go tool cover -func`: `factoryKeepSetRefusal` 92.9%,
+  `factoryNextValidate` 93.9%, `factoryRecordRefusal` 88.9%, `factoryNominateCompensate` 87.5%, `factoryNextNominatedClaim` 100%,
+  `factoryQueuedHoldMarked` 100%, `factoryRefusal`/`waitable`/`Error`/`ExitCode` 100%, `factorySerialInFlightExcluding` 83.3%,
+  `factoryNextSelectAndLease` 83.1%, `newFactoryNextCommand` 87.1%, `factoryNextNominate` 72.5%, `todoRefuseLaneMutation` 90.0%,
+  `todoLaneSession` 100%, `todoLaneAutoRefusalText` 100%, `handleFactoryNext` 70.5%, `factoryRowHolder` 66.7%. What the profile shows
+  uncovered: store/open error branches, the `compensation failed` branch (specified and untested, spec § G), the in-lock
+  `raced`/re-validation `lost` branches of the promotion (no seam sits between the validation and the promotion, so that window
+  cannot be forced from a test), and `handleFactoryNext`'s unchanged unnominated tail paths. Package-wide coverage (all of `internal/cli`) was NOT measured — a
+  full-package run on a loaded machine is outside the lane-local verification budget — so the 85% package threshold is neither claimed nor refuted here;
+  the changed functions are the unit measured, and the lowest (66.7-72.5%) are error-only branches.
+- **E4 subagent-boundary grep.** `grep -n 'AskUserQuestion\|mcp__askuser' internal/cli/factory_card.go internal/cli/todo.go internal/cli/factory_messaging.go internal/cli/mcp_factory_card.go internal/cli/factory_nominate_test.go`
+  → no output, exit 1 (no match in any file changed). Package-wide, `grep -rn 'AskUserQuestion\|mcp__askuser' --include='*.go' internal/cli | grep -v _test.go | grep -v '// ' | wc -l`
+  → `18` (pre-existing help-text strings in files this run did not touch, e.g. `harness.go`, `pr_watch_cmd.go`, `harness_mute.go`).
+- **E5 lint.** `golangci-lint v2.1.6`, `golangci-lint run --timeout=5m ./internal/cli/` → `0 issues.`, exit 0, after M4 (the one NEW finding of the M2 draft, `QF1001`, was
+  fixed in place; no baseline finding exists in the package). `gofmt -l` on the changed files is empty (`internal/cli/mcp_claude.go` is listed by `gofmt -l internal/cli/`; it predates this work and is untouched).
+- **E6 commits (no push; the repository's lanes never push):** `0f127e624` M1, `efec50cdc` M2, `f70fe64c7` M3, M4 (this commit, SHA in the completion report).
+- **E7 blocker report:** none.
+- **E8 RED output verbatim before GREEN:** recorded under M1 above (19 of 19 failing for the stated reasons; the two guards green with their seeded perturbations).
+
+Preserved and untouched (spec § D / plan §5): `internal/kanban/**`, `internal/graph/**`, every queue/gtd schema file, `.claude/`, `internal/template/`,
+`internal/template/catalog.yaml`, docs, and the bodies of `spec.md` / `plan.md` / `acceptance.md` / `research.md` (the one `spec.md`
+change is the frontmatter transition recorded at the top of this section). No M5/M6 work was started.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
