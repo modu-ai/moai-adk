@@ -360,7 +360,7 @@ open items for the leader (read from the results above, none relaxed):
 
 sync_status: audit-ready, PASS-WITH-DEBT recorded
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill
+sync_commit_sha: 5985fe8b78aba48d2c0bbb28d68ace982cbc8faf
 sync_audit: .moai/reports/t1434/sync-audit.md (local-only), auditor-model claude-sonnet-5-5[1m], audited_sha 18db326efa08f99d8ef14f9984519b466efdbc3d, verdict PASS-WITH-DEBT, score 78/100 (Functionality 80, Security 74, Craft 80, Consistency 78), blocking findings 0, should-fix 3, advisory 8. The auditor's 70-89 PASS-WITH-DEBT band is its own convention (the default evaluator profile has no numeric overall line).
 AC-004 judgment (auditor): NOT BLOCKING. The red is real (REAL-OFF-ALLOWLIST=1, CMD-ID 70, `claude plugin test --help`, home=real; the help verb wrote nothing; FORBIDDEN-REAL=0; the protected-set pair shows rows-changed=0, LEAK=0). Its cause is the orchestrator's own run-phase delegation, itself derived from a leader request to record the rollout-switch state per profile. The leader accepted it as a recorded deviation, not a pre-waiver (2026-10-02). It is carried as debt: the next SPEC revision that touches REQ-004 adds the help form to the read-only list in both the SPEC text and `check-evidence.sh` (`READONLY_VERBS`).
 Findings answered after the audit (verdict.md and the carrier were corrected, nothing re-measured, hashes recomputed, `check-evidence.sh stamps` reads CARRIER-ROWS=14 CARRIER-SHA=1 RESULT=PASS again):
