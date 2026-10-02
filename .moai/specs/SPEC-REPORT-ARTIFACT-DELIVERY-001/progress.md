@@ -206,7 +206,12 @@ run_complete_at: 2026-10-02
 ac_matrix: AC-RAD-001~009 release-blocking 전부 GREEN 전환 완료(§E.2의 동일 명령
 GREEN 재실행 기록) + AC-RAD-010~014 regression-guard 전부 유지 재입증.
 commits: 6d8968e5a (M1) · 7cf9130f1 (M2) · 612ff3960 (M3) · c65172d82 (M4) ·
-M5 미러+카탈로그 커밋(본 절 직후 착지 — §E.2 M5 절 참조)
+7bb5f7d3b (M5 미러+카탈로그) · 본 절 갱신 커밋(직후 착지)
+final_tree_verification: 7bb5f7d3b에서 AC-001(2)/002(8)/003(1)/005(1·1·3)/007(5809B)/
+009(2)/011(S:0·R:0)/012(0행 exit 1)/013(기본 html+md·미러 diff 0)/014(25900B) 전수
+재실행 확인 — AC-004/006/008/010은 §E.2 M4/M3/M5 실측 기록 참조.
+lint: golangci-lint v2.1.6(CI 판) — ./internal/settings/... ./internal/cli/wizard/...
+./internal/core/... → 0 issues (exit 0).
 evidence_ledger: acceptance.md §E(RED-now, 트리 5457f5832) ↔ 본 §E.2(GREEN 재실행,
 커밋별 트리) — 전환 귀속은 acceptance.md §D 표 기준.
 deviations: M2 SKILL.md 초산 증분이 예산 초과 → 산문 축약으로 수리(§E.2 M2 비고).
@@ -214,6 +219,8 @@ M5 카탈로그 해시 갱신이 계획 문언에 없던 필수 수리로 추가
 필연 결과 — 신규 파일 추가 시마다 갱신 대상).
 open_for_sync: CHANGELOG 항목(report.format=artifact + 스킬 전달 개편),
 미러 패리티 재입증(diff 0), 중립성 재입증 — §D.4 종결 게이트 기준.
+pre_existing_reds: internal/cli 2건(§E.2 M5 말미 — kotlin 감지 규칙 불일치 결정론적
+적색·t1099 기원 / stop-timing 예산 요동 부하 민감) — 본 카드 범위 밖, 리더 판정 대상.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
