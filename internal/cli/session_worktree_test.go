@@ -40,6 +40,13 @@ type swSeams struct {
 	// so defaulting to real git here would fail them on a fake path rather
 	// than on the guard each test actually exercises.
 	hasUnpushed func(wtPath string) (bool, error)
+	// landed is the SPEC-WEB-SETTINGS-SAVE-001 scope-③ remote-merge landing
+	// seam. When a test leaves it nil, the swapper installs a neutral
+	// (true, nil) stub — the same removable-tree contract the hasUnpushed
+	// default serves: the seam-swapped tests describe disposable trees, and
+	// real git on their fake worktree paths would answer unreadable and
+	// preserve everything, preempting the guard each test exercises.
+	landed func(wtPath string) (bool, error)
 	// seedHooks is the SPEC-HANDOFF-NEUTRAL-001 .codex/hooks.json seeding
 	// seam. When a test leaves it nil, the swapper installs a neutral no-op
 	// stub: the pre-existing materializer tests use fake worktree paths that
@@ -60,6 +67,7 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		statusPorc:  sessionWorktreeGitStatusPorcelain,
 		ignoredPorc: sessionWorktreeGitStatusIgnored,
 		hasUnpushed: sessionWorktreeGitHasUnpushed,
+		landed:      sessionWorktreeBranchLanded,
 		seedHooks:   sessionWorktreeSeedCodexHooks,
 	}
 	if s.add != nil {
@@ -94,6 +102,12 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		// guard each test actually exercises.
 		sessionWorktreeGitHasUnpushed = func(string) (bool, error) { return false, nil }
 	}
+	if s.landed != nil {
+		sessionWorktreeBranchLanded = s.landed
+	} else {
+		// Neutral default: removable tree (see the field comment).
+		sessionWorktreeBranchLanded = func(string) (bool, error) { return true, nil }
+	}
 	if s.seedHooks != nil {
 		sessionWorktreeSeedCodexHooks = s.seedHooks
 	} else {
@@ -111,6 +125,7 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		sessionWorktreeGitStatusPorcelain = orig.statusPorc
 		sessionWorktreeGitStatusIgnored = orig.ignoredPorc
 		sessionWorktreeGitHasUnpushed = orig.hasUnpushed
+		sessionWorktreeBranchLanded = orig.landed
 		sessionWorktreeSeedCodexHooks = orig.seedHooks
 	})
 }

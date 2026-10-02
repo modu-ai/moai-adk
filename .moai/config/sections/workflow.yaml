@@ -212,6 +212,20 @@ workflow:
     # internal/template/templates/).
     served_model_gate:
         enabled: false
+    # quota_gate: steer the NEXT card away from a nearly exhausted Claude
+    # account (SPEC-QUOTA-AWARE-SCHEDULING-001). A Claude lane's `moai factory
+    # next` leases no new card while a five-hour or seven-day window reads at or
+    # above its hold percentage; `moai factory status` and `moai todo --auto`
+    # recommend non-Claude lanes. This local opt-in enables the gate for
+    # dogfood; the numeric values are the shipped unmeasured defaults. Shipped
+    # default-false in template (internal/config/defaults.go enforces this; no
+    # gate-enabling value under internal/template/templates/).
+    quota_gate:
+        enabled: true
+        five_hour_hold_pct: 90
+        seven_day_hold_pct: 95
+        release_margin_pct: 5
+        max_age: 30m
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
     # probability; it generates no text and decides nothing. Ships OFF, and

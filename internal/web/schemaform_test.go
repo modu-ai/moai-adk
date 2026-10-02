@@ -102,8 +102,9 @@ func TestReportFormatRendersAsRadio(t *testing.T) {
 	if !strings.Contains(reportPanel, `type="radio"`) {
 		t.Error("report.format did not render as radio inputs (N2-a select→radio)")
 	}
-	// Both closed-set options render as radios.
-	for _, opt := range []string{"html+md", "md"} {
+	// All closed-set options render as radios (3 values since
+	// SPEC-REPORT-ARTIFACT-DELIVERY-001 REQ-001).
+	for _, opt := range []string{"html+md", "md", "artifact"} {
 		if !strings.Contains(reportPanel, `name="report.format" value="`+opt+`"`) {
 			t.Errorf("report.format radio missing option %q", opt)
 		}

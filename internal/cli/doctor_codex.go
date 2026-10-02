@@ -301,6 +301,12 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 			case !status.Canonical:
 				problems = append(problems, plainCodexFinding("[mcp_servers.moai] table differs from the canonical registration (user-owned; left untouched)"))
 			}
+			// A stale project-global approval override from an older Factory
+			// generation. Reported only; the managed launcher scopes approval
+			// to its own processes now (REQ-MS-010).
+			if line, stale := codexwiring.StaleApprovalOverride(cfgRaw); stale {
+				problems = append(problems, plainCodexFinding(fmt.Sprintf("stale project-global MoAI MCP approval override in %s (%s) — the managed launcher scopes approval to its own processes; remove it by hand (user-owned; left untouched)", codexwiring.ConfigRelPath, line)))
+			}
 		}
 
 		// Skill mirror. `.agents/skills` is what makes the MoAI skill catalog

@@ -783,6 +783,11 @@ func TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState(t *testing.T) {
 		if sgfHasDecision(out2) {
 			t.Errorf("%s: call 2 carries \"decision\"; stdout=%q", tag, out2)
 		}
+		// Call 3: the payload on disk is now call 2's stored ADVISORY (call 2
+		// replaced call 1's block payload), and the blocking default resolves
+		// the card t1385 flip: re-deliver as a synthesized block, no check
+		// re-run. The call-1 block body still never re-delivers — what
+		// re-delivers is the advisory.
 		before3 := f.count()
 		out3, _ := f.run("{}")
 		// Updated (card t1396): call 2 stored an ADVISORY payload and call 3

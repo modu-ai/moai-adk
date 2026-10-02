@@ -266,8 +266,19 @@ type i18nExemptPrefix struct {
 }
 
 // i18nEnExemptPrefixes is the explicit, enumerated registry of key prefixes
-// that may appear in non-en locales without an en counterpart. It is empty: its
-// only member, agentdesc., left with the agent-settings rows that consumed it
-// (SPEC-AGENT-MODEL-INHERIT-001). Adding a prefix is a reviewed act, not a
-// silent one, and each member must carry a justification.
-var i18nEnExemptPrefixes = []i18nExemptPrefix{}
+// that may appear in non-en locales without an en counterpart. Adding a prefix
+// is a reviewed act, not a silent one, and each member must carry a
+// justification.
+var i18nEnExemptPrefixes = []i18nExemptPrefix{
+	{
+		// SPEC-WEB-AGENTFM-RESTORE-001 M5 re-registration (the registry's
+		// only member left with the agent-settings rows under
+		// SPEC-AGENT-MODEL-INHERIT-001; the rows returned with the console
+		// surface): an agent row's description renders the ENGLISH text read
+		// from the agent .md frontmatter (the SSOT) pinned via
+		// data-i18n-baseline — agentdesc.<name> carries only the ko/ja/zh
+		// translations, so en has no such key by design.
+		Prefix:        "agentdesc.",
+		Justification: "Agent row descriptions are translated summaries; the en baseline is the agent's own frontmatter description, pinned server-side via data-i18n-baseline (an en dictionary key would duplicate the frontmatter SSOT).",
+	},
+}
