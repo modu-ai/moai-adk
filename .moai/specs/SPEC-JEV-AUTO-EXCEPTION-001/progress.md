@@ -206,7 +206,7 @@ Hits that exist at base and were rewritten in place keep their count (catalogue 
 ```yaml
 run_status: audit-ready
 run_complete_at: 2026-10-02T06:53:53Z
-run_commit_sha: pending-backfill   # the commit carrying this block; backfilled by the next commit (a commit cannot cite its own hash)
+run_commit_sha: 14ba2eca7          # the commit that carried this block (docs(SPEC-JEV-AUTO-EXCEPTION-001): M4 run-phase evidence); backfilled by the following commit, since a commit cannot cite its own hash
 guard_commit: 6d012fd4d            # G, AC-JAE-013
 linked_commit: 7983d9131           # K, AC-JAE-013
 ac_pass_count: 13
