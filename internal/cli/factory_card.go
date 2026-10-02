@@ -28,6 +28,13 @@ import (
 // to drive lease expiry without sleeping.
 var factoryCardNow = time.Now
 
+// factoryNominateBeforeRecord is the test seam of the nominated lease
+// (SPEC-TODO-AUTO-PICK-001 plan N1/N2): the nomination path calls it after it
+// has promoted the nominee to `picked` and before the first record write
+// (RecordPicked), so a test can inject a claim failure or a competing lease at
+// the one point the compensation can undo. The default is inert.
+var factoryNominateBeforeRecord = func(cardID string) error { return nil }
+
 // factoryCardRoot is the project root the factory record and the queue share.
 func factoryCardRoot() string { return resolveTodoQueueRoot() }
 

@@ -2,7 +2,7 @@
 id: SPEC-TODO-AUTO-PICK-001
 title: "Autonomous card selection under --auto — the invoked session judges, the lease is the only pick path, the keep-set is skipped and reported"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-10-02
 updated: 2026-10-03
 author: manager-spec (card t1448)

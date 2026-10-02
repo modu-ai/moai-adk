@@ -110,7 +110,137 @@ Forward notes for the run phase:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase milestones M1-M4 (card t1448, cycle_type=tdd). M5 and M6 are a separate later delegation.
+
+**Ownership-exception record.** The run-phase for M1-M4 was executed by a general-purpose carrier of the
+manager-develop role; reason: the typed `manager-develop` spawn auto-isolated into its own agent worktree
+(a blocker report whose pre-flight showed toplevel `.claude/worktrees/agent-a1738e79aac1cb93a`, branch
+`worktree-agent-a1738e79aac1cb93a`, HEAD `7109e0900`) and returned without writing; no ownership boundary
+was crossed — no manager-spec-owned body (`spec.md` body, `plan.md`, `acceptance.md`, `research.md`) was
+edited. The one `spec.md` change is the sanctioned frontmatter transition `status: draft` ->
+`status: in-progress` (`updated:` already read 2026-10-03). The authored-by trailer on the run commits names
+the role performing the transition, not a typed agent.
+
+### Pre-flight and baseline re-measured after develop absorption
+
+All measured in this run, in the card tree `.moai/worktrees/t1448`, branch `WT-todo-auto-pick-autonomy`,
+HEAD `095ac6c3e` (clean at start); toolchain `go1.26.8 darwin/arm64`, `golangci-lint v2.1.6`.
+
+| Command | Verbatim output | Exit |
+|---|---|---|
+| `go build ./...` | (empty) | 0 |
+| `GOOS=windows GOARCH=amd64 go build ./...` | (empty) | 0 |
+| `wc -c .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `28308 .claude/rules/moai/workflow/kanban-dispatch.md` · `27986 internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` · `56294 total` | 0 |
+| `wc -m` of the same two files | `28099 .claude/rules/moai/workflow/kanban-dispatch.md` · `27778 internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` · `55877 total` | 0 |
+| `go run ./cmd/moai factory next --help` (FLAGS block) | `-h --help` · `--run         Factory run id (default: the single active run)` · `--wait        Keep re-checking at a fixed interval until a card is leased or the wait bound elapses` · `--wait-bound  How long --wait re-checks before reporting no card (15m0s)` — no `--card` | 0 |
+| `git grep -n "factoryNominateBeforeRecord\|factoryNextRefusedExit" -- internal/cli` | (empty) — neither the seam nor the constant exists at `095ac6c3e` | 1 |
+
+The develop absorption moved the always-loaded stub: live 28,308 B / 28,099 chars, mirror 27,986 B / 27,778
+chars (the SPEC's pinned `4bf547bca` values were 26,959 / 26,754 and 26,637 / 26,433). M5's non-growth
+bound must be measured against THESE values, re-measured again right before M5 edits.
+
+Baseline of the existing pinned lease tests (anchored selector, lane variables scrubbed in one compound
+invocation, `-v`, HEAD `095ac6c3e`): `TestFactoryNextSerialMutualExclusivity`,
+`TestFactoryNextSkipsClassificationBlocked`, `TestFactoryNextParallelizableConcurrentLeases`,
+`TestFactoryNextRecordAndClaimRaceOnLeasedRow` — 4 of 4 `--- PASS`, `ok  github.com/modu-ai/moai-adk/internal/cli  10.602s`, exit 0.
+
+### M1 — tests first (RED), the inert seam, the golden
+
+Tree measured: HEAD `095ac6c3e` + the one inert seam declaration `factoryNominateBeforeRecord` in
+`internal/cli/factory_card.go` (uncalled) + the new test file `internal/cli/factory_nominate_test.go`
+(uncommitted at measurement time; committed in the M1 commit). `go vet ./internal/cli` exit 0 — every new
+test compiles.
+
+**RED (E8), verbatim, captured BEFORE any GREEN code.** Command (one compound invocation, anchored,
+19 names): `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER && go test ./internal/cli -run '^(TestFactoryNextNominateLeasesNominee|TestFactoryNextNominateUnknownCard|TestFactoryNextFlagSet|TestFactoryNextNominateMCPParity|TestFactoryNextNominateConcurrentLanes|TestFactoryNextNominateSameCardExactlyOne|TestFactoryNextNominateRefusesKeepSet|TestFactoryNextArmCSkipsHoldMarker|TestFactoryNextNominateQuotaHold|TestFactoryNextNominateBackendSkip|TestFactoryNextNominateRecordStateTokens|TestFactoryNextNominateRefusalLeavesStateUnchanged|TestFactoryNextNominatePromoteThenLose|TestFactoryNextNominateClaimRefusedRollsBack|TestFactoryNextNominateCompensationFailure|TestFactoryNextAllMarkerQueueExitsNoCard|TestTodoLaneRefusesAutoCycle|TestTodoLaneAutoRefusalText|TestFactoryFallbackDeclarePrintsLeasePath)$' -count=1 -v`
+→ exit 1, `FAIL github.com/modu-ai/moai-adk/internal/cli 140.021s`, 84 `=== RUN` lines, 19 of 19 top-level
+tests `--- FAIL`. The failure reasons (distinct verbatim assertion lines; none is a compile error or a tool failure):
+
+```text
+factory_nominate_test.go:330: next --card t2: unknown flag: --card (stderr "")
+factory_nominate_test.go:355: exit code = -1, want 4 for refused unknown-card; err=unknown flag: --card stderr=""
+factory_nominate_test.go:383: factory next flags = [run wait wait-bound], want [card run wait wait-bound] (the baseline --run/--wait/--wait-bound plus --card)
+factory_nominate_test.go:415: factory_next inputs = [project_root run], want exactly card,project_root,run
+factory_nominate_test.go:426: factory_next card=t2 text = "t1 stage=- worktree=t1\nt1\tunknown\t\t\tpicked\t\tfactory card 1", want the leased t2 line
+factory_nominate_test.go:453: factory_next card=t1 error = <nil>, want refused quota-hold
+factory_nominate_test.go:453: factory_next card=t1 error = <nil>, want refused backend-skip
+factory_nominate_test.go:542: lane lane-1's nomination of t1 ended before reaching the seam: err=unknown flag: --card stderr=""
+factory_nominate_test.go:599: exit code = -1, want 4 for refused held; err=unknown flag: --card stderr=""
+factory_nominate_test.go:641: bare next leased "t1 stage=- worktree=t1", want t3 (a marker card must be skipped)
+factory_nominate_test.go:798: exit code = -1, want 4 for refused backend-skip; err=unknown flag: --card stderr=""
+factory_nominate_test.go:842: exit code = -1, want 4 for refused raced; err=unknown flag: --card stderr=""
+factory_nominate_test.go:871: the error = unknown flag: --card, want the injected failure reported
+factory_nominate_test.go:921: all-marker queue: expected an error, got nil
+factory_nominate_test.go:1100: a lane session ran `moai todo --auto`: output "jev: unavailable (no local scripts) — labelled non-finding; proceeding on the operator session's own judgment\nselection: source=fallback reason=jev-disabled\nselection: ranked t1 …
+factory_nominate_test.go:1171: declare output = "fallback declared: trigger=channel-unavailable card=- at 2026-10-02T15:43:01Z\nswitch to /moai:todo --auto self-service pickup (REQ-FLA-001)\n", want the lease path `moai factory next [--card <id>]`
+```
+
+(Line numbers are those of the test file as measured; the arm-(c) line was re-measured after one helper fix: first
+run printed `bare next leased "moai: worktree commits under global git identity …"` because the assertion read the
+materializer's line — a test defect, fixed with `nmLeasedHead`, then re-run: `factory_nominate_test.go:641: bare next
+leased "t1 stage=- worktree=t1", want t3 …`, exit 1.) One subtest passes by design:
+`TestTodoLaneRefusesAutoCycle/read-only_forms_still_run` (the third Given of AC-TAU-005, a guard the lane
+guard already satisfies).
+
+Reasons per criterion: AC-TAU-001/-002/-004/-014 nominate through a flag that does not exist (`unknown flag:
+--card`), the MCP parity row fails on the missing input and on the ignored `card`; AC-TAU-004 arm (c) and AC-TAU-006
+all-marker fail because the marker card is leased today; AC-TAU-005 fails because a label-only, role-only and
+role-and-label lane session RUNS the serial cycle (queue-mutating) and the declare line still routes to
+`/moai:todo --auto`.
+
+**GREEN-on-arrival guards (by design), HEAD `095ac6c3e` + seam.**
+`unset … && go test ./internal/cli -run '^(TestFactoryNextBareUnchanged)$' -count=1 -v` → exit 0,
+`--- PASS: TestFactoryNextBareUnchanged (11.30s)` with the five subtests `arm-order`, `wait-bound`,
+`quota-hold`, `codex-skip`, `serial-slot` each `--- PASS`; the golden transcript was OBSERVED on this tree (the
+first attempt printed the worktree materializer and the machine-dependent pull-request notes into the head and
+stderr cells, so the transcript was narrowed to the leased-card line and the verb's own stderr lines — a test
+fix, not a behavior change — and then matched the expected arm order `t5, t4, t3, t1, t2`, the bounded wait
+`exit=3 sleeps=2`, the quota hold with the assigned card still leasing, the Codex skip of the merge-ready card,
+and the serial slot `t1, t3, exit 3`). `TestTodoNonLaneGPTSessionNotRefused` → `--- PASS`
+(`MOAI_KANBAN_BACKEND=gpt`, no role marker, no lane label: the cycle ran, `accept t1`).
+
+**Seeded perturbation 1 — the golden is not vacuous (MU-25).** One-line mutation of
+`internal/cli/factory_card.go`: `if noNewCards {` → `if noNewCards && false {` (the quota hold's early return
+disabled), tree HEAD `095ac6c3e` + seam + this mutation. Command: `unset … && go test ./internal/cli -run
+'^(TestFactoryNextBareUnchanged)$' -count=1` → exit 1:
+
+```text
+--- FAIL: TestFactoryNextBareUnchanged (15.68s)
+    --- FAIL: TestFactoryNextBareUnchanged/quota-hold (2.31s)
+        factory_nominate_test.go:1033: bare `factory next` transcript "quota-hold" changed:
+            --- got ---
+            next#1 exit=0 head="t4 stage=run worktree=t4" stderr=""
+            next#2 exit=0 head="t2 stage=- worktree=t2" stderr=""
+            --- want (golden) ---
+            next#1 exit=0 head="t4 stage=run worktree=t4" stderr=""
+            next#2 exit=3 head="" stderr="quota hold: five_hour used=92.0% resets_at=2026-09-26T12:00:00Z"
+FAIL	github.com/modu-ai/moai-adk/internal/cli	16.669s
+```
+
+Reverted by the inverse edit.
+
+**Seeded perturbation 2 — the GPT guard is not vacuous (MU-22).** Over-broad predicate temporarily added at the top of
+`todoRefuseLaneMutation` in `internal/cli/todo.go`: `if todoAutoFlag && factoryLaneRefusal() { return
+fmt.Errorf("mutant: over-broad lane predicate refuses --auto") }`, tree HEAD `095ac6c3e` + seam + this mutation.
+Command: `unset … && go test ./internal/cli -run '^(TestTodoNonLaneGPTSessionNotRefused)$' -count=1` → exit 1:
+
+```text
+--- FAIL: TestTodoNonLaneGPTSessionNotRefused (1.32s)
+    factory_nominate_test.go:1164: a non-lane Codex-backend session was refused `moai todo --auto`: mutant: over-broad lane predicate refuses --auto
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.313s
+```
+
+Reverted by the inverse edit; `git diff --stat` afterwards: `spec.md` frontmatter (1 line) and `factory_card.go` (+7, the seam
+declaration) only — `todo.go` untouched.
+
+**M1 exit (d) — scoped baselines re-run after the seam (HEAD `095ac6c3e` + seam, lane variables scrubbed, one
+compound invocation, `-v`).** The five existing lease pins plus the duplicate-dispatch and claim-refused pins, and the
+six doc pins of G2: `TestFactoryNextSerialMutualExclusivity`, `TestFactoryNextSkipsClassificationBlocked`,
+`TestFactoryNextParallelizableConcurrentLeases`, `TestFactoryNextRecordAndClaimRaceOnLeasedRow`,
+`TestFactoryNextDuplicateDispatchGuard`, `TestFactoryNextClaimRefusedMapsRace`, `TestAutoRankDoctrineAmendment`,
+`TestAutoRankMirrorParity`, `TestAutoRankMarkerDisclosure`, `TestAutoRankAgentDoctrine`,
+`TestAutoHelpAndRefusalDoNotAssertPickOrder`, `TestTodoSkillDocumentsClassification` → exit 0, 12 of 12 top-level tests
+`--- PASS` (73 `=== RUN` lines with subtests), `ok  github.com/modu-ai/moai-adk/internal/cli  12.575s`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
