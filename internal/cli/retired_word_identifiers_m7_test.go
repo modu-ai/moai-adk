@@ -2,10 +2,11 @@ package cli
 
 // retired_word_identifiers_m7_test.go — SPEC-LAUNCHER-ENTRY-FLAGS-001 M7 (card
 // t1399), the identifier half of AC-018 (REQ-017): outside internal/web, no Go
-// identifier carries the retired mode word in any letter case. The bare package
-// name, which M8 renames with the package, the package clause, and the four test
+// identifier carries the retired mode word in any letter case. The four test
 // names that acceptance commands select by name are the only identifiers that
-// keep it. internal/web moves as one unit at M9 and is not scanned here.
+// keep it (the bare package name was an allowed identifier until M8 renamed the
+// package; a bare use of it now counts like any other). internal/web moves as
+// one unit at M9 and is not scanned here.
 //
 // The scan is syntactic (go/parser identifiers), so a comment, a string literal,
 // or a marker value (`MOAI_KANBAN_ID`, frozen by AC-016) never trips it. The
@@ -35,8 +36,7 @@ var pinnedRetiredWordTestNames = map[string]bool{
 }
 
 // retiredWordIdentifiers returns the identifiers of one Go source that carry the
-// word, other than the bare package name, the package clause, and the pinned
-// test names.
+// word, other than the package clause and the pinned test names.
 func retiredWordIdentifiers(t *testing.T, filename string, src any) []string {
 	t.Helper()
 	fset := token.NewFileSet()
@@ -50,7 +50,7 @@ func retiredWordIdentifiers(t *testing.T, filename string, src any) []string {
 		if !ok || id == f.Name {
 			return true
 		}
-		if id.Name != "kanban" && strings.Contains(strings.ToLower(id.Name), "kanban") && !pinnedRetiredWordTestNames[id.Name] {
+		if strings.Contains(strings.ToLower(id.Name), "kanban") && !pinnedRetiredWordTestNames[id.Name] {
 			out = append(out, filename+":"+strconv.Itoa(fset.Position(id.Pos()).Line)+" "+id.Name)
 		}
 		return true
@@ -59,9 +59,10 @@ func retiredWordIdentifiers(t *testing.T, filename string, src any) []string {
 }
 
 // TestRetiredWordIdentifierScanHasTeeth is the positive control: the scan finds
-// an old-style identifier and lets the allowed shapes through, so a zero result
-// on the tree below means something. The old-style name is assembled from parts
-// so the rename program, which rewrites spelled identifiers in strings, leaves
+// an old-style identifier and a stale bare package qualifier, and lets the
+// renamed qualifier and the pinned test name through, so a zero result on the
+// tree below means something. The old-style spellings are assembled from parts
+// so the rename programs, which rewrite spelled identifiers in strings, leave
 // the fixture alone.
 func TestRetiredWordIdentifierScanHasTeeth(t *testing.T) {
 	oldName := "prepare" + "Kan" + "ban" + "Settings"
@@ -69,10 +70,11 @@ func TestRetiredWordIdentifierScanHasTeeth(t *testing.T) {
 		"import \"github.com/modu-ai/moai-adk/internal/factory\"\n\n" +
 		"func " + oldName + "() {}\n\n" +
 		"var _ = factory.Record{}\n\n" +
+		"var _ = kan" + "ban.Record{}\n\n" +
 		"func Test" + "Kan" + "banEntryRefused() {}\n"
 	got := retiredWordIdentifiers(t, "control.go", src)
-	if len(got) != 1 || !strings.HasSuffix(got[0], " "+oldName) {
-		t.Fatalf("the scan must report exactly %s (and let the package qualifier and the pinned test name through), got %v", oldName, got)
+	if len(got) != 2 || !strings.HasSuffix(got[0], " "+oldName) || !strings.HasSuffix(got[1], " kan"+"ban") {
+		t.Fatalf("the scan must report exactly %s and the stale bare qualifier (and let the renamed qualifier and the pinned test name through), got %v", oldName, got)
 	}
 }
 

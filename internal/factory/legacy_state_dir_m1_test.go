@@ -3,8 +3,8 @@ package factory
 // legacy_state_dir_m1_test.go — SPEC-LAUNCHER-ENTRY-FLAGS-001 M1 (card t1399),
 // AC-016: the legacy project-local state directory is still read from
 // `.moai/state/kanban`. The AC names the factory package for this test
-// (`./internal/factory`); through M7 the package path is `./internal/factory`,
-// where this file lives and is carried along by the package rename at M8.
+// (`./internal/factory`); through M7 this file lived in the package's old
+// directory, and the package rename at M8 carried it along.
 //
 // The directory name below is a literal on purpose: it is the on-disk name an
 // older binary wrote, which no rename of a Go identifier may move.

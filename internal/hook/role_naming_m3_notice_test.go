@@ -131,11 +131,11 @@ func TestRoleNamingM3StaleRunNoticeNamesRetireStep(t *testing.T) {
 	}
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "")
-	kanban := staleRunNotice("lead", "en")
-	if strings.Contains(kanban, "factory runs --retire") {
-		t.Errorf("kanban stale-run notice %q must not name a factory retire step", kanban)
+	relaunch := staleRunNotice("lead", "en")
+	if strings.Contains(relaunch, "factory runs --retire") {
+		t.Errorf("relaunch stale-run notice %q must not name a factory retire step", relaunch)
 	}
-	if !strings.Contains(kanban, "lead") {
-		t.Errorf("kanban stale-run notice %q does not name the legacy value", kanban)
+	if !strings.Contains(relaunch, "lead") {
+		t.Errorf("relaunch stale-run notice %q does not name the legacy value", relaunch)
 	}
 }
