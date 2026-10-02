@@ -70,7 +70,9 @@ func NewRetention(logPath, archiveDir string, nowFn func() time.Time) *Retention
 //
 // @MX:WARN: [AUTO] The pruner reads the whole log and replaces it by rename; events other hooks append in that window are lost.
 // @MX:REASON: [AUTO] The state-file flock admits a single pruner per interval (it was N concurrent rewriters),
-// but appenders never take that lock. On Windows the lock is in-process only, so there the stamp alone bounds the rewrites.
+// but appenders never take that lock. The attempt stamp is written before the work, so a killed pruner is not
+// repeated until the interval ends. On Windows the lock is in-process only: a burst of hooks that all read
+// "no stamp" before the first stamp lands can still prune concurrently, once per interval.
 func (r *Retention) PruneStaleEntries(retentionDays int) error {
 	now := r.nowFn()
 
@@ -97,12 +99,15 @@ func (r *Retention) PruneStaleEntries(retentionDays int) error {
 
 // pruneExclusive runs the prune while holding an exclusive lock on the state file.
 //
-// If the state file cannot be created or locked the prune is SKIPPED and the error
-// returned (the observer ignores it): pruning without the lock would let every hook
-// process rewrite the log again, which is the storm this guard exists to stop.
+// If the state file cannot be created, locked or stamped the prune is SKIPPED and the error
+// returned (the observer ignores it): pruning without the lock or without a recorded attempt
+// would let every hook process rewrite the log again, which is the storm this guard exists to stop.
 //
 // @MX:NOTE: [AUTO] Double-checked locking: the stamp is read again after the lock is won, with a fresh
-// clock reading, because the previous holder may have pruned while this process waited.
+// clock reading, because the previous holder may have stamped while this process waited.
+// @MX:NOTE: [AUTO] Stamp-before-work: a pruner killed after archiving and before the rename leaves the
+// stamp, so the same events are archived again at most once per interval, not by every later hook.
+// A kill mid-rewrite can still leave an orphan usage-log-*.tmp; nothing sweeps those.
 func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
 	sf, err := os.OpenFile(statePath, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
@@ -122,18 +127,14 @@ func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
 		return nil
 	}
 
-	pruneErr := r.prune(retentionDays, now)
-
-	// Stamp the ATTEMPT, also after a failed prune, so a persistent failure is not retried by every hook.
-	stampErr := writeStamp(sf, now)
-
-	if pruneErr != nil {
-		return pruneErr
+	// Stamp the ATTEMPT before the work, so a pruner killed mid-way (hook timeout) or a prune that
+	// fails leaves the stamp behind and later hooks skip until the interval ends. If the stamp cannot
+	// be recorded the prune is skipped: without a recorded attempt every waiter would prune in turn.
+	if err := writeStamp(sf, now); err != nil {
+		return fmt.Errorf("retention: prune state write failed: %w", err)
 	}
-	if stampErr != nil {
-		return fmt.Errorf("retention: prune state write failed: %w", stampErr)
-	}
-	return nil
+
+	return r.prune(retentionDays, now)
 }
 
 // readStamp returns the (bounded) content of an open state file.
