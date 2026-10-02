@@ -183,7 +183,7 @@ Written by manager-docs on the single sync commit (the 3-phase close). Every mea
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-10-02T08:00:05Z     # date -u, taken after the last evidence command of this sync run
-sync_commit_sha: pending-backfill           # a commit cannot cite its own hash; the next commit backfills the real SHA (D3 window)
+sync_commit_sha: 4a8ab71a7981cefeff77de34cbfd7a8fa6c927ef           # a commit cannot cite its own hash; the next commit backfills the real SHA (D3 window)
 card: t1424
 head_measured: 9d8e8d02c
 b12_self_test_a: PASS                       # grep -c 'SPEC-RUN-EXTERNAL-DELEGATION-001' CHANGELOG.md printed 0 before the entry was written
