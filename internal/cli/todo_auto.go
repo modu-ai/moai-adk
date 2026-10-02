@@ -206,7 +206,18 @@ type autoOptions struct {
 	// request. Production wiring (todo.go) sets both live seams.
 	landed  autoLandedLookup // landed-state lookup over the whole record
 	jevRank autoJevRanker    // one bounded Jev request over the candidates
+
+	// quota is the quota-pressure steering seam (SPEC-QUOTA-AWARE-SCHEDULING-001
+	// REQ-QAS-019): it returns the one line printed immediately before each
+	// accept line, or "" when there is nothing to say. A nil value is INERT — no
+	// line, no read of any quota record or registry. Printing only: the line
+	// never reaches a queue write, a lease, or a dispatch.
+	quota autoQuotaLine
 }
+
+// autoQuotaLine returns the quota-pressure steering line for the project root,
+// or "" while pressure is off. It is evaluated afresh before every accept line.
+type autoQuotaLine func(root string) string
 
 // runAutoCycle executes the serial cycle against the store, writing the
 // narrated output (accept → directive → evidence → done/unpick → guidance)
@@ -259,6 +270,15 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 	}
 
 	for _, card := range targets {
+		// Quota steering (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-019): one
+		// line immediately before the accept line, evaluated afresh per card.
+		// Printing only — no queue write, no lease, no dispatch — and absent
+		// entirely while pressure is off or the seam is nil.
+		if opts.quota != nil {
+			if line := opts.quota(root); line != "" {
+				_, _ = fmt.Fprintln(out, line)
+			}
+		}
 		_, _ = fmt.Fprintf(out, "accept %s %s\n", card.ID, todoTextPrefix(card.Text))
 		// Claim the card before dispatch: a queued card becomes picked (the
 		// cycle's own pick); a dead-owner picked card is already claimed. The

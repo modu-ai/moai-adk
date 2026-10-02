@@ -504,6 +504,15 @@ type WorkflowConfig struct {
 	// work regardless of Enabled. Deliberately separate from IntegrationLock.
 	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
 
+	// QuotaGate carries the quota-aware lane gate settings
+	// (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008): whether the gate runs, the
+	// per-window hold percentages, the release margin, and the freshest-reading
+	// max age. Read through LoadQuotaGate, which owns the default on every
+	// failure and every out-of-range value. Default OFF; the status block, the
+	// hold, and the integration-window warning all consult it. Template
+	// neutrality: no `enabled: true` under internal/template/templates/.
+	QuotaGate QuotaGateConfig `yaml:"quota_gate"`
+
 	// SubagentWriteGuard gates the deny layer of the PreToolUse subagent
 	// destructive-write guard (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). Default
 	// false: detection and the audit-log append always run, but no subagent
@@ -753,6 +762,22 @@ type SlotLeaseConfig struct {
 	Enabled            bool                               `yaml:"enabled"`
 	DefaultMaxDuration string                             `yaml:"default_max_duration"`
 	Resources          map[string]SlotLeaseResourceConfig `yaml:"resources"`
+}
+
+// QuotaGateConfig mirrors workflow.quota_gate.* (SPEC-QUOTA-AWARE-SCHEDULING-001
+// REQ-QAS-008). Enabled gates every quota surface; the two hold percentages are
+// the used percentage at or above which a window counts as under pressure; a
+// held lane is released once the reading falls below its hold percentage minus
+// ReleaseMarginPct; MaxAge is a duration string — the age beyond which a session
+// record's reading is unknown. The numeric defaults are unmeasured. The raw
+// values may be out of range here; LoadQuotaGate is the resolver that replaces
+// an invalid value with its default.
+type QuotaGateConfig struct {
+	Enabled          bool   `yaml:"enabled"`
+	FiveHourHoldPct  int    `yaml:"five_hour_hold_pct"`
+	SevenDayHoldPct  int    `yaml:"seven_day_hold_pct"`
+	ReleaseMarginPct int    `yaml:"release_margin_pct"`
+	MaxAge           string `yaml:"max_age"`
 }
 
 // SlotLeaseResourceConfig is one resource entry: RE2 command patterns matched

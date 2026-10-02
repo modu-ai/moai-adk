@@ -2397,6 +2397,21 @@
 - path: "workflow.project.continuation"
   class: P
   evidence: .claude/skills/moai/workflows/project/doc-generation.md
+- path: "workflow.quota_gate.enabled"
+  class: W
+  evidence: reader
+- path: "workflow.quota_gate.five_hour_hold_pct"
+  class: W
+  evidence: reader
+- path: "workflow.quota_gate.max_age"
+  class: W
+  evidence: reader
+- path: "workflow.quota_gate.release_margin_pct"
+  class: W
+  evidence: reader
+- path: "workflow.quota_gate.seven_day_hold_pct"
+  class: W
+  evidence: reader
 - path: "workflow.served_model_gate.enabled"
   class: W
   evidence: reader
