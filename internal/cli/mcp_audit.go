@@ -1,12 +1,10 @@
-// Package cli — 3-way audit backend selection + secret hygiene
-// (SPEC-MOAI-MCP-SERVER-001 M3, REQ-MCP-010/011/014).
+// Package cli — audit backend env hygiene
+// (SPEC-MOAI-MCP-SERVER-001 M3, REQ-MCP-011/014).
 //
-// mcp_audit.go holds the audit_model/audit_gate contract surface shared by the
-// codex (mcp_codex.go) and GLM (mcp_glm.go) backends:
-//   - activeAuditBackend: validates audit_model ∈ {claude,codex,glm,multi} and
-//     returns the single active backend. `multi` is a DECLARED token only — its
-//     convergence logic is SPEC-AUDIT-MULTI-MODEL (AP-8); M3 accepts the token
-//     but does NOT orchestrate the parallel fan-out / disagreement synthesis.
+// mcp_audit.go holds the backend env-reference surface shared by the codex
+// (mcp_codex.go) and GLM (mcp_glm.go) backends. The audit_model token itself is
+// validated and consumed by config.ResolveAuditPlan; the `multi` fan-out is
+// orchestrated by the audit_multi tool (mcp_audit_multi.go), not here.
 //   - buildAuditEnvBlock: the ONLY producer of backend env references for
 //     provisioning. Every value is a ${VAR} literal expanded by the Claude Code
 //     runtime at load — a resolved secret is NEVER serialized (C3 / REQ-MCP-011
@@ -19,16 +17,8 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/modu-ai/moai-adk/internal/config"
 )
-
-// multiConvergenceImplemented documents AP-8: the `multi` audit_model token is
-// accepted and stored by M3, but its convergence logic (parallel fan-out +
-// disagreement synthesis) is owned by a future SPEC-AUDIT-MULTI-MODEL. M3 MUST
-// NOT orchestrate it. This constant makes the deferral grep-visible.
-const multiConvergenceImplemented = false
 
 // ${VAR} literal env-reference tokens. These are Claude Code host-runtime
 // expansion tokens (the runtime substitutes them at .mcp.json load), NOT env
@@ -42,21 +32,6 @@ const (
 	envKeyGLMName         = "GLM_API_KEY"
 	envKeyCodexName       = "CODEX_API_KEY"
 )
-
-// activeAuditBackend validates audit_model and returns the single active
-// backend (AC-MCP-017). For claude/codex/glm the backend is the model itself
-// (exactly one executes, per its audit_gate). `multi` is accepted verbatim
-// (stored) but its fan-out is NOT orchestrated here (multiConvergenceImplemented
-// = false); a caller that needs a concrete backend should treat `multi` as
-// "deferred to SPEC-AUDIT-MULTI-MODEL".
-func activeAuditBackend(model string) (string, error) {
-	switch model {
-	case config.AuditModelClaude, config.AuditModelCodex, config.AuditModelGLM, config.AuditModelMulti:
-		return model, nil
-	default:
-		return "", fmt.Errorf("audit_model %q unknown (want one of claude|codex|glm|multi)", model)
-	}
-}
 
 // buildAuditEnvBlock returns the backend env-reference block for a given
 // audit_model, or nil when the model needs no backend key (claude).

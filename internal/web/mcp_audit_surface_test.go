@@ -47,15 +47,19 @@ func TestSchemaSurfaces_AuditSelection(t *testing.T) {
 // resolver. The audit selection surfaces via the schema-driven form (which
 // reads/writes the M3 config.AuditConfig yaml paths); the model/effort
 // resolution for the audit backends stays in the MCP handlers (which call the
-// shared SSOT). A second activeAuditBackend / audit-model resolver in
+// shared SSOT). A second ResolveAuditPlan / audit-model resolver in
 // internal/web would be the fork this test forbids.
+//
+// The sentinel is only meaningful while it names a live symbol:
+// TestWebConsole_AuditSentinelExists is the positive control that fails when
+// config.ResolveAuditPlan is renamed or removed, so this guard cannot go
+// vacuous.
 func TestWebConsole_AuditNoForkedInterpreter(t *testing.T) {
 	// Collect every non-test .go file in internal/web.
 	files, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatalf("glob internal/web *.go: %v", err)
 	}
-	const sentinel = "activeAuditBackend" // the M3 resolver symbol in internal/cli
 	for _, f := range files {
 		if strings.HasSuffix(f, "_test.go") {
 			continue
@@ -68,6 +72,65 @@ func TestWebConsole_AuditNoForkedInterpreter(t *testing.T) {
 			t.Errorf("internal/web/%s defines/references %q — the web console must NOT fork the audit interpreter (AC-MCP-021); it reads the M3 config.AuditConfig via the schema seam", f, sentinel)
 		}
 	}
+}
+
+// sentinel is the live audit-model resolver symbol the web console must not
+// fork: config.ResolveAuditPlan, the single consumer of the workflow.audit.model
+// token. Both the guard and its positive control read this one constant.
+const sentinel = "ResolveAuditPlan"
+
+// declaresFunc reports how many non-test .go files in dir declare
+// `func <name>(`. It returns an error when dir holds no non-test source at
+// all, so an empty sweep is never read as a verdict.
+func declaresFunc(dir, name string) (int, error) {
+	files, err := filepath.Glob(filepath.Join(dir, "*.go"))
+	if err != nil {
+		return 0, err
+	}
+	var scanned, hits int
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return 0, err
+		}
+		scanned++
+		if strings.Contains(string(data), "func "+name+"(") {
+			hits++
+		}
+	}
+	if scanned == 0 {
+		return 0, os.ErrNotExist
+	}
+	return hits, nil
+}
+
+// TestWebConsole_AuditSentinelExists is the positive control for
+// TestWebConsole_AuditNoForkedInterpreter: a guard whose sentinel names a
+// deleted symbol passes vacuously, so the sentinel must be declared in the
+// non-test source of internal/config. The second subtest proves the probe can
+// report absence.
+func TestWebConsole_AuditSentinelExists(t *testing.T) {
+	t.Run("sentinel is declared in internal/config non-test source", func(t *testing.T) {
+		hits, err := declaresFunc(filepath.Join("..", "config"), sentinel)
+		if err != nil {
+			t.Fatalf("scan internal/config: %v", err)
+		}
+		if hits == 0 {
+			t.Errorf("func %s( is not declared in internal/config non-test source — the no-forked-interpreter guard names no live symbol and passes vacuously", sentinel)
+		}
+	})
+	t.Run("probe reports an absent symbol as absent", func(t *testing.T) {
+		hits, err := declaresFunc(filepath.Join("..", "config"), "NoSuchAuditResolverSymbol")
+		if err != nil {
+			t.Fatalf("scan internal/config: %v", err)
+		}
+		if hits != 0 {
+			t.Errorf("probe found %d declarations of a symbol that does not exist — the control cannot fail", hits)
+		}
+	})
 }
 
 // TestWebConsole_NoPerAgentModelResolver verifies the web console neither
