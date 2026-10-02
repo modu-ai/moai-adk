@@ -292,7 +292,7 @@ Second re-close state (2026-10-02). Close history: first close sync commit `578e
 
 ```yaml
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill  # canonical placeholder: a commit cannot cite its own SHA; backfilled with the real SHA in a following commit (phase-owned field, manager-docs §E.4). Prior close SHAs: 35dbf356c4ca5e3cd9cb84cae2382c4908afef5e, 578e0d8896a6238d9d110aa55cf702f85d11446e (spec.md HISTORY prior_completed_sha)
+sync_commit_sha: 45a7020de0e533202ab51f79e9824184fa2dee7d  # D3-exempt backfill: the second re-close sync commit SHA replaced the placeholder written in that commit (phase-owned field, manager-docs §E.4). Prior close SHAs: 35dbf356c4ca5e3cd9cb84cae2382c4908afef5e, 578e0d8896a6238d9d110aa55cf702f85d11446e (spec.md HISTORY prior_completed_sha)
 sync_status: complete
 re_close: 2
 b12_self_test_a: pass  # the existing CHANGELOG entry is corrected in place; `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001](' CHANGELOG.md` = 1 (no second entry)
