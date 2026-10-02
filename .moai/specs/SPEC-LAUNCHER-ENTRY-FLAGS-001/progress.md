@@ -1721,6 +1721,140 @@ internal/factorylane top: pass=53 fail=0 skip=0 sub=8
 
 The one failure, `TestHookWrapperCopiesStayIdentical`, is the known red on the base for a reason outside this SPEC (named in the delegation); it is the only test ignored anywhere in this record.
 
+#### The rename program (committed, re-runnable)
+
+Path: `.moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe/rename/m7_rename.go` (`//go:build ignore`, standard library only; a copy sits in the gitignored `.moai/reports/t1399/rename/`). Run command, from the tree root:
+
+```text
+go run .moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe/rename/m7_rename.go -root <git tree> [-dry-run]
+```
+
+What it does and refuses is its header comment. Summary: step 1 deletes the `KanbanEnabled` field of the entry-parse struct; step 2 deletes the `exportFactoryLaunchFacts` wrapper where `exportKanbanLaunchFacts` is declared; step 3 renames every Go identifier that carries the word (the six marker constants by the design 4.7 map, `kanbanEntryParse` to `launcherEntryParse`, every other identifier by replacing the word), except the bare package name `kanban`, package clauses, and the four test names acceptance commands pin; step 4 rewrites tokens that spell a renamed identifier inside comments and string literals, and (comments only) file names it renames; step 5 applies the design 4.7 literal rewrites; step 6 renames files (`git mv` for tracked files). It never touches `internal/web`, non-Go files, `testdata`, `node_modules`, `vendor`, `.git`, `.moai`, `.claude`, or `internal/template/templates`, and it leaves the six marker string values alone (only identifiers, and tokens that spell an identifier, are rewritten). It refuses (exit 2) on a tree with tracked modifications, and refuses (exit 1, nothing written) on a package-level name collision, a file-rename collision, or a rewrite that does not parse.
+
+Observed results, each a command run in this run:
+
+| What | Command, tree | Observed |
+|---|---|---|
+| dry run | `-dry-run` on the real tree `d206491f3` plus the program | `m7_rename: identifiers renamed: 540 (35 distinct names, 111 files); comment/string tokens rewritten: 61; literal rewrites: 38; KanbanEnabled fields deleted: 1; launch-facts wrappers deleted: 1; files renamed: 10 (dry run, nothing written)` |
+| per-package identifier counts of that run | same | `internal/cli` 294, `internal/cli/ptycaptest` 17, `internal/config` 12, `internal/discovery` 7, `internal/homestate` 3, `internal/hook` 202, `internal/kanban` 5 (sum 540) |
+| the real run, commit `602aa8c93` | the run command on tree `48365b722` | the same summary line without the dry-run suffix |
+| run 2, idempotence | the run command on `602aa8c93` | `m7_rename: identifiers renamed: 0 (0 distinct names, 0 files); comment/string tokens rewritten: 0; literal rewrites: 0; KanbanEnabled fields deleted: 0; launch-facts wrappers deleted: 0; files renamed: 0`, then `git status --short` printed nothing |
+| program extended, then run on `5513923a6` | the run command | `… identifiers renamed: 0 (0 distinct names, 8 files); comment/string tokens rewritten: 9; …; files renamed: 0` (nine comment mentions of renamed files, commit `e41310611`) |
+| run 3, idempotence on the final tree `e41310611` | the run command | all zeros again, `git status --short` printed nothing |
+| refuses a dirty tree | the run command on a scratch clone with a staged rename | `m7_rename: the tree has tracked modifications; commit or revert them first:` and `R  internal/cli/cc.go -> internal/cli/cc_moved.go`; `exit status 2` |
+| converts a planted late reference | the run command on a scratch clone of `602aa8c93` holding an untracked `internal/cli/kanban_planted_test.go` that uses `config.EnvMoaiKanbanBackend`, `exportKanbanLaunchFacts`, and a comment and message naming `prepareKanbanSettings` | `identifiers renamed: 2`, `text token (comment or string): prepareKanbanSettings -> prepareFactorySettings`, `file: internal/cli/kanban_planted_test.go -> internal/cli/factory_planted_test.go`; the converted file read back uses `config.EnvFactoryBackend`, `exportFactoryLaunchFacts`, and `prepareFactorySettings`; `go vet ./internal/cli/` of that scratch clone exit 0 |
+| one command reproduces the commit | the final program on a scratch clone checked out at `48365b722` (plus the new guard test file), then `diff -rq` of `internal` and `cmd` against the committed tree `e41310611` | summary `identifiers renamed: 540 (35 distinct names, 112 files); comment/string tokens rewritten: 70; literal rewrites: 38; … files renamed: 10`; `diff -rq` listed exactly 14 files, the 13 hand-edited comment files of commit `f4a809fcf` and `internal/cli/ptycaptest/harness.go` (the hand edit in `602aa8c93`) |
+
+Not covered by the program (hand edits, so a post-absorption re-run leaves them to a manual grep): the 11 doctrine-path comment lines and the other comment rewordings of commit `f4a809fcf` (13 files), and the one comment of `internal/cli/ptycaptest/harness.go` in `602aa8c93`, which would otherwise have turned the REQ-SRL-009 env-literal guard red in that commit (the rename modifies a line that spells `MOAI_KANBAN*`, and a modified line is an added line).
+
+Actual versus the plan: 540 identifier occurrences renamed against the plan's 515 (PV-79, modeled tree), plus one field and one wrapper deleted; the guard test below saw 542 identifier tokens on the pre-rename tree (the 540, the deleted field, and the identifier inside the deleted wrapper).
+
+#### Claim
+
+- Every Go identifier outside `internal/web` that carried the word is renamed; the bare package qualifier `kanban` (1,980 occurrences, M8's), the package clauses (M8), and five occurrences of three pinned test names remain. The six marker constants carry the design 4.7 names and their string values are unchanged. `kanbanEntryParse` is `launcherEntryParse` with no `KanbanEnabled` field. There is one launch-facts function, `exportFactoryLaunchFacts`. The transient settings prefix is `moai-factory`, the timing lap is `factory_record`, the five landing and backlog files carry `todo queue …` and `factory: …` error prefixes, and the todo, gtd, MCP, and tokens help sentences no longer carry the word.
+- Ten Go files were renamed (`kanban.go` to `factory_launch_helpers.go`, `kanban_settings.go` to `factory_settings.go`, and eight test files by the word replacement). `find internal cmd -iname '*kanban*'` now lists six names, all owned by later milestones.
+- Behavior preserved: the factory net is 8 / 2 / 2 on the final tree and the whole-package test name lists of the eight packages are identical to the baseline modulo seven renamed test names.
+
+#### Evidence
+
+AC rows, each a command run on the committed tree `e41310611` (`git status --short` empty), env unset in one compound invocation for every `go test`; the tool exit was 0 for every row unless stated:
+
+| AC and row | Status | Command | Observed |
+|---|---|---|---|
+| AC-015 net, cli | PASS | the AC-015 `./internal/cli` selector, `-v -count=1` | 8 `--- PASS` lines, including `TestPrepareFactorySettingsWritesTransientFile` (the new name exists, the old name does not): `TestCCFactoryLaneJoinsDiscoveredLeader`, `TestGLMFactoryLaneJoinsDiscoveredLeader`, `TestFactoryNetLeaderLaunch`, `TestFactoryNetLaneLaunch`, `TestFactoryNetBlockCap`, `TestFactoryEntryMatrix`, `TestPrepareFactorySettingsWritesTransientFile`, `TestCCFactoryEntryRecordsFailOpenRunMetadata`; `ok  	github.com/modu-ai/moai-adk/internal/cli	34.130s` |
+| AC-015 net, hook | PASS | the AC-015 `./internal/hook` selector | 2 PASS (`TestFactoryNetSessionRecord`, `TestFactoryNetSessionStartNotices`), `ok … 1.882s` |
+| AC-015 net, discovery | PASS | the AC-015 `./internal/discovery` selector | 2 PASS, `ok … 0.727s` |
+| AC-016 frozen values | PASS | `go test ./internal/config -run '^TestFactoryMarkerValuesFrozen$' -v -count=1` | `--- PASS: TestFactoryMarkerValuesFrozen (0.00s)`; the test file is unchanged in assertion (its six literals are written in the file; the compiler retargeted the six constant references and the text rule the six label strings) |
+| AC-016 allowlist | PASS | `go test ./internal/codexwiring -run '^TestMCPServerEnvVarsKeepFactoryMarkers$' -v -count=1` | 1 PASS |
+| AC-016 legacy state dir | PASS | `go test ./internal/kanban -run '^TestLegacyStateDirStillRead$' -v -count=1` | 1 PASS |
+| AC-016 discovery | PASS | the two discovery tests (net row) | 2 PASS |
+| AC-017 | PASS | `go test ./internal/cli ./internal/hook ./internal/web ./internal/statusline -run '^TestPreexistingKanbanArtifactsTolerated$' -v -count=1` | 1 PASS in each of the four packages |
+| AC-011 | PASS | `go test ./internal/cli -run '^TestKanbanEntryRefused$' -v -count=1` | `--- PASS: TestKanbanEntryRefused (30.47s)` (name pinned, unchanged) |
+| AC-014 (tests) | PASS | `go test ./internal/hook -run '^(TestSessionStartEmitsNoKanbanNotice\|TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide)$' -v -count=1` | 2 PASS |
+| AC-024 (hook tests) | PASS | `go test ./internal/hook -run '^(TestUnbindNoticeRebindLinePresence\|TestFactoryGuideNamesWorkerJoinInEveryLocale)$' -v -count=1` | 2 PASS |
+| AC-024 (cli help test) | GAP | `go test ./internal/cli -run '^TestLauncherHelpDocumentsLaneEntry$' -v -count=1` | the selector swept 0 tests: no commit of this repository contains that name (Findings 1) |
+| AC-018, identifier half (new guard) | PASS | `go test ./internal/cli -run '^(TestRetiredWordIdentifierScanHasTeeth\|TestNoRetiredWordIdentifiersOutsideWeb)$' -v -count=1` | both PASS (`--- PASS: TestNoRetiredWordIdentifiersOutsideWeb (2.10s)`); RED before: the same two tests on a scratch clone of `48365b722` with the test file added printed `--- PASS: TestRetiredWordIdentifierScanHasTeeth` and `retired_word_identifiers_m7_test.go:112: 542 Go identifier(s) outside internal/web still carry the retired mode word`, `--- FAIL: TestNoRetiredWordIdentifiersOutsideWeb (0.64s)`, tool exit 1; mutant: a planted `func helperKanbanThing() {}` in a scratch clone printed `1 Go identifier(s) … ../../internal/cli/zz_planted_old_name_test.go:4 helperKanbanThing`, `--- FAIL`, exit 1 |
+| AC-018, file names | PARTIAL (M7 part PASS) | `find internal cmd -iname '*kanban*'` (RED-N2 15 names) | 6 names: `internal/kanban` (M8), `internal/web/preexisting_kanban_artifacts_m1_test.go` (M9), the skill directory `internal/template/templates/.claude/skills/moai-kanban-foreman` and the three `kanban-dispatch*.md` template rules (M10); no `internal/cli`, `internal/hook`, `internal/kanban`, `internal/statusline` file name remains |
+| AC-018, word grep (RED-N1) | PARTIAL | the AC-018 grep, files then lines | 169 files, 1,024 lines (RED-N1 183 / 1,207); excluding `internal/web`: 153 files, 815 lines, of which 67 are import paths, 59 are `package kanban` clauses and 512 are code lines using the package qualifier (all M8), 157 are comment lines (22 `SPEC-KANBAN-*` citations, 57 naming the package or its path, 78 other prose; no milestone owns them), and 20 are other code lines (string literals and the allowed files, listed under the remaining-word table) |
+| AC-018, importers (RED-N3) | unchanged (M8) | `grep -rl '"github.com/modu-ai/moai-adk/internal/kanban"' internal cmd --include='*.go' \| wc -l` | 183 |
+| AC-018 / REQ-024 build | PASS | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...` | exit 0, no output, each |
+| vet | PASS | `go vet` of `./internal/cli/... ./internal/hook/... ./internal/config/... ./internal/kanban/... ./internal/discovery/... ./internal/homestate/... ./internal/statusline/... ./internal/factorymsg/... ./internal/factorylane/... ./internal/codexwiring/... ./internal/web/... ./internal/escalation/... ./internal/graph/... ./internal/mission/... ./cmd/...`, host, and the same with `GOOS=windows GOARCH=amd64` (`./internal/cli/` and `./internal/cli/ptycaptest/` in place of `./internal/cli/...`) | exit 0, no output, both; the whole-module `go vet ./...` and the pre-existing windows failure `internal/cli/worktree/sweep_test.go:1687` were not exercised (Gap 2) |
+| gofmt | PASS for touched files | `gofmt -l internal cmd .moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe` | prints `internal/cli/mcp_claude.go`, `internal/config/slice.go`, `internal/web/codex_panel_test.go`; none of the three is in this diff (`git status --short` listed none of them), so they are unformatted on the base |
+| REQ-SRL-009 env-literal guard | PASS | `go test ./internal/hook -run '^TestNoNewEnvLiteralsInDiff$' -v -count=1` | `env-literal sweep: 1167 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=a6d3e6fd4f21f9c04fbcb7ca7507e87571f9b2c2, distinct literals=0`; the first full-suite run after the program printed `distinct literals=1` `[MOAI_KANBAN]` (the harness.go comment), which is why that comment was reworded in the same commit |
+
+Whole-package suites, before (tree `d206491f3`, above) and after (tree `e41310611`; the non-hook packages in one `go test -p 2 -v -count=1` run, the `internal/hook` package in two runs by test-name range `^Test[A-L]` and `^Test[M-Z]` to stay under the foreground limit), top-level / subtest counts by the same `awk`:
+
+```text
+                         before                                    after (e41310611)
+internal/config          488/0/0 sub 412  ok                       488/0/0 sub 412  ok  5.906s
+internal/kanban          514/0/0 sub 228  ok                       514/0/0 sub 228  ok  251.952s
+internal/hook            1269 pass, 1 fail, 6 skip, sub 1934       671+597 pass, 1 fail, 3+3 skip, sub 1137+797=1934
+internal/discovery       14/0/1 sub 0     ok                       14/0/1 sub 0     ok  3.764s
+internal/codexwiring     91/0/0 sub 71    ok                       91/0/0 sub 71    ok  1.178s
+internal/statusline      333/0/2 sub 460  ok                       333/0/2 sub 460  ok  32.087s
+internal/factorymsg      70/0/1 sub 122   ok                       70/0/1 sub 122   ok  93.504s
+internal/factorylane     53/0/0 sub 8     ok                       53/0/0 sub 8     ok  4.109s
+```
+
+The hook failure is `TestHookWrapperCopiesStayIdentical` in both (the known base red). The hook top-level pass count reads 1268 against 1269 only because one `--- PASS` line is glued to a log line in the file; counting every `--- PASS|FAIL|SKIP: <name>` occurrence, glued ones included, gives 6,079 results before and 6,079 after, and `diff` of the two sorted name lists shows exactly the seven renames: `TestKanbanHelperProcess`, `TestKanbanRoleFromEnvLegacyLabelsNotRecognized`, `TestKanbanRoleFromEnvNewVocabulary`, `TestKanbanRoleFromEnvReadsOnlyLaneLabels`, `TestKanbanSessionRecord_NoStrayTreeInSubdirCWD`, `TestNonKanbanSessionWritesNoRecord` (to the `TestFactory…`/`TestNonFactory…` names) and `TestSessionRecordIgnoresRetiredKanbanMarkers` (five results, to `…RetiredFactoryMarkers`).
+
+`internal/homestate` and `internal/cli/ptycaptest`, whole: `ok  	github.com/modu-ai/moai-adk/internal/homestate	98.156s`, `ok  	github.com/modu-ai/moai-adk/internal/cli/ptycaptest	4.425s`. `internal/cli`, by file-derived name list: 86 tests from the files the rename changed that carry behavior text (settings, launch effort, cross-session settings, launch facts, lead name, autonomy, bootstrap, the new guard, retired entries, characterization, gtd, tokens, MCP factory messages, role naming doctor, goal readers, block-cap) all PASS (`ok  	github.com/modu-ai/moai-adk/internal/cli	120.884s`, 86 `--- PASS`, 0 skip), run on the tree before the comment commits.
+
+A wider `internal/cli` list (1,894 names from the launcher, factory, todo, hook, MCP, and settings test files) timed out at the default 10 minute package limit on a machine whose load average read 72 (`uptime`): 498 tests ran, 4 failed, 1,396 did not run. Those 4 on the renamed tree: `TestStopChainEffectParityGolden`, `TestStopChainMemberCostWithinBudget`, `TestSyncGateLanguageDetectionMatchesScript`, `TestCodexTaskBackgroundHandshakeHonorsTaskBound`. Re-run alone on the renamed tree and on a scratch clone of the pre-rename base `48365b722`: the same three fail on both (`TestStopChainEffectParityGolden` `Claude path decision = allow, want deny`; `TestStopChainMemberCostWithinBudget` member budgets exceeded under load; `TestSyncGateLanguageDetectionMatchesScript` `languages: Go = [kotlin], script = [kotlin java]`) and `TestCodexTaskBackgroundHandshakeHonorsTaskBound` passes alone on both. They are not caused by this milestone.
+
+#### Remaining occurrences of the word outside `internal/web`, and their owners (baseline for M8-M10)
+
+```text
+$ identifiers (syntax-tree count, scratch program): 1985 occurrences of 4 names
+1980 kanban (the package qualifier)                                          -> M8
+   3 TestPreexistingKanbanArtifactsTolerated, 1 TestKanbanEntryRefused,
+   1 TestSessionStartEmitsNoKanbanNotice                                     -> kept on purpose (acceptance commands name them)
+$ non-test string literals that still carry the word (scratch program; import paths and the six frozen marker values excluded)
+internal/cli/home_state_coverage.go (3), internal/cli/migrate_home_state.go (4)      "./internal/kanban" path strings and the key "kanban" -> M8
+internal/cli/launcher_retired_entries.go ("--kanban", "-k/--kanban is retired: Kanban Mode was removed; ")  -> allowed file (REQ-017)
+internal/kanban/state_dir.go ("kanban")                                      -> allowed file, frozen legacy state directory
+internal/cli/doctor_factory_run.go ("no session records — no factory or kanban run declared")     -> no owner
+internal/cli/factory_launch_helpers.go (two launcher diagnostics beginning "kanban: ")           -> no owner
+internal/kanban/record.go (9), record_prune.go (1) ("read/write/prune kanban record(s)")           -> no owner (not in design 4.7's table)
+internal/kanban/state_lock.go ("kanban board lock held", "kanban board lock changed hands …")      -> no owner (behavior preserved since M6)
+$ symbols and constants left by design: boardLockTransientRetries and boardLockTransientDelay (windows-only, state_lock_windows.go), not in the plan's list; unchanged.
+```
+
+Comment lines (157 after M7 in non-test Go outside `internal/web`): 22 cite `SPEC-KANBAN-*` identifiers of other SPECs (a SPEC id cannot be reworded), 57 name the package or a path under it (`internal/kanban/…`, `kanban.X`; M8's program edits code, so these remain after it unless M8 also rewrites comments), 78 are other prose. Estimated from the same line filter, M8 would clear import paths, package clauses and code qualifier lines and leave about 186 lines in 84 non-test files (an estimate, not a measurement of M8). The plan assigns the 13 doctrine-path lines to M7 and nothing else of the comment prose to any milestone, while AC-018 reads zero outside four files.
+
+#### Baseline-attribution
+
+- Trees and builds: the sizing, the baseline suites, and the net were measured on `d206491f3`; the rename ran on `48365b722` (HEAD after the sizing commit `30b2eab3c` and the program commit); the after-suites ran on the working tree that became `602aa8c93` (the harness comment edit made after the first hook run, and the env-literal guard re-run after it) and again on the committed tree `e41310611`; the AC rows above, the greps, the builds, the vets, and the idempotence runs are on `e41310611` with `git status --short` empty. HEAD, branch (`WT-launcher-entry-flags`) and `git status --short` were re-read before each commit.
+- Judging build: every measurement is by the Go toolchain (`go1.26.8`) and shell tools run from this tree; no installed `moai` build produced any cited measurement, except `moai slot acquire` (lease line) and `moai slot release`.
+- Commits (card t1399): `30b2eab3c` (sizing and baseline, docs), `48365b722` (the program), `602aa8c93` (the rename output plus the one hand comment and the guard test), `f4a809fcf` (hand comment rewording), `5513923a6` (program extended to follow file renames in comments), `e41310611` (its output), then this record. `git diff --stat d206491f3 HEAD` (on `e41310611`): `126 files changed, 1551 insertions(+), 662 deletions(-)`; the only non-`.go` file in it is this `progress.md`; `internal/web` has 0 changed files.
+
+#### Gaps
+
+1. `internal/cli` whole suite not run (about 5,100 tests; machine load average 72 at the time). Run: the factory net, the 86-test focused list (PASS), a 1,894-name list that timed out after 498 tests (above), `homestate` and `ptycaptest` whole. The rename is type-checked on both OSes (build and vet), and the behavior-visible edits (38 literal rewrites, 70 comment or string tokens) are covered only by those runs and by the five non-`cli` suites.
+2. `go vet ./...` for the whole module, `GOOS=windows go vet ./...` for the whole module, `golangci-lint`, and any run on Windows were not done; vet ran over the 15 package patterns named above on both OSes.
+3. AC-024's `TestLauncherHelpDocumentsLaneEntry` cannot be run (Findings 1); the two hook tests of that row pass.
+4. The RED of the new guard (542 identifiers) was observed on a scratch clone of `48365b722` with the test file copied in, not on a commit: the guard test shares commit `602aa8c93` with the rename it measures, so the order is a session record and not a commit-graph fact (verification-claim-integrity section 2.3). The baseline and sizing are committed ahead (`30b2eab3c`).
+5. The whole-suite hook counts are split across two runs by name range; the sum of the sub-test counts equals the baseline (1,934) and the name lists are identical modulo the renames, but a single-run figure was not taken.
+6. The program was proven on this tree and on scratch clones of it; it was not run on an absorbed develop tree (the lane does that), so what other lanes added since the base is untested against it.
+7. Worktree-guard refusals, two, each re-issued as plain commands measuring the same thing: (a) a heredoc that wrote the scratch Go program followed by other commands in one call, replaced by the Write tool and a separate `go run` of a literal path; (b) a `for` loop over file names that ran `awk` and named `suites_final_*` files in a computed form, replaced by separate `awk` calls. In addition one foreground call (the 1,894-name `internal/cli` list) exceeded the 600 second tool limit and the runtime moved it to the background; its output file was read once after the completion notice and nothing was polled; the later runs were sized to fit the limit.
+8. Scratch clones used for the dry comparisons (`git clone --local` into the scratchpad and a scratchpad helper that runs one git command there) are outside the tree; the guard's own refusal of `-C` was not triggered because the helper runs git through its own process.
+
+#### Residual-risk
+
+- Test names that describe retired behavior now read oddly because the rule is a word replacement: `TestSessionRecordIgnoresRetiredFactoryMarkers`, `TestNonFactorySessionWritesNoRecord`, `TestCodexFactoryEntryIsRefused` (it asserts the retired `-k` entry is refused), `TestFactoryRoleFromEnvLegacyLabelsNotRecognized`. Only the four names acceptance commands select stay unchanged. The files `session_start_no_factory_notice_test.go` and `preexisting_factory_artifacts_m1_test.go` (hook, statusline) are named by the same rule while their tests assert the absence of retired kanban artifacts.
+- The comment pass rewrites any camel-case token that spells an old identifier, including a comment that mentions a symbol that no longer exists anywhere (it now names a `factory…` symbol that does not exist either); the program prints its 21 distinct token pairs (read in the dry run before the real run), and none of them rewrites a marker value.
+- Behavior-visible text changes in `internal/kanban` error prefixes (`todo queue …`, `factory: …`) were matched against tests by the whole `internal/kanban` suite only; a consumer outside Go that parses those messages was not searched.
+- The new guard test scans `internal` and `cmd` outside `internal/web`; M9 must drop its web exclusion and M8 may drop the `kanban` qualifier allowance, otherwise it keeps passing without covering them.
+
+#### Findings (statements the tree contradicts, no SPEC file edited)
+
+1. acceptance.md AC-024 names `go test ./internal/cli -run '^TestLauncherHelpDocumentsLaneEntry$' -v -count=1` (swept count 1). `grep -rn TestLauncherHelpDocumentsLaneEntry internal --include='*.go'` found nothing, and `git log -S 'TestLauncherHelpDocumentsLaneEntry' --oneline -- internal` printed nothing: no commit on the base or this branch ever carried the test, so M2-M6 did not author it and the criterion's help-test half sweeps zero tests.
+2. design.md section 4.7 counts "13 comment lines in 11 non-test Go files" that name `kanban-dispatch.md` or `moai-kanban-foreman`; on this tree outside `internal/web` there were 11 lines in 9 files (`token_budget_guard.go` 3, `factory_card.go`, `codex_review_scope.go`, `todo_edit_move.go`, `todo_auto.go`, `todo_drop.go`, `integration.go`, `kanban/integration_lock.go`, `hook/lane_spawn_authority.go`), plus the one in `internal/web/viewmodel_ops.go:46` (M9, deleted with `ChainRoles`); `session_start_factory.go` no longer carries one.
+3. AC-018 reads zero outside four files, but after M7 the non-web residue that no milestone is assigned is 157 comment lines and 20 string lines (section above), and AC-018's `SPEC-KANBAN-*` citations (22 lines here) are ids of other SPECs. The plan's M7-M10 text does not say who rewords them.
+4. design.md section 4.7 says the statusline label "Kanban backlog" is a label at `internal/statusline/types.go:252,350`; both are comments, not rendered text, so the change is two comment edits (done, `f4a809fcf`).
+5. `ReadCardStatus`, `FactoryFreeSlots`, `rejectFactoryOnCG`, and `config.DefaultFactoryLanes` were not deleted (not in the plan's lists).
+6. plan.md M7 and the probe rename every identifier that carries the word, while four acceptance commands select tests by names that carry it: AC-011 `TestKanbanEntryRefused`, AC-014 `TestSessionStartEmitsNoKanbanNotice`, AC-017 `TestPreexistingKanbanArtifactsTolerated` (three packages), AC-019 `TestLegacyKanbanRouteRedirects` (`internal/web`, M9). A mechanical rename of them would leave those commands sweeping zero tests (the probe checks compilation only, so it did not show this). The program keeps the four names; acceptance.md was not edited. The same reasoning applies to AC-018's `find`, which covers test file names: the files that hold those tests were renamed (the cli test lives in `launcher_retired_entries_test.go` and `launcher_characterization_m1_test.go`, the hook and statusline files carry `factory` in their names now).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
