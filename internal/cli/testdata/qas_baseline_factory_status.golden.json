@@ -1,0 +1,35 @@
+{
+  "empty": {
+    "run": "run-cli",
+    "cards": [],
+    "unavailable": []
+  },
+  "one_card": {
+    "run": "run-cli",
+    "cards": [
+      {
+        "run_id": "run-cli",
+        "card_id": "t1",
+        "state": "leased",
+        "legacy": false,
+        "stage": "run",
+        "version": 1,
+        "owner": "",
+        "lease_holder": "lane-1",
+        "lease_expires_at": "2026-09-26T10:00:00Z",
+        "lease_expired": false,
+        "decision_gate": "",
+        "decision_question": "",
+        "decision_resume": "",
+        "prefer": "",
+        "after": "",
+        "spec_id": "",
+        "failure_reason": "",
+        "contract": null,
+        "mode": "serial",
+        "priority": "high"
+      }
+    ],
+    "unavailable": []
+  }
+}
