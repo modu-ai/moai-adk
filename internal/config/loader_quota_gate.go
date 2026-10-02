@@ -27,9 +27,6 @@ type QuotaGateSettings struct {
 	SevenDayHoldPct  int
 	ReleaseMarginPct int
 	MaxAge           time.Duration
-	// MaxScanDirs is the bound on linked-worktree record directories examined
-	// per quota reading (SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011).
-	MaxScanDirs int
 }
 
 // Valid ranges of the numeric keys (REQ-QAS-008).
@@ -72,6 +69,14 @@ func LoadQuotaGate(projectRoot string) QuotaGateSettings {
 		return DefaultQuotaGate()
 	}
 	return resolveQuotaGate(wrapper.Workflow.QuotaGate)
+}
+
+// LoadQuotaScanBound returns the bound on linked-worktree record directories the
+// quota reading examines per call (workflow.quota_gate.max_scan_dirs,
+// SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011). Signature-only stub: the body
+// lands with the configuration key.
+func LoadQuotaScanBound(projectRoot string) int {
+	return 0
 }
 
 // resolveQuotaGate replaces every out-of-range value of c with its default.

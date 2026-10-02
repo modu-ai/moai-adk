@@ -2,12 +2,13 @@ package config
 
 // quota_gate_scan_dirs_test.go — SPEC-QUOTA-RECORD-WORKTREES-001 M1 (card
 // t1442), AC-QWR-013 / REQ-QWR-011, -012: the directory bound is the
-// configuration key workflow.quota_gate.max_scan_dirs — its default mirrored in
-// the shipped template and the local twin, its range, its behaviour on a
-// type-mismatched value (the predecessor's whole-block fallback, asserted as
-// unchanged rather than softened), its shipped-key inventory row, and the
-// config cache schema bump. It reuses the predecessor's fixture helpers
-// (workflow_quota_gate_test.go) without editing them.
+// configuration key workflow.quota_gate.max_scan_dirs, read through the accessor
+// LoadQuotaScanBound and never carried by QuotaGateSettings (run-phase decision
+// R1) — its default mirrored in the shipped template and the local twin, its
+// range, its behaviour on a type-mismatched value (the predecessor's whole-block
+// fallback, asserted as unchanged rather than softened), its shipped-key
+// inventory row, and the config cache schema bump. It reuses the predecessor's
+// fixture helpers (workflow_quota_gate_test.go) without editing them.
 
 import (
 	"os"
@@ -42,11 +43,22 @@ func TestQWR_AC013_MaxScanDirsConfigKey(t *testing.T) {
 		if tmpl.SlotLease.DefaultMaxDuration == "" {
 			t.Fatal("positive control failed: the template decode produced no slot_lease.default_max_duration")
 		}
-		if got := NewDefaultWorkflowConfig().QuotaGate.MaxScanDirs; got != qwrDefaultScanDirs {
-			t.Errorf("Go default QuotaGate.MaxScanDirs = %d, want %d", got, qwrDefaultScanDirs)
+		// The Go default is observed through the accessor on a root without a
+		// workflow.yaml, and through the seed of the YAML struct.
+		if got := LoadQuotaScanBound(t.TempDir()); got != qwrDefaultScanDirs {
+			t.Errorf("LoadQuotaScanBound on a root with no workflow.yaml = %d, want %d", got, qwrDefaultScanDirs)
+		}
+		seed := NewDefaultWorkflowConfig().QuotaGate
+		if seed.MaxScanDirs != qwrDefaultScanDirs {
+			t.Errorf("Go default seeded into the YAML struct QuotaGate.MaxScanDirs = %d, want %d", seed.MaxScanDirs, qwrDefaultScanDirs)
 		}
 		if tmpl.QuotaGate.MaxScanDirs != qwrDefaultScanDirs {
 			t.Errorf("template workflow.quota_gate.max_scan_dirs = %d, want %d", tmpl.QuotaGate.MaxScanDirs, qwrDefaultScanDirs)
+		}
+		// The predecessor's equality of the template decode against the Go
+		// defaults keeps holding once the template carries the key.
+		if tmpl.QuotaGate != seed {
+			t.Errorf("template quota_gate decode = %+v, want the Go defaults %+v", tmpl.QuotaGate, seed)
 		}
 		_, block, found := qasQuotaGateBlock(raw)
 		if !found || !strings.Contains(block, "max_scan_dirs:") {
@@ -99,12 +111,9 @@ func TestQWR_AC013_MaxScanDirsConfigKey(t *testing.T) {
 			if name != "no_file" {
 				root = qasProjectWith(t, body)
 			}
-			if got := LoadQuotaGate(root).MaxScanDirs; got != qwrDefaultScanDirs {
-				t.Errorf("%s: LoadQuotaGate().MaxScanDirs = %d, want %d", name, got, qwrDefaultScanDirs)
+			if got := LoadQuotaScanBound(root); got != qwrDefaultScanDirs {
+				t.Errorf("%s: LoadQuotaScanBound = %d, want %d", name, got, qwrDefaultScanDirs)
 			}
-		}
-		if got := DefaultQuotaGate().MaxScanDirs; got != qwrDefaultScanDirs {
-			t.Errorf("DefaultQuotaGate().MaxScanDirs = %d, want %d", got, qwrDefaultScanDirs)
 		}
 	})
 
@@ -119,11 +128,10 @@ func TestQWR_AC013_MaxScanDirsConfigKey(t *testing.T) {
 			{"1", 1}, {"3", 3}, {"128", 128}, {"1024", 1024},
 		} {
 			root := qwrProjectWithGate(t, "enabled: true", "five_hour_hold_pct: 80", "max_scan_dirs: "+tc.value)
-			got := LoadQuotaGate(root)
-			if got.MaxScanDirs != tc.want {
-				t.Errorf("max_scan_dirs %s: MaxScanDirs = %d, want %d", tc.value, got.MaxScanDirs, tc.want)
+			if got := LoadQuotaScanBound(root); got != tc.want {
+				t.Errorf("max_scan_dirs %s: LoadQuotaScanBound = %d, want %d", tc.value, got, tc.want)
 			}
-			if !got.Enabled || got.FiveHourHoldPct != 80 {
+			if got := LoadQuotaGate(root); !got.Enabled || got.FiveHourHoldPct != 80 {
 				t.Errorf("max_scan_dirs %s: the other keys of the block were not honoured: %+v", tc.value, got)
 			}
 		}
@@ -132,10 +140,14 @@ func TestQWR_AC013_MaxScanDirsConfigKey(t *testing.T) {
 	t.Run("type_mismatch_defaults_the_whole_block_gate_off", func(t *testing.T) {
 		// The predecessor's behaviour, asserted as unchanged and not as a
 		// per-key tolerance this SPEC adds: a mistyped value fails the decode, so
-		// the whole block resolves to its defaults with the gate off.
+		// the whole block resolves to its defaults with the gate off (the
+		// settings carry no bound) while the accessor independently returns 128.
 		want := QuotaGateSettings{
 			Enabled: false, FiveHourHoldPct: 90, SevenDayHoldPct: 95, ReleaseMarginPct: 5,
-			MaxAge: 30 * time.Minute, MaxScanDirs: qwrDefaultScanDirs,
+			MaxAge: 30 * time.Minute,
+		}
+		if want != DefaultQuotaGate() {
+			t.Fatalf("positive control failed: DefaultQuotaGate() = %+v, want %+v", DefaultQuotaGate(), want)
 		}
 		for name, value := range map[string]string{
 			"string_value": `"many"`,
@@ -144,6 +156,9 @@ func TestQWR_AC013_MaxScanDirsConfigKey(t *testing.T) {
 			root := qwrProjectWithGate(t, "enabled: true", "five_hour_hold_pct: 80", "max_scan_dirs: "+value)
 			if got := LoadQuotaGate(root); got != want {
 				t.Errorf("%s: LoadQuotaGate = %+v, want the whole-block defaults %+v", name, got, want)
+			}
+			if got := LoadQuotaScanBound(root); got != qwrDefaultScanDirs {
+				t.Errorf("%s: LoadQuotaScanBound = %d, want %d", name, got, qwrDefaultScanDirs)
 			}
 		}
 	})
