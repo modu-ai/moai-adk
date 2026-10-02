@@ -197,7 +197,7 @@ JSON on stdout, exit 0:
   claude|codex|glm|multi)`, exit 1. A system error (cannot resolve a tree) exits 2
   per `internal/cli/CLAUDE.md`, also `audit-plan:`-prefixed.
 
-**The checker (REQ-ACV-016, decision D12).** With `--result '<json>'` the verb
+**The checker (REQ-ACV-016, decision D12).** With `--result-file <path>` the verb
 also compares the plan with an `audit_multi` result and adds
 
 ```json
@@ -209,24 +209,51 @@ also compares the plan with an `audit_multi` result and adds
 `gate` is `required` (a `verdict` that is missing, null, empty, `inconclusive` or
 any other value — `"pas"`, say — is an unmet gate named in `convergence_check`),
 **and** the result's `plan_source` is `config` whenever any plan
-entry has a `config.*` source. A result that is not a JSON object is an
-`audit-plan:` error, exit 1. The checker is **pure**: its only inputs are the
-resolved plan and the JSON it is handed; it reads no `.moai/state` file, takes no
-session id, and changes nothing. It never changes the verdict; the caller reads it.
+entry has a `config.*` source. A file that is missing, unreadable, a directory,
+empty, larger than the size bound below, or not a JSON object is an `audit-plan:`
+error on stderr, exit 1, with no plan on stdout — never a pass. The checker is
+**pure**: its only inputs are the resolved plan and the one file it is handed; it
+opens exactly the path the caller names, once, enumerates and reads nothing under
+`.moai/state`, takes no session id, and changes nothing. It never changes the verdict; the caller reads it.
 It is the production consumer of `plan_source` — an additive, `omitempty` member
 of the result that an older server does not emit, which is the signal that the
 server that produced the result did not read the configuration.
 
-*The input form.* The result is passed as one quoted command-line argument, not
-through stdin or a file: the worktree-isolation guard refuses heredocs and
-compound commands (observed in this run: a command with a heredoc was refused as
-too complex to verify), a pipe from `echo` is a compound, and `sync-auditor`
-carries no `Write` tool, so a file argument is not available to both auditors. An
-inline single-quoted argument is one plain command. The auditor passes a digest,
-not the whole result — only `overall_verdict`, `gate_unmet`, `plan_source` and, per
-backend, `backend`, `gate` and `verdict` — which holds no free text and so no
-quote to escape; the full `ConvergenceResult` is also accepted (unknown members are
-ignored).
+*The input form (amended at 0.1.5).* The result is passed as a FILE path, not as a
+command-line JSON argument. Measured during M4: the worktree-isolation guard
+refuses every command that carries braces or quotes, heredocs and compound commands
+included, so an inline `--result '<json>'` cannot be run by an auditor in a guarded
+session and is not kept. A path argument is a plain word: the guard ran
+`moai verify audit-plan --result-file <abs path>` with the path under the
+worktree's `.moai/state/` and with a path under `/tmp` (both reached the CLI, which
+answered with its own unknown-flag error on the build that predates the flag;
+neither was refused). The auditor writes the result with its `Write` tool and
+passes only the path — the same family as `moai handoff save --stdin`, which reads
+what the caller wrote. The file holds a digest, not the whole result — only
+`overall_verdict`, `gate_unmet`, `plan_source` and, per backend, `backend`, `gate`
+and `verdict`; the full `ConvergenceResult` is also accepted (unknown members are
+ignored), since a file needs no shell quoting.
+
+*Size bound.* The verb refuses a file larger than 256 KiB (262,144 bytes) with an
+`audit-plan:` error, exit 1. Measured on this tree: three real persisted
+`ConvergenceResult` files of the iteration audits are 4,626, 10,747 and 20,473
+bytes; a digest is under 1 KiB. 256 KiB is about twelve times the largest measured
+full result and a few hundred times a digest, so no real result is refused and a
+runaway or wrong file is, without the verb reading an unbounded input.
+
+*Where the auditor writes.* A path its `Write` tool can reach and the guard accepts:
+a file under the audited worktree's own `.moai/state/` (gitignored — measured with
+`git check-ignore`), e.g. `<toplevel>/.moai/state/audit-plan-result.json`, written
+fresh before each check so a stale file at that name is overwritten. The auditor
+tools differ: `plan-auditor` carries `Write` and `Edit`; `sync-auditor` carries
+neither (`tools:` lists Read, Grep, Glob, Bash, task tools, Skill and the audit MCP
+tools, with `permissionMode: plan`) and stays read-only (no `Write` is added; its
+`tools:` list is not touched). The rule, which the M7 instruction text carries:
+`plan-auditor` writes the file itself; in the sync phase the ORCHESTRATOR session,
+which holds `Write`, writes the digest file and runs
+`moai verify audit-plan --result-file <path>`, and a cold `sync-auditor` returns its
+`audit_multi` result members (the digest members above) in its report for the
+orchestrator to write and check.
 
 *Why the earlier failure modes cannot arise.* The first design read the result the
 server persisted under a session id. It needed the right reader for a
@@ -234,9 +261,11 @@ config-orphaned worktree's tree-qualified file name, a binding between the file
 and the audit being checked, a validated id, and a guarantee that a failed save
 did not leave an earlier pass in place. None of that exists now: there is no store
 read, so no choice of loader and no tree-qualified name to get wrong; there is no
-session id, so no path to escape; the input is the result of the caller's own
-call, so it cannot be a stale file from an earlier audit or a foreign tree's file;
-and a failed save of the persisted copy changes nothing the checker looks at. The
+session id, so no id to turn into a path; the verb reads exactly the one path the
+caller names, once, so it cannot pick a sibling tree's tree-qualified file or
+select by a session prefix; the caller writes that file from its own call's result
+immediately before the check, so a stale copy is overwritten; and a failed save of
+the server's persisted copy changes nothing the checker looks at. The
 price is that the checker trusts the caller to pass the result faithfully (spec.md
 R-8); the receipt guard is the independent backstop.
 
@@ -320,8 +349,11 @@ Both agents, in this order:
    tree's own plan applies), with `project_root` set to the agent's toplevel,
    `target`, `focus`, and `claude_verdict` only from a Claude main session. Fold
    the result with the existing table in `moai-ref-cross-model-audit`.
-5. Run `moai verify audit-plan --project-root <path> --result '<digest>'` with the
-   digest of the result just obtained and read `convergence_check`. `ok: false` —
+5. `plan-auditor`: write the digest of the result just obtained to a file (§D.5,
+   "Where the auditor writes"), run `moai verify audit-plan --project-root <path>
+   --result-file <file>` and read `convergence_check`. A cold `sync-auditor` has no
+   `Write`: it returns the digest members of its result in its report and the sync
+   orchestrator does this step (§D.8). `ok: false` —
    an unmet gate named in Gaps and Residual-risk, no PASS, and the agent says it is
    an unmet gate and not a reviewed defect.
 6. `gate_unmet` non-empty in the result: the overall verdict is `fail`; same
@@ -358,9 +390,10 @@ changed.
 1. The script runs exactly as today and returns its verdict.
 2. The orchestrator applies the existing binding rule. On any existing fallback
    trigger (INCOMPLETE, a zero-scored dimension, a contested finding) it spawns the
-   cold `sync-auditor` as today; that agent runs the verb, `audit_multi` and the
-   checker itself (REQ-ACV-013, 016), so the orchestrator makes no extra call on
-   this branch.
+   cold `sync-auditor` as today; that agent runs the verb and `audit_multi`
+   (REQ-ACV-013) and returns its result members in its report, and the orchestrator
+   then writes the digest file and runs the checker (REQ-ACV-016, step 5), making
+   no other extra call on this branch.
 3. On a clean PASS the orchestrator runs `moai verify audit-plan --project-root
    <own toplevel>` and applies the outcome table of §D.7 step 2: the positive
    old-binary signature — legacy path (the existing binding rule as today, A3
@@ -378,7 +411,8 @@ changed.
    (`manager-docs` is the only source/doc writer) is untouched. In a GPT- or
    GLM-launched session the supplied verdict is ignored and the independent Claude
    backend runs (§D.6).
-5. It runs the checker (`--result '<digest>'`, §D.5).
+5. It writes the digest file (`<toplevel>/.moai/state/audit-plan-result.json`, with
+   its own `Write`) and runs the checker (`--result-file <file>`, §D.5).
 6. The sync verdict is **binding only when all hold**: the 4-dimension PASS; the
    `audit_multi` overall verdict `pass` with an empty `gate_unmet`; and
    `convergence_check.ok: true`.

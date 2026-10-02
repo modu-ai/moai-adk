@@ -89,7 +89,7 @@ command. (E11, E20-E21 of earlier versions are retired with the cuts.)
 | E18c | `grep -n "context.WithTimeout" internal/cli/mcp_claude.go` | `110:	auditCtx, cancel := context.WithTimeout(ctx, claudeAuditTimeout)` | 0 | positive control: the same form hits where a deadline exists |
 | E19 | `grep -c "audit_multi unreachable" .claude/skills/moai/workflows/sync.md internal/template/templates/.claude/skills/moai/workflows/sync.md` | `:0` · `:0` | 1 | neither `sync.md` copy records the unavailable-`audit_multi` outcome |
 | E22 | `go test -overlay <SCRATCH>/overlay.json -count=1 -v -run '^TestRedACVModelMultiCodexInconclusive$' ./internal/cli/` (source in the ledger entry E22-src; `<SCRATCH>` = a machine-local scratch directory holding `zz_red_acv_test.go` and the overlay JSON) | `=== RUN   TestRedACVModelMultiCodexInconclusive` · `zz_red_acv_test.go:39: overall_verdict=pass gate_unmet="" fail_open=[codex]` · `zz_red_acv_test.go:41: RED: model: multi with codex inconclusive returned overall_verdict=pass gate_unmet="" (want fail / codex)` · `--- FAIL: TestRedACVModelMultiCodexInconclusive (0.01s)` · `FAIL	github.com/modu-ai/moai-adk/internal/cli	1.087s` | 1 | the BEHAVIOURAL RED for AC-ACV-009 and the old-server shape for AC-ACV-015: a `model: multi` yaml with codex `inconclusive` currently returns pass with an empty `gate_unmet`. Tree `53a42f013`. The overlay supplies a throwaway test file that is not in the tree. |
-| E23 | `grep -c "audit-plan --result" .claude/skills/moai/workflows/sync.md internal/template/templates/.claude/skills/moai/workflows/sync.md` | `:0` · `:0` | 1 | neither `sync.md` copy mentions the checker call |
+| E23 | `grep -c "audit-plan --result-file" .claude/skills/moai/workflows/sync.md internal/template/templates/.claude/skills/moai/workflows/sync.md` | `:0` · `:0` | 1 | neither `sync.md` copy mentions the checker call |
 | E24 | `grep -n "NewDefaultWorkflowConfig" internal/auditreceipt/store.go internal/cli/mcp_worktree_root.go internal/cli/mcp_audit_multi.go internal/cli/audit_pin.go` | (no output) | 1 | baseline for the raw-read guard: the existing raw readers never construct the default config |
 | E24c | `grep -rln --exclude="*_test.go" "NewDefaultWorkflowConfig" internal` | `internal/config/types.go` · `internal/config/defaults.go` · `internal/config/closed_sets.go` · `internal/config/audit_models.go` · `internal/cli/mcp_audit_multi_record.go` · `internal/cli/contract.go` | 0 | positive control: the same form hits files that do use the default constructor |
 | E28 | `grep -c "config_status: unreadable" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md .claude/skills/moai/workflows/sync.md` | `:0` · `:0` · `:0` · `:0` | 1 | the unreadable-state Gap wording is absent |
@@ -472,7 +472,7 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
 - **Given** the four agent copies (`plan-auditor.md`, `sync-auditor.md`, local
   and template), the emitted `.codex` pair, and the cross-model skill (local and
   template), **When** they are scanned after M7, **Then** each `.md` agent and
-  each skill copy contains `moai verify audit-plan` and `--result`; the old block
+  each skill copy contains `moai verify audit-plan` and `--result-file`; the old block
   heading `Single-backend audit mode (per the project` is absent from all four
   agent copies (the token-keyed prose survives only inside the paragraph labelled
   as the legacy path, AC-ACV-014); the two template `.codex` role TOMLs,
@@ -537,7 +537,8 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
 - **Classification**: release-blocking (RED-now: E3 — the checker does not exist;
   E22 — the old-server-shaped result it must reject).
 - **Given** a temp tree with `audit.model: multi` (plan: claude and codex
-  enforced-required) and, in turn, these `--result` arguments to
+  enforced-required) and, in turn, files with these contents named by
+  `--result-file <path>` to
   `moai verify audit-plan --project-root <tree>`, **When** the verb runs, **Then**
   `convergence_check` reports: (a) an OLD-SERVER-SHAPED result — `overall_verdict:
   pass`, empty `gate_unmet`, a codex entry `inconclusive`, no `plan_source` —
@@ -546,7 +547,7 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
   codex entry — `ok: false`, `unmet: ["codex"]`; (d) the codex entry present,
   `pass`, but its gate `advisory` — `ok: false`; (e) codex `pass` with gate
   `required`, claude `pass`, and `plan_source: "config"` — `ok: true`; (f) a
-  `--result` that is not a JSON object — an `audit-plan:` error, exit 1; (g) a tree
+  file whose content is not a JSON object — an `audit-plan:` error, exit 1; (g) a tree
   with no audit configuration — `ok: true` for any well-formed result (no
   enforced-required backend, no config-sourced gate); (h) the digest form (only
   `overall_verdict`, `gate_unmet`, `plan_source` and per-backend `backend`, `gate`,
@@ -554,16 +555,22 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
   entries that carry a `gate` of `required` but a malformed `verdict` — the member
   absent (`{"backend":"codex","gate":"required"}`), `"verdict":""`, and
   `"verdict":"pas"` — each give `ok: false` with `codex` named in `unmet` (a
-  `verdict` counts only when it is exactly `pass` or `fail`). The verb
-  exits 0 in (a)-(e), (g)-(i), reads no file other than `workflow.yaml`, takes no
-  session id, and changes no file.
+  `verdict` counts only when it is exactly `pass` or `fail`); (j) the file itself
+  unusable — a path that does not exist, a path that is a directory, an empty file,
+  a file larger than 256 KiB (262,144 bytes) — each an `audit-plan:` error on
+  stderr, exit 1, no plan on stdout, never `ok: true`. The verb
+  exits 0 in (a)-(e), (g)-(i), exits 1 in (f) and (j), reads no file other than
+  `workflow.yaml` and the one file named, takes no session id, and changes no file.
 - **RED-now**: E3 (no verb, hence no checker); E22 shows result shape (a) is what a
   server that ignores the token produces for this very configuration (`pass`, empty
   `gate_unmet`, `fail_open=[codex]`). Fixture (i) has no output of its own to
   record: the verb does not exist yet, so its RED is the same absence observation
-  (E3); no failing output is claimed for it.
+  (E3); no failing output is claimed for it. The same holds for the file-specific
+  cases (j). The flag `--result-file` is also unknown on the installed build (a
+  probe printed `Unknown flag: --result-file`), which is the absence observation
+  for the flag itself.
 - **green** (M4): `<SCRUB>go test -count=1 -v -run '^TestAuditPlanCmd_ResultCheck$' ./internal/cli/` →
-  `--- PASS: TestAuditPlanCmd_ResultCheck ` and its nine sub-test names (a)-(i),
+  `--- PASS: TestAuditPlanCmd_ResultCheck ` and its ten sub-test names (a)-(j),
   exit 0; and `grep -n "audit-multi\|loadConvergenceResult\|check-session" internal/cli/audit_plan_cmd.go` →
   (no output), exit 1 (no store read, no session id).
 - **Mutant probe**: a checker that keys only on a non-empty `gate_unmet` passes (a)
@@ -571,8 +578,9 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
   one that accepts an `advisory` entry fails (d); the literal-predicate mutant —
   `verdict != "inconclusive"` — accepts all three entries of (i) and is killed by
   (i), which none of (a)-(h) does; one that requires a result even
-  for a default plan fails (g); one that reads a persisted file fails the
-  no-store grep. The checker cannot detect a caller who passes a fabricated digest
+  for a default plan fails (g); one that reads a persisted store file fails the
+  no-store grep; one that treats an unusable file as an empty result or a pass, or
+  reads without the size bound, fails (j). The checker cannot detect a caller who passes a fabricated digest
   (spec.md R-8); the receipt guard (AC-ACV-010) is the independent backstop.
 
 ## AC-ACV-016 — the sync verdict is binding only with a passing `audit_multi` and a good check
@@ -584,7 +592,7 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
   `audit_multi` result and the verb's checker (AC-ACV-015).
 - **Given** both copies of `workflows/sync.md` after M7, **When** they are scanned,
   **Then** each names `cross_model_required`, `moai verify audit-plan`,
-  `audit-plan --result`, the post-PASS `audit_multi` call, the "both must pass"
+  `audit-plan --result-file`, the post-PASS `audit_multi` call, the "both must pass"
   rule, the `cross_model:` / `audit_multi:` / `gate_unmet:` / `audit_receipt:` /
   `plan_check:` lines of the binding statement, `binding: no`, and the literal
   `audit_multi unreachable`; the Go `FourDimVerdict` / `IsBinding` source and
@@ -592,7 +600,7 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
   template copy carries no internal SPEC or card identifier.
 - **RED-now**: E14, E19, E23 (zero in both `sync.md` copies).
 - **green** (M7): `grep -c "cross_model_required" …`,
-  `grep -c "audit_multi unreachable" …` and `grep -c "audit-plan --result" …` over
+  `grep -c "audit_multi unreachable" …` and `grep -c "audit-plan --result-file" …` over
   both `sync.md` copies → each at least `1`, exit 0;
   `grep -c "audit_multi" .claude/workflows/sync-audit-4dim.js internal/template/templates/.claude/workflows/sync-audit-4dim.js` →
   `:0` · `:0`, exit 1 (the script is not edited); and `<SCRUB>go test -count=1 -v -run '^(TestAuditPlanDocSurface|TestTemplateNoInternalContentLeak)$' ./internal/template/` →
@@ -780,7 +788,7 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
    `moai verify audit-plan --project-root <abs toplevel>` prints a JSON plan with
    `config_status: "ok"` and `model: "multi"` in this repository, one `audit_multi`
    call returns a result carrying `plan_source: "config"`, and the verb's
-   `--result` check of that result prints `convergence_check.ok: true`. Until a
+   `--result-file` check of that result prints `convergence_check.ok: true`. Until a
    session has reconnected, its audits fail closed BY NAME at the checker — a
    bounded per-session window, not an absence of one; while the verb is absent the
    auditors and the sync step take the legacy path with the named Gap (nothing is

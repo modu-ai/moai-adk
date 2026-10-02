@@ -53,10 +53,11 @@
   and the activation text — the local auditors, the skill and `sync.md` — LAST, so
   nothing instructs the new path before every mechanism it relies on is in the
   tree (design.md §D.13).
-- **D-6 The checker is pure (decision D12).** `--result '<json>'` is the only input;
-  there is no session id and no read of the `audit-multi` store. The argument form
-  is chosen because the worktree guard refuses heredocs and compound commands and
-  `sync-auditor` has no `Write` tool (design.md §D.5).
+- **D-6 The checker is pure (decision D12).** `--result-file <path>` is the only
+  input (leader ruling at 0.1.5: the inline `--result '<json>'` form is removed —
+  the worktree guard refuses every command carrying braces or quotes); there is no
+  session id and no read of the `audit-multi` store; the verb opens exactly the
+  named path (design.md §D.5).
 - **D-7 The codex turn reader is fixed at the source (PA2-D6).** The two
   non-completed returns of `awaitCodexTurnReview` become errors; `runTurn` already
   maps an error to `inconclusive`. The leg adds only a deadline and the timeout
@@ -201,7 +202,8 @@ commits whose subject names the SPEC and card.
 | M1 baseline-first + scrub | `internal/cli/main_test.go` (scrub, `TestMain_ScrubsClaudeProjectDir`), `internal/cli/mcp_audit_multi_baseline_test.go`, `internal/cli/testdata/audit_multi_default.golden.json` | AC-008 (GREEN on arrival), AC-019 |
 | M2 resolver | `internal/config/audit_plan.go` · `audit_plan_test.go` | AC-001, -002, -003 (resolver part), -004 |
 | M3 consumers + codex turn | `mcp_audit_multi.go`, `mcp_convergence.go`, `mcp_codex.go` (two returns), `defaults.go`, `mcp_worktree_root.go`, `auditreceipt/store.go` · `mcp_audit_multi_config_plan_test.go`, `codex_turn_incomplete_test.go`, `store_test.go` | AC-006, -007, -009, -010, -020 |
-| M4 verb + checker | `internal/cli/audit_plan_cmd.go` · `audit_plan_cmd_test.go` | AC-005 (complete), -011, -012 (verb part), -015, -003 (verb part) |
+| M4 verb + checker | `internal/cli/audit_plan_cmd.go` · `audit_plan_cmd_test.go` | AC-005 (complete), -011, -012 (verb part), -003 (verb part) |
+| M4b checker input is a file | `internal/cli/audit_plan_cmd.go` (`--result` → `--result-file <path>`, size bound, file-error cases) · `audit_plan_cmd_test.go` | AC-015 |
 | M5 cleanup | `mcp_audit.go`, `audit_models.go`, `closed_sets.go`, `schema_sections.go` · `mcp_audit_test.go`, `internal/web/mcp_audit_surface_test.go` | AC-017 |
 | M6 config flip | `.moai/config/sections/workflow.yaml` · `internal/config/` yaml test | AC-018 |
 | M7 activation text | 8 documents (local + template), 2 `.codex` TOMLs, `catalog.yaml` · `internal/template/` doc-surface test | AC-013, -014, -016, -012 (document part) |
@@ -273,17 +275,29 @@ whose ordering the commit graph alone can witness (verification-claim-integrity
 
 - New `internal/cli/audit_plan_cmd.go`: `moai verify audit-plan` registered through
   `verifyExtraCommands`, sharing `verify`'s `--project-root` (resolved through
-  `verifyResolveRoot`), plus `--result '<json>'`; JSON per design.md §D.5, including
+  `verifyResolveRoot`), plus the checker input — `--result-file <path>` in its final
+  form (shipped first as an inline `--result` and replaced by the follow-up commit
+  M4b; the inline form is not kept); JSON per design.md §D.5, including
   the `unreadable` state (read through `loadWorkflowAuditSection`, with the
   config-orphaned-worktree routing of `resolveAuditGates`) and the
   `convergence_check` object; `audit-plan:`-prefixed errors, exit codes 0 / 1 / 2.
   No store read, no session id. New `audit_plan_cmd_test.go`: plan printing for every
   token (an explicit `model: claude` fixture asserts the D7' row), the pins-only and
   absent shapes, invalid configuration, the corrupt-yaml fixture, project-root
-  handling, the output contract, the checker fixtures (a)-(h), the writes-no-files
+  handling, the output contract, the checker fixtures (a)-(i) and the file-error cases (j), the writes-no-files
   test (a recursive listing of regular files under the tree's `.moai`, before and
   after; the `backendCall` seam never invoked) and the `AskUserQuestion` static
   guard.
+
+### M4b — The checker input becomes a file (small follow-up commit)
+
+- `internal/cli/audit_plan_cmd.go`: replace the inline `--result` flag by
+  `--result-file <path>`; the verb reads exactly that path once, refuses a missing,
+  unreadable, directory, empty, non-object or over-256 KiB (262,144 bytes) file with
+  an `audit-plan:` error on stderr, exit 1; the predicate and the `convergence_check`
+  output are unchanged. `audit_plan_cmd_test.go`: the (a)-(i) fixtures now feed a
+  file and the (j) file-error cases are added. Flips AC-ACV-015; the no-store
+  forbidden-reference grep stays. Size bound justification: design.md §D.5.
 
 ### M5 — Stale-deferral cleanup (mechanical)
 
@@ -315,11 +329,26 @@ whose ordering the commit graph alone can witness (verification-claim-integrity
   call, the checker call, the "both must pass" rule, the statement lines, the
   unmet/unreachable record). The old token-keyed block becomes the labelled
   **legacy path** paragraph; the main path is the verb. Required literals:
-  `moai verify audit-plan`, `--result`, `plan surface unreachable, legacy path used`,
+  `moai verify audit-plan`, `--result-file`, `plan surface unreachable, legacy path used`,
   `Shared diagnostic snapshot contract` and `config_status: unreadable` in the two
-  agents, the skill and `sync.md`; `cross_model_required`, `audit-plan --result` and
+  agents, the skill and `sync.md`; `cross_model_required`, `audit-plan --result-file` and
   `audit_multi unreachable` in `sync.md`; the old "Single-backend audit mode (per the
-  project's `audit_model`)" block heading gone.
+  project's `audit_model`)" block heading gone. The checker instruction (the rule the
+  M7 text must carry): the digest file (design.md §D.5) is written with `Write` to a
+  fresh file under the audited worktree's `.moai/state/` (gitignored; e.g.
+  `<toplevel>/.moai/state/audit-plan-result.json`) and only the path is passed to
+  `--result-file`. Who writes: `plan-auditor` (it carries `Write` and `Edit`) writes
+  the file itself; in the sync phase the ORCHESTRATOR session, which holds `Write`,
+  writes the file and runs `moai verify audit-plan --result-file <path>`; a cold
+  `sync-auditor` stays READ-ONLY (it carries neither `Write` nor `Edit`,
+  `permissionMode: plan`; its `tools:` list is NOT touched) and returns its
+  `audit_multi` result members in its report for the orchestrator to write and check
+  (Jev jev-1.13.0, confidence 1.0, recorded in `.moai/reports/t1423/progress.md`).
+  Finding (read from the agent frontmatter and probed against the guard): the guard
+  accepted an
+  absolute path under the worktree's `.moai/state/` and a `/tmp` path as a plain
+  argument; whether a subagent's `Write` is allowed at the `.moai/state/` path was
+  not observed.
 - A doc-surface test in `internal/template/` (new file, `TestAuditPlanDocSurface`)
   asserting the literals in the eight document copies and the absence of the old
   heading.
@@ -427,8 +456,8 @@ Sequence after the card's commits are done:
    `moai verify audit-plan --project-root <abs toplevel>` prints a JSON plan with
    `config_status: "ok"`, `model: "multi"` in this repository; one `audit_multi`
    call on a trivial target returns a result carrying `plan_source: "config"`; and
-   `moai verify audit-plan --project-root <abs toplevel> --result '<digest>'` of that
-   result prints `convergence_check.ok: true`.
+   `moai verify audit-plan --project-root <abs toplevel> --result-file <path>` of that
+   result's digest file prints `convergence_check.ok: true`.
 5. Only then does the new audit path apply to that session's later audits.
 
 What is true meanwhile, per session: while the verb is absent the auditors and the

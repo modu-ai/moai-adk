@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-MODEL-CONVERGE-001
 title: "Make workflow.audit.model real — one resolver turns the audit model token and gates into a backend plan, audit_multi and the plan/sync auditors follow it, and a required cross-model backend that cannot answer fails the gate by name"
-version: "0.1.4"
+version: "0.1.5"
 status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
@@ -21,6 +21,11 @@ related_specs: [SPEC-MOAI-MCP-SERVER-001, SPEC-V3R6-AUDIT-MODEL-PIN-001, SPEC-MC
 
 ## HISTORY
 
+- 0.1.5 — 2026-10-02 — leader-approved amendment 10-02 after the audit ceiling;
+  checker input is `--result-file`; inline `--result` removed (the worktree
+  isolation guard refuses every command carrying braces or quotes, so an inline
+  JSON argument cannot be run by an auditor in a guarded session). The predicate
+  is unchanged. No requirement or criterion added, none renumbered.
 - 0.1.4 — 2026-10-02 — iteration 4 = delta confirmation over the Tier L ceiling
   of 3, leader-approved 10-02 (same criterion as t1411); D1 and D2 of
   plan-audit iteration 3 repaired (REQ-ACV-016 and its checker rule: a required
@@ -316,8 +321,9 @@ requirement states one behaviour.
 
 - **REQ-ACV-016** (When) — **When** an auditor or the sync orchestrator holds an
   `audit_multi` result for a tree whose plan lists enforced-required backends, it
-  shall pass the result JSON to `moai verify audit-plan --result '<json>'`, and
-  the verb shall compare it with the plan without reading any store: for every
+  shall write the result JSON to a file and pass its path to
+  `moai verify audit-plan --result-file <path>`, and the verb shall read exactly
+  that file, once, and compare it with the plan without reading any store: for every
   enforced-required backend, a `per_backend_verdicts` entry whose `verdict` is
   exactly `pass` or `fail` and whose effective gate is `required`, and, where the
   plan reports any config-sourced gate, a `plan_source` of `config` on the result;

@@ -22,6 +22,7 @@ plan_audit:
 flagged_assumptions: [OQ-3, OQ-6, OQ-8, OQ-9, OQ-11, OQ-12]
 closed_open_questions: [OQ-1 (D7' confirmed by the leader), OQ-2 (D5), OQ-4 (REQ-ACV-012/-015), OQ-5 (D10 override), OQ-7 (D6), OQ-10 (D12 pure checker)]
 open_clarifications: []
+amendment_0_1_5_note: "leader-approved amendment 10-02 after the audit ceiling; checker input is --result-file; inline --result removed (spec 0.1.5; plan.md gains the M4b row)"
 iteration_4_note: "iteration 4 = delta confirmation over the Tier L ceiling of 3, leader-approved 10-02 (same criterion as t1411); D1 and D2 repaired. Carry-over: DB1-DB8 of plan-audit-iter3 to be checked for resolution at the sync stage — DB1 legacy-window-fail-open-by-design; DB2 full-result-form-invites-shell-injection; DB3 reader-fix-reaches-review-gate-and-codex_task; DB4 instruction-text-criteria-are-shallow; DB5 signature-brittleness; DB6 startup-regular-file-effects-unmeasured; DB7 codex-hosted-auditor-cannot-run-the-verb; DB8 req-014-vs-design-d8-sync-legacy-wording"
 ```
 
