@@ -277,7 +277,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 				// first session handoff (REQ-009's cc/glm form).
 				debugTiming.debugDump(cmd.ErrOrStderr())
 			}
-			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
+			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs, entry.FactoryRun, entry.FactoryLead)
 		}
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
