@@ -21,3 +21,7 @@ Accept the debt; do not revise the SPEC again. Iteration 3 is the third of three
 - D3: pin W1 returns 0 on correct ko/ja/zh text under `LC_ALL=C` and 1 under UTF-8; run its commands under a UTF-8 locale and say which locale was used.
 - D4: spec.md L50 still cites the ledger at `0e7b6af5b` while acceptance.md uses `ff7b64f6e`; HISTORY lists v0.1.2 before v0.1.1. Cosmetic, left as is.
 - Known residual from iteration 3: a coupling worded without the token `xhigh` passes the count pins and is left to diff review.
+
+## Explicit wait
+
+wait record: waiting_on=leader (integration window designation and merge path for card t1416) reason=the card was dispatched directly and has no factory record, so `moai factory complete` cannot record or integrate it, and the lane-integration lesson says not to improvise a merge; the evidence packet is `.moai/reports/t1416/verdict.md` recheck=next awaken: run the lane stall watchdog first, then read `moai integration status` and the leader's reply; resume the merge only on a designation, never on silence
