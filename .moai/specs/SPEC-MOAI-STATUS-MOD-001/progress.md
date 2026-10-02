@@ -105,6 +105,14 @@ Builds in play at run phase (re-measured at entry): `claude 2.1.287`, `moai v3.2
 - **GREEN (pure, bun)** — exit **0**, `13 pass / 0 fail`; junit counts: `classify:` → 6, `strip-pure:` → 2, `suffix-pure:` → 2, `toast-pure:` → 2, `argv:` → 1; `<failure` → 0; `<skipped` → 0.
 - **GREEN (engine)** — exit **0**, `10 pass / 0 fail`; `(pass) toast:` → 3.
 
+### M4 — health cycle (TDD; commits of this milestone)
+
+- **RED (pure, bun)** — `tests/pure/health.spec.ts` written before `hooks/health.ts` existed: exit **1**, `13 pass / 1 fail / 1 error` — the health spec failed to load (module not found), the red for the stated reason.
+- **RED (engine, temp profile)** — `health-cycle:` ×7 + `failsoft:` ×2 in `tests/engine.test.ts`: exit **1**, `8 fail` — every cycle test failed with `calls.length 0` (no timer registered yet) and the unknown-source shape; the throwing-hook guard passed (it exercises M3 behavior plus the engine's skip line). One RED-phase harness fact: the engine refuses a second `on('session.receive', …)` in one test without a matcher — the throwing sibling hook registers matcher-narrowed (`{ origin: 'peer' }`) before setup's catch-all answer.
+- **GREEN (pure, bun)** — exit **0**, `23 pass / 0 fail`; junit counts: `health:` → 8, `health-rowfirst:` → 1 (debt N-4: a parseable row wins over any exit code — the parser sees stdout alone), `health-merge:` → 1 (unknown keeps the previous good verdict); `<failure` → 0; `<skipped` → 0.
+- **GREEN (engine)** — exit **0**, `19 pass / 0 fail` (`health-cycle:` ×7, `failsoft:` ×2 among them).
+- Three GREEN-phase defects the engine caught, each fixed: (1) `runDiag`'s `$` was a free variable — it resolved to an environment-global `$` whose `process.run` bypassed the test stubs (every source read unknown while no argv was recorded); `$` threads from the handler now. (2) The engine's `$`-flow rule refuses `$` passed to a function declared inside `register` — `runDiag` moved to the top of the hooks module (the sibling's `runMoai` shape); validate's `calls:` line then completed to `$.clock.every (via startHealth), $.process.run (via runDiag), $.state.get, $.state.set, $.ui.resolve, $.ui.status (via runHealthCycle), $.ui.toast`. (3) The clock's cancel handle is `{ cancel }` at runtime (an object), not the bare function the laid typings name — the stop helper accepts both shapes defensively; `session.end` also needed a test-side answer (`{ sessionId }`).
+
 ### Measurement notes carried into the run phase (authored at plan phase; the `## §E.3 Run-phase Audit-Ready Signal` section is manager-develop's, written at run completion)
 
 - The authority typings were laid by a **headless session load** (`claude -p` with `--plugin-dir` and an empty `CLAUDE_CONFIG_DIR`; spec.md M-4). `validate` and `plugin test` lay nothing. If C4 must re-lay them at run-phase entry, budget one headless model call.

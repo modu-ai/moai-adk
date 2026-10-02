@@ -35,10 +35,12 @@ export type Stub = {
   toasts: { lines: string[] }
   /** When set, the `ui.toast` stub throws (the mod must still pass the delivery). */
   toastThrows: { value: boolean }
+  /** The stdout each health source answers with (defaults: behind / ok / ok). */
+  out: { binary: string; mcp: string; memory: string }
   /** What the next process answers: 'ok' (fixtures), 'reject' (cannot start), 'exit2', 'garbage'. */
   mode: { value: 'ok' | 'reject' | 'exit2' | 'garbage' }
-  /** The next `Binary Freshness` check blocks on this promise; one use only. */
-  hold: { wait: Promise<void> | undefined }
+  /** The next `Binary Freshness` check blocks until `release()`; one use only. */
+  hold: { wait: Promise<void> | undefined; release: () => void }
 }
 
 export const setup = (on: On): Stub => {
@@ -48,8 +50,10 @@ export const setup = (on: On): Stub => {
   const toasts = { lines: [] as string[] }
   const toastThrows = { value: false }
   const mode = { value: 'ok' } as Stub['mode']
-  const hold: Stub['hold'] = { wait: undefined }
+  const hold: Stub['hold'] = { wait: undefined, release: () => {} }
+  const out = { binary: BINARY_BEHIND, mcp: MCP_OK, memory: MEMORY_OK }
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
+  on('session.end', (_$, e) => ({ sessionId: e.sessionId }))
   // The engine implements none of the mod's event nouns (M-3): the test answers
   // the raised events with their core echo shapes.
   on('session.measure', (_$, e) => ({ changed: e.changed }))
@@ -79,13 +83,13 @@ export const setup = (on: On): Stub => {
         hold.wait = undefined
         await wait
       }
-      return ran(BINARY_BEHIND)
+      return ran(out.binary)
     }
-    if (joined === 'moai doctor --check MCP Server Version') return ran(MCP_OK)
-    if (joined === 'moai memory doctor --json') return ran(MEMORY_OK)
+    if (joined === 'moai doctor --check MCP Server Version') return ran(out.mcp)
+    if (joined === 'moai memory doctor --json') return ran(out.memory)
     return ran('')
   })
-  return { calls, inits, clock: mock.clock(on), status, toasts, toastThrows, mode, hold }
+  return { calls, inits, clock: mock.clock(on), status, toasts, toastThrows, out, mode, hold }
 }
 
 /** A warned context measure on a 200K window (soft 90): 91% warns. */
