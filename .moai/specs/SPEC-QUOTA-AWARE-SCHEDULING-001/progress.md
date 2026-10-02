@@ -6,7 +6,7 @@
 - plan_artifacts: spec.md, plan.md, acceptance.md, design.md, research.md (Tier L), plus decision-index.md
 - plan_complete_at: 2026-10-02
 - open_decisions: none — DO-1..DO-12 resolved (oracle; leader verdict on DO-3, DO-7, DO-8; DO-12 `write_backend_at_claim` verified then applied at spec 0.4.0)
-- plan_audit_verdict: iteration 1 FAIL 0.74 (`.moai/reports/t1347/plan-audit-iter1.md`, local-only); revised at spec 0.5.0 to close D1-D24, awaiting iteration 2
+- plan_audit_verdict: iteration 2 PASS 0.87 (Tier L threshold 0.85; `.moai/reports/t1347/plan-audit-iter2.md`, audited_sha 7fe1ee49d, local-only). Iteration 1 was FAIL 0.74 (`plan-audit-iter1.md`); the revision at spec 0.5.0 closed D1-D24. Ten MINOR findings (N1-N10) are carried as known plan debt in section F below.
 - open_decisions_note: DO-13 (first-exhausted time surfaced in the status block) is PROVISIONAL, escalated to the leader
 
 ## §E.2 Run-phase Evidence
@@ -20,6 +20,60 @@ _pending run-phase_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase_
+
+## §F Phase 4 Mode Selection
+
+### Kickoff gate (plan→run) — autonomous form, `.claude/rules/moai/workflow/auto-semantics.md` §9.1
+
+| Condition (§9.1) | Observed | Evidence |
+|---|---|---|
+| Independent plan-audit verdict is PASS | PASS, 0.87 against the Tier L threshold 0.85 (iteration 1 was FAIL 0.74; the score rose, no regression stop) | `.moai/reports/t1347/plan-audit-iter2.md` (`verdict: PASS`, `audited_sha: 7fe1ee49d62e67e86ae45e139187a679d67873ca`, read from the file by the lane) |
+| Plan phase records audit-ready | `plan_status: audit-ready` | §E.1 above |
+| Plan-artifact hashes unchanged since the verdict | equal | `shasum -a 256` of the five plan artifacts re-measured by the lane after the verdict; all five equal the hashes in the iteration 2 report (spec ec919773, plan 6050abc6, acceptance 803e5e69, design bf4d616e, research 99f141e1); `git diff --stat 7fe1ee49d..HEAD` empty; progress.md is not a hash subject |
+| No blocker open | none | no BLOCKER or MAJOR finding in iteration 2; DO-1..DO-13 resolved (DO-3 and DO-13 leader-confirmed provisional) |
+| Keep-set case (environment-impossible / operator-held / irreversible external-shared) | none applies | nothing is pushed, no PR, no external shared system touched; the operator-held items (push, release) stay with the leader |
+
+```text
+decision record: decided_by=claude-code lane-9 orchestrator (factory lane, Kickoff autonomous transition) evidence_refs=.moai/reports/t1347/plan-audit-iter2.md(verdict=PASS score=0.87 audited_sha=7fe1ee49d),.moai/specs/SPEC-QUOTA-AWARE-SCHEDULING-001/progress.md#E.1,commit 7fe1ee49d,sha256 spec=ec919773 plan=6050abc6 acceptance=803e5e69 ladder_path=gate-row plan→run Kickoff (AUTONOMOUS, auto-semantics §9.1)
+```
+
+Recorded 2026-10-02T06:59:41Z. The decision board under the moai home (auto-semantics §11) was NOT written: `moai factory decide` records only a human decider (its help text: `--decider ... (F1 accepts only human)`), and this card was dispatched directly by the leader without a factory record. This record lives here and in the card's local evidence files; a reader must treat it as self-attested (auto-semantics §10).
+
+Whether to spend a third and final audit on the ten minor findings was put to the decision oracle (Jev): `proceed_record_debt` (probability 0.86, confidence 0.73). Proceeding keeps the audited hash valid; any edit to a plan artifact would void the verdict and the margin over the threshold is 0.02.
+
+### Known plan debt carried into the run delegation (iteration 2 findings N1-N10, all MINOR)
+
+The implementer may not edit the SPEC body; each item is handed over with the rule that a blocker report goes to the lane if one blocks a milestone.
+
+| ID | Debt | Treatment in run |
+|----|------|------------------|
+| N1 | AC-014 minimum swept count (3) cannot pass per package before M5, while plan M2/M3 list it | AC-014's count assertion is evaluated at M5 (its own green-path sentence says so); M2/M3 run only the per-file part |
+| N2 | plan.md:102 and research.md:19 say "integer-rounded"; REQ-003, design 2 and AC-003 say truncated (`int()`, context_usage.go:272) | follow the REQ/AC: truncate |
+| N3 | plan.md:114 reads as if the pressure function takes a caller argument; REQ-017 and AC-017 say it takes none | follow REQ-017: the shared function takes no caller input, the lane gate applies the Claude-caller predicate to its result; AC-017 varies the environment, not an argument |
+| N4 | E9's CLI half is a pipeline; AC-022's RED row measures a different directory | add a conforming single-invocation RED row in the M0 evidence if cheap, else record as a gap |
+| N5 | AC-005 fixtures are one-directional (a "minimum over fresh" mutant survives); the text-mode status baseline is missing (M0 captures `--json` only) | add a fixture where the newer record is the higher one; capture a text-mode golden in M0 if the SPEC permits, else report the gap |
+| N6 | REQ-005 lists only percentage and reset time; REQ-013 also needs capture time and exhausted time; REQ-004 reset-while-at-100% case unspecified | implement REQ-013's fields; on a changed reset time re-observe the exhausted time from the current capture when the window is still at or above 100% |
+| N7 | short-form IDs in prose produce 14 ORPHAN lines in the traceability verb (not a coverage gap) | none (doc-only) |
+| N8 | AC-018 does not say the fixture registry lacks the `legacy_workers_imported` meta row; release rule for two held windows is unstated | fixture inserts lane rows with plain SQL into a database lacking the marker; treat release as "all held windows released" |
+| N9 | the `SaveFactoryRegistry` round-trip of `backend` has no AC | add one subtest alongside AC-023 |
+| N10 | AC-016's hunk check reads only the hunk's old-side start line | in the implementation of the check also require the hunk end inside the allowed range |
+
+Also carried from the iteration 2 gaps: the pinned `modernc.org/sqlite v1.57.0` was never exercised; a system `sqlite3` 3.54.0 `-readonly` open of a no-sidecar WAL database failed with `unable to open database file (14)`. At M5 start the implementer measures the real driver with a scratch program outside the tree (a cleanly closed WAL database, `mode=ro`, read one row, attempt a write, record the directory listing before and after) and reports the observed behaviour; if the quiescent case fails, the inventory returns no candidates (fail-open) and the finding goes to the lane.
+
+### Mode evaluation
+
+Input parameters: tier L (REQ 23, AC 23); files affected more than 15 across three packages (`internal/statusline`, `internal/cli`, `internal/kanban`, plus `internal/config` and template mirrors); domains: Go source, tests and goldens, config defaults, template mirror, one rule-adjacent doc line; language mix Go + YAML; concurrency benefit LOW — milestones M0-M6 are ordered (M0 commits the baseline goldens before any implementation commit, M1-M3 build the record, aggregator and gate, M4 the claim write, M5 the steering surfaces that read it). Agent Teams: not requested.
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | non-trivial, spans code, tests, config and template |
+| serial | **yes** | coding-heavy, ordered milestones, one writer per tree; the default fallback |
+| fanout | no | research is finished; the remaining work is implementation |
+| sweep | no | not a uniform mechanical transform |
+
+Decision: serial
+
+Boundary case: the Tier L entry predicate for `manager-lead` (at least 3 milestones and at least 10 files) is met, but a lane session holds standing spawn authority at depth 1 only and agents it spawns are leaf workers that must not spawn further agents, so `manager-lead` (the Agent-carrying coordinator) cannot be used from this lane. The lane drives the milestones itself, one `manager-develop` leaf per milestone, in order; the lane does not write code.
 
 ## §J Lane Decision Log (card t1347, lane-9)
 
