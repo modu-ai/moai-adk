@@ -34,7 +34,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -90,14 +90,14 @@ var (
 	autoMergeResolveOwnerPID = session.ResolveOwnerPID
 
 	// autoMergeReadLock reads the window record (the busy-window pre-check).
-	autoMergeReadLock = kanban.ReadIntegrationLock
+	autoMergeReadLock = factory.ReadIntegrationLock
 
 	// autoMergeAcquireLock records the window hold. The force argument is
 	// deliberately NOT a parameter of this seam — it is pinned to literal
 	// false inside (REQ-WKW-004: the auto path never takes over any hold), so
 	// no caller on this path can displace a window even by accident.
-	autoMergeAcquireLock = func(root string, lock kanban.IntegrationLock) (*kanban.IntegrationLock, error) {
-		return kanban.AcquireIntegrationLock(root, lock, false)
+	autoMergeAcquireLock = func(root string, lock factory.IntegrationLock) (*factory.IntegrationLock, error) {
+		return factory.AcquireIntegrationLock(root, lock, false)
 	}
 
 	// autoMergeReleaseLock releases THIS session's own hold. force is pinned
@@ -110,8 +110,8 @@ var (
 	// literally true (the record removed is the one this session's id holds),
 	// rather than widening it to "any record this process holds" on a path that
 	// never needed the second key.
-	autoMergeReleaseLock = func(root, sessionID string) (*kanban.IntegrationLock, error) {
-		return kanban.ReleaseIntegrationLock(root, sessionID, 0, false)
+	autoMergeReleaseLock = func(root, sessionID string) (*factory.IntegrationLock, error) {
+		return factory.ReleaseIntegrationLock(root, sessionID, 0, false)
 	}
 
 	// autoMergeGitMerge runs the one permitted branch-mutating invocation:
@@ -229,16 +229,16 @@ func sessionExitAutoMerge(cfg *config.Config, wtPath string, cleanExit bool, out
 
 	targetWt := autoMergeWorktreeForBranch(develop)
 	ownerPID, _ := autoMergeResolveOwnerPID()
-	if _, aerr := autoMergeAcquireLock(root, kanban.IntegrationLock{
+	if _, aerr := autoMergeAcquireLock(root, factory.IntegrationLock{
 		SessionID: sessionID,
 		PID:       ownerPID,
 		// The pid recorded is the OWNING SESSION's, never this process's —
 		// same discipline as the acquire verb (integration.go).
-		PIDSource: kanban.PIDSourceSessionOwner,
+		PIDSource: factory.PIDSourceSessionOwner,
 		// The record names the integration TARGET, source config: the same
 		// branch the merge below lands on.
 		Branch:       develop,
-		BranchSource: kanban.BranchSourceConfig,
+		BranchSource: factory.BranchSourceConfig,
 		Worktree:     targetWt,
 	}); aerr != nil {
 		autoMergeNoticef(out, "skipped (window acquire refused): %v", aerr)

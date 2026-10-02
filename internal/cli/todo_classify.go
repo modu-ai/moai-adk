@@ -21,14 +21,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoCardDecider is the classification seam the add paths resolve
 // (REQ-TCD-012). The shipped value is the deterministic default; the
 // --classification-file flag swaps in a static carrier for one invocation.
 // Tests replace it to inject judgments and failures.
-var todoCardDecider kanban.CardDecider = kanban.DefaultCardDecider{}
+var todoCardDecider factory.CardDecider = factory.DefaultCardDecider{}
 
 // todoClassificationFallbackNotice is the ONE stderr line the fallback
 // prints (REQ-TCD-003). Exactly one line, so a supervising reader can count
@@ -44,7 +44,7 @@ const todoClassificationFallbackNotice = "todo add: classification decider unava
 //     write promotes the fail-safe default (REQ-TCD-003);
 //   - content that is read but malformed or out-of-set is a USAGE error:
 //     the add is refused with exit 2 and nothing is written (REQ-TCD-004).
-func todoDeciderFromClassificationFile(path string) (kanban.CardDecider, error) {
+func todoDeciderFromClassificationFile(path string) (factory.CardDecider, error) {
 	var (
 		data []byte
 		err  error
@@ -55,29 +55,29 @@ func todoDeciderFromClassificationFile(path string) (kanban.CardDecider, error) 
 		data, err = os.ReadFile(path)
 	}
 	if err != nil {
-		return kanban.UnavailableCardDecider{
+		return factory.UnavailableCardDecider{
 			Cause: fmt.Errorf("read --classification-file %s: %w", path, err),
 		}, nil
 	}
-	cls, parseErr := kanban.ParseCardClassificationJSON(data)
+	cls, parseErr := factory.ParseCardClassificationJSON(data)
 	if parseErr != nil {
 		return nil, &exitCodeError{
 			code: 2,
 			msg:  fmt.Sprintf("todo add: --classification-file %s refused: %v (nothing written)", path, parseErr),
 		}
 	}
-	return kanban.StaticCardDecider{Class: cls}, nil
+	return factory.StaticCardDecider{Class: cls}, nil
 }
 
 // todoClassifyInLock resolves one card's classification inside the locked
 // write. A decider error promotes the fail-safe default and prints exactly
 // one stderr notice; a healthy decider's judgment is recorded verbatim. The
 // classified-at stamp is taken here, at the write, for every branch.
-func todoClassifyInLock(dec kanban.CardDecider, text string, errOut io.Writer) kanban.CardClassification {
+func todoClassifyInLock(dec factory.CardDecider, text string, errOut io.Writer) factory.CardClassification {
 	cls, err := dec.Classify(text)
 	if err != nil {
 		_, _ = fmt.Fprintln(errOut, todoClassificationFallbackNotice)
-		cls = kanban.DefaultCardClassification()
+		cls = factory.DefaultCardClassification()
 	}
 	cls.ClassifiedAt = time.Now().UTC().Format(time.RFC3339)
 	return cls
@@ -85,7 +85,7 @@ func todoClassifyInLock(dec kanban.CardDecider, text string, errOut io.Writer) k
 
 // todoApplyClassification attaches the resolved classification to the named
 // card inside the caller's locked write.
-func todoApplyClassification(rec *kanban.BacklogRecord, cardID string, cls kanban.CardClassification) {
+func todoApplyClassification(rec *factory.BacklogRecord, cardID string, cls factory.CardClassification) {
 	for i := range rec.Items {
 		if rec.Items[i].ID == cardID {
 			c := cls

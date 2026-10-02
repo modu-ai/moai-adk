@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestGatewayHooksPreserveRoutingSettings(t *testing.T) {
@@ -59,22 +59,22 @@ func TestGatewayHooksPreserveRoutingSettings(t *testing.T) {
 func TestGatewayRecordUsesInitialProviderAndKeepsExistingRecord(t *testing.T) {
 	root := newMoaiProjectRoot(t)
 	scrubFactoryEnv(t)
-	t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(1))
+	t.Setenv(config.EnvMoaiFactoryWorker, factory.FactoryLaneLabel(1))
 	t.Setenv(config.EnvFactoryBackend, "claude")
 	t.Setenv(config.EnvMoaiLaunchProvider, "glm")
 	input := &HookInput{SessionID: "gateway-initial", ProjectDir: root, CWD: root, Source: "startup"}
 	writeFactorySessionRecord(input)
-	rec, err := kanban.Read(root, input.SessionID)
+	rec, err := factory.Read(root, input.SessionID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.Backend != kanban.BackendGLM {
+	if rec.Backend != factory.BackendGLM {
 		t.Fatalf("backend %q", rec.Backend)
 	}
 	t.Setenv(config.EnvMoaiLaunchProvider, "claude")
 	writeFactorySessionRecord(input)
-	rec, err = kanban.Read(root, input.SessionID)
-	if err != nil || rec.Backend != kanban.BackendGLM {
+	rec, err = factory.Read(root, input.SessionID)
+	if err != nil || rec.Backend != factory.BackendGLM {
 		t.Fatalf("initial record changed: %+v %v", rec, err)
 	}
 }

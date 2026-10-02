@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func newStaleRunRoot(t *testing.T) string {
@@ -34,7 +34,7 @@ func TestStaleRunNoticeLegacyLeaderSpelling(t *testing.T) { // AC-RNC-025 (a) + 
 	input := &HookInput{SessionID: "stale-lead-session", Source: "startup", ProjectDir: root, CWD: root}
 	writeFactorySessionRecord(input)
 
-	if _, err := os.Stat(kanban.RecordPath(root, "stale-lead-session")); !os.IsNotExist(err) {
+	if _, err := os.Stat(factory.RecordPath(root, "stale-lead-session")); !os.IsNotExist(err) {
 		t.Errorf("session record exists after legacy-label SessionStart, want no file created")
 	}
 	notice := staleRunNoticeFor(root, "stale-lead-session", "en")
@@ -57,7 +57,7 @@ func TestStaleRunNoticeLegacySessionRecord(t *testing.T) { // AC-RNC-025 (b)
 	// A pre-rename binary wrote this record with role "lead" — written as raw
 	// JSON because the current-vocabulary WithRole setter correctly refuses
 	// the legacy value.
-	path := kanban.RecordPath(root, "legacy-record-session")
+	path := factory.RecordPath(root, "legacy-record-session")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestStaleRunNoticeFactoryLegacyLabel(t *testing.T) { // AC-RNC-022 hook cla
 
 	input := &HookInput{SessionID: "stale-lane-session", Source: "startup", ProjectDir: root, CWD: root}
 	writeFactorySessionRecord(input)
-	if _, err := os.Stat(kanban.RecordPath(root, "stale-lane-session")); !os.IsNotExist(err) {
+	if _, err := os.Stat(factory.RecordPath(root, "stale-lane-session")); !os.IsNotExist(err) {
 		t.Errorf("session record exists after legacy lane label, want none")
 	}
 
@@ -115,9 +115,9 @@ func TestStaleRunNoticeFactoryLegacyLabel(t *testing.T) { // AC-RNC-022 hook cla
 
 	// The bootstrap notice surface carries the stale-run message instead of a
 	// leader or lane notice.
-	factory := factoryBootstrapNotice(root, "", "en")
-	if !strings.Contains(factory, "worker-2") || !strings.Contains(factory, "runR") {
-		t.Errorf("factoryBootstrapNotice = %q, want the stale-run message naming worker-2 and runR", factory)
+	factoryRun := factoryBootstrapNotice(root, "", "en")
+	if !strings.Contains(factoryRun, "worker-2") || !strings.Contains(factoryRun, "runR") {
+		t.Errorf("factoryBootstrapNotice = %q, want the stale-run message naming worker-2 and runR", factoryRun)
 	}
 }
 
@@ -134,7 +134,7 @@ func TestFactoryRoleFromEnvNewVocabulary(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 	role, lane, ok := factoryRoleFromEnv()
-	if !ok || role != kanban.RoleLane || lane != 2 {
+	if !ok || role != factory.RoleLane || lane != 2 {
 		t.Errorf("factoryRoleFromEnv(lane-2) = (%q, %d, %v), want (lane, 2, true)", role, lane, ok)
 	}
 }

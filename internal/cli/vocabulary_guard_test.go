@@ -34,22 +34,22 @@ import (
 
 // guardPackages are the packages the guard scans, relative to this package's
 // directory (internal/cli).
-var guardPackages = []string{".", "../kanban", "../hook", "../factorymsg", "../web"}
+var guardPackages = []string{".", "../factory", "../hook", "../factorymsg", "../web"}
 
 // guardAllowlist is the complete set of permitted legacy-vocabulary literals.
 // Each entry: the file it lives in and the exact literal that must still be
 // present. Extend only for refuse/detect comparisons, their error text, or a
 // documented non-role sense (REQ-RNC-018).
 var guardAllowlist = []guardAllowlistEntry{
-	// --- internal/kanban: the detection vocabulary -------------------------
+	// --- internal/factory: the detection vocabulary -------------------------
 	// legacyLeaderSpelling (role.go) and the legacy factory role constants
 	// (bootstrap.go) exist only to be refused or detected (REQ-RNC-009);
 	// their values are the frozen legacy spellings. Legacy label shapes are
 	// built by concatenation (`factoryLegacyWorkerRole + "-" + n`), so the
 	// only legacy literals in production strings are the bare role tokens.
-	{file: "../kanban/role.go", literal: "lead"},
-	{file: "../kanban/bootstrap.go", literal: "worker"},
-	{file: "../kanban/bootstrap.go", literal: "agent"},
+	{file: "../factory/role.go", literal: "lead"},
+	{file: "../factory/bootstrap.go", literal: "worker"},
+	{file: "../factory/bootstrap.go", literal: "agent"},
 
 	// --- internal/cli: refusal messages and detection comparisons ----------
 	// factory.go: the leader-name refusal path composes the canonical form by

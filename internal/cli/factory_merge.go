@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -144,23 +144,23 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			// not the one it wrote — the acquired record is read back from
 			// the store, which is also what carries the acquire stamp the
 			// pre-check proof below is verified against.
-			if _, err := kanban.AcquireIntegrationLock(lockRoot, kanban.IntegrationLock{
+			if _, err := factory.AcquireIntegrationLock(lockRoot, factory.IntegrationLock{
 				SessionID:    sessionID,
 				SessionName:  lane,
 				PID:          ownerPID,
-				PIDSource:    kanban.PIDSourceSessionOwner,
+				PIDSource:    factory.PIDSourceSessionOwner,
 				Branch:       developRef,
-				BranchSource: kanban.BranchSourceConfig,
+				BranchSource: factory.BranchSourceConfig,
 				Worktree:     worktreeForBranch(developRef),
 				Card:         card,
 			}, false); err != nil {
-				if !kanban.IsIntegrationLockHeld(err) {
+				if !factory.IsIntegrationLockHeld(err) {
 					return err
 				}
 				// AC-FLA-010: refused/waiting WITH THE HOLDER NAMED — the
 				// existing acquire behavior consumed, surfaced in this path's
 				// output. The window stays with its holder.
-				current, readErr := kanban.ReadIntegrationLock(lockRoot)
+				current, readErr := factory.ReadIntegrationLock(lockRoot)
 				if readErr != nil {
 					return readErr
 				}
@@ -180,7 +180,7 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			// exists BEFORE the integration acquire timestamp. The window is
 			// already ours here, so a failed proof is released again — a
 			// cleared verdict never rides an unproven record.
-			acquired, err := kanban.ReadIntegrationLock(lockRoot)
+			acquired, err := factory.ReadIntegrationLock(lockRoot)
 			if err != nil {
 				return err
 			}
@@ -204,7 +204,7 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			// window is released again.
 			sameSecondProof := recorded.AllPassed && recorded.CheckedAt.Before(acquireAt.Add(time.Second))
 			if !proofOK && !sameSecondProof {
-				if _, releaseErr := kanban.ReleaseIntegrationLock(lockRoot, sessionID, ownerPID, false); releaseErr != nil {
+				if _, releaseErr := factory.ReleaseIntegrationLock(lockRoot, sessionID, ownerPID, false); releaseErr != nil {
 					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "factory merge ready: the pre-acquire proof failed (%s) and the window release also failed: %v\n", proofWhy, releaseErr)
 				}
 				_, _ = fmt.Fprintf(human, "merge-readiness: REFUSED — %s\nthe window was released again; no cleared verdict rides an unproven record\n", proofWhy)
@@ -250,7 +250,7 @@ func newFactoryMergeGateCommand() *cobra.Command {
 					return err
 				}
 			}
-			lock, err := kanban.ReadIntegrationLock(integrationLockRoot())
+			lock, err := factory.ReadIntegrationLock(integrationLockRoot())
 			if err != nil {
 				return err
 			}

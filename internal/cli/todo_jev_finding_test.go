@@ -15,18 +15,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/jev"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // installJevProbe replaces the Consumer C seam for one test and restores it
 // afterwards. The count is the positive control every absence assertion in
 // this file leans on.
-func installJevProbe(t *testing.T, judge func(rec *kanban.BacklogRecord, item kanban.BacklogItem) (jevNearDuplicateJudgment, bool)) *int {
+func installJevProbe(t *testing.T, judge func(rec *factory.BacklogRecord, item factory.BacklogItem) (jevNearDuplicateJudgment, bool)) *int {
 	t.Helper()
 	calls := 0
 	prev := jevNearDuplicateProbe
-	jevNearDuplicateProbe = func(rec *kanban.BacklogRecord, item kanban.BacklogItem) (jevNearDuplicateJudgment, bool) {
+	jevNearDuplicateProbe = func(rec *factory.BacklogRecord, item factory.BacklogItem) (jevNearDuplicateJudgment, bool) {
 		calls++
 		return judge(rec, item)
 	}
@@ -35,8 +35,8 @@ func installJevProbe(t *testing.T, judge func(rec *kanban.BacklogRecord, item ka
 }
 
 // alwaysNearDuplicateOf answers with a fixed related id and probability.
-func alwaysNearDuplicateOf(relatedID string, p float64) func(*kanban.BacklogRecord, kanban.BacklogItem) (jevNearDuplicateJudgment, bool) {
-	return func(_ *kanban.BacklogRecord, _ kanban.BacklogItem) (jevNearDuplicateJudgment, bool) {
+func alwaysNearDuplicateOf(relatedID string, p float64) func(*factory.BacklogRecord, factory.BacklogItem) (jevNearDuplicateJudgment, bool) {
+	return func(_ *factory.BacklogRecord, _ factory.BacklogItem) (jevNearDuplicateJudgment, bool) {
 		return jevNearDuplicateJudgment{RelatedID: relatedID, Probability: p}, true
 	}
 }
@@ -58,9 +58,9 @@ func TestJevFinding_WrittenAtAdmission(t *testing.T) {
 		t.Fatal("positive control failed: the admission path never consulted the Jev seam")
 	}
 
-	var got []kanban.BacklogFinding
+	var got []factory.BacklogFinding
 	for _, f := range loadFindings(t, store) {
-		if f.Source == kanban.BacklogSourceJev {
+		if f.Source == factory.BacklogSourceJev {
 			got = append(got, f)
 		}
 	}
@@ -70,8 +70,8 @@ func TestJevFinding_WrittenAtAdmission(t *testing.T) {
 	if got[0].SubjectID != "t2" || got[0].RelatedID != "t1" {
 		t.Errorf("finding = %s->%s, want t2->t1 (the new card is the subject)", got[0].SubjectID, got[0].RelatedID)
 	}
-	if got[0].Relation != kanban.BacklogRelationNearDuplicate {
-		t.Errorf("relation = %q, want %q", got[0].Relation, kanban.BacklogRelationNearDuplicate)
+	if got[0].Relation != factory.BacklogRelationNearDuplicate {
+		t.Errorf("relation = %q, want %q", got[0].Relation, factory.BacklogRelationNearDuplicate)
 	}
 	if got[0].Score != 0.87 {
 		t.Errorf("probability carried through as %v, want 0.87", got[0].Score)
@@ -84,7 +84,7 @@ func TestJevFinding_WrittenAtAdmission(t *testing.T) {
 // relation. Both existing sources are exercised, and the reversed-pair
 // orientation is used for the agent case so an ordered comparison fails here.
 func TestJevFinding_PrecedenceHalfA_Suppressed(t *testing.T) {
-	for _, existing := range []string{kanban.BacklogSourceMechanical, kanban.BacklogSourceAgent} {
+	for _, existing := range []string{factory.BacklogSourceMechanical, factory.BacklogSourceAgent} {
 		t.Run(existing, func(t *testing.T) {
 			_, store := todoFixture(t)
 			if _, _, err := runTodo(t, "add", "alpha one"); err != nil {
@@ -93,12 +93,12 @@ func TestJevFinding_PrecedenceHalfA_Suppressed(t *testing.T) {
 			// Seeded ahead of the arrival, naming the pair {t1, t2} — in the
 			// reversed orientation for the agent case.
 			subject, related := "t2", "t1"
-			if existing == kanban.BacklogSourceAgent {
+			if existing == factory.BacklogSourceAgent {
 				subject, related = "t1", "t2"
 			}
-			seedFindings(t, store, kanban.BacklogFinding{
+			seedFindings(t, store, factory.BacklogFinding{
 				SubjectID: subject, RelatedID: related,
-				Relation: kanban.BacklogRelationNearDuplicate, Source: existing,
+				Relation: factory.BacklogRelationNearDuplicate, Source: existing,
 			})
 			before := len(loadFindings(t, store))
 
@@ -116,7 +116,7 @@ func TestJevFinding_PrecedenceHalfA_Suppressed(t *testing.T) {
 					len(after), before, existing)
 			}
 			for _, f := range after {
-				if f.Source == kanban.BacklogSourceJev {
+				if f.Source == factory.BacklogSourceJev {
 					t.Errorf("a jev-sourced finding landed despite an existing %s finding for the pair: %+v", existing, f)
 				}
 			}
@@ -129,17 +129,17 @@ func TestJevFinding_PrecedenceHalfA_Suppressed(t *testing.T) {
 // analyser's similarity score, and the pre-existing mechanical and agent forms
 // are unchanged (including the `machine-only` mark's meaning).
 func TestJevFindingLine_DistinctFromMechanicalScore(t *testing.T) {
-	rec := &kanban.BacklogRecord{}
-	mk := func(source string) kanban.BacklogFinding {
-		return kanban.BacklogFinding{
+	rec := &factory.BacklogRecord{}
+	mk := func(source string) factory.BacklogFinding {
+		return factory.BacklogFinding{
 			SubjectID: "t2", RelatedID: "t1",
-			Relation: kanban.BacklogRelationNearDuplicate, Source: source, Score: 0.87,
+			Relation: factory.BacklogRelationNearDuplicate, Source: source, Score: 0.87,
 		}
 	}
 
-	jevLine := todoFindingLine(rec, "t2", mk(kanban.BacklogSourceJev))
-	mechLine := todoFindingLine(rec, "t2", mk(kanban.BacklogSourceMechanical))
-	agentLine := todoFindingLine(rec, "t2", mk(kanban.BacklogSourceAgent))
+	jevLine := todoFindingLine(rec, "t2", mk(factory.BacklogSourceJev))
+	mechLine := todoFindingLine(rec, "t2", mk(factory.BacklogSourceMechanical))
+	agentLine := todoFindingLine(rec, "t2", mk(factory.BacklogSourceAgent))
 
 	// Regression control on the two pre-existing forms first: if these drift,
 	// the distinctness assertion below is measuring the wrong baseline.
@@ -166,7 +166,7 @@ func TestJevFindingLine_DistinctFromMechanicalScore(t *testing.T) {
 	if !strings.Contains(jevLine, "0.87") {
 		t.Errorf("the jev line dropped the probability entirely: %q", jevLine)
 	}
-	if !strings.Contains(jevLine, kanban.BacklogSourceJev) {
+	if !strings.Contains(jevLine, factory.BacklogSourceJev) {
 		t.Errorf("the jev line does not name its source: %q", jevLine)
 	}
 	// A Jev finding never carries the machine-only mark: the mark is about
@@ -256,7 +256,7 @@ func TestJevFinding_WritesNoCardField(t *testing.T) {
 		t.Fatalf("seed add: %v", err)
 	}
 
-	load := func() *kanban.BacklogRecord {
+	load := func() *factory.BacklogRecord {
 		t.Helper()
 		rec, err := store.Load()
 		if err != nil {
@@ -267,7 +267,7 @@ func TestJevFinding_WritesNoCardField(t *testing.T) {
 	// Every field of every card enters the digest, so a field written as a
 	// consequence of the finding cannot hide behind a field-by-field
 	// comparison someone forgot to extend when the card gained a field.
-	digestItems := func(items []kanban.BacklogItem) string {
+	digestItems := func(items []factory.BacklogItem) string {
 		h := sha256.New()
 		for _, it := range items {
 			raw, err := json.Marshal(it)
@@ -312,8 +312,8 @@ func TestJevFinding_WritesNoCardField(t *testing.T) {
 		t.Fatalf("findings = %d, want %d (exactly the appended Jev finding)",
 			len(after.Findings), len(before.Findings)+1)
 	}
-	if appended := after.Findings[len(after.Findings)-1]; appended.Source != kanban.BacklogSourceJev {
-		t.Errorf("appended finding source = %q, want %q", appended.Source, kanban.BacklogSourceJev)
+	if appended := after.Findings[len(after.Findings)-1]; appended.Source != factory.BacklogSourceJev {
+		t.Errorf("appended finding source = %q, want %q", appended.Source, factory.BacklogSourceJev)
 	}
 	// Control on the digest itself: the engine bytes DID move, so the
 	// item-digest equality above is a preserved value rather than a
@@ -337,13 +337,13 @@ func TestJevProbe_DisabledCapabilityProducesNothing(t *testing.T) {
 		t.Fatalf("add: %v", err)
 	}
 	for _, f := range loadFindings(t, store) {
-		if f.Source == kanban.BacklogSourceJev {
+		if f.Source == factory.BacklogSourceJev {
 			t.Errorf("a jev-sourced finding was recorded while the capability is off: %+v", f)
 		}
 	}
 	// Positive control: the seam IS reached on the admission path, so the
 	// absence above is the gate's doing rather than an unwired call site.
-	calls := installJevProbe(t, func(*kanban.BacklogRecord, kanban.BacklogItem) (jevNearDuplicateJudgment, bool) {
+	calls := installJevProbe(t, func(*factory.BacklogRecord, factory.BacklogItem) (jevNearDuplicateJudgment, bool) {
 		return jevNearDuplicateJudgment{}, false
 	})
 	if _, _, err := runTodo(t, "add", "alpha three"); err != nil {

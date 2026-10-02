@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // legacyLaunchLabelValue returns the launch-label value carrying a legacy
@@ -24,10 +24,10 @@ import (
 // leaders alike) and the lane label (MOAI_FACTORY_WORKER) are the two
 // role-bearing launch labels.
 func legacyLaunchLabelValue() string {
-	if label := strings.TrimSpace(os.Getenv(config.EnvFactoryLeadName)); kanban.IsLegacyLeaderSpelling(label) {
+	if label := strings.TrimSpace(os.Getenv(config.EnvFactoryLeadName)); factory.IsLegacyLeaderSpelling(label) {
 		return label
 	}
-	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)); kanban.IsLegacyFactoryRoleValue(label) {
+	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)); factory.IsLegacyFactoryRoleValue(label) {
 		return label
 	}
 	return ""
@@ -50,7 +50,7 @@ func staleRunNoticeFor(root, sessionID, lang string) string {
 		return gatedStaleRunAnswer(root, sessionID, label, lang)
 	}
 	if sessionID != "" && root != "" {
-		if rec, err := kanban.Read(root, sessionID); err == nil && isLegacyRecordRole(rec.Role) {
+		if rec, err := factory.Read(root, sessionID); err == nil && isLegacyRecordRole(rec.Role) {
 			return gatedStaleRunAnswer(root, sessionID, rec.Role, lang)
 		}
 	}
@@ -155,7 +155,7 @@ func staleRunNotice(value, lang string) string {
 // locale; the broker hook surface (agent-facing additionalContext) passes
 // langEnglish.
 func legacyFactoryHookNotice(label, runID, lang string) string {
-	if !kanban.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
+	if !factory.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
 		return ""
 	}
 	if runID != "" {

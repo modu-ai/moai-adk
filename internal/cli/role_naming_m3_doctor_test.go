@@ -12,12 +12,12 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func seedFactoryRecord(t *testing.T, root, sessionID, role string) {
 	t.Helper()
-	path := kanban.RecordPath(root, sessionID)
+	path := factory.RecordPath(root, sessionID)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}

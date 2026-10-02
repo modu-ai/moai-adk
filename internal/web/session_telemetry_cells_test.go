@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 )
@@ -60,8 +60,8 @@ func TestChainCellsCarryTelemetryValues(t *testing.T) {
 	root := t.TempDir()
 	pid := os.Getpid()
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-run", pid)})
-	writeKanbanRecord(t, root, kanban.Record{
-		SessionID: "sess-run", Role: "run", Backend: kanban.BackendClaude,
+	writeKanbanRecord(t, root, factory.Record{
+		SessionID: "sess-run", Role: "run", Backend: factory.BackendClaude,
 	})
 	writeTelemetry(t, root, statusline.SessionTelemetryRecord{
 		SchemaVersion: 2, SessionID: "sess-run", WriterPID: pid,
@@ -95,8 +95,8 @@ func TestChainCellsDoNotBorrowAnotherSessionsValues(t *testing.T) {
 		liveEntry("sess-a", pid),
 		liveEntry("sess-b", pid+100000),
 	})
-	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-a", Role: "plan", Backend: kanban.BackendClaude})
-	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-b", Role: "run", Backend: kanban.BackendClaude})
+	writeKanbanRecord(t, root, factory.Record{SessionID: "sess-a", Role: "plan", Backend: factory.BackendClaude})
+	writeKanbanRecord(t, root, factory.Record{SessionID: "sess-b", Role: "run", Backend: factory.BackendClaude})
 	writeTelemetry(t, root, statusline.SessionTelemetryRecord{
 		SchemaVersion: 2, SessionID: "sess-a",
 		ContextWindowSize: 200000, TokensUsed: 110000, RawPct: 55,
@@ -128,8 +128,8 @@ func TestChainCellsTolerateSchemaV1Record(t *testing.T) {
 		liveEntry("sess-old", pid),
 		liveEntry("sess-new", pid+100001),
 	})
-	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-old", Role: "leader", Backend: kanban.BackendClaude})
-	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-new", Role: "sync", Backend: kanban.BackendClaude})
+	writeKanbanRecord(t, root, factory.Record{SessionID: "sess-old", Role: "leader", Backend: factory.BackendClaude})
+	writeKanbanRecord(t, root, factory.Record{SessionID: "sess-new", Role: "sync", Backend: factory.BackendClaude})
 	// Pre-dependency shape: schema 1, no model, no effort.
 	writeTelemetry(t, root, statusline.SessionTelemetryRecord{
 		SchemaVersion: 1, SessionID: "sess-old",
@@ -164,7 +164,7 @@ func TestChainCellsUnreadableTelemetryStaysBlank(t *testing.T) {
 	root := t.TempDir()
 	pid := os.Getpid()
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-bad", pid)})
-	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-bad", Role: "run", Backend: kanban.BackendClaude})
+	writeKanbanRecord(t, root, factory.Record{SessionID: "sess-bad", Role: "run", Backend: factory.BackendClaude})
 
 	path := statusline.SessionTelemetryPath(filepath.Join(root, ".moai", "state"), "sess-bad")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -201,7 +201,7 @@ func TestChainCellsClampContextPercentage(t *testing.T) {
 			root := t.TempDir()
 			pid := os.Getpid()
 			writeActiveSessions(t, root, []session.Entry{liveEntry("sess-c", pid)})
-			writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-c", Role: "run", Backend: kanban.BackendClaude})
+			writeKanbanRecord(t, root, factory.Record{SessionID: "sess-c", Role: "run", Backend: factory.BackendClaude})
 			writeTelemetry(t, root, statusline.SessionTelemetryRecord{
 				SchemaVersion: 2, SessionID: "sess-c",
 				ContextWindowSize: 200000, TokensUsed: 1, RawPct: tc.raw,

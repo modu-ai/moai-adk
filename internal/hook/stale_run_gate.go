@@ -43,9 +43,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // factoryGateBudget bounds the gate's own measurement. It wraps the caller's
@@ -205,7 +205,7 @@ func staleRunPrescriptionGate(ctx context.Context, root, sessionID, label, runID
 // documented re-bind entry only while an active run exists in the same root
 // (REQ-SRL-006) — a failed liveness measurement omits the line (fail-open).
 func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, lang string) string {
-	if !kanban.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
+	if !factory.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
 		return ""
 	}
 	notice := fmt.Sprintf(staleRunMessagesFor(lang).laneLabelUnbind, label, runID, status)

@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // stubTodoHome points the queue resolution's home seam at a throwaway
@@ -29,16 +29,16 @@ import (
 func stubTodoHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
-	orig := kanban.HomeDirFn
-	kanban.HomeDirFn = func() (string, error) { return home, nil }
-	t.Cleanup(func() { kanban.HomeDirFn = orig })
+	orig := factory.HomeDirFn
+	factory.HomeDirFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { factory.HomeDirFn = orig })
 	return home
 }
 
 // writeBacklog writes raw bytes to root's backlog file, creating the directory.
 func writeBacklog(t *testing.T, root, body string) string {
 	t.Helper()
-	path := kanban.BacklogPathForRoot(root)
+	path := factory.BacklogPathForRoot(root)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir queue dir: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestTodoSectionReadsThroughToProjectLocalQueue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat local queue: %v", err)
 	}
-	fallbackRoot := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(root))
+	fallbackRoot := filepath.Join(home, ".moai", "todo", factory.TodoQueueProjectKey(root))
 	time.Sleep(10 * time.Millisecond)
 
 	body := todoBodyFor(t, root)

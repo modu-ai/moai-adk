@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -165,9 +165,9 @@ func currentBranch() string {
 // never disagree with the recorded branch.
 func resolveIntegrationTarget(explicitBranch, configuredBranch string) (branch, worktree, source string) {
 	target := strings.TrimSpace(explicitBranch)
-	source = kanban.BranchSourceFlag
+	source = factory.BranchSourceFlag
 	if target == "" {
-		target, source = strings.TrimSpace(configuredBranch), kanban.BranchSourceConfig
+		target, source = strings.TrimSpace(configuredBranch), factory.BranchSourceConfig
 	}
 	if target != "" {
 		// An honest unknown beats a confidently wrong path: no worktree has
@@ -177,7 +177,7 @@ func resolveIntegrationTarget(explicitBranch, configuredBranch string) (branch, 
 		return target, worktreeForBranch(target), source
 	}
 	wt, _ := os.Getwd()
-	return currentBranch(), wt, kanban.BranchSourceCaller
+	return currentBranch(), wt, factory.BranchSourceCaller
 }
 
 // integrationFallbackWarning is the one-line standard-error warning for a
@@ -275,7 +275,7 @@ func newIntegrationStatusCmd() *cobra.Command {
 		Short: "Report who holds the release-integration window",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root := integrationLockRoot()
-			lock, err := kanban.ReadIntegrationLock(root)
+			lock, err := factory.ReadIntegrationLock(root)
 			if err != nil {
 				return err
 			}
@@ -359,11 +359,11 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// failure direction is "an operator must ask the holder to release"
 			// rather than "two lanes merge at once".
 			ownerPID, _ := session.ResolveOwnerPID()
-			replaced, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
+			replaced, err := factory.AcquireIntegrationLock(root, factory.IntegrationLock{
 				SessionID:    sessionID,
 				SessionName:  nameFlag,
 				PID:          ownerPID,
-				PIDSource:    kanban.PIDSourceSessionOwner,
+				PIDSource:    factory.PIDSourceSessionOwner,
 				Branch:       branch,
 				BranchSource: source,
 				Worktree:     wt,
@@ -384,7 +384,7 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// already recorded; the warning neither refuses nor changes
 			// stdout, and it goes to the error writer so --json stays one
 			// parseable object.
-			if source == kanban.BranchSourceCaller && gitFlow.IsGitFlow() {
+			if source == factory.BranchSourceCaller && gitFlow.IsGitFlow() {
 				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), integrationFallbackWarning(branch))
 			}
 			// Warn-only (card t656, REQ-GWS-003): an invalid workflow value is
@@ -401,7 +401,7 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// Silent only when there is nothing to say: the git-flow cell
 			// resolves an empty target (the t637 warning owns it), and a caller
 			// already standing in the named target is not a disagreement.
-			if source == kanban.BranchSourceCaller && gitFlow.IntegrationTarget != "" && gitFlow.IntegrationTarget != branch {
+			if source == factory.BranchSourceCaller && gitFlow.IntegrationTarget != "" && gitFlow.IntegrationTarget != branch {
 				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), integrationUnwiredTargetWarning(gitFlow.Workflow, gitFlow.IntegrationTarget, branch))
 			}
 			if jsonOut {
@@ -435,7 +435,7 @@ func newIntegrationAcquireCmd() *cobra.Command {
 // settingsDriftBypassPreservedPath returns the preserved copy's path only when
 // a refusal was actually bypassed. Recording it otherwise would put a bypass
 // artefact on a record that bypassed nothing.
-func settingsDriftBypassPreservedPath(r kanban.SettingsDriftResult) string {
+func settingsDriftBypassPreservedPath(r factory.SettingsDriftResult) string {
 	if !r.Bypassed {
 		return ""
 	}
@@ -461,7 +461,7 @@ func newIntegrationReleaseCmd() *cobra.Command {
 			// the refusal named the refused process's own pid. An unresolvable
 			// owner yields 0, which matches nothing and leaves the id key alone.
 			callerOwnerPID, _ := session.ResolveOwnerPID()
-			released, err := kanban.ReleaseIntegrationLock(integrationLockRoot(), sessionID, callerOwnerPID, force)
+			released, err := factory.ReleaseIntegrationLock(integrationLockRoot(), sessionID, callerOwnerPID, force)
 			if err != nil {
 				return err
 			}

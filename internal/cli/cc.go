@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // findProjectRootFn is the function used to locate the project root.
@@ -114,7 +114,7 @@ func init() {
 
 // runCC switches the LLM backend to Claude, then launches Claude Code.
 func runCC(cmd *cobra.Command, args []string) error {
-	return runClaudeEntry(cmd, args, "cc", "claude", kanban.BackendClaude, unifiedLaunch)
+	return runClaudeEntry(cmd, args, "cc", "claude", factory.BackendClaude, unifiedLaunch)
 }
 
 func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backend string, launch func(string, string, []string) error) error {

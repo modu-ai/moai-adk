@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestFactoryGuideTeachesLaneFormsInEveryLocale pins the lane-axis vocabulary
@@ -61,8 +61,8 @@ func TestFactoryRoleFromEnvReadsOnlyLaneLabels(t *testing.T) {
 	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
 	role, n, ok := factoryRoleFromEnv()
-	if !ok || role != kanban.RoleLane || n != 3 {
-		t.Errorf("factoryRoleFromEnv(lane-3) = (%q, %d, %v), want (%q, 3, true)", role, n, ok, kanban.RoleLane)
+	if !ok || role != factory.RoleLane || n != 3 {
+		t.Errorf("factoryRoleFromEnv(lane-3) = (%q, %d, %v), want (%q, 3, true)", role, n, ok, factory.RoleLane)
 	}
 	for _, label := range []string{"worker-4", "agent-2"} {
 		scrubFactoryEnv(t)

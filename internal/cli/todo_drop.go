@@ -40,7 +40,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // The drop marker follows the convention the hand-written dropped cards
@@ -97,7 +97,7 @@ leaving the file untouched.`,
 
 			store := newTodoStore()
 			var original string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -109,9 +109,9 @@ leaving the file untouched.`,
 							id, todoTextPrefix(rec.Items[i].Text), expect)
 					}
 					switch rec.Items[i].State {
-					case kanban.BacklogStateDropped:
+					case factory.BacklogStateDropped:
 						return fmt.Errorf("backlog item %s is already dropped", id)
-					case kanban.BacklogStateQueued:
+					case factory.BacklogStateQueued:
 						// the only droppable state
 					default:
 						return fmt.Errorf(
@@ -120,7 +120,7 @@ leaving the file untouched.`,
 					}
 					original = rec.Items[i].Text
 					rec.Items[i].Text = todoDropMarkerOpen + reason + todoDropMarkerClose + original
-					rec.Items[i].State = kanban.BacklogStateDropped
+					rec.Items[i].State = factory.BacklogStateDropped
 					// REQ-TST-006: the drop is stamped at the transition.
 					rec.Items[i].DroppedAt = todoStampNow()
 					return nil
@@ -166,7 +166,7 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
 			var restored string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -178,14 +178,14 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 					// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
 					// REQ-THS-012): the gate names the state it reverts.
 					switch rec.Items[i].State {
-					case kanban.BacklogStateDropped:
+					case factory.BacklogStateDropped:
 						// the only undroppable-into-queued state
 					default:
 						return fmt.Errorf("backlog item %s is %s, not dropped", id, rec.Items[i].State)
 					}
 					restored = stripTodoDropMarker(rec.Items[i].Text)
 					rec.Items[i].Text = restored
-					rec.Items[i].State = kanban.BacklogStateQueued
+					rec.Items[i].State = factory.BacklogStateQueued
 					// REQ-TST-006: undrop clears the stamp — a queued card
 					// carries no dropped stamp, and a later re-drop stamps
 					// afresh.

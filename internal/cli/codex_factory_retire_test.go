@@ -25,10 +25,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // laneKeyFixtureValues gives each of the eleven lane keys a distinct,
@@ -471,7 +471,7 @@ func driveFactoryEntry(t *testing.T, launcher string, args ...string) (int, erro
 		err := runGLM(c, args)
 		return launches, err
 	}
-	err := runClaudeEntry(c, args, "cc", "claude", kanban.BackendClaude, func(string, string, []string) error {
+	err := runClaudeEntry(c, args, "cc", "claude", factory.BackendClaude, func(string, string, []string) error {
 		launches++
 		return nil
 	})

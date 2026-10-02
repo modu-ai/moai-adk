@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -40,9 +40,9 @@ func TestLaneSectionRendersCompleteRow(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-2": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-lane-2", pid)})
-	writeKanbanRecord(t, root, kanban.Record{
+	writeKanbanRecord(t, root, factory.Record{
 		SessionID: "sess-lane-2", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
-		Backend: kanban.BackendGLM, Lane: 2, CardID: "t207",
+		Backend: factory.BackendGLM, Lane: 2, CardID: "t207",
 	})
 
 	body := kanbanBodyFor(t, root)
@@ -75,7 +75,7 @@ func TestLaneSectionMarksEstimatedStageOnlyWhenEstimated(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-1": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-1", pid)})
-	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-1", Role: "lane", Lane: 1, CardID: "t1"})
+	writeKanbanRecord(t, root, factory.Record{SessionID: "sess-1", Role: "lane", Lane: 1, CardID: "t1"})
 
 	if body := kanbanBodyFor(t, root); !strings.Contains(body, `data-i18n="mark.estimated"`) {
 		t.Error("estimated lane row carries no estimated marker")
@@ -110,7 +110,7 @@ func TestLaneSectionPresentWithNoRegistry(t *testing.T) {
 	})
 	t.Run("malformed", func(t *testing.T) {
 		root := t.TempDir()
-		path := kanban.FactoryRegistryPath(root)
+		path := factory.FactoryRegistryPath(root)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
@@ -135,7 +135,7 @@ func TestLaneSectionRendersUnresolvedRows(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-1": pid, "lane-5": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-dup", pid)})
-	writeKanbanRecord(t, root, kanban.Record{
+	writeKanbanRecord(t, root, factory.Record{
 		SessionID: "sess-dup", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
 		Lane: 1, CardID: "t999",
 	})

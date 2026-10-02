@@ -17,19 +17,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // writeFactoryRegistry writes root's lane registry from a label→pid map.
 func writeFactoryRegistry(t *testing.T, root string, lanes map[string]int) {
 	t.Helper()
-	reg := make(map[string]kanban.FactoryLaneEntry, len(lanes))
+	reg := make(map[string]factory.FactoryLaneEntry, len(lanes))
 	for label, pid := range lanes {
-		reg[label] = kanban.FactoryLaneEntry{PID: pid, RegisteredAt: time.Now().UTC().Format(time.RFC3339)}
+		reg[label] = factory.FactoryLaneEntry{PID: pid, RegisteredAt: time.Now().UTC().Format(time.RFC3339)}
 	}
-	path := kanban.FactoryRegistryPath(root)
-	if err := kanban.SaveFactoryRegistry(path, reg); err != nil {
+	path := factory.FactoryRegistryPath(root)
+	if err := factory.SaveFactoryRegistry(path, reg); err != nil {
 		t.Fatalf("write registry: %v", err)
 	}
 }
@@ -51,9 +51,9 @@ func writeActiveSessions(t *testing.T, root string, entries []session.Entry) {
 }
 
 // writeKanbanRecord writes one kanban record keyed by its session id.
-func writeKanbanRecord(t *testing.T, root string, rec kanban.Record) {
+func writeKanbanRecord(t *testing.T, root string, rec factory.Record) {
 	t.Helper()
-	if err := kanban.Write(root, &rec); err != nil {
+	if err := factory.Write(root, &rec); err != nil {
 		t.Fatalf("write record: %v", err)
 	}
 }
@@ -88,11 +88,11 @@ func TestFactoryLanesResolveCompleteJoin(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-2": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-lane-2", pid)})
-	writeKanbanRecord(t, root, kanban.Record{
+	writeKanbanRecord(t, root, factory.Record{
 		SessionID: "sess-lane-2",
 		SpecID:    "SPEC-EXAMPLE-001",
 		Role:      "lane",
-		Backend:   kanban.BackendGLM,
+		Backend:   factory.BackendGLM,
 		Lane:      2,
 		CardID:    "t207",
 	})
@@ -119,8 +119,8 @@ func TestFactoryLanesResolveCompleteJoin(t *testing.T) {
 	if !row.StageEstimated {
 		t.Error("StageEstimated = false, want true — heartbeat estimation is not a recorded transition")
 	}
-	if row.Backend != kanban.BackendGLM {
-		t.Errorf("Backend = %q, want %q", row.Backend, kanban.BackendGLM)
+	if row.Backend != factory.BackendGLM {
+		t.Errorf("Backend = %q, want %q", row.Backend, factory.BackendGLM)
 	}
 }
 
@@ -155,9 +155,9 @@ func TestFactoryLanesDuplicatePIDFactorySide(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-1": pid, "lane-5": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-dup", pid)})
-	writeKanbanRecord(t, root, kanban.Record{
+	writeKanbanRecord(t, root, factory.Record{
 		SessionID: "sess-dup", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
-		Backend: kanban.BackendClaude, Lane: 1, CardID: "t999",
+		Backend: factory.BackendClaude, Lane: 1, CardID: "t999",
 	})
 
 	_, byID := loadSessions(root, time.Now())
@@ -185,9 +185,9 @@ func TestFactoryLanesDuplicatePIDSessionSide(t *testing.T) {
 		liveEntry("sess-stale", pid),
 		liveEntry("sess-live", pid),
 	})
-	writeKanbanRecord(t, root, kanban.Record{
+	writeKanbanRecord(t, root, factory.Record{
 		SessionID: "sess-live", SpecID: "SPEC-EXAMPLE-001", Role: "lane",
-		Backend: kanban.BackendClaude, Lane: 1, CardID: "t888",
+		Backend: factory.BackendClaude, Lane: 1, CardID: "t888",
 	})
 
 	_, byID := loadSessions(root, time.Now())
@@ -214,7 +214,7 @@ func TestFactoryLanesMissingAndMalformedRegistry(t *testing.T) {
 	})
 	t.Run("malformed", func(t *testing.T) {
 		root := t.TempDir()
-		path := kanban.FactoryRegistryPath(root)
+		path := factory.FactoryRegistryPath(root)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
@@ -235,7 +235,7 @@ func TestFactoryLanesJoinWritesNothing(t *testing.T) {
 	pid := os.Getpid()
 	writeFactoryRegistry(t, root, map[string]int{"lane-3": pid})
 	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-3", pid)})
-	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-3", Role: "lane", Lane: 3, CardID: "t3"})
+	writeKanbanRecord(t, root, factory.Record{SessionID: "sess-3", Role: "lane", Lane: 3, CardID: "t3"})
 
 	before := listStateTree(t, root)
 	_, byID := loadSessions(root, time.Now())

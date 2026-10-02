@@ -31,8 +31,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // netLaunch is what one substituted engine launch observed.
@@ -148,8 +148,8 @@ func netCodexLaneChild(t *testing.T) netCodexLane {
 func netCodexLaneChildFor(t *testing.T, args ...string) netCodexLane {
 	t.Helper()
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+	fcQueue(t, store, factory.BacklogStatePicked)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	t.Chdir(root)
 	netScrubLaneEnv(t)
 
@@ -215,7 +215,7 @@ func containsFlag(args []string, flag string) bool {
 // a count-less leader records).
 func netRunRecorded(t *testing.T, root, runID, backend string) {
 	t.Helper()
-	record, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
+	record, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()
 	if err != nil {
 		t.Fatalf("load the queue record: %v", err)
 	}
@@ -251,8 +251,8 @@ func TestFactoryNetLeaderLaunch(t *testing.T) {
 		backend string
 		entry   func([]string) error
 	}{
-		{"cc", kanban.BackendClaude, netCC},
-		{"glm", kanban.BackendGLM, netGLM},
+		{"cc", factory.BackendClaude, netCC},
+		{"glm", factory.BackendGLM, netGLM},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLeaderFixture(t)
@@ -268,7 +268,7 @@ func TestFactoryNetLeaderLaunch(t *testing.T) {
 			if got := launch.env[config.EnvMoaiFactoryWorkers]; got != "1" {
 				t.Errorf("%s at launch = %q, want 1 (the count-less leader's one-lane default)", config.EnvMoaiFactoryWorkers, got)
 			}
-			if got, want := launch.env[config.EnvFactoryLeadAddr], kanban.FactoryLeaderSocketPath(runID); got != want {
+			if got, want := launch.env[config.EnvFactoryLeadAddr], factory.FactoryLeaderSocketPath(runID); got != want {
 				t.Errorf("%s at launch = %q, want the run's leader socket %q", config.EnvFactoryLeadAddr, got, want)
 			}
 			if got := launch.env[config.EnvFactoryBackend]; got != tc.backend {
@@ -281,7 +281,7 @@ func TestFactoryNetLeaderLaunch(t *testing.T) {
 				}
 			}
 			leaderName := launch.env[config.EnvFactoryLeadName]
-			if _, ok := kanban.SplitLeaderLabel(leaderName); !ok {
+			if _, ok := factory.SplitLeaderLabel(leaderName); !ok {
 				t.Errorf("%s at launch = %q, want a leader-shaped name", config.EnvFactoryLeadName, leaderName)
 			}
 			if got := netNamedArg(launch.args); got != leaderName {
@@ -314,8 +314,8 @@ func TestFactoryNetLaneLaunch(t *testing.T) {
 		backend string
 		entry   func([]string) error
 	}{
-		{"cc", kanban.BackendClaude, netCC},
-		{"glm", kanban.BackendGLM, netGLM},
+		{"cc", factory.BackendClaude, netCC},
+		{"glm", factory.BackendGLM, netGLM},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLaneFixture(t, tc.backend)
@@ -324,7 +324,7 @@ func TestFactoryNetLaneLaunch(t *testing.T) {
 			if first.err != nil || !first.launched {
 				t.Fatalf("%s -l: launched=%v err=%v", tc.name, first.launched, first.err)
 			}
-			label := kanban.FactoryLaneLabel(1)
+			label := factory.FactoryLaneLabel(1)
 			for key, want := range map[string]string{
 				config.EnvFactoryRole:                      config.FactoryRoleLane,
 				config.EnvMoaiFactoryWorker:                label,
@@ -354,11 +354,11 @@ func TestFactoryNetLaneLaunch(t *testing.T) {
 			if second.err != nil || !second.launched {
 				t.Fatalf("%s second -l: launched=%v err=%v", tc.name, second.launched, second.err)
 			}
-			if got, want := second.env[config.EnvMoaiFactoryWorker], kanban.FactoryLaneLabel(2); got != want {
+			if got, want := second.env[config.EnvMoaiFactoryWorker], factory.FactoryLaneLabel(2); got != want {
 				t.Errorf("second lane %s = %q, want %q (the first claim is live)", config.EnvMoaiFactoryWorker, got, want)
 			}
 			reg = loadFactoryRegistry(factoryRegistryPath(root))
-			if _, ok := reg[kanban.FactoryLaneLabel(2)]; !ok {
+			if _, ok := reg[factory.FactoryLaneLabel(2)]; !ok {
 				t.Errorf("registry lost the second claim: %v", reg)
 			}
 		})
@@ -407,7 +407,7 @@ func TestFactoryNetBlockCap(t *testing.T) {
 		}
 	})
 	t.Run("lane", func(t *testing.T) {
-		root := netLaneFixture(t, kanban.BackendClaude)
+		root := netLaneFixture(t, factory.BackendClaude)
 		launch := netDriveLaunch(t, root, netCC, []string{"-l"}, func() { check(t, "lane") })
 		if launch.err != nil || !launch.launched {
 			t.Fatalf("cc -l: launched=%v err=%v", launch.launched, launch.err)
@@ -455,8 +455,8 @@ func TestFactoryEntryMatrix(t *testing.T) {
 		backend string
 		entry   func([]string) error
 	}{
-		{"claude lane", kanban.BackendClaude, netCC},
-		{"glm lane", kanban.BackendGLM, netGLM},
+		{"claude lane", factory.BackendClaude, netCC},
+		{"glm lane", factory.BackendGLM, netGLM},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLaneFixture(t, tc.backend)
@@ -474,8 +474,8 @@ func TestFactoryEntryMatrix(t *testing.T) {
 		if lane.env[config.EnvFactoryRole] != config.FactoryRoleLane || lane.env[config.EnvMoaiFactoryWorker] == "" {
 			t.Errorf("codex lane child is not a lane: role=%q worker=%q", lane.env[config.EnvFactoryRole], lane.env[config.EnvMoaiFactoryWorker])
 		}
-		if got := lane.env[config.EnvFactoryBackend]; got != kanban.BackendGPT {
-			t.Errorf("codex lane child %s = %q, want %q", config.EnvFactoryBackend, got, kanban.BackendGPT)
+		if got := lane.env[config.EnvFactoryBackend]; got != factory.BackendGPT {
+			t.Errorf("codex lane child %s = %q, want %q", config.EnvFactoryBackend, got, factory.BackendGPT)
 		}
 	})
 	t.Run("codex leader refused", func(t *testing.T) {
@@ -500,7 +500,7 @@ func TestFactoryEntryMatrix(t *testing.T) {
 		if launches != 0 {
 			t.Errorf("codex -f launched %d child(ren); the refusal must start none", launches)
 		}
-		if record, loadErr := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure(); loadErr == nil && len(record.Runtime.Runs) != 0 {
+		if record, loadErr := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure(); loadErr == nil && len(record.Runtime.Runs) != 0 {
 			t.Errorf("codex -f recorded %d run(s): %+v", len(record.Runtime.Runs), record.Runtime.Runs)
 		}
 		if reg := loadFactoryRegistry(factoryRegistryPath(root)); len(reg) != 0 {

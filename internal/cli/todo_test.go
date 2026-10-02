@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -62,7 +62,7 @@ func runTodo(t *testing.T, args ...string) (string, string, error) {
 // The dir is a committed git repository (t106): queue-root resolution goes
 // through git, so the fixture must look like a real primary checkout for
 // the command's file and the verification store to be the same file.
-func todoFixture(t *testing.T) (root string, store *kanban.BacklogStore) {
+func todoFixture(t *testing.T) (root string, store *factory.BacklogStore) {
 	t.Helper()
 	root = t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
@@ -70,7 +70,7 @@ func todoFixture(t *testing.T) (root string, store *kanban.BacklogStore) {
 	// stays project-local under it, where these tests read it (card t1229).
 	t.Setenv(config.EnvHome, "")
 	initGitRepo(t, root)
-	store = kanban.NewBacklogStore(todoBacklogPath(root))
+	store = factory.NewBacklogStore(todoBacklogPath(root))
 	return root, store
 }
 
@@ -102,9 +102,9 @@ func TestTodoAdd_PrintsIDAndPosition(t *testing.T) {
 	}
 }
 
-func todoRuntimeAssignment(t *testing.T, root, runID, cardID string) kanban.TodoRuntimeAssignment {
+func todoRuntimeAssignment(t *testing.T, root, runID, cardID string) factory.TodoRuntimeAssignment {
 	t.Helper()
-	record, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
+	record, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func todoRuntimeAssignment(t *testing.T, root, runID, cardID string) kanban.Todo
 		}
 	}
 	t.Fatalf("todo runtime assignment missing: run=%q card=%q", runID, cardID)
-	return kanban.TodoRuntimeAssignment{}
+	return factory.TodoRuntimeAssignment{}
 }
 
 func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
@@ -158,7 +158,7 @@ func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 	assignment := todoRuntimeAssignment(t, root, "run-card-test", "t1")
-	if assignment.OwnerLabel != kanban.RoleLeader || assignment.ReportedState != "picked" || assignment.EventKind != "card.assigned" {
+	if assignment.OwnerLabel != factory.RoleLeader || assignment.ReportedState != "picked" || assignment.EventKind != "card.assigned" {
 		t.Fatalf("assignment=(%q,%q,%q), want (leader,picked,card.assigned)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
 	}
 	payloadRaw := assignment.ProvenanceJSON
@@ -175,7 +175,7 @@ func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 	assignment = todoRuntimeAssignment(t, root, "run-card-test", "t1")
-	if assignment.OwnerLabel != kanban.RoleLeader || assignment.ReportedState != "queued" || assignment.EventKind != "card.unpicked" {
+	if assignment.OwnerLabel != factory.RoleLeader || assignment.ReportedState != "queued" || assignment.EventKind != "card.unpicked" {
 		t.Fatalf("updated assignment=(%q,%q,%q), want (leader,queued,card.unpicked)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
 	}
 }
@@ -314,11 +314,11 @@ func TestTodoList_JSONStructured(t *testing.T) {
 	if !json.Valid([]byte(out)) {
 		t.Fatalf("list --json output is not valid JSON: %q", out)
 	}
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(out), &rec); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(rec.Items) != 2 || rec.Items[0].State != kanban.BacklogStatePicked {
+	if len(rec.Items) != 2 || rec.Items[0].State != factory.BacklogStatePicked {
 		t.Errorf("json items = %+v; want 2 items with t1 picked", rec.Items)
 	}
 }
@@ -449,7 +449,7 @@ func TestTodoNextPick_OneLockedWrite(t *testing.T) {
 	}
 	picked := 0
 	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStatePicked {
+		if it.State == factory.BacklogStatePicked {
 			picked++
 			if it.ID != "t2" {
 				t.Errorf("picked item = %s, want t2", it.ID)
@@ -457,7 +457,7 @@ func TestTodoNextPick_OneLockedWrite(t *testing.T) {
 			if it.SpecID == nil || *it.SpecID != "SPEC-X-001" {
 				t.Errorf("picked spec_id = %v, want SPEC-X-001", it.SpecID)
 			}
-		} else if it.State != kanban.BacklogStateQueued {
+		} else if it.State != factory.BacklogStateQueued {
 			t.Errorf("item %s state = %s, want untouched queued", it.ID, it.State)
 		}
 	}
@@ -541,7 +541,7 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list --json: %v", err)
 	}
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(stdout), &rec); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -561,7 +561,7 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 }
 
 // TestTodoHelperProcess is the re-exec helper backing the cross-process
-// tests above (same idiom as internal/kanban/board_lock_cross_test.go).
+// tests above (same idiom as internal/factory/board_lock_cross_test.go).
 func TestTodoHelperProcess(t *testing.T) {
 	mode := os.Getenv("MOAI_TODO_HELPER")
 	if mode == "" {
@@ -571,7 +571,7 @@ func TestTodoHelperProcess(t *testing.T) {
 	if root == "" {
 		os.Exit(4)
 	}
-	store := kanban.NewBacklogStore(todoBacklogPath(root))
+	store := factory.NewBacklogStore(todoBacklogPath(root))
 	_ = store
 
 	switch mode {
@@ -591,7 +591,7 @@ func TestTodoHelperProcess(t *testing.T) {
 		// when the helper runs without -v, and the parent parses this line.
 		fmt.Print(out.String())
 	case "hold-lock":
-		err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+		err := store.Mutate(func(rec *factory.BacklogRecord) error {
 			time.Sleep(1200 * time.Millisecond)
 			return nil
 		})
@@ -973,7 +973,7 @@ func TestTodoAddPick_OneLockedWrite(t *testing.T) {
 		t.Fatalf("items = %d, want 1", len(rec.Items))
 	}
 	it := rec.Items[0]
-	if it.ID != "t1" || it.State != kanban.BacklogStatePicked {
+	if it.ID != "t1" || it.State != factory.BacklogStatePicked {
 		t.Errorf("item = %s/%s, want t1/picked from the same write", it.ID, it.State)
 	}
 
@@ -1045,7 +1045,7 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list --json: %v", err)
 	}
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(stdout), &rec); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -1053,7 +1053,7 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 		t.Fatalf("items after %d concurrent add --pick = %d, want %d", n, len(rec.Items), n)
 	}
 	for _, it := range rec.Items {
-		if it.State != kanban.BacklogStatePicked {
+		if it.State != factory.BacklogStatePicked {
 			t.Errorf("item %s state = %s, want picked (add+pick is one write; no queued window)", it.ID, it.State)
 		}
 	}
@@ -1094,7 +1094,7 @@ func TestTodoUnpick_RevertsPickedToQueued(t *testing.T) {
 		t.Fatalf("items after unpick = %d, want 1 (no re-add churn)", len(rec.Items))
 	}
 	it := rec.Items[0]
-	if it.ID != "t1" || it.State != kanban.BacklogStateQueued {
+	if it.ID != "t1" || it.State != factory.BacklogStateQueued {
 		t.Errorf("item = %s/%s, want t1/queued", it.ID, it.State)
 	}
 	if it.SpecID != nil {

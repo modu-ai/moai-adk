@@ -6,7 +6,7 @@ package hook
 //
 // Eight criteria, eight tests (AC-AP-017's constant test lives in
 // internal/config; the AC-AP-018 pins live in internal/cli and
-// internal/kanban):
+// internal/factory):
 //
 //	AC-AP-005  TestContractSignAgentInvocationDenied
 //	AC-AP-006  TestContractSignPositiveControlsAllowed

@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoStoreDivergenceCheckName is the doctor check identifier (also the
@@ -34,7 +34,7 @@ const todoStoreDivergenceCheckName = "Todo Store Divergence"
 func checkTodoStoreDivergence(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: todoStoreDivergenceCheckName, Status: uikit.CheckOK}
 
-	fact := kanban.InspectStaleLocalStores(projectRoot)
+	fact := factory.InspectStaleLocalStores(projectRoot)
 	if len(fact.Stores) == 0 {
 		check.Message = "no stale project-local queue store"
 		return check

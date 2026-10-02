@@ -31,7 +31,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // factoryBootstrapNotice returns the factory announcement for this session in
@@ -47,7 +47,7 @@ import (
 // empty notice.
 func factoryBootstrapNotice(root, sessionID, lang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
-		if kanban.IsLegacyFactoryRoleValue(label) {
+		if factory.IsLegacyFactoryRoleValue(label) {
 			// Run-state gated: an active run prescribes once, a dead run
 			// unbinds once, an unmeasurable one degrades — never an
 			// unconditional prescription (SPEC-STALE-RUN-LABEL-001).
@@ -97,14 +97,14 @@ func factoryLaneRuleForSource(source, lang string) string {
 		return ""
 	}
 	label := os.Getenv(config.EnvMoaiFactoryWorker)
-	if label == "" || kanban.IsLegacyFactoryRoleValue(label) {
+	if label == "" || factory.IsLegacyFactoryRoleValue(label) {
 		return ""
 	}
-	if _, ok := kanban.SplitFactoryLaneLabel(label); !ok {
+	if _, ok := factory.SplitFactoryLaneLabel(label); !ok {
 		return ""
 	}
 	switch os.Getenv(config.EnvFactoryBackend) {
-	case kanban.BackendClaude, kanban.BackendGLM:
+	case factory.BackendClaude, factory.BackendGLM:
 		// REQ-TCD-011 (SPEC-TODO-CLASSIFY-DISPATCH-001): the launcher's
 		// stamped dispatch selection picks the rule — manual mode receives a
 		// manual-mode rule, never the self-dispatch instruction. Any other
@@ -114,7 +114,7 @@ func factoryLaneRuleForSource(source, lang string) string {
 			return factoryMessagesFor(lang).laneManualDispatchRule
 		}
 		return factoryMessagesFor(lang).laneNextCardRule
-	case kanban.BackendGPT:
+	case factory.BackendGPT:
 		cardID := os.Getenv(config.EnvFactoryCard)
 		if cardID == "" {
 			// An owned-card rule without a card id names nothing the lane
@@ -170,7 +170,7 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	// emitted, not later when a dispatched card reaches the wrong run.
 	identity := []string{
 		fmt.Sprintf(m.leaderHeader, runID),
-		fmt.Sprintf(m.leaderIdentity, kanban.LeaderLabel()),
+		fmt.Sprintf(m.leaderIdentity, factory.LeaderLabel()),
 	}
 	// (b) the lane-start sentence rides in the same block as the dispatch
 	// statement above it.
@@ -219,7 +219,7 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 // label first), so the formats pin the argument order with explicit %[n]
 // indices rather than positional verbs.
 func factoryLaneNotice(label string, lanes int, lang string) string {
-	if _, ok := kanban.SplitFactoryLaneLabel(label); !ok {
+	if _, ok := factory.SplitFactoryLaneLabel(label); !ok {
 		return ""
 	}
 	m := factoryMessagesFor(lang)

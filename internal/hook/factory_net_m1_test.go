@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // netScrubFactoryEnv removes every MOAI_FACTORY* and MOAI_KANBAN* variable
@@ -56,22 +56,22 @@ func TestFactoryNetSessionRecord(t *testing.T) {
 	t.Run("lane", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		netScrubFactoryEnv(t)
-		t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(3))
+		t.Setenv(config.EnvMoaiFactoryWorker, factory.FactoryLaneLabel(3))
 		t.Setenv(config.EnvMoaiFactoryWorkers, "0")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendGLM)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendGLM)
 		t.Setenv(config.EnvFactoryCard, "t1399")
 
 		writeFactorySessionRecord(&HookInput{SessionID: "net-lane-sess", ProjectDir: root, CWD: root})
 
-		rec, err := kanban.Read(root, "net-lane-sess")
+		rec, err := factory.Read(root, "net-lane-sess")
 		if err != nil {
 			t.Fatalf("the lane wrote no session record: %v", err)
 		}
-		if rec.Role != kanban.RoleLane || rec.Lane != 3 {
-			t.Errorf("lane record = role %q lane %d, want role %q lane 3", rec.Role, rec.Lane, kanban.RoleLane)
+		if rec.Role != factory.RoleLane || rec.Lane != 3 {
+			t.Errorf("lane record = role %q lane %d, want role %q lane 3", rec.Role, rec.Lane, factory.RoleLane)
 		}
-		if rec.Backend != kanban.BackendGLM {
-			t.Errorf("lane record backend = %q, want %q", rec.Backend, kanban.BackendGLM)
+		if rec.Backend != factory.BackendGLM {
+			t.Errorf("lane record backend = %q, want %q", rec.Backend, factory.BackendGLM)
 		}
 		if rec.CardID != "t1399" {
 			t.Errorf("lane record card = %q, want the explicit card override t1399", rec.CardID)
@@ -82,19 +82,19 @@ func TestFactoryNetSessionRecord(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		netScrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 
 		writeFactorySessionRecord(&HookInput{SessionID: "net-leader-sess", ProjectDir: root, CWD: root})
 
-		rec, err := kanban.Read(root, "net-leader-sess")
+		rec, err := factory.Read(root, "net-leader-sess")
 		if err != nil {
 			t.Fatalf("the factory leader wrote no session record: %v", err)
 		}
-		if rec.Role != kanban.RoleLeader || rec.Lane != 0 {
-			t.Errorf("leader record = role %q lane %d, want role %q lane 0", rec.Role, rec.Lane, kanban.RoleLeader)
+		if rec.Role != factory.RoleLeader || rec.Lane != 0 {
+			t.Errorf("leader record = role %q lane %d, want role %q lane 0", rec.Role, rec.Lane, factory.RoleLeader)
 		}
-		if rec.Backend != kanban.BackendClaude {
-			t.Errorf("leader record backend = %q, want %q", rec.Backend, kanban.BackendClaude)
+		if rec.Backend != factory.BackendClaude {
+			t.Errorf("leader record backend = %q, want %q", rec.Backend, factory.BackendClaude)
 		}
 	})
 
@@ -104,7 +104,7 @@ func TestFactoryNetSessionRecord(t *testing.T) {
 
 		writeFactorySessionRecord(&HookInput{SessionID: "net-plain-sess", ProjectDir: root, CWD: root})
 
-		if _, err := os.Stat(kanban.RecordPath(root, "net-plain-sess")); err == nil {
+		if _, err := os.Stat(factory.RecordPath(root, "net-plain-sess")); err == nil {
 			t.Error("a session outside every run wrote a session record")
 		}
 	})
@@ -144,7 +144,7 @@ func TestFactoryNetSessionStartNotices(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 		t.Setenv(config.EnvFactoryRunID, "netrun01")
 		t.Setenv(config.EnvFactoryLeadAddr, "/tmp/moai-socket-factory/netrun01")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 
 		ctx, sys := netSessionStart(t, root, "net-notice-leader")
 		for channel, text := range map[string]string{"additionalContext": ctx, "systemMessage": sys} {
@@ -162,15 +162,15 @@ func TestFactoryNetSessionStartNotices(t *testing.T) {
 	t.Run("lane", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		netScrubFactoryEnv(t)
-		t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(2))
+		t.Setenv(config.EnvMoaiFactoryWorker, factory.FactoryLaneLabel(2))
 		t.Setenv(config.EnvMoaiFactoryWorkers, "0")
 		t.Setenv(config.EnvFactoryRunID, "netrun01")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 
 		ctx, sys := netSessionStart(t, root, "net-notice-lane")
 		for channel, text := range map[string]string{"additionalContext": ctx, "systemMessage": sys} {
-			if !strings.Contains(text, kanban.FactoryLaneLabel(2)) {
-				t.Errorf("lane notice on %s does not name the lane label %q:\n%s", channel, kanban.FactoryLaneLabel(2), text)
+			if !strings.Contains(text, factory.FactoryLaneLabel(2)) {
+				t.Errorf("lane notice on %s does not name the lane label %q:\n%s", channel, factory.FactoryLaneLabel(2), text)
 			}
 		}
 	})
@@ -204,7 +204,7 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	root := newMoaiProjectRoot(t)
 	netScrubFactoryEnv(t)
 
-	recPath := kanban.RecordPath(root, "old-plan")
+	recPath := factory.RecordPath(root, "old-plan")
 	if err := os.MkdirAll(filepath.Dir(recPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	}
 	// M5b: the record role reader has no companion branch, so the surviving
 	// markers give a session with a fresh id no record of its own.
-	if _, err := os.Stat(kanban.RecordPath(root, "new-session")); err == nil {
+	if _, err := os.Stat(factory.RecordPath(root, "new-session")); err == nil {
 		t.Error("a session carrying only the retired markers wrote a session record")
 	}
 
@@ -248,7 +248,7 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	if string(got) != original {
 		t.Errorf("the pre-existing record was rewritten:\n got: %s\nwant: %s", got, original)
 	}
-	if _, err := kanban.Read(root, "old-plan"); err != nil {
+	if _, err := factory.Read(root, "old-plan"); err != nil {
 		t.Errorf("the pre-existing role-plan record is unreadable through the reader: %v", err)
 	}
 }

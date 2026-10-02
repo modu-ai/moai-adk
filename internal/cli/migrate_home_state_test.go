@@ -16,9 +16,9 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 func homeStateFixture(t *testing.T) (string, string) {
@@ -65,7 +65,7 @@ func validHomeStateLedgerForTest(head string) *homeStateEvidenceLedger {
 	for pkg := range liveRaceGroups {
 		ledger.Checks["race:"+pkg] = newHomeStateEvidenceRecord("race "+pkg, []byte("PASS"), 0, head)
 	}
-	for _, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/kanban", "./internal/cli"} {
+	for _, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/factory", "./internal/cli"} {
 		ledger.Checks["windows:"+pkg] = newHomeStateEvidenceRecord("windows "+pkg, []byte("PASS"), 0, head)
 	}
 	return ledger
@@ -315,7 +315,7 @@ func TestHomeStateBarrierAdmissionHaltsAllHosts(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".moai", "state", "active-sessions.json")); !os.IsNotExist(err) {
 		t.Fatalf("blocked session wrote registry: %v", err)
 	}
-	if _, err := kanban.ClaimFactoryLaneName(root, "lane-1", os.Getpid(), "testrun", func(int) bool { return true }); err == nil {
+	if _, err := factory.ClaimFactoryLaneName(root, "lane-1", os.Getpid(), "testrun", func(int) bool { return true }); err == nil {
 		t.Fatal("factory worker admitted")
 	}
 	if err := runMCPServer(); err == nil {
@@ -989,7 +989,7 @@ func TestHomeStateVerdictEvidenceValidator(t *testing.T) {
 	for pkg := range liveRaceGroups {
 		ledger.Checks["race:"+pkg] = newHomeStateEvidenceRecord("race "+pkg, []byte("PASS"), 0, "abc")
 	}
-	for _, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/kanban", "./internal/cli"} {
+	for _, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/factory", "./internal/cli"} {
 		ledger.Checks["windows:"+pkg] = newHomeStateEvidenceRecord("windows "+pkg, []byte("PASS"), 0, "abc")
 	}
 	badCheck := ledger.Checks["vet"]
@@ -1056,7 +1056,7 @@ func TestPersistedHomeStateEvidenceIsImmutableAndReadsRealDatabases(t *testing.T
 	for pkg := range liveRaceGroups {
 		ledger.Checks["race:"+pkg] = newHomeStateEvidenceRecord("race "+pkg, []byte("PASS"), 0, "abc")
 	}
-	for _, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/kanban", "./internal/cli"} {
+	for _, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/factory", "./internal/cli"} {
 		ledger.Checks["windows:"+pkg] = newHomeStateEvidenceRecord("windows "+pkg, []byte("PASS"), 0, "abc")
 	}
 	path, err := persistHomeStateEvidence(root, id, ledger)

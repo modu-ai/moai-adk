@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // session_start_factory_rule_test.go covers the factory lane SessionStart
@@ -71,7 +71,7 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 			} {
 				sdScrubRuleEnv(t)
 				t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
-				t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+				t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 				t.Setenv(config.EnvFactoryClearPolicy, policy)
 				rule := factoryLaneRuleForSource("startup", lang)
 				if rule == "" {
@@ -102,7 +102,7 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 	t.Run("glm lane: source startup carries the rule", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendGLM)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendGLM)
 		rule := factoryLaneRuleForSource("startup", "en")
 		if rule == "" {
 			t.Fatal("backend glm: no rule injected on startup")
@@ -122,7 +122,7 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 	t.Run("source clear carries the rule", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 		if rule := factoryLaneRuleForSource("clear", "en"); rule == "" {
 			t.Fatal("source clear: no rule injected")
 		}
@@ -131,7 +131,7 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 	t.Run("resume and compact carry no rule", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 		for _, source := range []string{"resume", "compact"} {
 			if rule := factoryLaneRuleForSource(source, "en"); rule != "" {
 				t.Errorf("source %s: rule injected, want none", source)
@@ -142,7 +142,7 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 	t.Run("gpt lane: owned-card rule names the card and the two CLI verbs only", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendGPT)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
 		t.Setenv(config.EnvFactoryCard, "t9")
 		rule := factoryLaneRuleForSource("startup", "en")
 		if rule == "" {
@@ -174,7 +174,7 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 	t.Run("gpt lane without a card id: no rule", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendGPT)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
 		if rule := factoryLaneRuleForSource("startup", "en"); rule != "" {
 			t.Errorf("backend gpt without a card id: rule injected, want none (got %q)", rule)
 		}
@@ -183,7 +183,7 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 	t.Run("leader environment: no rule for either source", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "3")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 		for _, source := range []string{"startup", "clear"} {
 			if rule := factoryLaneRuleForSource(source, "en"); rule != "" {
 				t.Errorf("leader env source %s: rule injected, want none", source)
@@ -203,7 +203,7 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 	t.Run("legacy lane label: no rule", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "worker-2")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 		for _, source := range []string{"startup", "clear"} {
 			if rule := factoryLaneRuleForSource(source, "en"); rule != "" {
 				t.Errorf("legacy label source %s: rule injected, want none", source)

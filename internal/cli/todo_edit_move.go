@@ -28,7 +28,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // newTodoEditCmd — `moai todo edit <n> <text> [--expect <prefix>]`: rewrite
@@ -63,7 +63,7 @@ untouched.`,
 			}
 			store := newTodoStore()
 			var prior string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -128,7 +128,7 @@ confirmation prints the card's new 1-based position.`,
 			store := newTodoStore()
 			var pos int
 			var text string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				idx, err := applyTodoMove(rec, id, anchor)
 				if err != nil {
 					// Refused mutation: Mutate writes nothing, so the file
@@ -192,7 +192,7 @@ func todoMoveDestination(top, bottom bool, before, after string) (todoMoveAnchor
 // Relative destinations resolve against the list WITHOUT the moved card, so
 // "--before <m>" lands immediately ahead of m regardless of which side of m
 // the card started on.
-func applyTodoMove(rec *kanban.BacklogRecord, id string, anchor todoMoveAnchor) (int, error) {
+func applyTodoMove(rec *factory.BacklogRecord, id string, anchor todoMoveAnchor) (int, error) {
 	from := todoItemIndex(rec.Items, id)
 	if from < 0 {
 		return 0, fmt.Errorf("no backlog item %s", id)
@@ -202,7 +202,7 @@ func applyTodoMove(rec *kanban.BacklogRecord, id string, anchor todoMoveAnchor) 
 	}
 
 	item := rec.Items[from]
-	rest := make([]kanban.BacklogItem, 0, len(rec.Items)-1)
+	rest := make([]factory.BacklogItem, 0, len(rec.Items)-1)
 	rest = append(rest, rec.Items[:from]...)
 	rest = append(rest, rec.Items[from+1:]...)
 
@@ -223,7 +223,7 @@ func applyTodoMove(rec *kanban.BacklogRecord, id string, anchor todoMoveAnchor) 
 		}
 	}
 
-	moved := make([]kanban.BacklogItem, 0, len(rec.Items))
+	moved := make([]factory.BacklogItem, 0, len(rec.Items))
 	moved = append(moved, rest[:to]...)
 	moved = append(moved, item)
 	moved = append(moved, rest[to:]...)
@@ -232,7 +232,7 @@ func applyTodoMove(rec *kanban.BacklogRecord, id string, anchor todoMoveAnchor) 
 }
 
 // todoItemIndex returns the index of id in items, or -1.
-func todoItemIndex(items []kanban.BacklogItem, id string) int {
+func todoItemIndex(items []factory.BacklogItem, id string) int {
 	for i := range items {
 		if items[i].ID == id {
 			return i

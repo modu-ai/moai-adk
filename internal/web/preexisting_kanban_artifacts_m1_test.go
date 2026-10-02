@@ -16,13 +16,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	root := t.TempDir()
 	for _, role := range []string{"plan", "run", "sync"} {
-		path := kanban.RecordPath(root, "old-"+role)
+		path := factory.RecordPath(root, "old-"+role)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -32,7 +32,7 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 		}
 	}
 	// A record the loader cannot parse degrades to absence beside the good ones.
-	if err := os.WriteFile(kanban.RecordPath(root, "old-garbled"), []byte("{not json"), 0o600); err != nil {
+	if err := os.WriteFile(factory.RecordPath(root, "old-garbled"), []byte("{not json"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	roles := filepath.Join(root, ".moai", "state", "kanban-board", "roles")

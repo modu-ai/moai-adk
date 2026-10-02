@@ -1,7 +1,7 @@
 package statusline
 
 import (
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // BacklogCounts is the kanban backlog reduced to what a glance needs: how much
@@ -45,6 +45,6 @@ func resolveBoardRoot(input *StdinData) string {
 // Constant-cost per render, on either layout: it must never grow with the
 // number of cards in a way that puts the render on a slow path.
 func resolveBacklogCounts(boardRoot string) BacklogCounts {
-	c := kanban.BacklogCountsForRoot(boardRoot)
+	c := factory.BacklogCountsForRoot(boardRoot)
 	return BacklogCounts{Picked: c.Picked, Queued: c.Queued, Available: c.Available}
 }

@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // factoryRunCheckName is the `--check` selector for the doctor factory
@@ -34,7 +34,7 @@ const legacyLeaderRelaunchMessage = "legacy run: relaunch required"
 // kanban session records under the project root. Read-only: it never writes
 // and never repairs.
 func checkFactoryRun(cwd string, verbose bool) DiagnosticCheck {
-	records, err := kanban.ReadAll(cwd)
+	records, err := factory.ReadAll(cwd)
 	if err != nil {
 		return DiagnosticCheck{
 			Name:    factoryRunCheckName,
@@ -51,7 +51,7 @@ func checkFactoryRun(cwd string, verbose bool) DiagnosticCheck {
 		}
 	}
 
-	var leader, legacy *kanban.Record
+	var leader, legacy *factory.Record
 	laneCount := 0
 	for i := range records {
 		switch strings.ToLower(strings.TrimSpace(records[i].Role)) {

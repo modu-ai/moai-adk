@@ -2,7 +2,7 @@
 // REQ-TSP-041: the once-per-class ghost artifact notice.
 //
 // A ghost artifact (a legacy backlog.json, a .migrated quarantine, a
-// session-record JSON — internal/kanban's StaleStoreFact.Ghosts) is a
+// session-record JSON — internal/factory's StaleStoreFact.Ghosts) is a
 // leftover the home-database cutover left behind. The FIRST read or write
 // verb that discovers a class says so on stderr, once, and records the
 // fact in a notice marker inside the ALIVE state directory; every later
@@ -32,7 +32,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // ghostNoticeMarkerName is the marker file's base name inside the alive
@@ -41,7 +41,7 @@ const ghostNoticeMarkerName = "ghost-notices.json"
 
 // ghostNoticeMarkerPath returns the marker's location for a project root.
 func ghostNoticeMarkerPath(root string) string {
-	return filepath.Join(kanban.RuntimeStateDirForRoot(root), ghostNoticeMarkerName)
+	return filepath.Join(factory.RuntimeStateDirForRoot(root), ghostNoticeMarkerName)
 }
 
 // readGhostNoticeMarker loads the noticed-class map the marker records. A
@@ -88,7 +88,7 @@ type ghostClassTotals struct {
 // discovers for the first time — classes the marker already records are
 // silent. The marker write lands after the lines, so a failed write costs
 // a repeated notice rather than a lost one.
-func discloseGhostStoresOnce(w io.Writer, verb string, fact kanban.StaleStoreFact) error {
+func discloseGhostStoresOnce(w io.Writer, verb string, fact factory.StaleStoreFact) error {
 	if len(fact.Ghosts) == 0 {
 		return nil
 	}

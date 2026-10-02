@@ -324,7 +324,7 @@ const (
 
 	// FactoryRoleLane is the role value the guard expects: the canonical
 	// canonical lane role spelling (internal/cli's factoryLaneRoleToken), held
-	// equal to internal/kanban's lane-label prefix factoryLaneRole by the
+	// equal to internal/factory's lane-label prefix factoryLaneRole by the
 	// REQ-AP-013 equality assertion (AC-AP-018), restored at
 	// SPEC-ROLE-NAMING-CODE-001 M4 (REQ-RNC-012). The legacy spellings
 	// `worker` and `agent` are not accepted; internal/config cannot import

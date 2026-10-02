@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -312,7 +312,7 @@ func ccEntryLaunch(t *testing.T, args ...string) (launched int, err error) {
 	var errB bytes.Buffer
 	c.SetErr(&errB)
 	c.SetOut(&errB)
-	err = runClaudeEntry(c, args, "cc", "claude", kanban.BackendClaude, func(string, string, []string) error {
+	err = runClaudeEntry(c, args, "cc", "claude", factory.BackendClaude, func(string, string, []string) error {
 		launched++
 		return nil
 	})

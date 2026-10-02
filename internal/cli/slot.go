@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -57,9 +57,9 @@ func slotResult(err error) error {
 	switch {
 	case err == nil:
 		return nil
-	case kanban.IsSlotLeaseHeld(err):
+	case factory.IsSlotLeaseHeld(err):
 		return &slotExitError{code: slotExitHeld, err: err}
-	case kanban.IsSlotLeaseBusy(err):
+	case factory.IsSlotLeaseBusy(err):
 		return &slotExitError{code: slotExitBusy, err: fmt.Errorf("%w — transient; retry shortly (the resource may be free)", err)}
 	default:
 		return err
@@ -75,7 +75,7 @@ func slotLeaseRoot() string {
 	if start == "" {
 		start = resolveProjectDir()
 	}
-	if root, err := kanban.ResolveSlotLeaseRoot(start); err == nil {
+	if root, err := factory.ResolveSlotLeaseRoot(start); err == nil {
 		return root
 	}
 	return start
@@ -111,7 +111,7 @@ func newSlotAcquireCmd() *cobra.Command {
 		Use:   "acquire",
 		Short: "Record this session as the holder of a resource",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := kanban.ValidateSlotResourceName(resource); err != nil {
+			if err := factory.ValidateSlotResourceName(resource); err != nil {
 				return err
 			}
 			sessionID := integrationSessionID(sessionFlag)
@@ -123,7 +123,7 @@ func newSlotAcquireCmd() *cobra.Command {
 			if boundText == "" {
 				boundText = config.LoadSlotLeaseDefaultMaxDuration(root)
 			}
-			bound, err := kanban.ParseSlotLeaseMaxDuration(boundText)
+			bound, err := factory.ParseSlotLeaseMaxDuration(boundText)
 			if err != nil {
 				return err
 			}
@@ -131,7 +131,7 @@ func newSlotAcquireCmd() *cobra.Command {
 			// exits the moment it returns, so its own pid would read stale at
 			// once. Unresolvable is recorded as 0, which reads live.
 			ownerPID, _ := session.ResolveOwnerPID()
-			lease, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{
+			lease, err := factory.AcquireSlotLease(root, factory.SlotLeaseRequest{
 				Resource:    resource,
 				SessionID:   sessionID,
 				SessionName: nameFlag,
@@ -173,14 +173,14 @@ func newSlotAcquireCmd() *cobra.Command {
 
 // slotStatusView is one resource's status as reported by `moai slot status`.
 type slotStatusView struct {
-	Resource string            `json:"resource"`
-	Held     bool              `json:"held"`
-	Stale    bool              `json:"stale"`
-	Expired  bool              `json:"expired"`
-	Lease    *kanban.SlotLease `json:"lease,omitempty"`
+	Resource string             `json:"resource"`
+	Held     bool               `json:"held"`
+	Stale    bool               `json:"stale"`
+	Expired  bool               `json:"expired"`
+	Lease    *factory.SlotLease `json:"lease,omitempty"`
 }
 
-func slotView(resource string, lease *kanban.SlotLease, now time.Time) slotStatusView {
+func slotView(resource string, lease *factory.SlotLease, now time.Time) slotStatusView {
 	v := slotStatusView{Resource: resource, Held: lease.Held()}
 	if v.Held {
 		v.Stale, v.Expired, v.Lease = lease.Stale(), lease.Expired(now), lease
@@ -217,7 +217,7 @@ func writeSlotView(w io.Writer, v slotStatusView) {
 
 // listSlotResources returns the resource names that have a record under root.
 func listSlotResources(root string) ([]string, error) {
-	entries, err := os.ReadDir(filepath.Join(root, ".moai", "state", kanban.SlotLeaseDirName))
+	entries, err := os.ReadDir(filepath.Join(root, ".moai", "state", factory.SlotLeaseDirName))
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}
@@ -227,7 +227,7 @@ func listSlotResources(root string) ([]string, error) {
 	var names []string
 	for _, e := range entries {
 		name, ok := strings.CutSuffix(e.Name(), ".json")
-		if !ok || e.IsDir() || kanban.ValidateSlotResourceName(name) != nil {
+		if !ok || e.IsDir() || factory.ValidateSlotResourceName(name) != nil {
 			continue
 		}
 		names = append(names, name)
@@ -247,7 +247,7 @@ func newSlotStatusCmd() *cobra.Command {
 			now := time.Now()
 			out := cmd.OutOrStdout()
 			if resource != "" {
-				lease, err := kanban.ReadSlotLease(root, resource)
+				lease, err := factory.ReadSlotLease(root, resource)
 				if err != nil {
 					return err
 				}
@@ -267,7 +267,7 @@ func newSlotStatusCmd() *cobra.Command {
 			}
 			views := make([]slotStatusView, 0, len(names))
 			for _, name := range names {
-				lease, readErr := kanban.ReadSlotLease(root, name)
+				lease, readErr := factory.ReadSlotLease(root, name)
 				if readErr != nil {
 					return readErr
 				}
@@ -298,14 +298,14 @@ func newSlotReleaseCmd() *cobra.Command {
 		Use:   "release",
 		Short: "Release a resource this session holds",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := kanban.ValidateSlotResourceName(resource); err != nil {
+			if err := factory.ValidateSlotResourceName(resource); err != nil {
 				return err
 			}
 			sessionID := integrationSessionID(sessionFlag)
 			if sessionID == "" && !force {
 				return fmt.Errorf("cannot resolve this session's id; pass --session <id> or --force")
 			}
-			released, err := kanban.ReleaseSlotLease(slotLeaseRoot(), resource, sessionID, force)
+			released, err := factory.ReleaseSlotLease(slotLeaseRoot(), resource, sessionID, force)
 			if err != nil {
 				return slotResult(err)
 			}

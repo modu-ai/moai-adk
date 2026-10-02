@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoPRCall is one observed subprocess.
@@ -112,7 +112,7 @@ const pinnedPRJSON = `[
 ]`
 
 // seedQueue appends n cards and returns their ids.
-func seedQueue(t *testing.T, store *kanban.BacklogStore, texts ...string) []string {
+func seedQueue(t *testing.T, store *factory.BacklogStore, texts ...string) []string {
 	t.Helper()
 	ids := make([]string, 0, len(texts))
 	for _, txt := range texts {
@@ -204,10 +204,10 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 			root, store := todoFixture(t)
 			ids := seedQueue(t, store, "first card", "second card")
 			if tc.name == "landed and picked" {
-				if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+				if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 					for i := range rec.Items {
 						if rec.Items[i].ID == ids[0] {
-							rec.Items[i].State = kanban.BacklogStatePicked
+							rec.Items[i].State = factory.BacklogStatePicked
 						}
 					}
 					return nil
@@ -293,7 +293,7 @@ func TestTodoPR_FailOpenNoGh(t *testing.T) {
 	}
 	// Local attribution alone cannot establish that no open PR carries the
 	// card. The unavailable PR lookup makes the combined outcome unknown.
-	if !strings.Contains(lines[0], string(kanban.PRLinkUnknown)) {
+	if !strings.Contains(lines[0], string(factory.PRLinkUnknown)) {
 		t.Errorf("landed card row = %q, want unknown while gh is unavailable", lines[0])
 	}
 }
@@ -311,7 +311,7 @@ func TestTodoPR_FailOpenGhNonZero(t *testing.T) {
 	if !strings.Contains(errOut, "note:") {
 		t.Errorf("stderr = %q, want a degradation note", errOut)
 	}
-	if !strings.Contains(out, string(kanban.PRLinkUnknown)) {
+	if !strings.Contains(out, string(factory.PRLinkUnknown)) {
 		t.Errorf("stdout = %q, want the unknown outcome rendered", out)
 	}
 }
@@ -368,30 +368,30 @@ func TestTodoPR_RendersOutcomeAndConfidence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("todo pr --json: %v", err)
 	}
-	var got []kanban.PRLinkOutcome
+	var got []factory.PRLinkOutcome
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("unmarshal %q: %v", out, err)
 	}
 	if len(got) != 4 {
 		t.Fatalf("json carried %d records, want 4", len(got))
 	}
-	byID := map[string]kanban.PRLinkOutcome{}
+	byID := map[string]factory.PRLinkOutcome{}
 	for _, o := range got {
 		byID[o.CardID] = o
 		if o.CardID == "" || o.Kind == "" {
 			t.Errorf("record %+v is missing card_id or outcome", o)
 		}
 	}
-	if o := byID[ids[0]]; o.Kind != kanban.PRLinkLinked || o.Confidence != kanban.PRLinkExact || o.PRState != "OPEN" {
+	if o := byID[ids[0]]; o.Kind != factory.PRLinkLinked || o.Confidence != factory.PRLinkExact || o.PRState != "OPEN" {
 		t.Errorf("%s = %+v, want linked/exact/OPEN", ids[0], o)
 	}
-	if o := byID[ids[1]]; o.Kind != kanban.PRLinkLinked || o.Confidence != kanban.PRLinkInferred {
+	if o := byID[ids[1]]; o.Kind != factory.PRLinkLinked || o.Confidence != factory.PRLinkInferred {
 		t.Errorf("%s = %+v, want linked/inferred", ids[1], o)
 	}
-	if o := byID[ids[2]]; o.Kind != kanban.PRLinkAmbiguous || len(o.PRs) != 2 {
+	if o := byID[ids[2]]; o.Kind != factory.PRLinkAmbiguous || len(o.PRs) != 2 {
 		t.Errorf("%s = %+v, want ambiguous with 2 candidates", ids[2], o)
 	}
-	if o := byID[ids[3]]; o.Kind != kanban.PRLinkLanded {
+	if o := byID[ids[3]]; o.Kind != factory.PRLinkLanded {
 		t.Errorf("%s = %+v, want landed", ids[3], o)
 	}
 
@@ -406,7 +406,7 @@ func TestTodoPR_RendersOutcomeAndConfidence(t *testing.T) {
 		if len(cols) < 5 || cols[1] == "" {
 			t.Fatalf("row %q does not display an outcome kind", ln)
 		}
-		if cols[1] == string(kanban.PRLinkLinked) && cols[3] == "" {
+		if cols[1] == string(factory.PRLinkLinked) && cols[3] == "" {
 			t.Errorf("linked row %q displays no confidence label", ln)
 		}
 	}

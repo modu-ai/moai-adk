@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // retiredLaneLabelMarker is the spelling of the Codex lane-label marker that
@@ -165,8 +165,8 @@ func adoptChildLaneEnv(child map[string]string) func() {
 // stopped publishing the worker marker along with the label fails here.
 func TestFactoryCardVerbsResolveLaneFromWorkerMarker(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+	fcQueue(t, store, factory.BacklogStatePicked)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	t.Chdir(root)
 	netScrubLaneEnv(t)
 

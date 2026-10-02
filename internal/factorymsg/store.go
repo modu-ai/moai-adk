@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	_ "modernc.org/sqlite"
 )
 
@@ -405,12 +405,12 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 		for n := 1; ; n++ {
 			var count int
 			e := tx.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot = ?`,
-				kanban.FactoryLaneLabel(n)).Scan(&count)
+				factory.FactoryLaneLabel(n)).Scan(&count)
 			if e != nil {
 				return Peer{}, e
 			}
 			if count == 0 {
-				p.Slot = kanban.FactoryLaneLabel(n)
+				p.Slot = factory.FactoryLaneLabel(n)
 				break
 			}
 		}
@@ -609,8 +609,8 @@ func canonicalSlotName(slot string) (canonical string, ok bool) {
 	case "worker", "agent":
 		return "lane", true
 	}
-	if n, isLegacy := kanban.SplitFactoryLegacyLabel(slot); isLegacy {
-		return kanban.FactoryLaneLabel(n), true
+	if n, isLegacy := factory.SplitFactoryLegacyLabel(slot); isLegacy {
+		return factory.FactoryLaneLabel(n), true
 	}
 	return "", false
 }

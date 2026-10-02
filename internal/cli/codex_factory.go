@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // parseCodexFactoryEntry consumes only MoAI's tokens before --: the lane entry
@@ -56,9 +56,9 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 			default:
 				return nil, entry, fmt.Errorf("%s requires a leader label", leadFlagLong)
 			}
-			if kanban.IsLegacyLeaderSpelling(entry.Lead) {
+			if factory.IsLegacyLeaderSpelling(entry.Lead) {
 				return nil, entry, fmt.Errorf("%s %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
-					leadFlagLong, entry.Lead, kanban.LeaderLabel()+strings.TrimPrefix(entry.Lead, "lead"))
+					leadFlagLong, entry.Lead, factory.LeaderLabel()+strings.TrimPrefix(entry.Lead, "lead"))
 			}
 			continue
 		}
@@ -112,7 +112,7 @@ func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunc
 	if lane {
 		runID := os.Getenv(config.EnvFactoryRunID)
 		endClaim := timing.begin(factoryStepLaneClaim)
-		claim, claimErr := kanban.ClaimFactoryLaneWithin(root, entry.LaneLabel, entry.LaneRole,
+		claim, claimErr := factory.ClaimFactoryLaneWithin(root, entry.LaneLabel, entry.LaneRole,
 			os.Getpid(), runID, factoryJoinLaneBound(root, runID), factoryProcessAlive)
 		endClaim()
 		// Under debug the lane-claim step carries the claimed label and the

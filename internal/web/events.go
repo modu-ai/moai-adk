@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 const debounce = 250 * time.Millisecond
@@ -220,7 +220,7 @@ func resolvedWatchPaths(root string) map[string]string {
 			pathEvent[abs] = event
 		}
 	}
-	pathEvent[kanban.StateDirForRoot(root)] = "kanban"
+	pathEvent[factory.StateDirForRoot(root)] = "kanban"
 	if factoryDir, err := homestate.FactoryDir(root); err == nil {
 		pathEvent[factoryDir] = "kanban"
 	}

@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/goal"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/statusline"
@@ -60,7 +60,7 @@ const (
 )
 
 // KanbanRecord 는 디스크에 있는 칸반 세션 기록이다.
-type KanbanRecord = kanban.Record
+type KanbanRecord = factory.Record
 
 // StatVM 의 Note 는 영어 baseline("4 in-progress")이고 NoteKey 가 실제 표시
 // 언어를 바꾼다. 개수가 문장 안에 박힌 부제는 평평한 키 하나로 담을 수 없어
@@ -547,7 +547,7 @@ func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM
 // 디렉터리 이름은 kanban.RecordPath 로 해석한다 — 이름을 여기에 적어 두면
 // 이름이 바뀐 뒤에도 조용히 옛 경로를 읽는다.
 func loadKanbanRecords(root string) []KanbanRecord {
-	dir := filepath.Dir(kanban.RecordPath(root, "probe"))
+	dir := filepath.Dir(factory.RecordPath(root, "probe"))
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil

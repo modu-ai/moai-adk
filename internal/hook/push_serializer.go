@@ -35,7 +35,7 @@ package hook
 //	          cancelled CI run; a stuck deny halts the lane.
 //
 // The record is the existing slot-lease record, read and written only through
-// internal/kanban — no new record format, lock, or verb (spec.md §E C1).
+// internal/factory — no new record format, lock, or verb (spec.md §E C1).
 
 import (
 	"encoding/json"
@@ -47,7 +47,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // pushSerializerViolationPrefix is the deny sentinel the orchestrator matches.
@@ -132,25 +132,25 @@ func checkPushSerializer(input *HookInput, hookRoot string, show *PushShowJSON, 
 		advise("no project root; cannot read the %s lease", PushDevelopSlotResource)
 		return "", ""
 	}
-	root, err := kanban.ResolveSlotLeaseRoot(hookRoot)
+	root, err := factory.ResolveSlotLeaseRoot(hookRoot)
 	if err != nil {
 		advise("cannot normalize %s to the shared root (%v)", hookRoot, err)
-		auditPushSerializer(hookRoot, kanban.SlotLeaseAuditEntry{
+		auditPushSerializer(hookRoot, factory.SlotLeaseAuditEntry{
 			Event: "fail-open", Reason: "root-unresolved: " + err.Error(), SessionID: input.SessionID,
 		})
 		return "", ""
 	}
 	if input.SessionID == "" {
 		advise("this session has no id; cannot hold or compare the %s lease", PushDevelopSlotResource)
-		auditPushSerializer(root, kanban.SlotLeaseAuditEntry{
+		auditPushSerializer(root, factory.SlotLeaseAuditEntry{
 			Event: "fail-open", Reason: "missing session id", Resource: PushDevelopSlotResource,
 		})
 		return "", ""
 	}
-	lease, readErr := kanban.ReadSlotLease(root, PushDevelopSlotResource)
+	lease, readErr := factory.ReadSlotLease(root, PushDevelopSlotResource)
 	if readErr != nil {
 		advise("cannot read the lease for %s (%v)", PushDevelopSlotResource, readErr)
-		auditPushSerializer(root, kanban.SlotLeaseAuditEntry{
+		auditPushSerializer(root, factory.SlotLeaseAuditEntry{
 			Event: "fail-open", Reason: "unreadable record: " + readErr.Error(), Resource: PushDevelopSlotResource, SessionID: input.SessionID,
 		})
 		return "", ""
@@ -160,7 +160,7 @@ func checkPushSerializer(input *HookInput, hookRoot string, show *PushShowJSON, 
 		lease.SessionID != input.SessionID &&
 		!lease.Stale() &&
 		!lease.Expired(time.Now()) {
-		auditPushSerializer(root, kanban.SlotLeaseAuditEntry{
+		auditPushSerializer(root, factory.SlotLeaseAuditEntry{
 			Event: "guard-deny", Resource: PushDevelopSlotResource, SessionID: input.SessionID,
 			HolderSessionID: lease.SessionID, HolderPID: lease.PID,
 		})
@@ -175,14 +175,14 @@ func checkPushSerializer(input *HookInput, hookRoot string, show *PushShowJSON, 
 	// PID stays 0: the hook process cannot resolve the calling session's
 	// owner pid, and a recorded 0 reads live (conservative) — the declared
 	// bound is then the record's only expiry.
-	if _, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{
+	if _, err := factory.AcquireSlotLease(root, factory.SlotLeaseRequest{
 		Resource:    PushDevelopSlotResource,
 		SessionID:   input.SessionID,
 		Command:     command,
 		MaxDuration: maxDuration,
 	}); err != nil {
 		advise("cannot record the %s lease (%v)", PushDevelopSlotResource, err)
-		auditPushSerializer(root, kanban.SlotLeaseAuditEntry{
+		auditPushSerializer(root, factory.SlotLeaseAuditEntry{
 			Event: "fail-open", Reason: "acquire failed: " + err.Error(), Resource: PushDevelopSlotResource, SessionID: input.SessionID,
 		})
 		return "", ""
@@ -212,16 +212,16 @@ func releasePushLeaseOnFailure(input *HookInput, hookRoot string, show *PushShow
 			_, _ = fmt.Fprintf(advisory, pushSerializerAdvisoryPrefix+" "+format+"\n", args...)
 		}
 	}
-	root, err := kanban.ResolveSlotLeaseRoot(hookRoot)
+	root, err := factory.ResolveSlotLeaseRoot(hookRoot)
 	if err != nil {
 		advise("cannot normalize %s to the shared root (%v)", hookRoot, err)
 		return
 	}
-	lease, err := kanban.ReadSlotLease(root, PushDevelopSlotResource)
+	lease, err := factory.ReadSlotLease(root, PushDevelopSlotResource)
 	if err != nil || !lease.Held() || lease.SessionID != input.SessionID {
 		return
 	}
-	if _, err := kanban.ReleaseSlotLease(root, PushDevelopSlotResource, input.SessionID, false); err != nil {
+	if _, err := factory.ReleaseSlotLease(root, PushDevelopSlotResource, input.SessionID, false); err != nil {
 		advise("cannot release the %s lease (%v)", PushDevelopSlotResource, err)
 	}
 }
@@ -274,7 +274,7 @@ func pushSerializerShow(hookRoot string) *PushShowJSON {
 // failure path). An unparseable configured value yields 0, which makes the
 // admit path's acquire fail — and the serializer, failing open, allows.
 func pushSerializerBound(root string) time.Duration {
-	bound, err := kanban.ParseSlotLeaseMaxDuration(config.LoadSlotLeaseDefaultMaxDuration(root))
+	bound, err := factory.ParseSlotLeaseMaxDuration(config.LoadSlotLeaseDefaultMaxDuration(root))
 	if err != nil {
 		return 0
 	}
@@ -340,6 +340,6 @@ func refspecTargetsDevelop(arg string) bool {
 
 // auditPushSerializer appends one guard line; a logging failure never changes
 // the decision (the serializer fails open by contract).
-func auditPushSerializer(root string, entry kanban.SlotLeaseAuditEntry) {
-	_ = kanban.AppendSlotLeaseAudit(root, entry)
+func auditPushSerializer(root string, entry factory.SlotLeaseAuditEntry) {
+	_ = factory.AppendSlotLeaseAudit(root, entry)
 }

@@ -21,7 +21,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestLeaderEntryUnchanged characterizes today's leader entry and the removed
@@ -35,10 +35,10 @@ func TestLeaderEntryUnchanged(t *testing.T) {
 		entry   func([]string) error
 		args    []string
 	}{
-		{"cc -f", kanban.BackendClaude, netCC, []string{"-f"}},
-		{"cc --factory", kanban.BackendClaude, netCC, []string{"--factory"}},
-		{"glm -f", kanban.BackendGLM, netGLM, []string{"-f"}},
-		{"glm --factory", kanban.BackendGLM, netGLM, []string{"--factory"}},
+		{"cc -f", factory.BackendClaude, netCC, []string{"-f"}},
+		{"cc --factory", factory.BackendClaude, netCC, []string{"--factory"}},
+		{"glm -f", factory.BackendGLM, netGLM, []string{"-f"}},
+		{"glm --factory", factory.BackendGLM, netGLM, []string{"--factory"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLeaderFixture(t)
@@ -53,7 +53,7 @@ func TestLeaderEntryUnchanged(t *testing.T) {
 			if launch.env[config.EnvMoaiFactoryWorkers] != "1" {
 				t.Errorf("leader markers: %s = %q, want 1", config.EnvMoaiFactoryWorkers, launch.env[config.EnvMoaiFactoryWorkers])
 			}
-			if launch.env[config.EnvFactoryLeadAddr] != kanban.FactoryLeaderSocketPath(runID) {
+			if launch.env[config.EnvFactoryLeadAddr] != factory.FactoryLeaderSocketPath(runID) {
 				t.Errorf("leader markers: %s = %q, want the run's leader socket", config.EnvFactoryLeadAddr, launch.env[config.EnvFactoryLeadAddr])
 			}
 			netRunRecorded(t, root, runID, tc.backend)
@@ -150,7 +150,7 @@ func TestBareMoaiPrintsBannerAndHelp(t *testing.T) {
 func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	root := t.TempDir()
 	for _, role := range []string{"plan", "run", "sync"} {
-		path := kanban.RecordPath(root, "old-"+role)
+		path := factory.RecordPath(root, "old-"+role)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -160,7 +160,7 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 		}
 	}
 	// A record the reader cannot parse degrades to absence beside the good ones.
-	garbled := kanban.RecordPath(root, "old-garbled")
+	garbled := factory.RecordPath(root, "old-garbled")
 	if err := os.WriteFile(garbled, []byte("{not json"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	t.Setenv("MOAI_KANBAN", "1")
 	t.Setenv("MOAI_KANBAN_LABEL", "plan")
 
-	records, err := kanban.ReadAll(root)
+	records, err := factory.ReadAll(root)
 	if err != nil {
 		t.Fatalf("kanban.ReadAll over the pre-existing records: %v", err)
 	}

@@ -17,13 +17,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	root := t.TempDir()
 	for _, role := range []string{"plan", "run", "sync"} {
-		path := kanban.RecordPath(root, "old-"+role)
+		path := factory.RecordPath(root, "old-"+role)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -44,7 +44,7 @@ func TestPreexistingKanbanArtifactsTolerated(t *testing.T) {
 	t.Setenv("MOAI_KANBAN_LABEL", "plan")
 
 	// Positive control: the fixture really put files where the state tree is.
-	if _, err := os.Stat(kanban.RecordPath(root, "old-plan")); err != nil {
+	if _, err := os.Stat(factory.RecordPath(root, "old-plan")); err != nil {
 		t.Fatalf("the fixture's session record is absent: %v", err)
 	}
 

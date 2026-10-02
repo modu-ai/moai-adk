@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -58,9 +58,9 @@ func TestRecordIsKeyedByTheRuntimeSessionIDNotTheSidecar(t *testing.T) {
 	}
 
 	scrubFactoryEnv(t)
-	t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(2))
+	t.Setenv(config.EnvMoaiFactoryWorker, factory.FactoryLaneLabel(2))
 	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
-	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 
 	const own = "S-99999999-8888-7777-6666-555555555555"
 	writeFactorySessionRecord(&HookInput{
@@ -70,20 +70,20 @@ func TestRecordIsKeyedByTheRuntimeSessionIDNotTheSidecar(t *testing.T) {
 		Source:     "startup",
 	})
 
-	rec, err := kanban.Read(root, own)
+	rec, err := factory.Read(root, own)
 	if err != nil {
 		t.Fatalf("no record under the session's own identifier: %v", err)
 	}
 	if rec.SessionID != own {
 		t.Fatalf("session_id = %q, want %q", rec.SessionID, own)
 	}
-	if rec.Role != kanban.RoleLane || rec.Lane != 2 {
-		t.Fatalf("role = %q lane = %d, want %q lane 2", rec.Role, rec.Lane, kanban.RoleLane)
+	if rec.Role != factory.RoleLane || rec.Lane != 2 {
+		t.Fatalf("role = %q lane = %d, want %q lane 2", rec.Role, rec.Lane, factory.RoleLane)
 	}
-	if rec.Backend != kanban.BackendClaude {
-		t.Fatalf("backend = %q, want %q", rec.Backend, kanban.BackendClaude)
+	if rec.Backend != factory.BackendClaude {
+		t.Fatalf("backend = %q, want %q", rec.Backend, factory.BackendClaude)
 	}
-	if _, statErr := os.Stat(kanban.RecordPath(root, other)); statErr == nil {
+	if _, statErr := os.Stat(factory.RecordPath(root, other)); statErr == nil {
 		t.Fatalf("a record was created under the sidecar's identifier %q", other)
 	}
 }
@@ -94,24 +94,24 @@ func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 	t.Run("lane-3", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		scrubFactoryEnv(t)
-		t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(3))
+		t.Setenv(config.EnvMoaiFactoryWorker, factory.FactoryLaneLabel(3))
 		t.Setenv(config.EnvMoaiFactoryWorkers, "4")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendGLM)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendGLM)
 
 		writeFactorySessionRecord(&HookInput{SessionID: "lane-sess", ProjectDir: root, CWD: root})
 
-		rec, err := kanban.Read(root, "lane-sess")
+		rec, err := factory.Read(root, "lane-sess")
 		if err != nil {
 			t.Fatalf("Read: %v", err)
 		}
 		if rec.Lane != 3 {
 			t.Fatalf("lane = %d, want 3", rec.Lane)
 		}
-		if rec.Role != kanban.RoleLane {
-			t.Fatalf("role = %q, want %q", rec.Role, kanban.RoleLane)
+		if rec.Role != factory.RoleLane {
+			t.Fatalf("role = %q, want %q", rec.Role, factory.RoleLane)
 		}
-		if rec.Backend != kanban.BackendGLM {
-			t.Fatalf("backend = %q, want %q", rec.Backend, kanban.BackendGLM)
+		if rec.Backend != factory.BackendGLM {
+			t.Fatalf("backend = %q, want %q", rec.Backend, factory.BackendGLM)
 		}
 	})
 
@@ -119,19 +119,19 @@ func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		scrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 
 		writeFactorySessionRecord(&HookInput{SessionID: "lead-sess", ProjectDir: root, CWD: root})
 
-		rec, err := kanban.Read(root, "lead-sess")
+		rec, err := factory.Read(root, "lead-sess")
 		if err != nil {
 			t.Fatalf("Read: %v", err)
 		}
 		if rec.Lane != 0 {
 			t.Fatalf("lead lane = %d, want 0", rec.Lane)
 		}
-		if rec.Role != kanban.RoleLeader {
-			t.Fatalf("role = %q, want %q", rec.Role, kanban.RoleLeader)
+		if rec.Role != factory.RoleLeader {
+			t.Fatalf("role = %q, want %q", rec.Role, factory.RoleLeader)
 		}
 	})
 }
@@ -150,7 +150,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 
 		writeFactorySessionRecord(&HookInput{SessionID: "a", ProjectDir: root, CWD: cardWorktree})
 
-		rec, err := kanban.Read(root, "a")
+		rec, err := factory.Read(root, "a")
 		if err != nil {
 			t.Fatalf("Read: %v", err)
 		}
@@ -167,7 +167,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 
 		writeFactorySessionRecord(&HookInput{SessionID: "b", ProjectDir: root, CWD: cardWorktree})
 
-		rec, err := kanban.Read(root, "b")
+		rec, err := factory.Read(root, "b")
 		if err != nil {
 			t.Fatalf("Read: %v", err)
 		}
@@ -184,14 +184,14 @@ func TestCardIdentifierDerivation(t *testing.T) {
 
 		writeFactorySessionRecord(&HookInput{SessionID: "c", ProjectDir: root, CWD: primaryCheckout})
 
-		raw, err := os.ReadFile(kanban.RecordPath(root, "c"))
+		raw, err := os.ReadFile(factory.RecordPath(root, "c"))
 		if err != nil {
 			t.Fatalf("ReadFile: %v", err)
 		}
 		if got := string(raw); strings.Contains(got, `"card_id"`) {
 			t.Fatalf("card_id key present for a primary checkout:\n%s", got)
 		}
-		rec, err := kanban.Read(root, "c")
+		rec, err := factory.Read(root, "c")
 		if err != nil {
 			t.Fatalf("Read: %v", err)
 		}
@@ -217,7 +217,7 @@ func TestCardIdentifierFromADeepCwdInsideACardWorktree(t *testing.T) {
 	root := newMoaiProjectRoot(t)
 	writeFactorySessionRecord(&HookInput{SessionID: "real-wt", ProjectDir: root, CWD: deep})
 
-	rec, err := kanban.Read(root, "real-wt")
+	rec, err := factory.Read(root, "real-wt")
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
@@ -241,14 +241,14 @@ func TestFactoryLaneJoinClosesOnTheThirdHop(t *testing.T) {
 	root := t.TempDir()
 
 	// Hop 1: the factory registry entry for lane-5.
-	reg := map[string]kanban.FactoryLaneEntry{
-		kanban.FactoryLaneLabel(5): {PID: lanePID, RegisteredAt: "2026-08-24T09:22:12Z"},
+	reg := map[string]factory.FactoryLaneEntry{
+		factory.FactoryLaneLabel(5): {PID: lanePID, RegisteredAt: "2026-08-24T09:22:12Z"},
 	}
-	regPath := kanban.FactoryRegistryPath(root)
+	regPath := factory.FactoryRegistryPath(root)
 	if err := os.MkdirAll(filepath.Dir(regPath), 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
-	if err := kanban.SaveFactoryRegistry(regPath, reg); err != nil {
+	if err := factory.SaveFactoryRegistry(regPath, reg); err != nil {
 		t.Fatalf("SaveFactoryRegistry: %v", err)
 	}
 
@@ -268,14 +268,14 @@ func TestFactoryLaneJoinClosesOnTheThirdHop(t *testing.T) {
 
 	// Hop 3: the lane session writes its own record at SessionStart.
 	scrubFactoryEnv(t)
-	t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(5))
+	t.Setenv(config.EnvMoaiFactoryWorker, factory.FactoryLaneLabel(5))
 	t.Setenv(config.EnvMoaiFactoryWorkers, "8")
-	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 	writeFactorySessionRecord(&HookInput{SessionID: laneSession, ProjectDir: root, CWD: root, Source: "startup"})
 
 	// Resolve the chain the consumer walks.
-	loaded := kanban.LoadFactoryRegistry(regPath)
-	laneEntry, ok := loaded[kanban.FactoryLaneLabel(5)]
+	loaded := factory.LoadFactoryRegistry(regPath)
+	laneEntry, ok := loaded[factory.FactoryLaneLabel(5)]
 	if !ok {
 		t.Fatalf("lane-5 absent from the factory registry")
 	}
@@ -297,7 +297,7 @@ func TestFactoryLaneJoinClosesOnTheThirdHop(t *testing.T) {
 		t.Fatalf("no active session carries PID %d", laneEntry.PID)
 	}
 
-	rec, err := kanban.Read(root, resolved)
+	rec, err := factory.Read(root, resolved)
 	if err != nil {
 		t.Fatalf("third hop returned nothing: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestNonFactorySessionWritesNoRecord(t *testing.T) {
 
 	writeFactorySessionRecord(&HookInput{SessionID: "plain", ProjectDir: root, CWD: root})
 
-	if _, err := os.Stat(kanban.RecordPath(root, "plain")); err == nil {
+	if _, err := os.Stat(factory.RecordPath(root, "plain")); err == nil {
 		t.Fatalf("a record was written for a non-kanban session")
 	}
 }
@@ -369,11 +369,11 @@ func TestReEntrySourcesDoNotWriteOrOverwrite(t *testing.T) {
 			root := newMoaiProjectRoot(t)
 			scrubFactoryEnv(t)
 			t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-			t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+			t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 
 			writeFactorySessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: source})
 
-			if _, err := os.Stat(kanban.RecordPath(root, "s")); err == nil {
+			if _, err := os.Stat(factory.RecordPath(root, "s")); err == nil {
 				t.Fatalf("source %q wrote a record", source)
 			}
 		})
@@ -384,18 +384,18 @@ func TestExistingRecordIsNotClobbered(t *testing.T) {
 	root := t.TempDir()
 	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 
-	seeded := kanban.NewRecord("s", "SPEC-SEED", kanban.BackendGLM).WithRole(kanban.RoleLeader)
+	seeded := factory.NewRecord("s", "SPEC-SEED", factory.BackendGLM).WithRole(factory.RoleLeader)
 	seeded.DeepScanDir = "/tmp/scan"
 	seeded.VerifyReentries = 2
-	if err := kanban.Write(root, seeded); err != nil {
+	if err := factory.Write(root, seeded); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
 	writeFactorySessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: "startup"})
 
-	rec, err := kanban.Read(root, "s")
+	rec, err := factory.Read(root, "s")
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
@@ -426,13 +426,13 @@ func TestRecordWriteFailsOpenOnUnwritableStateDirectory(t *testing.T) {
 
 	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
 
 	// The path is reached (the environment marks a kanban session) and the
 	// write attempt fails inside WriteBestEffort, which discards the error.
 	writeFactorySessionRecord(&HookInput{SessionID: "unwritable", ProjectDir: root, CWD: root, Source: "startup"})
 
-	if _, err := os.Stat(kanban.RecordPath(root, "unwritable")); err == nil {
+	if _, err := os.Stat(factory.RecordPath(root, "unwritable")); err == nil {
 		t.Fatalf("a record exists though the state directory was unwritable")
 	}
 }

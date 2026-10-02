@@ -38,7 +38,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoHistoryEmptyArchive is the explicit empty-archive line (REQ-TAQ-009):
@@ -114,15 +114,15 @@ unchanged).`,
 // whose column width is the scarce resource, while this line is
 // tab-separated and unaligned, and its whole purpose is to hand back a value
 // an operator can paste into `git show` without a second lookup.
-func todoHistoryLandingCell(e *kanban.LandingEvidence) string {
+func todoHistoryLandingCell(e *factory.LandingEvidence) string {
 	if e == nil {
 		return "landing=-"
 	}
 	if err := e.Validate(); err != nil {
 		return "landing=" + todoPRLandingMarkerMalformed
 	}
-	if e.Marker() == kanban.LandingMarkerRefHead {
-		return "landing=" + kanban.LandingMarkerRefHead
+	if e.Marker() == factory.LandingMarkerRefHead {
+		return "landing=" + factory.LandingMarkerRefHead
 	}
 	return "landing=" + e.SHA
 }
@@ -143,7 +143,7 @@ func todoHistoryStampCell(s *string) string {
 // "verdict=-" when it does not. The ref rides in the SAME cell — the record
 // is the answer's coordinates, kind and ref together — and contains no tab,
 // so the line stays machine-parseable.
-func todoHistoryVerdictCell(v *kanban.LandingVerdict) string {
+func todoHistoryVerdictCell(v *factory.LandingVerdict) string {
 	if v == nil {
 		return "verdict=-"
 	}
@@ -158,7 +158,7 @@ func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 	// the archive tables and would erase exactly the fact the REQ-TAQ-013
 	// disclosure reports. The probe runs on its own connection and runs no
 	// DDL.
-	vouch := kanban.InspectBacklogArchiveVouch(store.Path())
+	vouch := factory.InspectBacklogArchiveVouch(store.Path())
 
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -173,11 +173,11 @@ func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 	// unaffected and `absent` is never mistaken for an authoritative
 	// archive answer.
 	switch vouch.Store {
-	case kanban.BacklogStoreLegacyJSON:
+	case factory.BacklogStoreLegacyJSON:
 		if _, werr := fmt.Fprintf(errOut, "history: answered by %s; no archive is available\n", vouch.Store); werr != nil {
 			return werr
 		}
-	case kanban.BacklogStoreSQLite:
+	case factory.BacklogStoreSQLite:
 		if !vouch.HasArchive {
 			if _, werr := fmt.Fprintf(errOut, "history: answered by %s; its archive tables are missing; no archive is available\n", vouch.Store); werr != nil {
 				return werr
@@ -194,7 +194,7 @@ func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 	// rides the same stream here; the fact is the single kanban detector's
 	// (REQ-TSS-004), not a second probe.
 	if werr := discloseStaleLocalStores(errOut, "history",
-		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure())); werr != nil {
+		factory.InspectStaleLocalStores(todoQueueRootForDisclosure())); werr != nil {
 		return werr
 	}
 
@@ -212,7 +212,7 @@ func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 // history verb. See renderTodoLookup — the machine is shared with `show`
 // (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-001), and only the stderr
 // qualifier's verb name differs.
-func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id string) error {
+func renderTodoHistoryLookup(out, errOut io.Writer, rec *factory.BacklogRecord, id string) error {
 	return renderTodoLookup(out, errOut, rec, id, "history")
 }
 
@@ -231,7 +231,7 @@ func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, i
 // every completed read. Every reachable degraded path here — the probe-keyed
 // disclosure and the legacy-JSON load — completes that read, so the mark is
 // present exactly where the note is most needed.
-func renderTodoLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id, verb string) error {
+func renderTodoLookup(out, errOut io.Writer, rec *factory.BacklogRecord, id, verb string) error {
 	for _, it := range rec.Items {
 		if it.ID == id {
 			// The live line appends the time axis before the card text
@@ -256,7 +256,7 @@ func renderTodoLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id, verb
 		return err
 	}
 	_, err := fmt.Fprintf(out, "%s\tabsent\n", id)
-	if n, ok := kanban.ParseBacklogSeq(id); ok && n <= rec.LastSeq {
+	if n, ok := factory.ParseBacklogSeq(id); ok && n <= rec.LastSeq {
 		if _, werr := fmt.Fprintf(errOut,
 			"%s: %s is at or below this queue's issued-id mark (last_seq %d) — it may have been issued and its record destroyed; absent does not establish never-issued\n",
 			verb, id, rec.LastSeq); werr != nil {
@@ -271,7 +271,7 @@ func renderTodoLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id, verb
 // bounded at limit entries (0 = unbounded). A truncated listing states the
 // withheld count on stderr (REQ-TAQ-008) — a truncated read must never be
 // mistaken for a complete one.
-func renderTodoHistoryListing(out, errOut io.Writer, rec *kanban.BacklogRecord, limit int) error {
+func renderTodoHistoryListing(out, errOut io.Writer, rec *factory.BacklogRecord, limit int) error {
 	total := len(rec.Archived)
 	if total == 0 {
 		_, err := fmt.Fprintln(out, todoHistoryEmptyArchive)

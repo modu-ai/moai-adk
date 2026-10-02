@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // AC-KRS-003(b): a launcher invocation creates no record. The listing of the
@@ -19,7 +19,7 @@ func TestLauncherWritesNoFactoryRecord(t *testing.T) {
 	// MOAI_HOME sandbox so it resolves project-locally (card t1229).
 	t.Setenv(config.EnvHome, "")
 	root := t.TempDir()
-	recordDir := kanban.StateDirForRoot(root)
+	recordDir := factory.StateDirForRoot(root)
 	if err := os.MkdirAll(recordDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestLauncherWritesNoFactoryRecord(t *testing.T) {
 
 	before := listNames(t, recordDir)
 
-	restore := exportFactoryLaunchFacts("SPEC-EXAMPLE-001", kanban.BackendGLM)
+	restore := exportFactoryLaunchFacts("SPEC-EXAMPLE-001", factory.BackendGLM)
 	defer restore()
 
 	after := listNames(t, recordDir)
@@ -67,10 +67,10 @@ func TestLaunchFactsAreExportedForTheSessionToRead(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	t.Setenv(config.EnvFactoryBackend, "")
 
-	restore := exportFactoryLaunchFacts("", kanban.BackendGLM)
+	restore := exportFactoryLaunchFacts("", factory.BackendGLM)
 
-	if got := os.Getenv(config.EnvFactoryBackend); got != kanban.BackendGLM {
-		t.Fatalf("%s = %q, want %q", config.EnvFactoryBackend, got, kanban.BackendGLM)
+	if got := os.Getenv(config.EnvFactoryBackend); got != factory.BackendGLM {
+		t.Fatalf("%s = %q, want %q", config.EnvFactoryBackend, got, factory.BackendGLM)
 	}
 
 	restore()
@@ -90,7 +90,7 @@ func TestLaunchFactsPublishNoSpecMarker(t *testing.T) {
 		t.Fatalf("Unsetenv: %v", err)
 	}
 
-	restore := exportFactoryLaunchFacts("SPEC-EXAMPLE-001", kanban.BackendClaude)
+	restore := exportFactoryLaunchFacts("SPEC-EXAMPLE-001", factory.BackendClaude)
 	defer restore()
 
 	if _, present := os.LookupEnv(retiredSpecMarker); present {

@@ -37,9 +37,9 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/discovery"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // factoryUnsupportedBackendSentinel is the machine-greppable marker on the
@@ -177,9 +177,9 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			default:
 				return p, fmt.Errorf("%s requires a leader label", leadFlagLong)
 			}
-			if kanban.IsLegacyLeaderSpelling(p.Lead) {
+			if factory.IsLegacyLeaderSpelling(p.Lead) {
 				return p, fmt.Errorf("%s %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
-					leadFlagLong, p.Lead, kanban.LeaderLabel()+strings.TrimPrefix(p.Lead, "lead"))
+					leadFlagLong, p.Lead, factory.LeaderLabel()+strings.TrimPrefix(p.Lead, "lead"))
 			}
 			continue
 		}
@@ -252,9 +252,9 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			// kind and the lane entry; every other value (a number, `lane`,
 			// a lane label, anything else) takes the one usage refusal.
 			lowered := strings.ToLower(value)
-			if kanban.IsLegacyFactoryRoleValue(lowered) {
-				if n, isLabel := kanban.SplitFactoryLegacyLabel(lowered); isLabel {
-					return p, fmt.Errorf("%q is the legacy lane label; lanes are named %q now and join with -l", value, kanban.FactoryLaneLabel(n))
+			if factory.IsLegacyFactoryRoleValue(lowered) {
+				if n, isLabel := factory.SplitFactoryLegacyLabel(lowered); isLabel {
+					return p, fmt.Errorf("%q is the legacy lane label; lanes are named %q now and join with -l", value, factory.FactoryLaneLabel(n))
 				}
 				return p, fmt.Errorf("%q is the legacy role token; a lane joins with -l", value)
 			}
@@ -326,16 +326,16 @@ func laneDispatchSelection(entry launcherEntryParse) string {
 // role) name errors naming the canonical `lane-<n>` / `-l`. Nothing is
 // parsed further, nothing launches, nothing is written.
 func refuseLegacyEntryNames(args []string) error {
-	if name, ok := parseNamedLabel(args, kanban.IsLegacyLeaderSpelling); ok {
+	if name, ok := parseNamedLabel(args, factory.IsLegacyLeaderSpelling); ok {
 		return fmt.Errorf("--name %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
-			name, kanban.LeaderLabel()+strings.TrimPrefix(name, "lead"))
+			name, factory.LeaderLabel()+strings.TrimPrefix(name, "lead"))
 	}
-	if name, ok := parseNamedLabel(args, kanban.IsLegacyFactoryRoleValue); ok {
-		if n, isLabel := kanban.SplitFactoryLegacyLabel(name); isLabel {
-			return fmt.Errorf("--name %q is the legacy lane label; use %q", name, kanban.FactoryLaneLabel(n))
+	if name, ok := parseNamedLabel(args, factory.IsLegacyFactoryRoleValue); ok {
+		if n, isLabel := factory.SplitFactoryLegacyLabel(name); isLabel {
+			return fmt.Errorf("--name %q is the legacy lane label; use %q", name, factory.FactoryLaneLabel(n))
 		}
 		return fmt.Errorf("--name %q is a legacy factory spelling; the leader launches as %q and lanes join with -l",
-			name, kanban.LeaderLabel())
+			name, factory.LeaderLabel())
 	}
 	return nil
 }
@@ -392,8 +392,8 @@ func parseLauncherEntry(args []string) (launcherEntryParse, error) {
 		// and the leader's dispatch address stay one implementation. The
 		// label is always the canonical lane-<n> — every writer emits the
 		// new vocabulary (REQ-RNC-010).
-		next := kanban.NextFactoryLaneNumber(loadFactoryRegistry(factoryRegistryPath(launchProjectRoot())), factoryProcessAlive)
-		label := kanban.FactoryLaneLabel(next)
+		next := factory.NextFactoryLaneNumber(loadFactoryRegistry(factoryRegistryPath(launchProjectRoot())), factoryProcessAlive)
+		label := factory.FactoryLaneLabel(next)
 		entry.Rest = insertBeforePassthrough(entry.Rest, nameFlagLong, label)
 		entry.FactoryAutoNumber = true
 		return entry, nil
@@ -536,7 +536,7 @@ func enterFactoryLaneRun(root, explicit, leadTarget string, timing *factoryLaunc
 	}
 	target := leadTarget
 	if target == "" {
-		target = kanban.LeaderLabel()
+		target = factory.LeaderLabel()
 	}
 	verified, derr := discoverFactoryLeader(context.Background(), root, target)
 	if derr != nil {
@@ -603,7 +603,7 @@ func refuseCodexLeaderRun(root, runID string) (err error) {
 // operator-supplied count, or homestate.LaneCapacityDerived when the leader
 // start carried none — the marker the join reads as capacity-open.
 func recordFactoryRunStart(root, runID, backend, specID string, declaredLanes int) (err error) {
-	if err := kanban.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
+	if err := factory.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
 		return err
 	}
 	db, err := homestate.OpenFactory(root)
@@ -676,7 +676,7 @@ func resolveFactoryBranch(factoryEnabled, isLane bool) factoryBranch {
 // defense for direct callers.
 func parseFactoryLaneLabel(args []string) (label string, ok bool) {
 	return parseNamedLabel(args, func(candidate string) bool {
-		_, isLane := kanban.SplitFactoryLaneLabel(candidate)
+		_, isLane := factory.SplitFactoryLaneLabel(candidate)
 		return isLane
 	})
 }
@@ -706,7 +706,7 @@ func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 	// directory (t118 scheme): the actual messaging-substrate address is a run
 	// concern, and this value gives the notice a non-empty, grep-friendly
 	// address line that never collides with another run's.
-	_ = os.Setenv(config.EnvFactoryLeadAddr, kanban.FactoryLeaderSocketPath(runID))
+	_ = os.Setenv(config.EnvFactoryLeadAddr, factory.FactoryLeaderSocketPath(runID))
 
 	return func() {
 		restoreTier()
@@ -770,29 +770,29 @@ func enterFactoryLaneMode(label string, lanes int, clearPolicy string, dispatch 
 }
 
 // factoryLaneEntry is one registered lane: the pid of the process that
-// claimed the label. The type lives in internal/kanban (factory_slots.go)
+// claimed the label. The type lives in internal/factory (factory_slots.go)
 // since the t85 leader loop — the alias keeps this package's call sites and
 // tests on their historical name.
-type factoryLaneEntry = kanban.FactoryLaneEntry
+type factoryLaneEntry = factory.FactoryLaneEntry
 
 // factoryRegistryPath / loadFactoryRegistry / saveFactoryRegistry delegate to
 // the kanban registry cluster (factory_slots.go). The cluster moved out of
 // this file because the SessionStart hook needs the same reads and cannot
 // import this package; these delegates keep the cli surface stable.
-func factoryRegistryPath(root string) string { return kanban.FactoryRegistryPath(root) }
+func factoryRegistryPath(root string) string { return factory.FactoryRegistryPath(root) }
 
 func loadFactoryRegistry(path string) map[string]factoryLaneEntry {
-	return kanban.LoadFactoryRegistry(path)
+	return factory.LoadFactoryRegistry(path)
 }
 
 func saveFactoryRegistry(path string, reg map[string]factoryLaneEntry) error {
-	return kanban.SaveFactoryRegistry(path, reg)
+	return factory.SaveFactoryRegistry(path, reg)
 }
 
 // factoryProcessAlive is the liveness seam; tests override it to simulate
 // live and dead claims without spawning processes. The default probe itself
-// lives in internal/kanban (factory_alive_*.go) since the same move.
-var factoryProcessAlive = kanban.FactoryProcessAlive
+// lives in internal/factory (factory_alive_*.go) since the same move.
+var factoryProcessAlive = factory.FactoryProcessAlive
 
 // resolveFactoryLaneName returns the label this lane session should
 // launch under: label itself when its number is free, or the next incremented
@@ -809,8 +809,8 @@ var factoryProcessAlive = kanban.FactoryProcessAlive
 // operator-visible bump line.
 func resolveFactoryLaneName(root, label string, auto bool, notes io.Writer) (string, error) {
 	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
-	claim, err := kanban.ClaimFactoryLane(root, label, auto, os.Getpid(), runID, factoryProcessAlive)
-	var legacyRun *kanban.FactoryLegacyRunError
+	claim, err := factory.ClaimFactoryLane(root, label, auto, os.Getpid(), runID, factoryProcessAlive)
+	var legacyRun *factory.FactoryLegacyRunError
 	if errors.As(err, &legacyRun) {
 		// REQ-RNC-022: a live legacy record of the same run refuses the join.
 		return "", fmt.Errorf("claim factory lane: %s", legacyRun)
@@ -822,7 +822,7 @@ func resolveFactoryLaneName(root, label string, auto bool, notes io.Writer) (str
 	if notes == nil {
 		return final, nil
 	}
-	if canonical, _ := kanban.CanonicalFactoryLabel(label); canonical != "" && canonical != final {
+	if canonical, _ := factory.CanonicalFactoryLabel(label); canonical != "" && canonical != final {
 		_, _ = fmt.Fprintf(notes, "factory: %s is held by a live session; launching as %s\n", canonical, final)
 	}
 	return final, nil

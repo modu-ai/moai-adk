@@ -25,14 +25,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // discloseNonAuthoritativeBacklogJSON writes one line naming the store that
 // answered and naming the backlog.json beside it as not authoritative, and
 // writes nothing at all when there is nothing to disclose (REQ-BJD-003).
 // It touches no file and takes no lock.
-func discloseNonAuthoritativeBacklogJSON(w io.Writer, verb string, vouch kanban.BacklogArchiveVouch) error {
+func discloseNonAuthoritativeBacklogJSON(w io.Writer, verb string, vouch factory.BacklogArchiveVouch) error {
 	if !vouch.NonAuthoritativeJSON {
 		return nil
 	}
@@ -56,7 +56,7 @@ func discloseNonAuthoritativeBacklogJSON(w io.Writer, verb string, vouch kanban.
 // passes through here, so the ghost discovery cannot be silent on one
 // surface and loud on another, and the once-only marker cannot drift
 // between verbs.
-func discloseStaleLocalStores(w io.Writer, verb string, fact kanban.StaleStoreFact) error {
+func discloseStaleLocalStores(w io.Writer, verb string, fact factory.StaleStoreFact) error {
 	if fact.Divergent {
 		for _, st := range fact.Stores {
 			if !st.Readable || st.LastSeq == fact.HomeLastSeq {
@@ -77,7 +77,7 @@ func discloseStaleLocalStores(w io.Writer, verb string, fact kanban.StaleStoreFa
 // resolves its answering store through, so a disclosure can never name a
 // store the verb's own read never considered.
 func todoQueueRootForDisclosure() string {
-	return kanban.ResolveTodoQueueRoot(resolveProjectDir())
+	return factory.ResolveTodoQueueRoot(resolveProjectDir())
 }
 
 // @MX:ANCHOR fan_in=5 - SPEC-BACKLOG-JSON-DISCLOSURE-001 REQ-BJD-002 sole
@@ -98,9 +98,9 @@ func todoQueueRootForDisclosure() string {
 // (REQ-TSS-004), so the two surfaces cannot disagree.
 func discloseQueueLayout(cmd *cobra.Command, verb string) error {
 	if err := discloseNonAuthoritativeBacklogJSON(cmd.ErrOrStderr(), verb,
-		kanban.InspectBacklogArchiveVouch(newTodoReadStore().Path())); err != nil {
+		factory.InspectBacklogArchiveVouch(newTodoReadStore().Path())); err != nil {
 		return err
 	}
 	return discloseStaleLocalStores(cmd.ErrOrStderr(), verb,
-		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure()))
+		factory.InspectStaleLocalStores(todoQueueRootForDisclosure()))
 }

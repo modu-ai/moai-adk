@@ -45,9 +45,9 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -783,13 +783,13 @@ const codexFactoryLegacyEntryCanonical = "'moai codex -l' is the only Codex fact
 // the caller falls through to the REQ-SD-004 line.
 func codexFactoryLegacyRefusalDiag(value string) (diag string, ok bool) {
 	lowered := strings.ToLower(value)
-	if n, isLabel := kanban.SplitFactoryLegacyLabel(lowered); isLabel {
-		return fmt.Sprintf("%q is the legacy lane label; use %q — %s", value, kanban.FactoryLaneLabel(n), codexFactoryLegacyEntryCanonical), true
+	if n, isLabel := factory.SplitFactoryLegacyLabel(lowered); isLabel {
+		return fmt.Sprintf("%q is the legacy lane label; use %q — %s", value, factory.FactoryLaneLabel(n), codexFactoryLegacyEntryCanonical), true
 	}
-	if kanban.IsLegacyFactoryRoleValue(lowered) {
+	if factory.IsLegacyFactoryRoleValue(lowered) {
 		return fmt.Sprintf("%q is the legacy role token; %s", value, codexFactoryLegacyEntryCanonical), true
 	}
-	if kanban.IsLegacyLeaderSpelling(lowered) {
+	if factory.IsLegacyLeaderSpelling(lowered) {
 		return fmt.Sprintf("%q is the legacy leader spelling; the factory leader launches with 'moai cc -f' or 'moai glm -f'", value), true
 	}
 	return "", false
@@ -987,7 +987,7 @@ func runCodexFactoryLane(cmd *cobra.Command, debug bool) error {
 	// the child environment carries the same marker.
 	restoreLane := enterFactoryLaneMode(label, 0, "", config.FactoryDispatchAuto)
 	defer restoreLane()
-	restoreBackend := exportFactoryLaunchFacts("", kanban.BackendGPT)
+	restoreBackend := exportFactoryLaunchFacts("", factory.BackendGPT)
 	defer restoreBackend()
 
 	ctx := cmd.Context()
@@ -1064,7 +1064,7 @@ func codexCardLaunchEnv(label, cardID string) []string {
 	return append(env,
 		config.EnvFactoryRole+"="+config.FactoryRoleLane,
 		config.EnvMoaiFactoryWorker+"="+label,
-		config.EnvFactoryBackend+"="+kanban.BackendGPT,
+		config.EnvFactoryBackend+"="+factory.BackendGPT,
 		config.EnvFactoryCard+"="+cardID,
 	)
 }

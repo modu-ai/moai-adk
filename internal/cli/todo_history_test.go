@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // seedHistoryFates builds the four-fates fixture: t1 queued, t2 picked,
@@ -88,12 +88,12 @@ func TestTodoHistoryReportsLiveCard(t *testing.T) {
 
 	for _, tc := range []struct {
 		id      string
-		state   kanban.BacklogState
+		state   factory.BacklogState
 		text    string
 		stampAt int // index of the field that must be a real stamp
 	}{
-		{"t2", kanban.BacklogStatePicked, "polish the docs landing page", 4},
-		{"t3", kanban.BacklogStateDropped, "[DROPPED — superseded by the parser rewrite] drop the legacy cache layer", 5},
+		{"t2", factory.BacklogStatePicked, "polish the docs landing page", 4},
+		{"t3", factory.BacklogStateDropped, "[DROPPED — superseded by the parser rewrite] drop the legacy cache layer", 5},
 	} {
 		out, _, err := runTodo(t, "history", tc.id)
 		if err != nil {
@@ -254,7 +254,7 @@ func TestTodoHistoryEmptyArchiveIsExplicit(t *testing.T) {
 // last_seq — the exact shape a pre-archive `done` left behind, which the
 // current CLI (which archives) cannot produce. This is the first of the
 // two storage surgeries acceptance.md names.
-func seedFiveAndDeleteT3(t *testing.T) (root string, store *kanban.BacklogStore) {
+func seedFiveAndDeleteT3(t *testing.T) (root string, store *factory.BacklogStore) {
 	t.Helper()
 	root, store = todoFixture(t)
 	for _, text := range []string{"one", "two", "three", "four", "five"} {
@@ -599,7 +599,7 @@ func goldenReplay(t *testing.T, root string) map[string]string {
 		}
 		streams[tc.name] = normalizeGoldenTimestamps(out)
 	}
-	counts, err := json.Marshal(kanban.BacklogCountsForRoot(root))
+	counts, err := json.Marshal(factory.BacklogCountsForRoot(root))
 	if err != nil {
 		t.Fatalf("marshal state counts: %v", err)
 	}

@@ -32,7 +32,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // landedCriterion names the counting criterion a cache's number was produced
@@ -190,7 +190,7 @@ var landedGitRunner = func(ctx context.Context, dir string, args ...string) (str
 // tests count. kanban's contract carries a command name; the adapter only
 // ever runs git and refuses anything else rather than silently running git in
 // its place.
-func landedScanRunner(ctx context.Context, dir string) kanban.CommandRunner {
+func landedScanRunner(ctx context.Context, dir string) factory.CommandRunner {
 	return func(name string, args ...string) (string, error) {
 		if name != "git" {
 			return "", fmt.Errorf("statusline: landed scan runs git only, got %q", name)
@@ -229,7 +229,7 @@ func RefreshLandedCounts(ctx context.Context, boardRoot string) error {
 	}
 
 	picked := pickedCards(boardRoot)
-	ref := kanban.LandedRefFor(boardRoot)
+	ref := factory.LandedRefFor(boardRoot)
 	if len(picked) == 0 {
 		// Nothing in flight is an OBSERVED zero, reached without asking git
 		// anything — renderable, unlike the unknowns above.
@@ -242,7 +242,7 @@ func RefreshLandedCounts(ctx context.Context, boardRoot string) error {
 	ctx, cancel := context.WithTimeout(ctx, landedScanBudget)
 	defer cancel()
 
-	commits, err := kanban.ScanLandedSubjects(landedScanRunner(ctx, boardRoot), ref)
+	commits, err := factory.ScanLandedSubjects(landedScanRunner(ctx, boardRoot), ref)
 	if err != nil {
 		// A failed or malformed query: keep the stale-but-timestamped cache and
 		// try again next TTL. Writing a zero here is exactly the fabricated
@@ -250,10 +250,10 @@ func RefreshLandedCounts(ctx context.Context, boardRoot string) error {
 		return nil
 	}
 
-	attributed := kanban.LandedAttributions(commits, kanban.LandedBranchFromRef(ref))
+	attributed := factory.LandedAttributions(commits, factory.LandedBranchFromRef(ref))
 	landed := 0
 	for _, c := range picked {
-		if hit, ok := attributed[c.ID]; ok && kanban.AutoDoneSubjectFresh(hit, c.AddedAt) {
+		if hit, ok := attributed[c.ID]; ok && factory.AutoDoneSubjectFresh(hit, c.AddedAt) {
 			landed++
 		}
 	}
@@ -278,13 +278,13 @@ type pickedCard struct {
 // never perform the queue's one-time storage cutover, which is why this uses
 // LoadPure rather than Load.
 func pickedCards(boardRoot string) []pickedCard {
-	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(boardRoot)).LoadPure()
+	rec, err := factory.NewBacklogStore(factory.BacklogPathForRoot(boardRoot)).LoadPure()
 	if err != nil || rec == nil {
 		return nil
 	}
 	var cards []pickedCard
 	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStatePicked && landedCardToken.MatchString(it.ID) {
+		if it.State == factory.BacklogStatePicked && landedCardToken.MatchString(it.ID) {
 			cards = append(cards, pickedCard{ID: it.ID, AddedAt: it.AddedAt})
 		}
 	}

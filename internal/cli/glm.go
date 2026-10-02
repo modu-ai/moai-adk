@@ -17,8 +17,8 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
@@ -240,10 +240,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		// Same recording as the cc leader: the kanban store AND the factory state
 		// a lane's -l join resolves. Recording only the former left
 		// every GLM-led run unjoinable (NO_ACTIVE_FACTORY).
-		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), kanban.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), factory.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
 			return fmt.Errorf("record factory run: %w", err)
 		}
-		defer exportFactoryLaunchFacts(entry.Spec, kanban.BackendGLM)()
+		defer exportFactoryLaunchFacts(entry.Spec, factory.BackendGLM)()
 		var leaderName string
 		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeaderSessionName(leaderName)()
@@ -276,7 +276,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy, laneDispatchSelection(entry))()
-		defer exportFactoryLaunchFacts(entry.Spec, kanban.BackendGLM)()
+		defer exportFactoryLaunchFacts(entry.Spec, factory.BackendGLM)()
 		// See cc.go: the relaunch policy is the supervising loop (design.md
 		// §6) — the launcher stays the parent across every card.
 		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {

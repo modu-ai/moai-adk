@@ -1,6 +1,6 @@
 // todo.go — SPEC-KANBAN-TODO-CLI-001 M2: the `moai todo` command surface.
 //
-// Thin cobra wiring over internal/kanban.BacklogStore: every mutation
+// Thin cobra wiring over internal/factory.BacklogStore: every mutation
 // delegates to the store's locked Mutate path, reads go through the
 // lock-free Load. The verbs serve the kanban dispatch protocol's entry rule
 // (`/moai todo` is the operator's act — the leader never picks for the
@@ -35,7 +35,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // init wires internal/cli's existing userHomeDirFn test-injection seam
@@ -45,7 +45,7 @@ import (
 // runtime is still observed by the resolution — the same pattern glm.go uses
 // for glmcred.HomeDirFn.
 func init() {
-	kanban.HomeDirFn = func() (string, error) { return userHomeDirFn() }
+	factory.HomeDirFn = func() (string, error) { return userHomeDirFn() }
 }
 
 // todoBacklogPath returns the backlog file location under root — the same
@@ -57,7 +57,7 @@ func init() {
 // where the queue lock is already in play (REQ-TOSQ-015). The read-only
 // surfaces — the console, the statusline — use the pure form and move nothing.
 func todoBacklogPath(root string) string {
-	return kanban.BacklogPathForRootAdopting(root)
+	return factory.BacklogPathForRootAdopting(root)
 }
 
 // resolveTodoQueueRoot returns the directory the backlog queue hangs from
@@ -66,13 +66,13 @@ func todoBacklogPath(root string) string {
 // answer — adopting a pre-existing project-local queue on that fallback
 // branch, exactly as before.
 //
-// The resolution itself lives in internal/kanban since
+// The resolution itself lives in internal/factory since
 // SPEC-WEB-TODO-QUEUE-001 M1, so the command layer and the web console share
 // ONE resolution (a second implementation is a second chance to fork the
 // queue). The command path takes the ADOPTING entry point; the console takes
 // the pure one, which never writes.
 func resolveTodoQueueRoot() string {
-	return kanban.ResolveTodoQueueRootAdopting(resolveProjectDir())
+	return factory.ResolveTodoQueueRootAdopting(resolveProjectDir())
 }
 
 // warnTempOriginQueueRefusal surfaces the temporary-origin refusal on the
@@ -93,7 +93,7 @@ func resolveTodoQueueRoot() string {
 // the command's PersistentPreRun, and the pure resolver the web console
 // imports neither writes nor speaks.
 func warnTempOriginQueueRefusal(cmd *cobra.Command) {
-	substitute, matched, refused := kanban.TempOriginRefusal(resolveProjectDir())
+	substitute, matched, refused := factory.TempOriginRefusal(resolveProjectDir())
 	if !refused {
 		return
 	}
@@ -104,15 +104,15 @@ func warnTempOriginQueueRefusal(cmd *cobra.Command) {
 
 // newTodoStore is the single constructor every todo verb goes through, so
 // every verb resolves — and sees — the same queue file.
-func newTodoStore() *kanban.BacklogStore {
-	return kanban.NewBacklogStore(todoBacklogPath(resolveTodoQueueRoot()))
+func newTodoStore() *factory.BacklogStore {
+	return factory.NewBacklogStore(todoBacklogPath(resolveTodoQueueRoot()))
 }
 
 // Observational commands must not relocate a legacy queue while constructing
 // their store, before LoadPure even gets a chance to preserve it.
-func newTodoReadStore() *kanban.BacklogStore {
-	root := kanban.ResolveTodoQueueRoot(resolveProjectDir())
-	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+func newTodoReadStore() *factory.BacklogStore {
+	root := factory.ResolveTodoQueueRoot(resolveProjectDir())
+	return factory.NewBacklogStore(factory.BacklogPathForRoot(root))
 }
 
 // todoStoreAt and todoReadStoreAt anchor the queue at an explicit root — the
@@ -120,12 +120,12 @@ func newTodoReadStore() *kanban.BacklogStore {
 // (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-024). The CLI verbs keep resolving
 // through resolveTodoQueueRoot; the two shapes share the same path builders,
 // so a root both surfaces agree on sees the same queue file.
-func todoStoreAt(root string) *kanban.BacklogStore {
-	return kanban.NewBacklogStore(todoBacklogPath(root))
+func todoStoreAt(root string) *factory.BacklogStore {
+	return factory.NewBacklogStore(todoBacklogPath(root))
 }
 
-func todoReadStoreAt(root string) *kanban.BacklogStore {
-	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+func todoReadStoreAt(root string) *factory.BacklogStore {
+	return factory.NewBacklogStore(factory.BacklogPathForRoot(root))
 }
 
 // todoLandedRef is the single place the todo surface resolves the ref the
@@ -136,7 +136,7 @@ func todoReadStoreAt(root string) *kanban.BacklogStore {
 // because the queue and the integration branch are properties of one
 // repository, not of whichever worktree the command happens to run in.
 func todoLandedRef() string {
-	return kanban.LandedRefFor(kanban.ResolveTodoQueueRoot(resolveProjectDir()))
+	return factory.LandedRefFor(factory.ResolveTodoQueueRoot(resolveProjectDir()))
 }
 
 // todoLandedRefResolved is todoLandedRef with its provenance: which chain
@@ -144,15 +144,15 @@ func todoLandedRef() string {
 // configured key (REQ-TLA-011) — a ref the repository supplied through its
 // own recorded default rather than through configuration is the exceptional
 // path, and a silent fallback is exactly how the wrong-ref answer hid.
-func todoLandedRefResolved() (string, kanban.LandedRefLevel) {
-	return kanban.LandedRefForWithLevel(kanban.ResolveTodoQueueRoot(resolveProjectDir()))
+func todoLandedRefResolved() (string, factory.LandedRefLevel) {
+	return factory.LandedRefForWithLevel(factory.ResolveTodoQueueRoot(resolveProjectDir()))
 }
 
 // todoRefLevelSource names where a chain level's answer came from, for the
 // disclosure line.
-func todoRefLevelSource(level kanban.LandedRefLevel) string {
+func todoRefLevelSource(level factory.LandedRefLevel) string {
 	switch level {
-	case kanban.LandedRefOriginHEAD:
+	case factory.LandedRefOriginHEAD:
 		return "refs/remotes/origin/HEAD"
 	default:
 		return "the compiled-in default"
@@ -731,7 +731,7 @@ func newTodoAddCmd() *cobra.Command {
 // parent's natural-language fallthrough (t69): non-empty guard, locked
 // append, "<id> <position>" stdout line. `--pick` stays add-only — the
 // fallthrough path has no flags.
-func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
+func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec factory.CardDecider) error {
 	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force, dec)
 }
 
@@ -739,7 +739,7 @@ func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec kanban.Ca
 // the shape the MCP todo_add tool calls (REQ-SD-024), so both surfaces run
 // one implementation. The decider argument is the classification seam this
 // invocation resolves; the MCP surface passes the package default.
-func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
+func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec factory.CardDecider) error {
 	if dec == nil {
 		dec = todoCardDecider
 	}
@@ -756,14 +756,14 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 	// (TestTodoWriteVerbs_CarryNoDisclosure). Runs before the Mutate, on
 	// stderr; stdout stays the bare "id position" machine line.
 	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add",
-		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
+		factory.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
 		return err
 	}
-	var item kanban.BacklogItem
+	var item factory.BacklogItem
 	var pos int
-	err := todoStoreAt(root).Mutate(func(rec *kanban.BacklogRecord) error {
+	err := todoStoreAt(root).Mutate(func(rec *factory.BacklogRecord) error {
 		var mutErr error
-		item, pos, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStateQueued, force)
+		item, pos, mutErr = appendAnalyzedCard(rec, text, factory.BacklogStateQueued, force)
 		if mutErr != nil {
 			return mutErr
 		}
@@ -794,7 +794,7 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 // race that mis-picked t67 on 2026-08-16. The confirmation prints the
 // issued id and the card text prefix; the caller never has to guess what
 // `--pick` just picked.
-func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool, dec kanban.CardDecider) error {
+func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string, force bool, dec factory.CardDecider) error {
 	if dec == nil {
 		dec = todoCardDecider
 	}
@@ -802,13 +802,13 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	// the issued id is a receipt for the store that answered. Scoped to the
 	// t1307 divergence line only (see the append-path comment).
 	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add --pick",
-		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
+		factory.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
 		return err
 	}
-	var item kanban.BacklogItem
-	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	var item factory.BacklogItem
+	err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		var mutErr error
-		item, _, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStatePicked, force)
+		item, _, mutErr = appendAnalyzedCard(rec, text, factory.BacklogStatePicked, force)
 		if mutErr != nil {
 			return mutErr
 		}
@@ -891,10 +891,10 @@ func runTodoListRoot(root string, cmd *cobra.Command, jsonOutput bool, droppedOn
 		_, _ = fmt.Fprintln(out, "queue is empty")
 		return nil
 	}
-	var visible []kanban.BacklogItem
+	var visible []factory.BacklogItem
 	dropped := 0
 	for _, it := range rec.Items {
-		isDropped := it.State == kanban.BacklogStateDropped
+		isDropped := it.State == factory.BacklogStateDropped
 		if isDropped {
 			dropped++
 		}
@@ -996,9 +996,9 @@ func newTodoDoneCmd() *cobra.Command {
 			// reported defect: eight cards archived on 2026-09-12 carried a
 			// recorded delivering SHA and every one of them closed as if
 			// nothing were known.
-			verdict := kanban.LandingUnknown
-			var landing *kanban.LandingEvidence
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			verdict := factory.LandingUnknown
+			var landing *factory.LandingEvidence
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				// Refused mutations below: Mutate writes nothing, so the
 				// record stays byte-identical on every one of them.
 				at := -1
@@ -1045,7 +1045,7 @@ func newTodoDoneCmd() *cobra.Command {
 					// write authority, and the delivering SHA is re-derived
 					// at re-adjudication by re-running the predicate against
 					// the recorded ref (REQ-TST-013).
-					rec.Archived[len(rec.Archived)-1].LandingVerdict = &kanban.LandingVerdict{
+					rec.Archived[len(rec.Archived)-1].LandingVerdict = &factory.LandingVerdict{
 						Verdict: verdict,
 						Ref:     ref,
 						At:      time.Now().UTC().Format(time.RFC3339),
@@ -1071,7 +1071,7 @@ func newTodoDoneCmd() *cobra.Command {
 			// validated record IS the answer, obtained earlier.
 			recorded := todoDoneLandingSuffix(landing)
 			if recorded != "" && !requireLanded {
-				verdict = kanban.LandingLanded
+				verdict = factory.LandingLanded
 			}
 			line := fmt.Sprintf("done %s landing=%s", id, verdict)
 			if requireLanded {
@@ -1140,27 +1140,27 @@ no such notice.`
 // this SPEC. Making it answer the right question needs a persisted
 // landing-state field, which is a separate card's scope; this ships the seam
 // and says plainly what it can and cannot answer (spec.md §A.4).
-func todoRequireLanded(cmd *cobra.Command, id, ref string, refLevel kanban.LandedRefLevel) (kanban.LandingAnswer, error) {
+func todoRequireLanded(cmd *cobra.Command, id, ref string, refLevel factory.LandedRefLevel) (factory.LandingAnswer, error) {
 	// The answering level is disclosed when it sits BELOW the configured key:
 	// a ref the repository supplied through refs/remotes/origin/HEAD or the
 	// compiled-in default is the exceptional path, and the operator sees the
 	// source rather than inferring it (REQ-TLA-011). A configured project
 	// (level 1) gets no notice — the exceptional path is what the notice
 	// marks, not every path.
-	if refLevel != kanban.LandedRefConfigured {
+	if refLevel != factory.LandedRefConfigured {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 			"note: landed ref %s was supplied by chain level %d (%s) — this project does not configure git_strategy.worktree_base_branch\n",
 			ref, refLevel, todoRefLevelSource(refLevel))
 	}
-	q := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: ref}
+	q := factory.GitLandedQuerier{Run: todoRunCommand, Ref: ref}
 	answer, err := q.Landed(id)
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 			"note: --require-landed could not answer for %s against %s (%v) — proceeding, because an unanswerable query is not evidence of not-landed\n",
 			id, q.LandedRef(), err)
-		return kanban.LandingUnknown, nil
+		return factory.LandingUnknown, nil
 	}
-	if answer == kanban.LandingNotLanded {
+	if answer == factory.LandingNotLanded {
 		return answer, fmt.Errorf("backlog item %s is named by no commit on %s — --require-landed refuses "+
 			"(the check asks whether anything naming the card has landed on that ref, not whether the card's last step has)",
 			id, q.LandedRef())
@@ -1182,7 +1182,7 @@ func todoRequireLanded(cmd *cobra.Command, id, ref string, refLevel kanban.Lande
 // to store one without the other: `landed` as a verdict and `operator` as its
 // source are two different facts, and a reader who sees only the first cannot
 // tell a stored assertion from a query this run made.
-func todoDoneLandingSuffix(e *kanban.LandingEvidence) string {
+func todoDoneLandingSuffix(e *factory.LandingEvidence) string {
 	if e == nil || strings.TrimSpace(e.SHA) == "" {
 		return ""
 	}
@@ -1231,7 +1231,7 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 					// state it accepts, never by refusing the ones it knows —
 					// a state added later must not fall through a negative's
 					// default.
-					if it.State == kanban.BacklogStateQueued {
+					if it.State == factory.BacklogStateQueued {
 						queued++
 						_, _ = fmt.Fprintf(out, "%s\t%s\n", it.ID, todoPRCell(it.Text))
 					}
@@ -1244,7 +1244,7 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 
 			id := normalizeTodoRef(args[0])
 			var pickedText string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID == id {
 						// The pick gate enumerates POSITIVELY
@@ -1257,13 +1257,13 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 						// to refuse only `dropped`, so a held card (and any
 						// future state) was pickable.
 						switch rec.Items[i].State {
-						case kanban.BacklogStateQueued:
+						case factory.BacklogStateQueued:
 							// the only pickable state
-						case kanban.BacklogStateDropped:
+						case factory.BacklogStateDropped:
 							return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
-						case kanban.BacklogStateHold:
+						case factory.BacklogStateHold:
 							return fmt.Errorf("backlog item %s is held — use moai todo unhold %s before picking", id, id)
-						case kanban.BacklogStatePicked:
+						case factory.BacklogStatePicked:
 							return fmt.Errorf("backlog item %s is already picked — use moai todo unpick %s before picking it again", id, id)
 						default:
 							return fmt.Errorf("backlog item %s is %q — not a pickable state", id, rec.Items[i].State)
@@ -1274,7 +1274,7 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 							return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
 								id, todoTextPrefix(rec.Items[i].Text), expect)
 						}
-						rec.Items[i].State = kanban.BacklogStatePicked
+						rec.Items[i].State = factory.BacklogStatePicked
 						// REQ-TST-004: the current picked episode begins now;
 						// any stamp from a previous episode is overwritten.
 						rec.Items[i].PickedAt = todoStampNow()
@@ -1319,7 +1319,7 @@ func newTodoUnpickCmd() *cobra.Command {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
 			var text string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -1329,14 +1329,14 @@ func newTodoUnpickCmd() *cobra.Command {
 					// every other state refuses — no negated comparison whose
 					// default could swallow a state added later.
 					switch rec.Items[i].State {
-					case kanban.BacklogStatePicked:
+					case factory.BacklogStatePicked:
 						// the only unpickable-into-queued state
 					default:
 						// Refused mutation: Mutate writes nothing, so the
 						// file stays byte-identical on a refusal.
 						return fmt.Errorf("backlog item %s is %s, not picked", id, rec.Items[i].State)
 					}
-					rec.Items[i].State = kanban.BacklogStateQueued
+					rec.Items[i].State = factory.BacklogStateQueued
 					// REQ-TST-005: a queued card carries no picked stamp.
 					rec.Items[i].PickedAt = nil
 					rec.Items[i].SpecID = nil
@@ -1362,12 +1362,12 @@ func recordFactoryCardState(cardID, specID, state, eventKind string) {
 	}
 	owner := os.Getenv(config.EnvMoaiFactoryWorker)
 	if owner == "" {
-		owner = kanban.RoleLeader // the factory card owner vocabulary: `leader` (REQ-RNC-010)
+		owner = factory.RoleLeader // the factory card owner vocabulary: `leader` (REQ-RNC-010)
 	}
 	// Queue mutations resolve through the primary checkout, but provenance must
 	// describe the lane checkout that actually selected and executed the card.
 	// OpenFactory canonicalizes only the DB routing after capture.
-	_ = kanban.RecordFactoryCardState(resolveProjectDir(), runID, cardID, owner, specID, state, eventKind)
+	_ = factory.RecordFactoryCardState(resolveProjectDir(), runID, cardID, owner, specID, state, eventKind)
 }
 
 // normalizeTodoRef maps a bare <n> argument to the item id t<n>; an explicit

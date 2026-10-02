@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestParseFactoryFlagLaneVocabulary pins the lane-axis entry tokens
@@ -105,8 +105,8 @@ func TestResolveFactoryWorkerNameRefusesLegacyLabel(t *testing.T) {
 }
 
 // NextFactoryLaneNumberForTest delegates to the kanban SSOT.
-func NextFactoryLaneNumberForTest(reg map[string]kanban.FactoryLaneEntry, alive func(int) bool) int {
-	return kanban.NextFactoryLaneNumber(reg, alive)
+func NextFactoryLaneNumberForTest(reg map[string]factory.FactoryLaneEntry, alive func(int) bool) int {
+	return factory.NextFactoryLaneNumber(reg, alive)
 }
 
 // TestNextFactoryWorkerNumber: the lane join takes one past the highest LIVE
@@ -114,10 +114,10 @@ func NextFactoryLaneNumberForTest(reg map[string]kanban.FactoryLaneEntry, alive 
 // refuses the join instead (design §4).
 func TestNextFactoryWorkerNumber(t *testing.T) {
 	alive := func(int) bool { return true }
-	if n := NextFactoryLaneNumberForTest(map[string]kanban.FactoryLaneEntry{}, alive); n != 1 {
+	if n := NextFactoryLaneNumberForTest(map[string]factory.FactoryLaneEntry{}, alive); n != 1 {
 		t.Errorf("empty registry = %d, want 1", n)
 	}
-	reg := map[string]kanban.FactoryLaneEntry{
+	reg := map[string]factory.FactoryLaneEntry{
 		"lane-1":   {PID: 100},
 		"agent-2":  {PID: 101}, // legacy row — holds no number
 		"worker-5": {PID: 102}, // legacy row — holds no number

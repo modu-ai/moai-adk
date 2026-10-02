@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // launcherEntryParse is the launcher entry parse: the factory entry the `-f`
@@ -79,13 +79,13 @@ type launcherEntryParse struct {
 // value that is only ever displayed. It is read BEFORE enterFactoryLeaderMode
 // publishes this launch's id, so what it sees is the prior value or nothing.
 func leaderRunID(leaderLabel string) string {
-	if suffix, ok := kanban.SplitLeaderLabel(leaderLabel); ok && suffix != "" && !allDigits(suffix) {
+	if suffix, ok := factory.SplitLeaderLabel(leaderLabel); ok && suffix != "" && !allDigits(suffix) {
 		return suffix
 	}
 	if runID := os.Getenv(config.EnvFactoryRunID); runID != "" {
 		return runID
 	}
-	return kanban.NewRunID()
+	return factory.NewRunID()
 }
 
 // allDigits reports whether s is a non-empty run of ASCII digits — the shape a
@@ -162,7 +162,7 @@ func seedLaneAgentCap() func() {
 // and sharing one file would make each role's launches contend on the other's
 // writes for no benefit. The shape and the machinery are identical.
 func leaderRegistryPath(root string) string {
-	return filepath.Join(kanban.RuntimeStateDirForRoot(root), "leads.json")
+	return filepath.Join(factory.RuntimeStateDirForRoot(root), "leads.json")
 }
 
 // resolveLeaderName returns the label this leader session should launch under:
@@ -188,7 +188,7 @@ func leaderRegistryPath(root string) string {
 // on a name claim.
 func resolveLeaderName(root, label string, notes io.Writer) string {
 	noteLegacyLeaderRegistryEntries(root, notes)
-	return claimName(leaderRegistryPath(root), label, kanban.LeaderNumberLabel, notes)
+	return claimName(leaderRegistryPath(root), label, factory.LeaderNumberLabel, notes)
 }
 
 // noteLegacyLeaderRegistryEntries writes one notice per LIVE legacy leader
@@ -202,14 +202,14 @@ func noteLegacyLeaderRegistryEntries(root string, notes io.Writer) {
 	reg := loadFactoryRegistry(leaderRegistryPath(root))
 	seen := map[string]bool{}
 	for name, entry := range reg {
-		if !kanban.IsLegacyLeaderSpelling(name) || seen[name] {
+		if !factory.IsLegacyLeaderSpelling(name) || seen[name] {
 			continue
 		}
 		if entry.PID <= 0 || !factoryProcessAlive(entry.PID) {
 			continue // dead legacy entries are pruned by the claim, not noticed
 		}
 		seen[name] = true
-		_, _ = fmt.Fprintf(notes, "kanban: registry entry %q is a leader session from before the leader/lane rename; end that session and relaunch it — launching as %s\n", name, kanban.LeaderLabel())
+		_, _ = fmt.Fprintf(notes, "kanban: registry entry %q is a leader session from before the leader/lane rename; end that session and relaunch it — launching as %s\n", name, factory.LeaderLabel())
 	}
 }
 
@@ -333,7 +333,7 @@ const (
 // one (see leaderRunID).
 func parseLeaderLabel(args []string) (label string, ok bool) {
 	return parseNamedLabel(args, func(candidate string) bool {
-		_, isLeader := kanban.SplitLeaderLabel(candidate)
+		_, isLeader := factory.SplitLeaderLabel(candidate)
 		return isLeader
 	})
 }
@@ -424,7 +424,7 @@ func leaderNameArgs(args []string) []string {
 	if operatorSuppliedName(args) {
 		return nil
 	}
-	return []string{nameFlagLong, kanban.LeaderLabel()}
+	return []string{nameFlagLong, factory.LeaderLabel()}
 }
 
 // appendLeaderName appends the leader session's `--name` pair to args, bumped past

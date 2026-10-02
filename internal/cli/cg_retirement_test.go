@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/spf13/cobra"
 	"io"
@@ -52,7 +52,7 @@ func TestCGRetiredEntryAndModeHaveZeroEffects(t *testing.T) {
 
 func TestCGRetirementHistoricalRecordRemainsReadable(t *testing.T) {
 	root := t.TempDir()
-	path := kanban.RecordPath(root, "historical-session")
+	path := factory.RecordPath(root, "historical-session")
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestCGRetirementHistoricalRecordRemainsReadable(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	rec, err := kanban.Read(root, "historical-session")
+	rec, err := factory.Read(root, "historical-session")
 	if err != nil || rec.Backend != "cg" {
 		t.Fatalf("historical backend %+v %v", rec, err)
 	}

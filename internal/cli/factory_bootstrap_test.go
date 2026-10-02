@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestEnterFactoryLeaderModeSetsRunID asserts the factory leader mints a run id
@@ -25,7 +25,7 @@ func TestEnterFactoryLeaderModeSetsRunID(t *testing.T) {
 	if runID == "" {
 		t.Fatalf("%s not set by enterFactoryLeaderMode", config.EnvFactoryRunID)
 	}
-	if _, ok := kanban.SplitLeaderLabel(kanban.RoleLeader + "-" + runID); !ok {
+	if _, ok := factory.SplitLeaderLabel(factory.RoleLeader + "-" + runID); !ok {
 		t.Errorf("run id %q does not produce a parseable leader label", runID)
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) != "1" {

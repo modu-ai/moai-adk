@@ -33,7 +33,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 const (
@@ -106,8 +106,8 @@ func captureLaneEnvToday(t *testing.T) map[string]map[string]string {
 		backend string
 		entry   func([]string) error
 	}{
-		{"cc", kanban.BackendClaude, netCC},
-		{"glm", kanban.BackendGLM, netGLM},
+		{"cc", factory.BackendClaude, netCC},
+		{"glm", factory.BackendGLM, netGLM},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLaneFixture(t, tc.backend)

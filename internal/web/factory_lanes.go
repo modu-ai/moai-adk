@@ -20,7 +20,7 @@ package web
 import (
 	"sort"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // Unresolved-lane reasons. They are why a row carries no join values, and the
@@ -60,7 +60,7 @@ type LaneVM struct {
 // An absent or malformed registry yields zero lanes and no error: the section
 // then renders as carrying no registered lanes (REQ-WC15-046).
 func loadFactoryLanes(root string, sessions map[string]SessionVM, records []KanbanRecord) []LaneVM {
-	reg := kanban.LoadFactoryRegistry(kanban.FactoryRegistryPath(root))
+	reg := factory.LoadFactoryRegistry(factory.FactoryRegistryPath(root))
 	if len(reg) == 0 {
 		return nil
 	}
@@ -69,7 +69,7 @@ func loadFactoryLanes(root string, sessions map[string]SessionVM, records []Kanb
 	// identifies neither, so it must not collapse to a last-write-wins winner.
 	laneClaims := map[int]int{}
 	for label, entry := range reg {
-		if _, ok := kanban.SplitFactoryLaneLabel(label); !ok {
+		if _, ok := factory.SplitFactoryLaneLabel(label); !ok {
 			continue // not a lane label — not this section's row
 		}
 		laneClaims[entry.PID]++
@@ -93,7 +93,7 @@ func loadFactoryLanes(root string, sessions map[string]SessionVM, records []Kanb
 
 	out := make([]LaneVM, 0, len(reg))
 	for label, entry := range reg {
-		n, ok := kanban.SplitFactoryLaneLabel(label)
+		n, ok := factory.SplitFactoryLaneLabel(label)
 		if !ok {
 			continue
 		}

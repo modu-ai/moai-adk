@@ -16,8 +16,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // TestFactoryEntryRefusesLegacyRoleTokens (AC-RNC-002, parse level): every
@@ -304,7 +304,7 @@ func TestRunCCFactoriesEntryWritesLane1(t *testing.T) {
 	cap := installFactoryLaunchSeam(t)
 
 	const run = "run-m2-lane-join"
-	if err := recordFactoryRunStart(root, run, kanban.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
+	if err := recordFactoryRunStart(root, run, factory.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatalf("record factory run: %v", err)
 	}
 
@@ -361,7 +361,7 @@ func TestRunCCLiveLegacyClaimRefusedThroughCLI(t *testing.T) {
 	cap := installFactoryLaunchSeam(t)
 
 	const run = "run-legacy-live"
-	if err := recordFactoryRunStart(root, run, kanban.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
+	if err := recordFactoryRunStart(root, run, factory.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatalf("record factory run: %v", err)
 	}
 	seedCLIWorkerRow(t, root, "worker-3", os.Getpid(), run)
@@ -398,7 +398,7 @@ func TestRunCCDeadLegacyClaimProceedsThroughCLI(t *testing.T) {
 	cap := installFactoryLaunchSeam(t)
 
 	const run = "run-legacy-dead"
-	if err := recordFactoryRunStart(root, run, kanban.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
+	if err := recordFactoryRunStart(root, run, factory.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatalf("record factory run: %v", err)
 	}
 	seedCLIWorkerRow(t, root, "worker-3", 999999999, run) // dead pid

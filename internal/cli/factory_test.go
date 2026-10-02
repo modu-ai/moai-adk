@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // factoryAmbientEnvKeys lists the factory/kanban signal variables a lane or
@@ -443,7 +443,7 @@ func TestEnterFactoryLeadModeMintsRunID(t *testing.T) {
 	if runID == "" {
 		t.Fatal("MOAI_KANBAN_ID empty for a bare factory lead; expected a minted run id")
 	}
-	if _, ok := kanban.SplitLeaderLabel(kanban.RoleLeader + "-" + runID); !ok {
+	if _, ok := factory.SplitLeaderLabel(factory.RoleLeader + "-" + runID); !ok {
 		t.Errorf("minted run id %q does not round-trip through the lead label shape", runID)
 	}
 }
@@ -795,7 +795,7 @@ func TestCCFactoryEntryRecordsFailOpenRunMetadata(t *testing.T) {
 	if err := runCC(ccCmd, []string{"-f"}); err != nil {
 		t.Fatalf("runCC(-f): %v", err)
 	}
-	record, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
+	record, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -904,7 +904,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		c := installFactoryLaunchSeam(t)
 
 		const run = "run-cc-lane-entry"
-		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
+		if err := recordFactoryRunStart(root, run, factory.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
 			t.Fatalf("record factory run: %v", err)
 		}
 
@@ -953,7 +953,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		c := installFactoryLaunchSeam(t)
 
 		const run = "run-cc-legacy-worker-entry"
-		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
+		if err := recordFactoryRunStart(root, run, factory.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
 			t.Fatalf("record factory run: %v", err)
 		}
 
@@ -991,7 +991,7 @@ func TestGLM_FactoryLaneEntry(t *testing.T) {
 	// NO_ACTIVE_FACTORY when none is active, so the fixture records the run a
 	// lead would have started before the lane enters.
 	const run = "run-glm-lane-entry"
-	if err := recordFactoryRunStart(root, run, kanban.BackendGLM, "", homestate.LaneCapacityDerived); err != nil {
+	if err := recordFactoryRunStart(root, run, factory.BackendGLM, "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatalf("record factory run: %v", err)
 	}
 

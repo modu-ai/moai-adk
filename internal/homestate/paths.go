@@ -107,7 +107,7 @@ func primaryCheckoutRootFromCommonDir(commonDir string) (string, bool) {
 }
 
 // tempRoots mirrors the production anchor set of kanban's TempOriginReason
-// (internal/kanban/temp_origin.go defaultTempRoots, REQ-THG-002): os.TempDir()
+// (internal/factory/temp_origin.go defaultTempRoots, REQ-THG-002): os.TempDir()
 // plus the /tmp and /var/folders spellings, whose containment os.TempDir()
 // alone misses on machines where TMPDIR points at the per-user directory
 // (/var/folders/... on macOS) while a project sits under /tmp. /var/tmp stays

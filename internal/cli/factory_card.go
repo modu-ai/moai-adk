@@ -17,9 +17,9 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 )
@@ -60,7 +60,7 @@ func factoryLaneAdmission() bool {
 func factoryLaneRefusal() bool {
 	return factoryLaneAdmission() ||
 		os.Getenv(config.EnvMoaiFactoryWorker) != "" ||
-		os.Getenv(config.EnvFactoryBackend) == kanban.BackendGPT
+		os.Getenv(config.EnvFactoryBackend) == factory.BackendGPT
 }
 
 // The refusal sentinels. One wording source per refusal kind, so the queue
@@ -91,13 +91,13 @@ func factoryLaneLabelFromEnv(verb string) (string, error) {
 		return "", fmt.Errorf("factory %s: %s is empty — a lane session carries its lane label there", verb, config.EnvMoaiFactoryWorker)
 	}
 	lowered := strings.ToLower(lane)
-	if n, ok := kanban.SplitFactoryLegacyLabel(lowered); ok {
-		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -l)", verb, lane, kanban.FactoryLaneLabel(n))
+	if n, ok := factory.SplitFactoryLegacyLabel(lowered); ok {
+		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -l)", verb, lane, factory.FactoryLaneLabel(n))
 	}
-	if kanban.IsLegacyFactoryRoleValue(lowered) {
+	if factory.IsLegacyFactoryRoleValue(lowered) {
 		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -l)", verb, lane)
 	}
-	if kanban.IsLegacyLeaderSpelling(lowered) {
+	if factory.IsLegacyLeaderSpelling(lowered) {
 		return "", fmt.Errorf("factory %s: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", verb, lane)
 	}
 	return lane, nil
@@ -115,7 +115,7 @@ const factoryCodexMergeSentinel = "the Codex harness cannot take the merge-ready
 // verbs call it before touching any record; the MCP factory tools (M3) call
 // the same function.
 func factoryRefuseCodexMergeEdge(verb string) error {
-	if os.Getenv(config.EnvFactoryBackend) != kanban.BackendGPT {
+	if os.Getenv(config.EnvFactoryBackend) != factory.BackendGPT {
 		return nil
 	}
 	return fmt.Errorf("factory %s: refused — %s: a Codex lane stops at merge-ready; integration is the Claude lane's or the leader's (F3)",
@@ -212,21 +212,21 @@ func factorySerialSlotFree(state string) bool {
 // factoryQueueClassification reads one card's classification from a queue
 // record snapshot. A card absent from the queue reads as the absent-field
 // default derivation (REQ-TCD-014): serial, normal, non-blocked.
-func factoryQueueClassification(rec *kanban.BacklogRecord, cardID string) kanban.CardClassification {
+func factoryQueueClassification(rec *factory.BacklogRecord, cardID string) factory.CardClassification {
 	if rec == nil {
-		return kanban.DefaultCardClassification()
+		return factory.DefaultCardClassification()
 	}
 	for _, it := range rec.Items {
 		if it.ID == cardID {
-			return kanban.EffectiveCardClassification(it)
+			return factory.EffectiveCardClassification(it)
 		}
 	}
 	for _, entry := range rec.Archived {
 		if entry.Item.ID == cardID {
-			return kanban.EffectiveCardClassification(entry.Item)
+			return factory.EffectiveCardClassification(entry.Item)
 		}
 	}
-	return kanban.DefaultCardClassification()
+	return factory.DefaultCardClassification()
 }
 
 // factoryNextLeaseOnce selects and leases one card for lane through the F1
@@ -397,7 +397,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	if err != nil {
 		return homestate.Card{}, false, false, fmt.Errorf("read the queue for classification: %w", err)
 	}
-	classOf := func(cardID string) kanban.CardClassification {
+	classOf := func(cardID string) factory.CardClassification {
 		return factoryQueueClassification(queueRec, cardID)
 	}
 	// serialInFlightExcluding reports whether a serial card OTHER than
@@ -411,14 +411,14 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 			if c.CardID == cardID {
 				continue
 			}
-			if !factorySerialSlotFree(c.State) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
+			if !factorySerialSlotFree(c.State) && classOf(c.CardID).Mode == factory.ClassModeSerial {
 				return true
 			}
 		}
 		return false
 	}
 	modeEligible := func(cardID string) bool {
-		if classOf(cardID).Mode != kanban.ClassModeSerial {
+		if classOf(cardID).Mode != factory.ClassModeSerial {
 			return true
 		}
 		return !serialInFlightExcluding(cardID)
@@ -453,7 +453,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if err != nil {
 			return homestate.Card{}, false, false, err
 		}
-		if !inQueue || state != kanban.BacklogStatePicked {
+		if !inQueue || state != factory.BacklogStatePicked {
 			continue
 		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
@@ -466,7 +466,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	for _, it := range rec.Items {
 		// Positive enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-012): the
 		// state this arm claims is named; every other state falls through.
-		if it.State == kanban.BacklogStatePicked && !recorded[it.ID] {
+		if it.State == factory.BacklogStatePicked && !recorded[it.ID] {
 			if !modeEligible(it.ID) {
 				continue
 			}
@@ -481,22 +481,22 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	// serial card is skipped while another serial card is in flight.
 	var promoted string
 	sawQueued := 0
-	if err := todoStoreAt(root).Mutate(func(r *kanban.BacklogRecord) error {
+	if err := todoStoreAt(root).Mutate(func(r *factory.BacklogRecord) error {
 		for i := range r.Items {
 			it := &r.Items[i]
 			// Positive enumeration (REQ-THS-012): the state this arm promotes
 			// is named; every other state — a state added later included —
 			// falls through.
-			if it.State == kanban.BacklogStateQueued {
+			if it.State == factory.BacklogStateQueued {
 				sawQueued++
-				cls := kanban.EffectiveCardClassification(*it)
+				cls := factory.EffectiveCardClassification(*it)
 				if cls.Blocked {
 					continue
 				}
-				if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID) {
+				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID) {
 					continue
 				}
-				it.State = kanban.BacklogStatePicked
+				it.State = factory.BacklogStatePicked
 				promoted = it.ID
 				return nil
 			}
@@ -583,7 +583,7 @@ func factoryNextClaimRefused(err error) (homestate.Card, bool, bool, error) {
 // `merge-ready` or later, including a card returned to `assigned` by lease
 // expiry with its stage kept. Every other backend selects freely.
 func factoryNextSkipForBackend() func(homestate.Card) bool {
-	if os.Getenv(config.EnvFactoryBackend) != kanban.BackendGPT {
+	if os.Getenv(config.EnvFactoryBackend) != factory.BackendGPT {
 		return func(homestate.Card) bool { return false }
 	}
 	return func(c homestate.Card) bool {
@@ -855,7 +855,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// re-resolved underneath its own choice. A window held by another live
 	// session refuses naming the holder; a free or stale window is resolved
 	// exactly as acquire resolves it and taken over.
-	lock, err := kanban.ReadIntegrationLock(lockRoot)
+	lock, err := factory.ReadIntegrationLock(lockRoot)
 	if err != nil {
 		return fmt.Errorf("factory complete: %w", err)
 	}
@@ -875,8 +875,8 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// (1) The caller-source window: acquire fell back to the caller's own
 	// tree, which for a lane is its card worktree — never an integration
 	// branch. The remedy is acquire's --branch.
-	if source == kanban.BranchSourceCaller {
-		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); re-acquire with --branch <integration-target> (a card's own tree is not its integration branch)", branch, kanban.BranchSourceCaller)
+	if source == factory.BranchSourceCaller {
+		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); re-acquire with --branch <integration-target> (a card's own tree is not its integration branch)", branch, factory.BranchSourceCaller)
 	}
 	// (2) A card's own branch never serves as its integration branch.
 	cardBranch := factoryBranchOfWorktree(card.WorktreePath)
@@ -904,11 +904,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// ours is not re-written — the recorded branch choice stands.
 	if !heldByUs {
 		ownerPID, _ := session.ResolveOwnerPID()
-		replaced, err := kanban.AcquireIntegrationLock(lockRoot, kanban.IntegrationLock{
+		replaced, err := factory.AcquireIntegrationLock(lockRoot, factory.IntegrationLock{
 			SessionID:    sessionID,
 			SessionName:  lane,
 			PID:          ownerPID,
-			PIDSource:    kanban.PIDSourceSessionOwner,
+			PIDSource:    factory.PIDSourceSessionOwner,
 			Branch:       branch,
 			BranchSource: source,
 			Worktree:     integTree,
@@ -1029,9 +1029,9 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 // from the card worktree, the lane's own tree, never from the process cwd.
 func factoryResolveIntegrationBranch(root string, card homestate.Card) (string, string) {
 	if branch := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).DevelopBranch); branch != "" {
-		return branch, kanban.BranchSourceConfig
+		return branch, factory.BranchSourceConfig
 	}
-	return factoryBranchOfWorktree(card.WorktreePath), kanban.BranchSourceCaller
+	return factoryBranchOfWorktree(card.WorktreePath), factory.BranchSourceCaller
 }
 
 // factoryRepoDir names the repository directory the worktree lookup runs
@@ -1099,7 +1099,7 @@ func factorySameTree(a, b string) bool {
 
 // factoryHolderLabel mirrors kanban's holder label: the human-facing name a
 // lane recognizes its queue position by, else the session id.
-func factoryHolderLabel(lock *kanban.IntegrationLock) string {
+func factoryHolderLabel(lock *factory.IntegrationLock) string {
 	if lock == nil {
 		return "unknown"
 	}
@@ -1170,7 +1170,7 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 // queueItemState reads the queue state of cardID, anchored at root; ok is
 // false when the id is not in the queue at all. The factory record never
 // writes the queue.
-func queueItemState(root, cardID string) (kanban.BacklogState, bool, error) {
+func queueItemState(root, cardID string) (factory.BacklogState, bool, error) {
 	record, err := todoReadStoreAt(root).LoadPure()
 	if err != nil {
 		return "", false, err
@@ -1201,7 +1201,7 @@ func requireQueuePicked(root, cardID string) error {
 		return fmt.Errorf("queue item %s is not in the queue", cardID)
 	}
 	switch state {
-	case kanban.BacklogStatePicked:
+	case factory.BacklogStatePicked:
 		// the only admissible state for the factory record
 	default:
 		return fmt.Errorf("queue item %s is %s, not picked", cardID, state)
@@ -1327,7 +1327,7 @@ type factoryStatusReport struct {
 	Unavailable []homestate.RecordUnavailableEntry `json:"unavailable"`
 }
 
-func factoryCardViewOf(c homestate.Card, now time.Time, cls kanban.CardClassification) factoryCardView {
+func factoryCardViewOf(c homestate.Card, now time.Time, cls factory.CardClassification) factoryCardView {
 	v := factoryCardView{
 		RunID: c.RunID, CardID: c.CardID, State: c.State, Legacy: c.Legacy(), Stage: c.Stage, Version: c.Version,
 		Owner: c.OwnerLabel, LeaseHolder: c.LeaseHolder, LeaseExpiresAt: c.LeaseExpiresAt, LeaseExpired: c.LeaseExpired(now),
@@ -1384,7 +1384,7 @@ func newFactoryStatusCommand() *cobra.Command {
 				}
 				now := factoryCardNow()
 				for _, c := range cards {
-					cls := kanban.DefaultCardClassification()
+					cls := factory.DefaultCardClassification()
 					if queueErr == nil {
 						cls = factoryQueueClassification(queueRec, c.CardID)
 					}

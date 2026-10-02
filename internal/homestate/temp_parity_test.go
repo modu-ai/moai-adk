@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // TestTempDiscriminantParity asserts the homestate temp guard and kanban's
@@ -82,7 +82,7 @@ func TestTempDiscriminantParity(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, factoryTemp := kanban.TempOriginReason(tc.base)
+			_, factoryTemp := factory.TempOriginReason(tc.base)
 			if factoryTemp != tc.wantTmp {
 				t.Fatalf("premise: kanban.TempOriginReason(%s) = %v, want %v", tc.base, factoryTemp, tc.wantTmp)
 			}

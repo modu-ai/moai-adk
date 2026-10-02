@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // autoFixture seeds a store with named cards and returns the fixture root.
-func autoFixture(t *testing.T, cards map[string]string) (string, *kanban.BacklogStore) {
+func autoFixture(t *testing.T, cards map[string]string) (string, *factory.BacklogStore) {
 	t.Helper()
 	root, store := todoFixture(t)
 	for _, text := range cards {
@@ -28,9 +28,9 @@ func autoFixture(t *testing.T, cards map[string]string) (string, *kanban.Backlog
 	return root, store
 }
 
-func autoSetState(t *testing.T, store *kanban.BacklogStore, id string, state kanban.BacklogState) {
+func autoSetState(t *testing.T, store *factory.BacklogStore, id string, state factory.BacklogState) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == id {
 				rec.Items[i].State = state
@@ -75,19 +75,19 @@ func autoTestLiveness(root, cardID string, registryDead, processDead bool, lsofC
 // exist yet — the predicate under test reads the record, not the database.
 func TestTodoAutoPickupSelection(t *testing.T) {
 	root := t.TempDir()
-	card := func(id, text string, state kanban.BacklogState) kanban.BacklogItem {
-		return kanban.BacklogItem{ID: id, Text: text, State: state}
+	card := func(id, text string, state factory.BacklogState) factory.BacklogItem {
+		return factory.BacklogItem{ID: id, Text: text, State: state}
 	}
-	rec := &kanban.BacklogRecord{
+	rec := &factory.BacklogRecord{
 		Version: 1,
-		Items: []kanban.BacklogItem{
-			card("t3", "queued card a", kanban.BacklogStateQueued),
-			card("t4", "picked dead owner a", kanban.BacklogStatePicked),
-			card("t5", "picked live owner", kanban.BacklogStatePicked),
-			card("t6", "already done", kanban.BacklogStateDropped),
-			card("t7", "unknown future state", kanban.BacklogState("hold")),
-			card("t8", "queued card b", kanban.BacklogStateQueued),
-			card("t9", "picked dead owner b", kanban.BacklogStatePicked),
+		Items: []factory.BacklogItem{
+			card("t3", "queued card a", factory.BacklogStateQueued),
+			card("t4", "picked dead owner a", factory.BacklogStatePicked),
+			card("t5", "picked live owner", factory.BacklogStatePicked),
+			card("t6", "already done", factory.BacklogStateDropped),
+			card("t7", "unknown future state", factory.BacklogState("hold")),
+			card("t8", "queued card b", factory.BacklogStateQueued),
+			card("t9", "picked dead owner b", factory.BacklogStatePicked),
 		},
 	}
 
@@ -133,7 +133,7 @@ func TestTodoAutoPickupSelection(t *testing.T) {
 	live := autoTestLiveness(root, "t5", false, false, nil)
 	// Rebuild the record with ONLY t5 picked-dead-shaped live measurement:
 	// the seam is package-level per call, so run the single-card record.
-	single := &kanban.BacklogRecord{Version: 1, Items: []kanban.BacklogItem{card("t5", "picked live owner", kanban.BacklogStatePicked)}}
+	single := &factory.BacklogRecord{Version: 1, Items: []factory.BacklogItem{card("t5", "picked live owner", factory.BacklogStatePicked)}}
 	targets5, _, err := autoPickTargets(single, live, root)
 	if err != nil {
 		t.Fatal(err)
@@ -151,7 +151,7 @@ func TestTodoAutoLivenessChannels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	autoSetState(t, store, rec.Items[0].ID, kanban.BacklogStatePicked)
+	autoSetState(t, store, rec.Items[0].ID, factory.BacklogStatePicked)
 	cardID := rec.Items[0].ID
 
 	cases := []struct {
@@ -188,8 +188,8 @@ func TestTodoAutoLivenessNotCachedAcrossDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	autoSetState(t, store, rec.Items[0].ID, kanban.BacklogStatePicked)
-	autoSetState(t, store, rec.Items[1].ID, kanban.BacklogStatePicked)
+	autoSetState(t, store, rec.Items[0].ID, factory.BacklogStatePicked)
+	autoSetState(t, store, rec.Items[1].ID, factory.BacklogStatePicked)
 
 	calls := 0
 	lv := autoTestLiveness(root, rec.Items[0].ID, true, true, &calls)
@@ -216,7 +216,7 @@ func TestTodoAutoNoTakeoverLiveOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	autoSetState(t, store, rec.Items[0].ID, kanban.BacklogStatePicked)
+	autoSetState(t, store, rec.Items[0].ID, factory.BacklogStatePicked)
 	before, err := store.LoadPure()
 	if err != nil {
 		t.Fatal(err)
@@ -251,7 +251,7 @@ func TestTodoAutoSerialCycle(t *testing.T) {
 	}
 	ids := []string{rec.Items[0].ID, rec.Items[1].ID, rec.Items[2].ID}
 	// Middle card is picked by a dead owner — it must be taken first.
-	autoSetState(t, store, ids[1], kanban.BacklogStatePicked)
+	autoSetState(t, store, ids[1], factory.BacklogStatePicked)
 
 	lv := autoTestLiveness(root, ids[1], true, true, nil)
 	tick := 0
@@ -326,7 +326,7 @@ func TestTodoAutoSerialCycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, it := range after.Items {
-		if it.ID == ids[2] && it.State != kanban.BacklogStateQueued {
+		if it.ID == ids[2] && it.State != factory.BacklogStateQueued {
 			t.Errorf("failure-arm card state = %s, want queued", it.State)
 		}
 	}
@@ -452,7 +452,7 @@ func TestTodoAutoEmptyQueueZeroTargetReport(t *testing.T) {
 	}
 }
 
-func mustAutoRecord(t *testing.T, store *kanban.BacklogStore) *kanban.BacklogRecord {
+func mustAutoRecord(t *testing.T, store *factory.BacklogStore) *factory.BacklogRecord {
 	t.Helper()
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -471,7 +471,7 @@ func TestTodoAutoJevPoisonedValueCausesNoMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	autoSetState(t, store, rec.Items[0].ID, kanban.BacklogStatePicked)
+	autoSetState(t, store, rec.Items[0].ID, factory.BacklogStatePicked)
 
 	var out bytes.Buffer
 	opts := autoOptions{
@@ -492,7 +492,7 @@ func TestTodoAutoJevPoisonedValueCausesNoMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(after.Items) != 1 || after.Items[0].State != kanban.BacklogStatePicked {
+	if len(after.Items) != 1 || after.Items[0].State != factory.BacklogStatePicked {
 		t.Errorf("queue mutated under poisoned Jev value: %+v", after.Items)
 	}
 }

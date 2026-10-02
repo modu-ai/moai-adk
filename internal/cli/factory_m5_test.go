@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // sdCardLaunchCapture is one substituted Codex child: the argv the launcher
@@ -87,8 +87,8 @@ func sdCodexSessionWork(t *testing.T, root, cardID string) {
 // launcher exits 0 once `next` reports no card.
 func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	wantLabel := sdNextFreeLaneLabel(t, root)
 	t.Chdir(root)
 	sdScrubLauncherEnv(t)
@@ -145,8 +145,8 @@ func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 		if v := rec.env[retiredLaneLabelMarker]; v != "" {
 			t.Errorf("invocation %d: child env carries the retired %s=%q", i, retiredLaneLabelMarker, v)
 		}
-		if rec.env[config.EnvFactoryBackend] != kanban.BackendGPT {
-			t.Errorf("invocation %d: child env %s = %q, want the Codex harness value %q", i, config.EnvFactoryBackend, rec.env[config.EnvFactoryBackend], kanban.BackendGPT)
+		if rec.env[config.EnvFactoryBackend] != factory.BackendGPT {
+			t.Errorf("invocation %d: child env %s = %q, want the Codex harness value %q", i, config.EnvFactoryBackend, rec.env[config.EnvFactoryBackend], factory.BackendGPT)
 		}
 		if rec.env[config.EnvFactoryCard] != cardID {
 			t.Errorf("invocation %d: child env %s = %q, want card %s's id", i, config.EnvFactoryCard, rec.env[config.EnvFactoryCard], cardID)

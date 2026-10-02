@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -65,15 +65,15 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	// alone.
 	label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if label != "" {
-		if kanban.IsLegacyFactoryRoleValue(label) {
+		if factory.IsLegacyFactoryRoleValue(label) {
 			return staleRunPrescriptionGate(ctx, root, input.SessionID, label, runID, langEnglish)
 		}
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
 	}
-	role, slot := kanban.RoleLeader, kanban.RoleLeader
+	role, slot := factory.RoleLeader, factory.RoleLeader
 	if label != "" {
-		role, slot = kanban.RoleLane, label
+		role, slot = factory.RoleLane, label
 	}
 	backend := strings.TrimSpace(os.Getenv(config.EnvFactoryBackend))
 	if backend == "" {

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestOperatorSuppliedName covers every form claude accepts for a session name,
@@ -103,7 +103,7 @@ func TestLeadNameArgs_LabelIsNotLaneShape(t *testing.T) {
 	if len(args) != 2 {
 		t.Fatalf("leaderNameArgs = %q, want a --name pair", args)
 	}
-	if _, isLane := kanban.SplitFactoryLaneLabel(args[1]); isLane {
+	if _, isLane := factory.SplitFactoryLaneLabel(args[1]); isLane {
 		t.Errorf("injected leader label %q reads as a lane label", args[1])
 	}
 	if _, ok := parseFactoryLaneLabel(args); ok {
@@ -265,8 +265,8 @@ func TestLeadRunID_BumpNumberIsNotARunID(t *testing.T) {
 	clearFactoryTestEnv(t)
 	t.Setenv(config.EnvFactoryRunID, "abc123")
 
-	if got := leaderRunID(kanban.LeaderNumberLabel(2)); got != "abc123" {
-		t.Errorf("leaderRunID(%q) = %q, want %q (a bump number is not a run id)", kanban.LeaderNumberLabel(2), got, "abc123")
+	if got := leaderRunID(factory.LeaderNumberLabel(2)); got != "abc123" {
+		t.Errorf("leaderRunID(%q) = %q, want %q (a bump number is not a run id)", factory.LeaderNumberLabel(2), got, "abc123")
 	}
 }
 
@@ -277,13 +277,13 @@ func TestLeadRunID_BumpNumberIsNotARunID(t *testing.T) {
 func TestResolveLeadName_BumpsPastALiveClaim(t *testing.T) {
 	root := t.TempDir()
 
-	first := resolveLeaderName(root, kanban.LeaderLabel(), nil)
-	if first != kanban.LeaderLabel() {
-		t.Fatalf("first lead launched as %q, want the bare %q", first, kanban.LeaderLabel())
+	first := resolveLeaderName(root, factory.LeaderLabel(), nil)
+	if first != factory.LeaderLabel() {
+		t.Fatalf("first lead launched as %q, want the bare %q", first, factory.LeaderLabel())
 	}
 	// This process holds the claim, so it is alive by construction.
-	second := resolveLeaderName(root, kanban.LeaderLabel(), nil)
-	if want := kanban.LeaderNumberLabel(1); second != want {
+	second := resolveLeaderName(root, factory.LeaderLabel(), nil)
+	if want := factory.LeaderNumberLabel(1); second != want {
 		t.Errorf("second lead launched as %q, want %q", second, want)
 	}
 }
@@ -297,8 +297,8 @@ func TestResolveLeadName_SeparateFromLanes(t *testing.T) {
 	if leaderRegistryPath(root) == factoryRegistryPath(root) {
 		t.Error("leader and lane registries share one path")
 	}
-	if got := resolveLeaderName(root, kanban.LeaderLabel(), nil); got != kanban.LeaderLabel() {
-		t.Errorf("leader launched as %q on a fresh root, want the bare %q", got, kanban.LeaderLabel())
+	if got := resolveLeaderName(root, factory.LeaderLabel(), nil); got != factory.LeaderLabel() {
+		t.Errorf("leader launched as %q on a fresh root, want the bare %q", got, factory.LeaderLabel())
 	}
 }
 

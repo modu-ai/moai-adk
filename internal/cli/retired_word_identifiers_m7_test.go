@@ -66,7 +66,7 @@ func retiredWordIdentifiers(t *testing.T, filename string, src any) []string {
 func TestRetiredWordIdentifierScanHasTeeth(t *testing.T) {
 	oldName := "prepare" + "Kan" + "ban" + "Settings"
 	src := "package x\n\n" +
-		"import \"github.com/modu-ai/moai-adk/internal/kanban\"\n\n" +
+		"import \"github.com/modu-ai/moai-adk/internal/factory\"\n\n" +
 		"func " + oldName + "() {}\n\n" +
 		"var _ = kanban.Record{}\n\n" +
 		"func Test" + "Kan" + "banEntryRefused() {}\n"

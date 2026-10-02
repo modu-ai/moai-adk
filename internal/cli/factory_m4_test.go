@@ -22,9 +22,9 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // sdScrubLauncherEnv neutralizes every MOAI_* variable the launcher stamps or
@@ -121,8 +121,8 @@ func sdGLMEntry(args []string) error { return runGLM(glmCmd, args) }
 // the assertion follows the roster rather than a guessed number.
 func sdNextFreeLaneLabel(t *testing.T, root string) string {
 	t.Helper()
-	next := kanban.NextFactoryLaneNumber(loadFactoryRegistry(factoryRegistryPath(root)), factoryProcessAlive)
-	return kanban.FactoryLaneLabel(next)
+	next := factory.NextFactoryLaneNumber(loadFactoryRegistry(factoryRegistryPath(root)), factoryProcessAlive)
+	return factory.FactoryLaneLabel(next)
 }
 
 // AC-SD-002 — cc/glm lane launch stamps the marker, the lane label, and the
@@ -133,12 +133,12 @@ func TestSD_AC002_LaneLaunchStampsMarkerAndLabel(t *testing.T) {
 		backend string
 		entry   func([]string) error
 	}{
-		{"cc", kanban.BackendClaude, sdCCEntry},
-		{"glm", kanban.BackendGLM, sdGLMEntry},
+		{"cc", factory.BackendClaude, sdCCEntry},
+		{"glm", factory.BackendGLM, sdGLMEntry},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, _ := fcFixture(t)
-			sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+			sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 			t.Chdir(root)
 			t.Setenv(config.EnvClaudeProjectDir, root)
 			wantLabel := sdNextFreeLaneLabel(t, root)
@@ -244,7 +244,7 @@ func TestSD_AC006_LaneCycleWithoutRemote(t *testing.T) {
 		t.Skip("the recording wrapper is a POSIX shell script (the TestFR_AC018 family)")
 	}
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued)
+	fcQueue(t, store, factory.BacklogStateQueued)
 	sdRegisterLane(t, root, "lane-1")
 	// The §B fixture layout: the integration branch is develop, configured as
 	// the project's integration branch and checked out in the provisioned
@@ -308,7 +308,7 @@ func TestSD_AC006_LaneCycleWithoutRemote(t *testing.T) {
 
 	// The lane holds the integration window on develop, then completes — the
 	// merge itself runs inside complete, inside the integration worktree.
-	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", kanban.BranchSourceConfig, integWT, "t1")
+	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 	if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {
 		t.Fatalf("complete: %v", err)
@@ -361,7 +361,7 @@ func TestSD_AC007_NoHeadlessEngineArgv(t *testing.T) {
 	capture := func(t *testing.T, name string, entry func([]string) error) sdLaunchPathArgv {
 		t.Helper()
 		root, _ := fcFixture(t)
-		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 		t.Chdir(root)
 		captured := sdDriveLaneLaunch(t, root, entry)
 		return sdLaunchPathArgv{name: name, binary: captured.binary, argv: captured.argv}
@@ -373,8 +373,8 @@ func TestSD_AC007_NoHeadlessEngineArgv(t *testing.T) {
 	captureCodex := func(t *testing.T) sdLaunchPathArgv {
 		t.Helper()
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked)
-		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 		t.Chdir(root)
 		sdScrubLauncherEnv(t)
 		var argv []string
@@ -434,7 +434,7 @@ func sdReadSource(t *testing.T, path string) string {
 // do it only through the internal/config constants.
 func TestSD_AC017_StampedMarkerArmsContractGuard(t *testing.T) {
 	root, _ := fcFixture(t)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	t.Chdir(root)
 	t.Setenv(config.EnvClaudeProjectDir, root)
 

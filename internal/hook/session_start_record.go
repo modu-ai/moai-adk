@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"gopkg.in/yaml.v3"
 )
 
@@ -92,7 +92,7 @@ func writeFactorySessionRecord(input *HookInput) {
 		return
 	}
 
-	if _, err := os.Stat(kanban.RecordPath(root, input.SessionID)); err == nil {
+	if _, err := os.Stat(factory.RecordPath(root, input.SessionID)); err == nil {
 		return
 	}
 
@@ -105,13 +105,13 @@ func writeFactorySessionRecord(input *HookInput) {
 	if isGatewaySession() {
 		backend = os.Getenv(config.EnvMoaiLaunchProvider)
 	}
-	rec := kanban.NewRecord(
+	rec := factory.NewRecord(
 		input.SessionID,
 		"",
 		backend,
 	).WithRole(role).WithLane(lane).WithCard(resolveSessionCardID(dir))
 
-	kanban.WriteBestEffort(root, rec)
+	factory.WriteBestEffort(root, rec)
 	pruneSessionRecordsBestEffort(root)
 }
 
@@ -128,7 +128,7 @@ func pruneSessionRecordsBestEffort(root string) {
 	if !ok {
 		return
 	}
-	_, _ = kanban.PruneExpiredRecords(root, days, time.Now())
+	_, _ = factory.PruneExpiredRecords(root, days, time.Now())
 }
 
 // sessionRecordRetentionDays reads state.session_record_retention_days from
@@ -179,14 +179,14 @@ func sessionRecordRetentionDays(root string) (days int, ok bool) {
 // consumer never has to defend against arbitrary launch-label text.
 func factoryRoleFromEnv() (role string, lane int, ok bool) {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
-		n, parsed := kanban.SplitFactoryLaneLabel(label)
+		n, parsed := factory.SplitFactoryLaneLabel(label)
 		if !parsed {
 			return "", 0, false
 		}
-		return kanban.RoleLane, n, true
+		return factory.RoleLane, n, true
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-		return kanban.RoleLeader, 0, true
+		return factory.RoleLeader, 0, true
 	}
 	return "", 0, false
 }

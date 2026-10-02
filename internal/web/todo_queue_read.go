@@ -12,7 +12,7 @@
 package web
 
 import (
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // readTodoQueue resolves the backlog queue for the served project and reads it.
@@ -30,9 +30,9 @@ import (
 // The view receives no raw error text. All three states are
 // returned, none filtered out (resolved decision G-5); ordering is the store's.
 func readTodoQueue(projectRoot string) TodoVM {
-	root := kanban.ResolveTodoQueueRoot(projectRoot)
+	root := factory.ResolveTodoQueueRoot(projectRoot)
 	vm := TodoVM{Root: root}
-	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
+	rec, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()
 	if err != nil {
 		vm.Unavailable = true
 		return vm
@@ -60,7 +60,7 @@ func readTodoQueue(projectRoot string) TodoVM {
 // row the recorded direction reads forward ("blocks t2"), and on the
 // counterpart's row the original direction is kept and marked as the other
 // side of the record ("t1 blocks this").
-func todoRelationCell(f kanban.BacklogFinding, self string) string {
+func todoRelationCell(f factory.BacklogFinding, self string) string {
 	if f.SubjectID == self {
 		return f.Relation + " " + f.RelatedID + " (" + f.Source + ")"
 	}

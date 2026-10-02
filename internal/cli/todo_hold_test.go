@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // AC-THS-006 — hold on a queued card: state becomes hold, every other field
@@ -39,8 +39,8 @@ func TestTodoHold_MovesQueuedCardToHold(t *testing.T) {
 		t.Fatalf("load: %v", err)
 	}
 	got := rec.Items[0]
-	if got.State != kanban.BacklogStateHold {
-		t.Errorf("state = %q, want %q", got.State, kanban.BacklogStateHold)
+	if got.State != factory.BacklogStateHold {
+		t.Errorf("state = %q, want %q", got.State, factory.BacklogStateHold)
 	}
 	if got.Text != "raise the coverage floor" || got.AddedAt == "" {
 		t.Errorf("held card text/added_at = %q/%q, want them untouched/present", got.Text, got.AddedAt)
@@ -135,8 +135,8 @@ func TestTodoHold_ExpectMismatchRefuses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if rec.Items[0].State != kanban.BacklogStateHold {
-		t.Errorf("state = %q, want %q", rec.Items[0].State, kanban.BacklogStateHold)
+	if rec.Items[0].State != factory.BacklogStateHold {
+		t.Errorf("state = %q, want %q", rec.Items[0].State, factory.BacklogStateHold)
 	}
 }
 
@@ -163,8 +163,8 @@ func TestTodoUnhold_ReturnsHeldCardToQueued(t *testing.T) {
 		if err != nil {
 			t.Fatalf("load cycle %d: %v", cycle, err)
 		}
-		if rec.Items[0].State != kanban.BacklogStateQueued {
-			t.Errorf("cycle %d: state = %q, want %q", cycle, rec.Items[0].State, kanban.BacklogStateQueued)
+		if rec.Items[0].State != factory.BacklogStateQueued {
+			t.Errorf("cycle %d: state = %q, want %q", cycle, rec.Items[0].State, factory.BacklogStateQueued)
 		}
 		if rec.Items[0].Text != "parked pending decision" {
 			t.Errorf("cycle %d: text = %q, want it byte-identical (no marker, no strip)", cycle, rec.Items[0].Text)
@@ -182,7 +182,7 @@ func TestTodoUnhold_ReturnsHeldCardToQueued(t *testing.T) {
 	if err != nil {
 		t.Fatalf("final load: %v", err)
 	}
-	if rec.Items[0].State != kanban.BacklogStateQueued || rec.Items[0].Text != "parked pending decision" {
+	if rec.Items[0].State != factory.BacklogStateQueued || rec.Items[0].Text != "parked pending decision" {
 		t.Errorf("final card = %+v, want the original queued card", rec.Items[0])
 	}
 	_ = original
@@ -227,8 +227,8 @@ func TestTodoNext_PickOnHeldCardRefused(t *testing.T) {
 	seedTodo(t, "held card")
 	// Seeded directly through the store so this test isolates the PICK GATE's
 	// behavior (the SPEC's one live red-now) from the hold verb's existence.
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items[0].State = kanban.BacklogStateHold
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items[0].State = factory.BacklogStateHold
 		return nil
 	}); err != nil {
 		t.Fatalf("seed hold state: %v", err)
@@ -247,8 +247,8 @@ func TestTodoNext_PickOnHeldCardRefused(t *testing.T) {
 	}
 
 	// The positive control: the same card back in queued state picks fine.
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items[0].State = kanban.BacklogStateQueued
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items[0].State = factory.BacklogStateQueued
 		return nil
 	}); err != nil {
 		t.Fatalf("reset to queued: %v", err)
@@ -260,8 +260,8 @@ func TestTodoNext_PickOnHeldCardRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if rec.Items[0].State != kanban.BacklogStatePicked {
-		t.Errorf("state after pick = %q, want %q", rec.Items[0].State, kanban.BacklogStatePicked)
+	if rec.Items[0].State != factory.BacklogStatePicked {
+		t.Errorf("state after pick = %q, want %q", rec.Items[0].State, factory.BacklogStatePicked)
 	}
 }
 

@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // m3CodexRefusal drives one `moai codex` launch that must be refused and
@@ -27,7 +27,7 @@ import (
 // file. It returns the one line.
 func m3CodexRefusal(t *testing.T, args []string) string {
 	t.Helper()
-	root := netLaneFixture(t, kanban.BackendClaude)
+	root := netLaneFixture(t, factory.BackendClaude)
 	tmp := t.TempDir()
 	t.Setenv("TMPDIR", tmp)
 	cap := withCodexLaunchCapture(t)
@@ -76,8 +76,8 @@ func TestCodexLaneEntryStartsRelaunchLane(t *testing.T) {
 		if lane.env[config.EnvFactoryRole] != config.FactoryRoleLane || label == "" {
 			t.Errorf("codex %s: child is not a lane: role=%q worker=%q", spelling, lane.env[config.EnvFactoryRole], label)
 		}
-		if got := lane.env[config.EnvFactoryBackend]; got != kanban.BackendGPT {
-			t.Errorf("codex %s: child %s = %q, want %q", spelling, config.EnvFactoryBackend, got, kanban.BackendGPT)
+		if got := lane.env[config.EnvFactoryBackend]; got != factory.BackendGPT {
+			t.Errorf("codex %s: child %s = %q, want %q", spelling, config.EnvFactoryBackend, got, factory.BackendGPT)
 		}
 		if card := lane.env[config.EnvFactoryCard]; card == "" {
 			t.Errorf("codex %s: the relaunch loop handed the child no card id", spelling)
