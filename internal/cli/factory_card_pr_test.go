@@ -173,9 +173,8 @@ type ghDouble struct {
 	createErr error
 	hang      bool // block until the call's context ends
 
-	windowSeenHeld   bool
-	pushedAtCreate   bool
-	checkoutAtCreate string
+	windowSeenHeld bool
+	pushedAtCreate bool
 }
 
 func newGHDouble(t *testing.T, f ghfFixture) *ghDouble {

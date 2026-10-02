@@ -827,7 +827,7 @@ func newFactoryCompleteCommand() *cobra.Command {
 	var run string
 	cmd := &cobra.Command{
 		Use:   "complete <card> [remeasure]",
-		Short: "Take a merge-ready card through merging to merged-local (lane session)",
+		Short: "Take a merge-ready card through merging to merged-local; under github-flow, to pr-open then merged-pr (lane session)",
 		Args:  cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !factoryLaneAdmission() {
@@ -1326,7 +1326,7 @@ func newFactoryAssignCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&to, "to", "", "assign the card to this lane label (picked → assigned)")
 	cmd.Flags().StringVar(&prefer, "prefer", "", "assignment preference hint, key=value (reported, never enforced)")
-	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local first (\"\" clears)")
+	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local (git-flow) or merged-pr (github-flow) first (\"\" clears)")
 	cmd.Flags().StringVar(&spec, "spec", "", "SPEC identifier for the card")
 	cmd.Flags().StringVar(&worktree, "worktree", "", "card worktree path")
 	cmd.Flags().StringVar(&contractRef, "contract-ref", "", "contract pointer <spec-id>,<sha256>,<signed-at>[,<event>]")
