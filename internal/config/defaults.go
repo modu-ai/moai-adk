@@ -62,6 +62,17 @@ const (
 	// decision-pending card states hold no lease, so a human decision is never
 	// raced by it. A chosen value, not a measured one; no config key reads it.
 	DefaultFactoryLeaseDuration = 15 * time.Minute
+	// QuotaHeartbeatInterval is how old a window-carrying session telemetry
+	// record may grow, with an unchanged reading, before the statusline writer
+	// rewrites it to refresh its capture time (SPEC-QUOTA-AWARE-SCHEDULING-001
+	// REQ-QAS-003). It keeps a live session's reading from aging toward stale
+	// behind the write-if-changed throttle. A compiled, unmeasured value; a
+	// window-less record never heartbeats.
+	QuotaHeartbeatInterval = 5 * time.Minute
+	// QuotaExhaustionPct is the used percentage at or above which a rate-limit
+	// window counts as exhausted, so the record stamps its first-observed-
+	// exhausted time (REQ-QAS-004). A compiled, unmeasured value.
+	QuotaExhaustionPct = 100
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"

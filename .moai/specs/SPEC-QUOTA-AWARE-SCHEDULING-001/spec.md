@@ -2,7 +2,7 @@
 id: SPEC-QUOTA-AWARE-SCHEDULING-001
 title: "Quota-aware scheduling — Claude 5h/7d usage in the session record, and a Factory lane gate that steers the next card away from a nearly exhausted Claude account"
 version: "0.5.0"
-status: draft
+status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
