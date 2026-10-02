@@ -806,13 +806,13 @@ const sessionWorktreeIntegrationRef = "refs/remotes/origin/develop"
 // the remote integration branch, per the decided fetch-less predicate
 // (decision-index Q1):
 //
-//   (i) the branch tip is an ancestor of the remote-tracking integration
-//       ref (`git merge-base --is-ancestor`), or
-//  (ii) every patch the branch carries already exists upstream — `git
-//       cherry` answers with no "+" line (patch-id equivalence), which
-//       covers squash merges where no commit ancestry survives (the
-//       SPEC-WORKTREE-SQUASH-MERGE-001 lesson: reachability alone cannot
-//       see a squash).
+//	 (i) the branch tip is an ancestor of the remote-tracking integration
+//	     ref (`git merge-base --is-ancestor`), or
+//	(ii) every patch the branch carries already exists upstream — `git
+//	     cherry` answers with no "+" line (patch-id equivalence), which
+//	     covers squash merges where no commit ancestry survives (the
+//	     SPEC-WORKTREE-SQUASH-MERGE-001 lesson: reachability alone cannot
+//	     see a squash).
 //
 // No network runs: both checks read the remote-tracking refs the repository
 // already holds, so the shared exit path stays cheap (REQ-WSS-304). Any

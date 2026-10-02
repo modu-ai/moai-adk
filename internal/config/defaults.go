@@ -1217,9 +1217,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fallback when workflow.yaml omits the block.
 		Audit: AuditConfig{
 			Model: AuditModelClaude,
+			// Claude pin {claude-opus-5-5, high} (SPEC-WEB-SETTINGS-SAVE-001
+			// REQ-WSS-201, operator-confirmed 2026-10-01 — the effort rose from
+			// medium per the same directive that pinned GLM below).
 			Claude: ModelEffort{
 				Model:  "claude-opus-5-5",
-				Effort: "medium",
+				Effort: "high",
 			},
 			// Codex pin {gpt-6.1-sol, high} (SPEC-MODEL-MATRIX-UPDATE-001
 			// REQ-MMU-001). SUPERSEDES REQ-AMP-005 (keep-the-Go-default-EMPTY
@@ -1229,6 +1232,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			Codex: ModelEffort{
 				Model:  DefaultCodexAuditModel,
 				Effort: "high",
+			},
+			// GLM pin {glm-5.3, max} (SPEC-WEB-SETTINGS-SAVE-001 REQ-WSS-201,
+			// operator-confirmed 2026-10-01). Deliberately NOT derived from the
+			// tier default (DefaultGLMHigh = glm-5.3-flash): the audit pin is a
+			// model SWITCH + effort creation — the un-pinned GLM audit call's
+			// actual model changes from flash to the full 5.3, and the effort
+			// vocabulary here is the z.ai reasoning-state set {low, high, max}
+			// (REQ-AMP-006), not the Claude effort ladder.
+			GLM: ModelEffort{
+				Model:  DefaultGLM53,
+				Effort: "max",
 			},
 			Gates: AuditGates{
 				Claude: AuditGateRequired,

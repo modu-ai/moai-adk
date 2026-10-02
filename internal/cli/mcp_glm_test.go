@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // SPEC-MOAI-MCP-SERVER-001 M3 — glm_audit backend (REQ-MCP-009/011/012/013/014,
@@ -325,8 +327,10 @@ func (boomErr) Error() string { return "boom: simulated transport failure" }
 func TestResolveGLMAuditModel_BackendDefault(t *testing.T) {
 	// AC-MCP-015: model resolution never reads agent frontmatter /
 	// llm.agent_overrides. Without a pin the resolver returns the documented
-	// GLM backend default with an EMPTY effort (SPEC-V3R6-AUDIT-MODEL-PIN-001
-	// M3; SPEC-AGENT-MODEL-INHERIT-001 design D5).
+	// GLM backend default {glm-5.3, max} (SPEC-V3R6-AUDIT-MODEL-PIN-001 M3;
+	// SPEC-AGENT-MODEL-INHERIT-001 design D5; the effort rose from the former
+	// EMPTY by REQ-WSS-201 — RED observed at the want-empty assertion before
+	// this update).
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
 	old := projectDirResolver
 	projectDirResolver = func() string { return "" } // no sections dir available
@@ -339,8 +343,11 @@ func TestResolveGLMAuditModel_BackendDefault(t *testing.T) {
 	if me.Model == "opus" || strings.HasPrefix(me.Model, "claude") {
 		t.Errorf("resolveGLMAuditModelEffort model = %q; a Claude id cannot be a GLM default", me.Model)
 	}
-	if me.Effort != "" {
-		t.Errorf("resolveGLMAuditModelEffort effort = %q, want empty (the backend default carries no reasoning directive)", me.Effort)
+	if me.Model != config.DefaultGLM53 {
+		t.Errorf("resolveGLMAuditModelEffort model = %q, want %q (REQ-WSS-201 operator-confirmed audit pin)", me.Model, config.DefaultGLM53)
+	}
+	if me.Effort != "max" {
+		t.Errorf("resolveGLMAuditModelEffort effort = %q, want %q (REQ-WSS-201 — the fallback now carries the max reasoning state)", me.Effort, "max")
 	}
 }
 

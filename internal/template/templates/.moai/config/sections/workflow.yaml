@@ -105,20 +105,21 @@ workflow:
     # never a hard error). codex effort vocabulary: low|medium|high|xhigh|max.
     # glm effort vocabulary (z.ai reasoning states, verbatim): low|high|max —
     # any other non-empty value omits the reasoning directive while the model
-    # pin still applies. Claude ships at claude-opus-5-5/medium and Codex at
-    # gpt-6.1-sol/high (deliberate non-empty pins; an earlier empty-pin
-    # neutrality default was superseded by operator directive 2026-09-30); the
-    # GLM pin ships EMPTY and may be set per project.
+    # pin still applies. Claude ships at claude-opus-5-5/high, Codex at
+    # gpt-6.1-sol/high, and GLM at glm-5.3/max (deliberate non-empty pins;
+    # the claude effort and the GLM pin follow operator directive 2026-10-01,
+    # after the codex pin's 2026-09-30 supersession of the earlier empty-pin
+    # neutrality default).
     audit:
         claude:
             model: claude-opus-5-5
-            effort: medium
+            effort: high
         codex:
             model: gpt-6.1-sol
             effort: high
         glm:
-            model: ""
-            effort: ""
+            model: glm-5.3
+            effort: max
     # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
     # look at your uncommitted changes at turn-end and keeps the turn going when
     # the review comes back failing. Requires the optional `codex` binary.

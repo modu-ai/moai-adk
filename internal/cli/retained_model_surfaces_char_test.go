@@ -155,8 +155,8 @@ func TestCharacterize_AuditPinPrecedenceAndBackendDefault(t *testing.T) {
 	if got := resolveCodexModelEffort(map[string]any{"cwd": bare}); got != (config.ModelEffort{}) {
 		t.Errorf("codex task without pin = %+v, want the zero value", got)
 	}
-	if got := resolveGLMAuditModelEffort(bare); got != (config.ModelEffort{Model: config.DefaultGLMHigh}) {
-		t.Errorf("glm audit without pin = %+v, want {%s, \"\"}", got, config.DefaultGLMHigh)
+	if got := resolveGLMAuditModelEffort(bare); got != (config.ModelEffort{Model: config.DefaultGLM53, Effort: "max"}) {
+		t.Errorf("glm audit without pin = %+v, want {%s, max} (REQ-WSS-201 — the audit pin diverges from the tier default)", got, config.DefaultGLM53)
 	}
 	if got := resolveGLMTaskModel(); got != config.DefaultGLMHigh {
 		t.Errorf("glm task default = %q, want %q", got, config.DefaultGLMHigh)

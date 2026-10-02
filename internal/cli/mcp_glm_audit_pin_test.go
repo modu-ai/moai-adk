@@ -124,10 +124,10 @@ func TestGLMAuditPin_RequestBody(t *testing.T) {
 			wantEffort: "",
 		},
 		{
-			name:       "absent pin leaves body unchanged (legacy default model, no reasoning)",
+			name:       "absent pin uses the operator-confirmed default (glm-5.3 with the max reasoning state — REQ-WSS-201)",
 			pinYAML:    "",
 			wantModel:  glmAuditDefaultModel,
-			wantEffort: "",
+			wantEffort: glmAuditDefaultEffort,
 		},
 	}
 
@@ -175,8 +175,8 @@ func TestGLMAuditPin_TaskResolutionUnaffected(t *testing.T) {
 	writeRawSectionYAML(t, root, "llm.yaml", glmGLMSessionLLMYAML())
 	withCodexProjectDir(t, root)
 
-	if got := resolveGLMTaskModel(); got != glmAuditDefaultModel {
-		t.Errorf("resolveGLMTaskModel = %q, want the backend default %q (neither the audit pin nor a per-agent cell reaches glm_task)", got, glmAuditDefaultModel)
+	if got := resolveGLMTaskModel(); got != glmTaskDefaultModel {
+		t.Errorf("resolveGLMTaskModel = %q, want the task backend default %q (neither the audit pin nor a per-agent cell reaches glm_task; the task path carries its own constant since the audit pin diverged — REQ-WSS-201/REQ-WSS-204)", got, glmTaskDefaultModel)
 	}
 
 	// The pin DOES apply on the audit resolver under the same config. CR #8:

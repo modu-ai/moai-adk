@@ -41,17 +41,23 @@ import (
 // than in defaults.go because it is a single-call ceiling, not a cross-package
 // threshold).
 const (
-	// glmAuditDefaultModel is the GLM backend default model id: the model the
-	// audit and task paths use when no workflow.audit.glm pin (audit) or
-	// caller override (task) names one. Named constant per §14.
-	//
-	// DERIVED from the tier default rather than restated as its own literal. A
-	// second literal drifts: this fallback sat on a two-generation-old id while
-	// the tier defaults moved on, and the non-GLM path — a Claude session calling
-	// glm_audit for a cross-model second opinion, which is the common case — got
-	// that stale model every time. Deriving keeps the fallback on whatever the
-	// launcher actually injects.
-	glmAuditDefaultModel = config.DefaultGLMHigh
+	// glmAuditDefaultModel is the GLM AUDIT fallback model id: the model
+	// glm_audit uses when no workflow.audit.glm pin names one. Named constant
+	// per §14, still derived from a defaults.go constant rather than restated
+	// as a literal — but since SPEC-WEB-SETTINGS-SAVE-001 REQ-WSS-201
+	// (operator-confirmed 2026-10-01) it deliberately DIVERGES from the tier
+	// default: the audit pin is the full glm-5.3, while the tier default
+	// (config.DefaultGLMHigh) stays glm-5.3-flash for the launcher. The task
+	// path is unaffected (REQ-AMP-008 — the audit pins never delegate tasks;
+	// glm_task keeps its own config.DefaultGLMHigh fallback).
+	glmAuditDefaultModel = config.DefaultGLM53
+
+	// glmAuditDefaultEffort is the reasoning state the GLM audit request
+	// carries when no pin effort names one (REQ-WSS-201 — created together
+	// with the model switch; the former fallback returned an EMPTY effort,
+	// which omitted the reasoning directive entirely). Vocabulary is the z.ai
+	// reasoning-state set {low, high, max} (REQ-AMP-006).
+	glmAuditDefaultEffort = "max"
 
 	// glmMessagesPath is appended to config.DefaultGLMBaseURL to form the
 	// Anthropic-compatible /v1/messages endpoint (z.ai accepts Anthropic
@@ -188,8 +194,10 @@ func glmServedModelWarning(requested, served string) string {
 //     z.ai-4xx fail-open to VerdictInconclusive (design decision D3), never a
 //     hard error. Effort rides the pin only when the model is pinned (the
 //     model is the gate — effort alone pins nothing).
-//  2. Otherwise the backend default glmAuditDefaultModel with an EMPTY effort.
-//     MoAI assigns no per-agent model, so no llm.yaml cell is consulted
+//  2. Otherwise the backend default {glmAuditDefaultModel, max}
+//     (REQ-WSS-201 — the former fallback returned an EMPTY effort, which
+//     omitted the reasoning directive entirely). MoAI assigns no per-agent
+//     model, so no llm.yaml cell is consulted
 //     (SPEC-AGENT-MODEL-INHERIT-001 design D5).
 //
 // glm_task never calls it (REQ-AMP-008).
@@ -208,7 +216,7 @@ func resolveGLMAuditModelEffort(projectRoot string) config.ModelEffort {
 	if pin := workflowAuditPins(root).GLM; pin.Model != "" {
 		return pin
 	}
-	return config.ModelEffort{Model: glmAuditDefaultModel}
+	return config.ModelEffort{Model: glmAuditDefaultModel, Effort: glmAuditDefaultEffort}
 }
 
 // handleGLMAudit is the thin-wrapper handler for the `glm_audit` MCP tool. It

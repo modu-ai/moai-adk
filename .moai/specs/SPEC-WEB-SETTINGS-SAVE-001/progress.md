@@ -26,6 +26,14 @@
 - AC-WSS-005 무손실 회귀 0: `go test -count=1 -run 'TestApplySchemaEdits|TestNestedSeamEdit|TestPatchFile|TestSyncToProjectConfig|TestSharedNestedSeam' ./internal/settings/ ./internal/profile/` — settings 29 PASS + profile 전항 PASS, 양 패키지 ok. t1314 무손실 테스트 무수정.
 - 산출물 변경 0 — 이 행이 M2의 완료 기록이다.
 
+### M4 (2026-10-02) — 스코프 ② 감사 핀 3중 정합
+
+- **변경 3표면**: ① Go 기본값(defaults.go Audit 블록) — claude effort medium→high + GLM 핀 신설 `{glm-5.3(DefaultGLM53), max}` · ② 배포 템플릿 workflow.yaml — 동일 값 + 주석 갱신, `make build` 재생성 드리프트 0(git status 클린) · ③ resolver 폴백 — mcp_claude.go `claudeAuditDefaultEffort` medium→high, mcp_glm.go `glmAuditDefaultModel` config.DefaultGLM53 전환 + `glmAuditDefaultEffort = "max"` 신설, `resolveGLMAuditModelEffort`가 effort를 반환.
+- **codex 불변 확인**: `{gpt-6.1-sol, high}` 3표면 유지 — TestAuditConfig_DefaultProfile 단언 GREEN(AC-WSS-008).
+- **관측-RED(수정 전 값 단언 5건 적색 관측 후 갱신)**: mcp_audit_config_test.go:61(claude effort want medium), mcp_glm_fallback_test.go:28/50/82(폴백 track DefaultGLMHigh·want glm-5.3-flash), retained_model_surfaces_char_test.go:160-162. 원문 출력은 verdict.md.
+- **부수 결함 건 발견·수리**: `resolveGLMTaskModel`(glm_task.go)이 `glmAuditDefaultModel`을 공유 — 핀 변경이 태스크 경로를 몰래 따라가는 구조(REQ-AMP-008/REQ-WSS-204 위반 1커밋 거리). 캐릭터리제이션 테스트가 즉시 적색으로 잡았고(glm task default = glm-5.3, want flash), `glmTaskDefaultModel = config.DefaultGLMHigh` 상수를 분리해 태스크 경로를 불변으로 고정. TestResolveGLMTaskModel_BackendDefault·TestGLMAuditPin_TaskResolutionUnaffected GREEN.
+- **갱신 테스트**: mcp_glm_fallback_test.go(파생 가드를 분기-고정 가드로 재작성), mcp_glm_audit_pin_test.go(태스크 상수 지시 + 무핀 케이스 {default, max}), retained_model_surfaces_char_test.go(감사 폴백 분기 단언), mcp_audit_config_test.go(claude high + GLM 핀 신설 단언).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

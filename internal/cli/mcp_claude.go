@@ -18,7 +18,7 @@ const (
 	claudeBinaryName         = "claude"
 	claudeAuditTransport     = "claude-code-cli"
 	claudeAuditDefaultModel  = "claude-opus-5-5"
-	claudeAuditDefaultEffort = "medium"
+	claudeAuditDefaultEffort = "high"
 	claudeAuditOutputLimit   = 1 << 20
 	claudeAuditTimeout       = 5 * time.Minute
 	claudeCodeEnvPrefix      = "CLAUDE_CODE_"
