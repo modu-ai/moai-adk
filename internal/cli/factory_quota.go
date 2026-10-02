@@ -34,6 +34,12 @@ const (
 // without writing records. The production value is the statusline aggregator.
 var factoryQuotaAggregate = statusline.AggregateQuota
 
+// factoryQuotaStateDirs is the worktree-enumeration seam (SPEC-QUOTA-RECORD-WORKTREES-001
+// REQ-QWR-006): the one place this package references the enumerator, so a test
+// can count its calls and a static check can pin that no code path reaches it
+// before the gate check. The production value is the statusline enumerator.
+var factoryQuotaStateDirs = statusline.QuotaStateDirs
+
 // factoryQuotaWindowState is one rate-limit window as the evaluation sees it:
 // its aggregate reading and the hold percentage the configuration sets for it.
 type factoryQuotaWindowState struct {

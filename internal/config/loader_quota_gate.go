@@ -27,6 +27,9 @@ type QuotaGateSettings struct {
 	SevenDayHoldPct  int
 	ReleaseMarginPct int
 	MaxAge           time.Duration
+	// MaxScanDirs is the bound on linked-worktree record directories examined
+	// per quota reading (SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011).
+	MaxScanDirs int
 }
 
 // Valid ranges of the numeric keys (REQ-QAS-008).
