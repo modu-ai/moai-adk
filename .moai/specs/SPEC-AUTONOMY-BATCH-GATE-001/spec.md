@@ -2,7 +2,7 @@
 id: SPEC-AUTONOMY-BATCH-GATE-001
 title: "승인 게이트 배치 일괄화 — 운영자 형태 plan→run Kickoff의 배치 게이트 요약, 단일 승인, 반대 증거 의무"
 version: "0.4.1"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec (card t1344)
