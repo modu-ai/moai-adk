@@ -291,7 +291,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
 		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, kanban.BackendGLM, entry.FactoryAutoNumber, cmd.ErrOrStderr())
 		endClaim()
 		if claimErr == nil {
 			debugTiming.annotateDetail("label=" + finalLabel)
@@ -315,7 +315,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			if debugRequested {
 				debugTiming.debugDump(cmd.ErrOrStderr())
 			}
-			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
+			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs, entry.FactoryRun, entry.FactoryLead)
 		}
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)

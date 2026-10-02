@@ -85,7 +85,7 @@ import urllib.request
 
 # The three agent-settings groups (profile matrix, tier radio, haiku lock) left
 # with that tab (SPEC-AGENT-MODEL-INHERIT-001), taking the total from 13 to 10.
-INVENTORY_TOTAL = 10
+INVENTORY_TOTAL = 13
 
 # Reversible effect kinds a manifest entry may exercise unconditionally
 # (REQ-AFG-012). Save- and submit-family controls are outside this family: the
@@ -236,6 +236,25 @@ EXCLUSIONS = [
         "line_group": 412,
         "selector": 'select[name^="llm.glm.models."]',
         "reason": "GLM flash effort lock: option disabled-state pairing — form state outside the allowlist",
+    },
+    {
+        # SPEC-WEB-AGENTFM-RESTORE-001 M4: the restored agent-overrides surface
+        # adds three change groups, all form-state pairing like the GLM lock
+        # above — select/radio state set client-side, outside the probe's
+        # visibility/click effects family.
+        "line_group": 485,
+        "selector": 'select[name^="agentfm."]',
+        "reason": "profile-matrix repopulation: marks dirty selects and flips the Custom radio — form state pairing outside the allowlist",
+    },
+    {
+        "line_group": 493,
+        "selector": 'input[name="performance_tier"]',
+        "reason": "tier repopulation handler: resets agentfm selects to the tier's matrix cells — form state pairing outside the allowlist",
+    },
+    {
+        "line_group": 552,
+        "selector": 'select[name^="agentfm."][name$=".model"]',
+        "reason": "haiku effort lock: effort select disabled-state pairing — form state outside the allowlist (same shape as the GLM lock)",
     },
     {
         "line_group": 430,

@@ -240,7 +240,7 @@ Claude Code を開くときの基本権限モードです。有効な値は次�
 | `"bypassPermissions"` | すべての権限を自動許可 (危険、`disableBypassPermissionsMode` で遮断可能) |
 
 {{< callout type="info" >}}
-**デフォルト値**: MoAI-ADK テンプレートは `"defaultMode": "acceptEdits"` を使います。これは開発フローでファイル編集プロンプトを減らしつつ危険なコマンドは依然として確認するようにバランスを取ります。
+**デフォルト値**: MoAI-ADK テンプレートは `defaultMode` を固定しません。代わりに、`moai profile` ウィザードで選んだ権限モードが `.claude/settings.local.json` の `defaultMode` に記録され、`moai cc`・`moai glm` の起動時にも `--permission-mode` フラグとして渡されます。どこにも指定しない場合、Claude Code の内蔵デフォルトが適用されます。ファイル編集の確認を減らしつつ危険なコマンドは確認を保ちたい場合は、ウィザードで `"acceptEdits"` を選択してください。
 {{< /callout >}}
 
 ### allow (自動許可)

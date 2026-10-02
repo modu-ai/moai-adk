@@ -247,7 +247,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// the bumped value must reach the backend argv — the session name is
 		// the address the leader dispatches to.
 		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, backend, entry.FactoryAutoNumber, cmd.ErrOrStderr())
 		endClaim()
 		if claimErr == nil {
 			debugTiming.annotateDetail("label=" + finalLabel)
@@ -277,7 +277,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 				// first session handoff (REQ-009's cc/glm form).
 				debugTiming.debugDump(cmd.ErrOrStderr())
 			}
-			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
+			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs, entry.FactoryRun, entry.FactoryLead)
 		}
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)

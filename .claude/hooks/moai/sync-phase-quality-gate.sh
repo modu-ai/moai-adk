@@ -149,7 +149,7 @@ detect_languages() {
     if [ -f "$root/Gemfile" ] || has_suffix '*.rb'; then add_language ruby; fi
     if [ -f "$root/composer.json" ] || has_suffix '*.php'; then add_language php; fi
     if [ -f "$root/mix.exs" ] || has_suffix '*.ex' || has_suffix '*.exs'; then add_language elixir; fi
-    if [ -f "$root/CMakeLists.txt" ] || [ -f "$root/Makefile" ] || has_suffix '*.cpp' || has_suffix '*.cc' || has_suffix '*.h'; then add_language cpp; fi
+    if [ -f "$root/CMakeLists.txt" ] || [ -f "$root/Makefile" ] || has_suffix '*.cpp' || has_suffix '*.cc' || has_suffix '*.cxx' || has_suffix '*.h'; then add_language cpp; fi
     if [ -f "$root/build.sbt" ] || has_suffix '*.scala'; then add_language scala; fi
     if [ -f "$root/DESCRIPTION" ] || [ -f "$root/renv.lock" ] || has_suffix '*.R' || has_suffix '*.r'; then add_language r; fi
     if [ -f "$root/pubspec.yaml" ] || has_suffix '*.dart'; then add_language flutter; fi

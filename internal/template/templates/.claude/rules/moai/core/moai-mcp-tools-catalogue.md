@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 45-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 47-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 45 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 47 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (45 tools)
+## Tool catalogue (47 tools)
 
 ### SPEC lifecycle
 
@@ -79,15 +79,43 @@ the independent `claude_audit` backend. Codex and GLM continue to run as their
 configured gates require. Every backend tool fails open to `inconclusive`; an
 explicitly required gate left inconclusive makes the convergence verdict fail.
 
+### On-demand self-review (advisory)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__codex_review` | codex review of the caller's OWN change — `scope: card` (the card diff) or `scope: uncommitted` | the main session; any agent whose `tools:` list names it | `moai verify codex-review` (codex leg only) |
+| `mcp__moai__glm_review` | GLM (z.ai) review of the caller's own change, sent as a diff | the main session; any agent whose `tools:` list names it | — |
+
+These are not audit tools. A result is ADVISORY (non-binding): `advisory` is
+always true, no audit receipt is filed or consumed, the `workflow.audit.gates.*`
+required conversion never applies (an absent reviewer is `inconclusive`, never
+`fail`), and the audit model pins are not read — `model` is the caller's input or
+the backend default. `scope` is required and has no default. `card` resolves
+through the same scope resolver the turn-end review gate uses, with the merge
+base recomputed on every call; a tree that is not a card worktree returns
+`inconclusive` without reviewing anything. `uncommitted` reviews the named
+tree's uncommitted changes — in the primary checkout that is the whole shared
+working tree, and there is no path restriction. Every result names `scope`,
+`base` (the merge-base SHA for `card`, empty otherwise), `backend`, and `tree`
+(the canonical root that was reviewed).
+
+GLM has no filesystem, so its material is the diff with the runtime-managed
+paths excluded: untracked files cannot be part of it and are listed in
+`excluded_untracked`, a diff cut at the size cap sets `truncated`, and an empty
+diff calls neither backend. A call is synchronous, bounded by the review budget,
+and sends no progress notifications. A server process started before these tools
+existed does not list them — reconnect it. The codex leg then falls back to
+`moai verify codex-review --project-root <tree>`; the GLM leg has no fallback.
+
 ### Codex delegation (background jobs)
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__codex_task` | Delegate a coding/investigation task to codex (sync or background) | super-advisor | `moai codex task` |
+| `mcp__moai__codex_task` | Delegate a coding/investigation task to codex (sync or background) | manager-develop, super-advisor | `moai codex task` |
 | `mcp__moai__codex_setup` | Probe local codex install (LookPath + version + auth) | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | Read a background codex job's status/record | super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | Read a background codex job's output | super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | Stop a running background codex job | super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_job_status` | Read a background codex job's status/record | manager-develop, super-advisor | `moai codex job status` |
+| `mcp__moai__codex_job_result` | Read a background codex job's output | manager-develop, super-advisor | `moai codex job result` |
+| `mcp__moai__codex_job_cancel` | Stop a running background codex job | manager-develop, super-advisor | `moai codex job cancel` |
 
 The codex delegation family is wired into `super-advisor` because the on-demand
 high-reasoning consultation agent is the natural consumer of background
@@ -96,6 +124,7 @@ via `codex_job_status`/`codex_job_result`, and cancels via `codex_job_cancel`.
 `codex_setup` probes whether codex is available before delegating. codex is
 OPTIONAL: a missing or unavailable codex yields a fail-open `inconclusive`, never
 a hard error.
+`manager-develop` carries the family except `codex_setup`: it may start a bounded drafting job with `codex_task` only as the `External Model Delegation` section of `.claude/skills/moai/workflows/run.md` allows, and a delegated codex turn stays read-only.
 
 ### Codex read-only roles (background jobs)
 
@@ -118,10 +147,10 @@ its exit.
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__glm_task` | Delegate a task (arbitrary prompt) to GLM (z.ai) (sync or background) | super-advisor | — (no `moai glm task` CLI exists) |
-| `mcp__moai__glm_job_status` | Read a background GLM job's status/record | super-advisor | — |
-| `mcp__moai__glm_job_result` | Read a background GLM job's output | super-advisor | — |
-| `mcp__moai__glm_job_cancel` | Stop a running background GLM job | super-advisor | — |
+| `mcp__moai__glm_task` | Delegate a task (arbitrary prompt) to GLM (z.ai) (sync or background) | manager-develop, super-advisor | — (no `moai glm task` CLI exists) |
+| `mcp__moai__glm_job_status` | Read a background GLM job's status/record | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_result` | Read a background GLM job's output | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_cancel` | Stop a running background GLM job | manager-develop, super-advisor | — |
 
 The GLM delegation family mirrors the codex delegation family against the z.ai
 HTTP backend and is wired into `super-advisor` the same way: it arms a GLM task
@@ -131,12 +160,13 @@ polls completion via `glm_job_status`/`glm_job_result`, and cancels via
 learned from `glm_task` itself, which reports a structured failed result when
 the key is missing or z.ai is unreachable. GLM is OPTIONAL: a missing or
 unavailable GLM yields a fail-open result, never a hard error.
+`manager-develop` carries this family in full: it may start a bounded drafting job with `glm_task` only as the `External Model Delegation` section of `.claude/skills/moai/workflows/run.md` allows, and a GLM job sends its prompt to an external provider.
 
 ### Judgment (gated, display-only)
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__jev_ask` | Ask the gated judgment capability typed questions over one supplied state; typed answers with probability | gated-unavailable at the shipped default (`workflow.jev.enabled: false`); display-only — a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone | — (MCP-only) |
+| `mcp__moai__jev_ask` | Ask the gated judgment capability typed questions over one supplied state; typed answers with probability | gated-unavailable at the shipped default (`workflow.jev.enabled: false`); display-only — a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone, and except as the ordering key of the `todo --auto` cycle's own candidate ranking (the auto-scoped ranking exception — selection order only, in-process, never through this tool) | — (MCP-only) |
 
 The tool is registered unconditionally so its gate-off contract is invocable
 and countable, but with the gate off it constructs no request and makes no
@@ -218,7 +248,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (41 of the 45 tools; the session-messaging family follows below)
+## Tool families (43 of the 47 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -226,11 +256,12 @@ stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed
 | Verification snapshots | `verify_snapshot`, `verify_trend` | manager-develop, sync-auditor, super-advisor |
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | orchestrator only / manager-develop, manager-lead |
 | Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
-| Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor |
+| Self-review (advisory) | `codex_review`, `glm_review` | the main session; any agent whose `tools:` list names them — never an audit verdict, no receipt |
+| Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor (all five), manager-develop (all but codex_setup) |
 | Codex read-only roles | `codex_role_audit`, `codex_role_audit_status`, `codex_role_audit_result` | a Codex session — starts `plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor` as a top-level read-only process instead of through `spawn_agent` |
-| GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor |
+| GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor, manager-develop |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
-| Judgment (gated) | `jev_ask` | gated-unavailable at the shipped default (`workflow.jev.enabled: false`) — no request constructed, no network call; while the chain's fitness gate stands unrun it is not presented as available. Display-only: a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone |
+| Judgment (gated) | `jev_ask` | gated-unavailable at the shipped default (`workflow.jev.enabled: false`) — no request constructed, no network call; while the chain's fitness gate stands unrun it is not presented as available. Display-only: a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone, and except as the ordering key of the `todo --auto` cycle's own candidate ranking (the auto-scoped ranking exception — selection order only, in-process, never through this tool) |
 | Factory card verbs | `factory_next`, `factory_stage`, `factory_complete`, `factory_decide`, `todo_add`, `todo_list` | factory lane sessions (lane verbs, `project_root` required on next/stage/complete); `factory_decide` inverts the gate; `todo_list` is the family's read-only surface |
 | Factory messaging | `factory_msg_send`, `factory_msg_list`, `factory_msg_body`, `factory_msg_receipt`, `factory_msg_status` | attributed factory lead/worker sessions; `status` is the read-only operational roster/count surface |
 

@@ -7,23 +7,27 @@ import (
 )
 
 // TestEmitAcceptEditsConfirmationAnchor covers AC-CCI-006 and AC-TRI-007: when
-// the wizard normalizes permissionMode "acceptEdits" to empty string, an
-// explicit confirmation line MUST be emitted to the output writer carrying a
-// deterministic, grep-stable anchor — in EVERY locale (SPEC-CLI-TUX-RENDER-
-// I18N-001 REQ-TRI-006: the notice was the M1 sweep's one English-fixed
-// surface; localization must preserve the anchor tokens verbatim).
+// the wizard saves permissionMode "acceptEdits", an explicit confirmation line
+// MUST be emitted to the output writer carrying a deterministic, grep-stable
+// anchor — in EVERY locale (SPEC-CLI-TUX-RENDER-I18N-001 REQ-TRI-006: the
+// notice was the M1 sweep's one English-fixed surface; localization must
+// preserve the anchor tokens verbatim).
 //
-// The anchor states the two facts REQ-CCI-006 requires:
+// The anchor states the two facts REQ-CCI-006 requires (reversed by card
+// t1414 — the template settings.json stopped shipping a defaultMode default
+// in 20b4ff0f6, so an absent override lets CC 2.1.283+'s built-in default
+// win):
 //
-//	(1) "acceptEdits" is the project default;
-//	(2) settings.local.json will NOT receive a defaultMode override.
+//	(1) "acceptEdits" WILL be written to settings.local.json as defaultMode;
+//	(2) the persisted mode survives Claude Code's built-in default.
 //
-// Anchor tokens per locale: the config tokens "acceptEdits" and
-// "settings.local.json" survive verbatim in all four locales (REQ-TRI-006's
-// anchor-token contract, owned by SPEC-V3R6-CLI-CONFIG-INTEGRITY-001
-// REQ-CCI-006); the prose token "project default" is asserted on the English
-// column only — the localized columns assert their own native sentence and
-// the ABSENCE of the English original (AC-TRI-006 residue-zero contract).
+// Anchor tokens per locale: the config tokens "acceptEdits",
+// "settings.local.json" and "defaultMode" survive verbatim in all four
+// locales (REQ-TRI-006's anchor-token contract, owned by
+// SPEC-V3R6-CLI-CONFIG-INTEGRITY-001 REQ-CCI-006); the prose token "will be
+// written" is asserted on the English column only — the localized columns
+// assert their own native sentence and the ABSENCE of the English original
+// (AC-TRI-006 residue-zero contract).
 func TestEmitAcceptEditsConfirmationAnchor(t *testing.T) {
 	t.Parallel()
 
@@ -35,26 +39,26 @@ func TestEmitAcceptEditsConfirmationAnchor(t *testing.T) {
 	}{
 		{
 			locale:  "en",
-			native:  "project default",
-			anchors: []string{"acceptEdits", "project default", "settings.local.json"},
+			native:  "will be written",
+			anchors: []string{"acceptEdits", "settings.local.json", "defaultMode"},
 		},
 		{
 			locale:     "ko",
-			native:     "프로젝트 기본값이므로",
-			anchors:    []string{"acceptEdits", "settings.local.json"},
-			enResidues: []string{"project default", "will be written"},
+			native:     "기록합니다",
+			anchors:    []string{"acceptEdits", "settings.local.json", "defaultMode"},
+			enResidues: []string{"will be written", "built-in default"},
 		},
 		{
 			locale:     "ja",
-			native:     "プロジェクトのデフォルト",
-			anchors:    []string{"acceptEdits", "settings.local.json"},
-			enResidues: []string{"project default", "will be written"},
+			native:     "書き込まれます",
+			anchors:    []string{"acceptEdits", "settings.local.json", "defaultMode"},
+			enResidues: []string{"will be written", "built-in default"},
 		},
 		{
 			locale:     "zh",
-			native:     "项目默认值",
-			anchors:    []string{"acceptEdits", "settings.local.json"},
-			enResidues: []string{"project default", "will be written"},
+			native:     "写入",
+			anchors:    []string{"acceptEdits", "settings.local.json", "defaultMode"},
+			enResidues: []string{"will be written", "built-in default"},
 		},
 	} {
 		var buf bytes.Buffer
@@ -76,12 +80,12 @@ func TestEmitAcceptEditsConfirmationAnchor(t *testing.T) {
 		}
 	}
 
-	// The en line MUST still state the "no override will be written" fact so
-	// the user does not perceive the acceptEdits selection as a silent no-op.
+	// The en line MUST state the write fact so the user does not perceive the
+	// acceptEdits selection as a silent no-op (card t1414).
 	var buf bytes.Buffer
 	emitAcceptEditsConfirmation(&buf, "en")
-	if !strings.Contains(strings.ToLower(buf.String()), "no") {
-		t.Errorf("acceptEdits confirmation line must state that NO override will be written; got:\n%s", buf.String())
+	if !strings.Contains(strings.ToLower(buf.String()), "will be written") {
+		t.Errorf("acceptEdits confirmation line must state that the override WILL be written; got:\n%s", buf.String())
 	}
 }
 

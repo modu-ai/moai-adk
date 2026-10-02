@@ -77,7 +77,7 @@ description: "Claude Code 的斜杠命令 —— 整理内置命令、用 Markdo
 - [v2.1.154 更新日志](https://github.com/anthropics/claude-code/blob/v2.1.154/CHANGELOG.md)明确记载了动态工作流与 `/workflows` 的引入。[v2.1.141 更新日志](https://github.com/anthropics/claude-code/blob/v2.1.141/CHANGELOG.md)记载了 `/bg` 的修复，能证明当时已有该命令，但无法确定引入版本。
 - 同一功能常有多个名称（别名）。
 - 部分命令的可见性随平台、套餐、环境而异。
-- `ultracode` 目前既是工作流触发关键词（pre-v2.1.160 为 `workflow`），也是一个 `/effort` 等级。
+- `ultracode` 目前既是工作流触发关键词（pre-v2.1.160 为 `workflow`），自 v2.1.284 起也是 `/effort` 中可独立开启和关闭的开关。它不是推理强度等级，开启或关闭都不会改变等级。
 
 ## 自定义斜杠命令
 

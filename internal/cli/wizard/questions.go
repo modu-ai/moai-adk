@@ -98,19 +98,22 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     defaultProjectName,
 			Required:    true,
 		},
-		// 3. Report Format — html+md vs md.
+		// 3. Report Format — html+md vs md vs artifact.
 		// The value set mirrors internal/settings reportFormatValues (the closed
-		// set {"html+md", "md"} consumed by the moai-domain-html-report skill via
-		// report.format). Keep these two Values in sync with that SSOT.
+		// set {"html+md", "md", "artifact"} consumed by the
+		// moai-domain-html-report skill via report.format; artifact publishes the
+		// HTML as a Claude Artifact and falls back to html+md when the Artifact
+		// tool is absent). Keep these Values in sync with that SSOT.
 		{
 			ID:          "report_format",
 			Group:       "Model & Report",
 			Type:        QuestionTypeSelect,
 			Title:       "Select report format",
-			Description: "Controls whether reports are generated as HTML+Markdown or Markdown only.",
+			Description: "Controls whether reports are generated as HTML+Markdown, Markdown only, or published as a Claude Artifact.",
 			Options: []Option{
 				{Label: "HTML + Markdown (Recommended)", Value: "html+md", Desc: "Generate both an HTML report (browser-viewable) and Markdown"},
 				{Label: "Markdown only", Value: "md", Desc: "Generate Markdown reports only (lighter, diff-friendly)"},
+				{Label: "Artifact (Claude)", Value: "artifact", Desc: "Publish the report as a Claude Artifact (falls back to html+md when the Artifact tool is unavailable)"},
 			},
 			Default:  "html+md",
 			Required: true,

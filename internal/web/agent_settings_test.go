@@ -48,8 +48,6 @@ func TestNoTeamRoleProfileRender(t *testing.T) {
 	}
 }
 
-// TestAgentFMWarnI18nParity는 AC-WC11-028의 4-locale half다: agentfm 신규 키가
-
 // TestWorkflowAgentsWebSubmissionIgnored는 M5-a B1의 행동 완결이다: workflow_agents
 // 폼 제출은 웹에서 더 이상 렌더/쓰기하지 않으므로 무시된다 — 블록은 생성되지 않고
 // 기존 workflow.yaml 내용은 불변이다. struct 필드(config.Workflow.WorkflowAgents)와
