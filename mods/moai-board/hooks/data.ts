@@ -31,7 +31,7 @@ export type RunResult = {
 export type Run = (argv: readonly string[]) => Promise<RunResult>
 
 // ---- the fixed argv table (REQ-MBM-002, REQ-MBM-013) ------------------------
-/** Read-only commands. The pick command is built only by buildPickArgv. */
+/** Read-only commands. The one write-capable argv is built by the pick builder below, nowhere else. */
 export const ARGV = {
   queueJson: ['moai', 'gtd', 'list', '--json'],
   queueText: ['moai', 'gtd', 'list', '--limit', '0'],

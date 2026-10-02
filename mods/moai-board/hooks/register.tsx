@@ -2,28 +2,72 @@
 // (data.ts, specs.ts, view.tsx) receive functions or resolved element tables,
 // never `$` (the engine refuses `$` passed into an imported function, spec.md §4).
 import type { EngineInterface, Register } from 'claude-code'
+import type { MoaiBoardCard, MoaiBoardTab, MoaiBoardView } from '../types'
 import {
+  CANCEL_LABEL,
   CMD_TIMEOUT_MS,
+  CONFIRM_LABEL,
   POLL_INTERVAL_MS,
+  buildPickArgv,
+  canPick,
   clampInterval,
   createFlightGate,
   createQueueReaders,
+  cutChars,
   emptyFeed,
+  executePick,
+  firstLine,
+  isConfirmed,
+  isStillQueued,
+  pickPrefix,
   readLanes,
   readQueue,
   sameFeed,
 } from './data'
+import type { Actions, Model } from './view'
+import { drawBoard } from './view'
 
 const PANE = 'moai-board'
 
 // Typed references: plugin and key are literals, used for nothing but $.state calls.
+const viewRef = { plugin: 'moai-board', key: 'view' } as const
 const queueRef = { plugin: 'moai-board', key: 'queue' } as const
 const lanesRef = { plugin: 'moai-board', key: 'lanes' } as const
+const specsRef = { plugin: 'moai-board', key: 'specs' } as const
+const docRef = { plugin: 'moai-board', key: 'doc' } as const
 const noticeRef = { plugin: 'moai-board', key: 'notice' } as const
+
+const DEFAULT_VIEW: MoaiBoardView = { tab: 'queue', card: '', spec: '', file: '', status: 'active', page: 0, root: '' }
 
 // The single process.run call site (REQ-MBM-013). Helpers receive it as a function.
 const runMoai = ($: EngineInterface, argv: readonly string[]) =>
   $.process.run(argv, { timeoutMs: CMD_TIMEOUT_MS })
+
+const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err))
+
+// ---- state helpers ---------------------------------------------------------------------
+const readView = async ($: EngineInterface): Promise<MoaiBoardView> => (await $.state.get(viewRef)).value ?? DEFAULT_VIEW
+
+const patchView = async ($: EngineInterface, patch: Partial<MoaiBoardView>): Promise<void> => {
+  await $.state.set(viewRef, { ...(await readView($)), ...patch })
+}
+
+const say = async ($: EngineInterface, text: string): Promise<void> => {
+  await $.state.set(noticeRef, text)
+}
+
+// Fail-soft (REQ-MBM-010): a handler that throws leaves a notice, never an exception in the hook chain.
+const soft = async ($: EngineInterface, body: () => Promise<void>): Promise<void> => {
+  try {
+    await body()
+  } catch (err) {
+    try {
+      await say($, `moai-board: ${errorText(err)}`)
+    } catch {
+      // nothing left to try; the session continues unaffected
+    }
+  }
+}
 
 // ---- polling (REQ-MBM-006, REQ-MBM-007) --------------------------------------------
 // Module variables hold only what a hot reload may lose at the cost of one re-parse
@@ -41,10 +85,11 @@ const merge = (a: Wanted | undefined, b: Wanted): Wanted => ({ lanes: (a?.lanes 
 const pollOnce = async ($: EngineInterface, want: Wanted): Promise<void> => {
   const run = (argv: readonly string[]) => runMoai($, argv)
   const now = Date.now()
+  const view = await readView($)
   const prevQueue = (await $.state.get(queueRef)).value ?? emptyFeed()
   const q = await readQueue(run, readers, prevQueue, now)
   if (q.isChanged) await $.state.set(queueRef, q.feed)
-  if (want.lanes) {
+  if (want.lanes || view.tab === 'lanes') {
     const prevLanes = (await $.state.get(lanesRef)).value ?? emptyFeed()
     const next = await readLanes(run, prevLanes, now)
     if (!sameFeed(prevLanes, next)) await $.state.set(lanesRef, next)
@@ -65,7 +110,7 @@ const refresh = async ($: EngineInterface, want: Wanted, isTick = false): Promis
       pending = undefined
     }
   } catch (err) {
-    await $.state.set(noticeRef, `The board could not refresh: ${err instanceof Error ? err.message : String(err)}`)
+    await soft($, async () => say($, `The board could not refresh: ${errorText(err)}`))
   } finally {
     gate.finish()
   }
@@ -91,20 +136,99 @@ const closePane = async ($: EngineInterface): Promise<void> => {
   await $.ui.close({ id: PANE })
 }
 
+// ---- view navigation: local view state, and only argv of the fixed read-only table ------------
+const switchTab = async ($: EngineInterface, tab: MoaiBoardTab): Promise<void> => {
+  await patchView($, { tab, card: '', spec: '', file: '', page: 0 })
+  await say($, '')
+  await refresh($, { lanes: tab === 'lanes' })
+}
+
+const refreshNow = async ($: EngineInterface): Promise<void> => {
+  const view = await readView($)
+  await say($, '')
+  await refresh($, { lanes: view.tab === 'lanes' })
+}
+
+// ---- the one write-capable action: pick (REQ-MBM-003 to REQ-MBM-005) ---------------------------
+const onPickPress = async ($: EngineInterface, card: MoaiBoardCard): Promise<void> => {
+  const argv = canPick(card) ? buildPickArgv(card.id, pickPrefix(card.text)) : undefined
+  if (argv === undefined) return
+  let answer: string
+  try {
+    answer = await $.ui.ask(`Pick card ${card.id} ("${cutChars(firstLine(card.text), 120)}")?`, {
+      options: [CONFIRM_LABEL, CANCEL_LABEL],
+      header: 'Pick card',
+    })
+  } catch {
+    return // dismissed, or nobody to ask (-p run): no process, no change
+  }
+  if (!isConfirmed(answer)) return
+  const result = await executePick(argv => runMoai($, argv), argv)
+  await refresh($, { lanes: false })
+  const queued = (await $.state.get(queueRef)).value?.data
+  const isUnconfirmed = result.kind === 'ok' && queued !== undefined && isStillQueued(queued.cards, card.id)
+  const message =
+    result.kind === 'failed'
+      ? `Pick failed: ${result.text}`
+      : isUnconfirmed
+        ? 'The pick reported success but the card still reads queued (unconfirmed).'
+        : `Picked ${card.id}.`
+  await say($, message)
+  if (result.kind === 'failed' || isUnconfirmed) $.ui.toast(message)
+}
+
+// ---- drawing ---------------------------------------------------------------------------------------
+const readModel = async ($: EngineInterface, cols: number): Promise<Model> => ({
+  cols,
+  now: Date.now(),
+  view: await readView($),
+  queue: (await $.state.get(queueRef)).value ?? emptyFeed(),
+  lanes: (await $.state.get(lanesRef)).value ?? emptyFeed(),
+  specs: (await $.state.get(specsRef)).value ?? emptyFeed(),
+  doc: (await $.state.get(docRef)).value,
+  notice: (await $.state.get(noticeRef)).value ?? '',
+})
+
+const makeActions = ($: EngineInterface): Actions => ({
+  tab: tab => void soft($, () => switchTab($, tab)),
+  refresh: () => void soft($, () => refreshNow($)),
+  back: () => void soft($, () => patchView($, { card: '', spec: '', file: '' })),
+  close: () => void soft($, () => closePane($)),
+  openCard: id => void soft($, () => patchView($, { card: id })),
+  pick: card => void soft($, () => onPickPress($, card)),
+})
+
+const rootOf = async ($: EngineInterface): Promise<string> => {
+  try {
+    return await $.session.root()
+  } catch {
+    return ''
+  }
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({
-      name: 'moai-board',
-      description: 'Open the moai board pane: queue, lanes, SPECs (read-only; pick asks first)',
-    })
+    try {
+      await $.command.register({
+        name: 'moai-board',
+        description: 'Open the moai board pane: queue, lanes, SPECs (read-only; pick asks first)',
+      })
+    } catch {
+      // the command is simply absent; the session continues unaffected
+    }
     return next(e)
   })
 
   on('command.run', { command: 'moai-board' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'moai-board' })
-    startPolling($)
-    await refresh($, { lanes: false })
-    return { text: 'moai-board pane opened.' }
+    try {
+      await $.ui.open({ id: PANE, title: 'moai-board' })
+      await patchView($, { root: await rootOf($) })
+      startPolling($)
+      await refresh($, { lanes: false })
+      return { text: 'moai-board pane opened.' }
+    } catch (err) {
+      return { text: `moai-board could not open the pane: ${errorText(err)}` }
+    }
   })
 
   on('ui.close', async ($, e, next) => {
@@ -118,12 +242,13 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Button, Text } = $.ui.resolve(e)
-    return (
-      <Box flexDirection="row" gap={1}>
-        <Text dimColor>moai-board</Text>
-        <Button key="close" label="close" hotkey="x" plain onPress={() => closePane($)} />
-      </Box>
-    )
+    const table = $.ui.resolve(e)
+    try {
+      const cols = typeof e.props.bodyColumns === 'number' ? e.props.bodyColumns : 80
+      return drawBoard(table, await readModel($, cols), makeActions($))
+    } catch (err) {
+      const { Text } = table
+      return <Text dimColor>{`moai-board could not draw: ${errorText(err)}`}</Text>
+    }
   })
 }

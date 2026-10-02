@@ -1,45 +1,13 @@
 // Engine tests: run with `CLAUDE_CONFIG_DIR=<empty dir> claude plugin test mods/moai-board`.
 // They exercise hook dispatch, timers and the pick flow against the engine itself
 // (never a surface's paint). Pure parsers are covered by tests/pure/ under bun.
-import { expect, mock, test } from 'claude-code/testing'
+import { expect, test } from 'claude-code/testing'
+import { PANE, answerAsk, picks, setup } from './support'
 
-type On = Parameters<Parameters<typeof test>[1]>[1]
+const mount = ($: Parameters<Parameters<typeof test>[1]>[0]) =>
+  $.ui.mount({ plugin: 'moai-board', surface: 'terminal', component: 'Pane', requestId: 'moai-board', props: PANE })
 
-const QUEUE = JSON.stringify({
-  items: [
-    { id: 't1', text: 'first card text', state: 'picked', added_at: '2026-09-01T00:00:00Z', spec_id: '' },
-    { id: 't2', text: 'second card text', state: 'queued', added_at: '2026-09-02T00:00:00Z', spec_id: '' },
-    { id: 't3', text: 'dropped card', state: 'dropped', added_at: '', spec_id: '' },
-  ],
-  archived: [],
-  runtime: {},
-})
-const FACTORY = JSON.stringify({ run: 'r', cards: [], unavailable: [] })
-
-// Everything beneath the plugin in a test: the engine's own nouns the module calls,
-// a process.run stub that records every argv list and answers by command, and a mocked clock.
-const setup = (on: On) => {
-  const calls: string[][] = []
-  on('session.start', (_$, e) => ({ cwd: e.cwd }))
-  on('command.register', (_$, e) => ({ value: { command: e.name } }))
-  on('ui.open', () => ({ value: { isPlaced: true } }))
-  on('ui.close', () => ({ value: undefined }))
-  on('process.run', (_$, e) => {
-    calls.push([...e.argv])
-    const joined = e.argv.join(' ')
-    const stdout = joined.includes('gtd list')
-      ? QUEUE
-      : joined.includes('factory status')
-        ? FACTORY
-        : joined.includes('session list')
-          ? '[]'
-          : ''
-    return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
-  })
-  return { calls, clock: mock.clock(on) }
-}
-
-const PANE = { title: 'moai-board', isFocused: false, bodyColumns: 80, placement: 'inline' } as const
+// ---- polling and dispatch -------------------------------------------------------------
 
 test('poll: no process while the pane is closed', async ($, on) => {
   const { calls, clock } = setup(on)
@@ -56,14 +24,8 @@ test('poll: timer cancelled on ui.close', async ($, on) => {
   await clock.advance(15_000)
   expect(calls.length).toBeGreaterThan(opened)
   // The kit cannot raise ui.close itself; the pane's own close button does ($.ui.close,
-  // origin plugin), which is the event the module's hook answers by cancelling the timer.
-  const ui = await $.ui.mount({
-    plugin: 'moai-board',
-    surface: 'terminal',
-    component: 'Pane',
-    requestId: 'moai-board',
-    props: PANE,
-  })
+  // origin plugin), and the module stops its timer there.
+  const ui = await mount($)
   await ui.press({ key: 'close' })
   const closed = calls.length
   await clock.advance(120_000)
@@ -92,14 +54,80 @@ test('dispatch: no pick argv from session.start, command.run or render', async (
   const { calls } = setup(on)
   await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
   await $.command.run({ command: 'moai-board' })
-  const ui = await $.ui.mount({
-    plugin: 'moai-board',
-    surface: 'terminal',
-    component: 'Pane',
-    requestId: 'moai-board',
-    props: PANE,
-  })
+  const ui = await mount($)
   await ui.unmount()
   expect(calls.length).toBeGreaterThan(0)
   for (const argv of calls) expect(argv.includes('next')).toBe(false)
+})
+
+// ---- pick: confirmation, no-op paths -------------------------------------------------------
+
+const pressPick = async ($: Parameters<Parameters<typeof test>[1]>[0]) => {
+  await $.command.run({ command: 'moai-board' })
+  const ui = await mount($)
+  await ui.press({ key: 'open:t2' })
+  await ui.press({ key: 'pick:t2' })
+  return ui
+}
+
+test('pick: confirm label runs exactly one argv', async ($, on) => {
+  const { calls } = setup(on)
+  answerAsk(on, 'Pick')
+  await pressPick($)
+  expect(picks(calls)).toEqual([['moai', 'gtd', 'next', 't2', '--expect', 'second card text']])
+})
+
+test('pick: cancel runs no process', async ($, on) => {
+  const { calls } = setup(on)
+  answerAsk(on, 'Cancel')
+  await pressPick($)
+  expect(picks(calls).length).toBe(0)
+})
+
+test('pick: other text runs no process', async ($, on) => {
+  const { calls } = setup(on)
+  answerAsk(on, 'pick')
+  await pressPick($)
+  expect(picks(calls).length).toBe(0)
+})
+
+test('pick: rejected ask runs no process', async ($, on) => {
+  const { calls } = setup(on)
+  answerAsk(on, undefined)
+  await pressPick($)
+  expect(picks(calls).length).toBe(0)
+})
+
+// ---- fail-soft ------------------------------------------------------------------------------
+
+test('failsoft: no hook rejects', async ($, on) => {
+  const stub = setup(on)
+  for (const mode of ['reject', 'exit2', 'garbage'] as const) {
+    stub.mode.value = mode
+    await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+    await $.command.run({ command: 'moai-board' })
+    const ui = await mount($)
+    await ui.press({ key: 'refresh' })
+    await ui.press({ key: 'tab-lanes' })
+    await ui.press({ key: 'refresh' })
+    await stub.clock.advance(15_000)
+    await ui.unmount()
+  }
+  expect(stub.calls.length).toBeGreaterThan(3)
+})
+
+test('failsoft: last good data stays visible dimmed', async ($, on) => {
+  const stub = setup(on)
+  await $.command.run({ command: 'moai-board' })
+  const ui = await mount($)
+  const before = await ui.find({ key: 'open:t2' })
+  expect(before).toBeDefined()
+  expect(before?.props['dimColor']).not.toBe(true)
+  stub.mode.value = 'reject'
+  await ui.press({ key: 'refresh' })
+  const after = await ui.find({ key: 'open:t2' })
+  expect(after).toBeDefined()
+  expect(after?.props['dimColor']).toBe(true)
+  const status = await ui.find({ key: 'status' })
+  expect(status?.text).toContain('not found on PATH')
 })
