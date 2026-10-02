@@ -186,3 +186,35 @@ final batch re-ran every form on the committed tree and matched).
   are internal dev-facing rule files under `.claude/rules/` (+ their
   `go:embed` template mirrors); user-facing product docs are unaffected.
 - open_blockers: none
+
+## Sync-repair round 2 (sync-audit FAIL 74/100 → repair; report `.moai/reports/t1415/sync-audit.md`, audited_sha `2c5e8f8d8`)
+
+- **F1 [blocking]** — model-policy.md:66, live + mirror byte-identical:
+  the merged single model list ("CC 2.1.285 / 2.1.287 default 1M there
+  for Sonnet 5+ / Opus 4.7+ / Fable") overstated the CC 2.1.287
+  provider/app-gateway face as reaching Sonnet 5+. Rewritten
+  per-surface — "(CC 2.1.285 defaults gateways to 1M for Sonnet 5+ /
+  Opus 4.7+ / Fable, and CC 2.1.287 the cloud providers and the Claude
+  apps gateway for Opus 4.7+ and Fable; see …)" — per the auditor's
+  shape. **Deviation documented: this supersedes the plan §B P4 NEW
+  draft**, whose merged form research.md §1's own fidelity note rejects
+  ("merges the two into one model list across both surfaces would
+  overstate the provider case for Sonnet") — that avoidance rule was
+  applied to the C1/P3 drafts at plan time but missed P4. Line 68's
+  "the 200K-budget paths named above" antecedent re-read intact
+  (grep → 1).
+- **F2 [Low]** — model-policy.md:28, both copies: semicolon before the
+  capitalized "Since CC 2.1.287," replaced with a sentence break
+  ("…premium). Since CC 2.1.287,").
+- **F3 [Low]** — CHANGELOG.md [Unreleased] entry: "model-policy의
+  게이트웨이/공급자 200K 서술 5줄 정정" disambiguated to a total count —
+  "게이트웨이/공급자 200K 서술 총 5줄(cwm 1·model-policy 4) 정정" (true
+  split: cwm 1 + model-policy 4).
+- Post-repair re-measure (this run, tree after the repair commit's
+  content): `cmp` ×2 → exit 0 both pairs; `grep -c "CC 2.1.285"` mp
+  live/mirror → `3`/`3` (per-surface rewrite keeps all three
+  citations); anchor E16 → `3`; cwm live → 7,098 B unchanged; mp live →
+  27,773 B (+85, `paths:`-scoped, no budget duty); neutrality ×8 →
+  `0`; merged-form readback → `0` (exit 1) both copies; per-surface
+  readback → `1` both copies; F2 readback → `1` both copies, semicolon
+  form `0`.
