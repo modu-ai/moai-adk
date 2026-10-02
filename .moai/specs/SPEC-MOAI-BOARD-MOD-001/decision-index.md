@@ -1,6 +1,6 @@
 # Decision Index — SPEC-MOAI-BOARD-MOD-001
 
-Decisions surfaced while assembling this SPEC that the operator has not settled. Each row states what is unresolved and why; none carries a preferred answer (decision gate on, recommendation mode `pull`: `.moai/config/sections/interview.yaml`). Labels: `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER`. No row qualifies as `DECIDED` or `POLICY-COVERED`: none has an authority anchor verifiable in the committed tree, so none is relabeled to look settled. Measurements cited are `M-n` / `G-n` of `spec.md`, taken at tree `802a72235` (M-10, M-11, M-13, M-14 and M-15 re-measured at `5f6c7d343`).
+Decisions surfaced while assembling this SPEC that the operator has not settled. Each row states what is unresolved and why; none carries a preferred answer (decision gate on, recommendation mode `pull`: `.moai/config/sections/interview.yaml`). Labels: `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER`. No row qualifies as `DECIDED` or `POLICY-COVERED`: none has an authority anchor verifiable in the committed tree, so none is relabeled to look settled. Measurements cited are `M-n` / `G-n` of `spec.md`, taken at tree `802a72235` (M-10, M-11, M-13, M-14 and M-15 re-measured at `5f6c7d343`; M-16 and M-17 at `3de688996`).
 
 ### Q1: Where does the mod load from once the prototype stage ends — the user's mods folder, a project scope, or a repository-distributed path?
 
@@ -27,7 +27,7 @@ Operator verdict:
 
 Label: FOUNDER
 Authority anchor: —
-Why unresolved: `moai spec status --list` follows the process's working directory: this worktree printed 1,011 SPEC rows and the primary checkout 678 lines (M-6), so the tab shows whichever tree the session sits in. A SPEC that exists only on a card's branch is absent from the primary until merged. Reading both needs a way to locate the primary from a worktree and a rule for a SPEC present in both; none is specified here.
+Why unresolved: `moai spec status --list` follows the process's working directory: this worktree printed 1,010 SPEC-id rows at `5f6c7d343` (M-14) and the primary checkout 678 lines (M-6), so the tab shows whichever tree the session sits in. A SPEC that exists only on a card's branch is absent from the primary until merged. Reading both needs a way to locate the primary from a worktree and a rule for a SPEC present in both; none is specified here.
 Operator verdict:
 
 ### Q5: Is the pick button offered in a lane session, where the CLI refuses queue mutation?
@@ -44,9 +44,9 @@ Authority anchor: —
 Why unresolved: REQ-MBM-011 currently names draft and in-progress (25 + 15 = 40 rows, M-6). `implemented` has 143 rows and covers SPECs whose code landed but which are not closed; whether those belong in the default view is a product reading of "active" that no committed artifact states.
 Operator verdict:
 
-### Q7: If the engine test runner (`claude plugin test`) is still refused by the rollout switch at Kickoff, does run-phase start — and on what footing?
+### Q7: Must the mod also load under the operator's own Claude Code profile, whose rollout switch refuses hooks modules, before the card counts as delivered?
 
 Label: EVIDENCE-NEEDED
 Authority anchor: —
-Why unresolved: the runner exited 1 with `hooks modules are turned off in this process: the rollout switch served off` in every run after the first four of this session, including `claude plugin test --help` (M-13); why it is off and whether it flips back were not observed, and the same switch gates loading a hooks module in a session (G-11), so its state in the operator's own session is unread. The engine-runner criteria (AC-MBM-004b, -005b, -009b, -012) cannot execute while it is off; acceptance.md §A.2 and §F already fix that they stay UNOBSERVED and keep the SPEC open until a run executes or a leader or operator waiver is written. What is open is the Kickoff choice: wait for the switch; start run-phase on pure-function evidence (`bun test`, developer-local, G-13) with those criteria left UNOBSERVED; or a written waiver.
+Why unresolved: under the operator profile `claude plugin test` exited 1 with `hooks modules are turned off in this process: the rollout switch served off` in every run after the first four of this session, `--help` included (M-13), and the same switch gates loading a hooks module in a session (G-11). Under an empty temp config dir the same runner executes tests and separates pass from fail (M-16), so the engine criteria no longer wait on it and acceptance.md §A.2 / §F grant no waiver. What is open: why the operator profile is off, whether it flips back, and whether the operator needs `/moai-board` to load there (AC-MBM-014 is the check) or accepts the mod being exercised only under the temp profile until the switch changes. The leader reports the profile refusal to the operator; it is not a SPEC blocker.
 Operator verdict:
