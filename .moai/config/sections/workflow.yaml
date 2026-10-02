@@ -245,6 +245,18 @@ workflow:
     # an answer as its second signal, where it can only confirm an LLM
     # approval or route the Kickoff to a human; it never decides alone.
     #
+    # A second exception, separate from that cross-check, is the
+    # `moai todo --auto` cycle's own candidate ranking: the
+    # auto-scoped ranking exception. Behind the default-off
+    # workflow.jev.enabled gate, an in-process caller may supply the key
+    # that orders the queued candidates the cycle is about to accept, which
+    # sets selection order only. The candidate set is fixed by
+    # mechanical filters before any answer is read, and an answer that
+    # cannot be used as a whole falls back to recorded priority over the
+    # same set. The answer never adds, removes or edits a card, is never the
+    # basis of a completion verdict, a merge approval or an operator gate,
+    # and no ordering accuracy is claimed.
+    #
     # Where this setting is changed, and where it is NOT: `moai init` asks
     # about it once, and after that the `moai web` settings screen is the only
     # place it can be changed. It is deliberately absent from
