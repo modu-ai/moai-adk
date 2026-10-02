@@ -1206,6 +1206,29 @@ Test files, actual versus the plan's nine (re-measured on this tree after M2-M4)
 - `internal/config/envkeys.go:220` still documents `MOAI_KANBAN` as "set by the launcher when enterKanbanMode classifies a leader" (the function is gone); the comment belongs to the constant M5b deletes.
 - Kanban-named symbols that remain in `internal/cli` after M5a, and why: `kanban.go` (file name, `kanbanEntryParse`, `exportKanbanLaunchFacts`, `leaderRunID`, `claimName`, the leader name helpers: all read by the factory), `kanban_settings.go` (`prepareKanbanSettings`, `writeTransientSettingsFile(…, "moai-kanban")`: the factory settings injection), `kanban_launch_facts_test.go`, `kanban_lead_name_test.go`, `kanban_autonomy_test.go`, `kanban_bootstrap_test.go`, `kanban_settings_test.go` (factory tests under old file names), every `config.EnvMoaiKanban*` marker use (`MOAI_KANBAN_ID`, `_LEAD_ADDR`, `_LEAD_NAME`, `_SETTINGS_INJECTED`, `_BACKEND`, `_CARD` are the frozen factory markers), the three retired constants in `ptycaptest/harness.go` and in test scrub lists (M5b), and the `kanban` package import in `cc.go`, `glm.go`, `factory.go`, `codex_launcher.go` and the todo, doctor and factory files (M6/M8). All rename work is M7.
 
+#### Correction after verification: `TestLaneMarkerGoldenMatchesFLane` was red at `e3900c6af`
+
+The Claim and Evidence above say the M5a ACs and the net were green at `e3900c6af`. That was not established for every test: `TestLaneMarkerGoldenMatchesFLane` (AC-004's golden, in `lane_entry_golden_m1_test.go`) FAILED there, in an env-scrubbed run `go test ./internal/cli -run '^TestLaneMarkerGoldenMatchesFLane$' -count=1 -v` (found by the lane orchestrator, exit 1). Row codex: got `… MOAI_KANBAN_BACKEND=gpt MOAI_KANBAN_CARD=t1`, want `… MOAI_KANBAN_CARD=t1 MOAI_KANBAN_LABEL=lane-1`. Cause: the planned removal of the Codex lane label stamp (REQ-012) against a golden that keeps the key as captured. I missed it because the file was in none of my selectors: the regression selectors were name lists and prefix families, and `TestLaneMarkerGoldenMatchesFLane` matched none of them (`TestLaneEntryEnvParity`, in the sibling file, already excluded the key and passed). The statements above that name the AC-015 net, AC-011 and AC-013 results stand (each was run); the statement that nothing else turned red does not.
+
+Fix (commit `14c69db0b`): `lane_entry_golden_m1_test.go` compares each row through `withoutRetiredLabel`, which drops exactly the key `MOAI_KANBAN_LABEL` from both sides (the literal `retiredLaneLabelMarker`), with a comment naming REQ-012 and AC-004 / REQ-003; every other key, present or absent, still has to match. `git diff --stat -- internal/cli/testdata` printed nothing, so the golden is byte-unchanged. `TestLaneEntryEnvParity` already carried the same exclusion and needed no edit.
+
+Mutant proof that the exclusion is not wider than that key: a copy of `codex_launcher.go` outside the tree (scratchpad), with the `MOAI_KANBAN_BACKEND` entry removed from `codexCardLaunchEnv`, applied with `go test -overlay <scratch>/m5a/overlay_golden.json ./internal/cli -run '^TestLaneMarkerGoldenMatchesFLane$' -count=1 -v`, tool exit 1:
+
+```text
+    lane_entry_golden_m1_test.go:167: row "codex" differs from the golden
+         got: MOAI_FACTORY_AUTO_DISPATCH=auto MOAI_FACTORY_CLEAR_POLICY= MOAI_FACTORY_ROLE=lane MOAI_FACTORY_WORKER=lane-1 MOAI_KANBAN_CARD=t1
+        want: MOAI_FACTORY_AUTO_DISPATCH=auto MOAI_FACTORY_CLEAR_POLICY= MOAI_FACTORY_ROLE=lane MOAI_FACTORY_WORKER=lane-1 MOAI_KANBAN_BACKEND=gpt MOAI_KANBAN_CARD=t1
+--- FAIL: TestLaneMarkerGoldenMatchesFLane (6.45s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/cc (1.20s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/glm (1.22s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/codex (4.02s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	7.678s
+```
+
+Re-run on the fixed tree, env unset in one compound invocation each, no error banner (exit 0): `TestLaneMarkerGoldenMatchesFLane` PASS (3 subtests cc, glm, codex; `ok … 7.122s`); `TestLaneEntryEnvParity` PASS (`ok … 23.851s`); `TestKanbanEntryRefused` PASS (22 subtests, `ok … 34.507s`); `TestLaneEntryRefusals` PASS (45 subtests, 0 FAIL, `ok … 56.496s`); the AC-015 cli net selector 8 PASS (`ok … 30.817s`). Other tests that name the golden, `MOAI_KANBAN_LABEL` or the Codex lane child env were grepped and run: `launcher_characterization_m1_test.go`, `update_version_downgrade_test.go`, `todo_axisa_guard_test.go`, `lane_entry_m2_test.go`, `lane_entry_m3_test.go`, `codex_launcher_test.go` (its `TestCodexVerbRouting_*`, `TestCodexApp_*`, `TestCodexCommand_*`, `TestLaunchers_BareInvocationConvention`), `factory_net_m1_test.go`, `factory_m4_test.go` (the last two already in earlier runs): `ok … 83.534s`, no FAIL. No other red found. `gofmt -l` on the touched file prints nothing; `go vet ./internal/cli/` host and `GOOS=windows`, `go build ./...` host and `GOOS=windows GOARCH=amd64` printed nothing (exit 0).
+
+Gaps of this correction: the whole `internal/cli` suite is still unrun (Gap 1 above stands), so another test outside every selector could still be red; the golden test's `-count=1` run was a single run, not repeated for flakiness. Worktree-guard refusals in this round: none.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
