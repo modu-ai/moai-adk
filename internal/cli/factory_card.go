@@ -244,6 +244,9 @@ func factoryNextLeaseOnce(ctx context.Context, root, runID, lane string) (homest
 // noNewCards leaves only the card already assigned to this lane leasable. The
 // `next` verb and the factory_next MCP handler call this form; the relaunch
 // loop and the Codex loop keep calling the ungated function above.
+//
+// @MX:NOTE: [AUTO] The gated lease entry point — the noNewCards boolean is the quota gate's whole effect on card selection; the ungated factoryNextLeaseOnce must stay for the relaunch and Codex loops. Fan-in 3 (the next verb, the factory_next MCP handler, the ungated wrapper) — kept a NOTE because factory_card.go is at its 3-anchor limit.
+// @MX:SPEC: SPEC-QUOTA-AWARE-SCHEDULING-001
 func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, noNewCards bool) (homestate.Card, bool, error) {
 	db, err := homestate.OpenFactory(root)
 	if err != nil {

@@ -81,7 +81,8 @@ func (e factoryQuotaEvaluation) Pressure() bool { return len(e.HeldWindows()) > 
 // integration-window warning cannot disagree about whether pressure is on. A
 // disabled gate reads no record at all.
 //
-// @MX:NOTE: [AUTO] The one pressure evaluation; the lane gate calls it today and the status block, the --auto recommendation, and the integration-window warning adopt it in M5/M6 — a surface that re-derived pressure would let two surfaces disagree.
+// @MX:ANCHOR: [AUTO] The one pressure evaluation — the lane gate, the integration-window warning, the status block, and the --auto steering line all funnel through it.
+// @MX:REASON: 4 non-test call sites (factory_quota.go x3, factory_quota_lanes.go); it takes no caller input, and the lane gate and the acquire warning apply the Claude-caller predicate to its result, so a surface that re-derived pressure or fed it a backend would let two surfaces disagree (REQ-QAS-017).
 // @MX:SPEC: SPEC-QUOTA-AWARE-SCHEDULING-001
 func factoryQuotaEvaluate(root string) factoryQuotaEvaluation {
 	gate := config.LoadQuotaGate(root)
@@ -160,6 +161,10 @@ const factoryQuotaHoldPrefix = "quota hold: "
 
 // factoryQuotaHoldSegment renders one held window: its name, its used
 // percentage, and its reset instant as RFC 3339 UTC.
+//
+// @MX:ANCHOR: [AUTO] The one formatter of a held window's segment — shared by the hold line, the acquire warning, and the steering line.
+// @MX:REASON: 3 non-test call sites (factory_quota.go x2, factory_quota_lanes.go); changing the format changes three user-visible lines at once (REQ-QAS-010/-014).
+// @MX:SPEC: SPEC-QUOTA-AWARE-SCHEDULING-001
 func factoryQuotaHoldSegment(w factoryQuotaWindowState) string {
 	return fmt.Sprintf("%s used=%.1f%% resets_at=%s",
 		w.Name, w.Reading.UsedPercentage, time.Unix(w.Reading.ResetsAt, 0).UTC().Format(time.RFC3339))
