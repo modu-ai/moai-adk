@@ -305,6 +305,12 @@ plan.md §G U13 expected the predecessor's `TestQAS_AC007_ConfigDefaultsMirrorTe
 - The benchmark switch `MOAI_QWR_BENCH_ROOT` is a name chosen by the worker (neither acceptance.md nor plan.md names the variable); it is test-only and never read by production code.
 - Not measured at M1: coverage of the changed packages (E3), the template/`make build` path (M2), any behaviour of the real bodies.
 
+#### Explicit wait (lane-9, recorded 2026-10-02)
+
+Reason: the M2 plan defect above needs a decision; the lane holds the Kickoff gate's evidence (plan-audit PASS 0.87 at hashes unchanged since audited_sha bb6b9925e) and a plan-artifact revision would invalidate it. Asked: the leader (session `leader`), by cross-session message, with options A (separate accessor outside `QuotaGateSettings`, needs spec.md REQ-QWR-011 and acceptance.md AC-QWR-013 revision and a re-audit, the 3-iteration ceiling is spent), B (approved edit of the four predecessor subtests), C (struct default 0, read-site default 128). Lane recommendation: A. Recheck point: the next turn after a leader reply arrives, or the next awaken, whichever comes first, starting with the stall watchdog. No M2 file is touched while waiting.
+
+Resolved the same day by the leader (cross-session message): option A. See §J "Run-phase decision R1".
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
@@ -349,5 +355,11 @@ D-N9..D-N15 are minor wording and cross-reference items listed in `.moai/reports
 | Q3 / D5 | No output change; predecessor goldens and tests untouched | decision oracle (Jev) | confidence 0.97 |
 | Q4 / D6 | Measure around read-only `moai factory status` always; around `moai factory next` only when a lease is genuinely due anyway | decision oracle (Jev) | confidence 0.83 |
 | Q5 / D2 | Keep the seam type and derive the root from the path shape; if that proves unsafe, switch to a type change and report to the leader | oracle chose keep at confidence 0.42 (under the 0.5 gate); leader verdict | leader accepted provisionally |
+
+### Run-phase decision R1 (leader verdict, 2026-10-02, found at M1)
+
+Conflict: AC-QWR-013 (REQ-QWR-011) needs `DefaultQuotaGate()` to carry `MaxScanDirs` 128, while four subtests of the predecessor's `TestQAS_AC007_ConfigDefaultsMirrorTemplate` compare the whole `QuotaGateSettings` struct to literals without it, and REQ-QWR-010 / AC-QWR-003 / AC-QWR-012 forbid editing that file. Options offered: A separate accessor outside `QuotaGateSettings`; B approved edit of the four predecessor subtests; C struct default 0 with a read-site default.
+
+Verdict (leader, via cross-session message, not an operator gate): **A**. Predecessor tests stay unedited; the scan bound is read through a separate accessor outside `QuotaGateSettings`; key `workflow.quota_gate.max_scan_dirs`, default 128, range 1-1024 unchanged. Audit: the 3-iteration ceiling is spent, and the leader approves exactly ONE delta plan-audit, scoped to the revised REQ-QWR-011, AC-QWR-013, the plan.md §G U13 correction, and the "non-integer value" wording correction (a real number such as 2.5 does not fail the decode; a string and an overflowing integer literal do, U21 observed). Not a full re-audit. A FAIL delta gets no further extension: report to the leader. Sequence: manager-spec revises spec/plan/acceptance (acceptance revision carries the AC snapshot in the same commit), plan-auditor delta, then M2 on PASS family. Verdict file under `.moai/reports/t1442/`, decision recorded here.
 
 Plan-audit history: iteration 1 FAIL 0.75, iteration 2 FAIL 0.83, iteration 3 PASS 0.87. Defect lists were relayed to manager-spec with the decisions applied each time (commits b92f4bd8f, bb6b9925e).
