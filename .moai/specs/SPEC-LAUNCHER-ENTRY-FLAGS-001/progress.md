@@ -1100,6 +1100,112 @@ Codex lane label pair, RED run (`-run '^(TestSD_AC003_CodexRelaunchPerCard|TestC
 
 `TestFactoryCardVerbsResolveLaneFromWorkerMarker` passes before the change by design: the card verbs already read `MOAI_FACTORY_WORKER` and `MOAI_FACTORY_ROLE` (`factory_card.go:50-52,89`), so the stamp is redundant for them; the test exists to reject the mutant that removes the stamp and also stops publishing the worker marker (AC-013's mutant clause), not to be red now.
 
+#### Claim
+
+- `-k`, `--kanban`, `-k=…`, and every shape of the AC-011 table are refused on `moai cc`, `moai glm` and `moai codex` with one line from `internal/cli/launcher_retired_entries.go` (`retiredLongFlag`, `retiredShortFlag`, `retiredEntryRefusal`, `refuseRetiredEntry`); `parseLauncherEntry` calls it first and no longer calls the deleted parser; the Codex classifier calls it once at the top, so the retired line wins over every other token (`-l -k` included). A `-k` after `--` is forwarded untouched.
+- Deleted from `internal/cli`: `parseKanbanFlag`, `enterKanbanMode`, `enterKanbanCompanionMode`, `companionRegistryPath`, `resolveCompanionName`, `parseCompanionLabel`, `rejectKanbanOnCG`, `kanbanBranch` with its three constants, `resolveKanbanBranch`, the four constants `kanbanFlagLong`, `kanbanFlagShort`, `kanbanFlagUsageError`, `kanbanUnsupportedBackendSentinel`, `codexKanbanRefusalDiag`, the kanban branches of `cc.go` and `glm.go` (with the `parseCompanionLabel` call before the dispatch), the kanban clause of `launcher_blockcap_infinite.go` (the factory clause stays), and the Codex lane `MOAI_KANBAN_LABEL` stamp, its child-env line, and the three scrub-list entries `EnvMoaiKanban`, `EnvMoaiKanbanSpec`, `EnvMoaiKanbanLabel` of `codexLaneLaunchEnvKeys`.
+- Kept: `exportKanbanLaunchFacts` (signature unchanged, first parameter now `_`); it no longer captures or writes `MOAI_KANBAN_SPEC`. `MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_LABEL` stay defined in `internal/config/envkeys.go` and read by the hook (M5b). `internal/hook`, `internal/config`, `internal/kanban`, `internal/web` untouched.
+- Help text of `cc` and `glm` (Use line, the Kanban Mode block, the `-k <N>` factory item, two examples) no longer teaches `-k`; the genealogy paragraph keeps the history and states that `-k` is retired.
+- The comments that named deleted symbols are reworded in `kanban.go`, `factory.go`, `kanban_settings.go`, `cc.go`, `glm.go`, `codex_launcher.go`, `launcher_blockcap_infinite.go`.
+- Commits (HEAD at start `81f1f125b`): `7a9c52522` (docs: the RED record above, committed first so the graph orders it ahead of the change), `7afe450f3` (production and tests), then this record.
+
+#### Evidence
+
+AC matrix for the parts M5a flips (each row is a command run in this run on this tree; the detail follows):
+
+| AC | Part | Status | Command | Exit | Swept |
+|---|---|---|---|---|---|
+| AC-011 | `-k` refused in every shape | PASS | `go test ./internal/cli -run '^TestKanbanEntryRefused$' -v -count=1` | 0 | 1 parent, 21 refusal subtests, 1 passthrough subtest |
+| AC-012 | launcher identifiers (M5a share) | PASS | the symbol grep below: 8 files remain, all named by AC-012 for after M5a; `go build ./...` and the windows build | grep 0, builds 0 | 8 files |
+| AC-013 | test half | PASS | `go test ./internal/cli -run '^(TestSD_AC003_CodexRelaunchPerCard\|TestCodexLaneChildEnvOmitsLabelMarker\|TestFactoryCardVerbsResolveLaneFromWorkerMarker)$' -v -count=1` | 0 | 3 |
+| AC-013 | grep half | not read (M5b) | `grep -rl 'MOAI_KANBAN_LABEL' internal cmd --include='*.go' --exclude='*_test.go'` prints `internal/config/envkeys.go` only | n/a | n/a |
+| AC-015 | the net, 8 / 2 / 2 | PASS | the three selectors below | 0 each | 8 cli, 2 hook, 2 discovery |
+
+GREEN of AC-011's command, env unset in the same invocation, tool reported no error (exit 0): `go test ./internal/cli -run '^TestKanbanEntryRefused$' -v -count=1` printed `--- PASS: TestKanbanEntryRefused (34.82s)`, `ok  	github.com/modu-ai/moai-adk/internal/cli	35.917s`; `grep -c '^    --- PASS'` of the output printed `22` (21 refusal subtests, seven shapes times cc, glm, codex, plus `TestKanbanEntryRefused/passthrough`). Refusal line, from `go run ./cmd/moai codex -k` (stdout 0 bytes, tool exit 1): `-k/--kanban is retired: Kanban Mode was removed; start a factory leader with 'moai cc -f' or 'moai glm -f', and join as a lane with -l ('moai codex -l' on Codex)`.
+
+GREEN of AC-013's test command, same conditions: `go test ./internal/cli -run '^(TestSD_AC003_CodexRelaunchPerCard|TestCodexLaneChildEnvOmitsLabelMarker|TestFactoryCardVerbsResolveLaneFromWorkerMarker)$' -v -count=1`:
+
+```text
+--- PASS: TestSD_AC003_CodexRelaunchPerCard (7.67s)
+--- PASS: TestCodexLaneChildEnvOmitsLabelMarker (4.43s)
+--- PASS: TestFactoryCardVerbsResolveLaneFromWorkerMarker (4.53s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	17.664s
+```
+
+Swept count 3. AC-013's grep half is read at M5b; for the baseline `grep -rl 'MOAI_KANBAN_LABEL' internal cmd --include='*.go' --exclude='*_test.go'` now prints only `internal/config/envkeys.go` (`codex_launcher.go` left), and `grep -c 'EnvMoaiKanbanLabel' internal/cli/codex_launcher.go` prints `0` (RED-8 recorded 4).
+
+AC-012 symbol grep re-measured (RED-K3 was 15 files), `grep -rlE 'enterKanbanMode|enterKanbanCompanionMode|parseKanbanFlag|rejectKanbanOnCG|EnvMoaiKanban\b|EnvMoaiKanbanSpec|CompanionRoles|SplitCompanionLabel|kanbanLeaderNotice|kanbanCompanionNotice|kanbanBootstrapNotice' internal cmd --exclude='*_test.go'` printed 8 files, exactly the list AC-012 states for after M5a: `internal/config/envkeys.go`, `internal/cli/ptycaptest/harness.go`, `internal/kanban/bootstrap.go`, `internal/kanban/role.go`, `internal/hook/session_start_factory.go`, `session_start_kanban.go`, `session_start.go`, `session_start_record.go`. The nine launcher declarations and the constants, over all of `internal cmd` including tests: `grep -rnE '\b(parseKanbanFlag|enterKanbanMode|enterKanbanCompanionMode|companionRegistryPath|resolveCompanionName|parseCompanionLabel|rejectKanbanOnCG|kanbanBranch|kanbanBranchLeader|kanbanBranchCompanion|kanbanBranchNone|resolveKanbanBranch|kanbanFlagLong|kanbanFlagShort|kanbanFlagUsageError|kanbanUnsupportedBackendSentinel|codexKanbanRefusalDiag)\b' internal cmd --include='*.go'` printed one line: `internal/config/envkeys.go:220:	// Set by the launcher when enterKanbanMode classifies a leader, read by the` (a comment in the constant's documentation, `internal/config`, outside this milestone; M5b deletes the constant and its comment).
+
+Build, vet, format, lint, on the committed tree (tool reported no error, empty output, exit 0 each): `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...`; `go vet ./internal/cli/`; `GOOS=windows GOARCH=amd64 go vet ./internal/cli/`; `gofmt -l` over the changed files (the only file printed in `gofmt -l internal/cli/` is `mcp_claude.go`, untouched and pre-existing); `golangci-lint run ./internal/cli/` printed `0 issues.` (v2.1.6, the CI version).
+
+Net re-run (AC-015 selectors), env unset, tool exit 0 each: cli `go test ./internal/cli -run '^(TestCCFactoryEntryRecordsFailOpenRunMetadata|TestCCFactoryLaneJoinsDiscoveredLeader|TestGLMFactoryLaneJoinsDiscoveredLeader|TestPrepareKanbanSettingsWritesTransientFile|TestPrepareFactorySettingsWritesTransientFile|TestFactoryNetLeaderLaunch|TestFactoryNetLaneLaunch|TestFactoryNetBlockCap|TestFactoryEntryMatrix)$' -v -count=1`: 8 `--- PASS` (`TestCCFactoryLaneJoinsDiscoveredLeader`, `TestGLMFactoryLaneJoinsDiscoveredLeader`, `TestFactoryNetLeaderLaunch`, `TestFactoryNetLaneLaunch`, `TestFactoryNetBlockCap`, `TestFactoryEntryMatrix`, `TestCCFactoryEntryRecordsFailOpenRunMetadata`, `TestPrepareKanbanSettingsWritesTransientFile`), `ok  	github.com/modu-ai/moai-adk/internal/cli	51.176s` (the M7 name `TestPrepareFactorySettingsWritesTransientFile` does not exist yet); hook `-run '^(TestFactoryNetSessionRecord|TestFactoryNetSessionStartNotices)$'`: 2 PASS, `ok … internal/hook	2.088s`; discovery `-run '^(TestDiscoverLeaderVerifiesLiveLeader|TestDiscoverLeaderDeclinesUnparseableRunID)$'`: 2 PASS, `ok … internal/discovery	0.953s`. Swept 8 / 2 / 2.
+
+Mutants (g) and (h) once more, against the post-M5a tree, mutated copies in the scratchpad outside the tree, applied with `go test -overlay <scratch>/m5a/overlay_{g,h}.json ./internal/cli -run '<the 9-name net selector>' -v -count=1`, tool exit 1 each (`grep -rn MUTANT internal/cli` finds only pre-existing comments in unrelated files; `git status --short` listed no mutant edit):
+
+```text
+mutant g (the resolveFactoryLaneName call replaced by 'finalLabel, claimErr := factoryLabel, error(nil)' in cc.go and glm.go)
+--- FAIL: TestFactoryNetLaneLaunch (8.53s)
+    --- FAIL: TestFactoryNetLaneLaunch/cc (4.41s)
+    --- FAIL: TestFactoryNetLaneLaunch/glm (4.12s)
+    factory_net_m1_test.go:349: registry[lane-1] = ({PID:0 RegisteredAt:}, false), want a live claim under pid 34578
+    factory_net_m1_test.go:358: second lane MOAI_FACTORY_WORKER = "lane-1", want "lane-2" (the first claim is live)
+    factory_net_m1_test.go:362: registry lost the second claim: map[]
+FAIL	github.com/modu-ai/moai-adk/internal/cli	44.383s   (the other seven net tests PASS)
+
+mutant h (the MOAI_KANBAN_BACKEND Setenv replaced by '_ = backend' in exportKanbanLaunchFacts, kanban.go)
+    factory_net_m1_test.go:275: MOAI_KANBAN_BACKEND at launch = "", want "claude"
+    factory_net_m1_test.go:275: MOAI_KANBAN_BACKEND at launch = "", want "glm"
+--- FAIL: TestFactoryNetLeaderLaunch (3.09s)
+    factory_net_m1_test.go:338: MOAI_KANBAN_BACKEND at launch = "", want "claude"
+    factory_net_m1_test.go:338: MOAI_KANBAN_BACKEND at launch = "", want "glm"
+--- FAIL: TestFactoryNetLaneLaunch (8.51s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	49.000s   (the other net tests PASS)
+```
+
+Targeted regression sets run under `moai slot acquire --resource t1399-run --max-duration 45m` (released: `slot t1399-run released (was 0dcdf2d5-df5c-4da1-8870-24c2a5861303)`), env unset in each invocation; the first three rows ran before the last three test edits named in the rows below them (`cg_retirement_test.go`, `factory_m5_test.go`, `codex_debug_trace_test.go`), the later rows after:
+
+| Selector | Result |
+|---|---|
+| named tests of the touched and neighbouring files, block 1 (cc, codex retire, block cap, CG, entry grammar) | 48 top-level PASS, 0 FAIL, `ok … 119.584s` |
+| named tests, block 2 (factory_test.go, kanban_*_test.go, glm_test.go, launch facts) | 55 top-level PASS, 0 FAIL, `ok … 16.988s` |
+| named tests, block 3 (role refusal, lane entry, SD, net, vocabulary guard, CG retirement) | 45 PASS, 2 FAIL: `TestCGRetirementCompleteEntryShapesAndCounters` (its migrated control launched `cc -k 2`, which is refused now: shape replaced by `--name board-watch` in `cg_retirement_test.go:93`) and `TestSD_AC003_CodexRelaunchPerCard` (my first re-pin asserted key presence; the test blanks the ambient variable with `t.Setenv`, so the child inherits an empty value: re-pinned to assert an empty value) |
+| family `^TestCodex` + one of Launch, Debug, Spawn, Direct, Child, Factory, Lane, Entry, Harness | `TestCodexDebugTraceEnvKeysOnly` FAILED once (it pinned that an ambient `MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_LABEL` sentinel never reaches the child — the scrub-list entries this milestone removes): its sentinel map dropped the three retired keys; re-run `ok … 96.151s`, 0 FAIL |
+| families TestFactory[A-H], TestSD_, TestLauncher, TestLaunch | `ok … 458.060s`, 0 FAIL |
+| families TestFactory[I-Z] and TestCGRetirementCompleteEntryShapesAndCounters | `ok … 217.235s`, 0 FAIL |
+
+Test files, actual versus the plan's nine (re-measured on this tree after M2-M4): the plan's nine all change — `cc_test.go` (9 tests deleted: four `TestParseKanbanFlag_*`, `TestCC_KanbanFlagStrippedBeforeLaunch`, `TestCC_KanbanWritesNoStateRecord`, `TestCC_KanbanEnvMutationIsRestored`, two `TestEnterKanbanMode_*`), `codex_factory_retire_test.go` (scrub-list pin and `TestCodexKanbanEntryIsRefused` re-pinned to `retiredEntryRefusal`), `factory_test.go` (3 deleted: `TestParseKanbanFlagUnifiedEntry`, `TestParseKanbanFlagPassThroughBoundary`, `TestRejectKanbanOnCGLeavesFactoryForms`; merge, `rejectFactoryOnCG`, help and launch rows re-pinned), `kanban_companion_name_test.go` (deleted, 6 tests), `kanban_dispatch_test.go` (deleted, 4 tests and the helper `clearAllKanbanEnv`, whose caller moved to `clearFactoryTestEnv`), `kanban_lead_name_test.go` (re-pinned onto the factory leader: `enterFactoryLeaderMode`, `parseFactoryLaneLabel`, the lane registry), `kanban_autonomy_test.go` (re-pinned onto `enterFactoryLeaderMode` and `enterFactoryLaneMode`, the two callers of `seedAutonomyTier`), `kanban_bootstrap_test.go` (3 tests deleted, 1 re-pinned to the factory leader: `TestEnterFactoryLeaderModeSetsRunID`), `role_naming_m3_homonym_test.go` (the kanban row dropped). Beyond the plan's nine, each of which failed or would fail on this tree: `glm_test.go` (`TestGLM_KanbanFlagParity` deleted), `kanban_help_test.go` (deleted, 2 tests that assert `-k` help), `kanban_launch_facts_test.go` (SPEC subtests replaced by `TestLaunchFactsPublishNoSpecMarker`; backend subtests stay), `launcher_blockcap_infinite_test.go` (the kanban-clause tests replaced by `TestRetiredChainSignalsDoNotRaiseBlockCap` and factory re-pins), `codex_debug_trace_test.go`, `cg_retirement_test.go`, `factory_role_refusal_m2_test.go` (the `-k` rows), `lane_entry_m2_test.go` (the two `-k` rows now expect the retired line), `factory_m5_test.go` (`TestSD_AC003_CodexRelaunchPerCard`), and the new `launcher_retired_entries_test.go`.
+
+`git diff --stat 81f1f125b HEAD` (taken before this record): 28 files changed, 753 insertions(+), 1930 deletions(-); production: `cc.go`, `glm.go`, `kanban.go`, `factory.go`, `codex_launcher.go`, `kanban_settings.go`, `launcher_blockcap_infinite.go`, new `launcher_retired_entries.go`.
+
+#### Baseline-attribution
+
+- Trees: HEAD `81f1f125b` plus the uncommitted new tests for the RED measurements; the working tree that became `7afe450f3` for every GREEN, grep, build, vet, lint, net, mutant and regression measurement (HEAD stayed `81f1f125b` through every measurement; the two commits `7a9c52522` and `7afe450f3` were made after the last one, and `git diff --stat` was taken after them). The judging build is the Go toolchain compiling this tree (`go1.26.8` per the lint banner); `golangci-lint` v2.1.6 built with go1.26.8; no installed `moai` binary measured any test (it provided only the `moai slot` lease commands). The committed probe's M5a patch was read as a model and not applied (`patch` was not run); where it differed from the tree, the tree won: the Codex classifier (a pre-scan, not the probe's inline case, because the M3 classifier has the `kanbanSeen` merge branch the probe tree lacks), the retired line's text, and the test set above.
+
+#### Gaps
+
+1. The whole `internal/cli` suite (4,635 tests) was NOT run: the named blocks and families above ran, two broader family runs hit the 10-minute test timeout without a verdict (`^(TestFactory|TestCodex(…)|TestSD_|TestLauncher|TestLaunch|TestCG…)` at the default `10m`, one moved to the background by the harness and ended `panic: test timed out`; a `9m` re-run of `^(TestFactory|TestSD_|TestLauncher|TestLaunch|…)` ended the same way), and were replaced by the narrower selectors in the table; a regression in an `internal/cli` test outside those families, and in any other package's tests, is unobserved. `internal/hook` and `internal/discovery` ran only their net selectors.
+2. The probe's M5a stage (`probe.go … -to M5a`, many full-tree builds) was not re-run for comparison; the compile proof above is `go build ./...` and `go vet ./internal/cli/` on host and windows of the committed tree.
+3. Mutants (g) and (h) only; (a)-(f) were not re-run after M5a (the plan asks for (g) and (h)).
+4. Exit codes of passing commands were read from the tool (no error banner), not from `echo $?`: the worktree guard refuses `; echo rc=$?` chains.
+5. Worktree-guard refusals, each re-issued as plain commands with the same measurement and nothing replaced by reading source: (a) `sed -n` with a shell variable as the file (`P=…`) refused ("value computed at runtime"); (b) the first RED command as `go test … | tail; echo rc=${pipestatus[1]}` refused as too complex, re-run with output redirected to a file; (c) a `for` loop over symbol names with a variable refused, replaced by one `grep -E` alternation; (d) a heredoc followed by `gofmt`/`go vet` in one command refused, the content was added with the edit tool; (e) `which golangci-lint …; for s in …` refused. One broad run was moved to the background by the harness (item 1), not by me; no polling job was started.
+6. Ordering (verification-claim-integrity §2.3): the new tests and the production change share commit `7afe450f3`, so the commit graph cannot witness that the tests were written before the change; the RED output is committed ahead of it (`7a9c52522`) and was measured with the new tests present and production not yet edited, which only the session record establishes.
+7. The first `go vet`/`gofmt` runs listed compile errors in test files that the plan's "nine files" did not name (`launcher_blockcap_infinite_test.go`, `glm_test.go`, `kanban_help_test.go`, and so on): fixed as listed above, not left.
+
+#### Residual-risk
+
+- Removing `EnvMoaiKanban`, `EnvMoaiKanbanSpec`, `EnvMoaiKanbanLabel` from `codexLaneLaunchEnvKeys` (the plan's "scrub entries", and what makes RED-8's count 0) means a Codex lane launched from a shell that still exports one of them with a value passes it to the child: `TestCodexDebugTraceEnvKeysOnly` had pinned the opposite for those three, and its sentinel map no longer names them. The hook still reads `MOAI_KANBAN` and `MOAI_KANBAN_LABEL` until M5b, so in the window between M5a and M5b a stale kanban session's exports could reach a Codex child's hook; after M5b nothing reads them. The shipped child key-set (`TestCodexLaneChildEnvOmitsLabelMarker`) holds only for an environment without a non-empty ambient label.
+- `parseLauncherEntry`'s struct keeps three fields no entry sets any more (`KanbanEnabled`, `Spec`, `FactoryLanesDeclared`), the function `rejectFactoryOnCG` has no production caller (it was already uncalled once `cg` retired), and `config.DefaultFactoryLanes` lost its only reader (the deleted `-k --name lane-<n>` default); none is in the plan's deletion list and the SPEC authorizes exactly the listed deletions, so they stay for M7 (`KanbanEnabled` is named there) and for a later card (the rest). `golangci-lint` reports none of them.
+- `exportKanbanLaunchFacts(_, backend)` and `exportFactoryLaunchFacts(specID, backend)` keep a parameter nothing reads, so the eight call sites keep their shape until M7 collapses the two functions.
+- The retired line names `moai codex -l` and `moai cc -f` / `moai glm -f` for every verb; on cc and glm it also mentions the Codex form, which is harmless but not minimal.
+
+#### Findings (statements the tree contradicts, no SPEC file edited)
+
+- AC-003 lists `-l -k` and `--lane -k` as combination refusals that name the one-entry-token rule; AC-011 and plan M5a make the retired refusal run before any branch. On the post-M5a tree both shapes print the retired line (cc, glm and codex), so `lane_entry_m2_test.go`'s two rows changed from kind `tokens` to a new kind `retired`; the entry-token rule still covers `-l -f` and `-f -l`.
+- Plan M5b lists `launcher_blockcap_infinite_test.go`, `codex_debug_trace_test.go`, `kanban_launch_facts_test.go` and `cc_test.go` as files that wait for M5b to retarget removed constants. On this tree some of their assertions fail or no longer compile at M5a (the block-cap kanban clause, the three ambient sentinels, the SPEC export, the deleted-symbol calls and `-k` launches in `cc_test.go`) and were re-pinned or deleted here; the M5b retarget of what remains in them is unchanged.
+- The probe's M5a patch edits `codex_launcher.go` with an inline `-k` case that returns at the first token; the M3 classifier on this tree also folds `-k` into `kanbanSeen`/`other` for the entry-token conflict, so the equivalent edit is a pre-scan at the top of `codexFactoryEntryClassify`.
+- `internal/config/envkeys.go:220` still documents `MOAI_KANBAN` as "set by the launcher when enterKanbanMode classifies a leader" (the function is gone); the comment belongs to the constant M5b deletes.
+- Kanban-named symbols that remain in `internal/cli` after M5a, and why: `kanban.go` (file name, `kanbanEntryParse`, `exportKanbanLaunchFacts`, `leaderRunID`, `claimName`, the leader name helpers: all read by the factory), `kanban_settings.go` (`prepareKanbanSettings`, `writeTransientSettingsFile(…, "moai-kanban")`: the factory settings injection), `kanban_launch_facts_test.go`, `kanban_lead_name_test.go`, `kanban_autonomy_test.go`, `kanban_bootstrap_test.go`, `kanban_settings_test.go` (factory tests under old file names), every `config.EnvMoaiKanban*` marker use (`MOAI_KANBAN_ID`, `_LEAD_ADDR`, `_LEAD_NAME`, `_SETTINGS_INJECTED`, `_BACKEND`, `_CARD` are the frozen factory markers), the three retired constants in `ptycaptest/harness.go` and in test scrub lists (M5b), and the `kanban` package import in `cc.go`, `glm.go`, `factory.go`, `codex_launcher.go` and the todo, doctor and factory files (M6/M8). All rename work is M7.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
