@@ -37,6 +37,8 @@ export const ARGV = {
 // The strip thresholds mirror the in-repo gates' DEFAULT configuration (M-7,
 // spec.md D-3): the t1442 context band and the t1347 quota-gate holds. The
 // gates are runtime-configurable; the mod shows its own frozen values (G-12).
+// @MX:NOTE: [AUTO] frozen mirror of the in-repo gates' DEFAULT thresholds (context band from the t1442 renderer, holds from the t1347 quota gate); the gates are runtime-configurable, this copy is deliberately not
+// @MX:SPEC: SPEC-MOAI-STATUS-MOD-001
 export const DEFAULT_BAND: MoaiStatusBand = {
   softLargePct: 50,
   softStandardPct: 90,

@@ -2,7 +2,7 @@
 id: SPEC-MOAI-STATUS-MOD-001
 title: "moai-status: usage / lane-toast / health warning mod for Claude Code (MVP)"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-03
 author: manager-spec

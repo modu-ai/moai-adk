@@ -130,6 +130,9 @@ const startHealth = ($: EngineInterface, run: Run): void => {
 // reaches it comes from the fixed table in data.ts. `$` is the dispatch's own,
 // threaded from the handler into this top-of-file helper (the engine's $-flow
 // analysis requires that shape); `$` never crosses an import.
+// @MX:ANCHOR: [AUTO] the module's only child-process call site - every diagnostic argv routes through this single $.process.run seam
+// @MX:REASON: the fixed argv table in hooks/data.ts is the only argv source; a second call site would escape the fail-soft boundary audit (AC-MSM-002 counts exactly this one line) and the $-flow invariant ($ never crosses an import)
+// @MX:SPEC: SPEC-MOAI-STATUS-MOD-001
 const runDiag = ($: EngineInterface, argv: readonly string[]): Promise<RunResult> =>
   $.process.run(argv, { timeoutMs: CMD_TIMEOUT_MS })
 

@@ -158,6 +158,17 @@ push_state: not pushed — leader batch (git-flow lane protocol; the lane never 
 - The doctor single-check message spellings are pinned from the in-tree sources (`internal/cli/doctor.go:629-679`, `internal/cli/doctor_mcp_version.go:43-94`) and re-measured from the CLI (M-9); C5 re-checks both at run-phase entry.
 - This session is a lane: no queue-mutating command was run, no commit was made (the lane commits after the audit), and no file outside the worktree and /tmp was written.
 
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_commit_sha: "pending-backfill-sync"
+sync_phase: complete — the single sync commit carries the CHANGELOG `[Unreleased]`/`### Added` entry, the spec.md `in-progress → implemented → completed` terminal transition (`updated: 2026-10-03` — already current), this §E.4 signal, and the two MX tag additions. A commit cannot cite its own SHA; the placeholder is backfilled with the real SHA in the sanctioned follow-up commit by the lane.
+
+- CHANGELOG: one entry added as the first bullet under `[Unreleased]` `### Added` (new mod). Duplicate-entry guard ran before the edit: `grep -c 'SPEC-MOAI-STATUS-MOD-001' CHANGELOG.md` → `0`; the entry names only paths verified present (`ls mods/moai-status/`; figures cited from §E.1/§E.2/§E.3 as read this session).
+- MX tag changes (sync sub-step, none existed before — scan `grep -n '@MX' mods/moai-status/hooks/*.ts` → no match): `@MX:ANCHOR [AUTO]` + `@MX:REASON` + `@MX:SPEC` added on `hooks/register.ts` `runDiag` (the module's only `$.process.run` call site); `@MX:NOTE [AUTO]` + `@MX:SPEC` added on the `hooks/data.ts` `DEFAULT_BAND` mirrored-defaults block. No existing tag deleted, demoted, or rewritten.
+- Sync verification run this session: duplicate guard 0 → entry added; every path named in the entry exists; spec.md frontmatter touched only on `status:` (allowed scope); `git status --short` re-read immediately before staging; staged by explicit pathspec only (CHANGELOG.md, spec.md, progress.md, hooks/register.ts, hooks/data.ts).
+- AC-MSM-013 remains UNOBSERVED (manual, interactive) — the operator checklist recorded in §E.2 stands; sync claims nothing for it.
+- push_state: not pushed — leader batch (git-flow lane protocol; the lane never pushes).
+
 ## §F Phase 4 Mode Selection
 
 Input parameters: tier M; scope ≈ 12 files (11 under `mods/moai-status/` + root `.gitignore`); domains = 1 (TypeScript mod under `mods/`); file language mix = 100% TypeScript/JSON/Markdown; concurrency benefit = LOW (coding-heavy, single-writer tree).
