@@ -600,6 +600,7 @@ func stageM8() {
 	}
 	fmt.Printf("package clauses renamed: %d, qualifiers renamed: %d, shadowing locals renamed: %d\n", pkgDecl, qual, shadow)
 }
+
 // ---------------------------------------------------------------- M9: web console
 
 func stageM9() {
@@ -684,6 +685,7 @@ func tail(s string, n int) string {
 	}
 	return strings.Join(l, "\n") + "\n"
 }
+
 // ---------------------------------------------------------------- M10: rules, skills, catalog
 
 func stageM10() {

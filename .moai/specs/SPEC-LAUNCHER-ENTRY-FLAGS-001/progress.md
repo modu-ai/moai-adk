@@ -703,3 +703,72 @@ Reading of PV-46/PV-47 (and PV-70, which supersedes them for v0.7.0): REQ-to-AC 
 Reading of PV-84 (supersedes PV-70 for v0.8.0): REQ-to-AC coverage is again established by the hand count, not by the lint; the lint reports `No findings` and the collection verb reports 25 definitions with no `UNCOVERED` line, and the verb's `mapped` is generous (it counts any line that names both an AC and the REQ), so the per-requirement `Verifies` counts of PV-84 are the evidence. Counts at authoring: 25 requirements (Tier L ceiling 25, at the ceiling after the REQ-019 split) and 25 criteria (ceiling 25, at the ceiling; the new `-l` and `--leader` shapes were folded into AC-003 and AC-005).
 
 Gaps: see `plan.md` §G (sixteen plan-level items) and `research.md` §R14 (twenty-one items) — none is asserted as fact in `spec.md`. Gaps recorded by the v0.8.0 revision specifically: (1) the compile proof models each milestone's DELETIONS and the edits that keep the build, not the added code, and prints M0, M1, and M11 as stages with no Go change; (2) the semantic re-pin of every test the probe retargets (the removed constants are mapped to surviving factory markers as a compile model) and the per-function classification of the cases the probe deleted are the run phase's; (3) the five lock-coupled tests of `internal/kanban` are modeled by deletion although two of them (the errno classification and the cross-process exclusion) are to be re-pointed, and whether retained tests already cover the substrate was not measured; (4) the runtime effects of the M10 renames (embedded template paths, catalog hash, foreman path pins) are not compile effects and are gated by AC-018 to AC-022, not by the probe; (5) PV-77 and PV-79 quote two redeclaration errors and one file-name collision from an interim replay of the stage data before the corrections entered it, and PV-82 quotes the view-model reader errors from the M9 prototype tree, so those rows are attributable to the same edit set but not to the committed stage data end to end; (6) the committed runner's own run (PV-74) began before the header comment of `probe.go` was reworded; no code line changed, and the file was deliberately left as run (it is not gofmt-aligned in its `var` block) so that the recorded run stays attributable to it; (7) the plan-audit reports `.moai/reports/t1399/plan-audit-iter1.md` and `plan-audit-iter2.md` are local gitignored files; both were read and neither was edited; (8) the worktree guard refused several compound shell commands and the runs were re-issued as plain commands or scripts written with the Write tool, with no measurement replaced by source reading; (9) the Overview attention row (Q24) and the file `role.go` (verdict 20) are findings of the compile proof that the verdicts did not state — they are written to the smallest-footprint reading and returned for acknowledgement.
+
+## §J Plan-audit iteration 3 outcome and carried debt
+
+Appended after plan-audit iteration 3 (the last audit allowed). This section is append-only: no earlier line of this file was edited, and the five plan-artifact files (`spec.md`, `plan.md`, `acceptance.md`, `design.md`, `research.md`) were not touched, because the audit verdict is bound to their hash. Where this section contradicts an earlier line (the §E.1 prose says iteration 3 "has not run"; Gap (6) of §G says `probe.go` was left unformatted), this section is the later record and the earlier line is left as written history.
+
+### J.1 Audit iterations
+
+| Iteration | Verdict | Score | Audited at | Report (local, gitignored) |
+|-----------|---------|-------|------------|----------------------------|
+| 1 | FAIL | 0.72 | `b9242da00ce489c4f26efb5f6d447ccafef08c54` | `.moai/reports/t1399/plan-audit-iter1.md` |
+| 2 | FAIL | 0.79 | `5445e296caa48e6ab9821afe808eac2e7385e897` | `.moai/reports/t1399/plan-audit-iter2.md` |
+| 3 | PASS-WITH-DEBT | 0.88 (Tier L threshold 0.85) | `7e1ae0d808b180f266c71761290ab6ed96ba335f` | `.moai/reports/t1399/plan-audit-iter3.md` |
+
+Iteration 3 reports MUST-FIX 0, SHOULD-FIX 8, ADVISORY 6 (14 findings, all Class optional). The audit-ready signal of §E.1 (`plan_status: audit-ready`, `plan_complete_at: 2026-10-02`) was not edited: it carries no `audited_sha` field, its `audited_head` field names the iteration 2 commit, and editing an existing line would break the append-only constraint of this section. The iteration 3 audited commit is recorded here instead.
+
+### J.2 What the auditor re-ran, as the report states it
+
+Source: `.moai/reports/t1399/plan-audit-iter3.md` § 4.2 and § 4.3 (read in this run; the report is the auditor's measurement, not mine).
+
+- The committed compile-proof runner was re-run over all 14 stages (M0..M11 with M6a and M6b), four checks per stage. Every stage printed empty build and vet blocks with exit 0 on the host and for windows, except the windows vet block, which printed exactly the pre-existing three-line baseline (`internal/cli/worktree/sweep_test.go:1687`, `undefined: parseLsofCWDs`). The output equals the recorded PV-74 block except the `templ` generator's own timing lines at M9.
+- The auditor made the proof go red on purpose: one line (`internal/kanban/state_lock_unix.go`) appended to a scratch copy of `M6b.rm`, so a re-homed lock file is deleted with no replacement. The host build failed with five `undefined: acquireStateLockImpl` errors; the windows build stayed clean (the windows file survived).
+- A pristine-tree overlay control with the ten v0.7.0 "board family" files mapped to empty printed 25 `undefined:` lines, equal to PV-75.
+
+### J.3 Carried debt
+
+Owners are as the report assigns them. Where the report names no owner the row says `unassigned`; this section does not invent one. None of the plan-text fixes below can be applied now, because the five hash-subject files are frozen; every such fix is carried as run-phase or Kickoff work.
+
+| ID | Class | One-line description | Owner (as the report gives it) | The report's minimal fix |
+|----|-------|----------------------|--------------------------------|--------------------------|
+| D-A1 | SHOULD-FIX (major) | `probe/probe.go` was not gofmt-clean (blank line missing before the M9 and M10 banners), and the CI format gate runs over tracked `.go` files | the orchestrator, before the card branch is merged or pushed | `gofmt -w probe/probe.go`, note it in progress.md Gap (6), re-run `gofmt -l` and the probe's M0 stage — EXECUTED in this run except the M0 re-run, see J.4 |
+| D-A2 | SHOULD-FIX (major) | AC-018's exact-four grep still returns 123 files / 502 lines on the modeled final tree (22 files cite `SPEC-KANBAN-*`); the comment and citation sweep is unscheduled | M7 (comments), M10 (final sweep) | add a comment-and-citation sweep step to M7 with the measured count and a stated rewrite rule for completed-SPEC citations, or narrow REQ-017 and AC-018 to non-comment tokens |
+| D-A3 | SHOULD-FIX (major) | run-time package-path strings in tests are ungated: `TestBacklogJSONLiteralStaysSeamScoped` fails on the modeled tree and `migrate_home_state_test.go:68,992,1059` carry `"./internal/kanban"` and are named in no artifact; Gap 13's claim is false | M8 | add the three `migrate_home_state_test.go` sites to design §4.7, add scoped lease-guarded test selectors to AC-018's command, correct Gap 13 |
+| D-A4 | SHOULD-FIX (minor) | `-l -k` and `--lane -k`: REQ-002 and REQ-010 prescribe different one-line content with no stated precedence; AC-003's two rows go red at M5a unless re-pinned | M5a | state that `-k` is refused first and the line names both facts; add AC-003 to M5a's re-pin list |
+| D-A5 | SHOULD-FIX (minor) | AC-003 covers `--name lane-2` but not `-n lane-2` or `--name=lane-2` beside `-l` or `--lane` (a shallow-mutant gap) | M2 | add the `-n` and `--name=` shapes and their `--lane` twins to AC-003's shape list and subtest count |
+| D-A6 | SHOULD-FIX (minor) | AC-012 floors only the four wait-budget tests; the errno classification and cross-process exclusion tests could be deleted and AC-012 would still pass | M6 | add a scoped, lease-guarded selector over the retained consumer cross-process tests to AC-012's command, with a swept count |
+| D-A7 | SHOULD-FIX (minor) | AC-017's M1-authored fixture may name `MOAI_KANBAN` and `MOAI_KANBAN_LABEL` as constants that M5b deletes; Gap 12 says the design reads none | M1 | state that M1-authored tests name those markers only as string literals; say so in Gap 12 |
+| D-A8 | SHOULD-FIX (minor) | `graph-freshness.yml` runs `moai graph check` on every push to `develop`; the tracked codemaps cite `internal/kanban` 41 times, so the check is expected (inferred, not measured) to go red after the rename | M11 / sync | schedule `/moai codemaps` plus the stamp in the same batch as M8, or record that a red graph-freshness check is accepted until the debt card lands |
+| D-A9 | ADVISORY | stale labels: `design.md:1` says v0.7.0; `design.md:96` and `research.md:146` print a closed gap as open; `design.md:47` and `research.md` §R4 say "two `-k` constants" where `plan.md:168` lists four; `decision-index.md:25` Q18 row maps to REQ-019 which REQ-025 now carries | unassigned (the report gives none) | the report names no fix beyond the label corrections it lists; not applicable now (frozen files, and `decision-index.md` is not among the files this task may touch) |
+| D-A10 | ADVISORY | REQ-025 is printed between REQ-019 and REQ-020 (`spec.md:147`) | unassigned (the report gives none) | move it to the end of §B.4 or renumber |
+| D-A11 | ADVISORY | AC-023's added alternative misses a page that writes the retired short as separate code spans ("`-l`, `--lead <name>`") | unassigned (the report gives none) | the report states the gap and gives no fix |
+| D-A12 | ADVISORY | the proof and AC-018 cover darwin and windows only; linux-only files (`internal/discovery/leader_readers_linux.go`, `internal/session/proc_info_linux.go`) were measured clean only at the M11 tree | unassigned (the report's owner label is absent; its fix names M7) | add `GOOS=linux GOARCH=amd64 go build ./...` to the per-milestone gate at M7 (the marker-constant rename) |
+| D-A13 | ADVISORY | Q20-Q22 and Q24 stay open and non-gating; REQ-018 states the Q24 reading normatively, so an answer of B at Kickoff changes REQ-018 and M9 | Kickoff | record the closures at Kickoff or sync |
+| D-A14 | ADVISORY | REQ-019 still bundles several concerns (regression rows D12 and D45, partially resolved) | unassigned (the report gives none) | the report states the bundle and gives no fix |
+
+Row count: 14 (D-A1..D-A8 SHOULD-FIX, D-A9..D-A14 ADVISORY). Owner column: nine rows carry an owner the report names (D-A1, D-A2, D-A3, D-A4, D-A5, D-A6, D-A7, D-A8, D-A13); five carry `unassigned` (D-A9, D-A10, D-A11, D-A12, D-A14), of which D-A12's fix names M7.
+
+### J.4 Fix applied in this run
+
+D-A1 only: `gofmt -w` on `.moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe/probe.go`, run in this worktree at HEAD `7e1ae0d808b180f266c71761290ab6ed96ba335f` (this run, this tree). Observed:
+
+- before: `gofmt -l .moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe` printed `.moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe/probe.go`;
+- after: the same command printed nothing, exit 0;
+- `go vet` over `probe/probe.go` and over `probe/entry_probe.go` (each a `//go:build ignore` file, vetted by path): exit 0 for both;
+- the diff of the probe directory is exactly two inserted blank lines, one before the `// ---- M9: web console` banner and one before the `// ---- M10: rules, skills, catalog` banner; no code line changed. `entry_probe.go` was not listed by `gofmt -l` and was not changed; `entry_probe_test.go.txt` is not a Go file and was not touched.
+
+This supersedes the "left as run" statement of Gap (6) in §G for the formatting only: the file's formatting changed by those two blank lines, its code did not, and the recorded PV-74 run was taken before them. The `var` block alignment that Gap (6) mentions needed no change (the formatter produced no diff there).
+
+### J.5 Run-phase obligations (not requirement changes)
+
+The following bind the run phase without changing a requirement or a criterion:
+
+1. **AC-018 sweep sizing (D-A2).** At M1, size the exact-four-files grep sweep behind the audit's measured 123 files / 502 lines (41 files with a non-comment match; 22 files carrying `SPEC-KANBAN-*` citations) and record the measured edit list the plan already promises; the gofmt/format gate for tracked `.go` files (`make fmt-check`, which runs `gofmt -l` over `git ls-files '*.go'`) stays green in every milestone.
+2. **Path-string tests (D-A3).** The run-time path-string tests the report names are added to the milestone that renames their path strings (M8): `TestBacklogJSONLiteralStaysSeamScoped` in `internal/factory`; the three `internal/cli` tests the auditor saw go red once the non-test path strings were renamed (`TestHomeStateVerifiedLiveGateCannotBypassOrReplay`, `TestHomeStateVerdictEvidenceValidator`, `TestPersistedHomeStateEvidenceIsImmutableAndReadsRealDatabases`), caused by `internal/cli/migrate_home_state_test.go:68,992,1059`; the fourth failure the auditor saw (`TestHomeStateValidationCommandWrappersAndHelperFailures`, `head="" err=exit status 128`) failed identically before the rename on a scratch tree without a repository, so it is an environment artifact of that scratch tree and not a SPEC obligation.
+
+### J.6 Gaps of this section
+
+- The M0 sanity re-run of the probe that D-A1's fix suggests was not executed in this run (the instruction scoped this run to formatting plus this section); the `go vet` exit 0 over both probe files is the check that was observed. The auditor's own full 14-stage re-run (J.2) was taken against the pre-format file and the diff is two blank lines, so the program is unchanged, but that is a reading of the diff, not a re-measurement.
+- The report's counts (123 files, 502 lines, 41 codemaps citations, the four red tests) are the auditor's measurements; none was re-measured in this run.
+- The plan-text fixes D-A2..D-A7, D-A9..D-A12 and D-A14 were not applied, by instruction (hash-bound files); `decision-index.md` (D-A9's Q18 row) was outside the two files this run was permitted to touch.
