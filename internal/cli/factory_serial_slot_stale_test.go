@@ -158,15 +158,15 @@ func TestFactoryNextFailedSerialRowReleasesSlot(t *testing.T) {
 	}
 }
 
-// TestFactoryNextAssignedSerialCardsHoldSlot_PendingRuling pins the CURRENT
-// reading of a leader-assigned serial card — it holds the slot — as measured
-// evidence for the operator ruling this card routes upward, not as endorsed
-// behavior. Two serial cards assigned (no lease) to two lanes with nothing in
-// flight leave each lane's own `next` refused: the 2-card shape of the run
-// tm9i7y wedge (8 leader-assigned serial cards, every `factory next` refused).
-// REQ-TCD-008 reads literally this way; narrowing it is the operator's call
-// (OD-1), so a change here is a deliberate edit of this test, not a repair.
-func TestFactoryNextAssignedSerialCardsHoldSlot_PendingRuling(t *testing.T) {
+// TestFactoryNextOwnAssignedSerialCardLeasesPastSiblingAssigned — operator
+// ruling 2026-10-03 (card t1407, option B): `assigned` still counts as holding
+// the serial slot, but a lane leasing a card assigned TO ITSELF ignores sibling
+// cards that are merely `assigned`. Two serial cards assigned to two lanes with
+// nothing in flight no longer wedge each other (the 2-card shape of the run
+// tm9i7y deadlock: 8 leader-assigned serial cards, every `factory next`
+// refused). The first lane's lease then holds the slot against the second, so
+// serial cards are still served one at a time.
+func TestFactoryNextOwnAssignedSerialCardLeasesPastSiblingAssigned(t *testing.T) {
 	root, store := fcFixture(t)
 	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
 	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
@@ -177,15 +177,57 @@ func TestFactoryNextAssignedSerialCardsHoldSlot_PendingRuling(t *testing.T) {
 	)
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
+	ctx := context.Background()
 
-	for _, lane := range []string{"lane-1", "lane-2"} {
-		got, owned, err := factoryNextLeaseOnce(context.Background(), root, fcRun, lane)
-		if err != nil {
-			t.Fatalf("%s next: %v", lane, err)
-		}
-		if owned {
-			t.Fatalf("%s leased %s; the current reading is that assigned serial cards hold the slot against each other", lane, got.CardID)
-		}
+	got, owned, err := factoryNextLeaseOnce(ctx, root, fcRun, "lane-1")
+	if err != nil {
+		t.Fatalf("lane-1 next: %v", err)
+	}
+	if !owned || got.CardID != "t1" || got.LeaseHolder != "lane-1" {
+		t.Fatalf("lane-1 next = (%s, holder=%q, owned=%v), want its own assigned t1 leased past the sibling assigned t2", got.CardID, got.LeaseHolder, owned)
+	}
+
+	// t1's live lease now holds the slot: lane-2's own assigned t2 waits.
+	got2, owned2, err := factoryNextLeaseOnce(ctx, root, fcRun, "lane-2")
+	if err != nil {
+		t.Fatalf("lane-2 next: %v", err)
+	}
+	if owned2 {
+		t.Fatalf("lane-2 leased %s while t1's live lease holds the serial slot", got2.CardID)
+	}
+}
+
+// TestFactoryNextOwnAssignedSerialCardBlockedByLiveSerialLease — the control
+// for the option-B repair: ignoring sibling `assigned` cards does not ignore a
+// sibling that is actually in flight. A lane's own assigned serial card is not
+// leased while another serial card holds a live lease.
+func TestFactoryNextOwnAssignedSerialCardBlockedByLiveSerialLease(t *testing.T) {
+	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+	root := fcSlotFixture(t, fcDeadLaneCard(homestate.CardRun, live), 1)
+	fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-1"})
+
+	got, owned, err := factoryNextLeaseOnce(context.Background(), root, fcRun, "lane-1")
+	if err != nil {
+		t.Fatalf("next: %v", err)
+	}
+	if owned {
+		t.Fatalf("lane-1 leased its assigned %s while t1 holds a live serial lease", got.CardID)
+	}
+}
+
+// TestFactoryNextAssignedSerialCardStillHoldsSlotAgainstNewTakes — the second
+// control: an `assigned` serial card keeps holding the slot against a lane that
+// has no card of its own, so an unassigned lane still cannot take a NEW serial
+// card (arms b/b2/c) while one is assigned.
+func TestFactoryNextAssignedSerialCardStillHoldsSlotAgainstNewTakes(t *testing.T) {
+	root := fcSlotFixture(t, homestate.Card{State: homestate.CardAssigned, OwnerLabel: "lane-1"}, 1)
+
+	got, owned, err := factoryNextLeaseOnce(context.Background(), root, fcRun, "lane-2")
+	if err != nil {
+		t.Fatalf("next: %v", err)
+	}
+	if owned {
+		t.Fatalf("lane-2 (no card of its own) took %s while t1 is assigned and holds the serial slot", got.CardID)
 	}
 }
 
