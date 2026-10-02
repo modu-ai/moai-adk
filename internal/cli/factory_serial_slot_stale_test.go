@@ -267,6 +267,71 @@ func TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms(t *testing.T) {
 	}
 }
 
+// TestFactoryNextOwnAssignedSerialCardBlockedByPickedSibling — the option-B
+// exception ignores sibling `assigned` rows and nothing else: a `picked` serial
+// row still counts in arm (a), so a lane's own assigned serial card is not
+// leased past it. (Both rows then wait on each other — arm b cannot take the
+// picked row while the assigned one holds the slot; that residual belongs to
+// the same ruling and is recorded in the amendment, not repaired here.) A
+// mutation that ignores `picked` as well as `assigned` fails this test.
+func TestFactoryNextOwnAssignedSerialCardBlockedByPickedSibling(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1"},
+		homestate.Card{CardID: "t2", State: homestate.CardPicked},
+	)
+	sdRegisterLane(t, root, "lane-1")
+
+	got, owned, err := factoryNextLeaseOnce(context.Background(), root, fcRun, "lane-1")
+	if err != nil {
+		t.Fatalf("next: %v", err)
+	}
+	if owned {
+		t.Fatalf("lane-1 leased its assigned %s past a picked serial sibling; only assigned siblings are ignored in arm (a)", got.CardID)
+	}
+}
+
+// TestFactoryNextParallelizableLeasesBesideLiveSerial — the slot is a
+// serial-only exclusivity: while a serial card holds a live lease, a
+// parallelizable card is still leasable through arm (a) (assigned to the lane)
+// and through arm (c) (promoted from the queue). Dropping the serial-mode check
+// in either arm blocks the parallelizable card and fails the matching subtest.
+func TestFactoryNextParallelizableLeasesBesideLiveSerial(t *testing.T) {
+	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+	for _, tc := range []struct {
+		name        string
+		assignedRow bool
+	}{
+		{"arm-a-assigned-parallelizable", true},
+		{"arm-c-queued-parallelizable", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, store := fcFixture(t)
+			fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStateQueued)
+			fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+			fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+			rows := []homestate.Card{fcDeadLaneCard(homestate.CardRun, live)}
+			rows[0].CardID = "t1"
+			if tc.assignedRow {
+				rows = append(rows, homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-1"})
+			}
+			fcPlace(t, root, rows...)
+			sdRegisterLane(t, root, "lane-1")
+
+			got, owned, err := factoryNextLeaseOnce(context.Background(), root, fcRun, "lane-1")
+			if err != nil {
+				t.Fatalf("next: %v", err)
+			}
+			if !owned || got.CardID != "t2" {
+				t.Fatalf("lane-1 next = (%s, owned=%v), want the parallelizable t2 leased beside the live serial t1", got.CardID, owned)
+			}
+		})
+	}
+}
+
 // TestFactoryNextPickedOwnerlessRowHoldsSlot_OutOfExpiryScope measures the
 // boundary of the expiry repair: a `picked` row with no owner and no lease —
 // what a failed claim leaves behind, and the shape of t810 in run tm9i7y — is
