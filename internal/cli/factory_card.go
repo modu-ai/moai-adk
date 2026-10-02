@@ -751,7 +751,7 @@ func factoryKeepSetRefusal(it kanban.BacklogItem, row *homestate.Card, lane stri
 		return factoryRefusal(factoryRefuseHoldMarker, "the card's text opens with the hold marker %s; the operator parked it", autoRankHoldMarker)
 	}
 	if kanban.EffectiveCardClassification(it).Blocked {
-		return factoryRefusal(factoryRefuseBlocked, "the card's classification is blocked; an operator pick or unblock dispatches it")
+		return factoryRefusal(factoryRefuseBlocked, "the card's classification is blocked; no lane lease takes it, the operator decides it")
 	}
 	if serialHeld {
 		return factoryRefusal(factoryRefuseSerialSlot, "another serial card is in flight and holds the serial slot")
@@ -924,27 +924,34 @@ func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, roo
 // `queued` in one write that does nothing when the item is no longer `picked`,
 // only while the record shows no row, or a row at `picked` with no owner. It
 // reports whether another holder owns the card (their queue state is left
-// alone). A restoring write that itself fails is returned as a non-token
-// error naming the card; the card then stays `picked` and unowned.
+// alone). The record row is read INSIDE the queue lock, so a lease that lands
+// while the compensation waits for that lock is seen and the queue item is
+// left `picked` under it (a restored `queued` item could be claimed a second
+// time); a lease landing after that read, before the write, is the two-store
+// window the spec accepts. A failure of the restoring write — or of the
+// record read — is returned as a non-token error naming the card; the card
+// then stays `picked` and unowned.
 func factoryNominateCompensate(ctx context.Context, db *homestate.FactoryDB, root, runID, lane, cardID string, promoted bool) (bool, error) {
 	if !promoted {
 		return false, nil
 	}
-	var row *homestate.Card
-	cur, err := db.LoadCard(ctx, runID, cardID)
-	switch {
-	case errors.Is(err, homestate.ErrCardNotFound):
-	case err != nil:
-		return false, fmt.Errorf("compensation failed: card %s stays picked and unowned: read the factory record: %w", cardID, err)
-	default:
-		row = &cur
-	}
-	if row != nil && (row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
-		// Another holder (or this lane's own assigned row): the queue state is
-		// theirs and is left alone.
-		return row.OwnerLabel != lane && row.LeaseHolder != lane, nil
-	}
+	otherHolder := false
 	if err := todoStoreAt(root).Mutate(func(r *kanban.BacklogRecord) error {
+		var row *homestate.Card
+		cur, err := db.LoadCard(ctx, runID, cardID)
+		switch {
+		case errors.Is(err, homestate.ErrCardNotFound):
+		case err != nil:
+			return fmt.Errorf("read the factory record: %w", err)
+		default:
+			row = &cur
+		}
+		if row != nil && (row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
+			// Another holder (or this lane's own assigned row): the queue state is
+			// theirs and is left alone.
+			otherHolder = row.OwnerLabel != lane && row.LeaseHolder != lane
+			return nil
+		}
 		for i := range r.Items {
 			if r.Items[i].ID == cardID && r.Items[i].State == kanban.BacklogStatePicked {
 				r.Items[i].State = kanban.BacklogStateQueued
@@ -954,7 +961,7 @@ func factoryNominateCompensate(ctx context.Context, db *homestate.FactoryDB, roo
 	}); err != nil {
 		return false, fmt.Errorf("compensation failed: card %s stays picked and unowned: %w", cardID, err)
 	}
-	return false, nil
+	return otherHolder, nil
 }
 
 // factoryNextSkipForBackend is the REQ-SD-025 selection half: a Codex lane

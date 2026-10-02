@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -25,6 +26,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/pflag"
 
+	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/jev"
@@ -243,6 +245,11 @@ func nmCases() []nmCase {
 			nmSetText(t, store, "t1", "notes that mention "+nmHoldMarker+" only in the middle")
 		})},
 		{"blocked", "blocked", single(kanban.BacklogStateQueued, func(t *testing.T, _ string, store *kanban.BacklogStore) {
+			fcClassify(t, store, "t1", kanban.ClassPriorityNormal, true, kanban.ClassModeParallelizable)
+		})},
+		// Run-phase deviation (a): `blocked` applies in any queue state, an
+		// operator-picked nominee included.
+		{"blocked-picked", "blocked", single(kanban.BacklogStatePicked, func(t *testing.T, _ string, store *kanban.BacklogStore) {
 			fcClassify(t, store, "t1", kanban.ClassPriorityNormal, true, kanban.ClassModeParallelizable)
 		})},
 		{"serial-slot", "serial-slot", func(t *testing.T) (string, *kanban.BacklogStore, string) {
@@ -549,10 +556,39 @@ func nmRaceAtSeam(t *testing.T, lanes []nmLaneRun) []nmLaneResult {
 	return results
 }
 
+// nmIsolatedWorktrees stubs the shared worktree materializer so each card named
+// gets its OWN independent repository as its "worktree". The post-lease step of
+// a successful lease (factoryEnsureCardWorktree) renames the new tree's branch;
+// two lanes doing that at the same instant in ONE repository collide on the
+// shared reflog temp file — a pre-existing hazard of that step, outside the
+// lease invariant AC-TAU-002 asserts. Separate repositories remove the
+// collision while the contention under test (the queue promotion and the
+// version-checked record edges) stays untouched. The repositories are built up
+// front on the test goroutine; the stub only looks them up.
+func nmIsolatedWorktrees(t *testing.T, cards ...string) {
+	t.Helper()
+	trees := make(map[string]string, len(cards))
+	for _, id := range cards {
+		dir := t.TempDir()
+		initGitRepo(t, dir)
+		trees[id] = dir
+	}
+	prev := worktree.WorktreeCreator
+	worktree.WorktreeCreator = func(name string, _ io.Writer) (string, error) {
+		dir, ok := trees[name]
+		if !ok {
+			return "", fmt.Errorf("no isolated worktree prepared for %s", name)
+		}
+		return dir, nil
+	}
+	t.Cleanup(func() { worktree.WorktreeCreator = prev })
+}
+
 // TestFactoryNextNominateConcurrentLanes — two lanes nominating different
 // cards at the same moment each hold their own card.
 func TestFactoryNextNominateConcurrentLanes(t *testing.T) {
 	root, _ := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	nmIsolatedWorktrees(t, "t1", "t2")
 	results := nmRaceAtSeam(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t2"}})
 	for _, r := range results {
 		if r.err != nil {
@@ -609,7 +645,7 @@ func TestFactoryNextNominateSameCardExactlyOne(t *testing.T) {
 // its own token and changes no state; a card that merely mentions the marker
 // mid-text is not a marker card and leases.
 func TestFactoryNextNominateRefusesKeepSet(t *testing.T) {
-	for _, c := range nmCaseByName(t, "held", "hold-marker", "marker-leading-space", "marker-mid-text", "blocked", "serial-slot", "dropped", "owned") {
+	for _, c := range nmCaseByName(t, "held", "hold-marker", "marker-leading-space", "marker-mid-text", "blocked", "blocked-picked", "serial-slot", "dropped", "owned") {
 		t.Run(c.name, func(t *testing.T) { nmRunCase(t, c) })
 	}
 	t.Run("ordinary card leases", func(t *testing.T) {
@@ -770,6 +806,14 @@ func TestFactoryNextNominateRecordStateTokens(t *testing.T) {
 		root, store := place(t, homestate.Card{State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1"})
 		refuse(t, root, store, "owned")
 	})
+	// A `picked` row is leasable only while it has no owner (an operator pick);
+	// once an owner is recorded it is `owned`, for any lane — this one included.
+	for _, owner := range []string{"lane-2", "lane-1"} {
+		t.Run("owned/picked-with-owner-"+owner, func(t *testing.T) {
+			root, store := place(t, homestate.Card{State: homestate.CardPicked, OwnerLabel: owner})
+			refuse(t, root, store, "owned")
+		})
+	}
 	t.Run("owned/assigned-to-another-lane", func(t *testing.T) {
 		root, store := place(t, homestate.Card{State: homestate.CardAssigned, OwnerLabel: "lane-2"})
 		refuse(t, root, store, "owned")
@@ -916,6 +960,143 @@ func TestFactoryNextNominateCompensationFailure(t *testing.T) {
 			t.Errorf("t1 has a record row")
 		}
 	})
+}
+
+// TestFactoryNextNominateCompensateRechecksRecord — the compensation reads the
+// factory-record row INSIDE the queue lock, so a lease that lands while the
+// compensation waits for that lock is seen: the queue item is not restored to
+// `queued` under a card the factory holds (a restored `queued` item could be
+// claimed a second time). The table calls the compensation directly with the
+// state pre-arranged; the last test holds the queue lock from the test and lets
+// the lease land during the wait.
+func TestFactoryNextNominateCompensateRechecksRecord(t *testing.T) {
+	cases := []struct {
+		name         string
+		row          *homestate.Card
+		promoted     bool
+		wantOther    bool
+		wantQueueEnd kanban.BacklogState
+	}{
+		{"no row restores", nil, true, false, kanban.BacklogStateQueued},
+		{"unowned picked row restores", &homestate.Card{State: homestate.CardPicked}, true, false, kanban.BacklogStateQueued},
+		{"another lane's lease is left alone", &homestate.Card{State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", Stage: homestate.CardRun}, true, true, kanban.BacklogStatePicked},
+		{"another lane's assignment is left alone", &homestate.Card{State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true, true, kanban.BacklogStatePicked},
+		{"this lane's own lease is left alone and is not another holder", &homestate.Card{State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", Stage: homestate.CardRun}, true, false, kanban.BacklogStatePicked},
+		{"a promotion this invocation did not make is never undone", nil, false, false, kanban.BacklogStatePicked},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			root, store := nmBase(t, kanban.BacklogStatePicked)
+			if c.row != nil {
+				row := *c.row
+				row.CardID = "t1"
+				fcPlace(t, root, row)
+			}
+			db := fcOpen(t, root)
+			other, err := factoryNominateCompensate(context.Background(), db, root, fcRun, "lane-1", "t1", c.promoted)
+			if err != nil {
+				t.Fatalf("compensation: %v", err)
+			}
+			if other != c.wantOther {
+				t.Errorf("another holder = %v, want %v", other, c.wantOther)
+			}
+			if got := nmQueueState(t, store, "t1"); got != c.wantQueueEnd {
+				t.Errorf("t1 queue state = %s, want %s", got, c.wantQueueEnd)
+			}
+		})
+	}
+
+	t.Run("a lease landing while the compensation waits for the queue lock", func(t *testing.T) {
+		root, store := nmBase(t, kanban.BacklogStatePicked)
+		db := fcOpen(t, root)
+
+		// The test holds the queue lock.
+		locked, unlock := make(chan struct{}), make(chan struct{})
+		held := make(chan error, 1)
+		go func() {
+			held <- todoStoreAt(root).Mutate(func(*kanban.BacklogRecord) error {
+				close(locked)
+				<-unlock
+				return nil
+			})
+		}()
+		<-locked
+
+		type outcome struct {
+			other bool
+			err   error
+		}
+		done := make(chan outcome, 1)
+		go func() {
+			other, err := factoryNominateCompensate(context.Background(), db, root, fcRun, "lane-1", "t1", true)
+			done <- outcome{other, err}
+		}()
+		// Give the compensation time to reach the queue lock (a read of the
+		// record made before the wait would see no row), then let another lane
+		// lease the card and release the lock. The in-lock re-read makes the
+		// outcome independent of how long the wait took.
+		time.Sleep(400 * time.Millisecond)
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", Stage: homestate.CardRun})
+		close(unlock)
+		if err := <-held; err != nil {
+			t.Fatalf("the lock holder: %v", err)
+		}
+		select {
+		case r := <-done:
+			if r.err != nil {
+				t.Fatalf("compensation: %v", r.err)
+			}
+			if !r.other {
+				t.Errorf("another holder = false, want true (lane-2 leased the card during the wait)")
+			}
+		case <-time.After(30 * time.Second):
+			t.Fatal("the compensation never finished")
+		}
+		if got := nmQueueState(t, store, "t1"); got != kanban.BacklogStatePicked {
+			t.Errorf("t1 queue state = %s, want picked: restoring queued under lane-2's lease lets a second actor claim the item", got)
+		}
+		nmAssertLeased(t, root, "t1", "lane-2")
+	})
+}
+
+// TestFactoryNextNominateBlankCardIsAnError — a blank `--card` (CLI) or a blank
+// `card` (MCP) is an error that names the missing id; it never falls back to
+// the bare priority-order lease the session did not choose.
+func TestFactoryNextNominateBlankCardIsAnError(t *testing.T) {
+	assertNothingLeased := func(t *testing.T, root string, store *kanban.BacklogStore, before string) {
+		t.Helper()
+		if after := nmSnapshot(t, root, store); after != before {
+			t.Errorf("a blank card changed the queue or the record:\nbefore:\n%s\nafter:\n%s", before, after)
+		}
+		if fcHasCard(t, root, "t1") {
+			t.Errorf("t1 was leased: a blank card fell back to the bare lease")
+		}
+	}
+	for _, blank := range []string{"", "   "} {
+		t.Run(fmt.Sprintf("cli %q", blank), func(t *testing.T) {
+			root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+			nmLaneEnv(t, "lane-1", "")
+			before := nmSnapshot(t, root, store)
+			out, stderr, err := qasRunNext(t, "--run", fcRun, "--card="+blank)
+			if err == nil || !strings.Contains(err.Error(), "--card needs a card id") {
+				t.Fatalf("blank --card: err = %v (stdout %q stderr %q), want `--card needs a card id`", err, out, stderr)
+			}
+			if code := nmExit(err); code == 4 {
+				t.Errorf("a blank --card exited 4 (a refusal status); it names no card to refuse: %v", err)
+			}
+			assertNothingLeased(t, root, store, before)
+		})
+		t.Run(fmt.Sprintf("mcp %q", blank), func(t *testing.T) {
+			root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+			nmLaneEnv(t, "lane-1", "")
+			before := nmSnapshot(t, root, store)
+			_, err := sdCallTool(t, handleFactoryNext, map[string]any{"project_root": root, "run": fcRun, "card": blank})
+			if err == nil || !strings.Contains(err.Error(), "card needs a card id") {
+				t.Fatalf("blank card: err = %v, want `card needs a card id`", err)
+			}
+			assertNothingLeased(t, root, store, before)
+		})
+	}
 }
 
 // ---------------------------------------------------------------------------
