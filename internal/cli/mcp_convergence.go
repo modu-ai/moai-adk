@@ -149,6 +149,15 @@ type ConvergenceResult struct {
 	// result, and invisible to every project that did not declare the gate.
 	AuditReceipt string `json:"audit_receipt,omitempty"`
 
+	// PlanSource is "config" when at least one backend's gate came from the
+	// audited tree's configuration (audit.gates or the audit.model token)
+	// (SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-006). Additive + omitempty: with no
+	// configuration and no gates the member is absent, so the result of an
+	// unconfigured tree stays byte-identical to the pre-change one. Its consumer
+	// is the plan checker, which reads the member to tell a current server from
+	// one that predates the resolver.
+	PlanSource string `json:"plan_source,omitempty"`
+
 	// SecondReviewRecordError carries the A4 append failure
 	// (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-012): non-empty only when a
 	// card_id was supplied and the record could not be written. omitempty —
@@ -519,6 +528,11 @@ type MultiAuditConfig struct {
 	// scope, and the signed contract digest, into the card evidence
 	// directory. Empty ⇒ byte-identical pre-change behavior.
 	CardID string
+
+	// PlanSource is threaded to ConvergenceResult.PlanSource: the handler sets it
+	// to "config" when the resolved plan took a gate from the tree's
+	// configuration. Empty ⇒ the member is omitted.
+	PlanSource string
 }
 
 // backendCallFn is the injectable seam for external-backend invocation.
@@ -769,6 +783,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// carry the same commit the verdict carried (REQ-ABI-002 — no separate
 	// persistence-side code).
 	result.BuildCommit, result.BuildLag = buildCommit, buildLag
+	result.PlanSource = cfg.PlanSource
 
 	// ── explicit-required gate enforcement (GH #1632 item 3) ──
 	// converge above is deliberately fail-open: a required backend that

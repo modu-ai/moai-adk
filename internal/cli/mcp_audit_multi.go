@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -35,8 +36,10 @@ const auditMultiToolName = "audit_multi"
 //  1. Assembles the optional claude_verdict ReviewOutput. It is an anchor only
 //     in a Claude-origin session; GPT/GLM/unknown origins ignore it and invoke
 //     the independent subscription-backed Claude backend.
-//  2. Reads the per-auditor audit_gate from the `gates` argument (with
-//     distributed defaults applied for any gate the caller omits).
+//  2. Reads the per-auditor audit_gate the caller supplied in the `gates`
+//     argument and resolves the audited tree's plan around it: a supplied gate
+//     wins, then the tree's audit.gates, then its audit.model token, then the
+//     distributed default (config.ResolveAuditPlan).
 //  3. Fans out by calling runMultiAudit — which reuses the existing
 //     Claude/codex/GLM handler paths (NO backend re-implementation, AC-AMM-013).
 //  4. Shapes the ConvergenceResult into the tool's declared output.
@@ -79,12 +82,36 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		return toolErr(auditMultiToolName, rootErr), nil
 	}
 
+	// SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-003/006: the audited tree's plan —
+	// resolved from its RAW workflow.audit section and the gates this call
+	// supplied — decides every backend's gate. A configured value outside the
+	// closed sets is the second hard-error path of this handler for the same
+	// reason as the unusable project_root above: a mistyped token silently
+	// becoming the default is the failure the resolver exists to remove. An
+	// unreadable workflow.yaml still reads as "no audit configuration"
+	// (workflowAuditPins fails open), so a direct caller keeps today's reading.
+	planRoot := projectRoot
+	if planRoot == "" {
+		planRoot = resolveProjectDir()
+	}
+	var audit config.AuditConfig
+	if planRoot != "" {
+		audit, _ = auditSectionForRoot(planRoot)
+	}
+	plan, planErr := config.ResolveAuditPlan(audit, gates)
+	if planErr != nil {
+		return toolErr(auditMultiToolName, planErr), nil
+	}
+
 	cfg := MultiAuditConfig{
-		Gates:          gates,
+		Gates:          planGates(plan),
 		SessionID:      req.GetString("session_id", ""),
 		ProjectRoot:    projectRoot,
 		OriginProvider: os.Getenv(config.EnvMoaiLaunchProvider),
 		CardID:         cardID,
+	}
+	if plan.FromConfig() {
+		cfg.PlanSource = planSourceConfig
 	}
 
 	token := extractProgressToken(req)
@@ -116,21 +143,61 @@ func readClaudeVerdict(req mcp.CallToolRequest) (ReviewOutput, bool) {
 	return out, true
 }
 
-// readGatesArgument reads the optional `gates` object argument and falls back
-// to the distributed-default AuditGates when absent or partial. The defaults
-// (claude required, codex required, glm advisory) are applied via the existing
-// gateOr helper (mcp_convergence.go) so an explicit omission and a partial
-// override both converge to the same behavior runMultiAudit sees.
+// planSourceConfig is the plan_source value of a result whose gates came, in
+// whole or in part, from the audited tree's configuration.
+const planSourceConfig = "config"
+
+// readGatesArgument reads the optional `gates` object argument as SUPPLIED-ONLY:
+// a backend the caller did not name, or named with a value outside
+// off|advisory|required, reads as the empty string ("not supplied"). The
+// resolver then decides that backend's gate from the tree's configuration or the
+// distributed default; filling the defaults here would make every call look like
+// it supplied all three gates and erase the difference between "the caller said
+// required" and "the caller said nothing".
+//
+// An invalid supplied value is deliberately NOT an error: the hard-error surface
+// of this handler is the unusable project_root and an invalid CONFIGURATION, and
+// a value the call itself carries has never been one.
 func readGatesArgument(req mcp.CallToolRequest) config.AuditGates {
 	args, ok := req.GetArguments()["gates"].(map[string]any)
 	if !ok {
 		args = map[string]any{}
 	}
 	return config.AuditGates{
-		Claude: gateOr(stringGateArg(args["claude"]), config.AuditGateRequired),
-		Codex:  gateOr(stringGateArg(args["codex"]), config.AuditGateRequired),
-		GLM:    gateOr(stringGateArg(args["glm"]), config.AuditGateAdvisory),
+		Claude: suppliedGate(args["claude"]),
+		Codex:  suppliedGate(args["codex"]),
+		GLM:    suppliedGate(args["glm"]),
 	}
+}
+
+// suppliedGate returns v as a trimmed gate token when it is a string in
+// off|advisory|required, and "" (not supplied) otherwise.
+func suppliedGate(v any) string {
+	g := strings.TrimSpace(stringGateArg(v))
+	for _, valid := range config.ValidAuditGates() {
+		if g == valid {
+			return g
+		}
+	}
+	return ""
+}
+
+// planGates flattens a resolved plan into the per-backend gates the fan-out
+// reads. Every backend carries a gate, so the fan-out's own defaulting never
+// applies to a call that went through the resolver.
+func planGates(plan config.AuditPlan) config.AuditGates {
+	var g config.AuditGates
+	for _, e := range plan.Backends {
+		switch e.Backend {
+		case BackendClaude:
+			g.Claude = e.Gate
+		case BackendCodex:
+			g.Codex = e.Gate
+		case BackendGLM:
+			g.GLM = e.Gate
+		}
+	}
+	return g
 }
 
 // stringGateArg coerces an `any` argument (string, or nil) into a string gate.
