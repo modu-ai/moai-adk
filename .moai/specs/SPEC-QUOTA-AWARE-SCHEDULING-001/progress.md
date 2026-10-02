@@ -644,3 +644,23 @@ Report `.moai/reports/t1347/plan-audit-iter1.md` is local-only by operator direc
 | D12 | Surface the first-exhausted time (otherwise dead data) | surface (P 0.52 vs 0.48) | 0.03 LOW | leader: CONFIRMED surface in the status block (DO-13) |
 
 Revision commits: `0e12b4cfa` (D1-D24 closed, spec 0.5.0), `be14684ab` (drops a suffixed AC identifier that made the commit guard count 24). Lane re-check: tree clean, `moai spec lint --strict` no findings, REQ 23 and AC 23 by grep.
+
+### Plan-audit iteration 2 (PASS 0.87) and the run phase
+
+| ID | Question (short) | Oracle answer | Confidence | Disposition |
+|----|------------------|---------------|-----------:|-------------|
+| K1 | Proceed to run on a 0.87 PASS carrying ten MINOR findings (N1-N10), or fix them and spend the third and last audit | proceed and record the debt (P 0.86) | 0.73 | applied (section F: the audited hash stays valid; the margin over the threshold is 0.02) |
+
+Run-phase handling decisions taken by the lane (not oracle questions): the milestones ran serially, one leaf per milestone (M0; M1+M2; M3; M4; M5; M6), spawned as `general-purpose` in the manager-develop role because a manager-develop-typed spawn cannot write the card tree (card t1318 lesson); the first implementation commit `976b91458` carries `Authored-By-Agent: manager-develop` and the `draft -> in-progress` transition; the baseline goldens were committed alone before it (`c2ae5236a`). The lane verified each milestone itself against the tree (commit stat, scope guards, golden hashes, hunk ranges, the read-only registry open) and ran the M1/M2 AC tests itself (9 top-level `TestQAS_` tests PASS, 0 FAIL); the `internal/cli` / `internal/kanban` anchored sets were run by the milestone workers and independently by the sync auditor (the machine load stayed at 45-65 during the verification window, so the lane did not add its own cli runs).
+
+### Sync phase and the sync-audit (PASS-WITH-DEBT)
+
+Report `.moai/reports/t1347/sync-audit.md` (local-only; auditor claude-sonnet-5-5; `audited_sha` 39c1a2606; functionality 82, security 92, craft 86, consistency 88, aggregate 0.860 against 0.85). Sync commits: `ebf6f09c3` (the single sync commit: CHANGELOG entry, `spec.md` status `completed`, section E.4), `bd48ccda6` (`sync_commit_sha` backfill), `39c1a2606` (three `@MX` tags, comment-only, resolving the MX validation's MX-1..MX-3), `40946313e` (limit disclosure and audit debt).
+
+| ID | Question (short) | Oracle answer | Confidence | Disposition |
+|----|------------------|---------------|-----------:|-------------|
+| F1 | The aggregator reads only the primary checkout's record directory while sessions inside card worktrees write into their own worktree (audit finding F1, MAJOR): close with disclosure and a follow-up card, or amend the SPEC now | close with disclosure and follow-up (P 0.96) | 0.92 | applied: CHANGELOG limit sentence and section E.4 debt block committed in `40946313e`; the follow-up card is the leader's to issue |
+
+The lane reproduced F1 before acting on it: `internal/stateanchor/stateanchor.go` `Resolve` returns `workspace.project_dir` first, then the original cwd, then the git common-directory parent; this session's own record sits in the primary directory frozen at 14:28 and in `.moai/worktrees/t1347/.moai/state/context-usage/` at 18:05; of the records written in the last hour 6 were in the primary directory and 14 in linked-worktree directories. Plan assumption U6 ("closed by reading") quoted only the last step of that chain and is refuted for in-worktree sessions; spec.md section B decision D2 and plan U6 are therefore superseded by the section E.4 debt block (SPEC bodies are not edited after completion). Failure direction: no fresh visible record reads as unknown and never holds a lane.
+
+Not re-executed by the lane or the sync audit: `TestQAS_AC023_ClaimRecordsBackend` in `internal/kanban` (last observed at M4: `ok ... 36.205s`, 13 pass events); `git diff --name-only 558988ab6 HEAD -- internal/kanban internal/homestate` is empty, so the code under that test has not changed since.
