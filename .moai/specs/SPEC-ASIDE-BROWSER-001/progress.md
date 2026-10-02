@@ -30,7 +30,100 @@ Scope: the three findings of `.moai/reports/t1439/plan-audit-iter2.md` (PASS-WIT
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase (manager-develop)_
+### M1 (guards and the documented-command test) — commit subject `test(SPEC-ASIDE-BROWSER-001): M1 RED-record`
+
+All measurements below were taken by manager-develop (cycle_type=tdd) in this run on tree HEAD `59d69f1dd` (branch `WT-aside-browser-cli`, worktree t1439, base develop `4bf547bca`), unless a line names another measurer. The M1 commit's own SHA cannot appear here (a commit does not know its own hash); it is the tip of the branch after this edit lands.
+
+#### Pre-flight (plan.md § C)
+
+- `git rev-parse --short HEAD` printed `59d69f1dd`; `git branch --show-current` printed `WT-aside-browser-cli`.
+- `go build ./...` exit 0 (no output).
+- `aside --version`: measured by the orchestrator (main session), not by manager-develop (REQ-ASB-007: no subagent ever invokes `aside`). The orchestrator observed exactly `1.26.916.1741` (exit 0), supplied in the run prompt and recorded here verbatim on its attribution.
+- Baseline mirror facts: `cmp internal/template/templates/.claude/skills/moai/workflows/e2e.md .claude/skills/moai/workflows/e2e.md` exit 0 (identical). `diff` of the e2e-tester template against root printed hunks `2d1` and `144c143` (changed-line count 3: one line only in the template, one line replaced by one line), exit 1. `cmp` of the `settings-management.md` template/root pair printed `differ: char 18093, line 167`, exit 1. These three are the pre-existing baselines of plan.md § B; none is touched by M1.
+- Provenance of tool measurements (verification-claim-integrity §2.2): the Go tests and `go vet` compile from the tree under measurement. `moai spec lint` was run with a binary built from this tree's HEAD by `go build -o <scratch>/moai-t1439 ./cmd/moai` (exit 0); it carries no embedded commit stamp (built without the Makefile `LDFLAGS`; its `version` row printed `v3.1.3   none   built unknown`), so its judging-build commit is stated as "built from tree HEAD `59d69f1dd`, uncommitted M1 working changes only" and not as a commit stamp. The installed `moai` on PATH (`v3.2.0-rc.26`) was not used for the cited measurements.
+
+#### M1.1 `TestMCPDefaultExcludesAside` (file `internal/template/mcp_template_neutrality_test.go`)
+
+Guard passes at birth by design (it asserts invariants that already hold): baseline `grep -c -i aside` over the template `.mcp.json` and `settings.json.tmpl` printed `0` for both before the test was written.
+
+Green run, `go test ./internal/template/ -run '^(TestMCPDefaultExcludesAside|TestMCPNeutralityTemplateShape)$' -v -count=1`, exit 0:
+
+```
+--- PASS: TestMCPNeutralityTemplateShape (0.00s)
+--- PASS: TestMCPDefaultExcludesAside (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.172s
+```
+
+Mutant (a) — an `aside` key (`"command": "aside"`, `"args": ["mcp"]`) added to the template `.mcp.json`; same command, exit 1, verbatim:
+
+```
+--- FAIL: TestMCPNeutralityTemplateShape (0.00s)
+--- FAIL: TestMCPDefaultExcludesAside (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.375s
+```
+
+with the new test's own message `template .mcp.json registers the optional Aside server "aside" in the default; Aside is activated only by an explicit operator command, never by the distributed default` and the sibling's `template .mcp.json carries non-default-on entry "aside" (only moai and context7 are permitted in the distributed default)`. Both failures were observed, not inferred.
+
+Mutant (b) — the token `?aside` appended to the `$schema` value on line 2 of `settings.json.tmpl`; same command, exit 1, verbatim:
+
+```
+--- PASS: TestMCPNeutralityTemplateShape (0.00s)
+--- FAIL: TestMCPDefaultExcludesAside (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.401s
+```
+
+with the message `settings.json.tmpl mentions Aside; the distributed settings must not enable, permit, or wire the optional Aside server`. Only the new test failed: the settings half is the non-duplicate part.
+
+Both mutants were reverted by reversing the edit; the revert is proven by plain `git status --short`, which then listed only the two intended test files (` M internal/cli/mcp_test.go`, ` M internal/template/mcp_template_neutrality_test.go`), and `git diff --stat -- internal/template/templates` printed nothing.
+
+#### M1.2 `TestMCP_Add_AsideDocumentedCommandLine` (file `internal/cli/mcp_test.go`)
+
+The test drives the cobra command from `newMCPCmd()` with `add aside --command aside --args mcp` (plus `--scope user` for the user subtest), twice against a seeded config holding one unrelated server and one unrelated top-level key. Project scope runs under `t.Chdir(t.TempDir())` (the project path resolves from the working directory); user scope runs through the `userHomeDirFn` seam against a `t.TempDir()` home. No environment override; `moai mcp` Go code is untouched. It asserts exactly one `aside` entry, `command` `aside`, `args` `["mcp"]`, unrelated server and key preserved, and a byte-identical file after the second run. It is deliberately not parallel (it swaps a package global and the working directory).
+
+Green run, `go test ./internal/cli/ -run '^TestMCP_Add_AsideDocumentedCommandLine$' -v -count=1`, exit 0:
+
+```
+--- PASS: TestMCP_Add_AsideDocumentedCommandLine (0.00s)
+    --- PASS: TestMCP_Add_AsideDocumentedCommandLine/project (0.00s)
+    --- PASS: TestMCP_Add_AsideDocumentedCommandLine/user (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.733s
+```
+
+Mutant — `--args` misspelled as `--arg` in the test invocation; same command, exit 1, verbatim:
+
+```
+    mcp_test.go:223: documented command line failed: unknown flag: --arg
+--- FAIL: TestMCP_Add_AsideDocumentedCommandLine (0.00s)
+    --- FAIL: TestMCP_Add_AsideDocumentedCommandLine/project (0.00s)
+    --- FAIL: TestMCP_Add_AsideDocumentedCommandLine/user (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.830s
+```
+
+The mutant was reverted by reversing the edit; the final green run above ran after the revert.
+
+#### M1 static checks (tree HEAD `59d69f1dd` plus the uncommitted M1 changes)
+
+- `gofmt -l internal/cli/mcp_test.go internal/template/mcp_template_neutrality_test.go` printed nothing, exit 0.
+- `go vet ./internal/template/ ./internal/cli/` printed nothing, exit 0.
+- `golangci-lint run --timeout=5m --new-from-rev=2bba87fcd ./internal/template/ ./internal/cli/` printed `0 issues.`, exit 0 (linter `v2.1.6`, built with go1.26.8; `--new-from-rev` bounds the report to changes since the plan base).
+- `moai spec lint SPEC-ASIDE-BROWSER-001 --strict` (tree-built binary, see provenance above) printed `0 error(s), 0 warning(s)`, exit 0, with the one `INFO OwnershipTransitionUnmeasured` row for the plan commit.
+
+#### Gaps (M1)
+
+- Not run: the full `internal/template` and `internal/cli` package suites (minutes-long; the repository-wide verdict is owned by the CI run on the project's integration branch and is PENDING at report time). Only the named selectors were run, each with its `--- PASS:` or `--- FAIL:` line observed.
+- Not run in M1 by design: AC-ASB-003 to AC-ASB-014 (they belong to M2 and M3; no skill, catalog entry, or workflow edit exists yet).
+- The ordering claim "the failing run was observed before the commit" rests on this record plus the single `M1 RED-record` commit: the guards pass at birth, so the observed-failure evidence is the mutant runs above, which exist only as this progress record and were not committed separately. The commit graph can witness that M1 carries no implementation commit; it cannot witness the order of the mutant runs inside the commit.
+- The mutant runs used the Go test cache bypass (`-count=1`) and file edits reverted by hand; no mutation tool was used.
+
+#### Residual risk (M1)
+
+- The settings half of `TestMCPDefaultExcludesAside` is a case-insensitive substring match for `aside`. A future legitimate use of the English word in a settings string (a comment-free JSON file makes that unlikely) would fail it and need a deliberate edit; this is the intended direction (fail loudly, then decide).
+- `TestMCP_Add_AsideDocumentedCommandLine` shares the process working directory and a package global with other sequential tests; Go runs parallel tests only after sequential ones finish, so no overlap exists today, but a future test that parallelizes around it would need the same discipline.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
