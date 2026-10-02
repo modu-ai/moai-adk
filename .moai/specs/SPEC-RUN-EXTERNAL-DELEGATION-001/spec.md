@@ -1,7 +1,7 @@
 ---
 id: SPEC-RUN-EXTERNAL-DELEGATION-001
 title: "Run-phase external-model delegation — manager-develop hands bounded mechanical subtasks to codex_task and glm_task, applies the returned patch itself, and stays the only writer"
-version: "0.4.0"
+version: "0.4.1"
 status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
@@ -20,6 +20,12 @@ related_specs: [SPEC-AGENT-ARCH-V2-001]
 
 ## HISTORY
 
+- 0.4.1 — 2026-10-02 — AC identifier spelling (card t1424). Five locations in
+  `acceptance.md` (four section headings and one ledger `why:` line) used the
+  short-form identifiers `AC-001` to `AC-016`; the sync-phase CHANGELOG AC-count
+  self-test counted these as 8 extra live criteria (24 instead of 16). They now
+  use the canonical `AC-RXD-NNN` spelling, so the count is the true 16. No
+  requirement or criterion changed.
 - 0.4.0 — 2026-10-02 — run-phase errata (card t1424). Written after the run phase
   and before the sync audit so that the SPEC states only what the run established.
   (a) The 0.3.0 entry understated the change to how REQ-RXD-002 is checked: the

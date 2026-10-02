@@ -20,7 +20,7 @@
 
 **One document-level pin: every entry below was measured in this plan revision on the tree `c50da9c2f8aa1227073bd77caa07ca1c75b8d81b` (HEAD, clean tracked tree; the untracked SPEC directory is the only addition), in the worktree `.moai/worktrees/t1424`.** It binds every entry that carries no pin of its own. The ledger is fenced rather than tabled because a table cell mangles shell metacharacters. Each entry is `id`, the plain single invocation, the verbatim stdout, the exit code as its own field, and why it is red. Exit codes of `grep` entries were read by appending `; echo "rc=$?"` to the invocation; the command line recorded is the plain one. For `git` entries the exit code is recorded as `0 (no error reported)` because the worktree guard refuses a `git` command with a trailing `echo`. Output order of a multi-file `grep -c` is the tool's own and not significant. Where an entry's `out:` reads `(no output)`, stdout was empty. Entries marked `(scratch, informational)` — E3e, E7g, E7h, E22 — demonstrate a check on fixtures or copies outside the tree (the scratch directory is not a citation target and the fixtures are described in the entry); they carry no release-blocking criterion's RED-now observation, only positive controls and observed failures of regression-guard checks.
 
-### Capability grant, single home, pointers (AC-001, AC-002, AC-011)
+### Capability grant, single home, pointers (AC-RXD-001, AC-RXD-002, AC-RXD-011)
 
 ```
 E1    cmd:  grep -c -F "mcp__moai__codex_task" .claude/agents/moai/manager-develop.md internal/template/templates/.claude/agents/moai/manager-develop.md
@@ -111,7 +111,7 @@ E3e   cmd:  (scratch, informational — a scratch Go program that mirrors the `p
       why:  fixtures: `good_pointer.md` is a 24-word one-line pointer carrying the path and the title (passes); `audit_mutant_two_line.md` is the iteration-2 audit's mutant — the pointer line plus one 67-word line paraphrasing the whole procedure, 2 physical lines, 0 of the 13 old `(R)` phrases and no `### ` heading (`grep -c -F` over those 14 strings printed `0`, rc 1; the revision-2 checks passed it) — it fails the word cap and, here, also the anchor `no secrets`; `padded_one_line.md` is the same paraphrase on the pointer's own line, 1 line, 60 words (fails the word cap); `bullet_restates.md` puts anchor phrases into an MCP-tools bullet (fails the absence check, which has no bullet exemption); `short_paraphrase_residual.md` is a 19-word one-line pointer-plus-paraphrase with no anchor (passes — the accepted lexical residual of spec.md R-3)
 ```
 
-### The doctrine anchors (AC-003 to AC-009), live and template `run.md`
+### The doctrine anchors (AC-RXD-003 to AC-RXD-009), live and template `run.md`
 
 Each entry lists its subsection's H3 heading and every anchor of plan.md §D for that subsection; all of them are searched in both `run.md` copies, the live file and its template mirror, which are byte-identical today. Together E10a-E10g search 57 phrases — the 49 anchors of plan.md §D and the 8 headings (16 + 12 + 9 + 4 + 9 + 4 + 3).
 
@@ -157,7 +157,7 @@ E10x  cmd:  grep -n -o -F -e '## Recursive Self-Diagnosis Loop' -e 'zzzz-no-such
       why:  positive control: the same multi-pattern `-F -o` form fires when one of its phrases exists, so the empty E10a-E10g outputs are absence, not a broken probe
 ```
 
-### Consumer statements (AC-010)
+### Consumer statements (AC-RXD-010)
 
 ```
 E4a   cmd:  grep -c -E '^\| `mcp__moai__(codex_task|codex_job_status|codex_job_result|codex_job_cancel|glm_task|glm_job_status|glm_job_result|glm_job_cancel)` .*manager-develop' .claude/rules/moai/core/moai-mcp-tools-catalogue.md
@@ -228,7 +228,7 @@ E5c   cmd:  grep -c "mcp__moai__codex_task" .claude/rules/moai/development/agent
       why:  positive control: the warning sentence exists to be amended
 ```
 
-### Change set, defaults, hygiene (AC-012 to AC-016)
+### Change set, defaults, hygiene (AC-RXD-012 to AC-RXD-016)
 
 ```
 E6    cmd:  git diff --name-only c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- . ':(exclude).moai/specs/SPEC-RUN-EXTERNAL-DELEGATION-001' ':(exclude).moai/reports/t1424'
@@ -373,7 +373,7 @@ E15   cmd:  <SCRUB> go test -count=1 -v -run '^(TestTemplateNoInternalContentLea
 E16   cmd:  moai agent lint
       out:  last line: Summary: 25 total (0 errors, 25 warnings)
       exit: 0
-      why:  baseline for AC-016; the installed build `moai version` prints `v3.2.0-rc.24   moai_cp/20260925_122548-1896-gc50da9c2f   built 2026-10-02T05:34:44Z`, built from this HEAD
+      why:  baseline for AC-RXD-016; the installed build `moai version` prints `v3.2.0-rc.24   moai_cp/20260925_122548-1896-gc50da9c2f   built 2026-10-02T05:34:44Z`, built from this HEAD
 
 E17   cmd:  GOOS=windows GOARCH=amd64 go vet ./internal/template/
       out:  (no output)
