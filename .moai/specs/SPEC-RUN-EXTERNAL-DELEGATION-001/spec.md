@@ -1,7 +1,7 @@
 ---
 id: SPEC-RUN-EXTERNAL-DELEGATION-001
 title: "Run-phase external-model delegation — manager-develop hands bounded mechanical subtasks to codex_task and glm_task, applies the returned patch itself, and stays the only writer"
-version: "0.3.0"
+version: "0.4.0"
 status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
@@ -20,6 +20,26 @@ related_specs: [SPEC-AGENT-ARCH-V2-001]
 
 ## HISTORY
 
+- 0.4.0 — 2026-10-02 — run-phase errata (card t1424). Written after the run phase
+  and before the sync audit so that the SPEC states only what the run established.
+  (a) The 0.3.0 entry understated the change to how REQ-RXD-002 is checked: the
+  pointer-forbidden set of every plan.md §D anchor (every doctrine anchor and every
+  `### ` heading of the section, except `SPEC artifacts`) replaced revision 2's
+  hand-picked `(R)` phrases, and the pointer paragraph is capped at two physical
+  lines and forty words. (b) The guard mutants number ten, not nine: plan.md §D,
+  plan.md §E M5 step 2 and the plan.md §I residual note, and acceptance.md
+  AC-RXD-014, AC-RXD-016 and the Definition of Done, said nine, while AC-RXD-014
+  already required a tenth (the prescribed anchor sentence with ` to true`
+  appended); the run executed all ten and each fails the guard test (progress.md
+  §E.2.5). Every count and list now says ten and names the tenth. (c) The
+  AC-RXD-012 mutant-probe sentence said that pasting the card id fails the card-id
+  grep and the leak test `TestTemplateNoInternalContentLeak`; the run observed that
+  the leak test did not flag a bare card id (it did flag a SPEC id plus an ISO date),
+  so the card-id grep decides, and the sentence now says that; the criterion's pass
+  condition is unchanged. (d) These are wording and count corrections only: no
+  requirement and no acceptance criterion was added, removed or re-mapped (16
+  requirements, 16 acceptance criteria, 15 planned files), and plan.md and
+  acceptance.md are now revision 4.
 - 0.3.0 — 2026-10-02 — revision 3 of the plan, after plan-audit iteration 2 (verdict
   FAIL, 0.81 against the Tier M threshold 0.80: no must-pass criterion failed; the FAIL
   came from writable mutants and a dangling milestone reference). Findings N1-N10 were
