@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "plan.md — 구현 계획 (F3·F4)"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -112,14 +112,14 @@ grep -rn 'syscall\.' internal/cli/managed_*.go
 - Windows: `GOOS=windows GOARCH=amd64 go build ./...`, `GOOS=windows GOARCH=amd64 go vet ./internal/cli/`
 - 정적: `gofmt -l internal/cli internal/config`, `go vet ./internal/cli ./internal/config`, `golangci-lint run ./internal/cli/... ./internal/config/...`
 - 경계 grep: acceptance.md §5.
-- 변이 확인(acceptance.md §2.4 의 mu1–mu17)과 섭동 확인 1건(acceptance.md §6 DoD 3·4): 변이를 **하나씩** 임시 적용해 지목한 케이스가 붉어지는지 보이고, 각각 되돌린 뒤 `git diff --stat` 빈 출력을 확인하고 원문을 progress.md §E.2 에 인용한다.
+- 변이 확인(acceptance.md §2.4 의 mu1–mu18)과 섭동 확인 P1(acceptance.md §6 DoD 3·4): 변이를 **하나씩** 임시 적용해 지목한 케이스가 붉어지는지 보이고, 각각 되돌린 뒤 `git diff --stat` 빈 출력을 확인하고 원문을 progress.md §E.2 에 인용한다.
 
 ## §F. Milestones (실행 순서)
 
 ### M1 — RED 기준선 (독립 커밋, 가장 먼저; 시험 기반 AC의 채택 사건)
 
 - **선결**: RED 원문을 담을 경로가 추적되어야 한다. 이 SPEC은 `.moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/red-baseline.md` 를 쓴다(측정: gitignore 대상 아님, 감사 캐시 해시 목록 밖). `.moai/reports/t1409/` 에 두는 사본은 로컬 편의일 뿐 근거로 인용하지 않는다.
-- 재현 시험 **5개**(F3 4·F4 1)를 기준 트리 API에 대해 컴파일되는 형태로 쓴다(새 심볼 없이): `TestManagedCodexServerRequestPolicy`, `TestManagedCodexTurnSurvivesServerRequest`, `TestManagedCodexServerRequestIDCollision`, `TestManagedCodexDeclinedBrokerElicitationFailsTurn`, `TestManagedDriverIsolatesTurnFailure`. 각 시험이 어떤 이유로 붉어야 하는지의 표는 acceptance.md §2.1 이 정본이다(여기서 되풀이하지 않는다). RED-first 면제와 대체 채택(변이)도 같은 곳에 있다.
+- 재현 시험 **6개**(F3 4·F4 2)를 기준 트리 API에 대해 컴파일되는 형태로 쓴다(새 심볼 없이): `TestManagedCodexServerRequestPolicy`, `TestManagedCodexTurnSurvivesServerRequest`, `TestManagedCodexServerRequestIDCollision`, `TestManagedCodexDeclinedBrokerElicitationFailsTurn`, `TestManagedDriverIsolatesTurnFailure`, `TestManagedCodexNonCompletedTurnIsolated`. 각 시험이 어떤 이유로 붉어야 하는지의 표는 acceptance.md §2.1 이 정본이다(여기서 되풀이하지 않는다). RED-first 면제와 대체 채택(변이)도 같은 곳에 있다.
 - 각 시험을 기준 트리에서 돌려 **옳은 이유로 붉은지** 확인하고 원문을 `red-baseline.md` 에 적는다: 명령, 출력 원문(50줄/2KB 넘으면 파일 리다이렉트 + 꼬리), exit 코드, 측정 트리 SHA, 붉은 이유 한 줄, 선택 수(`-list`). 컴파일 오류, 패키지·하네스 타임아웃, 시험 인프라 실패로 붉은 것은 옳은 이유가 아니다(wrong-reason red) — 시험을 고친다. **시험 자신이 정한 시간 상한 단언**이 깨져서 붉은 것은 옳은 이유다(acceptance.md §2.1).
 - 시험 파일과 `red-baseline.md` 를 **한 커밋**에 담는다. 이 커밋이 수리 커밋들의 조상이어야 한다(REQ-MH-011, AC-MH-011). 같은 커밋에 구현 변경을 섞지 않는다(커밋 그래프가 선후의 유일한 증인이다: verification-claim-integrity §2.3). 커밋 게이트가 실패하는 시험을 담은 커밋을 거부하면 `--no-verify` 를 쓰지 말고 blocker 보고로 돌려준다(측정: `git config --get core.hooksPath` = `/dev/null` 이라 거부 위험은 낮다).
 - 커밋 제목 예: `test(SPEC-FACTORY-MANAGED-HARDEN-001): M1 RED baseline for F3 F4 (card t1409)`.
@@ -127,18 +127,18 @@ grep -rn 'syscall\.' internal/cli/managed_*.go
 ### M2 — F3 서버 요청 응답 (되돌리기 가장 어려운 판단: 정책표)
 
 - 프레임 분류(`id` 원문 보존), 서버 요청 읽기 고루틴 응답, 응답 정책표(한 곳의 표 데이터)와 그 곳에서 쓰는 로그 한 줄, 로그 출력 대상 원자 포인터(기본 `os.Stderr`), 연결 쓰기 뮤텍스(`call()`, `initialized` 알림, 답장 모두 경유), 읽기 고루틴의 턴 창 상태(`armTurn` 은 `turn/start` 쓰기 전, `prevTurnID` 유지, 판정은 `turn/completed` 프레임을 본 읽기 고루틴이 완료 이벤트에 실음 — design.md D-1 결정 3)와 `moaiMCPServerKey` 상수 비교. 표식 오류 심볼은 M3 가 도입하므로 M2 는 판정을 이벤트에 싣는 데까지, `DeliverTurn` 의 표식 오류 반환 연결은 M3.
-- GREEN: AC-MH-001, 002, 003, 004. 변이 확인: mu1–mu4. M1의 F3 재현 시험 중 앞 세 개가 뒤집힌다.
+- GREEN: AC-MH-001, 002, 003, 004. 변이 확인: mu1–mu5. M1의 F3 재현 시험 중 앞 세 개가 뒤집힌다.
 - 커밋: `fix(SPEC-FACTORY-MANAGED-HARDEN-001): M2 answer server-originated codex requests (card t1409)`.
 
 ### M3 — F4 턴 단위 실패 격리와 elicitation 판정 연결
 
 - 턴 단위 표식(`errors.Is` 판별)을 스트림 `result.is_error`, Codex `completed` 아닌 종료, 거부된 `moai` broker elicitation이 귀속된 턴(완료 이벤트가 실어 온 판정), 이 세 곳에서만 붙인다. 드라이버: 표식 있으면 로그+계속, 연속 횟수 상한, 성공 시 0으로, 우선 턴은 세지 않음. `defaults.go` 에 `DefaultManagedSessionMaxConsecutiveTurnFailures = 3`(`DefaultManagedCodexTurnTimeout` 뒤, UNMEASURED 표기, 근거 주석).
-- GREEN: AC-MH-005, 006(하위 17개 + 서버 이름 고정 시험), 007, 008. M1의 F4 재현 시험과 `TestManagedCodexDeclinedBrokerElicitationFailsTurn` 이 뒤집힌다. 변이 확인 mu5–mu17.
+- GREEN: AC-MH-005, 006(하위 17개 + 서버 이름 고정 시험), 007, 008. M1의 F4 재현 시험 둘(`TestManagedDriverIsolatesTurnFailure`, `TestManagedCodexNonCompletedTurnIsolated`)과 `TestManagedCodexDeclinedBrokerElicitationFailsTurn` 이 뒤집힌다. 변이 확인 mu6–mu18(acceptance.md §2.4).
 - 커밋: `fix(SPEC-FACTORY-MANAGED-HARDEN-001): M3 isolate turn failures with a ceiling (card t1409)`.
 
 ### M4 — 게이트와 증거 (기계적)
 
-- §E 의 정적·스코프·Windows·인접 패키지 명령을 돌리고 progress.md §E.2/§E.3 에 인용. 변이 확인 전부(mu1–mu17)와 섭동 확인, mu18(커밋 구성) 점검. 경계 grep.
+- §E 의 정적·스코프·Windows·인접 패키지 명령을 돌리고 progress.md §E.2/§E.3 에 인용. 변이 확인 전부(mu1–mu18)와 섭동 확인 P1, 커밋 구성 점검 C1. 경계 grep. `./internal/template` 스위트는 슬롯 임대(`moai slot acquire --resource internal-template-suite --max-duration 15m`) 안에서 한 번 돌리는 스모크로만 둔다(AC 근거 아님). 변이 미채택 불변 가드 G1–G8 은 acceptance.md §2.5 가 정본이다.
 - 문서·CHANGELOG(AC-MH-010)는 **sync 단계**(manager-docs)의 몫이다: `.moai/docs/factory-managed-session.md` 의 "알려진 한계"에서 F3·F4 문장을 고치거나 지우고(acceptance.md §1.2 의 고정 앵커대로) 남은 한계를 적으며, **F5 "시그널 처리 공백" 줄은 해결 주장이 아니라 카드 t1459 를 가리키는 정확한 안내로 남기고** "후속 카드 t1409 대상" 단락을 고친다. 이 SPEC의 CHANGELOG 엔트리를 쓰고 부모 엔트리의 "후속 카드 t1409 대상" 문구를 정정한다. 부모 SPEC 파일은 건드리지 않는다.
 
 ## §G. Anti-Patterns

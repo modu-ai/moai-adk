@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "Factory 관리 세션 소유자 강건화 — 서버 요청 응답과 턴 단위 실패 격리 (F3·F4, SPEC-FACTORY-MANAGED-SESSION-001 후속)"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -21,6 +21,7 @@ tags: "factory, managed-session, codex, app-server, hardening, failure-isolation
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.5.0 | 2026-10-03 | manager-spec | 축소 범위 plan-audit 1차(FAIL 0.75, 감사 커밋 `bca1e0629`) 개정. 검증층(오라클·변이표·시험 규약)만 고쳤다: 변이 17→18개와 변이 미채택 불변 가드 G1–G8 분리, 로그 관찰 규약(로그 선기록·폴링·단일 sink), `-race` 안전 주장 정정, 재현 시험 5→6개(`TestManagedCodexNonCompletedTurnIsolated`). REQ 12·AC 13 불변. REQ-MH-006/008 의 관계 문구("until REQ-MH-008 applies", "notwithstanding REQ-MH-006")와 귀속 상세의 design.md 이관만 요구 본문을 건드렸다. |
 | 0.4.0 | 2026-10-03 | manager-spec | **범위 분할 개정.** 운영자 결정(리더 중계, 2026-10-03)으로 F5(시그널 처리와 `Start`/`Close` 수명주기)가 새 카드 t1459 로 나가고 이 SPEC은 F3·F4 로 줄었다. F5 요구·AC·변이·설계(구 REQ-MH-010·011·012·013, 구 AC-MH-009·010·011·016, 수명 순서표)를 모두 제거하고 REQ·AC 를 연속 번호로 다시 매겼다(REQ 16→12, AC 16→13). plan-audit 3차(FAIL 0.81, `951f2bfb6`)의 N12(귀속 규칙 구멍)·N10(변이 m14·m17·m19)·N15(이음새)를 이 범위 안에서 해소했다. 이전 텍스트는 git 이력(`95dfd85c8`, `820eff47f`, `951f2bfb6`)에서만 볼 수 있다. |
 | 0.3.0 | 2026-10-03 | manager-spec | plan-audit 2차(FAIL 0.81, 감사 커밋 `820eff47f`) 개정(F5 포함 범위). |
 | 0.2.0 | 2026-10-03 | manager-spec | plan-audit 1차(FAIL 0.75, 감사 커밋 `95dfd85c8`) 개정(F5 포함 범위). |
@@ -62,9 +63,9 @@ tags: "factory, managed-session, codex, app-server, hardening, failure-isolation
 
 ### C.2 턴 단위 실패 격리 (F4)
 
-- **REQ-MH-006** — **When** a turn after the priming turn fails in a turn-scoped way — a Claude or GLM stream turn ending with an error result, a Codex turn ending in any state other than completed, or a Codex turn to which the owner attributed a declined `mcpServer/elicitation/request` whose `serverName` is the MoAI broker MCP server, even if the App Server marks that turn completed — the delivery driver shall write one operator-visible log line naming the consecutive-failure count and the cause, and shall continue the delivery loop. A request is attributed to a turn by the order in which the App Server's frames arrive, never by when the consumer reads them: a request arriving while no turn is in flight, a request carrying the id of the most recently completed turn, and a request carrying an id other than the current turn's once that is known all count for no turn, and every other request in an open turn window counts for that turn, several of them as one failure.
+- **REQ-MH-006** — **When** a turn after the priming turn fails in a turn-scoped way — a Claude or GLM stream turn ending with an error result, a Codex turn ending in any state other than completed, or a Codex turn to which the owner attributed a declined `mcpServer/elicitation/request` whose `serverName` is the MoAI broker MCP server, even if the App Server marks that turn completed — the delivery driver shall, until REQ-MH-008 applies, write one operator-visible log line naming the consecutive-failure count and the cause, and shall continue the delivery loop. A request is attributed to a turn by the order in which the App Server's frames arrive, never by when the consumer reads them, and several attributed requests count as one failure; the attribution rules are recorded in design.md D-1 decision 3.
 - **REQ-MH-007** — **When** a failure is session-fatal — the priming turn failing, the stream or connection closing, a write failure, a Codex per-turn timeout, or any error not classified turn-scoped — the delivery driver shall return that error as it does today.
-- **REQ-MH-008** — **When** the count of consecutive turn-scoped failures reaches `DefaultManagedSessionMaxConsecutiveTurnFailures` (defined in `internal/config/defaults.go`), the delivery driver shall return the last failure's error stating the count, and a turn that completes successfully shall reset the count to zero.
+- **REQ-MH-008** — **When** the count of consecutive turn-scoped failures reaches `DefaultManagedSessionMaxConsecutiveTurnFailures` (defined in `internal/config/defaults.go`), the delivery driver shall, notwithstanding REQ-MH-006, write the failure log line and then return the last failure's error stating the count, and a turn that completes successfully shall reset the count to zero.
 - **REQ-MH-009** — The delivery driver shall not release, acknowledge, or re-address a broker message claimed by a turn that failed; redelivery follows the broker's claim-lease policy, and this layer shall add no attempt cap of its own.
 
 ### C.3 공시와 검증 자세

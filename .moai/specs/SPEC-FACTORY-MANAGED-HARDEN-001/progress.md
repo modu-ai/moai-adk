@@ -4,7 +4,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: revised-after-scope-split (재감사 대기 — 축소 범위 1차)
+plan_status: revised-after-reduced-scope-audit-iter1 (0.5.0, 재감사 대기 — Tier M 상한 2회 중 마지막 개정, 추가 개정은 허용되지 않는다)
 plan_complete_at: 2026-10-03
 artifacts: spec.md (REQ 12) · plan.md · acceptance.md (AC 13) · design.md (D-1, D-2) · progress.md
 tier: M (축소 범위 재평가 결과 유지; 방법은 plan.md §A — 측정 `wc -l` + 가정 기반 줄 수 추정)
@@ -75,13 +75,45 @@ REQ 16→12, AC 16→13, 번호는 연속(MP-1).
 | N15(a) 훅 설정 race | **fixed(이음새 축소)** | 훅이 모두 사라져 남은 이음새는 로그 대상 `atomic.Pointer[io.Writer]` 하나 — 원자적이라 `-race` 안전, 시험은 병렬 금지 |
 | N15(b) stderr 줄 잡는 법 | **fixed** | 주입 가능한 쓰기 대상(위 원자 포인터). `os.Stderr` 전역 교체 안 함 |
 
+### 축소 범위 감사 (reduced-scope iteration)
+
+| 회차 | 판정 | 점수 | audited_sha | 결과 |
+|---|---|---|---|---|
+| 축소 1 | FAIL | 0.75 | `bca1e0629` | 차단 D1–D7(전부 검증층: 채택 경로, 변이 지목, 오라클 순서, 시간 상한, 로그 sink 경합), 선택 D8–D13. 개정 0.5.0(이 커밋) |
+
+판정서 로컬 사본: `.moai/reports/t1409/plan-audit-iter4.md`(gitignore 대상). 위 "3차 결함" 표의 m14·m17 문구는 분할 시점의 기록이며 이 절 이후의 변이 번호(mu1–mu18)가 현행이다.
+
+### 이 개정(0.5.0)이 한 일 — 축소 범위 1차 결함 D1–D13 처분
+
+원칙: 새 REQ·새 AC 없음(REQ 12·AC 13 유지). 한 단계 편집으로 적용되지 않거나 정직하게 붉어지지 않는 항목은 변이 표에서 빼 "불변 가드, 변이 미채택"(acceptance §2.5)으로 옮기고 DoD 3 을 적용 가능하고 가를 수 있는 변이로 줄였다.
+
+| 결함 | 처분 | 근거와 위치 |
+|---|---|---|
+| D1 #2 `codex_failed_or_interrupted` 미채택 | **fixed(채택)** | M1 에 `TestManagedCodexNonCompletedTurnIsolated`(`failed`·`interrupted` 각각, 세 번째 턴 전달 단언)를 추가(재현 시험 5→6)하고 변이 mu15 가 #2 와 그 시험을 지목(acceptance §1.3·§2.1·§2.4) |
+| D2 mu14 의 #4·#8 지목 오류 | **fixed + 이관** | mu14 지목을 #5–#7·#9 로 줄이고 그 행들이 `driveManagedFactorySession` 을 통과해 `/exit` 가 nil 을 내면 "기대한 오류가 아님"으로 붉어진다고 명시. #4 는 G2 로 이관(우선 턴은 루프 앞에서 무조건 반환, 기존 `TestManagedDriverFailureBranches` 가 고정). #8 은 `startTurn` 수준 행으로 두고 변이 mu16(`ctx.Done()` 분기가 표식 오류를 반환)이 지목 |
+| D3 mu2 "11개 각각" | **fixed** | mu2 를 결과 응답 7종 + 미지 method 로 좁히고(8개, 오류 3종은 초록 명시), 오류 코드 교환 변이 mu3(`-32000` ↔ `-32601`, 4개)을 추가 |
+| D4 mu17 한 단계 불가·AC-MH-008 공허, mu5 설계 교체 | **moved to guard** | mu17 삭제, AC-MH-008 은 G1(기준 트리에서도 초록, 드라이버에 store 핸들 없음 `managed_factory_session.go:300`, 재배달 증거는 기존 `TestDispatchResultExactlyOnce/lost_receipt_redelivery`, 이 개정에서 재실행 7개 PASS `ok 2.167s`). 소비자 쪽 계수기(구 mu5)는 G7 로 이관(DoD 아님, 가장 작은 적용 형태만 기술) |
+| D5 로그 이음새 `-race` 주장 오류 | **fixed** | design D-1 에 세 규칙: (a) sink 는 쓰기·스냅숏이 한 잠금 아래인 타입, 시험의 `String()` 직접 접근 금지, (b) 클라이언트를 시작한 모든 시험이 종료·읽기 고루틴 종료 대기 후 `t.Cleanup` 이 포인터 복원, (c) 로그 대기가 있는 행의 명령에 `-race`. 원자 포인터는 포인터 로드만 보호한다고 정정 |
+| D6 시간 상한 부재 | **fixed** | acceptance 머리말 규약: 블로킹 호출은 고루틴에서 돌리고 시험 고루틴이 5초 watchdog 으로 실패시키며, 정리에서 가짜 서버·연결을 닫고, 드라이버 시험은 `/exit` 종료자를 쓴다. AC-MH-002 의 5초가 이 watchdog 상한 |
+| D7 로그 오라클 순서 의존 | **fixed** | design D-1: 로그 줄을 답장보다 먼저 쓴다. 모든 로그 단언은 상한 있는 폴링, "정확히 한 번"은 500 ms 조용한 구간 값으로 고정. 변이 mu4(로그 줄 생략)가 AC-MH-001 11개 전부를 지목 |
+| D8 REQ-006/008 관계·귀속 규칙 혼재 | **fixed** | REQ-MH-006 에 "until REQ-MH-008 applies", REQ-MH-008 에 "notwithstanding REQ-MH-006" 과 상한 도달 시 로그 줄을 쓰고 반환함을 명시. 귀속 규칙 상세는 design.md D-1 결정 3 으로 가리키고 REQ-MH-006 에는 한 절만 남김. 새 REQ 는 만들지 않음 |
+| D9 줄 번호·상수 2개 | **fixed** | 비교 상수를 `moaiMCPServerKey`(`mcp_server.go:57`)로 못 박고 같은 값 `moaiMCPServerName`(`:54`)의 존재를 적음 |
+| D10 늦은 완료 프레임·쓰기 뮤텍스 | **fixed(문면) + G5** | `X == prevTurnID` 인 `turn/completed` 는 창을 닫지 않는다 한 줄과 "뮤텍스는 `WriteJSON` 호출만 감싼다, 답장은 상태 잠금을 푼 뒤 쓴다" 한 줄. 프로토콜 동작 미관측이라 시험 행·변이 없음(G5) |
+| D11 CHANGELOG 부모 엔트리 정정 | **fixed** | acceptance §1.2 에 `grep -c "후속 카드 t1409 대상" CHANGELOG.md` → `0`(exit 1) 행. 기준 트리 측정값 1 |
+| D12 템플릿 스위트 임대 | **fixed** | 템플릿 스위트를 AC 근거에서 빼고 plan M4 의 슬롯 임대(`moai slot acquire --resource internal-template-suite --max-duration 15m`) 안 스모크로만 둠. 영향 범위 근거 유지 |
+| D13 사소한 문면 | **fixed** | (a) AC-MH-001 Then 에 `item/tool/call` 의 `success:false` 응답 형태, (b) 로그·오류의 method 를 `%q` 인용, (c) `id: null` 은 분류되지 않고 버려진다고 한 줄 |
+
+**최종 변이 표:** mu1–mu18(acceptance §2.4). **불변 가드 G1–G8:** acceptance §2.5. 변이가 아닌 점검 둘: C1(RED·수리 커밋 분리, `merge-base --is-ancestor` 쌍)과 P1(상수를 일시적으로 2 로 바꿔도 AC-MH-007 시험 PASS). DoD 3 = mu1–mu18 전부와 P1·C1.
+
+**개정 시점에 이 개정이 실제로 재측정한 것:** `go test ./internal/cli -list '^.*(Managed|managed).*$'` 선택 수 66, `TestDispatchResultExactlyOnce` 7개 PASS(`ok … 2.167s`), 기준 `CHANGELOG.md` 의 `후속 카드 t1409 대상` 1건, `mcp_server.go:57`·`managed_factory_session.go:300-304` 줄 확인.
+
 ### t1410 의존 정리 (plan §B, spec §F 와 동일 내용)
 
 F8·F9·F13 모두 이 카드의 F3·F4 변경에 의존하지 않는다(줄 번호 측정, 결론은 추론). F8 은 `Start`/`Close` 를 구조적으로 바꾸는 t1459 와 같은 줄 영역을 만진다. 공유 시험 파일 `managed_codex_factory_test.go` 에서 텍스트 충돌 가능(추론).
 
 ### 미측정(개정 시점)
 
-설치된 `moai` 바이너리가 이 트리보다 뒤처져 있으므로 `moai spec lint` 출력은 지연 빌드의 증거일 뿐 이 트리 빌드의 판정이 아니다. elicitation 귀속의 읽기 고루틴 대 소비자 경합은 plan 작성자가 재현·관측하지 않았다(소스 순서와 설계 논증만). 라이브 Codex 관측(`serverName` 값 포함)은 run 진입 조건이 아닌 이름 붙은 Gap. Tier 의 줄 수 추정은 가정이다.
+설치된 `moai` 바이너리가 이 트리보다 뒤처져 있으므로 `moai spec lint` 출력은 지연 빌드의 증거일 뿐 이 트리 빌드의 판정이 아니다. elicitation 귀속의 읽기 고루틴 대 소비자 경합은 plan 작성자가 재현·관측하지 않았다(소스 순서와 설계 논증만). 이 개정(0.5.0)의 오라클·변이표·시험 규약(로그 선기록과 폴링, 단일 sink, 5초 watchdog, 500 ms 조용한 구간, mu1–mu18 의 "붉어지는 케이스" 지목)은 문서상으로만 고쳤고 어느 것도 실행해 보지 않았다(재현 시험이 아직 없다) — 실행 관측은 run 의 M1·M2·M3 몫이다. 연속 실패 상한 3 은 UNMEASURED(저장소의 "최대 3회 재시도" 관례에서 가져옴). 라이브 Codex 관측(`serverName` 값 포함)은 run 진입 조건이 아닌 이름 붙은 Gap. Tier 의 줄 수 추정은 가정이다.
 
 ## §E.2 Run-phase Evidence
 

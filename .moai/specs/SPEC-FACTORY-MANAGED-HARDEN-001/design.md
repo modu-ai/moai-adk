@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "design.md — 서버 요청 응답과 턴 단위 실패 격리 설계 결정 (F3·F4)"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -12,7 +12,7 @@ tier: M
 
 > 상태축 없음(spec-frontmatter-schema.md § Artifact Statelessness). 생명주기는 `spec.md` 만 운반한다. 이 문서의 식별자(함수·필드 이름)는 설명을 위한 가칭이며 run 단계가 바꿀 수 있다. **관측 등급 표기**: "실측" = 이 plan 실행에서 명령을 돌려 본 것, "소스 판독" = 코드를 읽고 추론한 것.
 >
-> **개정 이력**: 0.1.0–0.3.0 은 F5(시그널·`Start`/`Close` 수명주기)를 포함했다. 0.4.0 은 운영자의 범위 분할 결정으로 **F5 를 카드 t1459 로 내보내고 F3·F4 만 남긴 개정**이다. 이전 D-3(시그널 설계, 수명 순서표)은 이 문서에서 완전히 빠졌고 git 이력(커밋 `95dfd85c8`, `820eff47f`, `951f2bfb6`)에서만 볼 수 있다. 이 문서는 그 내용을 어디에도 되풀이하지 않는다.
+> **개정 이력**: 0.1.0–0.3.0 은 F5(시그널·`Start`/`Close` 수명주기)를 포함했다. 0.4.0 은 운영자의 범위 분할 결정으로 **F5 를 카드 t1459 로 내보내고 F3·F4 만 남긴 개정**이다. 이전 D-3(시그널 설계, 수명 순서표)은 이 문서에서 완전히 빠졌고 git 이력(커밋 `95dfd85c8`, `820eff47f`, `951f2bfb6`)에서만 볼 수 있다. 이 문서는 그 내용을 어디에도 되풀이하지 않는다. 0.5.0 은 축소 범위 plan-audit 1차(FAIL 0.75, `bca1e0629`)의 개정으로, 로그 이음새의 동기화 규약·로그와 답장의 순서·쓰기 뮤텍스 범위·직전 턴 완료 프레임·상수 줄 번호만 바꿨다(D-1·D-2 의 설계 판단은 그대로).
 
 ## D-1 — 서버가 먼저 보내는 요청: 읽기 고루틴에서 최소 권한으로 답한다 (F3)
 
@@ -22,7 +22,7 @@ tier: M
 
 **결정**: `read()` 가 프레임을 먼저 분류한다. 분류 기준은 필드 존재다 — `id` 와 `method` 가 모두 있으면 서버 요청, `method` 만 있으면 알림(지금처럼 `turn/started`·`turn/completed` 만 올리고 나머지는 버림), `id` 만 있으면 응답. `id` 는 원문(`json.RawMessage`)으로 받아 문자열·정수를 모두 담고, 응답 상관은 "정수이면서 대기 중인 클라이언트 id와 같음"으로만 한다. 서버 요청은 이벤트 채널에 올리지 않고 `read()` 고루틴에서 바로 답한다. 답장의 `id` 는 받은 원문 그대로 되돌린다.
 
-**쓰기 위치와 이유**: gorilla/websocket은 동시 쓰기를 하나만 허용한다(`Close`·`WriteControl` 만 예외). 지금 쓰기 지점은 `call()` 과 `Start()` 의 `initialized` 알림이고, 둘 다 소유자의 메인 고루틴(핸드셰이크와 `DeliverTurn`)에서 직렬로 실행된다. 답장은 읽기 고루틴에서 쓰므로 쓰기 고루틴이 둘로 갈린다. 그래서 연결 쓰기를 뮤텍스 하나가 지키는 한 메서드로 모은다. 읽기 고루틴이 답하는 이유는 둘이다.
+**쓰기 위치와 이유**: gorilla/websocket은 동시 쓰기를 하나만 허용한다(`Close`·`WriteControl` 만 예외). 지금 쓰기 지점은 `call()` 과 `Start()` 의 `initialized` 알림이고, 둘 다 소유자의 메인 고루틴(핸드셰이크와 `DeliverTurn`)에서 직렬로 실행된다. 답장은 읽기 고루틴에서 쓰므로 쓰기 고루틴이 둘로 갈린다. 그래서 연결 쓰기를 뮤텍스 하나가 지키는 한 메서드로 모은다. **뮤텍스 범위**: 뮤텍스는 `WriteJSON` 호출 하나만 감싼다. `call()` 의 응답 대기(`select`)는 뮤텍스 밖이고, 읽기 고루틴은 턴 창 상태 잠금을 **풀고 난 뒤에** 답장을 쓰므로 두 잠금을 동시에 쥐는 곳이 없다(획득 순서 문제가 생기지 않는다). 읽기 고루틴이 답하는 이유는 둘이다.
 
 1. 서버 요청은 턴 밖에서도 올 수 있다(인증 갱신, attestation). DeliverTurn 고루틴에서만 답하면 턴 사이에 온 요청은 다음 턴까지 응답이 없다.
 2. 이벤트 채널(버퍼 32)로 DeliverTurn 고루틴에 넘기는 설계는 턴 사이에 소비자가 없어 버퍼가 차면 `read()` 가 막힌다. 서버는 우리 답을 기다리고 우리는 서버 프레임을 못 읽는 교착이 되고, 턴 타임아웃(10분)에서야 풀린다.
@@ -49,15 +49,15 @@ tier: M
 
 오류 응답의 `message` 는 영어이고 method 이름을 담는다(예: "managed Factory session cannot answer <method>: no operator is attached"). 정책표는 코드 안의 한 표 데이터이고 분기마다 판단을 흩지 않는다 — 표를 한 곳에서 읽고 한 곳에서 시험한다.
 
-**운영자에게 보이는 흔적 (모든 응답 요청)**: 답한 서버 요청마다 로그 한 줄(영어)을 남긴다 — `Factory server request answered: <method> -> <decline|denied|empty|failed|error>`. `mcpServer/elicitation/request` 줄은 이어서 `serverName=<name> turn=<귀속 턴 id|none> broker_declined=<k>` 를 담는다(`k` 는 그 요청을 처리한 뒤 열린 창에서 센 브로커 거부 수, 센 것이 없으면 0; 스키마 실측: `McpServerElicitationRequestParams` 의 필수 필드는 `serverName`·`threadId`, `turnId` 는 `string` 또는 `null`). 같은 한 곳(응답 정책표를 읽는 함수)에서 쓰므로 표와 로그가 갈라지지 않는다.
+**운영자에게 보이는 흔적 (모든 응답 요청)**: 답한 서버 요청마다 로그 한 줄(영어)을 남긴다 — `Factory server request answered: <method> -> <decline|denied|empty|failed|error>`. `mcpServer/elicitation/request` 줄은 이어서 `serverName=<name> turn=<귀속 턴 id|none> broker_declined=<k>` 를 담는다(`k` 는 그 요청을 처리한 뒤 열린 창에서 센 브로커 거부 수, 센 것이 없으면 0; 스키마 실측: `McpServerElicitationRequestParams` 의 필수 필드는 `serverName`·`threadId`, `turnId` 는 `string` 또는 `null`). 같은 한 곳(응답 정책표를 읽는 함수)에서 쓰므로 표와 로그가 갈라지지 않는다. **로그 줄은 답장을 쓰기 전에 쓴다** — 그래서 가짜 서버가 답장을 받은 시점에는 그 줄이 이미 있다. 그래도 시험의 모든 로그 단언은 상한 있는 폴링(5초, 10ms 간격)을 쓴다(순서가 바뀌는 구현 변경에도 시험이 구현 순서에 기대지 않게). 로그와 오류 `message` 에 들어가는 method 이름은 `%q` 로 인용해 출력한다(개행이 든 이름이 줄을 위조하지 못하게; 서버는 토큰 인증된 loopback 자식이라 위험은 낮다).
 
-**로그 출력 이음새 (시험이 줄을 잡는 방법)**: 로그 줄과 F4 의 `Factory turn failed (…)` 줄은 모두 패키지 비공개 `atomic.Pointer[io.Writer]` 하나로 나간다(기본값 `os.Stderr`). `os.Stderr` 전역을 교체하지 않는다. 시험은 도우미로 쓰기 대상을 바꾸고 `t.Cleanup` 으로 되돌린다. 포인터가 원자적이라 직전 시험의 읽기 고루틴이 같은 값을 읽어도 `-race` 에 걸리지 않고, 시험은 병렬로 돌리지 않는다. 이 이음새가 이 SPEC의 **유일한** 시험 이음새이며 프로덕션 비용은 포인터 로드 한 번이다.
+**로그 출력 이음새 (시험이 줄을 잡는 방법)**: 로그 줄과 F4 의 `Factory turn failed (…)` 줄은 모두 패키지 비공개 `atomic.Pointer[io.Writer]` 하나로 나간다(기본값 `os.Stderr`). `os.Stderr` 전역을 교체하지 않는다. **원자 포인터는 포인터 로드만 보호한다** — 가리키는 `io.Writer` 자체가 동기화돼 있지 않으면 쓰는 고루틴과 읽는 시험 고루틴 사이에 데이터 경합이 난다(plan-audit 가 `atomic.Pointer` + `bytes.Buffer` 로 `DATA RACE` 를 재현했다). 그래서 규약이 셋이다. (1) 시험이 꽂는 sink 는 쓰기와 스냅숏 조회가 **한 뮤텍스 아래** 있는 타입이어야 하고, 시험은 그 안의 원시 버퍼에 직접 접근하거나 `String()` 을 부르지 않는다(스냅숏 메서드만 쓴다). (2) 클라이언트를 시작한 시험은 정리에서 `shutdown()` 을 부르고 읽기 고루틴이 끝나기까지(`events` 채널이 닫힐 때까지) 기다린 **뒤에** 포인터를 복원한다(`t.Cleanup` 은 LIFO 이므로 포인터 복원을 먼저 등록하고 클라이언트 종료를 나중에 등록한다). 직전 시험의 고루틴이 다음 시험의 sink 에 쓰는 일이 없어야 줄 개수·`broker_declined=` 단언이 안정적이다. (3) 로그 대기가 있는 하위 케이스를 도는 모든 명령은 `-race` 를 포함한다(acceptance.md). 시험은 병렬로 돌리지 않는다. 이 이음새가 이 SPEC의 **유일한** 시험 이음새이며 프로덕션 비용은 포인터 로드 한 번이다.
 
 ### 결정 3 — MoAI 브로커 elicitation 거부는 그 턴의 턴 단위 실패다 (귀속은 읽기 고루틴의 스트림 순서로)
 
 **목적(plan-audit D7)**: codex가 브로커 도구 승인을 elicitation으로 올리면 `decline` 은 도구 호출만 막고 턴은 `completed` 로 끝날 수 있다. 그러면 수신 확인이 안 써지고 claim은 lease(2분)마다 TTL까지 다시 배달되어 조용한 재배달 루프가 된다. 그 턴을 턴 단위 실패로 세면 연속 실패 상한(D-2)이 루프를 큰 소리의 정지로 바꾼다. 응답은 계속 `decline` 이며 이 규칙은 응답을 바꾸지 않는다.
 
-**판별**: 거부한 요청의 `serverName` 이 MoAI 브로커 MCP 서버 이름과 같을 때만 센다. 그 이름은 같은 패키지의 기존 상수 `moaiMCPServerKey`(`mcp_server.go:56`, 값 `"moai"`)를 쓴다 — 리터럴을 새로 적지 않는다. 소유 App Server 명령행의 승인 인수 `mcp_servers.moai.*`(`managed_codex_factory.go:333-335`)는 PRESERVE 대상이라 고치지 않고, 두 이름이 같은 값임을 **시험이 고정한다**(AC-MH-006의 `TestManagedBrokerNameMatchesApprovalArgs`). codex가 요청의 `serverName` 에 config 키를 실제로 쓰는지는 **미관측**이다(아래 Gap).
+**판별**: 거부한 요청의 `serverName` 이 MoAI 브로커 MCP 서버 이름과 같을 때만 센다. 그 이름은 같은 패키지의 기존 상수 `moaiMCPServerKey`(`mcp_server.go:57`, 값 `"moai"`)를 쓴다 — 리터럴을 새로 적지 않는다. 같은 값의 상수가 `moaiMCPServerName`(`:54`)에 따로 있고(`initialize` 의 서버 이름용) 둘은 지금 같은 `"moai"` 다 — 비교 기준은 `.mcp.json` 키인 `moaiMCPServerKey` 로 못 박고(codex config 의 `mcp_servers.<키>` 가 같은 키 공간이므로), 두 상수가 갈라지면 `TestManagedBrokerNameMatchesApprovalArgs` 가 붉어진다. 소유 App Server 명령행의 승인 인수 `mcp_servers.moai.*`(`managed_codex_factory.go:333-335`)는 PRESERVE 대상이라 고치지 않고, 두 이름이 같은 값임을 **시험이 고정한다**(AC-MH-006의 `TestManagedBrokerNameMatchesApprovalArgs`). codex가 요청의 `serverName` 에 config 키를 실제로 쓰는지는 **미관측**이다(아래 Gap).
 
 **귀속 규칙 — 소비자가 아니라 읽기 고루틴이 정한다**: 소비자 쪽에서 계수기를 읽는 설계는 읽기 고루틴이 소비자보다 앞서 달릴 때(이벤트 채널 버퍼 32) 완료 프레임 **뒤에** 도착한 한가한 시간의 요청이 정상 완료된 턴을 실패로 만든다. 그래서 판정을 읽기 고루틴의 프레임 도착 순서 안에서 끝낸다.
 
@@ -65,7 +65,7 @@ tier: M
 - **창 열기·초기화**: `startTurn` 이 `turn/start` 를 **쓰기 전에** 호출하는 `armTurn` 이 `open=true`, `turnID=""`, `brokerDeclined=0` 으로 만든다. **`prevTurnID` 는 지우지 않는다**(직전 완료 턴 id 를 계속 기억한다). 초기화는 여기서만 한다.
 - `turn/started` 프레임: 창이 열려 있고 `turnID` 가 비었으면 그 id를 `turnID` 로 기록.
 - **브로커 elicitation 거부 시점의 귀속**: 요청의 `turnId`(`string` 또는 `null`)를 `t` 라 하자. (1) 창이 닫혀 있으면(**턴 사이 — 진행 중인 턴이 없음**) 로그만 남기고 어느 턴에도 세지 않는다. (2) 창이 열려 있고 `t` 가 있는데 **`t == prevTurnID`**(직전 완료 턴의 늦은 요청, `turn/started` 이전 구간 포함)이거나 **`turnID` 가 알려져 있고 `t != turnID`** 이면 세지 않는다. (3) 그 밖의 열린 창 안의 요청(`t` 가 null 이거나 `t` 가 현재 턴으로 읽히는 경우)은 `brokerDeclined` 를 올린다. JSON-RPC `id` 의 형태(정수·문자열)는 귀속과 무관하다.
-- `turn/completed(X)` 프레임: 창이 열려 있고 `turnID` 가 비었거나 X와 같으면, 읽기 고루틴이 `brokerDeclined > 0` 이라는 **판정을 그 완료 이벤트에 실어** 소비자에게 올리고, `prevTurnID=X` 로 기록한 뒤 창을 닫는다. X가 다른 턴이면 판정 없이 올리고 창은 그대로 둔다.
+- `turn/completed(X)` 프레임: 창이 열려 있고 `turnID` 가 비었거나 X와 같으면, 읽기 고루틴이 `brokerDeclined > 0` 이라는 **판정을 그 완료 이벤트에 실어** 소비자에게 올리고, `prevTurnID=X` 로 기록한 뒤 창을 닫는다. X가 다른 턴이면 판정 없이 올리고 창은 그대로 둔다. **`X == prevTurnID` 인 완료 프레임(직전 턴의 중복·지연 완료)은 창을 닫지 않고 판정도 싣지 않는다** — `armTurn` 직후 `turn/started` 이전에는 `turnID` 가 비어 있어 위 조건만으로는 새 턴의 창을 닫을 수 있기 때문이다(codex 가 한 턴에 완료 프레임을 한 번만 보내는지는 관측하지 못했다 — 그래서 방어만 두고 시험 행은 두지 않는다).
 - 소비자는 완료 이벤트가 실어 온 판정만 읽는다. App Server가 그 턴을 `completed` 로 표시했어도 판정이 참이면 턴 단위 표식 오류(D-2의 `errManagedTurnFailed`)를 반환한다. 소비자 쪽에는 계수기도 리셋도 없다.
 
 **이 규칙이 약속하는 것과 시험이 고정하는 것은 같은 문장이다**: "**창이 닫힌 때 도착한 요청, 직전에 완료된 턴 id 를 단 요청, 현재 턴으로 확정된 id 와 다른 id 를 단 요청은 어느 턴도 실패시키지 않는다. 열린 창 안의 나머지 요청은 그 턴을 정확히 한 번 실패시킨다(요청 수와 무관).**" AC-MH-006 의 하위 케이스 #11–#17 이 이 문장의 각 갈래를 하나씩 고정한다(acceptance.md §1.3).
@@ -77,7 +77,7 @@ tier: M
 
 ### 공시한 한계 (이 SPEC이 닫지 않음)
 
-- **막힌 쓰기의 상한이 없다**: `call()` 은 `c.conn.WriteJSON(…)` 을 `select`(턴 컨텍스트·`done` 대기) **앞에서** 호출한다(`managed_codex_factory.go:212` 대 `:215`, 소스 판독). 그래서 서버가 읽지 않아 쓰기가 막히면 턴 타임아웃(10분)도 그것을 풀지 못한다. 쓰기 뮤텍스가 들어오면 읽기 고루틴의 답장 쓰기도 같은 뮤텍스에 걸려 함께 멈춘다. 이 한계의 상한은 "턴 타임아웃"이 아니라 **연결이 죽거나 세션이 닫힐 때까지**다(`Close` → `shutdown` 이 뮤텍스 없이 `conn.Close()` 를 부르므로 그때는 풀린다). 쓰기 데드라인 상수는 이 카드에서 더하지 않기로 판단했다: 상대는 우리가 소유한 loopback 자식이고 관측된 사례가 없다. 운영자 문서에 "상한 없음"으로 적고, 데드라인이 필요해지면 `defaults.go` 상수 하나와 REQ-MH-005 개정으로 닫는다(후속 후보). 이 단락은 소스 판독이며 실행으로 재현하지 않았다. `id: null` 프레임은 응답·요청 어느 쪽으로도 분류되지 않아 버려진다.
+- **막힌 쓰기의 상한이 없다**: `call()` 은 `c.conn.WriteJSON(…)` 을 `select`(턴 컨텍스트·`done` 대기) **앞에서** 호출한다(`managed_codex_factory.go:212` 대 `:215`, 소스 판독). 그래서 서버가 읽지 않아 쓰기가 막히면 턴 타임아웃(10분)도 그것을 풀지 못한다. 쓰기 뮤텍스가 들어오면 읽기 고루틴의 답장 쓰기도 같은 뮤텍스에 걸려 함께 멈춘다. 이 한계의 상한은 "턴 타임아웃"이 아니라 **연결이 죽거나 세션이 닫힐 때까지**다(`Close` → `shutdown` 이 뮤텍스 없이 `conn.Close()` 를 부르므로 그때는 풀린다). 쓰기 데드라인 상수는 이 카드에서 더하지 않기로 판단했다: 상대는 우리가 소유한 loopback 자식이고 관측된 사례가 없다. 운영자 문서에 "상한 없음"으로 적고, 데드라인이 필요해지면 `defaults.go` 상수 하나와 REQ-MH-005 개정으로 닫는다(후속 후보). 이 단락은 소스 판독이며 실행으로 재현하지 않았다. `id` 필드가 없거나 원문이 JSON `null` 이면 "id 없음"으로 본다 — `method` 가 있으면 알림(지금처럼 대부분 버림), 없으면 버린다(`json.RawMessage` 가 리터럴 `null` 을 담아도 "id 가 있다"로 분류하지 않는다).
 
 ### 기각한 대안
 
