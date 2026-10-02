@@ -5,7 +5,7 @@
 // every handler passes its event through with next(e), every hook fails soft,
 // and the only child-process calls are the fixed argv table's three diagnostics.
 import type { EngineInterface, Register } from 'claude-code'
-import { CMD_TIMEOUT_MS, type MoaiStatusHealth, type MoaiStatusUsage, type RunResult } from './data'
+import { CMD_TIMEOUT_MS, DEFAULT_BAND, classifyMeasure, sameUsage, stripLine, suffixMarker, type MoaiStatusHealth, type MoaiStatusUsage, type RunResult } from './data'
 
 // Typed references: plugin and key are literals (the shape validate enforces, M-13).
 const usageRef = { plugin: 'moai-status', key: 'usage' } as const
@@ -61,7 +61,13 @@ export const register: Register = on => {
   })
 
   on('session.measure', async ($, e, next) => {
-    await soft($, async () => {})
+    // The engine pushes the figures (D-2); the mod classifies and holds them
+    // in state, writing only when the classification moved (REQ-MSM-003).
+    await soft($, async () => {
+      const previous = (await $.state.get(usageRef)).value
+      const classified = classifyMeasure(e, DEFAULT_BAND)
+      if (!sameUsage(previous, classified)) await $.state.set(usageRef, classified)
+    })
     return next(e)
   })
 
@@ -70,10 +76,37 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    return next(e)
+    try {
+      // A survey holds the band; the mod yields (REQ-MSM-004).
+      if (e.props.hasSurvey) return next(e)
+      const usage = (await $.state.get(usageRef)).value
+      const line = stripLine(usage)
+      if (line === '') return next(e)
+      const T = $.ui.resolve(e)
+      const upstream = await next(e)
+      // Compose: the strip leads, the upstream tree still draws (REQ-MSM-004).
+      // Text takes no key — the findable line sits in a keyed Box (sibling craft).
+      return T.Box({
+        key: 'moai-status-strip',
+        flexDirection: 'column',
+        children: [T.Box({ key: 'moai-status-strip-line', children: T.Text({ children: line }) }), upstream],
+      })
+    } catch {
+      // A broken strip never blanks the band for later mods (plan §B.5).
+      return next(e)
+    }
   })
 
   on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
-    return next(e)
+    try {
+      const usage = (await $.state.get(usageRef)).value
+      const marker = suffixMarker(usage)
+      if (marker === '') return next(e)
+      // Only the suffix prop changes; word, message and mode pass untouched
+      // (REQ-MSM-005). The incoming suffix is preserved, the marker appended.
+      return next({ ...e, props: { ...e.props, suffix: e.props.suffix + marker } })
+    } catch {
+      return next(e)
+    }
   })
 }
