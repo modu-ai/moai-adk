@@ -494,7 +494,7 @@ summary: quota-aware scheduling — the statusline records the Claude rate-limit
 
 ```yaml
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill-sync  # a commit cannot cite its own hash; the real SHA is backfilled by the phase-owning agent in the follow-up commit (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_commit_sha: ebf6f09c3a0e6403548505f86de59973f870e846  # D3-exempt backfill: the pending-backfill-sync placeholder in the sync commit replaced with the real SHA by the phase-owning agent (spec-frontmatter-schema § SHA placeholder backfill exemption)
 sync_status: complete  # the manager-docs deliverables below; the independent sync-audit runs after this commit and is not part of this signal
 b12_self_test_a: pass  # pre-emission `grep -c 'SPEC-QUOTA-AWARE-SCHEDULING-001' CHANGELOG.md` = 0 before the entry was added (duplicate-entry guard)
 b12_self_test_b: pass  # ac_source=.moai/specs/SPEC-QUOTA-AWARE-SCHEDULING-001/acceptance.md, tier L; `grep -c '^### AC-QAS-' acceptance.md` = 23; the reserved-token counter printed `23` with `live=23 excluded=0 ambiguous=0`; the CHANGELOG entry cites 23 (AC-QAS-001..023)
