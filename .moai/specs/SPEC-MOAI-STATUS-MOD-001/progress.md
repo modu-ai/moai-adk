@@ -160,7 +160,7 @@ push_state: not pushed — leader batch (git-flow lane protocol; the lane never 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "03b8a763e"
 sync_phase: complete — the single sync commit carries the CHANGELOG `[Unreleased]`/`### Added` entry, the spec.md `in-progress → implemented → completed` terminal transition (`updated: 2026-10-03` — already current), this §E.4 signal, and the two MX tag additions. A commit cannot cite its own SHA; the placeholder is backfilled with the real SHA in the sanctioned follow-up commit by the lane.
 
 - CHANGELOG: one entry added as the first bullet under `[Unreleased]` `### Added` (new mod). Duplicate-entry guard ran before the edit: `grep -c 'SPEC-MOAI-STATUS-MOD-001' CHANGELOG.md` → `0`; the entry names only paths verified present (`ls mods/moai-status/`; figures cited from §E.1/§E.2/§E.3 as read this session).
