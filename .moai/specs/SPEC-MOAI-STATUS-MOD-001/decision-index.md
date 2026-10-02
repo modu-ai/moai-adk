@@ -13,14 +13,14 @@ Operator verdict:
 
 Label: FOUNDER
 Authority anchor: —
-Why unresolved: REQ-MSM-003 pins the classification to the in-repo gates' own formulas so the strip cannot contradict them (D-3, M-7): context warn at soft (50 for a window of 500,000+ tokens, else 90), critical at the hard ceiling (min(95, 85+10) clamped up to soft); rate windows warn at the t1347 gate holds (90 / 95). Whether the band should also show an INFO state below those levels (for example the raw percentages always, dimmed), or draw only at warn and above (the MVP's choice), and whether critical gets a visually distinct form, is a display decision no committed artifact states.
+Why unresolved: REQ-MSM-003 pins the classification to the in-repo gates' default formulas (D-3, M-7; the gates themselves are env/config-overridable at runtime — the mod shows its own frozen values, divergence recorded as G-12): context warn at soft (50 for a window of 500,000+ tokens, else 90), critical at the hard ceiling (min(95, 85+10) clamped up to soft); rate windows warn at the t1347 gate holds (90 / 95). Whether the band should also show an INFO state below those levels (for example the raw percentages always, dimmed), or draw only at warn and above (the MVP's choice), and whether critical gets a visually distinct form, is a display decision no committed artifact states.
 Operator verdict:
 
 ### Q3: What health poll interval, at or above the 15,000 ms floor of REQ-MSM-007, does the mod use?
 
 Label: EVIDENCE-NEEDED
 Authority anchor: —
-Why unresolved: one cycle spawns three `moai` processes; the doctor single checks measured 1,578 bytes of output in well under the 20-second timeout (M-9) and `memory doctor --json` measured 186,726 bytes (M-8), but the wall time of a full cycle on a loaded machine is unmeasured (G-6), and the hook budget (10 s of own time, `$` calls in flight excluded) has not been exercised against three sequential runs. The floor is the sibling's poll floor; the value above it depends on how fresh the health line must be and on the measured cycle cost.
+Why unresolved: one cycle spawns three `moai` processes; the doctor single checks measured 1,578 bytes of output in well under the 20-second timeout (M-9) and `memory doctor --json` measured 186,726 bytes (M-8), but the wall time of a full cycle on a loaded machine is unmeasured (G-6), and the hook budget (10 s of own time, `$` calls in flight excluded) has not been exercised against three sequential runs. Each tick also runs the MCP check, which **deletes the CLI's own dead PID-stamp files as a side effect** (plan §B.3, spec §2) — a higher interval runs that delete less often. The floor is the sibling's poll floor; the value above it depends on how fresh the health line must be and on the measured cycle cost.
 Operator verdict:
 
 ### Q4: Does the health line also show an OK state, or only warnings?

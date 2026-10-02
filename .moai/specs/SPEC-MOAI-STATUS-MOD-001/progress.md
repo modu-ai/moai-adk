@@ -48,6 +48,19 @@ Each row: the command verbatim and its observed output. Builds in play: `claude 
 - `git check-ignore -v mods/moai-status/.claude-plugin/types/claude-code/index.d.ts` — exit 1, stdout empty (the ignore rule is absent; plan §D.5 adds it at M5).
 - `git status --short` — only `?? .moai/specs/SPEC-MOAI-STATUS-MOD-001/` (the plan-phase tree holds nothing else new).
 
+### Delta repair 0.2.0 (plan-audit iter1 FAIL 0.75, must-fix only — this session, tree `3f51a713b`)
+
+- Spec lint re-run after the repair:
+  - Command: `moai spec lint SPEC-MOAI-STATUS-MOD-001` — exit **0**, output verbatim:
+    ```
+    ✓ No findings — all SPEC documents are valid
+    ```
+- Two new measurements were taken for the repair and recorded as M-rows in spec.md §1 (commands and verbatim output there):
+  - **M-12** (`$.ui.ask` listing control, AC-MSM-001's allow-list): `CLAUDE_CONFIG_DIR=/tmp/msm-claude-cfg-verify claude plugin validate /tmp/msm-ask-stub` → exit 0, `❯ ./register.ts calls: $.ui.ask`.
+  - **M-13** (the `state writes:` line, AC-MSM-011): `CLAUDE_CONFIG_DIR=/tmp/msm-claude-cfg-verify claude plugin validate /tmp/msm-f8-stub` → exit 0, `❯ ./register.ts state writes: f8stub.health, f8stub.notice, f8stub.usage` (sorted; names all three keys). AC-MSM-011's green condition is observable on this build — no Gap demotion needed.
+- F-1 disposition: option (b) — the `fail` STATUS token dropped from REQ-MSM-012, reason recorded in the HISTORY row and the requirement itself (both asked checks assign only ok/warn in-tree; `internal/cli/doctor.go:629-679`, `internal/cli/doctor_mcp_version.go`). Precedence fixed row-first in REQ-MSM-009/012 and plan §B.4.
+- No file outside this SPEC directory and /tmp was written; no commit made (the lane commits).
+
 ## E.2 Run-phase evidence
 
 (empty — filled by manager-develop at run phase; the Definition of Done of acceptance.md §F names the required shape)
