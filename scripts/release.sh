@@ -7,6 +7,7 @@
 #   scripts/release.sh v2.14.1 --hotfix     # Hotfix release
 #   scripts/release.sh v2.15.0 --dry-run    # 검증만 (실제 tag/push 없이)
 #   scripts/release.sh v3.2.0-rc.1          # Release candidate (-rc.N): CHANGELOG 섹션 불필요
+#   scripts/release.sh v3.2.0 --require-matrix-run   # 태그 전에 3-OS 매트릭스(workflow_dispatch) 녹색 확인 (기본 꺼짐)
 #
 # 전제 조건 (CLAUDE.local.md §18.8):
 #   - CHANGELOG.md 에 해당 버전 섹션 존재 (-rc.N 태그는 예외)
@@ -47,14 +48,16 @@ VERSION=""
 DRY_RUN=false
 HOTFIX=false
 SKIP_CI_CHECK=false
+REQUIRE_MATRIX_RUN=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)       DRY_RUN=true; shift ;;
         --hotfix)        HOTFIX=true; shift ;;
         --skip-ci-check) SKIP_CI_CHECK=true; shift ;;
+        --require-matrix-run) REQUIRE_MATRIX_RUN=true; shift ;;
         -h|--help)
-            sed -n '2,22p' "$0"
+            sed -n '2,23p' "$0"
             exit 0
             ;;
         -*)
@@ -245,6 +248,77 @@ if [[ "$SKIP_CI_CHECK" != true ]]; then
     fi
 else
     log_warn "CI check skipped (--skip-ci-check)"
+fi
+
+# ─── Validation 9b: 3-OS matrix run on this commit (opt-in) ─────────────────
+# Off unless --require-matrix-run is given: with it off nothing below runs and no
+# `gh run` call is made, so the script behaves exactly as it did before the
+# option existed. The multi-OS workflow (release-pr-multi-os.yml) runs on
+# release/* PR heads and by hand; a release tagged from a main commit no PR head
+# ever tested would otherwise reach macOS and windows untested, and a pushed v*
+# tag cannot be deleted or moved. So the maintainer dispatches the workflow on
+# this commit first, and this check reads the result BEFORE the tag exists.
+#
+# A run counts only when ALL of these hold: it belongs to that workflow, it ran
+# on exactly this commit, workflow_dispatch started it (on a pull_request event
+# a leg can be skipped by the docs-only filter), it is completed with conclusion
+# success, AND each of the three OS legs itself concluded success (a run-level
+# success is not enough: a skipped leg leaves it green).
+if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
+    MATRIX_WORKFLOW="release-pr-multi-os.yml"
+    command -v gh >/dev/null 2>&1 || die "Matrix gate: --require-matrix-run needs the gh CLI to read the $MATRIX_WORKFLOW run, and gh is not available."
+
+    MATRIX_RUNS="$(gh run list --workflow "$MATRIX_WORKFLOW" --commit "$LOCAL_SHA" --limit 50 \
+        --json databaseId,headSha,event,status,conclusion \
+        --jq '.[] | select(.headSha == "'"$LOCAL_SHA"'") | "\(.databaseId)|\(.event)|\(.status)|\(.conclusion // "")"')" \
+        || die "Matrix gate: could not list runs of $MATRIX_WORKFLOW (gh run list failed)."
+
+    MATRIX_OK_ID=""
+    MATRIX_REASON=""
+    MATRIX_EVENTS=""
+    MATRIX_DISPATCH_SEEN=false
+    while IFS='|' read -r run_id run_event run_status run_conclusion; do
+        [[ -n "$run_id" ]] || continue
+        MATRIX_EVENTS="${MATRIX_EVENTS:+$MATRIX_EVENTS, }$run_event"
+        [[ "$run_event" == "workflow_dispatch" ]] || continue
+        MATRIX_DISPATCH_SEEN=true
+
+        run_problem=""
+        if [[ "$run_status" != "completed" ]]; then
+            run_problem="run $run_id of $MATRIX_WORKFLOW for $LOCAL_SHA is $run_status, not completed."
+        elif [[ "$run_conclusion" != "success" ]]; then
+            run_problem="run $run_id of $MATRIX_WORKFLOW for $LOCAL_SHA concluded ${run_conclusion:-unknown}, not success."
+        else
+            RUN_JOBS="$(gh run view "$run_id" --json jobs --jq '.jobs[] | "\(.name)|\(.conclusion // "")"')" \
+                || die "Matrix gate: could not read the jobs of run $run_id (gh run view failed)."
+            for leg in "Release Verify (ubuntu-latest)" "Release Verify (macos-latest)" "Release Verify (windows-latest)"; do
+                leg_line="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v leg="$leg" '$1 == leg {print "found|" $2; exit}')"
+                if [[ -z "$leg_line" ]]; then
+                    run_problem="run $run_id has no leg '$leg'."
+                    break
+                elif [[ "${leg_line#found|}" != "success" ]]; then
+                    run_problem="run $run_id leg '$leg' is ${leg_line#found|}, not success."
+                    break
+                fi
+            done
+        fi
+
+        if [[ -z "$run_problem" ]]; then
+            MATRIX_OK_ID="$run_id"
+            break
+        fi
+        [[ -n "$MATRIX_REASON" ]] || MATRIX_REASON="$run_problem"
+    done <<< "$MATRIX_RUNS"
+
+    if [[ -z "$MATRIX_OK_ID" ]]; then
+        if [[ -z "$MATRIX_RUNS" ]]; then
+            MATRIX_REASON="no run of $MATRIX_WORKFLOW found for $LOCAL_SHA. Dispatch it on this commit, wait for it to finish, then release again."
+        elif [[ "$MATRIX_DISPATCH_SEEN" != true ]]; then
+            MATRIX_REASON="runs of $MATRIX_WORKFLOW exist for $LOCAL_SHA but none came from workflow_dispatch (events: $MATRIX_EVENTS). Dispatch it by hand on this commit."
+        fi
+        die "Matrix gate: $MATRIX_REASON"
+    fi
+    log_ok "Matrix gate: run $MATRIX_OK_ID of $MATRIX_WORKFLOW is green on all three OS legs for ${LOCAL_SHA:0:12}"
 fi
 
 # ─── Validation 10: SPEC status 확인 (optional, informational) ───────────────
