@@ -45,7 +45,7 @@ _<pending run-phase>_
 
 ```yaml
 sync_complete_at: 2026-10-02
-sync_commit_sha: "pending-backfill"  # D3-exempt placeholder: a commit cannot cite its own hash; backfilled with the real SHA by the following commit (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_commit_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3  # D3-exempt backfill: the pending-backfill placeholder in the sync commit replaced with the real SHA by the phase-owning agent (spec-frontmatter-schema § SHA placeholder backfill exemption)
 sync_status: complete
 b12_self_test_a: pass  # pre-emission grep `grep -c 'SPEC-WEB-AGENTFM-RESTORE-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
 b12_self_test_b: pass  # AC count against acceptance.md (tier M source): 13 unique live identifiers AC-AFR-001..013, zero reserved tokens (live=13 excluded=0 ambiguous=0); the CHANGELOG entry cites the same 13
