@@ -143,3 +143,51 @@ func TestPruneSweepRidesTheLockHolderOnly(t *testing.T) {
 		t.Fatalf("the next prune cycle did not sweep the old orphan")
 	}
 }
+
+// TestPruneSweepAgeBoundary pins the threshold between "may belong to a live rewrite" and
+// "orphan": 9 minutes old is kept, 11 minutes old is swept.
+func TestPruneSweepAgeBoundary(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	writeStaleLog(t, logPath, now, "stale")
+	nine := filepath.Join(dir, "usage-log-nine.tmp")
+	eleven := filepath.Join(dir, "usage-log-eleven.tmp")
+	writeTmpAged(t, nine, now, 9*time.Minute)
+	writeTmpAged(t, eleven, now, 11*time.Minute)
+
+	if err := NewRetention(logPath, filepath.Join(dir, "archive"), func() time.Time { return now }).PruneStaleEntries(30); err != nil {
+		t.Fatalf("prune: %v", err)
+	}
+	if !pathExists(nine) {
+		t.Errorf("a 9-minute-old tmp was swept")
+	}
+	if pathExists(eleven) {
+		t.Errorf("an 11-minute-old tmp survived")
+	}
+}
+
+// TestPruneSweepRunsWhenPruneFails: the sweep is housekeeping that does not depend on the prune
+// succeeding; a prune that errors (here: the archive directory path is occupied by a file) still
+// returns its error and still sweeps.
+func TestPruneSweepRunsWhenPruneFails(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	archiveDir := filepath.Join(dir, "archive")
+	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	writeStaleLog(t, logPath, now, "stale")
+	if err := os.WriteFile(archiveDir, []byte("not a directory"), 0o644); err != nil {
+		t.Fatalf("occupy archive path: %v", err)
+	}
+	orphan := filepath.Join(dir, "usage-log-555555.tmp")
+	writeTmpAged(t, orphan, now, time.Hour)
+
+	if err := NewRetention(logPath, archiveDir, func() time.Time { return now }).PruneStaleEntries(30); err == nil {
+		t.Fatalf("prune with an unusable archive directory returned no error")
+	}
+	if pathExists(orphan) {
+		t.Fatalf("the orphan survived a prune that failed")
+	}
+}
