@@ -26,7 +26,10 @@ The capability answers typed questions over a supplied state and returns a
 typed answer with the model's probability. It generates no text and decides
 nothing: the answer is a labelled model signal a person reads, never a
 completion predicate, a merge approval, a queue mutation, or any other
-decision that is hard to undo. Good questions keep that contract; bad
+decision that is hard to undo. A narrow exception is the `todo --auto` cycle's
+own candidate ranking, the auto-scoped ranking exception, which sets
+selection order only; it is an in-process consumer behind the default-off
+gate. Good questions keep that contract; bad
 questions waste the call or manufacture false confidence. Four rules govern
 question design.
 
