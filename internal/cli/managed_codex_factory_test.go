@@ -97,8 +97,10 @@ func serveFakeRPC(conn *websocket.Conn, logPath string) {
 		case "thread/start":
 			var params struct {
 				Model string `json:"model"`
+				Cwd   string `json:"cwd"`
 			}
 			_ = json.Unmarshal(req.Params, &params)
+			fakeAppendLog(logPath, "thread-cwd "+params.Cwd)
 			if params.Model != "" {
 				fakeAppendLog(logPath, "model "+params.Model)
 			}
@@ -155,6 +157,9 @@ func TestManagedCodexFakeAppServer(t *testing.T) {
 		t.Fatalf("read capability token: %v", err)
 	}
 	fakeAppendLog(logPath, "token-loaded")
+	if cwd, err := os.Getwd(); err == nil {
+		fakeAppendLog(logPath, "server-cwd "+cwd)
+	}
 
 	addr := strings.TrimPrefix(listen, "ws://")
 	ln, err := net.Listen("tcp", addr)
@@ -275,7 +280,7 @@ func TestManagedCodexRegistersBoundPeer(t *testing.T) {
 	t.Cleanup(func() { _ = stdinR.Close() })
 
 	errCh := make(chan error, 1)
-	go func() { errCh <- runManagedFactoryCodex(backend, []string{backend}, env, stdinR) }()
+	go func() { errCh <- runManagedFactoryCodex(backend, []string{backend}, env, "", stdinR) }()
 	select {
 	case err := <-errCh:
 		if err != nil {
@@ -311,6 +316,99 @@ func TestManagedCodexRegistersBoundPeer(t *testing.T) {
 	if lane.Slot != kanban.FactoryLaneLabel(1) || lane.BindingState != factorymsg.BindingBound || lane.SessionUUID != fakeAppServerThreadID {
 		t.Fatalf("bound endpoint = slot %q state %q session %q; want lane-1/bound/%s",
 			lane.Slot, lane.BindingState, lane.SessionUUID, fakeAppServerThreadID)
+	}
+}
+
+// TestManagedCodexOwnerUsesLaunchDir pins the launch directory the divert
+// carries (F1 of the t1375 sync audit): the App Server process and the thread
+// cwd both use the directory the launcher resolved — project root or a -w
+// worktree — never the process cwd, which here is a different directory.
+func TestManagedCodexOwnerUsesLaunchDir(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, run := t.TempDir(), "managed-codex-dir"
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	activateManagedRun(t, root, run)
+	launchDir := t.TempDir()
+	procCwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved, rerr := filepath.EvalSymlinks(launchDir); rerr != nil || resolved == procCwd {
+		t.Fatalf("test needs a launch dir distinct from the process cwd: %q vs %q (%v)", launchDir, procCwd, rerr)
+	}
+	logPath := filepath.Join(t.TempDir(), "dir.log")
+	backend := fakeAppServerScript(t)
+	env := []string{
+		config.EnvMoaiKanbanID + "=" + run,
+		config.EnvMoaiKanbanBackend + "=" + BackendCodex,
+		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
+		fakeAppServerRoleEnv + "=appserver",
+		fakeAppServerLogEnv + "=" + logPath,
+	}
+	stdinR, stdinW, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stdinW.WriteString("/exit\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := stdinW.Close(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stdinR.Close() })
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- runManagedFactoryCodex(backend, []string{backend}, env, launchDir, stdinR) }()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("managed codex run: %v", err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("managed codex run did not exit within 30s")
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantServer, _ := filepath.EvalSymlinks(launchDir)
+	for _, want := range []string{"server-cwd " + wantServer, "thread-cwd " + launchDir} {
+		if !strings.Contains(string(log), want+"\n") {
+			t.Errorf("log misses %q (process cwd %q):\n%s", want, procCwd, log)
+		}
+	}
+}
+
+// TestManagedCodexTokenFileIsPrivate pins the capability-token secrecy the
+// design promises (acceptance §3 Secured): while the session is up, the token
+// file is 0600 and its directory grants nothing to group or other.
+func TestManagedCodexTokenFileIsPrivate(t *testing.T) {
+	backend := fakeAppServerScript(t)
+	env := []string{
+		fakeAppServerRoleEnv + "=appserver",
+		fakeAppServerLogEnv + "=" + filepath.Join(t.TempDir(), "token.log"),
+	}
+	s, err := newManagedCodexSession(backend, []string{backend}, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+	file, err := os.Stat(filepath.Join(s.tokenDir, "token"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := file.Mode().Perm(); got != 0o600 {
+		t.Errorf("token file mode = %o, want 600", got)
+	}
+	dir, err := os.Stat(s.tokenDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := dir.Mode().Perm(); got&0o077 != 0 {
+		t.Errorf("token directory mode = %o, grants access beyond the owner", got)
 	}
 }
 
@@ -429,7 +527,7 @@ func TestManagedCodexFailurePaths(t *testing.T) {
 	})
 
 	t.Run("missing run id refuses before any child work", func(t *testing.T) {
-		err := runManagedFactoryCodex(backend, []string{backend}, nil, strings.NewReader(""))
+		err := runManagedFactoryCodex(backend, []string{backend}, nil, "", strings.NewReader(""))
 		if err == nil || !strings.Contains(err.Error(), "factory run id") {
 			t.Fatalf("run without a factory run id = %v, want the run-id refusal", err)
 		}
@@ -437,7 +535,7 @@ func TestManagedCodexFailurePaths(t *testing.T) {
 
 	t.Run("unsupported flag refuses before any broker or child work", func(t *testing.T) {
 		env := []string{config.EnvMoaiKanbanID + "=refused-run"}
-		err := runManagedFactoryCodex(backend, []string{backend, "--profile", "p"}, env, strings.NewReader(""))
+		err := runManagedFactoryCodex(backend, []string{backend, "--profile", "p"}, env, "", strings.NewReader(""))
 		if err == nil || !strings.Contains(err.Error(), "--profile") {
 			t.Fatalf("run with an unsupported flag = %v, want a refusal naming --profile", err)
 		}
@@ -545,7 +643,7 @@ func TestManagedCodexFactoryBrokerLive(t *testing.T) {
 	t.Cleanup(func() { _ = stdinR.Close() })
 
 	errCh := make(chan error, 1)
-	go func() { errCh <- runManagedFactoryCodex(codexBin, []string{codexBin}, env, stdinR) }()
+	go func() { errCh <- runManagedFactoryCodex(codexBin, []string{codexBin}, env, "", stdinR) }()
 	select {
 	case err := <-errCh:
 		if err != nil {

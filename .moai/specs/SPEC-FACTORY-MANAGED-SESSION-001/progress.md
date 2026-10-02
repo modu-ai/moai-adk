@@ -375,3 +375,16 @@ per-milestone delegation is the simpler correct envelope. Tier L auto-routing to
 was considered (the ≥3-milestone AND ≥10-file predicate is met on paper) and declined per the
 §B.2 boundary default toward the simpler mode: no cross-domain fan-out is warranted, and the
 delivery-only boundary (D-1) keeps every milestone inside one surface.
+
+## §G Audit-repair delta 1 (2026-10-02, 기준 HEAD `623e4b15a`)
+
+sync-audit FAIL 69의 F1·F6·F7·F10 대응(코드·테스트 한정). 이번 실행의 측정, 레인 env 전부 제거.
+
+- F1 수리: `managedFactoryCodexLaunchFunc`/`runManagedFactoryCodex`에 `dir` 인수 추가, divert가 `req.Dir`을 넘기고(`req :=` 줄은 불변), 소유자가 App Server `cmd.Dir`과 `thread/start` cwd에 사용(빈 값이면 기존처럼 프로세스 cwd). Claude/GLM 시임은 같은 결함이 없다: 일반 Claude 런치도 `cmd.Dir`/Chdir 없이 프로세스 cwd로 exec하고(`launcher.go`에 launch Dir 설정 없음), `-w`는 claude 자신이 해소한다.
+  - RED(구현 전, 빌드 실패): `managed_codex_factory_test.go:283:83: too many arguments in call to runManagedFactoryCodex … want (string, []string, []string, io.Reader)`.
+  - GREEN: `TestManagedCodexLaunchCarriesLaunchDir`(하위 디렉터리 cwd→프로젝트 루트, `-w card`→워크트리 = 앵커 락 디렉터리), `TestManagedCodexOwnerUsesLaunchDir`(가짜 App Server가 `server-cwd`와 `thread-cwd`를 기록, 테스트 프로세스 cwd는 다른 디렉터리) PASS.
+  - 변이(`go test -overlay`, 저장소 미변경): divert가 `""` 전달 / `cmd.Dir` 제거 / thread cwd가 dir 무시 / `session.dir = dir` 제거 → 각각 해당 테스트 `--- FAIL`.
+- F6: 프로덕션 claim/prompt 배선을 이름 있는 `managedFactoryInboxWiring`으로 추출(두 소유자가 사용), 루프백 real arm이 이를 직접 사용. 변이 claim `return nil, nil` / 프롬프트에 본문 주입 → `TestManagedSessionLoopbackRoundTrip --- FAIL`(overlay). 잔여: 소유자 진입점의 호출 줄 자체(`claim, toPrompt := managedFactoryInboxWiring(...)`)를 건너뛰는 변이는 여전히 잡히지 않는다(바운드 피어가 필요한 진입점 단위 왕복 테스트 없음).
+- F7: `TestManagedCodexTokenFileIsPrivate`(토큰 파일 0600, 디렉터리 그룹/기타 권한 0). 변이 `0o644` → `--- FAIL`(overlay).
+- F10: 처분하지 않음(블로커급 보고). 구현은 도착순 FIFO(`managedTurnQueue.Next`)이고 AC-MS-008의 "연산자 우선"은 구현되지 않았다. overlay 프로브(저장소 미변경): claim이 도는 동안 도착한 연산자 줄이 채널에 대기 중일 때 `delivery order: [priming, "INBOX-BATCH", "OPERATOR-WAITING"]`.
+- 검증: 관리 슬라이스 + M3/M4/M5 테스트 `ok … 18.889s`, 관리 파일 커버리지(statement-weighted) `managed_factory_session.go` 92.2% (153/166), `managed_codex_factory.go` 86.8% (198/228), 합 89.1% (351/394). vet exit 0, gofmt 빈 출력, lint `0 issues.`, store.go diff 0, vocab 0, syscall 0, windows exit 0, go.mod/go.sum 변경 0.

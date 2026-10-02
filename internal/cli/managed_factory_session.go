@@ -380,6 +380,16 @@ func claimManagedFactoryInbox(store *factorymsg.Store, pid int, start string) ([
 	return store.Claim(ctx, peer, factorymsg.MaxBatch, config.DefaultManagedSessionClaimLease)
 }
 
+// managedFactoryInboxWiring is the claim/prompt pair both managed owners hand
+// the delivery driver. It is one named function so a test can run the
+// production wiring itself instead of re-implementing it (a claim that
+// silently returns nothing must fail a test).
+func managedFactoryInboxWiring(store *factorymsg.Store, ownerPID int, ownerStart, runID string) (claim func() ([]factorymsg.Claim, error), toPrompt func([]factorymsg.Claim) string) {
+	claim = func() ([]factorymsg.Claim, error) { return claimManagedFactoryInbox(store, ownerPID, ownerStart) }
+	toPrompt = func(claims []factorymsg.Claim) string { return managedFactoryInboxPrompt(runID, claims) }
+	return claim, toPrompt
+}
+
 // managedFactoryInboxPrompt assembles the next turn's prompt from claimed
 // message METADATA only (REQ-MS-003): message id, claim token, kind, sender
 // slot, task ref. The body never enters the prompt — the model reads it
@@ -452,8 +462,7 @@ func runManagedFactoryStreamSession(backend, bin string, args, env []string, std
 		return err
 	}
 	defer closeFactoryToolStore("managed_factory_session", store)
-	claim := func() ([]factorymsg.Claim, error) { return claimManagedFactoryInbox(store, ownerPID, ownerStart) }
-	toPrompt := func(claims []factorymsg.Claim) string { return managedFactoryInboxPrompt(runID, claims) }
+	claim, toPrompt := managedFactoryInboxWiring(store, ownerPID, ownerStart, runID)
 	ticker := time.NewTicker(config.DefaultManagedSessionPollInterval)
 	defer ticker.Stop()
 	return driveManagedFactorySession(session, stdin, ticker.C, claim, toPrompt)

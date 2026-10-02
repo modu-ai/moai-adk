@@ -270,16 +270,19 @@ func runManagedLoopback(t *testing.T, run, body string, reexec bool, claimOverri
 		bodyRead = func() string { model.mu.Lock(); defer model.mu.Unlock(); return model.out.bodyRead }
 	}
 
+	// The real arm runs the PRODUCTION wiring both owners use; the mutant
+	// arms replace one step of it.
 	var calls atomic.Int64
+	prodClaim, prodPrompt := managedFactoryInboxWiring(store, os.Getpid(), homestate.CurrentProcessFingerprint(), run)
 	claim := func() ([]factorymsg.Claim, error) {
 		calls.Add(1)
 		if claimOverride != nil {
 			return claimOverride(store)
 		}
-		return claimManagedFactoryInbox(store, os.Getpid(), homestate.CurrentProcessFingerprint())
+		return prodClaim()
 	}
 	toPrompt := func(c []factorymsg.Claim) string {
-		p := managedFactoryInboxPrompt(run, c)
+		p := prodPrompt(c)
 		if promptOverride != nil {
 			p = promptOverride(run, c)
 		}

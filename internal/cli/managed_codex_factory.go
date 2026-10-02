@@ -359,6 +359,7 @@ type managedCodexSession struct {
 	env      []string
 	label    string
 	cmd      *exec.Cmd
+	dir      string // launch directory (project root or -w worktree); empty inherits the process cwd
 	tokenDir string
 	client   *managedCodexAppClient
 	threadID string
@@ -406,6 +407,7 @@ func (s *managedCodexSession) Start() error {
 	args := managedCodexAppServerArgs(url, tokenFile, s.appArgs)
 	s.cmd = exec.Command(s.program, args...)
 	s.cmd.Env = s.env
+	s.cmd.Dir = s.dir
 	s.cmd.Stderr = os.Stderr
 	if err := s.cmd.Start(); err != nil {
 		// No child exists, so the deferred Close will not run its teardown:
@@ -437,7 +439,9 @@ func (s *managedCodexSession) Start() error {
 	}
 
 	threadParams := map[string]any{}
-	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
+	if s.dir != "" {
+		threadParams["cwd"] = s.dir
+	} else if cwd, cwdErr := os.Getwd(); cwdErr == nil {
 		threadParams["cwd"] = cwd
 	}
 	if s.model != "" {
@@ -502,7 +506,7 @@ func (s *managedCodexSession) Close() error {
 // UUID), then the shared M1 delivery driver over the operator's stdin and
 // the broker inbox. stdin is a parameter so tests can drive a real session
 // without process-global mutation (the entry points pass os.Stdin).
-func runManagedFactoryCodex(bin string, args, env []string, stdin io.Reader) (err error) {
+func runManagedFactoryCodex(bin string, args, env []string, dir string, stdin io.Reader) (err error) {
 	root := launchProjectRoot()
 	runID := launchEnvValue(env, config.EnvMoaiKanbanID)
 	if runID == "" {
@@ -520,6 +524,7 @@ func runManagedFactoryCodex(bin string, args, env []string, stdin io.Reader) (er
 	if err != nil {
 		return err
 	}
+	session.dir = dir
 	pending, err := registerFactoryLaunchPending(context.Background(), root, launchEnv, ownerPID, ownerStart)
 	if err != nil {
 		return err
@@ -555,8 +560,7 @@ func runManagedFactoryCodex(bin string, args, env []string, stdin io.Reader) (er
 	}
 	bound = true
 
-	claim := func() ([]factorymsg.Claim, error) { return claimManagedFactoryInbox(store, ownerPID, ownerStart) }
-	toPrompt := func(claims []factorymsg.Claim) string { return managedFactoryInboxPrompt(runID, claims) }
+	claim, toPrompt := managedFactoryInboxWiring(store, ownerPID, ownerStart, runID)
 	ticker := time.NewTicker(config.DefaultManagedSessionPollInterval)
 	defer ticker.Stop()
 	return driveManagedFactorySession(session, stdin, ticker.C, claim, toPrompt)

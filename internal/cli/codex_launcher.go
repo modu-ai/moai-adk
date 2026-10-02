@@ -235,10 +235,11 @@ var codexSpawnCleanupPaneFn = tmuxKillPane
 
 // managedFactoryCodexLaunchFunc is the managed-divert seam (SPEC-FACTORY-
 // MANAGED-SESSION-001 M3): it receives the binary, the argv with the
-// program name at args[0], and the launcher env. Tests override it to
-// observe the divert without starting a real App Server.
-var managedFactoryCodexLaunchFunc = func(bin string, args, env []string) error {
-	return runManagedFactoryCodex(bin, args, env, os.Stdin)
+// program name at args[0], the launcher env, and the directory the launch
+// resolved (project root or the -w worktree — the one the doors launch in).
+// Tests override it to observe the divert without starting a real App Server.
+var managedFactoryCodexLaunchFunc = func(bin string, args, env []string, dir string) error {
+	return runManagedFactoryCodex(bin, args, env, dir, os.Stdin)
 }
 
 // defaultCodexSpawnLaunch opens a detached tmux window running codex
@@ -1085,7 +1086,7 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 				return &exitCodeError{code: 1}
 			}
 		}
-		return managedFactoryCodexLaunchFunc(binaryPath, append([]string{binaryPath}, childArgs...), os.Environ())
+		return managedFactoryCodexLaunchFunc(binaryPath, append([]string{binaryPath}, childArgs...), os.Environ(), req.Dir)
 	}
 	if spawn {
 		if err := checkSpawnPrereqs(); err != nil {

@@ -245,8 +245,9 @@ func withManagedCodexWiring(t *testing.T) (root string, managed *managedCodexLau
 	}
 	origManaged := managedFactoryCodexLaunchFunc
 	managed = &managedCodexLaunchCapture{}
-	managedFactoryCodexLaunchFunc = func(bin string, args, env []string) error {
+	managedFactoryCodexLaunchFunc = func(bin string, args, env []string, dir string) error {
 		managed.record(bin, args, env)
+		managed.dir = dir
 		return nil
 	}
 	t.Cleanup(func() {
@@ -262,6 +263,7 @@ type managedCodexLaunchCapture struct {
 	bin   string
 	args  []string
 	env   []string
+	dir   string
 }
 
 func (c *managedCodexLaunchCapture) record(bin string, args, env []string) {
@@ -296,6 +298,51 @@ func TestManagedCodexLaunchDivertsFactorySession(t *testing.T) {
 	if len(managed.args) == 0 || managed.args[0] != managed.bin {
 		t.Errorf("argv[0] convention broken: bin = %q args = %v", managed.bin, managed.args)
 	}
+}
+
+// TestManagedCodexLaunchCarriesLaunchDir — the divert hands the owner the
+// directory the ordinary door would launch in (F1 of the t1375 sync audit):
+// the project root even when the process cwd is a subdirectory, and the -w
+// worktree (the same directory the anchor lock names).
+func TestManagedCodexLaunchCarriesLaunchDir(t *testing.T) {
+	t.Run("subdirectory cwd resolves to the project root", func(t *testing.T) {
+		root, managed := withManagedCodexWiring(t)
+		factoryLaneEnv(t)
+		sub := filepath.Join(root, "pkg", "deep")
+		if err := os.MkdirAll(sub, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		origDir, _ := os.Getwd()
+		t.Cleanup(func() { _ = os.Chdir(origDir) })
+		if err := os.Chdir(sub); err != nil {
+			t.Fatal(err)
+		}
+		if err := runCodex(&cobra.Command{Use: "codex"}, []string{"cli"}); err != nil {
+			t.Fatalf("factory codex launch: %v", err)
+		}
+		if managed.calls != 1 || managed.dir != root {
+			t.Fatalf("managed owner got dir %q (calls %d), want the project root %q", managed.dir, managed.calls, root)
+		}
+	})
+	t.Run("-w worktree is the owner's directory and the anchor's", func(t *testing.T) {
+		root, managed := withManagedCodexWiring(t)
+		factoryLaneEnv(t)
+		tree := filepath.Join(root, ".moai", "worktrees", "card")
+		if err := os.MkdirAll(tree, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		prevCheck, prevLock := codexWorktreeWriterCheck, codexWorktreeAnchorLock
+		var anchored string
+		codexWorktreeWriterCheck = func(string) error { return nil }
+		codexWorktreeAnchorLock = func(dir string, _ int, _ string) error { anchored = dir; return nil }
+		t.Cleanup(func() { codexWorktreeWriterCheck, codexWorktreeAnchorLock = prevCheck, prevLock })
+		if err := runCodex(&cobra.Command{Use: "codex"}, []string{"cli", "-w", "card"}); err != nil {
+			t.Fatalf("factory codex worktree launch: %v", err)
+		}
+		if managed.calls != 1 || managed.dir != tree || anchored != tree {
+			t.Fatalf("owner dir %q, anchor dir %q (calls %d), want both %q", managed.dir, anchored, managed.calls, tree)
+		}
+	})
 }
 
 // TestCodexLaunchWithoutFactoryEnvReachesDirectDoor — a general codex launch
