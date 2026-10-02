@@ -48,6 +48,15 @@
 | B3-2 | O-2 크기 3배 점검 | `accept_current_size` | 0.45 (< 0.5, Jev 수준 잠정) | **리더가 2026-10-02 에 현 크기(≈235 LOC, Tier M) 수용** — 크기 질문은 더 이상 잠정이 아니다. 근거: plan.md §H「3배 초과 사유」(좁은 기준선은 GLM 리뷰·어느 세션에서든의 MCP 도달·advisory 표식을 충족하지 못함). 되돌림 경로: 새 codex 리뷰 도구를 뺀다(≈165 LOC, 2.4배) |
 | B3-3 | O-3 리더 제외의 지속성 | 코드로 미해결 | — | 명시적 운영자/리더 인계 항목로 유지. **리더가 primary `workflow.yaml` 로컬 수정과 동기화 지속성 인계를 수용**했고 첫 릴리스 동기화 때 확인한다. 이 SPEC 이 만족시킨 요구가 아니다 |
 
+### 4차 결정 배치 — Q13·Q14 (2026-10-02, plan-audit 3회차 PASS 뒤, Jev `jev-1.13.0` 운영자 위임)
+
+| # | Question | Resolution | Confidence | Disposition |
+|---|----------|-----------|------------|-------------|
+| B4-1 | Q13 새 자기 리뷰 도구의 진행 알림(`notifyMCPProgress`) | `no_heartbeat_residual_risk` | 1.00 | 새 도구는 알림을 호출하지 않는다. 호스트 도구 타임아웃 노출은 명시된 잔여 위험(plan.md §G 위험 6, spec.md §E). REQ·AC 증가 없음 |
+| B4-2 | Q14 빈 자료의 처분 | `skip_both_backends_inconclusive` | 1.00 | 빈 자료(런타임 접두 제외 뒤 카드 diff 가 비었거나 미커밋 diff 가 빈 경우)는 두 백엔드를 호출하지 않고 원인을 밝힌 `inconclusive` 를 돌려준다. **GLM 의 비추적 파일만 있는 경우는 첫 run 마일스톤에서 정한다**(아래 I3-2) |
+
+Jev 판정은 표시 전용 신호이며 결정 권한은 레인·리더 소관이다. 이 두 행은 `decision-index.md` Q13·Q14 의 `Operator verdict:` 와 같다.
+
 ### 인계 항목 (이 SPEC 의 코드 밖 — 만족된 요구가 아니다)
 
 1. **리더 제외의 전달(D5, N3 갱신).** primary 체크아웃의 `/Users/goos/MoAI/moai-adk-go/.moai/config/sections/workflow.yaml`(추적 파일의 로컬 수정본; primary HEAD 는 `ref: refs/heads/main`)은 **이동하는 운영자 상태**다. 2026-10-02 16:39 KST 관측: `codex.review_gate.enabled: false`(수정 15:32, 누가 바꿨는지는 관측하지 않음) — 이 시각에는 게이트가 이미 꺼져 있어 리더 제외에 `tree_scope: skip` 이 필요하지 않다. **`enabled: true` 로 다시 켤 때** 착지 뒤 리더가 `workflow.codex.review_gate.tree_scope: skip` 을 함께 쓴다(착지 시점에 파일을 다시 읽는다). 이 SPEC 은 그 값에 의존하지 않는다. 운영자 소유 파일이며 이 SPEC·run 은 편집하지 않는다. **지속성은 미해결(plan.md O-3)** — `main` 이 릴리스 PR 로만 전진하므로 릴리스가 이 파일을 바꿀 때 로컬 수정과 부딪힐 수 있다. `moai update` 가 old-only 키를 유지한다는 것은 문서 주석으로만 관측했고(`internal/cli/update/backup/merge.go:20-22`) 병합/풀 흐름은 시도하지 않았다.
@@ -72,7 +81,42 @@
 - 밀어붙임: 리더의 당면 문제는 primary 로컬 `enabled: false` 로 이미 풀려 있다(위 관측). `tree_scope` 의 가치는 repo 전체 `enabled: true` 아래의 스코프 분리다(plan.md §G).
 - 미관측: 카드 본문의 9~12분·282파일(리더 제공), t1395 처분 보고서 5건(경로 부재), 메인 세션의 도구 목록, codex 가 `baseBranch` 의 `branch` 필드에 SHA 를 받는지(라이브), primary 의 로컬 수정이 릴리스 병합을 견디는지(O-3), 웹 i18n 테스트의 빨간 상태(추론만).
 
+## plan-audit 이력 (2026-10-02)
+
+| 회차 | 판정 | 점수 | 보고서 (로컬 증거) | 감사 커밋 |
+|---|---|---|---|---|
+| 1 | FAIL | 0.76 | `.moai/reports/t1422/plan-audit.md` | `3ae43ed8e78ffa673ca238227df6ca7202c1ce70` |
+| 2 | FAIL | 0.79 | `.moai/reports/t1422/plan-audit-iter2.md` | `61befc5f90e36801f54a84c02b8fa4ff3dbced57` |
+| 3 (마지막 허용) | **PASS** | **0.835** (Tier M 임계 0.80) | `.moai/reports/t1422/plan-audit-iter3.md` | `d242e0ea933ea0f9d237a166d78e6a1f78b419be` |
+
+3회차: 필수 통과 기준 아홉 개 모두 통과, 필수 수정 0, 권고 2(I3-1, I3-2 — 비차단), 노트 5(I3-3 ~ I3-7), 이전 회차 미해결 0(D3·D9 가 해결로 바뀜). 감사 도구 환경에서 Grep 도구는 쓰이지 않았고 형식 verb 는 Write 도구로 만든 스크립트를 `sh <script>` 로 돌렸다.
+
+## 해시 기준선 — Kickoff "산출물 불변" 점검용 (HEAD `0eb437eec67d03db2e077511341481bf7f6ae346`, 이 레인이 `shasum -a 256` 으로 계산)
+
+```text
+a1c230e77c07fc4cd4e9ade67e6b054398527a9cdc7cd78ed338d469ca1f4c4e  .moai/specs/SPEC-CODEX-REVIEW-OWNERSHIP-001/spec.md
+b8895b339d943cae470e1236e3190797563332ced61cf0686d17c0a58a352c50  .moai/specs/SPEC-CODEX-REVIEW-OWNERSHIP-001/plan.md
+5bb90833426902455c9220f54103ab239b69602338fe198c64bee33c0bd68767  .moai/specs/SPEC-CODEX-REVIEW-OWNERSHIP-001/acceptance.md
+```
+
+세 값은 감사 3회차가 읽은 값과 같다(감사 보고서 첫머리). 이 SPEC 의 `ComputeHash` 대상(`spec.md`·`plan.md`·`acceptance.md`)이다. **PASS 는 이 해시에 걸려 있으므로 세 파일을 고치지 않는다**; `progress.md`·`decision-index.md` 는 해시 대상이 아니다.
+
+## M1 테스트 작성으로 이월 (SPEC 본문 수정 없음) — plan-audit 3회차 I3-1 ~ I3-7
+
+PASS 를 유지하려고 spec/plan/acceptance 를 고치지 않는다. 아래는 M1(RED 확립·테스트 작성) 단계가 AC 문구를 넘어서 시험에 담을 항목이다. 감사 보고서가 "run 단계에서 값싸게 닫을 수 있다"고 적었다.
+
+- **I3-1 (AC-005 env 행 — 권고).** 감사 관측: 런처는 `MOAI_KANBAN_LABEL=leader` 를 설정하지 않는다 — 칸 리더는 `MOAI_KANBAN=1`·id·리더 소켓 주소만 쓰고 라벨은 없으며(`kanban.go:193-206`), 라벨은 동반 세션이 자기 역할 라벨로 설정하고(`kanban.go:333-343`, `cc.go:319`), 팩토리 실행은 `MOAI_KANBAN`/라벨을 일부러 설정하지 않으며(`factory.go:665-668`) 팩토리 레인은 `MOAI_FACTORY_WORKER=<라벨>`·`MOAI_FACTORY_WORKERS=<n>` 을 쓴다(`factory.go:727-737`). 그러므로 AC-005 의 "런처가 실제로 쓰는 값" 문구와 R-leader 행은 정확하지 않다. **M1 시험이 할 일:** (1) 실제 칸 리더 행(`MOAI_KANBAN=1`, id, 주소, 라벨 없음), 팩토리 리더 행(`MOAI_FACTORY_WORKERS=8` 만), 동반 세션 행(`leader` 아닌 비어 있지 않은 라벨, 예 `run`)을 행렬에 더한다; (2) 변이 "다른 파일(`codex_review_scope.go`, 환경 읽기 2건 — P10)에 `isCompanion()` 도우미를 두고 정책 파일에서 호출"을 죽이는 행동 행(동반 라벨 행의 T2 결정이 부재 행과 같아야 함)을 포함한다 — 정적 가드는 이 변이를 못 본다.
+- **I3-2 (빈 자료 정의 — 권고).** (a) 정의가 "비추적 비런타임 파일도 없을 것"을 요구하는데 `glm_review` 의 자료에는 비추적 파일이 들어가지 않으므로(`excluded_untracked` 로만 보고) 비추적 파일만 있는 카드/`develop` 트리는 정의상 "비어 있지 않음"이 되어 GLM 이 빈 diff 로 호출될 수 있다(`callGLMAudit` 는 받은 문자열을 그대로 보낸다, `mcp_glm.go:302-308`). Q14 verdict 가 이 경우를 첫 run 마일스톤에 맡겼다. **M1 시험이 할 일:** GLM 백엔드의 빈 자료를 "비추적 파일 유무와 무관하게 diff 가 빈 경우"로 시험에 고정하고(`excluded_untracked` 는 계속 보고), 비추적 파일만 있는 픽스처 한 건(GLM: HTTP 0 회·`inconclusive`·`excluded_untracked` 에 그 파일; codex: 현 정의)을 p5 에 더한다. 이 결정은 SPEC 본문의 정의와 다르므로 M1 에서 리더 확인을 받고 progress.md 에 기록한다. (b) `scope: card` 호출이 빈 자료에 닿을 때의 `base`: REQ-CRO-010 첫 절은 SHA, 마지막 절은 빈 문자열이다 — AC-010 (b) 는 p5 에서 빈 문자열이다. **M1 시험이 할 일:** AC 문구대로 빈 자료 경로의 `base` 를 빈 문자열로 단정하고 이 해석을 시험 주석에 적는다.
+- **I3-3 (변이 점검의 "열림: 없음"은 너무 강하다 — 노트).** 아래 변이 점검 결과 절의 "죽임 67 / 열림 0"은 **작성자 판독 기준**이다. I3-1, I3-2, I3-7 이 표에 없는 생존 변이를 설명하므로 이 셋은 **생존 후보로서 M1 에서 시험**한다: (i) 정책 파일 밖 `isCompanion()` 도우미, (ii) GLM 비추적 파일만 있는 트리에서 빈 diff 호출, (iii) 카탈로그 수치만 올리고 도구 행을 쓰지 않는 구현, (iv) `project_root` 를 `resolveOptionalToolProjectRoot` 로 읽는 구현.
+- **I3-4 (결정 인덱스 빈 칸 — 노트).** Q13·Q14 verdict 를 채웠다(위 4차 결정 배치). 남은 열린 칸 없음.
+- **I3-5 (REQ-CRO-006 문구 대 AC-006 (b) — 노트).** REQ 는 두 경로가 "서로 어긋날 수 없다"고 하나 AC-006 (b) 는 설정 고아 워크트리에서 Claude 경로(primary 키)와 Codex 체인(`c.root`)이 갈라지는 기존 비대칭을 고정한다. AC 가 우선한다; M1 시험 주석에 이 비대칭이 의도임을 적는다.
+- **I3-6 (`related_specs` 누락 — 노트).** spec.md 프론트매터가 `SPEC-CODEX-REVIEW-ASYNC-001`·`SPEC-WORKTREE-STATE-ROOT-001` 을 `related_specs` 에 담지 않는다. 스키마 위반이 아니고 spec.md 편집은 해시를 바꾸므로 **고치지 않는다** — 이 SPEC 이 sync 단계에서 열릴 때 함께 정리한다.
+- **I3-7 (정합 변이 두 건 — 노트).** (i) 카탈로그 수치만 47/43 으로 올리고 새 도구 표 행(`moai-mcp-tools-catalogue.md` 의 감사 행 옆)을 쓰지 않는 구현은 `TestMCPToolCatalogueFiguresMatchRegistry`(수치만 읽음)와 docs-site 표 행(미검사; `project_root` 문장만 검사)을 모두 통과한다 — **M3 시험이 카탈로그 행 grep**(`grep -c 'codex_review' …/moai-mcp-tools-catalogue.md` ≥ 1, 두 사본)과 docs-site 4개 표 행 존재 단정을 더한다. (ii) `project_root` 를 `resolveToolProjectRoot`(부재 시 `CLAUDE_PROJECT_DIR`/서버 cwd)가 아니라 `resolveOptionalToolProjectRoot`(부재 시 루트 없음)로 읽는 구현은 REQ-CRO-007 의 "기존 도구들이 공유하는 계약"에 모호성이 있어(`mcp_project_root.go:92,153` 두 변형) 통과한다 — **M3 시험이 `project_root` 를 생략한 호출 픽스처 한 건**(어느 변형이 계약인지 정해 기록)을 더한다.
+- 작은 어긋남(추정치): plan.md §H 가 새 테스트 파일을 "신규 ≈2"로 적었으나 §F.2 에는 세 곳(소유권 시험, `mcp_selfreview_test.go`, 에이전트 `tools:` 검사)이 나온다 — 추정(`≈`)이므로 결함이 아니다.
+
 ## 변이 점검 결과 (이 개정의 자체 스윕 — 작성 시점 판독, 마지막 허용 감사 반복 전)
+
+> **정정(감사 3회차 I3-3).** 아래 "열림 0"은 작성자 판독 기준이다. 위「M1 테스트 작성으로 이월」의 I3-1·I3-2·I3-7 이 생존 후보를 추가하므로 "열림 0"을 닫힘으로 읽지 않는다.
 
 acceptance.md §C 표가 16개 AC 모두에 대해 요구를 어기면서 기준을 만족하는 가장 값싼 변이와 그것을 죽이는 단정 칸을 적는다. 행 수: AC-001 5 · AC-002 5 · AC-003 2 · AC-004 3 · AC-005 5 · AC-006 3 · AC-007 6 · AC-008 6 · AC-009 5 · AC-010 6 · AC-011 2 · AC-012 3 · AC-013 5 · AC-014 3 · AC-015 5 · AC-016 3 = **67 개 변이 행, 죽임 67 / 열림 0**(감사 보고서 2회차의 10개에서 확장; 생존 7개 — AC-010 두 건·AC-005 `MOAI_KANBAN_LABEL == "leader"`·AC-015 두 건·AC-007 스키마·REQ-CRO-010 빈 자료 — 는 각각 AC-010 (a)-(f)·AC-005 (a) R-leader 행·AC-015 (ii) L12 및 가드 두 시험·AC-007 (f)·AC-010 (e) 로 죽는다). "죽임"은 구현이 없는 plan 단계의 판독이며 실행 관측이 아니다. 변이 하나가 다른 칸으로 옮겨 가는 경우(예: AC-005 의 환경 읽기를 다른 파일 도우미로 옮김)는 행동 행렬과 정적 가드가 서로의 대조로 짝지어져 있다. 한 가지 정직한 한계: AC-004 (b) 는 M1 의 게이트 수준 시험이 변경 전 트리에서 초록으로 관측되기 전까지 회귀 칸이 아니라 미측정이다(L11).
 
@@ -82,7 +126,7 @@ acceptance.md §C 표가 16개 AC 모두에 대해 요구를 어기면서 기준
 
 - 산출: `spec.md` · `plan.md` · `acceptance.md` · `progress.md` · `decision-index.md` (Tier M 산출 집합 + progress + decision gate `interview.decision_gate: on`).
 - Tier: **M**(O-1 로 올림). 개수 규칙: 요구 = `### REQ-` 제목 수 14, 수락 기준 = `### AC-` 제목 수 16(하위 ID 없음; R1 분할로 AC-016 추가) — 둘 다 상한 16 이하이고 AC 는 상한에 닿았다. 번호 단정 62개(acceptance.md §E). 파일: 코드+테스트 ≈15(M 대역 상단), 미러·문서 ≈25, 합 ≈40(plan.md §H).
-- plan_status: **audit-ready (개정 3판)** — plan_complete_at: 2026-10-02. plan-audit 1회차 = FAIL 0.76(PA-1), **2회차 = FAIL 0.79**(PA-2, 보고서 `.moai/reports/t1422/plan-audit-iter2.md`, 감사 트리 `a0d801409`; 마지막 허용 반복). 이 개정이 R1·R2·N1-N11 을 반영했고 **3회차 감사는 아직 수행되지 않았다**(이 줄은 작성 레인의 준비 신호이지 감사 판정이 아니다).
+- plan_status: **audit-ready** — plan_complete_at: 2026-10-02. plan-audit 1회차 = FAIL 0.76(PA-1), 2회차 = FAIL 0.79(PA-2), **3회차 = PASS 0.835**(보고서 `.moai/reports/t1422/plan-audit-iter3.md`, 감사 커밋 `d242e0ea933ea0f9d237a166d78e6a1f78b419be` — 위「plan-audit 이력」). 해시 기준선은 위「해시 기준선」절의 세 값이다. 감사 3회차의 비차단 항목은「M1 테스트 작성으로 이월」에 있다(SPEC 본문은 수정하지 않는다).
 - 측정 원천: 본 트리(`.moai/worktrees/t1422`, 브랜치 `WT-codex-review-lane-scope`, 2026-10-02) 코드 좌표 직접 판독 — spec.md §A, plan.md §B·§D·§F. 리더 제공(미독립 재현): 9~12분·282파일(카드 본문), t1404 본문 3건 오탐.
 - 결정: Q1-Q9 해결(plan.md §G, decision-index.md, 위 Decision Log). 잠정 1건 — Q6(0.22, 리더 수용). O-1(Tier M 유지)·O-2(현 크기 리더 수용)는 해결, O-3(리더 제외의 지속성)은 코드로 미해결인 채 리더가 인계를 수용(B3-1~3, decision-index Q10–Q12). 남은 점검 항목: `baseBranch` 의 SHA 수용·미커밋 파일 포함 여부(미관측 — M3 기록 관측 단계).
 - 충돌 사전 검사: SPEC-CODEX-GATE-SCOPE-001(completed) REQ-CGS-003 만 개정(후속 개정, `amendment_of`). 인접 진행 카드: t1424(manager-develop `tools:` 줄 편집 — 병합 충돌 위험), t1399(`MOAI_KANBAN*` 삭제), t1423(감사관 문서) — plan.md §G.
@@ -98,3 +142,18 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- 입력: tier M · 범위 ≈40 파일(코드+테스트 ≈15, 미러·문서 ≈25) · 도메인 5(Go 소스, 훅·설정 템플릿, 에이전트 정의, 규칙, docs-site) · 파일 언어 혼합(Go + markdown/yaml) · 동시성 이득 LOW(코딩 중심, 마일스톤 간 의존이 강함).
+- 평가: `direct` 미선택(사소하지 않음) · `serial` **선택** · `fanout` 미선택(코딩 중심, 병렬 읽기 이득이 작음) · `sweep` 미선택(균일한 기계적 변환 아님).
+- Decision: serial
+- 근거: 마일스톤 M1→M5 가 서로의 산출(RED 로그, 정책 함수, 등록 도구)에 의존하고 한 작업 트리에 쓰기 에이전트는 하나여야 한다. 마일스톤마다 구현 에이전트를 순서대로 띄운다.
+
+### Kickoff 결정 (자율 형태, `.claude/rules/moai/workflow/auto-semantics.md` §9.1)
+
+- 충족 조건: ① 독립 plan-audit 판정 PASS(3회차 0.835, 합격선 0.80) ② plan 단계 audit-ready 기록(§E.1) ③ plan-artifact 해시 불변 — 위「해시 기준선」세 값을 2026-10-02 에 `shasum -a 256` 으로 다시 계산해 일치를 관측 ④ 열린 차단 없음(잠정 결정은 리더가 수용, O-3 은 리더 인계 항목).
+- keep-set 해당 없음: 환경상 불가능한 작업 없음, 운영자 보유 작업 없음, 외부 공유 시스템에 대한 되돌릴 수 없는 작업 없음(push·PR·develop 통합은 리더 일괄 소관으로 남는다).
+- 참고: 이 카드는 리더 직접 배차라 팩토리 기록에 없고 `factory_decide` 는 레인에 거부되므로 결정 기록은 여기에 둔다.
+
+decision record: decided_by=lane-7 (claude main session, orchestrator role) evidence_refs=.moai/reports/t1422/plan-audit-iter3.md (PASS 0.835, audited commit d242e0ea9), .moai/specs/SPEC-CODEX-REVIEW-OWNERSHIP-001/progress.md §E.1 + 해시 기준선 ladder_path=gate row plan→run Kickoff AUTONOMOUS (auto-semantics.md §9.1)

@@ -1,6 +1,6 @@
 # decision-index.md — SPEC-CODEX-REVIEW-OWNERSHIP-001
 
-`interview.decision_gate: on` — 카드 t1422 조립 중 표면화된 결정 중 운영자가 인터뷰에서 확정하지 않은 것. `Operator verdict` 는 작성 시점에는 비어 있었고, 2026-10-02 에 운영자 위임(Jev `jev-1.13.0`)·리더 승인으로 Q1–Q9 가 채워졌다(Q7 은 2차 배치가 대체: 삭제). **Q6 은 신뢰도 0.5 미만이라 PROVISIONAL** 이며 리더가 수용했다. Q10–Q12 는 plan-audit 1회차 개정 때 올라와 2026-10-02 에 verdict 가 채워졌다(Q12 는 코드로 미해결·인계). **Q13–Q14 는 plan-audit 2회차 개정 때 새로 올라온 미결**이라 verdict 가 비어 있다. 라벨 어휘: DECIDED / POLICY-COVERED / EVIDENCE-NEEDED / FOUNDER. 번호는 plan.md §G 해결된 결정과 일치한다. 각 행은 무엇이 미결이었는지와 왜인지만 적으며 권고를 싣지 않는다.
+`interview.decision_gate: on` — 카드 t1422 조립 중 표면화된 결정 중 운영자가 인터뷰에서 확정하지 않은 것. `Operator verdict` 는 작성 시점에는 비어 있었고, 2026-10-02 에 운영자 위임(Jev `jev-1.13.0`)·리더 승인으로 Q1–Q9 가 채워졌다(Q7 은 2차 배치가 대체: 삭제). **Q6 은 신뢰도 0.5 미만이라 PROVISIONAL** 이며 리더가 수용했다. Q10–Q12 는 plan-audit 1회차 개정 때 올라와 2026-10-02 에 verdict 가 채워졌다(Q12 는 코드로 미해결·인계). Q13–Q14 는 plan-audit 2회차 개정 때 올라왔고 plan-audit 3회차 PASS 뒤인 2026-10-02 에 verdict 가 채워졌다(운영자 위임 Jev `jev-1.13.0`). 라벨 어휘: DECIDED / POLICY-COVERED / EVIDENCE-NEEDED / FOUNDER. 번호는 plan.md §G 해결된 결정과 일치한다. 각 행은 무엇이 미결이었는지와 왜인지만 적으며 권고를 싣지 않는다.
 
 **권위 등록부 점검.** 권위 인용은 커밋된 산출물 — product.md, 완료 SPEC 의 HISTORY·`## Amendments` 행, `.moai/config/sections/*.yaml` 운영자 설정, 프로젝트 헌장 — 만 쓴다. 미커밋 자료(큐 카드 본문, `.moai/reports/**` 증거)는 권위가 아니다. Jev 판정(`.moai/reports/t1422/jev-decisions.md`)은 표시 전용 신호라 권위 등록부 밖이다. 아래 모든 행의 후보 권위를 커밋 트리에서 확인하지 못했으므로 DECIDED·POLICY-COVERED 로 라우팅한 행은 없다. verdict 칸의 Jev 응답은 운영자가 위임한 판단의 기록이지 권위 인용이 아니다.
 
@@ -93,11 +93,11 @@
 - Label: FOUNDER
 - Authority anchor: 없음 — `internal/cli/mcp_progress.go` 머리 주석은 감사 도구가 idle watchdog(stdio 기본 30분)을 재설정하려고 쓴다고 적을 뿐 새 도구가 써야 하는지를 정하지 않는다.
 - Why unresolved: 한 호출의 상한(900s)은 watchdog 창보다 짧지만, 호스트 도구 타임아웃이라는 별개 층이 그 알림으로 늘어나는지는 관측하지 않았다. 알림을 넣으면 두 호출 지점에 한 줄씩이지만 REQ 와 AC 가 하나씩 늘어 Tier M 상한 16 을 넘으므로 Tier 재분류나 SPEC 분리를 먼저 정해야 한다. 이 SPEC 은 넣지 않는 쪽으로 적었다(spec.md §E, plan.md §G 위험 6).
-- Operator verdict:
+- Operator verdict: Jev (operator-delegated), no_heartbeat_residual_risk, confidence 1.00, 2026-10-02 — 새 도구는 `notifyMCPProgress` 를 호출하지 않는다. 호스트 도구 타임아웃 노출은 명시된 잔여 위험으로 남는다(plan.md §G 위험 6). Jev 판정은 표시 전용 신호이며 이 줄은 위임된 판단의 기록이다.
 
 ### Q14: 자기 리뷰의 "빈 자료"를 어떻게 정의하고 AC-010 을 둘로 가르는가?
 
 - Label: FOUNDER
 - Authority anchor: 없음 — `SPEC-MOAI-MCP-SERVER-001` REQ-MCP-012 는 "빈 자료 경로"에서 fail-open 이라고만 적고 정의하지 않는다.
 - Why unresolved: 빈 자료를 스코프별 `git diff` 가 비고 비추적 비런타임 파일이 없는 경우로 정의하면 두 백엔드 모두 리뷰어를 호출하지 않는 동작이 새로 생긴다(codex 는 오늘 변경 유무를 도구가 판정하지 않는다). 그리고 R1 해소를 위해 AC-010 을 advisory·메타데이터(AC-010)와 영수증·`required` 무관(AC-016)으로 갈랐다 — AC 수가 상한 16 에 닿았다.
-- Operator verdict:
+- Operator verdict: Jev (operator-delegated), skip_both_backends_inconclusive, confidence 1.00, 2026-10-02 — 빈 자료(런타임 접두 제외 뒤 카드 diff 가 비었거나 미커밋 diff 가 빈 경우)는 두 백엔드를 모두 호출하지 않고 원인을 밝힌 `inconclusive` 를 돌려준다. **GLM 의 비추적 파일만 있는 경우의 처분은 첫 run 마일스톤(M1 테스트 작성)에서 정한다** — spec.md 정의는 비추적 비런타임 파일이 없을 것을 요구하므로 GLM 쪽에서 감사 I3-2 가 이 경우를 열어 두었다(progress.md「M1 테스트 작성으로 이월」). Jev 판정은 표시 전용 신호이며 이 줄은 위임된 판단의 기록이다.
