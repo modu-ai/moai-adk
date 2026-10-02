@@ -23,11 +23,26 @@ llm:
   claude_bin: ""
 
   # Sub-agent model/effort: agents inherit the main session's model and
-  # effort. The former per-agent profile
-  # matrix (profile / profiles / performance_tier / harness_agents /
-  # agent_overrides) is retired; `moai update` strips these keys from user
-  # files on the next run. Main-session reasoning effort comes from the
-  # preference profile (`moai profile setup`), never from this file.
+  # effort by default. `moai web` exposes per-agent overrides through the two
+  # keys below — an agent without an entry here resolves to the session
+  # model/effort, and an override pinned equal to the profile default is
+  # cleared on save, so deleting your overrides restores plain inheritance.
+  #
+  # profile: the active per-agent model+effort column, one of
+  # {max, medium, low} (empty = the medium default). Distinct from the
+  # retired llm.performance_tier — that key stays retired and `moai update`
+  # still strips it, together with profiles / harness_agents and the
+  # workflow.yaml routing keys.
+  #
+  # agent_overrides: per-agent {model, effort} pins keyed by canonical agent
+  # name, applied on top of the active profile's cell. model is one of
+  # {inherit, haiku, sonnet, opus, fable}; effort is one of
+  # {low, medium, high, xhigh, max} (inert under haiku — effort select is
+  # disabled in the console and backfilled with the resolved value).
+  profile: ""
+  agent_overrides: {}
+  # Main-session reasoning effort comes from the preference profile
+  # (`moai profile setup`), never from this file.
   #
   # Under a GLM backend (team_mode: glm), z.ai exposes a 3-level
   # reasoning_effort control (low/high/max; GLM-5.3 reasons ALWAYS — reasoning

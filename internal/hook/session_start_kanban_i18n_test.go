@@ -37,6 +37,7 @@ func TestKanbanLocalesCoverEveryField(t *testing.T) {
 			"settingsVerify":   m.settingsVerify,
 			"specLine":         m.specLine,
 			"backlogSummary":   m.backlogSummary,
+			"gateSummary":      m.gateSummary,
 			"companionJoin":    m.companionJoin,
 		}
 		for name, value := range fields {
