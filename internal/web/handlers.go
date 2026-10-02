@@ -11,8 +11,10 @@ import (
 
 	"path/filepath"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
+	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
 
 // pageView is the typed view-model for the Console page. It is the input to the
@@ -66,6 +68,30 @@ type pageView struct {
 	// 디스크 현재값(FieldDef.Name → 문자열)과 REQ-WC11-062 raw view 블록 텍스트.
 	SchemaValues map[string]string
 	RawBlocks    map[string]string
+
+	// Agent-overrides sub-section state (SPEC-WEB-AGENTFM-RESTORE-001 M3).
+	// PerfTier is the profile selector's seeded value — the ACTIVE profile
+	// after EffectiveProfile resolution (a stored "max" folds to "high" for
+	// display; the selector persists its own wire value verbatim).
+	// PerfTierIsEmpty drives the "(default)" empty-value hint.
+	PerfTier        string
+	PerfTierIsEmpty bool
+
+	// LLM carries the loaded llm.yaml config so the agentfm rows resolve each
+	// agent's selected model/effort through the profile matrix
+	// (template.ResolveAgentModelEffort). On the POST re-render path a read
+	// failure degrades to the zero value (medium-profile defaults).
+	LLM config.LLMConfig
+
+	// PerfTierCustom marks the client "Custom" pseudo-state: true when
+	// llm.agent_overrides is non-empty, so the perf-tier control preselects
+	// the Custom radio instead of a named tier (G3-4). Custom is a derived
+	// display state, NOT a persisted enum value.
+	PerfTierCustom bool
+
+	// AgentFMs is the scanned agent roster for the sub-section rows (M4
+	// render); a scan failure degrades to nil (empty section, page renders).
+	AgentFMs []agentfm.AgentInfo
 
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
@@ -412,6 +438,25 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	jevKeySubmitted := parseJevKeyForm(r)
 	jevKeyErrs := validateJevKey(jevKeySubmitted)
 
+	// SPEC-WEB-AGENTFM-RESTORE-001 M3: parse the performance_tier selector
+	// (wire field at the top of the agent-overrides sub-section) BEFORE the
+	// agentfm edits, because it is the target tier the per-agent default
+	// comparison resolves under. A "custom" submission (the client
+	// pseudo-state) resolves to "" here (preserve).
+	perfTier, perfTierErrs := parsePerfTierForm(r)
+
+	// Parse the per-agent model/effort edits into the desired
+	// llm.agent_overrides state. Resolution is against the loaded llm.yaml
+	// (the read seam SSOT); a load failure degrades to the zero config
+	// (medium-profile defaults). 목록 실패는 편집 불가로 저하한다. 정렬은
+	// resolved model/effort 기반이므로 llm.yaml 을 먼저 로드해 넘긴다.
+	var llmCfg config.LLMConfig
+	if loaded, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot); err == nil {
+		llmCfg = loaded.LLM
+	}
+	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot, llmCfg)
+	agentPins, agentSubmitted, agentErrs := parseAgentFMForm(r, agents, llmCfg, perfTier)
+
 	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge
 	// their FieldErrors. Any failure → atomic reject (EC-2): leave ALL persisted
 	// state unchanged and re-render with per-field errors.
@@ -423,6 +468,12 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		fieldErrs[k] = v
 	}
 	for k, v := range schemaErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range agentErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range perfTierErrs {
 		fieldErrs[k] = v
 	}
 	for k, v := range glmKeyErrs {
@@ -508,6 +559,28 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		logSaveFailure("applySchemaEdits", "profile preferences saved, but section config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but section config write failed: "+err.Error())
+		return
+	}
+
+	// SPEC-WEB-AGENTFM-RESTORE-001 M3: persist the profile selector to
+	// llm.profile (only when changed; the retired performance_tier alias is
+	// never written). Runs BEFORE patchAgentFM so an explicit per-agent
+	// override submitted in the same request still wins over the newly-applied
+	// tier's baseline (its comparison already ran against this tier).
+	if err := a.applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
+		logSaveFailure("applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed")
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but performance_tier apply failed: "+err.Error())
+		return
+	}
+
+	// Persist per-agent model/effort edits to llm.agent_overrides (settings
+	// block-splice seam). Agent .md frontmatter is NEVER mutated by the
+	// console (REQ-AFR-005).
+	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentPins, agentSubmitted); err != nil {
+		logSaveFailure("patchAgentFM", "settings saved, but agent override write failed")
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"settings saved, but agent override write failed: "+err.Error())
 		return
 	}
 

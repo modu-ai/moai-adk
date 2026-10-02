@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
@@ -458,7 +459,8 @@ func parseSchemaForm(r *http.Request, current map[string]string) (map[string]str
 }
 
 // applySchemaCurrent는 확장 필드 + read-only 표시 키 + raw view 블록의 디스크
-// 현재 값을 뷰모델에 시드한다.
+// 현재 값과 에이전트 오버라이드 표면의 현재 상태를 뷰모델에 시드한다
+// (SPEC-WEB-AGENTFM-RESTORE-001 M3).
 func (a *app) applySchemaCurrent(view *pageView) error {
 	values, err := a.schemaCurrentValues(a.cfg.ProjectRoot)
 	if err != nil {
@@ -470,6 +472,30 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 	}
 	view.SchemaValues = values
 	view.RawBlocks = blocks
+
+	// Seed the profile selector rendered at the top of the agent-overrides
+	// sub-section. llm.yaml is read directly — this field is deliberately NOT
+	// part of the generic schema (plan §B-6); the save persists to llm.profile
+	// only and never mutates agent frontmatter (REQ-AFR-005).
+	cfg, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot)
+	if err != nil {
+		return err
+	}
+	// The ACTIVE profile after alias folding — a stored "max" displays folded.
+	view.PerfTier = cfg.LLM.EffectiveProfile()
+	view.PerfTierIsEmpty = strings.TrimSpace(cfg.LLM.Profile) == ""
+
+	// Agent roster seeding: a list failure degrades to an empty section — the
+	// page itself must not fail (design §C.1 robustness).
+	if agents, err := a.listAllAgentFMs(a.cfg.ProjectRoot, cfg.LLM); err == nil {
+		view.AgentFMs = agents
+	}
+
+	// Seed the loaded LLM config so the rows resolve each agent's
+	// model/effort through the profile matrix, and preselect the Custom
+	// pseudo-tier when any per-agent override is present.
+	view.LLM = cfg.LLM
+	view.PerfTierCustom = len(cfg.LLM.AgentOverrides) > 0
 	return nil
 }
 

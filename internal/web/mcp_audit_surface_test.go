@@ -78,12 +78,12 @@ func TestWebConsole_AuditNoForkedInterpreter(t *testing.T) {
 // app.go :3100 patchAgentFM wiring, handlers.go :6488 the template resolver
 // call, schemaform.go :7098/:7115 EffectiveProfile/AgentOverrides reads, and
 // the re-ported agentfm.go which calls template.ResolveAgentModelEffort).
-// The set tracks reality per milestone: M2 allowlists the three surviving
-// files the M3 save path lands in; M3 adds agentfm.go when it re-ports the
-// parse/render helpers that call template.ResolveAgentModelEffort. Every
-// OTHER non-test internal/web file — the generated fieldsets_templ.go
+// The set tracks reality per milestone: M3 added agentfm.go when it re-ported
+// the parse/persist helpers that call template.ResolveAgentModelEffort.
+// Every OTHER non-test internal/web file — the generated fieldsets_templ.go
 // included — stays sentinel-free.
 var agentfmSurfaceFiles = map[string]bool{
+	"agentfm.go":    true,
 	"app.go":        true,
 	"handlers.go":   true,
 	"schemaform.go": true,
