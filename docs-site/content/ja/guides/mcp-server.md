@@ -60,9 +60,9 @@ flowchart TD
 
 `staggeredStartup` はサーバーが順次起動するように調整する Claude Code ランタイムのフィールドです。サーバーが複数あるとき同時起動の競合（race）を防ぎます。
 
-### 4つの documented-but-disabled エントリ
+### 5つの documented-but-disabled エントリ
 
-配布デフォルトは `moai` サーバー1つだけがアクティブです。4つの外部サーバーは文書に記録されていますが無効状態で、`moai mcp add <名前>` コマンドで有効にします。
+配布デフォルトは `moai` サーバー1つだけがアクティブです。5つの外部サーバーは文書に記録されていますが無効状態で、`moai mcp add <名前>` コマンドで有効にします。
 
 | サーバー | 用途 | 有効化 |
 |------|------|--------|
@@ -70,6 +70,9 @@ flowchart TD
 | `chrome-devtools` | ヘッドレスブラウザ自動化 | `moai mcp add chrome-devtools` |
 | `playwright` | ブラウザ自動化 + E2E テスト | `moai mcp add playwright` |
 | `ast-grep` | 構造的コード検索とリファクタリング | `moai mcp add ast-grep` |
+| `aside` | ログイン済みブラウザの中で動く任意のブラウザエージェント (exec, repl) | `moai mcp add aside --command aside --args mcp --scope user` |
+
+`aside` は任意の選択肢です。デフォルト構成には含まれず、どのワークフローもこのサーバーを前提にしません。全プロジェクトに登録するには `moai mcp add aside --command aside --args mcp --scope user` を実行し、現在のプロジェクトだけに登録する場合は `--scope user` を省きます。`aside mcp` は 2 つのツールを提供します。`exec` はログイン済みのサイトでブラウザエージェントを動かし、`repl` は開いているページに対して Playwright 形式の JavaScript を実行します。運用者自身のログイン済みブラウザの中で動くため、Moai は既定で読み取り専用として使い、`--permission full-access` では使いません。状態を変更する手順には運用者の明示的な確認が必要で、その確認を求めて実行するのは MoAI オーケストレーターだけです（サブエージェントは行いません）。MoAI が Aside をインストールすることはありません。Aside 自体のブラウザスキルを追加したい場合は、運用者が自分で `aside skills install` を実行します。E2E ワークフローで使えるのは `/moai e2e --tool aside` を明示したときだけで（`CI=true` では利用不可）、Aside がなければ何も表示せずプラットフォーム既定のツールチェーンで続行します。
 
 ### 中立性契約
 

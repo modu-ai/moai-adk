@@ -327,6 +327,43 @@ Checker-blindness probes (run on the GREEN tree, each reverted with `git checkou
 - Orchestrator-run Aside steps enlarge the orchestrator's context; the workflow bounds that by redirecting output to `e2e/.runs/` and citing screenshots by path, which is text, not enforcement.
 - `aside repl` has no permission flag, so its read-only limit is discipline only (stated in the skill).
 
+### M3.5 (docs-site guides, four locales) — commit subject `docs(SPEC-ASIDE-BROWSER-001): document the optional Aside MCP server in the MCP guide (card t1439)`
+
+Measured by manager-develop (run as a general-purpose agent), branch `WT-aside-browser-cli`, worktree t1439, unless a line names another measurer. No `aside` command was run. The `hugo` runs used `--source docs-site --destination <scratch>` (no `cd`, so nothing was written into the tree).
+
+#### Pre-flight
+
+- `git rev-parse --short HEAD` printed `2231bc22e` (M3 GREEN); `git branch --show-current` printed `WT-aside-browser-cli`; `git status --short` printed nothing before any edit.
+- Baseline lines re-read before editing (verbatim; line 63 heading, line 65 sentence, same line numbers in all four locales):
+  - ko: `### 네 가지 documented-but-disabled 엔트리` / `배포 기본값은 \`moai\` 서버 하나만 활성입니다. 네 개의 외부 서버는 ...`
+  - en: `### Four documented-but-disabled entries` / `The distribution default activates only the \`moai\` server. Four external servers are ...`
+  - ja: `### 4つの documented-but-disabled エントリ` / `配布デフォルトは \`moai\` サーバー1つだけがアクティブです。4つの外部サーバーは ...`
+  - zh: `### 四个 documented-but-disabled 条目` / `部署默认值只有 \`moai\` 一个服务器处于活跃状态。四个外部服务器已 ...`
+- Baseline `hugo --minify --gc --source docs-site --destination <scratch>/hugo-base` on the unedited tree: exit 0; `grep -c -i -E 'WARN|ERROR'` over its log printed `0`; page counts 189 / 187 / 187 / 187 (ko / en / ja / zh); `git status --short` afterwards printed nothing.
+
+#### Edits
+
+Per page, nothing else: the heading numeral and the sentence numeral changed to five (`다섯 가지` / `다섯 개의`, `Five` / `Five`, `5つの` / `5つの`, `五个` / `五个`), one table row for `aside` appended to the table, and one paragraph after the table carrying the exact registration command, the two tools, the read-only default, the orchestrator-only confirmation, the no-install and `aside skills install` operator sentence, and the explicit-only `/moai e2e --tool aside` (unavailable when `CI=true`, silent fallback) sentence. No heading added. Terminology follows each locale's existing pages (ko 운영자 / 서브에이전트 / MoAI 오케스트레이터; ja 運用者 / サブエージェント / オーケストレーター; zh 操作者 / 子智能体 / 编排器).
+
+#### Verification (tree HEAD `2231bc22e` plus the uncommitted four-page edit)
+
+- `grep -c -F 'moai mcp add aside --command aside --args mcp --scope user'` over the four pages: `2` each (table row and paragraph), exit 0.
+- Numeral greps (`Five documented-but-disabled`, `다섯 가지 documented-but-disabled`, `5つの documented-but-disabled`, `五个 documented-but-disabled`): `1` each. The old numerals (`Four external servers`, `네 개의 외부 서버`, `4つの外部サーバー`, `四个外部服务器`, and the four old heading forms): `0` in all four pages. The new sentence forms (`Five external servers`, `다섯 개의 외부 서버`, `5つの外部サーバー`, `五个外部服务器`) each print on line 65 of their page.
+- `hugo --minify --gc --source docs-site --destination <scratch>/hugo-after`: exit 0; `grep -c -i -E 'WARN|ERROR'` over its log printed `0`; `<scratch>/hugo-after/sitemap.xml` exists (`sitemap OK`).
+- Section-count parity of the four pages: `grep -c '^#\{2,\} '` printed `26` for each. Whole-tree ratchet (section 4 of the verify recipe, run without `cd`): 51 divergent pages now, 51 in `docs-site/.locale-parity-baseline`, and `comm -23` printed nothing.
+- URL blacklist grep over `docs-site/content` and `README*.md`: no output, exit 1. Mermaid direction grep: no output, exit 1. Body-emoji scan over the four pages: no output, exit 1.
+- `moai spec lint SPEC-ASIDE-BROWSER-001 --strict`, binary built by `go build -o <scratch>/moai-m35 ./cmd/moai` from this tree (exit 0; no commit stamp, built without the Makefile `LDFLAGS`; judging-build coordinate: tree HEAD `2231bc22e` plus uncommitted docs edits): exit 0, output `✓ No findings — all SPEC documents are valid`.
+
+#### Gaps (M3.5)
+
+- Not run: any Go test suite (by instruction); the version-string check (section 6) and the README parity check, which this change does not touch. The body-emoji scan covered the four edited pages, not the whole tree.
+- The AC names `cd docs-site && hugo ...` and `test -f docs-site/public/sitemap.xml`; the `cd` form was avoided (worktree guard discipline), so the build wrote to a scratch destination and the sitemap was tested there.
+- Native-idiom review of the ja and zh paragraphs is by the author only; no native-speaker or humanize pass was run.
+
+#### Residual risk (M3.5)
+
+- The paragraph repeats the facts of the skill in prose; if the skill or `e2e.md` wording changes, the four pages carry no mechanical guard against drifting from it (the only guards are the command and numeral greps above).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
