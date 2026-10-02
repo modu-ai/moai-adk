@@ -32,6 +32,9 @@ const (
 	rxdPointerMaxLine = 2
 	rxdPointerMaxWord = 40
 	rxdSetupTool      = "mcp__moai__codex_setup"
+	// rxdHarnessPhrase is the harness-scope signal the manager-develop pointer
+	// paragraph must carry in both trees.
+	rxdHarnessPhrase = "Claude Code sessions only"
 )
 
 // rxdToolsPrefix is the manager-develop `tools:` line as it stood before the
@@ -130,6 +133,14 @@ var rxdSubsections = []rxdSubsection{
 // period, or `allow_write` followed by true within 20. It is lexical; the
 // plan-auditor and sync-auditor reading owns what it cannot decide.
 var rxdWriteInstruction = regexp.MustCompile(`(?i)\bwrite\b[^.\n]{0,40}\b(true|enabled|on)\b|allow_write[^.\n]{0,20}\btrue\b`)
+
+// rxdWholeWordWrite matches the bare word `write` only: `allow_write` (the
+// underscore is a word character) and `writes` do not match.
+var rxdWholeWordWrite = regexp.MustCompile(`\bwrite\b`)
+
+// rxdNeverSets is the phrase the sentence carrying the one whole-word `write`
+// must contain.
+const rxdNeverSets = "never sets"
 
 var rxdListMarker = regexp.MustCompile(`^\s*([-*]|[0-9]+\.)\s`)
 
@@ -236,6 +247,33 @@ func rxdWriteHits(file, content string) []string {
 		}
 	}
 	return hits
+}
+
+// rxdWholeWordWriteLines reports every line of a section slice that holds the
+// whole word `write`, as "line N: text" with N relative to the slice (the
+// heading is line 1), together with the total number of occurrences.
+func rxdWholeWordWriteLines(section string) ([]string, int) {
+	var hits []string
+	total := 0
+	for i, l := range strings.Split(section, "\n") {
+		if n := len(rxdWholeWordWrite.FindAllStringIndex(l, -1)); n > 0 {
+			total += n
+			hits = append(hits, "line "+strconv.Itoa(i+1)+": "+l)
+		}
+	}
+	return hits, total
+}
+
+// rxdSentenceWithWrite returns the sentences of a line that hold the whole
+// word `write`; sentences are split on ". ".
+func rxdSentenceWithWrite(line string) []string {
+	var out []string
+	for _, s := range strings.Split(line, ". ") {
+		if rxdWholeWordWrite.MatchString(s) {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // rxdMultisetDelta is the multiset line difference between two texts: the sum,
@@ -452,10 +490,37 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 					if strings.Contains(section, "allow_write: true") {
 						t.Errorf("%s: section carries the literal `allow_write: true`", where)
 					}
+
+					// Positive check: the whole word `write` occurs exactly
+					// once in the section and its sentence says `never sets`.
+					// The lexical negative check above cannot see a spelling
+					// such as "the agent enables the write argument".
+					const writeReason = "a second whole-word `write` in the section needs review: this is the only mechanical control that keeps a delegated codex turn read-only where the project opt-in is on"
+					hits, total := rxdWholeWordWriteLines(section)
+					if total != 1 {
+						t.Errorf("%s: whole-word `write` occurs %d times in the delegation section, want exactly 1; matching lines: %s; %s", where, total, strings.Join(hits, " | "), writeReason)
+					} else {
+						for _, l := range strings.Split(section, "\n") {
+							for _, sentence := range rxdSentenceWithWrite(l) {
+								if !strings.Contains(sentence, rxdNeverSets) {
+									t.Errorf("%s: the sentence holding the one whole-word `write` does not contain %q: %s; %s", where, rxdNeverSets, hits[0], writeReason)
+								}
+							}
+						}
+					}
 				}
 			}
 
 			if s.name == "request" {
+				// Positive controls for the whole-word counter: it must see the
+				// bare word twice and must not see `allow_write` or `writes`.
+				if _, n := rxdWholeWordWriteLines("the agent enables the write argument. The agent never sets the write argument"); n != 2 {
+					t.Errorf("positive control failed: the whole-word counter found %d occurrences in a two-occurrence string", n)
+				}
+				if _, n := rxdWholeWordWriteLines("allow_write and writes are not the bare word"); n != 0 {
+					t.Errorf("positive control failed: the whole-word counter matched allow_write or writes (%d)", n)
+				}
+
 				// Positive controls: the expression must fire on a known-bad
 				// string and on the real tool registration, otherwise an empty
 				// result above could come from a broken expression.
@@ -501,6 +566,9 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 							break
 						}
 						para = append(para, l)
+					}
+					if rel == rxdAgentPath && !strings.Contains(strings.Join(para, " "), rxdHarnessPhrase) {
+						t.Errorf("%s:%d: the pointer paragraph does not contain the harness-scope phrase %q", where, at+1, rxdHarnessPhrase)
 					}
 					words := len(strings.Fields(strings.Join(para, " ")))
 					if len(para) > rxdPointerMaxLine {

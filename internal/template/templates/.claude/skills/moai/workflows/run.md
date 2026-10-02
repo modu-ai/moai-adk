@@ -246,13 +246,13 @@ A test expectation, a fixture or golden-file content is obtained by running the 
 
 Delegation is optional and fails open. When a backend is unavailable, inconclusive, failed or empty, the agent cancels the job if it started one, does the subtask itself, and returns no blocker report on account of the failed delegation.
 
-A job that is still not terminal after at most five reads of the job status or result tool, counted together, is a failed delegation. The agent makes the reads one at a time, each read follows a unit of its own work on files the prompt does not name, and the wait is never a sleep loop. There is no minimum number of reads: a job still not terminal when the agent has no such work left is a failed delegation after fewer than five reads.
+A job that is still not terminal after at most five reads of the job status or result tool, counted together, is a failed delegation: the agent cancels the job and does the subtask itself. The agent makes the reads one at a time, each read follows a unit of its own work on files the prompt does not name, and the wait is never a sleep loop. There is no minimum number of reads: a job still not terminal when the agent has no such work left is a failed delegation after fewer than five reads.
 
 ### One-writer rule
 
 While a job is in flight the agent does not edit the files named in an in-flight prompt. The agent reads or cancels every job it started before reporting completion, so no job outlives the cycle.
 
-This section binds only the agent's own edits; the orchestrator owns the one-writer-per-tree rule (see Background Agent Execution in `.claude/rules/moai/core/agent-common-protocol.md`). The external model never writes the tree because `workflow.codex.task.allow_write` stays off; the key is named and its opt-in value never is.
+This section binds only the agent's own edits; the orchestrator owns the one-writer-per-tree rule (see Background Agent Execution in `.claude/rules/moai/core/agent-common-protocol.md`). The external model never writes the tree because the agent never sets the argument named in Request construction; `workflow.codex.task.allow_write` ships off, and the agent does not rely on that default. The key is named here and its opt-in value never is.
 
 ### Harness scope
 
