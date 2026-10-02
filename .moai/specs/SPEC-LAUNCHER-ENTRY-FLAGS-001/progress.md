@@ -2052,6 +2052,67 @@ Owners: the web package, its template sources, assets, i18n keys, route, SSE key
 3. plan.md M8 and AC-018 count the importers at 179 and the references at 1,689/1,830; on `4e7a60232` the measured numbers are 183 importers and 1,894 qualifiers (the plan's models predate later merges).
 4. AC-018's `find` reads 5 names after M8, not the 4 template paths alone: `internal/web/preexisting_kanban_artifacts_m1_test.go` carries the word in its file name and is not in plan.md M9's rename list (M9 renames the web identifiers and sources; this test file name is not mentioned).
 
+### M9 evidence
+
+Recorded by the run-phase implementation worker (cycle_type ddd: the milestone is a behavior-preserving rename of the web console surface plus the decided removals, the chain session board and its view model, and the decided route behavior, `GET /kanban` redirects to `/factory`; characterization is the whole `internal/web` suite and the factory net) for milestone M9 of card t1399, branch `WT-launcher-entry-flags`. Start state, re-read before any change: `pwd` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1399`, `git rev-parse --short HEAD` printed `8d50c79d6`, `git branch --show-current` printed `WT-launcher-entry-flags`, `git status --short` printed nothing. Every output block below is a command run in this run on this tree (HEAD `8d50c79d6` until the first commit of this milestone), with what it drops stated. The sections grow in the commits of this milestone: this commit records the sizing, the baseline, and the RED-now of AC-019; later commits add the test, the program, its results, the hand fixups, and the self-verification.
+
+#### Sizing on this tree (measured before any change)
+
+```text
+$ grep -rlP '(?i)(?<!moai_)kanban|moai_kanban(?!_(id|lead_addr|lead_name|settings_injected|backend|card)\b)|칸반|かんばん|カンバン|看板' internal/web      (every file, tests included)
+34 files (counted by a separate | wc -l), 328 lines (grep -rIP ... | wc -l)
+$ the AC-018 command restricted to internal/web (--include='*.go' --include='*.templ' --include='*.js' --exclude='*_test.go' --exclude-dir=testdata --exclude-dir=node_modules)
+internal/web/todo_queue_read.go
+internal/web/shell.templ
+internal/web/shell_templ.go
+internal/web/screens_templ.go
+internal/web/factory_lanes.go
+internal/web/events.go
+internal/web/widgets.templ
+internal/web/app.go
+internal/web/widgets_templ.go
+internal/web/screens.templ
+internal/web/viewmodel_ops.go
+internal/web/icons.templ
+internal/web/icons_templ.go
+internal/web/screens.go
+internal/web/assets/i18n.js
+internal/web/assets/app.js
+$ find internal -iname '*kanban*'
+internal/web/preexisting_kanban_artifacts_m1_test.go
+internal/template/templates/.claude/skills/moai-kanban-foreman
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-mechanics.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md
+$ grep -c 'kanban' internal/web/assets/i18n.js ; grep -c '"kanban\.' internal/web/assets/i18n.js
+84 ; 72        (the key family; 86 lines by case-insensitive count, the other two carry the word in a value: "Kanban chain", "Open in Kanban")
+$ grep -c 'data-live="kanban"' internal/web/screens.templ ; grep -c '"/kanban"' internal/web/app.go ; grep -n '"kanban"' internal/web/events.go internal/web/assets/app.js internal/web/icons.templ internal/web/screens.go
+4 ; 1 ; events.go:35 (watch map key), events.go:223 and :225 (two path registrations), assets/app.js:614 (EVENTS list), icons.templ:72 (case "kanban"), screens.go:141 (area id)
+Go and templ identifiers carrying the word: KanbanRecord 25, writeKanbanRecord 16, loadKanbanRecords 16, Kanban 13, KanbanVM 12, kanbanBodyFor 11, buildKanban 4, handleKanban 2, and six test names (TestTodoSectionCarriesExistingKanbanMarker, TestKanbanRoleWithNoTelemetryRecord, TestKanbanPipelineColumns, TestKanbanNoteBannerCorrected, TestKanbanLaneStates, TestKanbanChainRoleStates, two occurrences each) plus the pinned TestPreexistingKanbanArtifactsTolerated (1); these counts are text occurrences from `grep -o` over *.go and *.templ including the generated *_templ.go files, so they are an upper bound of the identifier count the syntax-tree program reports.
+```
+
+None of the five tests AC-019 selects exists on this tree: `grep -rn 'TestLegacyKanbanRouteRedirects\|TestFactoryScreenOmitsChainBoard\|TestFactoryScreenStillShowsFactoryLanes\|TestTodoScreenStillLive\|TestWebLiveKeyContract' internal` finds only the pinned-name entry of `internal/cli/retired_word_identifiers_m7_test.go:35`. AC-019's RED-now commands on this tree (the ledger's RED-W1 and RED-W2):
+
+```text
+$ grep -c 'Chain session board' internal/web/screens.templ
+1                                    (exit 0)     RED-W1: the chain board panel exists
+$ grep -c '"/kanban"' internal/web/app.go
+1                                    (exit 0)     RED-W2: the route is registered as a screen
+```
+
+The recipes the program must keep working are in the section the program commit adds. The tools: the generated files are produced by the Makefile target `templ-generate`, whose command is `go run github.com/a-h/templ/cmd/templ generate -path ./internal/web` (Makefile line 32; `go.mod` pins `github.com/a-h/templ v0.3.1020` as a `tool` directive and the module is in the module cache, so no network is needed); run on this clean tree it printed `(✓) Complete [ updates=0 duration=123.138583ms ]` and `git status --short` printed nothing afterwards (the base's generated files are in sync with their sources). `golangci-lint` is `v2.1.6` (the CI version) and `golangci-lint run --timeout=5m ./internal/web/...` printed `0 issues.` on this tree.
+
+#### Baseline before any change (characterization)
+
+One compound invocation, environment scrubbed, output to a scratch file, counts by `grep -c '^--- PASS'` (top-level test lines; sub-tests are indented and not counted):
+
+```text
+$ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && go test ./internal/web -count=1 -v -timeout 560s
+internal/web (whole)   ok  35.302s   top-level PASS 536, FAIL 0, SKIP 7
+```
+
+The sorted list of the 536 passing top-level names is kept in the gitignored scratch area of the session and is compared with the after list in the self-verification. Resource lease: `moai slot acquire --resource t1399-run --max-duration 60m` printed `slot t1399-run acquired by 0dcdf2d5-df5c-4da1-8870-24c2a5861303 until 2026-10-02T19:19:18Z`; it is released before the milestone's last commit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
