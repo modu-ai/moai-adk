@@ -238,7 +238,7 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M5 + catalog cascade + AC-00
 ```yaml
 amendment_sync_status: complete
 amendment_sync_complete_at: 2026-10-03
-amendment_sync_commit_sha: "pending-backfill-sync"   # 커밋이 자기 해시를 인용할 수 없다 — 직후 커밋에서 백필 (D3 예외)
+amendment_sync_commit_sha: "f628fb2d8"   # 커밋이 자기 해시를 인용할 수 없어 플레이스홀더로 착지한 뒤 직후 커밋에서 백필함 (D3 예외)
 prior_completed_sha: "34f09f34d"                      # 최초 close; spec.md `## Amendments`가 인용하는 값과 동일
 amendment_commits: "250c03899 → 165283948 (WT-factory-serial-slot-stale-lease, 기준 7109e0900; push 안 함 — 통합은 리더 몫)"
 amendment_scope: "serial 슬롯 3동작 — 만료 임대는 슬롯을 쥐지 않음 / assigned 형제는 새 카드 경로에서만 슬롯을 쥠(옵션 B) / failed는 종단·슬롯 해제"
