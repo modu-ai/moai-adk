@@ -242,6 +242,64 @@ six doc pins of G2: `TestFactoryNextSerialMutualExclusivity`, `TestFactoryNextSk
 `TestAutoHelpAndRefusalDoNotAssertPickOrder`, `TestTodoSkillDocumentsClassification` → exit 0, 12 of 12 top-level tests
 `--- PASS` (73 `=== RUN` lines with subtests), `ok  github.com/modu-ai/moai-adk/internal/cli  12.575s`.
 
+### M2 — nomination and the shared keep-set predicate (GREEN)
+
+Files: `internal/cli/factory_card.go` only (plan §5). New: the named constant `factoryNextRefusedExit = 4`
+(`git grep -n "factoryNextRefusedExit" -- internal/cli` was empty at M1; `moai slot` uses 4 as `slotExitBusy` in a
+different verb family — no collision inside `factory*.go`), the twelve `factoryToken*` constants, the
+`factoryNominateRefusal` error (carries the status itself), the shared predicate `factoryKeepSetRefusal`, the
+read-only `factoryNextValidate`, `factoryNextNominate` (validate / promote inside `Mutate` with re-validation / seam then
+claim through `factoryNextRecordAndClaim` and `factoryNextClaim` / compensate), `factorySerialInFlightExcluding`
+(the serial-slot closure of the unnominated arms, extracted so both read one function), `factoryQueuedHoldMarked`
+(arm (c) skip, counted as seen), the `--card` flag, and the nominated branch of the `next` loop (`--wait` waits
+through `raced`, `serial-slot`, `quota-hold`, ends at once on any other refusal; a blank `--card` is an exit-1 error,
+never a silent fall-back to the priority-order lease).
+
+**GREEN, HEAD `095ac6c3e` + M1 commit `0f127e624` + the M2 working tree.** Command (one compound invocation, anchored,
+16 names): `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED
+MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER && go test ./internal/cli -run '^(TestFactoryNextNominateLeasesNominee|TestFactoryNextNominateUnknownCard|TestFactoryNextFlagSet|TestFactoryNextNominateConcurrentLanes|TestFactoryNextNominateSameCardExactlyOne|TestFactoryNextNominateRefusesKeepSet|TestFactoryNextArmCSkipsHoldMarker|TestFactoryNextNominateQuotaHold|TestFactoryNextNominateBackendSkip|TestFactoryNextNominateRecordStateTokens|TestFactoryNextNominateRefusalLeavesStateUnchanged|TestFactoryNextNominatePromoteThenLose|TestFactoryNextNominateClaimRefusedRollsBack|TestFactoryNextNominateCompensationFailure|TestFactoryNextAllMarkerQueueExitsNoCard|TestFactoryNextBareUnchanged)$' -count=1 -v`
+→ exit 0, 75 `=== RUN` lines, 16 of 16 top-level tests `--- PASS` (59 subtests `--- PASS`), `ok
+github.com/modu-ai/moai-adk/internal/cli  134.150s` (a loaded machine: other lanes were running). The golden
+`TestFactoryNextBareUnchanged` stayed GREEN through the arm (c) change, the closure extraction and the new flag.
+The two compensation-sensitive tests were re-run after a lint-driven rewrite of one condition (below): 4 of 4
+`--- PASS`, `ok … 14.277s`.
+
+**The existing lease and next-surface pins stay green** (anchored, scrubbed, `-v`): the six lease pins of
+`factory_classify_test.go` (`TestFactoryNextSerialMutualExclusivity`, `TestFactoryNextSkipsClassificationBlocked`,
+`TestFactoryNextParallelizableConcurrentLeases`, `TestFactoryNextRecordAndClaimRaceOnLeasedRow`,
+`TestFactoryNextDuplicateDispatchGuard`, `TestFactoryNextClaimRefusedMapsRace`) plus `TestSD_AC008_NextSelectionOrderAndOutput`,
+`TestSD_AC009_NextWaitLeasesOrTimesOut`, `TestSD_AC010_NextRefusedOutsideParent`, `TestSD_AC010_MCPNextParentCheck`,
+`TestSD_AC011_CardWorktreeCreateReuseRefuse`, `TestSD_AC014_MCPMatchesCLIWithProjectRoot`,
+`TestSD_AC014_ProjectRootRequired`, `TestQAS_AC008_ClaudeLaneHeldAtThreshold`, `TestQAS_AC008b_MCPFactoryNextHeld`,
+`TestQAS_AC009_HoldLineCarriesResetTime` → exit 0, 16 of 16 `--- PASS`, 46 `=== RUN` lines, `ok … 148.281s`.
+
+**Mutant check (MU-33, compensation steals the winner's queue state).** The restore guard disabled
+(`if false && row != nil && …` in `factoryNominateCompensate`) → `go test … -run '^(TestFactoryNextNominatePromoteThenLose)$'` exit 1:
+`factory_nominate_test.go:859: t1 queue state = queued, want picked (the competitor's state is left alone)`; reverted.
+
+**Race detector.** `go test -race ./internal/cli -run '^(TestFactoryNextNominateConcurrentLanes|TestFactoryNextNominateSameCardExactlyOne|TestFactoryNextNominatePromoteThenLose)$' -count=1`
+→ exit 0, no `DATA RACE`, `ok … 26.005s`. (The concurrency tests hold both invocations at the seam until both have
+arrived, so the two claims contend for real; a lane label is read once at the start of an invocation.)
+
+**Lint (CI version, stated: `golangci-lint v2.1.6`).** `golangci-lint run --timeout=5m ./internal/cli/` after the first M2
+draft: 1 NEW issue, `factory_card.go:942:19: QF1001: could apply De Morgan's law (staticcheck)` — fixed in place (the
+negated conjunction in `factoryNominateCompensate` rewritten as the disjunction); re-run: `0 issues.`, exit 0.
+`GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+
+**Design notes and deviations from plan.md (none contradicts a requirement).**
+1. `blocked` is applied to a nominee in any queue state (REQ-TAU-009 states it unqualified; only `hold-marker` is
+   qualified `queued`), so an operator-picked card whose classification is `blocked` is refused when NOMINATED while
+   the bare arms (b)/(b2) still lease it as before. The bare path is untouched by design.
+2. A queue state outside `{queued, picked, dropped, hold}` (a state added later) is refused with the token `held` and a
+   detail naming the state — positive enumeration of the leasable states, so a new state is never leased by accident.
+3. Check order inside the read-only validation: `unknown-card`, then the keep-set predicate (`dropped`, `held`, `owned`,
+   `recorded`, `hold-marker`, `blocked`, `serial-slot`), then `foreign-worktree`, `quota-hold`, `backend-skip`. spec § C.2 is a
+   set, not an order.
+4. The refusal line is printed by the verb itself (the real root never prints an exit-coded error, as for the quota
+   hold line); the cobra error carries status 4 through `ExitCoder`.
+5. `compensation failed` (the restoring write errors) and a post-`RecordPicked` failure remain specified-and-untested,
+   as spec § B.8 and § G state; the single seam sits before `RecordPicked`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
