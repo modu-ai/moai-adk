@@ -60,7 +60,7 @@ related_specs: [SPEC-AGENT-MODEL-INHERIT-001, SPEC-AGENT-TIER-001, SPEC-WEB-CONS
 
 ### B.4 상위 SPEC 수정 관계
 
-- **REQ-AFR-014** (Ubiquitous): The restoration shall be recorded as a narrow amendment of SPEC-AGENT-MODEL-INHERIT-001 — REQ-AMI-011 gains the operator-directed console-surface exception, REQ-AMI-013 narrows to the still-retired key set (`performance_tier`, `harness_agents`, workflow keys) — following the repo's completed-SPEC amendment precedent (SPEC-JEV-CORE-001 v0.2.0/v0.3.0 형식: HISTORY 행, 요구사항 삭제 없음, id 재번호 없음, `status`·`sync_commit_sha` 불변).
+- **REQ-AFR-014** (Ubiquitous): The restoration shall be recorded as a narrow amendment of SPEC-AGENT-MODEL-INHERIT-001 — REQ-AMI-011 gains the operator-directed console-surface exception, REQ-AMI-013 narrows to the still-retired key set (`performance_tier`, `harness_agents`, workflow keys) — following the repo's completed-SPEC amendment contract (spec-frontmatter-schema.md § completed → in-progress (amendment): HISTORY 행, 요구사항 삭제 없음, id 재번호 없음, `amendment_of` + `## Amendments` + `prior_completed_sha` = 기존 close의 `sync_commit_sha` 기록; `sync_commit_sha` 불변, 상태 축은 SSOT 수정 전이 `completed → in-progress`를 따른다 — sync-audit F7 재기술). 수정안 SPEC의 재완료는 수정 범위의 독립 검증 후 본 카드와 별도 close 커밋으로 수행하며(§E.4 갱신 동반), 그 전까지 드리프트-면제 형상(in-progress + amendment_of)을 유지한다.
 
 REQ 총수 14 ≤ Tier M 상한 16.
 

@@ -36,9 +36,14 @@ go test ./internal/cli/     -run 'TestStripRetiredModel'
 EV-AFR-008 (AC-AFR-008 — REQ-AFR-013, 실행 테스트 ≥ 3):
 go test ./internal/web/ -run 'TestConsoleTabsOrder|TestTabPanelRenderOrderMatchesTabs|TestSettingsPageHeaderKeepsAllThirteenTabs'
 
-EV-AFR-012 (AC-AFR-012 — §D.12, 0히트 기대 = exit 1):
+EV-AFR-012 (AC-AFR-012 — §D.12 반전-후 상태 핀; sync-audit F5 재기술 — 리터럴 0히트 기기는 기준선에서도 성립 불가):
 grep -rn 'TestAgentSettingsTab_IsNotRendered\|TestAgentSettingsFields_ArePostedWithoutEffect' internal/web/
+grep -rn 'sec.agentfm.title' internal/web/*_test.go
 grep -rn 'still renders' internal/web/*_test.go
+# 행 1: 0히트 기대 (exit 1 = 정상 패스, exit 2 = 오류).
+# 행 2-3: 0히트 기기가 아니다 — 'still renders'는 기준선 a48216da1에서도 11히트. 전수 판독 기기:
+# 모든 히트가 긍정(존재) 단언 문맥이어야 하고 부재-단정(lacks/gone) 문맥은 0이어야 한다.
+# agentfm 결합 허용 히트: fieldsets_states_test.go:368 (긍정 존재 단언).
 ```
 
 선택자 근거 (plan-audit D4/D13): `TestShippedConfigKeysHaveReaders` = `internal/config/shipped_key_reader_test.go:74` — 1차 초안의 `TestShippedKeyReader`는 존재하지 않는 이름이었고 패키지도 틀렸다(internal/cli → internal/config). `TestUpdateLLMYAML*` = `internal/cli/update_llm_preserve_test.go:229+` — 1차 초안의 `TestUpdateLlmPreserve`는 대소문자 불일치로 0매치. 템플릿 strip = `TestStripRetiredModelKeys_*`(internal/template), CLI strip = `TestStripRetiredModelConfig_*`(internal/cli). 1차 초안 커맨드의 중복 `./internal/template/` 패키지 인자는 제거되었다.
@@ -108,7 +113,7 @@ grep -rn 'still renders' internal/web/*_test.go
 M2의 반전은 파일명 재사용 또는 신규 파일 둘 다 허용되므로, 증거는 **반전 후 상태**에 핀한다. 구 파일 경로(`internal/web/agent_settings_removed_test.go`)를 대상으로 한 grep은 파일이 삭제·개명되면 0히트가 아니라 오류(exit 2)가 되므로 증거로 쓰지 않는다 — 이 지점이 1차 초안의 결함이었다.
 
 - 구 absent-모드 테스트명 소멸 (삭제·개명·전파 전부에서 유효한 0히트): EV-AFR-012 레저 1행 → 0히트 (grep exit 1 = 정상 패스, exit 2 = 오류).
-- 구 absent 모드의 5종 gone 마커(`sec.agentfm.title`, `name="agentfm.`, `name="performance_tier"`, `id="moai-profile-matrix"`, `data-agent-row=`)가 **부재-단정 문맥**으로 잔존하지 않음: EV-AFR-012 레저 2행(`still renders` 오류 문구 결합) → 0히트.
+- 구 absent 모드의 5종 gone 마커(`sec.agentfm.title`, `name="agentfm.`, `name="performance_tier"`, `id="moai-profile-matrix"`, `data-agent-row=`)가 **부재-단정 문맥**으로 잔존하지 않음: EV-AFR-012 결합 기기(마커 grep 전수 판독 — 전 히트가 긍정(존재) 단언 문맥, 부재-단정 문맥 0; sync-audit F5 — 리터럴 `still renders` 0히트 기기는 기준선에서도 11히트로 달성 불가하여 전수 판독으로 대체, agentfm 결합 허용 히트는 fieldsets_states_test.go:368 긍정 단언뿐).
 - 신규 존재 어설션 목록 (파일+행+극성)을 progress.md §E.2에 전사 — `data-agent-row` 등 5종 마커의 극성 반전 대응.
 - 반전 테스트 실행 수 ≥ 2 기록 (구 absent 2테스트의 대체분) — `[no tests to run]` 금지.
 - `agent_settings_test.go:51` 고아 주석 제거 확인.
