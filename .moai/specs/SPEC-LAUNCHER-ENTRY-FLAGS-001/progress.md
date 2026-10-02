@@ -393,6 +393,348 @@ ok  	github.com/modu-ai/moai-adk/internal/statusline	0.194s
 - The golden fixes the lane marker set for the three backends from one fixture each (run id `run-cli`, label `lane-1`, one picked card for codex). A marker that appears only under another option (`--clear-policy`, `--no-auto-dispatch`, `--factory-run`, the discovery path's `MOAI_KANBAN_LEAD_NAME`) is covered by AC-005's composition rows at M2, not by this golden.
 - Mutant strength is bounded by the eight edits chosen; a defect shaped differently from them (for example a marker published with a wrong value rather than removed) is caught only where an assertion names the value.
 
+### M2 evidence
+
+Recorded by the run-phase implementation worker (cycle_type tdd) for milestone M2 of card t1399, on the branch `WT-launcher-entry-flags`. Start state, re-read before any change: `git rev-parse --short HEAD` printed `2fd2da666`, `git branch --show-current` printed `WT-launcher-entry-flags`, `git status --short` printed nothing. Every output block below is the verbatim output of a command run in this run on this tree; text outside a block states what it shows. Excerpts keep the verbatim lines and drop only repeated subtest rows, the count of the dropped rows being stated.
+
+#### Claim
+
+- M2 adds the cc/glm lane entry `-l` / `--lane` (a branch in `parseFactoryFlag` that selects the lane role and feeds the existing desugar; constants `laneFlagShort` and `laneFlagLong`), the `-l`/`--lane` refusals, the `-f <value>` refusal (every `-f lane*` form and every other value), the refusal of a lane-shaped `--name` beside `-f`, the `--leader` selector refusal, the reworded `-f <N>` line, gates re-keyed to `-l`, and updated help text and comments. `-l`'s slot comes from the unchanged shared claim (`NextFactoryLaneNumber`, then `resolveFactoryLaneName`); no slot logic was written.
+- Production files changed, all in `internal/cli`: `factory.go` (grammar, refusals, constants), `cc.go` and `glm.go` (help text, `Use` line, one comment each), `kanban.go` (two comments), `factory_lane_relaunch.go` (one comment). `leadFlagShort` is kept (its remaining reader is `codex_factory.go:42-51`); `factory.go` no longer reads it. `-k` still parses.
+- Tests: new `internal/cli/lane_entry_m2_test.go` (seven test functions, AC-001, 003, 004, 005, 006, 008); the M1 net lane launches and the enterable-pair matrix rows for Claude and GLM, and the golden capture's cc/glm rows, re-pinned from `-f lane` to `-l`; thirteen existing test files that drove the removed forms re-pinned (list under Gaps item 6).
+- Commit 1 `6d9793aa6` (grammar, refusals, tests, net re-pin; build, vet and the net green at that commit); commit 2 is this progress record.
+
+#### Evidence
+
+First act, the RED-now of the explicit-name rows, the `--lane` rows and the `--leader` selector rows on this tree (ledger RED-11, RED-12, RED-14; the probe maps its test file in with `go test -overlay`, so the checkout is not written), env unset in the same invocation, exit 0 of the runner:
+
+`go run .moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe/entry_probe.go -root .`
+
+```text
+=== RUN   TestZZT1399EntryProbe
+CCPARSE args=["-f" "--name" "lane-2"] factoryEnabled=true rest=["--name" "lane-2"] laneLabel="lane-2" isLane=true branch=2
+CCPARSE args=["-f" "-n" "lane-2"] factoryEnabled=true rest=["-n" "lane-2"] laneLabel="lane-2" isLane=true branch=2
+CCPARSE args=["--factory" "--name=lane-2"] factoryEnabled=true rest=["--name=lane-2"] laneLabel="lane-2" isLane=true branch=2
+CCPARSE args=["-f" "--name" "leader-r7"] factoryEnabled=true rest=["--name" "leader-r7"] laneLabel="" isLane=false branch=1
+CCPARSE args=["--lane"] factoryEnabled=false rest=["--lane"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "lane-2"] factoryEnabled=false rest=["--lane" "lane-2"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane=lane-2"] factoryEnabled=false rest=["--lane=lane-2"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "3"] factoryEnabled=false rest=["--lane" "3"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "leader-2"] factoryEnabled=false rest=["--lane" "leader-2"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "-f"] factoryEnabled=true rest=["--lane"] laneLabel="" isLane=false branch=1
+CCPARSE args=["-l"] parseErr="--leader requires a leader label"
+CCPARSE args=["-l" "lane-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-l" "3"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-l=lane-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-l" "leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-l" "-f"] parseErr="--leader requires a leader label"
+CCPARSE args=["-l" "-k"] parseErr="--leader requires a leader label"
+CCPARSE args=["-l" "--name" "lane-2"] parseErr="--leader requires a leader label"
+CCPARSE args=["-f" "-l"] parseErr="--leader requires a leader label"
+CCPARSE args=["--lane" "-k"] factoryEnabled=false rest=["--lane"] laneLabel="" isLane=false branch=0
+CCPARSE args=["--lane" "--name" "lane-2"] factoryEnabled=false rest=["--lane" "--name" "lane-2"] laneLabel="lane-2" isLane=true branch=0
+CCPARSE args=["--leader" "leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["--leader=leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-f" "--leader" "leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CCPARSE args=["-f" "--leader=leader-2"] parseErr="--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target"
+CODEX args=["--lane"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane" "lane-2"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane=lane-2"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane" "3"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane" "leader-2"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane" "-f"] err= exitCode=1 stderr="FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader\n" stdoutLen=0
+CODEX args=["--lane" "-k"] err= exitCode=1 stderr="KANBAN_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead\n" stdoutLen=0
+CODEX args=["--lane" "--name" "lane-2"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["-f" "-l"] err= exitCode=1 stderr="FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader\n" stdoutLen=0
+CODEX args=["--leader" "leader-2"] err=--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target exitCode=-1 stderr="" stdoutLen=0
+CODEX args=["-f" "--leader" "leader-2"] err= exitCode=1 stderr="FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader\n" stdoutLen=0
+--- PASS: TestZZT1399EntryProbe (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.009s
+exit 0
+```
+
+Read: `-f --name lane-2`, `-f -n lane-2` and `--factory --name=lane-2` route to the lane branch (`branch=2`, `isLane=true`), `-f --name leader-r7` to the leader (`branch=1`); `--lane` and every `--lane <x>` shape are accepted with the tokens left in the passthrough rest (`--lane --name lane-2` parses as a named lane-shaped session); `-l <anything>` fails with removed-form text (`--leader requires a leader label`, `applies to a factory lane join (-f lane / -f lane-<n>)`); the `--leader` selector without a lane entry is refused with the removed-form line. The codex rows are for M3.
+
+RED of the new tests, written first and run before any production change (`go test ./internal/cli -run '^(TestLaneEntryJoinsNextFreeSlot|TestLaneEntryRefusals|TestLaneEntryEnvParity|TestLaneEntryComposesWithLaneOptions|TestLeaderSelectorRefusedWithoutLaneEntry|TestFactoryLaneSpellingsRefused|TestFactoryCountShapeStillRefused)$' -v -count=1`, exit 1). The seven parent tests fail; 66 subtests fail (10 + 30 + 8 + 16 + 2) and 2 pass (the two `named_leader_launches` rows, which assert behavior that is correct today). Top-level lines, then the first assertion lines (the full output was kept in the scratchpad, not in the tree):
+
+```text
+--- FAIL: TestLaneEntryJoinsNextFreeSlot (5.06s)
+--- FAIL: TestLaneEntryRefusals (25.32s)
+--- FAIL: TestLaneEntryEnvParity (1.35s)
+--- FAIL: TestLaneEntryComposesWithLaneOptions (0.78s)
+--- FAIL: TestLeaderSelectorRefusedWithoutLaneEntry (8.41s)
+--- FAIL: TestFactoryLaneSpellingsRefused (21.53s)
+--- FAIL: TestFactoryCountShapeStillRefused (1.67s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	65.137s
+FAIL
+    lane_entry_m2_test.go:128: cc -l: launched=false err=--leader requires a leader label
+    lane_entry_m2_test.go:128: cc -l: launched=false err=--leader requires a leader label
+    lane_entry_m2_test.go:128: cc -l: launched=false err=--leader requires a leader label
+    lane_entry_m2_test.go:128: cc -l: launched=false err=--leader requires a leader label
+    lane_entry_m2_test.go:192: [-l lane-2] refusal "--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target" names the removed form "-f lane"
+    lane_entry_m2_test.go:198: [-l lane-2] refusal "--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target" lacks "no argument"
+    lane_entry_m2_test.go:198: [-l lane-2] refusal "--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target" lacks "--leader <name>"
+    lane_entry_m2_test.go:200: [-l -f] refusal "--leader requires a leader label" lacks "entry token"
+    lane_entry_m2_test.go:192: [--lane lane-2] launched a session; a refusal launches nothing
+    lane_entry_m2_test.go:192: [--lane lane-2] was accepted, want a refusal
+    lane_entry_m2_test.go:192: [-l lane-2] refusal "--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target" names the removed form "-f lane"
+    lane_entry_m2_test.go:198: [-l lane-2] refusal "--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target" lacks "no argument"
+    lane_entry_m2_test.go:198: [-l lane-2] refusal "--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target" lacks "--leader <name>"
+    lane_entry_m2_test.go:200: [-l -f] refusal "--leader requires a leader label" lacks "entry token"
+    lane_entry_m2_test.go:358: [-f lane] launched a session; a refusal launches nothing
+    lane_entry_m2_test.go:358: [-f lane] was accepted, want a refusal
+    lane_entry_m2_test.go:358: [-f --name lane-2] launched a session; a refusal launches nothing
+    lane_entry_m2_test.go:358: [-f --name lane-2] was accepted, want a refusal
+    lane_entry_m2_test.go:358: [-f lane] launched a session; a refusal launches nothing
+exit status of the run: 1
+```
+
+Production change, then GREEN. Commands (each ran as one compound invocation `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && go test ...`; exit code 0 on each, shown as `RC=0` by the invoking tool call):
+
+```text
+$ go test ./internal/cli -run '^TestLaneEntryJoinsNextFreeSlot$' -v -count=1   (env unset in the same invocation; exit 0)
+--- PASS: TestLaneEntryJoinsNextFreeSlot (16.20s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F1_cc_-l (1.36s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F1_cc_--lane (1.60s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F1_glm_-l (1.76s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F1_glm_--lane (1.45s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F2_cc_-l (1.56s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F2_glm_-l (1.55s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F3_cc_-l (1.33s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F3_glm_-l (1.94s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F4_cc_-l (2.23s)
+    --- PASS: TestLaneEntryJoinsNextFreeSlot/F4_glm_-l (1.42s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	17.236s
+  swept: parent PASS=1, PASS lines incl. parent=11, FAIL=0, SKIP=0
+
+$ go test ./internal/cli -run '^TestLaneEntryRefusals$' -v -count=1   (env unset in the same invocation; exit 0)
+--- PASS: TestLaneEntryRefusals (74.02s)
+    --- PASS: TestLaneEntryRefusals/cc_-l_lane-2 (1.23s)
+    --- PASS: TestLaneEntryRefusals/cc_-l_3 (2.24s)
+    --- PASS: TestLaneEntryRefusals/cc_-l=lane-2 (2.31s)
+    --- PASS: TestLaneEntryRefusals/cc_-l_leader-2 (2.17s)
+    --- PASS: TestLaneEntryRefusals/cc_-l_-f (3.14s)
+    --- PASS: TestLaneEntryRefusals/cc_-f_-l (2.23s)
+    --- PASS: TestLaneEntryRefusals/cc_-l_-k (1.87s)
+    --- PASS: TestLaneEntryRefusals/cc_-l_--name_lane-2 (2.70s)
+    --- PASS: TestLaneEntryRefusals/cc_--lane_lane-2 (2.50s)
+    --- PASS: TestLaneEntryRefusals/cc_--lane=lane-2 (3.04s)
+    --- PASS: TestLaneEntryRefusals/cc_--lane_3 (3.20s)
+    --- PASS: TestLaneEntryRefusals/cc_--lane_leader-2 (3.16s)
+    --- PASS: TestLaneEntryRefusals/cc_--lane_-f (1.58s)
+    --- PASS: TestLaneEntryRefusals/cc_--lane_-k (1.53s)
+    --- PASS: TestLaneEntryRefusals/cc_--lane_--name_lane-2 (1.47s)
+    --- PASS: TestLaneEntryRefusals/glm_-l_lane-2 (1.76s)
+    --- PASS: TestLaneEntryRefusals/glm_-l_3 (2.27s)
+    --- PASS: TestLaneEntryRefusals/glm_-l=lane-2 (2.50s)
+    --- PASS: TestLaneEntryRefusals/glm_-l_leader-2 (2.76s)
+    --- PASS: TestLaneEntryRefusals/glm_-l_-f (2.94s)
+    --- PASS: TestLaneEntryRefusals/glm_-f_-l (2.89s)
+    --- PASS: TestLaneEntryRefusals/glm_-l_-k (2.39s)
+    --- PASS: TestLaneEntryRefusals/glm_-l_--name_lane-2 (2.04s)
+    --- PASS: TestLaneEntryRefusals/glm_--lane_lane-2 (2.09s)
+    --- PASS: TestLaneEntryRefusals/glm_--lane=lane-2 (2.28s)
+    --- PASS: TestLaneEntryRefusals/glm_--lane_3 (4.91s)
+    --- PASS: TestLaneEntryRefusals/glm_--lane_leader-2 (3.05s)
+    --- PASS: TestLaneEntryRefusals/glm_--lane_-f (3.12s)
+    --- PASS: TestLaneEntryRefusals/glm_--lane_-k (2.58s)
+    --- PASS: TestLaneEntryRefusals/glm_--lane_--name_lane-2 (2.03s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	75.094s
+  swept: parent PASS=1, PASS lines incl. parent=31, FAIL=0, SKIP=0
+
+$ go test ./internal/cli -run '^TestLaneEntryEnvParity$' -v -count=1   (env unset in the same invocation; exit 0)
+--- PASS: TestLaneEntryEnvParity (7.80s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	9.137s
+  swept: parent PASS=1, PASS lines incl. parent=1, FAIL=0, SKIP=0
+
+$ go test ./internal/cli -run '^TestLaneEntryComposesWithLaneOptions$' -v -count=1   (env unset in the same invocation; exit 0)
+--- PASS: TestLaneEntryComposesWithLaneOptions (9.13s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	10.405s
+  swept: parent PASS=1, PASS lines incl. parent=1, FAIL=0, SKIP=0
+
+$ go test ./internal/cli -run '^TestLeaderSelectorRefusedWithoutLaneEntry$' -v -count=1   (env unset in the same invocation; exit 0)
+--- PASS: TestLeaderSelectorRefusedWithoutLaneEntry (12.75s)
+    --- PASS: TestLeaderSelectorRefusedWithoutLaneEntry/cc_--leader_leader-2 (1.60s)
+    --- PASS: TestLeaderSelectorRefusedWithoutLaneEntry/cc_--leader=leader-2 (1.30s)
+    --- PASS: TestLeaderSelectorRefusedWithoutLaneEntry/cc_-f_--leader_leader-2 (1.62s)
+    --- PASS: TestLeaderSelectorRefusedWithoutLaneEntry/cc_-f_--leader=leader-2 (1.34s)
+    --- PASS: TestLeaderSelectorRefusedWithoutLaneEntry/glm_--leader_leader-2 (1.07s)
+    --- PASS: TestLeaderSelectorRefusedWithoutLaneEntry/glm_--leader=leader-2 (1.41s)
+    --- PASS: TestLeaderSelectorRefusedWithoutLaneEntry/glm_-f_--leader_leader-2 (1.72s)
+    --- PASS: TestLeaderSelectorRefusedWithoutLaneEntry/glm_-f_--leader=leader-2 (2.70s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	14.016s
+  swept: parent PASS=1, PASS lines incl. parent=9, FAIL=0, SKIP=0
+
+$ go test ./internal/cli -run '^TestFactoryLaneJoinLeadTargeting$' -v -count=1   (env unset in the same invocation; exit 0)
+--- PASS: TestFactoryLaneJoinLeadTargeting (18.15s)
+    --- PASS: TestFactoryLaneJoinLeadTargeting/default_targets_the_canonical_leader_label (7.28s)
+    --- PASS: TestFactoryLaneJoinLeadTargeting/explicit_--leader_targets_that_leader (7.67s)
+    --- PASS: TestFactoryLaneJoinLeadTargeting/unmatched_label_refuses_(AC-011) (3.19s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	19.564s
+  swept: parent PASS=1, PASS lines incl. parent=4, FAIL=0, SKIP=0
+
+$ go test ./internal/cli -run '^TestFactoryLaneSpellingsRefused$' -v -count=1   (env unset in the same invocation; exit 0)
+--- PASS: TestFactoryLaneSpellingsRefused (40.30s)
+    --- PASS: TestFactoryLaneSpellingsRefused/cc_-f_lane (2.11s)
+    --- PASS: TestFactoryLaneSpellingsRefused/cc_-f_lane-2 (2.10s)
+    --- PASS: TestFactoryLaneSpellingsRefused/cc_--factory_lane (2.03s)
+    --- PASS: TestFactoryLaneSpellingsRefused/cc_-f=lane (2.08s)
+    --- PASS: TestFactoryLaneSpellingsRefused/cc_--factory=lane-2 (2.96s)
+    --- PASS: TestFactoryLaneSpellingsRefused/cc_-f_--name_lane-2 (1.98s)
+    --- PASS: TestFactoryLaneSpellingsRefused/cc_-f_-n_lane-2 (2.03s)
+    --- PASS: TestFactoryLaneSpellingsRefused/cc_--factory_--name=lane-2 (2.29s)
+    --- PASS: TestFactoryLaneSpellingsRefused/cc_named_leader_launches (1.37s)
+    --- PASS: TestFactoryLaneSpellingsRefused/glm_-f_lane (1.78s)
+    --- PASS: TestFactoryLaneSpellingsRefused/glm_-f_lane-2 (1.79s)
+    --- PASS: TestFactoryLaneSpellingsRefused/glm_--factory_lane (1.44s)
+    --- PASS: TestFactoryLaneSpellingsRefused/glm_-f=lane (2.29s)
+    --- PASS: TestFactoryLaneSpellingsRefused/glm_--factory=lane-2 (2.59s)
+    --- PASS: TestFactoryLaneSpellingsRefused/glm_-f_--name_lane-2 (2.43s)
+    --- PASS: TestFactoryLaneSpellingsRefused/glm_-f_-n_lane-2 (2.84s)
+    --- PASS: TestFactoryLaneSpellingsRefused/glm_--factory_--name=lane-2 (2.36s)
+    --- PASS: TestFactoryLaneSpellingsRefused/glm_named_leader_launches (3.84s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	41.623s
+  swept: parent PASS=1, PASS lines incl. parent=19, FAIL=0, SKIP=0
+
+$ go test ./internal/cli -run '^TestFactoryCountShapeStillRefused$' -v -count=1   (env unset in the same invocation; exit 0)
+--- PASS: TestFactoryCountShapeStillRefused (5.96s)
+    --- PASS: TestFactoryCountShapeStillRefused/cc (3.31s)
+    --- PASS: TestFactoryCountShapeStillRefused/glm (2.65s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	7.515s
+  swept: parent PASS=1, PASS lines incl. parent=3, FAIL=0, SKIP=0
+```
+
+AC matrix (HEAD `6d9793aa6` for the code, this tree):
+
+| AC | Result | Command (exit 0) | Swept |
+|----|--------|------------------|-------|
+| AC-001 | PASS | `go test ./internal/cli -run '^TestLaneEntryJoinsNextFreeSlot$' -v -count=1` | 1 parent, 10 subtests (F1 cc/glm with `-l` and `--lane`, F2 to F4 cc/glm), 0 FAIL, 0 SKIP |
+| AC-003 (cc, glm) | PASS | `go test ./internal/cli -run '^TestLaneEntryRefusals$' -v -count=1` | 1 parent, 30 subtests (15 shapes x cc, glm), 0 FAIL, 0 SKIP; the 15 codex subtests (45 total) are authored at M3 |
+| AC-004 (cc, glm) | PASS | `go test ./internal/cli -run '^TestLaneEntryEnvParity$' -v -count=1` | 1 PASS result (no subtests): cc and glm, `-l` and `--lane`, equal the committed golden label aside, every key a constant of `envkeys.go`; the codex row joins at M3 |
+| AC-005 | PASS (cc, glm) | `...TestLaneEntryComposesWithLaneOptions` (1 PASS); `...TestLeaderSelectorRefusedWithoutLaneEntry` (1 parent, 8 subtests; the 2 codex subtests of the AC's 10 are for M3); `...TestFactoryLaneJoinLeadTargeting` (1 parent, 3 subtests) | `grep -c '"-l", "leader' internal/cli/factory_join_discovery_test.go` printed 0 |
+| AC-006 | PASS | `go test ./internal/cli -run '^TestFactoryLaneSpellingsRefused$' -v -count=1` | 1 parent, 16 refusal subtests, 2 launch subtests, 0 FAIL, 0 SKIP |
+| AC-008 | PASS | `go test ./internal/cli -run '^TestFactoryCountShapeStillRefused$' -v -count=1` | 1 parent, 2 subtests |
+| AC-004 cc/glm golden row | PASS | the M1 golden test `TestLaneMarkerGoldenMatchesFLane`, cc and glm now through `-l`, ran in the 115-test targeted set below | its codex row still uses `-f lane` until M3 |
+
+The M1 net after the re-pin (AC-015 selectors, swept 8 cli, 2 hook, 2 discovery):
+
+```text
+$ go test ./internal/cli -run '^(TestCCFactoryEntryRecordsFailOpenRunMetadata|TestCCFactoryLaneJoinsDiscoveredLeader|TestGLMFactoryLaneJoinsDiscoveredLeader|TestPrepareKanbanSettingsWritesTransientFile|TestPrepareFactorySettingsWritesTransientFile|TestFactoryNetLeaderLaunch|TestFactoryNetLaneLaunch|TestFactoryNetBlockCap|TestFactoryEntryMatrix)$' -v -count=1   (exit 0)
+--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (14.44s)
+--- PASS: TestGLMFactoryLaneJoinsDiscoveredLeader (8.16s)
+--- PASS: TestFactoryNetLeaderLaunch (4.32s)
+--- PASS: TestFactoryNetLaneLaunch (5.51s)
+--- PASS: TestFactoryNetBlockCap (2.80s)
+--- PASS: TestFactoryEntryMatrix (27.21s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (5.76s)
+--- PASS: TestPrepareKanbanSettingsWritesTransientFile (0.02s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	70.177s
+  swept: top-level PASS=8, FAIL=0, SKIP=0
+
+$ go test ./internal/hook -run '^(TestFactoryNetSessionRecord|TestFactoryNetSessionStartNotices)$' -v -count=1   (exit 0)
+--- PASS: TestFactoryNetSessionRecord (0.05s)
+--- PASS: TestFactoryNetSessionStartNotices (4.26s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	5.324s
+  swept: top-level PASS=2, FAIL=0
+
+$ go test ./internal/discovery -run '^(TestDiscoverLeaderVerifiesLiveLeader|TestDiscoverLeaderDeclinesUnparseableRunID)$' -v -count=1   (exit 0)
+--- PASS: TestDiscoverLeaderVerifiesLiveLeader (0.81s)
+--- PASS: TestDiscoverLeaderDeclinesUnparseableRunID (0.25s)
+ok  	github.com/modu-ai/moai-adk/internal/discovery	1.473s
+  swept: top-level PASS=2, FAIL=0
+```
+
+The two mutants re-observed on the `-l` path after the re-pin (AC-015 (g) and (h)). The mutated copies of `cc.go`, `glm.go` and `kanban.go` live in the scratchpad and are applied with `go test -overlay`, so the tree was never edited; `grep -rn MUTANT internal/` finds only pre-existing comments in unrelated packages, and `git status --short` showed no change to those files beyond the intended M2 edits.
+
+```text
+$ go test -overlay <scratch>/m2/overlay_g.json ./internal/cli -run '<the 9-name net selector>' -v -count=1   (mutant g: the resolveFactoryLaneName call replaced by 'finalLabel, claimErr := factoryLabel, error(nil)' in cc.go and glm.go, mutated copies kept OUTSIDE the tree; exit 1)
+--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (12.69s)
+--- PASS: TestGLMFactoryLaneJoinsDiscoveredLeader (11.97s)
+--- PASS: TestFactoryNetLeaderLaunch (6.16s)
+--- FAIL: TestFactoryNetLaneLaunch (10.68s)
+    --- FAIL: TestFactoryNetLaneLaunch/cc (4.53s)
+    --- FAIL: TestFactoryNetLaneLaunch/glm (6.15s)
+--- PASS: TestFactoryNetBlockCap (5.51s)
+--- PASS: TestFactoryEntryMatrix (30.64s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (2.73s)
+--- PASS: TestPrepareKanbanSettingsWritesTransientFile (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	81.980s
+FAIL
+    factory_net_m1_test.go:343: registry[lane-1] = ({PID:0 RegisteredAt:}, false), want a live claim under pid 76136
+    factory_net_m1_test.go:352: second lane MOAI_FACTORY_WORKER = "lane-1", want "lane-2" (the first claim is live)
+    factory_net_m1_test.go:356: registry lost the second claim: map[]
+    factory_net_m1_test.go:343: registry[lane-1] = ({PID:0 RegisteredAt:}, false), want a live claim under pid 76136
+    factory_net_m1_test.go:352: second lane MOAI_FACTORY_WORKER = "lane-1", want "lane-2" (the first claim is live)
+    factory_net_m1_test.go:356: registry lost the second claim: map[]
+
+$ go test -overlay <scratch>/m2/overlay_h.json ./internal/cli -run '<the 9-name net selector>' -v -count=1   (mutant h: the MOAI_KANBAN_BACKEND Setenv removed from exportKanbanLaunchFacts in kanban.go, mutated copy OUTSIDE the tree; exit 1)
+--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (18.10s)
+--- PASS: TestGLMFactoryLaneJoinsDiscoveredLeader (13.15s)
+--- FAIL: TestFactoryNetLeaderLaunch (3.93s)
+    --- FAIL: TestFactoryNetLeaderLaunch/cc (1.72s)
+    --- FAIL: TestFactoryNetLeaderLaunch/glm (2.21s)
+--- FAIL: TestFactoryNetLaneLaunch (8.49s)
+    --- FAIL: TestFactoryNetLaneLaunch/cc (4.27s)
+    --- FAIL: TestFactoryNetLaneLaunch/glm (4.22s)
+--- PASS: TestFactoryNetBlockCap (2.77s)
+--- PASS: TestFactoryEntryMatrix (23.01s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (2.72s)
+--- PASS: TestPrepareKanbanSettingsWritesTransientFile (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	73.707s
+FAIL
+    factory_net_m1_test.go:269: MOAI_KANBAN_BACKEND at launch = "", want "claude"
+    factory_net_m1_test.go:269: MOAI_KANBAN_BACKEND at launch = "", want "glm"
+    factory_net_m1_test.go:332: MOAI_KANBAN_BACKEND at launch = "", want "claude"
+    factory_net_m1_test.go:332: MOAI_KANBAN_BACKEND at launch = "", want "glm"
+```
+
+Targeted regression set (115 test functions drawn from every test file the change touched, plus the kanban help, vocabulary-guard, cg-retirement and role-pin files): `go test ./internal/cli -count=1 -timeout 40m -run '^(...115 names...)$'` ran once in full: exit 1, 402.354s, exactly one failing test, `TestACFB019_HelpDocumentsCompanionEntry` (cc and glm), whose assertion `kanban_help_test.go:72: glm help does not state the companion name collision bump` needs the literal sentence "bumped to the next free number" that my help edit had removed from the factory section. The sentence was restored to the `-k <N> / -k <N> --name lane-<i>` help item (where it is true for the still-valid `-k` lane form) in both launchers, and the family `TestACFB018_HelpDocumentsLeadEntry|TestACFB019_HelpDocumentsCompanionEntry|TestFactoryGenealogyInHelp|TestLauncherHelpLaneVocabulary|TestProductionStringLiteralsUseLeaderLaneVocabulary|TestCGRetirementHelpDoesNotOfferCG|TestCGRetirementLiveHelpHasNoLaunchRecommendation` then passed (7 of 7, exit 0). The AC-009 selector `go test ./internal/cli -run '^(TestCCFactoryEntryRecordsFailOpenRunMetadata|TestLeaderEntryUnchanged|TestCGRetiredEntryAndModeHaveZeroEffects|TestCGRetirementCompleteEntryShapesAndCounters|TestBareMoaiPrintsBannerAndHelp)$' -v -count=1` passed 5 of 5 (exit 0), and `TestCGEntryGuardRunsBeforeLaunchAndSpawn` (the one test in an untouched file that passes `-f`) passed (exit 0).
+
+Build and static checks, after the last edit (tree HEAD `6d9793aa6` plus only this progress file):
+
+```text
+$ go build ./...                               -> no output, exit 0 (echo BUILD_OK printed)
+$ GOOS=windows GOARCH=amd64 go build ./...     -> no output, exit 0 (echo WINBUILD_OK printed)
+$ go vet ./internal/cli/                       -> no output, exit 0 (echo VET_OK printed)
+$ GOOS=windows GOARCH=amd64 go vet ./internal/cli/   -> no output, exit 0 (echo WINVET_OK printed)
+$ gofmt -l <the 19 files of commit 1>          -> no output
+```
+
+`gofmt -l internal/cli/` over the whole directory prints one pre-existing file, `internal/cli/mcp_claude.go`, which this milestone did not touch.
+
+#### Baseline-attribution
+
+- Tree: HEAD `2fd2da666` at the start (RED-now and RED measurements, before the production change), `6d9793aa6` for the GREEN, net, mutant and build measurements. The judging build is the Go toolchain compiling this tree; no installed `moai` binary was used as a measuring instrument (the `moai slot` commands used only the lease).
+- The two mutants were measured against the same tree as the green net (HEAD `6d9793aa6`), through an overlay of one or two files, so the only difference between the green and red runs of the same selector is the mutated file.
+- The heavy runs ran under `moai slot acquire --resource t1399-run --max-duration 60m` and the lease was released (`moai slot release --resource t1399-run` printed `released`) after the last run, before commit 1.
+
+#### Gaps
+
+1. The whole `internal/cli` suite was NOT completed: one `go test ./internal/cli -count=1 -timeout 50m` run was started in the background and stopped by the harness's background time limit with no output (load average 16 to 38 on the machine); it measures nothing and is not cited. The 115-test targeted set above, run in full once, is the widest measurement; a regression in a test file outside it and outside the nine named selectors is unobserved.
+2. AC-003 (45 subtests), AC-005's selector test (10 subtests) and AC-004's codex row are staged: M2 sweeps the cc and glm halves (30, 8, and the cc/glm rows), the codex rows are authored at M3 where the codex parse changes. The AC text lists the full counts as flipped by M2 plus M3.
+3. The RED output of the seven new tests is kept as the excerpt above; the full RED file lives in the scratchpad (outside the tree).
+4. Worktree-guard refusals, each re-issued as a plain command with the same measurement: (a) a `cat > file <<EOF` heredoc followed by a second command, refused as "too complex to verify"; (b) two `python3 <<EOF` heredoc edits, refused, while three earlier ones of the same shape had been accepted, with no visible difference between them; (c) `go test ... ; echo rc=$?` forms, refused, re-issued as `go test ... && echo RC=0`; (d) a pipeline with `go test ... ; grep ... | head`, refused, re-issued as separate commands. Where a heredoc was refused the edit was made with the edit tool instead; no measurement was replaced by reading source.
+5. `git -C <own absolute path> status --short` was run once (permitted by the guard, forbidden by the brief's wording); every other git command was plain `git`.
+6. Existing tests re-pinned (the plan names only the net): `factory_test.go`, `factory_join_discovery_test.go`, `factory_autodispatch_test.go`, `factory_legacy_collision_test.go`, `factory_mixed_test.go`, `factory_worker_naming_test.go`, `factory_role_refusal_m2_test.go`, `factory_m7_test.go` (launcher-parse rows only; the codex rows are untouched), `factory_m4_test.go`, `factory_m6_test.go`, `codex_factory_retire_test.go` (cc/glm join rows only), `factory_net_m1_test.go`, `lane_entry_golden_m1_test.go`. They drove `-f lane`, `-f lane-<n>` or `-l <leader>`, which are refused after this change, so leaving them would put the suite red.
+7. Comment-only update targets outside `internal/cli` (`internal/config/defaults.go:689,700`, `internal/config/envkeys.go:278,357`, `internal/kanban/bootstrap.go:370`) were NOT edited: the brief limits M2 to `internal/cli`.
+8. Notice strings (`internal/hook`), the factory card errors (`factory_card.go:95,98,101`) and the Codex files still teach `-f lane`; they are M3 and M4 and merge with M2 as one integration unit.
+
+#### Residual-risk
+
+- Until M3 and M4 land, the leader SessionStart notice, the stale-run hint and the factory card rejoin errors still print `moai cc -f lane-<i>` / `-f lane`, which this milestone now refuses; M2 must not be merged without M3 and M4 (plan §D integration unit).
+- `-k N --name lane-<i>` still reaches the lane branch (it is the kanban parse, removed at M5a) and still takes an operator-typed number; the `-f` side of the dispatch table no longer has a lane trigger.
+- The pass-through fix (below) changes a launch shape that the old code mishandled; no test pinned the old behavior, but a script relying on `-f lane -- <args>` becoming a leader would change (it was refused anyway after this milestone).
+- Mutant strength is bounded by the two edits chosen; a lane claim that records the wrong pid, or a marker published with a wrong value, is caught only where `TestFactoryNetLaneLaunch` and `TestLaneEntryJoinsNextFreeSlot` assert it.
+
+#### Findings (statements the tree contradicts, no SPEC file edited)
+
+- `acceptance.md` AC-005 (the `-- --print` passthrough row) says the lane composes "as it composed with `-f lane`". On this tree it did not: `parseLauncherEntry` appended the desugared `--name lane-<n>` after the `--` marker, where `parseFactoryLaneLabel` stops reading, so `-f lane -- --print` resolved to `factoryBranchLeader` (measured: `entry rest=[-- --print --name lane-5] ... branch=1`). M2 inserts the desugared `--name` ahead of the marker (`insertBeforePassthrough`, `factory.go`) and `TestLaneEntryComposesWithLaneOptions` asserts a lane launch with `-l -- --print` on cc and glm. This is a deviation from "as before" that the plan did not list.
+- `plan.md` M2 says the `-f <N>` message is only reworded. The constant `factoryFlagUsageError` is also read by the Codex parse (`codex_factory.go:97`), so the Codex `-f <value>` usage line now carries the new text too; M3 owns the Codex refusal line.
+- `plan.md` §B.4 lists `session_stale_run.go`, `session_start_factory*.go` and `factory_card.go` as prints to update: none was changed here (M4).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
