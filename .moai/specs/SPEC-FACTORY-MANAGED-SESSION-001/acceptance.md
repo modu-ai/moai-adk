@@ -16,13 +16,13 @@ tier: L
 
 | AC | 요구 | 시나리오 (Given-When-Then) | 검증 |
 |---|---|---|---|
-| AC-MS-001 | REQ-MS-001 | Given 임시 projectRoot와 가짜 app-server 바이너리(re-exec) When 관리 Codex 런처가 기동하면 Then 루프백 WS에 토큰 인증으로 접속하고 `/readyz` 대기 후 `initialize`가 성공한다 | `go test ./internal/cli -run '^TestManagedCodexAppServerHandshake$'` |
+| AC-MS-001 | REQ-MS-001 | Given 옵트인이 활성이고 임시 projectRoot와 가짜 app-server 바이너리(re-exec)가 있을 때 When 관리 Codex 런처가 기동하면 Then 루프백 WS에 토큰 인증으로 접속하고 `/readyz` 대기 후 `initialize`가 성공한다 | `go test ./internal/cli -run '^TestManagedCodexAppServerHandshake$'` |
 | AC-MS-002 | REQ-MS-001 | Given 핸드셰이크 성공 When 스레드가 시작되면 Then 브로커에 스레드 ID가 SessionUUID인 엔드포인트가 등록된다 (status에 표시) | `go test ./internal/cli -run '^TestManagedCodexRegistersBoundPeer$'` |
 | AC-MS-003 | REQ-MS-002 | Given launch-pending 등록 후 세션 기동 실패 When 런처가 종료하면 Then launch-pending 잔행 행이 0건이다 | `go test ./internal/cli -run '^TestManagedLaunchPendingRollback$'` |
 | AC-MS-004 | REQ-MS-003 | Given 브로커에 수신 메시지 2건 When 관리 세션이 idle이 되면 Then claim 배치의 메타데이터(id/claim_token/kind/from/task_ref)만 다음 턴 프롬프트에 주입되고 본문 문자열은 프롬프트에 없다 | `go test ./internal/cli -run '^TestManagedInboxPromptMetadataOnly$'` |
 | AC-MS-005 | REQ-MS-004 | Given claim된 메시지 When 세션이 body를 조회하면 Then claim token 없는 조회는 거부되고 토큰이 있는 조회만 본문을 돌려준다 | `go test ./internal/factorymsg -run '^TestReadBodyClaimToken$'` |
 | AC-MS-006 | REQ-MS-004 | Given 처리 완료 When receipt를 기록하면 Then store status의 acknowledged 카운트가 증가하고 pending이 감소한다 | `go test ./internal/cli -run '^TestManagedReceiptAcknowledges$'` |
-| AC-MS-007 | REQ-MS-005 | Given 관리 Claude/GLM 기동 When 사용자가 `-p`/`--input-format` 등 소유 플래그를 전달하면 Then 런처는 오류로 거부하고 stream-json 플래그를 강제한다 | `go test ./internal/cli -run '^TestManagedSessionOwnsStreamFlags$'` |
+| AC-MS-007 | REQ-MS-005 | Given 옵트인 활성 상태의 관리 Claude/GLM 기동 When 사용자가 `-p`/`--input-format` 등 소유 플래그를 전달하면 Then 런처는 오류로 거부하고 stream-json 플래그를 강제한다 | `go test ./internal/cli -run '^TestManagedSessionOwnsStreamFlags$'` |
 | AC-MS-008 | REQ-MS-006 | Given 연산자 입력 1건과 브로커 메시지 1건이 동시에 있을 When 이전 턴이 완료되면 Then 두 입력이 도착순 FIFO로 한 번에 한 턴씩 직렬 주입되고 busy 동안 새 claim이 없다 | `go test ./internal/cli -run '^TestManagedQueueSerializesOperatorAndInbox$'` |
 | AC-MS-009 | REQ-MS-007 | Given 신규 관리 소스 파일들 When 라벨 생성 표면을 스캔하면 Then `agent-<n>`/`worker-<n>` 라벨 생성이 0건이고 lane 라벨만 만든다 | `grep -rnE 'fmt\.Sprintf\("(agent\|worker)-' internal/cli/managed_*.go` 0행 |
 | AC-MS-010 | REQ-MS-014 · REQ-MS-015 | Given 신규 관리 소스 파일들 When F3 상징과 수신확인-판정 상징을 스캔하면 Then 병합 자동화/Decider/핸드오버/완료판정 상징(`merge-window`, `Decider`, `T29b`, `T29c`, 카드 상태 전이 호출)이 0건이다 (F3 비침범 — receipt는 배달 증거로만 존재) | `grep -rnE 'merge-window\|Decider\|T29b\|T29c\|handover' internal/cli/managed_*.go` 0행 |

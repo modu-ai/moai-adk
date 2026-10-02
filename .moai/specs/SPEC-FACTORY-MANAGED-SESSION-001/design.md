@@ -85,6 +85,8 @@ F3의 현 상태(정찰 R7): M1a만 착지 — SPEC-FACTORY-RECORD-001 amendment
 
 ## D-7 — 런처 배선 위치
 
-**결정**: 배선은 세 런처의 factory 진입 분류 이후에 둔다 — `codex_launcher.go`의 `codexFactoryEntryClassify`(:791)와 `runCodex`(:658) 계열, cc/glm의 factory 세션 기동 경로. 관리 경로는 factory 리더·레인 세션에서만 활성화되고 일반(비-factory) 실행은 기존 exec/spawn 경로를 그대로 유지한다. Claude-only run에서 `factory_msg_send` 거부 정책(PR의 `TestFactoryMsgSendRejectsClaudeOnlyRun`)을 계승해 네이티브 SendMessage 정책과 충돌하지 않게 한다(REQ-MS-011).
+**결정**: 배선은 세 런처의 factory 진입 분류 이후에 둔다 — `codex_launcher.go`의 `codexFactoryEntryClassify`(:791)와 `runCodex`(:658) 계열, cc/glm의 factory 세션 기동 경로. 관리 경로는 **명시적 옵트인에서만** 활성화된다: 환경변수 `MOAI_FACTORY_MANAGED`가 `1` 또는 `true`(대소문자 무시·공백 제거, 미설정·빈 값·그 외는 꺼짐)이고 factory 스탬프(`MOAI_KANBAN_ID` + `MOAI_FACTORY_WORKER` 또는 `MOAI_FACTORY_WORKERS`)가 모두 있을 때다. 스탬프만, 또는 스위치만이면 모든 기동은 기존 exec/spawn 경로를 그대로 유지한다(운영자 결정, 기본 꺼짐). 게이트는 `internal/cli/launcher.go`(Claude/GLM)와 `internal/cli/codex_launcher.go`(Codex)에 있고 판정 헬퍼는 `factoryManagedRequested`(`internal/cli/factory_launch_pending.go`)다.
+
+**결과(도달 범위)**: (a) Claude/GLM에서는 `moai cc -f` / `moai glm -f` 기동이 스위치가 있을 때만 관리 소유자에 들어간다(스탬프는 런처 실행 전에 이미 내보내지므로 스위치만이 변수다). (b) Codex에서는 프로세스 환경에 스탬프와 스위치가 이미 있는 평범한 `moai codex` 실행에서만 관리 divert가 발동한다. `moai codex -f lane`은 `runCodexFactoryLane`으로 가서 카드 자식을 `launchCodexCardSession` → `codexDirectLaunchFn`으로 띄우므로 어떤 스위치 값에서도 Codex 레인 카드 자식은 관리되지 않는다(공시된 한계, 감독 루프 배선은 후속 작업이며 카드 id는 아직 없다). (c) 관리 Codex 기동은 이후 디버그 추적 단계와 `RUST_LOG` 주입을 건너뛴다(공시된 한계). Claude-only run에서 `factory_msg_send` 거부 정책(PR의 `TestFactoryMsgSendRejectsClaudeOnlyRun`)을 계승해 네이티브 SendMessage 정책과 충돌하지 않게 한다(REQ-MS-011).
 
 **기각**: (a) 새 최상위 서브커맨드로 관리 세션 노출 — 표면 이중화; (b) hook에서 세션을 소유 — 훅은 수명이 짧아 소유 루프를 못 유지.

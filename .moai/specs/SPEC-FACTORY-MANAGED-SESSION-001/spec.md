@@ -1,8 +1,8 @@
 ---
 id: SPEC-FACTORY-MANAGED-SESSION-001
 title: "Factory cross-host managed-session layer — PR #1722 재작성 (현 develop 어휘·브로커 API 기준)"
-version: "0.2.0"
-status: completed
+version: "0.3.0"
+status: in-progress
 created: 2026-10-01
 updated: 2026-10-02
 author: GOOS (manager-spec)
@@ -22,6 +22,19 @@ amendment_of: SPEC-FACTORY-MANAGED-SESSION-001
 
 ### Amendments
 
+Amendment 2 (version 0.3.0):
+
+| Field | Value |
+|---|---|
+| prior_completed_version | 0.2.0 |
+| prior_completed_sha | 35dbf356c4ca5e3cd9cb84cae2382c4908afef5e |
+| prior_completed_record | progress.md §E.4 sync_commit_sha (the re-close sync commit) |
+| rationale | The lane's merge attempt found the managed layer wired on factory environment stamps alone, and the hand-off had flagged the activation surface as ambiguous. The operator decided the managed layer is an explicit opt-in, default off. |
+| scope | spec.md (REQ-MS-001 and REQ-MS-005 activation wording, §B item 3, a §D constraint, frontmatter, this HISTORY, the Known debt section) + acceptance.md (AC-MS-001 and AC-MS-007 prose) + design.md (D-7 decision and consequences). REQ count (15) and AC count (17) unchanged; AC command cells unchanged. |
+| re_close_path | SPEC returns to `completed` on a later sync commit owned by manager-docs, after a delta plan-audit. |
+
+Amendment 1 (version 0.2.0):
+
 | Field | Value |
 |---|---|
 | prior_completed_version | 0.1.0 |
@@ -33,6 +46,7 @@ amendment_of: SPEC-FACTORY-MANAGED-SESSION-001
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.3.0 | 2026-10-02 | manager-spec | Completed-SPEC amendment (card t1375) — explicit opt-in activation and reachability limits. The managed layer engages only with `MOAI_FACTORY_MANAGED=1\|true` plus the factory stamps; default off. |
 | 0.2.0 | 2026-10-02 | manager-spec | Completed-SPEC amendment (card t1375) — headless Codex owner (audit F2) and arrival-order FIFO turn queue (audit F10). Weakening note: AC-MS-008 no longer promises operator priority, so operator input queues behind an already-claimed inbox batch. |
 | 0.1.0 | 2026-10-01 | manager-spec | Initial SPEC. |
 
@@ -50,20 +64,20 @@ t1365 판정(`.moai/reports/t1365/verdict.md`, 2026-09-30)에 따라 PR 병합�
 
 1. **관리 Claude/GLM 세션** — 런처가 `--print --input-format stream-json --output-format stream-json`으로 Claude/GLM 프로세스를 소유하고, 연산자 stdin과 브로커 inbox를 하나의 직렬 턴 큐로 합친다.
 2. **관리 Codex 세션** — 런처가 로컬 Codex App Server(루프백 WS + capability token)를 헤드리스로 소유하고(TUI 부착은 본 SPEC에서 미배달이며 후속 카드 몫이다), 스레드 ID로 브로커 엔드포인트를 바인딩해 무인 턴 주입을 수행한다.
-3. **런처 배선 + MCP 승인 스코핑** — cc/glm/codex_launcher의 factory 진입에 관리 경로를 연결하고, 자동 MoAI MCP 승인은 **런처가 소유한 프로세스에만** `-c` 인수로 전달한다.
+3. **런처 배선 + MCP 승인 스코핑** — cc/glm/codex_launcher의 factory 진입에 관리 경로를 **명시적 옵트인(`MOAI_FACTORY_MANAGED=1|true` + factory 스탬프, 기본 꺼짐)에서만** 연결하고, 자동 MoAI MCP 승인은 **런처가 소유한 프로세스에만** `-c` 인수로 전달한다.
 
 ## §C. 요구사항 (GEARS)
 
 ### C.1 관리 세션 소유와 브로커 바인딩
 
-- **REQ-MS-001** — The managed Codex launcher shall own a local Codex App Server reachable on a loopback WebSocket endpoint guarded by a per-launch random capability token, and shall register the broker endpoint bound to the App Server thread ID and the owner process fingerprint before admitting any message.
+- **REQ-MS-001** — **Where** the explicit managed-session opt-in is active (`MOAI_FACTORY_MANAGED` set to `1` or `true` (case-insensitive, trimmed; unset, empty or any other value means off) together with the factory stamps `MOAI_KANBAN_ID` and `MOAI_FACTORY_WORKER` or `MOAI_FACTORY_WORKERS`), the managed Codex launcher shall own a local Codex App Server reachable on a loopback WebSocket endpoint guarded by a per-launch random capability token, and shall register the broker endpoint bound to the App Server thread ID and the owner process fingerprint before admitting any message.
 - **REQ-MS-002** — **While** a launch is in flight, the launcher shall register a launch-pending broker endpoint and shall either bind it to the started session or roll it back, leaving no permanent launch-pending row when the session fails to start.
 - **REQ-MS-003** — **When** a managed session becomes idle and the broker holds unclaimed inbox messages addressed to it, the launcher shall claim a bounded batch under the store's lease discipline and inject only message metadata (message id, claim token, kind, sender slot, task ref) into the session's next turn.
 - **REQ-MS-004** — The managed session shall read each claimed message body through the broker's claim-token body-read path, and shall record a broker receipt after processing each claimed message.
 
 ### C.2 관리 Claude/GLM 세션
 
-- **REQ-MS-005** — **When** a managed Claude or GLM session launches, the launcher shall force the print and stream-JSON input/output flags onto the session process and shall refuse operator arguments that would take over those flags.
+- **REQ-MS-005** — **When** a managed Claude or GLM session launches under the same explicit opt-in as REQ-MS-001, the launcher shall force the print and stream-JSON input/output flags onto the session process and shall refuse operator arguments that would take over those flags.
 - **REQ-MS-006** — The managed Claude/GLM launcher shall serialize operator stdin lines and claimed broker inbox messages into one ordered turn queue gated on the previous turn's completion, so that operator input and broker delivery never race.
 
 ### C.3 어휘와 브로커 적합성
@@ -92,6 +106,7 @@ PR의 gorilla/websocket 기반 전송은 채택하되 App Server 클라이언트
 
 - **어휘**: `lane-<n>` · `-l/--leader` 만 사용. `internal/cli/factory.go`의 레거시 토큰 거부 경로는 회귀시키지 않는다.
 - **브로커**: `internal/factorymsg/store.go` 무수정이 원칙 — API 부족 시 blocker.
+- **활성화**: 관리 계층은 명시적 옵트인(`MOAI_FACTORY_MANAGED`가 `1` 또는 `true`, 대소문자 무시·공백 제거, 미설정·빈 값·그 외는 꺼짐)과 factory 스탬프(`MOAI_KANBAN_ID` + `MOAI_FACTORY_WORKER` 또는 `MOAI_FACTORY_WORKERS`)가 모두 있을 때만 진입한다. 스탬프만, 또는 스위치만으로는 모든 기동이 기존 exec 경로에 남는다.
 - **의존성**: 신규 의존은 `github.com/gorilla/websocket` v1.5.3 하나(사유와 기각 대안은 design.md D-2).
 - **F3 비침범**: 병합 자동화·Decider·lease reaping·재알림·T29b/T29c 핸드오버 발행은 전부 금지.
 - **문서 언어**: 문서·안내는 한국어(`language.yaml` documentation: ko), 코드 주석·커밋은 영어.
@@ -137,7 +152,10 @@ Source: `.moai/reports/t1375/sync-audit.md` (findings F2 and F10) and the operat
 
 1. **Headless owner, TUI attach owed.** The managed Codex launcher owns the local Codex App Server only. No TUI is attached or owned. By the sync-audit F2 reading of the launcher source (not observed in a run of `moai codex` in a factory environment), a factory-environment launch therefore shows no model output on screen and delivery is unattended. TUI attach is owed to a follow-up card (pending issuance by the leader; no card id is assigned here).
 2. **FIFO turn queue.** The managed turn queue is arrival-order FIFO, one turn at a time, gated on the previous turn's completion. Operator input does not take priority: it queues behind an inbox batch that is already claimed. This weakens the wording AC-MS-008 carried before this amendment. The arrival-order claim is proved both ways by the four subtests of `TestManagedQueueSerializesOperatorAndInbox` (commit 15fa2f096): `queue serves arrival order: operator then inbox`, `queue serves arrival order: inbox then operator`, `driver claims only when idle and serves operator then inbox in arrival order`, and `driver serves inbox then operator when the claim returns with an operator line already waiting`.
-3. **Verdict file.** `.moai/reports/t1375/sync-audit.md`.
+3. **Explicit opt-in, default off.** The managed layer engages only with `MOAI_FACTORY_MANAGED` set to `1` or `true` plus the factory stamps. Stamps alone, or the switch alone, leave every launch on its ordinary door. Proved by `TestFactoryManagedRequested`, `TestManagedLaunchRequiresOptIn` and `TestManagedCodexLaunchRequiresOptIn` in `internal/cli/managed_optin_test.go` (commit a88f138ad).
+4. **Codex lane card children are not managed.** `moai codex -f lane` routes to `runCodexFactoryLane`, which launches each card child through `launchCodexCardSession` and `codexDirectLaunchFn`, never through `runCodexLaunch`; every other Codex `-f`/`--factory` form is refused by `codexFactoryEntryClassify`. The managed Codex divert therefore fires only for a plain `moai codex` run whose process environment already carries the stamps and the switch. Proved for the lane loop by `TestManagedSwitchDoesNotReachCodexLaneLoop` (the managed seam is called 0 times and the direct door once per picked card). Wiring the supervising loop is follow-up work; no card id exists yet.
+5. **A managed Codex launch skips later debug steps.** With `-d`, a managed Codex launch traces `child-env assembly` and `exec handoff` 0 times (the ordinary launch traces each once) and injects no `RUST_LOG`. Proved by `TestManagedCodexLaunchSkipsLaterDebugSteps`.
+6. **Verdict file.** `.moai/reports/t1375/sync-audit.md`.
 
 ## §G. 교차 참조
 
