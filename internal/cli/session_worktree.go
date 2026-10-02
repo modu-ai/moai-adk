@@ -141,6 +141,12 @@ var (
 	// the M4 session-exit path and the M8 PR-merge path, like the dirty guard
 	// above: one predicate, two call sites, one answer.
 	sessionWorktreeGitHasUnpushed = gitHasUnpushedReal
+
+	// sessionWorktreeBranchLanded reports whether the worktree's branch has
+	// landed on the remote integration branch (SPEC-WEB-SETTINGS-SAVE-001
+	// scope ③ — session-exit disposal only; the M8 PR-merge path is out of
+	// scope by design).
+	sessionWorktreeBranchLanded = gitBranchLandedReal
 )
 
 // SessionExitCleanupNoticePrefix is the literal prefix of the session-exit
@@ -688,6 +694,25 @@ func cleanupSessionWorktree(cfg *config.Config, wtPath string, cleanExit bool, o
 		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (unpushed commits): worktree %s preserved (dispose manually via 'moai worktree remove' after the branch is pushed)\n", wtPath)
 		return
 	}
+	// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (REQ-WSS-301/302/306): pushed is not
+	// landed. A clean tree on a branch the remotes hold is still the only copy
+	// of work until the remote INTEGRATION branch carries it, so the landing
+	// confirmation runs after the dirty and unpushed guards and before any
+	// removal — merge-first order untouched (REQ-WSS-303: sessionExitAutoMerge
+	// has already run by the time this function is reached). Fail-open on an
+	// unreadable answer, like the two guards above. A branch merged into the
+	// LOCAL develop but not yet pushed to origin/develop also preserves here —
+	// the auto-merge-just-ran state preserving is the designed behavior, not
+	// a defect (decision-index Q4, AGENTS.md §3).
+	landed, lerr := sessionWorktreeBranchLanded(wtPath)
+	if lerr != nil {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (landing-check failed: %v): worktree %s preserved\n", lerr, wtPath)
+		return
+	}
+	if !landed {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (remote merge landing unconfirmed): worktree %s preserved (dispose manually via 'moai worktree remove' once %s carries the merge; a locally merged but not-yet-pushed develop lands here too — by design)\n", wtPath, sessionWorktreeIntegrationRef)
+		return
+	}
 	// Clean worktree + clean exit -> remove. A removal failure is non-blocking
 	// (REQ-SW-004 fail-open spirit): the worktree is left on disk and a notice
 	// names the failure.
@@ -767,6 +792,73 @@ func gitWorktreeRemoveReal(wtPath string) error {
 		return fmt.Errorf("%s (%s)", strings.TrimSpace(string(out)), execerr.StatusDetail(err))
 	}
 	return nil
+}
+
+// sessionWorktreeIntegrationRef is the remote-tracking integration branch the
+// landing predicate reads (decision-index Q1 DECIDED — fixed to
+// refs/remotes/origin/develop). A repository whose integration branch is
+// named differently has no ref to confirm against and fails open to
+// preserve; the misjudgment direction of a stale ref is also always
+// "not landed" → preserve (landing is monotonic).
+const sessionWorktreeIntegrationRef = "refs/remotes/origin/develop"
+
+// gitBranchLandedReal reports whether the worktree's branch has landed on
+// the remote integration branch, per the decided fetch-less predicate
+// (decision-index Q1):
+//
+//   (i) the branch tip is an ancestor of the remote-tracking integration
+//       ref (`git merge-base --is-ancestor`), or
+//  (ii) every patch the branch carries already exists upstream — `git
+//       cherry` answers with no "+" line (patch-id equivalence), which
+//       covers squash merges where no commit ancestry survives (the
+//       SPEC-WORKTREE-SQUASH-MERGE-001 lesson: reachability alone cannot
+//       see a squash).
+//
+// No network runs: both checks read the remote-tracking refs the repository
+// already holds, so the shared exit path stays cheap (REQ-WSS-304). Any
+// anomaly — a check error, a missing integration ref, a detached HEAD with
+// no branch to confirm — returns an error so the caller fails open to
+// preserve (REQ-WSS-302), matching the dirty and unpushed guards' contract.
+func gitBranchLandedReal(wtPath string) (bool, error) {
+	if err := exec.Command("git", "-C", wtPath, "rev-parse", "--verify", "--quiet",
+		sessionWorktreeIntegrationRef).Run(); err != nil {
+		return false, fmt.Errorf("remote-tracking integration ref %s not found", sessionWorktreeIntegrationRef)
+	}
+	branchOut, err := exec.Command("git", "-C", wtPath, "rev-parse", "--abbrev-ref", "HEAD").Output()
+	if err != nil {
+		return false, err
+	}
+	if branch := strings.TrimSpace(string(branchOut)); branch == "" || branch == "HEAD" {
+		return false, fmt.Errorf("detached HEAD has no branch to confirm a landing for")
+	}
+	// Arm (i): ancestry. Exit code 1 means "not an ancestor" — a verdict,
+	// not a failure; only other exits are anomalies.
+	ancestor := exec.Command("git", "-C", wtPath, "merge-base", "--is-ancestor",
+		"HEAD", sessionWorktreeIntegrationRef)
+	if err := ancestor.Run(); err == nil {
+		return true, nil
+	} else if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
+		return false, err
+	}
+	// Arm (ii): patch-id equivalence. `git cherry` lists the head-side
+	// commits, prefixing each with "-" when its patch matches an upstream
+	// commit and "+" when it does not — so empty output only happens when the
+	// head side is empty (the ancestry case above). Landed = every listed
+	// patch is equivalent: no "+" line. Measured against the squash fixture
+	// in session_worktree_landing_test.go: the naive "empty output" reading
+	// never fires on a squash (the equivalent commit still prints as
+	// "- <sha>").
+	cherry, err := exec.Command("git", "-C", wtPath, "cherry",
+		sessionWorktreeIntegrationRef, "HEAD").Output()
+	if err != nil {
+		return false, err
+	}
+	for _, ln := range strings.Split(string(cherry), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(ln), "+") {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // gitStatusPorcelainReal runs `git -C <wtPath> status --porcelain` and returns
