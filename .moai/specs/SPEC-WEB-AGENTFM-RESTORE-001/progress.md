@@ -95,3 +95,4 @@ _<pending sync-phase>_
 - 역방향 회귀 관측: TestCodexResolution_IgnoresPerAgentLLMCells GREEN(스폰-경로 무시 계약 생존 — REQ-AFR-002).
 
 - 커버리지 실측(이 트리, 이 런): internal/settings/agentfm 94.4% · internal/settings 87.0% · internal/config 82.8% · internal/template 84.4% · internal/web 73.5%. acceptance.md 간접 검증이 이름하는 2패키지 중 agentfm ≥85% 충족; template은 84.4%로 0.6pt 미달 — 신규 파일 기여분과 기존 레거시 기여분의 구분은 -coverprofile 산출 후 보고(아래 행), 본 SPEC 범위 밖 레거시 코드의 기여분이 있으면 sync-auditor 판정 자료로 남긴다.
+- coverprofile 산출(이 트리, 이 런): 신규·재포트 함수 전부 100% — profile_matrix.go(ValidPerformanceTiers·IsValidPerformanceTier·AgentGroup·ProfileMatrixAgents·DefaultProfileMatrix·ResolveAgentModelEffort)와 glm_effort_overlay.go 재포트 4종(ResolveGLMReasoning·ResolveGLMReasoningForModel·IsGLMCodingMaxOverrideAgent·GLMCodingMaxOverrideAgents) 포함. 유일 0%는 GLMReasoningStateNames — 본 SPEC이 건드리지 않은 기존 함수(스키마 위젯 소비). template 패키지 84.4%의 미달분은 레거시 코드 기여로 확인 — 신규 코드 커버리지는 충족.
