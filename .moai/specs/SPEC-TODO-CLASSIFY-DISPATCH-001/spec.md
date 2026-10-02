@@ -1,10 +1,10 @@
 ---
 id: SPEC-TODO-CLASSIFY-DISPATCH-001
 title: "LLM-classified card metadata at creation — priority·blocked·execution-mode on every card, a priority-sorted queue, mode-aware factory lane leases, and default-on auto-dispatch for -f lanes"
-version: "0.3.1"
-status: completed
+version: "0.4.0"
+status: in-progress
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-10-03
 author: manager-spec (card t1332)
 priority: P2
 phase: "v3.2.0 target"
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "todo, factory, classification, priority, execution-mode, serial, parallelizable, auto-dispatch, lease, queue-sort, card-t1332"
 tier: M
 card: t1332
+amendment_of: SPEC-TODO-CLASSIFY-DISPATCH-001
 depends_on: [SPEC-FACTORY-SELF-DISPATCH-001]
 related_specs: [SPEC-MANAGER-TODO-001, SPEC-TODO-HOLD-STATE-001, SPEC-AUTONOMY-CONTRACT-001, SPEC-KANBAN-TODO-CLI-001, SPEC-TODO-SQLITE-001]
 ---
@@ -27,11 +28,33 @@ related_specs: [SPEC-MANAGER-TODO-001, SPEC-TODO-HOLD-STATE-001, SPEC-AUTONOMY-C
 | 0.2.0 | 2026-09-29 | **Leader-ruling revision** (plan-audit PASS 0.875 iter 1; D1 + OD rulings folded, one repair pass). **D1 (provenance-only)**: the t1240-only `--clear-policy` citations in plan.md §B.5/§F M4 and surface-notes.md items 5/8 now carry the `WT-factory-self-dispatch:` prefix (the flag is absent from this tree's develop — measured 0 `ClearPolicy` hits); no REQ/AC content changed. **OD-1 REVISED (operator ruling 2026-09-29)**: pipeline exclusivity REJECTED; serial-card mutual exclusivity ADOPTED — a serial card blocks only OTHER SERIAL cards, served one at a time in priority order; parallelizable selection is unaffected while a serial card is in flight. Rationale recorded: a full `next` refusal costs half the throughput benefit that classification exists to deliver. REQ-TCD-008 rewritten, REQ-TCD-009 extended, AC-TCD-008 re-derived (three clauses). **OD-3 REVISED (same ruling)**: decider-failure default is now `serial` (fail-safe — a parallelizable failure default could run true-serial cards concurrently and violate ordering; the serial default costs throughput only); REQ-TCD-003 rewritten. The new serial failure-default vs REQ-TCD-014's parallelizable absent-field read default is a recorded TENSION, flagged for the lead in plan.md §C — not silently resolved. Provenance: leader Jev doctrine-fallback rulings, noul below threshold (OD-1 0.31, OD-3 0.36), dated 2026-09-29. REQ and AC counts unchanged (14 / 14). |
 | 0.3.0 | 2026-09-29 | **Tension resolved (leader ruling 2026-09-29, OD-3 extension).** REQ-TCD-014's absent-field READ default for the MODE axis flips `parallelizable` → `serial`; the PRIORITY axis default (`normal`) and BLOCKED axis default (`false`) are untouched. Rationale recorded: absent = unclassified = conservative treatment; a parallelizable absence default would silently bypass OD-3's serial failure default (a fail-safe bypassed through silence). plan.md §C FLAGGED item becomes RESOLVED with this provenance. No new read-default AC added (auditor optional D4 stays run-phase discretion); no existing AC asserted the old parallelizable absence default (measured: zero default-value hits in acceptance.md). REQ and AC counts unchanged (14 / 14). |
 | 0.3.1 | 2026-09-29 | **OD-2 resolved to judgment-file transport (leader ruling 2026-09-29, card t1332 remediation F2).** REQ-TCD-012 reworded to shipped reality: the product provides the decider seam (`--classification-file`, the sole injection path) with the default decider (`DefaultCardDecider`, identity `default`) as the shipped judgment backend; the `Decider(llm)` implementation is recorded out of scope for this SPEC (deferred to a follow-up card). plan.md §C OD-2 moves open → RESOLVED with the judgment-file option named as the adopted candidate (the plan's own OD-2 candidate list anticipated this). The Jev-isolation clause is untouched; no other REQ strengthened or weakened. Provenance: operator standing-delegation path, Jev ask noul 0.8 (gate 0.50), 2026-09-29. REQ and AC counts unchanged (14 / 14). |
+| 0.4.0 | 2026-10-03 | **In-place amendment of the `completed` SPEC (card t1407; operator decision 2026-10-03, relayed through the factory leader; manager-spec re-delegation per D-NEW-1).** Three serial-slot behaviors of `moai factory next` now differ from the literal text of REQ-TCD-008 / AC-TCD-008(b): (1) a serial card whose lease has expired does not hold the serial slot; (2) a merely `assigned` serial card holds the slot against every arm that takes a NEW card, but not against a lane leasing the card assigned to itself; (3) `failed` is terminal and releases the slot. A known limitation (non-atomic slot read versus claim) is recorded and left open. The original REQ-TCD-008 and AC-TCD-008 text is byte-unchanged; `## Amendments` carries the structured record and supersedes that text where they conflict. No requirement deleted, no id renumbered, no AC mapping changed (14 / 14). progress.md §E.4 `sync_commit_sha` is left at the prior close. Status moves `completed → in-progress` per the SSOT amendment transition (`spec-frontmatter-schema.md` § Status Enum). |
 
 > **Provenance discipline.** Every `file:line` citation was measured at HEAD `145c3d98c` in this
 > worktree. t1240-branch citations are prefixed `WT-factory-self-dispatch:` and were read via
 > `git show` — that branch is NEVER merged or checked out by this SPEC's plan phase, and its
 > absorption into develop is a run-phase entry precondition (REQ-TCD-013).
+
+## Amendments
+
+**2026-10-03 — v0.4.0 — in-place amendment of the prior `completed` SPEC (card t1407).**
+
+- Transition: `completed → in-progress` per the SSOT amendment contract (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Enum, `completed → in-progress (amendment)`); `amendment_of: SPEC-TODO-CLASSIFY-DISPATCH-001` (self-referential). The schema forces this status transition for an in-place amendment of a `completed` SPEC; it was not a free choice.
+- Prior completed version: **0.3.1** — closed 2026-09-29 (card t1332 sync lane).
+- `prior_completed_sha: 34f09f34d` — the prior close's `sync_commit_sha` (this SPEC's progress.md §E.4); that field is left unmodified.
+- Reason: operator decision 2026-10-03, relayed through the factory leader (card t1407). The serial exclusivity of REQ-TCD-008 / AC-TCD-008(b) is implemented in `internal/cli/factory_card.go` (`factoryNextSelectAndLease`, `factorySerialSlotFree`, `factorySerialSlotHeld`); run tm9i7y showed the literal text deadlocking the factory — eight leader-assigned serial cards, every `factory next` refused.
+- Scope — three behaviors, each superseding the original text where they conflict:
+
+  1. **Expired lease.** A serial card in a lease-holding state whose lease has expired (`homestate.Card.LeaseExpired(now)`, `internal/homestate/card_record.go`; expired when `now` is at or after `lease_expires_at`, and an unparseable expiry reads as expired) does NOT hold the serial slot. An expired lease is collected lazily, so the row keeps its lease-holding state after its lane is gone; the original text counts any non-terminal serial card as holding, and this narrows REQ-TCD-008 and AC-TCD-008(b). The selection clock is read before the record snapshot, so a renewal landing between the two cannot be read as an expiry. A live lease holds the slot in every lease-holding state.
+  2. **`assigned` serial cards (operator option B).** An `assigned` serial card (no lease) still holds the slot against every arm that takes a NEW card (selection arms b, b2, c). The one exception is arm (a): when a lane leases the card assigned TO ITSELF, sibling cards that are merely `assigned` are not counted; a sibling that is actually in flight (live lease) still blocks it, and `picked` rows still count. Effect: serial cards leader-assigned to several lanes no longer deadlock each other, yet remain served one at a time, because the first lease then holds the slot against the rest.
+  3. **`failed` is terminal.** `homestate.IsTerminalCardState` lists `done`, `failed`, `abandoned`, and no transition leaves `failed`; the positive releasing-state enumeration of `factorySerialSlotFree` now includes `failed`. REQ-TCD-008 already says the terminal states re-admit serial selection, enumerated positively — this makes the enumeration complete, it does not add a new rule. Non-terminal parked states (`blocked`, `needs-decision`) and `picked` rows still hold the slot.
+
+- AC-TCD-008(b), 한국어 판독: 원문은 high serial 이 terminal 에 도달하기 전까지 어떤 레인도 low serial 카드를 임대하지 못한다고 적었는데, 이를 아래처럼 고쳐 읽는다. 새 serial 카드를 가져가는 경로에서는 다른 serial 카드가 임대 중이거나 `assigned`·`picked` 상태이면 슬롯이 막힌다. 다만 임대가 만료된 카드와 `failed` 로 끝난 카드는 슬롯을 쥐지 않는다. 레인이 자신에게 배정된 카드를 임대하는 경로에서는 단지 `assigned` 인 형제 카드가 슬롯을 막지 않으며, 실제로 임대 중인 형제만 막는다.
+- **Known limitation (not closed by this amendment; the operator will take it as a separate follow-up).** The serial slot is read from a record snapshot and the claim happens afterwards, so two lanes selecting concurrently can both lease a serial card. The factory record and the todo queue are two stores, so an atomic lease across both is future work. This amendment makes no atomicity claim.
+- Original text: REQ-TCD-008 in §B and AC-TCD-008 in `acceptance.md` are unchanged; this entry supersedes them where they conflict. No requirement deleted, no id renumbered, no AC mapping changed. Requirement and AC counts unchanged: 14 / 14.
+- Evidence: branch `WT-factory-serial-slot-stale-lease`, `git log --oneline 7109e0900..HEAD` — `250c03899` (RED, expired lease), `abae30f67` and `e4e967ef8` (behavior 1), `e2123a271` (RED, failed row), `c28eb4d70` (behavior 3), `fb5217710` (RED, own assigned card) and `9499ec834` (fix, behavior 2). Tests, all in `internal/cli/factory_serial_slot_stale_test.go`: `TestFactoryNextExpiredLeaseReleasesSerialSlot`, `TestFactoryNextSerialSlotLeaseExpiryBoundary`, `TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState` (behavior 1); `TestFactoryNextOwnAssignedSerialCardLeasesPastSiblingAssigned`, `TestFactoryNextOwnAssignedSerialCardBlockedByLiveSerialLease`, `TestFactoryNextAssignedSerialCardStillHoldsSlotAgainstNewTakes`, `TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms` (behavior 2); `TestFactoryNextFailedSerialRowReleasesSlot` (behavior 3).
+
+---
 
 ## §A Context
 
