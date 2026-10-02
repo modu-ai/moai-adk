@@ -72,7 +72,7 @@ REQ 총수 14 ≤ Tier M 상한 16.
 | 2 | 같은 커밋이 지운 rosterguard/registry.go·v4manifest 표시 헬퍼 | **OUT** | 블루프린트에서 웹 저장 경로가 v4manifest에서 가져오는 것은 closed-set 상수뿐이고(전부 생존 실측), `ModelColor`/`Tier` 표시 헬퍼는 현재 티어 기계와 중복된다. rosterguard 행은 콘솔 저장 경로와 무관. 단, 복원 파일에 대응하는 rosterguard/numeral 등록은 M5에서 재검토한다(고아 방지). |
 | 3 | 착지된 티어 패널과의 공존 | **llm 패널 서브섹션 + 기계 공유** — Q3 운영자 확정 2026-10-02 (decision-index) | `agenttierpanel.go`/`jevkey.go`의 배치 패턴(마커 상수 + `.subsection` 블록 + 커스텀 parse/persist)을 공유한다. 배치는 workflow 패널이 아니라 **llm(3rd Party LLM) 패널** — 저장 대상이 llm.yaml이므로 파일 정합성이 있다. 티어 차트(workflow 패널)는 '왜 티어가 있는가'의 표시 근거, 본 서브섹션은 에이전트별 제어 — 상호 참조하는 두 표면. 탭 14개 복원안은 기각(탭 계약·i18n·chrome 락 전면 재협상 비용). |
 | 4 | revert가 아니라 re-port | **채택 (구체 차이 명시)** | 로스터 차이(mission-governor→manager-todo), 매트릭스 셀은 9-27 스냅숏이 아니라 현재 모델 매트릭스(t1368 착지본)에서 재유도, `llm.performance_tier` 레거시 alias 미부활(마지막 소비자 소멸), 프론트매터 쓰기 없음(REQ-MPM-040 승계), 14번째 탭 아님. 포트 선례: t1385/t1388. |
-| 5 | 락 테스트 반전 (observational-RED) | **열거 처분표 (표면-결합 집합)** | plan.md §D.5에 표면-결합 테스트 파일 전부(실측 스캔 기준 26파일)를 파일별 invert/replace/keep-and-why 행으로 **명시 열거**한다 — 전수 서술이 아니라 열거이며, 신규 파일은 run-phase 착수 시 재판정한다. 현재 부재 락이 TDD의 RED 기선이다. |
+| 5 | 락 테스트 반전 (observational-RED) | **열거 처분표 (표면-결합 집합)** | plan.md §D.5에 표면-결합 테스트 파일 전부(실측 스캔 기준 28파일)를 파일별 invert/replace/keep-and-why 행으로 **명시 열거**한다 — 전수 서술이 아니라 열거이며, 신규 파일은 run-phase 착수 시 재판정한다. 현재 부재 락이 TDD의 RED 기선이다. |
 
 ## §D 비기능 제약
 

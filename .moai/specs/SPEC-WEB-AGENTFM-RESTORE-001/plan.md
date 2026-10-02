@@ -85,7 +85,7 @@
 
 ### §D.5 락 테스트 처분표 (결정 5)
 
-표면-결합 테스트 파일 26종의 명시적 열거(spec.md §C-5 — 전수 서술이 아닌 열거; 실측 스캔 기준, 신규 파일은 run-phase 착수 시 재판정).
+표면-결합 테스트 파일 28종의 명시적 열거(spec.md §C-5 — 전수 서술이 아닌 열거; 실측 스캔 기준, 신규 파일은 run-phase 착수 시 재판정).
 
 | 파일 | 처분 | 근거 |
 |---|---|---|
@@ -99,7 +99,7 @@
 | `fieldsets_states_test.go` | **extend** — 서브섹션 상태(파싱 실패 행·빈 목록) 추가 | 삭제당시 -49행 분의 재포트 |
 | `crosssession_test.go` | **keep** + 주석 갱신 | §B-3 |
 | `internal/cli/mcp_audit_test.go` | **keep** | mcp 패키지 한정 가드(실측 :145-151) — 웹 레이어 복원과 무충돌 |
-| `internal/web/mcp_audit_surface_test.go` | **amend** — `TestWebConsole_NoPerAgentModelResolver` 센티널 계약 축소 | 4 센티널(`ResolveAgentModelEffort`·`ProfileMatrixAgents`·`EffectiveProfile`·`AgentOverrides`)은 블루프린트 실측 센티널-보유 표면 파일(`agentfm.go`·`app.go`·`handlers.go`·`schemaform.go`)에서 **허용**하고, 그 외 비테스트 internal/web 전 파일(센티널 0히트인 생성물 `fieldsets_templ.go` 포함)에서는 금지를 **유지**한다. 허용 집합 근거(레저 diff): `app.go` :3100 `patchAgentFM` 배선·`handlers.go` :6488 `template.ResolveAgentModelEffort` 호출·`schemaform.go` :7098/:7115 `EffectiveProfile()`·`len(cfg.LLM.AgentOverrides)` — `fieldsets_templ.go`(diff :3916-6222)는 센티널 0히트라 허용 불요. plan-audit iter2 D14. 보존되는 축소 계약: (1) internal/web은 자체 유도 함수를 정의하지 않는다(`func ResolveAgentModelEffort` 정의 전 파일 금지 — 단일-유도, REQ-AFR-010과 정합), (2) 제외 표면 집합이 비면 가드 실패(표면 삭제로 가드를 통과하는 것 금지). 블루프린트 실측: 구 web/agentfm.go도 `template.ResolveAgentModelEffort`를 호출했으므로(레저 diff :287 이하) 계약은 "호출 허용·정의 금지"가 정확하다 |
+| `internal/web/mcp_audit_surface_test.go` | **amend** — `TestWebConsole_NoPerAgentModelResolver` 센티널 계약 축소 | 4 센티널(`ResolveAgentModelEffort`·`ProfileMatrixAgents`·`EffectiveProfile`·`AgentOverrides`)은 블루프린트 실측 센티널-보유 표면 파일(`agentfm.go`·`app.go`·`handlers.go`·`schemaform.go`)에서 **허용**하고, 그 외 비테스트 internal/web 전 파일(센티널 0히트인 생성물 `fieldsets_templ.go` 포함)에서는 금지를 **유지**한다. 허용 집합 근거(제거 diff): `app.go` :3100 `patchAgentFM` 배선·`handlers.go` :6488 `template.ResolveAgentModelEffort` 호출·`schemaform.go` :7098/:7115 `EffectiveProfile()`·`len(cfg.LLM.AgentOverrides)` — `fieldsets_templ.go`(diff :3916-6222)는 센티널 0히트라 허용 불요. plan-audit iter2 D14. 보존되는 축소 계약: (1) internal/web은 자체 유도 함수를 정의하지 않는다(`func ResolveAgentModelEffort` 정의 전 파일 금지 — 단일-유도, REQ-AFR-010과 정합), (2) 제외 표면 집합이 비면 가드 실패(표면 삭제로 가드를 통과하는 것 금지). 블루프린트 실측: 구 web/agentfm.go도 `template.ResolveAgentModelEffort`를 호출했으므로(레저 diff :287 이하) 계약은 "호출 허용·정의 금지"가 정확하다 |
 | `update_llm_preserve_test.go`·`update_model_key_strip_test.go`·`retired_model_keys_test.go`·`shipped_key_reader_test.go` | **extend** — 수재 키 생존 + `performance_tier`/`harness_agents`/workflow 키 계속 strip 기대 | REQ-AFR-008 |
 | `settings/schema_sections_test.go`·`web/schema_sections_test.go` | **keep** — removed-key 무시 계약은 schema-external live 키와 정합 | §B-6 |
 | `webux_followup_test.go`·`webux_haiku_effort_test.go` | **replace** — 소멸. 해당 AC(haiku lock 등)는 신규 테스트로 흡수 | 통째 재생성 금지(Out of Scope) |
@@ -110,7 +110,7 @@
 | `internal/cli/update/backup/merge_useradd_test.go` | **keep** | :9-30 — 합성 픽스처 기반 백업 병합 단위 테스트, 표면 토큰과 무관. plan-audit D6 |
 | `internal/cli/model_backend_default_test.go` | **keep** | :13-51 — 스폰-경로 무시 계약(`TestCodexResolution_IgnoresPerAgentLLMCells` :28). 런타임 소비가 Out of Scope인 한 계약 생존 — Q2 후속 카드가 소비를 도입하면 그 SPEC이 재판정. plan-audit D6 |
 | `internal/cli/profile_setup_schema_options_test.go` | **keep** + :119 고아 주석 갱신 | 매트릭스 재포트(M1) 후 주석 서술을 사실 관계로 갱신 — §B-7. plan-audit D6 |
-| `partial_apply_repro_test.go` | **amend/extend** — saveStep 상수·`injectableSteps`·`recordingSeams`·양성 대조 `want`(:130-132)에 제거된 7/8 단계(`patchAgentFM`·`applyPerfTierEdits`) 재등록 | M3가 seam 호출을 재도입하면 `TestPartialApplyOrderPositiveControl`이 기계적으로 깨짐 — 레저 diff :6807-6876 제거분의 역방향. 현재 단계 종단 `:59-64 stepApplySchema` 실측. plan-audit iter2 D15 |
+| `partial_apply_repro_test.go` | **amend/extend** — saveStep 상수·`injectableSteps`·`recordingSeams`·양성 대조 `want`(:130-132)에 제거된 7/8 단계(`patchAgentFM`·`applyPerfTierEdits`) 재등록 | M3가 seam 호출을 재도입하면 `TestPartialApplyOrderPositiveControl`이 기계적으로 깨짐 — 레저 diff :6807-6876 제거분의 역방향. 현재 범위 `:59-67`, 종단 `stepJevcredSave` 실측. plan-audit iter2 D15 |
 | `save_observability_test.go` | **amend/extend** — `seamTable`·seam 목록을 같은 확장에 동행 | :28 스스로 종속 형제를 자칭 — 모든 저장 seam을 `recordingSeams`로 구동. plan-audit iter2 D15 |
 
 ## §E Self-Verification

@@ -76,7 +76,7 @@ grep -rn 'still renders' internal/web/*_test.go
 
 검증 커맨드: EV-AFR-006 레저 (4커맨드, 빈 스윕 금지 — 실행 테스트 ≥ 4).
 
-- **Given** 수재된 템플릿 llm.yaml이 `profile`·`agent_overrides`를 운반 **When** `template.ShippedRetiredModelKeys()` **Then** 반환 집합에 두 키가 **포함**된다(멤버십 = strip 제외 — `retired_model_keys.go:87-98`은 템플릿에서 발견된 키의 집합을 반환한다; plan-audit iter2 D16 극성 교정) **그리고** strip 실행 결과에서 두 키는 제거되지 않는다. 음(역)측 절반은 다음 bullet: 미수재 은퇴 키는 반환 집합에 있으면서 strip 대상이다.
+- **Given** 수재된 템플릿 llm.yaml이 `profile`·`agent_overrides`를 운반 **When** `template.ShippedRetiredModelKeys()` **Then** 반환 집합에 두 키가 **포함**된다(멤버십 = strip 제외 — `retired_model_keys.go:87-98`은 템플릿에서 발견된 키의 집합을 반환한다; plan-audit iter2 D16 극성 교정) **그리고** strip 실행 결과에서 두 키는 제거되지 않는다. (음측 절반은 다음 bullet — bullet 2가 그 자체로 완결된 음측 검증이다; plan-audit iter3 D18 — 극성 유발 해설문 삭제 처분.)
 - **Given** `llm.performance_tier: high`만 지닌 사용자 llm.yaml **When** strip 단계 실행 **Then** 해당 키는 제거되고 백업에 원본이 남는다 (여전히 은퇴 키).
 - **Given** `agent_overrides`에 사용자 값 **When** (미래의) strip이 실행되는 경우 **Then** `UserValues` 플래그 동작은 기존 계약 유지.
 
