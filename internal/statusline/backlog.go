@@ -4,7 +4,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
-// BacklogCounts is the kanban backlog reduced to what a glance needs: how much
+// BacklogCounts is the factory backlog reduced to what a glance needs: how much
 // work is in flight and how much is waiting. Dropped items are deliberately not
 // counted — they are history, and a number that only ever grows is noise.
 type BacklogCounts struct {
@@ -13,7 +13,7 @@ type BacklogCounts struct {
 	Available bool // false when no backlog file could be read
 }
 
-// resolveBoardRoot returns the directory holding the project's kanban state.
+// resolveBoardRoot returns the directory holding the project's factory state.
 //
 // This is NOT always the session's working directory. `.moai/state/` is
 // gitignored, so it exists only in the primary checkout — a session working

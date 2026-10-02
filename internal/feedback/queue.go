@@ -48,7 +48,7 @@ const queueFilePerm os.FileMode = 0o600
 // queueDirPerm is the directory mode for the queue's own directory.
 const queueDirPerm os.FileMode = 0o755
 
-// Lock contention budget: 25ms x 40 ~ 1s, the same bounded window the kanban
+// Lock contention budget: 25ms x 40 ~ 1s, the same bounded window the factory
 // stores use. A mutation racing a short-lived holder serializes behind it; a
 // genuinely stuck holder surfaces as an error rather than a hang.
 const (

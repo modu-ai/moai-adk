@@ -2,7 +2,7 @@ package hook
 
 // session_start_lang.go holds the two locale helpers the factory notices, the
 // stale-run notice, factory_messages.go, and the SessionStart handler share.
-// They moved here from session_start_kanban_i18n.go (SPEC-LAUNCHER-ENTRY-FLAGS-001
+// They moved here from the retired chain-session i18n file (SPEC-LAUNCHER-ENTRY-FLAGS-001
 // M5b first step) so that file could be deleted without taking them along.
 
 // langEnglish is the fallback locale and the language of every agent-facing

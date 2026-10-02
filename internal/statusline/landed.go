@@ -10,8 +10,8 @@
 // factory.GitLandedQuerier.Landed asks git ONCE PER CARD (measured 0.174s per
 // query — about fourteen seconds across eighty cards), and backlog.go's read is
 // contracted to stay constant-cost per render. The child therefore folds every
-// card into ONE subject-stream query — kanban's own landed scan
-// (factory.LandedScanArgs) — and attributes in memory through kanban's own
+// card into ONE subject-stream query — the factory's own landed scan
+// (factory.LandedScanArgs) — and attributes in memory through the factory's own
 // predicate (factory.LandedAttributions) and generation boundary
 // (factory.AutoDoneSubjectFresh). The count is the same subject criterion
 // `moai todo auto-done` evaluates; this file owns no matcher of its own.
@@ -62,7 +62,7 @@ const LandedCountsTTL = 10 * time.Minute
 const landedScanBudget = 20 * time.Second
 
 // landedCardToken bounds which picked ids are considered at all, mirroring
-// kanban's own card-token rule.
+// the factory's own card-token rule.
 var landedCardToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 // LandedCounts is how many picked cards the integration branch already carries
@@ -77,7 +77,7 @@ var landedCardToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 // factory.LandingUnknown exists beside landed and not-landed.
 type LandedCounts struct {
 	// Landed is how many picked cards Ref's subject stream attributes, through
-	// kanban's subject-attribution predicate, to a commit no older than the
+	// the factory's subject-attribution predicate, to a commit no older than the
 	// card itself. A body mention does not count. A landing is not a close —
 	// a plan-only landing counts too — which is why the render annotates with
 	// a verify-before-done glyph and never subtracts.
@@ -185,9 +185,9 @@ var landedGitRunner = func(ctx context.Context, dir string, args ...string) (str
 	return string(out), err
 }
 
-// landedScanRunner adapts landedGitRunner to kanban's CommandRunner contract,
+// landedScanRunner adapts landedGitRunner to the factory's CommandRunner contract,
 // so factory.ScanLandedSubjects runs its one query through the same seam the
-// tests count. kanban's contract carries a command name; the adapter only
+// tests count. The factory's contract carries a command name; the adapter only
 // ever runs git and refuses anything else rather than silently running git in
 // its place.
 func landedScanRunner(ctx context.Context, dir string) factory.CommandRunner {

@@ -1032,7 +1032,7 @@ type SecuritySandbox struct {
 type StateConfig struct {
 	RetentionDays int `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
 
-	// SessionRecordRetentionDays bounds the age of kanban session records
+	// SessionRecordRetentionDays bounds the age of factory session records
 	// (<state-dir>/<session>.json), pruned at SessionStart (card t1312). It
 	// is a pointer so an explicit 0 ("disable retention") stays
 	// distinguishable from a key the user omitted, which retains the

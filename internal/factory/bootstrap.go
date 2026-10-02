@@ -34,7 +34,7 @@ import (
 // base36Digits is the alphabet of NewRunID.
 const base36Digits = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-// NewRunID returns the identifier for one kanban run: the current Unix second
+// NewRunID returns the identifier for one factory run: the current Unix second
 // in lowercase base36, unpadded — six characters at the present epoch.
 //
 // Monotonic by construction, so a later run sorts after an earlier one, and it

@@ -1,4 +1,4 @@
-// session_start_record.go writes the kanban state record for THIS session.
+// session_start_record.go writes the factory state record for THIS session.
 //
 // The write lives here, and not in the launcher, because the launcher runs
 // BEFORE the session it launches exists: the identifier it would key on
@@ -40,7 +40,7 @@ import (
 // containment test is what separates a card id from a checkout name.
 const worktreeRootDirName = "worktrees"
 
-// writeFactorySessionRecord records this session's kanban identity under its
+// writeFactorySessionRecord records this session's factory identity under its
 // OWN identifier, or does nothing at all.
 //
 // Four gates precede the write, each of them a case where the correct answer
@@ -52,7 +52,7 @@ const worktreeRootDirName = "worktrees"
 //     orchestrator-written fields land independently as the chain progresses,
 //     so rewriting on every SessionStart would discard them. An empty source
 //     is treated as startup, matching the bootstrap notices.
-//   - A session that is neither a kanban nor a factory session. No launch
+//   - A session that is not a factory session. No launch
 //     facts, no record — unchanged from today, where no launcher ran.
 //   - A record already present for this identifier, for the same reason the
 //     re-entry gate exists: the write is additive to the session's start, not
@@ -116,7 +116,7 @@ func writeFactorySessionRecord(input *HookInput) {
 }
 
 // pruneSessionRecordsBestEffort sweeps session records older than the
-// configured retention window (card t1312) at the one point every kanban
+// configured retention window (card t1312) at the one point every factory
 // session already touches this directory: its own record write. Fail-open in
 // both directions — the sweep never gates the launch (the WriteBestEffort
 // precedent), and an UNREADABLE config never enables a sweep either: deleting
@@ -168,7 +168,7 @@ func sessionRecordRetentionDays(root string) (days int, ok bool) {
 // malformed label yields no record rather than a guessed role. A LEGACY label
 // also yields no record: the caller's legacy gate (above) stops it earlier, and
 // this reader maps no legacy spelling to a role (SPEC-ROLE-NAMING-CODE-001
-// REQ-RNC-009). The markers of the retired kanban mode — the leader marker and
+// REQ-RNC-009). The markers of the retired chain-session mode — the leader marker and
 // the companion label a surviving session may still carry — map to no role.
 //
 // The discriminators and their ORDER mirror the factory bootstrap notice
@@ -211,7 +211,7 @@ func resolveSessionCardID(dir string) string {
 // pure path arithmetic: `git rev-parse --show-toplevel` names the same
 // directory but costs a subprocess on a hook that runs under a 5s budget.
 // Measured on this tree, resolving it that way pushed SessionStart's
-// synchronous return from under 500ms to 650-890ms for every kanban session.
+// synchronous return from under 500ms to 650-890ms for every factory session.
 //
 // The containment test is what makes the "left empty rather than guessed"
 // clause reachable. Without it the derivation always yields something inside

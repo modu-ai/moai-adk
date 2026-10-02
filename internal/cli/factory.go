@@ -12,7 +12,8 @@ package cli
 // (parseLauncherEntry), and everything after the factory shape is selected.
 //
 // GENEALOGY (binding): the pre-3.1 "factory" flag (-f/--factory) was RENAMED
-// to -k/--kanban in #1513 (7f61332ef) and drove a three-role chain.
+// to the since-retired chain-session entry in #1513 (7f61332ef), which drove
+// a three-role chain.
 // -f briefly returned as the factory lane fan-out flag (v1.0.0, 2026-08-17)
 // and was RETIRED the same day (v1.2.0) in favor of `-k <N>`. t118 (v3.1.1)
 // REVIVED it as the dedicated factory entry, and SPEC-LAUNCHER-ENTRY-FLAGS-001
@@ -119,7 +120,7 @@ const (
 type factoryFlagParse struct {
 	Enabled     bool   // -f or -l present (either entry token)
 	Lanes       int    // always 0 post-N-removal; kept for the merge contract
-	LaneNumber  int    // no entry sets it any more (the numbered `-f lane-<n>` form is gone); 0
+	LaneNumber  int    // no entry sets it any more (no numbered lane form exists); 0
 	LaneLabel   string // no entry sets it any more; empty
 	LaneRole    bool   // -l/--lane: join as the next free lane
 	RunID       string // explicit --factory-run selector (MoAI-owned, pre--- only)
@@ -840,7 +841,7 @@ func enterFactoryLaneMode(label string, lanes int, clearPolicy string, dispatch 
 type factoryLaneEntry = factory.FactoryLaneEntry
 
 // factoryRegistryPath / loadFactoryRegistry / saveFactoryRegistry delegate to
-// the kanban registry cluster (factory_slots.go). The cluster moved out of
+// the factory registry cluster (factory_slots.go). The cluster moved out of
 // this file because the SessionStart hook needs the same reads and cannot
 // import this package; these delegates keep the cli surface stable.
 func factoryRegistryPath(root string) string { return factory.FactoryRegistryPath(root) }

@@ -53,7 +53,7 @@ func operatorSuppliedSettings(args []string) bool {
 // prepareFactorySettings writes a transient settings file carrying
 // {"crossSessionInbound": "accept"} (plus the user's crosssession.yaml extras
 // — dialogExpiry and an isolatePeerMachines opt-in ride along, only the
-// inbound value is forced to accept, because kanban dispatch stalls without
+// inbound value is forced to accept, because factory dispatch stalls without
 // it) to a session-private path under os.TempDir(), and returns the
 // --settings flag pair to append to the backend's argv (followed by
 // `--effort max` when the profile resolves max — see applyLaunchEffort), plus
@@ -72,7 +72,7 @@ func prepareFactorySettings(profileName string, args []string) (flag []string, c
 		return nil, func() {}
 	}
 
-	// The kanban payload: the user's cross-session preferences overlaid with
+	// The factory payload: the user's cross-session preferences overlaid with
 	// the profile's launch effort and the dispatch-required accept. An
 	// unreadable config degrades to the accept-only payload (fail-open — same
 	// as before the merge existed). The effort rides here rather than in
@@ -105,7 +105,7 @@ func prepareFactorySettings(profileName string, args []string) (flag []string, c
 
 // writeTransientSettingsFile writes the given settings payload to a
 // session-private file under os.TempDir() and returns its path. The prefix
-// names the injector ("moai-kanban" / "moai-crosssession") in the filename.
+// names the injector ("moai-factory" / "moai-crosssession") in the filename.
 func writeTransientSettingsFile(payload map[string]any, prefix string) (string, error) {
 	dir := os.TempDir()
 	// Session-private by PID + nanosecond; two concurrent launches in the same

@@ -167,7 +167,7 @@ const (
 	// file loader; the managed layer injects this env var instead.
 	EnvDisableBypassPermissionsMode = "MOAI_DISABLE_BYPASS_PERMISSIONS_MODE"
 
-	// EnvFactoryRunID carries the run identifier that distinguishes one kanban
+	// EnvFactoryRunID carries the run identifier that distinguishes one factory
 	// run from another on the same machine. The leader session generates it once at
 	// launch; the SessionStart hook reads it to name itself and the leader
 	// socket. It is leader-owned state: a companion neither carries nor publishes
@@ -180,7 +180,7 @@ const (
 	// {"crossSessionInbound": "accept"} and passed it to the backend via
 	// --settings. The hook reads it to decide which inbound-automation notice
 	// line to print: when set to "1", cross-session messages are auto-accepted
-	// (no operator action needed); when unset in a kanban session, the hook
+	// (no operator action needed); when unset in a factory session, the hook
 	// prints the operator advisory instead (verify the field is present in the
 	// operator's own --settings file, or it was not injected due to a fail-open
 	// write failure).
@@ -199,7 +199,7 @@ const (
 	// on: factory.BackendClaude, factory.BackendGLM, or factory.BackendGPT.
 	//
 	// It exists because the backend is the one launch fact a session cannot
-	// observe for itself. Before this key the value reached the kanban record
+	// observe for itself. Before this key the value reached the factory record
 	// only as a literal argument at the launcher's call sites, which is fine
 	// while the launcher writes the record and impossible once the session
 	// does. It is deliberately carried rather than inferred: ANTHROPIC_BASE_URL
@@ -629,8 +629,8 @@ const (
 
 	// EnvClaudeCodeMaxConcurrentSubagents is the runtime per-session cap on
 	// concurrently running subagents (default 20 per turn). t118 (v3.1.1
-	// launcher axis): the launcher seeds it on every kanban companion and
-	// factory lane so one lane's fan-out cannot crowd out the others —
+	// launcher axis): the launcher seeds it on every factory lane
+	// session so one lane's fan-out cannot crowd out the others —
 	// the operator-confirmed architecture is DefaultLaneMaxConcurrentSubagents
 	// (10) agents in parallel per lane. MoAI does not own this env (it is a
 	// Claude Code runtime env); the const centralizes the name per

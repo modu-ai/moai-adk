@@ -211,7 +211,7 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 		return ""
 	}
 
-	// No title yet, and this is a kanban or factory LEADER: the session's own name
+	// No title yet, and this is a factory LEADER: the session's own name
 	// is the title, so the operator finds it in the session list under the name
 	// they and every peer already address it by (issue #1596). This branch sits
 	// ABOVE the SPEC branch deliberately — a leader session sitting in a project
@@ -245,7 +245,7 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 }
 
 // leaderSessionTitle returns the leader session's resolved name, or "" when this
-// session is not a kanban or factory leader.
+// session is not a factory leader.
 //
 // The value is published by the launcher (exportLeaderSessionName) because the
 // launcher is the only actor that knows which name actually reached the backend

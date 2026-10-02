@@ -196,25 +196,25 @@ func RecordPath(projectRoot, sessionID string) string {
 // signature makes gating impossible.
 func Write(projectRoot string, rec *Record) error {
 	if rec == nil {
-		return fmt.Errorf("write kanban record: record is nil")
+		return fmt.Errorf("write factory record: record is nil")
 	}
 	if err := validateSessionID(rec.SessionID); err != nil {
-		return fmt.Errorf("write kanban record: %w", err)
+		return fmt.Errorf("write factory record: %w", err)
 	}
 
 	path := RecordPath(projectRoot, rec.SessionID)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("write kanban record: creating state directory: %w", err)
+		return fmt.Errorf("write factory record: creating state directory: %w", err)
 	}
 
 	encoded, err := json.MarshalIndent(rec, "", "  ")
 	if err != nil {
-		return fmt.Errorf("write kanban record: encoding: %w", err)
+		return fmt.Errorf("write factory record: encoding: %w", err)
 	}
 	encoded = append(encoded, '\n')
 
 	if err := os.WriteFile(path, encoded, 0o600); err != nil {
-		return fmt.Errorf("write kanban record: %w", err)
+		return fmt.Errorf("write factory record: %w", err)
 	}
 	return nil
 }
@@ -234,17 +234,17 @@ func WriteBestEffort(projectRoot string, rec *Record) {
 // record" from "a record that says nothing".
 func Read(projectRoot, sessionID string) (*Record, error) {
 	if err := validateSessionID(sessionID); err != nil {
-		return nil, fmt.Errorf("read kanban record: %w", err)
+		return nil, fmt.Errorf("read factory record: %w", err)
 	}
 
 	raw, err := os.ReadFile(RecordPath(projectRoot, sessionID))
 	if err != nil {
-		return nil, fmt.Errorf("read kanban record: %w", err)
+		return nil, fmt.Errorf("read factory record: %w", err)
 	}
 
 	var rec Record
 	if err := json.Unmarshal(raw, &rec); err != nil {
-		return nil, fmt.Errorf("read kanban record: decoding: %w", err)
+		return nil, fmt.Errorf("read factory record: decoding: %w", err)
 	}
 	return &rec, nil
 }
@@ -260,7 +260,7 @@ func ReadAll(projectRoot string) ([]Record, error) {
 		if os.IsNotExist(err) {
 			return []Record{}, nil
 		}
-		return nil, fmt.Errorf("read kanban records: %w", err)
+		return nil, fmt.Errorf("read factory records: %w", err)
 	}
 	out := make([]Record, 0, len(entries))
 	for _, e := range entries {

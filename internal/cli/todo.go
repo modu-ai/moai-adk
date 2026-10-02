@@ -2,7 +2,7 @@
 //
 // Thin cobra wiring over internal/factory.BacklogStore: every mutation
 // delegates to the store's locked Mutate path, reads go through the
-// lock-free Load. The verbs serve the kanban dispatch protocol's entry rule
+// lock-free Load. The verbs serve the factory dispatch protocol's entry rule
 // (`/moai todo` is the operator's act — the leader never picks for the
 // operator): `add` and `done` mutate, `list` and bare `next` observe, and
 // `next <n> [--spec]` records the operator's pick as one locked write.

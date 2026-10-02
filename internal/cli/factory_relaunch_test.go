@@ -347,6 +347,46 @@ func TestFactoryRelaunchLaunchesProviderEntry(t *testing.T) {
 	}
 }
 
+// The lane entry `-l` takes no argument, so a supplied --lane cannot pin the
+// join: the verb says so once on stderr before launching, leaves stdout and the
+// launched argv alone, and stays silent when --lane is not supplied.
+func TestFactoryRelaunchLaneIsIgnoredWithNote(t *testing.T) {
+	root := runOwnerSandbox(t)
+	t.Chdir(root)
+	const note = "--lane lane-3 is ignored"
+	for _, provider := range []string{"cc", "glm"} {
+		captured := captureRelaunchLaunch(t)
+		stdout, stderr, err := runRelaunch(t, "--provider", provider, "--lane", "lane-3", "--run", "runA")
+		if err != nil {
+			t.Fatalf("%s relaunch with --lane: %v", provider, err)
+		}
+		if got := strings.Count(stderr, note); got != 1 {
+			t.Errorf("%s: stderr carries the --lane note %d times, want exactly once:\n%s", provider, got, stderr)
+		}
+		if !strings.Contains(stderr, "next free lane") || !strings.Contains(stderr, "-l takes no argument") {
+			t.Errorf("%s: note does not state the next-free-lane join and the reason:\n%s", provider, stderr)
+		}
+		if stdout != "" {
+			t.Errorf("%s: stdout = %q, want empty", provider, stdout)
+		}
+		if want := [][]string{{provider, "-l", "--factory-run", "runA"}}; !reflect.DeepEqual(*captured, want) {
+			t.Errorf("%s: launch argv = %v, want %v (no lane in the argv)", provider, *captured, want)
+		}
+
+		captured = captureRelaunchLaunch(t)
+		_, stderr, err = runRelaunch(t, "--provider", provider, "--run", "runA")
+		if err != nil {
+			t.Fatalf("%s relaunch without --lane: %v", provider, err)
+		}
+		if strings.Contains(stderr, "--lane") {
+			t.Errorf("%s: stderr mentions --lane although none was supplied:\n%s", provider, stderr)
+		}
+		if want := [][]string{{provider, "-l", "--factory-run", "runA"}}; !reflect.DeepEqual(*captured, want) {
+			t.Errorf("%s: launch argv without --lane = %v, want %v", provider, *captured, want)
+		}
+	}
+}
+
 // A failing launcher child is surfaced: its exit status is propagated, and any
 // other launch failure is wrapped with the line that was being launched.
 func TestFactoryRelaunchSurfacesLaunchFailure(t *testing.T) {

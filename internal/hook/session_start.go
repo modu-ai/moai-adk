@@ -455,10 +455,10 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
-	// SPEC-KANBAN-RECORD-SESSION-KEY-001: write THIS session's kanban record,
+	// SPEC-KANBAN-RECORD-SESSION-KEY-001: write THIS session's factory record,
 	// keyed by the identifier its own runtime delivered. The launcher used to
 	// write it and could not key it correctly — it runs before the session it
-	// launches exists (see session_start_record.go). Non-kanban sessions get
+	// launches exists (see session_start_record.go). Non-factory sessions get
 	// no record and nothing happens here; every failure is discarded, so the
 	// call returns nothing and the session start cannot gate on it.
 	clock.lap("marshal_attribution")

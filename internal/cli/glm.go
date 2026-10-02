@@ -237,9 +237,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			return runErr
 		}
 		defer restoreRun()
-		// Same recording as the cc leader: the kanban store AND the factory state
-		// a lane's -l join resolves. Recording only the former left
-		// every GLM-led run unjoinable (NO_ACTIVE_FACTORY).
+		// Same recording as the cc leader: the factory run state a lane's -l join
+		// resolves. Without it every GLM-led run is unjoinable
+		// (NO_ACTIVE_FACTORY).
 		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), factory.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
 			return fmt.Errorf("record factory run: %w", err)
 		}

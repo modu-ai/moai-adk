@@ -21,8 +21,8 @@ import (
 
 // legacyLaunchLabelValue returns the launch-label value carrying a legacy
 // role, or "" when every label in the environment is current-vocabulary (or
-// absent). The leader label (MOAI_KANBAN_LEAD_NAME — kanban and factory
-// leaders alike) and the lane label (MOAI_FACTORY_WORKER) are the two
+// absent). The leader label (config.EnvFactoryLeadName — chain-session and factory
+// leaders alike) and the lane label (config.EnvMoaiFactoryWorker) are the two
 // role-bearing launch labels.
 func legacyLaunchLabelValue() string {
 	if label := strings.TrimSpace(os.Getenv(config.EnvFactoryLeadName)); factory.IsLegacyLeaderSpelling(label) {
@@ -44,7 +44,7 @@ func isLegacyRecordRole(role string) bool {
 // launch label OR its existing session record carries a legacy role value,
 // and "" when the session is current-vocabulary (or not a run member). The
 // factory branch is run-state gated (staleRunPrescriptionGate,
-// SPEC-STALE-RUN-LABEL-001); the kanban relaunch branch is not a retire
+// SPEC-STALE-RUN-LABEL-001); the retired-mode relaunch branch is not a retire
 // prescription and stays ungated.
 func staleRunNoticeFor(root, sessionID, lang string) string {
 	if label := legacyLaunchLabelValue(); label != "" {
@@ -76,7 +76,7 @@ func staleRunNoticeFor(root, sessionID, lang string) string {
 // the run id always %[2].
 type staleRunMessages struct {
 	roleValueRetire       string // legacy role value %[1]q, run id %[2]s, command line %[3]s — the factory branch
-	roleValueRelaunch     string // legacy role value %[1]q — the kanban branch
+	roleValueRelaunch     string // legacy role value %[1]q — the retired-mode branch
 	laneLabelRetire       string // legacy lane label %[1]q, run id %[2]s, command line %[3]s — the factory message hook
 	laneLabelUnbind       string // orphan label %[1]q, run %[2]s, measured state %[3]s — the one-time unbind notice (REQ-SRL-005)
 	laneLabelUnbindRebind string // header of the re-bind command line, no format args — one active run (REQ-SRH-001)
@@ -167,7 +167,7 @@ func staleRunMessagesFor(lang string) staleRunMessages {
 
 // staleRunNotice renders the stale-run message. The relaunch command is named
 // only for factory sessions (the run id + MOAI_FACTORY_WORKERS discriminator):
-// a kanban run has no factory run to relaunch into — its remedy is ending the
+// a retired-mode run has no factory run to relaunch into — its remedy is ending the
 // session and relaunching.
 func staleRunNotice(value, lang string) string {
 	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))

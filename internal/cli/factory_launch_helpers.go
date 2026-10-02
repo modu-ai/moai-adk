@@ -209,7 +209,7 @@ func noteLegacyLeaderRegistryEntries(root string, notes io.Writer) {
 			continue // dead legacy entries are pruned by the claim, not noticed
 		}
 		seen[name] = true
-		_, _ = fmt.Fprintf(notes, "kanban: registry entry %q is a leader session from before the leader/lane rename; end that session and relaunch it — launching as %s\n", name, factory.LeaderLabel())
+		_, _ = fmt.Fprintf(notes, "factory: registry entry %q is a leader session from before the leader/lane rename; end that session and relaunch it — launching as %s\n", name, factory.LeaderLabel())
 	}
 }
 
@@ -254,7 +254,7 @@ func claimName(path, label string, bump func(int) string, notes io.Writer) strin
 		if final != label && notes != nil {
 			// The note is best-effort operator guidance; the SessionStart
 			// notice is the reliable surface for the final name.
-			_, _ = fmt.Fprintf(notes, "kanban: %s is held by a live session; launching as %s\n", label, final)
+			_, _ = fmt.Fprintf(notes, "factory: %s is held by a live session; launching as %s\n", label, final)
 		}
 	}
 

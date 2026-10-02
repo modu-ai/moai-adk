@@ -41,7 +41,7 @@ const (
 // slotNotGiven is how an omitted --name or --command reads on status.
 const slotNotGiven = "(not given)"
 
-// slotExitError carries an intentional exit code while keeping the kanban
+// slotExitError carries an intentional exit code while keeping the factory
 // sentinel reachable through errors.Is.
 type slotExitError struct {
 	code int
@@ -52,7 +52,7 @@ func (e *slotExitError) Error() string { return e.err.Error() }
 func (e *slotExitError) Unwrap() error { return e.err }
 func (e *slotExitError) ExitCode() int { return e.code }
 
-// slotResult maps a kanban error to its exit code; other errors pass through.
+// slotResult maps a factory error to its exit code; other errors pass through.
 func slotResult(err error) error {
 	switch {
 	case err == nil:

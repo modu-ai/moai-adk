@@ -21,7 +21,7 @@ import (
 
 // ErrStateLockHeld is returned by a state-lock acquisition when another
 // process holds the lock at that path.
-var ErrStateLockHeld = errors.New("kanban board lock held")
+var ErrStateLockHeld = errors.New("factory state lock held")
 
 // IsStateLockHeld reports whether err is the contention sentinel.
 func IsStateLockHeld(err error) bool {
@@ -32,7 +32,7 @@ func IsStateLockHeld(err error) bool {
 // pre-removal re-read observes a different recorded identity than the
 // inspection did — the artifact was released and re-acquired inside the
 // window, and the clear aborts rather than unlinking a valid lock.
-var ErrStateLockChangedHands = errors.New("kanban board lock changed hands between inspection and removal")
+var ErrStateLockChangedHands = errors.New("factory state lock changed hands between inspection and removal")
 
 // IsStateLockChangedHands reports whether err is the changed-hands abort.
 func IsStateLockChangedHands(err error) bool {

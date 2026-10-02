@@ -1,8 +1,8 @@
 // role.go — the role vocabulary the factory and the session records share:
 // RoleLeader, RoleLane, and the detection of the retired leader spelling.
-// (The role-declaration carrier that used to live here went with the kanban
-// board: SPEC-LAUNCHER-ENTRY-FLAGS-001 M6. Declaration files a past board wrote
-// under .moai/state/kanban-board/roles are left on disk, unread.)
+// (The role-declaration carrier that used to live here went with the retired
+// board mode: SPEC-LAUNCHER-ENTRY-FLAGS-001 M6. Declaration files a past board wrote
+// under the legacy board-state roles directory are left on disk, unread.)
 package factory
 
 import "strings"

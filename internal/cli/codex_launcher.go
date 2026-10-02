@@ -23,10 +23,10 @@ package cli
 // the shared probe, so no second classification path forks here (REQ-CL-007).
 // The status readout never writes; -w requires an existing worktree. POSIX direct
 // launch replaces moai with Codex (the -w lock names that one pid); Windows
-// retains the child Start/wait path. The kanban entry (-k) stays refused
+// retains the child Start/wait path. The retired chain-session entry (-k) stays refused
 // (SPEC-CODEX-FACTORY-RETIRE-001). The factory surface narrowed to exactly
 // the lane entry `-l` / `--lane` (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003,
-// whose trigger SPEC-LAUNCHER-ENTRY-FLAGS-001 renamed from `-f lane`): a
+// whose trigger SPEC-LAUNCHER-ENTRY-FLAGS-001 moved to the `-l` flag): a
 // supervising loop that leases each card on the parent checkout and starts one
 // interactive Codex session in the card's own worktree; `-f` in every shape
 // keeps its refusal (REQ-SD-004).
@@ -369,7 +369,7 @@ func buildCodexSpawnCommandWithEnv(program string, args, factoryEnv []string) st
 	// Codex must bind through its own process identity, never a foreign Claude
 	// UUID or an outer launcher's PID.
 	parts = append(parts, config.EnvClaudeCodeSessionID+"=", config.EnvMoaiSessionPID+"=")
-	// The same holds for a Claude lane's kanban/factory identity: the pane
+	// The same holds for a Claude lane's factory identity: the pane
 	// would otherwise inherit it from this process or the tmux server and
 	// present itself as a peer of the lane's run.
 	for _, key := range codexLaneLaunchEnvKeys {
@@ -773,7 +773,7 @@ func runCodex(cmd *cobra.Command, args []string) error {
 // names: every `-f` shape prints it byte-identically
 // (AC-SD-004 compares stderr against this constant). Since
 // SPEC-LAUNCHER-ENTRY-FLAGS-001 the lane entry is `-l`, so no `-f` shape is an
-// entry on moai codex, `-f lane` included. The retired `-k` entry prints
+// entry on moai codex, whatever its value. The retired `-k` entry prints
 // retiredEntryRefusal instead (launcher_retired_entries.go).
 const codexFactoryRefusalDiag = factoryUnsupportedBackendSentinel +
 	": moai codex has no -f entry; the lane entry is 'moai codex -l'; use 'moai cc -f' or 'moai glm -f' for the factory leader"
@@ -829,7 +829,7 @@ const (
 // The lane entry is `-l` / `--lane` (SPEC-LAUNCHER-ENTRY-FLAGS-001): it takes
 // no argument, composes with no other entry token (`-f`) and no operator
 // --name, and the leader selector composes with it only. `-f` is no Codex
-// entry in any shape — `-f lane` included. Legacy role tokens (`worker` /
+// entry in any shape, whatever its value. Legacy role tokens (`worker` /
 // `agent`, their numbered labels, and `lead`) refuse with the
 // REQ-RNC-003/-005/-007 message naming the canonical form (AC-SD-021) — the
 // REQ-SD-004 line is reserved for non-legacy shapes.

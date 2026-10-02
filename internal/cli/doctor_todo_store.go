@@ -2,7 +2,7 @@
 // doctor divergence check over a stale project-local queue store.
 //
 // After the home-database cutover a rollback snapshot can remain under
-// .moai/state/todo/ or .moai/state/kanban/ while every read is answered by
+// .moai/state/todo/ or the legacy retired-mode state directory while every read is answered by
 // ~/.moai/db/<project-key>/todo/backlog.db. The read surface discloses the
 // ghost store (M1); this check makes the SAME divergence reproducible with
 // one doctor line (REQ-TSS-010), from the SAME detector the disclosure

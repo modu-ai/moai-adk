@@ -194,7 +194,7 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			proofOK, proofWhy := factorylane.VerifyRunBeforeAcquire(&recorded, acquireAt)
 			// One case the strict record-only verifier cannot see: the
 			// window's acquire stamp carries RFC3339 SECOND precision (the
-			// kanban record format) while the check record carries
+			// factory record format) while the check record carries
 			// nanoseconds, so a record written within the acquire's own
 			// second is unorderable from the records alone. sameSecondProof
 			// admits exactly that: a passing record falling at or before the

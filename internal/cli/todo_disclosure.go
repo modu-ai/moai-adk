@@ -94,7 +94,7 @@ func todoQueueRootForDisclosure() string {
 //
 // SPEC-TODO-STALE-STORE-001: the same entry point carries the stale
 // project-local store disclosure (REQ-TSS-001) — the divergence fact comes
-// from the single kanban detector the doctor check also uses
+// from the single stale-store detector the doctor check also uses
 // (REQ-TSS-004), so the two surfaces cannot disagree.
 func discloseQueueLayout(cmd *cobra.Command, verb string) error {
 	if err := discloseNonAuthoritativeBacklogJSON(cmd.ErrOrStderr(), verb,

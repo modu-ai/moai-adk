@@ -402,7 +402,7 @@ func readAndHashSettingsDriftSource(path string) ([]byte, string, int64, error) 
 //
 // This is the same seam, for the same reason, as
 // integrationLockMutationTestHook next door. It is unexported and
-// package-level, so only `package kanban` can assign it, and no non-test file
+// package-level, so only `package factory` can assign it, and no non-test file
 // does. Every production path leaves it nil, and the call site is nil-guarded
 // — invoking a nil func() panics in Go, so the guard is what makes "with the
 // hook nil, behaviour is byte-for-byte unchanged" true rather than intended.

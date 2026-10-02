@@ -191,7 +191,7 @@ func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 	}
 	// SPEC-TODO-STALE-STORE-001 REQ-TSS-001 — history enters disclosure
 	// ONLY through this direct call (AC-TSS-001e), so the stale-store fact
-	// rides the same stream here; the fact is the single kanban detector's
+	// rides the same stream here; the fact is the single stale-store detector's
 	// (REQ-TSS-004), not a second probe.
 	if werr := discloseStaleLocalStores(errOut, "history",
 		factory.InspectStaleLocalStores(todoQueueRootForDisclosure())); werr != nil {

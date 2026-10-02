@@ -1,7 +1,7 @@
 package cli
 
 // doctor_factory_run.go — the doctor factory section (SPEC-ROLE-NAMING-CODE-001
-// REQ-RNC-001, AC-RNC-013). It reads the kanban session records — the same
+// REQ-RNC-001, AC-RNC-013). It reads the factory session records — the same
 // store the web view model reads — and reports the run's leader role in the
 // persisted vocabulary:
 //
@@ -31,7 +31,7 @@ const factoryRunCheckName = "Factory Run"
 const legacyLeaderRelaunchMessage = "legacy run: relaunch required"
 
 // checkFactoryRun reports the leader role of the declared run, read from the
-// kanban session records under the project root. Read-only: it never writes
+// factory session records under the project root. Read-only: it never writes
 // and never repairs.
 func checkFactoryRun(cwd string, verbose bool) DiagnosticCheck {
 	records, err := factory.ReadAll(cwd)
@@ -47,7 +47,7 @@ func checkFactoryRun(cwd string, verbose bool) DiagnosticCheck {
 		return DiagnosticCheck{
 			Name:    factoryRunCheckName,
 			Status:  uikit.CheckInfo,
-			Message: "no session records — no factory or kanban run declared",
+			Message: "no session records — no factory run declared",
 		}
 	}
 

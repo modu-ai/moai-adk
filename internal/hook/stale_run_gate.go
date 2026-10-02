@@ -22,7 +22,7 @@ package hook
 // keyed by session identity, shared across ALL prescription surfaces
 // (SessionStart bootstrap + peer registration, UserPromptSubmit peer path) so
 // startup and the first prompt cannot both emit (plan M1.2). It is
-// deliberately NOT the kanban session record — a legacy-label session must
+// deliberately NOT the factory session record — a legacy-label session must
 // never grow one (SPEC-ROLE-NAMING-CODE-001) — and deliberately NOT the
 // run's broker DB, which is the dead run's own store, absent exactly when
 // the unbind path needs the carrier most. Marker failures fail open to
@@ -253,7 +253,7 @@ func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, 
 // gatedStaleRunAnswer applies the run-state gate exactly where the answer
 // would carry the factory retire step — runID set and the factory fan-out
 // env stamped (config.EnvMoaiFactoryWorkers), the same discriminator
-// staleRunNotice uses for its factory branch. The kanban relaunch prose
+// staleRunNotice uses for its factory branch. The retired-mode relaunch prose
 // names no factory run and stays ungated.
 func gatedStaleRunAnswer(root, sessionID, label, lang string) string {
 	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))

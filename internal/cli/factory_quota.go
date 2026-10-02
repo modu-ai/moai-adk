@@ -119,10 +119,10 @@ func factoryQuotaEvaluate(root string) factoryQuotaEvaluation {
 }
 
 // factoryQuotaClaudeLane reports whether this session is a Claude lane: its
-// launch provider names Claude, falling back to the kanban backend variable
+// launch provider names Claude, falling back to the factory backend variable
 // only when no launch provider is set (the pattern of
 // internal/hook/session_start_factory.go factoryLaunchEntry; the launch-provider
-// variable does not depend on the kanban launcher). A glm, gpt, empty, or
+// variable does not depend on the factory launcher). A glm, gpt, empty, or
 // unrecognised value is not a Claude lane and is never held (REQ-QAS-012).
 func factoryQuotaClaudeLane() bool {
 	provider := os.Getenv(config.EnvMoaiLaunchProvider)

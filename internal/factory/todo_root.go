@@ -190,8 +190,8 @@ func primaryCheckoutRoot(base string) (string, bool) {
 // among the sources resolveStateDir adopts a queue FROM, so an operator whose
 // cards were carried into the old fallback still gets them back.
 //
-// The directory is named for the command that owns the queue (`moai todo` —
-// no `moai kanban` command exists). Read-only.
+// The directory is named for the command that owns the queue (`moai todo`).
+// Read-only.
 func homeTodoQueueRoot(base string) (string, bool) {
 	if base == "" {
 		base = "."

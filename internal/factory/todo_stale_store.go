@@ -4,7 +4,7 @@
 // After the home-database cutover (SPEC-TODO-QUEUE-HOME-CANON-001) the
 // canonical queue is ~/.moai/db/<project-key>/todo/backlog.db, but a
 // rollback snapshot can remain project-local under .moai/state/todo/ or
-// .moai/state/kanban/. Nothing reads it, yet nothing says it is there —
+// the legacy retired-mode state directory. Nothing reads it, yet nothing says it is there —
 // and on 2026-09-29 a reader took such a snapshot's queued count for the
 // live queue (home last_seq 1305 vs the snapshot's 661). This file is THE
 // single detector for that divergence (REQ-TSS-004): the stderr disclosure
@@ -46,7 +46,7 @@ const (
 	// GhostClassLegacyJSON is a `backlog.json` at a queue path the SQLite
 	// engine no longer reads: the downgrade route's file name surviving as
 	// a byte document in the home queue directory or a project-local
-	// todo/kanban directory.
+	// todo or legacy state directory.
 	GhostClassLegacyJSON = "legacy-json"
 	// GhostClassMigratedJSON is a `backlog.json.migrated` — the quarantine
 	// rename the lazy migration left behind.
@@ -99,7 +99,7 @@ type StaleStoreFact struct {
 //
 // InspectStaleLocalStores reports the stale-local-store fact for root: the
 // home database's presence and meta.last_seq, every project-local legacy
-// store found (both the todo-named and kanban-named directories), whether
+// store found (both the todo-named and legacy-named directories), whether
 // any readable pair diverges, and the non-SQLite ghost artifacts in the
 // same directories (REQ-TSP-040). Read-only on every branch: no migration,
 // no DDL, no lock, no marker file — a ghost is a rollback snapshot and
@@ -143,7 +143,7 @@ func InspectStaleLocalStores(root string) StaleStoreFact {
 
 // inspectGhostArtifacts walks the same queue directories the SQLite probe
 // walks — the resolved (home or temporary) state directory, the
-// project-local todo directory, and the legacy kanban directory — and
+// project-local todo directory, and the legacy state directory — and
 // reports the non-SQLite ghost classes found in each: a plain backlog.json,
 // its .migrated quarantine sibling, and UUID-shaped session-record files.
 //

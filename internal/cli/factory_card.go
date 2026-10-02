@@ -1130,8 +1130,8 @@ func factorySameTree(a, b string) bool {
 	return filepath.Clean(a) == filepath.Clean(b)
 }
 
-// factoryHolderLabel mirrors kanban's holder label: the human-facing name a
-// lane recognizes its queue position by, else the session id.
+// factoryHolderLabel renders an integration-lock holder: the human-facing
+// name a lane recognizes its queue position by, else the session id.
 func factoryHolderLabel(lock *factory.IntegrationLock) string {
 	if lock == nil {
 		return "unknown"

@@ -430,7 +430,7 @@ const (
 
 	// DefaultSessionRecordRetentionDays is the shipped default for the
 	// project-tier `state.session_record_retention_days` key (card t1312):
-	// the age bound past which SessionStart prunes kanban session records.
+	// the age bound past which SessionStart prunes factory session records.
 	// It mirrors DefaultHomeCleanRetentionDays — the same 30-day window the
 	// home tier already ships — because the consumers (doctor Factory Run,
 	// the web ops console, the stale-run hook) need liveness only and no
@@ -804,7 +804,7 @@ const DefaultFactoryLeaderLanes = 1
 const DefaultFactorySlowLaunchThreshold = 2 * time.Second
 
 // DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
-// the launcher seeds on kanban companion and factory lane sessions (t118,
+// the launcher seeds on factory lane sessions (t118,
 // operator-confirmed architecture: each lane runs up to 10 agents in
 // parallel). It rides CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS (runtime default
 // 20) so N lanes fanning out simultaneously divide the machine's capacity by

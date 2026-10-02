@@ -10,7 +10,7 @@ package cli
 // (REQ-WKW-005). Pushing remains the leader/operator's explicit act.
 //
 // The integration-window ceremony is BINDING (REQ-WKW-004): the path records
-// the release-integration window through the same kanban lock API the
+// the release-integration window through the same factory lock API the
 // `moai integration acquire` verb uses, BEFORE the merge, and releases it
 // AFTER the merge terminates (success or failure), via defer. The force flag
 // is pinned to literal false at the seam signatures below — the auto path

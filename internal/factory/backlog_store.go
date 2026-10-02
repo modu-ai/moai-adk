@@ -339,7 +339,7 @@ type BacklogArchiveEntry struct {
 	// REQ-TST-008): the done-time landing query's answer — verdict, answering
 	// ref, verdict time — persisted alongside, never instead of, the
 	// operator-authored evidence in Item.Landing (REQ-TST-009). It carries no
-	// SHA by construction; see kanban/landing_verdict.go.
+	// SHA by construction; see landing_verdict.go.
 	LandingVerdict *LandingVerdict `json:"landing_verdict,omitempty"`
 }
 
@@ -620,7 +620,7 @@ func NewBacklogStore(path string) *BacklogStore {
 
 // QueuedCount returns the number of items in state "queued", failing open to
 // 0 (the store already reads a missing file as an empty queue). It is the
-// shared count shape both the kanban notice and the factory leader loop render
+// shared count shape both the queue notice and the factory leader loop render
 // from, so the notice and the queue command cannot disagree about what
 // "waiting" means: state queued and nothing else — a picked card is in
 // flight on another lane, a dropped card was discarded, and a finished card
@@ -670,7 +670,7 @@ type BacklogStateCounts struct {
 }
 
 // @MX:ANCHOR: [AUTO] BacklogCountsForRoot — the statusline's per-render read
-// @MX:REASON: expected fan_in >= 3 (statusline render, kanban notice, factory loop); it runs once per status render, so a non-constant-cost implementation here puts every render on a path that grows with the queue
+// @MX:REASON: expected fan_in >= 3 (statusline render, queue notice, factory loop); it runs once per status render, so a non-constant-cost implementation here puts every render on a path that grows with the queue
 //
 // BacklogCountsForRoot counts items by state under a project root.
 //

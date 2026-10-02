@@ -14,7 +14,7 @@
 // live runtime artifacts (companions.json, leads.json, the autodone log),
 // whose contents are working state, not rollback evidence. The ghost
 // evidence itself is never touched: no byte of a ghost file changes, and
-// the pure ghost directories (the legacy kanban dir, the ghost positions
+// the pure ghost directories (the legacy retired-mode state dir, the ghost positions
 // in the home queue directory) gain nothing — the sha-verified read-only
 // judgment is TestGhostNoticeOnce's.
 //

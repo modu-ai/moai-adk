@@ -100,7 +100,7 @@ const (
 // one write — tens of microseconds — so a barrier-released pair hits it only by
 // luck, and a criterion that waits for luck has no stop rule.
 //
-// It is unexported and package-level, so only `package kanban` can assign it,
+// It is unexported and package-level, so only `package factory` can assign it,
 // and no non-test file does (the closure gate greps for the assignment). Every
 // production path leaves it nil, and the call site below is nil-guarded — a
 // nil func() invoked in Go panics, so the guard is what makes "with the hook

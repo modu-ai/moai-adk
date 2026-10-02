@@ -108,7 +108,7 @@ var specStatusPattern = regexp.MustCompile(`(?m)^status:\s*(.+?)\s*$`)
 // value; a reader that only quotes the raw text back does not.
 //
 // @MX:ANCHOR: [AUTO] shared status normalizer — fan_in 5 across internal/spec and internal/factory
-// @MX:REASON: changing which quotes are stripped shifts every status comparison (audit, closer, ParseStatus, ownership lint, kanban board) at once
+// @MX:REASON: changing which quotes are stripped shifts every status comparison (audit, closer, ParseStatus, ownership lint, factory backlog) at once
 func NormalizeStatusValue(raw string) string {
 	v := strings.TrimSpace(raw)
 	if len(v) >= 2 && (v[0] == '"' || v[0] == '\'') && v[len(v)-1] == v[0] {

@@ -107,7 +107,7 @@ func IsSlotResourceNameInvalid(err error) bool { return errors.Is(err, ErrSlotRe
 // slotLeaseMutationTestHook is a nil-by-default, TEST-ONLY interleaving point
 // invoked once between the acquire decision and the write, inside the
 // per-resource mutation lock. Same contract as integrationLockMutationTestHook:
-// only package kanban can assign it, no non-test file does, and the nil guard
+// only package factory can assign it, no non-test file does, and the nil guard
 // at the call site keeps production behaviour byte-for-byte unchanged.
 var slotLeaseMutationTestHook func()
 

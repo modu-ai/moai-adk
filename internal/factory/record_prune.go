@@ -52,7 +52,7 @@ func PruneExpiredRecords(root string, retentionDays int, now time.Time) (int, er
 		if os.IsNotExist(err) {
 			return 0, nil
 		}
-		return 0, fmt.Errorf("prune kanban records: %w", err)
+		return 0, fmt.Errorf("prune factory records: %w", err)
 	}
 
 	cutoff := now.AddDate(0, 0, -retentionDays)
