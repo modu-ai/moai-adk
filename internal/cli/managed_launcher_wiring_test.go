@@ -95,6 +95,7 @@ func factoryLaneEnv(t *testing.T) {
 func TestManagedLaunchDivertsFactoryLeaderLaunch(t *testing.T) {
 	bin, managed := withManagedWiringFixture(t)
 	factoryLeaderEnv(t)
+	managedOptIn(t)
 
 	if err := runLaunchClaude("", []string{"--model", "m1", "--", "--progress"}); err != nil {
 		t.Fatalf("factory leader launch: %v", err)
@@ -126,6 +127,7 @@ func TestManagedLaunchDivertsFactoryLeaderLaunch(t *testing.T) {
 func TestManagedLaunchDivertsFactoryLaneLaunch(t *testing.T) {
 	_, managed := withManagedWiringFixture(t)
 	factoryLaneEnv(t)
+	managedOptIn(t)
 
 	if err := runLaunchClaude("", nil); err != nil {
 		t.Fatalf("factory lane launch: %v", err)
@@ -143,6 +145,7 @@ func TestManagedLaunchDivertsFactoryLaneLaunch(t *testing.T) {
 func TestManagedLaunchDivertsFactoryGLMLaunch(t *testing.T) {
 	_, managed := withManagedWiringFixture(t)
 	factoryLeaderEnv(t)
+	managedOptIn(t)
 	if err := persistTeamMode(".", "glm"); err != nil {
 		t.Fatalf("persist glm team mode: %v", err)
 	}
@@ -196,6 +199,7 @@ func TestLaunchWithoutFactoryEnvReachesExecDoor(t *testing.T) {
 func TestManagedLaunchRefusesContinue(t *testing.T) {
 	_, managed := withManagedWiringFixture(t)
 	factoryLaneEnv(t)
+	managedOptIn(t)
 
 	err := runLaunchClaude("", []string{"-c"})
 	if err == nil {
@@ -215,6 +219,7 @@ func TestManagedLaunchRefusesContinue(t *testing.T) {
 func TestManagedLaunchDivertsOnEitherStamp(t *testing.T) {
 	_, managed := withManagedWiringFixture(t)
 	factoryLeaderEnv(t)
+	managedOptIn(t)
 
 	if err := runLaunchClaude("", nil); err != nil {
 		t.Fatalf("factory launch: %v", err)
@@ -281,6 +286,7 @@ func (c *managedCodexLaunchCapture) envValue(key string) string {
 func TestManagedCodexLaunchDivertsFactorySession(t *testing.T) {
 	_, managed := withManagedCodexWiring(t)
 	factoryLaneEnv(t)
+	managedOptIn(t)
 
 	c := &cobra.Command{Use: "codex"}
 	if err := runCodex(c, []string{"cli", "--", "--model", "m1"}); err != nil {
@@ -308,6 +314,7 @@ func TestManagedCodexLaunchCarriesLaunchDir(t *testing.T) {
 	t.Run("subdirectory cwd resolves to the project root", func(t *testing.T) {
 		root, managed := withManagedCodexWiring(t)
 		factoryLaneEnv(t)
+		managedOptIn(t)
 		sub := filepath.Join(root, "pkg", "deep")
 		if err := os.MkdirAll(sub, 0o755); err != nil {
 			t.Fatal(err)
@@ -327,6 +334,7 @@ func TestManagedCodexLaunchCarriesLaunchDir(t *testing.T) {
 	t.Run("-w worktree is the owner's directory and the anchor's", func(t *testing.T) {
 		root, managed := withManagedCodexWiring(t)
 		factoryLaneEnv(t)
+		managedOptIn(t)
 		tree := filepath.Join(root, ".moai", "worktrees", "card")
 		if err := os.MkdirAll(tree, 0o755); err != nil {
 			t.Fatal(err)
@@ -377,6 +385,7 @@ func TestCodexLaunchWithoutFactoryEnvReachesDirectDoor(t *testing.T) {
 func TestManagedCodexLaunchKeepsSpawnDoor(t *testing.T) {
 	_, managed := withManagedCodexWiring(t)
 	factoryLaneEnv(t)
+	managedOptIn(t)
 
 	// The spawn door's prereq gate is pinned open the way the launcher-SPEC
 	// spawn tests do — this cell measures the divert, not the prereqs.

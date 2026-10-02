@@ -1165,7 +1165,7 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	// the launcher keeps its PID and owns the App Server child (REQ-MS-012) —
 	// instead of the doors below. General launches reach the doors unchanged,
 	// and the tmux --spawn door stays a general-launch surface.
-	if !spawn && factoryLaunchEnabled(os.Environ()) {
+	if !spawn && factoryManagedRequested(os.Environ()) && factoryLaunchEnabled(os.Environ()) {
 		if worktree.present {
 			// Same anchor discipline as the direct door: the lock names the
 			// owning process before the session starts.

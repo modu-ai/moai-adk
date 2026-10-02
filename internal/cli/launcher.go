@@ -820,7 +820,7 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// keeps its PID and owns the child as a stream-json process (REQ-MS-012).
 	// General (non-factory) launches fall through to the doors below
 	// unchanged.
-	if factoryLaunchEnabled(launchEnv) {
+	if factoryManagedRequested(launchEnv) && factoryLaunchEnabled(launchEnv) {
 		if cont {
 			return errors.New("factory managed session owns the launch shape: --continue/-c is a plain-launch resume and is not available")
 		}
