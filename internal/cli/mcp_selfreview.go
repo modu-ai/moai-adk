@@ -12,7 +12,7 @@
 //
 //   - card — the card diff, resolved by the SAME scope resolver the turn-end
 //     review gate uses (reviewScopeResolver), so there is no second card
-//     discriminator and no second merge-base computation. The base is
+//     discriminator and no second merge base computation. The base is
 //     recomputed on every call, never pinned. A tree that is not a card worktree
 //     returns `inconclusive` without reviewing anything.
 //   - uncommitted — the named tree's uncommitted changes, with the request shape
@@ -60,7 +60,7 @@ type SelfReviewOutput struct {
 	Advisory bool `json:"advisory"`
 	// Scope echoes the requested scope (`card` | `uncommitted`).
 	Scope string `json:"scope"`
-	// Base is the merge-base SHA a card-scope review was measured from. Empty on
+	// Base is the merge base SHA a card-scope review was measured from. Empty on
 	// every other path (uncommitted, non-card early return, empty material).
 	Base string `json:"base"`
 	// Backend is `codex` or `glm`.
@@ -90,7 +90,7 @@ func handleGLMReview(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 // unusable project_root) is a tool error the caller can correct; everything
 // after that fails open to `inconclusive` (REQ-MCP-012).
 //
-// @MX:NOTE: [AUTO] the card/uncommitted split lives here once; the card branch must keep going through reviewScopeResolver (REQ-CRO-008) — a local WT- check or merge-base computation would fork the gate's discriminator
+// @MX:NOTE: [AUTO] the card/uncommitted split lives here once; the card branch must keep going through reviewScopeResolver (REQ-CRO-008) — a local WT- check or merge base computation would fork the gate's discriminator
 // @MX:SPEC: SPEC-CODEX-REVIEW-OWNERSHIP-001
 func runSelfReview(ctx context.Context, req mcp.CallToolRequest, backend string) *mcp.CallToolResult {
 	tool := backend + "_review"

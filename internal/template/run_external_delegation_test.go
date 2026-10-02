@@ -3,9 +3,15 @@
 //
 // The doctrine is prose, so its machine-checkable form is a fixed set of anchor
 // phrases pinned inside their own subsection of the `## External Model
-// Delegation` section of run.md, plus the capability grant on the
-// manager-develop `tools:` line, the pointer-only shape of the consumer files,
-// and a lexical check that no shipped prose instructs a write.
+// Delegation` section, plus the capability grant on the manager-develop
+// `tools:` line, the pointer-only shape of the consumer files, and a lexical
+// check that no shipped prose instructs a write.
+//
+// The section's home is the run-phase sub-skill
+// workflows/run/external-delegation.md (moved out of run.md by card t1455: the
+// entry router has a permanent 200-line ceiling, TestEntryRouterLOCCeiling).
+// run.md keeps exactly one routing row pointing at it and no copy of the
+// section; the "router" subtest pins that shape.
 //
 // The test reads both trees from disk: the live tree under the project root
 // and the template tree under internal/template/templates/ (the embedded FS
@@ -24,7 +30,12 @@ import (
 const (
 	rxdSectionHeading = "## External Model Delegation"
 	rxdSectionTitle   = "External Model Delegation"
-	rxdRunPath        = ".claude/skills/moai/workflows/run.md"
+	// rxdRunPath is the file that holds the section: the run-phase sub-skill.
+	// The identifier keeps its old name so every reader of the section path
+	// follows the move; rxdRouterPath is the entry router that points at it.
+	rxdRunPath        = ".claude/skills/moai/workflows/run/external-delegation.md"
+	rxdRouterPath     = ".claude/skills/moai/workflows/run.md"
+	rxdRouterRowPath  = "workflows/run/external-delegation.md"
 	rxdAgentPath      = ".claude/agents/moai/manager-develop.md"
 	rxdAdvisorPath    = ".claude/agents/moai/super-advisor.md"
 	rxdTemplateRoot   = "internal/template/templates"
@@ -471,7 +482,7 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 			}
 		}
 		if len(texts) == 2 && texts[0] != texts[1] {
-			t.Errorf("run.md copies are not byte-equal (live %d bytes, template %d bytes)", len(texts[0]), len(texts[1]))
+			t.Errorf("external-delegation.md copies are not byte-equal (live %d bytes, template %d bytes)", len(texts[0]), len(texts[1]))
 		}
 	})
 
@@ -605,6 +616,44 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 				}
 				for _, hit := range rxdWriteHits(where, content) {
 					t.Errorf("write-instruction pattern matched in a pointer file: %s", hit)
+				}
+			}
+		}
+	})
+
+	// The entry router keeps a pointer and nothing of the section: the section
+	// has one home (rxdRunPath), and run.md stays under its permanent line
+	// ceiling (TestEntryRouterLOCCeiling) because it never carries a copy.
+	t.Run("router", func(t *testing.T) {
+		// Positive control: the section counter must see a heading that is there,
+		// otherwise the zero it reports for run.md below proves nothing.
+		if _, n := rxdSection("intro\n" + rxdSectionHeading + "\nbody"); n != 1 {
+			t.Fatalf("positive control failed: the section counter found %d headings in a one-heading string", n)
+		}
+		forbidden := rxdForbiddenInPointers()
+		for _, tree := range rxdTrees(root) {
+			content := rxdRead(t, tree.base, rxdRouterPath)
+			where := tree.label + " " + rxdRouterPath
+
+			if _, n := rxdSection(content); n != 0 {
+				t.Errorf("%s: carries %d copies of %q; the section lives only in %s", where, n, rxdSectionHeading, rxdRunPath)
+			}
+			rows := 0
+			for _, l := range strings.Split(content, "\n") {
+				if !strings.Contains(l, rxdRouterRowPath) {
+					continue
+				}
+				rows++
+				if !strings.HasPrefix(l, "|") {
+					t.Errorf("%s: the line naming %s is not a routing-table row: %s", where, rxdRouterRowPath, l)
+				}
+			}
+			if rows != 1 {
+				t.Errorf("%s: want exactly one routing row naming %s, found %d", where, rxdRouterRowPath, rows)
+			}
+			for _, phrase := range forbidden {
+				if strings.Contains(content, phrase) {
+					t.Errorf("%s: carries the doctrine phrase %q (the router names the section, it does not restate it)", where, phrase)
 				}
 			}
 		}

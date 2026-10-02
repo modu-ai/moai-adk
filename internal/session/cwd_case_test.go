@@ -1,6 +1,9 @@
 package session
 
 import (
+	"errors"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -11,19 +14,34 @@ import (
 // entry CWD is stored in the on-disk spelling, not the caller's logical PWD
 // spelling (t1290 F1 — lanes registered as /Users/goos/moai/... while git and
 // lsof name the same tree /Users/goos/MoAI/...). On case-sensitive platforms
-// the case-variant is a different directory and the assertion is skipped's
-// inverse: the stored value stays the caller's spelling (nothing to fix).
+// the case-variant does not exist, so the test enters the real spelling and
+// pins that the stored value is the on-disk path (nothing to canonicalize).
 func TestRegisterCanonicalizesCaseVariantCWD(t *testing.T) {
 	dir := t.TempDir()
 	variant := swappedCasePath(t, dir)
 	if variant == "" {
 		t.Skip("temp path has no case-varying component")
 	}
+	// On a case-insensitive filesystem the case-variant names the same directory
+	// and is what the caller enters. On a case-sensitive one (Linux CI) it names a
+	// directory that does not exist, so the caller enters the real spelling and
+	// the test pins the contract that remains there: no case axis to
+	// canonicalize, so the stored CWD is the on-disk path.
+	enter := variant
+	if _, err := os.Stat(variant); err != nil {
+		// Only a missing variant off darwin means "case-sensitive filesystem".
+		// On darwin the variant must exist, and any other Stat error must fail
+		// loudly rather than turn this into a pass that never canonicalizes.
+		if runtime.GOOS == "darwin" || !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("stat case-variant %q: %v", variant, err)
+		}
+		enter = dir
+	}
 
 	regPath := filepath.Join(t.TempDir(), "active-sessions.json")
 	reg := NewRegistry(regPath, nil)
 
-	t.Chdir(variant)
+	t.Chdir(enter)
 	if err := reg.Register("sess-t1293-case", "SPEC-T1293", "run"); err != nil {
 		t.Fatalf("register: %v", err)
 	}
@@ -43,8 +61,15 @@ func TestRegisterCanonicalizesCaseVariantCWD(t *testing.T) {
 			t.Errorf("stored CWD %q is neither the logical spelling nor the on-disk spelling %q", entries[0].CWD, dir)
 		}
 	default:
-		if entries[0].CWD != variant {
-			t.Errorf("stored CWD %q differs from the caller spelling %q on %s — canonicalization changed a case-sensitive path", entries[0].CWD, variant, runtime.GOOS)
+		want := enter
+		if enter == dir {
+			// Symlink resolution is canonicalCWD's job on every platform.
+			if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+				want = resolved
+			}
+		}
+		if entries[0].CWD != want {
+			t.Errorf("stored CWD %q differs from the caller spelling %q on %s — canonicalization changed a case-sensitive path", entries[0].CWD, want, runtime.GOOS)
 		}
 	}
 }

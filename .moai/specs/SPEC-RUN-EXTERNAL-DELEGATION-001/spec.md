@@ -1,10 +1,10 @@
 ---
 id: SPEC-RUN-EXTERNAL-DELEGATION-001
 title: "Run-phase external-model delegation — manager-develop hands bounded mechanical subtasks to codex_task and glm_task, applies the returned patch itself, and stays the only writer"
-version: "0.4.1"
+version: "0.5.0"
 status: completed
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 author: manager-spec (card t1424)
 priority: P2
 phase: "v3.2.0 target"
@@ -14,12 +14,18 @@ tags: "run-phase, manager-develop, codex_task, glm_task, delegation, one-writer,
 tier: M
 card: t1424
 related_specs: [SPEC-AGENT-ARCH-V2-001]
+amendment_of: SPEC-RUN-EXTERNAL-DELEGATION-001
 ---
 
 # SPEC: run-phase external-model delegation for `manager-develop`
 
 ## HISTORY
 
+- 0.5.0 — 2026-10-03 — in-place amendment (card t1455): the home of the delegation
+  doctrine moves from `workflows/run.md` to `workflows/run/external-delegation.md`.
+  Where this SPEC says `run.md` for the section's home, the home is now the new
+  file. No requirement or acceptance-criterion text changed; the structured record
+  is in `## Amendments`.
 - 0.4.1 — 2026-10-02 — AC identifier spelling (card t1424). Five locations in
   `acceptance.md` (four section headings and one ledger `why:` line) used the
   short-form identifiers `AC-001` to `AC-016`; the sync-phase CHANGELOG AC-count
@@ -79,6 +85,17 @@ related_specs: [SPEC-AGENT-ARCH-V2-001]
   Tier M: spec.md + plan.md + acceptance.md (+ the progress.md skeleton). Design
   decisions DR-1..DR-3 (§B.1) are binding input; DR-3 was confirmed by the leader
   on 2026-10-02 and is not open.
+
+## Amendments
+
+**Amendment 1 — 2026-10-03 (in-place; card t1455, factory-leader decision)**
+
+| Field | Value |
+|---|---|
+| Prior completed version | `0.4.1` (`status: completed`) |
+| `prior_completed_sha` | `4a8ab71a7981cefeff77de34cbfd7a8fa6c927ef` |
+| Rationale | The SPEC fixes the home of the delegation doctrine as the `## External Model Delegation` section of `.claude/skills/moai/workflows/run.md` (design decision DR-2 in §B.1 and requirement REQ-RXD-002 in §C). That placement conflicts with the permanent entry-router ceiling of requirement REQ-WFSP-002a (`internal/skills/workflow_split_test.go` `TestEntryRouterLOCCeiling`: `run.md` stays at or under 200 lines). `run.md` was 199 lines before commit `07d921629` (this SPEC's M2) and 263 after it, so the `origin/develop` CI run 37026145604 (push `7109e0900`) failed that test. The ceiling is not raised. |
+| Scope | Home move only. The section moves, text unchanged, to `.claude/skills/moai/workflows/run/external-delegation.md` (live tree and `internal/template/templates/` mirror); `workflows/run.md` keeps exactly one routing-table row pointing at it; the consumer pointer lines in `fix.md`, `loop.md` and the `manager-develop.md` body (both trees) name the new path; the guard test `internal/template/run_external_delegation_test.go` is re-pointed to the new file with the same anchors and the same checks plus a router check. **Reading rule:** wherever this SPEC says `run.md` for the section's home or as the pointer target, the home and the pointer target are now `.claude/skills/moai/workflows/run/external-delegation.md`, effective with card t1455. **No requirement, acceptance criterion or design decision is reworded** — the original wording is kept as written and read through this rule. |
 
 ## §A Context
 
