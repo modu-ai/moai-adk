@@ -76,7 +76,7 @@ type kanbanEntryParse struct {
 // The environment step is what replaces the name round-trip. Nothing
 // functional was ever downstream of that round-trip — the per-session records
 // key on the Claude session id — so the id now survives a relaunch exactly as
-// far as MOAI_KANBAN_ID does, and no new state file is introduced to carry a
+// far as the run-id marker does, and no new state file is introduced to carry a
 // value that is only ever displayed. It is read BEFORE enterFactoryLeaderMode
 // publishes this launch's id, so what it sees is the prior value or nothing.
 func leaderRunID(leaderLabel string) string {

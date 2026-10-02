@@ -8,7 +8,7 @@ package cli
 // backends: the cc and glm rows are the environment live at the engine launch
 // seam, the codex row is the per-card child environment of the supervising
 // loop. It is captured from today's code BEFORE the `-l` entry exists
-// (testdata/lane_entry_env_golden.json, committed alone) and compared here
+// (internal/config/testdata/lane_entry_env_golden.json, committed alone) and compared here
 // against the same launches, so a later milestone that adds `-l` can prove the
 // new entry publishes the identical set (label aside), and so a milestone that
 // removes the kanban surface can prove it dropped no lane marker.
@@ -37,7 +37,11 @@ import (
 )
 
 const (
-	laneGoldenPath     = "testdata/lane_entry_env_golden.json"
+	// The golden lives under internal/config/testdata, not internal/cli/testdata:
+	// the REQ-SRL-009 env-literal diff guard sweeps every non-_test.go file
+	// under internal/cli, and this file is a statement about the wire, so it
+	// carries the marker names as literals on purpose.
+	laneGoldenPath     = "../config/testdata/lane_entry_env_golden.json"
 	laneGoldenWriteEnv = "MOAI_LANE_GOLDEN_WRITE"
 )
 

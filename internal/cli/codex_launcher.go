@@ -983,7 +983,7 @@ func runCodexFactoryLane(cmd *cobra.Command, debug bool) error {
 	// merge-ready skip) and identify the lane; the backend value rides the
 	// same export the cc/glm launches use (REQ-SD-002's stamp set, gpt). The
 	// factory card verbs (next/stage/complete) and the factory notices read the
-	// lane label from MOAI_FACTORY_WORKER alone (REQ-RNC-011's kept name), and
+	// lane label from the lane-worker marker alone (REQ-RNC-011's kept name), and
 	// the child environment carries the same marker.
 	restoreLane := enterFactoryLaneMode(label, 0, "", config.FactoryDispatchAuto)
 	defer restoreLane()
@@ -1050,7 +1050,7 @@ func launchCodexCardSession(binaryPath, wt, label, cardID string, debug bool) er
 
 // codexCardLaunchEnv is the per-card child environment (design.md §4): the
 // eleven-key scrub of codexChildEnv, then the entries the owned-card session
-// reads — the role marker, the lane label (MOAI_FACTORY_WORKER, the one carrier
+// reads — the role marker, the lane label (the lane-worker marker, the one carrier
 // the factory card verbs and the factory notices read), the Codex backend
 // value, and the leased card's id in the card-identifier variable
 // (REQ-SD-003, -019). Appending after the scrub
