@@ -824,9 +824,14 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	var (
 		enforcementGates config.AuditGates
 		gateAssumedNote  string
+		// receiptCodexRequired is the call-start codex gate the receipt exposure
+		// follows; nil (no plan carried) keeps the configuration re-read.
+		receiptCodexRequired *bool
 	)
 	if cfg.EnforcementGates != nil {
 		enforcementGates, gateAssumedNote = *cfg.EnforcementGates, cfg.EnforcementNote
+		codexRequired := enforcementGates.Codex == config.AuditGateRequired
+		receiptCodexRequired = &codexRequired
 	} else {
 		enforcementGates, gateAssumedNote = workflowAuditGates(cfg.ProjectRoot)
 	}
@@ -849,7 +854,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	var notices []string
 	if codexVerdict, participated := codexParticipation(verdicts); participated {
 		var notice string
-		result.AuditReceipt, notice = recordAuditReceipt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet)
+		result.AuditReceipt, notice = recordAuditReceiptAt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet, receiptCodexRequired)
 		if notice != "" {
 			notices = append(notices, notice)
 		}

@@ -256,3 +256,100 @@ func TestRunMultiAudit_CarrylessCallerKeepsTheReReadFallback(t *testing.T) {
 		t.Errorf("overall = %q, gate_unmet = %q, want fail / codex from the re-read", res.OverallVerdict, res.GateUnmet)
 	}
 }
+
+// receiptID returns the audit_receipt member of a decoded audit_multi result and
+// whether it is present and non-empty.
+func receiptID(m map[string]any) (string, bool) {
+	id, _ := m["audit_receipt"].(string)
+	return id, id != ""
+}
+
+// TestAuditMulti_ReceiptExposureFollowsTheCallStartGate (NEW-1, REQ-ACV-009):
+// the receipt id is exposed when the codex gate the enforcement used was
+// required — the gate read once at call start — not when the tree's
+// configuration reads required after the fan-out. An edit of workflow.yaml made
+// while the backends run therefore cannot make the exposed receipt disagree with
+// the persisted verdict.
+//
+// Measured before the repair (receipt predicate re-reading config after the
+// fan-out): the first case returned overall=fail, gate_unmet=codex and no
+// audit_receipt; the second returned a pass carrying an audit_receipt.
+func TestAuditMulti_ReceiptExposureFollowsTheCallStartGate(t *testing.T) {
+	t.Run("a required gate edited away mid-call still exposes the receipt of the unmet failure", func(t *testing.T) {
+		root := newAuditMultiBaselineRoot(t, planWorkflowYAML(config.AuditModelMulti, nil))
+		m := callAuditMultiRewritingConfig(t, root, planWorkflowYAML(config.AuditModelClaude, nil), inconclusiveVerdict("codex unavailable"))
+		if m["overall_verdict"] != "fail" || m["gate_unmet"] != BackendCodex {
+			t.Fatalf("overall_verdict = %v, gate_unmet = %v, want fail / codex (precondition)", m["overall_verdict"], m["gate_unmet"])
+		}
+		if id, ok := receiptID(m); !ok {
+			t.Errorf("audit_receipt = %q, want an id: the call-start plan required codex, so the failure's receipt is exposed (REQ-ACV-009)", id)
+		}
+	})
+
+	t.Run("a gate edited in mid-call exposes no receipt", func(t *testing.T) {
+		root := newAuditMultiBaselineRoot(t, distributedAuditPinsYAML)
+		codexPass := ReviewOutput{Verdict: "pass", Summary: "codex:pass", Findings: []Finding{}, NextSteps: []string{}}
+		m := callAuditMultiRewritingConfig(t, root, planWorkflowYAML(config.AuditModelMulti, nil), codexPass)
+		if m["overall_verdict"] != "pass" {
+			t.Fatalf("overall_verdict = %v, want pass (precondition)", m["overall_verdict"])
+		}
+		if id, ok := receiptID(m); ok {
+			t.Errorf("audit_receipt = %q, want absent: nothing was configured at call start, so the codex gate was not required", id)
+		}
+	})
+}
+
+// TestAuditMulti_ReceiptExposureAgreesWithASuppliedGate: the receipt follows the
+// gate the enforcement used, including a supplied one. Measured before the
+// repair: a supplied advisory over a configured required still exposed a receipt
+// (the config read required) while the enforcement and the entry said advisory;
+// after it the receipt is not exposed, matching gate_unmet being absent. A
+// supplied required over an unconfigured tree stays hidden before and after (it
+// is not an opt-in, REQ-ACV-006), and over a configured required stays exposed.
+func TestAuditMulti_ReceiptExposureAgreesWithASuppliedGate(t *testing.T) {
+	codexDown := map[string]ReviewOutput{BackendCodex: inconclusiveVerdict("codex unavailable")}
+
+	for _, tc := range []struct {
+		name     string
+		yaml     string
+		supplied string
+		want     bool
+	}{
+		{"advisory over a configured multi", planWorkflowYAML(config.AuditModelMulti, nil), "advisory", false},
+		{"advisory over an audit.gates required", planWorkflowYAML("", map[string]string{"codex": config.AuditGateRequired}), "advisory", false},
+		{"required over a configured multi", planWorkflowYAML(config.AuditModelMulti, nil), "required", true},
+		{"required over an unconfigured tree", distributedAuditPinsYAML, "required", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := newAuditMultiBaselineRoot(t, tc.yaml)
+			_, res, m := planCall(t, root, map[string]any{"gates": map[string]any{"codex": tc.supplied}}, codexDown)
+			if res.IsError {
+				t.Fatalf("unexpected error result: %s", toolResultText(res))
+			}
+			id, ok := receiptID(m)
+			if ok != tc.want {
+				t.Errorf("audit_receipt = %q (exposed = %v), want exposed = %v (gate_unmet = %v)", id, ok, tc.want, m["gate_unmet"])
+			}
+		})
+	}
+}
+
+// TestRunMultiAudit_CarrylessCallerKeepsTheReceiptReRead: a caller that hands
+// runMultiAudit no enforcement gates keeps the receipt predicate's own read of
+// the tree's configuration, as every direct caller had before the repair.
+func TestRunMultiAudit_CarrylessCallerKeepsTheReceiptReRead(t *testing.T) {
+	root := newAuditMultiBaselineRoot(t, planWorkflowYAML(config.AuditModelMulti, nil))
+	rc := &recordingCallerMulti{verdictBy: map[string]ReviewOutput{BackendCodex: inconclusiveVerdict("codex unavailable")}}
+	orig := backendCall
+	backendCall = rc.call
+	t.Cleanup(func() { backendCall = orig })
+
+	cfg := MultiAuditConfig{
+		Gates:       config.AuditGates{Claude: "required", Codex: "required", GLM: "advisory"},
+		ProjectRoot: root,
+	}
+	res := runMultiAudit(context.Background(), ReviewOutput{}, "", "", cfg, nil)
+	if res.AuditReceipt == "" {
+		t.Errorf("AuditReceipt is empty, want an id from the configuration re-read (model: multi)")
+	}
+}
