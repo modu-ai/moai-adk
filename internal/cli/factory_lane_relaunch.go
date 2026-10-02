@@ -28,6 +28,15 @@ var factoryLaneCardLaunchFn = func(c *exec.Cmd) error {
 	return c.Run()
 }
 
+// factoryLaneRunGateFn is the lane-join gate the loop re-enters every
+// iteration (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-011); factoryLaneLeaseFn
+// is the lease step. Both are package vars so the tests substitute them the
+// way they substitute the launch seam above.
+var (
+	factoryLaneRunGateFn = enterFactoryLaneRun
+	factoryLaneLeaseFn   = factoryNextLeaseOnce
+)
+
 // @MX:NOTE: the loop stays the parent (design.md §6): lease the next card
 // through the F1 machinery on the parent checkout, ensure its worktree,
 // start ONE interactive session there, wait, repeat. The stop condition is
@@ -37,7 +46,15 @@ var factoryLaneCardLaunchFn = func(c *exec.Cmd) error {
 // them, so each fresh session re-enters the cycle with the same lane
 // identity and the same clear policy.
 // @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
-func runFactoryLaneRelaunch(cmd *cobra.Command, label string, claudeArgs []string) error {
+//
+// @MX:NOTE: the run is re-resolved on EVERY iteration (REQ-SRH-011): the
+// launcher's own gate resolved it once, but a run can retire and another take
+// its place while a card session runs, and a loop that kept the first id would
+// keep leasing from the dead run's record. explicit and leadTarget are the
+// launcher's own selectors (entry.FactoryRun / entry.FactoryLead), handed to
+// the same shared gate; an explicit selection that retires stops the loop.
+// @MX:SPEC: SPEC-FACTORY-STALE-RUN-HEAL-001
+func runFactoryLaneRelaunch(cmd *cobra.Command, label string, claudeArgs []string, explicit, leadTarget string) error {
 	// The loop drives the F1 lease machinery itself, so it inherits the
 	// `next` verb's own precondition: the parent checkout (REQ-SD-010).
 	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
@@ -51,33 +68,57 @@ func runFactoryLaneRelaunch(cmd *cobra.Command, label string, claudeArgs []strin
 		return &exitCodeError{code: 1}
 	}
 	root := factoryCardRoot()
-	// The run id was resolved and stamped by the lane branch's
-	// enterSelectedFactoryRun before the divert reached here.
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
 	ctx := cmd.Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	for {
-		card, leased, err := factoryNextLeaseOnce(ctx, root, runID, label)
+		more, err := factoryLaneRelaunchIteration(ctx, cmd, root, binaryPath, claudeArgs, label, explicit, leadTarget)
 		if err != nil {
-			return fmt.Errorf("factory lane: %w", err)
+			return err
 		}
-		if !leased {
+		if !more {
 			return nil // no card available: the loop's stop condition
 		}
-		wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, label, cmd.ErrOrStderr())
-		if err != nil {
-			return fmt.Errorf("factory lane: %w", err)
-		}
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), filepath.Base(wt))
-		if err := launchFactoryLaneCardSession(binaryPath, claudeArgs, wt, card.CardID); err != nil {
-			// On that session's exit, continue with the next card: a child
-			// that failed to start or exited non-zero does not stop the
-			// loop; its card stays leased until expiry.
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "factory lane: card %s session: %v\n", card.CardID, err)
-		}
 	}
+}
+
+// factoryLaneRelaunchIteration is one pass of the relaunch loop: re-enter the
+// lane-join gate, lease from the run it resolved, and run one card session.
+// It reports whether a card was leased (false is the loop's stop condition).
+// The gate's environment stamp is restored when the pass ends, after the
+// child has exited — the child launched inside the pass inherits the stamp the
+// gate just set, which is how an iteration after a run switch starts its
+// session on the new run.
+func factoryLaneRelaunchIteration(ctx context.Context, cmd *cobra.Command, root, binaryPath string, claudeArgs []string, label, explicit, leadTarget string) (bool, error) {
+	restore, err := factoryLaneRunGateFn(launchProjectRoot(), explicit, leadTarget, nil)
+	if err != nil {
+		// The gate refused (no active run, an explicit run that retired,
+		// ambiguous leaders): nothing is leased and the loop stops with the
+		// gate's own text.
+		return false, fmt.Errorf("factory lane: re-join the factory run: %w", err)
+	}
+	defer restore()
+	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	card, leased, err := factoryLaneLeaseFn(ctx, root, runID, label)
+	if err != nil {
+		return false, fmt.Errorf("factory lane: %w", err)
+	}
+	if !leased {
+		return false, nil
+	}
+	wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, label, cmd.ErrOrStderr())
+	if err != nil {
+		return false, fmt.Errorf("factory lane: %w", err)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), filepath.Base(wt))
+	if err := launchFactoryLaneCardSession(binaryPath, claudeArgs, wt, card.CardID); err != nil {
+		// On that session's exit, continue with the next card: a child
+		// that failed to start or exited non-zero does not stop the
+		// loop; its card stays leased until expiry.
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "factory lane: card %s session: %v\n", card.CardID, err)
+	}
+	return true, nil
 }
 
 // launchFactoryLaneCardSession starts ONE interactive session whose working
