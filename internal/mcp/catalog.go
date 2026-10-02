@@ -77,6 +77,10 @@ var moaiMCPTools = []ToolDef{
 	{Name: "glm_job_result", WriteCapable: false},
 	{Name: "glm_job_cancel", WriteCapable: true},
 	{Name: "glm_audit", WriteCapable: false},
+	// On-demand self-review (advisory, no audit receipt): read-only by design,
+	// unlike the receipt-filing audit tools above.
+	{Name: "codex_review", WriteCapable: false},
+	{Name: "glm_review", WriteCapable: false},
 	{Name: "audit_multi", WriteCapable: true},
 	{Name: "session_msg_register", WriteCapable: true},
 	{Name: "session_msg_list", WriteCapable: false},

@@ -52,7 +52,11 @@ import (
 // context: the UserPromptSubmit peer path arrives under factoryBindBudget,
 // the SessionStart surfaces under the handler context or none at all — the
 // tighter of the two budgets wins either way.
-const factoryGateBudget = factoryHookInspectionDeadline
+//
+// It is a variable only so tests can pin it generously (a 200 ms budget made
+// the gate tests load-dependent — SPEC-FACTORY-STALE-RUN-HEAL-001 plan §B
+// seams); production never assigns it.
+var factoryGateBudget = factoryHookInspectionDeadline
 
 const (
 	factoryNoticePrescription = "prescription"
@@ -63,9 +67,16 @@ const (
 // two kinds are recorded independently: the prescription (REQ-SRL-002, at
 // most once) and the unbind notice (REQ-SRL-005, exactly one and final —
 // after it nothing emits for the identity again).
+//
+// State is the third, independent carrier: the last emitted state key of a
+// current-vocabulary lane session (`rebound:Y`, `unbound:X`, `ambiguous:<ids>`,
+// `refused:Y` — SPEC-FACTORY-STALE-RUN-HEAL-001 DP12). The two legacy fields
+// are never read or written by that path, so the legacy cadence — and the
+// finality of the legacy unbind notice — is untouched.
 type factoryNoticeMarker struct {
 	PrescriptionEmittedAt string `json:"prescription_emitted_at,omitempty"`
 	UnbindEmittedAt       string `json:"unbind_emitted_at,omitempty"`
+	State                 string `json:"state,omitempty"`
 }
 
 func (m factoryNoticeMarker) emitted(kind string) bool {
@@ -128,6 +139,13 @@ func readFactoryNoticeMarker(dbPath, sessionID string) factoryNoticeMarker {
 }
 
 func markFactoryNotice(dbPath, sessionID, kind string) {
+	updateFactoryNoticeMarker(dbPath, sessionID, func(m *factoryNoticeMarker) { m.mark(kind, time.Now()) })
+}
+
+// updateFactoryNoticeMarker reads the session identity's marker, applies edit
+// and writes it back; fields edit does not touch are preserved. Failures fail
+// open exactly as markFactoryNotice documents.
+func updateFactoryNoticeMarker(dbPath, sessionID string, edit func(*factoryNoticeMarker)) {
 	if sessionID == "" || dbPath == "" {
 		// A session without an identity cannot own a carrier; fail open to
 		// over-informing (emit unmarked). Degenerate input — production hook
@@ -142,7 +160,7 @@ func markFactoryNotice(dbPath, sessionID, kind string) {
 		return
 	}
 	m := readFactoryNoticeMarker(dbPath, sessionID)
-	m.mark(kind, time.Now())
+	edit(&m)
 	data, err := json.Marshal(m)
 	if err != nil {
 		return
@@ -201,16 +219,33 @@ func staleRunPrescriptionGate(ctx context.Context, root, sessionID, label, runID
 }
 
 // unbindFactoryHookNotice renders the one-time unbind notice (REQ-SRL-005):
-// it names the orphan label and the measured run state, and names the
-// documented re-bind entry only while an active run exists in the same root
-// (REQ-SRL-006) — a failed liveness measurement omits the line (fail-open).
+// it names the orphan label and the measured run state, and — only while an
+// active run exists in the same root (REQ-SRL-006) — the executable relaunch
+// line(s) of rows R7-R9 of the notice-line table (spec.md §D.7). A failed
+// listing omits the lines (fail-open).
 func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, lang string) string {
 	if !kanban.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
 		return ""
 	}
-	notice := fmt.Sprintf(staleRunMessagesFor(lang).laneLabelUnbind, label, runID, status)
-	if active, err := factorymsg.ActiveRunExistsAt(ctx, dbPath); err == nil && active {
-		notice += "\n" + staleRunMessagesFor(lang).laneLabelUnbindRebind
+	m := staleRunMessagesFor(lang)
+	notice := fmt.Sprintf(m.laneLabelUnbind, label, runID, status)
+	active, err := factorymsg.ActiveRunIDsAt(ctx, dbPath)
+	if err != nil || len(active) == 0 {
+		return notice
+	}
+	lines := kanban.RelaunchNoticeFor(kanban.RelaunchNoticeState{
+		Provider:   kanban.RelaunchProviderForBackend(os.Getenv(config.EnvMoaiKanbanBackend)),
+		Legacy:     true,
+		Run:        runID,
+		ActiveRuns: active,
+	})
+	header := m.laneLabelUnbindRebind
+	if len(active) > 1 {
+		header = m.laneLabelUnbindMany
+	}
+	notice += "\n" + header + "\n" + strings.Join(lines.Lines, "\n")
+	if lines.More > 0 {
+		notice += "\n" + fmt.Sprintf(m.laneLabelUnbindMore, lines.More)
 	}
 	return notice
 }

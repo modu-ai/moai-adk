@@ -93,20 +93,42 @@ func validateLinkedWorktreeRoot(raw, canonical string) (string, error) {
 	return reject("it is not a registered worktree of " + primary)
 }
 
-// resolveAuditGates returns the workflow.audit.gates block that governs an
+// auditSectionForRoot returns the raw workflow.audit section that governs an
 // audit of root (REQ-MWU-011/012). A root that is not config-orphaned reads its
 // own workflow.yaml exactly as before and runs no git. A config-orphaned root
-// reads the gate of its primary checkout; when that primary cannot be
-// identified the codex gate is treated as `required` and assumedNote says why.
-func resolveAuditGates(root string) (gates config.AuditGates, assumedNote string) {
+// reads the section of its primary checkout; primaryUnidentified is true when
+// that primary cannot be identified, and the section is then empty.
+func auditSectionForRoot(root string) (audit config.AuditConfig, primaryUnidentified bool) {
 	if !isConfigOrphanedRoot(root) {
-		return workflowAuditPins(root).Gates, ""
+		return workflowAuditPins(root), false
 	}
 	primary, _, err := identifyPrimaryCheckout(root)
 	if err != nil {
+		return config.AuditConfig{}, true
+	}
+	return workflowAuditPins(primary), false
+}
+
+// resolveAuditGates returns the gates an operator WROTE for an audit of root —
+// the explicit entries of the plan config.ResolveAuditPlan resolves from the
+// tree's raw audit section (SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-005): an
+// audit.gates value or an entry the audit.model token assigns, never the
+// distributed default. Empty reads as "not configured", which is what the
+// fail-closed readers key on. The section is routed as auditSectionForRoot
+// routes it; when a config-orphaned root's primary cannot be identified the
+// codex gate is treated as `required` and assumedNote says why
+// (REQ-MWU-011/012). A section the resolver rejects reads as not configured:
+// this path fails open, and the loud error belongs to audit_multi and the verb.
+func resolveAuditGates(root string) (gates config.AuditGates, assumedNote string) {
+	audit, primaryUnidentified := auditSectionForRoot(root)
+	if primaryUnidentified {
 		return config.AuditGates{Codex: config.AuditGateRequired}, gateAssumedRequiredNote
 	}
-	return workflowAuditPins(primary).Gates, ""
+	plan, err := config.ResolveAuditPlan(audit, config.AuditGates{})
+	if err != nil {
+		return config.AuditGates{}, ""
+	}
+	return plan.ExplicitGates(), ""
 }
 
 // receiptCodexGateRequired is the receipt-id exposure read of recordAuditReceipt,

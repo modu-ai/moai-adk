@@ -98,7 +98,7 @@ flowchart TD
 
 ## `project_root` 入力 — 呼び出し側が自分のツリーを指名する
 
-20個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_task`、`claude_audit`、`glm_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。ただし `factory_next`・`factory_stage`・`factory_complete`・`codex_task` ではオプションではなく必須です — 自分の toplevel を渡さないと呼び出しは拒否され、どのツリーも既定値になりません。
+22個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`codex_task`、`claude_audit`、`glm_audit`、`glm_review`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。ただし `factory_next`・`factory_stage`・`factory_complete`・`codex_task` ではオプションではなく必須です — 自分の toplevel を渡さないと呼び出しは拒否され、どのツリーも既定値になりません。
 
 ワークツリーの中で作業するエージェントは、必ずこれを渡さなければなりません。利便性のための機能ではありません。サーバーには自力で答えを導く手段がないからです。MCP サーバーは長命なサブプロセスなので、作業ディレクトリがワークツリーの切り替えに追従できず、代わりに参照する環境変数は、セッションがワークツリーで作業していても**プロジェクト**ルート — つまり primary チェックアウト — を指します。ワークツリーでこれを省くと、呼び出しは primary チェックアウトを対象に動作し、カードのブランチにしか存在しない SPEC は監査者が読むカタログに入りません。欠落として報告もされません。ただ存在しないだけです。
 
@@ -163,6 +163,17 @@ manager-develop が run-phase の自己検証（継ぎ目 §E）で使い、sync
 | `mcp__moai__audit_cache` | plan-audit PASS キャッシュ（compute_hash / lookup / store、プロセス間共有） | sync-auditor | `moai audit cache` |
 
 単一バックエンド監査モードはプロジェクトの `audit_model` 設定で決まります: `codex+glm`（デフォルト、`audit_multi` で収束）| `glm` | `codex` | `none`（Claude 単独、バックエンド呼び出しなし）。すべてのバックエンドは fail-open です — 利用不可なバックエンドは `inconclusive` を返し、Go error ではありません。
+
+### オンデマンド自己レビュー（参考扱い）
+
+| ツール | 目的 | 消費エージェント | CLI 等価物 |
+|------|------|---------------|------------|
+| `mcp__moai__codex_review` | 呼び出し側自身の変更を codex でレビュー — `scope: card`（カード diff）または `scope: uncommitted` | メインセッション、および自分の `tools:` リストにこのツールを載せたエージェント | `moai verify codex-review`（codex 側のみ） |
+| `mcp__moai__glm_review` | 呼び出し側自身の変更を diff にして GLM (z.ai) へレビュー依頼 | メインセッション、および自分の `tools:` リストにこのツールを載せたエージェント | — |
+
+どちらも監査ツールではありません。結果は参考扱いで拘束力はありません。`advisory` は常に true で、監査レシートは作成も参照もせず、`workflow.audit.gates.*` の required への読み替えも受けません（レビュアーが不在なら `fail` ではなく `inconclusive`）。監査モデルのピンも適用しないため、`model` は呼び出し側が渡した値かバックエンドの既定値です。`scope` は必須で、既定値はありません。`card` はターン終了時のレビューゲートと同じスコープ解決器でカード diff を決め、マージベースを呼び出しのたびに計算し直します。カードのワークツリーではないツリーは、何もレビューせずに `inconclusive` を返します。`uncommitted` は指定したツリーの未コミット変更をレビューします。primary チェックアウトでは共有の作業ツリー全体が対象で、パスの絞り込みはありません。どの結果にも `scope`、`base`（`card` ではマージベースの SHA、それ以外は空文字列）、`backend`、`tree`（実際にレビューした正規化済みのルート）が入ります。
+
+GLM にはファイルシステムがないため、ランタイム管理のパスを除いた diff をリクエストに載せて送ります。追跡されていないファイルは diff に含められないので `excluded_untracked` に列挙し、diff がサイズ上限で切られたときは `truncated` が立ち、diff が空ならどちらのバックエンドも呼びません。呼び出しは同期で、レビュー予算の範囲内で終わり、進捗通知は送りません。これらのツールが追加される前に起動したサーバープロセスにはツールが見えないので、サーバーを再接続してください。その間、codex 側は `moai verify codex-review --project-root <ツリー>` で代替できますが、GLM 側に代替手段はありません。
 
 ### codex 委任（バックグラウンドジョブ）
 

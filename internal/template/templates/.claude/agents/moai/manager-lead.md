@@ -7,7 +7,7 @@ description: |
   Use PROACTIVELY when a SPEC crosses the Tier L coordination threshold and the orchestrator delegates serial-shaped fan-out rather than driving milestones serially itself, or when a Kanban Mode (-k) or Factory Mode (-f) leader session needs the dispatch cycle driven.
   Match intent language-independently — do not require literal keyword matches.
   NOT for: writing code itself (delegated to leaf workers / lanes), Tier S/M single-milestone runs (orchestrator-direct serial is simpler), acting as the Agent Teams static layer (separate explicit-request experimental surface; `MODE_TEAM_UNAVAILABLE` is documented history), or invoking the orchestrator-exclusive user-question tool (return blocker reports; the orchestrator owns the user channel).
-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__session_list, mcp__moai__goal_status, SendMessage, ListAgents
+tools: Read, Write, Edit, Bash, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__session_list, mcp__moai__goal_status, SendMessage, ListAgents, mcp__moai__codex_review, mcp__moai__glm_review
 color: violet
 permissionMode: bypassPermissions
 memory: project

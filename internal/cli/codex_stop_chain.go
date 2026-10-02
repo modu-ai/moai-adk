@@ -623,6 +623,12 @@ func (c *codexStopChain) codexReviewMember(ctx context.Context) stopMemberOutcom
 	}
 	scope := reviewScopeResolver(c.root)
 	reviewGateScopeLogger(scope, reviewGateEnvContext())
+	// The tree_scope policy, shared with the Claude path (REQ-CRO-006): the key
+	// is read from c.root, the same root `enabled` was read from above. A skip
+	// reads no receipt.
+	if treeScopeSkipApplies(scope, func() string { return c.root }) {
+		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusNotApplicable, Reason: "tree_scope=skip"}
+	}
 	if !reviewGateScopedChangeDetector(scope) {
 		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusNotApplicable, Reason: "no reviewable change"}
 	}

@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: ea14804578d3737f0b5b627c932ba7e1146e0a3bdcf219e12ba9cab651c8413f
+              hash: 16979a952a32a4c56843c6702d5a4928eb635f641ab649ae49e402facb4dc521
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -46,7 +46,7 @@ catalog:
             - name: moai-lane-watchdog
               tier: core
               path: templates/.claude/skills/moai-lane-watchdog/
-              hash: f50089faee6cdf2e33a8d74acb497154db6095757cd3ed017dad6039ffc5a1f7
+              hash: 3a1604ef1336e3a3456f6d53970d5df3796b614b265658d8d4d604911254f490
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
@@ -132,17 +132,17 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: 8bf08dedbb2c97cdb3335d842059e09cf84035bad0d0a9d19dbd8174af2c2055
+              hash: e79e4c2d587e7ef76bf1e9a4d64166ef9c95884c5536fd6e2af12990f1183f85
               version: 1.0.0
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 43fb4731c75de45b130b3f6a7fad62064e5d42adcfc6d61b0092b4a664f2b9f8
+              hash: d852e816c7af90aacf2ca8b1f40cf5bbc7d29b35a5687457c5e1db1ab782dc0a
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: fe3b2e075f011a845d8cddd80d06de729f518069aa8eca896d8d1b77a1437ce9
+              hash: 51ec7b26f7dbb741dea9f9fe9924ddcdc1d2d476f5872aea58cf1d192ad1ff33
               version: 1.0.0
             - name: manager-git
               tier: core
@@ -152,7 +152,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: d1a3fa8d7a8c7d43d85c388f0dfed84968567ae217208ed9aee1579cd16f16ca
+              hash: 48e617b09550a044546ac30fb1f12ad39a2596af56458e897a8442a8544ee007
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -162,7 +162,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: a8a2a5671ea9452bc5ec13ba49008d897c12e6edb35f382c743443ced68999bf
+              hash: 61d3eb5f279eea77306411f1dbea9ced02526c4140c895f117ab7b30e561220a
               version: 1.0.0
             - name: super-advisor
               tier: core
@@ -240,7 +240,7 @@ catalog:
                 - name: moai-ref-cross-model-audit
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-cross-model-audit/
-                  hash: ef0c5b52b6ff9c961be05058c55681112445936a71db8f595246922d7cc8e3fa
+                  hash: cdd99445b591b30b2083f342c7e79d7e1f99fe36d6ab4bb7603ca7a8cbed7d87
                   version: 1.0.0
                 - name: moai-ref-supply-chain
                   tier: optional-pack:devops

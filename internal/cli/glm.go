@@ -315,7 +315,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			if debugRequested {
 				debugTiming.debugDump(cmd.ErrOrStderr())
 			}
-			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
+			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs, entry.FactoryRun, entry.FactoryLead)
 		}
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)

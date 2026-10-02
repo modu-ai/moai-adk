@@ -98,7 +98,7 @@ flowchart TD
 
 ## `project_root` 입력 — 호출자가 자기 트리를 지목한다
 
-20개 도구가 선택적 문자열 `project_root`를 받습니다: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `codex_task`, `claude_audit`, `glm_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`, `factory_stage`, `factory_complete`. 이 호출이 대상으로 삼을 트리를 가리키는 값이며, 넘길 값은 호출자 자신의 `git rev-parse --show-toplevel` 결과입니다. 다만 `factory_next`, `factory_stage`, `factory_complete`, `codex_task`에서는 선택이 아니라 필수입니다 — 자기 toplevel을 넘기지 않으면 호출이 거부되며, 어떤 트리로도 기본값이 잡히지 않습니다.
+22개 도구가 선택적 문자열 `project_root`를 받습니다: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `codex_review`, `codex_task`, `claude_audit`, `glm_audit`, `glm_review`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`, `factory_stage`, `factory_complete`. 이 호출이 대상으로 삼을 트리를 가리키는 값이며, 넘길 값은 호출자 자신의 `git rev-parse --show-toplevel` 결과입니다. 다만 `factory_next`, `factory_stage`, `factory_complete`, `codex_task`에서는 선택이 아니라 필수입니다 — 자기 toplevel을 넘기지 않으면 호출이 거부되며, 어떤 트리로도 기본값이 잡히지 않습니다.
 
 워크트리 안에서 일하는 에이전트는 이 값을 반드시 넘겨야 합니다. 편의 기능이 아닙니다. 서버가 스스로 답을 알아낼 방법이 없기 때문입니다. MCP 서버는 오래 사는 서브프로세스라 작업 디렉터리가 워크트리 전환을 따라가지 못하고, 대신 참조하는 환경변수는 세션이 워크트리에서 일하고 있어도 **프로젝트** 루트 — 즉 primary 체크아웃 — 를 가리킵니다. 워크트리에서 이 값을 빠뜨리면 호출은 primary 체크아웃을 대상으로 동작하고, 카드 브랜치에만 있는 SPEC은 감사자가 읽는 카탈로그에 들어오지 않습니다. 없다고 보고되지도 않습니다. 그냥 없습니다.
 
@@ -163,6 +163,17 @@ manager-develop가 run-phase 자가 검증(이음매 §E)에서 쓰며, sync-aud
 | `mcp__moai__audit_cache` | plan-audit PASS 캐시 (compute_hash / lookup / store, 프로세스 간 공유) | sync-auditor | `moai audit cache` |
 
 단일 백엔드 감사 모드는 프로젝트의 `audit_model` 설정으로 결정합니다: `codex+glm`(기본값, `audit_multi`로 수렴) | `glm` | `codex` | `none`(Claude 단독, 백엔드 호출 없음). 모든 백엔드는 fail-open입니다 — 사용 불가 백엔드는 `inconclusive`를 반환하며, Go error가 아닙니다.
+
+### 온디맨드 자기 리뷰 (참고용)
+
+| 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
+|------|------|---------------|------------|
+| `mcp__moai__codex_review` | 호출자 자신의 변경을 codex로 리뷰 — `scope: card`(카드 diff) 또는 `scope: uncommitted` | 메인 세션, 자기 `tools:` 목록에 이 도구를 둔 에이전트 | `moai verify codex-review` (codex 쪽만) |
+| `mcp__moai__glm_review` | 호출자 자신의 변경을 diff로 만들어 GLM(z.ai)에 리뷰 요청 | 메인 세션, 자기 `tools:` 목록에 이 도구를 둔 에이전트 | — |
+
+두 도구는 감사 도구가 아닙니다. 결과는 참고용이라 구속력이 없습니다. `advisory`는 항상 true이고, 감사 영수증을 만들지도 읽지도 않으며, `workflow.audit.gates.*`의 required 전환도 받지 않습니다(리뷰어가 없으면 `fail`이 아니라 `inconclusive`). 감사 모델 핀도 적용하지 않으므로 `model`은 호출자가 넘긴 값이거나 백엔드 기본값입니다. `scope`는 필수이고 기본값이 없습니다. `card`는 턴 종료 리뷰 게이트와 같은 스코프 해상기로 카드 diff를 정하며 머지 베이스를 호출할 때마다 새로 계산합니다. 카드 워크트리가 아닌 트리는 아무것도 리뷰하지 않고 `inconclusive`를 돌려줍니다. `uncommitted`는 지정한 트리의 미커밋 변경을 리뷰합니다. primary 체크아웃에서는 공유 작업 트리 전체가 대상이며 경로 제한은 없습니다. 모든 결과에는 `scope`, `base`(`card`일 때 머지 베이스 SHA, 그 밖에는 빈 문자열), `backend`, `tree`(실제로 리뷰한 정규 루트)가 담깁니다.
+
+GLM은 파일 시스템이 없어서, 런타임 관리 경로를 뺀 diff를 요청에 실어 보냅니다. 추적되지 않는 파일은 diff에 들어갈 수 없으므로 `excluded_untracked`에 나열하고, diff가 크기 상한에서 잘리면 `truncated`가 켜집니다. diff가 비어 있으면 어느 백엔드도 호출하지 않습니다. 호출은 동기식이며 리뷰 예산 안에서 끝나고 진행 알림은 보내지 않습니다. 이 도구가 생기기 전에 뜬 서버 프로세스에는 도구가 보이지 않으니 서버를 다시 연결하세요. 그동안 codex 쪽은 `moai verify codex-review --project-root <트리>`로 대신할 수 있지만, GLM 쪽은 대신할 방법이 없습니다.
 
 ### codex 위임 (백그라운드 작업)
 
