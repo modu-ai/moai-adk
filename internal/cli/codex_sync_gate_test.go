@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -87,6 +88,7 @@ func TestSyncGateLanguageDetectionMatchesScript(t *testing.T) {
 		"python and go":         {"tool.py", "cmd/main.go"},
 		"visual studio dir":     {".vs/settings.json"},
 		"cpp header only":       {"include/x.h"},
+		"cxx source":            {"src/kernel.cxx"},
 		"r lower":               {"analysis/a.r"},
 		"docs only":             {"docs/a.md"},
 		"swift package":         {"Package.swift"},
@@ -116,6 +118,41 @@ func TestSyncGateLanguageDetectionMatchesScript(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestSyncGateCxxSourceDetectsCpp pins the semantics the parity test cannot
+// see: both implementations share the same detection line, so both can miss
+// the same case together and still agree. A tree whose only C++ evidence is a
+// .cxx file must resolve to cpp on each side independently (card t1420) — the
+// compile step and code_delta_pattern already cover .cxx, so a missed
+// detection let a .cxx-only sync commit pass without any checker running.
+func TestSyncGateCxxSourceDetectsCpp(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not on PATH")
+	}
+	root := t.TempDir()
+	p := filepath.Join(root, "src", "kernel.cxx")
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("go port", func(t *testing.T) {
+		got := detectSyncGateLanguages(root)
+		if !slices.Contains(got, "cpp") {
+			t.Fatalf("languages: Go = %v, want cpp present", got)
+		}
+	})
+	t.Run("script", func(t *testing.T) {
+		out, err := exec.Command("bash", "-c", `source "$1" && detect_languages "$2"`, "_", syncGateScriptPath(t), root).Output()
+		if err != nil {
+			t.Fatalf("source script: %v", err)
+		}
+		if !slices.Contains(strings.Fields(string(out)), "cpp") {
+			t.Fatalf("languages: script = %q, want cpp present", string(out))
+		}
+	})
 }
 
 // TestVerifySyncGateRecordsReceipt: `moai verify sync-gate` runs the checks out

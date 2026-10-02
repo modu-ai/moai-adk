@@ -32,6 +32,7 @@ import (
 func srlGateEnv(t *testing.T, run, label string) {
 	t.Helper()
 	m3ScrubEnv(t)
+	pinFactoryGateBudget(t) // no gate verdict may depend on machine load
 	t.Setenv(config.EnvMoaiKanbanID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 	t.Setenv(config.EnvMoaiFactoryWorker, label)
@@ -82,7 +83,7 @@ func TestStaleRunNoticeFiresWhenRunActive(t *testing.T) { // AC-SRL-002 positive
 	srlGateEnv(t, run, "worker-69")
 
 	notice := registerFactoryHookPeer(context.Background(), &HookInput{SessionID: "srl-002-session", ProjectDir: root}, factoryPeerBindUserPrompt)
-	for _, want := range []string{"stale run:", "worker-69", "runs --retire " + run} {
+	for _, want := range []string{"stale run:", "worker-69", "moai factory relaunch --provider cc --from-run " + run} {
 		if !strings.Contains(notice, want) {
 			t.Fatalf("active-run prescription %q missing %q", notice, want)
 		}
@@ -97,7 +98,7 @@ func TestStaleRunNoticeOncePerSession(t *testing.T) { // AC-SRL-003
 	in := &HookInput{SessionID: "srl-003-session", ProjectDir: root}
 
 	first := registerFactoryHookPeer(context.Background(), in, factoryPeerBindUserPrompt)
-	if !strings.Contains(first, "runs --retire") {
+	if !strings.Contains(first, "moai factory relaunch --provider cc --from-run "+run) {
 		t.Fatalf("first turn lost the prescription: %q", first)
 	}
 	second := registerFactoryHookPeer(context.Background(), in, factoryPeerBindUserPrompt)
@@ -151,7 +152,7 @@ func TestUnbindNoticeRebindLinePresence(t *testing.T) { // AC-SRL-005 (b)
 	if strings.Contains(notice, "runs --retire") {
 		t.Fatalf("unbind path prescribed a retire: %q", notice)
 	}
-	if !strings.Contains(notice, "moai cc -f lane-") {
+	if !strings.Contains(notice, "moai factory relaunch --provider cc") {
 		t.Fatalf("unbind notice omits the re-bind entry although an active run exists: %q", notice)
 	}
 
@@ -159,7 +160,7 @@ func TestUnbindNoticeRebindLinePresence(t *testing.T) { // AC-SRL-005 (b)
 	recordFactoryRunWithStatus(t, alone, dead, "retired")
 	srlGateEnv(t, dead, "worker-69")
 	solo := registerFactoryHookPeer(context.Background(), &HookInput{SessionID: "srl-005b-session", ProjectDir: alone}, factoryPeerBindUserPrompt)
-	if strings.Contains(solo, "moai cc -f lane-") {
+	if strings.Contains(solo, "moai factory relaunch") {
 		t.Fatalf("unbind notice names a re-bind with no active run in the root: %q", solo)
 	}
 }

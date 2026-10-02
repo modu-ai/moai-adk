@@ -17,12 +17,16 @@ workflow:
     # codex_audit / glm_audit / audit_multi), never task delegation. Precedence per
     # backend: this pin > llm.yaml sync-auditor SSOT cell > empty. codex effort
     # Claude/Codex effort vocabulary low|medium|high|xhigh|max; GLM effort =
-    # z.ai states low|high|max. Claude defaults to claude-opus-5-5/medium and
+    # z.ai states low|high|max. Claude defaults to claude-opus-5-5/high and
     # codex to gpt-6.1-sol/high (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001/002).
+    # model: multi (SPEC-AUDIT-MODEL-CONVERGE-001) opts this repository into
+    # cross-model convergence: codex required, GLM advisory, Claude as the anchor.
+    # Relax it per backend with an audit.gates block if needed.
     audit:
+        model: multi
         claude:
             model: claude-opus-5-5
-            effort: medium
+            effort: high
         codex:
             model: gpt-6.1-sol
             effort: high
@@ -220,12 +224,15 @@ workflow:
     # dogfood; the numeric values are the shipped unmeasured defaults. Shipped
     # default-false in template (internal/config/defaults.go enforces this; no
     # gate-enabling value under internal/template/templates/).
+    # max_scan_dirs: the unmeasured shipped default; more linked worktrees than
+    # this need a larger value.
     quota_gate:
         enabled: true
         five_hour_hold_pct: 90
         seven_day_hold_pct: 95
         release_margin_pct: 5
         max_age: 30m
+        max_scan_dirs: 128
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
     # probability; it generates no text and decides nothing. Ships OFF, and

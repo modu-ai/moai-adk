@@ -145,9 +145,15 @@ workflow:
     # the review comes back failing. Requires the optional `codex` binary.
     # Ships OFF: set enabled to true to turn it on. While it is off the hook
     # short-circuits in shell and costs nothing per turn.
+    # tree_scope (optional, shown below as a commented example only): what a
+    # session with no card-branch evidence does while the gate is on. `review`
+    # (the default) reviews the tree's uncommitted changes; `skip` lets such a
+    # session end its turn without a review. A session on a `WT-` card branch
+    # is reviewed either way.
     codex:
         review_gate:
             enabled: false
+            # tree_scope: review  # review | skip
     # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
     # It reads the most recent convergence result of the configured review
     # backends and keeps the turn going only when a required backend failed;
@@ -197,6 +203,8 @@ workflow:
     #     release_margin_pct    0-50, release below hold minus this margin
     #     max_age               a session reading older than this is unknown
     #                           (at least 10m, twice the 5m statusline heartbeat)
+    #     max_scan_dirs         1-1024, linked worktrees examined per reading; unmeasured
+    #                           (a project with more worktrees than this needs a larger value)
     # A value outside its range falls back to the default shown here.
     quota_gate:
         enabled: false
@@ -204,6 +212,7 @@ workflow:
         seven_day_hold_pct: 95
         release_margin_pct: 5
         max_age: 30m
+        max_scan_dirs: 128
     # served_model_gate: refuse to adopt a plan-auditor or sync-auditor verdict
     # when the model that actually answered that auditor differs from the
     # expected one, or cannot be determined. The SubagentStop hook records the

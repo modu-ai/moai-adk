@@ -31,8 +31,28 @@ const (
 )
 
 // factoryQuotaAggregate is the reading seam: tests replace it to feed readings
-// without writing records. The production value is the statusline aggregator.
-var factoryQuotaAggregate = statusline.AggregateQuota
+// without writing records. Its type is the single-directory aggregator's. The
+// production value reads the quota records of the primary checkout and of every
+// linked worktree (SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-006, -007): it
+// derives the repository root from the state-directory path, which the one
+// caller builds as <root>/.moai/state, enumerates through factoryQuotaStateDirs
+// with the configured bound, and aggregates across the directories. A state
+// directory of any other shape is read alone, as before (fail open).
+var factoryQuotaAggregate = func(stateDir string, now time.Time, maxAge time.Duration) statusline.QuotaAggregate {
+	clean := filepath.Clean(stateDir)
+	root := filepath.Dir(filepath.Dir(clean))
+	if filepath.Join(root, ".moai", "state") != clean {
+		return statusline.AggregateQuota(stateDir, now, maxAge)
+	}
+	dirs := factoryQuotaStateDirs(root, config.LoadQuotaScanBound(root))
+	return statusline.AggregateQuotaDirs(dirs, now, maxAge)
+}
+
+// factoryQuotaStateDirs is the worktree-enumeration seam (SPEC-QUOTA-RECORD-WORKTREES-001
+// REQ-QWR-006): the one place this package references the enumerator, so a test
+// can count its calls and a static check can pin that no code path reaches it
+// before the gate check. The production value is the statusline enumerator.
+var factoryQuotaStateDirs = statusline.QuotaStateDirs
 
 // factoryQuotaWindowState is one rate-limit window as the evaluation sees it:
 // its aggregate reading and the hold percentage the configuration sets for it.

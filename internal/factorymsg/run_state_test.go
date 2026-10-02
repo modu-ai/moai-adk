@@ -130,3 +130,63 @@ func TestPrescriptionGateActiveRunExists(t *testing.T) {
 		}
 	})
 }
+
+// SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-001/-006: the read-only listing of
+// active runs the notice-line table is computed from.
+func TestActiveRunIDsAt(t *testing.T) {
+	t.Run("lists only active runs, sorted", func(t *testing.T) {
+		root := t.TempDir()
+		seedRunStatus(t, root, "run-b", "active")
+		seedRunStatus(t, root, "run-a", "active")
+		seedRunStatus(t, root, "run-r", "retired")
+		dbPath, err := homestate.FactoryDBPath(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := ActiveRunIDsAt(context.Background(), dbPath)
+		if err != nil {
+			t.Fatalf("ActiveRunIDsAt: %v", err)
+		}
+		if want := []string{"run-a", "run-b"}; len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
+			t.Errorf("ActiveRunIDsAt = %q, want %q", got, want)
+		}
+	})
+	t.Run("a project without a factory database lists nothing and creates nothing", func(t *testing.T) {
+		root := t.TempDir()
+		dbPath, err := homestate.FactoryDBPath(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := ActiveRunIDsAt(context.Background(), dbPath)
+		if err != nil || len(got) != 0 {
+			t.Fatalf("ActiveRunIDsAt on an absent database = (%q, %v), want (empty, nil)", got, err)
+		}
+		if _, statErr := os.Stat(dbPath); !os.IsNotExist(statErr) {
+			t.Errorf("the read-only listing created %s", dbPath)
+		}
+	})
+	t.Run("an unreadable database is an error, not an empty answer", func(t *testing.T) {
+		root := t.TempDir()
+		dbPath, err := homestate.FactoryDBPath(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dbPath, []byte("definitely not a sqlite database"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if got, err := ActiveRunIDsAt(context.Background(), dbPath); err == nil {
+			t.Fatalf("ActiveRunIDsAt on a corrupt database = (%q, nil), want an error", got)
+		}
+	})
+}
+
+func TestValidRunID(t *testing.T) {
+	for id, want := range map[string]bool{"runX": true, "tlwgk9": true, "run-1.a:b": true, "": false, "bad id!": false, "../x": false, "-lead": false} {
+		if got := ValidRunID(id); got != want {
+			t.Errorf("ValidRunID(%q) = %v, want %v", id, got, want)
+		}
+	}
+}

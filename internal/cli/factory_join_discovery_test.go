@@ -455,13 +455,17 @@ func TestFactoryLaneJoinMirrorParity(t *testing.T) {
 		"func enterFactoryLaneRun(",
 		"discoverFactoryLeader(",
 		"ResumeRun(",
-		"enterSelectedFactoryRun(root, \"\", true, timing)", // the re-entry is the SAME gate
+		// The re-entry is the SAME gate, and it carries the verified
+		// leader's run id explicitly (card t1444 ①): an empty selector
+		// would re-enter the very ambiguity a named join just resolved on
+		// the live-ambiguity branch.
+		"enterSelectedFactoryRun(root, leader.RunID, true, timing)",
 	} {
 		if !strings.Contains(gateSrc, want) {
 			t.Errorf("factory.go (the shared join point) does not carry %q", want)
 		}
 	}
-	for _, f := range []string{"cc.go", "glm.go", "codex_factory.go"} {
+	for _, f := range []string{"cc.go", "glm.go", "codex_factory.go", "codex_launcher.go"} {
 		raw, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatalf("read %s: %v", f, err)

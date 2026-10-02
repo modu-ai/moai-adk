@@ -79,15 +79,16 @@ When a loop iteration re-awakens a lane, the awaken turn runs the watchdog
 self-diagnosis **before** resuming card work:
 
 measure progress (§3–4) → classify the cause (**awaited-judgment** /
-**blocked-by** / **shell-error** / **accidental-stop**) → apply the remedy
-or the ladder (§6) → resume, or record an explicit wait (§14).
+**blocked-by** / **shell-error** / **accidental-stop** / **awaited-delegate**)
+→ apply the remedy or the ladder (§6) → resume, or record an explicit wait
+(§14).
 
 The watchdog is awaken-tick based and **hook-independent by design**: it
-binds the awaken turn's FIRST action, never the scheduler, and introduces no
-hook surface. The dual-harness hook-parity precedent applies only if a
-future iteration adds a hook surface.
+binds the awaken turn's FIRST action and introduces no hook surface; who arms
+the scheduler that fires the awaken is §5.1. The dual-harness hook-parity
+precedent applies only if a future iteration adds a hook surface.
 
-Canonical awaken prompt (paste into the lane's loop driver):
+Canonical awaken prompt (the prompt of the lane's standing recheck cron, §5.1):
 
 ```text
 Each iteration: run the lane stall watchdog FIRST — invoke
@@ -96,6 +97,33 @@ the card's progress record left off. Never resume card work without the
 watchdog pass. If the watchdog records an explicit wait, end the iteration;
 do not idle-spin on the wait.
 ```
+
+### 5.1 The standing awaken carrier
+
+A lane that has stopped cannot wake itself, and a turn ended by an API error
+(a 429) leaves no model action in which to arm anything. The carrier is
+therefore **standing**: armed once at card intake, before the first stage, and
+kept until the completion report.
+
+- **Arm.** `CronCreate` with `cron: "7,27,47 * * * *"` (off-minute, every 20
+  minutes), `recurring: true`, and the canonical awaken prompt above. Never a
+  one-shot at an absolute clock time: a local/UTC slip lands it in the past
+  and it never fires (observed on card t1393), and it covers one wait rather
+  than the stall that follows it. The 20-minute cadence keeps every fire
+  longer than the N-minute stall window after the previous snapshot (§4).
+- **Keep.** `CronList` at card intake and after every `/clear`; re-arm when
+  the entry is missing. A recurring job expires after 7 days — a card that
+  outlives that re-arms it. Delete it (`CronDelete`) when the completion report
+  is sent; the next card arms its own.
+- **Read disk, not messages.** Every wake — the cron, a leader message, a
+  teammate's idle notice — starts with the watchdog pass, which reads the
+  evidence on disk (the three channels of §3, the card's progress record, the
+  reports, the commits, a delegate's deliverable). A message says when to
+  look; it is never evidence of progress or of its absence.
+- **Cost.** A fire after the cache window re-writes the prefix once. The
+  cadence trades that cost against a stall bounded by about two periods (the
+  first observation after a wake yields no verdict, §4) instead of the 87 to
+  1606 minutes measured on cards t1393 and t1339.
 
 ## 6. The decision ladder
 
@@ -146,8 +174,10 @@ Every ladder step carries a per-runner path. The Claude runner is `moai cc`
 | ⑤ reply path | the session messaging tool | NO session-messaging tool on codex — cross-harness notice only via the session messaging broker (`session_msg_register` / `session_msg_send` + poll) and the queue-on-disk delegation channel; the wait reason is recorded on disk |
 
 A step impossible on a runner names its substitute — never implicitly
-impossible. The awaken CARRIER is scheduler-mediated and out of scope (§5
-binds the turn's first action, not the scheduler).
+impossible. The awaken carrier on the Claude runner is the standing recheck
+cron (§5.1). The codex runner has no session cron tool; its substitute is the
+leader's evidence read plus the explicit wait record on disk — a named gap,
+never an implicit one.
 
 ## 9. The gate inventory and dispositions
 
