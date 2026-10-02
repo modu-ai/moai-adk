@@ -288,58 +288,71 @@ go.mod/go.sum: base 대비 변경은 M2의 승인된 `github.com/gorilla/websock
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+Re-close state (2026-10-02). The first close (sync commit `578e0d8896a6238d9d110aa55cf702f85d11446e`, backfill `623e4b15a`) was followed by an independent sync audit (FAIL 69) and an in-place SPEC amendment (0.2.0); this re-close sync commit returns the SPEC to `completed`. The prior close SHA is kept in `spec.md` HISTORY as `prior_completed_sha`. Earlier §E.4 wording is superseded by this block; the audit trail is in §J.
+
 ```yaml
 sync_complete_at: 2026-10-02
-sync_commit_sha: 578e0d8896a6238d9d110aa55cf702f85d11446e  # D3-exempt backfill: the placeholder in the sync commit replaced with the real SHA in a following commit (phase-owned field, manager-docs §E.4)
+sync_commit_sha: pending-backfill  # canonical placeholder: a commit cannot cite its own SHA; backfilled with the real SHA in a following commit (phase-owned field, manager-docs §E.4). Prior close SHA: 578e0d8896a6238d9d110aa55cf702f85d11446e (spec.md HISTORY prior_completed_sha)
 sync_status: complete
-b12_self_test_a: pass  # pre-emission `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
-b12_self_test_b: pass  # AC count: MOAI-AC-COUNTER against acceptance.md (tier L source) → live=17 excluded=0 ambiguous=0; the CHANGELOG entry cites the same 17 (AC-MS-001..017); milestones 6 (M1..M6, per the run commit list); managed-test coverage 88.0% (344/391) quoted from §E.3, not re-measured here
-b12_self_test_c: pass  # file-path verification: all 9 implementation/doc paths cited in the CHANGELOG entry confirmed via ls against this tree (ls exit 0)
-changelog_entry_position: "[Unreleased] > Added (first entry)"
+re_close: true
+b12_self_test_a: pass  # re-close corrects the existing CHANGELOG entry in place; `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001' CHANGELOG.md` = 1 before this edit and still one entry afterwards (no second entry)
+b12_self_test_b: pass  # AC count: MOAI-AC-COUNTER against acceptance.md (tier L source) → live=17 excluded=0 ambiguous=0; AC rows 17, REQ 15 by grep; the CHANGELOG entry cites 17 (AC-MS-001..017); managed-file coverage 89.3% (352/394) re-measured this run
+b12_self_test_c: pass  # file-path verification: every implementation/doc path cited in the corrected entry confirmed via ls (see Verification)
+changelog_entry_position: "[Unreleased] > Added (first entry, corrected in place)"
 frontmatter_status_transitions:
-  in_progress_to_implemented: merged  # folded into the single sync commit per the 3-phase close
-  implemented_to_completed: this commit  # spec.md frontmatter status+updated only; plan/acceptance/design/research are stateless on the status axis and carry no status field
+  in_progress_to_completed: this commit  # spec.md frontmatter status only (updated was already 2026-10-02); amendment_of and HISTORY untouched
 canary_compliance_check:
-  spec_body_untouched: true  # spec/plan/acceptance/design/research bodies byte-unchanged vs 677cb6919 (see Verification, diff below)
+  spec_body_untouched: true  # spec.md body and plan/acceptance/design/research byte-unchanged vs 76c795333
   runtime_files_untouched: true  # .moai/state, .moai/harness, .moai/cache untouched
-recorded_by: manager-docs (sync phase, card t1375)
+recorded_by: manager-docs (re-close sync, card t1375)
 ```
 
 ### What was synced
 
-- `CHANGELOG.md` `[Unreleased] > Added`: one entry for the managed cross-host session layer. It states the one new dependency `github.com/gorilla/websocket v1.5.3` (`go.mod:37`, loopback App Server use only) and the delivery-only boundary (no merge automation, no card completion judgment).
-- `spec.md` frontmatter: `status: in-progress → completed`, `updated: 2026-10-01 → 2026-10-02`.
-- README / docs-site: no edit. The only docs-site surface naming the broker is `docs-site/content/en/guides/mcp-server.md:220-224` (and its ja/zh/ko twins), which lists the five `factory_msg_*` MCP tools; this card did not change that tool surface (`git diff f22e2d7ac..HEAD --name-only | grep -E 'mcp_server|docs-site|README' | wc -l` → `0`). The operator-facing guide `.moai/docs/factory-managed-session.md` already landed in M5 and is linked from the CHANGELOG entry, not duplicated.
-- Codemaps refresh: not performed in this sync commit (outside the dispatched deliverables); listed under Gaps.
+- `CHANGELOG.md`: the existing SPEC-FACTORY-MANAGED-SESSION-001 entry corrected in place. It now states the exact `go.mod` delta (new `require github.com/gorilla/websocket v1.5.3`, and the `// indirect` marker dropped from `github.com/santhosh-tekuri/jsonschema/v6 v6.0.2`, already directly imported at base `f22e2d7ac` by `internal/codextools/registry.go`), the headless Codex owner, the arrival-order FIFO queue, the launch-directory behavior and the residual risks, with refreshed coverage and commit range.
+- `.moai/docs/factory-managed-session.md`: the same facts in Korean, plus the follow-ups F8, F9 and F13 without card ids.
+- `spec.md` frontmatter: `status: in-progress → completed` (the `re_close_path` row of the HISTORY amendment table).
+- progress.md: the stale §E.4 wording fixed (below) and §J added.
+- README / docs-site: no edit; same reason as the first close (broker MCP tool surface unchanged).
 
-### Verification (this run, this tree: HEAD `677cb6919` + uncommitted sync edits; lane env scrubbed in the same compound call as each command)
+Stale §E.4 lines fixed (audit F12), before → after:
+- Before: `- `sync_commit_sha` is a placeholder until the backfill commit lands.` (Gaps; false after backfill `623e4b15a`) → After: removed; the slot's own comment states the placeholder state for this re-close commit.
+- Before: `It states the one new dependency `github.com/gorilla/websocket v1.5.3`` (What was synced) → After: states both go.mod changes (new `require` plus the dropped `// indirect` marker).
+
+### Verification (this run, this tree: HEAD `76c795333` plus uncommitted re-close edits; lane env scrubbed in the same compound call as each go command)
 
 | Check | Command | Verbatim result |
 |---|---|---|
 | SPEC lint | `go run ./cmd/moai spec lint SPEC-FACTORY-MANAGED-SESSION-001` | `✓ No findings — all SPEC documents are valid` |
-| AC counter (B12) | MOAI-AC-COUNTER awk from `manager-docs.md` § B12, `AC_FILE=.moai/specs/SPEC-FACTORY-MANAGED-SESSION-001/acceptance.md` | stdout `17`, stderr `live=17 excluded=0 ambiguous=0`, exit 0 |
-| Duplicate guard | `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001' CHANGELOG.md` (before the edit) | `0` |
-| SPEC-corpus test slice | `go test -count=1 -run '^(TestACCounterFullCorpusMatchesBaseline\|TestACCounterCorpusMutantIsDetected)$' -v ./internal/spec` | `--- PASS: TestACCounterFullCorpusMatchesBaseline (8.33s)`, `--- PASS: TestACCounterCorpusMutantIsDetected (0.01s)`, `ok  github.com/modu-ai/moai-adk/internal/spec 8.794s` |
-| SPEC audit | `go run ./cmd/moai spec audit --json`, entries naming this SPEC | one entry: `finding_type: EraAutoDetected`, `severity: INFO`, `era: V3R6`, `heuristic_matched: H-4 (§E.2 + §E.4 + sync_commit_sha)`; no drift finding for this SPEC in the filtered output (`grep -B2 -A8` window, not a full-report parse) |
-| store.go untouched | `git diff f22e2d7ac..HEAD -- internal/factorymsg/store.go \| wc -l` | `0` |
-| Body untouched | `git diff 677cb6919 -- .moai/specs/SPEC-FACTORY-MANAGED-SESSION-001/<file>.md \| grep -E '^[-+]'` for plan/acceptance/design/research | empty for all four; for spec.md only `-status: in-progress` / `+status: completed` / `-updated: 2026-10-01` / `+updated: 2026-10-02` (plus the two `---`/`+++` header lines) |
+| B12 AC counter | MOAI-AC-COUNTER awk from `manager-docs.md` § B12 on `acceptance.md` | stdout `17`, stderr `live=17 excluded=0 ambiguous=0`, exit 0 |
+| AC rows / REQ | `grep -cE '^\| AC-MS-[0-9]+ ' acceptance.md`; `grep -cE '^- \*\*REQ-MS-[0-9]+\*\*' spec.md` | `17`; `15` |
+| Coverage | `go test -count=1 -run '^TestManaged\|^TestClaimManagedFactoryInbox\|^TestMoAIMCP\|^TestFactoryMsgSendRejectsClaudeOnlyRun\|^TestParseCompanionLabelStopsAtPassThroughMarker\|^TestDoctorCodexWarnsStaleGlobalApproval\|^TestCodexLaunchWithoutFactoryEnvReachesDirectDoor\|^TestLaunchWithoutFactoryEnvReachesExecDoor' -coverprofile=<scratch>/cov.out ./internal/cli/`, statement-weighted over the two managed files | `ok … internal/cli 10.223s coverage: 8.7% of statements`; `managed_factory_session.go 154/166 92.8%`, `managed_codex_factory.go 198/228 86.8%`, `COMBINED 352/394 89.3%` |
+| SPEC-corpus tests | `go test -count=1 -run '^(TestACCounterFullCorpusMatchesBaseline\|TestACCounterCorpusMutantIsDetected)$' ./internal/spec` | `ok  github.com/modu-ai/moai-adk/internal/spec 5.634s` |
+| SPEC audit | `go run ./cmd/moai spec audit --json`, `drift_findings` filtered to this SPEC (parsed with json) | 1 finding: `EraAutoDetected` / `INFO`; no `SyncStatusDrift` |
+| Bodies untouched | `git diff 76c795333 -- .moai/specs/SPEC-FACTORY-MANAGED-SESSION-001/<file>.md \| wc -l` for plan / acceptance / design / research | `0` for all four |
+| spec.md diff | `git diff 76c795333 -- …/spec.md \| grep -E '^[-+]'` | `-status: in-progress` / `+status: completed` (plus the two `---`/`+++` header lines); `updated` was already `2026-10-02` |
+| Path check | `ls` of the cited managed files, the guide and `go.mod` | exit 0 |
+| go.mod delta | `git diff f22e2d7ac..HEAD -- go.mod` | `+require github.com/gorilla/websocket v1.5.3`; `-github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect` / `+github.com/santhosh-tekuri/jsonschema/v6 v6.0.2` |
 
 ### Gaps
 
-- The live Codex round trip is unobserved: `TestManagedCodexFactoryBrokerLive` skips without `MOAI_FACTORY_LIVE_ROOT` / `MOAI_FACTORY_LIVE_RUN` (AC-MS-016 passes as a SKIP, per §E.2).
-- The CI-parity lint version is unchecked: the `golangci-lint` figures in §E.3 come from the local binary, and its match to the CI v2.1.6 build was not verified. No lint was run in this sync phase.
-- The two reds in the full `./internal/cli` run, `TestStopChainEffectParityGolden` (owner card t1390) and `TestSyncGateLanguageDetectionMatchesScript` (owner card t1402), are recorded in the 회귀 증거 subsection; their ownership comes from the leader's message and is not a sync-phase observation. No full-package suite was run in this sync phase.
-- Codemaps (`.moai/project/codemaps/`) were not refreshed in this sync commit.
-- The SPEC-corpus slice above is the AC-counter corpus test; no test dedicated to `status:` frontmatter of the real `.moai/specs` tree was found by grep, so `spec lint` on this SPEC is the status/frontmatter validity evidence.
+- The live Codex round trip is unobserved (`TestManagedCodexFactoryBrokerLive` skips without `MOAI_FACTORY_LIVE_ROOT` / `MOAI_FACTORY_LIVE_RUN`).
+- TUI attach is not delivered (headless owner); the follow-up card has no id yet.
+- The CI-parity lint version is unchecked; no lint was run in this re-close.
+- The two reds in the full `./internal/cli` run, `TestStopChainEffectParityGolden` (owner card t1390) and `TestSyncGateLanguageDetectionMatchesScript` (owner card t1402), are recorded in the 회귀 증거 subsection; ownership comes from the leader's message, not from a re-close observation. No full-package suite was run in this re-close.
+- Codemaps were not refreshed in this re-close commit.
+- AC-MS-012's "only" and no-TUI claims are unpinned by tests (plan-audit delta3 D3, carried debt).
 - `sync_commit_sha` is a placeholder until the backfill commit lands.
+- The audit and plan-audit evidence files named in §J are local and gitignored, so they reach no other clone.
 
 ### Residual-risk
 
-- MCP approval scoping and loopback guards are covered by in-repo tests only; behavior against a real Codex App Server is unobserved (see Gaps).
-- The coverage figure (88.0%) covers the managed test selection only, not the whole `internal/cli` package.
-- A concurrent session pushing a competing change to the CHANGELOG `[Unreleased] > Added` block would conflict textually with the first-entry insertion; resolve at integration.
+- Server-initiated approval and elicitation requests are not answered, so an un-pre-approved action can stall a turn up to the 10-minute turn timeout; one failed turn ends the whole session; the launcher has no signal handling (sync-audit F3, F4, F5; follow-up cards, no ids assigned).
+- Follow-ups without ids: F8 (token directory not removed when Start fails early), F9 (the 10 s handshake budget is thin), F13 (the `/readyz` probe follows redirects without re-applying the loopback guard).
+- Operator input queues behind an already-claimed inbox batch (arrival-order FIFO, by amendment).
+- The coverage figure (89.3%) covers the managed test selection only, not the whole `internal/cli` package.
 
-sync_status: audit-ready — this signal is ready for the independent sync audit (sync-auditor).
+sync_status: audit-ready — this signal is ready for the NEXT independent sync audit (delta over `623e4b15a`).
 
 ## §F Phase 4 Mode Selection
 
@@ -392,3 +405,13 @@ sync-audit FAIL 69의 F1·F6·F7·F10 대응(코드·테스트 한정). 이번 �
 F10 처분 (2026-10-02, 기준 HEAD `175fa3398`): 측정 사실 — `managedTurnQueue.Next`는 도착순 FIFO(`turns[0]` pop)이고, claim이 도는 동안 도착한 연산자 줄은 overlay 프로브에서 `[priming, "INBOX-BATCH", "OPERATOR-WAITING"]` 순으로 inbox 뒤에 섰다. REQ-MS-006은 경합 없는 직렬화만 요구하므로 운영자 결정은 코드가 아니라 주석을 구현(FIFO)에 맞추는 것이다. `managed_factory_session.go`의 주석 3곳과 `TestManagedQueueSerializesOperatorAndInbox` 문서 주석 한 문장만 고쳤고 동작·단언·테스트 이름은 불변이다. AC-MS-008의 "연산자 우선" 문구는 SPEC 담당 워커가 정정한다(이 에이전트의 범위 밖).
 
 AC-MS-008 FIFO 양방향 증명 (2026-10-02, 기준 HEAD `ba8c25396`): `TestManagedQueueSerializesOperatorAndInbox`에 큐·드라이버 두 수준의 거울 배치를 추가했다. 서브테스트: `queue serves arrival order: operator then inbox`, `queue serves arrival order: inbox then operator`, `driver claims only when idle and serves operator then inbox in arrival order`, `driver serves inbox then operator when the claim returns with an operator line already waiting`. overlay 변이(저장소 미변경): A = `Next`가 연산자 턴을 우선 → `inbox then operator`·`driver serves inbox then operator…` 서브테스트 `--- FAIL`; B = `Next`가 마지막 턴 선택 → 큐 두 서브테스트와 드라이버 거울 서브테스트 `--- FAIL`. 프로덕션 코드 변경 없음.
+
+## §J Re-close audit trail (2026-10-02)
+
+Evidence files below are local and gitignored (`.moai/reports/t1375/`); they are not cited as fetchable from a clone.
+
+- Sync-audit 1 (`.moai/reports/t1375/sync-audit.md`), audited `623e4b15a`: verdict FAIL 69/100. Two blocking findings: F1 (the managed Codex divert dropped the launcher-resolved launch directory) and F2 (the SPEC says the launcher owns App Server and TUI, but the implementation is a headless owner and nothing disclosed it). Optional findings F3 to F13 (server-initiated requests unanswered, one failed turn ends the session, no signal handling, production inbox wiring unpinned, token mode unpinned, token dir leak on early failure, thin handshake budget, queue comments saying operator priority, broad MCP approve, stale E.4 line, readyz redirects).
+- Operator decisions, in my words: F2 is resolved by aligning the SPEC with reality (headless owner, TUI attach owed to a follow-up card) and disclosing the debt; F3, F4 and F5 become follow-up cards and are disclosed as residual risk; the minor findings F6, F7, F10 and F12 are fixed now, while F8, F9 and F13 are recorded as follow-ups.
+- Repair commits: `175fa3398` (launch directory carried into the managed Codex owner, production inbox wiring extracted and pinned, token file mode pinned), `d42adfdbc` (queue comments say FIFO), `ba8c25396` and `76c795333` (SPEC amendment: status in-progress, `amendment_of`, HISTORY Amendments with `prior_completed_sha` `578e0d8896a6238d9d110aa55cf702f85d11446e`, FIFO and headless wording), `15fa2f096` (FIFO proved both ways, four subtests).
+- Plan-audit of the amendment: `.moai/reports/t1375/plan-audit-delta2.md` FAIL 0.88 on `ba8c25396` (two blocking defects D1 and D2, both small), then `.moai/reports/t1375/plan-audit-delta3.md` PASS-WITH-DEBT 0.95 on `76c795333`. Carried debt: D3, AC-MS-012's "only" and no-TUI claims are unpinned by tests.
+- Re-close: this sync commit (`status: completed`) followed by a SHA backfill commit.
