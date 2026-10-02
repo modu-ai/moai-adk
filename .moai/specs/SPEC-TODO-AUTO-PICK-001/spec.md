@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-AUTO-PICK-001
 title: "Autonomous card selection under --auto — the invoked session judges, the lease is the only pick path, the keep-set is skipped and reported"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-02
 updated: 2026-10-02
@@ -21,6 +21,21 @@ related_specs: [SPEC-AUTONOMY-BATCH-GATE-001, SPEC-JEV-AUTO-EXCEPTION-001, SPEC-
 
 ## HISTORY
 
+- 0.3.0 — 2026-10-02 — plan-audit iteration 2 repair (FAIL 0.77, MP-9 failed on N1; audited commit
+  `63daaf6a7`; the leader approved one extra delta audit scoped to N1-N6 plus a full ordering
+  re-read). N1: M1 declares the one seam variable, so the seam tests compile at M1 and are RED at
+  runtime while the golden is GREEN. N2: REQ-TAU-005 and AC-TAU-014 are narrowed to what the
+  factory-record API can undo (it has no delete), with the seam point, the post-record residue and
+  the compensation failure specified (§B.8). N3: the generated Codex `manager-todo.toml` and the
+  second stale sentence in `auto-semantics.md` join the sweep; a whole-tree sweep for the old
+  authority wording is classified in `plan.md`. N4: every release-blocking test name has its own
+  RED-now cell. N5: the marker predicate's mid-text and leading-whitespace cards are fixtures. N6:
+  the refusal tokens are closed over the producible refusals (twelve) and `owned`/`recorded` are
+  defined against the nineteen record states. N7: §G states that the §10 sync-audit wording stands
+  for the other gates. The handoff wording for the three operator-decision cards is made identical
+  everywhere (§B.3, REQ-TAU-011, §G, Definition of Done 6, `plan.md` §7). REQ-TAU-013, the open
+  input set for card t1454, is unchanged. Requirement count 16, criterion count 14. Resolution map:
+  `plan.md` § Audit resolution map.
 - 0.2.0 — 2026-10-02 — plan-audit iteration 1 repair (FAIL 0.73, MP-9 failed on two ordering
   conflicts; audited commit `b3646de10`). Live and mirror doc edits now land in one milestone
   (D1); the bare-path golden is GREEN on the unmodified tree with a seeded-perturbation
@@ -123,10 +138,16 @@ the operator means to keep out but has neither held nor marked is **not** mechan
 falls to the text-judgement half of the keep-set, whose evidence is recorded (REQ-TAU-010). That
 failure mode is stated, not hidden (§G). The same marker has two treatments, which the doctrine
 names: it **demotes** a card in the serial cycle and **excludes** it on the lease path (REQ-TAU-011).
-The cards the memory index calls operator-decision-queue cards (t810, t1294, t1383) were read
-through the installed binary during the plan audit: t1294 and t1383 `queued` with ordinary text,
-t810 `picked` — so they are selectable today; a lane cannot mutate the queue, so the operator or
-leader must hold or mark them before lanes exercise this doctrine (Definition of Done item 6).
+**How the three cards the memory index calls operator-decision-queue cards are identified.** Read
+through the installed binary with the read-only `moai gtd show` (plan audit, and again in the
+iteration-2 repair): t810 is `picked`, t1294 and t1383 are `queued`, none with text that begins
+with the marker. The handoff sentence, identical in every place it appears: **Today t810
+(`picked`), t1294 and t1383 (`queued`, ordinary text) carry neither the structural `hold` state
+nor a leading `[보류` marker, so the keep-set does not mechanically identify them. The SPEC
+supports exactly two identification forms — (a) the structural `hold` state, written only by
+`moai gtd hold`, and (b) card text that begins with the `[보류` marker — and a lane may write
+neither. The operator or leader must apply one of them to each such card before lanes exercise
+this doctrine.** This SPEC does not touch the queue.
 
 ### B.4 The two deliberate deltas, each isolated so the leader can veto it
 
@@ -175,7 +196,9 @@ joined by `;`: `card`, `class`, `relate`, `pr`, `wt`, `overlap`, `skipped`, each
 the input could not be read.
 
 **Location, and what it is not.** The line is written in the card's progress record
-(`.moai/specs/<SPEC-ID>/progress.md` §F where a SPEC exists, else under `.moai/reports/<card-id>/`).
+(`.moai/specs/<SPEC-ID>/progress.md` in a fresh top-level section — `§J`, because the schema's
+section map allocates `§F` to the Phase 4 Mode Selection log and tells a new concern to claim an
+unallocated letter — where a SPEC exists, else under `.moai/reports/<card-id>/`).
 It is **evidence, not the §11 decision board**: no lane-writable board verb exists (R4-iii), and
 `auto-semantics.md` §11 calls a tree-local copy "a ghost — never a board". The line makes no claim
 to be the board. It is **self-attested**; **no party executes a re-read of it today** — the
@@ -200,6 +223,40 @@ of the optional inputs, so adding an input never amends them. Relation records a
 one of the two existing stores; file overlap is a pluggable input whose fallback is INFERRED and
 whose expected value until measured is `unmeasured`. `plan.md` § Forward-compatibility with t1454
 lists what this SPEC leaves open and must not pre-empt.
+
+### B.8 The nominee's state semantics — what is undone and what is not
+
+The factory record API cannot delete: `RecordPicked` INSERTs a `cards` row at `picked` and appends a
+`card.transition` event (`homestate/card_picked.go:114-145`), and the package has no delete verb
+(`grep` for delete verbs in non-test `internal/homestate` finds none; plan audit N2). The
+compensation therefore promises only what the stores allow:
+
+- **Before any write**, every § C.2 token that can be read is decided (one pure queue read, one
+  record read, the foreign-worktree precheck). A refusal here changes nothing.
+- **Seam point — before `RecordPicked`.** Between the queue promotion and the first record write
+  the lease path calls one test seam (`factoryNominateBeforeRecord`, declared in M1). A seam that
+  injects a refusal, or a competing lane that leases the card there, exercises the two
+  compensation outcomes the tests can observe: with no record row and no other holder the queue
+  item is restored to `queued`; with another holder the winner's state is left alone and the
+  invocation refuses `raced`.
+- **After `RecordPicked` the record cannot be rolled back.** A failure there (a later
+  version-checked edge refused for a non-race reason, or a store error) leaves the card's row at
+  `picked`, unowned, with its `card.transition` event, and the queue item restored to `queued`
+  only if the record shows no other holder. That state is what arm (c) already leaves when its own
+  claim fails, and an unnominated arm or a later nomination re-adopts it (`RecordPicked` returns
+  the existing row unchanged); it is visible as a `picked` row with no owner in `moai factory
+  status`. It is **not tested** — the single M1 seam sits before `RecordPicked` — and is listed in
+  §G.
+- **Non-atomicity.** The record read ("no other holder") and the queue write (the restore) are two
+  stores with no shared lock. A lane that adopts the unowned `picked` row between the two leaves
+  the queue `queued` while the record says `leased`; no second lease results (arm (c) re-promoting
+  the item cannot claim a row that is no longer `picked`), and the inconsistency is the one a
+  crashed lane already leaves. It is accepted and stated, not hidden.
+- **A failed compensation** (the restoring queue write errors, or finds the item no longer
+  `picked`) is not a refusal token. If the item is no longer `picked` the compensation does
+  nothing and the original token is reported; if the write errors the invocation exits with status
+  1 and `factory next: compensation failed: <cause>` naming the card, and the card stays `picked`
+  and unowned (adoptable, nothing lost).
 
 ## §C Requirements
 
@@ -231,10 +288,13 @@ criteria say so.
 - **REQ-TAU-005** (Event-detected): **When** a nominee is refused or its lease race is lost, the
   invocation shall exit with status 4, print one line `factory next: refused <token>: <detail>` on
   its error stream with `<token>` from the closed set of § C.2 and nothing on its output stream,
-  and leave the queue and the factory record as they were before the invocation, apart from a
-  change made by a concurrent holder: validation completes before any write, and a promotion of
-  the nominee from `queued` to `picked` that the invocation made is undone when the claim then
-  fails with no other holder (the re-selection that follows is the session's act, *doctrine-only*).
+  and shall write nothing once the refusal is decided: every readable refusal is decided before the
+  first write; a promotion of the nominee from `queued` to `picked` that the invocation made is
+  undone, in one queue write that acts only if the item is still `picked`, when the claim fails
+  before any record row exists or when the record shows no other holder; a row `RecordPicked`
+  already wrote cannot be undone and stays at `picked`, unowned (§B.8); and a failed compensation
+  exits with status 1 and `factory next: compensation failed: <cause>`, not with a token (the
+  re-selection that follows a refusal is the session's act, *doctrine-only*).
 - **REQ-TAU-006** (Ubiquitous): The nominated lease shall preserve single ownership under
   concurrency: two lanes nominating different cards shall each hold their own card, and two lanes
   nominating the same card shall end with exactly one holder and one refusal.
@@ -254,9 +314,11 @@ criteria say so.
 ### Module C — The keep-set
 
 - **REQ-TAU-009** (Unwanted): The nominated lease shall not lease a card that is absent from the
-  queue, in state `hold` or `dropped`, owned by another holder, whose text opens with the `[보류`
-  marker, whose effective classification is `blocked`, or that is a serial card while another
-  serial card holds the serial slot; each refusal shall carry its own § C.2 token.
+  queue, in state `hold` or `dropped`, whose factory-record row is in a state § C.2 maps to `owned`
+  or `recorded`, that is `queued` with text whose trimmed form opens with the `[보류` marker,
+  whose effective classification is `blocked`, whose landing directory belongs to no card, or that
+  is a serial card while another serial card holds the serial slot; each refusal shall carry its
+  own § C.2 token.
 - **REQ-TAU-010** (Event-driven): **When** the session screens a candidate it chose, it shall not
   nominate a card whose text hinges on an operator confirmation — payments, secrets, or irreversible
   external-shared work — nor a `queued` card whose pull-request or landed state it read as open or
@@ -267,7 +329,9 @@ criteria say so.
   existing `hold` state and `[보류` marker only, shall introduce no new marker, state, per-item
   field, or queue verb, and shall state in its doctrine that a card marked by neither is judged by
   REQ-TAU-010 alone and that the marker demotes a card in the serial cycle and excludes it on the
-  lease path.
+  lease path, and shall state the handoff sentence of §B.3 verbatim: today t810 (`picked`), t1294
+  and t1383 (`queued`, ordinary text) carry neither the `hold` state nor a leading marker, a lane
+  may write neither, and the operator or leader must apply one before lanes exercise the doctrine.
 
 ### Module D — The decision record and the open input set
 
@@ -313,9 +377,16 @@ literals below are written without backticks.
 | `kanban-dispatch.md` | `Outside an --auto authorization the leader never picks for the operator`; `authorizes the invoked session to take cards from the queue on its own judgment`; `moai factory next — bare, or --card <id>` | `Promotion is the operator's act, always.`; `The leader never picks for the operator`; `consumption of the queue and nothing else` |
 | `gtd.md` (`--auto` section) | `on its own judgment`; `a lane session exercises the --auto authorization through moai factory next`; `factory next --card`; `keep-set`; `payments, secrets, or irreversible external-shared work`; `decision record:`; `ladder_path=gate-row card pick`; `unmeasured`; `demotes a card in the serial cycle and excludes it on the lease path` | `consumption of the queue and nothing else` |
 | `manager-todo.md` | `on its own judgment`; `keep-set` | `process cards in queue order`; `consumption of the queue and nothing else` |
+| `.codex/agents/moai/manager-todo.toml` (template tree only; **generated** from the template `manager-todo.md` by `make agents-emit`, never hand-edited) | the same two literals as `manager-todo.md` | the same two absent literals |
 | `moai-kanban-foreman/SKILL.md` | `on its own judgment`; `outside a batch authorization` | `consumption in queue order is authorized`; `not yours to pick.` |
 | `kanban-dispatch-detail.md` | `a pull request or landed state is a skip input for a queued candidate the session chose and is report-only for an operator-picked card` | — |
-| `auto-semantics.md` | `ladder_path=gate-row card pick`; `adds an input without amending the keep-set or the lease path`; `unmeasured`; a `9.3` heading; `evidence, not the decision board` | — |
+| `auto-semantics.md` | `ladder_path=gate-row card pick`; `adds an input without amending the keep-set or the lease path`; `unmeasured`; a `9.3` heading; `evidence, not the decision board`; `no party re-reads the card-pick record` | `authorizes serial queue consumption and nothing else` (the §9.2 sentence at line 186, the second place the old authority is stated) |
+
+Literals that a raw `git grep -F` cell checks (L9, L19, L20, L24-L26 of the ledger) are written
+**without interior backticks**, so the raw-byte cell and the normalized Go test agree. The §9.1
+and §10 sentences of `auto-semantics.md` that call the sync audit's re-read "the compensating
+control" are **not edited**: they stand for the other gates (§G); the new §9.3 sentence above
+says they do not hold for the card-pick record.
 
 The `gtd.md` `--auto` section keeps its heading `### --auto — the serial batch consumption`
 (the passage start marker of `TestAutoRankMirrorParity`) and every existing pinned clause; the
@@ -329,7 +400,9 @@ requirement tokens, ISO dates and 9+-hex runs (the neutrality contract two exist
 | `unknown-card` | the id is in no live queue row |
 | `dropped` | the card's queue state is `dropped` |
 | `held` | the card's queue state is `hold` |
-| `owned` | the card is `picked` and owned by another lane, or leased/assigned to another holder, or already leased by this lane |
+| `owned` | the card's factory-record row is `assigned` to another lane, or is in an in-flight state — `leased`, `plan`, `plan-audit`, `kickoff`, `run`, `sync`, `sync-audit`, `merge-ready`, `merging`, `merged-local`, `pushed`, `ci-green` — for **any** holder, this lane included |
+| `recorded` | the card's factory-record row is in a terminal or parked state — `done`, `abandoned`, `failed`, `blocked`, `needs-decision` — or is a legacy row outside the nineteen states; only an operator unblock or re-pick moves it |
+| `foreign-worktree` | the card has no recorded worktree and its landing directory already exists and belongs to no card (the `factoryRefuseForeignWorktree` refusal, decided by the read-only precheck) |
 | `hold-marker` | a `queued` card whose trimmed text opens with `[보류` |
 | `blocked` | the card's effective classification is `blocked` |
 | `serial-slot` | a serial card while another serial card is in flight |
@@ -337,8 +410,16 @@ requirement tokens, ISO dates and 9+-hex runs (the neutrality contract two exist
 | `backend-skip` | a Codex lane and a card at or past merge-ready |
 | `raced` | the nominee was promoted or claimed by another lane first, or the version-checked edge reported a stale version |
 
-A card assigned to this lane (arm (a) shape) is leasable by nomination; every other state outside
-this table does not exist (the queue has four states: `queued`, `picked`, `dropped`, `hold`).
+**Leasable by nomination:** a card with no record row; a card whose row is `picked` with no owner
+(an operator pick, arms (b)/(b2)); a card whose row is `assigned` to **this** lane (arm (a)); and a
+`queued` card that passes every row above. The factory record has nineteen states — `picked`,
+`assigned`, the twelve in-flight states of the `owned` row, and the five of the `recorded` row — and
+every one is mapped here, so no record state produces a refusal without a token. The queue has four
+states: `queued`, `picked`, `dropped`, `hold`. An error reading or opening either store (not a
+refusal of the card) exits with status 1 and no token, as every other `factory next` error does;
+the closed set covers every refusal of the nominee, not infrastructure failures. A failed
+compensation is the other non-token exit (REQ-TAU-005, §B.8). The claim-lease columns of the queue
+(`picked_by`, `lease_expires_at`) are not consulted, exactly as the unnominated arms do not.
 
 ## §D Out of Scope
 
@@ -381,9 +462,26 @@ this table does not exist (the queue has four states: `queued`, `picked`, `dropp
   and no party executes a re-read of the card-pick record: the sync-audit instructions carry no
   decision-record step. The record is evidence a reader may check; nothing checks it
   (`research.md` R4-iii, plan audit measurement).
-- **Unmarked operator-decision cards.** A card kept on an operator decision queue by arrangement
-  but neither `hold`ed nor `[보류`-marked is selectable until the operator marks it; t810, t1294,
-  t1383 were read as selectable during the plan audit (Definition of Done item 6).
+- **Unmarked operator-decision cards.** Today t810 (`picked`), t1294 and t1383 (`queued`, ordinary
+  text) carry neither the structural `hold` state nor a leading `[보류` marker, so the keep-set
+  does not mechanically identify them. The SPEC supports exactly two identification forms — (a) the
+  structural `hold` state, written only by `moai gtd hold`, and (b) card text that begins with the
+  `[보류` marker — and a lane may write neither. The operator or leader must apply one of them to
+  each such card before lanes exercise this doctrine (Definition of Done item 6).
+- **The post-record residue of a failed claim is untested.** After `RecordPicked` the factory record
+  cannot be rolled back (§B.8); the single M1 seam sits before it, so the case where a later claim
+  edge fails and leaves a `picked`, unowned row plus its event is specified, accepted and **not
+  tested**, and so is the branch where the compensating queue write itself errors (exit 1,
+  `factory next: compensation failed`). The record read and the queue write of the compensation are
+  two stores without a shared lock (the window is stated in §B.8).
+- **auto-semantics §9.1 and §10 are outside this SPEC's scope.** Their wording that the sync audit's
+  re-read is "the compensating control" for decision records (`auto-semantics.md` ~L179-L180 and
+  ~L241-L242) still stands for the other gates; this SPEC retracts that claim **only for the
+  card-pick record**, in the new §9.3 sentence, and does not edit those lines.
+- **The `--auto` flag help still says the invocation is the operator's batch approval "of the queue
+  and nothing else" and that the cycle processes the queue serially** (`todo.go` ~L315, read-only
+  in this SPEC by REQ-TAU-003): accurate for the operator-session serial cycle, silent about the
+  lane path; named here, not edited.
 - **Text-judgement keep-set is a model act.** The text-judgement and PR-skip parts of REQ-TAU-010
   are enforceable by evidence (the record's `skipped=` entries and the card text read), not by a
   mechanical check; so are the "does not ask" part of REQ-TAU-001 and the re-selection of

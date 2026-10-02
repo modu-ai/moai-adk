@@ -304,3 +304,40 @@ lane and has no lease alternative (`factory next` refuses outside a lane) — th
 audit warned about; (b) a guard on the role marker alone would not refuse M2. The SPEC's predicate
 is the union of role marker and label, with the backend marker deliberately excluded. Setup rows
 S1/S2 and cells L18/C4 are in `acceptance.md`; the scratch directory is machine-local.
+
+## R12. Iteration-2 observations (plan audit N2, N3, N5, N6)
+
+All measured on `63daaf6a7`.
+
+- **The record API cannot undo a write (N2).** **READ** `internal/homestate/card_picked.go:114-145`:
+  `RecordPicked` INSERTs a `cards` row at `picked` and appends a `card.transition` event (from empty,
+  to `picked`); when the row exists and no fields are asked it returns the existing row unchanged.
+  A search for delete verbs over non-test `internal/homestate` finds none (the audit's
+  `DELETE`/`DeleteCard`/`RemoveCard` grep). So a failure after `RecordPicked` leaves a row and an
+  event; `moai factory status` (`factory_card.go:1392`) lists the rows. The compensation of spec
+  §B.8 is therefore bounded to the queue item.
+- **The foreign-worktree refusal runs after the record write (N6).** **READ** `factoryNextClaim`
+  (`factory_card.go:566-572`): `factoryRefuseForeignWorktree` runs inside the claim, after
+  `RecordPicked` in `factoryNextRecordAndClaim`; only a read-only precheck in the nominated path
+  keeps it from leaving a promoted card and a record row (spec token `foreign-worktree`).
+- **The record has nineteen states (N6).** **READ** `homestate/card_record.go:20-45`: `picked`,
+  `assigned`, `leased`, `plan`, `plan-audit`, `kickoff`, `run`, `sync`, `sync-audit`, `merge-ready`,
+  `merging`, `merged-local`, `pushed`, `ci-green`, `done`, `needs-decision`, `blocked`, `failed`,
+  `abandoned` — twelve in-flight (`leased` to `ci-green`), two leasable shapes (`picked`,
+  `assigned`), five terminal or parked.
+- **The marker predicate trims (N5).** **READ** `todo_auto_rank.go:~150`: `autoRankHoldMarked` is
+  `strings.HasPrefix(strings.TrimSpace(text), "[보류")`.
+- **Old-authority sweep (N3).** **OBSERVED** by `git grep -n -F -i` over `.claude`,
+  `internal/template/templates`, `docs-site`, `CLAUDE.md`, `AGENTS.md`: besides the surfaces
+  iteration 1 named, the old wording lives in the **generated** Codex artifact
+  `internal/template/templates/.codex/agents/moai/manager-todo.toml` (L22, L34, L39) and in
+  `auto-semantics.md` L186 (`authorizes serial queue consumption and nothing else`); every hit and
+  its disposition is `plan.md` §4a. **Observed** baseline of the artifact parity test on the
+  unmodified tree: `TestGoldenCommittedArtifactsMatchEmission` PASS (ledger G3). Not observed red
+  (the auditor's gap G2): that it turns red when `manager-todo.md` is edited without regeneration is
+  inferred from the test reading the template `.md` and the committed TOML and from `make build`
+  depending on `agents-emit-check` (`Makefile:33-50`); AC-TAU-010 has the run phase observe it.
+- **The acceptance-counter baseline was green before this repair edited `acceptance.md`** (ledger
+  G4): `TestACCounterFullCorpusMatchesBaseline` `ok … 6.230s`.
+- **The three operator-decision cards were re-read, read-only** (ledger G5): t810 `picked`, t1294
+  and t1383 `queued`, none starting with the marker.

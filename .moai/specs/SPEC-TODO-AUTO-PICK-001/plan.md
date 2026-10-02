@@ -1,10 +1,10 @@
 # SPEC-TODO-AUTO-PICK-001 — Plan
 
-Tier M. Card t1448, plan-start HEAD `4bf547bca`, repair base `b3646de10`, worktree
-`.moai/worktrees/t1448`, branch `WT-todo-auto-pick-autonomy`. Milestones are ordered by **decision
-reversibility** — the decisions most likely to change come first (the nominated-lease interface a
-lane sees, then the doctrine the operator reads), mechanical edits last. No time estimates;
-priority labels and ordering only.
+Tier M. Card t1448, plan-start HEAD `4bf547bca`, iteration-1 repair base `b3646de10`, iteration-2
+repair base `63daaf6a7`, worktree `.moai/worktrees/t1448`, branch `WT-todo-auto-pick-autonomy`.
+Milestones are ordered by **decision reversibility** — the decisions most likely to change come
+first (the nominated-lease interface a lane sees, then the doctrine the operator reads), mechanical
+edits last. No time estimates; priority labels and ordering only.
 
 ## 1. Approach in one paragraph
 
@@ -12,9 +12,9 @@ Add one opt-in nomination form to `moai factory next`, validated before any writ
 atomically, with one shared keep-set predicate; refuse `moai todo --auto` inside a lane (by an
 explicit lane predicate, with a dedicated refusal text and a corrected fallback instruction) so the
 lease is the only lane pick path; then amend the doctrine sentences the card names — **replacing**
-them, never appending, **live and mirror in one change** — and move the doc pins in that same
-change. All work is TDD-first. Net bytes and characters on the always-loaded `kanban-dispatch.md`
-must not grow.
+them, never appending, **live and mirror in one change, with the generated Codex agent artifact
+regenerated in the same change** — and move the doc pins in that same change. All work is
+TDD-first. Net bytes and characters on the always-loaded `kanban-dispatch.md` must not grow.
 
 ## 2. Milestones
 
@@ -23,6 +23,14 @@ must not grow.
 The decisions most likely to change: the flag name, the refusal tokens, the exit code, the lane
 predicate.
 
+- **The only production edit M1 may make (N1).** One package-level function variable in
+  `internal/cli/factory_card.go`, declared with its default and **not called by any production
+  path**: `var factoryNominateBeforeRecord = func(cardID string) error { return nil }`, in the
+  style of the existing `factoryCardNow` seam. It changes no behavior, so the tree after M1 is the
+  unmodified tree plus one inert declaration. It exists so that the seam tests **compile** at M1
+  (an assignment to an undeclared identifier is a compile error, not a RED) and fail at **runtime**
+  for their stated reason (the nomination flag does not exist). M2 gives the variable its single
+  call site, **before** `RecordPicked` (N2).
 - Write the new tests in `internal/cli/factory_nominate_test.go` against the existing fixtures
   (`fcFixture`, `fcQueue`, `fcClassify`, `sdRegisterLane`, `sdLaneEnv`, `runFactory`), **scrubbing
   the lane environment first** (`sdClearLaneEnv`). Test set — each is the swept set of the
@@ -32,26 +40,33 @@ predicate.
     `TestFactoryNextNominateMCPParity` (the MCP form's `card` input; inputs are `run`,
     `project_root`, `card`).
   - AC-TAU-002: `TestFactoryNextNominateConcurrentLanes`, `TestFactoryNextNominateSameCardExactlyOne`.
-  - AC-TAU-004: `TestFactoryNextNominateRefusesKeepSet` (subtests `held`, `hold-marker`, `blocked`,
-    `serial-slot`, `dropped`, `owned`), `TestFactoryNextArmCSkipsHoldMarker`.
+  - AC-TAU-004: `TestFactoryNextNominateRefusesKeepSet` (subtests `held`, `hold-marker`,
+    `marker-leading-space`, `marker-mid-text` (leases), `blocked`, `serial-slot`, `dropped`,
+    `owned`), `TestFactoryNextArmCSkipsHoldMarker` (the same three marker cards on the bare path).
   - AC-TAU-014: `TestFactoryNextNominateQuotaHold`, `TestFactoryNextNominateBackendSkip`,
+    `TestFactoryNextNominateRecordStateTokens` (one subtest per § C.2 record-state class: `owned`,
+    `recorded`, `foreign-worktree`, and the three leasable shapes),
     `TestFactoryNextNominateRefusalLeavesStateUnchanged` (byte-compares queue and record),
-    `TestFactoryNextNominatePromoteThenLose`, `TestFactoryNextNominateClaimRefusedRollsBack`.
+    `TestFactoryNextNominatePromoteThenLose`, `TestFactoryNextNominateClaimRefusedRollsBack`,
+    `TestFactoryNextNominateCompensationFailure` (subtest `item-moved`).
   - AC-TAU-005: `TestTodoLaneRefusesAutoCycle` (subtests `label-only`, `role-only`,
     `role-and-label`, each asserting the queue byte-identical), `TestTodoLaneAutoRefusalText`,
     `TestTodoNonLaneGPTSessionNotRefused`, `TestFactoryFallbackDeclarePrintsLeasePath`.
   - AC-TAU-006: `TestFactoryNextBareUnchanged` (the golden) and
     `TestFactoryNextAllMarkerQueueExitsNoCard`.
-- **M1 exit (D2).** (a) Every new test **except** the golden and the non-lane GPT guard is observed
-  RED on the unmodified tree for its stated reason (the flag does not exist, the string is still
-  there, the lane runs the cycle, the marker card is leased) — a runtime failure, not a compile
-  error. (b) `TestFactoryNextBareUnchanged` and `TestTodoNonLaneGPTSessionNotRefused` are GREEN on
-  the unmodified tree (they pin current behavior and must stay green). (c) Their non-vacuity is
-  shown by a **seeded perturbation** recorded in `progress.md` §E.2 with command, verbatim stdout,
-  exit code and tree SHA: for the golden, a one-line mutation of `factory_card.go` (for example
-  moving the `noNewCards` early return, or swapping the arm (b)/(c) order); for the GPT guard, the
-  over-broad predicate (`factoryLaneRefusal()` in the new guard). Each mutation is then reverted
-  (`git diff` empty) before M2. (d) The scoped baseline of R3/R11 re-run and still green.
+- **M1 exit (D2, N1).** The tree measured is **the unmodified tree plus the seam declaration**.
+  (a) Every new test **except** the golden and the non-lane GPT guard **compiles** and is observed
+  RED at runtime for its stated reason (the flag does not exist, the string is still there, the
+  lane runs the cycle, the marker card is leased) — never a compile error: `go vet ./internal/cli`
+  passes and the new tests build under an anchored selector over their names. (b) `TestFactoryNextBareUnchanged`
+  and `TestTodoNonLaneGPTSessionNotRefused` are GREEN on that tree (they pin current behavior and
+  must stay green). (c) Their non-vacuity is shown by a **seeded perturbation** recorded in
+  `progress.md` §E.2 with command, verbatim stdout, exit code and tree SHA: for the golden, a
+  one-line mutation of `factory_card.go` (for example moving the `noNewCards` early return, or
+  swapping the arm (b)/(c) order); for the GPT guard, the over-broad predicate
+  (`factoryLaneRefusal()` in the new guard). Each mutation is then reverted (`git diff` shows only
+  the seam declaration) before M2. (d) The scoped baselines of R3, R11 and G2 re-run and still
+  green.
 - **The golden's minimum case set** (also in AC-TAU-006): default arm order (a)→(b)→(b2)→(c) over
   assigned / operator-picked / queue-picked / queued cards; `--wait` with a bounded wait through
   the `factoryNextWaitSleep` seam; the quota hold (`noNewCards`) with an assigned card still
@@ -70,28 +85,42 @@ predicate.
   `factoryNextRecordAndClaim` (the version-checked edges — no second lease route); extract one
   keep-set predicate `factoryKeepSetRefusal` returning the § C.2 token, applied by the nomination
   path **and** by arm (c) for the `[보류` skip only (REQ-TAU-007).
-- **State semantics (D7), the mechanism.** The nominated path runs four steps in order:
+- **State semantics (D7, N2), the mechanism.** The nominated path runs four steps in order; spec
+  §B.8 states what each can and cannot undo:
   1. *Validate, read-only.* One pure queue read plus one factory-record read decide every § C.2
-     token — `unknown-card`, `dropped`, `held`, `owned`, `hold-marker`, `blocked`, `serial-slot`,
-     `quota-hold`, `backend-skip` — and run the foreign-worktree precheck that `factoryNextClaim`
-     would otherwise run only after a promotion (`factoryRefuseForeignWorktree`). No write has
-     happened when any of these refuses.
+     token — `unknown-card`, `dropped`, `held`, `owned`, `recorded`, `hold-marker`, `blocked`,
+     `serial-slot`, `quota-hold`, `backend-skip` — and run the foreign-worktree precheck
+     (`factoryRefuseForeignWorktree`) that `factoryNextClaim` would otherwise run only after a
+     promotion, mapping it to `foreign-worktree`. The record-state mapping is the § C.2 table (all
+     nineteen states). No write has happened when any of these refuses.
   2. *Promote inside the queue `Mutate`, re-validating.* A `queued` nominee is promoted to `picked`
      only if, inside the lock, its state is still `queued` and the predicate still passes; if it is
      no longer `queued` another lane moved it first and the invocation refuses `raced` without
-     writing. A nominee that is already `picked` and unowned (operator pick, arms (b)/(b2)) skips
-     this step; a nominee assigned to this lane is arm (a)'s.
-  3. *Claim* through `factoryNextRecordAndClaim` / `factoryNextClaim`.
-  4. *Compensate.* If the claim is refused or lost and the factory record shows **no other holder**
-     for the card, the invocation restores the queue item from `picked` to `queued` in one `Mutate`
-     (it undoes only the promotion it made); if another holder exists, the queue state is that
-     holder's and is left alone, and the invocation refuses `raced`.
-  A package-level function variable in the style of `factoryCardNow` marks the point between
-  steps 2 and 3 so `TestFactoryNextNominatePromoteThenLose` and
-  `TestFactoryNextNominateClaimRefusedRollsBack` can interleave a competing lease and an injected
-  claim refusal.
+     writing. A nominee already `picked` and unowned (operator pick, arms (b)/(b2)) skips this
+     step; a nominee assigned to this lane is arm (a)'s.
+  3. *Call the seam, then claim.* `factoryNominateBeforeRecord(cardID)` is called **after the
+     promotion and before `RecordPicked`**; a non-nil error is treated as a claim failure. Then the
+     claim runs through `factoryNextRecordAndClaim` / `factoryNextClaim`.
+  4. *Compensate.* On a claim failure (a seam error, a lost race, or a store error) the invocation
+     reads the record: if there is **no row, or a row at `picked` with no owner**, it restores the
+     queue item from `picked` to `queued` in one `Mutate` that acts **only if the item is still
+     `picked`**; if another holder exists the queue state is the holder's and is left alone and
+     the invocation refuses `raced`. If the item is no longer `picked` the compensation does
+     nothing and the original outcome is reported. If the restoring write itself fails the
+     invocation exits with status 1 and `factory next: compensation failed: <cause>` — no token —
+     and the card stays `picked` and unowned (adoptable by an unnominated arm or a later
+     nomination).
+  **What the record API cannot undo:** `RecordPicked` INSERTs a row and appends an event and the
+  package has no delete, so a failure *after* `RecordPicked` leaves that row (`picked`, unowned) and
+  its event; the queue item is still restored per step 4. The seam sits before `RecordPicked` so
+  the tests can prove the restore and the absence of a row; the post-record case is specified in
+  §B.8, accepted (it is the state arm (c)'s own failed claim leaves), visible as a `picked` row with
+  no owner in `moai factory status`, and **not tested**.
 - The arm (c) skip counts the marker card as seen (`sawQueued`), so a queue holding only
-  marker-bearing cards ends on the no-card exit 3 (AC-TAU-006).
+  marker-bearing cards ends on the no-card exit 3 (AC-TAU-006). The marker test is
+  `strings.HasPrefix(strings.TrimSpace(text), "[보류")` — the same predicate as
+  `autoRankHoldMarked` (`todo_auto_rank.go:~150`): leading whitespace still opens with the marker;
+  a mid-text mention does not.
 - Refusal: stderr one line `factory next: refused <token>: <detail>`, nothing on stdout, exit 4.
 - Exit: M1's nominate/bare/arm-c/flag-set/state tests GREEN (MCP parity waits for M4); the five
   existing pinned lease tests of R3 still green; the golden unchanged.
@@ -121,16 +150,21 @@ predicate.
   the CLI's `--wait`/`--wait-bound` have no MCP counterpart, so the MCP form takes **two** inputs
   today, not three).
 
-### M5 — Doctrine amendment, live and mirror in one change, pins first (Priority High)
+### M5 — Doctrine amendment, live and mirror and generated artifact in one change, pins first (Priority High)
 
 Everything below is **one commit**: no state exists in which a live file is edited and its mirror is
-not, or in which a doc is edited and its pin is not.
+not, in which a doc is edited and its pin is not, or in which `manager-todo.md` is edited and the
+generated Codex artifact is not.
 
 Order inside the milestone: (1) write `TestAutoPickDocDoctrine` and `TestAutoPickMirrorParity` in
-`internal/cli/todo_auto_pick_doc_test.go` — observe RED (AC-TAU-007/-008 RED-now cells); (2) edit
-every doc and every mirror; (3) move the existing pins in `internal/cli/todo_auto_doc_test.go`;
-(4) before moving the pins, run the scoped command once to **observe the two expected breakages**
-and record them.
+`internal/cli/todo_auto_pick_doc_test.go` — observe RED (AC-TAU-007/-008 RED-now cells);
+(2) edit every doc and every mirror, **then run `make agents-emit`** to regenerate
+`internal/template/templates/.codex/agents/moai/manager-todo.toml` from the edited template
+`manager-todo.md` (never hand-edit the TOML); (3) run the scoped doc-pin command once **before**
+moving any pin, and record the two expected breakages; (4) move the existing pins in
+`internal/cli/todo_auto_doc_test.go`; (5) run `AGENTEMIT_UPDATE= go test ./internal/template/agentemit/...
+-run '^TestGoldenCommittedArtifactsMatchEmission$' -count=1` and see it PASS (it compares the committed
+TOML to the template `.md`; `make build` depends on it through `agents-emit-check`).
 
 **Every existing marker that must move (D6, enumerated):**
 
@@ -144,10 +178,11 @@ and record them.
 | `TestAutoRankMarkerDisclosure` | four clauses (`[보류`, `only a card whose text begins with the [보류 marker is demoted`, `a hold stated in prose without the marker is not`, `the structural hold is moai todo hold`) on live gtd.md, mirror gtd.md, `--auto` flag help | **kept** — the D12 sentence is added beside them, not instead |
 | `TestAutoRankAgentDoctrine` | both pinned literals in the `Serial-cycle contract (` and `## Jev Decision Boundary` regions; four stale phrases absent; kept Jev prohibitions | **kept** — new manager-todo wording must not reintroduce a stale phrase |
 | `TestTodoSkillDocumentsClassification` (`todo_classify_doc_parity_test.go`) | whole-file neutrality of mirror `gtd.md` | **kept** — no internal token in the new gtd text |
+| `TestGoldenCommittedArtifactsMatchEmission` (`internal/template/agentemit`) | the committed `.codex/agents/moai/manager-todo.toml` equals the emission of the template `manager-todo.md` | **must be regenerated** with `make agents-emit` in the same commit (baseline PASS observed, ledger G3) |
+| `TestContractModeEmitterSites` (`contract_mode_guided_test.go`) | every document containing the word `Kickoff` is classified; `kanban-dispatch.md` is `R` | **kept** — the new `auto-semantics.md` §9.3 and `gtd.md` text must not add the word `Kickoff` to a file the registry does not classify (use "plan→run gate" wording) |
 | `internal/template/jev_auto_exception_test.go` | presence anchors `jaeAnchors` in `kanban-dispatch.md`, `gtd.md`, `manager-todo.md` | **kept** (read: markers are Jev tokens the edit leaves) |
-| `internal/template/contract_mode_guided_test.go` | Kickoff-bearing documents classified (`kanban-dispatch.md` is `R`) | **kept** — no Kickoff text is touched |
 | `internal/cli/init_headroom_export_test.go` | a path list for a measurement harness (skips without its flag) | **kept** — no assertion on content |
-| `internal/template/rule_template_mirror_test.go` | read in this repair: no `kanban-dispatch`/`gtd`/`manager-todo` marker | **kept** |
+| `internal/template/rule_template_mirror_test.go` | read in iteration 1: no `kanban-dispatch`/`gtd`/`manager-todo` marker | **kept** |
 
 Baseline of the scoped doc-pin command (observed, lane env scrubbed, one compound invocation,
 `b3646de10`): `go test ./internal/cli -run '^(TestAutoRankDoctrineAmendment|TestAutoRankMirrorParity|TestAutoRankMarkerDisclosure|TestAutoRankAgentDoctrine|TestAutoHelpAndRefusalDoNotAssertPickOrder|TestTodoSkillDocumentsClassification)$' -count=1 -v` → exit 0, 6 of 6 named tests `--- PASS`, `ok … 2.035s`. (A wider prefix selector over `TestAutoRank`, `TestTodoAuto`, `TestAutoHelp` ran 54 passing tests in 108.063s, exit 0; the anchored list is the pin set that reads the amended files.)
@@ -161,10 +196,12 @@ restructuring; AC-TAU-013 bounds each file's diff):
 | `kanban-dispatch.md` L29 | `**Promotion is the operator's act, always.**` and the unscoped `The leader never picks for the operator, …` | promotion is the operator's act, in person or in advance through `--auto`; `Outside an --auto authorization the leader never picks for the operator, …` |
 | `kanban-dispatch.md` L31 | `The one reconciliation is named, not excepted: … authorized serial consumption of the queue and nothing else.` | authorizes the invoked session to take cards from the queue on its own judgment, each only through a lease and never a keep-set card, and nothing else |
 | `kanban-dispatch.md` L33 | `only through \`moai factory next\`, whose lease lands in the factory record the way a leader's dispatch lands in the queue.` | `only through \`moai factory next\` — bare, or \`--card <id>\` for the lane's own judged pick.` |
-| `gtd.md` `--auto` section (L334-L361) | the `[HARD] … authorizes serial consumption of the queue and nothing else` clause | the same clause with `on its own judgment`; the lane routing sentence (`a lane session exercises the --auto authorization through moai factory next …`); the **keep-set list** (mechanical: `hold` state, `[보류` marker, `blocked`, serial slot, owned; text-judgement: payments, secrets, or irreversible external-shared work); the **record form** (`decision record:` with `ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)` and `unmeasured`, located in the card's progress record as evidence); the D12 sentence naming both treatments of the marker; the "exactly one card is in flight" sentence scoped to the operator-session cycle |
-| `auto-semantics.md` §9 card-pick row | the row text | keeps the AUTONOMOUS disposition, adds the pointer `§9.3` |
-| `auto-semantics.md` new `### 9.3` | — | the keep-set, the input set, the record form with `ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)`, `evidence, not the decision board`, `unmeasured`, the open-set sentence `adds an input without amending the keep-set or the lease path` |
-| `manager-todo.md` L23, L34-L35 | `process cards in queue order`; `serial consumption of the queue and nothing else` | `on its own judgment` / keep-set wording; the serial-cycle region keeps the pinned ranking literals |
+| `gtd.md` `--auto` section (L334-L361) | the `[HARD] … authorizes serial consumption of the queue and nothing else` clause | the same clause with `on its own judgment`; the lane routing sentence (`a lane session exercises the --auto authorization through moai factory next …`, no backticks around the literal); the **keep-set list**; the **record form** (`decision record:` with `ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)` and `unmeasured`, located in the card's progress record — a fresh `§J` section, not `§F` — as evidence); the D12 sentence naming both treatments of the marker; the "exactly one card is in flight" sentence scoped to the operator-session cycle |
+| `auto-semantics.md` §9 card-pick row (L169) | the row text | keeps the AUTONOMOUS disposition, adds the pointer `§9.3` |
+| `auto-semantics.md` §9.2 sentence (L186, **N3b**) | `It is distinct from the \`--auto\` batch authorization of the card pick row, which authorizes serial queue consumption and nothing else.` | the same sentence with the authority stated as in §9.3 (the invoked session takes cards on its own judgment, each only through a lease); the old literal `authorizes serial queue consumption and nothing else` is absent afterwards |
+| `auto-semantics.md` new `### 9.3` | — | the keep-set, the input set, the record form with `ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)`, `evidence, not the decision board`, `unmeasured`, the open-set sentence `adds an input without amending the keep-set or the lease path`, and `no party re-reads the card-pick record` (the §9.1/§10 "compensating control" wording stays and is **not edited**; §9.3 says it does not hold for this record) |
+| `manager-todo.md` L23, L34-L35 (template copy and live copy) | `process cards in queue order`; `serial consumption of the queue and nothing else` | `on its own judgment` / keep-set wording; the serial-cycle region keeps the pinned ranking literals |
+| `.codex/agents/moai/manager-todo.toml` (template tree only) | — **generated**, not edited | regenerated by `make agents-emit` from the edited template `manager-todo.md`; the three old phrases are absent afterwards |
 | `moai-kanban-foreman/SKILL.md` Boundary 1, step 4 | `serial consumption in queue order is authorized`; `\`queued\` items are not yours to pick.` | `… on the iteration's own judgment, within the keep-set`; `… not yours to pick outside a batch authorization.` |
 | `kanban-dispatch-detail.md` § The pre-dispatch cross-check | — | one added paragraph carrying `a pull request or landed state is a skip input for a queued candidate the session chose and is report-only for an operator-picked card` and the B.2 reconciliation. Lazy file — growth is free |
 | `moai-mcp-tools-catalogue.md` factory_next row | the one cell | mentions the optional `card` argument |
@@ -173,9 +210,9 @@ New detail goes in `auto-semantics.md` §9.3 (lazy, `paths:`-scoped to the watch
 (a lane reads it) and `kanban-dispatch-detail.md` — **never** into the always-loaded stub beyond the
 replaced sentences. Preserve each copy's `kanban-dispatch.md` line 177 exactly (see §4).
 
-- Exit: the new doc pins GREEN **for live and mirror at once**; the moved existing pins GREEN; every
-  AC-TAU-007/-008/-010/-011/-013 reading holds on the committed tree; the mutants of `acceptance.md`
-  each fail their criterion.
+- Exit: the new doc pins GREEN **for live and mirror at once**; the moved existing pins GREEN;
+  `TestGoldenCommittedArtifactsMatchEmission` PASS; every AC-TAU-007/-008/-010/-011/-013 reading
+  holds on the committed tree; the mutants of `acceptance.md` each fail their criterion.
 
 ### M6 — Verification and measurement only (Priority High; no file edits)
 
@@ -186,8 +223,13 @@ exit code and verbatim tail in `progress.md` §E.2:
   package run (`.claude/rules/local/gitflow-lane-protocol.md` §8) and scrub the lane environment in
   one compound invocation.
 - `internal/template`: the tests naming the edited files (`jev_auto_exception_test.go`,
-  `contract_mode_guided_test.go`, `rule_template_mirror_test.go`) by `-run` selector, with a
-  swept-count check.
+  `contract_mode_guided_test.go`, `rule_template_mirror_test.go`) by an anchored selector, with a
+  swept-count check; and `AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run
+  '^TestGoldenCommittedArtifactsMatchEmission$' -count=1 -v` (the swept set is the single named
+  test: its `--- PASS` line must appear).
+- `internal/spec`: `go test ./internal/spec -run '^TestACCounterFullCorpusMatchesBaseline$' -count=1`
+  after the criteria are final (the acceptance counter baseline; regenerate in the same commit if
+  the count moved — `.moai/docs/ac-count-baseline-refresh.md`).
 - Measurements (AC-TAU-010, -011, -012, -013): `cmp` on each pair, `wc -c` and `wc -m` on both
   `kanban-dispatch.md` copies against the baselines, `git diff --numstat "$CARD_BASE"..HEAD` against
   the caps, the boundary pathspec probe, and the draft-versus-actual byte comparison (§3).
@@ -195,10 +237,12 @@ exit code and verbatim tail in `progress.md` §E.2:
 - The commit body of M5 carries the measured before/after bytes **and characters** and the
   non-invoking-cost sentence (`rule-authoring.md` (c)).
 
-### Milestone ↔ criterion order check (D1)
+### Milestone ↔ criterion order check (D1, N1)
 
 Each criterion's green path names a milestone, and every obligation that criterion reads is
-completed in that milestone or an earlier one — checked by hand for **all** fourteen:
+completed in that milestone or an earlier one; **every test an exit names compiles at that
+milestone** (the only identifier a test needs that production code does not yet have is the M1 seam
+declaration, which M1 itself adds). Checked by hand for **all** fourteen, again after the N1 repair:
 
 | AC | Green at | Reads work from | Order holds because |
 |---|---|---|---|
@@ -207,15 +251,15 @@ completed in that milestone or an earlier one — checked by hand for **all** fo
 | AC-TAU-003 | M5 | M5 | doctrine literals, live and mirror, one commit |
 | AC-TAU-004 | M2 | M2 | the arm (c) skip and the nominated refusals are both M2 |
 | AC-TAU-005 | M3 (Go), M5 (routing sentence) | M3, M5 | the Go rows do not read the docs; the routing-sentence row is stated against M5 |
-| AC-TAU-006 | golden GREEN at M1 (unmodified), stays GREEN at M2 | M1, M2 | the golden is GREEN before any change, so no RED/GREEN conflict (D2) |
-| AC-TAU-007 | M5 | M5 | live, mirror, pins in one commit (D1) |
+| AC-TAU-006 | golden GREEN at M1 (unmodified tree plus the seam declaration); stays GREEN at M2; all-marker test GREEN at M2 | M1, M2 | the golden is GREEN before any behavior change, the seam declaration is inert, so no RED/GREEN conflict; its tests compile at M1 |
+| AC-TAU-007 | M5 | M5 | live, mirror, generated artifact and pins in one commit |
 | AC-TAU-008 | M5 | M5 | same commit |
-| AC-TAU-009 | run evidence (M6 report) | the first lane lease under the doctrine | no executing re-reader is assumed |
-| AC-TAU-010 | M5, measured M6 | M5 | both sides edited together |
-| AC-TAU-011 | M5, measured M6 | M5 | measurement only at M6 |
+| AC-TAU-009 | no milestone flips it: the first lane lease taken under the doctrine, after the run phase | the lease | a regression-guard with no executing party; recorded as a pass only once a reader has opened the record |
+| AC-TAU-010 | M5 (measured M6) | M5 | both sides and the generated artifact edited together; the parity test runs at M5 step 5 |
+| AC-TAU-011 | M5 (measured M6) | M5 | measurement only at M6 |
 | AC-TAU-012 | M6 | all | boundary read over the finished diff |
-| AC-TAU-013 | M5, measured M6 | M5 | floor and ceiling both read the M5 commit |
-| AC-TAU-014 | M2 | M2 | validation, promotion, compensation in one milestone |
+| AC-TAU-013 | M5 (measured M6) | M5 | floor and ceiling both read the M5 commit |
+| AC-TAU-014 | M2 | M1 (seam declaration), M2 | the seam tests compile at M1 and are RED at runtime there; M2 gives the seam its call site before `RecordPicked`, and all seven tests flip at M2 |
 
 ## 3. Always-loaded growth: the constraint, the method, the draft
 
@@ -248,7 +292,15 @@ record …` clause on L33 — and then measures `len(s.encode())` and `len(s)`. 
 scratch directory of the plan session and is **not committed** (a script outside the tree cannot be
 re-run by a stranger); the run phase re-derives the measurement from the committed edit with the
 `wc` commands above, which are the binding measurement. The draft is evidence that ≤ 0 is
-reachable, not the binding figure.
+reachable, not the binding figure. (The iteration-2 audit drafted its own replacements and measured
+−135 B / −135 chars, which agrees on direction.)
+
+**The `auto-semantics.md` cap (N3b) — measured the same way.** A scratch draft of the new `### 9.3`
+section, carrying every § C.1 literal, is **27 lines** (`wc -l` of the draft); the §9 row edit and
+the §9.2 sentence edit are one line each. So the edit adds about 29 lines and deletes 2. AC-TAU-013
+caps `auto-semantics.md` at **45 added / 2 deleted** per copy: the draft plus roughly half again for
+rewording, and exactly the two replaced single-line paragraphs. The draft is not committed; the
+binding measurement is `git diff --numstat` on the committed edit.
 
 ## 4. Mirror handling (preserve, do not absorb)
 
@@ -258,13 +310,41 @@ worktree sweep …` sentence, present in the live copy only; research R7). Prese
 unreviewed sentence into every user project's always-loaded rule, and the existing parity test is
 deliberately scoped to the amended passage. After the edits `git diff --no-index --numstat` of the
 pair must still read `1  1` (AC-TAU-010). The completion report names the drift for a follow-up card.
-If the Makefile defines a template embed refresh, run it after the edits (pre-flight; research R10).
+The Makefile's embed refresh, if it defines one beyond `agents-emit`, runs after the edits
+(pre-flight; research R10). **The Codex agent artifact is a second kind of mirror:** generated, not
+copied, regenerated in the same M5 commit (§2 M5).
+
+## 4a. The old-authority sweep (N3) — every surface that states the old rule
+
+Measured at `63daaf6a7` by `git grep -n -F -i` for `serial consumption`, `serial queue consumption`,
+`queue order`, `never picks for the operator`, and `nothing else` (with `auto`/`batch`/`serial`
+context) across `.claude`, `internal/template/templates`, `docs-site`, `CLAUDE.md`, `AGENTS.md`;
+`docs-site` exists and carries only vendored minified JavaScript hits (a false positive of the
+`nothing else` pattern), no documentation page. Each hit is classified:
+
+| Hit | Disposition |
+|---|---|
+| `.claude/rules/moai/workflow/kanban-dispatch.md` L29 (`never picks for the operator`), L31 (`serial consumption … nothing else`) — live and mirror | **edited** (M5) |
+| `.claude/skills/moai/workflows/gtd.md` L335 (`serial consumption of the queue and nothing else`) — live and mirror | **edited** (M5) |
+| `.claude/agents/moai/manager-todo.md` L23 (`process cards in queue order`), L35 — live and template | **edited** (M5) |
+| `internal/template/templates/.codex/agents/moai/manager-todo.toml` L22, L34 (generated from the template `.md`) | **regenerated** (M5, `make agents-emit`) |
+| `.claude/skills/moai-kanban-foreman/SKILL.md` L69 (`consumption in queue order is authorized`), L168 — live and mirror | **edited** (M5) |
+| `.claude/rules/moai/workflow/auto-semantics.md` L186 (`authorizes serial queue consumption and nothing else`) — live and mirror | **edited** (M5; the second place the old authority is stated) |
+| `.claude/rules/moai/workflow/auto-semantics.md` L169 (card pick row) — live and mirror | **edited** (pointer to §9.3) |
+| `gtd.md` L47, L55 (`SORTED queue order`, `the queue order under the lock`) | **kept** — describes how the queue is sorted and repositioned, not who may pick |
+| `gtd.md` L340 and `manager-todo.md` L40 (`queue order within a priority`) | **kept** — the ranking source of the serial cycle, pinned by `TestAutoRankDoctrineAmendment`/`TestAutoRankAgentDoctrine` and unchanged for the operator-session cycle |
+| `.codex/agents/moai/manager-todo.toml` L39 (the same ranking sentence) | **kept** — generated from the kept `manager-todo.md` sentence |
+| `.claude/rules/moai/workflow/contract-autonomy.md` L92 (`Card selection, which stays the operator's act.`) | **kept, flagged** — it lists what a signed *contract* cannot permit (`workflow.autonomy.mode: contract`); the `--auto` batch authorization is the card-pick gate's own autonomous form (`auto-semantics.md` §9), a separate authorization path. A follow-up card may cross-reference the two |
+| `internal/cli/todo_auto.go` L26 (Go comment: the cycle "authorizes serial consumption of the queue and nothing") and the `--auto` flag help (`todo.go` L315) | **kept** — accurate for the operator-session serial cycle, which this SPEC leaves unchanged; the flag help is named in spec §G |
+| `internal/cli/todo_auto_doc_test.go` L344-L346 (a Go comment and a stale-phrase list quoting the old agent wording) | **kept** — a historical quotation pinned as an absent phrase |
+| `.claude/rules/moai/core/askuser-protocol.md` L111 (`withholds a recommendation and nothing else`) | **kept** — unrelated sense of "and nothing else" |
+| `docs-site/**` | **kept** — no documentation page states the old authority; the hits are vendored JavaScript |
 
 ## 5. Files to modify
 
 | Area | File | Change |
 |---|---|---|
-| Go | `internal/cli/factory_card.go` | `--card` flag, nomination path (validate / promote / claim / compensate), `factoryKeepSetRefusal`, arm (c) `[보류` skip counted as seen, refusal exit/diagnostic, promote-then-claim test seam |
+| Go | `internal/cli/factory_card.go` | the seam declaration (M1); `--card` flag, nomination path (validate / promote / seam / claim / compensate), `factoryKeepSetRefusal`, arm (c) `[보류` skip counted as seen, refusal exit/diagnostic (M2) |
 | Go | `internal/cli/mcp_factory_card.go` | optional `card` parameter, shared implementation |
 | Go | `internal/cli/todo.go` | lane refusal of `--auto` in `todoRefuseLaneMutation` (lane-session predicate, dedicated text) |
 | Go | `internal/cli/factory_messaging.go` | the printed fallback instruction (and its comment) point at the lease path |
@@ -273,11 +353,13 @@ If the Makefile defines a template embed refresh, run it after the edits (pre-fl
 | Go test (edit) | `internal/cli/todo_auto_doc_test.go` | move the two markers of the § M5 table |
 | Rule (live + mirror) | `kanban-dispatch.md` | replace three paragraphs (net ≤ 0 B and chars; line 177 preserved) |
 | Rule (live + mirror) | `kanban-dispatch-detail.md` | one paragraph (D10 sentence) |
-| Rule (live + mirror) | `auto-semantics.md` | §9 row pointer + new §9.3 |
+| Rule (live + mirror) | `auto-semantics.md` | §9 row pointer + the §9.2 L186 sentence + new §9.3 |
 | Skill (live + mirror) | `.claude/skills/moai/workflows/gtd.md` | `--auto` section: replacement, keep-set list, record form, lane routing, D12 sentence |
 | Agent (live + mirror) | `.claude/agents/moai/manager-todo.md` | two sentence replacements |
+| **Generated** (template tree only) | `internal/template/templates/.codex/agents/moai/manager-todo.toml` | **regenerated** with `make agents-emit` in the same M5 commit; never hand-edited; `TestGoldenCommittedArtifactsMatchEmission` verifies |
 | Skill (live + mirror) | `.claude/skills/moai-kanban-foreman/SKILL.md` | Boundary 1 and step 4 |
 | Rule (live + mirror) | `.claude/rules/moai/core/moai-mcp-tools-catalogue.md` | one catalogue cell |
+| Baseline (tracked) | `.moai/reports/t338/ac-count-baseline.txt` | regenerate in the same commit **only if** `TestACCounterFullCorpusMatchesBaseline` is red after the criteria are final (observed green at iteration-2 repair time; see progress §E.1) |
 
 No file under `internal/kanban/**`, `internal/graph/**`, or any schema file changes (REQ-TAU-003);
 no `sync-auditor` / `sync-audit-4dim` change (REQ-TAU-012 states the record is unread, not
@@ -287,60 +369,85 @@ controlled).
 
 What this SPEC **leaves open**: the input set is open — the record's `evidence_refs` and the
 selection rule name the inputs t1448 needs and say a later card adds an input without amending the
-keep-set or the lease path (REQ-TAU-013). Relation records are read through whatever the lane-read
-surfaces expose (today `moai todo why`); no code here names the queue-findings store or the
-`gtd_relations` table as *the* source. File overlap is a pluggable input: expected-file data when
-present; otherwise a fallback that is INFERRED and unmeasured (a lane reading another lane's branch
-by name from its own tree); `unmeasured` is the expected value until measured, and the record does
-not require it.
+keep-set or the lease path (REQ-TAU-013, **unchanged by either audit repair**). Relation records are
+read through whatever the lane-read surfaces expose (today `moai todo why`); no code here names the
+queue-findings store or the `gtd_relations` table as *the* source. File overlap is a pluggable input:
+expected-file data when present; otherwise a fallback that is INFERRED and unmeasured (a lane reading
+another lane's branch by name from its own tree); `unmeasured` is the expected value until measured,
+and the record does not require it.
 
 What this SPEC **must not pre-empt**: it adds no schema field, no relation kind, no `moai graph`
 change, no expected-file, parent/spawned-by or size field, and no mechanical refusal keyed on a
 relation store (the relation-blocked refusal is deliberately *not* in the keep-set predicate;
 probe O2). The mechanical guard reads only `state`, the `[보류` marker, `classification.blocked`,
-the serial slot, and ownership — none of which t1454's inputs change.
+the serial slot, ownership and the record state — none of which t1454's inputs change.
 
 ## 7. Operational follow-ups (not part of this SPEC's code)
 
-- **Before lanes exercise this doctrine** the operator or leader must `moai gtd hold` (or
-  `[보류`-mark) the cards kept on an operator decision queue — t810, t1294, t1383 per the memory
-  index and read as selectable by the plan audit. Lanes cannot mutate the queue, so this is the
-  operator's or leader's act; the completion report must carry the note (Definition of Done 6).
+- **Before lanes exercise this doctrine** (the handoff sentence, identical in spec §B.3, REQ-TAU-011,
+  spec §G and Definition of Done 6): **Today t810 (`picked`), t1294 and t1383 (`queued`, ordinary
+  text) carry neither the structural `hold` state nor a leading `[보류` marker, so the keep-set does
+  not mechanically identify them. The SPEC supports exactly two identification forms — (a) the
+  structural `hold` state, written only by `moai gtd hold`, and (b) card text that begins with the
+  `[보류` marker — and a lane may write neither. The operator or leader must apply one of them to
+  each such card before lanes exercise this doctrine.** Read with the read-only `moai gtd show`;
+  the queue is not touched by this plan.
 - The line-177 drift in `kanban-dispatch.md` needs a follow-up card to decide which copy is right.
 - The lane bootstrap notice still says bare `moai factory next`; a follow-up candidate is to mention
   the judged `--card` form in the four locales of `session_start_factory_i18n.go`.
 - No party re-reads the decision record (spec §G); a follow-up card may add that step to the sync
-  audit if the record is wanted as a control.
+  audit if the record is wanted as a control — and may then reconcile the §9.1/§10 wording of
+  `auto-semantics.md`, which this SPEC leaves untouched.
+- `contract-autonomy.md` L92 says card selection stays the operator's act for a signed contract; a
+  follow-up may cross-reference the `--auto` authorization there.
 
 ## 8. Risks and their milestones
 
 | Risk | Where handled |
 |---|---|
-| Doc pins red when the docs change | M5: docs, mirrors and pins in one commit; the two expected breakages observed first |
+| Doc pins red when the docs change | M5: docs, mirrors, generated artifact and pins in one commit; the two expected breakages observed first |
+| `make build` red because the generated Codex artifact is stale | M5 step 2/5: `make agents-emit` in the same commit, `TestGoldenCommittedArtifactsMatchEmission` PASS |
 | Default-path `[보류` skip surprises an operator | isolated clause of REQ-TAU-007; stated in B.4 |
 | Lane `--auto` refusal reverses an FLA doctrine move, or refuses a Codex leader | isolated REQ-TAU-008 with an explicit predicate, a non-lane GPT guard, and the corrected fallback string |
-| Promoted-then-lost nominee leaves a `picked` card | M2 steps 1-4, two interleave tests |
+| Promoted-then-lost nominee leaves a `picked` card or a record row | M2 steps 1-4, the seam before `RecordPicked`, spec §B.8; the post-record residue is accepted and untested |
 | Self-attested, unread decision record | spec §G (unimplemented residual risk), DoD item 6 |
 | Parallel edit collision with lane-5's t1453 | surgical replacements; AC-TAU-013's diff bound; this card's rule-doc edits land first |
 | Always-loaded growth | AC-TAU-011, bytes and characters, both copies |
+| Acceptance counter baseline moves with the criteria | M6: `TestACCounterFullCorpusMatchesBaseline`, regenerate in the same commit if red |
 
 ## 9. Commit structure
 
-Plan phase: the plan commit and this repair commit carry the artifact set. Run phase: tests-first
-commit(s) per milestone; M5 is one commit for docs, mirrors and pins. The baseline measurements of
-`acceptance.md` land in the plan commits, **before** any run commit, so the commit graph — not a
-message — witnesses that the baselines precede the change (`verification-claim-integrity.md` §2.3).
+Plan phase: the plan commit and the two repair commits carry the artifact set. Run phase: tests-first
+commit(s) per milestone; M5 is one commit for docs, mirrors, the generated artifact and pins. The
+baseline measurements of `acceptance.md` land in the plan commits, **before** any run commit, so the
+commit graph — not a message — witnesses that the baselines precede the change
+(`verification-claim-integrity.md` §2.3).
 
-## 10. Audit-1 resolution map
+## 10. Audit resolution map
+
+### Iteration 2 (audited commit `63daaf6a7`; the leader approved one extra delta audit, scope N1-N6 plus a full ordering re-read)
 
 | Item | Resolution (where / how) |
 |---|---|
-| D1 | M5 now edits live, mirror and pins in one commit; M6 is measurement only; the milestone↔criterion order table above checks all fourteen criteria; AC-TAU-007/-008/-010 green paths restated |
-| D2 | M1 exit split: all new tests RED except the golden and the non-lane GPT guard (GREEN on the unmodified tree) with seeded-perturbation non-vacuity cells; golden minimum case set in M1 and AC-TAU-006 |
+| N1 | M1 declares the one seam variable (`factoryNominateBeforeRecord`, inert, uncalled) as its only production edit; M1 exit is stated against "the unmodified tree plus the seam declaration" and requires every new test to **compile** and be RED at runtime except the golden and the GPT guard; AC-TAU-006, AC-TAU-014 and DoD item 2 edited to match; the full order check is redone below |
+| N2 | REQ-TAU-005 and AC-TAU-014 narrowed to what the record API can undo; spec §B.8 specifies the seam point (before `RecordPicked`), what a post-record failure leaves (a `picked`, unowned row plus its event — accepted, visible in `moai factory status`, untested), the compensation guard (acts only if the item is still `picked`; a failed write exits 1 with `compensation failed`, no token), and the stated non-atomicity window |
+| N3 | (a) `manager-todo.toml` is in §5 and M5, regenerated by `make agents-emit`, verified by `TestGoldenCommittedArtifactsMatchEmission` (AC-TAU-010 row, M6 command); cells L23-L24 find the old phrases in the TOML. (b) The `auto-semantics.md` L186 sentence is in the M5 table and C.1, cell L25 finds it, AC-TAU-013's cap is re-measured (45 added / 2 deleted, method in §3). The whole-tree sweep is §4a |
+| N4 | One `git grep -c -F "<exact test name>" -- internal/cli` RED-now cell per release-blocking test name (L3, L4 and L27-L47, with control C1), each run for real |
+| N5 | AC-TAU-004 gains the mid-text and leading-whitespace fixture cards (`marker-mid-text` leases; `marker-leading-space` refused `hold-marker`), defined against `strings.HasPrefix(strings.TrimSpace(text), "[보류")` |
+| N6 | The token set is closed over every producible refusal: twelve tokens, `foreign-worktree` and `recorded` added; `owned` and `recorded` defined against all nineteen record states (spec § C.2); REQ-TAU-009 carries the `queued` qualifier; infrastructure errors exit 1 with no token, stated |
+| N7 | spec §G states the §9.1/§10 "compensating control" wording stands for the other gates and is not edited; the new §9.3 sentence `no party re-reads the card-pick record` says it does not hold here; the record's section is `§J` not `§F`; the `--auto` flag help is named in §G; `--wait` with `--card` now waits through `quota-hold` like the bare form; the L19 literal is written without backticks; `TestContractModeEmitterSites` is in the pin table; step (3)/(4) order in M5 fixed; AC-TAU-009's label corrected |
+| Leader items | AC baseline snapshot observed first (green) — progress §E.1; the three operator-decision cards are named by one identical handoff sentence in spec §B.3, REQ-TAU-011, §G, DoD 6 and §7; REQ-TAU-013 is intact (§6) |
+
+### Iteration 1 (audited commit `b3646de10`)
+
+| Item | Resolution (where / how) |
+|---|---|
+| D1 | M5 edits live, mirror and pins in one commit; M6 is measurement only; the milestone↔criterion order table checks all fourteen criteria; AC-TAU-007/-008/-010 green paths restated |
+| D2 | M1 exit split: all new tests RED except the golden and the non-lane GPT guard (GREEN on the tree) with seeded-perturbation non-vacuity cells; golden minimum case set in M1 and AC-TAU-006 |
 | D3 | `factory_messaging.go` added to § 5 and M3; printed string moves to the lease path; `TestFactoryFallbackDeclarePrintsLeasePath` pins it; REQ-TAU-008 and spec B.4 carry the supersession sentence for REQ-FLA-001 |
 | D4 | REQ-TAU-008 defines the predicate (role marker `lane` or non-empty label; Codex marker alone not sufficing); dedicated refusal text; gtd.md routing sentence pinned (C.1); AC-TAU-005 includes a non-lane GPT-backend session measured with a real command (R11 M1) |
 | D5 | Option (b): spec B.5 and §G retract the compensating-control claim (unimplemented residual risk); REQ-TAU-012 states the location and "evidence, not the §11 board"; AC-TAU-009 rewritten with no executing party; no audit-surface edit (Out of Scope) |
-| D6 | AC-TAU-013 bounds each edited file's diff (floor and ceiling by `git diff --numstat`); § M5 table enumerates every existing marker including `TestAutoRankMirrorParity`'s start marker; the jev/contract/rule-mirror/headroom tests were read |
+| D6 | AC-TAU-013 bounds each edited file's diff (floor and ceiling by `git diff --numstat`); § M5 table enumerates every existing marker including `TestAutoRankMirrorParity`'s start marker; the jev/contract/rule-mirror tests were read |
 | D7 | REQ-TAU-005 restated as the state left; spec § C.2 token table normative; M2 mechanism (validate read-only, re-validate inside `Mutate`, claim, compensate); AC-TAU-014 covers `dropped`, `owned`, `quota-hold`, `backend-skip`, promote-then-lose, claim-refused rollback |
 | D8 | AC-TAU-001 (flag-set equality, MCP parity), AC-TAU-014 (quota hold and Codex skip honored by the nominee), AC-TAU-004 (`dropped`), AC-TAU-006 (all-marker queue exits 3, golden minimum case set) |
 | D9 | AC-TAU-010 and AC-TAU-012 reclassified as regression-guards (neither is release-blocking); AC-TAU-011 stays conjunctive; AC-TAU-013 carries a real RED-now floor |
