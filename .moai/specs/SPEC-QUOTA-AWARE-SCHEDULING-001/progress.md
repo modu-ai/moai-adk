@@ -322,9 +322,173 @@ Classification: EXPECTED_RED for the behaviours that do not exist yet. Three hon
 
 **Residual risk.** The `-wal`/`-shm` sidecar files a read-only reader creates remain in the registry directory (measured in Step A); a later writer on a system where the directory becomes read-only would fail to open its own database — unchanged from before for any reader but newly reachable from `moai factory status` and `moai todo --auto`. `unknown` lanes (every row written before M4) make the no-candidate warning fire on a fleet that does have a usable glm/gpt lane until it is relaunched (the SPEC's §H row); the unknown count is printed. A seam consumer that sets `autoOptions.quota` to a function that prints or writes inside it would not be caught by a type; the contract is a comment.
 
+### M6 — Integration-window warning (REQ-QAS-014; AC-QAS-013; AC-QAS-017 `acquire_warning` subtests)
+
+Commits (parent of the code commit is `baf50e466`, the M5 evidence commit): code `6eba20def482ec12999e5611c9dc7fe6d27d813a` (`internal/cli/factory_quota.go`, `internal/cli/integration.go`, `internal/cli/factory_quota_test.go`; no template, config, or other file). Evidence commit: the one that adds this section and §E.3. Tree: toplevel `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1347`, branch `WT-quota-aware-scheduling`, HEAD at start `baf50e466`; toolchain `go version go1.26.8 darwin/arm64`; lint `golangci-lint@v2.1.6`. Load average (`uptime`) 14.09 at the start of the burst (17:20), 47.78 at 17:29 before the whole-package runs. Slot `go-test-cli` taken twice (`slot go-test-cli acquired by 2da35a68-1196-4183-b6e5-a50fc9b6d901 until 2026-10-02T08:41:58Z` and `... until 2026-10-02T08:51:45Z`) and released both times before this evidence was written (`slot go-test-cli released (was 2da35a68-1196-4183-b6e5-a50fc9b6d901)`). Every `internal/cli` Go command ran as one compound `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED [MOAI_FACTORY_WORKER MOAI_FACTORY_ROLE MOAI_FACTORY_WORKERS MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_AUTO_DISPATCH MOAI_KANBAN_BACKEND MOAI_LAUNCH_PROVIDER] && go -C <tree> ...` — the first two runs and the regression run carried only the five-variable prefix, the later runs the full 12 listed; `MOAI_AUTONOMY_TIER`, `MOAI_PROFILE_LEASE_TOKEN`, `MOAI_SESSION_PID`, and `MOAI_CONFIG_SOURCE` (shown by `env`) were never unset in M6.
+
+Design as built. `integrationQuotaWarning(root)` in `factory_quota.go` (beside the other quota surfaces; it is swept by the AC-QAS-014 import check): `factoryQuotaClaudeLane()` (the lane gate's own Claude-caller predicate, no second copy) must hold, then `factoryQuotaEvaluate(root).HeldWindows()` (the one shared evaluation, no second predicate); with no held window it returns the empty string; otherwise one line `quota warning: <segment>[; <segment>...] (warn-only; the integration window is still taken)` where each segment is the hold line's own `factoryQuotaHoldSegment` (`five_hour used=92.0% resets_at=<RFC 3339 UTC>`). Every failure of the quota read already reads as "no pressure" inside `factoryQuotaEvaluate` (unreadable config, absent or corrupt record, gate disabled), so the function has no error path to swallow. `integration.go` `acquire` prints the line with `cmd.ErrOrStderr()` after the three existing warn-only lines and before the JSON/text result, i.e. after the lock record is written; the root it passes is the same `integrationLockRoot()` value the lock uses. Nothing in acquire's control flow, its lock record, its exit status, or standard output changed; no prompt, wait, or refusal was added (DO-7 final).
+
+**E8 — RED, step 1 (compile).** `unset <5 vars> && go -C <tree> test -count=1 -run '^TestQAS_AC013_AcquireWarnsNeverRefuses$' ./internal/cli` → rc=1:
+
+```
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/factory_quota_test.go:883:10: undefined: integrationQuotaWarning
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+```
+
+**E8 — RED, step 2 (assertion level; EXPECTED_RED).** With the stub `func integrationQuotaWarning(root string) string { return "" }` and acquire not yet wired, `-v -count=1 -run '^(TestQAS_AC013_AcquireWarnsNeverRefuses|TestQAS_AC017_SharedPressureEvaluationAndSurfaces)$'` → rc=1, `FAIL	github.com/modu-ai/moai-adk/internal/cli	13.014s`; verbatim failure lines (the regexp in the first line is `qasAcquireWarningRE`, abbreviated here):
+
+```
+factory_quota_test.go:885: warning = "", want a line matching ^quota warning: [a-z_]+ used=...Z(; ...)* \(warn-only; the integration window is still taken\)$
+factory_quota_test.go:898: stderr quota lines = [], want exactly one matching ^quota warning: ...   (warns_text_and_never_blocks)
+factory_quota_test.go:911: stderr quota lines = [], want exactly one matching ^quota warning: ...   (warns_json_and_never_blocks)
+factory_quota_test.go:924: stderr quota lines = [], want exactly one matching ^quota warning: ...   (both_windows_one_line)
+factory_quota_test.go:1035: acquire warning printed = false, want true (pressure true, caller "claude"); stderr: ""   (AC017 at_92/acquire_warning)
+--- FAIL: TestQAS_AC013_AcquireWarnsNeverRefuses (4.56s)
+    --- FAIL: .../warning_line_names_window_and_reset
+    --- FAIL: .../warns_text_and_never_blocks
+    --- FAIL: .../warns_json_and_never_blocks
+    --- FAIL: .../both_windows_one_line
+--- FAIL: TestQAS_AC017_SharedPressureEvaluationAndSurfaces (7.53s)
+    --- FAIL: .../at_92 ; --- FAIL: .../at_92/acquire_warning
+```
+
+Classification: EXPECTED_RED for the positive cases. The negative cases (`no_line_and_output_unchanged/*`, `unreadable_quota_state_falls_through_silently`, and the AC-017 `acquire_warning` children other than `at_92`) PASSED at RED: they guard "no line", which a stub also satisfies. Their discriminating power is shown by the mutant probes below, not by this RED.
+
+**GREEN.** After the implementation and the wiring, `unset <5 vars> && go -C <tree> test -count=1 -v -run '^(TestQAS_AC013_AcquireWarnsNeverRefuses|TestQAS_AC017_SharedPressureEvaluationAndSurfaces)$' ./internal/cli` → rc=0, `ok  	github.com/modu-ai/moai-adk/internal/cli	13.804s`: `--- PASS: TestQAS_AC013_AcquireWarnsNeverRefuses (5.86s)` with subtests `warning_line_names_window_and_reset`, `warns_text_and_never_blocks`, `warns_json_and_never_blocks`, `both_windows_one_line`, `no_line_and_output_unchanged` (children `below_threshold`, `reset`, `unknown_no_record`, `gate_disabled`, `non_claude_glm`, `non_claude_gpt`, `no_backend`), `unreadable_quota_state_falls_through_silently`; `--- PASS: TestQAS_AC017_SharedPressureEvaluationAndSurfaces (6.88s)` with `shared_function_ignores_caller` and, for each of `at_92`, `acquire_requires_claude_caller`, `at_89_9`, `reset`, `unknown`, `gate_disabled`, both a `status_and_auto_surfaces` and an `acquire_warning` child PASS — the six `acquire_warning` children M5 left `t.Skip`ped now run (no SKIP line remains). Each pressure case compares against a control run with the gate disabled: stdout, the lock record (with `acquired_at` blanked), the exit status, and stderr outside the quota line are equal; the `--json` run's stdout parses as one object. The `acquire_warning` child asserts the warning iff pressure is on AND the named caller backend is `claude` (the caller is named per case, not read back from the environment a sibling left).
+
+Regression, anchored, one run, `unset <5 vars> && go -C <tree> test -count=1 -v -run '^(TestQAS_AC[0-9]+b?_.*|TestIntegration.*|TestFactoryStatusShowsHolderModePriority|TestTodoAutoSerialCycle|TestTodoAutoCreatesNoFactoryLease|TestTodoAutoClearGuidancePerCard)$' ./internal/cli` → rc=1, verbatim `FAIL	github.com/modu-ai/moai-adk/internal/cli	212.389s`, ONE failure: `--- FAIL: TestFactoryStatusShowsHolderModePriority` with `factory_classify_test.go:394: todo add: moai add: refused — lane boundary: a lane session cannot mutate the queue ...` (the lane environment falsifying a fixture, the same signature as the M0 generator). Re-run alone in the full 12-variable scrub: `... -run '^(TestFactoryStatusShowsHolderModePriority)$' ./internal/cli` → rc=0, `--- PASS: TestFactoryStatusShowsHolderModePriority (3.80s)`, `ok  	github.com/modu-ai/moai-adk/internal/cli	4.834s`. The same regression run's other `--- PASS` lines: 57 top-level lines matching `TestQAS_|TestIntegration|TestTodoAuto` — all 17 `TestQAS_AC*` tests (`AC006b, AC008, AC008b, AC009, AC010, AC011, AC011b, AC012, AC013, AC014, AC017, AC018, AC019, AC020, AC021, AC022, AC023b`), every `TestIntegration*` test (including the four `TestIntegrationAcquire_KnownTarget*`, `TestIntegrationAcquire_WarningIsOnStderrOnly`, `TestIntegrationAcquire_RefusedAcquireDoesNotWarn`, `TestIntegrationAcquire_InvalidWorkflowValueWarnsButRecordsIdentically`, `TestIntegrationOwnerLiveness_*`), and `TestTodoAutoSerialCycle`, `TestTodoAutoClearGuidancePerCard`, `TestTodoAutoCreatesNoFactoryLease`. (This run included the five-variable scrub only; the failing test passed with the full scrub, so the failure is attributed to the lane environment from its message and from the pass, not proven on the base commit.)
+
+**Mutant probes (discriminating power of the negative cases; each applied to the committed tree, run under the slot, then reverted by a second edit; `git status --short` was empty after each revert and after the last).** (1) Remove the `factoryQuotaClaudeLane()` early return from `integrationQuotaWarning`: `rc=1`, FAIL in `TestQAS_AC013/no_line_and_output_unchanged/{non_claude_glm,non_claude_gpt,no_backend}` and `TestQAS_AC017/acquire_requires_claude_caller/acquire_warning`. (2) Print the warning on `cmd.OutOrStdout()` instead of `cmd.ErrOrStderr()`: `rc=1`, FAIL in `TestQAS_AC013/{warns_text_and_never_blocks,warns_json_and_never_blocks,both_windows_one_line}` and `TestQAS_AC017/at_92/acquire_warning`. After both reverts `go -C <tree> test -count=1 -run '^(TestQAS_AC013_AcquireWarnsNeverRefuses|TestQAS_AC017_SharedPressureEvaluationAndSurfaces|TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly)$' ./internal/cli` → rc=0, verbatim `ok  	github.com/modu-ai/moai-adk/internal/cli	24.188s`. Not probed: a mutant that refuses or exits non-zero (the control comparison asserts `err == nil`), a mutant that evaluates pressure with a different threshold than the lane gate (AC-017's shared-function subtests cover the function, not this call site).
+
+Other M6 measurements. `go -C <tree> vet ./internal/cli/...` rc=0, no output. `gofmt -l internal/cli/factory_quota.go internal/cli/factory_quota_test.go internal/cli/integration.go` printed nothing. `cd <tree> && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6 run --new-from-rev=baf50e466 ./internal/cli/...` → `0 issues.` (run on the uncommitted tree before the code commit; no positive control for the lint). `cd <tree> && GOOS=windows GOARCH=amd64 go build ./internal/statusline/... ./internal/config/... ./internal/cli/... ./internal/kanban/...` rc=0, no output (NARROWED to these four packages, not `./...`).
+
+**Gaps (M6).** (a) The negative cases were never observed RED against a missing feature (a stub satisfies them); the two mutant probes above are the substitute, and the refusal/exit-status mutants were not run. (b) The test drives the real `integration acquire` command with `CLAUDE_PROJECT_DIR` pinned to a fixture; no real Claude Code session, real statusline, or real quota was involved, and the Claude-caller fact is the environment variable the lane gate reads (`MOAI_LAUNCH_PROVIDER` with the `MOAI_KANBAN_BACKEND` fallback), not an observed launcher. (c) A window already held by another lane is refused before the warning point, so no warning appears on a refused acquire (the control for that is the existing `TestIntegrationAcquire_RefusedAcquireDoesNotWarn`, which does not set a quota fixture, so "a refused acquire under pressure prints no warning" is by construction, not by test). (d) The warning is evaluated once per acquire at the moment of the write; a window crossing its hold percentage afterwards is not reported. (e) The regression run's single failure is a lane-environment artefact attributed from its message and from a passing scrubbed re-run; the base commit was not measured (a branch switch is not permitted). (f) Coverage of the changed package was not measured. (g) Scrub breadth: see the first paragraph.
+
+**Residual risk.** A future surface that prints an unrelated line containing the text `quota` on acquire's stderr would be counted by the subtests that look for `quota` lines (the control comparison drops such lines before comparing the rest, so it would not hide a regression elsewhere, but the "no line" assertions would flag it). The warning text is not localized and is not a stable machine format beyond the regexp in `qasAcquireWarningRE`.
+
+### Closure — run-phase completion evidence (card t1347)
+
+Measured at HEAD `6eba20def482ec12999e5611c9dc7fe6d27d813a` (the M6 code commit; the working tree had no change except this file at measurement time), branch `WT-quota-aware-scheduling`, in this run. Judging builds: the `go` toolchain `go1.26.8 darwin/arm64` for every Go measurement; the installed `moai` for the `spec lint` / `spec audit` lines printed `v3.2.0-rc.25   moai_cp/20260925_122548-1952-g802a72235   built 2026-10-02T08:00:14Z`, and `git -C <tree> merge-base --is-ancestor 802a72235 HEAD` exited 1 (the installed build's commit is not an ancestor of this tree's HEAD, so it is not a lagging build in the verification-claim-integrity §2.2 sense; it was not built from this tree).
+
+**C1 — AC-QAS-015 (baseline-first ordering; plain commands, verbatim).**
+
+```
+$ git merge-base develop HEAD
+c50da9c2f8aa1227073bd77caa07ca1c75b8d81b                                   (CARD_BASE; develop did not move: equals the M4/M5 value)
+$ git log --reverse --format=%H c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal/statusline/testdata/qas_baseline_windowless_record.golden.json
+c2ae5236af96e8e76fb5c27639c22380bdec5dfa                                   (B_1)
+$ git log --reverse --format=%H c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal/cli/testdata/qas_baseline_factory_status.golden.json
+c2ae5236af96e8e76fb5c27639c22380bdec5dfa                                   (B_2)
+$ git log --reverse --format=%H c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal/cli/testdata/qas_baseline_todo_auto.golden.txt
+c2ae5236af96e8e76fb5c27639c22380bdec5dfa                                   (B_3)
+$ git log --reverse --format=%H c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal ':(exclude)*_test.go' ':(exclude)*/testdata/*'
+976b91458e3dea6d4f8eb7d860a1f905d43a04d2                                   (first line = I)
+a078b4ecaab9f994f711ac2dbea1e9d7b1610827
+a595fb2ce47e48c476783e1f45c9f556a5f93b29
+558988ab64f096e1ae8a7d5615a4775a9f65d574
+903173181908ed0fb290b7d4df62497d6d512a62
+6eba20def482ec12999e5611c9dc7fe6d27d813a
+$ git merge-base --is-ancestor c2ae5236af96e8e76fb5c27639c22380bdec5dfa 976b91458e3dea6d4f8eb7d860a1f905d43a04d2
+(no output; exit 0 — B is an ancestor of I)
+$ git merge-base --is-ancestor 976b91458e3dea6d4f8eb7d860a1f905d43a04d2 c2ae5236af96e8e76fb5c27639c22380bdec5dfa
+(no output; exit 1 — the reverse is false)
+$ git rev-list --count c2ae5236af96e8e76fb5c27639c22380bdec5dfa..976b91458e3dea6d4f8eb7d860a1f905d43a04d2
+2
+$ git rev-list --count 976b91458e3dea6d4f8eb7d860a1f905d43a04d2..c2ae5236af96e8e76fb5c27639c22380bdec5dfa
+0
+$ git diff --name-only c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD
+(44 paths, confirmed by `git diff --shortstat` -> `44 files changed, 6115 insertions(+), 42 deletions(-)`; non-empty — the positive control; the list includes the three golden files and every implementation file named in the milestones)
+```
+
+All three B_i are the same commit (`c2ae5236a`, one commit adds the three goldens), so the ancestry/count pair was run once for the shared SHA; it applies to each golden. Result: PASS — each B_i exists and is a strict ancestor of I (`976b91458`, the M1 commit), count `B..I` = 2 (at least 1), count `I..B` = 0. This is a pre-merge evaluation (`gitflow-lane-protocol.md` §8) and is vacuous after the card merges.
+
+**C2 — AC-QAS-016 (no kanban-mode path touched; plain commands, verbatim `@@` lines).**
+
+```
+$ git diff --name-only c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal/kanban internal/cli/kanban.go internal/cli/kanban_settings.go
+internal/kanban/factory_slots.go
+internal/kanban/factory_slots_test.go
+$ git diff -U0 c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal/cli/cc.go            -> @@ -250 +250 @@ func runClaudeEntry(...
+$ git diff -U0 c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal/cli/glm.go           -> @@ -294 +294 @@ func runGLM(...
+$ git diff -U0 c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal/cli/codex_launcher.go -> @@ -932 +932 @@ func runCodexFactoryLane(...
+$ git diff -U0 c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal/cli/codex_factory.go  -> @@ -149,2 +149,2 @@ func enterCodexFactory(...
+$ git diff -U0 c50da9c2f8aa1227073bd77caa07ca1c75b8d81b..HEAD -- internal/cli/factory.go        -> @@ -790 +790 @@ func resolveFactoryLaneName(...   and   @@ -792 +792 @@ func resolveFactoryLaneName(...
+```
+
+Allowed old-file ranges: `cc.go` 250, `glm.go` 294, `codex_launcher.go` 932, `codex_factory.go` 149-150, `factory.go` 790-792. Hunk start and end (plan debt N10): `cc.go` 250-250, `glm.go` 294-294, `codex_launcher.go` 932-932, `codex_factory.go` 149-150 (old count 2), `factory.go` 790-790 and 792-792 — all inside. Positive control: each of the five files shows at least one hunk (above) and the `git diff --name-only` list of C1 is non-empty. The M6 code commit touched none of these files (`integration.go`, `factory_quota.go`, `factory_quota_test.go` only). Result: PASS.
+
+**C3 — whole-package runs (scrubbed 12-variable form; `uptime` before them: `17:29  up 16 days,  5:41, 31 users, load averages: 47.78 35.97 29.08`).** `go -C <tree> test -count=1 ./internal/statusline` → rc=0, `ok  	github.com/modu-ai/moai-adk/internal/statusline	52.856s`. `go -C <tree> test -count=1 ./internal/config` → rc=0, `ok  	github.com/modu-ai/moai-adk/internal/config	8.865s`. The known quota-flake `TestBuilderSetModeNormalizes` did not fail in this run (no re-run needed). Anchored `go -C <tree> test -count=1 -v -run '^TestQAS_AC007_ConfigDefaultsMirrorTemplate$' ./internal/config` → rc=0, `--- PASS: TestQAS_AC007_ConfigDefaultsMirrorTemplate (0.03s)` with the nine subtests `defaults_equal_template`, `template_ships_off`, `template_comment_says_unmeasured`, `local_twin_enabled`, `loader_reads_a_configured_block`, `absent_or_unparseable_yields_default`, `out_of_range_yields_default`, `max_age_below_twice_heartbeat_yields_default`, `cache_schema_bumped` each PASS, `ok  	github.com/modu-ai/moai-adk/internal/config	0.258s`. `./internal/cli` and `./internal/kanban` were NOT run whole-package (the lane runs the consolidated verification); `./internal/kanban` was not run at all in M6 (no file under it changed since M4).
+
+**C4 — spec lint and audit (installed `moai`, build above).** `moai spec lint /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1347/.moai/specs/SPEC-QUOTA-AWARE-SCHEDULING-001` → `✓ No findings — all SPEC documents are valid`. `moai spec lint --strict <same path>` → `✓ No findings — all SPEC documents are valid`. Both were run twice: before this section was written and again after progress.md carried §E.2 M6/Closure and §E.3 (uncommitted), with the same output both times. `moai spec audit --base-dir <tree> --filter-spec SPEC-QUOTA-AWARE-SCHEDULING-001 --json` → `total_specs: 1`, `grandfathered: 0`, `modern_era_clean: 1`, and one finding `{"spec_id": "SPEC-QUOTA-AWARE-SCHEDULING-001", "era": "V3R6", "finding_type": "EraAutoDetected", "severity": "INFO", "details": {"heuristic_matched": "H-5 (modern phase or created date)"}}` — an informational era-classification note, no drift finding.
+
+**C5 — build, vet, lint, format, boundary.** `cd <tree> && GOOS=windows GOARCH=amd64 go build ./internal/statusline/... ./internal/config/... ./internal/cli/... ./internal/kanban/...` rc=0, no output (NARROWED; not `./...`). `go -C <tree> vet ./internal/cli/...` rc=0. `cd <tree> && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6 run --new-from-rev=baf50e466 ./internal/cli/...` → `0 issues.` (new issues against the M5 head only; no positive control). `gofmt -l` on the three M6 Go files printed nothing. `grep -n AskUserQuestion` over the 20 non-test `.go` files the card changed under `internal/` (`git diff --name-only c50da9c2f..HEAD -- internal` filtered to non-test `.go`: `cli/{cc,codex_factory,codex_launcher,factory,factory_card,factory_quota,factory_quota_lanes,glm,integration,mcp_factory_card,todo,todo_auto}.go`, `config/{cache,defaults,loader_quota_gate,types}.go`, `kanban/factory_slots.go`, `statusline/{builder,context_usage,quota}.go`) → no output; a positive-control grep of the same shell form (`grep -c factoryQuotaEvaluate internal/cli/factory_quota.go internal/cli/integration.go`) printed `factory_quota.go:5` and `integration.go:0`, so the tool works in that form.
+
+**C6 — template parity.** `internal/template/templates/.moai/config/sections/workflow.yaml` carries the block (lines 201-206): `quota_gate:` / `enabled: false` / `five_hour_hold_pct: 90` / `seven_day_hold_pct: 95` / `release_margin_pct: 5` / `max_age: 30m`, and the word `unmeasured` (`grep -c unmeasured` → `1`); the local `.moai/config/sections/workflow.yaml` carries `quota_gate:` / `enabled: true` (lines 223-224). The decider is `TestQAS_AC007_ConfigDefaultsMirrorTemplate` (C3): subtests `template_ships_off`, `template_comment_says_unmeasured`, `local_twin_enabled`, `defaults_equal_template` PASS. `make build` was not run in M6 (no template changed in M6; the last run was M2).
+
+**Gaps (closure).** (a) `./internal/cli` and `./internal/kanban` whole-package results are not part of this evidence; the cli verdict rests on anchored selectors only, the kanban verdict on M4's anchored run (no change under `internal/kanban` since). (b) The windows build is narrowed to four packages; `./...` was not built in M6. (c) C4's lint and audit were re-run on the uncommitted final file, not on the committed blob; the commit adds only this file, so the two are the same bytes, but the committed blob was not re-linted. (d) The AC-QAS-015 pair of commands was run once for the shared B SHA, not three times. (e) Lint has no positive control. (f) The `moai` used for C4 was the installed build named above, not one built from this tree.
+
+### Plan debt N1-N10 — treatment record
+
+N1 AC-QAS-014 floor: statusline half asserts 1 file (M2), cli half asserts 3 (M5), the sweep still passes at M6 (`--- PASS: TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly`, regression run above) with `integrationQuotaWarning` living in a swept file. N2 truncation followed (M1). N3 shared function takes no caller (M3). N4 conforming CLI-golden RED row recorded (M5). N5 (a) one-directional fixture added (M2), (b) no text-mode status golden — recorded as a Gap (M5). N6 REQ-013 fields and re-observation implemented (M2, M5). N7 doc-only, no action. N8 fixture registry lacks the migration marker; release is "all held windows released" (M3, M5). N9 `SaveFactoryRegistry` round-trip subtest (M4). N10 hunk start and end checked (M4 and C2).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-10-02
+card: t1347
+cycle_type: tdd
+run_commit_sha: 6eba20def
+m0_to_m6_commit_strategy: per-milestone code commits on branch WT-quota-aware-scheduling, evidence in its own commit, no push, no amend; M0 goldens c2ae5236a (evidence 58c01fb5f); M1 976b91458; M2 a078b4eca; M3 a595fb2ce 1652bcfc6; M4 558988ab6 (evidence f21b22b7e); M5 903173181 (evidence baf50e466); M6 6eba20def (evidence + this signal: the commit that adds this section)
+ac_pass_count: 23
+ac_fail_count: 0
+ac_unobserved_count: 0
+ac_matrix: AC-QAS-001 to AC-QAS-023 PASS, each observed by a command recorded in section E.2 (table below); AC-QAS-015 and AC-QAS-016 are one-shot pre-merge evaluations measured at HEAD 6eba20def
+preserve_list_post_run_count: not-applicable (plan.md names no PRESERVE list)
+l44_pre_commit_fetch: not-run (lane worktree, no push; the leader batch-pushes)
+l44_post_push_fetch: not-applicable (nothing pushed)
+new_warnings_or_lints_introduced: 0 (golangci-lint@v2.1.6 --new-from-rev=baf50e466 ./internal/cli/... -> 0 issues; go vet ./internal/cli/... exit 0; earlier milestones each recorded 0 issues)
+cross_platform_build:
+  windows_amd64: GOOS=windows GOARCH=amd64 go build ./internal/statusline/... ./internal/config/... ./internal/cli/... ./internal/kanban/... exit 0 at HEAD 6eba20def (NARROWED to four packages; not ./...)
+total_run_phase_files: 44 files in git diff --shortstat c50da9c2f..HEAD at HEAD 6eba20def (8 under .moai/: 7 SPEC artifacts and the local workflow.yaml; 36 under internal/: 20 non-test .go, 11 test files, 4 testdata files, 1 template mirror)
+drift_guard: not computed (no planned-file list with counts was recorded in plan.md; the file map is plan.md section D)
+known_plan_debt: N1-N10 treated as recorded in section E.2 (N5(b) text-mode status golden remains a Gap)
+pre_existing_red: none observed in the packages measured; one lane-environment artefact (TestFactoryStatusShowsHolderModePriority fails under the lane env and passes in the full scrub)
+repository_wide_test_verdict: PENDING (owned by CI on the integration branch; ./internal/cli and ./internal/kanban whole-package runs are owned by the lane's consolidated verification)
+summary: quota-aware scheduling — the statusline records the Claude rate-limit windows (schema 3); an offline aggregator and one shared pressure evaluation drive the lane gate (a Claude lane near its limit leases no NEW card), the status quota block, the --auto steering and the acquire warning; the lane backend is recorded at claim; ships OFF with unmeasured defaults
+```
+
+| AC | Status | Deciding test or command | Observed in | Observed result |
+|----|--------|--------------------------|-------------|-----------------|
+| AC-QAS-001 | PASS | `TestQAS_AC001_RecordCarriesSuppliedWindowsOnly` (`./internal/statusline`) | M1 GREEN; M6 whole package | `--- PASS` (M1); `ok  	.../internal/statusline	52.856s` (M6) |
+| AC-QAS-002 | PASS | `TestQAS_AC002_PreviousSchemaReadsAsNoWindows`, `TestQAS_AC002b_WindowlessRecordBytesMatchBaseline` | M1 GREEN; M6 whole package | `--- PASS` both (M1); package ok (M6) |
+| AC-QAS-003 | PASS | `TestQAS_AC003_ThrottleBucketHeartbeatAndWindowDrop` plus guards `TestWriteContextUsage_ThrottleSkipUnchanged`, `TestThrottleUnaffectedByModelAndEffort` | M1 GREEN; M6 whole package | `--- PASS` (M1, 25 PASS lines); package ok (M6) |
+| AC-QAS-004 | PASS | `TestQAS_AC004_ExhaustedAtStickyUntilRollover` | M1 GREEN; M6 whole package | `--- PASS` (M1); package ok (M6) |
+| AC-QAS-005 | PASS | `TestQAS_AC005_AggregateFreshestBoundariesSkewAndRollover` (13 subtests; the N5 fixture kills the minimum mutant) | M2 GREEN; M6 whole package | `--- PASS` (M2); package ok (M6) |
+| AC-QAS-006 | PASS | `TestQAS_AC006_FailOpenOnAbsentOrUnreadable` (statusline half); `TestQAS_AC006b_NextLeasesWhenQuotaDataAbsent` (cli half) | M2 GREEN, M3 GREEN; M6 regression | `--- PASS` (M2, M3); `--- PASS: TestQAS_AC006b...` (M6 regression run) |
+| AC-QAS-007 | PASS | `TestQAS_AC007_ConfigDefaultsMirrorTemplate` | M2 GREEN; M6 anchored + whole package | 9 subtests PASS, `ok .../internal/config 0.258s` (anchored), `ok ... 8.865s` (package), M6 |
+| AC-QAS-008 | PASS | `TestQAS_AC008_ClaudeLaneHeldAtThreshold`, `TestQAS_AC008b_MCPFactoryNextHeld` | M3 GREEN; M6 regression | `--- PASS` both (M3, M6) |
+| AC-QAS-009 | PASS | `TestQAS_AC009_HoldLineCarriesResetTime` | M3 GREEN; M6 regression | `--- PASS` (M3, M6) |
+| AC-QAS-010 | PASS | `TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrResetOrUnknown` (7 subtests; latch mutant observed killed) | M3 GREEN; M6 regression | `--- PASS` (M3, M6) |
+| AC-QAS-011 | PASS | `TestQAS_AC011_NonClaudeBackendsNeverHeld`, `TestQAS_AC011b_StageAndCompleteIgnoreQuotaHold` | M3 GREEN; M6 regression | `--- PASS` both (M3, M6) |
+| AC-QAS-012 | PASS | `TestQAS_AC012_StatusQuotaBlockOnlyWhenGateEnabledWithData`, `TestFactoryStatusShowsHolderModePriority` | M5 GREEN; M6 regression | `--- PASS: TestQAS_AC012...` (M5, M6); the guard PASS in the full-scrub re-run (3.80s), FAIL under the lane env (artefact) |
+| AC-QAS-013 | PASS | `go -C <tree> test -count=1 -run '^TestQAS_AC013_AcquireWarnsNeverRefuses$' ./internal/cli` | M6 GREEN, regression, final re-run | `--- PASS: TestQAS_AC013_AcquireWarnsNeverRefuses (5.86s)`; final `ok  	.../internal/cli	24.188s`; mutants (1) and (2) each FAIL it |
+| AC-QAS-014 | PASS | `TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly` in `./internal/statusline` (1 file floor) and `./internal/cli` (3 file floor) | M2, M5, M6 | `--- PASS` (M2 statusline, M5 cli) and in the M6 regression and final re-run (cli, with `integrationQuotaWarning` in a swept file) |
+| AC-QAS-015 | PASS | `git merge-base --is-ancestor c2ae5236a 976b91458` (exit 0), reverse exit 1, `rev-list --count B..I` = 2, `I..B` = 0 | M6 closure C1 | quoted in C1 |
+| AC-QAS-016 | PASS | `git diff --name-only <CARD_BASE>..HEAD -- internal/kanban internal/cli/kanban.go internal/cli/kanban_settings.go` and the five `git diff -U0` hunk lists | M4 (at f21b22b7e) and M6 closure C2 (at 6eba20def) | quoted in C2 |
+| AC-QAS-017 | PASS | `TestQAS_AC017_SharedPressureEvaluationAndSurfaces`: `shared_function_ignores_caller`, `at_92`, `acquire_requires_claude_caller`, `at_89_9`, `reset`, `unknown`, `gate_disabled`, each with `status_and_auto_surfaces` and `acquire_warning` children | M3 (function), M5 (surfaces), M6 (acquire warning) | `--- PASS: TestQAS_AC017... (6.88s)`, all 13 listed children PASS, no SKIP line (M6 GREEN) |
+| AC-QAS-018 | PASS | `TestQAS_AC018_LaneInventoryCandidates` (6 subtests; registry-read mutant observed killed) | M5 GREEN; M6 regression | `--- PASS` (M5, M6) |
+| AC-QAS-019 | PASS | `TestQAS_AC019_AutoAndStatusRecommendNonClaudeLanes` | M5 GREEN; M6 regression | `--- PASS` (M5, M6) |
+| AC-QAS-020 | PASS | `TestQAS_AC020_NoNonClaudeLaneWarnsOnly` | M5 GREEN; M6 regression | `--- PASS` (M5, M6) |
+| AC-QAS-021 | PASS | `TestQAS_AC021_SteeringChangesNothing` plus the import grep of M5 | M5 GREEN; M6 regression | `--- PASS` (M5, M6) |
+| AC-QAS-022 | PASS | `TestQAS_AC022_GateOffOrPressureOffOutputUnchanged` plus `TestTodoAutoSerialCycle`, `TestTodoAutoCreatesNoFactoryLease`, `TestTodoAutoClearGuidancePerCard` | M5 GREEN; M6 regression | `--- PASS` all four (M6 regression run) |
+| AC-QAS-023 | PASS | `TestQAS_AC023_ClaimRecordsBackend` (`./internal/kanban`, 6 subtests) and `TestQAS_AC023b_LaunchersPassTheirBackendToTheClaim` (`./internal/cli`) | M4 GREEN (kanban, cli); M6 regression (cli only) | `ok .../internal/kanban 36.205s` with 13 `pass` events (M4); `--- PASS: TestQAS_AC023b...` (M4, M6); kanban not re-run after M4 |
+
+**Gaps.** (1) `./internal/cli` and `./internal/kanban` whole-package results are not in this evidence; AC-QAS-023's kanban half was last observed at M4. (2) AC-QAS-005's SPEC text says seven subtests and names eight; thirteen are implemented (recorded at M2). (3) N5(b): no text-mode status golden exists; AC-QAS-022's text comparison compares two runs of the same binary (recorded at M5). (4) The windows build is narrowed to four packages. (5) The MX audit, the sync-audit, CHANGELOG, and docs are the sync phase's. (6) One lane-environment artefact, `TestFactoryStatusShowsHolderModePriority`, fails under the lane environment and passes in the 12-variable scrub; it was not measured on the base commit. (7) Nothing here is a real Claude Code, Codex, or quota measurement: every test drives the CLI or the writer in a fixture.
+
+**Residual risk.** See each milestone's residual-risk paragraph; the shared ones are: a mistyped `workflow.quota_gate` value reverts the whole block to the defaults (gate off); a launcher that stamps another Claude spelling is never held; rows written before M4 read as an unknown backend until relaunched; the read-only registry reader leaves `-wal`/`-shm` sidecars.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
