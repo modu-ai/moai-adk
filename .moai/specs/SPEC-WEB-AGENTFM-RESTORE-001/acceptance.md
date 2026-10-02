@@ -119,7 +119,7 @@ M2의 반전은 파일명 재사용 또는 신규 파일 둘 다 허용되므로
 
 - `grep -n "AGENTFM-RESTORE" .moai/specs/SPEC-AGENT-MODEL-INHERIT-001/spec.md` → HISTORY 신규 행 1히트 이상.
 - 동 SPEC 본문 REQ-AMI-011에 본 SPEC을 향한 예외 문단 존재, REQ-AMI-013의 축소 문구 존재.
-- 불변 확인: 동 SPEC `status: completed`·`sync_commit_sha` 미수정 (`git diff` 빈 출력).
+- 불변 확인: 동 SPEC `progress.md` §E.4의 `sync_commit_sha` 미수정 (`git diff`에 progress.md 미등장). 상태 축은 SSOT 수정 전이를 따른다 — `status: completed → in-progress` + `amendment_of` + `## Amendments`(prior_completed_sha = 기존 close의 sync_commit_sha): spec-frontmatter-schema.md § completed → in-progress (amendment)의 문서화된 표류-면제 형식 (M5b 실측 착지형 — 원래 "status 미수정" 문구는 SSOT 전이와 상충하여 재기술됨).
 - `TestJevAmendmentLinkage` 스타일 정합: 본문·HISTORY·인용 3자 분열 없음.
 
 ## 간접 검증 (indirect)
