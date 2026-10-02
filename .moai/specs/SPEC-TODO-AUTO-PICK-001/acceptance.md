@@ -19,6 +19,22 @@ these rows are history by design — each describes the pinned tree and is expec
 something else on a tree that carries the linked milestone. Row ids are `L<n>` (RED-now / context),
 `C<n>` (controls), `S<n>` (setup).
 
+**Post-audit re-pin (develop absorption; mechanical, no criterion changed).** After the plan was
+audited (audited hash `724841520`, base `4bf547bca`), develop `7109e0900` was absorbed into the card
+branch (merge `095ac6c3e`). It changed `kanban-dispatch.md`, `kanban-dispatch-detail.md`,
+`auto-semantics.md`, `moai-mcp-tools-catalogue.md` and `internal/template/catalog.yaml`, and added two
+files under `internal/kanban`. Every row whose output depends on those paths was re-measured on tree
+`b03619b29` (`b03619b29` = the card branch HEAD at the re-pin; run commits M1-M4 are above the plan),
+and every cell that named the old base
+`4bf547bca` as its reference was re-expressed against the card's **merge base with develop**:
+`CARD_BASE` is the output of `git merge-base develop HEAD`, **re-derived at reading time and never a
+pinned SHA** (`gitflow-lane-protocol.md` §8; `verification-completeness.md` §4: on rebase,
+re-measure and re-pin). The SHA written beside such a cell is what that command printed in this
+measurement, not a bound. A merge-base reading is valid before the card merges into develop only:
+after the merge the merge base is the card tip and the range is empty (so a reader reports "not
+measurable", never "no change"). Rows edited in place: L11, L12 (note), C3, L14, L21, L22; rows added:
+L48-L52; the rows re-measured and found unchanged are tabulated after L47.
+
 | Id | Command | Verbatim stdout | Exit | Why it is red |
 |---|---|---|---|---|
 | L1 | `go run ./cmd/moai factory next --card t1` | (empty stdout); the process error output reads `ERROR`, `Unknown flag: --card.`, `Try --help for usage.`, `exit status 1` | 1 | the nomination flag does not exist |
@@ -33,11 +49,11 @@ something else on a tree that carries the linked milestone. Row ids are `L<n>` (
 | L9 | `git grep -c -F "factory next --card" -- .claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/moai/workflow/auto-semantics.md .claude/skills/moai/workflows/gtd.md .claude/agents/moai/manager-todo.md .claude/skills/moai-kanban-foreman/SKILL.md` | (empty) | 1 | none of the five docs names the nominated form |
 | L10 | `git grep -c -F "ladder_path=gate-row card pick" -- .claude/rules/moai/workflow/auto-semantics.md .claude/skills/moai/workflows/gtd.md` | (empty) | 1 | no card-pick decision-record form exists |
 | C2 | `git grep -c -F "ladder_path=" -- .claude/rules/moai/workflow/auto-semantics.md` | `.claude/rules/moai/workflow/auto-semantics.md:1` | 0 | control for L10: the sibling literal is live on the same pathspec |
-| L11 | `wc -c .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `   26959 .claude/rules/moai/workflow/kanban-dispatch.md` · `   26637 internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` · `   53596 total` | 0 | baseline byte sizes the non-growth bound is measured against |
-| L12 | `git diff --no-index --numstat -- .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `1	1	{.claude => internal/template/templates/.claude}/rules/moai/workflow/kanban-dispatch.md` | 1 | baseline: exactly one differing line (the pre-existing line-177 drift) |
-| C3 | `cmp .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `.claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md differ: char 23771, line 177` | 1 | positive control: `cmp` detects the one drifting pair |
+| L11 | `wc -c .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `   28308 .claude/rules/moai/workflow/kanban-dispatch.md` · `   27986 internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` · `   56294 total` | 0 | **informational, tree `b03619b29` (re-measured after the develop absorption; `26959` / `26637` / `53596` at `4bf547bca`, +1,349 B per copy from develop's own edits)**: these are the sizes at the card's merge base too (rows L49-L50), so AC-TAU-011's bound starts from equality at arrival; the bound itself is the merge-base blob, not this number |
+| L12 | `git diff --no-index --numstat -- .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `1	1	{.claude => internal/template/templates/.claude}/rules/moai/workflow/kanban-dispatch.md` | 1 | baseline: exactly one differing line (the pre-existing live-only `moai worktree sweep …` sentence: line 177 at plan start, line 181 at `b03619b29`). **Unchanged after absorption** — re-measured at `b03619b29`, same stdout, exit 1 observed by a redirected re-run followed by `echo $?` |
+| C3 | `cmp .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `.claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md differ: char 25120, line 181` | 1 | positive control: `cmp` detects the one drifting pair (re-measured at `b03619b29`; `char 23771, line 177` at `4bf547bca` — the same one drifting sentence, moved four lines down by develop's insertions above it; L12 still reads exactly one differing line) |
 | L13 | `cmp .claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/skills/moai/workflows/gtd.md` | (empty) | 0 | baseline: identical (parity guard — green by design; AC-TAU-010) |
-| L14 | `git diff --name-only 4bf547bca -- internal/kanban internal/graph` | (empty) | 0 | baseline: no change under the two packages REQ-TAU-003 freezes (guard — green by design; AC-TAU-012) |
+| L14 | `git diff --name-only 7109e0900a060cda33269ebff071272ba64e840e -- internal/kanban internal/graph` (the SHA is `CARD_BASE`, the output of `git merge-base develop HEAD`, row L48; re-derived at reading time) | (empty) | 0 | baseline: no change by this card under the two packages REQ-TAU-003 freezes (guard — green by design; AC-TAU-012). **Re-based after the absorption**: against the old pin `4bf547bca` the same pathspec lists `internal/kanban/factory_relaunch_cmd.go` and `internal/kanban/factory_relaunch_cmd_test.go`, which arrived with develop and are not this card's changes |
 | L15 | `go run ./cmd/moai factory next --help` | `Lease the lane's next card through the factory record (lane session, parent checkout)` · `USAGE` · `moai factory next [--flags]` · `FLAGS` · `-h --help     Help for next` · `--run         Factory run id (default: the single active run)` · `--wait        Keep re-checking at a fixed interval until a card is leased or the wait bound elapses` · `--wait-bound  How long --wait re-checks before reporting no card (15m0s)` | 0 | the flag set has no `--card`; the baseline the flag-set-equality criterion compares to (AC-TAU-001) |
 | L16 | `git grep -n -F "switch to /moai:todo --auto self-service pickup" -- internal/cli/factory_messaging.go` | `internal/cli/factory_messaging.go:255:			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "fallback declared: trigger=%s card=%s at %s\nswitch to /moai:todo --auto self-service pickup (REQ-FLA-001)\n",` | 0 | the shipped fallback verb still routes a lane to the serial cycle (AC-TAU-005) |
 | L17 | `git grep -c -F "authorization is exercised through" -- internal/cli/todo.go` | (empty) | 1 | no dedicated `--auto` refusal text exists (AC-TAU-005) |
@@ -47,11 +63,11 @@ something else on a tree that carries the linked milestone. Row ids are `L<n>` (
 | C4 | `env MOAI_KANBAN_BACKEND=gpt MOAI_HOME=<S>/home CLAUDE_PROJECT_DIR=<S>/proj <S>/moai todo --auto --auto-wait 1ms` (same precondition as L18) | the same ten lines as L18 (`accept t1 …` through `unpick t1 …`) | 0 | **control, must stay green:** a non-lane session carrying only the Codex backend marker runs `--auto` today and must keep running it (AC-TAU-005 non-lane arm); a guard built on `factoryLaneRefusal()` would turn this row red |
 | L19 | `git grep -c -F "exercises the --auto authorization through" -- .claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/skills/moai/workflows/gtd.md` | (empty) | 1 | gtd.md has no lane routing sentence (AC-TAU-007) |
 | L20 | `git grep -c -F "report-only for an operator-picked card" -- .claude/rules/moai/workflow/kanban-dispatch-detail.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md` | (empty) | 1 | the detail companion has no operator-picked report-only sentence (AC-TAU-007) |
-| L21 | `git diff --numstat 4bf547bca -- .claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/moai/workflow/kanban-dispatch-detail.md .claude/rules/moai/workflow/auto-semantics.md .claude/skills/moai/workflows/gtd.md .claude/agents/moai/manager-todo.md .claude/skills/moai-kanban-foreman/SKILL.md` | (empty) | 0 | the floor of AC-TAU-013 (every named doc has at least one changed line) is not met: nothing is edited yet |
-| L22 | `wc -m .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `   26754 .claude/rules/moai/workflow/kanban-dispatch.md` · `   26433 internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` · `   53187 total` | 0 | baseline character counts (AC-TAU-011) |
+| L21 | `git diff --numstat 7109e0900a060cda33269ebff071272ba64e840e -- .claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/moai/workflow/kanban-dispatch-detail.md .claude/rules/moai/workflow/auto-semantics.md .claude/skills/moai/workflows/gtd.md .claude/agents/moai/manager-todo.md .claude/skills/moai-kanban-foreman/SKILL.md` (the SHA is `CARD_BASE`, the output of `git merge-base develop HEAD`, row L48; re-derived at reading time) | (empty) | 0 | the floor of AC-TAU-013 (every named doc has at least one changed line) is not met: nothing is edited yet by this card. **Re-based after the absorption**: against the old pin `4bf547bca` the same command prints three lines (`38 8 auto-semantics.md`, `20 0 kanban-dispatch-detail.md`, `5 1 kanban-dispatch.md`) that are develop's own edits, which would read as a partly green floor for the wrong reason |
+| L22 | `wc -m .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `   28099 .claude/rules/moai/workflow/kanban-dispatch.md` · `   27778 internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` · `   55877 total` | 0 | **informational, tree `b03619b29` (re-measured after the develop absorption; `26754` / `26433` / `53187` at `4bf547bca`)**: equal to the merge-base blob's character counts (rows L51-L52); AC-TAU-011's bound is that blob, not this number |
 | L23 | `git grep -c -F "consumption of the queue and nothing else" -- internal/template/templates/.codex/agents/moai/manager-todo.toml` | `internal/template/templates/.codex/agents/moai/manager-todo.toml:1` | 0 | the **generated** Codex artifact carries the old serial-only sentence (AC-TAU-007, -010) |
 | L24 | `git grep -c -F "process cards in queue order" -- internal/template/templates/.codex/agents/moai/manager-todo.toml` | `internal/template/templates/.codex/agents/moai/manager-todo.toml:1` | 0 | and the old queue-order mission sentence |
-| L25 | `git grep -c -F "authorizes serial queue consumption and nothing else" -- .claude/rules/moai/workflow/auto-semantics.md internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md` | `.claude/rules/moai/workflow/auto-semantics.md:1` · `internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md:1` | 0 | the second place the old authority is stated (§9.2, line 186), which the L5 literal does not find (AC-TAU-007) |
+| L25 | `git grep -c -F "authorizes serial queue consumption and nothing else" -- .claude/rules/moai/workflow/auto-semantics.md internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md` | `.claude/rules/moai/workflow/auto-semantics.md:1` · `internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md:1` | 0 | the second place the old authority is stated (§9.2: line 186 at plan start, line 216 at `b03619b29` after the develop absorption — the cell prints counts, not line numbers, so its output is unchanged), which the L5 literal does not find (AC-TAU-007) |
 | L26 | `git grep -c -F "factoryNominateBeforeRecord" -- internal/cli` | (empty) | 1 | the M1 seam does not exist (AC-TAU-014); **this cell flips at M1** (the seam declaration), while the criterion's green path is M2 (S8) |
 | C5 | `git grep -c -F "factoryCardNow" -- internal/cli/factory_card.go` | `internal/cli/factory_card.go:15` | 0 | control for L26: the seam style the plan names exists, so L26's empty output is a measured absence |
 | L27 | `git grep -c -F "TestFactoryNextBareUnchanged" -- internal/cli` | (empty) | 1 | the golden does not exist (AC-TAU-006) |
@@ -75,6 +91,34 @@ something else on a tree that carries the linked milestone. Row ids are `L<n>` (
 | L45 | `git grep -c -F "TestTodoNonLaneGPTSessionNotRefused" -- internal/cli` | (empty) | 1 | AC-TAU-005 (a guard: GREEN on the tree once written, see AC-TAU-005) |
 | L46 | `git grep -c -F "TestFactoryFallbackDeclarePrintsLeasePath" -- internal/cli` | (empty) | 1 | AC-TAU-005 |
 | L47 | `git grep -c -F "TestAutoPickMirrorParity" -- internal/cli` | (empty) | 1 | AC-TAU-007 |
+| L48 | `git merge-base develop HEAD` | `7109e0900a060cda33269ebff071272ba64e840e` | 0 | `CARD_BASE` at the re-pin (measured at `b03619b29`); the reference every relative bound below is read against; **re-derived at reading time, never pinned** |
+| L49 | `git cat-file -s 7109e0900a060cda33269ebff071272ba64e840e:.claude/rules/moai/workflow/kanban-dispatch.md` | `28308` | 0 | AC-TAU-011 bound, live copy, bytes: the size of the merge-base blob (the SHA is row L48's output) |
+| L50 | `git cat-file -s 7109e0900a060cda33269ebff071272ba64e840e:internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `27986` | 0 | AC-TAU-011 bound, mirror copy, bytes |
+| L51 | `git show 7109e0900a060cda33269ebff071272ba64e840e:.claude/rules/moai/workflow/kanban-dispatch.md \| wc -m` | `   28099` | 0 | AC-TAU-011 bound, live copy, characters (the two-step form: the SHA from L48, then the blob piped to `wc -m`; the exit is the pipeline's last command, `wc`) |
+| L52 | `git show 7109e0900a060cda33269ebff071272ba64e840e:internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md \| wc -m` | `   27778` | 0 | AC-TAU-011 bound, mirror copy, characters |
+
+**Rows re-measured after the develop absorption and found unchanged** (tree `b03619b29`, each run
+for real with its exit code read from an `echo` after the command; the printed stdout is identical to
+the row's recorded stdout unless a note says otherwise): **unchanged after absorption (re-measured at
+`b03619b29`)**
+
+| Row | Exit now | Note |
+|---|---|---|
+| L5, L6, L7, L8 | 0, 0, 0, 0 | the old-authority sentences are still present on every surface listed in each row, one hit per file (the same counts as recorded) |
+| L9, L10, L19, L20 | 1, 1, 1, 1 | still empty: none of the new wording exists yet (M5 has not run) |
+| C2 | 0 | `.claude/rules/moai/workflow/auto-semantics.md:1` |
+| L13 | 0 | the two `gtd.md` copies are still byte-identical; the other five pairs of AC-TAU-010 (`kanban-dispatch-detail.md`, `auto-semantics.md`, `moai-mcp-tools-catalogue.md`, `manager-todo.md`, `moai-kanban-foreman/SKILL.md`) were also `cmp`-ed now and read exit 0 each |
+| L23, L24 | 0, 0 | the generated Codex artifact still carries both old sentences, one hit each |
+| L25 | 0 | both `auto-semantics.md` copies still carry the §9.2 sentence, one hit each (line 216 now, line 186 at plan start) |
+| G6 | 0 | `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/template -run '^(TestManifestHashFormat\|TestCatalogHashCoversSkillSubfiles)$' -count=1 -v` → `--- PASS: TestCatalogHashCoversSkillSubfiles (0.04s)`, `audited 37 directory entries for whole-tree hash coverage`, `--- PASS: TestManifestHashFormat (0.04s)`, `audited 49 catalog entries for hash validity`, `ok …/internal/template 0.457s` — the same swept counts as the plan-time baseline; develop changed 8 stored `hash:` lines (the `moai` skill's moved from `ae8aa96c…` to `354d897b…`) and kept the guards green |
+
+Not re-executed here, and why (each is history by design — it describes the pre-run tree and was
+flipped by this card's own M1-M4 commits, or measures a surface develop did not touch): L1-L4, C1,
+L15-L18, C4, L26-L47, C5 (the run phase's `progress.md` §E.2 records the later measurements), S1-S2,
+G1-G5 and G7-G8 (pinned to their own trees; G7's verbatim stored-hash values for the `moai` skill
+are history of tree `f9f66e27120b7af16251fc67bafedac5465f08ba` — the stored `moai-kanban-foreman`
+and `manager-todo` hashes it quotes are still the current stored values, and the property it witnesses,
+that an unregenerated edit turns both guards red, is mechanism and not a value).
 
 Rows G6-G8 were measured in the iteration-3 repair on `625f01718`
 (`625f017181a57a60b8f1e7f52b10e1b66a018dfd`, tree `f9f66e27120b7af16251fc67bafedac5465f08ba`).
@@ -448,7 +492,9 @@ today (L13) and the drift is exactly one line (L12).
 **Then** `kanban-dispatch-detail.md`, `auto-semantics.md`, `gtd.md`, `manager-todo.md`,
 `moai-kanban-foreman/SKILL.md` and `moai-mcp-tools-catalogue.md` are byte-identical (`cmp` exit 0),
 and `kanban-dispatch.md` differs by exactly the one line it differed by before
-(`git diff --no-index --numstat` reads `1	1`, and the differing line is still line 177).
+(`git diff --no-index --numstat` reads `1	1`, and the differing line is still the live-only `moai worktree sweep …` sentence — identified by its
+text and located by `cmp`'s reported line, which was 177 at plan start and is 181 at `b03619b29`
+after the develop absorption; read the line from `cmp` at reading time, never from this sentence).
 
 **Given** the edited template `manager-todo.md` and the **generated** Codex artifact
 `internal/template/templates/.codex/agents/moai/manager-todo.toml`
@@ -485,7 +531,7 @@ lines report the entry counts), and the catalog diff is exactly the three `hash:
   the committed tree with `catalog.yaml` regenerated (M5 step 5, re-measured at M6). The run phase's
   own seeded probe (plan M5 step 2) records the red once more against the real edits.
 - **Mutant probe:** (MU-12) an edit applied to the live copy only fails `cmp`; (MU-16) an edit that
-  syncs line 177 either way changes the numstat to `0 0` or `2 2`; (MU-43) template artifacts edited
+  syncs the line-177 (now line-181) sentence either way changes the numstat to `0 0` or `2 2`; (MU-43) template artifacts edited
   and the Codex TOML regenerated but `catalog.yaml` left stale fails both catalog guards (G7).
 
 ## AC-TAU-011 — The always-loaded stub does not grow, in bytes or characters (REQ-TAU-016)
@@ -494,17 +540,33 @@ lines report the entry counts), and the catalog diff is exactly the three `hash:
 
 Release-blocking; **conjunctive** so it is not vacuous.
 
-**Given** the pinned baselines — bytes live 26,959 / mirror 26,637 (L11), characters live 26,754 /
-mirror 26,433 (L22)
-**When** both copies of `kanban-dispatch.md` are measured after the edit
+**Given** the bound of each copy of `kanban-dispatch.md` — the blob of that file at the card's merge
+base with develop, `CARD_BASE` (the output of `git merge-base develop HEAD`), **re-derived at reading
+time and never pinned**: its byte size and its character count (rows L48-L52)
+**When** both working copies are measured after the edit: `wc -c` and `wc -m` of each file, against
+the merge-base blob's size, read in two steps — first `git merge-base develop HEAD` prints a SHA, then
+`git cat-file -s <that-sha>:<path>` (bytes) and `git show <that-sha>:<path>` piped to `wc -m`
+(characters)
 **Then** (a) the old sentence `consumption of the queue and nothing else` is absent from both (the
-L5 form), **and** (b) `wc -c` of each copy is ≤ its byte baseline **and** `wc -m` of each copy is
-≤ its character baseline.
+L5 form), **and** (b) `wc -c` of each working copy is ≤ the byte size of its merge-base blob **and**
+`wc -m` of each working copy is ≤ the character count of its merge-base blob.
 
-- **RED-now:** L5 (conjunct a is red). Conjunct b is green today by construction (growth 0 ≤ 0);
-  the right reason for the red is conjunct a.
-- **Green path:** M5 — L5 empty for the two files, and the `wc` commands read ≤ the baselines. The
-  reproducible feasibility draft (plan §3) reads −12 B and −16 chars.
+The criterion's intent is unchanged: this card does not grow the always-loaded stub. Only the
+reference moved: develop's own +1,349 B per copy (its edits to this file, numstat `5 1` against the
+old pin, absorbed after the plan audit) is not this card's growth and cannot be removed by this card's edit, so
+a fixed byte figure taken before the absorption would have been unsatisfiable. For information only,
+at HEAD `b03619b29` (not a bound): live 28,308 B / 28,099 chars, mirror 27,986 B / 27,778 chars (rows
+L11, L22). **Before the first M5 edit the two sides are equal by construction**, so conjunct (b) is
+green at arrival and the RED cell stays conjunct (a), the old sentence still present (L5). The
+relative reading is valid before the card merges into develop; after the merge the merge base is the
+card tip and (b) is vacuous, so a reader then reports "not measurable" rather than a pass.
+
+- **RED-now:** L5 (conjunct a is red). Conjunct b is green today by construction (growth 0 ≤ 0,
+  now measured against the merge-base blob: L49-L52 equal L11 and L22); the right reason for the red
+  is conjunct a.
+- **Green path:** M5 — L5 empty for the two files, and the working-copy `wc` readings are ≤ the
+  merge-base blob's. The reproducible feasibility draft (plan §3) reads −12 B and −16 chars; the
+  three replaced paragraphs it measures are unchanged by the develop absorption.
 - **Mutant probe:** (MU-17) an append-only edit that replaces the sentence but adds paragraphs
   without trimming satisfies (a) and fails (b); (MU-29) an edit that trades multi-byte punctuation
   for ASCII passes the byte bound and fails the character bound.
@@ -540,13 +602,14 @@ Release-blocking; a floor and a ceiling, so a reflow fails and an empty edit fai
 **Given** the merge-base `CARD_BASE=$(git merge-base develop HEAD)` taken at read time
 **When** `git diff --numstat "$CARD_BASE"..HEAD -- <path>` is read for each live file and its mirror
 **Then** each file has at least one added line (the floor) and no more than its cap (the ceiling),
-and the pre-existing line 177 of `kanban-dispatch.md` is untouched:
+and the pre-existing live-only sentence of `kanban-dispatch.md` (line 177 at plan start, line 181 at
+`b03619b29`) is untouched:
 
 | File (each copy) | max added | max deleted |
 |---|---|---|
 | `kanban-dispatch.md` | 3 | 3 (the three single-line paragraphs L29, L31, L33) |
 | `kanban-dispatch-detail.md` | 12 | 0 |
-| `auto-semantics.md` | 45 | 2 (the card-pick row L169 and the §9.2 sentence L186; method: a scratch draft of §9.3 is 27 lines, plus one added line for each of the two replaced single-line paragraphs, plus roughly half again for rewording — `plan.md` §3) |
+| `auto-semantics.md` | 45 | 2 (the card-pick row — L169 at plan start, L199 at `b03619b29` — and the §9.2 sentence — L186 at plan start, L216 at `b03619b29`; method: a scratch draft of §9.3 is 27 lines, plus one added line for each of the two replaced single-line paragraphs, plus roughly half again for rewording — `plan.md` §3. **Cap re-checked after the develop absorption and kept:** the two replaced lines are text-identical to the pinned ones (rows L25 and the `auto-semantics.md` rows of the re-measure table) and develop's own hunks in this file — which sit at other lines — fall outside this card's range because the range starts at `CARD_BASE`; the 27-line draft is new text and does not depend on the base. The scratch draft itself was not committed and is not re-run here; the binding measurement is the committed edit's numstat at M5/M6) |
 | `gtd.md` | 80 | 24 (the `--auto` clause paragraph, L334-L357, may be re-wrapped) |
 | `manager-todo.md` | 12 | 12 (the two regions L22-L25 and L33-L42) |
 | `.codex/agents/moai/manager-todo.toml` (template tree only, generated) | 12 | 12 (the same bound as `manager-todo.md`, whose body it emits; checked on the committed diff, produced only by `make agents-emit`) |
@@ -559,8 +622,27 @@ lines in `kanban-dispatch.md`); exceeding one needs a recorded reason in the com
 delta re-audit's agreement, not a silent raise. The numstat of the mirror pair must equal the live
 file's.
 
-- **RED-now:** L21 — `git diff --numstat 4bf547bca -- <the six live docs>` is empty (exit 0): the
-  floor is not met because nothing is edited yet. Red for the right reason.
+**Caps after the develop absorption (re-read at `b03619b29`; no cap changed, none invented).** The
+caps are derived from the regions this card replaces, and those regions are untouched by develop:
+the `kanban-dispatch.md` paragraphs L29, L31 and L33 are at the same line numbers with the same text
+(develop's hunks there sit at lines 96-118), so the `3 / 3` cap and the `-12 B / -16 chars` feasibility
+draft of `plan.md` §3 still describe the same three lines; the `auto-semantics.md` caps are stated
+above; `gtd.md`, `manager-todo.md` and the foreman skill are not among the files develop changed, so
+their line ranges (L334-L357, L22-L25 and L33-L42, L61-L70) are unchanged; the `kanban-dispatch-detail.md`
+section that takes the one added paragraph (`The pre-dispatch cross-check`) still exists; the
+`moai-mcp-tools-catalogue.md` `factory_next` row is still one line (line 182); and the
+`catalog.yaml` cap `3 3` rests on the generator rewriting exactly the hash lines of artifacts that
+changed — its premise (every stored hash current before the edit) was re-measured as row G6 above.
+Two things were **not** re-run, and the cap for each is read at M5 from the committed edit instead of
+claimed now: the scratch drafts of §9.3 and of the three `kanban-dispatch.md` paragraphs (not
+committed, not reproducible by a stranger), and the G8 generator experiment (it perturbs three
+tracked template files, outside this task's edit scope).
+
+- **RED-now:** L21 — `git diff --numstat <CARD_BASE> -- <the six live docs>` (`CARD_BASE` = the
+  output of `git merge-base develop HEAD`, re-derived at reading time; `7109e0900…` at the re-pin) is
+  empty (exit 0): the floor is not met because this card has edited none of them yet. Red for the
+  right reason (re-based from the old pin `4bf547bca`, where develop's own edits made the cell
+  non-empty).
 - **Green path:** M5 — every file's numstat is within [1, cap]; the M6 measurement records it.
 - **Mutant probe:** (MU-30) reflowing or reordering the whole of `kanban-dispatch.md` while keeping
   the literals and shedding bytes elsewhere satisfies AC-TAU-007 and AC-TAU-011 and fails the
@@ -668,7 +750,7 @@ the serial slot against other serial cards until it is re-adopted (spec §G).
 | MU-32..MU-35 promote before validate; over-eager rollback; quota and Codex ignored | REQ-TAU-004/-005 | AC-TAU-014 |
 | MU-37/MU-38/MU-42 `recorded` row leased; compensation overwrites an operator change; foreign-worktree not prechecked | REQ-TAU-005/-009 | AC-TAU-014 |
 | MU-39 hand-edited or stale generated Codex artifact | REQ-TAU-014/-015 | AC-TAU-010 (`TestGoldenCommittedArtifactsMatchEmission`), AC-TAU-007 (L23/L24 form) |
-| MU-40 the §9.2 L186 sentence left in `auto-semantics.md` | REQ-TAU-014 | AC-TAU-007 (L25 form) |
+| MU-40 the §9.2 sentence (L186 at plan start, L216 now) left in `auto-semantics.md` | REQ-TAU-014 | AC-TAU-007 (L25 form) |
 | MU-41 marker predicate that does not trim leading whitespace | REQ-TAU-009 | AC-TAU-004 |
 | MU-43 template artifacts edited and the Codex TOML regenerated but `catalog.yaml` left stale | REQ-TAU-015 | AC-TAU-010 (`TestManifestHashFormat`, `TestCatalogHashCoversSkillSubfiles`; red observed, G7) |
 
@@ -721,7 +803,7 @@ Counts: 47 mutants named in all (MU-1..MU-48 with MU-36 unused) — 42 caught by
 3. The commit graph shows the baseline measurements (the plan commits) before any run commit.
 4. The always-loaded byte and character measurement and the non-invoking-cost statement are in the
    M5 commit body.
-5. The completion report names the preserved line-177 drift, the two deliberate deltas (D-DEF,
+5. The completion report names the preserved live-only-sentence drift (line 177 at plan start, line 181 after the develop absorption), the two deliberate deltas (D-DEF,
    D-LANE) and the unresolved residual risks (spec §G).
 6. **Handoff note** (the sentence is identical in spec §B.3, REQ-TAU-011, spec §G, plan §7 and
    here). **Today t810 (`picked`), t1294 and t1383 (`queued`, ordinary text) carry neither the

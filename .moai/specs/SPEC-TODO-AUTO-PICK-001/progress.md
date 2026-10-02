@@ -80,6 +80,21 @@ Plan-phase notes (what a reader of this record needs, nothing populated for late
   `{acceptance.md, design.md, plan.md, research.md, spec.md, tasks.md}`
   (`.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence), so this append does not
   invalidate the verdict.
+- **Post-audit re-pin (develop absorption) — mechanical, no re-audit run, leader to be told.**
+  After the iteration-4 verdict (audited hash `724841520`) develop `7109e0900` was absorbed (merge
+  `095ac6c3e`) and changed files the SPEC cites. Re-pinned, at tree `b03619b29`: AC-TAU-011 now measures
+  the always-loaded `kanban-dispatch.md` relative to the blob at `git merge-base develop HEAD`
+  (re-derived at reading time, never pinned) instead of the fixed 26,959 / 26,637 B and 26,754 / 26,433
+  chars that develop's own +1,349 B per copy made unsatisfiable; cells L14 and L21 re-based to the
+  merge base; L11, L22, C3 re-measured (28,308 / 27,986 B, 28,099 / 27,778 chars, `differ: char 25120,
+  line 181`); line numbers moved by develop's insertions given with their text (the live-only
+  sentence 177 → 181; `auto-semantics.md` L169 → L199, L186 → L216); new ledger rows L48-L52;
+  unchanged rows tabulated with their exit codes. **Semantics unchanged:** REQ 16, AC 14, no criterion
+  changed meaning, `status:` untouched, `spec.md` `version` 0.4.1. Plan artifacts differ from the
+  audited hash only by this mechanical re-pin: `spec.md`, `plan.md`, `acceptance.md`,
+  `spec-compact.md` (plus `spec.md`'s run-phase `status:` transition, recorded in §E.2); resolution
+  map: `plan.md` § 10 "Post-audit re-pin". No re-audit was run; the leader decides whether the
+  re-pinned artifacts need one before M5.
 
 ### Plan->run Kickoff record (autonomous form, `auto-semantics.md` §9.1)
 
