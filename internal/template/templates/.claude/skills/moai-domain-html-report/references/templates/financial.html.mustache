@@ -349,6 +349,64 @@
       }
     }
   </style>
+  <!-- artifact:begin =====================================================
+       Claude Artifact delivery (report.format=artifact) — publication-contract
+       additions. When this report is published as a Claude Artifact: replace
+       the font <link> set above with the Google-Fonts set below (the non-Google
+       stylesheet host used by the html-file format never ships in an artifact),
+       include the dark-mode + mobile sheet as part of the document's styles,
+       emit structural diagrams as pre.mermaid code blocks (the artifact viewer
+       pre-renders them — no external mermaid <script>), and publish with a
+       2-4-word <title> plus a one-sentence description. Full contract:
+       references/artifact-contract.md.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    /* artifact font tokens — Korean type loads from Google Fonts only */
+    :root {
+      --sans:  "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      --serif: "Noto Sans KR", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    /* artifact dark mode — dual blocks: the media query follows the OS
+       preference unless the page opts out; the attribute block is the
+       explicit toggle. body keeps an explicit background in both schemes. */
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --ivory: #17150F; --paper: #201E19; --slate: #F0EEE6;
+        --clay: #E08B6D; --clay-d: #EC9F82; --oat: #2E2B24; --olive: #97A87B;
+        --g100: #26241E; --g300: #3D3B33; --g500: #87867F; --g700: #C4C2B8;
+      }
+      :root:not([data-theme="light"]) body {
+        background: var(--ivory);
+        color: var(--slate);
+      }
+    }
+    :root[data-theme="dark"] {
+      --ivory: #17150F; --paper: #201E19; --slate: #F0EEE6;
+      --clay: #E08B6D; --clay-d: #EC9F82; --oat: #2E2B24; --olive: #97A87B;
+      --g100: #26241E; --g300: #3D3B33; --g500: #87867F; --g700: #C4C2B8;
+    }
+    :root[data-theme="dark"] body {
+      background: var(--ivory);
+      color: var(--slate);
+    }
+
+    /* artifact mobile layout — phone width, 16px side gutter, no horizontal
+       page scroll (wide pre/table scroll within their own box instead) */
+    @media (max-width: 640px) {
+      body { padding: 24px 16px 96px; }
+      pre, table, img, svg { max-width: 100%; }
+      pre { overflow-x: auto; }
+    }
+
+    /* artifact mermaid policy — diagrams ship as pre.mermaid code blocks;
+       the viewer pre-renders them. No external mermaid <script> in an artifact. */
+  </style>
+  <!-- artifact:end ======================================================= -->
 </head>
 <body>
   <div class="page">

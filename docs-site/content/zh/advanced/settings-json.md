@@ -240,7 +240,7 @@ Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示�
 | `"bypassPermissions"` | 自动允许所有权限（危险，可用 `disableBypassPermissionsMode` 拦截） |
 
 {{< callout type="info" >}}
-**默认值**：MoAI-ADK 模板使用 `"defaultMode": "acceptEdits"`。这在开发流程中减少文件编辑提示的同时，危险命令仍会请求确认，取得平衡。
+**默认值**：MoAI-ADK 模板不固定 `defaultMode`。取而代之，`moai profile` 向导中选择的权限模式会记录到 `.claude/settings.local.json` 的 `defaultMode`，`moai cc`、`moai glm` 启动时也会通过 `--permission-mode` 标志传递。若任何位置都未指定，则适用 Claude Code 的内置默认值。若想减少文件编辑确认的同时保留危险命令的确认，请在向导中选择 `"acceptEdits"`。
 {{< /callout >}}
 
 ### allow（自动允许）

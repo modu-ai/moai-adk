@@ -349,6 +349,7 @@ secret-*.*
 # ===========================================
 .moai/harness/observations.yaml
 .moai/harness/usage-log.jsonl
+.moai/harness/usage-log.jsonl.prune-state
 .moai/harness/learning-history/
 .moai/harness/proposals/
 

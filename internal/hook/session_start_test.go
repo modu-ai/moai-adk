@@ -16,6 +16,11 @@ import (
 // testFixedNow is a stable reference time for staleness tests.
 var testFixedNow = time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC)
 
+// Model-id expectations follow SPEC-MODEL-MATRIX-UPDATE-001 DR-2: the built-in
+// glmContextWindows table dropped the seven retired ids (glm-5.2,
+// glm-4.5-air, …), so a retired id now resolves to 0 and both hooks leave the
+// env keys unset; llm.yaml glm.context_windows is the override path for any
+// custom id.
 func TestMaybeSet1MAutoCompactWindow(t *testing.T) {
 	t.Parallel()
 

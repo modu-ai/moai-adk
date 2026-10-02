@@ -9,6 +9,18 @@ package cli
 // repositories (no git seams swapped, so every git call below actually
 // executes), per the card's first-judgment rule: the guard must be OBSERVED
 // on a committed-unpushed tree, not only read in the source.
+//
+// SUPERSEDED COVERAGE NOTE (SPEC-WEB-SETTINGS-SAVE-001 scope ③): the former
+// TestCleanupSessionWorktree_PushedBranchStillRemovable control asserted the
+// t673-era premise that pushed alone makes a clean tree removable. REQ-WSS-306
+// reverses that premise — a push alone does not satisfy the landing
+// confirmation (RED observed when the landing guard landed: the test's tree
+// was preserved, its assertion expected removal). The scenario coverage moved
+// to session_worktree_landing_test.go: the pushed-unmerged preservation is
+// TestCleanupSessionWorktree_PushedUnmergedPreserved, the main-only-repo
+// fail-open shape is TestCleanupSessionWorktree_MissingIntegrationRefPreserved,
+// and the no-freeze control it carried lives on as
+// TestCleanupSessionWorktree_MergedIntoDevelopRemoved.
 
 import (
 	"bytes"
@@ -122,51 +134,11 @@ func TestCleanupSessionWorktree_DetachedHeadPreserved(t *testing.T) {
 	}
 }
 
-// TestCleanupSessionWorktree_PushedBranchStillRemovable is the no-regression
-// control: a worktree whose branch tracks an upstream that is up to date (and
-// a clean tree) is still removed — the new guard must not freeze every tree.
-func TestCleanupSessionWorktree_PushedBranchStillRemovable(t *testing.T) {
-	// Build the repo with a bare remote so the branch CAN be pushed.
-	git := func(args ...string) {
-		cmd := exec.Command("git", args...)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("git %v: %v\n%s", args, err, out)
-		}
-	}
-	tmp := canonicalTempDir(t)
-	repoDir := filepath.Join(tmp, "repo")
-	remoteDir := filepath.Join(tmp, "origin.git")
-	if err := os.MkdirAll(repoDir, 0o755); err != nil {
-		t.Fatalf("mkdir repo: %v", err)
-	}
-	git("init", "-q", "-b", "main", repoDir)
-	git("-C", repoDir, "config", "user.email", "t@example.com")
-	git("-C", repoDir, "config", "user.name", "t")
-	if err := os.WriteFile(filepath.Join(repoDir, "base.txt"), []byte("base\n"), 0o644); err != nil {
-		t.Fatalf("write base: %v", err)
-	}
-	git("-C", repoDir, "add", ".")
-	git("-C", repoDir, "commit", "-qm", "base")
-	git("init", "-q", "--bare", remoteDir)
-	git("-C", repoDir, "remote", "add", "origin", remoteDir)
-	git("-C", repoDir, "push", "-q", "origin", "main")
-
-	wtPath := filepath.Join(tmp, "wt")
-	git("-C", repoDir, "worktree", "add", "-q", "-b", "WT-pushed02-fix", wtPath)
-	git("-C", wtPath, "push", "-q", "-u", "origin", "WT-pushed02-fix")
-	chdirTemp(t, repoDir)
-
-	var out bytes.Buffer
-	cleanupSessionWorktree(worktreeCfg(true), wtPath, true, &out)
-
-	if _, err := os.Stat(wtPath); err == nil {
-		t.Fatalf("pushed clean worktree should have been removed; notice: %s", out.String())
-	}
-	if !strings.Contains(out.String(), SessionExitCleanupNoticePrefix) {
-		t.Fatalf("expected removal notice with prefix %q, got %q", SessionExitCleanupNoticePrefix, out.String())
-	}
-}
+// TestCleanupSessionWorktree_PushedBranchStillRemovable — REMOVED with the
+// SPEC-WEB-SETTINGS-SAVE-001 scope-③ landing guard: see the SUPERSEDED
+// COVERAGE NOTE in the file header. The guard landed, its RED was observed
+// (pushed-but-unmerged now preserves, per REQ-WSS-306), and the scenario is
+// re-covered in session_worktree_landing_test.go under the new contract.
 
 // TestPRMergeCleanup_GhMergedWithUnpushedCommitsPreserved closes the second
 // hole the card names: gh answers MERGED, but the branch gained commits after
