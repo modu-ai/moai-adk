@@ -736,6 +736,199 @@ $ gofmt -l <the 19 files of commit 1>          -> no output
 - `plan.md` M2 says the `-f <N>` message is only reworded. The constant `factoryFlagUsageError` is also read by the Codex parse (`codex_factory.go:97`), so the Codex `-f <value>` usage line now carries the new text too; M3 owns the Codex refusal line.
 - `plan.md` §B.4 lists `session_stale_run.go`, `session_start_factory*.go` and `factory_card.go` as prints to update: none was changed here (M4).
 
+### M3 evidence
+
+Recorded by the run-phase implementation worker (cycle_type tdd) for milestone M3 of card t1399 (the Codex launcher entry), on the branch `WT-launcher-entry-flags`. Start state, re-read before any change: `git rev-parse --short HEAD` printed `c0e8ce07e`, `git branch --show-current` printed `WT-launcher-entry-flags`, `git status --short` printed nothing. Every output block is the verbatim output of a command run in this run on this tree; excerpts say what they drop. Full outputs of the larger runs were kept in the session scratchpad (outside the tree).
+
+#### Claim
+
+- `moai codex -l` / `--lane` is the trigger of the supervising relaunch lane that `-f lane` started; every `-f` shape on `moai codex` is refused with the new one line (`FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex has no -f entry; the lane entry is 'moai codex -l'; use 'moai cc -f' or 'moai glm -f' for the factory leader`); `-l`/`--lane` refuses an argument, a second entry token, and an operator `--name`; `--leader` composes with the lane entry only; the Codex leader stays refused; `leadFlagShort` is deleted; the Codex usage line and help text name `-l`.
+- Production files changed (all `internal/cli`): `codex_launcher.go` (classification `codexFactoryEntryClassify` rewritten, refusal constants, usage and help text, comments), `codex_factory.go` (the Codex parse now consumes `-l`/`--lane`, `--leader` and `--factory-run`; the `-f` arms, the `-l` short of `--leader` and `codexHeadTokenIsVerb` — orphaned by that change, its only reader was the `-f` value arm — are gone), `factory.go` (`leadFlagShort` deleted; two comments). Test files: new `lane_entry_m3_test.go`; codex rows added to `lane_entry_m2_test.go`; `factory_net_m1_test.go` (`netCodexLaneChildFor`, codex lane row re-pinned from `-f lane` to `-l`), `factory_m4_test.go`, `factory_m5_test.go`, `factory_m7_test.go`, `factory_join_discovery_test.go`, `codex_factory_retire_test.go`, `lane_entry_golden_m1_test.go`, `codex_debug_composition_test.go` (comment) re-pinned.
+- Commits: `69588367a` (grammar, refusals, tests, net re-pin; build, vet and the net green at that commit), `1c3ab47ef` (a comment-only test edit), then this progress record.
+
+#### Evidence
+
+First act, the codex rows of RED-13 and RED-14 on this tree (`go run .moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe/entry_probe.go -root .`, env unset in the same invocation, runner exit 0; the cc rows of the same output are M2's and are dropped here; where a row repeats the generic usage line it is abbreviated "(same usage line)" in this record only):
+
+```text
+CODEX args=["--lane"] err= exitCode=1 stderr="unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app\n" stdoutLen=0
+CODEX args=["--lane" "lane-2"] err= exitCode=1 stderr=(same usage line) stdoutLen=0
+CODEX args=["--lane=lane-2"] err= exitCode=1 stderr=(same usage line) stdoutLen=0
+CODEX args=["--lane" "3"] err= exitCode=1 stderr=(same usage line) stdoutLen=0
+CODEX args=["--lane" "leader-2"] err= exitCode=1 stderr=(same usage line) stdoutLen=0
+CODEX args=["--lane" "-f"] err= exitCode=1 stderr="FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader\n" stdoutLen=0
+CODEX args=["--lane" "-k"] err= exitCode=1 stderr="KANBAN_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead\n" stdoutLen=0
+CODEX args=["--lane" "--name" "lane-2"] err= exitCode=1 stderr=(same usage line) stdoutLen=0
+CODEX args=["-f" "-l"] err= exitCode=1 stderr="FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader\n" stdoutLen=0
+CODEX args=["--leader" "leader-2"] err=--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target exitCode=-1 stderr="" stdoutLen=0
+CODEX args=["-f" "--leader" "leader-2"] err= exitCode=1 stderr="FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader\n" stdoutLen=0
+--- PASS: TestZZT1399EntryProbe (0.81s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.215s
+exit 0
+```
+
+Read: on codex the `--lane` shapes die on the generic usage line, `--lane -f` and `-f -l` on the removed-form `-f lane` line, `--lane -k` on the kanban line, `--leader` without a lane entry returns the removed-form `-f lane / -f lane-<n>` error, and `-f --leader` the removed-form `-f lane` line — the RED-13 and RED-14 codex rows, red for the stated reason (none names `-l` as taking no argument or the lane entry).
+
+RED of the new and re-pinned tests, written first and run before any production change (`go test ./internal/cli -run '^(TestCodexLaneEntryStartsRelaunchLane|TestCodexFactoryFlagRefusals|TestLaneEntryRefusals|TestLaneEntryEnvParity|TestLeaderSelectorRefusedWithoutLaneEntry|TestCodexFactoryEntryParsingUsesLaneOnly|TestCodexFactoryLegacyEntryIsRefused|TestSD_AC004_CodexOtherFactoryShapesRefused|TestCodexFactoryLeadFlagSurface|TestSD_AC021_LegacySpellingsRefused)$' -v -count=1`, env unset in the same invocation, exit 1): ten parent tests FAIL and 23 subtests FAIL (1 + 15 + 2 + 5), 0 SKIP. Top-level lines, the failing subtest set summarised, then a selection of assertion lines (long lines shortened with "..."):
+
+```text
+--- FAIL: TestCodexFactoryLegacyEntryIsRefused (0.00s)
+--- FAIL: TestCodexFactoryEntryParsingUsesLaneOnly (0.00s)
+--- FAIL: TestCodexFactoryLeadFlagSurface (0.00s)
+--- FAIL: TestSD_AC004_CodexOtherFactoryShapesRefused (0.35s)
+--- FAIL: TestSD_AC021_LegacySpellingsRefused (0.02s)
+--- FAIL: TestLaneEntryRefusals (67.13s)
+--- FAIL: TestLaneEntryEnvParity (7.75s)
+--- FAIL: TestLeaderSelectorRefusedWithoutLaneEntry (14.31s)
+--- FAIL: TestCodexLaneEntryStartsRelaunchLane (0.81s)
+--- FAIL: TestCodexFactoryFlagRefusals (10.88s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	102.516s
+(failing subtests: TestSD_AC021_LegacySpellingsRefused/moai_codex; TestLaneEntryRefusals/codex_* all 15; TestLeaderSelectorRefusedWithoutLaneEntry/codex_* both; TestCodexFactoryFlagRefusals/* all 5)
+    codex_factory_retire_test.go:167: parse ["-l" "cli"]: rest=[] entry={Enabled:false ... Lead:cli ...} err=--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target
+    factory_m5_test.go:210: the refusal line does not name "moai codex -l": "FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader"
+    factory_m5_test.go:214: the refusal line names the removed form "-f lane": "FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only ..."
+    factory_m5_test.go:218: shape [-f lane]: exit code = (0, false), want (1, true); err=factory next: refused — this verb runs from the parent checkout ..., not from .../internal/cli
+    factory_m7_test.go:103: -f worker: stderr "\"worker\" is the legacy role token; 'moai codex -f lane' is the only Codex factory entry\n" does not name "moai codex -l"
+    lane_entry_m2_test.go:219: codex [-l lane-2]: exit code = (0, false), want (1, true); err=--leader applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target
+    lane_entry_m2_test.go:219: codex [-l -f]: refusal "FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; ..." lacks "entry token"
+    lane_entry_m2_test.go:219: [-l -k] refusal "KANBAN_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead" lacks "entry token"
+    lane_entry_m2_test.go:219: [--lane lane-2] refusal "unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app" lacks "-l"
+exit status of the run: 1
+```
+
+(The full RED file has 33 FAIL lines. The `factory_m5_test.go:218` line shows today's `-f lane` starting the relaunch loop, which the re-pinned shape list refuses.)
+
+Production change, then GREEN (same selector, exit 0, 0 FAIL, 0 SKIP):
+
+```text
+--- PASS: TestCodexFactoryLegacyEntryIsRefused (0.00s)
+--- PASS: TestCodexFactoryEntryParsingUsesLaneOnly (0.00s)
+--- PASS: TestCodexFactoryLeadFlagSurface (0.00s)
+--- PASS: TestSD_AC004_CodexOtherFactoryShapesRefused (0.00s)
+--- PASS: TestSD_AC021_LegacySpellingsRefused (0.02s)
+--- PASS: TestLaneEntryRefusals (67.45s)
+--- PASS: TestLaneEntryEnvParity (14.95s)
+--- PASS: TestLeaderSelectorRefusedWithoutLaneEntry (16.90s)
+--- PASS: TestCodexLaneEntryStartsRelaunchLane (11.38s)
+--- PASS: TestCodexFactoryFlagRefusals (7.20s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	119.220s
+```
+
+Subtest counts from the same run: `grep -c "    --- PASS: TestLaneEntryRefusals/codex"` printed 15 and `grep -c "    --- PASS: TestLaneEntryRefusals/"` printed 45 (15 shapes x cc, glm, codex); `TestLeaderSelectorRefusedWithoutLaneEntry/codex` 2; `TestCodexFactoryFlagRefusals/` 5.
+
+Per-AC commands, each its own run in this run (env unset in the same invocation, exit 0):
+
+```text
+$ go test ./internal/cli -run '^TestCodexLaneEntryStartsRelaunchLane$' -v -count=1
+--- PASS: TestCodexLaneEntryStartsRelaunchLane (11.39s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	12.737s
+$ go test ./internal/cli -run '^TestLaneEntryEnvParity$' -v -count=1
+--- PASS: TestLaneEntryEnvParity (15.36s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	16.383s
+$ go test ./internal/cli -run '^TestLaneMarkerGoldenMatchesFLane$' -v -count=1
+--- PASS: TestLaneMarkerGoldenMatchesFLane (5.32s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/cc (0.99s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/glm (0.98s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/codex (3.35s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	6.111s
+$ go test ./internal/cli -run '^TestLeaderSelectorRefusedWithoutLaneEntry$' -v -count=1
+--- PASS: TestLeaderSelectorRefusedWithoutLaneEntry (10.64s)   (10 subtests PASS: 4 cc, 4 glm, 2 codex)
+ok  	github.com/modu-ai/moai-adk/internal/cli	11.351s
+$ go test ./internal/cli -run '^TestCodexFactoryFlagRefusals$' -v -count=1
+--- PASS: TestCodexFactoryFlagRefusals (6.58s)   (5 subtests PASS: -f, -f lane, -f lane-2, -f 3, --factory lane)
+ok  	github.com/modu-ai/moai-adk/internal/cli	7.751s
+```
+
+The AC-004 golden test compares the codex row now through `-l`; the golden was captured with the codex row's `MOAI_KANBAN_LABEL` and `TestLaneMarkerGoldenMatchesFLane` still compares it whole (the label is removed at M5a); `TestLaneEntryEnvParity`'s codex rows (`-l` and `--lane`) exclude exactly that key.
+
+The three byte-pinned refusal tests, anchored selector, swept 3 (exit 0):
+
+```text
+$ go test ./internal/cli -run '^(TestCodexFactoryEntryParsingUsesLaneOnly|TestCodexFactoryLegacyEntryIsRefused|TestSD_AC004_CodexOtherFactoryShapesRefused)$' -v -count=1
+--- PASS: TestCodexFactoryLegacyEntryIsRefused (0.00s)
+--- PASS: TestCodexFactoryEntryParsingUsesLaneOnly (0.00s)
+--- PASS: TestSD_AC004_CodexOtherFactoryShapesRefused (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.448s
+```
+
+The net after the re-pin (AC-015 selectors, on HEAD `69588367a`, exit 0 each): 8 cli, 2 hook, 2 discovery.
+
+```text
+$ go test ./internal/cli -run '^(TestCCFactoryEntryRecordsFailOpenRunMetadata|TestCCFactoryLaneJoinsDiscoveredLeader|TestGLMFactoryLaneJoinsDiscoveredLeader|TestPrepareKanbanSettingsWritesTransientFile|TestPrepareFactorySettingsWritesTransientFile|TestFactoryNetLeaderLaunch|TestFactoryNetLaneLaunch|TestFactoryNetBlockCap|TestFactoryEntryMatrix)$' -v -count=1
+--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (8.35s)
+--- PASS: TestGLMFactoryLaneJoinsDiscoveredLeader (5.36s)
+--- PASS: TestFactoryNetLeaderLaunch (2.57s)
+--- PASS: TestFactoryNetLaneLaunch (5.48s)
+--- PASS: TestFactoryNetBlockCap (3.20s)
+--- PASS: TestFactoryEntryMatrix (13.99s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (1.31s)
+--- PASS: TestPrepareKanbanSettingsWritesTransientFile (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	41.428s
+$ go test ./internal/hook -run '^(TestFactoryNetSessionRecord|TestFactoryNetSessionStartNotices)$' -v -count=1
+--- PASS: TestFactoryNetSessionRecord (0.01s)
+--- PASS: TestFactoryNetSessionStartNotices (3.63s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	4.575s
+$ go test ./internal/discovery -run '^(TestDiscoverLeaderVerifiesLiveLeader|TestDiscoverLeaderDeclinesUnparseableRunID)$' -v -count=1
+--- PASS: TestDiscoverLeaderVerifiesLiveLeader (0.38s)
+--- PASS: TestDiscoverLeaderDeclinesUnparseableRunID (0.24s)
+ok  	github.com/modu-ai/moai-adk/internal/discovery	1.018s
+```
+
+Wider regression sets, each run once in full on this tree (env unset, exit 0, 0 FAIL): `go test ./internal/cli -run '^TestCodex' -count=1 -timeout 9m -v` — 388 top-level PASS, 0 FAIL, 8 SKIP (`ok ... 226.904s`; the skips are in tests this milestone did not touch); and `go test ./internal/cli -run '^(TestACFB018_HelpDocumentsLeadEntry|TestACFB019_HelpDocumentsCompanionEntry|TestFactoryGenealogyInHelp|TestLauncherHelpLaneVocabulary|TestProductionStringLiteralsUseLeaderLaneVocabulary|TestCGRetire.*|TestFactoryLaneJoin.*|TestLaneEntryComposesWithLaneOptions|TestFactoryLaneSpellingsRefused|TestFactoryCountShapeStillRefused|TestSD_.*|TestFactoryJoin.*|TestLeaderEntryUnchanged|TestFactoryRolePin.*)$' -count=1 -timeout 9m -v` — 59 top-level PASS, 0 FAIL, 0 SKIP. `grep -c '"-l", "leader' internal/cli/factory_join_discovery_test.go` printed 0.
+
+Codex lane reachability, measured (the question: is the interactive Codex lane branch — `enterCodexFactory`, reached from `runCodexLaunch`, plus `codexFactoryEnv` and the claim-stamping seams — reachable once classification routes `-l` to the relaunch loop first?). Method: a scratch copy of `codex_factory.go` whose `enterCodexFactory` first appends the caller's file:line and the entry's `Enabled`/`LaneRole` to a log file named by an environment variable, applied through `go test -overlay` (the tree was not edited). Test set: every test that drives `runCodex` for a launch or a refusal plus the codex launcher and debug families (`^(TestCodexLaneEntryStartsRelaunchLane|TestCodexFactoryFlagRefusals|TestSD_AC003_CodexRelaunchPerCard|TestSD_AC004_CodexOtherFactoryShapesRefused|TestSD_AC021_LegacySpellingsRefused|TestCodexFactoryLegacyEntryIsRefused|TestCodexKanbanEntryIsRefused|TestCodexEntryRefusalHasNoStateEffect|TestCodexEntryTokensAfterDashDashPassThrough|TestCodexFactoryLaneJoinsDiscoveredLeader|TestFactoryEntryMatrix|TestCodexLaunch.*|TestCodexDebug.*|TestCodexSpawn.*|TestCodexDirect.*)$`, exit 0, 54 top-level PASS, 0 FAIL). Observed log, `sort | uniq -c`:
+
+```text
+   3 enterCodexFactory caller=codex_launcher.go:1205 enabled=true lane=true
+   1 enterCodexFactory caller=factory_join_discovery_test.go:404 enabled=true lane=true
+```
+
+Read: the production call site `codex_launcher.go:1205` (inside `runCodexLaunch`, `if factoryEntry.Enabled`) was reached three times, and the only caller of `runCodexLaunch` that hands it an enabled lane entry is `codex_debug_composition_test.go:56` (`grep -rn "runCodexLaunch(" internal cmd --include='*.go'` prints that line and the one in `runCodex`; the test builds the entry itself with `stagedLaneEntry()`); no run through `runCodex` reached it, including every `-l` and `--lane` launch of `TestCodexLaneEntryStartsRelaunchLane`, `TestSD_AC003_CodexRelaunchPerCard` and the matrix. By construction too: the Codex parse sets `Enabled` only for `-l`/`--lane`, the classification returns the lane entry for exactly that case, and `runCodex` returns into `runCodexFactoryLane` before `runCodexLaunch` for it. Answer: the interactive Codex lane branch is unreachable from `moai codex` after M3 and live only through tests that call `runCodexLaunch` or `enterCodexFactory` directly. Nothing was deleted (not in M3's list); the branch and its fields (`factoryFlagParse.LaneNumber`/`LaneLabel`, which no entry sets now) are left for a later cleanup decision.
+
+Re-measure of `factoryFlagUsageError` (the Codex parse read it at `codex_factory.go:97`): `grep -rn "factoryFlagUsageError" internal --include='*.go'` now prints `factory.go:87` (comment), `factory.go:91` (definition) and `factory.go:264` (the cc/glm `-f <value>` refusal) — the Codex parse no longer reads it, and the Codex `-f <value>` line is the new refusal line from the classification. `grep -rn "leadFlagShort" internal cmd --include='*.go'` prints nothing.
+
+Build and static checks, after the last edit (HEAD `1c3ab47ef` plus only this progress file):
+
+```text
+$ gofmt -l <the 13 touched Go files>                      -> no output
+$ go build ./...                                          -> no output, exit 0 (BUILD_OK printed)
+$ GOOS=windows GOARCH=amd64 go build ./...                -> no output, exit 0 (WINBUILD_OK printed)
+$ go vet ./internal/cli/                                  -> no output, exit 0 (VET_OK printed)
+$ GOOS=windows GOARCH=amd64 go vet ./internal/cli/        -> no output, exit 0 (WINVET_OK printed)
+$ golangci-lint run ./internal/cli/   (v2.1.6)            -> 0 issues.
+```
+
+(The gofmt, build and vet block ran at HEAD `c0e8ce07e` plus the uncommitted edits that became `69588367a`; the only later source change is the comment in `codex_debug_composition_test.go`, after which `go vet ./internal/cli/` was re-run once, exit 0.)
+
+#### Baseline-attribution
+
+- Tree: HEAD `c0e8ce07e` for the RED measurements (probe and the ten-test selector, before the production change), `69588367a` content for the GREEN, net, regression and build measurements (measured on the working tree before it was committed as `69588367a`; the commit added no other change), `1c3ab47ef` for the last vet. The judging build is the Go toolchain compiling this tree; `golangci-lint` is the installed v2.1.6, used as a check. No installed `moai` binary measured anything except the `moai slot` lease commands.
+- The reachability measurement ran against the tree through an overlay of one file; the instrumented copy and its log are in the scratchpad.
+- The heavy runs ran under `moai slot acquire --resource t1399-run --max-duration 60m`; `moai slot release --resource t1399-run` printed `slot t1399-run released` after the last heavy run, before commit 1.
+
+#### Gaps
+
+1. The whole `internal/cli` suite was NOT run. The widest sets are the `^TestCodex` family (388 PASS), the 59-test factory/help/vocabulary set, the nine net selectors and the AC selectors above; a regression in a test outside them is unobserved. A first reachability run with the broader selector `Codex|^TestSD_|^TestFactoryNet|...` exceeded the tool's foreground timeout and was moved to the background by the harness; it was stopped with TaskStop, produced no result, and is not cited; the narrower selector above replaced it.
+2. No mutant probe was run for M3: a classification that reads `--lane <x>` as `--lane` plus a forwarded value, or refuses `-l -f` but not `-f -l`, was not applied to the codex path. The codex subtests of `TestLaneEntryRefusals` carry both orders and all fifteen shapes, but their discriminating power is argued, not measured.
+3. AC-003's codex half asserts one stderr line, exit 1, nothing on stdout, no launch, no lane claim, no new run row and no temp file; a refusal path that wrote some other state is not asserted against (the codex refusal returns before the first read, by construction, read not measured).
+4. The composition rows of AC-005 (`--clear-policy`, `--no-auto-dispatch`, `--factory-run`, `-p`, `-w`, `--`) are asserted for cc and glm only (the AC text lists them for cc); on codex `--factory-run` stays refused and `--clear-policy`/`--no-auto-dispatch` are not codex flags (usage failure). That the relaunch loop ignores a `--leader` it was given is read from `runCodexFactoryLane` (it passes an empty leader to `enterSelectedFactoryRun`), not measured.
+5. Worktree-guard refusals, each re-issued as a plain command with the same measurement: (a) a `python3` heredoc edit followed by a `grep` in one command, refused as too complex to verify — the edits were made with the edit tool instead; (b) a `go test ... > file 2>&1 && echo RC=0 || echo RC=$?` chain, refused — re-issued without the `|| echo` clause (the tool reported exit 1 for the RED run and `RC=0` for the green ones); (c) an edit through the shared-checkout path of this file was refused by the edit tool and redone on the worktree path. No measurement was replaced by reading source, except the item-4 `--leader` statement.
+6. Plain `git` only; no `git -C` was used.
+
+#### Residual-risk
+
+- Until M4 lands, the leader SessionStart notice, the stale-run hint and the factory card rejoin errors still print `moai cc -f lane-<i>` / `-f lane` (M2's residual, unchanged): M2 and M3 must not merge without M4.
+- Behavior change on non-lane combinations: `moai codex -f -k` (either order) now prints the kanban line; before, the first token in argument order decided. The lane combinations (`-l -f`, `-l -k`) print the one-entry-token line as AC-003 requires.
+- `moai codex -l --factory-run <id>` is still refused (with the `-f` refusal line, as `-f lane --factory-run` was before); the line names the codex lane entry, but its first clause says "no -f entry" for a token the operator did not type.
+- The interactive Codex lane branch and its seams (`enterCodexFactory`, `codexFactoryEnv`, `stampCodexLaneClaim`, `codexExplicitFactoryEnv`) are unreachable from the launcher and still compile and test; dropping them is a decision for a later milestone.
+
+#### Findings (statements the tree contradicts, no SPEC file edited)
+
+- `plan.md` M3 and the brief place the interactive lane branch at `codex_factory.go:128-229`; on this tree it lives in `enterCodexFactory` and its siblings (`codex_factory.go`), with the call site in `runCodexLaunch` (`codex_launcher.go:1205` after this milestone's edits). The reachability answer does not depend on the line numbers.
+- The brief lists an empty value as a shape for AC-007; `acceptance.md` AC-007 counts exactly five subtests. The empty value (`-f=`, `--factory=`) is asserted in `TestSD_AC004_CodexOtherFactoryShapesRefused`'s shape list (a loop inside one test, not subtests), so the AC's count of five holds.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
