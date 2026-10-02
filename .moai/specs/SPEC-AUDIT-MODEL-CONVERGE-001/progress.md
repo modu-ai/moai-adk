@@ -64,6 +64,44 @@ Golden facts: the golden is one JSON object keyed `<root>/<case>` (4 entries); t
 
 Not covered at M1 (a Gap, not a pass): the clause of AC-ACV-008 that the plan resolved for each root is the default plan with every entry `explicit: false` cannot be asserted before the resolver exists (M2); that assertion is to be added with M2 and kept by M3-M7. The full `internal/cli` suite was not run (heavy-run rule); CI runs it on push.
 
+### M2 — audit plan resolver (`internal/config/audit_plan.go`)
+
+Measured against base HEAD `dd44df3cf` (the M1 commit), branch `WT-audit-model-convergence`, worktree `.moai/worktrees/t1423`; the M2 commit adds `internal/config/audit_plan.go`, `internal/config/audit_plan_test.go`, one added assertion in `internal/cli/mcp_audit_multi_baseline_test.go`, and this block (no production code in `internal/cli`, golden untouched, `UPDATE_AUDIT_MULTI_DEFAULT_GOLDEN` never set). Every Go run is `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED CLAUDE_PROJECT_DIR && go test ...` in one invocation; judging toolchain `golangci-lint v2.1.6` (the CI pin); no installed `moai` build was used.
+
+Pre-flight: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=2m ./internal/config/...` exit 0, `0 issues.`; `ls internal/config/audit_plan.go` -> `No such file or directory`, exit 1; `grep -rn "audit_plan" internal/config` -> no output, exit 1 (RED-now: no resolver).
+
+RED, observed in two forms. (a) Tests only, no resolver: `go test ./internal/config -run '^TestResolveAuditPlan_' -count=1` -> `internal/config/audit_plan_test.go:79:44: undefined: AuditPlan` ... `too many errors`, exit 1 — a compile failure, a TOOL_FAILURE and not a RED. (b) Semantic RED against a throwaway stub (types only, `ResolveAuditPlan` returns a zero plan, no behaviour):
+
+    $ go test ./internal/config -run '^TestResolveAuditPlan_' -count=1 -v
+    --- FAIL: TestResolveAuditPlan_TokenTable (0.00s)        # "plan has 0 backend entries, want 3: []" x5 sub-tests
+    --- FAIL: TestResolveAuditPlan_Precedence (0.00s)
+    --- FAIL: TestResolveAuditPlan_PrecedenceExample (0.00s)
+    --- FAIL: TestResolveAuditPlan_ExplicitGates (0.00s)
+    --- FAIL: TestResolveAuditPlan_FromConfig (0.00s)
+    --- FAIL: TestResolveAuditPlan_RejectsUnknown (0.00s)    # 7 sub-tests: no error returned
+    --- FAIL: TestResolveAuditPlan_TrimsWhitespace (0.00s)
+    --- PASS: TestResolveAuditPlan_SourceIsPure (0.00s)      # guard, green against the stub by design
+    FAIL	github.com/modu-ai/moai-adk/internal/config	0.375s
+    exit=1
+
+GREEN (real resolver, same command): 8 `--- PASS:` lines (`TokenTable`, `Precedence`, `PrecedenceExample`, `ExplicitGates`, `FromConfig`, `RejectsUnknown`, `TrimsWhitespace`, `SourceIsPure`), 22 sub-test `--- PASS:` lines, `ok  github.com/modu-ai/moai-adk/internal/config  0.414s`, exit 0. Whole package: `go test ./internal/config -count=1` -> `ok ... 11.947s`, exit 0.
+
+Positive controls inside the sweeps: token table asserts 5 tokens swept; precedence sweep asserts 5 tokens x 3 backends x 4 caller choices x 4 configured choices = 240 cases; the purity test asserts the file holds `func ResolveAuditPlan(` and that the import scan saw at least one import.
+
+Mutant probes (resolver edited, tests re-run, resolver restored byte-identical to the committed copy): `claude` token mapped to Claude alone -> `TestResolveAuditPlan_TokenTable` and `_Precedence` FAIL; argument and config.gates swapped in the ladder -> `_Precedence` FAIL; the empty token marks codex explicit -> `TestAuditMulti_PinsOnlyConfig_ByteIdentical` FAIL with `pins-only: codex = {... Source:config.model Explicit:true}, want ... source "default", explicit false`.
+
+AC-ACV-008 clause left as a Gap at M1 is closed: `internal/cli/mcp_audit_multi_baseline_test.go` gains `assertDefaultAuditPlan`, called once per root by `runAuditMultiBaselineRoot`, so both named tests assert that the plan resolved from the RAW section (`loadWorkflowAuditSection`, then `config.ResolveAuditPlan` with no caller gates) is the default plan with every entry `explicit: false`, source `default`, gates required / required / advisory, and `ExplicitGates()` empty. Run: `-run '^TestAuditMulti_NoConfigNoArgs_ByteIdentical'` -> `--- PASS` plus `all-pass` and `codex-inconclusive`, `ok`, exit 0; `-run '^TestAuditMulti_PinsOnlyConfig_ByteIdentical'` -> same, exit 0. The end anchor `$` was dropped from both `-run` patterns because the worktree guard refused a command containing `$'` (see Gaps); no other test name shares either prefix.
+
+AC-ACV-004 (resolver part): `grep -c "^package config" internal/config/audit_plan.go` -> `1`, exit 0; `grep -nE "\"(os|time|net|io|path/filepath|os/exec)\"" internal/config/audit_plan.go` -> no output, exit 1; `grep -n "NewDefaultWorkflowConfig\|NewDefaultConfig"` over `audit_plan.go`, `audit_pin.go`, `mcp_audit_multi.go`, `mcp_worktree_root.go`, `internal/auditreceipt/store.go` -> no output, exit 1; `grep -n 'AskUserQuestion\|mcp__askuser__\|NewDefaultWorkflowConfig\|NewDefaultConfig\|internal/cli' internal/config/audit_plan.go` -> no output, exit 1. The same two import/constructor clauses are also pinned by `TestResolveAuditPlan_SourceIsPure`.
+
+Coverage of the new file: `go test ./internal/config -run '^TestResolveAuditPlan_' -coverprofile=<scratch> -count=1` then `go tool cover -func=<scratch>` filtered to `audit_plan.go`: `ModelSource`, `FromConfig`, `ExplicitGates`, `auditPlanCells`, `gateAt`, `normalizeAuditGate`, `ResolveAuditPlan` all `100.0%`.
+
+Post-change: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/config/` exit 0; `go vet ./internal/cli/` exit 0; `golangci-lint run --timeout=2m ./internal/config/... ./internal/cli/` exit 0, `0 issues.`; `gofmt -l` on the three touched Go files empty, exit 0.
+
+Interface decisions M3/M4 consume (spec text is silent on them; flagged for the plan-audit trail): `ResolveAuditPlan(audit AuditConfig, supplied AuditGates) (AuditPlan, error)`; a supplied gate outside the closed set is an error too (`gates.<backend> "<v>" unknown (want one of off|advisory|required)`), whitespace-only values read as unset, a token or gate is trimmed before matching and matching is case-sensitive; on error the returned plan is the zero value. `AuditPlan.ModelSource()` is `config` when the token is non-empty and `default` otherwise, `AuditPlan.FromConfig()` is the `plan_source: "config"` predicate. The gate error key text for a configured value is `audit.gates.<backend>`; the REQ-ACV-003 token text is pinned as `audit_model "<v>" unknown (want one of claude|codex|glm|multi)`.
+
+Not covered at M2 (a Gap, not a pass): the full `internal/cli` suite was not run (heavy-run rule; CI runs it on push); no consumer of the resolver exists yet (M3/M4), so AC-ACV-005 stays open and `internal/auditreceipt` / `audit_multi` still read gates as before; `TestResolveAuditPlan_RejectsUnknown` pins the resolver half of AC-ACV-003 only (the `audit_multi` and verb halves are M3/M4).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

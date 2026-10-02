@@ -192,7 +192,48 @@ func assertNoPlanMembers(t *testing.T, name string, got []byte) {
 	}
 }
 
+// assertDefaultAuditPlan checks the last clause of AC-ACV-008: the plan resolved
+// for the root, from the audit values its workflow.yaml carries and no caller
+// gates, is the distributed default plan with every entry not explicit. The input
+// is the RAW section (loadWorkflowAuditSection), never a default-merged
+// configuration — a merged read would give the pins-only root `model: claude`.
+func assertDefaultAuditPlan(t *testing.T, rootName, workflowYAML string) {
+	t.Helper()
+	root := newAuditMultiBaselineRoot(t, workflowYAML)
+	audit, err := loadWorkflowAuditSection(root)
+	if err != nil {
+		t.Fatalf("%s: loadWorkflowAuditSection: %v", rootName, err)
+	}
+	plan, err := config.ResolveAuditPlan(audit, config.AuditGates{})
+	if err != nil {
+		t.Fatalf("%s: ResolveAuditPlan: %v", rootName, err)
+	}
+	wantGates := map[string]string{
+		"claude": config.AuditGateRequired,
+		"codex":  config.AuditGateRequired,
+		"glm":    config.AuditGateAdvisory,
+	}
+	// Positive control: three entries, so the loop below cannot pass vacuously.
+	if len(plan.Backends) != len(wantGates) {
+		t.Fatalf("%s: plan has %d entries, want %d: %+v", rootName, len(plan.Backends), len(wantGates), plan.Backends)
+	}
+	for _, e := range plan.Backends {
+		if e.Gate != wantGates[e.Backend] || e.Source != config.AuditPlanSourceDefault || e.Explicit {
+			t.Errorf("%s: %s = %+v, want gate %q, source %q, explicit false",
+				rootName, e.Backend, e, wantGates[e.Backend], config.AuditPlanSourceDefault)
+		}
+	}
+	if plan.Model != "" || plan.ModelSource() != config.AuditPlanSourceDefault || plan.FromConfig() {
+		t.Errorf("%s: model %q (%s), FromConfig %v, want no model token and nothing from config",
+			rootName, plan.Model, plan.ModelSource(), plan.FromConfig())
+	}
+	if got := plan.ExplicitGates(); got != (config.AuditGates{}) {
+		t.Errorf("%s: ExplicitGates() = %+v, want none (no explicit gate means fail-open stays)", rootName, got)
+	}
+}
+
 func runAuditMultiBaselineRoot(t *testing.T, rootName, workflowYAML string) {
+	assertDefaultAuditPlan(t, rootName, workflowYAML)
 	for caseName, verdictBy := range auditMultiBaselineCases() {
 		t.Run(caseName, func(t *testing.T) {
 			root := newAuditMultiBaselineRoot(t, workflowYAML)
