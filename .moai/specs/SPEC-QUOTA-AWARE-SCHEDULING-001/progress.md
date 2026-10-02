@@ -43,3 +43,16 @@ Rule (leader dispatch, operator instruction): in-flight decisions are asked of J
 Leader messages: plan commit and the three low-confidence items reported to the leader; verdict received for DO-3 / DO-7 / DO-8 (above). No hard-to-reverse external action has been taken (no push, PR or delete).
 
 Plan artifacts: `400b5f986` (initial), `fdfb2d0c8` (oracle resolutions + leader verdict, Tier L), `ca57dc350` (DO-12). Tier L: REQ 23 of 25, AC 23 of 25.
+
+### Plan-audit iteration 1 (FAIL 0.74) — decisions taken while closing D1-D24
+
+Report `.moai/reports/t1347/plan-audit-iter1.md` is local-only by operator directive (`.gitignore` `.moai/reports/*`, `.moai/docs/audit-artifact-convention.md` Committing section); it is not committed. The leader asked for a commit, the lane declined on that directive, and the leader withdrew the request after reading both sources and recomputing the sha256.
+
+| ID | Question (short) | Oracle answer | Confidence | Disposition |
+|----|------------------|---------------|-----------:|-------------|
+| D1 | `factory status` quota block vs byte-identical output when pressure is off | block only when the gate is enabled (P 0.94) | 0.88 | applied (REQ-013, REQ-022) |
+| D3 | A held wait whose reading ages out mid-wait | release when unknown (P 0.80) | 0.59 | applied (REQ-011, AC-010 `unknown_mid_wait_releases`) |
+| D7 | Lane inventory read of the registry | genuinely read-only open (P 0.82) | 0.63 | applied after feasibility was measured by manager-spec on `modernc.org/sqlite v1.57.0` (plan.md D.1: absent file errors without creating anything; `mode=ro` reads a closed WAL database and sees live WAL rows; `immutable=1` rejected because it missed uncheckpointed rows); the lane re-read the existing `mode=ro` pattern the SPEC reuses, `openSQLiteReadOnly` at `internal/discovery/factory_discovery.go:353-362` (fail-open: a WAL database whose recovery needs the write lock contributes no candidates). The lane did not re-run the scratch measurements |
+| D12 | Surface the first-exhausted time (otherwise dead data) | surface (P 0.52 vs 0.48) | 0.03 LOW | leader: CONFIRMED surface in the status block (DO-13) |
+
+Revision commits: `0e12b4cfa` (D1-D24 closed, spec 0.5.0), `be14684ab` (drops a suffixed AC identifier that made the commit guard count 24). Lane re-check: tree clean, `moai spec lint --strict` no findings, REQ 23 and AC 23 by grep.
