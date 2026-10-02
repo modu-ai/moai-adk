@@ -2,9 +2,9 @@
 id: SPEC-ASIDE-BROWSER-001
 title: "Optional Aside browser-CLI integration — documented optional MCP, thin safety-policy skill, explicit-only orchestrator-run e2e toolchain"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"

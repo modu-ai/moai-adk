@@ -446,7 +446,60 @@ Two of my commands were refused by the worktree guard before running: a `go test
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (manager-docs)_
+sync_status: audit-ready (documentation and lifecycle close done; the Gaps below are unobserved, not passes)
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill
+sync_head_before_commit: 76a004377 (branch WT-aside-browser-cli, base develop 4bf547bca); the sync commit cannot cite its own hash, so the lane backfills the real SHA in a following commit
+b12_self_test_a: pass (pre-emission grep printed 0; no earlier entry)
+b12_self_test_b: pass (14 live AC identifiers in acceptance.md, tier M; entry states 14)
+b12_self_test_c: pass (every path cited in the entry exists per `ls`)
+changelog_entry_position: CHANGELOG.md `[Unreleased]` / `### Added`, first bullet (newest first, as the preceding card sync commits do)
+frontmatter_status_transitions: spec.md `status: in-progress → implemented → completed` and `updated: 2026-10-03`, on this single sync commit. Per the schema doctrine `Artifact Statelessness`, plan.md, acceptance.md and research.md carry no `status:` field, so there is nothing to transition in them; progress.md carries none either.
+
+Sync phase by manager-docs, card t1439, run as a general-purpose agent in the card worktree (the manager-docs agent type isolates into its own throwaway worktree). Every result below was observed in this run against this tree (HEAD `76a004377` plus the uncommitted sync edits). Judging build for `moai spec lint` and `moai graph check`: a scratch binary built in this run from this tree with `go build -o <scratchpad>/moai-lint ./cmd/moai`; `moai-lint version` prints `v3.1.3   none   built unknown`, so it carries no commit stamp and the second coordinate (the judging build's commit) cannot be stated; no Go source in this card changes a lint or graph rule (the Go changes are test files only), which is the only reason the measurement is relied on. No Go test suite was run in this phase (machine load).
+
+### Verification evidence
+
+| Command | Exit | Bounded output |
+|---|---|---|
+| `grep -c 'SPEC-ASIDE-BROWSER-001' CHANGELOG.md` (B12 pre-emission, before the edit) | not echoed (`grep -c` with zero matches exits 1 by its own contract; the call reported no error) | printed `0`, so no earlier entry exists |
+| `grep -o -h -E 'AC-([A-Z0-9]+-)*[0-9]+[a-z]?' acceptance.md \| sort -u \| wc -l` (B12 source: `acceptance.md`, tier M) | 0 (call reported no error) | `14` (AC-ASB-001..014); `grep -c -E '\[RETIRED\]\|\[REF\]' acceptance.md` printed `0` (exit not echoed), so all 14 are live |
+| inline B12 counter (the `MOAI-AC-COUNTER` awk body, passed as an inline program) on `acceptance.md` | 0 | stderr `live=14 excluded=0 ambiguous=0`, stdout `14` |
+| `ls` of every path cited in the CHANGELOG entry (skill and mirror, `e2e.md` and mirror, `e2e-tester.md` and mirror, `e2e-tester.toml`, `catalog.yaml`, the four `mcp-server.md`, the three Go test files) | 0 | all fifteen paths listed, none missing |
+| `moai-lint spec lint SPEC-ASIDE-BROWSER-001 --strict` (after the `completed` transition edit, before this section was written) | 0 | `✓ No findings — all SPEC documents are valid` |
+| `moai-lint graph check` | 1 | `codemaps  metric=described-source-diff value=71 threshold=40 verdict=stale`; `contribution: 0 described-worthy file(s) vs first parent 5629a0d6f (inherited — this change contributed none of it)`; `citations ... verdict=fresh`; `mx-index` and `edges` `verdict=absent` (untracked runtime artifacts in a fresh worktree) |
+| `git status --short` before the sync commit | 0 | ` M .moai/specs/SPEC-ASIDE-BROWSER-001/spec.md`, ` M CHANGELOG.md`, plus this file |
+
+The final `spec lint --strict` run after this section was written is recorded in the commit report, not here, because its result cannot be written into the file it judges without changing the file.
+
+### Documentation surfaces checked
+
+- CHANGELOG: edited. One `[Unreleased]` / `### Added` entry. Every path the entry cites was checked with `ls` (run just before the entry was drafted, over exactly those paths); the requirement count (15) and the AC count (14) were taken from `spec.md` and from `acceptance.md`; the run-phase figures (package-wide `go test ./internal/template/` exit 0, Windows cross-build exit 0, 14 of 14 PASS) are quoted from §E.2 and §E.3 and marked there as not re-run in this phase. The precedent for a merged card is the same: `a63b18d3b` (card t1436) put its CHANGELOG entry, a `structure.md` line, the spec.md status and §E.4 in one sync commit.
+- docs-site: the four-locale `guides/mcp-server.md` change was made in the run phase (`0de4cfabe`, `5629a0d6f`); read here against the skill and `e2e.md` for the claims (optional, never default, orchestrator-run, read-only by default, silent fallback, `CI=true` exclusion, `aside skills install` advice only); no overclaim found, nothing edited in this phase.
+- README (four locales): not edited. Out of scope by the SPEC (spec.md § 7). The ref-skill list and count at `README.md:452` and `README.md:774` read "Eleven"/"11" and now omit `moai-ref-aside-browser` — a known, accepted gap, not fixed.
+- `.moai/project/structure.md`: not edited. It lists no individual ref skills (its `skills/` line is a generic directory entry), and this change adds no new top-level directory.
+- Codemaps: not regenerated. `moai graph check` reports the codemaps layer stale (71 against 40), and its own report states this change contributed none of it; the inherited drift comes from other cards' Go source, and regenerating here would absorb unrelated work. This change's Go code is test-only.
+- MX: no tag added or changed. The new Go code is test files only (`aside_skill_policy_test.go`, `mcp_template_neutrality_test.go`, `mcp_test.go`) with no exported function, no goroutine and no fan-in target, as the plan recorded.
+- SPEC lifecycle: `spec.md` frontmatter only (`status`, `updated`); no body edit to spec.md, plan.md or acceptance.md.
+
+### Gaps (unobserved, not passes)
+
+- Whether `aside repl` can persist a screenshot to a path is UNCONFIRMED (one orchestrator measurement ended in a CDP timeout, no file written). The workflow wording is the hedged form and the CHANGELOG entry says so.
+- Every guard is lexical (static text anchors, forbidden patterns, per-site carve-out enumeration). None proves what a model emits or does at run time, including the silent fallback and the read-only discipline of `aside repl`; no hook enforces the orchestrator-only boundary.
+- The run-phase results (package-wide `internal/template` suite, Windows cross-build, mutants) were not re-run in this phase: no Go test suite ran here by instruction. They are quoted from §E.2 and §E.3, not re-measured.
+- The ja and zh docs-site paragraphs were not run through the humanize pass (author review only).
+- The CI verdict on `origin/develop` is pending; nothing was pushed.
+- The README ref-skill list and count drift by one (see above), accepted by the SPEC.
+- The `moai spec lint` and `moai graph check` judging build is a scratch build with no commit stamp, so its commit cannot be compared with this tree's HEAD (verification-claim-integrity §2.2 second coordinate unstated).
+- The B12 counter was run as an inline awk program because the worktree guard refused the same program passed by file (`awk -f`); the inline form is the counter body without the optional `moai-ac-prefix` declaration branch, and `acceptance.md` carries no such declaration (a `grep -n 'moai-ac-prefix'` on it printed nothing), so the two forms are equivalent for this file.
+- Guard refusals in this run: one command, `awk -f <scratchpad>/ac-counter.awk <acceptance.md>`, was refused before running and was redone as the inline program above. No other command was refused.
+
+### Residual risk
+
+- Lexical guards over prose can drift from what a model does; the text pins the instruction, not the behavior.
+- The docs-site paragraph and the skill are two copies of the same statements; only grep guards tie them, so they can drift.
+- `sync_commit_sha` is a placeholder until the lane backfills it; until then a lint run reads the recognized placeholder, not a SHA.
+- The Aside CLI flag and tool names reflect one observed version (`1.26.916.1741` per spec.md § 3, not re-read here, because this role never invokes `aside`).
 
 ## §F Phase 4 Mode Selection and Kickoff record
 
