@@ -183,7 +183,7 @@ func detectSyncGateLanguages(root string) []string {
 	if exists("mix.exs") || has(".ex", ".exs") {
 		add("elixir")
 	}
-	if exists("CMakeLists.txt") || exists("Makefile") || has(".cpp", ".cc", ".cxx", ".h") {
+	if exists("CMakeLists.txt") || exists("Makefile") || has(".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx") {
 		add("cpp")
 	}
 	if exists("build.sbt") || has(".scala") {
