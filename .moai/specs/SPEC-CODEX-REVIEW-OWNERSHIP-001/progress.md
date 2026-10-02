@@ -361,7 +361,7 @@ Sync base `f586579c3` (M4 commit) on branch `WT-codex-review-lane-scope`, card w
 sync_status: audit-ready
 sync_complete_at: 2026-10-02
 card: t1422
-sync_commit_sha: pending-backfill
+sync_commit_sha: 630888ad74208d13d94bf556d1446ae36c471bc5
 changelog_path: CHANGELOG.md
 changelog_entry_position: "[Unreleased] > ### Added, first bullet"
 frontmatter_status_transitions:
@@ -421,6 +421,15 @@ Every Go test ran as one env-scrubbed compound call (`unset MOAI_KANBAN … MOAI
 - Under `tree_scope: skip`, a card worktree on a detached HEAD resolves as having no `WT-` branch and is not reviewed by the turn-end gate (plan.md §G risk 11).
 - `scope: uncommitted` in the primary checkout reviews the shared working tree, which may hold another session's work.
 - The persistence of a primary-checkout `tree_scope: skip` across a release sync is unresolved (hand-off item 1).
+
+### Close-out
+
+Recorded by the backfill commit that replaces the `pending-backfill` placeholder with the sync commit's full SHA, `630888ad74208d13d94bf556d1446ae36c471bc5` (subject `docs(SPEC-CODEX-REVIEW-OWNERSHIP-001): sync-phase artifacts`, parent `f586579c3`).
+
+- `moai spec lint SPEC-CODEX-REVIEW-OWNERSHIP-001` on the tree with the backfilled SHA: `✓ No findings — all SPEC documents are valid`.
+- `moai spec audit --filter-spec SPEC-CODEX-REVIEW-OWNERSHIP-001 --json`: `total_specs 1`, `grandfathered 0`, `modern_era_clean 1`, one finding only — `EraAutoDetected`, severity `INFO`, era `V3R6`, heuristic `H-4 (§E.2 + §E.4 + sync_commit_sha)`; no drift finding.
+- Tool provenance (verification-claim-integrity §2.2): the installed `moai` reports `v3.2.0-rc.25`, commit `802a72235`, built 2026-10-02T08:00:14Z, and `git merge-base --is-ancestor 802a72235 HEAD` exits 1 (not an ancestor of this tree's HEAD), so the same lint and audit were repeated with a binary built from this tree (`go build ./cmd/moai`, no version ldflags, so it reports `v3.1.3 none`): same results. Neither build was compared against the other beyond those outputs.
+- A sync-audit has not been run; the leader owns that dispatch.
 
 ## §F Phase 4 Mode Selection
 
