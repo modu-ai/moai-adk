@@ -550,6 +550,10 @@ sync_status: docs-synced-audit-pending   # the independent sync audit has NOT ru
 card: t1448
 tier: M
 tree_head_at_sync_start: 842369c77       # branch WT-todo-auto-pick-autonomy, clean at start
+re_close_complete_at: 2026-10-02T18:07:17Z   # UTC; sync re-close after sync-audit iteration 1 repairs; local date 2026-10-03
+tree_head_at_re_close_start: 9a5cb0dcb   # branch WT-todo-auto-pick-autonomy, clean at start of the re-close
+sync_audit_iteration_1: "FAIL 77.2/100 (cut 85) at audited commit 8de769d81; claude fail, codex fail (3 P1), glm inconclusive (HTTP 401); report .moai/reports/t1448/sync-audit.md (local, uncommitted)"
+sync_audit_status: not-passed            # no audit verdict is claimed for the repaired tree; iteration 2 has not run
 b12_self_test_a: "grep -c 'SPEC-TODO-AUTO-PICK-001' CHANGELOG.md -> 0 before emission (exit 1), proceed"
 b12_self_test_b: "ac_source=.moai/specs/SPEC-TODO-AUTO-PICK-001/acceptance.md tier=M; canonical counter -> 14 (live=14 excluded=0 ambiguous=0, exit 0); live requirements REQ-TAU-001..016 = 16; CHANGELOG entry states 16 / 14"
 b12_self_test_c: "every path cited in the CHANGELOG entry verified with ls (exit 0): 4 changed Go files, 3 test files, 7 doctrine files, the Codex TOML, catalog.yaml, progress.md, 4 factory-mode pages; the 9 cited commit SHAs read from git log"
@@ -624,8 +628,8 @@ Sync-phase notes (what a reader needs; every figure below was measured in this r
 
 Gaps (explicitly not observed in this sync run):
 
-- The independent sync audit (`sync-auditor`, or the orchestrator verification batch) has not run; nothing here
-  claims a verdict.
+- (First sync, as written at `8de769d81`; superseded by the re-close record below.) The independent sync audit had
+  not run at that point; nothing here claimed a verdict. It has since run once and FAILED (see the re-close record).
 - No Go test, build or lint was re-run in this sync phase (documentation-only scope); the run-phase results in §E.2
   are cited, not re-measured here.
 - Cyclomatic complexity of the new functions was not measured (`gocyclo` is absent).
@@ -639,3 +643,66 @@ Residual risk: the KEPT judgments rest on reading the doctrine and the page cont
 line-115 shorthand blurb or the diagram label as a statement about `--auto` would still read them as the operator
 being the only picker. The decision record a lane writes under the new doctrine has not yet been observed (AC-TAU-009
 is a regression-guard with no executing party, per §E.2).
+
+### Sync re-close after sync-audit iteration 1 (this record asserts NO audit verdict for the repaired tree)
+
+`sync_status` stays `docs-synced-audit-pending`. The independent sync audit ran once on `8de769d81` and returned
+**FAIL 77.2/100** against the 85 cut (Functionality 65 must-pass, Security 90, Craft 78, Consistency 80; cross-model
+gate: claude fail, codex fail with three P1 reports, glm inconclusive — HTTP 401). Report: `.moai/reports/t1448/sync-audit.md`
+(local, uncommitted). The repairs landed as `e55aaeb1b` (code and tests) and `9a5cb0dcb` (doctrine wording); their
+run-side evidence is in §E.2 'sync-audit iteration 1 repair' (owned by the run phase, not restated here). The audit has
+NOT been re-run on the repaired tree, so no PASS, no FAIL and no score is claimed for it; the iteration-2 audit and the
+leader's disposition of F3 (a)/(c) are outstanding.
+
+Finding dispositions (ids from the audit report; one line each):
+
+| Id | Disposition |
+|---|---|
+| F1 (blocking) | Fixed in `e55aaeb1b`: the AC-TAU-002 concurrency test is deterministic (per-card worktree repositories through a stubbed creator). Builder-measured 30/30 and 20/20 under `-race -count=5`; orchestrator-measured 20/20 and 12/12 under `-race -count=3`, 0 DATA RACE. Not independently re-audited |
+| F2 | Fixed: doctrine scoped to a lane session (`9a5cb0dcb`: stub, `gtd.md`, `auto-semantics.md` §9.2/§9.3, live and mirror, catalog) and user docs scoped in this re-close (`docs-site/content/{ko,en,ja,zh}/advanced/factory-mode.md` line 65) |
+| F3 (b) | Fixed in `e55aaeb1b`: compensation re-reads the factory record inside the queue lock |
+| F3 (a), (c) | NOT fixed — accepted residual risk pending the leader's disposition: (a) two different serial cards nominated at once can both lease; (c) an operator `unpick` then `hold` between promotion and claim can leave a held card leased. Both are two-store non-atomicity windows, the class of the pre-existing unnominated arm (c) |
+| F4 | Tests added in `e55aaeb1b` for mutants M1 (blank `--card`, CLI and MCP), M2 (`picked` with owner) and M5 (`picked` plus `blocked`); M3, M4, M6 judged lower value and not pursued |
+| F5 | Reworded in `e55aaeb1b` (the `blocked` refusal detail) |
+| F6 | Follow-up owed: `kanban-dispatch-detail.md` is over the 40,000-character budget (43,138 characters now, 42,675 on develop) — split card |
+| F7 | Holds owed: t810 (`picked`), t1294 and t1383 (`queued`) carry neither the `hold` state nor a leading `[보류` — operator or leader action; this card does not touch the queue |
+| F8 | Not attributable to this card (base-ref contract-mode guards fail on files the card did not touch; 0 added lines contain "kickoff") |
+| F9 | Naming nit (`factoryToken*` in the record vs `factoryRefuse*` plus one `factoryTokenForeignWorktree` in code); trailer disclosure already recorded; the AC-TAU-011 re-pin without re-audit is disclosed in the plan artifacts — no action in this re-close |
+| F10 | Low security note, not changed: the `unknown-card` refusal echoes the unvalidated `--card` text and `foreign-worktree` prints an absolute landing path; both reach only the caller |
+| F11 | Help text: `moai todo --help` `--auto` still says the batch approval is 'of the queue and nothing else' — follow-up |
+| F12 | CHANGELOG corrected in place (no second entry): AC-TAU-002 no longer stated as unqualified PASS, the audit FAIL and repairs recorded, stub bytes 28,308 → 28,304, limitations group added |
+
+Follow-up card candidates (none created by this commit): (1) leader disposition of F3 (a)/(c) — fix with an atomic
+serial slot and a final queue re-read, or add them to spec §B.8/G; (2) the pre-existing `git branch -m` reflog-temp-file
+collision when two lanes lease at the same instant in one repository (`factoryEnsureCardWorktree`; surfaced by the new
+concurrency test; the verb errors after the lease succeeded); (3) split `kanban-dispatch-detail.md` under the budget;
+(4) `moai gtd hold` or a leading `[보류` for t810, t1294, t1383; (5) `moai todo --help` `--auto` wording; (6) decide the
+live-only `moai worktree sweep …` sentence of `kanban-dispatch.md`.
+
+`sync_commit_sha` stays `pending-backfill` until the sync audit passes (a commit cannot cite its own hash).
+
+Measured in this re-close (tree HEAD `9a5cb0dcb`, plain commands, output to the scratchpad where long):
+
+- User docs: the four `factory-mode.md` line-65 sentences rewritten at sentence level, one line changed per file
+  (`git diff --stat` 4 files, 4 insertions, 4 deletions before the CHANGELOG edit). URL-blacklist grep over
+  `docs-site/content` and `docs-site/hugo.toml` exit 1 (no match); Mermaid `LR`/`RL` grep exit 1; heading parity
+  `^## ` 8/8/8/8 and `^#{1,6} ` 14/14/14/14 across ko/en/ja/zh (the first sync's '9 per locale' used a filter not
+  reproduced here; parity holds); body-emoji scan exit 1 (no match); `hugo --minify --gc --source docs-site
+  --destination <scratchpad>` exit 0, 0 WARN/ERROR lines, `sitemap.xml` present.
+- CHANGELOG (B12): `grep -c 'SPEC-TODO-AUTO-PICK-001' CHANGELOG.md` was 1 before editing, edited in place, still 1
+  after; canonical counter on `.moai/specs/SPEC-TODO-AUTO-PICK-001/acceptance.md` (tier M) `live=14 excluded=0
+  ambiguous=0`, exit 0; live requirements `REQ-TAU-001..016` = 16; every path and every commit SHA cited in the entry
+  verified with `ls` / `git cat-file -e` (exit 0).
+- Quality reads (read-only): `moai spec lint .moai/specs/SPEC-TODO-AUTO-PICK-001` exit 0 and with `--strict` exit 0,
+  both "No findings". Judging build `moai-adk v3.2.0-rc.26`, `archive/t1401-293-g45600e4ee`, built
+  2026-10-02T14:42:32Z; `git merge-base --is-ancestor 45600e4ee HEAD` exit 0 (a strict ancestor) and
+  `git diff --name-only 45600e4ee HEAD -- internal/spec` lists 0 files, so its lint rules equal the tree's. MCP
+  `spec_audit` (filter `SPEC-TODO-AUTO-PICK-001`, `project_root` this worktree): `modern_era_clean: 1`, one
+  `EraAutoDetected` INFO finding (`H-4 (§E.2 + §E.4 + sync_commit_sha)`), no drift finding.
+
+Gaps of the re-close (explicitly not observed): the sync audit was not re-run, so nothing here is a verdict; no Go
+test, build or lint was run in this documentation pass — the figures for the repaired code are builder- and
+orchestrator-measured and cited, not re-measured; the derived-locale sentences (en/ja/zh) were checked by the author
+only and the `moai-domain-humanize` pass was not run (single-sentence edit); pre-existing `**term (note)**` emphasis
+spans on lines 90-91 of the en/ja/ko pages (parenthetical inside the markers) were found by the emphasis scan and left
+untouched, being outside this re-close's scope.
