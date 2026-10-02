@@ -700,7 +700,9 @@ const (
 	// (--model, this variable, a settings `model` value, or an organization
 	// default) chose a model.
 	//
-	// MoAI neither reads nor writes it.
+	// MoAI never writes it. The Claude launcher reads it only to leave the
+	// choice to Claude Code: while it is set, the launcher does not pass a
+	// saved /model value (card t1441).
 	EnvAnthropicModel = "ANTHROPIC_MODEL"
 
 	// EnvAnthropicDefaultModel names the model new sessions start on (Claude

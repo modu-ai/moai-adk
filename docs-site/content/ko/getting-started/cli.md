@@ -363,10 +363,12 @@ moai glm [-p profile] [-- claude-args...]
 
 1. 명시한 `--model` 인자
 2. 프로필의 모델(`moai profile setup`에서 고른 값)
-3. 그 프로필의 사용자 범위 `settings.json`에 `/model`로 저장해 둔 값 — 실행 때 `model: opus (user /model)` 한 줄로 알려 줍니다
-4. 위 셋이 모두 비어 있으면 아무것도 넘기지 않습니다. 이때는 프로젝트 `.claude/settings.json`의 `model` 핀이 세션 모델이 되고, 런처가 그 값과 바꾸는 방법을 알려 줍니다
+3. 환경변수 `ANTHROPIC_MODEL` (이번 실행에만 적용)
+4. 프로젝트 `.claude/settings.local.json`의 `model` (이 프로젝트에만 적용)
+5. 그 프로필의 사용자 범위 `settings.json`에 `/model`로 저장해 둔 값 — 실행 때 `model: opus (user /model)` 한 줄로 알려 줍니다
+6. 위가 모두 비어 있으면 아무것도 넘기지 않습니다. 이때는 프로젝트 `.claude/settings.json`의 `model` 핀이 세션 모델이 되고, 런처가 그 값과 바꾸는 방법을 알려 줍니다
 
-프로젝트 설정은 사용자 범위 설정보다 우선하므로, 3번 단계가 없으면 `/model`로 고른 모델이 프로젝트 핀에 가려집니다. `moai glm`은 이 규칙을 따르지 않습니다. GLM은 모델을 슬롯 별칭으로 넘겨야 하고, Anthropic 계정에서 `/model`로 고른 값은 다른 모델 계열이라 엉뚱한 슬롯으로 연결되기 때문입니다.
+더 구체적이고 더 최근에 직접 지정한 쪽이 이깁니다. 3번과 4번은 Claude Code가 직접 적용하므로 런처는 `--model`을 넘기지 않고 비켜 줍니다. 프로젝트 설정은 사용자 범위 설정보다 우선하므로, 5번 단계가 없으면 `/model`로 고른 모델이 프로젝트 핀에 가려집니다. `moai glm`은 이 규칙을 따르지 않습니다. GLM은 모델을 슬롯 별칭으로 넘겨야 하고, Anthropic 계정에서 `/model`로 고른 값은 다른 모델 계열이라 엉뚱한 슬롯으로 연결되기 때문입니다.
 
 ### moai glm 하위 명령어
 

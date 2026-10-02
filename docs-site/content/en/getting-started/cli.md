@@ -361,10 +361,12 @@ Flags common to both launch commands.
 
 1. An explicit `--model` argument
 2. The profile's model (the value chosen in `moai profile setup`)
-3. The value saved with `/model` in that profile's user-scope `settings.json` — the launch prints a one-line notice such as `model: opus (user /model)`
-4. If all three are empty, nothing is passed. The project's `.claude/settings.json` `model` pin then decides the session model, and the launcher names that value and how to change it
+3. The `ANTHROPIC_MODEL` environment variable (this launch only)
+4. The `model` in the project's `.claude/settings.local.json` (this project only)
+5. The value saved with `/model` in that profile's user-scope `settings.json` — the launch prints a one-line notice such as `model: opus (user /model)`
+6. If all of the above are empty, nothing is passed. The project's `.claude/settings.json` `model` pin then decides the session model, and the launcher names that value and how to change it
 
-Project settings outrank user-scope settings, so without step 3 a model picked with `/model` would be hidden behind the project pin. `moai glm` does not follow this rule: GLM needs the model as a slot alias, and a value picked with `/model` on an Anthropic account names a different model family that would route to the wrong slot.
+The more specific and more recent choice wins. Claude Code applies steps 3 and 4 itself, so the launcher passes no `--model` and stays out of their way. Project settings outrank user-scope settings, so without step 5 a model picked with `/model` would be hidden behind the project pin. `moai glm` does not follow this rule: GLM needs the model as a slot alias, and a value picked with `/model` on an Anthropic account names a different model family that would route to the wrong slot.
 
 ### moai glm subcommands
 

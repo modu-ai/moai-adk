@@ -712,33 +712,19 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	}
 	model = resolveMainSessionModel(model, glmBackend)
 
-	// 6a. Neither --model nor the profile chose a model: take the one the user
-	// saved with /model in this launch's user-scope settings.json (Claude
-	// backend only — see launcher_model_source.go). Without this the launch
-	// passed nothing, and a project-level model pin, which outranks user-scope
-	// settings inside Claude Code, silently decided the session (card t1441).
-	if model == "" && !glmBackend {
-		if userModel := readUserScopeModel(); userModel != "" {
-			model = userModel
-			noteUserScopeModel(launcherStderr, model)
-		}
-	}
-
-	// 6b. Still no model: the project's .claude/settings.json pin (if any)
-	// decides, and the notice names it. Without a pin, an empty model is only
-	// worth surfacing for a named profile (via -p or a project-scoped binding)
-	// that yielded none — that suggests the profile is empty or misconfigured.
-	// The default profile with no pin is the normal state and stays quiet.
-	// warnNoModelResolved itself stays unconditional (its unit test calls it
-	// directly with any profileName).
-	if model == "" {
-		root, _ := findProjectRoot()
-		if pinned := readProjectPinnedModel(root); pinned != "" {
-			warnProjectModelPin(launcherStderr, pinned)
-		} else if isNamedProfile(profileName) {
-			warnNoModelResolved(os.Stderr, profileName)
-		}
-	}
+	// 6a. Neither --model nor the profile chose a model: apply the remaining
+	// precedence levels — ANTHROPIC_MODEL and the project's settings.local.json
+	// (both left to Claude Code), then the model the user saved with /model,
+	// then the announced project pin. Without the /model level a project-level
+	// model pin, which outranks user-scope settings inside Claude Code,
+	// silently decided the session (card t1441). Rules, GLM exclusion and
+	// notices: launcher_model_source.go. An empty model is surfaced for a named
+	// profile (via -p or a project-scoped binding) that yielded none, which
+	// suggests the profile is empty or misconfigured; the default profile with
+	// no pin is the normal state and stays quiet. warnNoModelResolved itself
+	// stays unconditional (its unit test calls it directly with any profileName).
+	launchRoot, _ := findProjectRoot()
+	model = resolveLaunchModelFallback(model, glmBackend, launchRoot, profileName, launcherStderr)
 
 	// 7. Build args
 	buildArgs := func(withContinue bool) []string {
