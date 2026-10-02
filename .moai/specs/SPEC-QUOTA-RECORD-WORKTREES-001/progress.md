@@ -311,6 +311,108 @@ Reason: the M2 plan defect above needs a decision; the lane holds the Kickoff ga
 
 Resolved the same day by the leader (cross-session message): option A. See §J "Run-phase decision R1".
 
+### M1 rework + M2 — accessor stub and RED tests (commit `e350a8139`), then the key release (commit `7ff94b33f`)
+
+Measured in the card tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1442`, branch `WT-quota-read-worktree-records`, 2026-10-02, parent of the first commit `349bf40ab`. Judging build: `go version go1.26.8 darwin/arm64`, run through `go -C <tree> test` on this tree (no installed `moai` build is cited as evidence; `make build` produced `bin/moai` from commit `e350a8139` plus the uncommitted M2 working tree, used only for the embed check below). Config runs held the `moai slot` lease `go-test-cli` and used the scrubbed single compound form `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go -C <tree> test …`; the lease was released after the last config run. A shell exit code cannot be echoed in this worktree (the guard refuses `; echo $?`), so a passing run is evidenced by the printed `ok` / `PASS` lines and a failing run by the tool-reported `Exit code 1` plus `FAIL`.
+
+#### What the M1 rework changed (commit `e350a8139`, `test(...): M1 rework accessor stub and RED tests`)
+
+`QuotaGateSettings.MaxScanDirs` removed from `internal/config/loader_quota_gate.go` (the M1 stub field of `0bb2048be`); the signature-only accessor stub `LoadQuotaScanBound(projectRoot string) int` added (returns 0, no default, no range); `internal/config/quota_gate_scan_dirs_test.go` reworked so every AC-QWR-013 subtest reads the accessor (the whole-block type-mismatch case compares `LoadQuotaGate(root)` with `DefaultQuotaGate()`). The YAML decode field `QuotaGateConfig.MaxScanDirs` (types.go) stays. No predecessor test file is edited. `go vet ./internal/config` clean and `golangci-lint v2.1.6 run ./internal/config/...` → `0 issues.` on the stub tree. Spec status was already flipped at `0bb2048be`; neither this commit nor the key-release commit carries the `Authored-By-Agent` trailer.
+
+#### E8 — verbatim RED (accessor stub, before any default or accessor body), AC-QWR-013
+
+`unset … && go -C <tree> test -count=1 -v -run '^TestQWR_AC013_MaxScanDirsConfigKey$' ./internal/config` → tool-reported `Exit code 1`, `FAIL github.com/modu-ai/moai-adk/internal/config 0.476s`; eight subtests ran and all eight FAIL (swept 8, not `[no tests to run]`). Classification (tdd-result-contract): EXPECTED_RED, assertions about the missing behaviour, never a compile error. Failing assertions, verbatim:
+
+```
+quota_gate_scan_dirs_test.go:49: LoadQuotaScanBound on a root with no workflow.yaml = 0, want 128
+quota_gate_scan_dirs_test.go:53: Go default seeded into the YAML struct QuotaGate.MaxScanDirs = 0, want 128
+quota_gate_scan_dirs_test.go:56: template workflow.quota_gate.max_scan_dirs = 0, want 128
+quota_gate_scan_dirs_test.go:65: the template quota_gate block does not carry the key max_scan_dirs:   (followed by the five-line block: enabled false, 90, 95, 5, max_age 30m)
+quota_gate_scan_dirs_test.go:81: no template comment line names max_scan_dirs
+quota_gate_scan_dirs_test.go:96: local workflow.quota_gate.max_scan_dirs = 0, want 128
+quota_gate_scan_dirs_test.go:99: the local quota_gate block does not carry the key max_scan_dirs:   (followed by the five-line block)
+quota_gate_scan_dirs_test.go:115: no_file: LoadQuotaScanBound = 0, want 128
+quota_gate_scan_dirs_test.go:115: unparseable_file: LoadQuotaScanBound = 0, want 128
+quota_gate_scan_dirs_test.go:115: key_absent: LoadQuotaScanBound = 0, want 128
+quota_gate_scan_dirs_test.go:132: max_scan_dirs 0: LoadQuotaScanBound = 0, want 128
+quota_gate_scan_dirs_test.go:132: max_scan_dirs -1: LoadQuotaScanBound = 0, want 128
+quota_gate_scan_dirs_test.go:132: max_scan_dirs 1025: LoadQuotaScanBound = 0, want 128
+quota_gate_scan_dirs_test.go:132: max_scan_dirs 1: LoadQuotaScanBound = 0, want 1
+quota_gate_scan_dirs_test.go:132: max_scan_dirs 3: LoadQuotaScanBound = 0, want 3
+quota_gate_scan_dirs_test.go:132: max_scan_dirs 128: LoadQuotaScanBound = 0, want 128
+quota_gate_scan_dirs_test.go:132: max_scan_dirs 1024: LoadQuotaScanBound = 0, want 1024
+quota_gate_scan_dirs_test.go:161: int_overflow: LoadQuotaScanBound = 0, want 128
+quota_gate_scan_dirs_test.go:161: string_value: LoadQuotaScanBound = 0, want 128
+quota_gate_scan_dirs_test.go:196: the shipped-key inventory has no row for workflow.quota_gate.max_scan_dirs
+quota_gate_scan_dirs_test.go:202: configCacheSchemaVersion = 11, want 12 — Workflow.QuotaGate gained MaxScanDirs
+```
+
+Observation: in `type_mismatch_defaults_the_whole_block_gate_off` the whole-block half (`LoadQuotaGate(root)` equals `DefaultQuotaGate()` for the string value and the overflowing integer literal, gate off, no bound in the settings) already held at RED; only the accessor half failed. That is the intended split: the predecessor's behaviour is pinned as unchanged and the accessor's 128 is the new behaviour.
+
+#### Predecessor guards after the stub-field removal and BEFORE any default changed (stub tree, commit `e350a8139`)
+
+`unset … && go -C <tree> test -count=1 -v -run '^(TestQAS_AC007_ConfigDefaultsMirrorTemplate|TestShippedConfigKeysHaveReaders)$' ./internal/config` (the only `TestQAS_` test in `internal/config` is `TestQAS_AC007_ConfigDefaultsMirrorTemplate`, read by grep of `^func TestQAS_`) → `--- PASS: TestShippedConfigKeysHaveReaders (22.23s)` with its four subtests PASS, `--- PASS: TestQAS_AC007_ConfigDefaultsMirrorTemplate (0.16s)` with its nine subtests PASS (`defaults_equal_template`, `template_ships_off`, `template_comment_says_unmeasured`, `local_twin_enabled`, `loader_reads_a_configured_block`, `absent_or_unparseable_yields_default`, `out_of_range_yields_default`, `max_age_below_twice_heartbeat_yields_default`, `cache_schema_bumped`), `ok  github.com/modu-ai/moai-adk/internal/config 22.643s`. Two top-level tests swept.
+
+#### GREEN (key release, commit `7ff94b33f`, `feat(...): M2 scan bound accessor and key`)
+
+Everything of M2 is in this one commit (decision D-R6: the Go seed and the template and local-twin key cannot be separated): `DefaultQuotaGateMaxScanDirs = 128` in `defaults.go` beside the `DefaultQuotaGate*` constants and seeded into the YAML struct in `NewDefaultWorkflowConfig`; the range constants `quotaGateScanDirsMin = 1` and `quotaGateScanDirsMax = 1024` and the accessor body in `loader_quota_gate.go` (same `loadYAMLFile` and defaults-seeded `workflowFileWrapper` as `LoadQuotaGate`); `configCacheSchemaVersion` 11 to 12 with a comment line; the inventory row `workflow.quota_gate.max_scan_dirs` (class W, evidence reader) between `max_age` and `release_margin_pct`; the key `max_scan_dirs: 128` plus a comment (one comment line names the key and says `unmeasured`, a second says a project with more worktrees than the key needs a larger value) in the shipped template block; the key and a comment in the local twin. `git diff 60cb309ba -- internal/config/loader_quota_gate.go` shows only additions (the range constants and the accessor): `QuotaGateSettings`, `DefaultQuotaGate`, `resolveQuotaGate`, and `LoadQuotaGate` are byte-identical to the predecessor.
+
+```
+$ unset … && go -C <tree> test -count=1 -v -run '^TestQWR_AC013_MaxScanDirsConfigKey$' ./internal/config
+--- PASS: TestQWR_AC013_MaxScanDirsConfigKey (0.10s)
+    --- PASS: TestQWR_AC013_MaxScanDirsConfigKey/default_equals_template (0.03s)
+    --- PASS: TestQWR_AC013_MaxScanDirsConfigKey/template_comment_says_unmeasured (0.00s)
+    --- PASS: TestQWR_AC013_MaxScanDirsConfigKey/local_twin_carries_key (0.00s)
+    --- PASS: TestQWR_AC013_MaxScanDirsConfigKey/absent_or_unparseable_yields_default (0.01s)
+    --- PASS: TestQWR_AC013_MaxScanDirsConfigKey/out_of_range_numeric_yields_default (0.03s)
+    --- PASS: TestQWR_AC013_MaxScanDirsConfigKey/type_mismatch_defaults_the_whole_block_gate_off (0.02s)
+    --- PASS: TestQWR_AC013_MaxScanDirsConfigKey/inventory_row_with_reader (0.01s)
+    --- PASS: TestQWR_AC013_MaxScanDirsConfigKey/cache_schema_bumped (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/config	0.807s
+```
+
+Swept: 1 top-level test, 8 subtests (the RED run printed the same eight names). The cli half of AC-QWR-013 (`TestQWR_AC013b_ProductionSeamAppliesConfiguredBound`) is an M4 item and was not run here.
+
+```
+$ unset … && go -C <tree> test -count=1 -v -run '^(TestQAS_AC007_ConfigDefaultsMirrorTemplate|TestShippedConfigKeysHaveReaders)$' ./internal/config
+--- PASS: TestShippedConfigKeysHaveReaders (15.92s)   (four subtests PASS)
+--- PASS: TestQAS_AC007_ConfigDefaultsMirrorTemplate (0.13s)   (the same nine subtests PASS, including defaults_equal_template and cache_schema_bumped)
+ok  	github.com/modu-ai/moai-adk/internal/config	16.260s
+```
+
+`max_scan_dirs` does not appear among the keys the guard's diagnostic lists as dead or unbound (grep of the saved output printed nothing), so the inventory row's reader (`LoadQuotaScanBound`) resolved. Whole package: `unset … && go -C <tree> test -count=1 ./internal/config/` → `ok  github.com/modu-ai/moai-adk/internal/config 15.720s` (non-verbose run, so only the package verdict line was observed: no test of the package failed). Template neutrality: `go -C <tree> test -count=1 -v -run '^TestTemplateNoInternalContentLeak$' ./internal/template` → `--- PASS: TestTemplateNoInternalContentLeak (3.54s)`, `ok  github.com/modu-ai/moai-adk/internal/template 4.049s`.
+
+#### `make build` and the embedded template
+
+`make -C <tree> build` (`/usr/bin/make`, no Xcode-licence refusal) ran its read-only agent-emit check, `templ generate`, `gen-catalog-hashes --all` (printed `catalog.yaml updated successfully`, but `git status --short` afterwards listed no catalog change), then `go build … -o bin/moai`. Templates are embedded straight from `internal/template/templates/` (`//go:embed all:templates`), so no embedded file is regenerated into the tree; the evidence that the build embeds the new key is on the binary: `grep -a -c "max_scan_dirs: 128" bin/moai` → `1`, and the control `grep -a -c "max_scan_dirs: 129" bin/moai` → `0`. `bin/moai` is gitignored (`git check-ignore bin/moai` printed it). `git status --short` after the build listed exactly the six files the key-release commit stages.
+
+#### M2 data point (D-R2): what the accessor returns for non-integral numbers (observation, no assertion, no AC names it)
+
+A throwaway test (written, run once under the lease, then deleted; never committed) wrote `max_scan_dirs: <v>` beside `enabled: true` and `five_hour_hold_pct: 80` and printed the accessor and the settings:
+
+```
+OBS max_scan_dirs 2.5: LoadQuotaScanBound=2 LoadQuotaGate.Enabled=true FiveHourHoldPct=80
+OBS max_scan_dirs 2.0: LoadQuotaScanBound=2 LoadQuotaGate.Enabled=true FiveHourHoldPct=80
+OBS max_scan_dirs 0.5: LoadQuotaScanBound=128 LoadQuotaGate.Enabled=true FiveHourHoldPct=80
+OBS max_scan_dirs 1024.5: LoadQuotaScanBound=1024 LoadQuotaGate.Enabled=true FiveHourHoldPct=80
+OBS max_scan_dirs 1e3: LoadQuotaScanBound=1000 LoadQuotaGate.Enabled=true FiveHourHoldPct=80
+```
+
+Reading: the decoder does not fail on a real number and assigns the integer part (2.5 gives 2, 1024.5 gives 1024, 0.5 gives 0 which the range check turns into 128); the other keys of the block are honoured. This is observed on this tree with this decoder only; it is not a stated guarantee and no test pins it.
+
+#### Other checks
+
+- `go -C <tree> vet ./internal/config` → no output. `golangci-lint v2.1.6 run ./internal/config/...` → `0 issues.` (once on the stub tree and once on the key-release tree). `GOOS=windows GOARCH=amd64 go -C <tree> build ./...` → no output (the plain `go build ./...` ran inside `make build`).
+- PRESERVE: `git diff --name-only 10783cb50 -- internal/config/workflow_quota_gate_test.go internal/cli/factory_quota_test.go internal/statusline/quota_test.go` printed nothing; positive control `git diff --name-only 10783cb50 -- internal/config/loader_quota_gate.go internal/config/workflow_quota_gate_test.go` printed `internal/config/loader_quota_gate.go` (a changed file shows, so the empty first result is a measured absence).
+- Only `internal/config` Go files, the inventory fixture, the template `workflow.yaml`, and the local twin changed; no `internal/cli` or `internal/statusline` file was touched, so their lint and vet were not run.
+
+#### Gaps
+
+- `gofmt -l internal/config` lists `internal/config/slice.go`, a file this work did not touch (absent from `git status`); not investigated and not part of this card.
+- The cli seam (`TestQWR_AC013b_...`, `TestQWR_AC007..009`, `TestQAS_` cli tests) and the statusline tests were not run: M3/M4 own them and this work changed no code they read except through the accessor, which no production caller uses yet. The 2.5 observation is a data point from one decoder on one machine.
+- Whether `moai doctor --check "Agent Emit Embed"` / `make embed-check` is clean was not run (no agent definition changed).
+- The throwaway observation test was deleted before the commit; its code is not in the tree, only its printed output above.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
