@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-BATCH-GATE-001
 title: "승인 게이트 배치 일괄화 — 운영자 형태 plan→run Kickoff의 배치 게이트 요약, 단일 승인, 반대 증거 의무"
-version: "0.4.0"
+version: "0.4.1"
 status: draft
 created: 2026-10-02
 updated: 2026-10-02
@@ -23,6 +23,7 @@ related_specs: [SPEC-LANE-STALL-WATCHDOG-001, SPEC-AUTONOMY-KICKOFF-CALIB-001, S
 
 ## HISTORY
 
+- 0.4.1 — 2026-10-02 — 플랜 감사 3회차(FAIL, 0.84; Tier L 상한 3회 도달; 신규 결함 N16–N27) 가운데 N16·N17·N18·N26만 반영한 좁은 개정. 운영자가 상한 연장 1회(작성자 개정 한 번과 감사자 델타 읽기)를 승인했다. status는 draft, tier는 L, 요구사항 20개·인수 기준 17개·앵커 45행은 그대로다. (N16) REQ-BGS-010의 "operator gates" 항목이 REQ-BGS-001이 요약 모집단으로 정한 운영자 형태 plan→run Kickoff 행을 포함하지 않는다고 한정했고, keep-set 범주에 걸리지 않는 그 행은 요약 행으로 REQ-BGS-011에 따라 분류한다고 적었다(AC-004, 앵커 A26 문구, spec-compact, design D.5, decision-index Q6, research R4.5를 같은 말로 맞춤). (N17) AC-005 Then의 (e)를 지웠다 — "요약은 권한 게이트 불변식을 약화하지 않는다"는 REQ-BGS-011의 목적절로만 남는다(앵커 추가 없음). (N18) plan M3와 design D.6의 run.md 편집 예를 AC-016 (b)를 만족하는 형태로 고쳤다. (N26) progress.md §E.1과 acceptance.md 머리 고정 문장의 낡은 상태 서술을 갱신했다. N19–N25·N27은 이름 붙은 부채로 그대로 둔다.
 - 0.4.0 — 2026-10-02 — 플랜 감사 2회차(FAIL, 0.775, 신규 결함 N1–N15, MP-9 실패) 반영. status는 draft, tier는 L 그대로. 오케스트레이터 2회차 판정 R1–R4를 적용했다: (R1) 요약은 plan→run Kickoff 행 하나에만 적용하고 나머지 게이트 행은 개별 질문으로 둔다(REQ-BGS-001·003·004·005·006·011·019, 확대 여부는 decision-index Q13). (R2) Q3는 풀지 않고 "차단 행을 차단으로 보고하고 승인에서 뺀다"(요구)와 "어디에 보고하는가"(열린 부분)를 갈랐다(REQ-BGS-011). (R3) M0 종료 조건에서 정본 절 커밋에 기대는 조상 판정을 끝 점검으로 옮겼다(AC-008, plan M0). (R4) AC-016 (c)(d)의 왼쪽 끝을 읽는 시점의 merge-base로 바꿨다. 그 밖에: 독립 판정 복원, 기록 시점 재확인 범위 확대, 빼내기 자유 입력의 읽기 규칙, 배치 식별자 유일성, 기록 서식 문법, 선호 배출 비약화(REQ-BGS-020 신설), 공지 문장의 이름 토큰, 하위 테스트 비공허 점검. 요구사항 20개, 인수 기준 17개. 결함별 처분은 `plan.md` §J. Q4·Q5의 운영자 판정 줄과 Q11 판정 본문은 그대로다(Q11은 숫자만 갱신).
 - 0.3.0 — 2026-10-02 — 플랜 감사 1회차(FAIL, 0.70, 결함 D1–D17) 반영. status는 draft 그대로. 오케스트레이터 1회차 판정 R1–R5(tier L, 기준선 추적 경로, REQ-BGS-011 양성형, REQ-BGS-010 예약 목록 한정, Q8 정정)를 적용했다. 결함별 처분은 `plan.md` §I. 요구사항 19개, 인수 기준 17개.
 - 0.2.0 — 2026-10-02 — Decision Point 1 반영(status는 draft 그대로). 운영자 답: (1) 이 초안으로 plan-audit 진행, (2) decision-index Q4(낡은 카드별 "필수 Kickoff" 표현 정합) 범위 안, (3) Q5(런처가 SessionStart에 주입하는 리더 공지 문장) 범위 안. 변경: REQ-BGS-014 무조건화, REQ-BGS-016과 AC-015 신설(리더 공지 문장, 네 로케일), "제품 Go 변경 없음" 서술을 "리더 공지 문장과 그 테스트에 한정"으로 전면 개정(§B.1·§B.7·§D·AC-009·plan "Go 작업 판단"), plan M4·M5 무조건화, Tier 재측정 사실을 §A.5에 공시(`tier: M`은 바꾸지 않았다 — 판정은 오케스트레이터). decision-index는 Q4·Q5의 판정 줄과 Q11의 사유만 갱신했고 나머지 행은 여전히 열려 있다.
@@ -143,7 +144,7 @@ related_specs: [SPEC-LANE-STALL-WATCHDOG-001, SPEC-AUTONOMY-KICKOFF-CALIB-001, S
 
 ### C.4 Reserved and blocked rows
 
-- **REQ-BGS-010** (Event-driven) — **When** a pending row falls in a keep-set category of the auto-semantics gate inventory (environment-impossible, operator-held, or an irreversible operation on an external shared system) or in a power that the kanban-dispatch rule keeps with the leader session (final PASS/FAIL verdicts, final merge approval, operator gates, card issuance and `done` through queue mutations, CodeRabbit slot-wait adjudication, cross-session dispute coordination), the session shall handle that row individually, outside the single approval. [draft reading: Q6, Q2]
+- **REQ-BGS-010** (Event-driven) — **When** a pending row falls in a keep-set category of the auto-semantics gate inventory (environment-impossible, operator-held, or an irreversible operation on an external shared system) or in a power that the kanban-dispatch rule keeps with the leader session (final PASS/FAIL verdicts, final merge approval, operator gates, card issuance and `done` through queue mutations, CodeRabbit slot-wait adjudication, cross-session dispute coordination), the session shall handle that row individually, outside the single approval; the "operator gates" item of that list does not include the operator-form plan→run Kickoff row that REQ-BGS-001 defines as the summary's population, so such a row is reserved only when it falls in a keep-set category and otherwise is a summary row classified under REQ-BGS-011. [draft reading: Q6, Q2]
 - **REQ-BGS-011** (Ubiquitous) — The session shall list a row as approvable only when its most recent independent plan-audit verdict (the final-iteration verdict of the card's current plan artifacts, produced by the plan-auditor and not by the session that authored them) is PASS, the plan phase records audit-ready status, the plan-artifact hashes are unchanged since that verdict, and no blocker is open; the session shall report every other row as blocked and exclude it from the single approval, treating PASS-WITH-DEBT, BYPASSED, FAIL, INCONCLUSIVE, an absent verdict, and a verdict not produced by the plan-auditor as blocked states, so that the summary never weakens the authority-gate invariant of the decision ladder. [draft reading: Q3 — where a blocked row is reported, in the summary table or outside it, is open]
 - **REQ-BGS-012** (State-driven) — **While** `workflow.autonomy.mode` is `contract`, the summary shall not stand in for the signing gate: the contract signature verified by `moai contract kickoff-check` remains the plan→run gate and forms no summary row.
 

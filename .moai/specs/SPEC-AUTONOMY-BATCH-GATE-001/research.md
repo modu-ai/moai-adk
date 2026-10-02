@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-BATCH-GATE-001
 title: "Research — 근거 요약과 전제 검증"
-version: "0.4.0"
+version: "0.4.1"
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
@@ -237,7 +237,7 @@ ok  	github.com/modu-ai/moai-adk/internal/hook	6.364s
 
 ### R4.5 `kanban-dispatch.md:106` 목록 원문 (결함 D4)
 
-`grep -n "The deputy never holds" .claude/rules/moai/workflow/kanban-dispatch.md` → `:106`: "**The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session." — 이 줄의 항목이 REQ-BGS-010의 리더 보유 권한 목록이다(목록의 집은 그 요구사항 하나다). "user-facing behavior changes"는 이 줄에 없다. 그 구절은 로컬 문서 `.moai/docs/jev-local-operations.md:30`에만 있고 출하되지 않는다(E3).
+`grep -n "The deputy never holds" .claude/rules/moai/workflow/kanban-dispatch.md` → `:106`: "**The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session." — 이 줄의 항목이 REQ-BGS-010의 리더 보유 권한 목록이다(목록의 집은 그 요구사항 하나다). 이 줄의 "operator gates"는 리더가 대리인에게 넘기지 않는 권한을 가리키며, 요약 모집단인 운영자 형태 Kickoff 행을 예약한다는 뜻이 아니다 — 그 한정은 REQ-BGS-010이 가진다. "user-facing behavior changes"는 이 줄에 없다. 그 구절은 로컬 문서 `.moai/docs/jev-local-operations.md:30`에만 있고 출하되지 않는다(E3).
 
 ### R4.6 질문 채널 상한 (결함 D9)
 

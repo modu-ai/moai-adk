@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-BATCH-GATE-001
 title: "Design — 배치 게이트 요약"
-version: "0.4.0"
+version: "0.4.1"
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
@@ -81,7 +81,7 @@ decision record: decided_by=<runner+role> evidence_refs=<paths+verdict-ids> ladd
 ## D.5 예약·차단·contract 행과 기록 시점 재확인 (REQ-BGS-010·011·012·019)
 
 **예약 목록의 출처 — 출하된 문서가 이미 싣는 것만.**
-- 목록의 단일 원천은 REQ-BGS-010이다. 원천 문서는 keep-set 정의(`auto-semantics.md:154-158`)와 `kanban-dispatch.md:106`이며, 그 줄의 원문은 `research.md` R4.5가 가진다. 여기서 되풀이하지 않는다.
+- 목록의 단일 원천은 REQ-BGS-010이다. 원천 문서는 keep-set 정의(`auto-semantics.md:154-158`)와 `kanban-dispatch.md:106`이며, 그 줄의 원문은 `research.md` R4.5가 가진다. 여기서 되풀이하지 않는다. 목록의 "operator gates" 항목이 요약 모집단(운영자 형태 plan→run Kickoff 행)을 포함하지 않는다는 한정도 REQ-BGS-010이 가진다 — 한정이 없으면 모집단 전체가 예약되어 요약이 비기 때문이다. 운영자 형태 Kickoff 행이 예약되는 길은 keep-set 범주뿐이고, 그 밖의 행은 요약 행이다.
 - 0.2.0까지 REQ-BGS-010에 있던 "user-facing behavior changes"는 뺐다. 이 문구는 로컬 유지보수 문서 `.moai/docs/jev-local-operations.md:30`에만 있고 출하되지 않는다. 문자대로 읽으면 대부분의 기능 SPEC Kickoff 행이 사용자 대면 동작을 바꾸므로 전부 예약되어 배치가 비고, 좁게 읽으면 리더마다 분류가 갈린다.
 - 열린 행 Q6은 열린 채다: 3등급 개별 승인 규칙이 출하 문서에서 *어디에* 서는가(keep-set 정의 + 권한 불변식만, 또는 리더 보유 권한 목록까지 지명, 또는 새 정의). 초안의 읽기는 앞의 둘(keep-set 정의와 `kanban-dispatch.md:106`)이다. REQ-BGS-010, 이 절, Q6이 이 하나의 원천에 일치한다.
 
@@ -103,7 +103,7 @@ decision record: decided_by=<runner+role> evidence_refs=<paths+verdict-ids> ladd
 
 **표면.** 다른 모든 표면은 포인터만 지닌다.
 - `kanban-dispatch.md`(상시 로딩, 리더가 매 턴 읽음): Boundaries "No gate bypass." 불릿 안에서 문장을 다듬어 §9.2를 가리킨다. 상시 로딩이므로 순증가는 `rule-authoring.md`의 1,000바이트 기준 아래여야 하고, 보존 구간("Promotion is the operator's act, always." → "The self-dispatch lane exception.")은 바이트 단위로 건드리지 않는다.
-- `run.md`: 기존 줄(`:137`)의 "§9.1" 인용을 "§9.1–9.2"로 바꾸는 식의 줄 수 불변 편집.
+- `run.md`: 기존 줄(`:137`)의 "§9.1" 인용을 "§9.1 and §9.2"로 바꾸는 식의 줄 수 불변 편집.
 - `spec-assembly.md:202-208`, `workflows/moai.md:144,240`: 낡은 "mandatory·score-independent" 표현을 §9.1·§9.2에 맞춰 다시 쓴다(REQ-BGS-014, 운영자 판정 Q4). 같은 줄 수로, 보존 문구와 사전 차이 줄은 그대로.
 
 **기각한 대안.** `kanban-dispatch.md`에 본문을 두는 안(상시 로딩 비용, 보존 구간 제약), 새 규칙 파일(`paths:` 없으면 상시 로딩 비용이 늘고 `paths:`가 있으면 리더가 읽을 길이 없다), `askuser-protocol.md`(상시 로딩이고 질문 규약과 섞인다).

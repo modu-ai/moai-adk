@@ -119,7 +119,7 @@ go test -count=1 -v -run '^(TestImplementationKickoffApprovalPreservedBeforeGoal
 | A23 | keep-set 범주 1 환경상 불가능 | 010 | 004 |
 | A24 | keep-set 범주 2 운영자 보유 | 010 | 004 |
 | A25 | keep-set 범주 3 외부 공유 시스템의 되돌릴 수 없는 조작 | 010 | 004 |
-| A26 | 리더 보유 권한 여섯 항목 모두 | 010 | 004 |
+| A26 | 리더 보유 권한 여섯 항목 모두, 단 "operator gates" 항목은 운영자 형태 Kickoff 행(요약 모집단)을 포함하지 않는다는 한정과, keep-set 밖의 그 행은 요약 행으로 REQ-011에 따라 분류된다는 문장 | 010 | 004 |
 | A27 | contract 모드: 서명이 게이트, 요약 행 없음 | 012 | 004 |
 | A28 | 판정 참조는 현재 산출물의 최종 반복 판정에 결속 | 011 | 005 |
 | A29 | 승인 가능은 PASS·audit-ready·해시 불변·열린 차단 없음 *넷 모두*이고 그 밖의 행은 차단으로 보고되어 승인에서 빠진다(보고 위치는 Q3) | 011 | 005 |
@@ -177,7 +177,7 @@ go test -count=1 -v -run '^(TestImplementationKickoffApprovalPreservedBeforeGoal
 
 - 선행: M2 커밋(정본 절 존재). 상시 로딩 `kanban-dispatch.md`는 이 마일스톤에서만 편집한다(B13).
 - `kanban-dispatch.md` Boundaries "No gate bypass." 불릿 안에서 문장을 다듬어 §9.2를 가리킨다(상시 로딩, 제약 4의 한도 안, 보존 구간 `:29-33` 밖). 미러 동시 편집, `:177` 사전 차이는 유지.
-- `run.md:137`의 기존 문장에서 "§9.1" 인용을 "§9.1–9.2"로 바꾸는 식의 *줄 수 불변* 편집만. 고정 문구·순서 유지.
+- `run.md:137`의 기존 문장에서 "§9.1" 인용을 "§9.1 and §9.2"로 바꾸는 식의 *줄 수 불변* 편집만. 고정 문구·순서 유지.
 - 정본 서식을 옮겨 적지 않는다(제약 13). 검증: 예산·LOC·AutoRank·Kickoff 보존 테스트 전부와 AC-016의 (a)–(d).
 - Exit: AC-016의 (a)–(d)(읽는 시점의 merge-base, 범위 비공허 대조 포함)와 AC-010의 가드 전부가 통과한다. 병합 전에 판정한다.
 

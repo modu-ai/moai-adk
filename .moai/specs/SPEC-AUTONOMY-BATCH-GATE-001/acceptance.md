@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-BATCH-GATE-001
 title: "Acceptance criteria — 배치 게이트 요약"
-version: "0.4.0"
+version: "0.4.1"
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
@@ -15,7 +15,7 @@ tier: L
 
 검증 계층이다. 요구사항 계층(GEARS)은 `spec.md` §C가 소유하고, 여기서는 반복하지 않는다. 각 기준은 `Given … When … Then …` 형식이고 `AC-NNN`으로 라벨링했다. 분류는 두 가지다.
 
-- **release-blocking**: RED-now 칸(명령 · 원문 stdout · 종료 코드 · 트리 SHA)을 §Evidence Ledger에 갖는다. 문서 수준 고정: **트리 `72e09d27b`**(전체 `72e09d27b0f7f8140bb11223c0d44a36d44984bb`, 브랜치 `WT-batch-approval-gate`). 0.3.0에서 RED 칸 전부를 이 트리에서 다시 돌렸고, 0.4.0에서 바꾼 칸(RED-3의 3d–3f, RED-6의 6d, RED-7의 7c·7d)은 칸에 적힌 트리 `08692e732`(작업 트리는 그 위에 SPEC 파일 수정만 있다)에서 다시 돌렸다. 칸 자체의 고정이 문서 수준 고정보다 우선한다. 0.2.0 값은 `c50da9c2f`에서 쟀고 두 트리의 소스 파일은 같다(`git diff --stat c50da9c2f HEAD -- . ':(exclude).moai/specs'`가 빈 출력, exit 0). 이 고정은 칸 자체에 고정이 없는 모든 기준에 적용된다.
+- **release-blocking**: RED-now 칸(명령 · 원문 stdout · 종료 코드 · 트리 SHA)을 §Evidence Ledger에 갖는다. 문서 수준 고정: **트리 `72e09d27b`**(전체 `72e09d27b0f7f8140bb11223c0d44a36d44984bb`, 브랜치 `WT-batch-approval-gate`). 0.3.0에서 RED 칸 전부를 이 트리에서 다시 돌렸고, 0.4.0에서 바꾼 칸(RED-3의 3d–3f, RED-6의 6d, RED-7의 7c·7d)은 칸에 적힌 트리 `08692e732`에서 다시 돌렸다(0.4.0의 SPEC 파일 수정은 이후 커밋 `4dec6281c`가 담았고, `git diff --stat 08692e732 HEAD -- . ':(exclude).moai/specs'`가 빈 출력, exit 0이라 소스 파일은 같다). 칸 자체의 고정이 문서 수준 고정보다 우선한다. 0.2.0 값은 `c50da9c2f`에서 쟀고 두 트리의 소스 파일은 같다(`git diff --stat c50da9c2f HEAD -- . ':(exclude).moai/specs'`가 빈 출력, exit 0). 이 고정은 칸 자체에 고정이 없는 모든 기준에 적용된다.
 - **regression-guard**: 현재 GREEN인 가드가 계속 GREEN이어야 하거나, 감사가 읽어 판정하는 시나리오. RED-now 칸 없음. 시나리오 기준은 기계 점검이 불가능하며 그 사실을 §D.1에 공시했다.
 
 검증 명령은 단순 명령·리터럴 경로·`-run` 앵커 패턴만 쓴다(워크트리 가드 안전). 테스트 계열 기준의 통과는 `--- PASS` 줄과 *비어 있지 않은 하위 테스트 집합*을 함께 읽어야 한다(빈 selector의 `ok`는 통과가 아니다 — `verification-completeness.md` §1.1).
@@ -49,16 +49,16 @@ tier: L
 
 - **Given** 행이 keep-set 범주이거나 리더 세션이 쥐는 권한이거나, 모드가 `contract`이다.
 - **When** 정본 절의 REQ-BGS-010·012 규칙을 점검한다.
-- **Then** 정본 절은 REQ-BGS-010이 나열한 keep-set 세 범주를 각각 — 환경상 불가능(A23), 운영자 보유(A24), 외부 공유 시스템의 되돌릴 수 없는 조작(A25) — 단일 승인에서 제외한다고 명시하고, 같은 요구사항이 나열한 리더 보유 권한 여섯 항목을 모두 제외 목록에 담으며(A26), contract 모드에서는 서명이 plan→run 게이트이고 요약 행이 생기지 않는다고 명시한다(A27). 정본 절에 "user-facing behavior changes"가 없다.
+- **Then** 정본 절은 REQ-BGS-010이 나열한 keep-set 세 범주를 각각 — 환경상 불가능(A23), 운영자 보유(A24), 외부 공유 시스템의 되돌릴 수 없는 조작(A25) — 단일 승인에서 제외한다고 명시하고, 같은 요구사항이 나열한 리더 보유 권한 여섯 항목을 모두 제외 목록에 담되 "operator gates" 항목은 REQ-BGS-001이 요약 모집단으로 정한 운영자 형태 plan→run Kickoff 행을 포함하지 않는다고 한정하고, keep-set 범주에 걸리지 않는 그 행은 요약 행이며 REQ-BGS-011로 분류된다고 쓰며(A26), contract 모드에서는 서명이 plan→run 게이트이고 요약 행이 생기지 않는다고 명시한다(A27). 정본 절에 "user-facing behavior changes"가 없다.
 - Verify: AC-002와 같은 명령(A23–A27 하위 테스트).
 - Verify: `grep -rcF "user-facing behavior" .claude/rules/moai/workflow/auto-semantics.md internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md` → 두 파일 모두 `:0`(출처가 출하된 문서로 한정됐는지의 부재 점검; 양성 대조 불가 — 부재가 정답이다).
-- 변이 탐침: 여섯 항목 중 하나를 뺀 목록은 A26 위반으로 거부된다.
+- 변이 탐침: 여섯 항목 중 하나를 뺀 목록은 A26 위반으로 거부된다. "operator gates"를 한정 없이 나열해 운영자 형태 Kickoff 행까지 예약하는 목록(요약 모집단이 빈다)도 한정 문장이 없으므로 A26 위반으로 거부된다.
 
 ### AC-005 — 차단 행은 승인에서 빠진다: 양성 규칙과 차단 토큰 (release-blocking, RED: RED-2)
 
 - **Given** 행의 최신(최종 반복) 독립 plan-audit 판정이 PASS가 아니거나(plan-auditor가 낸 판정이 아니라 계획 산출물을 쓴 세션의 자기 진술인 경우 포함), 계획 단계가 audit-ready를 기록하지 않았거나, 판정 뒤 계획 산출물 해시가 바뀌었거나, 열린 차단이 있다.
 - **When** 정본 절의 REQ-BGS-011 규칙을 점검한다.
-- **Then** 정본 절은 (a) 판정 참조가 현재 계획 산출물의 최종 반복 판정에 결속된다고 쓰고(A28) 그 판정은 plan-auditor가 낸 독립 판정이며 작성 세션의 자기 진술 PASS는 차단 상태라고 쓰고(A44), (b) 승인 가능 조건이 PASS·audit-ready 기록·해시 불변·열린 차단 없음 *넷 모두*라고 양성형으로 쓰고 그 밖의 행은 차단으로 보고되어 승인에서 빠진다고 쓰며(A29 — 보고 위치가 표 안인지 밖인지는 Q3), (c) PASS-WITH-DEBT(A30), BYPASSED(A31), FAIL(A32), INCONCLUSIVE(A33), 부재한 판정(A34)을 각각 차단 상태로 명명하고, (d) audit-ready 미기록(A35), 해시 변경(A36), 열린 차단(A37)을 각각 차단으로 명시하며, (e) 어느 경우에도 §7 권한 게이트 불변식을 약화하지 않는다고 쓴다.
+- **Then** 정본 절은 (a) 판정 참조가 현재 계획 산출물의 최종 반복 판정에 결속된다고 쓰고(A28) 그 판정은 plan-auditor가 낸 독립 판정이며 작성 세션의 자기 진술 PASS는 차단 상태라고 쓰고(A44), (b) 승인 가능 조건이 PASS·audit-ready 기록·해시 불변·열린 차단 없음 *넷 모두*라고 양성형으로 쓰고 그 밖의 행은 차단으로 보고되어 승인에서 빠진다고 쓰며(A29 — 보고 위치가 표 안인지 밖인지는 Q3), (c) PASS-WITH-DEBT(A30), BYPASSED(A31), FAIL(A32), INCONCLUSIVE(A33), 부재한 판정(A34)을 각각 차단 상태로 명명하고, (d) audit-ready 미기록(A35), 해시 변경(A36), 열린 차단(A37)을 각각 차단으로 명시한다.
 - Verify: AC-002와 같은 명령(A28–A37·A44 하위 테스트 — 앵커 하나당 변이 하나).
 - 변이 탐침(`verification-completeness.md` §2): 부정 열거형 문단(FAIL·INCONCLUSIVE·부재만 차단)은 A30·A31 위반으로 거부된다. 나머지 다섯을 차단하고 *PASS-WITH-DEBT만* 통과시키는 문단은 A30, *BYPASSED만* 통과시키는 문단은 A31, 각각 한 토큰만 풀어 둔 문단은 A32·A33·A34 위반으로 거부된다. 이전 반복의 PASS를 인용해도 된다고 허용하는 문단은 A28 위반이다. 계획 산출물을 쓴 세션의 자기 진술 PASS를 판정으로 인정하는 문단은 A44 위반이다. 차단 행을 보고 없이 조용히 빼는 문단은 A29 위반이다. 통과할 수 있는 변이: 앵커를 둔 채 뒤에 모순 문장(예외 조항)을 두는 본문(어휘적 한계, G-4) — AC-011이 감사 읽기로 막는다.
 

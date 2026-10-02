@@ -2,7 +2,7 @@
 
 > 요구사항마다 한 줄 요지만 싣는 압축본이다(0.4.0에서 spec.md를 베끼지 않고 요지로 다시 썼다). 정확한 GEARS 문장과 REQ-BGS-010의 목록(keep-set 세 범주, 리더 보유 권한 여섯 항목)은 `spec.md` §C가 정본이다. 불일치 시 `spec.md`가 이긴다. 열린 결정은 `decision-index.md`(Q1–Q13)이며 Q4·Q5는 운영자가 범위 안으로 판정했다(2026-10-02). 열린 행은 Q1–Q3, Q6–Q10, Q12, Q13이고 Q8(Go 강제)은 범위 밖이다. Q11은 오케스트레이터 판정(Tier L).
 
-card t1344 · version 0.4.0 · `tier: L`(계수 규칙은 `spec.md` §A.5: 경로 단위, 라이브·미러 각각, `.moai/specs/`·`.moai/reports/` 제외 → 17개) · status draft · 제품 Go 변경은 리더 공지 문자열(4파일)에 한정, 테스트 Go 3파일 · 문서(규칙·스킬) 변경 + 가드 테스트 + 리더 공지 문장. 산출물: `spec.md`, `plan.md`, `acceptance.md`, `design.md`, `research.md`.
+card t1344 · version 0.4.1 · `tier: L`(계수 규칙은 `spec.md` §A.5: 경로 단위, 라이브·미러 각각, `.moai/specs/`·`.moai/reports/` 제외 → 17개) · status draft · 제품 Go 변경은 리더 공지 문자열(4파일)에 한정, 테스트 Go 3파일 · 문서(규칙·스킬) 변경 + 가드 테스트 + 리더 공지 문장. 산출물: `spec.md`, `plan.md`, `acceptance.md`, `design.md`, `research.md`.
 
 ## Requirements (요지, 20개)
 
@@ -22,7 +22,7 @@ C.3 Counter-evidence and per-row records
 - REQ-BGS-009 (Event-driven) — 승인된 행마다 한 줄 자기 결정 기록: §10 세 필드, 이어서 `counter_refs=`. `ladder_path` = 게이트 행 슬러그;`batch=<UTC YYYYMMDDTHHMMSSZ>`, 한 요약 안 동일, 결정 보드에 같은 값이 있으면 다음 빈 초. 기록 없는 행은 미승인.
 
 C.4 Reserved and blocked rows
-- REQ-BGS-010 (Event-driven) — keep-set 범주 또는 리더 보유 권한(목록은 `spec.md`)의 행은 단일 승인 밖에서 개별 처리한다.
+- REQ-BGS-010 (Event-driven) — keep-set 범주 또는 리더 보유 권한(목록은 `spec.md`)의 행은 단일 승인 밖에서 개별 처리한다. 목록의 "operator gates" 항목은 요약 모집단인 운영자 형태 Kickoff 행을 포함하지 않는다: 그 행은 keep-set 범주에 걸릴 때만 예약되고 아니면 요약 행으로 REQ-BGS-011이 분류한다.
 - REQ-BGS-011 (Ubiquitous) — 승인 가능은 독립 plan-audit 최종 반복 판정 PASS + audit-ready 기록 + 해시 불변 + 열린 차단 없음 *넷 모두*일 때뿐. 그 밖의 행은 차단으로 보고되고 승인에서 빠진다(PASS-WITH-DEBT·BYPASSED·FAIL·INCONCLUSIVE·부재·plan-auditor가 아닌 판정). 보고 위치(표 안/밖)는 Q3.
 - REQ-BGS-012 (State-driven) — `contract` 모드에서는 계약 서명이 plan→run 게이트이고 요약 행은 없다.
 
@@ -47,7 +47,7 @@ C.7 Approval consistency
 - AC-001 (rb) 정본 절 제목 `### 9.2 The batch gate summary`가 라이브·미러에 각 1회.
 - AC-002 (rb) 서식·keep-set 점검 필드·질문 하나·승인 범위·빼내기와 읽기 규칙·선호 배출 비약화가 정본 절에 있다 — 가드 테스트(A05–A13, A41, A42, A45).
 - AC-003 (rb) `counter_refs=`·`none searched=<토큰>`·한 줄 §10 기록·`;batch=<id>`·기록 직전 재확인(A14–A22, A43).
-- AC-004 (rb) keep-set 세 범주·리더 보유 권한 여섯 항목·contract 모드 제외, "user-facing behavior" 부재(A23–A27).
+- AC-004 (rb) keep-set 세 범주·리더 보유 권한 여섯 항목("operator gates"는 운영자 형태 Kickoff 행을 포함하지 않는다는 한정과 함께)·contract 모드 제외, "user-facing behavior" 부재(A23–A27).
 - AC-005 (rb) 최종 반복 독립 판정 결속, PASS 양성 규칙, 차단 토큰 다섯, 차단 사유 셋, 자기 진술 PASS 거부(A28–A37, A44).
 - AC-006 (rb) Kickoff 행 한정·다른 게이트 행은 개별 질문·붙잡지 않기·동일 판정 1회(차단·예약 행은 이름에 올리지 않음)(A01–A04, A39, A40).
 - AC-007 (rb) 앵커 표 45행마다 변이 본문이 해당 앵커 위반으로 거부 — `--- PASS` 46 이상, `=== RUN`과 같은 수, `[no tests to run]` 없음, 변이 거부 줄 45개.
