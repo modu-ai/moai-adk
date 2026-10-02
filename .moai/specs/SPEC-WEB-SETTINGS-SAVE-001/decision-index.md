@@ -18,6 +18,8 @@ Label: EVIDENCE-NEEDED
 
 Authority anchor: —
 
+> **리드 처분 기록(2026-10-02, M1 진단 — 측정 완결)**: ① 운영자 설치 바이너리 = rc.23(d194083fb, 2026-09-30 빌드) — t1314 seam 재작성 포함(`git merge-base --is-ancestor 9be71a4f1 d194083fb` exit 0), 본 트리 HEAD의 조상. ② "미저장" 배지의 런타임 생산자는 **양 빌드 모두 존재하지 않는다**(rc.23 app.js `dirty` 0히트 실측, settingsSaveState는 error|saved|clean만 반환) — 운영자 관측은 실 dirty 상태가 아니었다. ③ 풀폼(152키 교차 탭) 재현이 본 트리에서 GREEN — 저장 경로 자체는 양 빌드에서 정상(codex overlay Gap은 풀폼 실측으로 대체 소멸). 잔여: 당시 운영자 세션의 프로세스 상태(스테일 moai web 가능성)는 현 시점에서 관측 불가 — `.moai/reports/t1393/root-cause.md` §6 residual. 스크린샷 재판독만 운영자 몫으로 남는다.
+
 Why unresolved: 본 트리(develop f130aa041)에서 `data-save-state="dirty"`의 런타임 생산자가 관측되지 않는다(app.js 폼 변경 리스너 0건; `settingsSaveState`는 error|saved|clean만 반환 — internal/web/settings_shell.go:61). 운영자 관측이 실제 dirty였다면 실행 바이너리가 본 트리와 다르거나 미관측 생산자가 존재하고, 오류 배지였다면 가설 (a)(검증 거절)이 올라간다. plan-audit iter 1의 codex overlay 보고("최소 제출은 정상 저장" — 중간 신뢰도, 미검증 Gap)가 "운영자 바이너리 ≠ 본 트리" 대립 가설을 강화했다 — AC-WSS-001의 미재현 분기(acceptance.md §D.1)가 이 질의를 M1 진입 조건으로 흡수한다. 배지 정체가 가설 판별의 분기점이므로 M1 진단 전에 운영자 바이너리 버전 또는 스크린샷 재판독이 필요하다.
 
 Operator verdict:

@@ -21,16 +21,16 @@ author: GOOS
 
 | AC | 스코프 | 요구사항 | 심각도 | 판정 |
 |---|---|---|---|---|
-| AC-WSS-001 | ① | REQ-WSS-101 | Blocker | 관측-RED 재현 증거 |
-| AC-WSS-002 | ① | REQ-WSS-102 | Blocker | 토글 영속 테스트 GREEN |
-| AC-WSS-003 | ① | REQ-WSS-103 | Blocker | 감사 필드 영속 테스트 GREEN |
-| AC-WSS-004 | ① | REQ-WSS-104 | Blocker | 시늅 실패 배너 노출 테스트 GREEN |
+| AC-WSS-001 | ① | REQ-WSS-101 | Blocker (§D.0 regression-guard) | 관측-RED 재현 증거 |
+| AC-WSS-002 | ① | REQ-WSS-102 | Blocker (§D.0 regression-guard) | 토글 영속 테스트 GREEN |
+| AC-WSS-003 | ① | REQ-WSS-103 | Blocker (§D.0 regression-guard) | 감사 필드 영속 테스트 GREEN |
+| AC-WSS-004 | ① | REQ-WSS-104 | Blocker (§D.0 regression-guard) | 시늅 실패 배너 노출 테스트 GREEN |
 | AC-WSS-005 | ① | REQ-WSS-105 · REQ-WSS-106 | Blocker | save_lossless + 저장 계약 기존 테스트 무수정 GREEN |
 | AC-WSS-006 | ② | REQ-WSS-201 | Major | claude 기본값 단언 GREEN |
 | AC-WSS-007 | ② | REQ-WSS-201 | Major | glm 핀 3중 정합 GREEN |
 | AC-WSS-008 | ② | REQ-WSS-201 | Major | codex 불변 GREEN |
 | AC-WSS-009 | ② | REQ-WSS-203 | Major | 관측-RED 증거 |
-| AC-WSS-010 | ③ | REQ-WSS-301 · REQ-WSS-306 | Blocker | 미확증 거부 테스트 GREEN |
+| AC-WSS-010 | ③ | REQ-WSS-301 · REQ-WSS-306 | Blocker (§D.0 regression-guard) | 미확증 거부 테스트 GREEN |
 | AC-WSS-011 | ③ | REQ-WSS-304 | Major | 착지 경로 통과 테스트 GREEN |
 | AC-WSS-012 | ③ | REQ-WSS-302 | Major | fail-open 보존 테스트 GREEN |
 | AC-WSS-013 | ③ | REQ-WSS-303 | Major | merge-first 순서 보존 GREEN |
@@ -64,7 +64,7 @@ author: GOOS
 
 ## §D.4 전체 재측정
 
-- **AC-WSS-014 (소관 패키지 전량)** Given 최종 트리, When 재측정 단위 명령(§D 전 행 공통 — 5패키지)이 실행되면, Then 전량 GREEN이고 원문 출력이 verdict.md에 반출된다. **수정 전 기준선**: 증거 원장 EV-001(§D.8). (로컬 전체 스위트 실행 금지 — 전 패키지 판정은 CI.)
+- **AC-WSS-014 (소관 패키지 전량)** Given 최종 트리, When 재측정 단위 명령(§D 전 행 공통 — 5패키지)이 실행되면, Then 전량 GREEN이고 원문 출력이 verdict.md에 반출된다. **수정 전 기준선**: 증거 원장 EV-001(§D.8). **차등 판독(N2)**: internal/cli의 기존 적색 — 30m 스위트 타임아웃 + TestStopChainEffectParityGolden ×3·TestStopChainMemberCostWithinBudget·TestSyncGateLanguageDetectionMatchesScript(t1384/t1390 알려진 CI 적색군, EV-001이 기록) — 는 본 SPEC이 고칠 대상이 아니라 **"새로 유발하지 않았음"의 대비 집합**이다: 수정 후 측정에서 같은 테스트만 적색이면 차등 GREEN이고, 그 외 신규 적색은 본 SPEC의 결함이다. 부하기에서의 cli 타임아웃 재현 가능성도 EV-001이 증거로 남긴다. (로컬 전체 스위트 실행 금지 — 전 패키지 판정은 CI.)
 
 ## §D.5 간접 검증
 
@@ -94,13 +94,67 @@ author: GOOS
 
 - command (단일 호출): `go test -timeout 30m ./internal/web/... ./internal/cli/... ./internal/config/... ./internal/settings/... ./internal/profile/...`
 - 실행 맥락(4요소 외 부기): 레인 정화 래퍼 `unset MOAI_AUTONOMY_TIER MOAI_CONFIG_SOURCE MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_ID MOAI_KANBAN_SETTINGS_INJECTED MOAI_LAUNCH_PROVIDER MOAI_PROFILE_LEASE_TOKEN MOAI_SESSION_PID && <위 명령>` 을 1회 호출로 실행 — 래퍼는 명령 요소가 아니라 실행 맥락이다. 원문 전문: `.moai/reports/t1393/baseline-prefix-20261001.txt`
-- verbatim stdout (꼬리): <PENDING-BID67HBR9>
-- exit code: <PENDING-BID67HBR9>
+- verbatim stdout (꼬리):
+  ```
+  FAIL	github.com/modu-ai/moai-adk/internal/cli	1801.869s
+  ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	1.360s
+  ok  	github.com/modu-ai/moai-adk/internal/cli/harness	7.972s
+  (…중간 cli 하위 패키지 ok 15행 — 원문 전문은 인용 파일…) N3: 본 표식 <PENDING-BID67HBR9>의 백필 착지 지점은 이 원장 항목이다(2026-10-02 M5).
+  ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	310.365s
+  ok  	github.com/modu-ai/moai-adk/internal/config	34.238s
+  ok  	github.com/modu-ai/moai-adk/internal/config/atomicfile	1.631s
+  ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	1.628s
+  ok  	github.com/modu-ai/moai-adk/internal/settings	3.322s
+  ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.621s
+  ok  	github.com/modu-ai/moai-adk/internal/profile	2.975s
+  FAIL
+  ```
+- exit code: 1 (파일 말미 `exit=1` — internal/cli의 기존 적색 3테스트(TestStopChainEffectParityGolden ×3·TestStopChainMemberCostWithinBudget·TestSyncGateLanguageDetectionMatchesScript, t1384/t1390군) + 30m 스위트 타임아웃; 나머지 소관 패키지 전부 ok)
 - tree SHA: f130aa041bb90c81b235029afffa806a65e88480
 
 ### EV-002 — AC-WSS-005 수정 전 기준선 (무손실 대상 3패키지 행)
 
 - command: EV-001과 동일 실행의 `./internal/config/...` · `./internal/settings/...` · `./internal/profile/...` 행
-- verbatim stdout: <PENDING-BID67HBR9>
-- exit code: <PENDING-BID67HBR9>
+- verbatim stdout:
+  ```
+  ok  	github.com/modu-ai/moai-adk/internal/config	34.238s
+  ok  	github.com/modu-ai/moai-adk/internal/config/atomicfile	1.631s
+  ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	1.628s
+  ok  	github.com/modu-ai/moai-adk/internal/settings	3.322s
+  ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.621s
+  ok  	github.com/modu-ai/moai-adk/internal/profile	2.975s
+  ```
+- exit code: 0 (해당 3패키지 행 전부 ok — 상기 행은 인용 파일 같은 실행에서 발췌)
 - tree SHA: f130aa041bb90c81b235029afffa806a65e88480
+
+### EV-003 — AC-WSS-014 수정 후 셀 (소관 5패키지, 2026-10-02)
+
+- command (단일 호출): EV-001과 동일 — `go test -count=1 -timeout 30m ./internal/web/... ./internal/cli/... ./internal/config/... ./internal/settings/... ./internal/profile/...` (레인 정화 래퍼 10변수, 1회 호출 — `-count=1` 추가는 기준선보다 강한 조건)
+- verbatim stdout (요약 행):
+  ```
+  ok  	github.com/modu-ai/moai-adk/internal/web	55.595s
+  FAIL	github.com/modu-ai/moai-adk/internal/cli	1801.638s
+  ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	197.848s
+  ok  	github.com/modu-ai/moai-adk/internal/config	9.348s
+  ok  	github.com/modu-ai/moai-adk/internal/settings	2.383s
+  ok  	github.com/modu-ai/moai-adk/internal/profile	2.262s
+  FAIL
+  ```
+  (cli 하위 패키지 16행 전부 ok — 원문 전문은 `.moai/reports/t1393/` 세션 로그, 요약은 verdict.md 전체 재측정 절)
+- exit code: 1 — **차등 판독(N2)에서 GREEN**: 적색 3테스트 중 TestStopChainEffectParityGolden·TestSyncGateLanguageDetectionMatchesScript는 EV-001과 동일한 기존 적색이고, TestStopChainMemberCostWithinBudget(기존 적색)은 이번 실행에서 통과(시간 민감 예산 단언 — 유리 방향 변동), 유일 신규 적색은 TestAuditLagUsesBinlagSeam의 스윕이 본 SPEC의 착지 술어 추가분을 깃든 것으로 선언 요구한 것(`44a5d8c6a`에서 선언 완료·선별 재실행 GREEN 2.43s). 신규 유발 결함 0.
+- tree SHA: 360c41b5d (측정 시점 HEAD — 스윕 선언 커밋 44a5d8c6a는 측정 후)
+
+### EV-004 — AC-WSS-005 수정 후 셀 (무손실 대상 3패키지 행)
+
+- command: EV-003과 동일 실행의 `./internal/config/...` · `./internal/settings/...` · `./internal/profile/...` 행
+- verbatim stdout:
+  ```
+  ok  	github.com/modu-ai/moai-adk/internal/config	9.348s
+  ok  	github.com/modu-ai/moai-adk/internal/config/atomicfile	0.896s
+  ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	1.127s
+  ok  	github.com/modu-ai/moai-adk/internal/settings	2.383s
+  ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.339s
+  ok  	github.com/modu-ai/moai-adk/internal/profile	2.262s
+  ```
+- exit code: 0 (해당 3패키지 행 전부 ok — EV-001 기준선과 동일 판정, 무손실 회귀 0)
+- tree SHA: 360c41b5d
