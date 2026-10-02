@@ -113,7 +113,14 @@ const runHealthCycle = async ($: EngineInterface, run: Run): Promise<void> => {
     const merged = mergeGoodHealth(previous, fresh)
     if (JSON.stringify(previous) !== JSON.stringify(merged)) await $.state.set(healthRef, merged)
   } catch (err) {
-    await setNotice($, `moai-status: ${errorText(err)}`)
+    // soft()'s nested guard (sync-audit F-1): a state failure during the catch
+    // itself must not reject this promise — the timer discards it with `void`,
+    // so an unguarded await here leaks an unhandled rejection per tick.
+    try {
+      await setNotice($, `moai-status: ${errorText(err)}`)
+    } catch {
+      // nothing left to try; the session continues unaffected
+    }
   } finally {
     inFlight = false
   }

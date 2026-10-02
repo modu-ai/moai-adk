@@ -143,6 +143,12 @@ Builds: `claude 2.1.287`, `moai v3.2.0-rc.25`, `bun 1.4.2`. Engine profile: `/tm
 - DoD-3 (committed-diff path check): `git diff --name-only 58dad3055..HEAD` filtered against `mods/moai-status/`, `.gitignore`, and this SPEC directory leaves **nothing** — every committed path is in scope.
 - AC-MSM-013 checklist for the operator (recorded, not claimed): load with `claude --plugin-dir <abs path to mods/moai-status>`; work past the context thresholds and watch the strip/suffix; run with a behind binary and a second session sending one delivery; confirm the toast, the status line naming both SHAs, and otherwise-unchanged behavior. If the operator profile's rollout switch is off the mod will not load there (G-10).
 
+### Post-close addendum — F-1 repair (leader-directed, pre-push; this session)
+
+- **F-1 [P2]** (sync-audit.md): `runHealthCycle`'s catch awaited `setNotice` unguarded while the timer discards the promise with `void` — a state failure during the catch leaked an unhandled rejection per tick. Repair mirrors `soft()`'s nested guard (register.ts, +8/-1).
+- **RED (right reason)**: `tests/pure/guards.spec.ts` against the pre-fix source — `guard: the health cycle catch wraps its notice write (F-1)` fails; bun 25 testcases / 1 failure. Honest account of the detour: the first RED attempt (engine test with a `process.on('unhandledRejection')` listener) failed for the WRONG reason — the engine sandbox exposes no `process` global (its module loader also rejects `node:process`), so that form was discarded; the escaped-rejection surface itself is observed at the host level by the sync-audit's fault injection (the observed failure on record), the discriminating check lives in the bun structural test, and the engine-side test is relabeled a regression guard (broken-state cycle completes, single-flight gate resets, later ticks run).
+- **GREEN**: bun 25 pass / 0 fail / 0 skipped; engine 20 pass / 0 fail (`CLAUDE_CONFIG_DIR=/tmp/msm-cfg-f1c claude plugin test mods/moai-status`); `claude plugin validate` exit 0 — `calls:` unchanged, `$.process.run` ×1, `state writes:` three keys.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
