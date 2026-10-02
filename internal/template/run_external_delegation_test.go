@@ -3,9 +3,15 @@
 //
 // The doctrine is prose, so its machine-checkable form is a fixed set of anchor
 // phrases pinned inside their own subsection of the `## External Model
-// Delegation` section of run.md, plus the capability grant on the
-// manager-develop `tools:` line, the pointer-only shape of the consumer files,
-// and a lexical check that no shipped prose instructs a write.
+// Delegation` section, plus the capability grant on the manager-develop
+// `tools:` line, the pointer-only shape of the consumer files, and a lexical
+// check that no shipped prose instructs a write.
+//
+// The section's home is the run-phase sub-skill
+// workflows/run/external-delegation.md (moved out of run.md by card t1455: the
+// entry router has a permanent 200-line ceiling, TestEntryRouterLOCCeiling).
+// run.md keeps exactly one routing row pointing at it and no copy of the
+// section; the "router" subtest pins that shape.
 //
 // The test reads both trees from disk: the live tree under the project root
 // and the template tree under internal/template/templates/ (the embedded FS
@@ -24,7 +30,12 @@ import (
 const (
 	rxdSectionHeading = "## External Model Delegation"
 	rxdSectionTitle   = "External Model Delegation"
-	rxdRunPath        = ".claude/skills/moai/workflows/run.md"
+	// rxdRunPath is the file that holds the section: the run-phase sub-skill.
+	// The identifier keeps its old name so every reader of the section path
+	// follows the move; rxdRouterPath is the entry router that points at it.
+	rxdRunPath        = ".claude/skills/moai/workflows/run/external-delegation.md"
+	rxdRouterPath     = ".claude/skills/moai/workflows/run.md"
+	rxdRouterRowPath  = "workflows/run/external-delegation.md"
 	rxdAgentPath      = ".claude/agents/moai/manager-develop.md"
 	rxdAdvisorPath    = ".claude/agents/moai/super-advisor.md"
 	rxdTemplateRoot   = "internal/template/templates"
@@ -139,13 +150,15 @@ var rxdSubsections = []rxdSubsection{
 // plan-auditor and sync-auditor reading owns what it cannot decide.
 var rxdWriteInstruction = regexp.MustCompile(`(?i)\bwrite\b[^.\n]{0,40}\b(true|enabled|on)\b|allow_write[^.\n]{0,20}\btrue\b`)
 
-// rxdWholeWordWrite matches the bare word `write` only: `allow_write` (the
-// underscore is a word character) and `writes` do not match.
-var rxdWholeWordWrite = regexp.MustCompile(`\bwrite\b`)
+// rxdWholeWordWrite matches the bare word `write` in any capitalisation:
+// `allow_write` (the underscore is a word character) and `writes` do not match.
+var rxdWholeWordWrite = regexp.MustCompile(`(?i)\bwrite\b`)
 
-// rxdNeverSets is the phrase the sentence carrying the one whole-word `write`
-// must contain.
-const rxdNeverSets = "never sets"
+// rxdReadOnlySentence is the one sentence of the delegation section that keeps a
+// delegated codex turn read-only where the project opt-in is on. The control is
+// lexical, so the sentence is pinned whole: any qualifier, rewording or
+// replacement fails the guard and needs review.
+const rxdReadOnlySentence = "The agent never sets the write argument, so a delegated turn stays read-only."
 
 var rxdListMarker = regexp.MustCompile(`^\s*([-*]|[0-9]+\.)\s`)
 
@@ -279,6 +292,28 @@ func rxdSentenceWithWrite(line string) []string {
 		}
 	}
 	return out
+}
+
+// rxdReadOnlyControlDefects checks the one mechanical control that keeps a
+// delegated codex turn read-only where the project opt-in is on: the whole word
+// `write` occurs exactly once in the section, and the sentence holding it is
+// rxdReadOnlySentence. It returns one message per defect; nil means the control
+// holds.
+func rxdReadOnlyControlDefects(section string) []string {
+	const writeReason = "a second whole-word `write` in the section needs review: this is the only mechanical control that keeps a delegated codex turn read-only where the project opt-in is on"
+	hits, total := rxdWholeWordWriteLines(section)
+	if total != 1 {
+		return []string{"whole-word `write` occurs " + strconv.Itoa(total) + " times in the delegation section, want exactly 1; matching lines: " + strings.Join(hits, " | ") + "; " + writeReason}
+	}
+	var defects []string
+	for _, l := range strings.Split(section, "\n") {
+		for _, sentence := range rxdSentenceWithWrite(l) {
+			if strings.TrimSuffix(sentence, ".") != strings.TrimSuffix(rxdReadOnlySentence, ".") {
+				defects = append(defects, "the sentence holding the one whole-word `write` is not the pinned read-only sentence "+strconv.Quote(rxdReadOnlySentence)+": "+hits[0]+"; "+writeReason)
+			}
+		}
+	}
+	return defects
 }
 
 // rxdMultisetDelta is the multiset line difference between two texts: the sum,
@@ -447,7 +482,7 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 			}
 		}
 		if len(texts) == 2 && texts[0] != texts[1] {
-			t.Errorf("run.md copies are not byte-equal (live %d bytes, template %d bytes)", len(texts[0]), len(texts[1]))
+			t.Errorf("external-delegation.md copies are not byte-equal (live %d bytes, template %d bytes)", len(texts[0]), len(texts[1]))
 		}
 	})
 
@@ -500,18 +535,8 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 					// once in the section and its sentence says `never sets`.
 					// The lexical negative check above cannot see a spelling
 					// such as "the agent enables the write argument".
-					const writeReason = "a second whole-word `write` in the section needs review: this is the only mechanical control that keeps a delegated codex turn read-only where the project opt-in is on"
-					hits, total := rxdWholeWordWriteLines(section)
-					if total != 1 {
-						t.Errorf("%s: whole-word `write` occurs %d times in the delegation section, want exactly 1; matching lines: %s; %s", where, total, strings.Join(hits, " | "), writeReason)
-					} else {
-						for _, l := range strings.Split(section, "\n") {
-							for _, sentence := range rxdSentenceWithWrite(l) {
-								if !strings.Contains(sentence, rxdNeverSets) {
-									t.Errorf("%s: the sentence holding the one whole-word `write` does not contain %q: %s; %s", where, rxdNeverSets, hits[0], writeReason)
-								}
-							}
-						}
+					for _, defect := range rxdReadOnlyControlDefects(section) {
+						t.Errorf("%s: %s", where, defect)
 					}
 				}
 			}
@@ -591,6 +616,44 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 				}
 				for _, hit := range rxdWriteHits(where, content) {
 					t.Errorf("write-instruction pattern matched in a pointer file: %s", hit)
+				}
+			}
+		}
+	})
+
+	// The entry router keeps a pointer and nothing of the section: the section
+	// has one home (rxdRunPath), and run.md stays under its permanent line
+	// ceiling (TestEntryRouterLOCCeiling) because it never carries a copy.
+	t.Run("router", func(t *testing.T) {
+		// Positive control: the section counter must see a heading that is there,
+		// otherwise the zero it reports for run.md below proves nothing.
+		if _, n := rxdSection("intro\n" + rxdSectionHeading + "\nbody"); n != 1 {
+			t.Fatalf("positive control failed: the section counter found %d headings in a one-heading string", n)
+		}
+		forbidden := rxdForbiddenInPointers()
+		for _, tree := range rxdTrees(root) {
+			content := rxdRead(t, tree.base, rxdRouterPath)
+			where := tree.label + " " + rxdRouterPath
+
+			if _, n := rxdSection(content); n != 0 {
+				t.Errorf("%s: carries %d copies of %q; the section lives only in %s", where, n, rxdSectionHeading, rxdRunPath)
+			}
+			rows := 0
+			for _, l := range strings.Split(content, "\n") {
+				if !strings.Contains(l, rxdRouterRowPath) {
+					continue
+				}
+				rows++
+				if !strings.HasPrefix(l, "|") {
+					t.Errorf("%s: the line naming %s is not a routing-table row: %s", where, rxdRouterRowPath, l)
+				}
+			}
+			if rows != 1 {
+				t.Errorf("%s: want exactly one routing row naming %s, found %d", where, rxdRouterRowPath, rows)
+			}
+			for _, phrase := range forbidden {
+				if strings.Contains(content, phrase) {
+					t.Errorf("%s: carries the doctrine phrase %q (the router names the section, it does not restate it)", where, phrase)
 				}
 			}
 		}

@@ -363,7 +363,7 @@ func describeRunOwners(owners []homestate.RunOwner) string {
 	for _, o := range owners {
 		detail := fmt.Sprintf("%s (owner %s", o.RunID, o.Classification)
 		if o.LeadPID > 0 {
-			detail += fmt.Sprintf(", lead pid %d", o.LeadPID)
+			detail += fmt.Sprintf(", leader pid %d", o.LeadPID)
 		}
 		if o.CreatedAt != "" {
 			detail += fmt.Sprintf(", started %s", o.CreatedAt)

@@ -127,6 +127,13 @@ recorded_by: manager-docs (sync phase, card t1411)
 - **DoD 체크리스트(acceptance.md)**: (1) AC 13/13 PASS — 증거는 §E.2 각 행; (2) decision-index Q1-Q3 운영자 확인 완료(2026-10-02); (3) Out of Scope 미침수 — 커밋 범위가 §A.1 파일 맵 내(43파일 + SPEC 아티팩트); (4) LSP run 게이트 오류 0(vet 프록시 실측). 커버리지: 신규 패키지 internal/settings/agentfm 94.4% ≥ 85% 충족.
 - 최종 행: `go test ./internal/web/ ./internal/settings/... ./internal/template/` → web ok(cached) · settings ok 0.648s · settings/agentfm ok(cached) · settings/yamlpatch ok(cached) · template ok 134.556s — 전량 GREEN, exit 0.
 
+### Amendment (2026-10-03, card t1446) — REQ-AFR-007 narrowing (t1411 sync-audit round-2 N1)
+
+- manager-spec의 completed SPEC 재자리 수정 — SSOT 수정 전이 따름: `status: completed → in-progress` + `amendment_of`(자기참조) + version 0.2.0 + `updated: 2026-10-03` + HISTORY 0.2.0 행 + `## Amendments` 신설. `prior_completed_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3` — 기존 close의 `sync_commit_sha`(위 §E.4), 불변. 수정 전 spec.md 마지막 본문 커밋: `422524f5d` (2026-10-02, t1411 F5/F7 dispositions).
+- REQ-AFR-007 본문 축소: 영속-오류 원자 복원을 llm.yaml agent-overrides write pair(`llm.profile` + `llm.agent_overrides`)로 한정 — 검증-오류 원자 거절은 의미 불변, pair 밖 선행 단계는 문서화된 best-effort + 한계를 본문에 명시. N1 판정: 구 문구("any validation or persistence error … byte-identical")는 구현 수리보다 넓었다(위 M6-repair F3 행 — steps 7→8 pair snapshot/rollback이 구현 보장의 전부; step-6 schema 편집의 잔존은 수리 이전의 부분 영속). §D 원자성 제약 행 동기화. 이 쌍 이름("llm.yaml agent-overrides write pair (llm.profile + llm.agent_overrides)")은 동일 카드에서 정렬 중인 코드측 실패 배너 문구와 일치시킨다.
+- acceptance.md 무변경 판정: AC-AFR-004(REQ-AFR-006/007 유일 매핑)의 시나리오는 전부 검증-오류 거절이라 축소된 의미에서도 그대로 성립하고, 광역 영속-오류 원자성을 핀하는 기준은 없다(§D.2·§D.3·§D.4의 byte-identical 행은 검증 거절·preserve·no-op·frontmatter 무접촉 문맥). plan.md:42 사전-비행 프로브 행은 본 축소를 이미 예고한 기록이므로 불변.
+- 이 파일의 §E.2/§E.3/§E.4 증거는 불변 — 본 블록은 말미 추가 기록뿐이다. 재완료(→completed)는 본 수정과 별도의 후속 close 커밋 소관이다.
+
 ### M6-repair (2026-10-02, sync-audit FAIL 73/100 NO-GO 판정 .moai/reports/t1411/verdict.md 대응 — F1-F4)
 
 - **F1 [P1] 수리 — llmoverrides.go 블록 스플라이스의 빈 줄·컬럼-0 주석 오판**: 관측-RED 선행(회귀 테스트 4종 선작성 → verbatim RED `/tmp/t1411-f1-red.txt`, §E.2 전사): `TestWriteLLMAgentOverridesRealTemplateShape`/`BlankLineInsideBlock`/`Column0CommentInsideBlock`/`EndToEndTemplateFile` 전부 FAIL — `line 47: mapping key "agent_overrides" already defined at line 2`(실제 템플릿 픽스처)·`line 10: ...`(빈 줄 케이스)·`line 9: ...`(컬럼-0 주석 케이스) — 감사기 4중 재현과 동일 결함 양상 독립 재현. 수리: (a)키 탐색 루프와 몸통 범위 루프 모두 빈 줄·주석 행을 스킵(isBlankOrComment continue) — 영-들여쏘기 **내용** 행에서만 종단; (b)몸통 내 빈 줄·주석은 영역을 확장도 종단도 하지 않음(뒤에 오는 몸통-들여쏘기 내용만 확장 — 후행 공백·주석 보존); (c)스플라이스 결과를 기록 전 yaml 언마샬 검증(중복 키 → write refused). GREEN: 4종 회귀 + 기존 splice 테스트 전부 PASS. 판정문의 "실제 임베디드 템플릿 파일 FAIL — 출현 3회" 재현가도 본 수리로 소멸(EndToEndTemplateFile이 실제 템플릿 바이트 대상 공개 seam 경유 단일-키+핀 착지 단언).

@@ -215,7 +215,7 @@ This agent carries verification, goal and delegation MCP tools in its `tools:` l
 - `mcp__moai__glm_job_result` — read a GLM job's result.
 - `mcp__moai__glm_job_cancel` — stop a GLM job.
 
-Optional delegation of bounded mechanical subtasks to an external model is described in `.claude/skills/moai/workflows/run.md` § External Model Delegation; it applies to Claude Code sessions only.
+Optional delegation of bounded mechanical subtasks to an external model is described in `.claude/skills/moai/workflows/run/external-delegation.md` § External Model Delegation; it applies to Claude Code sessions only.
 
 ## Conditional Skill Loading
 
