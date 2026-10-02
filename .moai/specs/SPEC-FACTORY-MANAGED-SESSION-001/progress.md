@@ -316,7 +316,7 @@ recorded_by: manager-docs (re-close sync, card t1375)
 - README / docs-site: no edit; same reason as the first close (broker MCP tool surface unchanged).
 
 Stale §E.4 lines fixed (audit F12), before → after:
-- Before: `- `sync_commit_sha` is a placeholder until the backfill commit lands.` (Gaps; false after backfill `623e4b15a`) → After: removed; the slot's own comment states the placeholder state for this re-close commit.
+- Before: `- `sync_commit_sha` is a placeholder until the backfill commit lands.` (Gaps; false after backfill `623e4b15a`) → After: removed (the slot now holds the real re-close SHA from the backfill commit).
 - Before: `It states the one new dependency `github.com/gorilla/websocket v1.5.3`` (What was synced) → After: states both go.mod changes (new `require` plus the dropped `// indirect` marker).
 
 ### Verification (this run, this tree: HEAD `76c795333` plus uncommitted re-close edits; lane env scrubbed in the same compound call as each go command)
@@ -342,7 +342,7 @@ Stale §E.4 lines fixed (audit F12), before → after:
 - The two reds in the full `./internal/cli` run, `TestStopChainEffectParityGolden` (owner card t1390) and `TestSyncGateLanguageDetectionMatchesScript` (owner card t1402), are recorded in the 회귀 증거 subsection; ownership comes from the leader's message, not from a re-close observation. No full-package suite was run in this re-close.
 - Codemaps were not refreshed in this re-close commit.
 - AC-MS-012's "only" and no-TUI claims are unpinned by tests (plan-audit delta3 D3, carried debt).
-- `sync_commit_sha` is a placeholder until the backfill commit lands.
+- To be checked after the merge with develop (audit D3): develop's `Debug` and `launchTiming` request fields may not reach the managed Codex path, so `moai codex -d` and the slow-launch report may not apply to factory managed launches. Unverified; this card's base lacks those fields.
 - The audit and plan-audit evidence files named in §J are local and gitignored, so they reach no other clone.
 
 ### Residual-risk
