@@ -16,7 +16,51 @@ planned_at_head: 284e09c44023598affe486f17701717ca173e6ca
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### QWR-M0 — real-lane record-location measurement (baseline, own commit, precedes every implementation commit)
+
+Protocol: plan.md §C. Measured by the lane session itself (lane-9, session `2da35a68-1196-4183-b6e5-a50fc9b6d901`), tree `.moai/worktrees/t1442` at HEAD `7a4a89548` (the Kickoff commit), 2026-10-02.
+
+What this establishes: record locations and modification times only. It cannot show the gate reading any record (see "What it cannot establish" in plan.md §C).
+
+Times: T0 `2026-10-02T19:51:57+0900`, T1 `2026-10-02T19:52:19+0900`, T2 `2026-10-02T19:52:23+0900`.
+
+Installed build (judging build for every `moai` command below), `moai version`:
+
+```
+ v3.2.0-rc.25   moai_cp/20260925_122548-1952-g802a72235   built 2026-10-02T08:00:14Z
+```
+
+- `git merge-base --is-ancestor 802a72235 HEAD` printed nothing, harness reported no failure status (exit 0): the installed build is an ancestor of this tree.
+- `git ls-tree --name-only 802a72235 internal/cli/factory_quota.go internal/statusline/quota.go` printed nothing: the installed build contains neither quota file, so no pressure evaluation exists in it.
+- Lane anchor at the measured command: `git rev-parse --show-toplevel` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1442`, a card worktree, not the parent checkout.
+
+Copies of this session's record (`find <primary>/.moai/worktrees <primary>/.claude/worktrees -maxdepth 6 -path "*/.moai/state/context-usage/<SID>.json"` printed three, plus the primary directory's own copy checked by path):
+
+```
+-rw-r--r--@ 1 goos  staff  316 Oct  2 18:28 <primary>/.moai/state/context-usage/<SID>.json
+-rw-r--r--@ 1 goos  staff  316 Oct  2 18:26 <primary>/.claude/worktrees/develop/.moai/state/context-usage/<SID>.json
+-rw-r--r--@ 1 goos  staff  316 Oct  2 18:21 <primary>/.moai/worktrees/t1347/.moai/state/context-usage/<SID>.json
+-rw-r--r--@ 1 goos  staff  314 Oct  2 19:51 <primary>/.moai/worktrees/t1442/.moai/state/context-usage/<SID>.json
+```
+
+The same four-line listing was printed again at T1 and at T2 with identical mtimes (no render fell inside the 26 s interval for the other three; the t1442 copy shows 19:51 at all three readings, minute resolution).
+
+Freshest copy (`.moai/worktrees/t1442/.moai/state/context-usage/<SID>.json`, read after T0):
+
+```
+"schema_version": 2, "writer_pid": 336, "captured_at": "2026-10-02T19:51:59.052742+09:00", "raw_pct": 30, "stage": "none", "band": "large", "model": "Sonnet 5.5", "effort": "high"
+```
+
+No window field exists (schema 2).
+
+Measured command: `moai factory status` (always; no `moai factory next` was run, no lease was due). Output (17 rows, one showing an already-expired lease for another lane, none changed by this call; verbatim rows begin `t587 run=tl4rkl state=completed (legacy) …` and end `t810 run=tm9i7y state=picked stage=- version=1 owner=- lease=none …`) is recorded here as run, and is not read as evidence about the gate.
+
+Statements:
+- (i) At the moment of the call the lane's own record was in the card worktree directory (`t1442`, 19:51), age under 1 minute against T0; the primary copy (18:28) was about 83 minutes old.
+- (ii) Three stale copies of the same session id remain in other directories (18:28 primary, 18:26 develop, 18:21 t1347), 83 to 90 minutes behind the freshest copy: the shape the gate's freshest-capture-wins rule has to cope with.
+- (iii) NOT established: the lane was anchored at a card worktree when it ran the command, so this observation does not show a parent-anchored lane's freshest record sitting in the primary directory (plan.md §C claim (iii) needs a parent-anchored lane; DP1 in plan.md §C is the only observation of that shape).
+
+Gaps: end-to-end gate observation (the installed build has no quota code; post-install follow-up recorded for §E.3); `moai factory next` not run; mtimes are minute-resolution; whether the 26 s window contained a statusline render for the other directories is not observable from this data.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
