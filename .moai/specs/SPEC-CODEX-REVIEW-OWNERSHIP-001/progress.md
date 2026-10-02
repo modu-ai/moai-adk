@@ -133,7 +133,69 @@ acceptance.md §C 표가 16개 AC 모두에 대해 요구를 어기면서 기준
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase implementer: manager-develop role, `cycle_type=tdd`, lane worker for card t1422. Scope of this run: M1 and M2 only. Every figure below is a command plus the observed output, in this run, against the tree named next to it. Raw logs live under `.moai/reports/t1422/red/` (gitignored, local evidence — not citable from another machine; the deciding lines are quoted here).
+
+### M1 — regression lines, preserve test, schema snapshot, RED
+
+**Pre-change tree.** `git rev-parse HEAD` → `984d649577362d9c10e9a47e21326b6e6241f708`, branch `WT-codex-review-lane-scope`, `git status --short` clean at start. Toolchain: `golangci-lint --version` → `v2.1.6` (the CI version); `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=2m ./internal/cli/...` → `0 issues.` (baseline: nothing pre-existing to separate from new).
+
+**Regression lines, observed GREEN before any production change** (one env-scrubbed compound call each: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_WORKER MOAI_FACTORY_ROLE MOAI_AUTONOMY_TIER MOAI_PROFILE_LEASE_TOKEN && go test … -count=1 -v`; swept set counted: `-list` named 10 tests, the run printed 31 `=== RUN` lines (10 top level + subtests) and 10 top-level `--- PASS`; log `m1-regression-pre.txt`):
+
+```text
+--- PASS: TestCodexAudit_RequiredGateBlocksWhenBinaryAbsent (0.01s)        # codex_audit required-gate control (AC-016 (d))
+--- PASS: TestReviewGate_FailOpenOnMissingCodex (0.05s)                      # fail-open
+--- PASS: TestCodexReviewGate_TreeScopeRequestShapeUnchanged (1.37s)         # AC-003 / P6
+--- PASS: TestCodexReviewGate_CardScopeRequestIsCardDiff (2.22s)             # AC-004 (a) / P7
+--- PASS: TestCodexReviewScope_UnidentifiedFallsToTree (3.25s)               # AC-004 (b) resolver half / P8
+--- PASS: TestCodexReviewGate_CardScopeFailOpenOnMissingReviewer (1.89s)     # fail-open, card scope
+--- PASS: TestMCPToolCatalogueDocsStayMirrorIdentical (0.01s)
+--- PASS: TestMCPToolCatalogueFiguresMatchRegistry (0.00s)
+--- PASS: TestReviewGateReaders_HonourNestedWorkflowKeyPath (0.05s)
+--- PASS: TestReviewGateReaders_AgreeWithConfigLoader (0.05s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	10.225s
+```
+
+`go test ./internal/mcp/ -count=1 -v` (log `m1-mcp-pre.txt`): `TestMoaiMCPTools_CatalogSize`, `…WriteCapableSet`, `…NoDuplicateNames`, `TestMoaiMCPToolNames_MatchesCatalog` all PASS, `ok  github.com/modu-ai/moai-adk/internal/mcp  0.292s` (the `wantCatalogSize = 45` invariant is green). `go test ./internal/config/ -run '^(TestShippedConfigKeysHaveReaders|TestTemplateWorkflowYAML_JevShipsOff)$' -count=1 -v` → exit 0 (log `m1-config-pre.txt`).
+
+Source-level preserve readings on the same tree: `grep -l mcp__moai__codex_audit .claude/agents/moai/manager-develop.md …manager-docs.md …manager-lead.md …plan-auditor.md …sync-auditor.md` → `.claude/agents/moai/plan-auditor.md` and `.claude/agents/moai/sync-auditor.md` only (P1); `shasum -a 256 internal/config/testdata/shipped_key_inventory.yaml` → `a3d2c397827130d71047fad9aa59c6b690d64394b222dca56adc44db149fc409` (P5); `grep -c tree_scope internal/config/testdata/shipped_key_inventory.yaml` → `0` (P3).
+
+**New gate-level preserve test (plan.md §I M1, N2).** `TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree` in `internal/cli/codex_review_gate_wtnobase_test.go`, authored WITHOUT the skip key, run before any production change on HEAD `984d64957` (log `m1-wtnobase-preserve-pre.txt`):
+
+```text
+=== RUN   TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree
+--- PASS: TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree (1.56s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.013s
+```
+
+It asserts: one reviewer lookup, request `{target: uncommittedChanges, cwd: <tree>}`, one scope row of class tree carrying branch `WT-orphan` with a basis naming "merge base unavailable". AC-004 (b) now counts as a regression line.
+
+**Audit-tool schema snapshot (plan.md §I M1, N4; AC-007 (f)).** A server was built from this tree (`go build -o <scratch>/moai-pre ./cmd/moai` exit 0, HEAD `984d64957`, built from the working tree that carries no production change at snapshot time) and spoken to over stdio (`initialize`, `notifications/initialized`, `tools/list`); `tools/list` returned 45 tools (`jq … | length` → `45`). The four audit tools were extracted with `jq -S -s '[ .[] | select(.id==2) | .result.tools[] | select(.name=="codex_audit" or .name=="glm_audit" or .name=="claude_audit" or .name=="audit_multi") | {name, inputSchema, outputSchema}] | sort_by(.name)'` into `.moai/reports/t1422/red/audit-tools-schema-pre.json` (20520 bytes, tools `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`; `audit_multi` declares no output schema; the `target` enum is `["uncommittedChanges","baseBranch"]` on the other three).
+
+```text
+sha256  6910a4678ee5c82966a8e12af5e6762e216d109577a606b9ad0165b76b134ce6  .moai/reports/t1422/red/audit-tools-schema-pre.json
+```
+
+(A first attempt without `-s` wrote two JSON documents because the response stream has two lines; it was discarded and redone with `-s` — only the hash above is the snapshot.)
+
+**RED (M1).** Verbatim logs and the semantic classification are in `.moai/reports/t1422/red/m1-red1-compile-failure.txt`, `m1-red2-runtime.txt`, `m1-red-semantic.txt`. Pre-implementation tree: HEAD `984d64957` + uncommitted tests + declaration-only stub (no policy code; neither `HandleCodexReviewGate` nor `codexReviewMember` reads `tree_scope`).
+
+- Run 1, `go test ./internal/cli/ -run '^TestTreeScopeReader_TruthTable$' -count=1 -v` → exit 1, `FAIL … [build failed]`, `undefined: treeScopeSkipLogger`, `undefined: reviewGateTreeScopeReader`, `undefined: readCodexReviewGateTreeScope`, … → **TOOL_FAILURE** (never counted as RED; reclassified by taking the stub step below).
+- Run 2 (15 exact names, `-count=1 -v`, 91 `=== RUN` lines) → exit 1, 11 FAIL / 4 PASS. **EXPECTED_RED** (11, each at its intended assertion): `TestTreeScopeReader_TruthTable` (`readCodexReviewGateTreeScope = "review", want "skip"`), `TestTreeScopeReader_AgreesWithConfigLoader` and `TestReviewGateReaders_AgreeWithConfigLoader` (`reader = "review", config loader = "skip" (schema drift)`), `TestCodexReviewGate_TreeScopeSkip` (`a skip must precede the detector, the lookup and the review (lookups=1 detects=1 reviewed=true)`), `TestCodexStopChain_TreeScopeSkip` (member 6 `Decision:deny … ReceiptRead:true`), `TestTreeScopePolicy_EnvMatrix` (`T1 develop tree gate path: skipped=false, want true` in all 8 rows), `TestTreeScopePolicy_SourceReadsNoEnvironment` (`open codex_review_tree_scope.go: no such file or directory`), `TestTreeScopePolicy_SameDecisionOnBothPaths`, `TestTreeScopePolicy_EachPathReadsItsOwnEnabledRoot`, `TestTreeScopePolicy_ConfigOrphanedWorktree`, `TestTreeScopeSkipRow`. **PASS (4)**: the preserve lines `TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree`, `TestTreeScope_NonSkipValuesKeepTreeRequest`, `TestTreeScopeSkip_WTSessionsStillReviewed`, `TestTreeScopePolicy_ExplicitProducerIgnoresPolicy` (they must stay green after M2; the mutant probe in the M2 section shows they bite).
+
+**Carried-over items (plan-audit 3rd round) — disposition in M1.**
+
+| Item | Disposition |
+|---|---|
+| I3-1 env rows | Done in `TestTreeScopePolicy_EnvMatrix`: rows are the values the launchers really set — kanban leader without a label, the acceptance.md "label leader" row, factory leader (`MOAI_FACTORY_WORKERS` only), kanban companion (`MOAI_KANBAN_LABEL=run`, no `MOAI_KANBAN`), factory worker, factory lane, all keys set-but-empty, all absent. The key list is derived from `internal/config/envkeys.go` by parsing it, so a key added or deleted by t1399 moves the matrix. A helper-outside-policy mutant is killed by the behaviour rows (the static guard cannot see it; it is the counterpart). Static guard: `TestTreeScopePolicy_SourceReadsNoEnvironment` (go/parser over `codex_review_tree_scope.go`, positive control: the same scan finds environment reads in `codex_review_scope.go`). |
+| I3-2 empty-material definition (GLM) | M3 — untouched. |
+| I3-3 survivor candidates | (i) helper outside the policy file: covered in M1/M2 as above; (ii)–(iv): M3 — untouched. |
+| I3-4 | Nothing to do (decision-index filled). |
+| I3-5 asymmetry comment | Recorded in the doc comment of `TestTreeScopePolicy_ConfigOrphanedWorktree`. |
+| I3-6 `related_specs` | Not touched (spec.md body stays out of scope of this role; sync-phase item). |
+| I3-7 catalogue/`project_root` mutants | M3 — untouched. |
+
+**Gaps (M1).** The raw logs under `.moai/reports/t1422/red/` are gitignored local evidence; this section quotes the deciding lines. `go test` exit codes were not captured as `$?` (the isolation guard refuses `echo $?` in a compound call); the process status was observed through the tool result (non-zero reported as `Exit code 1` for the RED runs, no error for the green ones) and through the `ok`/`FAIL` summary lines. The `tools/list` snapshot was taken over stdio from a binary built from this tree, not from the long-running MCP server of the session (that one is `v3.2.0-rc.23`, an older build — plan.md §G risk 7).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

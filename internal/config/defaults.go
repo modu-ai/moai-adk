@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/pkg/models"
@@ -555,6 +556,28 @@ var DefaultHandoffStaleTTL = 7 * 24 * time.Hour
 // Not a compile-time const because time.Duration multiplication is not a
 // constant expression.
 var DefaultCodexReviewGateTimeout = 900 * time.Second
+
+// Values of workflow.codex.review_gate.tree_scope
+// (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-001): what the codex review gate
+// does for a tree-scope session that carries no WT- branch evidence. Review is
+// today's whole-uncommitted-tree review and the distributed default; Skip lets
+// the turn through without a review. Single source of truth for both names.
+const (
+	CodexReviewGateTreeScopeReview = "review"
+	CodexReviewGateTreeScopeSkip   = "skip"
+)
+
+// NormalizeCodexReviewGateTreeScope maps a raw tree_scope value onto the policy:
+// only "skip", compared without regard to case or surrounding whitespace, reads
+// as skip; an empty, unknown or misspelled value reads as review, so a mistyped
+// key never silently reviews less (REQ-CRO-001). The config loader and the
+// gate's hand-rolled reader both go through this one function.
+func NormalizeCodexReviewGateTreeScope(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), CodexReviewGateTreeScopeSkip) {
+		return CodexReviewGateTreeScopeSkip
+	}
+	return CodexReviewGateTreeScopeReview
+}
 
 // DefaultMultiReviewGateTimeout is the per-call timeout for the multi-model
 // convergence read performed by the multi-review-gate Stop hook
@@ -1233,7 +1256,8 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` under internal/template/templates/.
 		Codex: CodexConfig{
 			ReviewGate: CodexReviewGateConfig{
-				Enabled: false,
+				Enabled:   false,
+				TreeScope: CodexReviewGateTreeScopeReview,
 			},
 			// SPEC-CODEX-PHASE2-001 (REQ-CX2-007 / REQ-CX2-015): the codex_task
 			// write mode ships default-OFF. A local opt-in belongs in local
