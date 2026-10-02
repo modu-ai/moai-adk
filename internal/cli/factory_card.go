@@ -405,7 +405,9 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 // queue read anchors every mode lookup; a serial card recorded in a
 // non-terminal state holds the serial slot — unless its lease has expired
 // (factorySerialSlotHeld) — so no lane leases another serial
-// card through ANY arm — while parallelizable candidates stay leasable
+// card through ANY arm, except that arm (a), a lane leasing the card assigned
+// to itself, does not count sibling cards that are merely assigned — while
+// parallelizable candidates stay leasable
 // throughout (REQ-TCD-008). The auto-promotion arm additionally never
 // selects a blocked card (REQ-TCD-007).
 //
@@ -445,9 +447,18 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	// serial card is not a second serial card in flight — the exclusivity
 	// holds against DISTINCT cards (REQ-TCD-008), and a self-blocked
 	// candidate would wedge every lease of a legacy serial row.
-	serialInFlightExcluding := func(cardID string) bool {
+	//
+	// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card
+	// t1407): a lane leasing the card assigned TO ITSELF does not count sibling
+	// cards that are merely `assigned`, which would otherwise wedge every
+	// leader-assigned serial card against the others with nothing in flight.
+	// Every arm that takes a NEW card still counts them.
+	serialInFlightExcluding := func(cardID string, ignoreAssigned bool) bool {
 		for _, c := range cards {
 			if c.CardID == cardID {
+				continue
+			}
+			if ignoreAssigned && c.State == homestate.CardAssigned {
 				continue
 			}
 			if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
@@ -460,7 +471,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if classOf(cardID).Mode != kanban.ClassModeSerial {
 			return true
 		}
-		return !serialInFlightExcluding(cardID)
+		return !serialInFlightExcluding(cardID, false)
 	}
 	// (a) a card assigned to this lane — the lease edge alone (T3).
 	for _, c := range cards {
@@ -470,7 +481,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if skip(c) {
 			continue
 		}
-		if !modeEligible(c.CardID) {
+		if classOf(c.CardID).Mode == kanban.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
 			continue
 		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
@@ -535,7 +546,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 				if cls.Blocked {
 					continue
 				}
-				if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID) {
+				if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
 					continue
 				}
 				it.State = kanban.BacklogStatePicked

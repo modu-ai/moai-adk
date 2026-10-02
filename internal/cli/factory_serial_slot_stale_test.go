@@ -231,6 +231,42 @@ func TestFactoryNextAssignedSerialCardStillHoldsSlotAgainstNewTakes(t *testing.T
 	}
 }
 
+// TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms — the third control:
+// the option-B exception belongs to arm (a) only. A lane with no card of its
+// own is refused when the next serial candidate comes through arm (b) (a
+// recorded operator-picked card with no owner) or arm (b2) (a queue-picked
+// card with no record row yet) while another serial card is merely assigned.
+func TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		recordSecond bool
+	}{
+		{"arm-b-recorded-picked-ownerless", true},
+		{"arm-b2-queue-picked-unrecorded", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, store := fcFixture(t)
+			fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+			fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+			fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+			rows := []homestate.Card{{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1"}}
+			if tc.recordSecond {
+				rows = append(rows, homestate.Card{CardID: "t2", State: homestate.CardPicked})
+			}
+			fcPlace(t, root, rows...)
+			sdRegisterLane(t, root, "lane-2")
+
+			got, owned, err := factoryNextLeaseOnce(context.Background(), root, fcRun, "lane-2")
+			if err != nil {
+				t.Fatalf("next: %v", err)
+			}
+			if owned {
+				t.Fatalf("lane-2 took %s through a picked arm while t1 is assigned and holds the serial slot", got.CardID)
+			}
+		})
+	}
+}
+
 // TestFactoryNextPickedOwnerlessRowHoldsSlot_OutOfExpiryScope measures the
 // boundary of the expiry repair: a `picked` row with no owner and no lease —
 // what a failed claim leaves behind, and the shape of t810 in run tm9i7y — is
