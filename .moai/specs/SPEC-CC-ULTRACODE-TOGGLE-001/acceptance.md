@@ -1,83 +1,378 @@
 # SPEC-CC-ULTRACODE-TOGGLE-001 — Acceptance Criteria
 
-Two-cell discipline: every AC pins its RED-now state to tree `c50da9c2f` (measured 2026-10-02 in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1416`) and states the green-path observable. All commands are single-invocation (no pipes, `&&`, or `;` inside a pinned command) and run from the worktree root unless a `cd` prefix is shown.
+Two-cell discipline. Every release-blocking AC carries a RED-now cell (command, verbatim stdout, exit code, tree SHA — all in the Evidence ledger below) and a green-path cell (the printed values after the work). Controls are classed regression-guard: green today, must not flip.
 
-Evidence obligation: judge the printed `grep -c` COUNT, not the exit code — `grep -c` exits 1 on a zero count, so a printed `0` is a PASS on zero-match assertions and a printed `0` is the RED value on positive pins. Quote the verbatim printed output for every command. RED-now cells record the observed printed counts; the exit codes follow the `grep -c` contract (count 0 -> exit 1, count >= 1 -> exit 0) and were not captured separately (see Gaps in `progress.md` §E.1).
+Measured on this worktree at HEAD `0e7b6af5b`; the scope files are byte-identical to the original pin `c50da9c2f` (`git diff --stat c50da9c2f HEAD -- .claude internal docs-site` printed nothing). Judge printed `grep -c` COUNTS; `grep -c` exits 1 when every file prints `0`, and exits 0 when at least one file prints non-zero — for multi-file invocations read each `path:count` line, not the exit code.
 
-Path abbreviations:
+## Path ledger (literal paths; `<loc>` is each of ko, en, ja, zh)
 
-- `RS` = `.claude/rules/moai/workflow/dynamic-workflows.md`
-- `RM` = `internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md`
-- `WF` = `docs-site/content/<loc>/claude-code/agentic/workflows.md`
-- `ML` = `docs-site/content/<loc>/multi-llm/_index.md`
-- `UW` = `docs-site/content/<loc>/advanced/ultracode-workflows.md`
-- `CM` = `docs-site/content/<loc>/claude-code/foundations/commands.md`
-- `<loc>` iterates ko, en, ja, zh — every per-locale AC is run once per locale.
+| Id | Literal path |
+|----|--------------|
+| RS | `.claude/rules/moai/workflow/dynamic-workflows.md` |
+| RM | `internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md` |
+| WF | `docs-site/content/<loc>/claude-code/agentic/workflows.md` |
+| ML | `docs-site/content/<loc>/multi-llm/_index.md` |
+| UW | `docs-site/content/<loc>/advanced/ultracode-workflows.md` |
+| CM | `docs-site/content/<loc>/claude-code/foundations/commands.md` |
+| ko-UW | `docs-site/content/ko/advanced/ultracode-workflows.md` |
 
-## AC-001 — Rule source: the xhigh coupling is gone (REQ-001, REQ-004)
+Every ledger command below is written with the literal paths (multi-file invocations list all four locale paths in the order ko, en, ja, zh). A per-locale AC is judged on each locale's own `path:count` line.
 
-- RED-now (c50da9c2f): `grep -c 'combines `xhigh` reasoning' RS` prints `1`; same on RM prints `1`.
-- Given M1 and M3 are applied When ``grep -c 'combines `xhigh` reasoning' <file>`` runs on RS and RM Then each prints `0`. When `grep -c -F 'leaves the effort level unchanged' <file>` runs on RS and RM Then each prints at least `1` (positive pin: a mutant that merely deletes the sentence fails). When `grep -c -F 'v2.1.284' <file>` runs on RS and RM Then each prints at least `1`.
-- Positive-pin RED-now: `grep -c -F 'v2.1.284' RS` prints `0`.
+## AC-001 — Rule source: coupling removed, canonical phrases present (REQ-001, REQ-004) — release-blocking
 
-## AC-002 — Rule source: off route and launch-flag exception (REQ-002, REQ-003)
+- RED-now → green-path: `[R1]` (coupling-wording regex: `ultracode`, then a coupling verb with a non-letter before and after it, then `xhigh`) `1,1` → `0,0`; `[R1b]` (old phrase) `1,1` → `0,0`; `[R2]` `leaves the effort level unchanged` `0,0` → at least `1,1`; `[R3]` `independent on/off toggle` `0,0` → at least `1,1`; `[R4]` `v2.1.284` `0,0` → at least `1,1`.
+- The R1 regex is wording-independent for the coupling (forces / forced / combines / sets / raises / runs at / implies) and does not match the required launch-flag clause: that clause reads "the `--effort ultracode` launch flag also starts the session at `xhigh`" and contains none of those verbs between `ultracode` and `xhigh` (mutant probe in plan.md M1: it flags "forces", "runs at", "combines", "sets" lines and passes the flag-clause line). The positive pins use the exact phrases REQ-001 mandates and plan.md M1 lists; they are byte-identical to the REQ text.
 
-- RED-now (c50da9c2f): ``grep -c 'step back with `/effort high`' RS`` prints `1`; `grep -c -F 'effort ultracode off' RS` prints `0`; `grep -c -F -- '--effort ultracode' RS` prints `0`; `grep -c -F '"ultracode": true' RS` prints `0`.
-- Given M1 and M3 are applied When ``grep -c 'step back with `/effort high`' <file>`` runs on RS and RM Then each prints `0`. When the other three positive pins run on RS and RM Then each prints at least `1` (the off route, the launch-flag exception that legitimately keeps one `xhigh` mention, and the persistent settings-key route).
-- Retention pin (REQ-003): `grep -c -F 'ultrathink.' RS` prints at least `1` after the edit — the "opener does not restore ultracode" sentence is retained. (Control: green today, MUST NOT flip.)
+## AC-002 — Rule source: off route, launch-flag exception, scope, settings key (REQ-002, REQ-003, DEC-1) — release-blocking
 
-## AC-003 — Mirror parity (REQ-004) — control, MUST NOT flip
+- RED-now → green-path: `[R12]` `step back with `/effort high`` `1,1` → `0,0`; `[R5]` `/effort ultracode off` `0,0` → at least `1,1`; `[R6]` `--effort ultracode` `0,0` → at least `1,1`; `[R7]` `starts the session at `xhigh`` `0,0` → at least `1,1`; `[R10]` `current session` `0,0` → at least `1,1`; `[R8]` `"ultracode": true` `0,0` → at least `1,1`; `[R11]` `v2.1.284` and `"ultracode": true` on one line `0,0` → at least `1,1` (the settings-key route carries its version qualifier, DEC-1).
+- Retention control: `[R9]` `ultrathink.` `1,1` must stay at least `1,1` (the "opener does not restore ultracode" sentence).
 
-- Pre-state (green today at c50da9c2f): `cmp RS RM` exits 0 with no output.
-- Given M1 and M3 are applied When `cmp RS RM` runs Then exit code is 0 with no output. A mutant that edits only one side flips this red.
+## AC-003 — Mirror parity (REQ-004) — regression-guard
 
-## AC-004 — docs-site workflows row, all four locales (REQ-005, REQ-009)
+- `[X-cmp]` `cmp RS RM` exit `0`, empty stdout today; must stay exit `0` after the edit. A mutant that edits only one side flips it.
 
-- RED-now (c50da9c2f), per locale `<loc>`: `grep -c -E '/effort ultracode.*xhigh' WF` prints `1` for ko, en, ja, zh; `grep -c '/effort ultracode.*/effort high' WF` prints `1` for ko, en, ja, zh; `grep -c 'v2.1.284' WF` prints `0` for ko, en, ja, zh.
-- Given M2 is applied When `grep -c -E '/effort ultracode.*xhigh' WF` runs per locale Then each prints `0`. When `grep -c '/effort ultracode.*/effort high' WF` runs per locale Then each prints `0`. When `grep -c 'v2.1.284' WF` and `grep -c -F '/effort ultracode off' WF` run per locale Then each prints at least `1` (positive pins; ko-only or two-locale edits fail the per-locale loop).
-- Shape control: `grep -c -E '^\| `/effort ultracode` \|' WF` prints `1` per locale before and after (the row stays a single table row).
+## AC-004 — docs-site workflows row, four locales (REQ-005, REQ-009, REQ-011) — release-blocking
 
-## AC-005 — docs-site multi-llm comment, all four locales (REQ-006)
+- RED-now → green-path, per locale ko/en/ja/zh: `[W1]` `--effort ultracode` followed by `xhigh` inside the same table cell `0,0,0,0` → at least `1` each; `[W2]` `"ultracode": true` `0,0,0,0` → at least `1` each; `[W3]` `v2.1.284` and `"ultracode": true` on one line `0,0,0,0` → at least `1` each; `[W4]` `/effort ultracode off` `0,0,0,0` → at least `1` each; `[W8]` `v2.1.284` `0,0,0,0` → at least `1` each; `[W6]` `/effort ultracode` … `/effort high` `1,1,1,1` → `0,0,0,0`.
+- Row-xhigh discipline (replaces the retired pin `[W9]` `/effort ultracode.*xhigh`, which the required flag clause would legitimately match): `[W5]` (`xhigh` twice, or `xhigh` before `--effort ultracode`) `0,0,0,0` must stay `0,0,0,0` — together with `[W1]` this permits exactly one `xhigh` on the row, located in the flag clause. A mutant that keeps the old "Combines `xhigh` …" opening and appends the flag clause trips `[W5]`; a mutant that drops the flag clause trips `[W1]`.
+- Controls (regression-guard): `[W7]` row shape `1,1,1,1` stays; `[W10-ko]`, `[W10-en]`, `[W10-ja]`, `[W10-zh]` the current-session scope literal (`현재 세션` / `current session` / `現在のセッション` / `当前会话`) stays `1` each (the existing "current session only" statement is retained, not rewritten away).
 
-- RED-now (c50da9c2f), per locale: `grep -c -E '^/effort ultracode # xhigh' ML` prints `1` for ko, en, ja, zh.
-- Given M2 is applied When `grep -c -E '^/effort ultracode # .*xhigh' ML` runs per locale Then each prints `0`. When `grep -c -E '^/effort ultracode #' ML` runs per locale Then each prints `1` (the line still exists as a one-line comment; a mutant that deletes the line fails).
+## AC-005 — docs-site multi-llm comment, four locales (REQ-006) — release-blocking
 
-## AC-006 — docs-site ultracode-workflows page, all four locales (REQ-007)
+- RED-now → green-path: `[M1]` `^/effort ultracode # .*xhigh` `1,1,1,1` → `0,0,0,0`. Control: `[M2]` `^/effort ultracode #` `1,1,1,1` stays (a mutant that deletes the line fails).
 
-- RED-now (c50da9c2f): en ``grep -c -F 'Reasoning effort: set to `xhigh`' UW`` prints `1`; ja ``grep -c -F 'Reasoning effort: `xhigh` に設定' UW`` prints `1`; zh ``grep -c -F 'Reasoning effort：设置为 `xhigh`' UW`` prints `1`; ko ``grep -c -F '`xhigh`로 올라갑니다' UW`` prints `1`, ``grep -c -F '/effort high`로 한 단계 내립니다' UW`` prints `1`, and `grep -c -F '세 가지가 함께 바뀝니다' UW` prints `1`.
-- Given M2 is applied When each of those commands runs on its locale Then each prints `0`. When `grep -c -F '/effort ultracode off' UW` runs per locale Then each prints at least `1`. When `grep -c -F '세션 경계를 넘지 않습니다' ko-UW` runs Then it prints `1` (the session-boundary callout is retained — control).
+## AC-006 — docs-site ultracode-workflows page, four locales (REQ-007) — release-blocking
 
-## AC-007 — docs-site commands page, all four locales (REQ-008)
+- RED-now → green-path: `[U1]` effects-list bullet carrying `xhigh` (`^- (Reasoning effort|추론 깊이).*xhigh`) `1,1,1,1` → `0,0,0,0`; `[U2]` `/effort high` `1,0,0,0` → `0,0,0,0`; `[U3]` `/effort ultracode off` `0,0,0,0` → at least `1` each; `[U4]` ko "three things change together" sentence `1` → `0`.
+- Control: `[U5]` ko session-boundary callout `1` stays `1`. Heading counts are held by AC-008.
 
-- RED-now (c50da9c2f): en ``grep -c -F 'simultaneously an `/effort` level' CM`` prints `1`; ko ``grep -c -F '동시에 `/effort` 레벨입니다' CM`` prints `1`; ja ``grep -c -F '`/effort` のレベルでもあります' CM`` prints `1`; zh ``grep -c -F '也是一个 `/effort` 等级' CM`` prints `1`.
-- Given M2 is applied When each command runs on its locale Then each prints `0`. When `grep -c 'ultracode' CM` runs per locale Then each prints at least `1` (the mention is corrected, not deleted).
+## AC-007 — docs-site commands page, four locales (REQ-008) — release-blocking
 
-## AC-008 — 4-locale heading parity and no new divergence (REQ-009, REQ-010) — control
+- RED-now → green-path: `[C1en]`, `[C1ko]`, `[C1ja]`, `[C1zh]` the "is an `/effort` level" sentence `1` each → `0` each; `[C2en]`, `[C2ko]` the L137 level-list wording `1` each → `0` each; `[C3-en]`, `[C3-ko]`, `[C3-ja]`, `[C3-zh]` a line carrying `ultracode` and the locale's toggle word (`toggle` / `토글` / `トグル` / `开关`) `0` each → at least `1` each. (The earlier `grep -c ultracode` pin is retired: it was already `3,3,2,2` today.)
 
-- Baseline at c50da9c2f (heading counts, `grep -c '^#' <file>`): WF 11/11/11/11 (ko/en/ja/zh); ML 13/13/13/13; UW 24/20/20/20 (already divergent, listed in `docs-site/.locale-parity-baseline`); CM ko 23, en 23, ja 18, zh 18.
-- Given M2 is applied When `grep -c '^#' <file>` runs on each of the 16 docs files Then each count equals its baseline. When `git diff --stat -- docs-site/.locale-parity-baseline` runs Then the output is empty.
+## AC-008 — 4-locale heading parity and no new divergence (REQ-009, REQ-010) — regression-guard
 
-## AC-009 — docs-site exit gate (REQ-010) — control
+- `[H-WF]` 11/11/11/11, `[H-ML]` 13/13/13/13, `[H-UW]` 24/20/20/20 (already divergent), `[H-CM]` 23/23/18/18 (already divergent) must stay identical after the edit. `[X-baseline-diff]` (`git diff --stat -- docs-site/.locale-parity-baseline`) empty today, must stay empty.
 
-- Given M2 is applied When `hugo --minify --gc` runs in `docs-site/` Then exit code is 0 and the output contains no `WARN` or `ERROR` line. When the URL-blacklist grep (`grep -rn 'docs\.moai-ai\.dev\|adk\.moai\.com\|adk\.moai\.kr' docs-site/content`) runs Then it prints nothing. When `grep -rn 'flowchart LR\|graph LR\|flowchart RL\|graph RL' docs-site/content` runs Then it prints nothing. (Recipes: `hns-oss-docs-verify` §1-§3; the build is structurally green-today — a control, not a flip.)
+## AC-009 — docs-site exit gate (REQ-010) — regression-guard
 
-## AC-010 — Scope control (REQ-011, REQ-012)
+- Observed on the unedited tree at `0e7b6af5b` (this run): `hugo --minify --gc --destination <scratch>` run in `docs-site/` → exit `0`, `grep -c -E 'WARN|ERROR'` over its output printed `0`. URL-blacklist grep (`grep -rn 'docs\.moai-ai\.dev\|adk\.moai\.com\|adk\.moai\.kr' docs-site/content`) printed nothing, exit `1`. Mermaid grep (`grep -rn 'flowchart LR\|graph LR\|flowchart RL\|graph RL' docs-site/content`) printed nothing, exit `1`. After the work all three must repeat these values.
 
-- Given only the change-map files are edited When `git status --porcelain` runs Then there are no entries outside the 2 rule files, the 16 docs-site files, and `.moai/specs/SPEC-CC-ULTRACODE-TOGGLE-001/` (the assertion is the absence of extras). When `grep -c -i 'slider' <RS>` runs Then the edited bullet makes no persistence claim about the slider toggle (reviewer reads the bullet; OQ-1 stays open).
-- Out-of-scope surfaces untouched: `git diff --stat -- .claude/rules/moai/workflow/session-handoff.md .claude/rules/moai/workflow/session-handoff-examples.md .claude/rules/moai/workflow/session-handoff-format.md .claude/output-styles/moai/moai.md CHANGELOG.md` prints nothing.
+## AC-010 — Scope and slider control (REQ-011, REQ-012) — regression-guard
 
-## AC-011 — Template embed sanity
+- `[R13]` `slider` over RS and RM `0,0`, and `[W11]` slider words (`slider|슬라이더|スライダー|滑块`) over all 16 edited docs-site files `0` each, must stay `0` after the edit (the edited text does not mention the slider, so it cannot assert slider persistence).
+- Given only the change-map files are edited When `git status --porcelain` runs Then no entry lies outside the 2 rule files, the 16 docs-site files, and `.moai/specs/SPEC-CC-ULTRACODE-TOGGLE-001/` (the assertion is the absence of extras). When `git diff --stat -- .claude/rules/moai/workflow/session-handoff.md .claude/rules/moai/workflow/session-handoff-examples.md .claude/rules/moai/workflow/session-handoff-format.md .claude/output-styles/moai/moai.md CHANGELOG.md .moai/docs/session-handoff-appendix.md` runs Then the output is empty. Line-level scope inside the 18 edited files is judged by reading the diff against the §3 change map; no command asserts it.
 
-- Given the mirror is edited When `make build` runs from the worktree root Then exit code is 0. When `go test ./internal/template/...` runs from the worktree root Then exit code is 0. (`make build` does not regenerate the mirror — see plan §B — so this proves the embed compiles and the template package tests still pass; byte parity is AC-003.)
+## AC-011 — Template embed sanity (REQ-004) — regression-guard
+
+- Given the mirror is edited When `make build` runs from the worktree root Then the exit code is 0. When `go test ./internal/template/...` runs from the worktree root Then the exit code is 0. (`make build` does not regenerate the mirror — plan §B; byte parity is AC-003.)
 
 ## Mutant probe (adoption check)
 
-- Delete-only mutant (remove the wrong sentences, add nothing): fails AC-001/002/004/006 positive pins.
-- One-side mutant (edit RS only, or ko only): fails AC-003 / the per-locale loops.
-- Over-correction mutant ("never xhigh" including the launch flag): fails AC-002's `--effort ultracode` pin.
-- Rewrite-in-place mutant that keeps the `/effort high` return phrasing under new words: fails AC-004's `/effort ultracode.*/effort high` zero pin.
+- Delete-only mutant (remove the wrong sentences, add nothing): fails AC-001/002/004/006/007 positive pins.
+- One-side mutant (edit RS only, or ko only): fails AC-003 / the per-locale pins.
+- Over-correction mutant ("never xhigh" including the launch flag): fails `[R7]` and `[W1]`.
+- Rewording mutant ("forces", "runs at", "sets", "raises" `xhigh` instead of "combines"): fails `[R1]`; on the docs row it fails `[W5]`/`[W1]` (a second or leading `xhigh`).
+- Unqualified settings-key mutant (names `"ultracode": true` without `v2.1.284`): fails `[R11]`, `[W3]`.
+- Slider-claim mutant (adds a slider persistence sentence): fails `[R13]`, `[W11]`.
+- Vacuity check: every positive pin above is `0` today (RED) and every zero pin is at least `1` today, per the ledger; the controls are the entries marked regression-guard.
 
 ## Quality gates
 
 - LSP gates: N/A — prose-only change to `.md` files, no Go symbols.
-- Definition of Done: AC-001..AC-011 green with verbatim output cited; open questions OQ-1..OQ-3 still recorded as open in spec.md.
+- Definition of Done: AC-001..AC-011 green with verbatim output cited; OQ-1 and OQ-3 still recorded as open in spec.md.
+
+## Evidence ledger (RED-now cells; tree `0e7b6af5b`, scope files identical to `c50da9c2f`)
+
+Each entry: the command, its verbatim stdout (one `path:count` line per file for multi-file invocations), and its exit code. Entries `[R*]` run on RS then RM; `[W*]`, `[M*]`, `[U*]`, `[C*]`, `[H-*]` on the four locales in the order ko, en, ja, zh.
+
+```
+[R1] grep -c -E -- 'ultracode.*[^A-Za-z](forces|forced|combines|sets|raises|runs at|implies)[^A-Za-z].*xhigh' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:1
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:1
+    exit: 0
+[R1b] grep -c -F -- 'combines `xhigh` reasoning' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:1
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:1
+    exit: 0
+[R2] grep -c -F -- 'leaves the effort level unchanged' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[R3] grep -c -F -- 'independent on/off toggle' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[R4] grep -c -F -- v2.1.284 .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[R5] grep -c -F -- '/effort ultracode off' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[R6] grep -c -F -- '--effort ultracode' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[R7] grep -c -F -- 'starts the session at `xhigh`' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[R8] grep -c -F -- '"ultracode": true' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[R9] grep -c -F -- ultrathink. .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:1
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:1
+    exit: 0
+[R10] grep -c -F -- 'current session' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[R11] grep -c -E -- 'v2.1.284.*"ultracode": true|"ultracode": true.*v2.1.284' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[R12] grep -c -F -- 'step back with `/effort high`' .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:1
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:1
+    exit: 0
+[R13] grep -c -i -E -- slider .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      .claude/rules/moai/workflow/dynamic-workflows.md:0
+      internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md:0
+    exit: 1
+[W1] grep -c -E -- '--effort ultracode[^|]*xhigh' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:0
+      docs-site/content/en/claude-code/agentic/workflows.md:0
+      docs-site/content/ja/claude-code/agentic/workflows.md:0
+      docs-site/content/zh/claude-code/agentic/workflows.md:0
+    exit: 1
+[W2] grep -c -F -- '"ultracode": true' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:0
+      docs-site/content/en/claude-code/agentic/workflows.md:0
+      docs-site/content/ja/claude-code/agentic/workflows.md:0
+      docs-site/content/zh/claude-code/agentic/workflows.md:0
+    exit: 1
+[W3] grep -c -E -- 'v2.1.284.*"ultracode": true|"ultracode": true.*v2.1.284' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:0
+      docs-site/content/en/claude-code/agentic/workflows.md:0
+      docs-site/content/ja/claude-code/agentic/workflows.md:0
+      docs-site/content/zh/claude-code/agentic/workflows.md:0
+    exit: 1
+[W4] grep -c -F -- '/effort ultracode off' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:0
+      docs-site/content/en/claude-code/agentic/workflows.md:0
+      docs-site/content/ja/claude-code/agentic/workflows.md:0
+      docs-site/content/zh/claude-code/agentic/workflows.md:0
+    exit: 1
+[W5] grep -c -E -- 'xhigh.*xhigh|xhigh.*--effort ultracode' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:0
+      docs-site/content/en/claude-code/agentic/workflows.md:0
+      docs-site/content/ja/claude-code/agentic/workflows.md:0
+      docs-site/content/zh/claude-code/agentic/workflows.md:0
+    exit: 1
+[W6] grep -c -E -- '/effort ultracode.*/effort high' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:1
+      docs-site/content/en/claude-code/agentic/workflows.md:1
+      docs-site/content/ja/claude-code/agentic/workflows.md:1
+      docs-site/content/zh/claude-code/agentic/workflows.md:1
+    exit: 0
+[W7] grep -c -E -- '^\| `/effort ultracode` \|' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:1
+      docs-site/content/en/claude-code/agentic/workflows.md:1
+      docs-site/content/ja/claude-code/agentic/workflows.md:1
+      docs-site/content/zh/claude-code/agentic/workflows.md:1
+    exit: 0
+[W8] grep -c -E -- v2.1.284 docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:0
+      docs-site/content/en/claude-code/agentic/workflows.md:0
+      docs-site/content/ja/claude-code/agentic/workflows.md:0
+      docs-site/content/zh/claude-code/agentic/workflows.md:0
+    exit: 1
+[W9] grep -c -E -- '/effort ultracode.*xhigh' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:1
+      docs-site/content/en/claude-code/agentic/workflows.md:1
+      docs-site/content/ja/claude-code/agentic/workflows.md:1
+      docs-site/content/zh/claude-code/agentic/workflows.md:1
+    exit: 0
+[W10-ko] grep -c -F -- '현재 세션' docs-site/content/ko/claude-code/agentic/workflows.md
+    stdout:
+      1
+    exit: 0
+[W10-en] grep -c -F -- 'current session' docs-site/content/en/claude-code/agentic/workflows.md
+    stdout:
+      1
+    exit: 0
+[W10-ja] grep -c -F -- 現在のセッション docs-site/content/ja/claude-code/agentic/workflows.md
+    stdout:
+      1
+    exit: 0
+[W10-zh] grep -c -F -- 当前会话 docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      1
+    exit: 0
+[W11] grep -c -i -E -- 'slider|슬라이더|スライダー|滑块' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md docs-site/content/ko/multi-llm/_index.md docs-site/content/en/multi-llm/_index.md docs-site/content/ja/multi-llm/_index.md docs-site/content/zh/multi-llm/_index.md docs-site/content/ko/advanced/ultracode-workflows.md docs-site/content/en/advanced/ultracode-workflows.md docs-site/content/ja/advanced/ultracode-workflows.md docs-site/content/zh/advanced/ultracode-workflows.md docs-site/content/ko/claude-code/foundations/commands.md docs-site/content/en/claude-code/foundations/commands.md docs-site/content/ja/claude-code/foundations/commands.md docs-site/content/zh/claude-code/foundations/commands.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:0
+      docs-site/content/en/claude-code/agentic/workflows.md:0
+      docs-site/content/ja/claude-code/agentic/workflows.md:0
+      docs-site/content/zh/claude-code/agentic/workflows.md:0
+      docs-site/content/ko/multi-llm/_index.md:0
+      docs-site/content/en/multi-llm/_index.md:0
+      docs-site/content/ja/multi-llm/_index.md:0
+      docs-site/content/zh/multi-llm/_index.md:0
+      docs-site/content/ko/advanced/ultracode-workflows.md:0
+      docs-site/content/en/advanced/ultracode-workflows.md:0
+      docs-site/content/ja/advanced/ultracode-workflows.md:0
+      docs-site/content/zh/advanced/ultracode-workflows.md:0
+      docs-site/content/ko/claude-code/foundations/commands.md:0
+      docs-site/content/en/claude-code/foundations/commands.md:0
+      docs-site/content/ja/claude-code/foundations/commands.md:0
+      docs-site/content/zh/claude-code/foundations/commands.md:0
+    exit: 1
+[M1] grep -c -E -- '^/effort ultracode # .*xhigh' docs-site/content/ko/multi-llm/_index.md docs-site/content/en/multi-llm/_index.md docs-site/content/ja/multi-llm/_index.md docs-site/content/zh/multi-llm/_index.md
+    stdout:
+      docs-site/content/ko/multi-llm/_index.md:1
+      docs-site/content/en/multi-llm/_index.md:1
+      docs-site/content/ja/multi-llm/_index.md:1
+      docs-site/content/zh/multi-llm/_index.md:1
+    exit: 0
+[M2] grep -c -E -- '^/effort ultracode #' docs-site/content/ko/multi-llm/_index.md docs-site/content/en/multi-llm/_index.md docs-site/content/ja/multi-llm/_index.md docs-site/content/zh/multi-llm/_index.md
+    stdout:
+      docs-site/content/ko/multi-llm/_index.md:1
+      docs-site/content/en/multi-llm/_index.md:1
+      docs-site/content/ja/multi-llm/_index.md:1
+      docs-site/content/zh/multi-llm/_index.md:1
+    exit: 0
+[U1] grep -c -E -- '^- (Reasoning effort|추론 깊이).*xhigh' docs-site/content/ko/advanced/ultracode-workflows.md docs-site/content/en/advanced/ultracode-workflows.md docs-site/content/ja/advanced/ultracode-workflows.md docs-site/content/zh/advanced/ultracode-workflows.md
+    stdout:
+      docs-site/content/ko/advanced/ultracode-workflows.md:1
+      docs-site/content/en/advanced/ultracode-workflows.md:1
+      docs-site/content/ja/advanced/ultracode-workflows.md:1
+      docs-site/content/zh/advanced/ultracode-workflows.md:1
+    exit: 0
+[U2] grep -c -F -- '/effort high' docs-site/content/ko/advanced/ultracode-workflows.md docs-site/content/en/advanced/ultracode-workflows.md docs-site/content/ja/advanced/ultracode-workflows.md docs-site/content/zh/advanced/ultracode-workflows.md
+    stdout:
+      docs-site/content/ko/advanced/ultracode-workflows.md:1
+      docs-site/content/en/advanced/ultracode-workflows.md:0
+      docs-site/content/ja/advanced/ultracode-workflows.md:0
+      docs-site/content/zh/advanced/ultracode-workflows.md:0
+    exit: 0
+[U3] grep -c -F -- '/effort ultracode off' docs-site/content/ko/advanced/ultracode-workflows.md docs-site/content/en/advanced/ultracode-workflows.md docs-site/content/ja/advanced/ultracode-workflows.md docs-site/content/zh/advanced/ultracode-workflows.md
+    stdout:
+      docs-site/content/ko/advanced/ultracode-workflows.md:0
+      docs-site/content/en/advanced/ultracode-workflows.md:0
+      docs-site/content/ja/advanced/ultracode-workflows.md:0
+      docs-site/content/zh/advanced/ultracode-workflows.md:0
+    exit: 1
+[U4] grep -c -F -- '세 가지가 함께 바뀝니다' docs-site/content/ko/advanced/ultracode-workflows.md
+    stdout:
+      1
+    exit: 0
+[U5] grep -c -F -- '세션 경계를 넘지 않습니다' docs-site/content/ko/advanced/ultracode-workflows.md
+    stdout:
+      1
+    exit: 0
+[C1en] grep -c -F -- 'simultaneously an `/effort` level' docs-site/content/en/claude-code/foundations/commands.md
+    stdout:
+      1
+    exit: 0
+[C1ko] grep -c -F -- '동시에 `/effort` 레벨입니다' docs-site/content/ko/claude-code/foundations/commands.md
+    stdout:
+      1
+    exit: 0
+[C1ja] grep -c -F -- '`/effort` のレベルでもあります' docs-site/content/ja/claude-code/foundations/commands.md
+    stdout:
+      1
+    exit: 0
+[C1zh] grep -c -F -- '也是一个 `/effort` 等级' docs-site/content/zh/claude-code/foundations/commands.md
+    stdout:
+      1
+    exit: 0
+[C2en] grep -c -F -- 'plus `auto`, and `ultracode`' docs-site/content/en/claude-code/foundations/commands.md
+    stdout:
+      1
+    exit: 0
+[C2ko] grep -c -F -- '그리고 워크플로우 오케스트레이션을 켜는 `ultracode`가 있습니다' docs-site/content/ko/claude-code/foundations/commands.md
+    stdout:
+      1
+    exit: 0
+[C3-en] grep -c -i -E -- 'ultracode.*toggle|toggle.*ultracode' docs-site/content/en/claude-code/foundations/commands.md
+    stdout:
+      0
+    exit: 1
+[C3-ko] grep -c -i -E -- 'ultracode.*토글|토글.*ultracode' docs-site/content/ko/claude-code/foundations/commands.md
+    stdout:
+      0
+    exit: 1
+[C3-ja] grep -c -i -E -- 'ultracode.*トグル|トグル.*ultracode' docs-site/content/ja/claude-code/foundations/commands.md
+    stdout:
+      0
+    exit: 1
+[C3-zh] grep -c -i -E -- 'ultracode.*开关|开关.*ultracode' docs-site/content/zh/claude-code/foundations/commands.md
+    stdout:
+      0
+    exit: 1
+[H-WF] grep -c '^#' docs-site/content/ko/claude-code/agentic/workflows.md docs-site/content/en/claude-code/agentic/workflows.md docs-site/content/ja/claude-code/agentic/workflows.md docs-site/content/zh/claude-code/agentic/workflows.md
+    stdout:
+      docs-site/content/ko/claude-code/agentic/workflows.md:11
+      docs-site/content/en/claude-code/agentic/workflows.md:11
+      docs-site/content/ja/claude-code/agentic/workflows.md:11
+      docs-site/content/zh/claude-code/agentic/workflows.md:11
+    exit: 0
+[H-ML] grep -c '^#' docs-site/content/ko/multi-llm/_index.md docs-site/content/en/multi-llm/_index.md docs-site/content/ja/multi-llm/_index.md docs-site/content/zh/multi-llm/_index.md
+    stdout:
+      docs-site/content/ko/multi-llm/_index.md:13
+      docs-site/content/en/multi-llm/_index.md:13
+      docs-site/content/ja/multi-llm/_index.md:13
+      docs-site/content/zh/multi-llm/_index.md:13
+    exit: 0
+[H-UW] grep -c '^#' docs-site/content/ko/advanced/ultracode-workflows.md docs-site/content/en/advanced/ultracode-workflows.md docs-site/content/ja/advanced/ultracode-workflows.md docs-site/content/zh/advanced/ultracode-workflows.md
+    stdout:
+      docs-site/content/ko/advanced/ultracode-workflows.md:24
+      docs-site/content/en/advanced/ultracode-workflows.md:20
+      docs-site/content/ja/advanced/ultracode-workflows.md:20
+      docs-site/content/zh/advanced/ultracode-workflows.md:20
+    exit: 0
+[H-CM] grep -c '^#' docs-site/content/ko/claude-code/foundations/commands.md docs-site/content/en/claude-code/foundations/commands.md docs-site/content/ja/claude-code/foundations/commands.md docs-site/content/zh/claude-code/foundations/commands.md
+    stdout:
+      docs-site/content/ko/claude-code/foundations/commands.md:23
+      docs-site/content/en/claude-code/foundations/commands.md:23
+      docs-site/content/ja/claude-code/foundations/commands.md:18
+      docs-site/content/zh/claude-code/foundations/commands.md:18
+    exit: 0
+[X-cmp] cmp .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md
+    stdout:
+      (empty)
+    exit: 0
+[X-baseline-diff] git diff --stat -- docs-site/.locale-parity-baseline
+    stdout:
+      (empty)
+    exit: 0
+```
