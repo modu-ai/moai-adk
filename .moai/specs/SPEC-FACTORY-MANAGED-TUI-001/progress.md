@@ -191,7 +191,7 @@ m1_to_mN_commit_strategy: stub S, RED R, one commit per milestone M2..M4, two M5
 
 sync_status: audit-ready (AC-MT-015 operator-held, NOT run; real TUI behavior never observed)
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill   # canonical placeholder: this commit cannot cite its own hash; backfilled in the following progress.md-only commit
+sync_commit_sha: 40aa3aedf   # backfilled in the following progress.md-only commit (a commit cannot cite its own hash)
 head_at_signal: 71befeeb9 (measured tree, = the card branch after absorbing local develop 1da5e4fc6; the sync edits were uncommitted when measured)
 tree: .claude/worktrees/t1408
 branch: WT-managed-codex-tui-attach
