@@ -41,6 +41,19 @@ llm:
   # disabled in the console and backfilled with the resolved value).
   profile: ""
   agent_overrides: {}
+
+  # agent_overrides_consume: opt-in spawn consumption (default false). Keep
+  # it false and the map above stays storage-only — every subagent keeps the
+  # session model/effort it inherits, the documented default. Set it true and
+  # the orchestrator consults the overrides before each spawn and passes the
+  # configured model on the Agent() call; an override whose model is
+  # `inherit` stays an explicit inheritance no-op. Spawn payloads carry model
+  # only (the Agent tool exposes no effort parameter), so a pinned effort is
+  # delivered by convention, not by the payload. Note that a spawn pinned to
+  # a concrete model does not inherit the parent session's [1m] context
+  # entitlement — the closed alias set on the overrides is what keeps pins
+  # spawnable.
+  agent_overrides_consume: false
   # Main-session reasoning effort comes from the preference profile
   # (`moai profile setup`), never from this file.
   #

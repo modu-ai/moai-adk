@@ -361,6 +361,40 @@ func TestAgentOverridesSave(t *testing.T) {
 			t.Errorf("an atomic reject rewrote llm.yaml:\n%s", got)
 		}
 	})
+
+	// AC-AFR-014 (REQ-AFR-015): a non-boolean llm.agent_overrides_consume
+	// stored in llm.yaml joins the same atomic-reject flow — the save path
+	// re-checks the stored section strictly (the lenient loader silently
+	// falls back to defaults on exactly this defect class) and re-renders
+	// with a per-field error while every persisted file stays byte-identical.
+	t.Run("non-boolean consume value is an atomic reject", func(t *testing.T) {
+		a, root := seedAgentOverridesProject(t)
+		llmBody := "llm:\n  mode: \"\"\n  glm_env_var: GLM_API_KEY\n  agent_overrides_consume: \"yes\"\n"
+		writeLLMYAML(t, root, llmBody)
+		agentPath := filepath.Join(root, ".claude", "agents", "moai", "manager-develop.md")
+		agentBefore, err := os.ReadFile(agentPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rec := postSave(t, a, agentOverridesForm(nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("save status = %d, want the 200 re-render", rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), "agent_overrides_consume") {
+			t.Error("the re-render must carry a per-field error naming the non-boolean key")
+		}
+		if got := readSectionFile(t, root, "llm"); got != llmBody {
+			t.Errorf("the atomic reject rewrote llm.yaml:\n%s", got)
+		}
+		agentAfter, err := os.ReadFile(agentPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(agentBefore, agentAfter) {
+			t.Error("the atomic reject touched agent frontmatter")
+		}
+	})
 }
 
 // asMap narrows an any carrying a YAML map for assertions.
@@ -372,6 +406,7 @@ func asMap(t *testing.T, v any) map[string]any {
 	}
 	return m
 }
+
 
 // TestAgentFrontmatterUntouched covers AC-AFR-005 (REQ-AFR-005): a fully
 // legal submission — a tier change plus an override pin — leaves every agent

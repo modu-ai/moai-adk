@@ -257,6 +257,13 @@ templ fieldsetAgentFM(view pageView) {
 		<p class="panel__help" data-i18n="sec.agentfm.help">
 			Per-agent model/effort overrides on top of the selected profile. An agent without an override resolves the profile cell — plain inheritance is the default — and a pin equal to the profile default is cleared on save. The per-class tier chart lives in the Workflow panel.
 		</p>
+		// Stored llm.yaml type fidelity (v0.3.0 M7, REQ-AFR-015): a non-boolean
+		// agent_overrides_consume stored in llm.yaml rejects the save; the
+		// strict checker's message renders here, next to the surface the key
+		// belongs to. The error is keyed by the yaml key, so a type mismatch in
+		// any other llm key renders under its own name when one exists.
+		@fieldErr(view.FieldErrors, "agent_overrides_consume")
+		@fieldErr(view.FieldErrors, "llm.yaml")
 		// t66 web half: under a GLM backend the model axis is session-inherited,
 		// so the effort(reasoning) map is the per-agent routing surface — state
 		// that on the sub-section, gated on the backend signal (never rendered
