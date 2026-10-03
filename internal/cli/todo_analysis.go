@@ -273,7 +273,7 @@ func todoFindingLine(rec *factory.BacklogRecord, cardID string, f factory.Backlo
 	// other relation is a judgement about the row's own card, so its
 	// suggestion keeps naming that row (card t1484).
 	target := cardID
-	if f.Relation == kanban.BacklogRelationNearDuplicate {
+	if f.Relation == factory.BacklogRelationNearDuplicate {
 		target = f.SubjectID
 	}
 	return fmt.Sprintf("\t↳ %s %s (%s%s%s)%s — moai todo drop %s | moai todo edit %s \"<text>\"",

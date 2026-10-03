@@ -752,7 +752,7 @@ func newTodoAddCmd() *cobra.Command {
 			// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002: --classification-file
 			// outranks the standing selection; without a supplied file the
 			// standing decider resolves from MOAI_TODO_DECIDER.
-			var dec kanban.CardDecider
+			var dec factory.CardDecider
 			if scan.haveClassFile {
 				resolved, err := todoDeciderFromClassificationFile(scan.classFile)
 				if err != nil {
