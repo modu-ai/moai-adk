@@ -1743,14 +1743,48 @@ func codexFindingLineOf(ln string) (indent, sev, msg string, continues, ok bool)
 	return "", "", "", false, false
 }
 
+// codexFindingAnchorOf picks the file:line anchor a finding message can
+// defend (card-review repair round 2, N1). A message carrying EXACTLY ONE
+// distinct path:line candidate anchors to it — first occurrence's line when
+// the same path repeats. A message carrying SEVERAL distinct candidates — a
+// headline naming one file while the actual location is another — has no
+// defensible single location, so the anchor stays unset: a reference inside a
+// title is not the target, and ambiguity is not resolved by position.
+// Consumers that require an unambiguous target (REQ-CGSC-008's runtime-drift
+// reclassification) read an unset anchor as "keep the strict disposition".
+// URL-shaped matches are excluded as before.
+func codexFindingAnchorOf(msg string) (string, int, bool) {
+	var anchor string
+	var line int
+	for _, m := range codexPathLineRef.FindAllStringSubmatch(msg, -1) {
+		if strings.Contains(m[1], "://") {
+			continue
+		}
+		if anchor != "" && anchor != m[1] {
+			return "", 0, false // several distinct candidates — no defensible anchor
+		}
+		if anchor == "" {
+			anchor = m[1]
+			if n, err := strconv.Atoi(m[2]); err == nil {
+				line = n
+			}
+		}
+	}
+	if anchor == "" {
+		return "", 0, false
+	}
+	return anchor, line, true
+}
+
 // codexFindingsOf parses codex's review prose into structured findings
 // (#1632 axis 1). Each severity-tagged bullet becomes one Finding carrying the
-// verbatim severity, the message as title/body, and the first path:line anchor
-// found in the message as File/Line. Indented continuation lines following a
-// bullet are joined into that finding's body — codex commonly continues a
-// finding across the next lines, and truncating it to the headline would lose
-// the substance a reviewer needs. A body with no bullets returns an empty,
-// non-nil slice: the parser invents no structure from prose.
+// verbatim severity, the message as title/body, and — when the message
+// carries exactly one distinct path:line candidate — that anchor as File/Line
+// (codexFindingAnchorOf). Indented continuation lines following a bullet are
+// joined into that finding's body — codex commonly continues a finding across
+// the next lines, and truncating it to the headline would lose the substance
+// a reviewer needs. A body with no bullets returns an empty, non-nil slice:
+// the parser invents no structure from prose.
 func codexFindingsOf(reviewText string) []Finding {
 	findings := []Finding{}
 	var cur *Finding
@@ -1764,11 +1798,9 @@ func codexFindingsOf(reviewText string) []Finding {
 			continue
 		}
 		f := Finding{Severity: sev, Title: msg, Body: msg}
-		if pm := codexPathLineRef.FindStringSubmatch(msg); pm != nil && !strings.Contains(pm[1], "://") {
-			f.File = pm[1]
-			if line, err := strconv.Atoi(pm[2]); err == nil {
-				f.Line = line
-			}
+		if file, line, ok := codexFindingAnchorOf(msg); ok {
+			f.File = file
+			f.Line = line
 		}
 		findings = append(findings, f)
 		cur, curIndent = nil, ""

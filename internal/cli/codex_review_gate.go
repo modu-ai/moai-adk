@@ -337,7 +337,10 @@ func normalizeFindingPath(file, dir string) string {
 // anchor, and anchors outside the surfaces, keep the review's block. The
 // anchor is normalized against the reviewed scope's tree dir before the
 // comparison (card-review repair R3), so an absolute anchor reclassifies
-// exactly as its relative twin.
+// exactly as its relative twin. The anchor must also be UNAMBIGUOUS
+// (card-review repair round 2, N1): codexFindingsOf leaves File empty when a
+// finding message carries several distinct path candidates, and an
+// anchor-less finding keeps the strict disposition below.
 func runtimeConfigOnlyFindings(findings []Finding, dir string) ([]string, bool) {
 	if len(findings) == 0 {
 		return nil, false
