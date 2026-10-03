@@ -42,7 +42,7 @@ red_tests: internal/cli/codex_review_gate_primary_scope_red_test.go(AC-001·005�
 `unset <레인 env> && go test -count=1 -timeout 20m ./internal/cli/ -run '<게이트 표면 셀렉터>'` — 4회 실행 전부 `ok`(180.6s → 177.7s → 117.0s → 103.9s, 유일 적색이었던 RED-CGSC-008은 M3 후 반전). `go test -count=1 ./internal/settings/` `ok 1.498s`. 정적: `go vet` 4패키지 0 · `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `golangci-lint run --timeout=10m`(v2.1.6 = CI 판) `0 issues.` · gofmt 0 · `./bin/moai spec lint SPEC-CODEX-GATE-SCOPING-001` 무발견.
 
 - 커버리지(변경 함수, 게이트 표면 프로파일 — `go test -coverprofile ./internal/cli/ -run '<게이트+porcelain 셀렉터>'`): `HandleCodexReviewGate` 100% · `treeScopeSkipApplies` 100% · `treeScopeSkipRow` 100% · `isTreeRuntimeConfigPath` 100% · `runtimeConfigOnlyFindings` 90.9% · `logRuntimeDriftReclassification` 80.0% · `resolveReviewScope` 93.3% · `isPrimaryCheckoutGit` 77.8% · `reviewScopeGitPath` 100% · `readCodexReviewGatePrimaryScope` 77.8% · `reviewableFromPorcelain` 83.3% · `hasReviewableChanges` 100% — 신규·수정 함수 전부 77.8% 이상, 주요 판정 함수 90-100%.
-- 패키지 집계: `config` 83.6% · `settings` 86.8% (측정 — 본 실행, M4 후 트리). `cli`·`template` 패키지 집계는 동시 레인 부하로 커버리지 실행이 CPU 굶주림(듀티 2-16% 실측)에 걸려 미측정 — `-timeout 300m` 재실행이 백그라운드 진행 중이며 착지 시 보충. `cli` 변경파일은 위 게이트 표면 프로파일로 판정 보강, `template`은 본 SPEC의 Go 코드 변경이 0(셸 스크립트만 — 스크립트 계약 AC-010/011/012 전부 초록). 85%는 가이드이며 config 83.6% 공백은 본 카드 미접촉 기존 표면.
+- 패키지 집계: `config` 83.6% · `settings` 86.8% (측정 — 본 실행, M4 후 트리). `cli`·`template` 패키지 집계는 동시 레인 부하로 커버리지 실행이 CPU 굶주림(듀티 2-16% 실측)에 걸려 미측정 — 부하 완화 후 `unset <레인 env> && go test -count=1 -cover ./internal/config/ ./internal/settings/ ./internal/cli/ ./internal/template/` 재측정. `cli` 변경파일은 위 게이트 표면 프로파일로 판정 보강, `template`은 본 SPEC의 Go 코드 변경이 0(셸 스크립트만 — 스크립트 계약 AC-010/011/012 전부 초록). 85%는 가이드이며 config 83.6% 공백은 본 카드 미접촉 기존 표면.
 - E4 경계 grep: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli internal/config internal/settings --include='*.go' | grep -v _test.go | grep -v '// '` = 18행 — **baseline `45a397e72` 동일 형태 18행과 동일(신규 0)**. 전부 기존 스트링 리터럴 헬프 텍스트(harness.go·pr_watch_cmd.go)이며 본 카드 변경 파일 적중 0. C-HRA-008 정적 가드 테스트 초록 유지.
 - 미러 중성성: 신규 주석 카드 id 0(`grep -c t1404` = 0), 기존 `t1392` 6건 불변.
 - 범위 침범: `git diff 45a397e72..HEAD --stat` 16파일 전부 plan §A.5 범위(설정 3·cli 9·게이트 스크립트 쌍둔 2·spec.md frontmatter 2행·config 테스트 1) + 테스트 적응 5파일. 디버그 잔재 스캔 0.
@@ -63,7 +63,7 @@ new_warnings_or_lints_introduced: 0
 cross_platform_build:
   darwin_arm64: "go build ./... exit 0; go vet 0; golangci-lint v2.1.6 0 issues; gofmt 0"
   windows_amd64: "GOOS=windows GOARCH=amd64 go build ./... exit 0"
-coverage_4_packages: "config 83.6% · settings 86.8% (측정) · cli·template 패키지 집계는 레인 부하로 백그라운드 재측정 진행(-timeout 300m) — 변경함수 프로파일로 판정 보강(신규·수정 함수 전부 77.8%+, 판정 함수 90-100%)"
+coverage_4_packages: "config 83.6% · settings 86.8% (측정) · cli·template 패키지 집계는 레인 부하로 미측정(부하 완화 후 재측정) — 변경함수 프로파일로 판정 보강(신규·수정 함수 전부 77.8%+, 판정 함수 90-100%)"
 total_run_phase_files: 16
 m1_to_mN_commit_strategy: "M1 697f18570 -> M2 912773c64 -> M3 dc52d74cb -> M4 dc68de6d1 -> M5 progress record"
 fixture_adaptations: "기존 테스트 10지점이 pre-SPEC 리뷰 기본값을 고정하고 있어 REQ-CGSC-004 복원 픽스처로 적응(ownership·scope·stop_fixture·live·selfreview) — 계약상 5 RED 테스트는 무변경"
