@@ -119,7 +119,15 @@ func (p *cvoProtection) edit(name, from, to string) {
 	p.set(name, strings.Replace(string(data), from, to, 1))
 }
 
+// run executes the comparison with the retiring branch the fixture supplies: the script
+// carries no default name (card t1453, decision D17).
 func (p *cvoProtection) run(args ...string) rlsResult {
+	p.t.Helper()
+	return p.runRaw(append([]string{"--retiring-branch", cvoRetiringBranch}, args...)...)
+}
+
+// runRaw executes the comparison with exactly the given arguments.
+func (p *cvoProtection) runRaw(args ...string) rlsResult {
 	p.t.Helper()
 	env := p.poison.env("CUTOVER_GH_CMD="+p.stub, "GH_API_LOG="+p.log, "GH_API_DIR="+p.dir, "GH_API_REPO="+cvoProtectionRepo)
 	res := rlsRun(p.t, p.dir, env, "bash", append([]string{cvoScript(p.t, cvoProtectionRel)}, args...)...)
@@ -146,7 +154,7 @@ func (p *cvoProtection) calls() []string {
 
 // TestCutoverProtectionCompare is AC-GFD-020's protection comparison through the
 // stubbed seam: required checks, strict, enforce_admins, merge methods,
-// delete_branch_on_merge, default branch, rulesets and develop's protection.
+// delete_branch_on_merge, default branch, rulesets and the retiring branch's protection.
 func TestCutoverProtectionCompare(t *testing.T) {
 	t.Run("the_observed_baseline_matches_research_section_2", func(t *testing.T) {
 		p := cvoNewProtection(t)
@@ -157,7 +165,7 @@ func TestCutoverProtectionCompare(t *testing.T) {
 		out := rlsNorm(res.out)
 		for _, field := range []string{
 			"required_checks", "strict", "enforce_admins", "default_branch", "allow_merge_commit",
-			"allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge", "rulesets", "develop_protection",
+			"allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge", "rulesets", "retiring_protection",
 		} {
 			rlsMustContain(t, out, "MATCH "+field)
 		}
@@ -226,7 +234,7 @@ func TestCutoverProtectionCompare(t *testing.T) {
 		if res.exit != 1 {
 			t.Errorf("exit code = %d, want 1", res.exit)
 		}
-		rlsMustContain(t, rlsNorm(res.out), "DRIFT develop_protection")
+		rlsMustContain(t, rlsNorm(res.out), "DRIFT retiring_protection")
 	})
 
 	t.Run("the_post_cutover_target_drops_only_the_multi_os_gate", func(t *testing.T) {
@@ -269,11 +277,13 @@ func TestCutoverProtectionCompare(t *testing.T) {
 	t.Run("a_missing_gh_command_is_exit_2", func(t *testing.T) {
 		p := cvoNewProtection(t)
 		env := p.poison.env("CUTOVER_GH_CMD="+filepath.Join(p.dir, "no-such-gh"), "GH_API_LOG="+p.log, "GH_API_DIR="+p.dir, "GH_API_REPO="+cvoProtectionRepo)
-		res := rlsRun(t, p.dir, env, "bash", cvoScript(t, cvoProtectionRel))
+		res := rlsRun(t, p.dir, env, "bash", cvoScript(t, cvoProtectionRel), "--retiring-branch", cvoRetiringBranch)
 		p.poison.assertUntouched(t)
 		if res.exit != 2 {
 			t.Errorf("exit code = %d, want 2\n%s", res.exit, rlsNorm(res.out))
 		}
+		// The name was supplied, so the exit 2 is the missing gh and nothing else.
+		rlsMustContain(t, rlsNorm(res.out), "the gh command is not available")
 	})
 
 	t.Run("usage_errors_are_exit_2", func(t *testing.T) {

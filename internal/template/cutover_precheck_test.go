@@ -112,6 +112,8 @@ func (p *cvoPre) run(args ...string) rlsResult {
 		"CUTOVER_GTD_LIST_CMD="+p.gtd,
 		"CUTOVER_CARD_BRANCH_CMD="+p.branch,
 	)
+	// The script carries no branch name; the fixture supplies the retiring branch.
+	args = append([]string{"--retiring-branch", cvoRetiringBranch}, args...)
 	res := rlsRun(p.t, p.repo.work, env, "bash", append([]string{cvoScript(p.t, cvoPrecheckRel)}, args...)...)
 	p.poison.assertUntouched(p.t)
 	p.t.Logf("exit=%d\n%s", res.exit, rlsNorm(res.out))
@@ -160,7 +162,7 @@ func TestCutoverPrecheck(t *testing.T) {
 	t.Run("negative_1_unpushed_develop_commit", func(t *testing.T) {
 		p := cvoNewPre(t)
 		p.repo.commit(map[string]string{"README.md": "two\n"}, "unpushed")
-		cvoWantFail(t, p.run(), "unpushed-develop-commits", "1")
+		cvoWantFail(t, p.run(), "unpushed-retiring-commits", "1")
 	})
 
 	t.Run("negative_2_live_window_or_slot_holder", func(t *testing.T) {
@@ -191,7 +193,7 @@ func TestCutoverPrecheck(t *testing.T) {
 		res := b.run()
 		cvoWantFail(t, res, "unmerged-picked-card", "t9002")
 		// ... and the unpushed merge is named as well.
-		rlsMustContain(t, rlsNorm(res.out), "FAIL unpushed-develop-commits")
+		rlsMustContain(t, rlsNorm(res.out), "FAIL unpushed-retiring-commits")
 	})
 
 	t.Run("negative_4_active_lane_session", func(t *testing.T) {
@@ -255,7 +257,7 @@ func TestCutoverPrecheckGuards(t *testing.T) {
 		p.repo.commit(map[string]string{"README.md": "x\n"}, "unpushed")
 		p.setIntegration(cvoWindowHeld, 0)
 		res := p.run("--exclude-card", "t1453")
-		cvoWantFail(t, res, "unpushed-develop-commits")
+		cvoWantFail(t, res, "unpushed-retiring-commits")
 		cvoWantFail(t, res, "live-integration-window")
 	})
 

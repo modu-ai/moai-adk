@@ -13,6 +13,7 @@ package template_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -80,17 +81,36 @@ func TestCutoverScriptsRequireBranchNames(t *testing.T) {
 
 	t.Run("protection_compare_baseline_names_the_missing_retiring_branch", func(t *testing.T) {
 		p := cvoNewProtection(t)
-		cvoWantUsage(t, p.run(), "--retiring-branch")
-		cvoWantUsage(t, p.run("--expect", "baseline"), "--retiring-branch")
+		cvoWantUsage(t, p.runRaw(), "--retiring-branch")
+		cvoWantUsage(t, p.runRaw("--expect", "baseline"), "--retiring-branch")
 		if calls := p.calls(); len(calls) != 0 {
 			t.Errorf("a usage error must precede every gh read, got %d call(s): %v", len(calls), calls)
+		}
+	})
+
+	t.Run("protection_compare_reads_the_branch_it_was_given", func(t *testing.T) {
+		p := cvoNewProtection(t)
+		// The result is not judged here (the stub answers only the fixture's branch);
+		// the logged endpoint is what proves the supplied name reached the read.
+		_ = p.runRaw("--retiring-branch", "alpha")
+		var sawAlpha bool
+		for _, c := range p.calls() {
+			if strings.Contains(c, "branches/alpha/protection") {
+				sawAlpha = true
+			}
+			if strings.Contains(c, "branches/"+cvoRetiringBranch+"/protection") {
+				t.Errorf("the read used a name that was not supplied: %q", c)
+			}
+		}
+		if !sawAlpha {
+			t.Errorf("no read of branches/alpha/protection; calls: %v", p.calls())
 		}
 	})
 
 	t.Run("protection_compare_post_cutover_reads_no_retiring_branch", func(t *testing.T) {
 		p := cvoNewProtection(t)
 		p.edit("main-protection.json", `, "Release PR Multi-OS Gate"`, ``)
-		res := p.run("--expect", "post-cutover")
+		res := p.runRaw("--expect", "post-cutover")
 		if res.exit != 0 {
 			t.Errorf("post-cutover judges no retiring-branch state and needs no name; exit = %d\n%s", res.exit, rlsNorm(res.out))
 		}

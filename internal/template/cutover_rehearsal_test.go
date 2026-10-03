@@ -65,6 +65,15 @@ func cvoRehearse(t *testing.T, args ...string) rlsResult {
 	return res
 }
 
+// cvoRehearseNamed runs the rehearsal with the branch names the fixtures build their
+// repositories with. The script carries no default name (card t1453, decision D17), so
+// every full run supplies them; cvoRehearse stays raw for the runs that test their absence.
+func cvoRehearseNamed(t *testing.T, args ...string) rlsResult {
+	t.Helper()
+	named := append([]string{"--retiring-branch", cvoRetiringBranch, "--target-branch", cvoTargetBranch}, args...)
+	return cvoRehearse(t, named...)
+}
+
 // cvoEvidence extracts `key=value` pairs from the evidence line that starts with
 // the given label.
 func cvoEvidence(t *testing.T, out, label string) map[string]string {
@@ -111,7 +120,7 @@ func TestCutoverRehearsal(t *testing.T) {
 		}
 
 		work := filepath.Join(t.TempDir(), "m6")
-		res := cvoRehearse(t, "--source", src, "--workdir", work)
+		res := cvoRehearseNamed(t, "--source", src, "--workdir", work)
 		out := rlsNorm(res.out)
 		t.Logf("exit=%d\n%s", res.exit, res.out)
 		if res.exit != 0 {
@@ -120,39 +129,43 @@ func TestCutoverRehearsal(t *testing.T) {
 		rlsMustContain(t, out, "REHEARSAL-RESULT PASS")
 
 		start := cvoEvidence(t, res.out, "start")
-		cvoWant(t, start, "develop", develop)
-		cvoWant(t, start, "main", main)
-		cvoWant(t, start, "develop-tree", developTree)
-		cvoWant(t, start, "main-tree", mainTree)
+		cvoWant(t, start, "retiring", develop)
+		cvoWant(t, start, "target", main)
+		cvoWant(t, start, "retiring-tree", developTree)
+		cvoWant(t, start, "target-tree", mainTree)
 
 		absorb := cvoEvidence(t, res.out, "absorb")
 		cvoWant(t, absorb, "parents", develop+","+main) // a merge commit: develop first, main second
 		cvoWant(t, absorb, "tree", absorbTree)
 
 		conv := cvoEvidence(t, res.out, "convergence")
-		absorbSHA := absorb["develop"]
+		absorbSHA := absorb["retiring"]
 		cvoWant(t, conv, "parents", main+","+absorbSHA) // a merge commit, never a squash
 		cvoWant(t, conv, "tree", absorbTree)
 
 		ident := cvoEvidence(t, res.out, "tree-identity")
-		cvoWant(t, ident, "main-tree", absorbTree)
-		cvoWant(t, ident, "develop-tree", absorbTree)
+		cvoWant(t, ident, "target-tree", absorbTree)
+		cvoWant(t, ident, "retiring-tree", absorbTree)
 		cvoWant(t, ident, "equal", "yes")
 
 		anc := cvoEvidence(t, res.out, "ancestry")
-		cvoWant(t, anc, "develop-tip-is-ancestor-of-main", "yes")
+		cvoWant(t, anc, "retiring-tip-is-ancestor-of-target", "yes")
 
 		rev := cvoEvidence(t, res.out, "revert")
 		cvoWant(t, rev, "tree", mainTree)
-		cvoWant(t, rev, "start-main-tree", mainTree)
+		cvoWant(t, rev, "start-target-tree", mainTree)
 		cvoWant(t, rev, "equal", "yes")
 
 		rb := cvoEvidence(t, res.out, "rollback")
-		cvoWant(t, rb, "main", main)
-		cvoWant(t, rb, "develop", develop)
-		cvoWant(t, rb, "origin-main", main)
-		cvoWant(t, rb, "origin-develop", develop)
+		cvoWant(t, rb, "target", main)
+		cvoWant(t, rb, "retiring", develop)
+		cvoWant(t, rb, "origin-target", main)
+		cvoWant(t, rb, "origin-retiring", develop)
 		cvoWant(t, rb, "identical-to-start", "yes")
+
+		// The evidence names the branches the caller supplied, not a built-in pair.
+		cvoWant(t, cvoEvidence(t, res.out, "branches"), "retiring", cvoRetiringBranch)
+		cvoWant(t, cvoEvidence(t, res.out, "branches"), "target", cvoTargetBranch)
 
 		// The scratch repositories, read after the run: refs are back at the
 		// starting values, locally and in the scratch bare origin.
@@ -171,11 +184,63 @@ func TestCutoverRehearsal(t *testing.T) {
 		rlsMustContain(t, string(rec), "main "+main, "develop "+develop)
 	})
 
+	// The names are arguments, not built-ins: under names the script has never been
+	// given before, the same rehearsal passes and its refs carry those names.
+	t.Run("the_branch_names_are_the_callers_not_built_in", func(t *testing.T) {
+		src, develop, main := cvoSource(t)
+		rlsGit(t, src, "update-ref", "refs/remotes/origin/alpha", develop)
+		rlsGit(t, src, "update-ref", "refs/remotes/origin/beta", main)
+		rlsGit(t, src, "update-ref", "-d", "refs/remotes/origin/develop")
+		rlsGit(t, src, "update-ref", "-d", "refs/remotes/origin/main")
+
+		work := filepath.Join(t.TempDir(), "m6")
+		res := cvoRehearse(t, "--source", src, "--workdir", work, "--retiring-branch", "alpha", "--target-branch", "beta")
+		out := rlsNorm(res.out)
+		if res.exit != 0 {
+			t.Fatalf("exit code = %d, want 0\n%s", res.exit, out)
+		}
+		rlsMustContain(t, out, "REHEARSAL-RESULT PASS")
+		cvoWant(t, cvoEvidence(t, res.out, "branches"), "retiring", "alpha")
+		cvoWant(t, cvoEvidence(t, res.out, "branches"), "target", "beta")
+		cvoWant(t, cvoEvidence(t, res.out, "start"), "retiring", develop)
+		cvoWant(t, cvoEvidence(t, res.out, "start"), "target", main)
+		cvoWant(t, cvoEvidence(t, res.out, "rollback"), "identical-to-start", "yes")
+
+		o := filepath.Join(work, "origin.git")
+		cvoWant(t, map[string]string{"alpha": rlsGit(t, o, "rev-parse", "refs/heads/alpha")}, "alpha", develop)
+		cvoWant(t, map[string]string{"beta": rlsGit(t, o, "rev-parse", "refs/heads/beta")}, "beta", main)
+		// Nothing under the old names was created in the scratch origin.
+		for _, name := range []string{"develop", "main"} {
+			if res := rlsRun(t, o, rlsEnv(), "git", "rev-parse", "--verify", "--quiet", "refs/heads/"+name); res.exit == 0 {
+				t.Errorf("the scratch origin has refs/heads/%s; the run must create only the supplied names", name)
+			}
+		}
+		rec, err := os.ReadFile(filepath.Join(work, "pre-merge-refs.txt"))
+		if err != nil {
+			t.Fatalf("the pre-merge refs record is missing: %v", err)
+		}
+		rlsMustContain(t, string(rec), "beta "+main, "alpha "+develop)
+	})
+
+	t.Run("an_invalid_or_identical_branch_name_is_a_usage_error", func(t *testing.T) {
+		src, _, _ := cvoSource(t)
+		for _, names := range [][]string{
+			{"--retiring-branch", "-x", "--target-branch", cvoTargetBranch},
+			{"--retiring-branch", "a b", "--target-branch", cvoTargetBranch},
+			{"--retiring-branch", cvoRetiringBranch, "--target-branch", cvoRetiringBranch},
+		} {
+			args := append([]string{"--source", src, "--workdir", filepath.Join(t.TempDir(), "m6")}, names...)
+			if res := cvoRehearse(t, args...); res.exit != 2 {
+				t.Errorf("names %v: exit = %d, want 2\n%s", names, res.exit, rlsNorm(res.out))
+			}
+		}
+	})
+
 	t.Run("remotes_are_local_paths_and_the_source_is_untouched", func(t *testing.T) {
 		src, _, _ := cvoSource(t)
 		before := rlsGit(t, src, "for-each-ref") + "|" + rlsGit(t, src, "config", "--get-regexp", "^remote\\.")
 		work := filepath.Join(t.TempDir(), "m6")
-		res := cvoRehearse(t, "--source", src, "--workdir", work)
+		res := cvoRehearseNamed(t, "--source", src, "--workdir", work)
 		if res.exit != 0 {
 			t.Fatalf("exit code = %d\n%s", res.exit, rlsNorm(res.out))
 		}
@@ -238,7 +303,7 @@ func TestCutoverRehearsalRefusals(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(work, "keep.txt"), []byte("x"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		res := cvoRehearse(t, "--source", src, "--workdir", work)
+		res := cvoRehearseNamed(t, "--source", src, "--workdir", work)
 		if res.exit != 2 {
 			t.Errorf("a non-empty workdir must be a usage error (exit 2), got %d\n%s", res.exit, rlsNorm(res.out))
 		}
@@ -246,7 +311,7 @@ func TestCutoverRehearsalRefusals(t *testing.T) {
 
 	t.Run("a_workdir_inside_the_source_is_refused", func(t *testing.T) {
 		src, _, _ := cvoSource(t)
-		res := cvoRehearse(t, "--source", src, "--workdir", filepath.Join(src, "m6"))
+		res := cvoRehearseNamed(t, "--source", src, "--workdir", filepath.Join(src, "m6"))
 		if res.exit != 2 {
 			t.Errorf("a workdir inside the source must be refused (exit 2), got %d\n%s", res.exit, rlsNorm(res.out))
 		}
@@ -259,7 +324,7 @@ func TestCutoverRehearsalRefusals(t *testing.T) {
 	t.Run("a_source_without_the_remote_tracking_refs_is_refused", func(t *testing.T) {
 		src, _, _ := cvoSource(t)
 		rlsGit(t, src, "update-ref", "-d", "refs/remotes/origin/main")
-		res := cvoRehearse(t, "--source", src, "--workdir", filepath.Join(t.TempDir(), "m6"))
+		res := cvoRehearseNamed(t, "--source", src, "--workdir", filepath.Join(t.TempDir(), "m6"))
 		if res.exit != 2 {
 			t.Errorf("a source lacking origin/main must be a usage error (exit 2), got %d\n%s", res.exit, rlsNorm(res.out))
 		}
@@ -287,7 +352,7 @@ func TestCutoverRehearsalRealHistory(t *testing.T) {
 	}
 	root := findProjectRootForMirrorTest(t)
 	work := filepath.Join(t.TempDir(), "m6")
-	res := cvoRehearse(t, "--source", root, "--workdir", work)
+	res := cvoRehearseNamed(t, "--source", root, "--workdir", work)
 	t.Logf("exit=%d\n%s", res.exit, res.out)
 	if res.exit != 0 {
 		t.Fatalf("exit code = %d", res.exit)

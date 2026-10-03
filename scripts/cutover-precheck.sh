@@ -1,33 +1,41 @@
 #!/usr/bin/env bash
-# cutover-precheck.sh - batch-boundary precheck for the develop -> main base-branch
-# cutover (SPEC-GITHUB-FLOW-DEFAULT-001 M6, AC-GFD-019, REQ-GFD-019, design D-8
-# step 3 and D-25).
+# cutover-precheck.sh - batch-boundary precheck for the base-branch cutover from the
+# retiring branch to the target base branch (SPEC-GITHUB-FLOW-DEFAULT-001
+# M6, AC-GFD-019, REQ-GFD-019, design D-8 step 3 and D-25).
 #
 # READ-ONLY. It runs `git rev-parse|rev-list|merge-base|worktree list` and the
 # injected reader commands below, nothing else: it does not fetch, push, tag,
-# merge, or write any file. It reads origin/develop as the remote-tracking ref
-# stands; fetch before running it if a fresher read is wanted (the output prints
+# merge, or write any file. It reads the retiring branch's remote-tracking ref as
+# it stands; fetch before running it if a fresher read is wanted (the output prints
 # the SHA it compared against).
 #
+# The script names no branch of its own and carries no default: the caller supplies
+# the retiring branch with --retiring-branch, and without it the script
+# stops with a usage error (exit 2). The local ref is <name>, the remote-tracking
+# ref is origin/<name>.
+#
 # The cutover must not start while any of these is true:
-#   unpushed-develop-commits  local develop has commits origin/develop lacks
-#   live-integration-window   the release-integration window has a live holder
-#   live-slot-holder          a slot lease has a live holder
-#   active-lane-session       a live session sits in a card worktree
-#   unmerged-picked-card      a picked card's branch tip is not an ancestor of
-#                             origin/develop (not merged, or merged but not pushed)
-#   reader-unavailable        a reader failed or answered in a shape this script
-#                             does not recognise: unobserved is a violation, never
-#                             a pass
+#   unpushed-retiring-commits  the local retiring branch has commits its
+#                              remote-tracking ref lacks
+#   live-integration-window    the release-integration window has a live holder
+#   live-slot-holder           a slot lease has a live holder
+#   active-lane-session        a live session sits in a card worktree
+#   unmerged-picked-card       a picked card's branch tip is not an ancestor of the
+#                              retiring branch's remote-tracking ref (not merged, or
+#                              merged but not pushed)
+#   reader-unavailable         a reader failed or answered in a shape this script
+#                              does not recognise: unobserved is a violation, never
+#                              a pass
 #
-# Usage: scripts/cutover-precheck.sh [--repo <path>] [--local-ref <ref>]
-#                                    [--remote-ref <ref>] [--exclude-card <id>]
+# Usage: scripts/cutover-precheck.sh --retiring-branch <name> [--repo <path>]
+#                                    [--exclude-card <id>]
 #
+#   --retiring-branch <name>  REQUIRED: the retiring branch (see above).
 #   --exclude-card <id>  exempts exactly ONE card (design D-25: the cutover card
 #                        itself, whose post-merge commits may not be ancestors of
-#                        origin/develop). It is accepted once; the exclusion is
-#                        printed by name; it never masks the unpushed, window,
-#                        slot or any other card's condition.
+#                        the retiring branch's remote-tracking ref). It is accepted
+#                        once; the exclusion is printed by name; it never masks the
+#                        unpushed, window, slot or any other card's condition.
 #
 # Readers (each a command string run with `sh -c`; defaults in brackets):
 #   CUTOVER_INTEGRATION_STATUS_CMD  [moai integration status]
@@ -45,15 +53,13 @@ usage() {
 }
 
 REPO="."
-LOCAL_REF="develop"
-REMOTE_REF="origin/develop"
+RETIRING=""
 EXCLUDE=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --repo) [ $# -ge 2 ] || { echo "cutover-precheck: --repo needs a value" >&2; exit 2; }; REPO="$2"; shift 2 ;;
-    --local-ref) [ $# -ge 2 ] || { echo "cutover-precheck: --local-ref needs a value" >&2; exit 2; }; LOCAL_REF="$2"; shift 2 ;;
-    --remote-ref) [ $# -ge 2 ] || { echo "cutover-precheck: --remote-ref needs a value" >&2; exit 2; }; REMOTE_REF="$2"; shift 2 ;;
+    --retiring-branch) [ $# -ge 2 ] || { echo "cutover-precheck: --retiring-branch needs a value" >&2; exit 2; }; RETIRING="$2"; shift 2 ;;
     --exclude-card)
       [ $# -ge 2 ] || { echo "cutover-precheck: --exclude-card needs a card id" >&2; exit 2; }
       if [ -n "$EXCLUDE" ]; then
@@ -65,6 +71,10 @@ while [ $# -gt 0 ]; do
     *) echo "cutover-precheck: unknown argument: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
+
+[ -n "$RETIRING" ] || { echo "cutover-precheck: --retiring-branch is required (the retiring branch; this script has no default name, try --help)" >&2; exit 2; }
+LOCAL_REF="$RETIRING"
+REMOTE_REF="origin/$RETIRING"
 
 INTEGRATION_CMD="${CUTOVER_INTEGRATION_STATUS_CMD:-moai integration status}"
 SLOT_CMD="${CUTOVER_SLOT_STATUS_CMD:-moai slot status}"
@@ -106,12 +116,12 @@ else
   echo "exclusion: none"
 fi
 
-# 1. unpushed develop commits
+# 1. unpushed commits on the retiring branch
 UNPUSHED=$(git_r rev-list --count "$REMOTE_REF..$LOCAL_REF" 2>/dev/null) || UNPUSHED=""
 case "$UNPUSHED" in
   ''|*[!0-9]*) fail reader-unavailable "git rev-list --count $REMOTE_REF..$LOCAL_REF did not return a count" ;;
-  0) ok unpushed-develop-commits "0 commits in $REMOTE_REF..$LOCAL_REF" ;;
-  *) fail unpushed-develop-commits "$UNPUSHED commit(s) in $REMOTE_REF..$LOCAL_REF are not pushed" ;;
+  0) ok unpushed-retiring-commits "0 commits in $REMOTE_REF..$LOCAL_REF" ;;
+  *) fail unpushed-retiring-commits "$UNPUSHED commit(s) in $REMOTE_REF..$LOCAL_REF are not pushed" ;;
 esac
 
 # 2. release-integration window
@@ -177,7 +187,7 @@ if run_reader sessions "$SESSION_CMD"; then
   fi
 fi
 
-# 5. picked cards: the tip must be an ancestor of the remote-tracking develop
+# 5. picked cards: the tip must be an ancestor of the retiring branch's remote-tracking ref
 default_card_branch() {
   git_r worktree list --porcelain 2>/dev/null | awk -v id="$1" '
     /^worktree / { path = substr($0, 10); n = split(path, a, "/"); base = a[n] }

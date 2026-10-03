@@ -12,19 +12,27 @@
 #   repos/<repo>                            default branch, merge methods,
 #                                           delete_branch_on_merge, auto-merge
 #   repos/<repo>/rulesets                   the ruleset names
-#   repos/<repo>/branches/develop/protection  develop must be unprotected (baseline)
+#   repos/<repo>/branches/<retiring>/protection  the retiring branch must
+#                                           be unprotected (baseline only)
 #
-# Usage: scripts/cutover-protection-compare.sh [--repo <owner/name>] [--expect baseline|post-cutover]
+# The script names no retiring branch of its own and carries no default: the caller
+# supplies it with --retiring-branch, which the baseline comparison requires (it
+# reads that branch's protection). Without it a baseline run stops with a usage
+# error (exit 2) before any read. A post-cutover run reads and judges no retiring
+# branch and needs no name.
+#
+# Usage: scripts/cutover-protection-compare.sh [--retiring-branch <name>]
+#                                              [--repo <owner/name>] [--expect baseline|post-cutover]
 #
 #   baseline       the observation recorded in research.md section 2 (the AC-GFD-020
 #                  regression-guard signal): five required checks including
 #                  `Release PR Multi-OS Gate`, strict false, enforce_admins true,
 #                  merge commit and squash allowed, rebase not, one tag ruleset,
-#                  develop unprotected.
+#                  the retiring branch unprotected. Needs --retiring-branch.
 #   post-cutover   the target after the operator removed `Release PR Multi-OS Gate`
 #                  from the required checks (design D-22, runbook step 9a); every
-#                  other value is unchanged. develop's protection is not judged: it
-#                  is the operator's choice at step 9a (design D-13).
+#                  other value is unchanged. The retiring branch's protection is not
+#                  judged: it is the operator's choice at step 9a (design D-13).
 #
 # Output: one line per field, `MATCH <field>` or `DRIFT <field>`. A MATCH is "no
 # change evidence", never a proof that nothing changed (acceptance.md AC-GFD-020,
@@ -45,10 +53,12 @@ usage() {
 
 REPO="modu-ai/moai-adk"
 EXPECT="baseline"
+RETIRING=""
 GH_CMD="${CUTOVER_GH_CMD:-gh}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --retiring-branch) [ $# -ge 2 ] || { echo "cutover-protection-compare: --retiring-branch needs a value" >&2; exit 2; }; RETIRING="$2"; shift 2 ;;
     --repo) [ $# -ge 2 ] || { echo "cutover-protection-compare: --repo needs a value" >&2; exit 2; }; REPO="$2"; shift 2 ;;
     --expect) [ $# -ge 2 ] || { echo "cutover-protection-compare: --expect needs a value" >&2; exit 2; }; EXPECT="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
@@ -60,6 +70,11 @@ case "$EXPECT" in
   baseline|post-cutover) ;;
   *) echo "cutover-protection-compare: --expect must be baseline or post-cutover, got: $EXPECT" >&2; exit 2 ;;
 esac
+
+if [ "$EXPECT" = "baseline" ] && [ -z "$RETIRING" ]; then
+  echo "cutover-protection-compare: --retiring-branch is required for --expect baseline (the retiring branch whose protection is read; this script has no default name, try --help)" >&2
+  exit 2
+fi
 
 # shellcheck disable=SC2086  # CUTOVER_GH_CMD may be a command plus fixed arguments
 GH_BIN=${GH_CMD%% *}
@@ -124,19 +139,19 @@ field rulesets "repos/$REPO/rulesets" '[.[].name] | sort | join("|")' "Release t
 
 
 if [ "$EXPECT" = "baseline" ]; then
-  EP_DEV="repos/$REPO/branches/develop/protection"
+  EP_RET="repos/$REPO/branches/$RETIRING/protection"
   # shellcheck disable=SC2086
-  DEV_OUT=$($GH_CMD api "$EP_DEV" 2>&1)
-  DEV_RC=$?
-  if [ "$DEV_RC" -eq 0 ]; then
-    compare develop_protection "protected" "unprotected"
-  elif grep -qiE 'not protected|not found|HTTP 404' <<<"$DEV_OUT"; then
-    compare develop_protection "unprotected" "unprotected"
+  RET_OUT=$($GH_CMD api "$EP_RET" 2>&1)
+  RET_RC=$?
+  if [ "$RET_RC" -eq 0 ]; then
+    compare retiring_protection "protected" "unprotected"
+  elif grep -qiE 'not protected|not found|HTTP 404' <<<"$RET_OUT"; then
+    compare retiring_protection "unprotected" "unprotected"
   else
-    unreadable "develop-protection" "$EP_DEV"
+    unreadable "retiring-protection" "$EP_RET"
   fi
 else
-  echo "SKIP develop_protection: not judged after the cutover (the operator's choice at runbook step 9a, design D-13)"
+  echo "SKIP retiring_protection: not judged after the cutover (the operator's choice at runbook step 9a, design D-13)"
 fi
 
 echo "limit: a MATCH is no change evidence, not proof that nothing was changed (AC-GFD-020); a live-repository run is a separate observation"

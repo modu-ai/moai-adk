@@ -30,6 +30,14 @@ const (
 	cvoRunbookRel    = ".moai/specs/SPEC-GITHUB-FLOW-DEFAULT-001/cutover-runbook.md"
 )
 
+// The cutover scripts name no branch of their own (card t1453, decision D17): every
+// run supplies the retiring integration branch and the target base branch. These are
+// the names the fixtures build their repositories with.
+const (
+	cvoRetiringBranch = "develop"
+	cvoTargetBranch   = "main"
+)
+
 // cvoScript resolves a project-relative script path against the real repository.
 func cvoScript(t *testing.T, rel string) string {
 	t.Helper()
