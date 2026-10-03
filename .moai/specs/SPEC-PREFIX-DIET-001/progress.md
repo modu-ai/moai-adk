@@ -357,4 +357,62 @@ run_open_for_leader: D4 targets (all three below the plan drafts, REQ-PFD-002), 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill
+sync_status: complete (sync-audit and the leader's evidence read are still owed; this record claims neither)
+b12_self_test_a: PASS — `grep -c "SPEC-PREFIX-DIET-001" CHANGELOG.md` printed `0` before the entry was written (no duplicate)
+b12_self_test_b: PASS with a named deviation — ac_source=`.moai/specs/SPEC-PREFIX-DIET-001/acceptance.md`, tier=M; live count 16 (AC-PFD-001..016), no `[RETIRED]`/`[REF]` token and no `moai-ac-prefix` line in the file (`grep -c -F` -> 0 for each), so no identifier is ambiguous; the CHANGELOG entry states 16. The deviation: the worktree guard refused `awk -f`, so the contract's awk counter was not executed; the count was rebuilt from `grep -o -E "AC-[A-Z0-9]+-[0-9]+[a-z]?"` (28 occurrences, 16 distinct ids, 001..016) by hand
+b12_self_test_c: PASS — `ls` of all 17 paths named in the CHANGELOG entry (3 output-style templates, 4 agent templates, 3 test files, 3 testdata fixtures, `surface_guard.py`, `tools/diet_ledger.py`, `tools/agent_desc_apply.py`, `catalog.yaml`) returned each path, no error
+changelog_entry_position: `CHANGELOG.md` `[Unreleased]` -> first `### Changed` block (opens at line 178), first entry; the closest recent sync-close entries sit under `### Added` and `### Changed` of the same section, and a change of this kind (shortened prompt bodies, new guards) belongs under Changed
+frontmatter_status_transitions: `spec.md` `in-progress -> implemented -> completed` on this single sync commit (version stays 0.3.1; `updated:` already reads 2026-10-03). `plan.md`, `acceptance.md` and `progress.md` carry no `status:` field (`spec-frontmatter-schema.md` § Artifact Statelessness), so no status line changed in them; their `updated:` already reads 2026-10-03. No body text of `spec.md` / `plan.md` / `acceptance.md` was edited
+canary_compliance_check: not applicable (this SPEC defines no forward-looking policy that its own sync tests)
+
+### Sync-phase scope decisions
+
+- CHANGELOG: edited (the repo lists SPEC sync-close entries for changes of this kind; English only).
+- README (4 locales) and docs-site (4 locales): NOT edited. No behaviour, command, flag, setting or install step changed; `grep -rli "Questions Beginners Often Have" . --include="*.md"` (excluding `.git`, `.moai`, `node_modules`) -> no output, and `grep -rli "Teaching Philosophy" docs-site` -> no output, so no user-facing page cites a dropped output-style section. Only those two section names were searched; the other dropped section titles were not.
+- Codemaps / project docs (`product.md`, `structure.md`, `tech.md`): NOT regenerated. No directory, package or dependency edge was added (new files are tests and fixtures inside the existing `internal/template/` package), so the structural-change trigger of `sync/doc-execution.md` does not fire.
+
+### Evidence-bearing report
+
+**Claim.** (1) The run-phase guards still pass on the final tree. (2) The SPEC lints clean and the audit engine finds no lifecycle drift after the `completed` transition. (3) The CHANGELOG entry is unique, counts the acceptance criteria correctly and cites only existing paths. (4) One guard result is red after the sync edit and is explained below, not hidden.
+
+**Evidence** (commands run in this tree, cwd = worktree root, HEAD `1d711d13b` plus the uncommitted sync edits named per row; a tool result with no error is recorded as exit 0, the Bash tool prints a code only on failure):
+
+```
+go test ./internal/template/ -run '^TestOutputStyle' -count=1 -v        exit 0 (HEAD 1d711d13b, before the sync edits)
+  --- PASS: TestOutputStylesCharBudget   (moai 61149 / moai-easy 21350 / moai-learn 27010)
+  --- PASS: TestOutputStyleBindingLedger (10 mutation subtests)  --- PASS: TestOutputStyleHandoffUnitsFrozen
+  --- PASS: TestOutputStyleLocalizationTableParity               --- PASS: the five TestOutputStyles* parity tests
+  ok  github.com/modu-ai/moai-adk/internal/template  0.417s
+go test ./internal/template/ -run 'TestAgentDescriptionBudget' -count=1 -v      exit 0 (same tree)
+  agent-description-total=10460 largest=1815 agents=12
+  --- PASS: TestAgentDescriptionBudget (+ oversized_description_names_file_and_size)
+  ok  github.com/modu-ai/moai-adk/internal/template  0.199s
+make agents-emit-check                                                           exit 0 (same tree)
+  ok  github.com/modu-ai/moai-adk/internal/template/agentemit  0.178s
+python3 .moai/specs/SPEC-PREFIX-DIET-001/surface_guard.py 5d5ff1aae              exit 0 (same tree, before the sync edits)
+  32 `ok` lines ... surface-guard=PASS
+moai spec lint .moai/specs/SPEC-PREFIX-DIET-001                                  exit 0, run twice: before the sync edits and again after the status transition + CHANGELOG edit
+  ✓ No findings — all SPEC documents are valid
+mcp__moai__spec_audit (filter_spec=SPEC-PREFIX-DIET-001, after the status transition)
+  total_specs 1, modern_era_clean 1, grandfathered 0, one INFO EraAutoDetected (H-5), no drift finding
+python3 .moai/specs/SPEC-PREFIX-DIET-001/surface_guard.py 5d5ff1aae              exit 1 (re-run after the CHANGELOG edit)
+  VIOLATION outside-allowlist CHANGELOG.md   ... surface-guard=FAIL   (CHANGELOG.md is the only violation line)
+```
+
+The last row is the sync-phase edit itself: `CHANGELOG.md` is a mandated sync deliverable but is not in the guard's run-phase allowlist, and `spec.md` §F / REQ-PFD-013 are silent on it. `grep -rln "surface_guard" . --include="*.go" --include="Makefile" --include="*.yml" --include="*.yaml" --include="*.sh"` (excluding `.git`, `node_modules`) -> no output, so nothing in CI or the test suite runs the guard; it is a SPEC-local script run by hand. Nothing in the guard was edited here (it is a SPEC artifact).
+
+**Baseline-attribution.** All rows: this run, worktree `t1450`, branch `WT-prefix-diet-stage2`, HEAD `1d711d13b`. Tool provenance (VCI 2.2): `moai` is the installed `v3.2.0-rc.27` (`moai version`, commit `0732cc699`, built 2026-10-03T03:34:50Z); `git merge-base --is-ancestor 0732cc699 HEAD` exits 0 and `git rev-list --count 0732cc699..HEAD` prints 157, so the installed build IS a strict ancestor of HEAD (157 commits behind); `git diff --stat 0732cc699 HEAD -- internal/spec` prints nothing, so the SPEC lint and audit code is identical between that build and this tree — the stale build does not change the lint/audit verdicts, but the build was not rebuilt from this tree. The Go tests and `make agents-emit-check` ran from this tree's source. The first-turn token figures (-3,178, -2.06%) are not re-measured in this sync; they are the run-phase measurement in §E.2 (anchor `e5523d672` clean vs `c1443d00c` clean, single-call runs).
+
+**Gaps.** (1) The AC counter's awk script was not run (guard refusal); the count of 16 is a manual reduction of `grep -o` output. (2) `moai spec lint` and the audit ran after the status transition but before this §E.4 text was written; a final lint pass after the §E.4 write is reported in the hand-off message, not recorded here (a record cannot cite a run that follows it). (3) No sync-audit (4-dimension or cold sync-auditor) was run by this agent — that verdict belongs to the orchestrator / sync-auditor. (4) Only two dropped section titles were searched in docs-site and the repo's markdown, not every dropped group. (5) Codex and other harnesses were not measured (unchanged from §E.2). (6) The sync-phase quality-gate Stop hook was not observed by this agent.
+
+**Residual-risk.** Carried debts, listed without softening:
+
+- **D5 — `manager-git` description mismatch.** The template (553) and local (533) `description:` blocks differ in substance (PR-only-on-Tier-L/`--pr` versus owns-every-push); it is a delivery-route policy question, so it was left unedited and remains open for the leader.
+- **Weak-survivor dropped groups.** (a) moai-easy FAQ row "What if I make a mistake?" lost its explicit version-control reassurance (partial survivor only); (b) moai-easy section 14 dropped the explicit `/output-style MoAI-Learn` switch text (the generic switch mechanism survives in section 1); (c) moai.md unit 65 names a rule file, not a unit of the same file, as survivor. Survivor classification is author-side; no tool can judge whether a dropped unit was really rationale.
+- **`plan.md` still shows draft targets.** Its section B carries the draft budget numbers (21,000 / 20,000 / 45,000 UTF-16 units) that §E.2 D4 superseded with the measured droppable totals (21,350 / 27,010 / 61,149); `spec.md` 0.3.1 states the measured values, but a sync-phase agent may not edit `plan.md` body, so the stale numbers stay until `manager-spec` amends them.
+- **Per-milestone token numbers were taken on dirty trees.** The M2, M3 and M4 after-runs had five modified files listed in the prompt's git-status block and M5's own effect was not measured like-for-like, so those per-milestone reductions slightly understate the cut. Only the headline (anchor clean vs final clean: 154,235 -> 151,057, -3,178, -2.06%) is a like-for-like comparison. One account/time window, hooks off.
+- **Guard vs CHANGELOG.** `surface_guard.py` reports `VIOLATION outside-allowlist CHANGELOG.md` once the sync entry exists; run it against the run-phase HEAD to get PASS. A `manager-spec` amendment (allow `CHANGELOG.md` in the sync phase, or state the guard is run-phase only) would remove the ambiguity.
+- **Routing quality of shortened descriptions.** `TestAgentFrontmatterAudit` and the golden Codex test cannot judge whether a routing hint that lived only in a removed phrase (for example `manager-lead`'s lane-label wording) is still found at selection time; it is now only in the agent body, which loads on spawn.
+- **Not pushed.** The branch is local; integration and the remote CI verdict are the leader's.
