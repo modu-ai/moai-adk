@@ -2,7 +2,7 @@
 id: SPEC-GPT-DOC-DRIFT-001
 title: "moai gpt launcher doc-CLI drift re-pointing"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec
