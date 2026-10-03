@@ -287,22 +287,21 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 
 ## 8. Harness-local instructions
 
-`AGENTS.local.md` is the user-owned local instruction file both harnesses read. Claude Code reaches
-`AGENTS.local.md` through the final `@AGENTS.local.md` import in `CLAUDE.md`; this contract never
-imports it, which keeps it out of Codex's discovered chain. A linked worktree receives the import when
-`AGENTS.local.md` exists inside its checkout. An absent file, or one only outside the project,
-is skipped. Direct `codex -C <worktree>` loads this `AGENTS.md` but does not preload the sibling
-`AGENTS.local.md`. Direct sessions follow the startup rule above. The MoAI Codex launcher
-instead injects the content before the session starts.
-
-For every local launch shape (bare, `cli`, `app`, `--spawn`, and `-w`), `moai codex` reads the
-non-empty regular local guidance files from the project root, led by `AGENTS.local.md`,
-prefixes each body with its own provenance header, and passes the combined text as one session
-`developer_instructions` override. A `-w` child still reads the original project root. The
-launcher refuses links and non-regular inputs, reads through the descriptor it inspected, and fails
-before launch on an operator-supplied `developer_instructions` collision or an oversized
-direct/spawn argument. Codex Web sessions do not run the local MoAI launcher, so this injection is
-local-CLI-only.
+`moai codex` reads the project's common local guidance — the gitignored, never-deployed file that
+`CLAUDE.md` imports last — followed by any legacy local guidance, from the project root. For every
+local launch shape (bare, `cli`, `app`, `--spawn`, and `-w`), it keeps each input body under its own
+source header and passes the combined text as one Codex-specific session `developer_instructions`
+override. A `-w` child still reads the original project root. The launcher refuses links and
+non-regular inputs, reads through the descriptor it inspected, and fails before launch on an
+operator-supplied `developer_instructions` collision or an oversized direct/spawn argument. This
+contract never imports local guidance, which keeps it out of Codex's discovered chain. In a linked
+worktree, Claude Code resolves that import when the local file exists inside the worktree's
+checkout; it skips an absent file or one outside the project. Direct `codex -C <worktree>` uses
+Codex's `AGENTS.md` discovery and does not preload a sibling local file. Direct sessions follow the
+startup rule above. The MoAI Codex launcher instead injects that content before the session starts.
+Codex Web sessions do not run the local MoAI launcher, so this injection is local-CLI-only; local
+`.codex/hooks.json`, the status line, and the launcher injection do not run there. Treat Web
+sessions as read-and-review first.
 
 ## 9. Hook Event Coverage
 
