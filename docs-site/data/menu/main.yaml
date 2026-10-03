@@ -155,12 +155,6 @@ main:
           zh: TRUST 5 质量框架
         ref: /core-concepts/trust-5
       - name:
-          ko: 칸반 보드 용어
-          en: Kanban Board Terms
-          ja: カンバンボード用語
-          zh: 看板术语
-        ref: /core-concepts/kanban-board-terms
-      - name:
           ko: 검증 경로 무결성
           en: Verification Claim Integrity
           ja: 検証クレーム完全性
@@ -488,12 +482,6 @@ main:
           ja: Model Policy
           zh: Model Policy
         ref: /multi-llm/model-policy
-      - name:
-          ko: 칸반 모드
-          en: Kanban Mode
-          ja: カンバンモード
-          zh: 看板模式
-        ref: /multi-llm/kanban-mode
 
   - name:
       ko: 비용 최적화
@@ -721,17 +709,17 @@ main:
           zh: moai web 控制台
         ref: /advanced/moai-web-console
       - name:
-          ko: 칸반 모드
-          en: Kanban Mode
-          ja: カンバンモード
-          zh: 看板模式
-        ref: /advanced/kanban-mode
-      - name:
           ko: 팩토리 모드
           en: Factory Mode
           ja: ファクトリーモード
           zh: 工厂模式
         ref: /advanced/factory-mode
+      - name:
+          ko: 세션 계보 체인
+          en: Origin-Trail Chain
+          ja: セッション系譜チェーン
+          zh: 会话溯源链
+        ref: /advanced/origin-trail-chain
       - name:
           ko: manager-lead 리더 코디네이터
           en: manager-lead Leader Coordinator
