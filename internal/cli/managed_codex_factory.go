@@ -255,6 +255,10 @@ type managedCodexAppClient struct {
 	writeDeadline time.Duration
 	writeBarrier  func(v any)
 	onExit        func()
+
+	// readEnded is set by the read goroutine just before onExit, so a monitor
+	// that starts after the reader already ended can still see the loss.
+	readEnded atomic.Bool
 }
 
 // write sends one JSON frame; gorilla/websocket allows a single concurrent
@@ -468,6 +472,7 @@ func (c *managedCodexAppClient) answerServerRequest(req managedCodexAppReply) er
 func (c *managedCodexAppClient) read() {
 	defer func() {
 		close(c.events)
+		c.readEnded.Store(true)
 		if c.onExit != nil {
 			c.onExit()
 		}

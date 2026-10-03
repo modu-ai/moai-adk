@@ -211,8 +211,31 @@ func openManagedTUILog(root, runID, label string) (*os.File, string, error) {
 		return nil, "", err
 	}
 	path := filepath.Join(dir, "factory-managed-"+managedLogNamePart(runID)+"-"+managedLogNamePart(label)+".log")
+	// A planted symlink is replaced, never followed; any other non-regular file
+	// is refused.
+	if info, err := os.Lstat(path); err == nil {
+		switch {
+		case info.Mode()&os.ModeSymlink != 0:
+			if err := os.Remove(path); err != nil {
+				return nil, "", err
+			}
+		case !info.Mode().IsRegular():
+			return nil, "", fmt.Errorf("session log %s is not a regular file", path)
+		}
+	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
+		return nil, "", err
+	}
+	// Close the Lstat/open gap: the opened file must be the one at the path.
+	opened, err1 := f.Stat()
+	atPath, err2 := os.Lstat(path)
+	if err1 != nil || err2 != nil || !os.SameFile(opened, atPath) || !atPath.Mode().IsRegular() {
+		_ = f.Close()
+		return nil, "", fmt.Errorf("session log %s changed while it was opened", path)
+	}
+	if err := f.Chmod(0o600); err != nil {
+		_ = f.Close()
 		return nil, "", err
 	}
 	return f, path, nil
@@ -306,6 +329,12 @@ func (t *managedCodexTUI) attach(s *managedCodexSession) (<-chan error, bool) {
 	t.mu.Unlock()
 	t.attached.Store(true)
 	go t.wait(cmd, s.client, reaped)
+	// A connection that ended before the flag above was set was ignored by the
+	// monitor; either the monitor sees the flag or this check sees the ended
+	// reader (both is harmless: connectionLost is idempotent).
+	if s.client.readEnded.Load() {
+		go t.connectionLost()
+	}
 	return done, true
 }
 
