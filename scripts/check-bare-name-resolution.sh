@@ -323,7 +323,7 @@ run_measurement() {
     (
         cd "$scratch/work" || exit 1
         claude -p "Invoke the skill named moai-resolution-probe (bare name, no namespace prefix) with the Skill tool." \
-            --plugin-dir "$plugin_dir" --no-session-persistence --max-turns 16 --allowedTools Write \
+            --plugin-dir "$plugin_dir" --no-session-persistence --max-turns 16 --allowedTools "Write,Bash,Edit" \
             >"$scratch/claude-skill.log" 2>&1
     ) &
     skill_pid=$!
@@ -339,7 +339,7 @@ run_measurement() {
     (
         cd "$scratch/work" || exit 1
         claude -p "/resolution-probe" \
-            --plugin-dir "$plugin_dir" --no-session-persistence --max-turns 16 --allowedTools Write \
+            --plugin-dir "$plugin_dir" --no-session-persistence --max-turns 16 --allowedTools "Write,Bash,Edit" \
             >"$scratch/claude-command.log" 2>&1
     ) &
     body_pid=$!
