@@ -30,20 +30,18 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-m, --model <model>` | 覆盖模型选择 |
 | `-w, --worktree [name]` | 在隔离的 git worktree(`.claude/worktrees/<name>/`)中启动 —— 省略名称时自动生成 |
 | `--chrome` / `--no-chrome` | 原样传递给 Claude Code。启动器不会自行添加任一标志，因此除非传入 `--no-chrome`，否则可通过 `/chrome` 连接 |
-| `-k, --kanban [SPEC-ID]` | 进入**工厂主导** —— 把看板 `plan → run → sync` 链种进本会话。附上 SPEC-ID 时以该 SPEC 为目标 |
-| `-k --name <role>` | 作为伴随会话加入已打开的看板 run。角色为 `plan` · `run` · `sync`。同一角色名已被活着的会话占用时取下一个编号 (`plan-1`, `plan-2`, …) |
-| `-f, --factory` | 进入**工厂主导** —— 打开工厂 run，一条泳道（`lane-1`）。主导通过跨会话消息把操作者选中的卡片分给空闲泳道 |
-| `-f lane` | 让一条泳道自动加入下一个空号，连到正在运行的工厂主导套接字 |
-| `-f lane-<n>` | 精确启动那个编号（`lane-<n>`）的泳道。编号与存活的泳道冲突时顺延到下一个空号。`moai glm -f lane` / `-f lane-<n>` 在 GLM 后端上行为相同 |
-| `-l, --lead <name>` | 与 `-f lane` / `-f lane-<n>` 同用：指定记录缺失验证瞄准哪个领导者会话（默认 `leader`；旧拼写 `lead` 会被拒绝）。运行记录缺失或已退役而领导者存活时，加入会验证该领导者（pid 加进程启动）并恢复其运行 |
-| `-k <N>` / `-k <N> --name lane-<i>` | v1.2.0 的统一形式，至今仍然有效 —— `-k <N>` 是 N 条泳道 run 的主导，`-k <N> --name lane-<i>` 是其中的泳道 `<i>`。不带 N 只用 `-k --name lane-<i>` 时默认 8 条泳道 |
-| 旧拼写 | 不再被解析 —— 用旧拼写加入会报错，并指出规范的 `-f lane` / `-f lane-<n>` |
+| `-f, --factory` | 以**工厂主导**身份进入，不带参数。主导会话把运维者挑好的卡片通过跨会话消息整张分配给空闲 lane，lane 用 `-l` 加入 |
+| `-l, --lane` | 以 **lane** 身份加入正在运行的工厂，自动领取下一个空闲的 `lane-<n>` 编号。不带参数，没有正在运行的工厂时会被拒绝。`moai glm -l` 与 `moai codex -l` 行为相同 |
+| `--leader <name>` | 只能与 `-l` 或 `--lane` 同用，指定要加入的主导会话（默认 `leader`，旧拼写 `lead` 会被拒绝）。当运行记录缺失或已退役而存活的主导会话仍在时，加入会验证该主导会话（pid + 进程启动）并恢复它的运行 |
+| `--factory-run <run-id>` | 与 `-l` 同用：按 id 指定要加入的运行，不能与 `--leader` 同时使用 |
+| `--clear-policy <value>` | 与 `moai cc -l` / `moai glm -l` 同用：lane 做完卡片后清理上下文的方式（默认 `clear-each`，另有 `clear-when-full`、`relaunch`） |
+| `--no-auto-dispatch` | 与 `moai cc -l` / `moai glm -l` 同用：以手动模式启动 lane。默认是自主派单的 lane，会自己租用队列里的下一张卡片 |
 
-{{< callout type="info" >}} `-k` 是看板链的标记，`-f` 是**工厂模式** (Factory Mode) 的专用进入标记。 `-k` 一个标记有三种解释这点没变 —— 不带参数 / 带 SPEC-ID 是看板主导，`--name <角色>` 是看板伴随会话，数字是泳道 run。 一次启动只能带一个进入标记，所以 `-k` 和 `-f` 同时给出会报错。 详细契约见[看板模式](/zh/advanced/kanban-mode)和 [manager-lead 主导协调者](/zh/advanced/manager-lead)。 {{< /callout >}}
+{{< callout type="info" >}} 进入令牌只有 `-f`（主导）和 `-l`（lane）两个，都不带参数。一次启动只能带一个令牌，所以 `-f` 与 `-l` 同时出现会报错；`-f <值>`、`-l lane-2` 这类带值的形式，以及在 Codex 上请求主导（`moai codex` 上的 `-f`），都会被一行错误拒绝。已停用的 `-k` 入口同样被拒绝，并提示改用 `-f` 和 `-l`。完整约定见[工厂模式](/zh/advanced/factory-mode)与 [manager-lead 主导协调者](/zh/advanced/manager-lead)。 {{< /callout >}}
 
-卡片流转的方式与看板不同。看板里一张卡片在 `plan → run → sync` 各列之间移动，而工厂里一张卡片整个交给一条泳道，在该泳道内部按顺序走完三个阶段。每个阶段都由该会话启动 `Agent()` 子智能体来跑，其中承担写入的生成用 `isolation: "worktree"` 隔离。一条泳道最多同时启动 10 个子智能体，启动器会把这个值以 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` 注入泳道与伴随会话，所以 N 条泳道分摊机器容量的结构由配置保证，而不是靠操作者自制。泳道不要一次全开 —— 先把第一条泳道拉起来，确认它真的开始产出之后再启动其余泳道。
+卡片整张进入一条 lane，并在其中按顺序走完 `plan → run → sync` 三个阶段。每个阶段由该会话拉起 `Agent()` 子智能体，有写权限的拉起用 `isolation: "worktree"` 隔离。一条 lane 同时最多运行 10 个子智能体，启动器会在 lane 会话中以 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` 设置这个值，所以 N 条 lane 分摊机器容量，靠的是配置的保证，而不是运维者自觉。不要一次把所有 lane 全部启动：先起第一条，确认它确实开始产出，再启动其余的。
 
-后端组合先看 token 余量再定。一个可用的起点是：主导用 GLM、plan 用 Claude（Opus）、run 用 GLM、sync 用 Claude（Opus），只把 Opus 放在判断吃重的阶段。换别的组合、或统一到一个后端，同样没有问题。
+主导会话与 lane 可以使用不同的后端。后端组合先看 token 余量再定，一个可用的起点是只在需要重判断的位置用 Opus，以实现为主的 lane 跑在 GLM 上。换一种组合，或统一用同一个后端，同样没有问题。
 
 权限模式为 `default`、`acceptEdits`（`moai init` 的默认值）、`plan`、`auto`、`bypassPermissions`、`dontAsk` 之一。`auto` 模式由后台分类器审查操作。支持的方案和模型请参阅 [Claude Code 权限模式文档](https://code.claude.com/docs/en/permission-modes)。
 
