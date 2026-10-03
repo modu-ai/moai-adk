@@ -27,8 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
@@ -177,12 +175,9 @@ func pluginOptOutFromEnv() bool {
 	return v == "1" || strings.EqualFold(v, "true")
 }
 
-// runPluginInstallStepForInit is the runInit call: the harness selects the
-// tools, the guidance goes to stderr.
-func runPluginInstallStepForInit(cmd *cobra.Command, wiring agentWiring, projectRoot string) {
-	opts := newPluginInstallOptions(pluginToolsForHarness(wiring), projectRoot, getBoolFlag(cmd, "no-plugin"))
-	_ = runPluginInstallStep(cmd.ErrOrStderr(), opts)
-}
+// (The runInit call site is runInitPluginInstallProbed (plugin_probe.go):
+// the same step, with the post-install list-surface probe reading the
+// observable outcome.)
 
 // runPluginInstallStep acts on opts.Tools in order and returns nil in every
 // case (REQ-013 to REQ-015); everything it has to say goes to out.

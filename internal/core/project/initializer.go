@@ -87,6 +87,13 @@ type InitOptions struct {
 	// project root carries zero .claude/** paths.
 	Harness string // llm.harness axis; "gpt" suppresses claude-surface writes
 
+	// DeployMode is the resolved deploy-mode record (SPEC-INIT-SHRINK-001
+	// REQ-001): "plugin" (the default) carries no .claude/skills/** or
+	// .claude/commands/** file — the plugin is the carrier — so the Step-2
+	// scaffold skips those two directory shells; "local" (the opt-out and
+	// --all paths) and the empty value keep today's scaffold unchanged.
+	DeployMode string // "plugin" skips the dropped-root scaffold; "" and "local" keep it
+
 	MCPProvision bool // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 
 	// AfterTemplateDeploy, when non-nil, runs once immediately after a
@@ -201,7 +208,7 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		return nil, err
 	}
 	if opts.Harness != "gpt" {
-		if err := i.createClaudeDirs(opts.ProjectRoot, result); err != nil {
+		if err := i.createClaudeDirs(opts.ProjectRoot, result, opts.DeployMode); err != nil {
 			return nil, fmt.Errorf("create .claude/ structure: %w", err)
 		}
 	}
@@ -355,9 +362,16 @@ func (i *projectInitializer) createMoAIDirs(root string, result *InitResult) err
 	return nil
 }
 
-// createClaudeDirs creates the .claude/ directory structure.
-func (i *projectInitializer) createClaudeDirs(root string, result *InitResult) error {
+// createClaudeDirs creates the .claude/ directory structure. On the plugin
+// deploy path (SPEC-INIT-SHRINK-001 REQ-001) the two dropped-root shells —
+// skills/ and commands/moai/ — are skipped: the deploy writes nothing under
+// them, and an empty scaffold would misdirect a reader into expecting local
+// components.
+func (i *projectInitializer) createClaudeDirs(root string, result *InitResult, deployMode string) error {
 	for _, dir := range claudeDirs {
+		if deployMode == "plugin" && (dir == "skills" || dir == "commands/moai") {
+			continue
+		}
 		dirPath := filepath.Clean(filepath.Join(root, defs.ClaudeDir, dir))
 		if err := os.MkdirAll(dirPath, defs.DirPerm); err != nil {
 			return fmt.Errorf("mkdir %s: %w", dirPath, err)
