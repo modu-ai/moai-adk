@@ -148,7 +148,8 @@ if [ "$EXPECT" = "baseline" ]; then
   elif grep -qiE 'not protected|not found|HTTP 404' <<<"$RET_OUT"; then
     compare retiring_protection "unprotected" "unprotected"
   else
-    unreadable "retiring-protection" "$EP_RET"
+    echo "UNREADABLE retiring_protection: the read of $EP_RET failed; no MATCH can be claimed for this field"
+    UNREAD=$((UNREAD + 1))
   fi
 else
   echo "SKIP retiring_protection: not judged after the cutover (the operator's choice at runbook step 9a, design D-13)"

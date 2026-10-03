@@ -274,6 +274,31 @@ func TestCutoverProtectionCompare(t *testing.T) {
 		}
 	})
 
+	// A failed read of the retiring branch's protection that is neither "not
+	// protected" nor 404 (here: HTTP 500) is an unobserved state. It must not print a
+	// MATCH, must not call an undefined helper, and must exit 2 (card t1453 D17
+	// follow-up: the baseline branch called a function that did not exist and fell
+	// through to RESULT MATCH, exit 0).
+	t.Run("an_unreadable_retiring_branch_read_is_exit_2_never_a_match", func(t *testing.T) {
+		p := cvoNewProtection(t)
+		p.set("develop-protection.json", cvoMainProtection)
+		if err := os.WriteFile(filepath.Join(p.dir, "develop-protection.json.fail"), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		res := p.run()
+		out := rlsNorm(res.out)
+		if res.exit != 2 {
+			t.Errorf("exit code = %d, want 2 (an unobserved retiring-branch read is not a pass)\n%s", res.exit, out)
+		}
+		rlsMustContain(t, out, "UNREADABLE retiring_protection")
+		if strings.Contains(out, "command not found") {
+			t.Errorf("the script called a helper that does not exist:\n%s", out)
+		}
+		if strings.Contains(out, "RESULT MATCH") || strings.Contains(out, "MATCH retiring_protection") {
+			t.Errorf("an unreadable read must not print a MATCH:\n%s", out)
+		}
+	})
+
 	t.Run("a_missing_gh_command_is_exit_2", func(t *testing.T) {
 		p := cvoNewProtection(t)
 		env := p.poison.env("CUTOVER_GH_CMD="+filepath.Join(p.dir, "no-such-gh"), "GH_API_LOG="+p.log, "GH_API_DIR="+p.dir, "GH_API_REPO="+cvoProtectionRepo)
