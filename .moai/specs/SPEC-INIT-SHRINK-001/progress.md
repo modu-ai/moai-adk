@@ -123,7 +123,21 @@ claude cases are 420 s-bounded; the codex case is quick in every observed run).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-10-04T22:40+09:00 (manager-develop, general-type worker, card worktree)
+ac_matrix: 21/21 PASS — full command + verbatim-output matrix in §E.2 (M1/M2/M3/M4 tables)
+builds: exit 0 ×2 (go build ./... and GOOS=windows GOARCH=amd64 go build ./..., final tree)
+lint: 0 issues (baseline 0 — no NEW; golangci-lint --timeout=2m over internal/cli, internal/template, internal/config, internal/core)
+boundary_grep: 0 matches (AskUserQuestion|mcp__askuser over all 13 touched non-test files)
+coverage: internal/cli 84.9%, internal/template 83.4%, internal/config 83.7%, internal/core/project 89.0%, update 86.1%, deploy 91.6%, merge 93.1%, plan 95.0%, report 92.9%, backup 86.6% (internal/cli measured with -cover -timeout 45m, live-codex test skipped)
+coverage_disposition: internal/cli, internal/template, internal/config sit 0.1–1.6pt under the 85% package-aggregate target — the gap is pre-existing untouched surface, the new migration/probe/mode-record code is fully covered by its own tests (Gaps, not a Claim)
+suite_failures: full scrubbed run (-timeout 40m/-45m, TestHandleCodexReviewGate_LiveCodex skipped) → 4 failures, all dispositioned in §E.2 M4 table (2 pre-existing zero-diff-reach, 2 flip guarded-surfaces FIXED in-change; re-run PASS)
+req008_gate: verdict recorded in §E.2 BEFORE the M2 flip commit (RESULT pass=5 fail=1 — the one fail is the marker-write mechanism; both session logs confirm bare-name resolution itself)
+lane_env_hazard: recorded in §E.2 — lane-local runs require the live-enumerated 13-variable MOAI_* scrub
+commits: d8e4300e4 M1, fd877e59a M2, 3b04fc13a M3, e22a41bee M4, b84d7baca gate fix (local only — leader batch push)
+```
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
