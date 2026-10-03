@@ -31,7 +31,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-w, --worktree [name]` | 在隔离的 git worktree(`.claude/worktrees/<name>/`)中启动 —— 省略名称时自动生成 |
 | `--chrome` / `--no-chrome` | 原样传递给 Claude Code。启动器不会自行添加任一标志，因此除非传入 `--no-chrome`，否则可通过 `/chrome` 连接 |
 | `-f, --factory` | 以**工厂主导**身份进入，不带参数。主导会话把运维者挑好的卡片通过跨会话消息整张分配给空闲 lane，lane 用 `-l` 加入 |
-| `-l, --lane` | 以 **lane** 身份加入正在运行的工厂，自动领取下一个空闲的 `lane-<n>` 编号。不带参数，没有正在运行的工厂时会被拒绝。`moai glm -l` 与 `moai codex -l` 行为相同 |
+| `-l, --lane` | 以 **lane** 身份加入正在运行的工厂，自动领取下一个 `lane-<n>` 编号（存活 lane 中最大编号的下一个）。不带参数，没有正在运行的工厂时会被拒绝。`moai glm -l` 与 `moai codex -l` 行为相同 |
 | `--leader <name>` | 只能与 `-l` 或 `--lane` 同用，指定要加入的主导会话（默认 `leader`，旧拼写 `lead` 会被拒绝）。当运行记录缺失或已退役而存活的主导会话仍在时，加入会验证该主导会话（pid + 进程启动）并恢复它的运行 |
 | `--factory-run <run-id>` | 与 `-l` 同用：按 id 指定要加入的运行，不能与 `--leader` 同时使用 |
 | `--clear-policy <value>` | 与 `moai cc -l` / `moai glm -l` 同用：lane 做完卡片后清理上下文的方式（默认 `clear-each`，另有 `clear-when-full`、`relaunch`） |

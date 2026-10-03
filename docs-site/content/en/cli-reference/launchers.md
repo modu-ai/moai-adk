@@ -31,7 +31,7 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-w, --worktree [name]` | Launch inside an isolated git worktree (`.claude/worktrees/<name>/`) — name omitted means auto-generated |
 | `--chrome` / `--no-chrome` | Passed through to Claude Code unchanged; the launcher adds neither, so `/chrome` can attach unless you pass `--no-chrome` |
 | `-f, --factory` | Enter as the **factory leader**. It takes no argument. The leader deals the cards the operator picks, whole, to free lanes over cross-session messages, and lanes join with `-l` |
-| `-l, --lane` | Join the running factory as a **lane**, claiming the next free `lane-<n>` number automatically. It takes no argument and is refused when no factory is running. `moai glm -l` and `moai codex -l` behave the same |
+| `-l, --lane` | Join the running factory as a **lane**, claiming the next `lane-<n>` number automatically (one past the highest live lane). It takes no argument and is refused when no factory is running. `moai glm -l` and `moai codex -l` behave the same |
 | `--leader <name>` | Used with `-l` or `--lane` only. Picks which leader session to join (default `leader`; the former spelling `lead` is refused). When the run's record is missing or retired while a live leader exists, the join verifies that leader (pid + process-start) and restores its run |
 | `--factory-run <run-id>` | With `-l`: join the run with this id. It cannot be combined with `--leader` |
 | `--clear-policy <value>` | With `moai cc -l` / `moai glm -l`: how the lane clears its context after a card (`clear-each` default, `clear-when-full`, `relaunch`) |

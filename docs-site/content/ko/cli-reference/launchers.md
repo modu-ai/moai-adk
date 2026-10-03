@@ -31,7 +31,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-w, --worktree [name]` | 격리된 git worktree(`.claude/worktrees/<name>/`)에서 실행 — 이름 생략 시 자동 생성 |
 | `--chrome` / `--no-chrome` | Claude Code 에 그대로 전달합니다. 런처가 스스로 붙이지 않으므로 `--no-chrome` 을 넘기지 않는 한 `/chrome` 으로 연결할 수 있습니다 |
 | `-f, --factory` | **팩토리 리더**로 진입합니다. 인자를 받지 않습니다. 리더는 운영자가 고른 카드를 교차 세션 메시지로 빈 레인에 통째로 배분하고, 레인은 `-l`로 합류시킵니다 |
-| `-l, --lane` | 실행 중인 팩토리에 **레인**으로 합류해 다음 빈 `lane-<n>` 번호를 자동으로 받습니다. 인자를 받지 않으며, 실행 중인 팩토리가 없으면 거부됩니다. `moai glm -l`과 `moai codex -l`도 같은 동작입니다 |
+| `-l, --lane` | 실행 중인 팩토리에 **레인**으로 합류해 다음 `lane-<n>` 번호(살아 있는 레인 가운데 가장 큰 번호의 다음)를 자동으로 받습니다. 인자를 받지 않으며, 실행 중인 팩토리가 없으면 거부됩니다. `moai glm -l`과 `moai codex -l`도 같은 동작입니다 |
 | `--leader <name>` | `-l` 또는 `--lane`과 함께만 씁니다. 합류할 리더 세션을 지정합니다(기본값 `leader`, 옛 철자 `lead`는 거부). 실행 기록이 없거나 은퇴했는데 살아 있는 리더가 있으면, 합류는 그 리더를 검증(pid + 프로세스 시작)하고 그 실행을 복원합니다 |
 | `--factory-run <run-id>` | `-l`과 함께: 합류할 실행을 id로 지정합니다. `--leader`와는 함께 쓸 수 없습니다 |
 | `--clear-policy <value>` | `moai cc -l`·`moai glm -l`과 함께: 카드를 끝낸 뒤 컨텍스트를 비우는 방식입니다(`clear-each` 기본값, `clear-when-full`, `relaunch`) |
