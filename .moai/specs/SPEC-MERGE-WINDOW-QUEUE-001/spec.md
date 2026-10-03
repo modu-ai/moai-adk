@@ -168,7 +168,10 @@ to that tree.
   holdership and, **When** the caller is not the holder or the caller's lease has expired, refuse
   before applying any queue mutation, leaving the window record unchanged; **While** the caller
   holds the window with an unexpired lease, it shall renew the lease, apply REQ-MWQ-003 drops,
-  resolve the card's `WT-` branch the same way SPEC-CANDIDATE-CI-001 REQ-CCI-004 resolves it, pin
+  apply the same card gate as `moai factory complete` (REQ-MWQ-019 step 1: card `merge-ready`,
+  caller holds the card's unexpired lease, version as read) and require the requested card to equal
+  the window record's card, require the integration worktree to be clean (`git status --porcelain`
+  empty, no unmerged paths, no autostash residue), resolve the card's `WT-` branch the same way SPEC-CANDIDATE-CI-001 REQ-CCI-004 resolves it, pin
   the branch tip to one commit SHA, and then, in this order, require the card's re-measure record to
   be valid under REQ-MWQ-014/015, require the record's absorbed commit to equal the integration
   branch tip, require the pinned SHA to differ from that absorbed commit (where they are equal there
@@ -177,9 +180,10 @@ to that tree.
   SHA's tree to equal the record's tree, call SPEC-CANDIDATE-CI-001's shared landing check
   (REQ-CCI-011; a no-op while `workflow.candidate_ci.enabled` is false) for that SHA, run
   `git merge --no-ff <pinned SHA>` into the integration branch (never the branch name), verify the
-  merge commit's tree equals the record's tree, and release the window; it shall run no test suite.
+  merge commit's tree equals the record's tree and the integration worktree is clean again, and
+  release the window; it shall run no test suite.
 - **REQ-MWQ-018** (Event-driven) — **When** a REQ-MWQ-017 step fails, the merge step shall release
-  the window and exit with a code distinct per cause, of which there are ten: (1) record invalid;
+  the window and exit with a code distinct per cause, of which there are twelve: (1) record invalid;
   (2) integration tip moved since the record's absorbed commit — the re-measure-and-re-acquire code,
   naming both SHAs, after which the lane re-absorbs, re-measures, and re-acquires at the tail, the
   only point at which a stale candidate is rebuilt, never eagerly at queue entry, as
@@ -187,9 +191,12 @@ to that tree.
   commit; (4) pinned tree differing from the record's tree; (5) landing-check refusal; (6) merge
   failure with the worktree clean after `git merge --abort`; (7) merge failure with the worktree
   still not clean after the abort; (8) any failure after the merge commit exists (a merge-tree
-  mismatch or a lookup error); (9) any other error before the merge; (10) nothing to merge — the
-  pinned SHA equals the record's absorbed commit, refused before `git merge` runs. Causes 1-6, 9
-  and 10 occur before
+  mismatch, a lookup error, or an integration worktree not clean after the merge, autostash residue
+  included); (9) any other error before the merge; (10) nothing to merge — the pinned SHA equals
+  the record's absorbed commit, refused before `git merge` runs; (11) card gate refused (card not
+  `merge-ready`, caller not holding the card's unexpired lease, version changed, or requested card ≠
+  window card), with the card and the integration branch untouched; (12) integration worktree not
+  clean before the merge. Causes 1-6 and 9-12 occur before
   the integration branch moves and promote the next live ticket on release; in causes 7 and 8 the
   merge step shall, before releasing, set the window policy to `hold` with a reason naming the cause
   (and, for 8, the merge commit SHA, which it leaves in place for the leader), so that no later
@@ -216,7 +223,7 @@ to that tree.
   exists (including a card version or lease changed after step 1), complete shall leave the merge
   commit in place, set the window policy to `hold` with cause `post-merge-transition-conflict`
   naming the merge SHA (a system write in REQ-MWQ-018 cause 8's post-merge class), release the
-  window, and exit with its own code, distinct from the ten REQ-MWQ-018 codes.
+  window, and exit with its own code, distinct from the twelve REQ-MWQ-018 codes.
 - **REQ-MWQ-020** (Unwanted) — `moai factory complete` shall not write a record that stands in for
   the re-measure; the merge identity it records shall be stored separately from, and shall never
   satisfy, the re-measure requirement.

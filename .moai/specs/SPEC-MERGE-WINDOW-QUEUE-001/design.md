@@ -74,7 +74,7 @@ moai integration merge --card <id>
 With checks (2)-(4) passing, `git merge --no-ff SHA` onto a tip equal to `record.base` produces
 `SHA^{tree}`, so cause 8's tree mismatch is unreachable by construction; cause 8 still exists for
 lookup and I/O errors after the commit, and its `hold` stops the queue on a develop the leader must
-inspect. Exit-code names are placeholders; the run phase assigns ten distinct values (cause 10: pinned SHA equals `record.base`, nothing to merge, refused before `git merge`). The stale
+inspect. Exit-code names are placeholders; the run phase assigns twelve distinct values (cause 10: pinned SHA equals `record.base`, nothing to merge, refused before `git merge`; cause 11: the merge verb applies complete's card gate and requires the requested card to equal the window card, before develop moves; cause 12: integration worktree dirty before the merge; dirty after the merge is cause 8). The stale
 candidate is rebuilt only after the RE-MEASURE exit, never eagerly at queue entry
 (SPEC-CANDIDATE-CI-001's assignment to this SPEC).
 
