@@ -114,7 +114,7 @@ residuals:
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-10-03
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "a1692c380"
 sync_changes:
   - CHANGELOG.md: exactly one [Unreleased]/### Added entry for the AST-based
     workflow.worktree.* key-honesty guard + testdata characterization fixtures
