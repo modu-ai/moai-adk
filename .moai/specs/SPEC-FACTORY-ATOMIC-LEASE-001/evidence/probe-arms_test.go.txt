@@ -1,0 +1,225 @@
+package cli
+
+// Plan-phase observation probes for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458):
+// the unnominated arms (a) and (c) of `moai factory next`.
+//
+// Evidence, not source (.txt suffix, mapped in for one run by overlay-arms.json).
+// The arms have no test seam in the tree, so the probes hang each lane on an
+// EXISTING variable: factoryCardNow, which factory_card.go calls as an argument
+// of the first claim write (RecordPicked in factoryNextRecordAndClaim, the
+// lease Transition in factoryNextClaim) - that is, after the arm's decision and
+// before its claim. The hook recognises that call by the function names in the
+// calling stack and holds it, once per goroutine. This is a probe device and is
+// not proposed as product or test-harness code.
+
+import (
+	"fmt"
+	"runtime"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
+)
+
+func armsGoroutineID() int {
+	buf := make([]byte, 64)
+	buf = buf[:runtime.Stack(buf, false)]
+	fields := strings.Fields(string(buf))
+	id, _ := strconv.Atoi(fields[1])
+	return id
+}
+
+// armsAtPassEntry reports whether factoryCardNow was called directly by
+// factoryNextSelectAndLease, i.e. by its first line, before any snapshot read.
+func armsAtPassEntry() bool {
+	pcs := make([]uintptr, 4)
+	n := runtime.Callers(3, pcs)
+	if n == 0 {
+		return false
+	}
+	f, _ := runtime.CallersFrames(pcs[:n]).Next()
+	return strings.HasSuffix(f.Function, ".factoryNextSelectAndLease")
+}
+
+// armsAtClaim reports whether the calling stack is inside a claim function.
+func armsAtClaim() bool {
+	pcs := make([]uintptr, 24)
+	n := runtime.Callers(2, pcs)
+	frames := runtime.CallersFrames(pcs[:n])
+	for {
+		f, more := frames.Next()
+		if strings.HasSuffix(f.Function, ".factoryNextRecordAndClaim") || strings.HasSuffix(f.Function, ".factoryNextClaim") {
+			return true
+		}
+		if !more {
+			return false
+		}
+	}
+}
+
+type armsResult struct {
+	lane        string
+	out, stderr string
+	err         error
+}
+
+// armsRace launches each lane's bare `factory next` and holds every lane at the
+// second factoryCardNow call until all have arrived, then releases them
+// together. A lane that finishes before arriving (it was refused or found no
+// card) is recorded and the remaining lanes are released.
+func armsRace(t *testing.T, labels []string, atPassEntry bool) []armsResult {
+	t.Helper()
+	prevNow := factoryCardNow
+	var mu sync.Mutex
+	held := map[int]bool{}
+	arrived := make(chan struct{}, len(labels))
+	release := make(chan struct{})
+	factoryCardNow = func() time.Time {
+		hit := armsAtClaim()
+		if atPassEntry {
+			hit = armsAtPassEntry()
+		}
+		if hit {
+			id := armsGoroutineID()
+			mu.Lock()
+			first := !held[id]
+			held[id] = true
+			mu.Unlock()
+			if first {
+				arrived <- struct{}{}
+				<-release
+			}
+		}
+		return prevNow()
+	}
+	t.Cleanup(func() { factoryCardNow = prevNow })
+
+	done := make(chan armsResult, len(labels))
+	started := 0
+	for _, label := range labels {
+		nmLaneEnv(t, label, "")
+		started++
+		go func(label string) {
+			out, stderr, err := qasRunNext(t, "--run", fcRun)
+			done <- armsResult{lane: label, out: out, stderr: stderr, err: err}
+		}(label)
+		select {
+		case <-arrived:
+		case <-time.After(2 * time.Second):
+			// The lane did not reach its claim: it was refused, found no card, or
+			// is waiting behind another lane. Go on and start the next lane.
+		}
+	}
+	close(release)
+	var results []armsResult
+	for ; started > 0; started-- {
+		select {
+		case r := <-done:
+			results = append(results, r)
+		case <-time.After(60 * time.Second):
+			t.Fatal("a raced invocation never finished")
+		}
+	}
+	return results
+}
+
+func armsLeased(t *testing.T, root string, ids ...string) (int, []string) {
+	t.Helper()
+	n := 0
+	var held []string
+	for _, id := range ids {
+		if !fcHasCard(t, root, id) {
+			continue
+		}
+		c := fcCard(t, root, id)
+		held = append(held, fmt.Sprintf("%s=%s/%s", id, c.State, c.LeaseHolder))
+		if c.State == homestate.CardLeased {
+			n++
+		}
+	}
+	return n, held
+}
+
+// M1 via the bare form: two lanes enter a selection pass at the same moment,
+// before either has read the record, with two queued serial cards and nothing in
+// flight. Held at the pass entry (before the snapshot), because a hold placed
+// after the decision lets the second lane adopt the first lane's promoted card
+// through arm (b2) and lose the version-checked edge instead.
+func TestT1458ProbeArmCSerialTwoLanes(t *testing.T) {
+	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	nmIsolatedWorktrees(t, "t1", "t2")
+	results := armsRace(t, []string{"lane-1", "lane-2"}, true)
+	n, held := armsLeased(t, root, "t1", "t2")
+	var errs []error
+	for _, r := range results {
+		errs = append(errs, r.err)
+	}
+	t.Logf("PROBE arm-c serial cards leased=%d rows=%v errs=%v", n, held, errs)
+	if n > 1 {
+		t.Errorf("arm (c): %d serial cards are leased at once (%v)", n, held)
+	}
+}
+
+// M2 via arm (c): the operator holds the promoted card between arm (c)'s
+// promotion and its claim (the hold is written from the hook, at the point the
+// claim is about to start).
+func TestT1458ProbeArmCHoldAfterPromotion(t *testing.T) {
+	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	nmLaneEnv(t, "lane-1", "")
+	nmIsolatedWorktrees(t, "t1")
+	prevNow := factoryCardNow
+	var mu sync.Mutex
+	done := false
+	factoryCardNow = func() time.Time {
+		if armsAtClaim() {
+			mu.Lock()
+			first := !done
+			done = true
+			mu.Unlock()
+			if first {
+				nmSetState(t, store, "t1", kanban.BacklogStateHold)
+			}
+		}
+		return prevNow()
+	}
+	t.Cleanup(func() { factoryCardNow = prevNow })
+	out, stderr, err := qasRunNext(t, "--run", fcRun)
+	q := nmQueueState(t, store, "t1")
+	state, holder := "", ""
+	if fcHasCard(t, root, "t1") {
+		c := fcCard(t, root, "t1")
+		state, holder = c.State, c.LeaseHolder
+	}
+	t.Logf("PROBE arm-c-hold err=%v queue=%s record=%s holder=%s stdout=%q stderr=%q", err, q, state, holder, out, stderr)
+	if q == kanban.BacklogStateHold && state == homestate.CardLeased {
+		t.Errorf("arm (c) leased a card whose hold was committed before its claim: queue=%s record=%s holder=%s", q, state, holder)
+	}
+}
+
+// M4 / arm (a): two lanes each lease the serial card assigned to themselves at
+// the same moment, nothing in flight.
+func TestT1458ProbeArmASerialSiblings(t *testing.T) {
+	root, store := nmBase(t, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
+		homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2", Stage: homestate.CardRun})
+	nmIsolatedWorktrees(t, "t1", "t2")
+	results := armsRace(t, []string{"lane-1", "lane-2"}, false)
+	n, held := armsLeased(t, root, "t1", "t2")
+	var errs []error
+	for _, r := range results {
+		errs = append(errs, r.err)
+	}
+	t.Logf("PROBE arm-a serial cards leased=%d rows=%v errs=%v", n, held, errs)
+	if n > 1 {
+		t.Errorf("arm (a): %d serial cards are leased at once (%v)", n, held)
+	}
+}

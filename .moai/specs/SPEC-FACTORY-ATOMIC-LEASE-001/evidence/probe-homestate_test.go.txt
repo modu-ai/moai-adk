@@ -1,0 +1,109 @@
+package homestate
+
+// Plan-phase observation probe for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458).
+// Evidence, not source: .txt suffix, mapped in for one run by
+// overlay-homestate.json. It measures the cost and the stall behavior of the
+// factory-record claim (RecordPicked + T2 + T3), which is what a lease critical
+// section would hold the queue lock across.
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"testing"
+	"time"
+)
+
+func probeClaim(db *FactoryDB, ctx context.Context, id string) (time.Duration, error) {
+	start := time.Now()
+	c, err := db.RecordPicked(ctx, "run-p", id, CardFields{}, "probe", time.Now())
+	if err != nil {
+		return time.Since(start), err
+	}
+	c, err = db.Transition(ctx, TransitionRequest{RunID: "run-p", CardID: id, To: CardAssigned, ExpectedVersion: c.Version, Actor: "probe", Owner: "lane-1", Now: time.Now()})
+	if err != nil {
+		return time.Since(start), err
+	}
+	_, err = db.Transition(ctx, TransitionRequest{RunID: "run-p", CardID: id, To: CardLeased, ExpectedVersion: c.Version, Actor: "lane-1", Now: time.Now()})
+	return time.Since(start), err
+}
+
+func TestT1458ProbeRecordClaim(t *testing.T) {
+	db := openSandboxFactory(t)
+	ctx := context.Background()
+	mustRecordRun(t, db, FactoryRun{RunID: "run-p", Backend: "claude", LeadPID: 1, LeadProcessStart: "st"})
+	frRegisterWorker(t, db, "lane-1")
+
+	var durs []time.Duration
+	for i := 1; i <= 100; i++ {
+		d, err := probeClaim(db, ctx, fmt.Sprintf("t%d", 9000+i))
+		if err != nil {
+			t.Fatalf("claim %d: %v", i, err)
+		}
+		durs = append(durs, d)
+	}
+	sort.Slice(durs, func(i, j int) bool { return durs[i] < durs[j] })
+	t.Logf("PROBE uncontended claim n=100 p50=%s p95=%s max=%s", durs[49], durs[94], durs[99])
+
+	other, err := OpenFactoryPath(db.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = other.Close() }()
+	hold := func(d time.Duration) {
+		tx, err := other.DB.BeginTx(ctx, nil)
+		if err != nil {
+			t.Fatalf("holder begin: %v", err)
+		}
+		time.AfterFunc(d, func() { _ = tx.Rollback() })
+	}
+
+	var bt int
+	if err := db.DB.QueryRow(`PRAGMA busy_timeout`).Scan(&bt); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("PROBE handle busy_timeout=%dms", bt)
+
+	hold(1500 * time.Millisecond)
+	start := time.Now()
+	_, rerr := db.LoadCard(ctx, "run-p", "t9001")
+	t.Logf("PROBE read while another connection holds a write tx: elapsed=%s err=%v", time.Since(start), rerr)
+	time.Sleep(1700 * time.Millisecond)
+
+	hold(3 * time.Second)
+	cctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+	d, cerr := probeClaim(db, cctx, "t9201")
+	cancel()
+	t.Logf("PROBE claim ctx-deadline=500ms vs 3s write holder: elapsed=%s err=%v", d, cerr)
+	time.Sleep(3200 * time.Millisecond)
+
+	hold(7 * time.Second)
+	d, cerr = probeClaim(db, ctx, "t9203")
+	t.Logf("PROBE claim no-deadline vs 7s write holder: elapsed=%s err=%v", d, cerr)
+
+	// A connection opened with a low busy timeout bounds the wait; a runtime
+	// PRAGMA on the shared handle does not survive a context-cancelled call.
+	low, err := OpenFactoryPath(db.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = low.Close() }()
+	if _, err := low.DB.Exec(`PRAGMA busy_timeout=200`); err != nil {
+		t.Fatal(err)
+	}
+	hold(3 * time.Second)
+	cctx, cancel = context.WithTimeout(ctx, 500*time.Millisecond)
+	d, cerr = probeClaim(low, cctx, "t9301")
+	cancel()
+	t.Logf("PROBE claim busy_timeout=200ms + ctx-deadline=500ms vs 3s write holder: elapsed=%s err=%v", d, cerr)
+	time.Sleep(3200 * time.Millisecond)
+	hold(7 * time.Second)
+	cctx, cancel = context.WithTimeout(ctx, time.Second)
+	d, cerr = probeClaim(low, cctx, "t9302")
+	cancel()
+	t.Logf("PROBE claim busy_timeout=200ms (runtime PRAGMA) + ctx-deadline=1s vs 7s write holder: elapsed=%s err=%v", d, cerr)
+	if err := low.DB.QueryRow(`PRAGMA busy_timeout`).Scan(&bt); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("PROBE busy_timeout on that handle afterwards=%dms", bt)
+}
