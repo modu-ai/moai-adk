@@ -209,3 +209,125 @@ func TestSyncPhaseGateCheckerSweepParityWithReportsKey(t *testing.T) {
 		}
 	})
 }
+
+// goSurvivingRootsRun builds the round-3 M2 fixture: a HEALTHY surviving
+// module (keep/), a ROOT module deleted whole by the sync commit, and a
+// broken parked module under .moai/reports/lab. The delta walk resolves
+// nothing (the deleted files own no surviving go.mod), so the gate falls to
+// find_surviving_go_module_roots — the filesystem walk under test — which
+// discovers both the healthy keep module and the parked broken lab module.
+// Runs the gate once, optionally FIXES the parked fixture (removing only its
+// brokenness — a change the content key is indifferent to), and runs it
+// again, returning both stdouts and the stub log.
+func goSurvivingRootsRun(t *testing.T, script string, fixLab bool) (string, string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	bin := t.TempDir()
+	stubLog := filepath.Join(t.TempDir(), "stub.log")
+
+	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(reportsGateStub), 0o755); err != nil {
+		t.Fatalf("write stub go: %v", err)
+	}
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", filepath.Dir(p), err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatalf("write %s: %v", rel, err)
+		}
+	}
+	write("go.mod", "module example.com/r3root\n\ngo 1.22\n")
+	write("app.go", "package main\n\nfunc main() {}\n")
+	write(filepath.Join("keep", "go.mod"), "module example.com/r3keep\n\ngo 1.22\n")
+	write(filepath.Join("keep", "keep.go"), "package keep\n\nfunc Keep() {}\n")
+	write(filepath.Join(".moai", "reports", "lab", "go.mod"), "module example.com/r3lab\n\ngo 1.22\n")
+	write(filepath.Join(".moai", "reports", "lab", "broken.go"), "package lab\n\nfunc F() { thisIsNotDefined() }\n")
+	write(filepath.Join(".moai", "reports", "lab", "BROKEN"), "the parked audit lab does not compile\n")
+
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-c", "user.email=t1404@example.invalid", "-c", "user.name=t1404"}, args...)...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+	}
+	git("init", "--quiet")
+	git("add", "go.mod", "app.go", "keep")
+	git("commit", "--quiet", "-m", "docs: sync-phase surviving roots fixture")
+	// The sync commit deletes the ROOT module whole: the delta walk resolves
+	// no owning go.mod, so find_surviving_go_module_roots stands in.
+	git("rm", "--quiet", "go.mod", "app.go")
+	git("commit", "--quiet", "-m", "docs: sync-phase delete root module")
+
+	run := func() string {
+		cmd := exec.Command("bash", script)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(),
+			"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+			"CLAUDE_PROJECT_DIR="+dir,
+			"MOAI_SYNC_GATE_BLOCKING=1",
+			"MOAI_AUTONOMY_TIER=",
+			"STUB_LOG="+stubLog,
+		)
+		out, _ := cmd.CombinedOutput() // the gate always exits 0; its verdict rides stdout
+		return string(out)
+	}
+	out1 := run()
+	if fixLab {
+		// The repair lands in the fixture: only content under .moai/reports
+		// changes — neither HEAD nor the content key moves.
+		if err := os.Remove(filepath.Join(dir, ".moai", "reports", "lab", "BROKEN")); err != nil {
+			t.Fatalf("remove BROKEN marker: %v", err)
+		}
+		write(filepath.Join(".moai", "reports", "lab", "broken.go"), "package lab\n\nfunc F() {}\n")
+	}
+	out2 := run()
+	log, _ := os.ReadFile(stubLog)
+	return out1, out2, string(log)
+}
+
+// TestSyncPhaseGateSurvivingRootsSweepParityWithReportsKey pins the round-3
+// M2 contract on the deployed hook AND the template mirror: the
+// surviving-module-root walk prunes .moai/reports the same way the checker
+// sweeps and the content key do — the deleted-module scenario never vets a
+// parked lab module, so fixing the fixture cannot replay a stored failure;
+// and the control premise proves the walk still vets the healthy module.
+func TestSyncPhaseGateSurvivingRootsSweepParityWithReportsKey(t *testing.T) {
+	reportsGateRequire(t)
+	root := hocProjectRoot(t)
+	mirror := filepath.Join(root, "internal", "template", "templates",
+		".claude", "hooks", "moai", "sync-phase-quality-gate.sh")
+	deployed := filepath.Join(root, ".claude", "hooks", "moai", "sync-phase-quality-gate.sh")
+
+	t.Run("deployed surviving-roots walk never vets the parked module", func(t *testing.T) {
+		out1, out2, stub := goSurvivingRootsRun(t, deployed, true)
+		if !strings.Contains(stub, "keep") {
+			t.Fatalf("premise: the stub go was never handed the healthy keep module — the surviving-roots walk resolved nothing.\nstub log: %q", stub)
+		}
+		if strings.Contains(stub, ".moai/reports/lab") {
+			t.Errorf("SYNC_GATE_REPORTS_SCAN_PARITY: the surviving-roots walk vetted the parked reports module — a verdict the content key cannot invalidate.\nstub log: %q", stub)
+		}
+		if strings.Contains(out1, `"decision":"block"`) {
+			t.Errorf("SYNC_GATE_REPORTS_SCAN_PARITY: run 1 blocked on the parked module the key excludes.\nrun1: %q", out1)
+		}
+		if strings.Contains(out2, `"decision":"block"`) {
+			t.Errorf("SYNC_GATE_REPORTS_SCAN_PARITY: run 2 replayed a stored failure after the parked module was fixed — the walk and the key disagree.\nrun2: %q", out2)
+		}
+	})
+
+	t.Run("mirror carries the same surviving-roots parity", func(t *testing.T) {
+		out1, out2, stub := goSurvivingRootsRun(t, mirror, true)
+		if !strings.Contains(stub, "keep") {
+			t.Fatalf("premise: the stub go was never handed the healthy keep module — the surviving-roots walk resolved nothing.\nstub log: %q", stub)
+		}
+		if strings.Contains(stub, ".moai/reports/lab") {
+			t.Errorf("SYNC_GATE_REPORTS_SCAN_PARITY: the template mirror's surviving-roots walk vets the parked module too.\nstub log: %q", stub)
+		}
+		if strings.Contains(out1, `"decision":"block"`) || strings.Contains(out2, `"decision":"block"`) {
+			t.Errorf("SYNC_GATE_REPORTS_SCAN_PARITY: the template mirror blocked across the fix-the-fixture sequence.\nrun1: %q\nrun2: %q", out1, out2)
+		}
+	})
+}

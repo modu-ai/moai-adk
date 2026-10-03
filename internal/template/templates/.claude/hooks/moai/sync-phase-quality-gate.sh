@@ -781,7 +781,11 @@ GOFILES
 # resolves a changed file to its OWNING module; when a changed file's whole
 # module is deleted its go.mod is gone with it and the walk resolves nothing.
 # The prune set mirrors has_suffix's, so discovery skips the
-# same heavy trees.
+# same heavy trees — and the parked-audit-lab tree, for cache-key parity: the
+# content key excludes .moai/reports, so a verdict vetted from a module parked
+# there is keyed WITHOUT it, and fixing the fixture would replay the stored
+# failure. Same -path/-prune shape as the checker sweeps; the spelling follows
+# this walk's absolute start point.
 find_surviving_go_module_roots() {
     find "$PROJECT_ROOT" \
         \( -name .git -o -name .hg -o -name .svn \
@@ -789,7 +793,8 @@ find_surviving_go_module_roots() {
            -o -name .venv -o -name venv -o -name site-packages -o -name __pycache__ \
            -o -name .tox -o -name .nox -o -name .mypy_cache -o -name .ruff_cache \
            -o -name .pytest_cache \
-           -o -name dist -o -name build -o -name target -o -name .next -o -name .output \) -prune \
+           -o -name dist -o -name build -o -name target -o -name .next -o -name .output \
+           -o -path "$PROJECT_ROOT/.moai/reports" \) -prune \
         -o -type f -name go.mod -print 2>/dev/null | while IFS= read -r m; do
             [ -n "$m" ] || continue
             dirname "$m"
