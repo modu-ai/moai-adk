@@ -633,6 +633,18 @@ const (
 	CodexReviewGateTreeScopeSkip   = "skip"
 )
 
+// Values of workflow.codex.review_gate.primary_scope
+// (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-004): what the codex review gate does
+// for a tree-scope session whose tree is the repository's primary working
+// tree. Skip is the distributed default — a primary checkout's non-card
+// changes have no card to attribute them to (REQ-CGSC-002); Review is the
+// explicit restore axis that keeps the pre-SPEC whole-tree review. Single
+// source of truth for both names.
+const (
+	CodexReviewGatePrimaryScopeSkip   = "skip"
+	CodexReviewGatePrimaryScopeReview = "review"
+)
+
 // NormalizeCodexReviewGateTreeScope maps a raw tree_scope value onto the policy:
 // only "skip", compared without regard to case or surrounding whitespace, reads
 // as skip; an empty, unknown or misspelled value reads as review, so a mistyped
@@ -643,6 +655,23 @@ func NormalizeCodexReviewGateTreeScope(value string) string {
 		return CodexReviewGateTreeScopeSkip
 	}
 	return CodexReviewGateTreeScopeReview
+}
+
+// NormalizeCodexReviewGatePrimaryScope maps a raw primary_scope value onto the
+// policy (the §F.2 disposition table): only an explicit "review", compared
+// without regard to case or surrounding whitespace, restores the pre-SPEC
+// whole-tree review; every other read outcome — an empty, unknown or
+// misspelled value, a missing key — leaves the default skip in force, because
+// the gate does not review a primary checkout's unattributable changes
+// (REQ-CGSC-002). The fail direction is deliberately REVERSED from
+// NormalizeCodexReviewGateTreeScope: there the default reviews, here it skips.
+// The config loader and the gate's hand-rolled reader both go through this one
+// function.
+func NormalizeCodexReviewGatePrimaryScope(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), CodexReviewGatePrimaryScopeReview) {
+		return CodexReviewGatePrimaryScopeReview
+	}
+	return CodexReviewGatePrimaryScopeSkip
 }
 
 // DefaultMultiReviewGateTimeout is the per-call timeout for the multi-model
@@ -1353,8 +1382,9 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` under internal/template/templates/.
 		Codex: CodexConfig{
 			ReviewGate: CodexReviewGateConfig{
-				Enabled:   false,
-				TreeScope: CodexReviewGateTreeScopeReview,
+				Enabled:      false,
+				TreeScope:    CodexReviewGateTreeScopeReview,
+				PrimaryScope: CodexReviewGatePrimaryScopeSkip,
 			},
 			// SPEC-CODEX-PHASE2-001 (REQ-CX2-007 / REQ-CX2-015): the codex_task
 			// write mode ships default-OFF. A local opt-in belongs in local

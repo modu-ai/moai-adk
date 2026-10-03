@@ -55,6 +55,30 @@ func writeOwnershipConfig(t *testing.T, root, treeScope string) {
 	writeCardFile(t, root, filepath.Join(".moai", "config", "sections", "workflow.yaml"), ownershipWorkflow(treeScope))
 }
 
+// ownershipWorkflowWithPrimary renders the gate config with an explicit
+// primary_scope value beside tree_scope — the restore axis
+// (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-004): the distributed primary_scope
+// default is skip, so a fixture pinning the pre-SPEC whole-tree review of a
+// primary checkout must restore it explicitly.
+func ownershipWorkflowWithPrimary(treeScope, primaryScope string) string {
+	body := "workflow:\n  codex:\n    review_gate:\n      enabled: true\n"
+	if treeScope != "" {
+		body += "      tree_scope: " + treeScope + "\n"
+	}
+	if primaryScope != "" {
+		body += "      primary_scope: " + primaryScope + "\n"
+	}
+	return body
+}
+
+// writeOwnershipConfigWithPrimary writes both policy axes into root's
+// workflow.yaml.
+func writeOwnershipConfigWithPrimary(t *testing.T, root, treeScope, primaryScope string) {
+	t.Helper()
+	writeCardFile(t, root, filepath.Join(".moai", "config", "sections", "workflow.yaml"),
+		ownershipWorkflowWithPrimary(treeScope, primaryScope))
+}
+
 // captureTreeScopeSkips swaps the policy's skip-log seam and returns the values
 // logged (one entry per skip row).
 func captureTreeScopeSkips(t *testing.T) *[]reviewScope {
@@ -220,6 +244,85 @@ func TestTreeScopeReader_AgreesWithConfigLoader(t *testing.T) {
 	}
 }
 
+// --- primary_scope reader (SPEC-CODEX-GATE-SCOPING-001) -------------------
+
+// primaryScopeFixtures is the §F.2 disposition table as a truth table: only an
+// explicit review family reads review; every other shape, value and failure
+// reads skip — the REVERSED fail direction from the tree_scope reader
+// (REQ-CGSC-002 / REQ-CGSC-004).
+var primaryScopeFixtures = []struct {
+	name   string
+	body   string
+	review bool
+}{
+	// the restore family: case and surrounding whitespace are ignored
+	{"review", nestedPrimaryScope("review"), true},
+	{"padded and capitalised", nestedPrimaryScope(`" Review "`), true},
+	{"upper case", nestedPrimaryScope("REVIEW"), true},
+	{"inline comment", nestedPrimaryScope("review  # note"), true},
+	{"double quoted", nestedPrimaryScope(`"review"`), true},
+	// everything else reads skip — the default
+	{"skip value", nestedPrimaryScope("skip"), false},
+	{"empty value", nestedPrimaryScope(""), false},
+	{"unknown value", nestedPrimaryScope("never"), false},
+	{"prefix variant", nestedPrimaryScope("reviewx"), false},
+	{"suffix variant", nestedPrimaryScope("no-review"), false},
+	{"key absent", "workflow:\n  codex:\n    review_gate:\n      enabled: true\n", false},
+	{"malformed yaml", "workflow:\n\tcodex: [oops\n", false},
+	{"file absent", "", false},
+	// misplaced keys: only the nested workflow.codex.review_gate path counts
+	{"flat without workflow root", "codex:\n  review_gate:\n    primary_scope: review\n", false},
+	{"commented out", "workflow:\n  codex:\n    review_gate:\n      # primary_scope: review\n      enabled: true\n", false},
+	{"under the multi gate", "workflow:\n  multi:\n    review_gate:\n      primary_scope: review\n", false},
+	{"under codex task", "workflow:\n  codex:\n    task:\n      primary_scope: review\n", false},
+}
+
+// nestedPrimaryScope renders the deployed (workflow-rooted) shape with a raw
+// primary_scope value text.
+func nestedPrimaryScope(value string) string {
+	return "workflow:\n  codex:\n    review_gate:\n      primary_scope: " + value + "\n"
+}
+
+// TestPrimaryScopeReader_TruthTable pins the primary_scope read discipline: the
+// nested path's review family restores; every other shape, value and failure
+// leaves the default skip in force (REQ-CGSC-004).
+func TestPrimaryScopeReader_TruthTable(t *testing.T) {
+	for _, tc := range primaryScopeFixtures {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := writeGateWorkflowYAML(t, tc.body)
+			want := config.CodexReviewGatePrimaryScopeSkip
+			if tc.review {
+				want = config.CodexReviewGatePrimaryScopeReview
+			}
+			if got := readCodexReviewGatePrimaryScope(dir); got != want {
+				t.Errorf("readCodexReviewGatePrimaryScope = %q, want %q", got, want)
+			}
+		})
+	}
+	if got := readCodexReviewGatePrimaryScope(""); got != config.CodexReviewGatePrimaryScopeSkip {
+		t.Errorf("empty root must read skip (the primary default direction), got %q", got)
+	}
+}
+
+// TestPrimaryScopeReader_AgreesWithConfigLoader is the drift guard for the new
+// reader: on every fixture the hand-rolled reader and config.Loader — through
+// the single normaliser — return the same policy. A loader error is the skip
+// direction, as for the reader.
+func TestPrimaryScopeReader_AgreesWithConfigLoader(t *testing.T) {
+	for _, tc := range primaryScopeFixtures {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := writeGateWorkflowYAML(t, tc.body)
+			want := config.CodexReviewGatePrimaryScopeSkip
+			if cfg, err := config.NewLoader().Load(filepath.Join(dir, ".moai")); err == nil {
+				want = config.NormalizeCodexReviewGatePrimaryScope(cfg.Workflow.Codex.ReviewGate.PrimaryScope)
+			}
+			if got := readCodexReviewGatePrimaryScope(dir); got != want {
+				t.Errorf("reader = %q, config loader = %q (schema drift)", got, want)
+			}
+		})
+	}
+}
+
 // --- AC-002: the skip, on both automatic paths ----------------------------
 
 // TestCodexReviewGate_TreeScopeSkip pins REQ-CRO-002 on the Claude path: with
@@ -240,8 +343,10 @@ func TestCodexReviewGate_TreeScopeSkip(t *testing.T) {
 				t.Errorf("%s: the skip row rides after the scope row (tree class), scopes=%+v", variant, p.scopes)
 			}
 
-			// control: the same session under review is NOT skipped
-			writeOwnershipConfig(t, root, "review")
+			// control: the same session under review is NOT skipped — with the
+			// explicit primary_scope restore, since the distributed default now
+			// skips a primary-checkout tree session (REQ-CGSC-002 / REQ-CGSC-004)
+			writeOwnershipConfigWithPrimary(t, root, "review", "review")
 			c := newOwnershipProbe(t)
 			cskips := captureTreeScopeSkips(t)
 			gatePath(t, root, root)
@@ -281,7 +386,8 @@ func TestCodexStopChain_TreeScopeSkip(t *testing.T) {
 					variant, p.lookups, p.detects, p.reviewed(), len(*skips))
 			}
 
-			writeOwnershipConfig(t, root, "review")
+			// The same primary_scope restore as the Claude path's control arm.
+			writeOwnershipConfigWithPrimary(t, root, "review", "review")
 			c := newOwnershipProbe(t)
 			cskips := captureTreeScopeSkips(t)
 			got = chainPath(t, root)
@@ -300,16 +406,26 @@ func TestCodexStopChain_TreeScopeSkip(t *testing.T) {
 
 // --- AC-003: non-skip values keep the pre-policy tree request -------------
 
+// primaryScopeRestore appends the explicit primary_scope restore to a nested
+// workflow.codex.review_gate block, and primaryScopeRestoreRooted adds it as
+// its own workflow root beside a flat (not-honoured) tree_scope key: the pins
+// below ride the pre-SPEC whole-tree review of a primary checkout, which the
+// distributed primary_scope default now skips (REQ-CGSC-002 / REQ-CGSC-004).
+const (
+	primaryScopeRestoreNested = "      primary_scope: review\n"
+	primaryScopeRestoreRooted = "workflow:\n  codex:\n    review_gate:\n      primary_scope: review\n"
+)
+
 // TestTreeScope_NonSkipValuesKeepTreeRequest pins REQ-CRO-003 (the REQ-CGS-003
 // amendment): an absent key, review, an unknown value and a misplaced skip all
 // leave the tree-scope request shape-identical to its form before the policy
 // (REQ-CRT-006). PRESERVE line — GREEN before and after.
 func TestTreeScope_NonSkipValuesKeepTreeRequest(t *testing.T) {
 	for _, tc := range []struct{ name, body string }{
-		{"key absent", ownershipWorkflow("")},
-		{"review", ownershipWorkflow("review")},
-		{"unknown value", ownershipWorkflow("never")},
-		{"misplaced flat skip", "codex:\n  review_gate:\n    tree_scope: skip\n"},
+		{"key absent", ownershipWorkflow("") + primaryScopeRestoreNested},
+		{"review", ownershipWorkflow("review") + primaryScopeRestoreNested},
+		{"unknown value", ownershipWorkflow("never") + primaryScopeRestoreNested},
+		{"misplaced flat skip", "codex:\n  review_gate:\n    tree_scope: skip\n" + primaryScopeRestoreRooted},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newStopFixture(t)
@@ -555,21 +671,30 @@ func TestTreeScopePolicy_SourceReadsNoEnvironment(t *testing.T) {
 // paths decide alike — skip only for a tree session without WT- evidence under
 // skip.
 func TestTreeScopePolicy_SameDecisionOnBothPaths(t *testing.T) {
+	// primary is the primary_scope restore value; "" keeps the distributed
+	// default (skip), which is what the two "skip" rows ride on a primary
+	// checkout and what the WT- rows are guarded against by the branch
+	// evidence, never by configuration.
 	cases := []struct {
 		name      string
 		tree      func(t *testing.T) string
 		value     string
+		primary   string
 		wantSkips bool
 	}{
-		{"tree session, skip", func(t *testing.T) string { return newTreeSession(t, "develop") }, "skip", true},
-		{"tree session, review", func(t *testing.T) string { return newTreeSession(t, "develop") }, "review", false},
-		{"WT- session without base, skip", newWTNoBaseTree, "skip", false},
-		{"WT- session without base, review", newWTNoBaseTree, "review", false},
+		{"tree session, skip", func(t *testing.T) string { return newTreeSession(t, "develop") }, "skip", "", true},
+		{"tree session, review", func(t *testing.T) string { return newTreeSession(t, "develop") }, "review", "review", false},
+		{"WT- session without base, skip", newWTNoBaseTree, "skip", "", false},
+		{"WT- session without base, review", newWTNoBaseTree, "review", "review", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := tc.tree(t)
-			writeOwnershipConfig(t, root, tc.value)
+			if tc.primary == "" {
+				writeOwnershipConfig(t, root, tc.value)
+			} else {
+				writeOwnershipConfigWithPrimary(t, root, tc.value, tc.primary)
+			}
 
 			p := newOwnershipProbe(t)
 			skips := captureTreeScopeSkips(t)
@@ -593,6 +718,9 @@ func TestTreeScopePolicy_EachPathReadsItsOwnEnabledRoot(t *testing.T) {
 	session := newTreeSession(t, "develop")
 	decoy := t.TempDir() // a config-only directory, the other path's root
 
+	// Both roots carry the primary_scope restore: the read-count pin below
+	// counts tree_scope reads, and the primary-checkout policy (which reads
+	// its own key first) must stay silent for it to hold (REQ-CGSC-002/004).
 	t.Run("Claude path reads reviewGateConfigRoot(projectDir)", func(t *testing.T) {
 		for _, tc := range []struct {
 			name, decoyValue, sessionValue string
@@ -602,8 +730,8 @@ func TestTreeScopePolicy_EachPathReadsItsOwnEnabledRoot(t *testing.T) {
 			{"skip only in the session tree", "review", "skip", false},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				writeOwnershipConfig(t, decoy, tc.decoyValue)
-				writeOwnershipConfig(t, session, tc.sessionValue)
+				writeOwnershipConfigWithPrimary(t, decoy, tc.decoyValue, "review")
+				writeOwnershipConfigWithPrimary(t, session, tc.sessionValue, "review")
 				p := newOwnershipProbe(t)
 				skips := captureTreeScopeSkips(t)
 				reads := recordTreeScopeReads(t)
@@ -626,8 +754,8 @@ func TestTreeScopePolicy_EachPathReadsItsOwnEnabledRoot(t *testing.T) {
 			{"skip only in the other root", "skip", "review", false},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				writeOwnershipConfig(t, decoy, tc.decoyValue)
-				writeOwnershipConfig(t, session, tc.sessionValue)
+				writeOwnershipConfigWithPrimary(t, decoy, tc.decoyValue, "review")
+				writeOwnershipConfigWithPrimary(t, session, tc.sessionValue, "review")
 				newOwnershipProbe(t)
 				reads := recordTreeScopeReads(t)
 				if skipped := chainSkipped(chainPath(t, session)); skipped != tc.wantSkip {

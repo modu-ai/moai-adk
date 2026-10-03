@@ -63,19 +63,30 @@ const cardDigestHexLen = 16
 // reviewScope is the resolved scope of one session state: the class, the log
 // basis (branch match / none — REQ-CGS-010), the tree the scope resolves from,
 // the branch, and — card-scope only — the merge base recomputed at resolution
-// time (never a pinned SHA, gitflow-lane-protocol §8).
+// time (never a pinned SHA, gitflow-lane-protocol §8). Primary carries the
+// primary-checkout determination (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-001):
+// the session tree's git dir is the repository's common git dir. It is
+// resolved only on the non-card tree arms — the card class and a WT- branch
+// with an unavailable base carry card evidence, so the primary policy never
+// evaluates them (REQ-CGSC-005, REQ-CRO-004).
 type reviewScope struct {
 	Class     string
 	Basis     string
 	Dir       string
 	Branch    string
 	MergeBase string
+	Primary   bool
 }
 
 // reviewScopeResolver is the injectable scope seam (REQ-CGS-001, the
 // reviewGateChangeDetector precedent): tests drive the discriminator with no
 // live codex, and both execution paths share this one variable.
 var reviewScopeResolver = resolveReviewScope
+
+// primaryScopeDetector is the injectable primary-checkout seam (the
+// reviewScopeResolver precedent, SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-001):
+// tests drive the git-dir/git-common-dir comparison with no git probe.
+var primaryScopeDetector = isPrimaryCheckoutGit
 
 // resolveReviewScope classifies a session tree. The decision chain is branch
 // detection first (REQ-CGS-004), then the merge base (REQ-CGS-002); every
@@ -88,19 +99,73 @@ func resolveReviewScope(sessionDir string) reviewScope {
 	branch, err := reviewScopeGit(sessionDir, "branch", "--show-current")
 	if err != nil || branch == "" {
 		// An unreadable tree or a detached HEAD (empty branch output): the
-		// documented tree-scope fail-open (decision-index Q5 CONFIRMED).
-		return reviewScope{Class: reviewScopeTree, Basis: "no card branch (unreadable or detached)", Dir: sessionDir}
+		// documented tree-scope fail-open (decision-index Q5 CONFIRMED). The
+		// primary axis is still decidable on a readable-but-detached tree —
+		// the determination is branch-independent (git-dir identity, REQ-CGSC-001).
+		s := reviewScope{Class: reviewScopeTree, Basis: "no card branch (unreadable or detached)", Dir: sessionDir}
+		s.Primary = primaryScopeDetector(sessionDir)
+		return s
 	}
 	if !cardScopeFromBranch(branch) {
-		return reviewScope{Class: reviewScopeTree, Basis: "no card branch: " + branch, Dir: sessionDir, Branch: branch}
+		s := reviewScope{Class: reviewScopeTree, Basis: "no card branch: " + branch, Dir: sessionDir, Branch: branch}
+		s.Primary = primaryScopeDetector(sessionDir)
+		return s
 	}
 	base, err := cardMergeBase(sessionDir)
 	if err != nil {
 		// A WT- branch whose base cannot be computed keeps today's behavior;
 		// the merge base failure reason rides the log basis (REQ-CGS-010).
+		// Primary stays false: card evidence, never primary-skipped (REQ-CRO-004).
 		return reviewScope{Class: reviewScopeTree, Basis: "card branch detected but merge base unavailable: " + err.Error(), Dir: sessionDir, Branch: branch}
 	}
 	return reviewScope{Class: reviewScopeCard, Basis: "branch match: " + branch, Dir: sessionDir, Branch: branch, MergeBase: base}
+}
+
+// isPrimaryCheckoutGit reports whether dir is the repository's primary working
+// tree: the checkout whose git dir is the repository's common git dir
+// (REQ-CGSC-001). Fail-open in the PRESERVE direction: an empty dir, a non-git
+// directory, or a git error reads false — not primary — so the
+// primary-checkout skip never applies to an undecidable tree and today's
+// behavior for that state is kept (REQ-CGSC-006). Both git outputs may be
+// relative to dir, so each is resolved against dir before the comparison.
+func isPrimaryCheckoutGit(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	gitDir, err := reviewScopeGit(dir, "rev-parse", "--git-dir")
+	if err != nil || gitDir == "" {
+		return false
+	}
+	commonDir, err := reviewScopeGit(dir, "rev-parse", "--git-common-dir")
+	if err != nil || commonDir == "" {
+		return false
+	}
+	return reviewScopeGitPath(dir, gitDir) == reviewScopeGitPath(dir, commonDir)
+}
+
+// reviewScopeEvalPath resolves symlinks in one resolved git-path candidate,
+// returning it unchanged when the resolution fails (a missing final
+// component, a broken link) — both sides of the comparison degrade the same
+// way, so the equality stays meaningful (card-review repair round 2, N4).
+func reviewScopeEvalPath(p string) string {
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		return resolved
+	}
+	return p
+}
+
+// reviewScopeGitPath resolves one git subcommand's possibly-relative path
+// output against the tree it was produced in, so the equality check compares
+// LOCATIONS rather than spellings. The tree itself is symlink-resolved before
+// the join (card-review repair round 2, N4): through a symlinked subdirectory
+// git reports --git-dir as the REAL absolute path while --git-common-dir
+// comes back relative to the link, and joining the relative output against
+// the unresolved link spells a location that differs only by the link.
+func reviewScopeGitPath(dir, out string) string {
+	if filepath.IsAbs(out) {
+		return reviewScopeEvalPath(filepath.Clean(out))
+	}
+	return reviewScopeEvalPath(filepath.Clean(filepath.Join(reviewScopeEvalPath(dir), out)))
 }
 
 // cardScopeFromBranch is the pure decision core of the discriminator: a card
@@ -183,11 +248,22 @@ func reviewRequestParams(scope reviewScope) map[string]any {
 // (REQ-CGS-006): the card class measures the card diff; every other class
 // keeps the pre-SPEC detector over the scope's tree, so the existing seam and
 // its tests are unchanged on the tree path.
+//
+// The tree class composes one more exclusion (SPEC-CODEX-GATE-SCOPING-001
+// REQ-CGSC-007, card-review repair R1): a turn whose ONLY changes are the
+// runtime-config surfaces is not reviewable. The consult lives HERE — the
+// tree-scope-only caller — never inside the shared reviewableFromPorcelain the
+// multi-review gates also consume: a card or a multi-review turn over
+// config-only changes keeps full reviewability (REQ-CGSC-005 / AC-CGSC-009).
+// The probe can only narrow the detector's answer, never widen it.
 func reviewGateScopedChangeDetector(scope reviewScope) bool {
 	if scope.Class == reviewScopeCard {
 		return hasReviewableCardChanges(scope)
 	}
-	return reviewGateChangeDetector(scope.Dir)
+	if !reviewGateChangeDetector(scope.Dir) {
+		return false
+	}
+	return !treeConfigOnlyChanges(scope.Dir)
 }
 
 // cardChangedPaths returns the changed paths of the card diff: the union
