@@ -139,7 +139,7 @@ open_items_for_leader: P-1 defect candidate (direct door `syscall.Exec` ends the
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill
+sync_commit_sha: 68b4690df
 head_at_signal: af80023fe (measured tree; this sync commit cannot cite its own hash, so `sync_commit_sha` is the canonical placeholder `pending-backfill` and the real SHA is backfilled in a following commit — never left empty)
 tree: .claude/worktrees/t1440
 branch: WT-codex-card-managed-path
