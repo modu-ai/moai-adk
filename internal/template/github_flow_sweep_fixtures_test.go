@@ -106,6 +106,10 @@ func sweepFixtures() []sweepFixture {
 		{name: "F-red-20", file: f, content: "Allow entry for another file does not apply.\nWork starts from develop.\n",
 			allow: []sweepAllow{{File: "docs/other.md", Literal: "Work starts from develop.", Why: "wrong file"}},
 			viol:  []sweepWant{{2, sweepWeak, "weak"}}},
+		{name: "F-red-21", file: f, content: "```text\nWork starts from develop.\n```\n",
+			viol: []sweepWant{{2, sweepStrong, "P-A"}}}, // a fenced line is P-A with no other signal on it
+		{name: "F-red-22", file: f, content: "Work starts from `develop` today.\n",
+			viol: []sweepWant{{1, sweepStrong, "P-A"}}}, // an inline code span is P-A with no other signal on it
 		{name: "F-green-11", file: f, content: "`develop @ 0cca34439` and develop @ 0123abc\n",
 			exempt: []sweepWantExempt{{1, "stamp"}}},
 		{name: "F-green-12", file: f, content: "> RETIRED 2026-10-02 quoted note\n> Cards fork from develop.\n\nplain text\n",
