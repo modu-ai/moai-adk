@@ -14,7 +14,7 @@ spec_version: 0.4.0
 req_count: 25
 ac_count: 25 (24 release-blocking, 1 RG)
 plan_audit: iter1 FAIL 0.74 (.moai/reports/t1481/plan-audit-iter1.md); iter2 FAIL 0.80 (.moai/reports/t1481/plan-audit-iter2.md); revision 0.3.0 addresses N1-N7 + O1-O4; iter3 FAIL 0.83 (.moai/reports/t1481/plan-audit-iter3.md, Tier L ceiling, no regression); leader-ruled one delta round; revision 0.4.0 addresses N8-N11 + O6 within the iter3 fix_scope; iter4 delta PASS 0.885, no blockers (.moai/reports/t1481/plan-audit-iter4.md, audited_sha a13b83868)
-plan_artifacts_frozen_at: a13b83868 (no spec/plan/acceptance/design/research/decision-index edit after the PASS, so the audited state and hash stay bound)
+plan_artifacts_audited_at: a13b83868 (iter4 PASS). Corrected record: the plan artifacts were edited after that SHA — commit 818569869 (Q27, leader ruling D-RUN-1: REQ-FDA-014, design §5, AC-FDA-014, decision-index) and the run/sync status flips — so the audited hash no longer binds the current artifacts; no delta plan re-audit has run (debt D6/C2)
 recorded_debts:
   - O9 (dispose_in: run M2): plan.md M2 row does not name the spec-workflow.md hash-subject sentence edit (local + template); run M2 follows design.md §5, which assigns it
   - O10 (dispose_in: run M3): the REQ-FR-019 Amendments obligation of REQ-FDA-016 is asserted only through AC-FDA-015; run M3 evidence names REQ-FDA-016 beside AC-FDA-015
@@ -132,6 +132,24 @@ golangci-lint v2.1.6: `0 issues.`
 - C2: plan artifacts were edited after the audited SHA a13b83868 (Q27, commit 818569869) while
   §E.1 still claims `plan_artifacts_frozen_at`; needs a delta plan re-audit or a record correction.
 
+### Sync round-3 FAIL 80 repair (`.moai/reports/t1481/sync-audit-3.md`)
+
+| Finding | Fix | RED | GREEN |
+|---|---|---|---|
+| B1 equal repeated keys in a real plan-auditor report refused | duplicates refuse only when the normalized values differ or a value fails to parse; fixture `internal/auditverdict/testdata/plan-audit-report.md` (copy of this card's plan-audit-iter4.md) | `equal duplicates in a real report flagged: [verdict]` | `ok …auditverdict 1.129s` (-race); FAIL + appended PASS still refused |
+| D2 conflicting decision-index fields in one row | conflicting Label/Class/Operator verdict lines refuse the row; equal repeats allowed | `conflicting_Class_lines … err=<nil>, want ok=false` | `ok …homestate 89.062s` (-race, full package) |
+
+CLI selectors (-race): `ok …cli 14.316s`. contract packages ok. golangci-lint v2.1.6: `0 issues.`
+
+### Recorded debts (sync round 3)
+
+- D3: backlog.db and factory.db are separate stores, so the in-transaction hold read cannot lock a
+  concurrent hold write (accepted N2 residual; structural fix is t1458's atomic lease).
+- D4: the tier is read from anywhere in spec.md, including body examples, not only the frontmatter.
+- D5: only the first `## §E.1` section is checked.
+- D6: corrected above — the §E.1 frozen-at claim and the §E.4 transition line now state the real
+  history; a delta plan re-audit is still owed (same as C2).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -167,7 +185,7 @@ sync_status: re-close pending — spec.md reverted to in-progress until a sync a
 sync_audit: FAIL 72 (.moai/reports/t1481/sync-audit.md) → F1-F4 repaired; re-audit FAIL 78 (.moai/reports/t1481/sync-audit-2.md) → N1-N3 repaired; next re-audit pending
 changelog_entry_position: "CHANGELOG.md [Unreleased] ### Added (first entry)"
 frontmatter_status_transitions:
-  spec.md: in-progress -> completed (merged implemented+completed, single sync commit)
+  spec.md: "in-progress -> completed at 4293979c7, then reverted to in-progress at 7b5a85141 after sync-audit FAIL 78; re-close pending"
 amended_specs:
   SPEC-FACTORY-RECORD-001: stays completed — Amendments row only; the amended behavior (T8a, AC-005 66/295) is implemented and tested in this card (homestate package ok)
   SPEC-FACTORY-SELF-DISPATCH-001: stays completed — Amendments row only; the REQ-SD-016 exception is tested here (TestFDA_LaneAuditDecideAdmission, TestSD_AC016 ok)

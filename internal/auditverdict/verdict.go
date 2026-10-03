@@ -68,7 +68,7 @@ var (
 // "- debt: <id> dispose_in=<run|sync> <description>".
 func Parse(raw []byte) Fields {
 	var f Fields
-	seen := map[string]bool{}
+	seen := map[string]string{}
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimSpace(strings.TrimRight(line, "\r"))
 		if m := debtLine.FindStringSubmatch(line); m != nil {
@@ -96,10 +96,13 @@ func Parse(raw []byte) Fields {
 		}
 		switch canonical {
 		case "verdict", "overall_score", "must_pass_failed", "blocking_count", "plan_artifact_hash":
-			if seen[canonical] {
+			norm, ok := normalizeDecisionValue(canonical, value)
+			if prev, dup := seen[canonical]; dup && (!ok || prev != norm) {
 				f.DuplicateKeys = append(f.DuplicateKeys, canonical)
 			}
-			seen[canonical] = true
+			if _, dup := seen[canonical]; !dup {
+				seen[canonical] = norm
+			}
 		}
 		switch key {
 		case "verdict":
@@ -123,6 +126,29 @@ func Parse(raw []byte) Fields {
 		}
 	}
 	return f
+}
+
+// normalizeDecisionValue canonicalizes a decision value so equal repeats
+// (a report header plus its machine line) compare equal; ok is false when
+// the value does not parse, which makes any repeat of that key a conflict.
+func normalizeDecisionValue(key, value string) (string, bool) {
+	switch key {
+	case "verdict":
+		return strings.ToUpper(value), value != ""
+	case "overall_score":
+		s, err := strconv.ParseFloat(value, 64)
+		if err != nil || math.IsNaN(s) || math.IsInf(s, 0) {
+			return value, false
+		}
+		return strconv.FormatFloat(s, 'f', -1, 64), true
+	case "must_pass_failed", "blocking_count":
+		n, err := strconv.Atoi(value)
+		if err != nil {
+			return value, false
+		}
+		return strconv.Itoa(n), true
+	}
+	return value, value != ""
 }
 
 // AdmitLabel reports whether a verdict label is PASS-family. It is the whole

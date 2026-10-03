@@ -126,11 +126,11 @@ func TestAdmit_RefusesNonFiniteAndOutOfRangeScores(t *testing.T) {
 // never last-wins.
 func TestAdmit_RefusesDuplicatedDecisionKeys(t *testing.T) {
 	cases := map[string]string{
-		"verdict PASS appended after FAIL":  strings.Replace(planPass, "verdict: PASS", "verdict: FAIL", 1) + "Verdict: PASS\n",
-		"second must_pass_failed":           planPass + "must_pass_failed: 0\n",
-		"second blocking_count":             planPass + "blocking_count: 0\n",
-		"second score":                      planPass + "overall_score: 0.95\n",
-		"second plan_artifact_hash":         planPass + "plan_artifact_hash: abc123\n",
+		"verdict PASS appended after FAIL":   strings.Replace(planPass, "verdict: PASS", "verdict: FAIL", 1) + "Verdict: PASS\n",
+		"second, different must_pass_failed": strings.Replace(planPass, "must_pass_failed: 0", "must_pass_failed: 2", 1) + "must_pass_failed: 0\n",
+		"second, different blocking_count":   planPass + "blocking_count: 1\n",
+		"second, different score":            planPass + "overall_score: 0.95\n",
+		"second, different plan hash":        planPass + "plan_artifact_hash: def456\n",
 	}
 	for name, raw := range cases {
 		if ok, reason := admitPlan(raw, true); ok {
@@ -139,6 +139,33 @@ func TestAdmit_RefusesDuplicatedDecisionKeys(t *testing.T) {
 	}
 	if ok, _ := Admit(Parse([]byte("verdict: FAIL\nverdict: PASS\n")), PhaseSync, 0, false); ok {
 		t.Errorf("sync phase: duplicated verdict admitted")
+	}
+}
+
+// Sync round 3 B1: the plan-auditor report repeats keys legitimately (a
+// `Verdict:` header plus a machine `verdict:` line). Equal duplicates are
+// admitted; only disagreeing or unparseable duplicates refuse.
+func TestParse_RealReportShapeEqualDuplicatesAdmitted(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("testdata", "plan-audit-report.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := Parse(raw)
+	if len(f.DuplicateKeys) != 0 {
+		t.Fatalf("equal duplicates in a real report flagged: %v", f.DuplicateKeys)
+	}
+	if f.Label != LabelPass {
+		t.Fatalf("label %q", f.Label)
+	}
+	full := planPass + "Verdict: PASS\nOverall Score: 0.900\n"
+	if ok, reason := admitPlan(full, true); !ok {
+		t.Fatalf("equal duplicate verdict/score refused: %s", reason)
+	}
+	if ok, _ := admitPlan(strings.Replace(planPass, "verdict: PASS", "verdict: FAIL", 1)+"Verdict: PASS\n", true); ok {
+		t.Fatalf("FAIL then appended PASS admitted")
+	}
+	if ok, _ := admitPlan(planPass+"overall_score: banana\n", true); ok {
+		t.Fatalf("unparseable duplicate score admitted")
 	}
 }
 

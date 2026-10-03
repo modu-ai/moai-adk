@@ -83,22 +83,33 @@ func founderRowRefusal(path string) string {
 	}
 	for _, block := range strings.Split("\n"+string(raw), "\n### ") {
 		var label, class, verdict string
-		hasDefault, hasVerdictLine := false, false
+		hasDefault, hasVerdictLine, conflict := false, false, false
+		// set records a field once; a later line with a different value is a
+		// conflict that refuses the row (fail closed), an equal repeat is fine.
+		set := func(dst *string, seen *bool, v string) {
+			if *seen && *dst != v {
+				conflict = true
+			}
+			*dst, *seen = v, true
+		}
+		var seenLabel, seenClass bool
 		for _, line := range strings.Split(block, "\n") {
 			line = strings.TrimSpace(line)
 			switch {
 			case strings.HasPrefix(line, "Label:"):
-				label = strings.TrimSpace(strings.TrimPrefix(line, "Label:"))
+				set(&label, &seenLabel, strings.TrimSpace(strings.TrimPrefix(line, "Label:")))
 			case strings.HasPrefix(line, "Class:"):
-				class = strings.TrimSpace(strings.TrimPrefix(line, "Class:"))
+				set(&class, &seenClass, strings.TrimSpace(strings.TrimPrefix(line, "Class:")))
 			case strings.HasPrefix(line, "Default:"):
 				hasDefault = true
 			case strings.HasPrefix(line, "Operator verdict:"):
-				hasVerdictLine = true
-				verdict = strings.TrimSpace(strings.TrimPrefix(line, "Operator verdict:"))
+				set(&verdict, &hasVerdictLine, strings.TrimSpace(strings.TrimPrefix(line, "Operator verdict:")))
 			}
 		}
 		head, _, _ := strings.Cut(strings.TrimSpace(block), "\n")
+		if conflict {
+			return fmt.Sprintf("row %q carries conflicting Label, Class, or Operator verdict lines", head)
+		}
 		// The DEFAULT-APPLIED restriction binds every row whatever its label:
 		// a relabelled row must not carry a default the rule never allowed.
 		if strings.HasPrefix(verdict, "DEFAULT-APPLIED") && (class != "implementation-level" || !hasDefault) {

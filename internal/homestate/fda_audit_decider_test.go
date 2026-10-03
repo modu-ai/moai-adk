@@ -157,6 +157,8 @@ func TestFDA_AuditDeciderFounderRows(t *testing.T) {
 		"DEFAULT-APPLIED on Class-less row": {"Label: FOUNDER\nDefault: a\nOperator verdict: DEFAULT-APPLIED x\n", false},
 		"DEFAULT-APPLIED without Default":   {"Label: FOUNDER\nClass: implementation-level\nOperator verdict: DEFAULT-APPLIED x\n", false},
 		"operator verdict on product-level": {"Label: FOUNDER\nClass: product-level\nOperator verdict: keep the CLI default\n", true},
+		"conflicting Class lines":           {"Label: FOUNDER\nClass: product-level\nClass: implementation-level\nDefault: a\nOperator verdict: DEFAULT-APPLIED x\n", false},
+		"equal duplicate Class lines":       {"Label: FOUNDER\nClass: implementation-level\nClass: implementation-level\nDefault: a\nOperator verdict: DEFAULT-APPLIED x\n", true},
 	}
 	for name, r := range rows {
 		t.Run(name, func(t *testing.T) {
