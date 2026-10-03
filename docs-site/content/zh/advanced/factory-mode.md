@@ -25,7 +25,7 @@ added_in: "v3.2"
 | 打开工厂主导会话 | `moai cc -f` · `moai glm -f`（长形式 `--factory`） | 主导 |
 | 以 lane 身份加入正在运行的工厂 | `moai cc -l` · `moai glm -l` · `moai codex -l`（长形式 `--lane`） | lane |
 
-- `-l` 会加入正在运行的工厂，并**自动领取下一个空闲的 lane 编号**。编号不由运维者挑选，被存活会话占用的编号会被跳过。没有正在运行的工厂时，加入会被拒绝。
+- `-l` 会加入正在运行的工厂，并**自动领取下一个 lane 编号**。编号不由运维者挑选，取存活 lane 中最大编号的下一个。没有正在运行的工厂时，加入会被拒绝。
 - `moai codex` 没有主导入口，只能以 lane 身份加入；主导会话要用 `moai cc -f` 或 `moai glm -f` 打开。
 - 一次启动最多带一个进入令牌，`-f` 与 `-l` 同时出现会报错。
 
@@ -33,7 +33,7 @@ added_in: "v3.2"
 # 主导：打开工厂主导会话
 $ moai cc -f
 
-# lane：各自在自己的终端里，按下一个空闲编号 (lane-1, lane-2, ...) 加入
+# lane：各自在自己的终端里，按下一个编号 (lane-1, lane-2, ...) 加入
 $ moai cc -l
 $ moai cc -l
 $ moai glm -l      # GLM 后端的 lane，形式相同
@@ -119,7 +119,7 @@ lane 在 `run` 结束、进入集成之前，还要走一个 `card-review` 阶�
 
 ## lane 编号与运行记录
 
-哪个编号被哪条 lane 占用，记录在 `~/.moai/db/<project-key>/factory/factory.db`。新 lane 只跳过**存活会话占用的编号**，领取下一个空闲编号；已死 lane 的 claim 不再占住编号。lane 编号是自动分配的，所以与 `--name`/`-n` 同时使用会报错。
+哪个编号被哪条 lane 占用，记录在 `~/.moai/db/<project-key>/factory/factory.db`。新 lane 领取存活 lane 中**最大编号的下一个**，不会回填中间的空位：存活的是 lane-1 和 lane-3 时，新 lane 是 lane-4。已死 lane 的 claim 不再占住编号。若这次运行记录了固定的 lane 数量，`moai codex -l` 会在该范围内领取最小的空闲编号。lane 编号是自动分配的，所以与 `--name`/`-n` 同时使用会报错。
 
 主导会话的 socket 开在 `/tmp/moai-socket-factory/<run-id>`，引导提示会告诉你实际路径。主导会话和 lane 会话启动时，会各在 `.moai/state/todo/<session-id>.json` 写入一份会话记录，包含角色、后端和进入时间。
 
