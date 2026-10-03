@@ -22,3 +22,10 @@ Label: FOUNDER
 Authority anchor: (none)
 Why unresolved: 현행 직접 문 루프에도 상한이 없고(`internal/cli/codex_launcher.go:1000-1005`), 관리 경로는 시작 실패 요인(`app-server` 하위 명령 부재, 10초 핸드셰이크 시간 초과)이 더 많다.
 Operator verdict: 상한 없음(현행과 같다). decided_by=leader · evidence_refs=리더 메시지, mission contract 11c79e1a · ladder_path=lead chat step 5 · 귀결: 관리 시작이 계속 실패하면 큐 카드가 연속으로 lease 되어 큐가 소진될 수 있다(progress.md Residual-risk).
+
+### Q1–Q3 결정과 plan-audit r2 처분(PASS-WITH-DEBT D2/D3)의 권한 근거
+
+Label: FOUNDER
+Authority anchor: (none in-tree — 감사자가 커밋된 트리에서 볼 수 없는 근거를 여기에 기록한다)
+Why unresolved: Q1–Q3 결정과 D2·D3 의 PASS-WITH-DEBT 처분이 리더 메시지로만 전달됐다.
+Operator verdict: 리더 결정, 미션 계약 11c79e1a(운영자 승인 2026-10-03), 리더 메시지로 전달. decided_by=leader · 범위: Q1·Q2·Q3 와 plan-audit r2(FAIL 0.88)의 PASS-WITH-DEBT 처분(D2/D3), 재감사 없이 run 진입. 부채는 progress.md "Run-phase first obligations" 에 있다.

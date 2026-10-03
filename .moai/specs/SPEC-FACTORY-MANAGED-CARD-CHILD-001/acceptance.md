@@ -10,7 +10,7 @@ tier: M
 
 # acceptance.md — AC-CC-001..013
 
-> 이 파일은 검증층이고 시나리오는 Given-When-Then 이다. 요구(GEARS)는 `spec.md` §C 의 REQ-CC-001..012 가 운반한다. 모든 AC 는 이진 판정이 가능하고 실제 codex 를 쓰지 않는다 — 가짜 App Server(기존 `fakeAppServerScript`, POSIX 전용)와 기존 이음새(`codexLookPath`, `codexDirectLaunchFn`, `managedFactoryCodexLaunchFunc`, `codexWorktreeAnchorLock`)만 쓴다.
+> 이 파일은 검증층이고 시나리오는 Given-When-Then 이다. 요구(GEARS)는 `spec.md` §C 의 REQ-CC-001..014 가 운반한다. 모든 AC 는 이진 판정이 가능하고 실제 codex 를 쓰지 않는다 — 가짜 App Server(기존 `fakeAppServerScript`, POSIX 전용)와 기존 이음새(`codexLookPath`, `codexDirectLaunchFn`, `managedFactoryCodexLaunchFunc`, `codexWorktreeAnchorLock`)만 쓴다.
 >
 > **명령 규약.** `-run` 패턴은 앵커형(`^…$`)이다. 파이프를 담은 명령은 §1.1 의 fenced 블록에 원문으로 적고 표에서는 AC id 로 가리킨다. 부하 규율상 `go test ./internal/cli` 전체는 로컬에서 돌리지 않는다.
 >

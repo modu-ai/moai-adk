@@ -71,7 +71,7 @@ tags: "factory, managed-session, codex, lane-loop, card-child, opt-in"
 ### C.3 브로커 바인딩과 재사용
 
 - **REQ-CC-007** — **When** a managed card-child session starts, the owner shall register the lane label's launch-pending endpoint under the launcher's process identity and bind it to the new session thread.
-- **REQ-CC-013** — **When** an earlier card's session of the same launcher process left a bound endpoint under the same lane label, the owner shall complete the registration of the next card's session and replace that endpoint.
+- **REQ-CC-013** (번호는 마지막이지만 의미상 REQ-CC-007 의 연속 카드 변형이라 이 절에 둔다) — **When** an earlier card's session of the same launcher process left a bound endpoint under the same lane label, the owner shall complete the registration of the next card's session and replace that endpoint.
 - **REQ-CC-014** — **When** a managed card-child session fails to start, no launch-pending row shall remain for its lane label.
 - **REQ-CC-008** — **While** a managed card-child session is up, the session shall deliver broker inbox messages, answer App Server requests, and isolate turn failures through the same owner code the plain managed launch uses (REQ-MS-003, REQ-MS-004, REQ-MH-001 through REQ-MH-009), and the change shall add no second implementation of those behaviors.
 
