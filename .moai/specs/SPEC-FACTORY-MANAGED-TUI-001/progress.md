@@ -325,7 +325,7 @@ All attributions are `(this run, this tree, HEAD ab6b59aac plus the uncommitted 
 
 sync_status: audit-ready (PASS-WITH-DEBT by the leader's convergence rule was granted at `c8cbf6f44`, before this hardening; the hardening is NOT re-audited; AC-MT-015 operator-held, NOT run)
 sync_complete_at: 2026-10-04
-sync_commit_sha: pending-backfill   # canonical placeholder: this commit cannot cite its own hash; backfilled in a following progress.md-only commit
+sync_commit_sha: 3ee1f6f6f   # backfilled in the following progress.md-only commit (a commit cannot cite its own hash)
 superseded_first_close: 56fcd510b (the previous re-close; its SHA is the `superseded_sync_commit_sha` line of the preceding block)
 head_at_signal: 8ce99230a (measured tree; the re-close edits were uncommitted when measured)
 tree: .claude/worktrees/t1408
