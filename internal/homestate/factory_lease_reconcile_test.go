@@ -166,14 +166,14 @@ func TestRecordWriteReconcileBoundedRereadsUnderLock(t *testing.T) {
 	}
 }
 
-// TestHomestateDoesNotImportKanban — AC-FAL-011's layering guard:
-// internal/homestate has no dependency path to internal/kanban through its
+// TestHomestateDoesNotImportFactory — AC-FAL-011's layering guard:
+// internal/homestate has no dependency path to internal/factory through its
 // NON-TEST files. The guard lists `go list -deps` of the package without
-// `-test`: a test file that imports internal/kanban (temp_parity_test.go does)
+// `-test`: a test file that imports internal/factory (temp_parity_test.go does)
 // does not turn it red (ledger L16).
-func TestHomestateDoesNotImportKanban(t *testing.T) {
+func TestHomestateDoesNotImportFactory(t *testing.T) {
 	const pkg = "github.com/modu-ai/moai-adk/internal/homestate"
-	const kanbanPkg = "github.com/modu-ai/moai-adk/internal/factory"
+	const factoryPkg = "github.com/modu-ai/moai-adk/internal/factory"
 	goBin, err := exec.LookPath("go")
 	if err != nil {
 		t.Fatalf("the go tool is not on PATH: %v", err)
@@ -184,7 +184,7 @@ func TestHomestateDoesNotImportKanban(t *testing.T) {
 	}
 	deps := strings.Fields(string(out))
 	// Positive control: the listing is real (it names the package itself and a
-	// dependency the package certainly has), so a missing kanban line is a
+	// dependency the package certainly has), so a missing factory line is a
 	// measurement and not an empty listing.
 	hasSelf, hasSQL := false, false
 	for _, d := range deps {
@@ -193,8 +193,8 @@ func TestHomestateDoesNotImportKanban(t *testing.T) {
 			hasSelf = true
 		case "database/sql":
 			hasSQL = true
-		case kanbanPkg:
-			t.Errorf("internal/homestate's non-test files depend on %s (a layering violation: the queue lock sits above the record)", kanbanPkg)
+		case factoryPkg:
+			t.Errorf("internal/homestate's non-test files depend on %s (a layering violation: the queue lock sits above the record)", factoryPkg)
 		}
 	}
 	if !hasSelf || !hasSQL {
