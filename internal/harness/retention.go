@@ -220,7 +220,7 @@ func (r *Retention) prune(retentionDays int, now time.Time) error {
 	cutoff := now.AddDate(0, 0, -retentionDays)
 
 	// Read log file
-	kept, stale, err := partitionEvents(r.logPath, cutoff)
+	kept, stale, classifiedEnd, err := partitionEvents(r.logPath, cutoff)
 	if err != nil {
 		return fmt.Errorf("retention: 이벤트 분류 실패: %w", err)
 	}
@@ -236,8 +236,8 @@ func (r *Retention) prune(retentionDays int, now time.Time) error {
 		return fmt.Errorf("retention: 아카이브 실패: %w", err)
 	}
 
-	// Overwrite log file with only kept events
-	if err := overwriteWithEvents(r.logPath, kept); err != nil {
+	// Overwrite log file with the kept events plus whatever the log gained past the classified prefix
+	if err := overwriteWithEvents(r.logPath, kept, classifiedEnd); err != nil {
 		return fmt.Errorf("retention: 로그 파일 갱신 실패: %w", err)
 	}
 
@@ -254,19 +254,45 @@ type logLine struct {
 	raw string
 }
 
-// partitionEvents reads log file and classifies kept/stale events based on cutoff.
+// scanTerminatedLines is bufio.ScanLines restricted to lines that end in a newline: a final line
+// without its terminator is never returned, and *consumed counts the bytes of the lines returned.
+func scanTerminatedLines(consumed *int64) bufio.SplitFunc {
+	return func(data []byte, atEOF bool) (int, []byte, error) {
+		advance, token, err := bufio.ScanLines(data, atEOF)
+		if advance > 0 && data[advance-1] != '\n' {
+			return 0, nil, nil
+		}
+		*consumed += int64(advance)
+		return advance, token, err
+	}
+}
+
+// partitionEvents reads the log file and classifies kept/stale events based on cutoff.
 // A line that fails JSON parsing is kept, in file order, as its original text.
-func partitionEvents(logPath string, cutoff time.Time) (kept []logLine, stale []Event, err error) {
+//
+// Only the prefix the log holds when it is opened is read, and only whole newline-terminated lines
+// inside it are classified. classifiedEnd is the byte offset just past the last of them: the bytes
+// from there on (a final line without a terminator, and anything appended later) are not classified.
+//
+// @MX:NOTE: [AUTO] classifiedEnd is the boundary overwriteWithEvents carries the log tail from; a
+// line is never split between the classified part and the tail.
+func partitionEvents(logPath string, cutoff time.Time) (kept []logLine, stale []Event, classifiedEnd int64, err error) {
 	f, err := os.Open(logPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil, nil
+			return nil, nil, 0, nil
 		}
-		return nil, nil, fmt.Errorf("파일 열기: %w", err)
+		return nil, nil, 0, fmt.Errorf("파일 열기: %w", err)
 	}
 	defer func() { _ = f.Close() }()
 
-	scanner := bufio.NewScanner(f)
+	info, err := f.Stat()
+	if err != nil {
+		return nil, nil, 0, fmt.Errorf("파일 상태: %w", err)
+	}
+
+	scanner := bufio.NewScanner(io.NewSectionReader(f, 0, info.Size()))
+	scanner.Split(scanTerminatedLines(&classifiedEnd))
 	for scanner.Scan() {
 		text := scanner.Text()
 		line := strings.TrimSpace(text)
@@ -286,9 +312,9 @@ func partitionEvents(logPath string, cutoff time.Time) (kept []logLine, stale []
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, nil, fmt.Errorf("파일 스캔: %w", err)
+		return nil, nil, 0, fmt.Errorf("파일 스캔: %w", err)
 	}
-	return kept, stale, nil
+	return kept, stale, classifiedEnd, nil
 }
 
 // archiveEvents adds stale events to monthly gzip archives.
@@ -347,8 +373,35 @@ func appendToGzip(archivePath string, events []Event) error {
 	return nil
 }
 
-// overwriteWithEvents overwrites log file with only kept lines.
-func overwriteWithEvents(logPath string, lines []logLine) error {
+// appendLogTail copies, verbatim, every byte the log holds from offset from to its current end into
+// dst, and adds one newline when the copied bytes are non-empty and do not end with one, so the
+// replacement log stays empty or newline-terminated.
+func appendLogTail(dst io.Writer, logPath string, from int64) error {
+	src, err := os.Open(logPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = src.Close() }()
+	if _, err := src.Seek(from, io.SeekStart); err != nil {
+		return err
+	}
+	tail, err := io.ReadAll(src)
+	if err != nil {
+		return err
+	}
+	if len(tail) == 0 {
+		return nil
+	}
+	if tail[len(tail)-1] != '\n' {
+		tail = append(tail, '\n')
+	}
+	_, err = dst.Write(tail)
+	return err
+}
+
+// overwriteWithEvents overwrites the log file with the kept lines followed by the log tail from
+// tailFrom on (see partitionEvents). The tail is read once, immediately before the rename.
+func overwriteWithEvents(logPath string, lines []logLine, tailFrom int64) error {
 	// Write to temporary file first, then atomic replacement
 	dir := filepath.Dir(logPath)
 	tmp, err := os.CreateTemp(dir, tmpPattern)
@@ -372,6 +425,12 @@ func overwriteWithEvents(logPath string, lines []logLine) error {
 			_ = os.Remove(tmpPath)
 			return fmt.Errorf("임시 파일 인코딩: %w", err)
 		}
+	}
+
+	if err := appendLogTail(tmp, logPath, tailFrom); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("log tail carry: %w", err)
 	}
 
 	if err := tmp.Close(); err != nil {
