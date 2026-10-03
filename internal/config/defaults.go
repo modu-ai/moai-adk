@@ -113,8 +113,9 @@ const (
 	// DefaultManagedCodexReadyTimeout bounds one Codex App Server handshake —
 	// process spawn, /readyz wait, loopback WS dial, initialize, thread start
 	// (SPEC-FACTORY-MANAGED-SESSION-001 AC-MS-001). It also bounds the WS
-	// handshake itself.
-	DefaultManagedCodexReadyTimeout = 10 * time.Second
+	// handshake itself. UNMEASURED: the 30 s value is a relaxation of the
+	// former 10 s with no cold-start data behind it (card t1410, F9).
+	DefaultManagedCodexReadyTimeout = 30 * time.Second
 	// DefaultManagedCodexTurnTimeout bounds one injected turn: a turn that
 	// never completes fails the delivery instead of holding the serial queue
 	// forever; the store's claim lease owns redelivery afterwards.
