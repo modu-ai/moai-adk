@@ -23,8 +23,9 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
-// templatesDir is the template tree root relative to this package's dir.
-const templatesDir = "../templates"
+// rawTemplateDir is the raw embed layout root (catalog.yaml beside templates/)
+// relative to this package's dir.
+const rawTemplateDir = ".."
 
 // goldenFiles maps each emitted path to its shape-pin file under testdata.
 var goldenFiles = map[string]string{
@@ -77,11 +78,12 @@ func TestManifestsGolden(t *testing.T) {
 	}
 }
 
-// TestGoldenCommittedArtifactsMatchEmission is the drift guard: every file
-// the emitter produces over the real template tree must be byte-identical to
-// the committed file at the repository root.
+// TestGoldenCommittedArtifactsMatchEmission is the drift guard: the emitter run
+// over the real template tree must equal the committed tree at the repository
+// root — bytes, modes, missing files and extra files (REQ-009). With
+// PLUGIN_EMIT_UPDATE=1 it regenerates the committed tree instead.
 func TestGoldenCommittedArtifactsMatchEmission(t *testing.T) {
-	pub, err := pluginemit.Emit(os.DirFS(templatesDir), pluginemit.DefaultOptions())
+	pub, err := pluginemit.Emit(os.DirFS(rawTemplateDir), pluginemit.DefaultOptions())
 	if err != nil {
 		t.Fatalf("Emit over the real template tree: %v", err)
 	}
@@ -89,31 +91,19 @@ func TestGoldenCommittedArtifactsMatchEmission(t *testing.T) {
 		t.Fatal("emitted set is empty — nothing was compared")
 	}
 
-	paths := make([]string, 0, len(pub.Files))
-	for p := range pub.Files {
-		paths = append(paths, p)
+	if updateMode() {
+		if err := pluginemit.Write(pub, repoRoot); err != nil {
+			t.Fatalf("update write: %v", err)
+		}
+		t.Logf("regenerated %d files", len(pub.Files))
+		return
 	}
-	sort.Strings(paths)
 
-	for _, p := range paths {
-		dst := filepath.Join(repoRoot, filepath.FromSlash(p))
-		if updateMode() {
-			if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-				t.Fatalf("update mkdir: %v", err)
-			}
-			if err := os.WriteFile(dst, pub.Files[p], 0o644); err != nil {
-				t.Fatalf("update write %s: %v", p, err)
-			}
-			t.Logf("updated %s", p)
-			continue
-		}
-		committed, err := os.ReadFile(dst)
-		if err != nil {
-			t.Errorf("%s: committed artifact missing (%v) — run `make plugin-emit`", p, err)
-			continue
-		}
-		if string(committed) != string(pub.Files[p]) {
-			t.Errorf("%s: committed artifact differs from emission — run `make plugin-emit` or stop hand-editing", p)
-		}
+	diffs, err := pluginemit.Drift(pub, repoRoot)
+	if err != nil {
+		t.Fatalf("Drift: %v", err)
+	}
+	for _, d := range diffs {
+		t.Errorf("%s: %s — run `make plugin-emit` or stop hand-editing", d.Path, d.Kind)
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -50,7 +51,7 @@ const (
 type Options struct {
 	// Version is the version SSOT value, with or without a leading "v".
 	Version string
-	// MCPSource is the fs-relative path of the template .mcp.json.
+	// MCPSource is the path of the template .mcp.json inside the tier view.
 	MCPSource string
 }
 
@@ -69,18 +70,29 @@ type Publication struct {
 	// Files maps each repository-root-relative path (forward slashes) to its
 	// bytes.
 	Files map[string][]byte
+	// Modes maps every path of Files to the file mode it is committed at.
+	Modes map[string]fs.FileMode
 }
 
 // Emit produces the four manifests from the template tree and the version.
-// On any error it returns (nil, err): no partial set.
+// raw is the raw embed layout: catalog.yaml at its root and the template tree
+// under templates/. On any error it returns (nil, err): no partial set.
 //
 // @MX:NOTE: sole entry point of the plugin generator; the golden tests and `make plugin-emit-check` judge its output
-func Emit(fsys fs.FS, opts Options) (*Publication, error) {
+func Emit(raw fs.FS, opts Options) (*Publication, error) {
 	ver := strings.TrimPrefix(opts.Version, "v")
 	if ver == "" {
 		return nil, fmt.Errorf("pluginemit: empty version")
 	}
-	mcp, err := DeriveMCPEntry(fsys, opts.MCPSource)
+	cat, err := template.LoadCatalog(raw)
+	if err != nil {
+		return nil, fmt.Errorf("pluginemit: %w", err)
+	}
+	view, err := template.SlimFS(raw, cat)
+	if err != nil {
+		return nil, fmt.Errorf("pluginemit: tier view: %w", err)
+	}
+	mcp, err := DeriveMCPEntry(view, opts.MCPSource)
 	if err != nil {
 		return nil, err
 	}
@@ -91,13 +103,27 @@ func Emit(fsys fs.FS, opts Options) (*Publication, error) {
 		ClaudePluginPath:      claudePlugin(ver),
 		CodexPluginPath:       codexPlugin(ver, mcp),
 	}
-	pub := &Publication{Files: make(map[string][]byte, len(manifests))}
+	pub := &Publication{
+		Files: make(map[string][]byte, len(manifests)),
+		Modes: make(map[string]fs.FileMode, len(manifests)),
+	}
 	for path, m := range manifests {
 		data, err := marshal(m)
 		if err != nil {
 			return nil, fmt.Errorf("pluginemit: marshal %s: %w", path, err)
 		}
 		pub.Files[path] = data
+		pub.Modes[path] = modeFor(path)
 	}
 	return pub, nil
+}
+
+// modeFor is the deployer's mode rule (internal/template/deployer.go): 0755 for
+// a .sh file, 0644 for every other file. The embedded template tree carries no
+// mode to copy (embed.FS reports 0444), so the suffix is the only rule it offers.
+func modeFor(path string) fs.FileMode {
+	if strings.HasSuffix(path, ".sh") {
+		return 0o755
+	}
+	return 0o644
 }

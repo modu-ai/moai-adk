@@ -26,9 +26,23 @@ const (
 	codexPluginPath       = "plugins/moai/.codex-plugin/plugin.json"
 )
 
-// syntheticTemplate builds a template tree holding only the given .mcp.json.
+// emptyCatalog is a catalog.yaml with no entries.
+const emptyCatalog = "version: 1.0.0\ncatalog:\n  core:\n    skills: []\n"
+
+// syntheticRaw builds the raw embed layout the generator reads: catalog.yaml at
+// the root and the template tree files under templates/.
+func syntheticRaw(catalog string, tree map[string]string) fs.FS {
+	m := fstest.MapFS{"catalog.yaml": &fstest.MapFile{Data: []byte(catalog)}}
+	for p, content := range tree {
+		m["templates/"+p] = &fstest.MapFile{Data: []byte(content)}
+	}
+	return m
+}
+
+// syntheticTemplate builds a raw layout whose template tree holds only the
+// given .mcp.json.
 func syntheticTemplate(mcpJSON string) fs.FS {
-	return fstest.MapFS{".mcp.json": &fstest.MapFile{Data: []byte(mcpJSON)}}
+	return syntheticRaw(emptyCatalog, map[string]string{".mcp.json": mcpJSON})
 }
 
 const defaultMCPJSON = `{

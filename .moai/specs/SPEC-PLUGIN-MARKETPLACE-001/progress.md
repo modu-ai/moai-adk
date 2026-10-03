@@ -600,6 +600,42 @@ Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketpla
 - Strict validation and Codex acceptance are shown at claude 2.1.288 and codex 0.160.0 only (RK-13).
 - The payload (skills, commands, `.mcp.json`) does not exist yet, so the manifest descriptions describe components M2 adds; until M2 lands an install of this tree carries a plugin with no components.
 
+### M2 (payload derivation, layout, discoverability, drift gate)
+
+Run-phase worker: `Agent(general-purpose)` carrying the manager-develop role text, `cycle_type=tdd`, in the card worktree. Scope: M2 only (REQ-004 to REQ-009; exit AC-004 to AC-009). M3 and M4 are not started.
+
+#### Pre-flight (recorded before any edit, 2026-10-03)
+
+```
+$ git rev-parse --show-toplevel
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435
+$ git rev-parse --short HEAD
+b49894ef3
+$ git branch --show-current
+WT-marketplace-core-plugin
+$ git status --short
+(empty)
+$ env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'
+(empty; grep exit 1)                                         # BI-1, start of the first measurement batch
+$ go build ./...                                             # exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                   # exit 0
+$ go test ./internal/template/pluginemit/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template/pluginemit	0.290s     # the M1 baseline, green
+$ grep -c moai-factory-foreman internal/template/catalog.yaml
+0                                                            # t1399 not landed
+$ sh scripts/protected-set-hash.sh                           # before-line, before the first claude command
+PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190
+```
+
+B2 cross-SPEC scan (`grep -rn "Retired\|superseded" internal/template --include='*.go' -l`): nineteen unrelated files (model policy, retired wrappers and keys, tool catalog, agent frontmatter audits and similar); none concerns a plugin or marketplace emitter, so no conflict with extending `internal/template/pluginemit`.
+
+#### Design decisions taken in M2 (read from the SPEC text, recorded because the plan leaves the seam open)
+
+- `Emit` now takes the **raw embed layout** (`catalog.yaml` beside `templates/`), loads the catalog with `template.LoadCatalog` and applies the very tier view `moai init` uses, `template.SlimFS`, so the generator holds the filter as data and a tier-blind generator is red on the synthetic non-core entry (AC-004 (a)). The M1 test helpers (`syntheticTemplate`, the golden test's source directory) were adapted to that layout; no M1 assertion changed.
+- `Publication` gains `Modes` (path to mode, the deployer rule `.sh` 0755 otherwise 0644); `drift.go` holds `Drift` (read-only: bytes, mode, missing, extra) and `Write` (the one regeneration path: writes, repairs modes with `Chmod`, removes extras inside the three generated roots). The mode comparison is skipped on Windows (no execute bit; `deployer.go` likewise just passes a perm and Windows ignores the bit).
+
+_(Commits, claim, evidence, baseline attribution, gaps and residual risk follow in this subsection as the milestone completes.)_
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
