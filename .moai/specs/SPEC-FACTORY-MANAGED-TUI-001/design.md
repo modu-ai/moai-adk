@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "design.md — TUI attach design decisions"
-version: "0.3.3"
+version: "0.3.4"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -105,6 +105,7 @@ The TUI draws on the terminal; any other writer corrupts the screen. Three write
 - **Mechanism.** The owner entry already has the single log seam `managedLogOutput` (HARDEN-001's only test seam); production stores a synchronized writer there while attached and clears it as soon as the TUI child has been reaped (D-8 step 2), so the teardown lines that follow go to the terminal again. The App Server child keeps writing to the file for its whole life, because a child's stderr is fixed when it starts. If the TUI then fails to start, the headless fallback is "as today" except for that stderr: it stays in the file and the launcher prints the path once (REQ-MT-004). The driver's direct `Factory inbox:` line moves onto `managedLogf`. The App Server child's stderr is chosen before `Start`, which is why the attach decision (D-4) is made before `Start`: the `cmd.Stderr` line is the only edit in the `Start` region (D-9).
 - **Why a file and not `/dev/null`.** The HARDEN-001 log lines are the only evidence of a declined MoAI elicitation, which is the silent redelivery loop that SPEC was written to expose. Discarding them would re-open that gap. They are not on the screen any more, and the documentation must say where they are (REQ-MT-013, known debt 7).
 - **Writer safety.** The sink is a mutex-guarded writer (HARDEN-001's rule that the atomic pointer protects the load only).
+- **Opening the file (0.3.4).** `.moai` and `.moai/logs` are walked with `Lstat`; a symlink or non-directory component is refused and the session runs headless with one stderr line. The file is created new (`O_APPEND|O_CREATE|O_EXCL`, 0600, unique temporary name) and renamed over the log name, so a hard link or symlink at that name is replaced and never written through; a pre-existing regular file's content is copied in. Remaining limits are spec.md §H item 16.
 
 **Rejected.** (a) Leave logs on stderr — corrupts the TUI. (b) Print them into the TUI — no channel. (c) `/dev/null`. (d) A new log subsystem — one file and the existing seam suffice.
 
