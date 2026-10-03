@@ -2,7 +2,7 @@
 id: SPEC-INIT-SHRINK-001
 title: "Shrink moai init to a thin project deploy — skills and commands ride the plugin, update scope follows the deploy mode, existing projects migrate with backup"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-04
 author: manager-spec
