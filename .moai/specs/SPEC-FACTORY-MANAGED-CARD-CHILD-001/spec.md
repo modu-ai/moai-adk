@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-MANAGED-CARD-CHILD-001
 title: "Codex 레인 카드 자식 세션을 관리 경로에 연결 — `moai codex -f lane` 의 카드별 자식이 관리 Codex 소유자로 뜬다 (SPEC-FACTORY-MANAGED-SESSION-001 후속)"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
