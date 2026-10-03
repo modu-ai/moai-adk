@@ -69,6 +69,13 @@ func managedLoopbackURL(raw string) error {
 	return nil
 }
 
+// Test seams: tests force the early Start failures that a real filesystem and
+// loopback cannot produce on demand.
+var (
+	managedCodexWriteToken  = os.WriteFile
+	managedCodexAllocateURL = managedCodexAppEndpoint
+)
+
 // managedCodexAppEndpoint allocates the ephemeral loopback port the app
 // server listens on. The owner closes its probe listener before the child
 // binds — the standard ephemeral-port handoff, same shape as the reference.
@@ -674,11 +681,19 @@ func (s *managedCodexSession) Start() error {
 		return err
 	}
 	s.tokenDir = tokenDir
+	// Until the child exists, Close is a no-op, so any failure before
+	// cmd.Start must drop the token directory here.
+	defer func() {
+		if !s.started {
+			_ = os.RemoveAll(s.tokenDir)
+			s.tokenDir = ""
+		}
+	}()
 	tokenFile := filepath.Join(tokenDir, "token")
-	if err := os.WriteFile(tokenFile, []byte(token), 0o600); err != nil {
+	if err := managedCodexWriteToken(tokenFile, []byte(token), 0o600); err != nil {
 		return err
 	}
-	url, err := managedCodexAppEndpoint()
+	url, err := managedCodexAllocateURL()
 	if err != nil {
 		return err
 	}
@@ -688,10 +703,6 @@ func (s *managedCodexSession) Start() error {
 	s.cmd.Dir = s.dir
 	s.cmd.Stderr = os.Stderr
 	if err := s.cmd.Start(); err != nil {
-		// No child exists, so the deferred Close will not run its teardown:
-		// drop the token directory here instead.
-		_ = os.RemoveAll(s.tokenDir)
-		s.tokenDir = ""
 		return fmt.Errorf("start managed Factory codex app server: %w", err)
 	}
 	s.started = true
