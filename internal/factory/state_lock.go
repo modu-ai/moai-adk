@@ -105,7 +105,7 @@ func checkStateLockAncestors(lockPath string) error {
 // (defense in depth); a swap between this check and the open stays the
 // accepted residual (card t1458).
 //
-// @MX:ANCHOR: [AUTO] Single pre-create guard for every caller that makes a state-lock directory (AcquireFactoryStepLock).
+// @MX:ANCHOR: [AUTO] Single pre-create guard for every caller that makes a state-lock directory (AcquireFactoryStepLock and BacklogStore.acquireLock, the queue lock).
 // @MX:REASON: a MkdirAll that runs before this check mutates the directory a symlinked ancestor points at, whatever the opener later refuses (card t1458 P2).
 // @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
 func ensureStateLockDir(lockPath string) error {

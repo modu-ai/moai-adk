@@ -36,17 +36,18 @@ type lockEntryPoint struct {
 	// guardsDirCreation is true when the entry point runs the pre-create
 	// ancestor check (ensureStateLockDir) before making the lock's parent
 	// directories, so a symlinked ancestor is refused without any write
-	// through the link. The queue lock creates its directory itself before
-	// the opener runs, so it is excluded from the no-write tests.
+	// through the link. Both entries (the queue lock via acquireLock, and the
+	// factory step lock) run it, so both join the no-write tests.
 	guardsDirCreation bool
 }
 
 func lockEntryPoints() []lockEntryPoint {
 	return []lockEntryPoint{
 		{
-			name:   "queue-lock",
-			relDir: filepath.Join(".moai", "state"),
-			file:   backlogLockFileName,
+			name:              "queue-lock",
+			relDir:            filepath.Join(".moai", "state"),
+			file:              backlogLockFileName,
+			guardsDirCreation: true,
 			acquire: func(root string) (func() error, error) {
 				store := NewBacklogStore(filepath.Join(root, ".moai", "state", backlogFileName))
 				l, err := store.acquireLock()

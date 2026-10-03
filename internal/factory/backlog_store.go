@@ -1300,7 +1300,13 @@ func derefOr(s *string, fallback string) string {
 // genuinely stuck holder surfaces as an error rather than a hang. The timeout
 // error names the lock artifact so the operator can act on the right file.
 func (s *BacklogStore) acquireLock() (*StateLock, error) {
-	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
+	// The ancestor check runs before the directory is created: MkdirAll follows
+	// a symlinked `.moai` and would create the queue directory outside the
+	// project before the opener refused (card t1458).
+	if err := ensureStateLockDir(s.LockPath()); err != nil {
+		if errors.Is(err, ErrStateLockUnsafePath) {
+			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), err)
+		}
 		return nil, fmt.Errorf("mutate backlog %s: creating dir: %w", s.EnginePath(), err)
 	}
 	var lastErr error

@@ -503,6 +503,25 @@ run and released after each: `moai slot status` free). Summary files `wm6-final-
 - **Gaps.** No Windows execution. No `codex_review` pass from this role. Other `MkdirAll` callers of kanban state (`board_store.go`,
   `board_recover.go`, `record.go`) were not examined or changed.
 
+### P2 follow-up on the queue-lock entry after the develop rename
+
+- **Found.** Develop retired `AcquireBoardLock`, which removed the board-lock entry the P2 repair guarded, but `BacklogStore.acquireLock` (the queue lock behind every `Mutate` and `WithLock`) still opened with a bare `os.MkdirAll(filepath.Dir(s.path))`. With `.moai` a symlink to an external directory, that call created `state` OUTSIDE the project before the opener refused.
+- **Fix.** `acquireLock` now calls `ensureStateLockDir(s.LockPath())` (the pre-create ancestor check, same depth rule: up to and including `.moai`). A refusal wraps `ErrStateLockUnsafePath` under the existing `mutate backlog ...: lock ...:` wording; a plain mkdir failure keeps the `creating dir` wording. The `@MX:ANCHOR` on `ensureStateLockDir` names the queue-lock caller; the queue-lock entry in `lockEntryPoints` now sets `guardsDirCreation`, so the existing no-write tests cover it too.
+- **Verification** (commit 49d0dfdb1 = RED, then the fix commit; evidence git-ignored under `.moai/reports/t1458/q2-*.txt`):
+
+| Check | Result |
+|---|---|
+| RED at HEAD 91121c4d2 (`^TestQueueLock`) | exit 1, `external dir ... gained entries through the link: state` (Mutate, WithLock) |
+| new + `^TestStateLock` tests | exit 0, 46 PASS |
+| `go test -race ./internal/factory/...` | exit 0 |
+| `go test -race ./internal/homestate/...` | exit 0 |
+| internal/cli lease selectors under -race | exit 0 (slot `internal-cli-suite` held, released) |
+| AC-FAL-010 top-level counts | 36+2+1+6+6+16+1 = 68 PASS, 0 FAIL, 0 SKIP; sorted name list identical to `baseline-list.txt` (its one extra line is the `ok` summary) |
+| gofmt, go vet, golangci-lint v2.1.6, go build ./..., GOOS=windows build and vet (factory, cli, homestate) | all exit 0, 0 issues |
+| mutant: bare `MkdirAll` back in `acquireLock` (`go test -overlay`) | `^TestQueueLockSymlinkedMoaiCreatesNothing` RED (Mutate, WithLock); tracked file sha256 and `git status` identical before and after |
+
+- **Gaps.** No Windows execution. The `.moai/state` symlink variant stays GREEN at HEAD as well (MkdirAll on an existing link creates nothing; the opener refuses), so it is a regression guard, not a RED proof.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: complete
