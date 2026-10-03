@@ -52,8 +52,8 @@ var factoryLeaseAtPassEntry = func() {}
 // (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3). The claim wait cap is the sum of
 // the claim's context deadline and the busy timeout its record connection
 // carries; it must stay within one third of the queue lock's wait budget
-// (kanban.LockWaitBudget). The worktree-step constants are wired by the
-// milestone that serializes that step.
+// (kanban.LockWaitBudget). The worktree step takes its lock for at most
+// factoryWorktreeStepWait (factoryCreateAndRenameWorktree).
 const (
 	factoryLeaseClaimDeadline    = 800 * time.Millisecond
 	factoryLeaseClaimBusyTimeout = 200 * time.Millisecond
@@ -520,13 +520,9 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 		return "", false, errors.New("worktree creator is not initialized")
 	}
 	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID))
-	wt, err := worktree.WorktreeCreator(card.CardID, out)
+	wt, err := factoryCreateAndRenameWorktree(root, card.CardID, slug, out)
 	if err != nil {
-		return "", false, fmt.Errorf("create the card worktree: %w", err)
-	}
-	rename := exec.Command("git", "-C", wt, "branch", "-m", SessionWorktreeBranchPrefix+slug)
-	if outb, err := rename.CombinedOutput(); err != nil {
-		return "", false, fmt.Errorf("rename the card worktree branch: %v: %s", err, strings.TrimSpace(string(outb)))
+		return "", false, err
 	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
@@ -537,6 +533,32 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 		return "", false, fmt.Errorf("record the card worktree: %w", err)
 	}
 	return wt, true, nil
+}
+
+// factoryCreateAndRenameWorktree runs the creator and the in-place branch
+// rename under the worktree-step lock (SPEC-FACTORY-ATOMIC-LEASE-001 plan D3):
+// two lanes creating a worktree at the same instant collided in git's own ref
+// and worktree bookkeeping, so the step is serialized across processes. The
+// lock is released before the caller's record write, and a wait that runs out
+// fails the step with nothing created.
+//
+// @MX:NOTE: [AUTO] The lock covers the creator and `git branch -m` only; the record write stays outside it (D3, lock order).
+// @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
+func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (string, error) {
+	release, err := kanban.AcquireFactoryStepLock(root, factoryWorktreeStepWait)
+	if err != nil {
+		return "", fmt.Errorf("serialize the card worktree step: %w", err)
+	}
+	defer func() { _ = release() }()
+	wt, err := worktree.WorktreeCreator(cardID, out)
+	if err != nil {
+		return "", fmt.Errorf("create the card worktree: %w", err)
+	}
+	rename := exec.Command("git", "-C", wt, "branch", "-m", SessionWorktreeBranchPrefix+slug)
+	if outb, err := rename.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("rename the card worktree branch: %v: %s", err, strings.TrimSpace(string(outb)))
+	}
+	return wt, nil
 }
 
 // factoryNextSelectAndLease runs one selection pass. raced reports that

@@ -351,6 +351,11 @@ func TestFactoryLeaseSectionAllowedSet(t *testing.T) {
 			if dbPath, err := homestate.FactoryDBPath(root); err == nil {
 				allow(dbPath)
 			}
+			// The creator stub runs inside the worktree step, which takes its own
+			// lock after the section has ended (plan D3); that lock's artifact is
+			// the step's file, not the section's, and the snapshot at the stub
+			// reaches past the section into the step.
+			allow(filepath.Join(root, ".moai", "state", "factory-worktree-step.lock"))
 			var outside []string
 			for p, st := range atStub {
 				if b, ok := before[p]; ok && b == st {
