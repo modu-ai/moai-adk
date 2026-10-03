@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-GATE-SCOPING-001
 title: "codex 리뷰 게이트의 비카드 검사 한계를 primary 체크아웃과 런타임 관리 표면으로 좁힌다"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -23,6 +23,7 @@ tags: "codex, review-gate, stop-hook, primary-checkout, runtime-drift, sync-gate
 
 - 2026-10-03 · v0.1.0 · manager-spec · 최초 작성. 측정 원천: 본 트리 코드 좌표 직독(측정 HEAD 핀: `2de0a2cb6`, 브랜치 `WT-codex-gate-scope`, 2026-10-03) + primary 체크아웃의 카드 t1395 게이트 차단 처분 기록 9건(§A.1, 읽기 전용 인용). 인접 SPEC 충돌 사전 검사: `SPEC-CODEX-GATE-SCOPE-001` 존재 확인( completed, t1383 — 본 SPEC은 §F.5의 관계로 흡수) 및 `SPEC-CODEX-GATE-SCOPING-001` 공석 확인. Facet-1 설계 결정(배제 방향)은 §F.1에 기록.
 - 2026-10-03 · v0.1.1 · manager-spec · plan-audit iteration-1 FAIL 수리(D1-D5). D1: release-blocking AC의 RED-now를 현 트리(`2de0a2cb613b04765a1554f86685a3b48e0be806`)에서 실제 관측 — plan 단계 저작 테스트(`internal/cli/codex_review_gate_primary_scope_red_test.go`, `internal/template/hook_gate_reports_exclude_test.go`) 2파일, 원문 stdout·exit 코드는 acceptance.md §D.0 관측 장부로. 구현 전 적색이 정의상 존재할 수 없는 보존 기준 4건(acceptance AC-002·003·009·012)은 §2.1 undecidable 처분에 따라 regression-guard로 재분류(acceptance §D.1). D2: `primary_scope` 판독 결과별 처분표를 §F.2에 확정하고 세 산출물을 그 표에 정합, §F.2의 REQ-CGSC-006 인용 과잉을 정정. D3: REQ-CGSC-009의 수집 경로 열거에 맞춰 plan M4 수단을 델타 삼팔 pathspec 확장으로 정합. D4: AC-CGSC-012의 계수 검사를 줄 수가 아닌 항목 멤버십 기준으로 교체(실측 baseline 반영). D5: §A.4 주석 좌표 :938/:954로 정정.
+- 2026-10-03 · v0.1.2 · manager-spec · plan-audit iteration-2 FAIL 수리(D6-D10) — 리더 판정(범위 축소 후 3회차, `.moai/reports/t1404/plan-decision-iter2.md`) 지시 범위 한정. D6: AC-CGSC-010 대조군 `root_fixture_still_gates`를 **재정의**(삭제 아님) — reports 배제가 이름 짓지 않는 비-reports 파손 변경(루트 모듈 미추적 깨진 .go + 루트 `BROKEN` 표식)으로 게이트하고 stub 키잉을 경로 하위문자열에서 `BROKEN` 표식 파일로 바꿔 올바른 M4 구현에서도 성립; 올바른-구현 성립은 M4 시뮬레이션(WCI_EXCLUDES 항목 추가 + ①② pathspec 확장)으로 두 세계 관측(acceptance §D.0 셀). D7: AC-CGSC-012의 `grep -c` 이중 -e 계측을 레이아웃 독립 존재 검사로 분할 — reports 항목 존재(오늘 적색, baseline 0)는 AC-CGSC-011로 이관, state 항목 존재(상시 green)는 잔류, 「20항목 불변」은 hook_gate_* 테스트 green+쌍둔 패리티로 명시 귀속, 「항목 기준」 모순 문언 삭제. D8: AC-CGSC-001에 스킵 행 내용 단언(basis가 primary 사유·트리 경로 운반), AC-CGSC-008에 재분류 행 단언(REQ-CGSC-011 채널 포획), AC-CGSC-010 픽스처에 ②팔 실입력(2커밋+미커밋 수정)과 미러 tracked 팔 추가, AC-CGSC-007의 `.claude/settings.local.json` 요구 삭제(REQ 열거 밖 — 리더 범위 축소). D9: acceptance 헤더·§D.1·spec §D의 클래스 문언을 삼클래스로 상호 정렬. D10: §D.0 헤더에 관측의 물리 상태(관측 HEAD+미커밋 테스트 파일, blob 해시, 재현 트리) 보충. 개정 테스트 5건 전부 재관측(HEAD `9ef1cbedc3082f97ac74cf6162bc1e2fd0a55324`, blob `5779dd07`·`1aa630c3`) — §D.0 셀 전면 갱신.
 
 ---
 
@@ -131,7 +132,7 @@ The sync-phase quality gate's change-collection exclusion set shall exclude `.mo
 
 ## §D 실행 순서 구속
 
-회귀선(REQ-CGSC-005·006·010 — 현행 경로)이 초록으로 고정된 뒤에 새 정책과 배제를 얹는다. 선행 SPEC §D와 같은 이유다: 회귀선 없는 수정은 고친 것과 깨뜨린 것을 구별하지 못한다. 각 요구는 RED-first(구현 전 실패 관측)로 채택한다.
+회귀선(REQ-CGSC-005·006·010 — 현행 경로)이 초록으로 고정된 뒤에 새 정책과 배제를 얹는다. 선행 SPEC §D와 같은 이유다: 회귀선 없는 수정은 고친 것과 깨뜨린 것을 구별하지 못한다. 채택 기준은 클래스별로 갈린다(iteration-2 D9 문언 정렬 — acceptance §D.1): release-blocking(R) 요구는 RED-first(구현 전 실패 관측)로 채택하고, 보존 기준(G)은 특성화 관측으로, 완화 축(P2)은 감사 소명 축으로 채택한다.
 
 ---
 

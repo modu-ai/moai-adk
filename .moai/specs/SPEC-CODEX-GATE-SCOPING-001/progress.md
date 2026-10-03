@@ -8,8 +8,8 @@ tier: M
 cycle_type: tdd
 artifacts: spec.md, plan.md, acceptance.md, decision-index.md (본 파일 포함 5본)
 evidence_copy: .moai/reports/t1404/gate-block-evidence.md (primary 원본 t1395 처분 기록 9건의 본 카드 필요분 사본)
-plan_audit: iteration-1 FAIL(2026-10-03, .moai/reports/t1404/plan-audit.md — MP-8 RED 미관측 + D2·D3·D4 blocking) 수리 완료(v0.1.1) — 재판정 대기(run 진입 전 plan-auditor 판정 필요). 수리 요지: R 5건(AC-001·005·007·008·010) RED를 plan 단계에서 실측(acceptance.md §D.0 장부 — 단일 호출 명령·원문 stdout·exit 코드·트리 SHA 2de0a2cb6), G 4건(AC-002·003·009·012) regression-guard 재분류(§D.1), primary_scope 판독 처분표(spec §F.2 — D2), M4 델타 삼팔 pathspec 확장(plan M4 — D3), AC-012 항목 멤버십 기준(§D.0/plan §C — D4), §A.4 좌표 :938/:954 정정(D5).
-red_tests: internal/cli/codex_review_gate_primary_scope_red_test.go(AC-001·005·007·008) · internal/template/hook_gate_reports_exclude_test.go(AC-010) — plan 단계 저작, 현 트리 관측 적색(acceptance.md §D.0). manager-develop가 M2/M3/M4에서 GREEN 전환(새로 저작하지 않음).
+plan_audit: iteration-1 FAIL(D1-D5) 수리 v0.1.1 → iteration-2 FAIL 0.8625(D6-D10, `.moai/reports/t1404/plan-audit-iter2.md`) → 리더 판정 범위 축소 후 3회차 수리 완료(v0.1.2, `.moai/reports/t1404/plan-decision-iter2.md` 지시 범위 한정) — 재판정 대기. v0.1.2 수리 요지: AC-010 대조군 재정의(비-reports 파손 변경 게이트 — D6), AC-012 레이아웃 독립 분할+AC-011 이관(D7), AC-001 행 내용·AC-008 재분류 행 단언·②팔 실입력·AC-007 settings.local.json 삭제(D8), 삼클래스 문언 정렬(D9), §D.0 핀 물리 상태 보충(D10). R 5건 전부 재관측(HEAD 9ef1cbedc + 개정 테스트 파일).
+red_tests: internal/cli/codex_review_gate_primary_scope_red_test.go(AC-001·005·007·008) · internal/template/hook_gate_reports_exclude_test.go(AC-010) — plan 단계 저작, iteration-2 D6·D8 개정 후 전부 재관측 적색(acceptance.md §D.0 — 개정 blob 5779dd07·1aa630c3). manager-develop가 M2/M3/M4에서 GREEN 전환(새로 저작하지 않음).
 
 ## §E.2 Run-phase Evidence
 

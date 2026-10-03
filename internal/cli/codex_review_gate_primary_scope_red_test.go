@@ -9,7 +9,11 @@ package cli
 // adoption discipline requires (verification-completeness §2.1). Each AC's
 // RED-now cell in .moai/specs/SPEC-CODEX-GATE-SCOPING-001/acceptance.md cites
 // one of these tests by name and carries the verbatim failing output recorded at
-// authoring time. manager-develop turns them GREEN in M2 (Facet 1) and M3
+// authoring time. Revised at HEAD 9ef1cbedc per plan-audit iteration-2 (D8:
+// AC-001 asserts the skip row's content, AC-008 asserts the reclassification
+// row on the diagnostic channel, AC-007 drops the settings.local.json surface
+// as outside the REQ) and re-observed RED on the revised file.
+// manager-develop turns them GREEN in M2 (Facet 1) and M3
 // (Facet 2); a rename forced by the implementation is reported through the E1
 // correction note, never applied silently.
 //
@@ -22,6 +26,9 @@ package cli
 // (acceptance.md §D.1).
 
 import (
+	"io"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -65,6 +72,18 @@ func TestCodexReviewGatePrimaryCheckoutSkip(t *testing.T) {
 	}
 	if len(*skips) != 1 {
 		t.Errorf("exactly one primary-skip row expected (basis distinguishable from tree_scope); got %d tree_scope rows", len(*skips))
+		return
+	}
+	// Content (plan-audit iteration-2 D8-①): the row is more than an existence
+	// count — REQ-CGSC-011 requires the row to carry the resolved tree and the
+	// policy axis, and REQ-CGSC-002 requires a basis distinguishable from a
+	// plain tree_scope row (whose basis reads "no card branch: …").
+	row := (*skips)[0]
+	if row.Dir != root {
+		t.Errorf("the primary-skip row must carry the resolved tree, got dir %q want %q", row.Dir, root)
+	}
+	if !strings.Contains(row.Basis, "primary") || !strings.Contains(row.Basis, root) {
+		t.Errorf("the primary-skip basis must name the primary reason and the tree path (%s), not a plain tree_scope basis; got %q", root, row.Basis)
 	}
 }
 
@@ -98,12 +117,16 @@ func TestCodexReviewGatePrimaryPolicySharedByBothPaths(t *testing.T) {
 // the self-gate must not fire. The ordinary-source control row kills the mutant
 // where the predicate stops counting anything at all.
 //
+// The table names exactly the two surfaces REQ-CGSC-007 enumerates; the
+// `.claude/settings.local.json` row the first draft carried was removed at
+// plan-audit iteration-2 (D8-④ scope reduction — the file is outside the REQ's
+// enumeration, so requiring it here demanded more than the REQ grants).
+//
 // RED on the pre-implementation tree: the runtime prefix list carries only
 // state surfaces, so a settings/config-only change reads reviewable.
 func TestReviewableFromPorcelainRuntimeConfigOnlyFalse(t *testing.T) {
 	for _, tc := range []struct{ name, path string }{
 		{"local claude settings", ".claude/settings.json"},
-		{"runtime-written settings variant", ".claude/settings.local.json"},
 		{"managed config tree", ".moai/config/sections/workflow.yaml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -125,13 +148,47 @@ func TestReviewableFromPorcelainRuntimeConfigOnlyFalse(t *testing.T) {
 const runtimeDriftReviewText = "- [P1] `.claude/settings.json:13` personal PATH entry drifted\n" +
 	"- [P2] `.moai/config/sections/workflow.yaml:65` auto_cleanup local drift"
 
+// captureGateDiagnostics swaps os.Stderr for a pipe for one gate call and
+// returns the restore-and-read closure: call it after the gate returns to put
+// stderr back and get everything the gate wrote to its diagnostic channel.
+// REQ-CGSC-011's surface IS the channel — structured rows ride stderr while
+// stdout stays the pure HookOutput contract — so the capture binds the row the
+// REQ names rather than any emission seam the implementation may or may not
+// add (plan-audit iteration-2 D8-②).
+func captureGateDiagnostics(t *testing.T) func() string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	orig := os.Stderr
+	os.Stderr = w
+	t.Cleanup(func() {
+		os.Stderr = orig
+		_ = w.Close()
+		_ = r.Close()
+	})
+	return func() string {
+		os.Stderr = orig
+		if err := w.Close(); err != nil {
+			t.Fatalf("close stderr capture: %v", err)
+		}
+		b, err := io.ReadAll(r)
+		if err != nil {
+			t.Fatalf("read stderr capture: %v", err)
+		}
+		return string(b)
+	}
+}
+
 // TestCodexReviewGateRuntimeDriftFindingsReclassified pins REQ-CGSC-008: when
 // EVERY finding of a tree-scope review targets only the runtime-managed
 // configuration surfaces, the turn is ALLOWED and the reclassification is
 // recorded — those findings are known local drift, not review defects the
 // session's lane owns.
 //
-// RED on the pre-implementation tree: the verdict is fail, so the gate BLOCKs.
+// RED on the pre-implementation tree: the verdict is fail, so the gate BLOCKs,
+// and no reclassification row exists to find on the diagnostic channel.
 func TestCodexReviewGateRuntimeDriftFindingsReclassified(t *testing.T) {
 	// Premise: the fixture synthesizes a FAIL verdict whose two findings carry
 	// exactly the config-surface files — a parser change that breaks this must
@@ -147,11 +204,19 @@ func TestCodexReviewGateRuntimeDriftFindingsReclassified(t *testing.T) {
 	withChangeDetector(t, true)
 	withCodexSession(t, codexSessionScript(runtimeDriftReviewText))
 
+	read := captureGateDiagnostics(t)
 	out, err := HandleCodexReviewGate(gateInput(false), true, "/proj")
 	if err != nil {
 		t.Fatalf("gate error: %v", err)
 	}
+	diagnostics := read()
 	if out == nil || out.Decision == hook.DecisionBlock {
 		t.Errorf("findings targeting only runtime-managed config surfaces must not block the turn (reclassify + record), got %+v", out)
+	}
+	// The row (REQ-CGSC-011): a silent allow is the mutant this kills — the
+	// diagnostic channel must carry the reclassification reason in the SPEC's
+	// own words ("runtime-managed drift") and name a targeted path.
+	if !strings.Contains(diagnostics, "runtime-managed") || !strings.Contains(diagnostics, ".claude/settings.json") {
+		t.Errorf("the reclassification must be recorded as a structured row on the diagnostic channel, naming the runtime-managed drift reason and a targeted path; diagnostics: %q", diagnostics)
 	}
 }

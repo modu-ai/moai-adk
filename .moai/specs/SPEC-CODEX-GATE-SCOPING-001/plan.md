@@ -25,7 +25,8 @@
 ```bash
 git branch --show-current; git rev-parse --short HEAD   # WT-codex-gate-scope 기대
 go test -count=1 ./internal/cli/... ./internal/config/... ./internal/template/...   # 회귀 baseline (기존 green)
-grep -c -e ':(top,exclude).moai/reports' -e ':(top,exclude).moai/state' .claude/hooks/moai/sync-phase-quality-gate.sh   # 배제 항목 멤버십 baseline (1 기대 = state 항목만 적중, reports 부재의 적 — M4 후 2). 항목 기준 검사이며 grep -c 줄 수 기준 아님; 기존 항목 수 20은 배열 원문 직독(:257-266)
+grep -cF ':(top,exclude).moai/reports' .claude/hooks/moai/sync-phase-quality-gate.sh   # reports 항목 존재 baseline: 0 (exit 1 — 부재의 적, 2026-10-03 실측) — M4 후 ≥1. 존재 기대라 레이아웃 독립(iteration-2 D7); 행동 축 RED는 AC-CGSC-010이 운반
+grep -cF ':(top,exclude).moai/state' .claude/hooks/moai/sync-phase-quality-gate.sh   # 기존 state 항목 존재 baseline: 1 (exit 0) — M4 후에도 1 (기존 항목 불변의 자리표). 기존 항목 수 20은 배열 원문 직독(:257-266) + hook_gate_* 테스트 green이 귀속
 GOOS=windows GOARCH=amd64 go build ./...                 # 크로스 플랫폼 baseline
 ```
 

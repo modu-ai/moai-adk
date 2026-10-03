@@ -1,6 +1,6 @@
 # SPEC-CODEX-GATE-SCOPING-001 — acceptance
 
-> AC 전부 `AC-CGSC-NNN` 라벨의 Given-When-Then. 이진 판정형 — 명령과 관측 대상을 이름으로 적는다. 채택은 두 클래스로 나뉜다(§D.1): **R(RED-first)** 5건 — 구현 전 같은 테스트가 적색이었음을 §D.0 관측 장부의 원문으로 증명하며 release-blocking이다. **G(regression-guard)** 4건 — 「변하지 않음」을 단언하는 보존 기준으로 구현 전 트리에서 적색이 정의상 존재하지 않아(verification-completeness §2.1 undecidable 처분) release-blocking 자격이 없고 특성화 관측으로 이행하며, 채택 시 pass로 기록되지 않는다. R 5건의 적색 테스트는 plan 단계에서 이미 저작돼 트리에 있다 — `internal/cli/codex_review_gate_primary_scope_red_test.go`(001·005·007·008), `internal/template/hook_gate_reports_exclude_test.go`(010). M2/M3/M4가 GREEN으로 뒤집는다(이름이 갈리면 E1이 실측명으로 정정 보고).
+> AC 전부 `AC-CGSC-NNN` 라벨의 Given-When-Then. 이진 판정형 — 명령과 관측 대상을 이름으로 적는다. 채택은 세 클래스로 나뉜다(§D.1): **R(RED-first, release-blocking)** 5건 — 구현 전 같은 테스트가 적색이었음을 §D.0 관측 장부의 원문으로 증명한다. **G(regression-guard)** 4건 — 「변하지 않음」을 단언하는 보존 기준으로 구현 전 트리에서 적색이 정의상 존재하지 않아(verification-completeness §2.1 undecidable 처분) release-blocking 자격이 없고 특성화 관측으로 이행하며, 채택 시 pass로 기록되지 않는다. **P2(완화 축)** 3건 — 미충족 시 PASS-WITH-DEBT 후보로, 보유한 하위 검사가 오늘 적색이면 그 관측을 baseline으로 기록하되 run 게이트를 지배하지 않는다(plan-audit iteration-2 D9 문언 정렬). R 5건의 적색 테스트는 plan 단계에서 저작돼 트리에 있고 plan-audit iteration-2 D6·D8 지시로 개정돼 재관측됐다 — `internal/cli/codex_review_gate_primary_scope_red_test.go`(001·005·007·008), `internal/template/hook_gate_reports_exclude_test.go`(010). M2/M3/M4가 GREEN으로 뒤집는다(이름이 갈리면 E1이 실측명으로 정정 보고).
 
 ## §A 검증 계약
 
@@ -19,13 +19,13 @@
 
 ## §D.0 RED-now 관측 장부 (plan 단계, evidence ledger)
 
-> verification-completeness §2.1의 4요소(단일 호출 명령·원문 stdout·exit 코드·트리 SHA)를 셀이 어긋나지 않게 담는 장부 — R AC의 셀은 여기 번호로 인용한다. 관측 트리: `2de0a2cb613b04765a1554f86685a3b48e0be806`, 브랜치 `WT-codex-gate-scope`, 관측 일자 2026-10-03.
+> verification-completeness §2.1의 4요소(단일 호출 명령·원문 stdout·exit 코드·트리 SHA)를 셀이 어긋나지 않게 담는 장부 — R AC의 셀은 여기 번호로 인용한다. **관측의 물리 상태(핀 보충 — plan-audit iteration-2 D10)**: 1차 관측(iter1)은 HEAD `2de0a2cb613b04765a1554f86685a3b48e0be806` + **미커밋 저작 테스트 파일 2개**(핀 트리에는 파일이 없음 — blob `ce1268e5`·`080e2ee4`로 산출물 커밋 `9ef1cbedc3082f97ac74cf6162bc1e2fd0a55324`에 착지) 상태에서 이뤄졌다. iteration-2 D6·D8 수리로 두 테스트 파일을 개정한 뒤 **전 셀을 HEAD `9ef1cbedc3082f97ac74cf6162bc1e2fd0a55324` + 미커밋 개정 테스트 파일 2개**(blob `5779dd07`·`1aa630c3`, 2026-10-03) 상태에서 재관측했다 — 테스트 파일은 그 다음 산출물 커밋에 창출되므로 **재현은 산출물 커밋 트리에서 수행**한다(커밋 이후 셀의 트리 핀은 관측 시점의 HEAD를 말하며, 인용 명령은 그 커밋에서 그대로 재실행 가능하다). 브랜치 `WT-codex-gate-scope`.
 
 ### RED-CGSC-001 — AC-CGSC-001 (관측 형태: authored-test)
 
 - 명령(단일 호출): `go test -count=1 -v ./internal/cli/ -run '^TestCodexReviewGatePrimaryCheckoutSkip$'`
 - exit 코드: 1
-- 적색 이유: primary 판별·스킵이 존재하지 않아 게이트가 primary 체크아웃의 트리 세션을 자기게이트→리뷰까지 밟고 BLOCK까지 낸다 — 측정된 피해(t1395 처분 #1-#4)의 재현. `lookups=1 detects=1 reviewed=true`가 리뷰 도달을, `0 tree_scope rows`가 별개 basis 행의 부재를 말한다.
+- 적색 이유: primary 판별·스킵이 존재하지 않아 게이트가 primary 체크아웃의 트리 세션을 자기게이트→리뷰까지 밟고 BLOCK까지 낸다 — 측정된 피해(t1395 처분 #1-#4)의 재현. `lookups=1 detects=1 reviewed=true`가 리뷰 도달을, `0 tree_scope rows`가 별개 basis 행의 부재를 말한다. iteration-2 D8-①로 행 **내용** 단언(basis가 primary 사유와 트리 경로를 운반, tree_scope 행과 구별)이 추가됐다 — 오늘은 행 0건이라 계수 게이트 뒤에 가려져 있고, M2 구현은 이 내용 단언까지 통과해야 한다(존재만 세는 구현은 여기서 적색이 된다).
 - (a) WHEN: 게이트 enabled + `tree_scope` 명시 review + primary 체크아웃(git-dir == common-dir)에 앉은 비카드 세션의 턴 끝 — 스킵이 자기게이트보다 앞서 결정돼야 의미 있는 자리다.
 - (b) 적색 입력: 가검토 가능한 미커밋을 품은 primary 레포 픽스처(`newCardScopeFixture`의 primary)로 `HandleCodexReviewGate` 호출 — 올바른 구현은 스킵 행 1건과 무호출을 낸다.
 - (c) 도달성: `go test` exit 1 — M2 착지 전 패키지 스위트의 매 실행에서 적색으로 보인다.
@@ -33,12 +33,12 @@
 
 ```text
 === RUN   TestCodexReviewGatePrimaryCheckoutSkip
-    codex_review_gate_primary_scope_red_test.go:60: a primary-checkout tree session must ALLOW without a review, got &{Continue:<nil> StopReason: SystemMessage: SuppressOutput:false Decision:block Reason:codex review gate: - [P1] ownership probe finding HookSpecificOutput:<nil> UpdatedInput: Retry:false ExitCode:0 WorktreePath: Data:[]}
-    codex_review_gate_primary_scope_red_test.go:63: the primary skip must precede the self-gate, the lookup and the review; got lookups=1 detects=1 reviewed=true
-    codex_review_gate_primary_scope_red_test.go:67: exactly one primary-skip row expected (basis distinguishable from tree_scope); got 0 tree_scope rows
---- FAIL: TestCodexReviewGatePrimaryCheckoutSkip (1.25s)
+    codex_review_gate_primary_scope_red_test.go:67: a primary-checkout tree session must ALLOW without a review, got &{Continue:<nil> StopReason: SystemMessage: SuppressOutput:false Decision:block Reason:codex review gate: - [P1] ownership probe finding HookSpecificOutput:<nil> UpdatedInput: Retry:false ExitCode:0 WorktreePath: Data:[]}
+    codex_review_gate_primary_scope_red_test.go:70: the primary skip must precede the self-gate, the lookup and the review; got lookups=1 detects=1 reviewed=true
+    codex_review_gate_primary_scope_red_test.go:74: exactly one primary-skip row expected (basis distinguishable from tree_scope); got 0 tree_scope rows
+--- FAIL: TestCodexReviewGatePrimaryCheckoutSkip (8.57s)
 FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/cli	2.391s
+FAIL	github.com/modu-ai/moai-adk/internal/cli	10.143s
 FAIL
 ```
 
@@ -46,7 +46,7 @@ FAIL
 
 - 명령(단일 호출): `go test -count=1 -v ./internal/cli/ -run '^TestCodexReviewGatePrimaryPolicySharedByBothPaths$'`
 - exit 코드: 1
-- 적색 이유: 두 자동 경로 모두 primary 축을 모른다 — Claude 경로는 리뷰를 밟고(`gate skipped=false, rows 0`), Codex 경로는 receipt 루트를 간다(`chain skipped=false`, `ReceiptRead:true`). 하나의 정책이 양 경로에 존재하지 않다는 관측이다.
+- 적색 이유: 두 자동 경로 모두 primary 축을 모른다 — Claude 경로는 리뷰를 밟고(`gate skipped=false, rows 0`), Codex 경로는 receipt 루트를 간다(`chain skipped=false`, `ReceiptRead:true`). 하나의 정책이 양 경로에 존재하지 않다는 관측이다. 이 테스트는 iteration-2 수리로 변경되지 않았다 — 같은 파일의 D8 개정이 좌표만 옮겨(:88→:107) 재관측으로 원문을 갱신했다(D1 장부 셀의 재확인 축).
 - (a) WHEN: 같은 세션 상태(primary 체크아웃, `tree_scope` review)를 두 자동 경로가 각각 평가할 때 — REQ-CGSC-003의 패리티 비교 자리.
 - (b) 적색 입력: 동일 primary 픽스처를 `HandleCodexReviewGate`와 `codexReviewMember` 양쪽으로 통과 — 올바른 구현은 양쪽 모두 스킵.
 - (c) 도달성: `go test` exit 1 — M2 착지 전 매 실행에서 적색.
@@ -54,10 +54,10 @@ FAIL
 
 ```text
 === RUN   TestCodexReviewGatePrimaryPolicySharedByBothPaths
-    codex_review_gate_primary_scope_red_test.go:88: both automatic paths must skip a primary-checkout tree session; gate skipped=false (rows 0), chain skipped=false (outcome {Number:0 Name: Decision:deny Class:unmeasured Status: Reason:moai hook codex-review-gate: not measured on this tree (receipt absent). Run `moai verify codex-review`, then end the turn again. (continuation 1 of 3 before the stop is allowed as unverified) ReceiptRead:true ElapsedMS:0 Err: Advisory: Discards:[]})
---- FAIL: TestCodexReviewGatePrimaryPolicySharedByBothPaths (1.91s)
+    codex_review_gate_primary_scope_red_test.go:107: both automatic paths must skip a primary-checkout tree session; gate skipped=false (rows 0), chain skipped=false (outcome {Number:0 Name: Decision:deny Class:unmeasured Status: Reason:moai hook codex-review-gate: not measured on this tree (receipt absent). Run `moai verify codex-review`, then end the turn again. (continuation 1 of 3 before the stop is allowed as unverified) ReceiptRead:true ElapsedMS:0 Err: Advisory: Discards:[]})
+--- FAIL: TestCodexReviewGatePrimaryPolicySharedByBothPaths (9.13s)
 FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/cli	2.949s
+FAIL	github.com/modu-ai/moai-adk/internal/cli	10.697s
 FAIL
 ```
 
@@ -65,7 +65,7 @@ FAIL
 
 - 명령(단일 호출): `go test -count=1 -v ./internal/cli/ -run '^TestReviewableFromPorcelainRuntimeConfigOnlyFalse$'`
 - exit 코드: 1
-- 적색 이유: 런타임 관리 **설정** 표면(`.claude/settings.json`, `.claude/settings.local.json`, `.moai/config/sections/workflow.yaml`)이 트리 자기게이트에서 여전히 검사 가능으로 계수된다(현행 `reviewGateRuntimePrefixes`는 상태 표면만 배제). 대조군 행(`cmd/moai/main.go` → reviewable)이 통과해 올바른 이유의 적색이다.
+- 적색 이유: 런타임 관리 **설정** 표면(`.claude/settings.json`, `.moai/config/sections/workflow.yaml`)이 트리 자기게이트에서 여전히 검사 가능으로 계수된다(현행 `reviewGateRuntimePrefixes`는 상태 표면만 배제). 대조군 행(`cmd/moai/main.go` → reviewable)이 통과해 올바른 이유의 적색이다. iteration-2 D8-④(범위 축소)로 첫 초안이 실은 `.claude/settings.local.json` 표면 행은 REQ-CGSC-007의 열거 밖이라 **삭제**됐다 — 표는 REQ가 이름하는 두 표면만 좇는다.
 - (a) WHEN: 트리 클래스 세션의 변경이 설정 표면뿐일 때 자기게이트가 porcelain을 판정하는 순간 — 이 경우 reviewer 호출 자체가 없어야 의미다.
 - (b) 적색 입력: 설정 표면 전용 porcelain 페이로드 — 올바른 구현은 false(무검사 ALLOW).
 - (c) 도달성: `go test` exit 1 — M3 착지 전 매 실행에서 적색.
@@ -74,17 +74,14 @@ FAIL
 ```text
 === RUN   TestReviewableFromPorcelainRuntimeConfigOnlyFalse
 === RUN   TestReviewableFromPorcelainRuntimeConfigOnlyFalse/local_claude_settings
-    codex_review_gate_primary_scope_red_test.go:111: runtime-managed config surface ".claude/settings.json" must not count as reviewable on the tree path
-=== RUN   TestReviewableFromPorcelainRuntimeConfigOnlyFalse/runtime-written_settings_variant
-    codex_review_gate_primary_scope_red_test.go:111: runtime-managed config surface ".claude/settings.local.json" must not count as reviewable on the tree path
+    codex_review_gate_primary_scope_red_test.go:134: runtime-managed config surface ".claude/settings.json" must not count as reviewable on the tree path
 === RUN   TestReviewableFromPorcelainRuntimeConfigOnlyFalse/managed_config_tree
-    codex_review_gate_primary_scope_red_test.go:111: runtime-managed config surface ".moai/config/sections/workflow.yaml" must not count as reviewable on the tree path
+    codex_review_gate_primary_scope_red_test.go:134: runtime-managed config surface ".moai/config/sections/workflow.yaml" must not count as reviewable on the tree path
 --- FAIL: TestReviewableFromPorcelainRuntimeConfigOnlyFalse (0.00s)
     --- FAIL: TestReviewableFromPorcelainRuntimeConfigOnlyFalse/local_claude_settings (0.00s)
-    --- FAIL: TestReviewableFromPorcelainRuntimeConfigOnlyFalse/runtime-written_settings_variant (0.00s)
     --- FAIL: TestReviewableFromPorcelainRuntimeConfigOnlyFalse/managed_config_tree (0.00s)
 FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/cli	1.486s
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.251s
 FAIL
 ```
 
@@ -92,7 +89,7 @@ FAIL
 
 - 명령(단일 호출): `go test -count=1 -v ./internal/cli/ -run '^TestCodexReviewGateRuntimeDriftFindingsReclassified$'`
 - exit 코드: 1
-- 적색 이유: 발견 전부가 런타임 관리 설정 표면(`.claude/settings.json:13`, `.moai/config/sections/workflow.yaml:65` — 처분 기록 #2·#4의 실측 형태)만을 겨냥한 fail 판정인데 게이트가 BLOCK을 낸다 — 재분류 경로가 존재하지 않는다는 관측. 전제 단언(파서가 두 발견의 File을 정확히 두 표면으로 추출)이 통과한 뒤의 적색이라 파서 변형에 취약하지 않다.
+- 적색 이유: 발견 전부가 런타임 관리 설정 표면(`.claude/settings.json:13`, `.moai/config/sections/workflow.yaml:65` — 처분 기록 #2·#4의 실측 형태)만을 겨냥한 fail 판정인데 게이트가 BLOCK을 낸다 — 재분류 경로가 존재하지 않는다는 관측. 전제 단언(파서가 두 발견의 File을 정확히 두 표면으로 추출)이 통과한 뒤의 적색이라 파서 변형에 취약하지 않다. iteration-2 D8-②로 **재분류 행 단언**이 추가됐다 — REQ-CGSC-011의 채널(stderr)을 통째로 포획하는 계측으로, 두 번째 적색 행이 오늘의 채널에 재분류 행이 없음(스코프 행 하나뿐)을 원문으로 보인다. 조용한 ALLOW(행 없는 녹색) 변이는 이 단언이 죽인다.
 - (a) WHEN: 트리 스코프 review가 실행된 뒤 verdict를 판정하는 순간 — 스킵이 아니라 리뷰 **후** 판정에서만 의미 있다(혼합 케이스는 §B.5).
 - (b) 적색 입력: 설정 표면 전용 발견을 싣고 fail로 합성되는 codex 세션 스크립트 — 올바른 구현은 ALLOW + 재분류 행.
 - (c) 도달성: `go test` exit 1 — M3 착지 전 매 실행에서 적색.
@@ -100,47 +97,53 @@ FAIL
 
 ```text
 === RUN   TestCodexReviewGateRuntimeDriftFindingsReclassified
-{"basis":"no card branch (unreadable or detached)","gate":"codex-review-gate","scope":"tree"}
-    codex_review_gate_primary_scope_red_test.go:155: findings targeting only runtime-managed config surfaces must not block the turn (reclassify + record), got &{Continue:<nil> StopReason: SystemMessage: SuppressOutput:false Decision:block Reason:codex review gate: - [P1] `.claude/settings.json:13` personal PATH entry drifted
+    codex_review_gate_primary_scope_red_test.go:214: findings targeting only runtime-managed config surfaces must not block the turn (reclassify + record), got &{Continue:<nil> StopReason: SystemMessage: SuppressOutput:false Decision:block Reason:codex review gate: - [P1] `.claude/settings.json:13` personal PATH entry drifted
         - [P2] `.moai/config/sections/workflow.yaml:65` auto_cleanup local drift HookSpecificOutput:<nil> UpdatedInput: Retry:false ExitCode:0 WorktreePath: Data:[]}
---- FAIL: TestCodexReviewGateRuntimeDriftFindingsReclassified (0.11s)
+    codex_review_gate_primary_scope_red_test.go:220: the reclassification must be recorded as a structured row on the diagnostic channel, naming the runtime-managed drift reason and a targeted path; diagnostics: "{\"basis\":\"no card branch (unreadable or detached)\",\"gate\":\"codex-review-gate\",\"scope\":\"tree\"}\n"
+--- FAIL: TestCodexReviewGateRuntimeDriftFindingsReclassified (0.18s)
 FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/cli	1.342s
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.976s
 FAIL
 ```
 
-### RED-CGSC-010 — AC-CGSC-010 (관측 형태: authored-test — 현재 아티팩트 실행 픽스처)
+### RED-CGSC-010 — AC-CGSC-010 (관측 형태: authored-test — 현재 아티팩트 실행 픽스처, iteration-2 D6·D8 개정판)
 
 - 명령(단일 호출): `go test -count=1 -v ./internal/template/ -run '^TestSyncPhaseGateExcludesReportsGoFixture$'`
 - exit 코드: 1
-- 적색 이유: `.moai/reports/lab`에 파킹된 Go 픽스처(go.mod + 깨진 .go)가 세 갈래 전부 — ③ 미추적 팔, ①② tracked 팔(커밋 diff), 템플릿 미러 — 에서 수집에 들어가 모듈 루트로 베트되고 스퓨리어스 블록을 낸다. stub 로그의 `go -C …/.moai/reports/lab vet ./…` 행이 수집 침입 그 자체를 말한다. 대조군 서브테스트(`root_fixture_still_gates`, PASS)가 통과해 게이트 전체가 죽은 게 아니라 reports 수집만 틀렸다는 올바른 이유의 적색이다(D3 정합 — 픽스처가 두 팔을 함께 관측).
+- 적색 이유: `.moai/reports/lab`에 파킹된 Go 픽스처(go.mod + 깨진 .go)가 네 갈래 전부 — ③ 미추적 팔, ①② tracked 팔, 템플릿 미러(미추적+tracked) — 에서 수집에 들어가 모듈 루트로 베트되고 스퓨리어스 블록을 낸다. stub 로그의 `go -C …/.moai/reports/lab vet ./…` 행이 수집 침입 그 자체를 말한다. iteration-2 개정 두 가지: **(D8-③)** tracked 픽스처는 2커밋(커밋 1 루트, 커밋 2 reports — HEAD~1..HEAD가 reports를 운반) + 커밋된 reports 파일의 미커밋 수정(git diff HEAD가 reports를 운반)이라 ①과 ②가 **실제 입력**을 갖고, 미러도 tracked 팔을 함께 관측한다(첫 초안의 전부-커밋 픽스처는 ②를 비워 §B.6 초기 커밋 빈-트리 경로만 밟았다). **(D6)** stub은 경로 하위문자열이 아니라 베트된 모듈 루트의 `BROKEN` 표식 파일로 실패를 키잉하고, **대조군(`root_fixture_still_gates`, PASS)은 reports 배제가 이름 짓지 않는 비-reports 파손 변경(루트 모듈의 미추적 깨진 .go + 루트 BROKEN 표식)으로 재정의**됐다 — 첫 초안의 대조군은 루트가 정상 코드라 블록의 유일한 원천이 reports 수집 자체였고, 올바른 M4에서 성립 불가능한 기준이었다(iter2 D6). 게이트 전체가 죽은 게 아니라 reports 수집만 틀렸다는 올바른 이유의 적색이다.
+- 올바른 구현에서의 성립 확인(재설계 검증 — 관측 트리와 동일 HEAD에서 수행): M4 시뮬레이션 스크립트(WCI_EXCLUDES에 reports 항목 추가 **+ 같은 pathspec을 ①② diff에 확장** — plan M4 수단 전체)를 /tmp 사본에 만들어 동일 픽스처 형태를 수동 재현한 결과, 배제 팔은 **무블록·stub 호출 0건**(채널 stdout 공백 — 조용한 허용), 대조군은 **루트 모듈만 호출한 stub 로그 + 블록**으로 성립했다. 대조군의 블록 원천이 reports 스윕에서 루트 파손 변경으로 옮겨졌음을 두 세계에서 관측했다.
 - (a) WHEN: sync-phase 커밋 뒤의 턴 끝 게이트가 델타 수집·언어 탐색·모듈 루트를 구성할 때 — reports 픽스처가 어느 집합에도 없어야 의미다.
-- (b) 적색 입력: `.moai/reports/lab/{go.mod,broken.go}` 픽스처(미추적 팔 / tracked 팔) — 올바른 구현은 빈 stdout(무블록) + stub 로그에 reports 호출 부재.
+- (b) 적색 입력: `.moai/reports/lab/{go.mod,broken.go,BROKEN}` 픽스처(미추적 팔 / 2커밋+미커밋 수정 tracked 팔) — 올바른 구현은 무블록 + stub 로그에 reports 호출 부재.
 - (c) 도달성: `go test` exit 1 — M4 착지 전 매 실행에서 적색.
 - 원문 stdout:
 
 ```text
 === RUN   TestSyncPhaseGateExcludesReportsGoFixture
 === RUN   TestSyncPhaseGateExcludesReportsGoFixture/untracked_reports_fixture_is_not_collected
-    hook_gate_reports_exclude_test.go:147: SYNC_GATE_REPORTS_SWEEP: an untracked Go fixture under .moai/reports drove a spurious block.
-        stub log: "stub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixtureuntracked_reports_fixt2998347028/001/.moai/reports/lab vet ./...\nstub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixtureuntracked_reports_fixt2998347028/001/.moai/reports/lab build ./...\n"
+    hook_gate_reports_exclude_test.go:192: SYNC_GATE_REPORTS_SWEEP: an untracked Go fixture under .moai/reports drove a spurious block.
+        stub log: "stub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixtureuntracked_reports_fixt3192974081/001/.moai/reports/lab vet ./...\nstub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixtureuntracked_reports_fixt3192974081/001/.moai/reports/lab build ./...\n"
         out: "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}\n"
 === RUN   TestSyncPhaseGateExcludesReportsGoFixture/tracked_reports_fixture_is_not_collected
-    hook_gate_reports_exclude_test.go:154: SYNC_GATE_REPORTS_SWEEP: a committed Go fixture under .moai/reports drove a spurious block.
-        stub log: "stub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturetracked_reports_fixtur2512011694/001/.moai/reports/lab vet ./...\nstub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturetracked_reports_fixtur2512011694/001/.moai/reports/lab build ./...\n"
-        out: "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+    hook_gate_reports_exclude_test.go:199: SYNC_GATE_REPORTS_SWEEP: a committed Go fixture under .moai/reports drove a spurious block.
+        stub log: "stub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturetracked_reports_fixtur1549942375/001/.moai/reports/lab vet ./...\nstub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturetracked_reports_fixtur1549942375/001/.moai/reports/lab build ./...\n"
+        out: "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
 === RUN   TestSyncPhaseGateExcludesReportsGoFixture/mirror_carries_the_same_exclusion
-    hook_gate_reports_exclude_test.go:161: SYNC_GATE_REPORTS_SWEEP: the template mirror sweeps .moai/reports too.
-        stub log: "stub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturemirror_carries_the_sam944560758/001/.moai/reports/lab vet ./...\nstub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturemirror_carries_the_sam944560758/001/.moai/reports/lab build ./...\n"
+    hook_gate_reports_exclude_test.go:206: SYNC_GATE_REPORTS_SWEEP: the template mirror sweeps .moai/reports too.
+        stub log: "stub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturemirror_carries_the_sam4109993162/001/.moai/reports/lab vet ./...\nstub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturemirror_carries_the_sam4109993162/001/.moai/reports/lab build ./...\n"
         out: "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+=== RUN   TestSyncPhaseGateExcludesReportsGoFixture/mirror_carries_the_tracked_arms_too
+    hook_gate_reports_exclude_test.go:213: SYNC_GATE_REPORTS_SWEEP: the template mirror sweeps .moai/reports on the tracked arms too.
+        stub log: "stub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturemirror_carries_the_tra3998115571/001/.moai/reports/lab vet ./...\nstub go -C /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncPhaseGateExcludesReportsGoFixturemirror_carries_the_tra3998115571/001/.moai/reports/lab build ./...\n"
+        out: "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
 === RUN   TestSyncPhaseGateExcludesReportsGoFixture/root_fixture_still_gates
---- FAIL: TestSyncPhaseGateExcludesReportsGoFixture (12.69s)
-    --- FAIL: TestSyncPhaseGateExcludesReportsGoFixture/untracked_reports_fixture_is_not_collected (3.85s)
-    --- FAIL: TestSyncPhaseGateExcludesReportsGoFixture/tracked_reports_fixture_is_not_collected (4.19s)
-    --- FAIL: TestSyncPhaseGateExcludesReportsGoFixture/mirror_carries_the_same_exclusion (2.45s)
-    --- PASS: TestSyncPhaseGateExcludesReportsGoFixture/root_fixture_still_gates (2.19s)
+--- FAIL: TestSyncPhaseGateExcludesReportsGoFixture (83.32s)
+    --- FAIL: TestSyncPhaseGateExcludesReportsGoFixture/untracked_reports_fixture_is_not_collected (12.25s)
+    --- FAIL: TestSyncPhaseGateExcludesReportsGoFixture/tracked_reports_fixture_is_not_collected (17.17s)
+    --- FAIL: TestSyncPhaseGateExcludesReportsGoFixture/mirror_carries_the_same_exclusion (14.34s)
+    --- FAIL: TestSyncPhaseGateExcludesReportsGoFixture/mirror_carries_the_tracked_arms_too (13.58s)
+    --- PASS: TestSyncPhaseGateExcludesReportsGoFixture/root_fixture_still_gates (25.80s)
 FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/template	12.974s
+FAIL	github.com/modu-ai/moai-adk/internal/template	83.839s
 FAIL
 ```
 
@@ -203,8 +206,8 @@ REQ: REQ-CGSC-007, REQ-CGSC-011
 REQ: REQ-CGSC-008, REQ-CGSC-011
 - **Given** 트리 스코프 review가 실행됐고 모든 발견이 런타임 관리 설정 표면 경로만 겨냥할 때
 - **When** verdict가 판정된다
-- **Then** BLOCK이 아니라 ALLOW이고, 재분류(known runtime-managed drift) 행이 기록된다
-- 검증: `go test -count=1 -v ./internal/cli/ -run '^TestCodexReviewGateRuntimeDriftFindingsReclassified$'` — RED: §D.0 RED-CGSC-008(authored-test 관측, 파서 전제 단언 포함).
+- **Then** BLOCK이 아니라 ALLOW이고, 재분류(known runtime-managed drift) 행이 기록된다 — 행 단언은 REQ-CGSC-011의 채널 자체(stderr)를 포획해 `runtime-managed` 사유와 대상 경로를 운반하는 구조화 행의 존재를 요구한다(조용한 ALLOW 변이 차단 — iteration-2 D8-②)
+- 검증: `go test -count=1 -v ./internal/cli/ -run '^TestCodexReviewGateRuntimeDriftFindingsReclassified$'` — RED: §D.0 RED-CGSC-008(authored-test 관측, 파서 전제 단언 + 재분류 행 단언 포함).
 
 ### AC-CGSC-009 — Facet 2 카드 경계: 공유 리스트 불변 (G — regression-guard)
 REQ: REQ-CGSC-005
@@ -215,28 +218,28 @@ REQ: REQ-CGSC-005
 
 ### AC-CGSC-010 — Facet 3 재현: `.moai/reports` Go 픽스처가 수집에 안 들어온다 (R)
 REQ: REQ-CGSC-009
-- **Given** 픽스처 리포에 `.moai/reports/lab/go.mod` + 깨진 `.go`가 있을 때 — **미추적 팔(③)과 tracked 팔(①②) 양쪽 형태로**(D3 정합)
+- **Given** 픽스처 리포에 `.moai/reports/lab/go.mod` + 깨진 `.go`(+ `BROKEN` 표식)가 있을 때 — **미추적 팔(③)과 tracked 팔(①②) 양쪽 형태로**(D3·D8-③ 정합: tracked 픽스처는 2커밋 — 커밋 1 루트, 커밋 2 reports, 커밋 2의 커밋 파일 하나를 미커밋 수정 — 해서 HEAD~1..HEAD와 git diff HEAD가 모두 reports를 운반한다), 템플릿 미러도 두 팔 형태로
 - **When** sync 게이트가 델타 수집·언어 탐색·모듈 루트를 구성한다
-- **Then** `.moai/reports/` 경로가 어느 집합에도 없고 게이트는 블록하지 않는다. `.moai/reports` 밖의 일반 소스는 계속 게이트한다(대조군)
-- 검증: `go test -count=1 -v ./internal/template/ -run '^TestSyncPhaseGateExcludesReportsGoFixture$'` — RED: §D.0 RED-CGSC-010(authored-test 관측; hook_gate_* 실행 픽스처 선례).
+- **Then** `.moai/reports/` 경로가 어느 집합에도 없고 게이트는 블록하지 않는다. **비-reports 파손 변경(루트 모듈의 미추적 깨진 .go + 루트 `BROKEN` 표식)은 올바른 M4 구현에서도 계속 게이트한다**(대조군 — 블록 원천이 reports 스윕에 의존하지 않는다, iteration-2 D6 재정의)
+- 검증: `go test -count=1 -v ./internal/template/ -run '^TestSyncPhaseGateExcludesReportsGoFixture$'` — RED: §D.0 RED-CGSC-010(authored-test 관측; hook_gate_* 실행 픽스처 선례; 개정 판의 올바른-구현 성립은 §D.0 셀의 M4 시뮬레이션 기록으로).
 
 ### AC-CGSC-011 — Facet 3 쌍둔 패리티 (P2)
 REQ: REQ-CGSC-009
 - **Given** 템플릿 미러와 추적본이 같은 커밋에서 바뀌었을 때
 - **When** `make build` 이후 임베드와 추적본을 비교한다
 - **Then** 동일 제외 항목이 양쪽에 존재하고 임베드에 반영된다
-- 검증: `go test ./internal/template/...` 기존 패리티 축 green + `grep -c '(top,exclude).moai/reports'` 양 쌍둔 각 1 이상.
+- 검증: `go test ./internal/template/...` 기존 패리티 축 green + reports 항목 존재 검사 `grep -cF ':(top,exclude).moai/reports' <쌍둔 각>` 양쪽 ≥1 — **baseline 0(2026-10-03 실측, 양 쌍둔 각 exit 1 — reports 항목 부재의 적) → M4 후 ≥1**. 이 하위 검사는 오늘 적색이며 iteration-2 D7 수리로 AC-012에서 이곳으로 귀속됐다 — P2의 오늘-적색 하위 검사 처분은 §D.1 문언대로 baseline 기록이며 run 게이트를 지배하지 않는다(행동 축 RED는 AC-CGSC-010이 운반한다).
 
 ### AC-CGSC-012 — Facet 3 회귀: 기존 수집 shape-identical (G — regression-guard)
 REQ: REQ-CGSC-010
 - **Given** `.moai/reports/` 밖의 변경 집합일 때
 - **When** sync 게이트가 수집한다
 - **Then** 기존 배제 항목(배열 원문 직독 20항목, :257-266) 불변, 델타·탐지·키가 pre-SPEC과 동일 형태
-- 이행: M4 착지 시 기존 `hook_gate_*` 테스트 green 유지 + 쌍둔 패리티(AC-CGSC-011) + 멤버십 검사 — `grep -c -e ':(top,exclude).moai/reports' -e ':(top,exclude).moai/state' .claude/hooks/moai/sync-phase-quality-gate.sh` **baseline 1(2026-10-03 실측, exit 0 — state 항목만 적중, reports 항목 부재의 적) → M4 후 2**. 항목 기준 검사이며 `grep -c` 줄 수 기준이 아니다 — 줄 수 기준(`grep -c ':(top,exclude)'` = 2)은 glob 항목을 못 세어 올바른 구현도 통과 못 하는 불가능 기준이었고 plan-audit iteration-1 D4로 교체됐다. 구현 전 적색은 정의상 없다(§D.0 재분류 기록).
+- 이행: M4 착지 시 ① 기존 `hook_gate_*` 테스트 green 유지 + ② 쌍둔 패리티(AC-CGSC-011) + ③ 기존 항목 존재 고정문자열 검사 `grep -cF ':(top,exclude).moai/state' <쌍둔 각>` **baseline 1(2026-10-03 실측, 양 쌍둔 각 exit 0) → M4 후에도 1** — 존재 기대(≥1)는 항목이 어느 줄에 놓이든 무관한 레이아웃 독립 계측이다. reports 항목의 존재 검사(오늘 적색)는 AC-CGSC-011로 이관됐고, 「20항목 불변」의 본체는 ①+②가 귀속한다 — 계수 명령은 내용 보존을 증명할 수 없어(iteration-2 D7: 같은 줄 추가가 줄 수를 바꾸지 않아 올바른 구현도 실패할 수 있었다) 제거됐다. 구현 전 적색은 정의상 없다(§D.0 재분류 기록).
 
 ## §D.1 분류
 
-plan-audit iteration-1(MP-8) 수리로 재분류됐다. **R(RED-first, release-blocking)** = 001·005·007·008·010 — 구현 전 동일 테스트의 적색이 §D.0 장부에 원문 stdout·exit 코드·트리 SHA와 함께 관측돼 있고, 미충족 시 run 게이트 불통과. **G(regression-guard)** = 002·003·009·012 — 전부 「변하지 않음」을 단언하는 보존 기준으로 구현 전 트리에서 정의상 green이라 적색 입력이 존재하지 않는다(verification-completeness §2.1 undecidable 처분): release-blocking 자격이 없고, 특성화 관측(구현 전후 동일 출력)으로 이행하며, 채택 시 pass로 기록되지 않는다. **P2(완화 축)** = 004·006·011 — 미충족 시 PASS-WITH-DEBT 후보이나 반전 근거(004)는 감사에서 소명 요구. 재분류 전문은 §D.0 말미와 HISTORY(spec v0.1.1)에 있다.
+plan-audit iteration-1(MP-8) 수리로 재분류됐고 iteration-2 D6-D10 수리로 R 셀이 개정 재관측됐다. 클래스는 **셋**이다(헤더 문언과 동일 — iteration-2 D9 정렬). **R(RED-first, release-blocking)** = 001·005·007·008·010 — 구현 전 동일 테스트의 적색이 §D.0 장부에 원문 stdout·exit 코드·트리 SHA와 함께 관측돼 있고, 미충족 시 run 게이트 불통과. **G(regression-guard)** = 002·003·009·012 — 전부 「변하지 않음」을 단언하는 보존 기준으로 구현 전 트리에서 정의상 green이라 적색 입력이 존재하지 않는다(verification-completeness §2.1 undecidable 처분): release-blocking 자격이 없고, 특성화 관측(구현 전후 동일 출력)으로 이행하며, 채택 시 pass로 기록되지 않는다 — 오늘 적색인 계측을 G가 보유하면 모순이므로(iteration-2 D7), 그런 계측은 G에서 R이나 P2로 옮겨진다. **P2(완화 축)** = 004·006·011 — 미충족 시 PASS-WITH-DEBT 후보이나 반전 근거(004)는 감사에서 소명 요구; P2가 보유한 하위 검사가 오늘 적색이면(AC-011의 reports 항목 존재 grep) 그 관측은 baseline으로 기록되고 run 게이트를 지배하지 않는다 — 행동 축의 release-blocking RED는 R 클래스가 운반한다. 재분류 전문은 §D.0 말미와 HISTORY(spec v0.1.1)에 있다.
 
 ## §D.2 REQ ↔ AC 추적표
 
