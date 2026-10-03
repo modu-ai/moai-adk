@@ -1743,14 +1743,15 @@ func codexFindingLineOf(ln string) (indent, sev, msg string, continues, ok bool)
 	return "", "", "", false, false
 }
 
-// codexFindingAnchorOf picks the file:line anchor a finding message can
-// defend (card-review repair round 2, N1). A message carrying EXACTLY ONE
-// distinct path:line candidate anchors to it — first occurrence's line when
-// the same path repeats. A message carrying SEVERAL distinct candidates — a
-// headline naming one file while the actual location is another — has no
-// defensible single location, so the anchor stays unset: a reference inside a
-// title is not the target, and ambiguity is not resolved by position.
-// Consumers that require an unambiguous target (REQ-CGSC-008's runtime-drift
+// codexFindingAnchorOf picks the file:line anchor a finding's COMPLETE body
+// can defend (card-review repair round 2, N1; round 3, M1). A body carrying
+// EXACTLY ONE distinct path:line candidate anchors to it — first occurrence's
+// line when the same path repeats. A body carrying SEVERAL distinct
+// candidates — a headline naming one file while the actual location is
+// another, in the headline OR the joined continuations — has no defensible
+// single location, so the anchor stays unset: a reference inside a title is
+// not the target, and ambiguity is not resolved by position. Consumers that
+// require an unambiguous target (REQ-CGSC-008's runtime-drift
 // reclassification) read an unset anchor as "keep the strict disposition".
 // URL-shaped matches are excluded as before.
 func codexFindingAnchorOf(msg string) (string, int, bool) {
@@ -1778,13 +1779,15 @@ func codexFindingAnchorOf(msg string) (string, int, bool) {
 
 // codexFindingsOf parses codex's review prose into structured findings
 // (#1632 axis 1). Each severity-tagged bullet becomes one Finding carrying the
-// verbatim severity, the message as title/body, and — when the message
-// carries exactly one distinct path:line candidate — that anchor as File/Line
-// (codexFindingAnchorOf). Indented continuation lines following a bullet are
-// joined into that finding's body — codex commonly continues a finding across
-// the next lines, and truncating it to the headline would lose the substance
-// a reviewer needs. A body with no bullets returns an empty, non-nil slice:
-// the parser invents no structure from prose.
+// verbatim severity and the message as title/body, with the anchor decided in
+// a SECOND pass after the continuations join (card-review repair round 3,
+// M1): codexFindingAnchorOf reads the COMPLETE body — a headline naming the
+// config surface while the body's continuation names the actual source
+// location is still two distinct candidates. Indented continuation lines
+// following a bullet are joined into that finding's body — codex commonly
+// continues a finding across the next lines, and truncating it to the
+// headline would lose the substance a reviewer needs. A body with no bullets
+// returns an empty, non-nil slice: the parser invents no structure from prose.
 func codexFindingsOf(reviewText string) []Finding {
 	findings := []Finding{}
 	var cur *Finding
@@ -1797,16 +1800,17 @@ func codexFindingsOf(reviewText string) []Finding {
 			}
 			continue
 		}
-		f := Finding{Severity: sev, Title: msg, Body: msg}
-		if file, line, ok := codexFindingAnchorOf(msg); ok {
-			f.File = file
-			f.Line = line
-		}
-		findings = append(findings, f)
+		findings = append(findings, Finding{Severity: sev, Title: msg, Body: msg})
 		cur, curIndent = nil, ""
 		if continues {
 			cur = &findings[len(findings)-1]
 			curIndent = indent
+		}
+	}
+	for i := range findings {
+		if file, line, ok := codexFindingAnchorOf(findings[i].Body); ok {
+			findings[i].File = file
+			findings[i].Line = line
 		}
 	}
 	return findings
