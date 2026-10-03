@@ -59,8 +59,8 @@ ACs: AC-008, AC-009, AC-010, AC-013, AC-020 (harness halves).
 |---|---|---|
 | Deployer file-set split: a deploy-mode option on the Claude/Dual/Codex deployer family that excludes `.claude/skills/**` and `.claude/commands/**` from `ListTemplates`/deploy walk on the plugin path; local path unchanged byte-for-byte | `internal/template/deployer.go`, `internal/template/harness_fs.go` (option plumb-through), `internal/template/deployer_mode_test.go` (new) | REQ-001, REQ-002, REQ-003 |
 | `init` wiring: default path selects the thin deployer (respecting slim/full catalog routing, P-05); `--no-plugin` and `--all` select the local deployer; mode record written on every run; success-card and slim-mode notice text updated | `internal/cli/init.go`, `internal/cli/init_workflow_flags.go` (if flag registration lives there), `internal/cli/init_mode_test.go` (new) | REQ-001, REQ-003, REQ-007, REQ-009 |
-| MCP-entry policy on the default path (OD-1 settled (c) 2026-10-03: the project `moai` entry is written only when the install step failed or was skipped — a confirmed install writes no entry, the plugin is the sole carrier; context7 + staggeredStartup preserved; `--no-plugin` writes as today; decline semantics restated) | `internal/cli/init.go` (`provisionMCPEntryUnlessDeclined` call site, sequenced after the install step so it can observe the outcome), `internal/cli/init_mcp_policy_test.go` (new) | REQ-005 |
-| Codex mirror policy (OD-6 settled (a) + condition 2026-10-03: plugin mode deploys no mirror and creates no `.agents/skills` entries — gated on the Codex actual-execution verification, and the mirror stays where that verification cannot be produced; local mode deploys as today) | `internal/template/skill_mirror.go` / `deployer.go` option, `internal/template/skill_mirror_mode_test.go` (new) | REQ-006 |
+| MCP-entry policy on the default path (OD-1 settled (c) 2026-10-03: the project `moai` entry is written only when the install-outcome probe (design §2.4) reads `failed-or-skipped` or `opted-out` — a probe-`confirmed` install writes no entry, the plugin is the sole carrier; context7 + staggeredStartup preserved; `--no-plugin` writes as today; decline semantics restated) | `internal/cli/init.go` (`provisionMCPEntryUnlessDeclined` call site, sequenced after the install step so it can read the probe outcome), the probe beside the t1435 step, `internal/cli/init_mcp_policy_test.go` (new) | REQ-005 |
+| Codex mirror policy (OD-6 settled (a) + condition 2026-10-03: plugin mode deploys no mirror and creates no `.agents/skills` entries — gated on the Codex actual-execution verification; where that verification cannot be produced the mirror stays with its entries re-homed to real directory copies rendered from the embedded template tree, never dangling symlinks into the undeployed `.claude/skills/**`; local mode deploys as today) | `internal/template/skill_mirror.go` / `deployer.go` option, `internal/template/skill_mirror_mode_test.go` (new) | REQ-006 |
 | Guidance block: skipped/failed install on the default path names both recourses, fail-open | `internal/cli/init.go`, covered in `init_mode_test.go` | REQ-004 |
 
 ACs: AC-001..AC-007 (minus AC-008), AC-009 re-verified end to end.
@@ -69,8 +69,8 @@ ACs: AC-001..AC-007 (minus AC-008), AC-009 re-verified end to end.
 
 | Deliverable | Files | Requirement |
 |---|---|---|
-| Update deployer selection by mode record (`newTemplateSyncDeployer` reads the OD-5 key); absent record → migration path (OD-4 settled (a, amended) 2026-10-03): install step fail-open under the opt-out; on install success, classify, then remove/archive per REQ-011/012 (removal only after every archive in the batch succeeded), then write the record `plugin`; on install failure — no dedupe, no removal, record `local`, and no path records `plugin` | `internal/cli/update_template_sync.go`, `internal/cli/update_migrate.go` (new), `internal/cli/update_migrate_test.go` (new) | REQ-015, REQ-016 |
-| Archive-then-remove: modified classified files archived through `archiveSkill` semantics **before** the Clean step removes them; the raw-template backup exemption (P-08) must not apply to dropped components — the migration hands Clean a deploy-set-scoped template FS or pre-removes through its own guarded path; archive-write failure aborts before any removal | `internal/cli/update/deploy/deploy.go` (backupThenRemove scope fix or its bypass), `internal/cli/update_migrate.go`, tests | REQ-012 |
+| Update deployer selection by mode record (`newTemplateSyncDeployer` reads the OD-5 key); absent record → migration path (OD-4 settled (a, amended) 2026-10-03): install step fail-open under the opt-out, its outcome read through the post-install list-surface probe (design §2.4); probe `confirmed` → classify, then remove/archive per REQ-011/012 (removal only after every archive in the batch succeeded), then write the record `plugin`; probe `failed-or-skipped` — no dedupe, no removal, record `local`, and no path records `plugin`; probe `opted-out` — full local payload, record `local` | `internal/cli/update_template_sync.go`, `internal/cli/update_migrate.go` (new), the probe beside the t1435 step, `internal/cli/update_migrate_test.go` (new) | REQ-015, REQ-016 |
+| Archive-then-remove: modified classified files archived through `archiveSkill` semantics **before** removal; the removal executor's scope is the classified list (design §3 step 4) — the migration passes Clean the classified removal list (or removes through its own guarded path with Clean's dropped roots skipped for that run); the global `ManagedCleanTargets` walk never runs over the dropped roots in a migration run; archive-write failure aborts before any removal | `internal/cli/update/deploy/deploy.go` (target-list parameterization or the guarded bypass), `internal/cli/update_migrate.go`, tests | REQ-012 |
 | Removal + reporting: identical files removed with counts; foreign untouched; idempotence (second run: zero removals, zero archives) | same files | REQ-011, REQ-013, REQ-014 |
 | No resurrection: plugin-mode update never re-creates dropped components; mode switch guidance printed (update never flips the record) | same files | REQ-018, REQ-019 |
 | Accounting honesty: `managedRedeployCount` / `restoredSet` / `preCleanFiles` report what this run deployed and removed | `internal/cli/update_template_sync.go`, `internal/cli/update/deploy/deploy.go`, tests | REQ-016 |
@@ -113,7 +113,10 @@ ACs: AC-021 closes; AC-016/AC-017 re-verified on the updated surfaces.
 - Land-order dependency: t1435 lands on `develop` first (leader-designated). It is `completed` in
   this tree since the 2026-10-03 absorb of develop 6770c714f (at the authoring pin 3f3ebb763 the
   consumed install step, `--no-plugin` flag, and runner seam did not exist — P-18); run-phase
-  pre-flight verifies each consumed surface by its landed name before M1 starts.
+  pre-flight verifies each consumed surface by its landed name before M1 starts. The consumed
+  surfaces include the probe's list commands — `claude plugin list` and `codex plugin list --json`
+  — and the REQ-017 runner seam they start through; a missing or renamed surface there is a
+  blocker report, not a local improvisation.
 - t1399 note: the t1399 rename wave has landed in this base; if a sibling card renames a skill or
   command again, the plugin derivation (t1435) turns its own emit-check red, and this card's
   classification compares against the render of whatever tree it runs on — no hand list exists to
@@ -141,6 +144,9 @@ ACs: AC-021 closes; AC-016/AC-017 re-verified on the updated surfaces.
 
 - Classifying against the **raw** template render instead of the deploy-mode render — that is
   exactly the P-08 exemption this card must close (RK-1).
+- Scoping the migration's removal by handing the Clean walk a scoped template FS — `tmplFS` scopes
+  only the backup (P-08); the walk removes every glob match with no classification gate, so the
+  removal scope must be the classified list itself (design §3 step 4).
 - Writing the mode record by inference at update time (REQ-018) instead of persisting it at init.
 - Running the resolution gate against the real profile or with a `HOME` override — the t1434 route
   is scratch-home + `--plugin-dir`, and the guard refuses the override (REQ-020).

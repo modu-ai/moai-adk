@@ -9,6 +9,7 @@ req_ac_count: 21 / 21 (Tier L ceilings 25 / 25)
 open_decisions: OD-1..OD-8 — all eight SETTLED 2026-10-03 (decision-index.md Operator verdict rows; leader ruling, codex-informed, relayed via lane; plan-audit-iter2 (e) verified all rows carry verdict letters and provenance)
 tree_pin: WT-moai-init-slim @ 3f3ebb763 (authoring)
 notes: RED-now ledger cells L-01..L-24 measured at the pin tree; the plan-auditor loop records its verdicts under .moai/reports/t1438/ and updates plan_status here.
+repair note: the iter2 verdict above was overturned to FAIL 0.90 by the codex cross-model receipt (rcpt-c5721bde339669a03956a37e; D-7 removal executor vs preservation, D-8 dangling-mirror fallback, D-9 unobservable install outcome — all source-verified) — the 2026-10-03 repair commit on WT-moai-init-slim (classified-set removal executor, re-homed mirror fallback, post-install list-surface probe; AC-006/011/013/015 cells re-observed at a1f17b038) is the iteration-3 fix.
 
 ## §E.2 Run-phase Evidence
 

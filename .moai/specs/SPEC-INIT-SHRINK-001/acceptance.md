@@ -13,7 +13,11 @@ each criterion here is a binary-testable Given/When/Then with the same number.
   AC-021. Their RED-now cells were re-observed on the current tree `3906f985b` (post-absorb:
   develop 6770c714f, incl. t1435 completed in-tree and the t1399 rename) — the entries below carry
   the re-measured output, exit code, and pin. Cells whose assertions did not change keep the
-  original `3f3ebb763` pin.
+  original `3f3ebb763` pin. A second same-day amendment — the cross-model-audit repair
+  (D-7/D-8/D-9) — changed the asserted behavior of AC-006, AC-011, AC-013, and AC-015; those four
+  criteria's RED-now cells were re-observed on the repair-session tree `a1f17b038` (L-07, L-12,
+  L-14, L-16 below carry the fresh command, output, exit code, and pin; L-12 and L-14 gained their
+  own selector commands in the same pass, moving off the L-01 shape).
 - **Two cells per criterion** (`verification-completeness.md` §2): a RED-now cell — the criterion's
   own command observed red on this tree, with the reason it is red, in the Evidence Ledger — and a
   green-path cell naming the milestone that flips it and the passing output. Where the RED-now
@@ -132,10 +136,13 @@ each criterion here is a binary-testable Given/When/Then with the same number.
   `.agents/skills` entry is created and none is left behind — and that absence holds only after
   Codex is verified to actually execute plugin-borne skills (the REQ-008 Codex question or an
   equivalent actual-execution check); where that verification cannot be produced, the mirror stays
-  deployed on every path. When a local-mode deploy runs (and on a codex-only project), the mirror
-  deploys exactly as today (symlink-or-copy, P-11/P-12).
+  deployed on every path with its entries re-homed to real directory copies rendered from the
+  embedded template tree (P-11's copy fallback) — never left as symlinks into a `.claude/skills/**`
+  the plugin path does not carry, so no kept entry dangles. When a local-mode deploy runs (and on a
+  codex-only project), the mirror deploys exactly as today (symlink-or-copy, P-11/P-12).
 - **Verify:** `go test ./internal/template -run '^TestCodexMirrorFollowsDeployMode$' -count=1 -v`
-  — expected `--- PASS:` present, exit 0 (the verification-gated arm included).
+  — expected `--- PASS:` present, exit 0 (the verification-gated arm and the re-homed-fallback arm
+  included).
 - **Alternates not taken (recorded):** (b) always-deploy, (c) retire on every path.
 
 ### AC-007 — `--all` semantics (REQ-007, OD-7 settled (a) 2026-10-03)
@@ -190,7 +197,10 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 
 - **Given** a classified set holding template-identical dropped components, **When** the migration
   runs, **Then** they are removed from the project tree, the removed count is printed, and no
-  archive copy of an identical component is written.
+  archive copy of an identical component is written — and the removal ran through the
+  classified-set-scoped executor (REQ-011; design §3 step 4): the removal list the executor
+  processed is the classified set, and the global managed-roots walk did not run over the dropped
+  roots in this run.
 - **OD-3 conditions folded here:** a file whose manifest entry is missing or stale classifies
   modified (archive-then-remove via REQ-010/REQ-012) and never enters this removal set; removal
   runs only after every archive in the batch has succeeded (REQ-012).
@@ -213,9 +223,13 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 
 ### AC-013 — Foreign untouched, symlink refusal (REQ-013)
 
-- **Given** a fixture tree holding a foreign user skill and a symlinked entry, **When** the
-  migration runs, **Then** the foreign file is byte-unchanged and still present, and the symlink
-  is neither dereferenced, archived, nor followed.
+- **Given** a fixture tree holding a foreign user skill at a name the managed glob matches
+  (`moai-custom` under `.claude/skills/`) and a symlinked entry, **When** the migration runs,
+  **Then** the foreign file is byte-unchanged and still present — the migration's removal list
+  never contains it, even though the Clean step's global walk (P-06/P-07) would have removed it —
+  and the symlink is neither dereferenced, archived, nor followed (mirror-entry handling is
+  REQ-006's own clause: removed as link entries or re-homed per its fallback form, never
+  dereferenced).
 - **Verify:** `go test ./internal/cli -run '^TestMigrationLeavesForeignFilesUntouched$' -count=1 -v`.
 
 ### AC-014 — Idempotence (REQ-014)
@@ -227,18 +241,22 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 ### AC-015 — Migration trigger (REQ-015, OD-4 settled (a, amended) 2026-10-03)
 
 - **Given** a fixture project with no mode record, **When** update runs, **Then** the install step
-  runs fail-open under the opt-out before classification, the dedupe follows it, and the record is
-  written `plugin`; but when the install step fails, nothing is deduped or removed, the record is
-  written `local`, and no path records `plugin`; with the opt-out set, the full local payload
-  deploys, nothing is removed, and the record is written `local`.
+  runs fail-open under the opt-out and its outcome is read through the post-install list-surface
+  probe (design §2.4): probe `confirmed` — the dedupe follows classification and the record is
+  written `plugin`; probe `failed-or-skipped` (tool absent, command failure or timeout, or the
+  plugin not listed) — nothing is deduped or removed, the record is written `local`, and no path
+  records `plugin`; probe `opted-out` — the full local payload deploys, nothing is removed, and
+  the record is written `local`.
 - **Verify:** `go test ./internal/cli -run '^TestUpdateMigratesLegacyProject$' -count=1 -v`
-  (three arms: confirmed install; failed install; opt-out).
+  (three arms mapped to the probe: `confirmed`; `failed-or-skipped`; `opted-out`).
 - **Alternates not taken (recorded):** (b) guidance-plus-local-record, (c) `moai migrate`.
 
 ### AC-016 — Update mode-scoped deployer + honest accounting (REQ-016)
 
-- **Given** a `plugin`-mode project, **When** update's template sync runs, **Then** the selected
-  deployer is the thin one, no dropped component is re-deployed, the outcome summary counts
+- **Given** a `plugin`-mode project on the verification-produced path (REQ-006's fallback deploys
+  the re-homed mirror per its own clause and is AC-006's subject), **When** update's template sync
+  runs, **Then** the selected
+  deployer is the thin one, no dropped skill/command component is re-deployed, the outcome summary counts
   what this run actually deployed and removed (a zero-redeploy run reports zero), and the recorded
   `deployment_mode` value is byte-identical after the run (REQ-016's survival clause, OD-5
   condition).
@@ -259,7 +277,9 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 
 ### AC-019 — No resurrection (REQ-019)
 
-- **Given** a migrated `plugin`-mode project, **When** update runs again with `--force`, **Then**
+- **Given** a migrated `plugin`-mode project on the verification-produced path (under REQ-006's
+  no-verification fallback the mirror's fate is REQ-006's own clause — re-homed copies held
+  stable, not resurrection), **When** update runs again with `--force`, **Then**
   `.claude/skills/**`, `.claude/commands/**`, and mirror entries stay absent.
 - **Verify:** `go test ./internal/cli -run '^TestUpdateForceDoesNotResurrectDropped$' -count=1 -v`.
 
@@ -344,8 +364,9 @@ redirect-and-echo bundles).
   - Amendment note (2026-10-03): re-run at `3906f985b` for the OD-verdict incorporation produced
     the identical shape — `testing: warning: no tests to run` / `PASS` /
     `ok github.com/modu-ai/moai-adk/internal/cli 0.777s [no tests to run]`, exit 0 — and serves as
-    the fresh form observation cited by L-09, L-16, and L-23. This entry's own pin (AC-001's
-    assertion did not change) stays `3f3ebb763`.
+    the fresh form observation cited by L-09 and L-23 (L-16 moved onto its own selector in the
+    cross-model repair). This entry's own pin (AC-001's assertion did not change) stays
+    `3f3ebb763`.
 - **L-02** (shared positive control)
   - Command: `go test ./internal/cli -run '^TestLegacySkillIDsNotEmbedded$' -count=1 -v`
   - Stdout (verbatim, tail):
@@ -379,8 +400,8 @@ redirect-and-echo bundles).
     ```
   - Exit code: 0; red by the PASS-line rule (the criterion's named test does not exist yet).
     Flipped by M2.
-- **L-07** (AC-006; re-observed 2026-10-03 — the OD-6 verification-gated arm changed the
-  criterion's assertion, so the cell was re-measured)
+- **L-07** (AC-006; re-observed 2026-10-03 twice — first for the OD-6 verification-gated arm at
+  `3906f985b`, then for the cross-model repair's re-homed-fallback binding at `a1f17b038`)
   - Command: `go test ./internal/template -run '^TestCodexMirrorFollowsDeployMode$' -count=1 -v`
   - Stdout (verbatim, at tree `3906f985b`):
     ```
@@ -388,7 +409,13 @@ redirect-and-echo bundles).
     PASS
     ok  	github.com/modu-ai/moai-adk/internal/template	0.374s [no tests to run]
     ```
-  - Exit code: 0; red by the PASS-line rule. Flipped by M2.
+  - Stdout (verbatim, at tree `a1f17b038` — the D-8 repair re-observation):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/template	0.434s [no tests to run]
+    ```
+  - Exit code: 0 (both runs); red by the PASS-line rule. Flipped by M2.
 - **L-08** (AC-007) — the AC-007 test does not exist; the L-01 shape cell stands for the form
   (internal/cli package, anchored `-run`).
 - **L-09** (AC-008) — the harness script and its Go wrapper test do not exist; the L-01 shape cell
@@ -408,7 +435,18 @@ redirect-and-echo bundles).
     ```
   - Exit code: 0; red by the PASS-line rule. Flipped by M1.
 - **L-11** (AC-010) — the AC-010 test does not exist; L-01 shape cell stands for the form.
-- **L-12** (AC-011) — the AC-011 test does not exist; L-01 shape cell stands for the form.
+- **L-12** (AC-011; own selector, observed 2026-10-03 at tree `a1f17b038` — the cross-model repair
+  (D-7) extended the criterion's assertion with the classified-set executor scope, so the cell
+  moved off the L-01 shape onto its own command)
+  - Command: `go test ./internal/cli -run '^TestMigrationRemovesIdenticalDroppedComponents$' -count=1 -v`
+  - Stdout (verbatim, at tree `a1f17b038`):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	0.792s [no tests to run]
+    ```
+  - Exit code: 0; red by the PASS-line rule (the criterion's named test does not exist yet).
+    Flipped by M3.
 - **L-13** (AC-012; re-observed 2026-10-03 — the OD-3 every-archive-in-the-batch condition
   strengthened the criterion's assertion, so the cell was re-measured)
   - Command: `go test ./internal/cli -run '^TestMigrationArchivesModifiedBeforeRemoval$' -count=1 -v`
@@ -420,12 +458,30 @@ redirect-and-echo bundles).
     ```
   - Exit code: 0; red by the PASS-line rule. Flipped by M3. The negative control (pre-fix silent
     deletion) is a subtest shown failing before the fix lands.
-- **L-14** (AC-013) — the AC-013 test does not exist; L-01 shape cell stands for the form.
+- **L-14** (AC-013; own selector, observed 2026-10-03 at tree `a1f17b038` — the cross-model repair
+  (D-7) strengthened the criterion's Given to a glob-hit foreign name, so the cell moved off the
+  L-01 shape onto its own command)
+  - Command: `go test ./internal/cli -run '^TestMigrationLeavesForeignFilesUntouched$' -count=1 -v`
+  - Stdout (verbatim, at tree `a1f17b038`):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	0.618s [no tests to run]
+    ```
+  - Exit code: 0; red by the PASS-line rule. Flipped by M1 (the migration classification unit).
 - **L-15** (AC-014) — the AC-014 test does not exist; L-01 shape cell stands for the form.
-- **L-16** (AC-015) — the AC-015 test does not exist; L-01 shape cell stands for the form.
-  Re-observed 2026-10-03 at `3906f985b` via the L-01 form (the OD-4 (a, amended) install-failure
-  arm changed this criterion's assertion): the L-01 command's fresh run printed the identical
-  no-tests-to-run shape (`...internal/cli 0.777s [no tests to run]`), exit 0.
+- **L-16** (AC-015; own selector, observed 2026-10-03 at tree `a1f17b038` — the cross-model repair
+  (D-9) re-mapped the criterion's three arms onto the post-install list-surface probe, so the cell
+  moved off the L-01 shape onto its own command; the earlier OD-4 re-observation at `3906f985b`
+  used the L-01 form and printed the identical no-tests-to-run shape)
+  - Command: `go test ./internal/cli -run '^TestUpdateMigratesLegacyProject$' -count=1 -v`
+  - Stdout (verbatim, at tree `a1f17b038`):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	0.653s [no tests to run]
+    ```
+  - Exit code: 0; red by the PASS-line rule. Flipped by M3.
 - **L-17** (AC-016; re-observed 2026-10-03 — the OD-5 survival clause extended the criterion's
   assertion, so the cell was re-measured)
   - Command: `go test ./internal/cli -run '^TestUpdatePluginModeSkipsDroppedRedeploy$' -count=1 -v`

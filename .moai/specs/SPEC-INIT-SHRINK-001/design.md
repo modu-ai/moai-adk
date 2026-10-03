@@ -20,6 +20,9 @@ New units, deliberately few:
 
 - `internal/cli/update/migrate_classify.go` — the classifier (REQ-010) and its three classes.
 - `internal/cli/update_migrate.go` — the trigger wiring in the update flow (REQ-015).
+- the post-install list-surface probe (§2.4) — the tri-state install-outcome signal this card adds
+  beside the t1435 step (never a change to the step's return contract; consumed by init's MCP
+  policy and the migration trigger — REQ-005, REQ-015).
 - `scripts/check-bare-name-resolution.sh` (+ its self-test script) — the REQ-008 measurement.
 - `deployment_mode` config key (OD-5 settled (a) 2026-10-03) beside `llm.harness`.
 
@@ -36,9 +39,12 @@ DeployMode: plugin | local
 - `plugin` — the default path: the deploy walk skips `.claude/skills/**` and `.claude/commands/**`
   (REQ-001); the skill mirror is disabled once the Codex actual-execution verification is produced
   (OD-6 settled (a) + condition — where the verification cannot be produced, the mirror stays
-  deployed); the project `.mcp.json` render carries no `moai` entry when the install step is
-  confirmed (OD-1 settled (c): the entry is written as the fallback carrier when the install step
-  failed or was skipped).
+  deployed **with its entries re-homed to real directory copies rendered from the embedded
+  template tree** (P-11's existing copy fallback), never left as the symlinks into
+  `../../.claude/skills/<name>` that would dangle once the plugin path stops deploying
+  `.claude/skills/**`; §3 mirror entries); the project `.mcp.json` render carries no `moai` entry
+  when the install-outcome probe reads `confirmed` (OD-1 settled (c): the entry is written as the
+  fallback carrier on `failed-or-skipped` and on `opted-out`; §2.4).
 - `local` — the `--no-plugin` and `--all` paths: today's payload byte-for-byte (REQ-003, REQ-007).
 
 Slim-mode composition: slim/full governs which catalog entries the **local** deploy carries (core
@@ -48,7 +54,8 @@ the rest. `--all` resolves to `local` + full-tier (OD-7 default), which is exact
 
 Codex-only: the harnessFS re-homing of P-12 composes with the mode — `local` mode re-homes to
 `.agents/skills` as today; `plugin` mode deploys no skills at all, so there is nothing to re-home
-and the mirror stays off (OD-6 default).
+and the mirror stays off (OD-6 primary path; under the no-verification fallback the mirror stays
+here too, as re-homed real copies per §2.1).
 
 ### 2.2 Where the flip lands
 
@@ -63,13 +70,57 @@ and the mirror stays off (OD-6 default).
 ### 2.3 The MCP entry
 
 `provisionMCPEntryUnlessDeclined` (P-15) keeps its signature and its decline table; on the plugin
-path the ensure-entry call for the `moai` server is skipped only when the install step is confirmed
-(OD-1 settled (c) — the render-time filter stands on the confirmed path); when the install step
-failed or was skipped, the provision call writes the project `moai` entry as the fallback carrier,
-which requires the provision call to run after the install step and observe its outcome. On
-`local` mode everything is as today. The `--llm gpt`
+path the ensure-entry call for the `moai` server is skipped only when the install-outcome probe
+(§2.4) reads `confirmed` (OD-1 settled (c) — the render-time filter stands on the confirmed path);
+on `failed-or-skipped`, and on `opted-out` (the local-path semantics of REQ-003/REQ-005), the
+provision call writes the project `moai` entry as the fallback carrier, which requires the
+provision call to run after the install step and read the probe's outcome. On `local` mode
+everything is as today. The `--llm gpt`
 project-entry decline is unaffected (OD-1); the Codex `config.toml` wiring is untouched on every
 path.
+
+### 2.4 The install-outcome signal — the post-install list-surface probe
+
+The t1435 install step is fail-open by contract and returns nil in every case: a failure, a
+timeout, an absent tool, and the opt-out skip are indistinguishable to its caller, and the outcome
+exists only as prose on the step's output writer (`internal/cli/plugin_install.go:187-202` —
+"runPluginInstallStep acts on opts.Tools in order and returns nil in every case"). That return
+contract is t1435's — completed — and is not changed here. This card adds its own observational
+signal beside the step, consumed by §2.3 (the MCP-entry policy) and §3 (the migration trigger):
+the **post-install list-surface probe**. The probe runs after the install step's process work
+ends, starts no install action, and never re-runs or repairs the step.
+
+- **`opted-out`**: the t1435 opt-out is set (`--no-plugin` or `MOAI_SKIP_PLUGIN_INSTALL=1|true`,
+  t1435 OD-5). Decided before the step runs; the step is not attempted; the outcome is
+  `opted-out` without probing.
+- **`confirmed`**: the step ran, and for every tool it acted on, that tool's installed-plugin
+  list surface names `moai@moai-adk` — `claude plugin list` for the Claude tool (a measured
+  read-only verb: the t1434 probe's read-only list, SPEC-PLUGIN-LOAD-SCOPE-001 REQ-004), and
+  `codex plugin list --json` for the Codex tool (the t1435 REQ-021 route, whose read pattern
+  `internal/cli/doctor_plugin_version.go` `probeCodexPluginVersion` already implements). The
+  probe starts its list commands through the same REQ-017 runner seam the step and the doctor
+  probe use, bounded by the doctor probe's timeout-constant class. The confirmed verdict requires
+  every acted tool's surface to list the plugin.
+- **`failed-or-skipped`**: everything else — the tool was absent from PATH, a step command failed
+  or timed out, the runner refused, a list surface does not name the plugin, or the probe could
+  not read a surface. Only a listed plugin confirms; every unconfirmed outcome resolves here
+  (conservative: unconfirmed means failed).
+
+Failure modes, named: a tool list that lags the install reads unconfirmed and parks the project
+in `local` — the conservative direction OD-4's amendment wants, with the documented init re-entry
+(REQ-018) as the recourse; a list-surface format change degrades to unconfirmed (the probe
+matches only the plugin ref string and the JSON entry — no coupling to the tool's internal
+install layout, the coupling t1435 REQ-021 deliberately avoids); a partial multi-tool landing
+(one surface lists, the other does not) is unconfirmed. The probe's own errors are never fatal to
+the flow — they resolve to `failed-or-skipped`.
+
+Arm mapping: `confirmed` is the only outcome that may record `plugin` or omit the project `moai`
+entry; `failed-or-skipped` writes no plugin record anywhere, removes nothing, keeps
+`deployment_mode: local`, and writes the project `moai` entry as the fallback carrier;
+`opted-out` deploys the full local payload and writes the `moai` entry (REQ-003/REQ-005's
+local-path semantics). In verification the probe is inert by the same REQ-017 refusal — a test
+that exercises an arm injects a runner whose list output names (or omits) the plugin, or sets the
+opt-out; no test reaches a real tool.
 
 ## 3. Migration pipeline
 
@@ -79,8 +130,10 @@ Ordered inside the update flow's existing step table; the Clean step stays the r
    (`update_template_sync.go:180-189`) has passed (the post-shrink binary bumped the version). The
    mode record is read: present → no migration (the deployer split of §2.2 governs). Absent → the
    migration path runs: install step fail-open under the opt-out (the t1435 step, sequenced after
-   its landing); an install-step failure ends the migration there with the record written `local`
-   and steps 2-4 unexecuted (OD-4 settled (a, amended)); on install success, then classification.
+   its landing), its outcome read through the post-install list-surface probe (§2.4); a
+   `failed-or-skipped` or `opted-out` probe outcome ends the migration there with the record
+   written `local` and steps 2-4 unexecuted (OD-4 settled (a, amended)) — on `opted-out` the full
+   local payload deploys as today; on probe `confirmed`, then classification.
 2. **Classification** (REQ-010): for every file under the dropped roots
    (`.claude/skills/**`, `.claude/commands/**`, the mirror), compare the on-disk content with the
    template **render for this project's context** — the same render the deployer would write. The
@@ -92,13 +145,27 @@ Ordered inside the update flow's existing step table; the Clean step stays the r
    standalone files (commands, mirror files) through the same layout with a file-level archive
    root. **Any archive failure aborts before the removal step runs** — the P-08 REQ-UDS-008 rule.
 4. **Removal** (REQ-011/REQ-013): `identical` items are removed (no archive — the plugin and the
-   template render are the recovery source); `foreign` items are never touched. The removal runs
-   through the Clean step's machinery so the existing progress lines, crash-window guards, and
-   recovery manifest apply; the migration hands Clean a deploy-set-scoped template FS (the
-   post-shrink deployer's file set, not the raw embedded tree) so the P-08 backup exemption cannot
-   silently apply to dropped components. Alternative accepted at design time: pre-remove the
-   modified set through the migration's own guarded path before Clean runs — chosen only if the
-   scoped-FS hand-off proves invasive; the abort-before-removal contract is identical either way.
+   template render are the recovery source); `foreign` items and symlinks are never in the
+   removal list. The binding invariant: **the removal executor's scope is exactly the classified
+   removal list** — the identical set plus the modified set, the latter only once REQ-012's batch
+   archive has fully succeeded — never the global managed-roots walk. Primary form: the migration
+   passes that list to the Clean machinery as its target list, and Clean processes exactly that
+   list with its existing progress lines, crash-window guards, and backup semantics; the
+   non-dropped managed roots (settings, agents/moai, rules/moai, output-styles/moai, hooks/moai,
+   `.moai/config`) keep their normal Clean treatment in the same run. Clean's default global walk
+   over `ManagedCleanTargets` (P-06/P-07) does not run over the dropped roots in a migration run.
+   Accepted alternative, same invariant: the migration removes through its own guarded path
+   reusing `backupThenRemove`, and the update flow skips Clean's dropped roots entirely for that
+   run. Why the earlier scoped-FS hand-over idea is dead: `tmplFS` scopes only the backup (P-08) —
+   the walk itself has no classification gate and no user-owned skip and removes every glob match,
+   so no template-FS scoping could preserve a foreign `moai-custom` skill the `.claude/skills/moai*`
+   glob hits, or a symlink entry. Backup disposition in the migration path: modified items carry
+   their own step-3 archive before they enter the removal list (the archive IS their backup), and
+   identical items are removed without backup per OD-3 (a) — the P-08 exemption is moot by
+   construction, not by FS scoping. The abort-before-removal contract is unchanged. On a
+   `local`-outcome migration run (`failed-or-skipped` / `opted-out`) nothing is removed by the
+   migration and the normal Clean walk runs as today — the local deploy redeploys the full
+   payload.
 5. **Record write**: the migration ends by writing the mode record (`plugin` after a confirmed
    install, or `local` under the opt-out — in which case steps 2-4 are skipped entirely — or
    `local` when the install step failed, OD-4's amended condition).
@@ -108,7 +175,12 @@ Ordered inside the update flow's existing step table; the Clean step stays the r
 
 Mirror entries: symlink mirror entries are removed as part of the dropped roots under OD-6
 settled (a) + condition — the removal happens only after Codex is verified to actually execute
-plugin-borne skills, and where the verification cannot be produced the mirror stays; the entries
+plugin-borne skills. Where the verification cannot be produced the mirror stays — re-homed, not
+kept as links: mirror entries are relative symlinks into `../../.claude/skills/<name>` (P-11) and
+the plugin path deploys no `.claude/skills/**` (REQ-001), so a kept symlink would dangle; the
+migration re-homes kept mirror entries to real directory copies rendered from the embedded
+template tree (P-11's existing copy fallback) BEFORE the dropped-root removal runs, and a fresh
+plugin deploy under the fallback renders the mirror as real copies from the start. The entries
 are never dereferenced (P-11's constraint; the archive contract already refuses them).
 
 ## 4. The resolution gate
