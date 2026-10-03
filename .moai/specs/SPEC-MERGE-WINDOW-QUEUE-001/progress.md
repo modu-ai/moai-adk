@@ -15,7 +15,9 @@
   of any code in `3bc274dac` (`.moai/reports/t1479/baseline-acquire-nowait/`).
 - Decisions: Q1 = recorded operator approval; Q2-Q6 (v0.2.0) and Q8-Q13 (v0.3.0, plan-audit
   iteration 1) = leader decisions (mission contract 07d28c4b) in the verdict lines. Target v3.2.0.
-- Open: decision-index Q14 (heartbeat interval/window, slice re-entry grace) — blocks M1.
+- v0.4.0: Q14 (heartbeat 15 s / window 60 s / re-entry grace 120 s), Q15 (starvation counting +
+  three-requeue bound), Q16 (non-test-command residual risk) recorded as leader decisions. No open
+  decision blocks run entry.
 - Plan audit iteration 1: FAIL 0.75 (`.moai/reports/t1479/plan-audit-iter1.md`, verbatim copy).
   v0.3.0 revision: 25 REQ / 25 AC, contiguous 001-025; push verb moved to SPEC-CANDIDATE-CI-001.
 

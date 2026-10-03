@@ -117,10 +117,17 @@ partly (a)/(b) — its owner confirms each:
 
 ## §R7 Residual risk — starvation under the front-once rule
 
-REQ-MWQ-020 guarantees that a reserved ticket neither blocks the queue nor waits behind later
-arrivals once it is ready. It does not guarantee a merge: if the reserved owner becomes ready while
-another lane holds the window, that holder's own merge moves the integration tip, the reserved
-ticket's record goes stale, and the next base move sends it to the tail under the leader's Q4/Q11
-rule. Under sustained arrivals a lane can still be requeued repeatedly. The run phase measures the
-requeue count per merge with a rule-model test (plan-audit operational note) and reports it; a
-change to the rule is a leader decision, not a run-phase fix.
+v0.3.0 named a hole: a reserved owner that became ready while another lane held the window would
+see that holder's merge move the tip, and under v0.3.0's rule that counted as the "second move" and
+sent it to the tail. v0.4.0 closes it by the leader's decision (decision-index Q15):
+
+- only a base move during the ticket's OWN re-measure counts toward "second move → tail";
+- a move that happens while the ready ticket waits for another holder keeps it at the front;
+- three consecutive requeues of any kind send it to the tail with a logged event (the bound that
+  keeps a perpetually-invalidated ticket from pinning the front forever).
+
+What remains: the three-requeue bound itself can send a lane to the tail under sustained load, so
+the guarantee is "no unbounded front-pinning, and a lane loses its place only after three
+consecutive requeues", not "every lane merges". The run phase measures the requeue count per merge
+with a rule-model test (plan-audit operational note) in M6 and reports it; a change to the bound is
+a leader decision, not a run-phase fix.

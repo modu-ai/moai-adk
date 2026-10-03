@@ -22,12 +22,14 @@
   heartbeat instant advances.
 - **AC-MWQ-003** (maps REQ-MWQ-003) — Given B queued at position 2 with `--slice 5m`, When the slice
   ends, Then B exits with the still-queued code naming position 2 and the ticket is `between-slices`;
-  When B re-invokes `acquire --wait --slice 5m` before the re-entry deadline, Then the queue still
-  holds exactly one ticket for B at position 2 and its state is `waiting`.
+  When B re-invokes `acquire --wait --slice 5m` at +119 s, Then the queue still holds exactly one
+  ticket for B at position 2 and its state is `waiting`; Given instead a re-invocation at +121 s
+  after the drop mutation ran, Then B gets a new ticket at the tail.
 - **AC-MWQ-004** (maps REQ-MWQ-004) — Scenario 1 (killed waiter): Given B's waiter process is killed
   (SIGKILL; owning session still live), When C enqueues, Then B's ticket is dropped and C's output
   names B with reason "waiter gone". Scenario 2 (pid reuse): Given a live process with B's pid but a
-  different start time, Then B is dropped. Scenario 3: Given a stale heartbeat, Then B is dropped.
+  different start time, Then B is dropped. Scenario 3: Given B's last heartbeat at −59 s, Then B
+  stays; at −61 s, Then B is dropped (60 s window, injected clock).
   Scenario 4: Given a `between-slices` ticket past its re-entry deadline, Then it is dropped.
 - **AC-MWQ-005** (maps REQ-MWQ-005) — Given A holds indefinitely, When B runs `acquire --wait=2m`
   (injected clock), Then at 1m59s B still waits and at 2m B exits non-zero naming A, its last
@@ -109,8 +111,13 @@
   B `waiting`, When the holder releases, Then B is promoted. Scenario 2 (front-once): Given A then
   produces a record on the current tip while C and D wait, When the holder releases, Then A is
   promoted before C and D. Scenario 3 (bound): Given A never re-measures, When 30m pass, Then A is
-  dropped with reason "readiness bound". Scenario 4 (second move): Given A used its front promotion
-  and its merge path finds the base moved again, Then A's new ticket is `waiting` at the tail.
+  dropped with reason "readiness bound". Scenario 4 (second own-re-measure move): Given A was
+  requeued once, and develop moves again while A is re-measuring, When A's merge path runs, Then
+  A's new ticket is `waiting` at the tail. Scenario 5 (move while waiting does not count): Given A
+  is ready at the front while B holds, When B's merge moves develop, Then A keeps its front position,
+  its own-re-measure requeue count is unchanged, and after re-measuring A is promoted before every
+  other ticket. Scenario 6 (bound): Given A has been requeued three consecutive times of any kind,
+  Then A is at the tail and the window record's log carries an entry naming A and the count 3.
 
 ### Completion gate
 

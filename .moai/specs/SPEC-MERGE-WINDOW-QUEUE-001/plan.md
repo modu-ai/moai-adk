@@ -15,7 +15,8 @@ plan-audit iteration 1 decisions Q8-Q13 (mission contract 07d28c4b).
 - The in-window re-measure duration figure is leader-measured, not re-measured here (spec.md §F).
 - SPEC-CANDIDATE-CI-001 (t1478) is not landed; `workflow.candidate_ci.enabled` absent reads as
   false, so the local record form governs until it lands (REQ-MWQ-015).
-- Heartbeat interval/window and slice re-entry grace are unvalued (decision-index Q14).
+- Heartbeat 15 s, heartbeat window 60 s, re-entry grace 120 s are leader values (Q14); M0 may only
+  tighten them.
 
 ## §C Pre-flight (run phase)
 
@@ -24,7 +25,7 @@ plan-audit iteration 1 decisions Q8-Q13 (mission contract 07d28c4b).
    part of this scope — stop and report.
 3. Check whether t1478 has landed and whether its key path is still `workflow.candidate_ci.enabled`;
    whichever card lands second verifies the shared path (research.md §R5).
-4. Confirm decision-index Q14 carries a disposition; without it M1 does not start.
+4. No open decision remains (Q14-Q16 settled in v0.4.0); re-read decision-index for any later row.
 5. The no-`--wait` baseline is already committed (`3bc274dac`,
    `.moai/reports/t1479/baseline-acquire-nowait/`); do not regenerate it after code changes.
 
@@ -109,7 +110,7 @@ progress.md §E.2.
 | Promotion races the bound | both decided in the mutation; late-observed promotion releases at once (REQ-MWQ-006) |
 | Bash 10-min cap below the 60-min wait | background run or slices that keep position (REQ-MWQ-003) |
 | Lease evicts a merging holder | 30-min default far above the identity + merge path; renewals; M0 may only shorten |
-| Requeue churn / starvation | reserved ticket that does not block, front-once, 30-min readiness bound (REQ-MWQ-020); residual risk in research.md §R7 |
+| Requeue churn / starvation | reserved ticket that does not block, front-once, 30-min readiness bound; only own-re-measure moves count; three consecutive requeues → tail + log (REQ-MWQ-020); rule-model requeue measurement in M6 (research.md §R7) |
 | Release during hold empties the window | intended: queue intact, promotion resumes on `open` (REQ-MWQ-008) |
 | Empty or unstructured test runs pass the gate | refused by REQ-MWQ-016 |
 | Dirty tree measured under HEAD's key | refused by REQ-MWQ-017 |

@@ -1,7 +1,7 @@
 ---
 id: SPEC-MERGE-WINDOW-QUEUE-001
 title: "Merge-window automation — FIFO acquire queue, leader nomination abolished, re-measure moved out of the window, substantive complete gate"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -25,6 +25,7 @@ related_specs: [SPEC-CANDIDATE-CI-001, SPEC-INTEGRATION-LOCK-ATOMIC-001, SPEC-IN
 | 0.1.0 | 2026-10-03 | manager-spec | Initial draft — card t1479 (Tier L). Operator approval 2026-10-03 (leader session df44e022, AskUserQuestion): "병합 창 선착순 대기열" — leader window nomination abolished, immediate implementation. Recorded in decision-index.md Q1. |
 | 0.2.0 | 2026-10-03 | manager-spec | Leader decisions Q2-Q6 (mission contract 07d28c4b; operator: implement now, include in v3.2.0): 30-min lease on by default, bare `--wait` bound 60 min, requeue front-once, candidate-CI vs local record form, tool-reported test count. |
 | 0.3.0 | 2026-10-03 | manager-spec | Plan-audit iteration 1 (FAIL 0.75, `.moai/reports/t1479/plan-audit-iter1.md`, MP-1 + D1-D10 blocking) closed with leader decisions (mission contract 07d28c4b, decision-index Q8-Q13). Push verb (former REQ-040..044) removed to SPEC-CANDIDATE-CI-001 (card t1478) with a hand-off note in research.md §R6 (D1/D8). Lettered items folded; REQ and AC renumbered contiguously 001-025 (MP-1/D2). Hold suspends every promotion (REQ-008, D3). Reserved re-entry ticket that does not block the queue, with a 30-min readiness bound (REQ-020, D4). Waiter-process liveness + heartbeat, timeout-vs-promotion race, slice re-entry without position loss (REQ-003..006, D5). Empty sweeps and unstructured runs refused (REQ-016, D6). Clean tree before and after the re-measure (REQ-017, D7). No-`--wait` baseline fixture committed ahead of code (`.moai/reports/t1479/baseline-acquire-nowait/`, commit `3bc274dac`, D9). Exact doctrine grep (AC-014, D10). Optional D11-D14 addressed (M0 method, `workflow.candidate_ci.enabled` named, record provenance + residual risk, positive grep on the distributed text). |
+| 0.4.0 | 2026-10-03 | manager-spec | Leader decisions (mission contract 07d28c4b): Q14 liveness values — heartbeat 15 s, window 60 s, re-entry grace 120 s, M0 tighten-only (REQ-MWQ-003/004); Q15 starvation — only a base move during the ticket's own re-measure counts toward "second move → tail", a move while a ready ticket waits for another holder keeps its front position, and three consecutive requeues of any kind send it to the tail with a logged event (REQ-MWQ-020, AC-MWQ-020 scenarios 4-6); Q16 — Q12 boundary accepted, non-test-command residual risk stated (§D). Counts unchanged 25/25. |
 
 ## §A Background
 
@@ -82,11 +83,13 @@ completion requires a measurement keyed to that tree.
   shall keep the caller's ticket at its position, mark it `between-slices` with a re-entry deadline,
   and exit with a dedicated still-queued exit code naming the position; **When** the same session
   re-invokes `acquire --wait` before that deadline, the verb shall resume the existing ticket at the
-  same position rather than enqueue a new one.
+  same position rather than enqueue a new one. The re-entry grace shall be 120 seconds.
 - **REQ-MWQ-004** (Event-driven) — **When** any queue mutation runs, the window record shall drop
   every ticket whose waiter process (matched on id AND start time) is gone, whose heartbeat is
   older than the heartbeat window, or whose `between-slices` re-entry deadline has passed, and the
-  mutating command shall name each dropped ticket and the reason in its output.
+  mutating command shall name each dropped ticket and the reason in its output. The waiter shall
+  heartbeat every 15 seconds and the heartbeat window shall be 60 seconds (four missed beats); run
+  milestone M0 may only tighten the heartbeat, window, and re-entry grace values.
 - **REQ-MWQ-005** (Event-driven) — **When** a ticket's total wait bound elapses before it is
   promoted, the acquire verb shall withdraw the ticket and exit non-zero, naming the holder, the
   ticket's last queue position, and the bound.
@@ -166,9 +169,13 @@ completion requires a measurement keyed to that tree.
 - **REQ-MWQ-020** (State-driven) — **While** a `reserved` ticket's owner has not produced a record
   whose absorbed commit equals the current integration tip, the ticket shall be not ready and shall
   not block promotion of the next ready ticket; **When** it becomes ready, it shall receive the next
-  promotion once; **When** it has not become ready within its readiness bound (default 30 minutes)
-  it shall be dropped with that reason; and **When** a ticket that already used its front promotion
-  is requeued again by a base move, it shall go to the tail as an ordinary `waiting` ticket.
+  promotion once and shall keep that front position while it waits for another holder's window;
+  **When** it has not become ready within its readiness bound (default 30 minutes) it shall be
+  dropped with that reason; **When** a ticket is requeued by a base move that happened during its
+  own re-measure for the second consecutive time, it shall go to the tail as an ordinary `waiting`
+  ticket, whereas a base move that happened while the ready ticket waited for another holder's
+  window shall not count toward that limit; and **When** a ticket reaches three consecutive
+  requeues of any kind, it shall go to the tail and the window record shall log the event.
 
 ### C.4 Substantive completion gate
 
@@ -207,6 +214,11 @@ completion requires a measurement keyed to that tree.
 - Trust model: the record is written by the re-measure verb and carries its build identity, but a
   hand-written record file is not distinguishable by the verifier. Actors are assumed cooperative;
   forgery is a residual risk, not a defended boundary.
+- Residual risk — non-test commands (leader decision Q12/Q16): a command whose tool emits no
+  recognized test structure stays valid on exit code zero, so the verifier cannot tell a
+  non-test command (for example `true`) from a real test run in that case. The candidate-CI form
+  (SPEC-CANDIDATE-CI-001, `workflow.candidate_ci.enabled: true`) is the stronger record and
+  removes this gap where it is enabled.
 
 ## §E Exclusions
 
@@ -237,5 +249,5 @@ completion requires a measurement keyed to that tree.
   leader's investigation figure on develop `42d8474de`; this plan did not re-measure it.
 - Cited line numbers were re-read on this tree (HEAD `d7112d005`, tree `632f65b47aa5`) and by the
   plan audit on `1e1d0cc84`; see research.md §R1.
-- Heartbeat interval, heartbeat window, and `between-slices` re-entry grace are not yet valued
-  (decision-index Q14); the run phase cannot start M1 without them.
+- Heartbeat interval (15 s), heartbeat window (60 s), and re-entry grace (120 s) are leader
+  decisions (Q14), not measurements; M0 may only tighten them.

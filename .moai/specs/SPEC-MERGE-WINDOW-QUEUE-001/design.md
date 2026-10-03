@@ -48,7 +48,10 @@ integration wt:  identity check (record.base == develop tip AND card tip tree ==
                  └─ moved ─► release (next ready promoted) ─► reserved ticket ─► re-absorb, re-measure
 reserved:        not ready ─(record on current tip)─► ready ─► next promotion once
                  ├─ not ready in 30 min ─► dropped ("readiness bound")
-                 └─ base moved again after its front promotion ─► tail, waiting
+                 ├─ base moved during its OWN re-measure, 2nd time in a row ─► tail, waiting
+                 ├─ base moved while ready and waiting for another holder ─► keeps front (not counted)
+                 └─ 3 consecutive requeues of any kind ─► tail + logged event
+liveness:        heartbeat 15 s · window 60 s · slice re-entry grace 120 s (M0 tighten-only)
 ```
 
 `moai factory complete` follows the same in-window steps and refuses up front without a valid
