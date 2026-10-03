@@ -85,12 +85,6 @@ var guardAllowlist = []guardAllowlistEntry{
 	// store.go: canonicalSlotName maps a legacy slot onto the canonical name
 	// the refusal error must advertise (REQ-RNC-013).
 	{file: "../factorymsg/store.go", literal: "lead"},
-
-	// --- internal/web: legacy dashboard rendering --------------------------
-	// viewmodel_ops.go: legacyLeaderRole is the persisted pre-rename value,
-	// detected so the leader slot renders the relaunch label (REQ-RNC-009,
-	// AC-RNC-013).
-	{file: "../web/viewmodel_ops.go", literal: "lead"},
 }
 
 // guardAllowlistEntry binds one allowlisted literal to the file that must
