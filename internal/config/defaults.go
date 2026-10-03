@@ -188,6 +188,23 @@ const (
 	// single source of truth.
 	DefaultHookDispatcherTimeout = 30 * time.Second
 
+	// Per-command bound of the plugin install step: it limits ONE `claude
+	// plugin` / `codex plugin` command (SPEC-PLUGIN-MARKETPLACE-001 REQ-013).
+	// Four commands in the worst case make RK-15's 240-second ceiling a visible
+	// number rather than a literal in a call. A chosen value, not a measured one.
+	DefaultPluginInstallCommandTimeout = 60 * time.Second
+
+	// DefaultPluginCommandWaitDelay is how long a plugin command's output pipes
+	// may stay open after its context ends before the runner stops waiting for
+	// them (a grandchild holding the pipe must not outlive the bound).
+	DefaultPluginCommandWaitDelay = 2 * time.Second
+
+	// DefaultPluginVersionProbeTimeout bounds the one `codex plugin list --json`
+	// the "Plugin Version" doctor check starts (SPEC-PLUGIN-MARKETPLACE-001
+	// REQ-021). The command measured 0.02 s; the bound only stops a hang from
+	// stalling an on-demand `moai doctor`. A chosen value, not a measured one.
+	DefaultPluginVersionProbeTimeout = 3 * time.Second
+
 	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
 	// failure Stops under the Claude harness that keep the fail-closed deny;
 	// the next one is answered with no opinion (SPEC-HOOK-STOP-PARSE-CAP-001
