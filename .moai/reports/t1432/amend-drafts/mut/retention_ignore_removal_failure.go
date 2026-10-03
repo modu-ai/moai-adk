@@ -27,18 +27,6 @@ const pruneSkipDuration = time.Hour
 // inject a mock clock stay deterministic).
 const pruneStateSuffix = ".prune-state"
 
-// pruneHealSuffix is appended to the log path to name the heal-lock file. Its flock serializes the
-// re-inspection and removal of a faulty state-path entry between hook processes; it is touched only
-// when such an entry is healed, never on the common path.
-const pruneHealSuffix = ".prune-heal"
-
-// pruneHealWait bounds how long a healer waits for the heal lock. The harness-observe hooks are killed
-// at the 5 s hook timeout; 2 s leaves room for the prune that follows a successful heal.
-const pruneHealWait = 2 * time.Second
-
-// pruneHealPoll is the interval at which a waiting healer retries the non-blocking heal-lock request.
-const pruneHealPoll = 10 * time.Millisecond
-
 // tmpPattern names the temp file the log rewrite creates next to the log; the orphan
 // sweep matches the same pattern so the two cannot drift apart.
 const tmpPattern = "usage-log-*.tmp"
@@ -106,11 +94,6 @@ func NewRetention(logPath, archiveDir string, nowFn func() time.Time) *Retention
 // Windows: the lock taken on the state file is an in-process mutex, so it gives
 // no cross-process exclusion. A burst of hook processes that all find no fresh stamp may prune
 // concurrently, once per interval. F5: not reproduced, not measured.
-//
-// Healing a faulty state-path entry: the re-inspection and removal run under the heal lock
-// (<log>.prune-heal), so concurrent healers do not remove each other's fresh state file. On Windows
-// the owner check never reports an entry as owned, so a faulty state-path entry is never healed and the
-// heal lock is never reached; the heal lock gives no exclusion on Windows.
 //
 // @MX:WARN: [AUTO] The pruner replaces the log by rename; an event appended after its final tail reading is lost.
 // @MX:REASON: [AUTO] The state-file flock admits a single pruner per interval (it was N concurrent rewriters),
@@ -210,9 +193,8 @@ const maxStateInspections = 3
 // so a directory keeps failing the open.
 //
 // @MX:WARN: [AUTO] This path removes an entry from the log directory.
-// @MX:REASON: [AUTO] Removal happens only for an entry the current user owns, only while it is still
-// the inspected entry (removeStateEntryIfUnchanged), and only under the heal lock (healStateEntry), so a
-// concurrent healer's fresh state file survives; the lock is released before the replacement is created.
+// @MX:REASON: [AUTO] Removal happens only for an entry the current user owns and only while it is still
+// the inspected entry (removeStateEntryIfUnchanged); a concurrent healer's fresh state file must survive.
 func (r *Retention) openStateFile(statePath string) (*os.File, error) {
 	for range maxStateInspections {
 		fi, err := os.Lstat(statePath)
@@ -264,27 +246,13 @@ func (r *Retention) openStateFile(statePath string) (*os.File, error) {
 // healStateEntry removes the inspected state-path entry so openStateFile can create a regular
 // replacement, but only when the current user owns it. A foreign-owned entry, or one whose owner
 // cannot be determined, is left untouched: the prune is skipped with an error and one warning line.
-//
-// The removal runs under the heal lock (acquireHealLock), held only across the re-inspection and the
-// removal and released before this function returns, so it is never held while openStateFile creates
-// the replacement or while the state file is locked. A heal lock that cannot be acquired (timeout,
-// unusable entry, failed call) leaves the state-path entry untouched: the prune is skipped with an error
-// naming the heal-lock path and one warning line.
 func (r *Retention) healStateEntry(statePath string, inspected os.FileInfo, kind string) error {
 	if !r.ownerCheck(statePath) {
 		fmt.Fprintf(os.Stderr, "[WARN] harness/retention: prune state %s %s is not owned by the current user or its owner cannot be determined; leaving it untouched and skipping the prune\n", kind, statePath)
 		return fmt.Errorf("retention: prune state %s %s is not owned by the current user; prune skipped", kind, statePath)
 	}
-	healPath := r.logPath + pruneHealSuffix
-	release, err := acquireHealLock(healPath, r.ownerCheck)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[WARN] harness/retention: prune heal lock %s cannot be used; leaving %s untouched and skipping the prune\n", healPath, statePath)
-		return err
-	}
-	defer release()
-	if _, err := removeStateEntryIfUnchanged(statePath, inspected); err != nil {
-		return fmt.Errorf("retention: prune state %s %s cannot be replaced: %w", kind, statePath, err)
-	}
+	// MUTANT (draft instrument): the removal failure is ignored.
+	_, _ = removeStateEntryIfUnchanged(statePath, inspected)
 	return nil
 }
 
