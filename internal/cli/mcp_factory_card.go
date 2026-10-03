@@ -34,6 +34,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // registerFactoryCardMCPTools registers the four factory card tools on the
@@ -41,8 +42,9 @@ import (
 func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler server.ToolHandlerFunc)) {
 	add("factory_next", mcp.NewTool(
 		"factory_next",
-		mcp.WithDescription("Lease the lane's next card through the factory record — the MCP form of `moai factory next` (no --wait). Lane session only; runs from the parent checkout named by project_root. Same implementation, same record changes, same refusals."),
+		mcp.WithDescription("Lease the lane's next card through the factory record — the MCP form of `moai factory next` (no --wait). Lane session only; runs from the parent checkout named by project_root. Same implementation, same record changes, same refusals. With card it leases exactly that card or returns the refusal line `factory next: refused <token>: <detail>` as an error result."),
 		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run).")),
+		mcp.WithString("card", mcp.Description("Optional: the card id to lease (the session's own judged pick). Leased through the same version-checked edges, or refused with a reason token; the quota hold and the Codex skip apply as to any new card. Absent: the unnominated priority-order lease.")),
 		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleFactoryNext)
@@ -127,11 +129,38 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	if err != nil {
 		return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
 	}
+	// A card argument present with a blank value is an error, never a silent
+	// fall-back to the priority-order choice the session did not make.
+	nominee := strings.TrimSpace(req.GetString("card", ""))
+	if _, present := req.GetArguments()["card"]; present && nominee == "" {
+		return toolErr("factory_next", errors.New("factory next: card needs a card id")), nil
+	}
 	// The same quota gate as the CLI verb, through the same shared evaluation.
 	held, holdLine := (&factoryQuotaLatch{}).evaluate(root)
-	card, leased, err := factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
-	if err != nil {
-		return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
+	var card homestate.Card
+	leased := false
+	if nominee != "" {
+		// The nominated lease: the same implementation the CLI verb calls, the
+		// same refusal line (design.md §3 — one implementation per verb).
+		quotaHold := ""
+		if held {
+			quotaHold = holdLine
+		}
+		card, err = factoryNextNominate(ctx, root, runID, lane, nominee, quotaHold)
+		var refusal *factoryNominateRefusal
+		switch {
+		case err == nil:
+			leased = true
+		case errors.As(err, &refusal):
+			return toolErr("factory_next", refusal), nil
+		default:
+			return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
+		}
+	} else {
+		card, leased, err = factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
+		if err != nil {
+			return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
+		}
 	}
 	if !leased {
 		if held {
