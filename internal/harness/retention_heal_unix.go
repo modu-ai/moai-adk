@@ -82,6 +82,13 @@ func acquireHealLockClock(path string, ownerCheck func(string) bool, now func() 
 	for {
 		ferr := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 		if ferr == nil {
+			// A waiter that stalled past the bound (stopped, descheduled) and only then won the lock is
+			// refused like a timeout: the heal never runs after the deadline.
+			if now().After(deadline) {
+				_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+				_ = f.Close()
+				return nil, healLockError(path, fmt.Sprintf("was not acquired within %s", pruneHealWait), nil)
+			}
 			return func() {
 				_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
 				_ = f.Close()

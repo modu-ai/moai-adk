@@ -442,3 +442,26 @@ a cold page cache, production frequency.
 - The load measurement above: a large log's prune exceeds the 5 s hook timeout on a loaded host independent of the heal lock.
 - A process that does not honour the heal lock (an older installed binary during the upgrade window) still races the removal, as the no-lock control shows.
 - On Windows no heal runs (the owner check refuses every entry); the heal lock gives no exclusion there.
+
+## A10. Post-audit fixes (after the delta sync-audit anchored to `89b4e75ea`)
+
+Leader decision on A7: accepted. The prune alone exceeds 5 s on this loaded host; that is pre-existing and tracked as card t1467. The heal lock's ~1.8 s contention wait is accepted.
+
+**Codex review P2: the blocked-pruner FIFO release could hang. Commit `8425b59a7`, test-only.**
+`blockedPruner`'s release opened the archive FIFO with a blocking read open before its 10 s limit. A pruner that failed before its archive step left that open with no writer.
+- **RED (forced state-open error overlay, `-timeout 6s`):** `panic: test timed out after 6s`, stack at `retention_tail_test.go:47`.
+- **Fix:** the read open now runs in a goroutine and one 10 s timer bounds the whole wait. A non-blocking write open releases the reader when the pruner never opened the FIFO. The release runs once and is registered with `t.Cleanup`.
+- **GREEN (same overlay):** no panic, and the real error is reported: `retention_tail_test.go:126: pruner returned retention: forced state-open error (review overlay) for <tmp>/.../usage-log.jsonl.prune-state, want nil`, `--- FAIL: TestPruneCarriesLateEvents (2.33s)`.
+- **Unmutated:** all four `blockedPruner` users PASS. `go test -count=1 -race ./internal/harness/...` ran on that tree: 15 packages `ok`, exit 0.
+
+**Delta sync-audit F6 (promoted to must-fix): a heal lock won after the deadline still healed.**
+- RED commit `11beaf721`. It adds a behaviour-preserving seam, `acquireHealLockClock(path, ownerCheck, now)`; production passes `time.Now`. It also adds `TestHealLockAcquiredPastTheDeadlineIsRefused`, whose clock jumps 3 s between computing the deadline and the first lock attempt. That attempt succeeds at once.
+  - Observed RED: `retention_heallock_test.go:556: the heal lock was granted 3s after its 2s deadline: want the timeout error`, `--- FAIL: TestHealLockAcquiredPastTheDeadlineIsRefused (0.00s)`.
+  - The existing heal tests stayed green on the seam alone: `ok ... 2.986s`.
+- Fix (the commit carrying this subsection): after a successful `flock`, the deadline is checked again. If it has passed, the helper unlocks, closes, and returns the same timeout error naming the heal-lock path. `healStateEntry` then writes its one warning line and returns before any removal; the prune is skipped with no stamp, as on a timeout.
+  - Observed GREEN: `--- PASS: TestHealLockAcquiredPastTheDeadlineIsRefused (0.03s)`. Together with the heal-lock group under `-race`, 15 PASS and 0 FAIL, `ok ... 4.304s`.
+  - The test also asserts that the refused late acquisition leaves the lock free (a non-blocking `LOCK_EX` succeeds afterwards).
+  - After the fix: `gofmt -l internal/harness/` empty, `go vet ./internal/harness/` exit 0, `GOOS=windows go build ./...` exit 0.
+- Not re-run after F6: the race probe of A5 (the fix only adds a refusal path), the mutation table and the load measurement. The SIGSTOP/SIGCONT reproduction was replaced by the deterministic clock seam.
+
+The delta sync-audit report is hoisted to `.moai/reports/t1432/sync-audit-amend.md` (commit `bd96f96f7`), with one Residual-risk line added at the leader's instruction.
