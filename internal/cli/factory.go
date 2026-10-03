@@ -418,12 +418,12 @@ func parseLauncherEntry(args []string) (launcherEntryParse, error) {
 // refuses is refused here, where the operator reads it, instead of inside a
 // window that closes with it. The check only parses: the registry it reads for
 // the next lane number is read-only, and nothing is written or launched. A
-// profile-flag error is left to the spawned session, which reports it as it
-// always has.
+// profile-flag error is returned too: without --spawn the launcher reports it
+// before the entry parse, and the spawned window would swallow it.
 func refuseBadEntryBeforeSpawn(spawnArgs []string) error {
 	_, rest, err := parseProfileFlag(spawnArgs)
 	if err != nil {
-		return nil
+		return err
 	}
 	_, err = parseLauncherEntry(rest)
 	return err

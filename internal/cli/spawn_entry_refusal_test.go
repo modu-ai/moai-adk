@@ -24,6 +24,37 @@ var spawnRefusedShapes = [][]string{
 	{"-f", "lane"},
 }
 
+// spawnProfileErrorShapes carry a profile-flag error. Without --spawn the
+// launcher reports it (a multi-line usage message) before the entry parse, so
+// --spawn must not hide it inside the new window (sync-audit iteration 3, B1).
+var spawnProfileErrorShapes = [][]string{
+	{"-p"},
+	{"-k", "-p"},
+	{"-l", "-f", "--profile="},
+}
+
+func TestSpawnRefusesProfileErrorsBeforeOpeningAWindow(t *testing.T) {
+	for _, verb := range laneVerbs {
+		for _, shape := range spawnProfileErrorShapes {
+			args := append(append([]string{}, shape...), "--spawn")
+			t.Run(verb.name+"_"+strings.Join(args, "_"), func(t *testing.T) {
+				spawned := withSpawnStubs(t, true, "%1", nil)
+				root := netLaneFixture(t, verb.backend)
+				launch := netDriveLaunch(t, root, verb.entry, args)
+				if launch.err == nil {
+					t.Fatalf("%s %v was accepted, want the profile error", verb.name, args)
+				}
+				if !strings.Contains(launch.err.Error(), "profile") {
+					t.Errorf("%s %v error = %q, want the profile-flag error", verb.name, args, launch.err)
+				}
+				if launch.launched || spawned.calls != 0 {
+					t.Errorf("%s %v launched=%v and opened %d tmux window(s); a refused entry launches nothing", verb.name, args, launch.launched, spawned.calls)
+				}
+			})
+		}
+	}
+}
+
 func TestSpawnRefusesBadEntriesBeforeOpeningAWindow(t *testing.T) {
 	for _, verb := range laneVerbs {
 		for _, shape := range spawnRefusedShapes {
