@@ -42,10 +42,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-func init() {
-	verifyExtraCommands = append(verifyExtraCommands, newVerifyAuditPlanCmd)
-}
-
 const (
 	// auditPlanMarker prefixes every error line the verb writes to stderr. It is
 	// how a caller tells "the verb ran and refused" from "the verb does not exist
