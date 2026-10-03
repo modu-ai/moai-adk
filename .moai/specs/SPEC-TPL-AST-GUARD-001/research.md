@@ -18,9 +18,9 @@ Enclosing functions read directly: `cleanupSessionWorktree` (session_worktree.go
 - `TmuxPreferred`: zero production reads — only `internal/config` `_test.go` files and the struct/defaults declarations (`types.go:696`, `defaults.go:1193`).
 - `SessionNamePattern`: zero reads of any kind outside the declaration.
 - Alias-copy probe `grep -rnE "(:=|=)\s+.*\.Workflow\.Worktree\b" ... | grep -v _test.go`: zero true assignments (the three hits were the `if cfg == nil ||` lines matching `=` inside `==`) — the alias defect is latent, not live, on this tree.
-- Cross-check, struct doc comment `internal/config/types.go:676-690` (SPEC-CONFIG-KEY-HONESTY-001 M5 / SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-012): names the same four reader sites and declares `SessionNamePattern` readerless. It does not mention `TmuxPreferred` — consistent with zero readers.
+- Cross-check, struct doc comment `internal/config/types.go:673-690` (SPEC-CONFIG-KEY-HONESTY-001 M5 / SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-012): names the same four reader sites and declares `SessionNamePattern` readerless. It does not mention `TmuxPreferred` — consistent with zero readers.
 - Template block verified at `internal/template/templates/.moai/config/sections/workflow.yaml` (~lines 54-69): prose clauses for `auto_create` (names worktree_advisory.go), `auto_cleanup`, `auto_merge`; `session_name_pattern` marked reserved; `tmux_preferred: true` shipped active with no clause; `sparse_paths` a commented-out example with **no struct field** behind it.
-- PR #1707: `gh pr view 1707 --json state,title` → `{"state":"CLOSED","title":"fix(template): say that auto_cleanup gates worktree removal"}`. Its test file absent on develop and on HEAD (`git cat-file -e` → absent, both). The PR's **final** diff is AST-based (plan-audit iteration 1, `gh pr diff 1707`: `ast.Inspect` ×3, `TestFieldReadersIn_FollowsCopiesAndIgnoresOtherStructs`); the review's alias Major was fixed inside the PR at d102e1e — the alias-blind text scan never shipped in the PR's final state and the PR never landed on develop.
+- PR #1707: `gh pr view 1707 --json state,title` → `{"state":"CLOSED","title":"fix(template): say that auto_cleanup gates worktree removal"}`. Its test file absent on develop and on HEAD (`git cat-file -e` → absent, both). The PR's **final** diff is AST-based but syntax-only: `go/parser` per-file parsing + a syntactic `worktreeAliases` alias tracker (zero `go/types`/`TypesInfo` — iter-2 primary-source grep), already write-excluding (diff +130), pinned by `TestFieldReadersIn_FollowsCopiesAndIgnoresOtherStructs`; the review's alias Major was fixed inside the PR at d102e1e — the alias-blind text scan never shipped in the PR's final state and the PR never landed on develop.
 
 ## 2. The two existing guards (what to keep, what supersedes what)
 
@@ -42,21 +42,21 @@ Recommendation: **A**. The deciding argument is not effort — it is that B move
 
 ## 4. Decision D2 — Scope (a) minimal (recommended) vs (b) helper extraction vs (c) house migration
 
-Simplicity ladder (constitution § Core Behaviors 4): (1) needed at all — yes, the card mandates the guard; (2) existing helper to reuse — the precedent's scanner is test-local in a different package; no shared helper exists, and extracting one from `shipped_key_reader_test.go` would touch an out-of-scope guard; (3) smallest thing that works — scanner as unexported funcs in the one `_test.go`. No second consumer exists for a shared AST-readers helper; the precedent itself keeps an 895-line scanner test-local. Extraction later is mechanical. (c) is excluded per card + spec.md §C Exclusions.
+Simplicity ladder (constitution § Core Behaviors 4): (1) needed at all — yes, the card mandates the guard; (2) existing helper to reuse — the precedent's scanner is test-local in a different package; no shared helper exists, and extracting one from `shipped_key_reader_test.go` would touch an out-of-scope guard; (3) smallest thing that works — scanner as unexported funcs in the one `_test.go`. No second consumer exists for a shared AST-readers helper; the precedent itself keeps an 895-line scanner test-local. Extraction later is mechanical. (c) is excluded per card + spec.md §D Exclusions.
 
 ## 5. go/packages vs stdlib go/parser + go/importer
 
 - **Decision: `golang.org/x/tools/go/packages`.** Zero new dependencies — x/tools v0.49.0 is already a direct require (`go.mod:32`).
 - Why not stdlib-only: `go/parser` alone repeats the text-scan's failure mode (syntax without binding); adding correct `go/types` resolution via `go/importer`'s source importer means re-implementing module-context package loading (module root discovery, export-data vs source fallback, cross-package `internal/` imports) that `packages.Load` provides and that the precedent already exercises at 24.0s measured (`go test ./internal/config/ -run '^TestShippedConfigKeysHaveReaders$' -count=1` → `ok ... 23.997s`, this session, warm cache).
-- Alias-proofness mechanism: with `NeedTypesInfo`, every field selection's identifier resolves through `pkg.TypesInfo` (`Uses[sel.Sel]`, or `Selections[sel]` kind FieldVal as in the precedent) to the same `*types.Var` field object regardless of receiver shape — local alias copies, method-internal reads, and multi-line expressions included. This is the property the text scan lacks; it is a checker guarantee, not a pattern heuristic.
+- Alias-proofness mechanism: with `NeedTypesInfo`, every field selection resolves through `pkg.TypesInfo` to the same `*types.Var` field object regardless of receiver shape — via `Selections[sel].Obj()` (the precedent's route, primary here); an executed probe at HEAD `84873b3c2` found `Uses[sel.Sel] == Selections[sel].Obj()` at all four reader sites across 165 packages (iter-2 audit N6), so the route choice is free. This is the property the text scan lacks; it is a checker guarantee, not a pattern heuristic.
 - Known limitation (documented, acceptable): reads that reach the field through untyped paths — `reflect`, `interface{}` round-trips — do not resolve to the field object. None exist for this struct on the tree (grep-verified); REQ-007's type-error failure prevents a degraded index from reading as a pass.
 
 ## 6. PR #1707 review findings → requirement mapping
 
 | review finding | where it lands |
 |---|---|
-| MAJOR: alias-blind reader scan (raised on the PR's initial text scan; fixed inside the PR at d102e1e — the final diff is AST-based; the retained alias-blind exposure on develop is the t682 text guard) | REQ-001/002 (type-resolved attribution), AC-005 (characterization fixture) |
-| both named reader sites required for auto_cleanup (be8b2dc) | REQ-004, AC-004 (two mutation arms) |
+| MAJOR: alias-blind reader scan (raised on the PR's initial text scan; fixed inside the PR at d102e1e — the final state is syntax-only `go/parser` alias tracking; the retained alias-blind exposure on develop is the t682 text guard) | REQ-001/002 (true `go/types` resolution — this SPEC's delta over the PR's syntax-only final state), AC-005 (characterization fixture) |
+| both named reader sites required for auto_cleanup (be8b2dc) | REQ-004, AC-004 (three mutation arms) |
 | Minor: empty-readers branch must also require named files empty | REQ-005, AC-007b (table-invalid when a reserved key names files) |
 | bidirectional file comparison | REQ-003, AC-002/003 |
 

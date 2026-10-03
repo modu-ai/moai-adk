@@ -23,7 +23,14 @@ plan_audit:
     blocking: [D1-vacuous-selector, D2-PR1707-narrative, D3-REQ004-enforcement-hole, D4-reader-definition]
     folded_optional: [D5, D6, D7, D8, D9]
     verdict_file: .moai/reports/t1377/plan-audit.md
-    corrections_applied: 2026-10-03 (awaiting confirming re-audit)
+    corrections_applied: 2026-10-03
+  iteration_2:
+    verdict: FAIL
+    score: 0.85
+    blocking: [N1-reader-definition-incomplete, N2-file-count-contradiction, N3-PR-narrative-residual, N4-AC005-invocation-vacuity]
+    folded_optional: [N5, N6, N7, N8, N9, N10]
+    verdict_file: .moai/reports/t1377/plan-audit-iter2.md
+    corrections_applied: 2026-10-03 (iteration 3 = confirming pass)
 ```
 
 ## §E.2 Run-phase Evidence
