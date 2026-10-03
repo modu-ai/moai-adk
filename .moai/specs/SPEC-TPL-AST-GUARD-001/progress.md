@@ -47,11 +47,67 @@ gate_debt:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+All evidence captured this run against this tree (branch `WT-ast-template-guard`),
+HEAD M2 commit `b82f8429a` (mutations observed at M2 state; final clean re-observation
+identical). Primary evidence files: `.moai/reports/t1377/run/` (gitignored local-primary;
+hoist to the card evidence path is the lane/leader concern). GUARD shorthand = the
+anchored alternation of `TestWorkflowWorktreeKeyHonesty|TestWorkflowWorktreeKeyHonestyAliasFixture`.
+
+```yaml
+run_evidence:
+  measured_at: 2026-10-03
+  head: b82f8429a
+  m1_scanner:
+    file: internal/template/workflow_worktree_key_honesty_test.go
+    first_run: "reader index ([./...]): 165 packages, 1423 files scanned, 0 type errors"
+    computed_map: matches audited expectation table exactly (no reconciliation needed)
+    evidence: .moai/reports/t1377/run/m1-gate.txt
+  ac_matrix:
+    AC-001: PASS — both named tests execute with --- PASS (m2-guard-both-tests.txt)
+    AC-002: PASS — dropped-reader RED then clean (m3-ac002.txt)
+    AC-003: PASS — unnamed-reader RED then clean (m3-ac003.txt)
+    AC-004: PASS — three arms, each RED then clean (m3-ac004-arm1/2/3.txt; arm 3 fires REQ-004)
+    AC-005: PASS — a/b/c/d fixture characterization (m2-guard-both-tests.txt + m3-clean-final.txt)
+    AC-006: PASS — table-entry deletion RED (m3-ac006.txt)
+    AC-007a: PASS — reserved-key reader RED (m3-ac007a.txt)
+    AC-007b: PASS — table-invalid under reserved key RED (m3-ac007b.txt)
+    AC-008: PASS — type-error RED with named cause (m3-ac008.txt)
+    AC-009: PASS — package gate ok 262.586s (m4-ac009-package-gate.txt)
+    AC-010: PASS — golangci-lint 0 issues, no NEW vs baseline (m4-lint-after.txt)
+    AC-011: PASS — gofmt -l empty on all four new files
+    AC-012: PASS — negative control, captured PASS with a _test.go-only read (m3-ac012.txt)
+  builds:
+    go_build: exit 0
+    windows_cross_build: "GOOS=windows GOARCH=amd64 go build ./... → exit 0"
+  coverage: "go test -cover ./internal/template/... → internal/template 84.4% (reported, not gated)"
+  boundary_grep: "AskUserQuestion|mcp__askuser over the 4 new files → no matches"
+  scope_proof: "git diff --name-only against card base → exactly the 4 new source paths + SPEC artifacts"
+  red_record: >
+    The deliverable IS a test (C-5): RED is the mutation matrix above — 9 mutation
+    observations each carrying verbatim failing output, every mutation reverted and the
+    clean pass re-observed (m3-clean-after-arm3.txt, m3-clean-final.txt).
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-10-03
+run_commits:
+  - 568d8907c M1 AST scanner + expectation table + production honesty test
+  - b82f8429a M2 alias characterization fixture + fixture-mode test
+  - (M4 progress close commit — this commit)
+m3_note: M3 is evidence-only (mutation matrix, no tracked-file change) — no commit.
+push_state: DEFERRED (factory leader batch-pushes local develop after integration)
+slot: go-test-internal-template released after the heavy-run batch
+gate_debt_carry: F3/F4 notation-only items unchanged (leader decision 2026-10-03)
+residuals:
+  - M1 commit (568d8907c) trailer reads "MoAI" — the 🗿 glyph was dropped by the heredoc;
+    --amend is prohibited (B9), so the defect is recorded here. M2+ commits carry the
+    correct trailer.
+  - template-claim ↔ expectation-table divergence remains unguarded under contract A
+    (spec §A.3 known residual; follow-up candidate).
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
