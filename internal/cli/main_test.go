@@ -268,6 +268,7 @@ func homeRedirectingFn(orig func() (string, error), announce bool) func() (strin
 // created and removed manually, mirroring sandboxProfileBaseDir.
 func sandboxUserHomeDir() func() {
 	orig := userHomeDirFn
+	origCodex := codexUserHomeDir
 	homeRedirectStderr = os.Stderr
 
 	// A re-executed child adopts the parent's sandbox and real home, removes
@@ -279,7 +280,11 @@ func sandboxUserHomeDir() func() {
 		capturedRealHome = os.Getenv(realHomeEnv)
 		homeSandboxDir = inherited
 		userHomeDirFn = homeRedirectingFn(orig, false)
-		return func() { userHomeDirFn = orig }
+		codexUserHomeDir = homeRedirectingFn(origCodex, false)
+		return func() {
+			userHomeDirFn = orig
+			codexUserHomeDir = origCodex
+		}
 	}
 
 	if resolved, err := paths.Home(); err == nil {
@@ -295,10 +300,23 @@ func sandboxUserHomeDir() func() {
 	}
 	homeSandboxDir = dir
 	userHomeDirFn = homeRedirectingFn(orig, true)
+	// The Codex home resolves through its own seam (codexUserHomeDir, which
+	// resolveCodexHomeDir joins with ".codex"), and CODEX_HOME outranks it.
+	// Redirect the seam and clear the variable for the whole package run, so no
+	// test reaches the real Codex home through the doctor registry
+	// (SPEC-PLUGIN-MARKETPLACE-001 AC-021 (c)). A test that wants a Codex home
+	// sets CODEX_HOME or assigns the seam itself.
+	codexUserHomeDir = homeRedirectingFn(origCodex, false)
+	origCodexHome, hadCodexHome := os.LookupEnv(codexHomeEnvVar)
+	_ = os.Unsetenv(codexHomeEnvVar)
 	_ = os.Setenv(homeSandboxEnv, dir)
 	_ = os.Setenv(realHomeEnv, capturedRealHome)
 	return func() {
 		userHomeDirFn = orig
+		codexUserHomeDir = origCodex
+		if hadCodexHome {
+			_ = os.Setenv(codexHomeEnvVar, origCodexHome)
+		}
 		_ = os.Unsetenv(homeSandboxEnv)
 		_ = os.Unsetenv(realHomeEnv)
 		_ = os.RemoveAll(dir)

@@ -120,7 +120,14 @@ jobs:
             fail "check 7 (main ancestry): tagged commit ${TAG_COMMIT} is not an ancestor of origin/main."
           fi
 
-          echo "RELEASE_PROVENANCE_GATE: all 7 checks passed for ${TAG} (${TAG_COMMIT})."
+          # Check 8 — the generated plugin version carrier equals the tag
+          # (SPEC-PLUGIN-MARKETPLACE-001 REQ-024). The workflow checked out the
+          # tagged tree, so the committed manifest is the one being released.
+          if ! sh scripts/check-plugin-version.sh "${TAG}"; then
+            fail "check 8 (plugin version): plugins/moai/.claude-plugin/plugin.json does not carry '${TAG#v}'; run 'make plugin-emit' in the bump."
+          fi
+
+          echo "RELEASE_PROVENANCE_GATE: all 8 checks passed for ${TAG} (${TAG_COMMIT})."
 
   release:
     name: Release
