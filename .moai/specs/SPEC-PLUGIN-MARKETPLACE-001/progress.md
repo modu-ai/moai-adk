@@ -1041,6 +1041,189 @@ Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketpla
 - The runner seam returns output for the M4 doctor probe, which does not exist yet; its use there is unobserved.
 - A `moai init` run by someone whose `claude` is a pinned wrapper that prompts for input would hang until the 60-second bound, then print guidance.
 
+### M3b (the scripts, CI and harness half of M3: installers, docs-site copies, test-install.yml, harness cases and flags, static guard)
+
+Run-phase worker: `Agent(general-purpose)` carrying the manager-develop role text, `cycle_type=tdd`, in the card worktree. Scope: M3b only (AC-018, AC-019 (c), AC-025). Out of scope and untouched: all of M4, Go install-step logic, templates. The worker was cut off once by a session rate limit; it resumed from the committed and working-tree state at `f453a6875` with an uncommitted harness edit, re-ran the pre-flight, judged that edit coherent, and committed it as its own RED commit before touching any install script.
+
+#### Pre-flight (recorded before any edit)
+
+```
+$ git rev-parse --show-toplevel / --short HEAD / branch --show-current / git status --short
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435 ; 0c0ebd673 ; WT-marketplace-core-plugin ; (empty)
+$ env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'
+(empty; grep exit 1)                       # BI-1, printed first in every measuring command of this milestone, always empty
+$ go build ./...                           # exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... # exit 0
+$ go test ./internal/cli -count=1 -run '^(TestPluginInstallStep_|TestPluginInstallCmd|TestInitPluginStep_|TestPluginOptOutCallersEnumerated)'
+ok  	github.com/modu-ai/moai-adk/internal/cli	21.525s
+$ go build -o bin/moai ./cmd/moai          # exit 0 (bin/ is gitignored)
+$ sh scripts/protected-set-hash.sh --dump <scratchpad>/m3b/dump-before.txt
+PROTECTED-SET e2f43ca5331dcbb7c23bcf84e7575e79390e35ac22376eb751fb88dc2de2f43e entries=190   # the dispatch baseline
+$ sh scripts/test-plugin-install-step.sh bin/moai        # the R0 harness before any change
+PENDING installer-calls-verb-by-installed-path: install-directory assertions pass; the verb-call assertion lands with install.sh in M3
+PASS installer-optout / PASS installer-set-e-guard / PASS installer-old-binary-unknown-verb
+RESULT pass=3 fail=0 pending=1
+LEAK=0 (real roots unchanged: PROTECTED-SET e2f43ca5...2f43e entries=190)
+$ ... --negative-control-install-dir bin/moai : four RED, RESULT negative-control-install-dir: red set and green set are exactly the expected ones, LEAK=0
+$ ... --negative-control-decoy-missing bin/moai : two PASS, RESULT negative-control-decoy-missing: the installer never ran with a decoy missing, LEAK=0
+```
+
+After the rate-limit resume, at HEAD `f453a6875` (`git status --short`: ` M scripts/test-plugin-install-step.sh` only), a fresh BEFORE dump was taken, because the first one could no longer be trusted as a baseline:
+
+```
+$ sh scripts/protected-set-hash.sh --dump <scratchpad>/m3b/dump-before2.txt
+PROTECTED-SET 5d8c23fdb87a8e15dcab32dbef5aad51741fa6db4affcb72ddd42625492b061c entries=190
+$ diff dump-before.txt dump-before2.txt
+190c190
+< CONTENT fc0b9b20...baf88 /Users/goos/.codex/config.toml
+---
+> CONTENT f90b7a97...45809 /Users/goos/.codex/config.toml
+```
+
+The entry listing is identical; only the content hash of `~/.codex/config.toml` moved (mtime 12:12), the foreign-writer pattern the dispatch named. The AFTER comparison below is against `dump-before2.txt`.
+
+#### Design decisions taken in M3b (read from the SPEC text; the plan leaves the seam open)
+
+- Opt-out in the scripts is inherited, not re-implemented: the call carries no environment edit, so `MOAI_SKIP_PLUGIN_INSTALL` reaches the verb, which is the single place that decides what counts as an opt-out (`1` or `true`). The message line before the call still prints under the opt-out; the verb then runs nothing.
+- `install.sh`: a function `install_plugin` called after `verify_installation`; the call is `if ! "$TARGET_PATH" plugin install; then ... fi` (an `if` condition is exempt from `set -e`); on failure a warning plus the two manual commands.
+- `install.ps1`: after `Verify-Installation`, `& $targetPath plugin install` inside `try`, `$LASTEXITCODE` checked for the warning, a `catch` that only warns. No `2>&1` on the call (under `$ErrorActionPreference = "Stop"` Windows PowerShell 5.1 turns redirected native stderr into a terminating error).
+- `install.bat`: `"%TARGET_PATH%" plugin install` then `if errorlevel 1 ( echo ... )`. **A deviation from design.md section 3.6, which says the script "ends `exit /b 0` (line 192)":** line 192 is the `:show_help` branch; the main path ended `goto :eof`, which hands back the ERRORLEVEL at that moment, so a verb that exits 1 (an older release, the case the Windows CI job meets) would have failed `call install.bat` although every later line is an `echo`. The main path now ends `exit /b 0`, and `TestInstallScriptsPluginStepGuarded` pins "the first script end after the call is `exit /b 0`".
+- Harness: one pass of the same script handles the six modes; the isolation cases judge the environment the product cases run in; `isolation-poisoned-pin-never-executed` runs the real verb and requires the recorder behind the pin to run zero times AND the stub claude to be called at least once (the positive control); `isolation-real-home-unchanged` judges the canary (3 entries, the recorder adds 2 when it can see it) and the protected real roots, after every product case.
+- The two installer cases that stub the binary also require that the verb WAS called exactly once, and the old-binary case that the `Unknown command "plugin" for "moai".` text reached the installer's output: without that a script that never calls the verb passes "exit 0 and Installation complete!" vacuously.
+- The static guard sweeps the two docs-site copies for byte identity as well as the three scripts, with mutant fixtures for each checker.
+- `scripts/test-plugin-install-step.sh` prints `RESULT pass=<n> fail=<m>` (the PENDING status no longer exists).
+
+#### Commits (tdd order: observed RED as two own commits, then GREEN)
+
+| Step | SHA | Content |
+|------|-----|---------|
+| RED 1 | `f453a6875` | `TestInstallScriptsPluginStepGuarded` (checkers, mutant fixtures, real-script sweep) |
+| RED 2 | `4326f5563` | harness: five `isolation-*` cases, three `verb-*` cases, three flags, the real verb-call assertion, the verb-was-called assertions |
+| GREEN | `b67f4bee0` | `install.sh`, `install.ps1`, `install.bat`, the two docs-site copies, `test-install.yml` |
+| REFACTOR | none | nothing simplifiable found after the mutant runs; no code change, no commit |
+
+The two RED commits precede GREEN in the commit graph (verification-claim-integrity section 2.3).
+
+#### RED (observed at the unchanged install scripts, before any GREEN edit)
+
+Guard (`go test ./internal/cli -run '^TestInstallScriptsPluginStepGuarded$' -count=1 -v`, 1 top-level test, 2 subtests, BI-1 empty):
+
+```
+--- FAIL: TestInstallScriptsPluginStepGuarded (0.03s)
+    --- PASS: TestInstallScriptsPluginStepGuarded/checkers-detect-mutants (0.00s)
+    --- FAIL: TestInstallScriptsPluginStepGuarded/real-scripts (0.03s)
+    plugin_install_guard_test.go:424: install.sh: no non-comment line runs "$TARGET_PATH" plugin install
+    plugin_install_guard_test.go:424: install.ps1: no non-comment line runs & $targetPath plugin install
+    plugin_install_guard_test.go:424: install.bat: no non-comment line runs "%TARGET_PATH%" plugin install
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.780s
+```
+
+Harness at the unchanged scripts (`sh scripts/test-plugin-install-step.sh bin/moai`, exit 1, `RESULT pass=9 fail=3`, `LEAK=0`):
+
+```
+FAIL installer-calls-verb-by-installed-path: plugin-calls=0(want 4); missing[claude plugin marketplace add modu-ai/moai-adk]; missing[claude plugin install moai@moai-adk]; missing[codex plugin marketplace add modu-ai/moai-adk]; missing[codex plugin add moai@moai-adk]
+FAIL installer-set-e-guard: verb-calls=0(want 1)
+FAIL installer-old-binary-unknown-verb: verb-calls=0(want 1); unknown-verb-text-not-seen
+```
+
+The five isolation cases and the three verb cases test behavior M3a already delivered, so they pass against the real binary at once; their observed failures are (a) the same harness run against a stand-in binary that predates the verb (`<scratchpad>/m3b/old-moai`, exit 1, `RESULT pass=5 fail=7`): `FAIL isolation-poisoned-pin-never-executed: stub-claude-never-called`, `FAIL verb-install-all-tools: exit-1; plugin-calls=0(want 4); ...`, `FAIL verb-no-tools-exit-0: exit-1; skip-lines=0(want 2)`, `FAIL verb-optout-zero-calls: exit-1`; and (b) the three new negative controls, which turn each isolation case red under its own breakage (E4).
+
+#### GREEN and the final run (HEAD `b67f4bee0`, bin/moai judged)
+
+```
+$ go test ./internal/cli -run '^TestInstallScriptsPluginStepGuarded$' -count=1 -v
+--- PASS: TestInstallScriptsPluginStepGuarded (0.01s)
+    --- PASS: .../checkers-detect-mutants   --- PASS: .../real-scripts
+$ sh scripts/test-plugin-install-step.sh bin/moai ; exit 0
+scrub: enumerated and unset 34 names
+PASS isolation-env-scrubbed / isolation-cwd-has-no-project / isolation-resolves-to-stubs / isolation-poisoned-pin-never-executed / isolation-real-home-unchanged
+PASS verb-install-all-tools / verb-no-tools-exit-0 / verb-optout-zero-calls
+PASS installer-calls-verb-by-installed-path / installer-optout / installer-set-e-guard / installer-old-binary-unknown-verb
+RESULT pass=12 fail=0
+LEAK=0 (real roots unchanged: PROTECTED-SET 228cd364e524698c045646242724e9a0b2a23797d148b5830a0de195f01b7d71 entries=190)
+```
+
+Negative controls at the final tree, each exit 0 with `LEAK=0` and `RESULT <label>: red set and green set are exactly the expected ones`: `--negative-control` (RED env-scrubbed with 33 names left, cwd, poisoned-pin with `recorder-executed(2)`, real-home with `canary-changed(entries 3 -> 5)`; green resolves-to-stubs), `--negative-control-cwd` (RED cwd, poisoned-pin; green the other three, canary 3 -> 3), `--typed-list-mutant` (RED env-scrubbed with 31 names left; green the other four, recorder runs 0), `--negative-control-install-dir` (four RED, each by `decoy-holds-moai` and `installed-path-not-under-case-dir`; five green), `--negative-control-decoy-missing` (two PASS, installer runs 0).
+
+`go build ./...` exit 0 and `GOOS=windows GOARCH=amd64 go build ./...` exit 0 at `b67f4bee0`. M3a regression selectors plus the guard (`TestPluginInstallStep_*`, `TestPluginInstallCmd`, `TestInitPluginStep_*`, `TestPluginOptOutCallersEnumerated`, `TestInstallScriptsPluginStepGuarded`): all `--- PASS`, `ok ... 17.938s`. `golangci-lint run --timeout=5m ./internal/cli/` at v2.1.6: `0 issues.` YAML of `test-install.yml` parsed with `ruby -ryaml` (the `test-sh` step list and the push path list printed as intended).
+
+#### AC matrix (PASS only where the AC's own command was run and the expected output observed)
+
+| AC | Result | Command | Observed |
+|----|--------|---------|----------|
+| AC-018 (a) | PASS | `sh scripts/test-plugin-install-step.sh bin/moai` | the four `PASS installer-*` lines above, each with its install-directory assertions (go resolves to the stub, installed path under the case directory, no decoy root holds a moai) |
+| AC-018 (b) | PASS | `bash -n install.sh` | exit 0 |
+| AC-018 (c) | PASS (static) | `go test ./internal/cli -run '^TestInstallScriptsPluginStepGuarded$' -count=1 -v` | `--- PASS`; labelled static, the behavior of `install.ps1` and `install.bat` is not executed locally |
+| AC-018 (d) | PASS | `cmp install.sh docs-site/static/install.sh`; `cmp install.ps1 docs-site/static/install.ps1` | exit 0, no output, both |
+| AC-019 (a), (b) | PASS (M3a, re-run) | the M3a selector run above; `bin/moai plugin install --help` | `--- PASS: TestPluginInstallCmd`; exit 0 |
+| AC-019 (c) | PASS | the normal harness run | `PASS verb-install-all-tools`, `PASS verb-no-tools-exit-0`, `PASS verb-optout-zero-calls` |
+| AC-025 (a) | PASS | the normal harness run | the five `PASS isolation-*` lines, `scrub: enumerated and unset 34 names` (N at least 5), `LEAK=0 (real roots unchanged: PROTECTED-SET ... entries=190)` |
+| AC-025 (b) | PASS | `... --negative-control bin/moai` | exit 0, the expected RED and green lines, `RESULT negative-control: ...` |
+| AC-025 (c) | PASS | `... --negative-control-cwd bin/moai`; `... --typed-list-mutant bin/moai` | exit 0 both, the expected sets |
+| AC-025 (d) | GAP (see G-M3b-1) | `sh scripts/protected-set-hash.sh` before and after | the two lines differ, only the `config.toml` content line moved; attributed, not proven |
+| AC-025 (e) | PASS | the grep of AC-025 (e) and the control | `grep` exit 1, no line; `grep -c 'CODEX_HOME' scripts/test-plugin-install-step.sh` prints `3` |
+| AC-025 (f) | PASS | `... --negative-control-install-dir bin/moai` | exit 0, four RED, five green, `RESULT negative-control-install-dir: ...`, `LEAK=0` |
+
+#### Mutants (each applied to the GREEN tree, run, then restored with `git checkout -- <file>`; harness = `scripts/test-plugin-install-step.sh bin/moai`, guard = the Go static test)
+
+Killed:
+- a bare `moai plugin install` in `install.sh`: harness `installer-calls-verb-by-installed-path` (`plugin-calls=0(want 4)`), `installer-set-e-guard` and `installer-old-binary-unknown-verb` red; guard `call without the installed path`.
+- the call unguarded (`"$TARGET_PATH" plugin install` as a bare statement): harness `installer-set-e-guard` and `installer-old-binary-unknown-verb` red (`installer-did-not-complete(rc=1)`); guard `unguarded call under set -e`.
+- a call that fails the installer on an old binary (`... || exit 1`): harness the same two cases red; the guard stayed green on shape (it reads `||` as guarded), which is the static limit named in AC-018 (c): only the harness kills it.
+- the opt-out stripped by the script (`env -u MOAI_SKIP_PLUGIN_INSTALL "$TARGET_PATH" ...`): harness `installer-optout` red (`plugin-calls-recorded(4)`); the guard cannot see it.
+- two comment lines that mention the verb and no call: harness three installer cases red; guard `no non-comment line runs ...`.
+- `docs-site/static/install.sh` differing by one byte: `cmp` exit 1 (`differ: char 44, line 2`); guard `docs-site/static/install.sh differs from the root install.sh`.
+- inside the guard: checker mutants for sh (bare moai, unguarded, comment-only), ps1 (bare moai, no try, catch rethrows, catch exits) and bat (bare moai, `exit /b %errorlevel%`, `goto :eof` as the first end) are all reported as problems, the well-formed shape of each is not (`checkers-detect-mutants`, PASS).
+- harness-side: a scrub disabled, a project pin alone, a typed-list scrub and an omitted `--install-dir` each turn exactly the expected cases red (E4 above).
+
+Not killed or not run: a `PATH` that is not reset (it would let the case start the real `claude`, which this milestone must not do), a scrub that runs after the first case, a files-only hash (not rebuilt here: `protected-set-hash.sh` is M-R0 and unchanged), and `install.ps1` / `install.bat` behavior mutants (no pwsh and no Windows host; only the static checkers see them). A harness started below a `.moai` ancestor through `TMPDIR` was tried and is inert on this machine: BSD `mktemp -d` without a template ignores `TMPDIR` (`env TMPDIR=<dir under a .moai> mktemp -d` printed a `/var/folders/...` path), so the run passed all twelve cases; the ancestor check is demonstrated by `--negative-control-cwd`, where the project directory inside the scratch makes `isolation-cwd-has-no-project` red.
+
+#### Protected-set bracket and BI-1
+
+BEFORE (`dump-before2.txt`, taken at `f453a6875` after the resume): `PROTECTED-SET 5d8c23fdb87a8e15dcab32dbef5aad51741fa6db4affcb72ddd42625492b061c entries=190`. AFTER (`dump-after.txt`, after the last harness run and the last mutant): `PROTECTED-SET 228cd364e524698c045646242724e9a0b2a23797d148b5830a0de195f01b7d71 entries=190`. The two lines are not equal. Line-by-line:
+
+```
+$ diff dump-before2.txt dump-after.txt
+186a187
+> CONTENT 0d9321a9...eacff /Users/goos/.codex/config.toml
+190d190
+< CONTENT f90b7a97...45809 /Users/goos/.codex/config.toml
+```
+
+(The line moved position because the dump is sorted by hash; it is one line, the content hash of `~/.codex/config.toml`.) All 189 other entries, directories and content lines, are identical. Classification: foreign writer, not this milestone. `~/.codex/config.toml` is 178,828 bytes with mtime 13:10 (178,211 bytes at 12:12); it holds 953 `[projects.*]` trust stanzas written by other lanes' live-codex tests; the plugin and marketplace stanzas it holds are the pre-existing `moai-cowork`, `openai-*` and `claude-plugins-official` ones, none names `moai-adk`, `moai@moai-adk` or `t1435`; the only stanzas matching `t1435|PluginInstall|pluginemit|moai-adk` are the 12 `hooks.state` entries and the `[projects."/Users/goos/MoAI/moai-adk-go"]` stanza of the primary checkout (pre-existing) and one scratchpad stanza of another lane's `develop` worktree. Within every harness run of this milestone the before and after hashes of the run itself were equal (every run of the harness printed `LEAK=0`, each run lasting seconds), so nothing the harness started wrote under the protected roots; the value moved only between runs. The file content before the run was not kept, so "pure addition of unrelated stanzas" is shown by absence of this lane's names, not by a diff (G-M3b-1).
+
+BI-1 printed nothing (grep exit 1) at the pre-flight, before every harness run, every mutant run, every go-test measurement and at the end.
+
+#### Claim
+
+M3b delivers REQ-018, the harness half of REQ-019 and REQ-025: the three install scripts call `plugin install` of the binary they installed by its installed path and finish successfully when the verb fails, does not exist or is opted out; the docs-site copies are byte-identical; the Unix CI job builds `moai` and runs the stub harness; the harness has the twelve default cases and the five negative-control flags, each control exiting 0 only on exactly its expected red set; `TestInstallScriptsPluginStepGuarded` pins the shapes of the three scripts statically.
+
+#### Evidence
+
+The commands and verbatim outputs are in the RED, final-run, AC-matrix, mutant and bracket sections above; the mutant and control runs were performed against `bin/moai` built at `0c0ebd673` from the Go sources, which M3b does not change.
+
+#### Baseline-attribution
+
+Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketplace-core-plugin`, base HEAD `0c0ebd673`. The guard RED was measured at `f453a6875`, the harness RED at the working tree on top of it (committed as `4326f5563` afterwards, unchanged), the GREEN runs, mutants, controls, build, lint and the AC commands at `b67f4bee0`; all in this run. The judging build for the harness is `bin/moai`, built from this tree with `go build -o bin/moai ./cmd/moai` at `0c0ebd673` and invoked by path (verification-claim-integrity section 2.2); no Go non-test source changed after it (the commits since touch only a test file, scripts, workflows and the installers), so the build's behavior is that of the tree's HEAD. The other judging tools are installed binaries resolved through PATH: `go` go1.26.8, `golangci-lint` v2.1.6, `ruby` for the YAML parse.
+
+#### Gaps
+
+- G-M3b-1: the protected-set bracket is not equal (see above); attributed to a foreign writer by content, not proven by a diff of the file's content, which was not kept.
+- G-M3b-2: `install.ps1` and `install.bat` were not executed (pwsh exists but is refused by the worktree guard and was not run; there is no Windows host). Their call, guard and exit shape are asserted statically only; `install.bat`'s `exit /b 0` behavior under cmd is unobserved. The Windows CI job (`install.bat` against the latest release, which lacks the verb until it ships) is the first real run.
+- G-M3b-3: the edited `test-install.yml` was parsed (ruby) but not run: the new Set up Go, Build moai and harness steps on ubuntu-latest and macos-latest are unobserved on a runner.
+- G-M3b-4: two commands were refused by the worktree guard (a `git show` combined with `grep -c` on carriage returns, and a pipe through `cut` followed by a `PIPESTATUS` echo); each was re-run as plain separate commands. Nothing was replaced by reading source.
+- G-M3b-5: mutants not run: the `PATH` that is not reset (it would start the real `claude`), the scrub that runs late, the files-only hash; the `TMPDIR` variant of the `.moai` ancestor mutant is inert on BSD `mktemp` (observed) and was replaced by `--negative-control-cwd`.
+- G-M3b-6: only `-run` selectors of `internal/cli` and one lint of `./internal/cli/` were run (AGENTS.md section 4); no `go test ./...`.
+- G-M3b-7: design.md section 3.6's statement about `install.bat` ending `exit /b 0` at line 192 is wrong for the main path (see Design decisions); the SPEC text was not edited (not this agent's file).
+- G-M3b-8: `isolation-real-home-unchanged` includes the real roots, so a foreign writer on a busy machine can turn it red in an otherwise clean run; the case prints `real-roots-changed` and the closing `LEAK=1` block prints the differing entries so it is attributable, but it is not self-healing.
+
+#### Residual-risk
+
+- The guidance wording of the scripts is a proposal; the harness asserts counts, the four vectors and two marker strings (`Installation complete!`, `Unknown command "plugin" for "moai"`), so a reword that drops either marker would turn a case red for a cosmetic reason.
+- The informational line before the call is printed even when the opt-out is set; only the verb's tool calls are suppressed.
+- On Windows the first `install.bat` run against a release without the verb prints the manual-install warning; that is intended (RK-14) but unobserved.
+- The static guard reads shapes (`if`, `||`, `try`/`catch`, `exit /b 0`); a guard that is shaped right and behaves wrong in `install.ps1` or `install.bat` is not detectable locally.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
