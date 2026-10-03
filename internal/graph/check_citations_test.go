@@ -13,12 +13,12 @@ import (
 func writeCitationsFixture(t *testing.T, doc string) string {
 	t.Helper()
 	root := t.TempDir()
-	for _, d := range []string{"internal/cli", "internal/graph", "internal/kanban", "cmd/moai"} {
+	for _, d := range []string{"internal/cli", "internal/graph", "internal/factory", "cmd/moai"} {
 		if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(d)), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, f := range []string{"cmd/moai/main.go", "internal/cli/factory.go", "internal/graph/check.go", "internal/kanban/record.go"} {
+	for _, f := range []string{"cmd/moai/main.go", "internal/cli/factory.go", "internal/graph/check.go", "internal/factory/record.go"} {
 		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(f)), []byte("package x\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -41,7 +41,7 @@ func writeCitationsFixture(t *testing.T, doc string) string {
 func TestCheckCitations_PositivePhantomRed(t *testing.T) {
 	base := `# modules
 
-### internal/kanban
+### internal/factory
 
 Entry points live in internal/cli/factory.go and cmd/moai/main() calls into
 internal/graph/check.go.
@@ -98,9 +98,9 @@ func TestCheckCitations_BlockquoteExemption(t *testing.T) {
 
 > ` + "`internal/bodp`" + ` 는 #1278 worktree surface redesign에서 제거되었다.
 
-### internal/kanban
+### internal/factory
 
-See internal/kanban/record.go for the registry record.
+See internal/factory/record.go for the registry record.
 `
 	root := writeCitationsFixture(t, doc)
 	rep := checkCitations(root)
@@ -119,12 +119,12 @@ func TestNormalizeCitedPath(t *testing.T) {
 		raw  string
 		want string
 	}{
-		{"internal/cli/", "internal/cli"},                           // trailing slash
-		{"internal/cli,", "internal/cli"},                           // trailing punctuation
-		{"internal/kanban/record.go.", "internal/kanban/record.go"}, // trailing period after .go
-		{"cmd/moai/main", "cmd/moai/main.go"},                       // call-chain map (spec §1.1 P8)
-		{"internal/graph/checkgo", "internal/graph/check.go"},       // .go-suffix restore (stripped period artifact)
-		{"internal/zzz-phantom", "internal/zzz-phantom"},            // no rule invents existence
+		{"internal/cli/", "internal/cli"},                             // trailing slash
+		{"internal/cli,", "internal/cli"},                             // trailing punctuation
+		{"internal/factory/record.go.", "internal/factory/record.go"}, // trailing period after .go
+		{"cmd/moai/main", "cmd/moai/main.go"},                         // call-chain map (spec §1.1 P8)
+		{"internal/graph/checkgo", "internal/graph/check.go"},         // .go-suffix restore (stripped period artifact)
+		{"internal/zzz-phantom", "internal/zzz-phantom"},              // no rule invents existence
 	}
 	for _, tc := range cases {
 		if got := normalizeCitedPath(root, tc.raw); got != tc.want {

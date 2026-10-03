@@ -836,7 +836,7 @@ func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
 func TestCodexSpawn_RealAssemblyUnderLaneEnv(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryBackend, "claude")
 	checkCodexSpawnRealAssembly(t)
 }
 
@@ -930,8 +930,8 @@ func TestCodexSpawnUnderLaneEnvRegistersNoFactoryPeer(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = db.Close()
-	t.Setenv(config.EnvMoaiKanbanID, run)
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryRunID, run)
+	t.Setenv(config.EnvFactoryBackend, "claude")
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	start, state := homestate.ProbeProcessIdentity(os.Getpid())

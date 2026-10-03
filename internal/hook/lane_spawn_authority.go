@@ -29,7 +29,7 @@ package hook
 //     manager_lead_depth_test.go enforces for the leader's own fan-out.
 //  3. Placement — the bootstrap context is the operative layer (what the lane
 //     actually reads; a peer message cannot override a session instruction).
-//     The normative text lives in the doctrine files (kanban-dispatch.md,
+//     The normative text lives in the doctrine files (the Factory Dispatch Protocol,
 //     agent-common-protocol.md, moai-constitution.md, manager-lead.md), and
 //     the runtime wiring already permits the spawn: Agent ships in the
 //     template's permissions.allow and the launcher seeds the per-lane

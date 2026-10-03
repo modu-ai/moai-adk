@@ -51,10 +51,10 @@ index:
   title: "线束学习面"
 "autonomy-tier":
   title: "自主级别 (MOAI_AUTONOMY_TIER)"
-"kanban-mode":
-  title: "看板模式"
 "factory-mode":
   title: "工厂模式"
+"origin-trail-chain":
+  title: "会话溯源链"
 "manager-lead":
   title: "manager-lead 主导协调者"
 "multi-model-audit":
@@ -72,7 +72,6 @@ index:
   weight: 96
 # v3.1 NEW-badge section-level list (SPEC-DESIGN-DOCS-V31-001 M3).
 new_items:
-  - kanban-mode
   - bas-navigator
   - manager-lead
   - multi-model-audit

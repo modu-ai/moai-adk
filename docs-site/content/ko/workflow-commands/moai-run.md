@@ -535,16 +535,19 @@ manager-develop 에이전트가 **진행 상황을 알아서 저장해 둡니다
 
 `/moai run`은 **이미 생성된 SPEC을 바탕으로 구현만** 수행합니다. `/moai`는 SPEC 생성부터 구현, 문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
 
-## 칸반 모드 — 한 번에 끝까지 (v3.1)
+## 팩토리 모드 — 카드 한 장을 끝까지 (v3.2)
 
-`/moai run`은 한 페이즈만 돌립니다. 그 뒤의 sync는 사용자가 다시 명령을 넣어야 이어집니다. **칸반 모드** (Kanban Mode)는 이 "이어 붙이기"를 자동화하는 진입 스위치입니다. 세션 런처에 `--kanban`을 붙여 시작하면, `plan → run → sync` 세 단계가 리더 세션의 조율 아래 자동으로 이어 붙여집니다.
+`/moai run`은 한 페이즈만 돌립니다. **팩토리 모드**에서는 레인 세션이 카드 한 장을 자기 세션 안에서 `plan → run → sync`까지 통째로 맡으므로, 페이즈 사이의 왕복에 사용자가 명령을 더 넣을 필요가 없습니다. `moai cc -f`로 리더를 열고 `moai cc -l`로 레인을 합류시키면, 리더가 운영자가 고른 카드를 빈 레인에 넘깁니다.
 
 ```bash
-# SPEC 한 건을 칸반 모드로 진입 — 종료까지 한 번에
-$ claude --kanban SPEC-AUTH-001
+# 리더: 팩토리 런을 엽니다
+$ moai cc -f
+
+# 레인: 각자 자기 터미널에서, 다음 빈 레인으로 합류합니다
+$ moai cc -l
 ```
 
-네 개의 휴먼 게이트(구현 착수 승인, verify CRITICAL/HIGH 결정, sync 게이트 2개)는 그대로 발화합니다. 칸반 모드가 "휴먼 게이트를 건너뛰는" 것이 아니라 "페이즈 사이의 왕복"을 자동화하는 것입니다. 4시간 벽시계 상한 안에서 굴러갑니다. 자세한 계약과 네 단계의 흐름은 [칸반 모드](/ko/advanced/kanban-mode)에서 다룹니다.
+휴먼 게이트(구현 착수 승인, verify CRITICAL/HIGH 결정, sync 게이트 2개)는 그대로 발화합니다. 팩토리 모드가 "휴먼 게이트를 건너뛰는" 것이 아니라 "페이즈 사이의 왕복"을 없애는 것입니다. 자세한 계약은 [팩토리 모드](/ko/advanced/factory-mode)에서 다룹니다.
 
 ## 관련 문서
 
@@ -553,4 +556,4 @@ $ claude --kanban SPEC-AUTH-001
 - [/moai plan](./moai-plan) - 이전 단계: SPEC 문서 생성
 - [/moai sync](./moai-sync) - 다음 단계: 문서 동기화 및 PR
 - [/moai goal](./moai-goal) - run-phase 자율성의 `ac_converge` 골 (v3.1)
-- [칸반 모드](/ko/advanced/kanban-mode) - run→verify→sync 체인을 자동으로 묶는 진입 스위치 (v3.1)
+- [팩토리 모드](/ko/advanced/factory-mode) - 리더와 레인이 카드 한 장을 한 세션에서 plan·run·sync까지 맡는 구조 (v3.2)

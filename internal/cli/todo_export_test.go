@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // AC-TOSQ-011 / SC-3: seed legacy → migrate → mutate → export → the exported
@@ -62,7 +62,7 @@ func TestTodoExportJSON_RoundTripsThroughTheLegacyShape(t *testing.T) {
 	}
 
 	// The file a downgraded binary reads is backlog.json at the queue root.
-	target := kanban.BacklogPathForRoot(root)
+	target := factory.BacklogPathForRoot(root)
 	raw, err := os.ReadFile(target)
 	if err != nil {
 		t.Fatalf("read exported file: %v", err)
@@ -70,7 +70,7 @@ func TestTodoExportJSON_RoundTripsThroughTheLegacyShape(t *testing.T) {
 
 	// Parse it exactly as a legacy reader would: the record shape, nothing
 	// engine-aware.
-	var exported kanban.BacklogRecord
+	var exported factory.BacklogRecord
 	if err := json.Unmarshal(raw, &exported); err != nil {
 		t.Fatalf("exported file does not parse as a legacy record: %v\n%s", err, raw)
 	}
@@ -109,10 +109,10 @@ func TestTodoExportJSON_RoundTripsThroughTheLegacyShape(t *testing.T) {
 	// exactly here.
 	var picked, dropped bool
 	for _, it := range exported.Items {
-		if it.State == kanban.BacklogStatePicked && it.SpecID != nil && *it.SpecID == "SPEC-EXAMPLE-001" {
+		if it.State == factory.BacklogStatePicked && it.SpecID != nil && *it.SpecID == "SPEC-EXAMPLE-001" {
 			picked = true
 		}
-		if it.State == kanban.BacklogStateDropped {
+		if it.State == factory.BacklogStateDropped {
 			dropped = true
 		}
 	}
@@ -153,11 +153,11 @@ func TestTodoExportJSON_LeavesTheLiveStoreAuthoritative(t *testing.T) {
 
 	// And the export is now stale by construction, which is correct: it is a
 	// point-in-time copy. It still holds exactly one card.
-	raw, err := os.ReadFile(kanban.BacklogPathForRoot(root))
+	raw, err := os.ReadFile(factory.BacklogPathForRoot(root))
 	if err != nil {
 		t.Fatalf("read export: %v", err)
 	}
-	var exported kanban.BacklogRecord
+	var exported factory.BacklogRecord
 	if err := json.Unmarshal(raw, &exported); err != nil {
 		t.Fatalf("parse export: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestTodoExportJSON_NoTempResidue(t *testing.T) {
 		t.Fatalf("export-json: %v", err)
 	}
 
-	entries, err := os.ReadDir(kanban.StateDirForRoot(root))
+	entries, err := os.ReadDir(factory.StateDirForRoot(root))
 	if err != nil {
 		t.Fatalf("read state dir: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestTodoExportJSON_NoTempResidue(t *testing.T) {
 			t.Errorf("export left residue %q", e.Name())
 		}
 	}
-	if _, err := os.Stat(filepath.Join(kanban.StateDirForRoot(root), "backlog.json")); err != nil {
+	if _, err := os.Stat(filepath.Join(factory.StateDirForRoot(root), "backlog.json")); err != nil {
 		t.Errorf("the export target is missing: %v", err)
 	}
 }
@@ -206,7 +206,7 @@ func TestTodoExportJSON_SurvivesSubsequentVerbs(t *testing.T) {
 	if _, _, err := runTodo(t, "export-json"); err != nil {
 		t.Fatalf("export-json: %v", err)
 	}
-	target := kanban.BacklogPathForRoot(root)
+	target := factory.BacklogPathForRoot(root)
 	before, err := os.ReadFile(target)
 	if err != nil {
 		t.Fatalf("read export: %v", err)
@@ -256,7 +256,7 @@ func TestTodoExportJSON_FailurePathsSurface(t *testing.T) {
 		if _, _, err := runTodo(t, "add", "a card"); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
-		dir := kanban.StateDirForRoot(root)
+		dir := factory.StateDirForRoot(root)
 		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 		if err := os.Chmod(dir, 0o500); err != nil {
 			t.Fatalf("revoke write bit: %v", err)
@@ -276,7 +276,7 @@ func TestTodoExportJSON_FailurePathsSurface(t *testing.T) {
 		if _, _, err := runTodo(t, "add", "a card"); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
-		dir := kanban.StateDirForRoot(root)
+		dir := factory.StateDirForRoot(root)
 		before := len(dirEntryNames(t, dir))
 		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 		if err := os.Chmod(dir, 0o500); err != nil {

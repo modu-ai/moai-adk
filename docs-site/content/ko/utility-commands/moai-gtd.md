@@ -56,4 +56,4 @@ LLM과 `manager-todo`는 구조화된 제안을 만들 뿐 직접 파일, Git, �
 
 현재 구현은 정책·복구·배차·명시 경로 커밋·local develop `--no-ff` 병합을 수행하는 owner adapter를 제공합니다. 커밋은 현재 HEAD에 대응하는 저장소 내부 `0600` 테스트 receipt가 있어야 하며, 로컬 병합은 manager-git 역할, `WT-*` 브랜치, 기준 SHA, `.git` 아래 `0600` lease를 다시 확인합니다. 백업·복원·내보내기는 명시적 opt-in에서만 GTD 확장 정보를 포함하고, private projection은 SQLite revision에서 다시 만듭니다. 실제 공급자가 시작·재연결·교체·자격 증명·프로세스 식별 능력을 모두 제공한다고 확인되기 전에는 세션 종료 뒤에도 계속 실행되는 durable 모드나 원격 push·PR·병합 완료를 보장하지 않습니다.
 
-관련 문서: [`/moai goal --auto`](/ko/utility-commands/moai-goal#auto-임무-모드) · [Kanban Mode](/ko/advanced/kanban-mode)
+관련 문서: [`/moai goal --auto`](/ko/utility-commands/moai-goal#auto-임무-모드) · [팩토리 모드](/ko/advanced/factory-mode)

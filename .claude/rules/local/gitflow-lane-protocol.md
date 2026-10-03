@@ -22,13 +22,13 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 - 하네스에 맞는 경로로 들어간다:
   - Claude Code 레인: `moai cc -w <card-id>` 또는 현재 세션의 `EnterWorktree(<card-id>)`.
   - Codex 레인: 기존 트리에 새 세션으로 들어갈 때 `moai codex -w <card-id>`.
-  - Codex의 `-f lane` 레인: 감독 런처가 카드 워크트리를 고르고 `codex -C <워크트리 절대경로>`로 자식 세션을 시작한다. 자식 세션은 해당 트리의 `CLAUDE.local.md`를 읽고 작업하며 `moai cc -w`를 호출하지 않는다. `moai codex` 런처로 시작한 세션은 이 파일을 `developer_instructions`에 싣는다.
+  - Codex의 `-l` 레인: 감독 런처가 카드 워크트리를 고르고 `codex -C <워크트리 절대경로>`로 자식 세션을 시작한다. 자식 세션은 해당 트리의 `CLAUDE.local.md`를 읽고 작업하며 `moai cc -w`를 호출하지 않는다. `moai codex` 런처로 시작한 세션은 이 파일을 `developer_instructions`에 싣는다.
   - 트리가 없으면 `moai worktree new <card-id>`로 먼저 만든다. **맨손 `git worktree add` 금지** — git은 아는데 MoAI는 모르는 트리가 생겨 `done`/`clean`/`recover`가 닫을 대상이 없어진다.
 - 생성 직후 카드 트리의 `HEAD`와 로컬 `develop`의 커밋이 같은지 확인한다. 다르면 작업을 시작하지 않고 분기 기준을 바로잡는다.
 - 생성 직후 브랜치를 제자리에서 개명한다: `git branch -m WT-<slug>`. slug은 카드가 **하는 일**에서 뽑고(소문자 `a-z0-9-`, 토큰 3개 이하, 24자 이하), **카드 id를 넣지 않는다**. 워크트리 디렉터리는 카드 id를 유지한다(`.claude/worktrees/<card-id>`).
 - 새 카드는 새 워크트리다. 이전 카드 트리에 앵커돼 있으면 `ExitWorktree`로 primary 체크아웃에 돌아온 뒤 만든다 — 안 그러면 새 카드 작업이 옛 카드 브랜치에 얹힌다.
 - **추적성 운반체 3종은 그대로다**: dispatch의 `card:` 필드, 브랜치 위 **모든** 커밋 메시지 안의 카드 id, 증거 경로(`.moai/reports/<card-id>/…`). 브랜치 이름은 더 이상 카드를 식별하지 않으므로 셋 중 무엇도 생략하지 않는다.
-- [HARD] 레인 세션은 카드 워크트리 안에서 시작해 그 안에 머문다 — 세션 도중 카드 워크트리에서 다른 카드 워크트리로의 이동은 금지며, 불가피하게 이동할 때는 이동 뒤 `/clear` 를 정확히 1회 실행한다. 이 금지의 정본은 배포 규칙 `.claude/rules/moai/workflow/kanban-dispatch.md`의 Isolation 절이며, 여기에 다시 적지 않는다. 통합 워크트리 진입(§2)은 이 금지의 적용 밖이다 — 자체 재진입 규칙을 그대로 따른다.
+- [HARD] 레인 세션은 카드 워크트리 안에서 시작해 그 안에 머문다 — 세션 도중 카드 워크트리에서 다른 카드 워크트리로의 이동은 금지며, 불가피하게 이동할 때는 이동 뒤 `/clear` 를 정확히 1회 실행한다. 이 금지의 정본은 배포 규칙 `.claude/rules/moai/workflow/factory-dispatch.md`의 Isolation 절이며, 여기에 다시 적지 않는다. 통합 워크트리 진입(§2)은 이 금지의 적용 밖이다 — 자체 재진입 규칙을 그대로 따른다.
 
 ## 2. 통합 면 — `develop` 워크트리는 하나뿐
 
@@ -115,7 +115,7 @@ git branch --show-current
 - **백그라운드 부하를 만들지 않는다.** 경합이 필요한 검증이라면 부하는 정리 보장이 있어야 한다 — 테스트 프레임워크 cleanup 훅에 등록된 kill이거나, 밖에서 프로세스를 묶는 `timeout` 래퍼. 뒤에 붙인 `kill`은 정리가 아니다(도달하지 못하는 줄이다).
 - **무거운 실행이 겹칠 자리에서는 자원 임대를 먼저 잡는다.** `moai slot acquire --resource <이름> --max-duration <상한>` → 실행 → `moai slot release --resource <이름>`. 보유자는 `moai slot status`로 읽는다. 통합 창(`moai integration`)과 기록·락·설정 키가 **분리돼 있다** — 병합 대기와 무거운 실행 대기가 서로를 막지 않게 하려는 것이다. 상한은 보유자 자신의 선언이라, 해제를 잊어도 상한까지만 묶인다(그 뒤에는 다른 레인이 `--force` 없이 인수한다). 매칭 명령을 거부하는 PreToolUse 가드는 **선택형이고 기본 꺼짐**(`workflow.slot_lease.enabled`)이며, 세 동작은 그 값과 무관하게 돈다. 표면 전체는 `.claude/rules/moai/workflow/resource-slot-lease.md`.
   - 거부는 숫자로 온다: 살아 있는 보유자가 상한 안에 있는 동안 다른 세션의 획득은 **exit 3**으로 침묵 거부되고 아무도 대체되지 않는다(2026-09-14 실측, `t774-repro-demo`) — 리더에게 묻는 대신 `moai slot status --resource <이름>` 한 번으로 지금 순번의 주인을 확인한다.
-  - "무거운 실행"의 예 — 최소한 `internal/cli` 전체 스위트(2026-09-10 침입: 세 레인이 동시에 돌려 load 8~21에서 판정이 뒤집혔다 — 이것이 표면이 없을 때 침범이 실제로 난다는 통제군 기록이며, 동시 스위트 재실행으로 재시연하지 않는다), 그리고 `internal/kanban`·`internal/hook` 같은 분 단위 패키지 스위트.
+  - "무거운 실행"의 예 — 최소한 `internal/cli` 전체 스위트(2026-09-10 침입: 세 레인이 동시에 돌려 load 8~21에서 판정이 뒤집혔다 — 이것이 표면이 없을 때 침범이 실제로 난다는 통제군 기록이며, 동시 스위트 재실행으로 재시연하지 않는다), 그리고 `internal/factory`·`internal/hook` 같은 분 단위 패키지 스위트.
   - 이 규율이 리더의 기억이 아니라 디스크 위에 있어야 하는 이유가 바로 그 두 차례의 침입이다: 1차는 통지 누락, 2차는 통지가 도달해도 레인이 순번을 조회할 방법이 없었다 — 선언과 통지와 조회 가능한 절차는 각각 다른 일이다.
 - **[HARD] 「이 카드가 무엇을 바꿨는가」는 흡수한 ref 와의 merge-base 부터 잰다 — 리터럴 base SHA 로 재지 않는다.** "Go 변경 없음", "템플릿 변경 없음", "이 경로만" 같은 범위 판정식의 왼쪽 끝은 읽는 시점에 `CARD_BASE=$(git merge-base develop HEAD)` 로 다시 구하고, 값을 핀하지 않는다. 대조군은 `git diff --name-only "$CARD_BASE"..HEAD | wc -l`(1 이상이어야 함), 프로브는 같은 범위에 pathspec 을 붙인 형태다. 대조군이 0 이면 "변경 없음"이 아니라 "측정 불가"로 보고한다.
   - 이유: 흡수하는 순간 리터럴 핀 범위에 다른 카드의 커밋이 들어온다. 로컬 develop 이 원격보다 앞서 있으면 `origin/develop` 기준 merge-base 도 흡수 전 분기점에 머물러 같은 오탐을 낸다. 실측(2026-09-10, `.moai/reports/t543/verdict.md`): 로컬 develop 을 흡수한 뒤 리터럴 핀과 `origin/develop` 기준은 모두 Go 51개를 냈고, `develop` 기준만 카드 자기 기여(파일 4, Go 0)를 냈다. 이 재현이 이 규율의 대조군이다.

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // queueStateBytes returns the STORED RECORD in its canonical document form —
@@ -29,7 +29,7 @@ import (
 // verification step must not migrate the fixture it is measuring.
 func queueStateBytes(t *testing.T, path string) []byte {
 	t.Helper()
-	rec, err := kanban.NewBacklogStore(path).LoadPure()
+	rec, err := factory.NewBacklogStore(path).LoadPure()
 	if err != nil {
 		t.Fatalf("read queue state at %s: %v", path, err)
 	}
@@ -43,7 +43,7 @@ func queueStateBytes(t *testing.T, path string) []byte {
 // queueDigest returns the SHA-256 of the fixture queue's stored record.
 // Invariance claims are judged on this digest: "looks the same" is not
 // evidence.
-func queueDigest(t *testing.T, store *kanban.BacklogStore) string {
+func queueDigest(t *testing.T, store *factory.BacklogStore) string {
 	t.Helper()
 	sum := sha256.Sum256(queueStateBytes(t, store.Path()))
 	return hex.EncodeToString(sum[:])
@@ -52,16 +52,16 @@ func queueDigest(t *testing.T, store *kanban.BacklogStore) string {
 // seedItems writes cards straight through the store, bypassing `add` and
 // therefore its analysis. A test that needs a queue holding a duplicate pair
 // but NO findings yet cannot build that state through the CLI.
-func seedItems(t *testing.T, store *kanban.BacklogStore, texts ...string) {
+func seedItems(t *testing.T, store *factory.BacklogStore, texts ...string) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for _, text := range texts {
 			rec.LastSeq++
-			rec.Items = append(rec.Items, kanban.BacklogItem{
+			rec.Items = append(rec.Items, factory.BacklogItem{
 				ID:      fmt.Sprintf("t%d", rec.LastSeq),
 				Text:    text,
 				AddedAt: "2026-01-01T00:00:00Z",
-				State:   kanban.BacklogStateQueued,
+				State:   factory.BacklogStateQueued,
 			})
 		}
 		return nil
@@ -71,7 +71,7 @@ func seedItems(t *testing.T, store *kanban.BacklogStore, texts ...string) {
 }
 
 // itemIDs returns the fixture queue's ids in file order.
-func itemIDs(t *testing.T, store *kanban.BacklogStore) []string {
+func itemIDs(t *testing.T, store *factory.BacklogStore) []string {
 	t.Helper()
 	rec, err := store.Load()
 	if err != nil {
@@ -86,7 +86,7 @@ func itemIDs(t *testing.T, store *kanban.BacklogStore) []string {
 
 // snapshotItems returns the fixture queue's items as JSON, for a later
 // byte-comparison.
-func snapshotItems(t *testing.T, store *kanban.BacklogStore) []byte {
+func snapshotItems(t *testing.T, store *factory.BacklogStore) []byte {
 	t.Helper()
 	rec, err := store.Load()
 	if err != nil {
@@ -101,7 +101,7 @@ func snapshotItems(t *testing.T, store *kanban.BacklogStore) []byte {
 
 // assertItemsUnchanged compares the fixture queue's items against a snapshot
 // taken earlier.
-func assertItemsUnchanged(t *testing.T, store *kanban.BacklogStore, snapshot []byte, when string) {
+func assertItemsUnchanged(t *testing.T, store *factory.BacklogStore, snapshot []byte, when string) {
 	t.Helper()
 	got := snapshotItems(t, store)
 	if string(got) != string(snapshot) {
@@ -159,9 +159,9 @@ func TestTodoAddForceAdmitsAndRecords(t *testing.T) {
 	}
 	forced := 0
 	for _, f := range rec.Findings {
-		if f.Relation == kanban.BacklogRelationDuplicateForced {
+		if f.Relation == factory.BacklogRelationDuplicateForced {
 			forced++
-			if f.RelatedID != "t1" || f.Source != kanban.BacklogSourceMechanical {
+			if f.RelatedID != "t1" || f.Source != factory.BacklogSourceMechanical {
 				t.Errorf("forced finding = %+v, want related t1 from the mechanical source", f)
 			}
 		}
@@ -215,11 +215,11 @@ func TestTodoAddNearDuplicateRecordsOnly(t *testing.T) {
 		switch {
 		case f.Names("t2") && f.Names("t1"):
 			near++
-			if f.Relation != kanban.BacklogRelationNearDuplicate {
+			if f.Relation != factory.BacklogRelationNearDuplicate {
 				t.Errorf("t1/t2 finding relation = %q, want near-duplicate", f.Relation)
 			}
-			if f.Score < kanban.BacklogNearDuplicateThreshold {
-				t.Errorf("t1/t2 score = %v, want >= %v", f.Score, kanban.BacklogNearDuplicateThreshold)
+			if f.Score < factory.BacklogNearDuplicateThreshold {
+				t.Errorf("t1/t2 score = %v, want >= %v", f.Score, factory.BacklogNearDuplicateThreshold)
 			}
 		case f.Names("t3"):
 			unrelated++

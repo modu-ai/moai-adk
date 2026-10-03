@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -112,7 +112,7 @@ permanent. It takes no --sha and no --ref.`
 func runTodoLanded(cmd *cobra.Command, id, sha, ref string, clear bool) error {
 	store := newTodoStore()
 
-	var record *kanban.LandingEvidence
+	var record *factory.LandingEvidence
 	if !clear {
 		built, err := buildLandingEvidence(store, id, sha, ref)
 		if err != nil {
@@ -122,7 +122,7 @@ func runTodoLanded(cmd *cobra.Command, id, sha, ref string, clear bool) error {
 		record = built
 	}
 
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == id {
 				// ONE field. The state, the position, the text, and the spec
@@ -162,7 +162,7 @@ func runTodoLanded(cmd *cobra.Command, id, sha, ref string, clear bool) error {
 
 // buildLandingEvidence assembles the record, refusing rather than storing any
 // fact it could not establish.
-func buildLandingEvidence(store *kanban.BacklogStore, id, sha, ref string) (*kanban.LandingEvidence, error) {
+func buildLandingEvidence(store *factory.BacklogStore, id, sha, ref string) (*factory.LandingEvidence, error) {
 	root := resolveTodoQueueRoot()
 	if strings.TrimSpace(ref) == "" {
 		ref = todoLandedRef()
@@ -186,7 +186,7 @@ func buildLandingEvidence(store *kanban.BacklogStore, id, sha, ref string) (*kan
 		return nil, err
 	}
 
-	evidence := &kanban.LandingEvidence{
+	evidence := &factory.LandingEvidence{
 		Ref:        ref,
 		RefHead:    refHead,
 		ObservedAt: time.Now().UTC().Format(time.RFC3339),
@@ -198,9 +198,9 @@ func buildLandingEvidence(store *kanban.BacklogStore, id, sha, ref string) (*kan
 		// `operator`. The encoder refuses a SHA without it, so a future path
 		// that filled SHA from anywhere else would have to state a provenance
 		// the SPEC does not define — and be refused for it.
-		evidence.SHASource = kanban.LandingSHASourceOperator
+		evidence.SHASource = factory.LandingSHASourceOperator
 	}
-	if _, err := kanban.EncodeLandingEvidence(*evidence); err != nil {
+	if _, err := factory.EncodeLandingEvidence(*evidence); err != nil {
 		return nil, &exitCodeError{code: 1, msg: "todo landed: " + err.Error()}
 	}
 	return evidence, nil
@@ -322,10 +322,10 @@ func gitReason(err error) error {
 // and a readable one carries what the frontmatter actually says. A default —
 // `completed`, `draft`, or anything else plausible — is never invented
 // (REQ-TLE-010).
-func readCardSpecStatus(store *kanban.BacklogStore, root, id string) string {
+func readCardSpecStatus(store *factory.BacklogStore, root, id string) string {
 	rec, err := store.LoadPure()
 	if err != nil {
-		return kanban.LandingSpecStatusUnknown
+		return factory.LandingSpecStatusUnknown
 	}
 	for _, it := range rec.Items {
 		if it.ID != id {
@@ -334,10 +334,10 @@ func readCardSpecStatus(store *kanban.BacklogStore, root, id string) string {
 		if it.SpecID == nil || strings.TrimSpace(*it.SpecID) == "" {
 			return ""
 		}
-		if status, ok := kanban.ReadPrimarySpecStatus(root, *it.SpecID); ok {
+		if status, ok := factory.ReadPrimarySpecStatus(root, *it.SpecID); ok {
 			return status
 		}
-		return kanban.LandingSpecStatusUnknown
+		return factory.LandingSpecStatusUnknown
 	}
 	return ""
 }

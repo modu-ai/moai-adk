@@ -27,15 +27,15 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // recordLanding attaches a record to a card through the store's own write
 // path, so the fixture exercises the same encode/decode seam the verb writes
 // through rather than a hand-built value the render never sees in the field.
-func recordLanding(t *testing.T, store *kanban.BacklogStore, id string, ev kanban.LandingEvidence) {
+func recordLanding(t *testing.T, store *factory.BacklogStore, id string, ev factory.LandingEvidence) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == id {
 				cp := ev
@@ -52,23 +52,23 @@ func recordLanding(t *testing.T, store *kanban.BacklogStore, id string, ev kanba
 
 // operatorEvidence is a record carrying an OPERATOR-ASSERTED delivering
 // commit; refHeadEvidence carries only the observed ref position.
-func operatorEvidence(sha string) kanban.LandingEvidence {
-	return kanban.LandingEvidence{
+func operatorEvidence(sha string) factory.LandingEvidence {
+	return factory.LandingEvidence{
 		Ref:        "origin/develop",
 		RefHead:    "e50964ad3f11223344556677889900aabbccddee",
 		ObservedAt: "2026-09-03T10:14:22Z",
 		SHA:        sha,
-		SHASource:  kanban.LandingSHASourceOperator,
+		SHASource:  factory.LandingSHASourceOperator,
 		SpecStatus: "completed",
 	}
 }
 
-func refHeadEvidence(refHead string) kanban.LandingEvidence {
-	return kanban.LandingEvidence{
+func refHeadEvidence(refHead string) factory.LandingEvidence {
+	return factory.LandingEvidence{
 		Ref:        "origin/develop",
 		RefHead:    refHead,
 		ObservedAt: "2026-09-03T10:14:22Z",
-		SpecStatus: kanban.LandingSpecStatusUnknown,
+		SpecStatus: factory.LandingSpecStatusUnknown,
 	}
 }
 
@@ -97,10 +97,10 @@ func TestTodoPR_SevenColumnsCardTextLast(t *testing.T) {
 	ids := seedQueue(t, store, "linked card", "landed card", "untouched card")
 	linked, landed, untouched := ids[0], ids[1], ids[2]
 
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == landed {
-				rec.Items[i].State = kanban.BacklogStatePicked
+				rec.Items[i].State = factory.BacklogStatePicked
 			}
 		}
 		return nil
@@ -208,11 +208,11 @@ func TestTodoPR_SevenColumnsCardTextLast(t *testing.T) {
 		if !present {
 			t.Fatalf("%s carries evidence but its JSON object has no landing key: %s", cardID, jsonOut)
 		}
-		var ev kanban.LandingEvidence
+		var ev factory.LandingEvidence
 		if err := json.Unmarshal(raw, &ev); err != nil {
 			t.Fatalf("landing key does not decode as a record: %v (%s)", err, string(raw))
 		}
-		if ev.SHA != "c9f712232aabbccddeeff00112233445566778899" || ev.SHASource != kanban.LandingSHASourceOperator {
+		if ev.SHA != "c9f712232aabbccddeeff00112233445566778899" || ev.SHASource != factory.LandingSHASourceOperator {
 			t.Errorf("landing record = %+v, want the operator-asserted SHA it was recorded with", ev)
 		}
 	}
@@ -264,11 +264,11 @@ func TestTodoPR_AssertionVersusObservationSurvivesSHASubstitution(t *testing.T) 
 			if assertedCell == observedCell {
 				t.Fatalf("the asserted and observed cells are identical (%q); the distinction cannot rest on the SHA value", assertedCell)
 			}
-			if !strings.Contains(assertedCell, "("+kanban.LandingSHASourceOperator+")") {
-				t.Errorf("asserted cell = %q, want the %q marker", assertedCell, kanban.LandingSHASourceOperator)
+			if !strings.Contains(assertedCell, "("+factory.LandingSHASourceOperator+")") {
+				t.Errorf("asserted cell = %q, want the %q marker", assertedCell, factory.LandingSHASourceOperator)
 			}
-			if !strings.Contains(observedCell, "("+kanban.LandingMarkerRefHead+")") {
-				t.Errorf("observed cell = %q, want the %q marker", observedCell, kanban.LandingMarkerRefHead)
+			if !strings.Contains(observedCell, "("+factory.LandingMarkerRefHead+")") {
+				t.Errorf("observed cell = %q, want the %q marker", observedCell, factory.LandingMarkerRefHead)
 			}
 
 			// The JSON records carry the same distinction under distinct keys
@@ -293,12 +293,12 @@ func TestTodoPR_AssertionVersusObservationSurvivesSHASubstitution(t *testing.T) 
 				if err := json.Unmarshal(obj["landing"], &record); err != nil {
 					t.Fatalf("observed card has no decodable landing record: %s", jsonOut)
 				}
-				if _, aliased := record[kanban.LandingKeyDeliveringSHA]; aliased {
+				if _, aliased := record[factory.LandingKeyDeliveringSHA]; aliased {
 					t.Errorf("observed record carries %q; a ref position must not be aliased to a delivering commit: %v",
-						kanban.LandingKeyDeliveringSHA, record)
+						factory.LandingKeyDeliveringSHA, record)
 				}
-				if got, ok := record[kanban.LandingKeyRefHead]; !ok || got != tc.observedAt {
-					t.Errorf("observed record %s = %v, want %q", kanban.LandingKeyRefHead, got, tc.observedAt)
+				if got, ok := record[factory.LandingKeyRefHead]; !ok || got != tc.observedAt {
+					t.Errorf("observed record %s = %v, want %q", factory.LandingKeyRefHead, got, tc.observedAt)
 				}
 			}
 		})
@@ -333,8 +333,8 @@ func TestTodoPR_NoRecordRendersEmptyEvidenceCell(t *testing.T) {
 	}
 	rows := prRowFields(t, out)
 	for id, wantOutcome := range map[string]string{
-		landed:    string(kanban.PRLinkLanded),
-		untouched: string(kanban.PRLinkNoLink),
+		landed:    string(factory.PRLinkLanded),
+		untouched: string(factory.PRLinkNoLink),
 	} {
 		cols := rows[id]
 		if len(cols) != 7 {
@@ -398,11 +398,11 @@ func TestTodoPR_ProjectRootUnchangedWithEvidence(t *testing.T) {
 	// this clause as `.moai/state/kanban/`, which is the PRE-RENAME legacy
 	// name: SPEC-TODO-SQLITE-001 renamed the directory to `.moai/state/todo/`
 	// and left the old name as a read-only fallback nothing writes through
-	// (`internal/kanban/state_dir.go:37,42`). Transcribed literally the clause
+	// (`internal/factory/state_dir.go:37,42`). Transcribed literally the clause
 	// could never match, so the positive control would fail permanently —
 	// vacuous in the loud direction. Asking StateDirForRoot keeps it correct
 	// across the next rename too.
-	queueDirPrefix, err := filepath.Rel(root, kanban.StateDirForRoot(root))
+	queueDirPrefix, err := filepath.Rel(root, factory.StateDirForRoot(root))
 	if err != nil {
 		t.Fatalf("resolving the queue directory under %s: %v", root, err)
 	}

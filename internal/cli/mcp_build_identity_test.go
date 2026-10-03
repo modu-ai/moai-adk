@@ -679,7 +679,16 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// `git merge-base develop HEAD` per evaluation. It selects which
 		// changes a review targets; it never judges binary-vs-source freshness,
 		// so binlag.Evaluate remains the one binary-lag comparison.
-		"codex_review_scope.go:132": true,
+		// Re-measured at card t1404: SPEC-CODEX-GATE-SCOPING-001's M2 primary
+		// check (isPrimaryCheckoutGit + reviewScopeGitPath) was inserted above
+		// cardMergeBase, moving the same single comparison from 132. Same one
+		// comparison, same count — only the coordinate moved (the t948
+		// precedent below); caught by the card's owed full-package re-run, not
+		// by the repair's own diff, which starts at line 233.
+		// Re-measured again at the card-review round-2 repair: N4's
+		// reviewScopeEvalPath insertion above cardMergeBase moved the same
+		// single comparison from 182. Same one comparison, same count.
+		"codex_review_scope.go:197": true,
 		// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (card t1393): the session-worktree
 		// disposal landing check — arm (i) of the decided predicate asks
 		// whether the branch tip is an ancestor of refs/remotes/origin/develop

@@ -16,15 +16,15 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // seedFindings writes findings into the fixture queue directly through the
 // store, so a test can construct a Given state the CLI verbs would need
 // several invocations to reach.
-func seedFindings(t *testing.T, store *kanban.BacklogStore, findings ...kanban.BacklogFinding) {
+func seedFindings(t *testing.T, store *factory.BacklogStore, findings ...factory.BacklogFinding) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		rec.Findings = append(rec.Findings, findings...)
 		return nil
 	}); err != nil {
@@ -33,7 +33,7 @@ func seedFindings(t *testing.T, store *kanban.BacklogStore, findings ...kanban.B
 }
 
 // loadFindings returns the fixture queue's current findings.
-func loadFindings(t *testing.T, store *kanban.BacklogStore) []kanban.BacklogFinding {
+func loadFindings(t *testing.T, store *factory.BacklogStore) []factory.BacklogFinding {
 	t.Helper()
 	rec, err := store.Load()
 	if err != nil {
@@ -55,8 +55,8 @@ func TestTodoDoneReclaimsFindings(t *testing.T) {
 		}
 	}
 	seedFindings(t, store,
-		kanban.BacklogFinding{SubjectID: "t1", RelatedID: "t2", Relation: kanban.BacklogRelationContains, Source: kanban.BacklogSourceAgent},
-		kanban.BacklogFinding{SubjectID: "t3", RelatedID: "t4", Relation: kanban.BacklogRelationContains, Source: kanban.BacklogSourceAgent},
+		factory.BacklogFinding{SubjectID: "t1", RelatedID: "t2", Relation: factory.BacklogRelationContains, Source: factory.BacklogSourceAgent},
+		factory.BacklogFinding{SubjectID: "t3", RelatedID: "t4", Relation: factory.BacklogRelationContains, Source: factory.BacklogSourceAgent},
 	)
 
 	if _, _, err := runTodo(t, "done", "t1"); err != nil {
@@ -124,7 +124,7 @@ func TestTodoLegacyRecordRoundTrips(t *testing.T) {
 			t.Errorf("legacy item %d card_uuid = %s, present=%v; want key-present literal null", i, got, present)
 		}
 	}
-	var roundTripped []kanban.BacklogItem
+	var roundTripped []factory.BacklogItem
 	if err := json.Unmarshal(rendered["items"], &roundTripped); err != nil {
 		t.Fatalf("parse items: %v", err)
 	}

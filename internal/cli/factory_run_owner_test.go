@@ -183,9 +183,9 @@ func TestCodexPaneDoorIdentityRefusalLeavesRunOwner(t *testing.T) {
 	launcherPID := os.Getpid()
 	seedRun(t, root, runID, launcherPID, "launcher-start")
 
-	t.Setenv(config.EnvMoaiKanbanID, runID)
+	t.Setenv(config.EnvFactoryRunID, runID)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryBackend, "claude")
 
 	restoreSpawn := tmuxSpawnFn
 	restoreIdentity := codexSpawnPaneIdentityFn
@@ -230,9 +230,9 @@ func TestCodexPaneDoorAnchorRefusalLeavesRunOwner(t *testing.T) {
 		t.Fatalf("precondition: seeded owner = (%d, %q), want (%d, %q)", pid, start, launcherPID, "launcher-start")
 	}
 
-	t.Setenv(config.EnvMoaiKanbanID, runID)
+	t.Setenv(config.EnvFactoryRunID, runID)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryBackend, "claude")
 
 	restoreSpawn := tmuxSpawnFn
 	restoreIdentity := codexSpawnPaneIdentityFn

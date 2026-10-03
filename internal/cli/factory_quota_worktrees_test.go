@@ -27,8 +27,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 )
 
@@ -73,7 +73,7 @@ func qwrWriteGate(t *testing.T, root string, enabled bool, extra string) {
 // primary directory, plus one linked worktree whose record directory holds the
 // one fresh reading (five). It returns the root, the worktree directory, and the
 // queue store.
-func qwrWorktreeOnly(t *testing.T, o qasFixtureOpts, five *statusline.QuotaWindowRecord) (string, string, *kanban.BacklogStore) {
+func qwrWorktreeOnly(t *testing.T, o qasFixtureOpts, five *statusline.QuotaWindowRecord) (string, string, *factory.BacklogStore) {
 	t.Helper()
 	o.noRecord = true
 	root, store := qasFixture(t, o)
@@ -199,7 +199,7 @@ func TestQWR_AC007_GateDisabledReadsNothing(t *testing.T) {
 		qwrWriteGate(t, root, enabled, "")
 		wt := qwrAddWorktree(t, root, "lane-wt")
 		qasWriteRecord(t, wt, "sess-wt", fcNow, qasWin(92, qasReset5), qasWin(96, qasReset7))
-		qasLaneEnv(t, "lane-1", kanban.BackendClaude)
+		qasLaneEnv(t, "lane-1", factory.BackendClaude)
 		t.Chdir(root)
 		return root
 	}
@@ -405,8 +405,8 @@ func TestQWR_AC008_SurfacesSeeWorktreeReading(t *testing.T) {
 	})
 
 	t.Run("acquire_warning_for_claude_caller", func(t *testing.T) {
-		control := qasAcquire(t, qasAcquireRoot(t, kanban.BackendClaude, nil, nil, qasFixtureOpts{gateOff: true}))
-		root := qasAcquireRoot(t, kanban.BackendClaude, nil, nil, qasFixtureOpts{})
+		control := qasAcquire(t, qasAcquireRoot(t, factory.BackendClaude, nil, nil, qasFixtureOpts{gateOff: true}))
+		root := qasAcquireRoot(t, factory.BackendClaude, nil, nil, qasFixtureOpts{})
 		wt := qwrAddWorktree(t, root, "lane-wt")
 		qasWriteRecord(t, wt, "sess-wt", fcNow, qasWin(92, qasReset5), nil)
 		got := qasAcquire(t, root)
@@ -433,12 +433,12 @@ func TestQWR_AC008_SurfacesSeeWorktreeReading(t *testing.T) {
 	t.Run("wait_recheck_sees_worktree_update", func(t *testing.T) {
 		sdClearLaneEnv(t)
 		root, store := sdMoaiFixture(t)
-		fcQueue(t, store, kanban.BacklogStateQueued)
+		fcQueue(t, store, factory.BacklogStateQueued)
 		sdRegisterLane(t, root, "lane-1")
 		qasEnableGate(t, root)
 		wt := qwrAddWorktree(t, root, "lane-wt")
 		qasWriteRecord(t, wt, "sess-wt", fcNow, qasWin(92, qasReset5), nil)
-		qasLaneEnv(t, "lane-1", kanban.BackendClaude)
+		qasLaneEnv(t, "lane-1", factory.BackendClaude)
 		t.Chdir(root)
 		// After the first wait the worktree's session renders again at 80%, below
 		// hold minus margin (90 - 5), captured at the advanced clock.
@@ -521,7 +521,7 @@ func TestQWR_AC009_WorktreeSourceRendersIdentically(t *testing.T) {
 	t.Run("acquire_warning", func(t *testing.T) {
 		var out [2]string
 		for i, inWorktree := range []bool{false, true} {
-			root := qasAcquireRoot(t, kanban.BackendClaude, nil, nil, qasFixtureOpts{})
+			root := qasAcquireRoot(t, factory.BackendClaude, nil, nil, qasFixtureOpts{})
 			place(t, root, inWorktree)
 			got := qasAcquire(t, root)
 			out[i] = strings.Join([]string{got.stdout, got.stderr, got.lock}, "|")

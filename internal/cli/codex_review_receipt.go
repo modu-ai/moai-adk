@@ -123,6 +123,12 @@ func cardReviewReceiptState(ctx context.Context, scope reviewScope, binaryPath s
 // the Stop chain reads as stale. It returns errCodexReviewerMissing, and
 // records nothing, when the codex binary is absent — the Stop chain then
 // allows on its own, as Claude does (codex_review_gate.go step 5).
+//
+// A TREE-scope fail whose every finding targets only the runtime-config
+// surfaces is reclassified like the Claude gate's step 7-pre (REQ-CGSC-008,
+// card-review repair R2 — both automatic paths take the one decision): the
+// receipt records the gate's outcome (pass) and the reclassification row rides
+// stderr (REQ-CGSC-011). Card scope keeps the fail.
 func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt, error) {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
@@ -141,11 +147,27 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	defer cancel()
 	out, rpcErr := runCodexReviewRPC(rctx, binaryPath, codexMethodReviewStart, reviewRequestParams(scope))
 	verdict, exit := codexReviewVerdictPass, 0
+	drift := false
 	switch {
 	case rpcErr != nil:
 		verdict = codexReviewVerdictInconclusive
 	case isBlockVerdict(out.Verdict):
-		verdict, exit = codexReviewVerdictFail, 1
+		// REQ-CGSC-008 (card-review repair R2): BOTH automatic paths take the
+		// one reclassification decision. On a TREE-scope review whose every
+		// finding targets only the runtime-config surfaces the Claude gate
+		// ALLOWs (codex_review_gate.go step 7-pre); the receipt mirrors that
+		// outcome — the receipt verdict is the GATE's disposition of this tree
+		// state, so a fail the gate reclassifies must not be recorded as one
+		// the Codex Stop chain's member 6 would DENY on. The reclassification
+		// row on the diagnostic channel (REQ-CGSC-011) keeps it from reading
+		// as a silent reviewer pass. Card scope keeps the fail: the
+		// reclassification is tree-only, as on Claude.
+		if targets, ok := runtimeConfigOnlyFindings(out.Findings, scope.Dir); ok && scope.Class == reviewScopeTree {
+			logRuntimeDriftReclassification(scope, targets)
+			drift = true
+		} else {
+			verdict, exit = codexReviewVerdictFail, 1
+		}
 	case !strings.HasPrefix(strings.ToLower(strings.TrimSpace(out.Verdict)), codexReviewVerdictPass):
 		verdict = codexReviewVerdictInconclusive
 	}
@@ -165,9 +187,15 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	}
 	// The receipt store carries no free text, so the findings reach the
 	// working agent here, on the runner's stderr.
-	if rpcErr != nil {
+	switch {
+	case rpcErr != nil:
 		_, _ = fmt.Fprintf(os.Stderr, "codex review: %s (review call failed: %v)\n", verdict, rpcErr)
-	} else {
+	case drift:
+		// logRuntimeDriftReclassification already wrote the REQ-CGSC-011 row;
+		// this runner line keeps the recorded pass from reading as a silent
+		// reviewer pass on the producer's own channel.
+		_, _ = fmt.Fprintln(os.Stderr, "codex review: reviewer fail recorded as pass (runtime-managed drift only — see the reclassification row)")
+	default:
 		_, _ = fmt.Fprintf(os.Stderr, "codex review: %s: %s\n", verdict, strings.TrimSpace(out.Summary))
 	}
 	return r, nil

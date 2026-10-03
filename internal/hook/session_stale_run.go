@@ -16,19 +16,19 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // legacyLaunchLabelValue returns the launch-label value carrying a legacy
 // role, or "" when every label in the environment is current-vocabulary (or
-// absent). The leader label (MOAI_KANBAN_LEAD_NAME — kanban and factory
-// leaders alike) and the lane label (MOAI_FACTORY_WORKER) are the two
+// absent). The leader label (config.EnvFactoryLeadName — chain-session and factory
+// leaders alike) and the lane label (config.EnvMoaiFactoryWorker) are the two
 // role-bearing launch labels.
 func legacyLaunchLabelValue() string {
-	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLeadName)); kanban.IsLegacyLeaderSpelling(label) {
+	if label := strings.TrimSpace(os.Getenv(config.EnvFactoryLeadName)); factory.IsLegacyLeaderSpelling(label) {
 		return label
 	}
-	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)); kanban.IsLegacyFactoryRoleValue(label) {
+	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)); factory.IsLegacyFactoryRoleValue(label) {
 		return label
 	}
 	return ""
@@ -44,14 +44,14 @@ func isLegacyRecordRole(role string) bool {
 // launch label OR its existing session record carries a legacy role value,
 // and "" when the session is current-vocabulary (or not a run member). The
 // factory branch is run-state gated (staleRunPrescriptionGate,
-// SPEC-STALE-RUN-LABEL-001); the kanban relaunch branch is not a retire
+// SPEC-STALE-RUN-LABEL-001); the retired-mode relaunch branch is not a retire
 // prescription and stays ungated.
 func staleRunNoticeFor(root, sessionID, lang string) string {
 	if label := legacyLaunchLabelValue(); label != "" {
 		return gatedStaleRunAnswer(root, sessionID, label, lang)
 	}
 	if sessionID != "" && root != "" {
-		if rec, err := kanban.Read(root, sessionID); err == nil && isLegacyRecordRole(rec.Role) {
+		if rec, err := factory.Read(root, sessionID); err == nil && isLegacyRecordRole(rec.Role) {
 			return gatedStaleRunAnswer(root, sessionID, rec.Role, lang)
 		}
 	}
@@ -76,7 +76,7 @@ func staleRunNoticeFor(root, sessionID, lang string) string {
 // the run id always %[2].
 type staleRunMessages struct {
 	roleValueRetire       string // legacy role value %[1]q, run id %[2]s, command line %[3]s — the factory branch
-	roleValueRelaunch     string // legacy role value %[1]q — the kanban branch
+	roleValueRelaunch     string // legacy role value %[1]q — the retired-mode branch
 	laneLabelRetire       string // legacy lane label %[1]q, run id %[2]s, command line %[3]s — the factory message hook
 	laneLabelUnbind       string // orphan label %[1]q, run %[2]s, measured state %[3]s — the one-time unbind notice (REQ-SRL-005)
 	laneLabelUnbindRebind string // header of the re-bind command line, no format args — one active run (REQ-SRH-001)
@@ -157,7 +157,7 @@ var staleRunLocales = map[string]staleRunMessages{
 
 // staleRunMessagesFor resolves a locale to its stale-run prose, falling back
 // to English for anything the table does not carry — the same contract as
-// kanbanMessagesFor and factoryMessagesFor.
+// factoryMessagesFor.
 func staleRunMessagesFor(lang string) staleRunMessages {
 	if m, ok := staleRunLocales[lang]; ok {
 		return m
@@ -167,10 +167,10 @@ func staleRunMessagesFor(lang string) staleRunMessages {
 
 // staleRunNotice renders the stale-run message. The relaunch command is named
 // only for factory sessions (the run id + MOAI_FACTORY_WORKERS discriminator):
-// a kanban run has no factory run to relaunch into — its remedy is ending the
+// a retired-mode run has no factory run to relaunch into — its remedy is ending the
 // session and relaunching.
 func staleRunNotice(value, lang string) string {
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	m := staleRunMessagesFor(lang)
 	if runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		return fmt.Sprintf(m.roleValueRetire, value, runID, legacyRelaunchLine(runID))
@@ -183,8 +183,8 @@ func staleRunNotice(value, lang string) string {
 // active. The provider token comes from the session's own launch backend
 // (REQ-SRH-016).
 func legacyRelaunchLine(runID string) string {
-	return strings.Join(kanban.RelaunchNoticeFor(kanban.RelaunchNoticeState{
-		Provider:  kanban.RelaunchProviderForBackend(os.Getenv(config.EnvMoaiKanbanBackend)),
+	return strings.Join(factory.RelaunchNoticeFor(factory.RelaunchNoticeState{
+		Provider:  factory.RelaunchProviderForBackend(os.Getenv(config.EnvFactoryBackend)),
 		Legacy:    true,
 		Run:       runID,
 		RunActive: true,
@@ -197,7 +197,7 @@ func legacyRelaunchLine(runID string) string {
 // locale; the broker hook surface (agent-facing additionalContext) passes
 // langEnglish.
 func legacyFactoryHookNotice(label, runID, lang string) string {
-	if !kanban.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
+	if !factory.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
 		return ""
 	}
 	if runID != "" {

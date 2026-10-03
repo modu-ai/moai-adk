@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/graph"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/spf13/cobra"
 )
 
@@ -20,10 +20,10 @@ type gtdCLIOwner struct {
 	apply    func() error
 }
 
-func (o gtdCLIOwner) Readback(_ context.Context, _ kanban.GTDOperation) (bool, error) {
+func (o gtdCLIOwner) Readback(_ context.Context, _ factory.GTDOperation) (bool, error) {
 	return o.readback()
 }
-func (o gtdCLIOwner) Apply(_ context.Context, _ kanban.GTDOperation) error { return o.apply() }
+func (o gtdCLIOwner) Apply(_ context.Context, _ factory.GTDOperation) error { return o.apply() }
 
 func printGTD(cmd *cobra.Command, value any, jsonOutput bool) error {
 	if jsonOutput {
@@ -53,7 +53,7 @@ func requireGTDID(id string) error {
 func NewGTDCommand() *cobra.Command {
 	cmd := newTodoCmd()
 	cmd.Use = "gtd"
-	cmd.Short = "Operate the GTD-managed kanban backlog queue"
+	cmd.Short = "Operate the GTD-managed backlog queue"
 	cmd.Long = `Manage captured work through Capture, Clarify, Organize, Reflect, and Engage.
 
 Captured GTD items stay separate from the established development queue. Only
@@ -68,7 +68,7 @@ func newGTDCaptureCmd() *cobra.Command {
 	var source, sensitivity, eventID string
 	var sourceAuthorized, jsonOutput bool
 	cmd := &cobra.Command{Use: "capture <text>", Short: "Capture an inbox item without publishing a card", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
-		item, err := kanban.CaptureGTDItem(cmd.Context(), newTodoStore(), kanban.CaptureInput{Content: args[0], Source: source, SourceAllowed: source == "user" || sourceAuthorized, Sensitivity: kanban.GTDSensitivity(sensitivity), EventID: eventID})
+		item, err := factory.CaptureGTDItem(cmd.Context(), newTodoStore(), factory.CaptureInput{Content: args[0], Source: source, SourceAllowed: source == "user" || sourceAuthorized, Sensitivity: factory.GTDSensitivity(sensitivity), EventID: eventID})
 		if err != nil {
 			return err
 		}
@@ -90,7 +90,7 @@ func newGTDClarifyCmd() *cobra.Command {
 		if err := requireGTDID(args[0]); err != nil {
 			return err
 		}
-		result, err := kanban.ClarifyGTDItem(cmd.Context(), newTodoStore(), kanban.ClarifyInput{ItemID: args[0], Disposition: kanban.GTDDisposition(disposition), DesiredOutcome: outcome, CompletionEvidence: evidence, Authority: authority, SourceTrusted: trusted})
+		result, err := factory.ClarifyGTDItem(cmd.Context(), newTodoStore(), factory.ClarifyInput{ItemID: args[0], Disposition: factory.GTDDisposition(disposition), DesiredOutcome: outcome, CompletionEvidence: evidence, Authority: authority, SourceTrusted: trusted})
 		if err != nil {
 			return err
 		}
@@ -113,11 +113,11 @@ func newGTDOrganizeCmd() *cobra.Command {
 		if err := requireGTDID(args[0]); err != nil {
 			return err
 		}
-		var relations []kanban.GTDRelation
+		var relations []factory.GTDRelation
 		for _, pair := range []struct {
-			kind   kanban.GTDRelationKind
+			kind   factory.GTDRelationKind
 			target string
-		}{{kanban.RelationPartOf, partOf}, {kanban.RelationDependsOn, dependsOn}} {
+		}{{factory.RelationPartOf, partOf}, {factory.RelationDependsOn, dependsOn}} {
 			kind, target := pair.kind, pair.target
 			if target == "" {
 				continue
@@ -125,9 +125,9 @@ func newGTDOrganizeCmd() *cobra.Command {
 			if err := requireGTDID(target); err != nil {
 				return err
 			}
-			relations = append(relations, kanban.GTDRelation{SubjectID: args[0], ObjectID: target, Kind: kind, Source: "operator", AssertionStatus: "confirmed", PolicyVersion: "gtd-v1"})
+			relations = append(relations, factory.GTDRelation{SubjectID: args[0], ObjectID: target, Kind: kind, Source: "operator", AssertionStatus: "confirmed", PolicyVersion: "gtd-v1"})
 		}
-		item, err := kanban.OrganizeGTDItemWithRelations(cmd.Context(), newTodoStore(), kanban.OrganizeInput{ItemID: args[0], Class: kanban.GTDClass(class), Context: contextName, ReviewAt: reviewAt}, relations)
+		item, err := factory.OrganizeGTDItemWithRelations(cmd.Context(), newTodoStore(), factory.OrganizeInput{ItemID: args[0], Class: factory.GTDClass(class), Context: contextName, ReviewAt: reviewAt}, relations)
 		if err != nil {
 			return err
 		}
@@ -146,7 +146,7 @@ func newGTDOrganizeCmd() *cobra.Command {
 func newGTDReflectCmd() *cobra.Command {
 	var jsonOutput, rebuild bool
 	cmd := &cobra.Command{Use: "reflect", Short: "Review blockers, stale evidence, and missing next actions", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		view, err := kanban.ReflectGTDStore(cmd.Context(), newTodoReadStore())
+		view, err := factory.ReflectGTDStore(cmd.Context(), newTodoReadStore())
 		if err != nil {
 			return err
 		}
@@ -175,34 +175,34 @@ func newGTDEngageCmd() *cobra.Command {
 			return errors.New("gtd engage: dispatch requires --pick, --lane, and --run-id")
 		}
 		store := newTodoStore()
-		item, err := kanban.LoadGTDItem(cmd.Context(), store, args[0])
+		item, err := factory.LoadGTDItem(cmd.Context(), store, args[0])
 		if err != nil {
 			return err
 		}
-		var result kanban.EngageResult
+		var result factory.EngageResult
 		publishOwner := gtdCLIOwner{
 			readback: func() (bool, error) {
-				current, err := kanban.LoadGTDItem(cmd.Context(), store, args[0])
+				current, err := factory.LoadGTDItem(cmd.Context(), store, args[0])
 				return current.CardID != "", err
 			},
 			apply: func() error {
 				var applyErr error
-				result, applyErr = kanban.EngageGTDItem(cmd.Context(), store, kanban.EngageInput{ItemID: args[0], Authorized: approved, EvidenceFresh: fresh, DependenciesReady: dependenciesReady, LaneAvailable: lane != "", ResourcesAvailable: resources})
+				result, applyErr = factory.EngageGTDItem(cmd.Context(), store, factory.EngageInput{ItemID: args[0], Authorized: approved, EvidenceFresh: fresh, DependenciesReady: dependenciesReady, LaneAvailable: lane != "", ResourcesAvailable: resources})
 				if applyErr == nil && result.CardID == "" {
 					return fmt.Errorf("gtd engage: blocked: %s", strings.Join(result.Reasons, ","))
 				}
 				return applyErr
 			},
 		}
-		op := kanban.GTDOperation{OperationID: "gtd-publish:" + args[0], MissionID: runIDOrManual(runID), Action: "publish", Target: args[0], SnapshotHash: fmt.Sprintf("gtd-revision:%d", item.SourceRevision), ReceiptJSON: []byte(`{"source":"gtd_cli"}`)}
-		if _, err = kanban.ExecuteGTDOperation(cmd.Context(), store, op, publishOwner); err != nil {
+		op := factory.GTDOperation{OperationID: "gtd-publish:" + args[0], MissionID: runIDOrManual(runID), Action: "publish", Target: args[0], SnapshotHash: fmt.Sprintf("gtd-revision:%d", item.SourceRevision), ReceiptJSON: []byte(`{"source":"gtd_cli"}`)}
+		if _, err = factory.ExecuteGTDOperation(cmd.Context(), store, op, publishOwner); err != nil {
 			return err
 		}
-		item, err = kanban.LoadGTDItem(cmd.Context(), store, args[0])
+		item, err = factory.LoadGTDItem(cmd.Context(), store, args[0])
 		if err != nil {
 			return err
 		}
-		result = kanban.EngageResult{Actionable: item.CardID != "", CardID: item.CardID}
+		result = factory.EngageResult{Actionable: item.CardID != "", CardID: item.CardID}
 		if result.CardID != "" && pick {
 			pickOwner := gtdCLIOwner{readback: func() (bool, error) {
 				record, err := store.LoadPure()
@@ -211,16 +211,16 @@ func newGTDEngageCmd() *cobra.Command {
 				}
 				for _, card := range record.Items {
 					if card.ID == result.CardID {
-						return card.State == kanban.BacklogStatePicked, nil
+						return card.State == factory.BacklogStatePicked, nil
 					}
 				}
 				return false, nil
 			}, apply: func() error {
-				return store.Mutate(func(record *kanban.BacklogRecord) error {
+				return store.Mutate(func(record *factory.BacklogRecord) error {
 					for i := range record.Items {
 						if record.Items[i].ID == result.CardID {
-							if record.Items[i].State == kanban.BacklogStateQueued {
-								record.Items[i].State = kanban.BacklogStatePicked
+							if record.Items[i].State == factory.BacklogStateQueued {
+								record.Items[i].State = factory.BacklogStatePicked
 								// REQ-TST-004: this is a picked transition too,
 								// so the stamp rides the same locked write.
 								record.Items[i].PickedAt = todoStampNow()
@@ -231,8 +231,8 @@ func newGTDEngageCmd() *cobra.Command {
 					return errors.New("gtd engage: published card not live")
 				})
 			}}
-			pickOp := kanban.GTDOperation{OperationID: "gtd-pick:" + args[0], MissionID: runIDOrManual(runID), Action: "pick", Target: result.CardID, SnapshotHash: op.SnapshotHash, ReceiptJSON: []byte(`{"source":"gtd_cli"}`)}
-			if _, err = kanban.ExecuteGTDOperation(cmd.Context(), store, pickOp, pickOwner); err != nil {
+			pickOp := factory.GTDOperation{OperationID: "gtd-pick:" + args[0], MissionID: runIDOrManual(runID), Action: "pick", Target: result.CardID, SnapshotHash: op.SnapshotHash, ReceiptJSON: []byte(`{"source":"gtd_cli"}`)}
+			if _, err = factory.ExecuteGTDOperation(cmd.Context(), store, pickOp, pickOwner); err != nil {
 				return err
 			}
 		}
@@ -246,7 +246,7 @@ func newGTDEngageCmd() *cobra.Command {
 				// the REQ-TSP-052 canonical write normalization, so the readback
 				// maps the caller's lane label onto the same canonical form
 				// before comparing — a legacy-spelled lane keeps its authority.
-				want := kanban.NormalizeOwnerLabel(lane)
+				want := factory.NormalizeOwnerLabel(lane)
 				for _, a := range record.Runtime.Assignments {
 					if a.RunID == runID && a.CardID == result.CardID && a.OwnerLabel == want {
 						return true, nil
@@ -255,14 +255,14 @@ func newGTDEngageCmd() *cobra.Command {
 				return false, nil
 			}, apply: func() error {
 				root := resolveTodoQueueRoot()
-				if err := kanban.RecordFactoryCardAssignment(root, runID, result.CardID, lane, ""); err != nil {
+				if err := factory.RecordFactoryCardAssignment(root, runID, result.CardID, lane, ""); err != nil {
 					return err
 				}
 				mirrorFactoryAssignment(cmd.Context(), cmd.ErrOrStderr(), root, store, runID, result.CardID, lane)
 				return nil
 			}}
-			dispatchOp := kanban.GTDOperation{OperationID: "gtd-dispatch:" + runID + ":" + args[0], MissionID: runID, Action: "dispatch", Target: result.CardID, SnapshotHash: op.SnapshotHash, ReceiptJSON: []byte(`{"source":"gtd_cli"}`)}
-			if _, err = kanban.ExecuteGTDOperation(cmd.Context(), store, dispatchOp, dispatchOwner); err != nil {
+			dispatchOp := factory.GTDOperation{OperationID: "gtd-dispatch:" + runID + ":" + args[0], MissionID: runID, Action: "dispatch", Target: result.CardID, SnapshotHash: op.SnapshotHash, ReceiptJSON: []byte(`{"source":"gtd_cli"}`)}
+			if _, err = factory.ExecuteGTDOperation(cmd.Context(), store, dispatchOp, dispatchOwner); err != nil {
 				return err
 			}
 		}

@@ -1,0 +1,28 @@
+{
+  "name": "moai",
+  "version": "1.2.3",
+  "description": "MoAI-ADK core plugin: the core-tier skills, the /moai commands and the moai MCP server, generated from the MoAI-ADK template tree.",
+  "author": {
+    "name": "MoAI-ADK"
+  },
+  "homepage": "https://github.com/modu-ai/moai-adk",
+  "repository": "https://github.com/modu-ai/moai-adk",
+  "license": "Apache-2.0",
+  "skills": "./skills/",
+  "mcpServers": {
+    "moai": {
+      "command": "moai",
+      "args": [
+        "mcp-server"
+      ]
+    }
+  },
+  "interface": {
+    "displayName": "MoAI-ADK",
+    "shortDescription": "MoAI-ADK core skills, commands and MCP server",
+    "longDescription": "MoAI-ADK core plugin: the core-tier skills, the /moai commands and the moai MCP server, generated from the MoAI-ADK template tree.",
+    "developerName": "MoAI-ADK",
+    "category": "Coding",
+    "websiteURL": "https://github.com/modu-ai/moai-adk"
+  }
+}
