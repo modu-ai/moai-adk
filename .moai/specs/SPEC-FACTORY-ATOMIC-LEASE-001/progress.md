@@ -265,6 +265,39 @@ section + bounded claim, moved tests). Tool: `go` from PATH, lane environment sc
   a lock-release failure after a committed lease is not reported (the lease stays valid); a claim on a loaded machine can read as busy at
   the 800 ms deadline by design.
 
+### WM5 — the worktree-step lock (card t1458, round R4)
+
+Commit `da0c9d039` (code and tests), then the docs commit carrying this section. Tool: `go` from PATH, lane environment scrubbed in each
+invocation (scratchpad scripts); the `internal-cli-suite` slot held for each `internal/cli` run and released after (`moai slot status`: free).
+
+- Built: `kanban.AcquireFactoryStepLock` (`internal/kanban/factory_step_lock.go`) over `acquireBoardLockImpl` and `boardLockRetryWait`, own file
+  `<root>/.moai/state/factory-worktree-step.lock`; `factoryCreateAndRenameWorktree` in `factory_card.go` takes it around the creator and
+  `git branch -m` for `factoryWorktreeStepWait` and releases it (defer) before `RecordCardWorktree`. The constants of D3 already existed from WM1.
+  `@MX:WARN` (with REASON) on the helper, `@MX:NOTE` on the step function.
+- RED to GREEN (`wm5-cli-ac006.txt`, `-race -count=3 -timeout 25m`, exit 0, `ok internal/cli 166.625s`):
+  `TestFactoryEnsureCardWorktreeConcurrentRealMaterializer` (3 of 3 PASS, 49-55 s each, `overlap-iterations=0 failed-iterations=0` per run),
+  `TestFactoryEnsureCardWorktreeStepLockBounded` (1.4-1.65 s), `TestFactoryWorktreeStepWaitDerivation`. New `internal/kanban` tests
+  (`wm5-kanban-steplock.txt`, `-race -count=3`, exit 0): `TestFactoryStepLockSerializesContenders`, `...ReleasesOnErrorAndPanic`,
+  `...WaitIsBounded`, `...IsItsOwnFile`. Not observed RED against the stub for the kanban tests (written beside the implementation); the CLI
+  pair was RED at WM1 (`red-cli.txt`).
+- Test edit, stated because the round was told not to touch the WM1 tests further: `TestFactoryLeaseSectionAllowedSet` went red
+  (`wm5-cli-lease-race.txt`) because its tree snapshot at the creator stub reaches into the worktree step, which creates the step lock's file after
+  the section has ended. The test now allows that one path (`factory-worktree-step.lock`) in its outside-the-stores scan; no git-line clause and
+  no timing bound changed. Re-run: PASS x2 under `-race` (`wm5-cli-allowedset.txt`). The edit is in `da0c9d039` and can be vetoed by the
+  leader; the alternative that keeps the test untouched is a lock file outside the project root, which D3 does not allow.
+- Lease/worktree selector under `-race` (`wm5-cli-lease-race.txt`, `^(TestFactoryLease|TestFactoryEnsureCardWorktree|TestFactoryWorktreeStepWait|TestFactoryNextNominate)`): the only FAIL was
+  `SectionAllowedSet` above; every other test PASS, including SectionExcludesWorktreeStep and DriftLogVerbWorktreeWriteWaits (returned 135-157 ms
+  after the release). `TestHomestateDoesNotImportKanban` PASS (`wm5-homestate-layer.txt`); `go test ./internal/kanban -run Lock -race` exit 0
+  (`wm5-kanban-lock.txt`).
+- Preservation: AC-FAL-010 68-name selector, `-count=1 -v`, exit 0, `ok internal/cli 164.592s`, `--- PASS` **68**, `--- FAIL` 0, `--- SKIP` 0,
+  no-tests 0, names identical to the WM1 baseline (`wm5-ac010-final.txt`; `DATA RACE` 0 is vacuous there, no `-race`). All
+  factory/mcp-factory test files (`wm5-cli-factoryfiles.txt`): exit 0, `ok internal/cli 603.587s`, PASS 259, FAIL 0, SKIP 4.
+- Static (`wm5-static-*.txt`): gofmt empty; `go vet` (kanban, homestate, cli) rc 0; `golangci-lint` v2.1.6 rc 0, 0 issues; `GOOS=windows GOARCH=amd64`
+  build and vet of kanban, homestate, cli rc 0.
+- Not claimed: mutants (WM6, MU4 in particular); the Windows lock beyond compile; a Windows stale lock file (D3: no recovery planned); the step
+  lock's wait of 60 s was not measured at ten lanes (spec §F R12); a timeout after a successful lease leaves the card `leased` with no recorded
+  worktree (D3, spec §F R15).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
@@ -294,9 +327,10 @@ baseline commit, RED commit); R2 = WM2; R3 = WM3 + WM4 (they land together); R4 
 the autonomous plan->run Kickoff recorded in `.moai/reports/t1458/decision.md` (git-ignored) at HEAD b27652922, and after
 absorbing develop 2b9e4a4d0 (merge 09faf2965; the plan-artifact hashes were re-checked unchanged).
 
-## §G Resume Point (after WM3+WM4, 2026-10-03)
+## §G Resume Point (after WM5, 2026-10-04)
 
 - WM1 landed in order: 0eb3d5b0d (seam-and-stub), 807eabe20 (AC-FAL-010 baseline, 68 PASS), 1a4ef6402 (RED). WM2 landed in order: 2997abc29 (RED tests), f8cc4b978 (primitive), then the docs commit carrying this section (find its SHA with `git log`).
 - Evidence (git-ignored, this worktree only): .moai/reports/t1458/{baseline-*.txt, red-*.txt, plan-audit*.md, decision.md, park.md}.
 - WM3+WM4 landed: fd70b9123 (homestate), 2016bad1a (two WM1 test repairs), daed5dd09 (lease section + bounded claim), then the docs commit carrying this section. Slot internal-cli-suite released. Nothing pushed or merged.
-- Resume at WM5 (round R4): `kanban.AcquireFactoryStepLock` replaces the stub in `internal/kanban/factory_step_lock.go` (reuse `acquireBoardLockImpl`, separate lock file `<root>/.moai/state/factory-worktree-step.lock`, wait via `factoryWorktreeStepWait`), `factoryEnsureCardWorktree` takes it around creator + `git branch -m` and releases before `RecordCardWorktree`. Tests still RED: TestFactoryEnsureCardWorktreeConcurrentRealMaterializer, TestFactoryEnsureCardWorktreeStepLockBounded. Then WM6 closure (mutants, hold-time distribution, AC-FAL-013 diff measure). AC-FAL-010 floor stays 68.
+- WM5 landed (round R4): `da0c9d039` (step lock helper, `factoryCreateAndRenameWorktree`, helper tests, the one-path allowance in `TestFactoryLeaseSectionAllowedSet`), then the docs commit carrying this section. No test is RED now: AC-FAL-006's pair is GREEN, AC-FAL-010 68 PASS, all factory test files 259 PASS / 0 FAIL. Slot internal-cli-suite released. Nothing pushed or merged.
+- Resume at WM6 (round R5, closure): (1) execute mutants MU1-MU20 of plan section 7 with `go test -overlay` on mutated copies kept in scratch (repository untouched), record the failing top-level test of each; MU4 (no step lock around creation and rename) must fail `TestFactoryEnsureCardWorktreeConcurrentRealMaterializer`; (2) the measured hold-time distribution of the section on a real lease (10 sequential and 2/4/10 concurrent lanes) into section E.2 (AC-FAL-009 iv, REQ-FAL-011); (3) AC-FAL-013 diff measurement: `git merge-base develop HEAD`, then `git diff --name-only <sha>..HEAD` for the allowed set (control non-empty), the forbidden set (probe empty) and the complement; the allowed-set list needs no new entry for WM5 (`factory_step_lock*.go` and its test are named, `factory_lease_unix_test.go` matches `factory_lease_*_test.go`); (4) layering test, doctrine sweep, AC-FAL-010 re-run (floor 68); then the run-phase audit-ready signal (section E.3). Leave AC-FAL-012 and -014 (CHANGELOG, three Amendments) to the sync phase.
