@@ -37,9 +37,9 @@
   - Note: t1435's P-16 recorded 35 core entries at its older base; this tree carries one more
     (the t1399 rename wave landed here). This card cites its own tree.
 - **R-03** (P-03) Command template set: `ls internal/template/templates/.claude/commands/moai/` →
-  19 entries — `clean.md.tmpl, codemaps.md.tmpl, e2e.md.tmpl, feedback.md.tmpl, fix.md.tmpl,
+  17 entries — `clean.md.tmpl, codemaps.md.tmpl, e2e.md.tmpl, feedback.md.tmpl, fix.md.tmpl,
   gate.md.tmpl, goal.md.tmpl, gtd.md, harness.md.tmpl, loop.md.tmpl, mx.md.tmpl, plan.md.tmpl,
-  project.md.tmpl, review.md.tmpl, run.md.tmpl, sync.md.tmpl, todo.md` (17 `.tmpl` + 2 plain).
+  project.md.tmpl, review.md.tmpl, run.md.tmpl, sync.md.tmpl, todo.md` (15 `.tmpl` + 2 plain).
 - **R-04** (P-04) Codex command-skill mirror template:
   `find internal/template/templates/.agents -type f | wc -l` → `17` (`moai-clean` … `moai-todo`,
   one `SKILL.md` per `/moai` command).

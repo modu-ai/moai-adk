@@ -380,8 +380,8 @@ Exit codes were read from the tool result (the worktree guard refuses redirect-a
     - `grep -c 'tier: core' internal/template/catalog.yaml` → `36`
     - `grep -c 'tier: optional-pack' internal/template/catalog.yaml` → `13`
     - `grep -c 'tier: harness-generated' internal/template/catalog.yaml` → `1`
-    - `ls internal/template/templates/.claude/commands/moai/ | wc -l` (equivalent listing measured:
-      19 entries — 17 `*.md.tmpl`, `gtd.md`, `todo.md`)
+    - `find internal/template/templates/.claude/commands/moai -maxdepth 1 -type f | wc -l` → `17`
+      (15 `*.md.tmpl` plus `gtd.md` and `todo.md`)
     - `find internal/template/templates/.agents -type f | wc -l` → `17`
     - `grep -rn 'Skill("' internal/template/templates/CLAUDE.md internal/template/templates/AGENTS.md.tmpl | wc -l` → `5`
     - `grep -rln 'Skill("moai' internal/template/templates/.claude/rules/ | wc -l` → `7`

@@ -73,7 +73,7 @@ All rows were observed by the author in this worktree session at base tree `3f3e
 |---|-------------|-----------------|----------------------------|--------|
 | P-01 | Tree pin | `git rev-parse --short HEAD`; `git branch --show-current` | `3f3ebb763`; `WT-moai-init-slim` | author |
 | P-02 | Template skill set and catalog tiers | `ls internal/template/templates/.claude/skills/ \| grep -c .`; `grep -c 'tier: core' internal/template/catalog.yaml`; `grep -c 'tier: optional-pack' …`; `grep -c 'tier: harness-generated' …` | `41`; `36`; `13`; `1` | author |
-| P-03 | Command template set | `ls internal/template/templates/.claude/commands/moai/` | 19 entries — 17 `*.md.tmpl` plus `gtd.md` and `todo.md` | author |
+| P-03 | Command template set | `ls internal/template/templates/.claude/commands/moai/` | 17 entries — 15 `*.md.tmpl` plus `gtd.md` and `todo.md` | author |
 | P-04 | Codex command-skill mirror template | `find internal/template/templates/.agents -type f \| wc -l` | `17` (one `SKILL.md` per `/moai` command) | author |
 | P-05 | Deployer selection per harness and slim mode | read of `internal/cli/init.go:738-767` | `agentWiringGPT` → `NewCodexOnlyDeployer…`; `both` → Dual (slim unless `shouldDistributeAll`); default → Claude (slim unless `shouldDistributeAll`) | author |
 | P-06 | Update runs Clean Managed Paths on every update, before Deploy | read of `internal/cli/update_template_sync.go:388-432` | step order `Backup → Validate Templates → Clean Managed Paths → Deploy Templates → Restore Settings`; the Clean step runs `archiveLegacySkills`, snapshots `InventoryManagedPaths`, then `guardFirstDestructiveStep` wraps `deploy.CleanMoaiManagedPaths(projectRoot, out, tmplFS)` | author |
