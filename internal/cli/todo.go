@@ -749,13 +749,22 @@ func newTodoAddCmd() *cobra.Command {
 			// REQ-TCD-004: the supplied classification is validated BEFORE
 			// the locked write — an out-of-set value or the jev identity is
 			// a usage refusal with nothing written.
-			dec := todoCardDecider
+			// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002: --classification-file
+			// outranks the standing selection; without a supplied file the
+			// standing decider resolves from MOAI_TODO_DECIDER.
+			var dec kanban.CardDecider
 			if scan.haveClassFile {
 				resolved, err := todoDeciderFromClassificationFile(scan.classFile)
 				if err != nil {
 					return err
 				}
 				dec = resolved
+			} else {
+				selected, err := todoDeciderFromEnv()
+				if err != nil {
+					return err
+				}
+				dec = selected
 			}
 			if scan.pick {
 				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec)
@@ -786,8 +795,21 @@ func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec kanban.Ca
 // invocation resolves; the MCP surface passes the package default.
 func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
 	if dec == nil {
-		dec = todoCardDecider
+		// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002: the MCP todo_add surface
+		// resolves the same standing decider the CLI path resolves, so the
+		// MOAI_TODO_DECIDER selection applies to both surfaces through this
+		// one nil branch.
+		selected, err := todoDeciderFromEnv()
+		if err != nil {
+			return err
+		}
+		dec = selected
 	}
+	// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-005: the LLM judgment is computed
+	// BEFORE the queue lock is acquired and attached inside the same locked
+	// write as a static carrier — only the computation moved out of the
+	// lock, never the attachment.
+	dec = todoPreClassifyLLM(dec, text, cmd.ErrOrStderr())
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
@@ -843,6 +865,10 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	if dec == nil {
 		dec = todoCardDecider
 	}
+	// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-005: the same outside-the-lock
+	// computation the append path carries — the pick's locked write is a
+	// queue lock too, and an in-lock LLM call would stall it identically.
+	dec = todoPreClassifyLLM(dec, text, cmd.ErrOrStderr())
 	// Card t1313: the same stale-store disclosure the append path carries —
 	// the issued id is a receipt for the store that answered. Scoped to the
 	// t1307 divergence line only (see the append-path comment).
