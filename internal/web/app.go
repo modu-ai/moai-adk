@@ -41,7 +41,7 @@ type app struct {
 	// truth stays on the server.
 	hub *Hub
 
-	// specs caches the full SPEC scan (rows + drift findings) that /, /kanban
+	// specs caches the full SPEC scan (rows + drift findings) that /, /factory
 	// and /specs all read. It is dropped when hub publishes "spec" (card t1460).
 	specs *specCache
 
