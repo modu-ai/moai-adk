@@ -220,3 +220,23 @@ func TestPruneStaleFinalLineWithoutNewlineWaitsOneInterval(t *testing.T) {
 		t.Errorf("stale-final still in the log after the next interval")
 	}
 }
+
+// N2: a prune with no late event leaves the replacement log exactly the kept lines: it does not end
+// with a blank line (the log reader drops blank lines, so only a raw count sees it).
+func TestPruneWithoutLateEventAddsNoBlankLine(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	writeStaleLog(t, logPath, now, "stale-1")
+	if err := NewRetention(logPath, filepath.Join(dir, "archive"), func() time.Time { return now }).PruneStaleEntries(30); err != nil {
+		t.Fatalf("prune returned %v, want nil", err)
+	}
+	got, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read log: %v", err)
+	}
+	if n := strings.Count(string(got), "\n"); n != 1 || !bytes.HasSuffix(got, []byte("}\n")) {
+		t.Errorf("replacement log = %q: want exactly one newline-terminated kept line and no blank line", got)
+	}
+}

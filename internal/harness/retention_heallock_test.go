@@ -144,11 +144,17 @@ func TestPruneHealSerializesOnTheHealLock(t *testing.T) {
 		t.Fatalf("lstat fresh: %v", err)
 	}
 	release()
+	releasedAt := time.Now()
 
 	select {
 	case perr = <-done:
 	case <-time.After(5 * time.Second):
 		t.Fatalf("the pruner did not finish after the heal lock was released")
+	}
+	// A waiter that polls returns within one poll interval of the release; one that sleeps out the
+	// whole bound before a single try returns about 1.7 s later.
+	if since := time.Since(releasedAt); since >= time.Second {
+		t.Errorf("the pruner returned %v after the heal lock was released, want under 1s: it did not poll for the lock", since)
 	}
 	if perr != nil {
 		t.Errorf("the pruner returned %v, want nil", perr)
@@ -430,6 +436,7 @@ func TestPruneHealWaitsForASharedHolder(t *testing.T) {
 		t.Errorf("the state-path entry was removed or replaced while a shared heal lock was held: err=%v", lerr)
 	}
 	release()
+	releasedAt := time.Now()
 	if returned {
 		return
 	}
@@ -440,6 +447,9 @@ func TestPruneHealWaitsForASharedHolder(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatalf("the pruner did not finish after the shared heal lock was released")
+	}
+	if since := time.Since(releasedAt); since >= time.Second {
+		t.Errorf("the pruner returned %v after the shared heal lock was released, want under 1s: it did not poll for the lock", since)
 	}
 	if fi, err := os.Lstat(fx.statePath); err != nil || !fi.Mode().IsRegular() {
 		t.Errorf("the faulty link was not replaced after the lock was released: err=%v", err)
