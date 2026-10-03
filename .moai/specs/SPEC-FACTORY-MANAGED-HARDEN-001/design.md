@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "design.md — 서버 요청 응답과 턴 단위 실패 격리 설계 결정 (F3·F4)"
-version: "0.5.0"
+version: "0.5.2"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -12,7 +12,7 @@ tier: M
 
 > 상태축 없음(spec-frontmatter-schema.md § Artifact Statelessness). 생명주기는 `spec.md` 만 운반한다. 이 문서의 식별자(함수·필드 이름)는 설명을 위한 가칭이며 run 단계가 바꿀 수 있다. **관측 등급 표기**: "실측" = 이 plan 실행에서 명령을 돌려 본 것, "소스 판독" = 코드를 읽고 추론한 것.
 >
-> **개정 이력**: 0.1.0–0.3.0 은 F5(시그널·`Start`/`Close` 수명주기)를 포함했다. 0.4.0 은 운영자의 범위 분할 결정으로 **F5 를 카드 t1459 로 내보내고 F3·F4 만 남긴 개정**이다. 이전 D-3(시그널 설계, 수명 순서표)은 이 문서에서 완전히 빠졌고 git 이력(커밋 `95dfd85c8`, `820eff47f`, `951f2bfb6`)에서만 볼 수 있다. 이 문서는 그 내용을 어디에도 되풀이하지 않는다. 0.5.0 은 축소 범위 plan-audit 1차(FAIL 0.75, `bca1e0629`)의 개정으로, 로그 이음새의 동기화 규약·로그와 답장의 순서·쓰기 뮤텍스 범위·직전 턴 완료 프레임·상수 줄 번호만 바꿨다(D-1·D-2 의 설계 판단은 그대로).
+> **개정 이력**: 0.1.0–0.3.0 은 F5(시그널·`Start`/`Close` 수명주기)를 포함했다. 0.4.0 은 운영자의 범위 분할 결정으로 **F5 를 카드 t1459 로 내보내고 F3·F4 만 남긴 개정**이다. 이전 D-3(시그널 설계, 수명 순서표)은 이 문서에서 완전히 빠졌고 git 이력(커밋 `95dfd85c8`, `820eff47f`, `951f2bfb6`)에서만 볼 수 있다. 이 문서는 그 내용을 어디에도 되풀이하지 않는다. 0.5.0 은 축소 범위 plan-audit 1차(FAIL 0.75, `bca1e0629`)의 개정으로, 로그 이음새의 동기화 규약·로그와 답장의 순서·쓰기 뮤텍스 범위·직전 턴 완료 프레임·상수 줄 번호만 바꿨다(D-1·D-2 의 설계 판단은 그대로). 0.5.2 는 완료된 SPEC 의 in-place 개정(독립 sync 감사 F1)으로, 정책표의 레거시 승인 두 줄(`applyPatchApproval`, `execCommandApproval`)의 응답 모양만 스키마에 맞게 고쳤고 정책 의미(거절·accept 없음·`abort` 없음)는 그대로다(spec.md HISTORY `### Amendments`).
 
 ## D-1 — 서버가 먼저 보내는 요청: 읽기 고루틴에서 최소 권한으로 답한다 (F3)
 
@@ -43,13 +43,15 @@ tier: M
 | `item/tool/call` | result `{"contentItems":[{"type":"inputText","text":"…"}],"success":false}` | `DynamicToolCallResponse` 가 `contentItems`·`success` 필수 | 스키마가 정한 도구 실패 표현이다. 이 계층은 동적 도구를 등록하지 않으므로 정상 흐름에서는 오지 않는다. |
 | `account/chatgptAuthTokens/refresh` | JSON-RPC error (`-32000`) | 응답이 `accessToken`·`chatgptAccountId` 필수 | 지어낼 수 없는 값이다. |
 | `attestation/generate` | JSON-RPC error (`-32000`) | 응답이 `token` 필수 | 지어낼 수 없는 값이다. |
-| `applyPatchApproval` | result `{"decision":"denied"}` | 레거시 `ReviewDecision`: `denied` = 거부하고 세션은 계속, `abort` = 사용자의 다음 명령까지 정지 | `decline` 과 같은 이유로 `abort` 를 쓰지 않는다. |
-| `execCommandApproval` | result `{"decision":"denied"}` | 같음 | 같음 |
+| `applyPatchApproval` | result `{"decision":{"denied":{"rejection":"<고정 문구 한 줄>"}}}` | 레거시 `ReviewDecision`(`ApplyPatchApprovalResponse`): `denied` 는 **객체** 변형이다 — 필수 키 `denied`, 그 값은 필수 문자열 `rejection` 을 가진 객체. 문자열 변형은 `approved`·`approved_for_session`·`approved_mcp_policy_amendment`·`timed_out`·`abort` 다. `denied` 객체는 "세션을 이어 가며 다른 방법을 시도"(우리가 원하는 의미), `abort` 는 턴을 끊는다 | `decline` 과 같은 이유로 `abort` 를 쓰지 않는다. `rejection` 문구는 코드의 상수 하나(`managedLegacyApprovalRejection`, `managedLegacyDeniedResult()` 가 만든다)이며 id·경로·비밀을 담지 않는다. 문자열 `"denied"` 는 스키마 위반이다(아래 정정 단락). |
+| `execCommandApproval` | result `{"decision":{"denied":{"rejection":"<위와 같은 상수 문구>"}}}` | `ExecCommandApprovalResponse` 의 `ReviewDecision` 이 위와 같다 | 같음 |
+
+**정정 (개정 0.5.2, 독립 sync 감사 F1)**: 0.1.0–0.5.1 의 이 두 줄은 `{"decision":"denied"}`(문자열)였고 codex 0.160.0 스키마에서 `ReviewDecision.denied` 가 객체 변형이라 스키마 위반이었다. 뿌리는 이 plan 산출물이다: plan 단계가 `ReviewDecision` 의 **열거 이름**(`denied`·`abort`)을 확인했을 뿐 **변형의 모양**(문자열인지 객체인지)을 확인하지 않았고, 세 번의 plan-audit 도 같은 이름 수준에서 읽었다. 그래서 이 표의 나머지 행도 응답 본문의 모양이 스키마에 맞는지를 `TestManagedServerRequestPolicyMatchesCodexSchema` 가 정책표 전체(10종과 미지 method 폴백)에 대해 검증한다 — 이름이 아니라 모양을 보는 가드다(acceptance.md AC-MH-001). 의미는 그대로다: 거절하고, accept 계열은 쓰지 않고, `abort` 도 쓰지 않는다.
 | 그 밖에 `id` 를 가진 method | JSON-RPC error (`-32601`, method not found) | JSON-RPC 2.0 | 모르는 요청에 침묵하지 않는다. |
 
 오류 응답의 `message` 는 영어이고 method 이름을 담는다(예: "managed Factory session cannot answer <method>: no operator is attached"). 정책표는 코드 안의 한 표 데이터이고 분기마다 판단을 흩지 않는다 — 표를 한 곳에서 읽고 한 곳에서 시험한다.
 
-**운영자에게 보이는 흔적 (모든 응답 요청)**: 답한 서버 요청마다 로그 한 줄(영어)을 남긴다 — `Factory server request answered: <method> -> <decline|denied|empty|failed|error>`. `mcpServer/elicitation/request` 줄은 이어서 `serverName=<name> turn=<귀속 턴 id|none> broker_declined=<k>` 를 담는다(`k` 는 그 요청을 처리한 뒤 열린 창에서 센 브로커 거부 수, 센 것이 없으면 0; 스키마 실측: `McpServerElicitationRequestParams` 의 필수 필드는 `serverName`·`threadId`, `turnId` 는 `string` 또는 `null`). 같은 한 곳(응답 정책표를 읽는 함수)에서 쓰므로 표와 로그가 갈라지지 않는다. **로그 줄은 답장을 쓰기 전에 쓴다** — 그래서 가짜 서버가 답장을 받은 시점에는 그 줄이 이미 있다. 그래도 시험의 모든 로그 단언은 상한 있는 폴링(5초, 10ms 간격)을 쓴다(순서가 바뀌는 구현 변경에도 시험이 구현 순서에 기대지 않게). 로그와 오류 `message` 에 들어가는 method 이름은 `%q` 로 인용해 출력한다(개행이 든 이름이 줄을 위조하지 못하게; 서버는 토큰 인증된 loopback 자식이라 위험은 낮다).
+**운영자에게 보이는 흔적 (모든 응답 요청)**: 답한 서버 요청마다 로그 한 줄(영어)을 남긴다 — `Factory server request answered: <method> -> <decline|denied|empty|failed|error>` (이 토큰은 로그 어휘일 뿐이고 와이어 값의 모양을 뜻하지 않는다 — 레거시 두 종류의 `denied` 토큰은 위 표의 `denied` **객체** 응답에 대응한다). `mcpServer/elicitation/request` 줄은 이어서 `serverName=<name> turn=<귀속 턴 id|none> broker_declined=<k>` 를 담는다(`k` 는 그 요청을 처리한 뒤 열린 창에서 센 브로커 거부 수, 센 것이 없으면 0; 스키마 실측: `McpServerElicitationRequestParams` 의 필수 필드는 `serverName`·`threadId`, `turnId` 는 `string` 또는 `null`). 같은 한 곳(응답 정책표를 읽는 함수)에서 쓰므로 표와 로그가 갈라지지 않는다. **로그 줄은 답장을 쓰기 전에 쓴다** — 그래서 가짜 서버가 답장을 받은 시점에는 그 줄이 이미 있다. 그래도 시험의 모든 로그 단언은 상한 있는 폴링(5초, 10ms 간격)을 쓴다(순서가 바뀌는 구현 변경에도 시험이 구현 순서에 기대지 않게). 로그와 오류 `message` 에 들어가는 method 이름은 `%q` 로 인용해 출력한다(개행이 든 이름이 줄을 위조하지 못하게; 서버는 토큰 인증된 loopback 자식이라 위험은 낮다).
 
 **로그 출력 이음새 (시험이 줄을 잡는 방법)**: 로그 줄과 F4 의 `Factory turn failed (…)` 줄은 모두 패키지 비공개 `atomic.Pointer[io.Writer]` 하나로 나간다(기본값 `os.Stderr`). `os.Stderr` 전역을 교체하지 않는다. **원자 포인터는 포인터 로드만 보호한다** — 가리키는 `io.Writer` 자체가 동기화돼 있지 않으면 쓰는 고루틴과 읽는 시험 고루틴 사이에 데이터 경합이 난다(plan-audit 가 `atomic.Pointer` + `bytes.Buffer` 로 `DATA RACE` 를 재현했다). 그래서 규약이 셋이다. (1) 시험이 꽂는 sink 는 쓰기와 스냅숏 조회가 **한 뮤텍스 아래** 있는 타입이어야 하고, 시험은 그 안의 원시 버퍼에 직접 접근하거나 `String()` 을 부르지 않는다(스냅숏 메서드만 쓴다). (2) 클라이언트를 시작한 시험은 정리에서 `shutdown()` 을 부르고 읽기 고루틴이 끝나기까지(`events` 채널이 닫힐 때까지) 기다린 **뒤에** 포인터를 복원한다(`t.Cleanup` 은 LIFO 이므로 포인터 복원을 먼저 등록하고 클라이언트 종료를 나중에 등록한다). 직전 시험의 고루틴이 다음 시험의 sink 에 쓰는 일이 없어야 줄 개수·`broker_declined=` 단언이 안정적이다. (3) 로그 대기가 있는 하위 케이스를 도는 모든 명령은 `-race` 를 포함한다(acceptance.md). 시험은 병렬로 돌리지 않는다. 이 이음새가 이 SPEC의 **유일한** 시험 이음새이며 프로덕션 비용은 포인터 로드 한 번이다.
 

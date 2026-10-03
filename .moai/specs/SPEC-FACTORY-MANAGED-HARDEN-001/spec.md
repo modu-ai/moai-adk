@@ -1,8 +1,8 @@
 ---
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "Factory 관리 세션 소유자 강건화 — 서버 요청 응답과 턴 단위 실패 격리 (F3·F4, SPEC-FACTORY-MANAGED-SESSION-001 후속)"
-version: "0.5.1"
-status: completed
+version: "0.5.2"
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -13,14 +13,29 @@ lifecycle: spec-anchored
 tier: M
 related_specs: [SPEC-FACTORY-MANAGED-SESSION-001]
 tags: "factory, managed-session, codex, app-server, hardening, failure-isolation"
+amendment_of: SPEC-FACTORY-MANAGED-HARDEN-001
 ---
 
 # SPEC-FACTORY-MANAGED-HARDEN-001 — Factory 관리 세션 소유자 강건화 (F3·F4)
 
 ## HISTORY
 
+### Amendments
+
+Amendment 1 (version 0.5.2):
+
+| Field | Value |
+|---|---|
+| prior_completed_version | 0.5.1 |
+| prior_completed_sha | 13eab5d4c (the sync commit; progress.md §E.4 still carries the canonical `pending-backfill` placeholder for `sync_commit_sha`, which is accurate because the real SHA is backfilled only by a later commit) |
+| prior_completed_record | progress.md §E.4 sync_commit_sha |
+| rationale | The independent sync audit (`.moai/reports/t1409/sync-audit.md`, finding F1, re-verified against the generated codex 0.160.0 schema) found that the plan-phase response policy table answered the two legacy approval requests `applyPatchApproval` and `execCommandApproval` with `{"decision":"denied"}`. In the schema the `ReviewDecision` variant `denied` is an object (required key `denied` whose value is an object with a required string `rejection`), so the valid refusal is `{"decision":{"denied":{"rejection":"<string>"}}}` — "continue the session and try something else", the semantics this SPEC wants. The plain strings `approved`, `approved_for_session`, `approved_mcp_policy_amendment`, `timed_out` and `abort` also exist; `abort` interrupts the turn and stays rejected. The run-phase repair (commit `2796a98d3`) fixed the code and tests: the text is the constant `managedLegacyApprovalRejection` (built by `managedLegacyDeniedResult()`), and the new guard `TestManagedServerRequestPolicyMatchesCodexSchema` validates every policy answer against vendored copies of the codex 0.160.0 response schemas in `internal/cli/testdata/codex-0.160.0/` (no `codex` binary, no network). Root cause, stated as the lesson and not as blame: the plan artifacts compared enum NAMES, not variant SHAPES, and three plan audits read them at the same name level, so a string-versus-object mismatch passed all three. |
+| scope | design.md (D-1 policy table rows for `applyPatchApproval` and `execCommandApproval`, the log-token sentence, a correction paragraph, the revision-history line) + acceptance.md (AC-MH-001 expected reply for the two legacy kinds and the schema-conformance guard as AC-MH-001 evidence, the AC-MH-013 selected-test count note) + spec.md (frontmatter, this HISTORY). plan.md is untouched. Policy semantics unchanged: still declines, never accepts, never `abort`. REQ count stays 12; AC count stays 13. |
+| re_close_path | SPEC returns to `completed` on a later sync commit owned by manager-docs, after a DELTA SYNC-AUDIT limited to F1 plus regression. A delta plan-audit is not run: the run phase is already finished, and the correction only aligns two design-table rows and one AC row with the code that the sync audit's F1 repair already fixed. This amendment changes the plan-artifact hash, which would force a plan re-audit only on a future `/moai run`. |
+
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.5.2 | 2026-10-03 | manager-spec | Completed-SPEC amendment (card t1409) — sync audit F1: the legacy approval requests are refused with the schema-valid object `{"decision":{"denied":{"rejection":"<string>"}}}` instead of the string `"denied"`; the schema-conformance guard `TestManagedServerRequestPolicyMatchesCodexSchema` is recorded as AC-MH-001 evidence. REQ 12 and AC 13 unchanged; policy semantics unchanged. |
 | 0.5.1 | 2026-10-03 | manager-spec | 축소 범위 plan-audit 2차(FAIL 0.78, 감사 커밋 `d43a52dac`) 개정 — 운영자가 감사 상한을 한 번 더 열었고 범위는 N1·N2 로 한정됐다. `acceptance.md` 만 고쳤다: AC-MH-007 의 `below_ceiling_continues` 시나리오 정의와 mu13 지목, mu18 지목 축소, #11 채택용 변이 mu19·mu20, 채택 회계 문장 정정. 변이 18→20개. REQ·AC 개수(12·13)와 요구 문면은 불변. |
 | 0.5.0 | 2026-10-03 | manager-spec | 축소 범위 plan-audit 1차(FAIL 0.75, 감사 커밋 `bca1e0629`) 개정. 검증층(오라클·변이표·시험 규약)만 고쳤다: 변이 17→18개와 변이 미채택 불변 가드 G1–G8 분리, 로그 관찰 규약(로그 선기록·폴링·단일 sink), `-race` 안전 주장 정정, 재현 시험 5→6개(`TestManagedCodexNonCompletedTurnIsolated`). REQ 12·AC 13 불변. REQ-MH-006/008 의 관계 문구("until REQ-MH-008 applies", "notwithstanding REQ-MH-006")와 귀속 상세의 design.md 이관만 요구 본문을 건드렸다. |
 | 0.4.0 | 2026-10-03 | manager-spec | **범위 분할 개정.** 운영자 결정(리더 중계, 2026-10-03)으로 F5(시그널 처리와 `Start`/`Close` 수명주기)가 새 카드 t1459 로 나가고 이 SPEC은 F3·F4 로 줄었다. F5 요구·AC·변이·설계(구 REQ-MH-010·011·012·013, 구 AC-MH-009·010·011·016, 수명 순서표)를 모두 제거하고 REQ·AC 를 연속 번호로 다시 매겼다(REQ 16→12, AC 16→13). plan-audit 3차(FAIL 0.81, `951f2bfb6`)의 N12(귀속 규칙 구멍)·N10(변이 m14·m17·m19)·N15(이음새)를 이 범위 안에서 해소했다. 이전 텍스트는 git 이력(`95dfd85c8`, `820eff47f`, `951f2bfb6`)에서만 볼 수 있다. |
