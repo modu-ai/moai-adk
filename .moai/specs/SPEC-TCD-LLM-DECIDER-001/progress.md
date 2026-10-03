@@ -212,7 +212,21 @@ directory (read-only).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: complete — 단일 sync 커밋으로 CHANGELOG [Unreleased] > Added 최상단 등재, spec.md frontmatter `in-progress → completed` 전환(in-progress → implemented → completed 3페이즈 클로즈 병합), 본 §E.4 기록을 함께 실어 착지. `sync_commit_sha`는 커밋이 자기 해시를 인용할 수 없으므로 `pending-backfill` 플레이스홀더로 적고 직후 커밋에서 백필한다(D3 예외, t1240·t1328·t1332 선례와 동일).
+- sync_commit_sha: "pending-backfill"
+- changelog_entry_position: [Unreleased] > Added 최상단 (B12 선방출 grep `grep -c 'SPEC-TCD-LLM-DECIDER-001' CHANGELOG.md` = 0 확인 후 편입)
+- b12_self_test_a: PASS — 선방출 grep 0건, exit 1 (중복 편입 없음; tree `9d6c41aaa`)
+- b12_self_test_b: PASS — B12 카운터(AC_FILE=`.moai/specs/SPEC-TCD-LLM-DECIDER-001/acceptance.md`, tier M) stdout `7`, stderr `live=7 excluded=0 ambiguous=0`; CHANGELOG 항목 기재 수 7건(AC-TLD-001..007)과 일치
+- b12_self_test_c: PASS — CHANGELOG가 인용하는 경로 실존 확인(`ls`, tree `9d6c41aaa`): `internal/cli/todo_decider_select.go`, `internal/cli/todo_classify_llm.go`, `internal/cli/todo.go`, `internal/config/envkeys.go`, `internal/config/defaults.go`, `internal/cli/todo_decider_select_test.go`, `internal/cli/todo_classify_llm_test.go`, `internal/cli/todo_lock_scope_test.go`, `.moai/specs/SPEC-TCD-LLM-DECIDER-001/spec.md`, `.moai/specs/SPEC-TCD-LLM-DECIDER-001/progress.md` — 10파일 전원 존재
+- frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed (단일 sync 커밋이 종단 전환을 싣는다); updated: 2026-10-03 (sync 커밋 날짜와 같아 값 불변)"
+  plan.md / acceptance.md: "n/a — frontmatter 없음, 본문 불변"
+  version: "불변 0.1.0 — 부모 SPEC의 sync 클로즈 2건(34f09f34d, f628fb2d8)이 status+updated만 고치고 version은 plan-개정 전용으로 올렸다는 규약을 따름"
+- canary_compliance_check: n/a — 본 SPEC이 정의하는 선향(forward-looking) 정책 없음
+- mx_tag_validation: PASS — sync 하위 단계로 검증, 추가·변경한 태그 없음. `todo_classify_llm.go:20`의 `@MX:SPEC: SPEC-TCD-LLM-DECIDER-001` 파일 수준 연계 유효; 신규 함수 전원 fan_in < 3(`todoDeciderFromEnv` 2, `todoPreClassifyLLM` 2, `newLLMCardDecider` 1)이라 ANCHOR 대상 없음; goroutine·복잡도 ≥ 15 없어 WARN 대상 없음; 미해결 `@MX:TODO` 0건. 관찰 1건(코드 불변, 후속 후보): `todoDeciderIsLLM`은 제품 호출자가 없는 테스트 전용 단언 헬퍼다(`todoPreClassifyLLM`이 자체 타입 단언을 수행) — 제거는 코드 변경이라 sync 스코프 밖이며 리드 처분 대상.
+- README/docs-site 결정: **의도적 미수정** — 부모 SPEC t1332의 sync 클로즈(`34f09f34d`)도 README 4파일·docs-site를 만지지 않았고, docs-site `moai-todo.md`에는 부모의 분류 표면(`--classification-file` 포함)조차 문서화돼 있지 않다(측정: `grep -n 'classification-file\|MOAI_TODO_DECIDER\|decider' docs-site/content/ko/utility-commands/moai-todo.md` → 0행). README의 `MOAI_` 기재는 `MOAI_HOME`류 운영 경로 안내뿐이다. 동일 관례에 따라 CHANGELOG-only로 닫는다.
+- spec lint: `moai spec lint SPEC-TCD-LLM-DECIDER-001` → `✓ No findings — all SPEC documents are valid`, exit 0 (sync 편집 직후·커밋 직전 측정; 바이너리 빌드 `69bfbafb2`는 tree HEAD보다 선행 — 판정 면은 CI)
+- AC 상태: 7/7 PASS (run §E.2 재측정분 + 레인 오케스트레이터 독립 재측정: selector 스위트 ok 69.0s, -race 확장 ok 97.6s, `go build`·GOOS=windows exit 0, lint 0 issues — 이월 편차 없음)
 
 ## §F Phase 4 Mode Selection
 
