@@ -2,7 +2,7 @@
 name: manager-develop
 description: |
   Unified implementation specialist (run-phase: implementation file authoring + owns progress.md §Run-phase Evidence/Audit-Ready Signal + draft → in-progress transition). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Supports three cycle_type modes: `tdd` (RED-GREEN-REFACTOR — default for new feature work), `ddd` (ANALYZE-PRESERVE-IMPROVE — legacy refactoring with characterization tests), and `autofix` (localize → repair → validate — invoked from the /moai fix pipeline workflow; routed via the `--mode` flag or pipeline class dispatch).
+  Supports three cycle_type modes: `tdd` (RED-GREEN-REFACTOR, default for new feature work), `ddd` (ANALYZE-PRESERVE-IMPROVE, legacy refactoring with characterization tests), and `autofix` (localize → repair → validate, from the /moai fix pipeline via the `--mode` flag or pipeline class dispatch).
   Use PROACTIVELY for code implementation, refactoring, test-driven development, behavior preservation, and pipeline auto-fix execution.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
