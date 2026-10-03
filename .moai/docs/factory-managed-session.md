@@ -1,7 +1,7 @@
 # Factory 관리 세션 (managed session) 사용 안내
 
-관리 세션을 켜면 `moai cc -f` / `moai glm -f` / `moai codex` 의 Factory 런치가, 레인(`lane-<n>`)과
-리더(`-l/--leader`) 세션을 MoAI가 직접 소유하는 "관리 세션"으로 뜬다. 평범한 대화형
+관리 세션을 켜면 리더(`moai cc -f` / `moai glm -f`)와 레인(`moai cc -l` / `moai glm -l` / `moai codex -l`,
+`lane-<n>`)의 Factory 런치가, 그 세션을 MoAI가 직접 소유하는 "관리 세션"으로 뜬다. 평범한 대화형
 세션과 달리 런처가 세션 프로세스의 부모로 남아, 브로커(`internal/factorymsg`)에 쌓인
 수신 메시지를 세션이 한가할 때 알아서 넘겨준다. **관리 세션은 기본적으로 꺼져 있고,
 명시적으로 켜야만 동작한다.** 이 문서는 켜는 방법, 운영자가 눈으로 보게 되는 동작, 지켜야 할
@@ -21,14 +21,21 @@
 
 ## 켜도 닿지 않는 범위
 
-- Claude / GLM 은 `moai cc -f` / `moai glm -f` 런치가 스위치가 있을 때만 관리 세션으로 들어간다.
-- Codex 는 프로세스 환경에 이미 스탬프와 스위치가 함께 있는 평범한 `moai codex` 실행에서만 분기한다.
-  `moai codex -f lane` 이 띄우는 카드 자식 세션은 스위치 값과 관계없이 관리되지 않고 직접 exec 경로로 간다.
+- Claude / GLM 은 `moai cc -f|-l` / `moai glm -f|-l` 런치가 스위치가 있을 때만 관리 세션으로 들어간다.
+- Codex 는 두 문으로 관리 소유자에 닿는다. 하나는 프로세스 환경에 이미 스탬프와 스위치가 함께 있는
+  평범한 `moai codex` 실행이다. 다른 하나는 `moai codex -l` 레인 루프로, 스위치와 레인 스탬프가
+  함께 있으면 카드마다 띄우는 자식 세션을 관리 소유자로 보낸다(SPEC-FACTORY-MANAGED-CARD-CHILD-001,
+  카드 t1440). 스위치가 꺼져 있으면 레인 루프의 카드 자식은 예전과 같은 직접 exec 경로로 간다.
+- 레인 루프의 관리 카드 자식은 카드 워크트리를 소유자의 런치 디렉터리로 받고(`-C` 인수는 넘기지 않는다),
+  레인 claim 과 브로커 endpoint 소유자는 런처 프로세스에 그대로 남는다. 앵커 락은 걸지 않는다.
+- 관리 카드 자식의 환경은 직접 exec 카드 자식과 두 곳이 다르다. 첫째, 관리 소유자가 요구하는 run id 를
+  `MOAI_KANBAN_ID` 로 싣는다(직접 exec 카드 자식은 이 키를 싣지 않는다). 둘째, 소유자가 App Server
+  환경에 `MOAI_SESSION_PID`(런처 PID)를 더한다(직접 exec 카드 자식 환경에서는 이 키를 지운다).
 - 관리되는 Codex 런치는 런처의 이후 디버그 추적 단계와 `RUST_LOG` 주입을 건너뛴다.
 - 스위치를 켠 상태에서 Claude / GLM 의 `--continue` / `-c` 는 오류로 거부된다. 관리 세션이 런치 형태를
   직접 정하기 때문이고, `--continue` 는 일반 런치의 이어 하기 기능이다.
 - Codex 의 `--spawn`(tmux 창) 런치는 스위치를 켜도 관리 소유자로 분기하지 않고 일반 런치로 남는다.
-  Codex 레인 카드 자식과 디버그 추적에 관리 계층을 연결하는 일은 아직 카드가 없는 후속 과제다.
+  디버그 추적에 관리 계층을 연결하는 일은 아직 카드가 없는 후속 과제다.
 
 ## 무엇이 달라지나
 
@@ -57,7 +64,7 @@
   명령행에만 들어간다. 프로젝트 설정의 `default_tools_approval_mode = "writes"` 는 건드리지
   않는다. 옛 Factory 세대가 프로젝트 전역에 승인 오버라이드를 남겨 두었다면 `moai doctor`
   가 경고만 하고 사용자 소유 설정 파일은 고쳐 쓰지 않는다.
-- **어휘는 정규형만 쓴다.** 레인은 `-f lane` / `-f lane-<n>`, 리더 탐색은 `-l/--leader`.
+- **어휘는 정규형만 쓴다.** 레인 합류는 인자 없는 `-l`/`--lane`, 리더 지정은 `-l`/`--lane`과 함께 쓰는 긴 형태 `--leader <이름>`.
   `agent-<n>` / `worker-<n>` 이름은 되살리지 않는다.
 - **범위는 전달까지다.** 카드 완료 판정, 병합 자동화, 컨트롤러 재알림은 관리 세션의 일이
   아니다(SPEC-FACTORY-CONTROLLER-001 소관).
@@ -76,6 +83,7 @@
 - <!-- anchor:tui-unobserved --> **미관측 3 — 실제 TUI 의 동작.** `codex resume --remote` 가 스레드 id 로 실행 중인 스레드를 찾는지, 런처가 시작한 턴을 화면에 그리는지, `/quit` 가 0 으로 끝나는지, 인터럽트 뒤 kill 로 끝낸 TUI 가 터미널을 복구하는지, 터미널 감지가 실제 tty 에서 맞는지는 시험이 보지 못한다.
 - <!-- anchor:tui-manual-check --> **수동 점검 AC-MT-015 는 운영자 몫이고 CI 에서 돌지 않는다.** 터미널이 지정되지 않아 현재 기록은 "operator confirmation pending, no terminal designated" 이다. 절차는 `.moai/specs/SPEC-FACTORY-MANAGED-TUI-001/acceptance.md` §4, 결과는 `.moai/reports/t1408/manual-attach-check.md` 에 남긴다.
 - <!-- anchor:tui-limits --> **TUI 부착의 나머지 한계.** 활성 턴이 길면 브로커 묶음은 그 턴이 끝날 때까지 미뤄지고 시간으로 풀리지 않는다(`turn/completed` 프레임을 잃으면 중계가 굶고, 단서는 로그 파일의 반복 줄뿐이다). 한가함 확인과 `turn/start` 사이의 경주 구간에 운영자가 시작한 턴에는 합류한다. 런처 자신의 `turn/start` 가 끝나기 전에 도착해 turn id 를 모르는 요청은 런처의 턴으로 보고 거부한다. 토큰은 TUI 자식 프로세스의 환경에 있어 같은 사용자의 프로세스 조회로 보일 수 있다. Windows 실행과 codex 버전 범위는 인증하지 않았다.
+- **`moai codex -l` 의 관리 카드 자식은 TUI 를 붙이지 않고 헤드리스로 남는다.** 레인 루프가 소유자에게 터미널 파일이 아니라 입력 어댑터를 건네므로, 부착 조건(stdin 이 터미널 파일일 것)이 맞지 않는다. 그래서 위 TUI 부착은 카드 자식이 아니라 일반 `moai codex` 관리 세션에만 닿고, 카드 자식의 모델 출력은 여전히 레인 터미널에 나오지 않는다. 코드(`internal/cli/managed_codex_tui.go` 의 `operatorTUIPreconditions`, `internal/cli/codex_launcher.go` 의 두 시임)를 읽어 확인한 내용이며 실제 레인 터미널로 관측하지는 않았다.
 - **런처는 시그널을 처리하지 않는다.** 런처 프로세스가 SIGTERM이나 SIGHUP으로 끝나면 정리 코드가 돌지 않아 자식 프로세스와 임시 파일이 남을 수 있다. 이 공백은 해결되지 않았다. 시그널 처리와 `Start`/`Close` 수명주기는 카드 t1459 가 맡는다.
 - **실제 codex 세션에서는 관측하지 않았다.** 서버 요청 응답과 턴 단위 실패 격리는 가짜 App Server를 상대로 한 시험으로만 확인했다. 실제 세션에서 거부 응답 뒤 모델이 어떻게 움직이는지, elicitation 요청의 `serverName` 에 `moai` 가 실리는지(귀속 판정이 기대는 값이다)는 확인하지 못했다. 레거시 승인 요청에 돌려주는 거부 객체 `{"decision":{"denied":{"rejection":…}}}` 는 vendoring 한 스키마에 대한 유효성만 확인했고, 어떤 실제 codex 세션도 그 객체를 받아 본 적이 없다. 서버가 그 객체를 받은 뒤 실제로 어떻게 처리하는지는 알지 못한다.
 - **독 메시지는 TTL까지 재배달될 수 있다.** 턴 단위 실패가 연속으로 쌓이면 세션이 끝나지만, 그 사이에 성공한 턴(운영자 입력이나 다른 메시지)이 끼면 횟수가 0으로 돌아간다. 매번 턴을 실패시키는 메시지는 lease(2분)가 끝날 때마다 다시 배달되어 TTL(최대 7일)에 닿을 때까지 이어질 수 있다. 관리 계층은 claim을 풀거나 되돌리지 않고 브로커에도 시도 횟수 상한이 없다.
@@ -86,8 +94,15 @@
 - **`id: null` 프레임에는 답하지 않는다.** `id` 가 없거나 `null` 인 프레임은 서버 요청으로 분류되지 않는다. `method` 가 있으면 알림으로 다루는데 알림은 대부분 버려지고, `method` 가 없으면 그대로 버려진다.
 - **스키마 가드는 오류 프레임의 필수 필드 누락을 잡지 못한다.** 오류로 답하는 세 종과 미지 method 폴백은 가드가 와이어 원문이 아니라 디코딩한 구조체로 `{"id","error":{"code","message"}}` 를 다시 조립해 `JSONRPCError.json` 에 대조하므로, 와이어에서 `message` 가 빠져도 가드는 통과한다. 독립 델타 감사가 JSON 태그를 바꿔 재현했다(감사 부채 D1). 현재 프로덕션 오류 프레임은 `message` 를 항상 쓰고 오류 코드와 메시지는 정책 시험이 정확히 단언하지만, 이 방향의 미래 회귀를 가드가 지켜 주지는 않는다.
 - **서버가 보낸 `turnId` 는 로그 줄에 따옴표 없이 실린다.** elicitation 응답 로그 줄의 `turn=<id>` 는 서버가 보낸 값을 그대로 찍는다(`serverName` 과 method 는 따옴표로 감싼다). 개행이 든 `turnId` 가 로그 줄 하나를 위조할 수 있다는 소스 판독이며 실행으로 재현하지는 않았다. 서버는 토큰으로 인증된 루프백 자식이라 위험은 낮다. SPEC 이 로그 문법을 `turn=<id>` 로 고정해 두어 이 카드에서는 고치지 않았다. `Factory turn failed (…): <오류>` 줄도 오류 문구를 따옴표 없이 그대로 싣는다.
+- **무인 레인은 첫 카드 이후로 진행하지 않는다.** 관리 카드 자식은 우선 턴 뒤 유휴 상태이고, 레인 루프가 카드 시작 프롬프트를 주입하지 않기 때문이다. 운영자가 입력하거나 브로커 메시지가 오기 전에는 세션이 스스로 카드 작업을 시작하지 않는다. 그래서 `moai codex -l` 의 관리 경로는 운영자가 붙어 있는 레인에서만 이득이 닿는다. 카드 시작 프롬프트를 주입하는 일은 아직 카드가 없는 후속 과제다. 가짜 App Server 시험으로 확인한 범위이며 무인 레인을 실제로 돌려 보지는 않았다.
+- **관리 카드 자식의 운영자 입력은 줄 단위로 나뉜다.** 레인 루프는 stdin 을 한 줄씩 세션에 건네고, 세션을 끝낸 `/exit` 또는 `/quit` 줄 이후의 입력은 끝난 세션에 주지 않고 다음 카드 세션이 받는다. 보장은 그 두 토큰으로 끝난 세션에 한정된다. 치명 오류처럼 다른 이유로 끝난 세션이 이미 받은 줄은 되찾지 않고, `/exit` 를 연달아 두 번 치면 두 번째 줄이 다음 카드 세션을 곧바로 끝낸다. 입력 어댑터는 드라이버의 종료 토큰 두 값을 복제하므로 드라이버에 토큰이 더해지면 어댑터가 따라가지 못한다. 이 어긋남은 루프 수준 시험도 `/exit`·`/quit` 만 돌려 잡지 못한다. 한 줄은 개행을 포함해 `bufio.MaxScanTokenSize`(65,536바이트)까지만 버퍼에 담는다. 이 한도를 넘는 줄은 세션에 건네지 않고 입력이 거기서 끝나며, 드라이버의 스캐너가 너무 긴 줄에서 입력을 끝내는 동작을 그대로 따른다(`TestManagedOperatorInputPumpBoundsLineLength`). 어댑터는 소유자 세션이 스스로 닫힌 뒤에야 닫히므로, 치명 오류로 끝나는 세션의 닫힘 구간에 친 줄은 이미 죽은 세션으로 갈 수 있다. 위 "이미 받은 줄" 범위가 문서보다 넓을 수 있다는 뜻이다. 코드를 읽어 확인한 내용이며 실행으로 관측하지 않았다.
+- **치명 오류로 끝난 세션은 드라이버의 입력 읽기 고루틴을 프로세스가 끝날 때까지 남길 수 있다.** 드라이버의 8칸 입력 채널이 가득 찬 상태에서(운영자 줄이 9개 이상 쌓여 있을 때) 세션이 치명 오류로 끝나면, 소유자의 입력 고루틴(`internal/cli/managed_factory_session.go` 의 `readManagedOperatorInput`, 약 294행)이 채널 송신에서 풀리지 않는다. `Close()` 도 `stop()` 도 이 고루틴을 풀지 못한다. 독립 감사가 재현했다(`Close()` 와 `stop()` 뒤에도 해당 줄에서 `chan send` 로 대기). 비용은 그런 세션 하나당 작은 고루틴 하나와 붙들린 줄 최대 8개다. 온전한 수리는 REQ-CC-008 이 고정한 소유자·드라이버 파일을 바꿔야 해서 이 카드에서는 부채로 받아들였다.
+- **stdin 이 EOF 인 레인은 `/exit`·`/quit`·치명 오류 없이는 세션이 끝나지 않는다.** 드라이버의 끝 조건을 이 카드에서 바꾸지 않았다.
+- **연속 시작 실패에 상한이 없다.** 관리 시작이 계속 실패하면 레인 루프가 큐의 카드를 연달아 lease 하며 소진할 수 있다. 카드는 lease 가 끝날 때까지 묶인다. 예전 직접 exec 루프도 같은 상한 없음이다.
+- **개발자 지침 쌍이 스레드에 적용되는지는 관측하지 못했다.** 카드 워크트리의 지역 지침을 `-c developer_instructions=…` 인수로 소유자에 넘기지만, 가짜 App Server 로는 그 값이 실제 codex 스레드에 닿는지 볼 수 없다.
+- **옛 직접 exec 문이 POSIX 에서 런처 프로세스를 교체해 스위치를 끈 레인 루프가 첫 카드 뒤에 이어지지 않던 결함은 카드 t1488 이 고쳤다. 이 카드는 그 문을 바꾸지 않았다.** 이 카드의 측정(P-1)이 먼저 그 결함을 보였다. 기본 직접 문 `defaultCodexDirectLaunch`(`internal/cli/codex_direct_posix.go`)가 `syscall.Exec` 로 프로세스를 바꿔치기했고, darwin/arm64 에서 가짜 codex 를 상대로 잰 결과 호출은 한 번뿐이었으며(`card=t1`) 가짜 codex 의 pid 가 런처 시험 프로세스의 pid 와 같았고 루프는 돌아오지 않았다. 교체하지 않는 대조 문에서는 두 카드가 순서대로 실행됐다. t1488 병합 뒤의 코드는 카드 환경(`MOAI_KANBAN_CARD`)이 있으면 `codexStartAndWait`(`internal/cli/codex_direct_wait.go`)로 자식을 띄우고 기다리므로, 레인 카드 자식은 직접 문에서도 런처가 부모로 남는다. 카드 환경이 없는 직접 실행은 여전히 `syscall.Exec` 를 쓴다. 이 문단은 병합 트리의 코드를 읽어 확인한 내용이고, 병합 트리에서 다시 돌린 시험은 `.moai/specs/SPEC-FACTORY-MANAGED-CARD-CHILD-001/progress.md` §E.2 에 있다. Windows 직접 문은 재지 않았다. 최초 측정 기록은 같은 파일 §E.2 의 M0 P-1 항목에 있다.
 
-서버가 먼저 보내는 요청에 대한 응답(F3)과 턴 단위 실패 격리(F4)는 `SPEC-FACTORY-MANAGED-HARDEN-001`(카드 t1409)로 해결됐다. 독립 sync 감사가 레거시 승인 응답 값이 스키마 위반이라는 점(F1)을 찾아냈고, 수리와 SPEC 개정으로 바로잡았다. 위 한계는 그 뒤에도 남는 부분이다. 그 밖에 아래 세 가지는 후속 카드 t1410 이 맡는다.
+서버가 먼저 보내는 요청에 대한 응답(F3)과 턴 단위 실패 격리(F4)는 `SPEC-FACTORY-MANAGED-HARDEN-001`(카드 t1409)로 해결됐다. 독립 sync 감사가 레거시 승인 응답 값이 스키마 위반이라는 점(F1)을 찾아냈고, 수리와 SPEC 개정으로 바로잡았다. 위 한계는 그 뒤에도 남는 부분이다. `moai codex -l` 카드 자식을 관리 경로에 연결하는 일은 `SPEC-FACTORY-MANAGED-CARD-CHILD-001`(카드 t1440)로 해결됐고, 위 "켜도 닿지 않는 범위"와 한계 목록이 그 뒤의 상태다. 그 밖에 아래 세 가지는 후속 카드 t1410 이 맡는다.
 
 - 시작이 일찍 실패하면 토큰 임시 디렉터리가 지워지지 않는다.
 - App Server 준비 핸드셰이크의 시간 예산(10초)이 빠듯하다. 독립 감사의 실제 codex 프로브에서 패키지 하위 디렉터리를 cwd로 했을 때 한 번 시간 초과가 관측됐다.
@@ -102,8 +117,10 @@
 - 서버 요청 응답은 `go test -race ./internal/cli -run '^TestManagedCodexServerRequestPolicy$'` 로, 턴 단위 실패 격리와 연속 실패 상한은 `go test -race ./internal/cli -run '^TestManagedDriverIsolatesTurnFailure$'` 와 `go test ./internal/cli -run '^TestManagedDriverConsecutiveFailureCeiling$'` 로 가짜 서버를 상대로 검증된다. 이 시험은 실제 codex 세션을 쓰지 않는다.
 - 서버 요청에 돌려주는 결과 본문(일곱 종)의 모양이 codex 0.160.0 스키마를 지키는지는 `go test ./internal/cli -run '^TestManagedServerRequestPolicyMatchesCodexSchema$'` 로 확인한다. `codex` 바이너리도 네트워크도 필요 없고, `internal/cli/testdata/codex-0.160.0/` 에 vendoring 한 스키마 사본을 쓴다. 최소 지원 codex 버전이 올라가면 사본을 다시 만들고(생성 명령은 그 폴더의 `README.md`) 시험을 다시 돌려야 한다. 이 시험은 모양만 보며, 스키마상 유효한 오답(`abort`, accept 계열)은 `TestManagedCodexServerRequestPolicy` 의 정확한 응답 단언이 잡는다.
 - TUI 부착은 `go test -race ./internal/cli -run '^TestManagedCodexTUIAttachCommand$'` 같은 시험들이 가짜 codex(테스트 바이너리를 다시 실행하는 App Server·TUI 겸용 헬퍼)를 상대로 확인한다. 실제 TUI 는 쓰지 않는다. 실제 터미널 확인 절차는 `.moai/specs/SPEC-FACTORY-MANAGED-TUI-001/manual-check.md`.
+- 레인 루프의 관리 카드 자식은 가짜 App Server 를 상대로 `go test ./internal/cli -run '^TestManagedCardChild'` 계열 시험(분기, 런치 형태, 환경, 앵커 락 부재, 연속 카드 바인딩, 세션 종료 뒤 루프 연속, 입력 전달)과 `TestManagedOperatorInputPumpDetachesEndedSession` 로 확인한다. 스위치를 끈 직접 exec 경로의 불변은 `TestManagedCardChildSwitchOffKeepsDirectDoor` 가 `*exec.Cmd` 전체를 리터럴 기대값과 비교한다. 실행 전에 레인 환경 변수를 한 호출 안에서 지워야 한다(`unset MOAI_KANBAN … MOAI_KANBAN_BACKEND && go test …`, 전체 목록은 SPEC 의 `acceptance.md` §1.1). 이 시험도 실제 codex 세션을 쓰지 않는다.
 - 메시지가 오지 않을 때: `factory_msg_status` 도구로 브로커 상태(대기/확인 수)를 먼저
   보고, 레인이 launch-pending 에 머물러 있는지 확인한다.
 
 SPEC: `.moai/specs/SPEC-FACTORY-MANAGED-SESSION-001/` (card t1375)
 후속 SPEC: `.moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/` (card t1409, 서버 요청 응답과 턴 단위 실패 격리)
+후속 SPEC: `.moai/specs/SPEC-FACTORY-MANAGED-CARD-CHILD-001/` (card t1440, `moai codex -l` 카드 자식의 관리 경로 연결)

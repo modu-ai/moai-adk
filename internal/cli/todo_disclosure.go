@@ -11,7 +11,7 @@
 // holds whoever the writer turns out to be (spec.md §A.3).
 //
 // The fact rides the EXISTING store-identity surface,
-// kanban.InspectBacklogArchiveVouch, which already measured it and threw it
+// factory.InspectBacklogArchiveVouch, which already measured it and threw it
 // away (REQ-BJD-006). There is no second inspector and no second probe.
 //
 // stderr only (REQ-BJD-004): stdout is a machine surface for these verbs —
@@ -25,14 +25,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // discloseNonAuthoritativeBacklogJSON writes one line naming the store that
 // answered and naming the backlog.json beside it as not authoritative, and
 // writes nothing at all when there is nothing to disclose (REQ-BJD-003).
 // It touches no file and takes no lock.
-func discloseNonAuthoritativeBacklogJSON(w io.Writer, verb string, vouch kanban.BacklogArchiveVouch) error {
+func discloseNonAuthoritativeBacklogJSON(w io.Writer, verb string, vouch factory.BacklogArchiveVouch) error {
 	if !vouch.NonAuthoritativeJSON {
 		return nil
 	}
@@ -56,7 +56,7 @@ func discloseNonAuthoritativeBacklogJSON(w io.Writer, verb string, vouch kanban.
 // passes through here, so the ghost discovery cannot be silent on one
 // surface and loud on another, and the once-only marker cannot drift
 // between verbs.
-func discloseStaleLocalStores(w io.Writer, verb string, fact kanban.StaleStoreFact) error {
+func discloseStaleLocalStores(w io.Writer, verb string, fact factory.StaleStoreFact) error {
 	if fact.Divergent {
 		for _, st := range fact.Stores {
 			if !st.Readable || st.LastSeq == fact.HomeLastSeq {
@@ -77,7 +77,7 @@ func discloseStaleLocalStores(w io.Writer, verb string, fact kanban.StaleStoreFa
 // resolves its answering store through, so a disclosure can never name a
 // store the verb's own read never considered.
 func todoQueueRootForDisclosure() string {
-	return kanban.ResolveTodoQueueRoot(resolveProjectDir())
+	return factory.ResolveTodoQueueRoot(resolveProjectDir())
 }
 
 // @MX:ANCHOR fan_in=5 - SPEC-BACKLOG-JSON-DISCLOSURE-001 REQ-BJD-002 sole
@@ -94,13 +94,13 @@ func todoQueueRootForDisclosure() string {
 //
 // SPEC-TODO-STALE-STORE-001: the same entry point carries the stale
 // project-local store disclosure (REQ-TSS-001) — the divergence fact comes
-// from the single kanban detector the doctor check also uses
+// from the single stale-store detector the doctor check also uses
 // (REQ-TSS-004), so the two surfaces cannot disagree.
 func discloseQueueLayout(cmd *cobra.Command, verb string) error {
 	if err := discloseNonAuthoritativeBacklogJSON(cmd.ErrOrStderr(), verb,
-		kanban.InspectBacklogArchiveVouch(newTodoReadStore().Path())); err != nil {
+		factory.InspectBacklogArchiveVouch(newTodoReadStore().Path())); err != nil {
 		return err
 	}
 	return discloseStaleLocalStores(cmd.ErrOrStderr(), verb,
-		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure()))
+		factory.InspectStaleLocalStores(todoQueueRootForDisclosure()))
 }

@@ -109,6 +109,6 @@ provenance: tree=/path/to/project commit=1a2b3c4d5e6
 
 ## 関連ドキュメント
 
-- [カンバンモード](/ja/advanced/kanban-mode) — マイルストーンとカードの交差検査が見張るカードの流れ
+- [ファクトリーモード](/ja/advanced/factory-mode) — マイルストーンとカードの交差検査が見張るカードの流れ
 - [`/moai mx`](/ja/utility-commands/moai-mx) — @MX タグと `@MX:SPEC` 接続の原本
 - [Navigator](/ja/core-concepts/navigator) — 設計決定·SPEC·シンボルを束ねるもうひとつのグラフ(nav-graph.json)

@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // rebindEnv seeds the launch environment of a factory session naming run X
@@ -34,10 +34,10 @@ func rebindEnv(t *testing.T, run, label, backend string) {
 	t.Helper()
 	m3ScrubEnv(t)
 	t.Setenv("MOAI_HOME", t.TempDir())
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 	t.Setenv(config.EnvMoaiFactoryWorker, label)
-	t.Setenv(config.EnvMoaiKanbanBackend, backend)
+	t.Setenv(config.EnvFactoryBackend, backend)
 	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
 	pinFactoryGateBudget(t)
 	prevBind, prevInspect := factoryBindBudget, factoryHookInspectionDeadline
@@ -133,8 +133,8 @@ func rebindMarker(t *testing.T, root, sid string) factoryNoticeMarker {
 // the workers registry rows and the free-slot view.
 func workersView(t *testing.T, root string) string {
 	t.Helper()
-	reg := kanban.LoadFactoryRegistry(kanban.FactoryRegistryPath(root))
-	free := kanban.FactoryFreeSlots(root, 4, func(int) bool { return true })
+	reg := factory.LoadFactoryRegistry(factory.FactoryRegistryPath(root))
+	free := factory.FactoryFreeSlots(root, 4, func(int) bool { return true })
 	return fmt.Sprintf("%v | free=%v", reg, free)
 }
 
@@ -148,7 +148,7 @@ func noFactoryNotice(t *testing.T, label, got string) {
 func TestLaneRebindsIntoSoleActiveRun(t *testing.T) { // AC-SRH-008
 	rebindEnv(t, "runX", "lane-3", "claude")
 	root := rebindRoot(t, "runX=retired", "runY=active")
-	if _, err := kanban.ClaimFactoryLane(root, "lane-3", false, os.Getpid(), "runX", func(int) bool { return true }); err != nil {
+	if _, err := factory.ClaimFactoryLane(root, "lane-3", false, os.Getpid(), "runX", func(int) bool { return true }); err != nil {
 		t.Fatalf("seed the lane's workers row: %v", err)
 	}
 	viewBefore := workersView(t, root)

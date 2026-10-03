@@ -125,7 +125,7 @@ func iconAt(name string, size int) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		case "kanban":
+		case "factory":
 			templ_7745c5c3_Err = iconPath("M3.5 3v13M9.5 3v8M15 3v11", size).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

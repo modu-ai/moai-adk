@@ -116,4 +116,4 @@ flowchart TD
 - [三层智能体架构](/zh/advanced/no-haiku-3tier/)——模型级别（单发、代理式、峰值）。与自主级别正交的"用什么模型"轴
 - [配置矩阵](/zh/advanced/profile-matrix/)——旧模型分配矩阵退役后的位置：子代理沿用会话的模型与推理深度。
 - [自主循环](/zh/advanced/autonomous-loops/)——基于目标引擎的无人连续执行
-- [看板模式](/zh/advanced/kanban-mode/)——用多会话看板并行运作自主级别
+- [工厂模式](/zh/advanced/factory-mode/)——用多会话工厂运行并行运作自主级别

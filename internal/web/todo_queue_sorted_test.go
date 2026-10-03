@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestWebQueueReadRendersSortedOrder(t *testing.T) {
 	root := t.TempDir()
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+	store := factory.NewBacklogStore(factory.BacklogPathForRoot(root))
 	ids := map[rune]string{}
 	for _, name := range []string{"A", "B", "C", "D"} {
 		it, _, err := store.Add("card " + name)
@@ -24,20 +24,20 @@ func TestWebQueueReadRendersSortedOrder(t *testing.T) {
 		}
 		ids[rune(name[0])] = it.ID
 	}
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		cls := func(prio string, blocked bool) *kanban.CardClassification {
-			return &kanban.CardClassification{Priority: prio, Blocked: blocked, Mode: kanban.ClassModeSerial, Decider: kanban.DeciderIdentityLLM}
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		cls := func(prio string, blocked bool) *factory.CardClassification {
+			return &factory.CardClassification{Priority: prio, Blocked: blocked, Mode: factory.ClassModeSerial, Decider: factory.DeciderIdentityLLM}
 		}
 		for i := range rec.Items {
 			switch rec.Items[i].ID {
 			case ids['A']:
-				rec.Items[i].Classification = cls(kanban.ClassPriorityNormal, false)
+				rec.Items[i].Classification = cls(factory.ClassPriorityNormal, false)
 			case ids['B']:
-				rec.Items[i].Classification = cls(kanban.ClassPriorityHigh, false)
+				rec.Items[i].Classification = cls(factory.ClassPriorityHigh, false)
 			case ids['C']:
-				rec.Items[i].Classification = cls(kanban.ClassPriorityLow, false)
+				rec.Items[i].Classification = cls(factory.ClassPriorityLow, false)
 			case ids['D']:
-				rec.Items[i].Classification = cls(kanban.ClassPriorityNormal, true)
+				rec.Items[i].Classification = cls(factory.ClassPriorityNormal, true)
 			}
 		}
 		// The add path re-sorts inside its locked write (REQ-TCD-005); the

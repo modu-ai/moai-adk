@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoListCardIDShaped matches the id form the queue issues, so the
@@ -38,7 +38,7 @@ func todoListRenderedIDs(stdout string) map[string]bool {
 // seedTodoCards appends n cards directly through the store — the seeder the
 // limit fixtures use (CLI adds would run the analyser n times for no
 // additional contract).
-func seedTodoCards(t *testing.T, store *kanban.BacklogStore, n int) {
+func seedTodoCards(t *testing.T, store *factory.BacklogStore, n int) {
 	t.Helper()
 	for i := 1; i <= n; i++ {
 		if _, _, err := store.Add(fmt.Sprintf("limit fixture card %d", i)); err != nil {
@@ -107,7 +107,7 @@ func TestTodoListJSONIgnoresLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list --json --limit 1: %v", err)
 	}
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(out), &rec); err != nil {
 		t.Fatalf("list --json output is not a BacklogRecord: %v (stdout %q...)", err, truncateForTest(out, 120))
 	}
@@ -131,8 +131,8 @@ func TestTodoListNegativeLimit(t *testing.T) {
 func TestTodoListDroppedOnly(t *testing.T) {
 	_, store := todoFixture(t)
 	seedTodoCards(t, store, 3)
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items[2].State = kanban.BacklogStateDropped
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items[2].State = factory.BacklogStateDropped
 		return nil
 	}); err != nil {
 		t.Fatalf("drop surgery: %v", err)
@@ -166,14 +166,14 @@ func TestTodoRenderCompleteness(t *testing.T) {
 	_, store := todoFixture(t)
 	seedTodoCards(t, store, 5)
 	// Spread the five rows across every state the DDL admits.
-	states := map[int]kanban.BacklogState{
-		1: kanban.BacklogStateQueued,
-		2: kanban.BacklogStatePicked,
-		3: kanban.BacklogStateDropped,
-		4: kanban.BacklogStateHold,
-		5: kanban.BacklogStateQueued,
+	states := map[int]factory.BacklogState{
+		1: factory.BacklogStateQueued,
+		2: factory.BacklogStatePicked,
+		3: factory.BacklogStateDropped,
+		4: factory.BacklogStateHold,
+		5: factory.BacklogStateQueued,
 	}
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			n := i + 1
 			if st, ok := states[n]; ok {

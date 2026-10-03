@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // seedTodo appends cards through the CLI and fails the test on any error.
@@ -27,7 +27,7 @@ func seedTodo(t *testing.T, texts ...string) {
 }
 
 // todoOrder returns the item ids in queue-file order.
-func todoOrder(t *testing.T, store *kanban.BacklogStore) []string {
+func todoOrder(t *testing.T, store *factory.BacklogStore) []string {
 	t.Helper()
 	rec, err := store.Load()
 	if err != nil {
@@ -206,7 +206,7 @@ func TestTodoMove_PreservesEveryItem(t *testing.T) {
 		t.Fatalf("item count = %d, want %d — a move must neither drop nor duplicate a card",
 			len(after.Items), len(before.Items))
 	}
-	byID := map[string]kanban.BacklogItem{}
+	byID := map[string]factory.BacklogItem{}
 	for _, it := range after.Items {
 		byID[it.ID] = it
 	}

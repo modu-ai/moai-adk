@@ -82,6 +82,7 @@ func init() {
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
+	initCmd.Flags().Bool("no-plugin", false, "Skip installing the moai plugin into Claude Code / Codex (also MOAI_SKIP_PLUGIN_INSTALL=1)")
 	initCmd.Flags().Bool("all", false, "Deploy all catalog entries (core + optional packs + harness-generated). Bypasses slim mode (SPEC-V3R4-CATALOG-002).")
 
 	// The two wizard mode flags are retired (REQ-WIZ-018): the wizard presents
@@ -1009,6 +1010,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// the Codex trust guidance. Adjacent to the .mcp.json provisioning call
 	// so both harness sides of the init tail read as one unit.
 	wireCodexUnlessClaude(cmd, agentWiringSelection, opts.ProjectRoot)
+
+	// SPEC-PLUGIN-MARKETPLACE-001 REQ-010: install the moai plugin into the
+	// tool(s) the harness selects, after the deployment is complete. Fail-open
+	// (REQ-013/014): guidance and skip lines go to stderr and never change the
+	// init result; --no-plugin and MOAI_SKIP_PLUGIN_INSTALL opt out.
+	runPluginInstallStepForInit(cmd, agentWiringSelection, opts.ProjectRoot)
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects

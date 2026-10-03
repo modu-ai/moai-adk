@@ -25,7 +25,7 @@
 // cwd, with no git common-dir step, so inside a linked worktree it names the
 // worktree — whose .moai/state holds no lease. Reading there would answer
 // "nobody holds it" and quietly allow. The root is therefore normalized with
-// kanban.ResolveSlotLeaseRoot, the same function the `moai slot` CLI uses.
+// factory.ResolveSlotLeaseRoot, the same function the `moai slot` CLI uses.
 package hook
 
 import (
@@ -37,7 +37,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // slotLeaseViolationPrefix is the deny sentinel the orchestrator matches.
@@ -76,7 +76,7 @@ func checkSlotLease(input *HookInput, hookRoot string, cfg config.SlotLeaseConfi
 			uncertain = append(uncertain, fmt.Sprintf("resource %q: %s", name, entry.Invalid))
 			continue
 		}
-		if err := kanban.ValidateSlotResourceName(name); err != nil {
+		if err := factory.ValidateSlotResourceName(name); err != nil {
 			uncertain = append(uncertain, err.Error())
 			continue
 		}
@@ -105,29 +105,29 @@ func checkSlotLease(input *HookInput, hookRoot string, cfg config.SlotLeaseConfi
 		advise("no project root; cannot read any slot lease")
 		return "", ""
 	}
-	root, err := kanban.ResolveSlotLeaseRoot(hookRoot)
+	root, err := factory.ResolveSlotLeaseRoot(hookRoot)
 	if err != nil {
 		advise("cannot normalize %s to the shared root (%v)", hookRoot, err)
-		auditSlotGuard(hookRoot, kanban.SlotLeaseAuditEntry{Event: "fail-open", Reason: "root-unresolved: " + err.Error(), SessionID: input.SessionID})
+		auditSlotGuard(hookRoot, factory.SlotLeaseAuditEntry{Event: "fail-open", Reason: "root-unresolved: " + err.Error(), SessionID: input.SessionID})
 		return "", ""
 	}
 	for _, why := range uncertain {
 		advise("%s", why)
-		auditSlotGuard(root, kanban.SlotLeaseAuditEntry{Event: "fail-open", Reason: why, SessionID: input.SessionID})
+		auditSlotGuard(root, factory.SlotLeaseAuditEntry{Event: "fail-open", Reason: why, SessionID: input.SessionID})
 	}
 	if len(matched) == 0 {
 		return "", ""
 	}
 	if input.SessionID == "" {
 		advise("this session has no id; cannot tell it from a holder of %s", strings.Join(matched, ", "))
-		auditSlotGuard(root, kanban.SlotLeaseAuditEntry{Event: "fail-open", Reason: "missing session id", Resource: matched[0]})
+		auditSlotGuard(root, factory.SlotLeaseAuditEntry{Event: "fail-open", Reason: "missing session id", Resource: matched[0]})
 		return "", ""
 	}
 
 	now := time.Now()
 	for _, name := range matched {
-		lease, readErr := kanban.ReadSlotLease(root, name)
-		entry := kanban.SlotLeaseAuditEntry{Resource: name, SessionID: input.SessionID}
+		lease, readErr := factory.ReadSlotLease(root, name)
+		entry := factory.SlotLeaseAuditEntry{Resource: name, SessionID: input.SessionID}
 		switch {
 		case readErr != nil:
 			advise("cannot read the lease for %s (%v)", name, readErr)
@@ -158,7 +158,7 @@ func checkSlotLease(input *HookInput, hookRoot string, cfg config.SlotLeaseConfi
 }
 
 // slotHolderLabel prefers the human-facing session name over the id.
-func slotHolderLabel(lease *kanban.SlotLease) string {
+func slotHolderLabel(lease *factory.SlotLease) string {
 	if strings.TrimSpace(lease.SessionName) != "" {
 		return lease.SessionName
 	}
@@ -167,6 +167,6 @@ func slotHolderLabel(lease *kanban.SlotLease) string {
 
 // auditSlotGuard appends a guard line; a logging failure never changes the
 // decision (the guard is fail-open by contract).
-func auditSlotGuard(root string, entry kanban.SlotLeaseAuditEntry) {
-	_ = kanban.AppendSlotLeaseAudit(root, entry)
+func auditSlotGuard(root string, entry factory.SlotLeaseAuditEntry) {
+	_ = factory.AppendSlotLeaseAudit(root, entry)
 }

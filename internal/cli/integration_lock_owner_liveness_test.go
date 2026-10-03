@@ -31,7 +31,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // buildMoaiBinary builds cmd/moai into this test's own temp dir and returns
@@ -123,7 +123,7 @@ func runIntegrationChild(t *testing.T, bin, root string, extraEnv []string, args
 // silently drop it rather than fail.
 func readLockRecordRaw(t *testing.T, root string) map[string]any {
 	t.Helper()
-	path := filepath.Join(root, ".moai", "state", kanban.IntegrationLockFileName)
+	path := filepath.Join(root, ".moai", "state", factory.IntegrationLockFileName)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("no lock record at %s after the child acquire: %v", path, err)
@@ -137,16 +137,16 @@ func readLockRecordRaw(t *testing.T, root string) map[string]any {
 
 // parentStatus runs `integration status --json` from the still-live parent
 // test process against the same root the child wrote.
-func parentStatus(t *testing.T, root string) (held, stale bool, lock kanban.IntegrationLock, raw string) {
+func parentStatus(t *testing.T, root string) (held, stale bool, lock factory.IntegrationLock, raw string) {
 	t.Helper()
 	out, err := runIntegration(t, root, "status", "--json")
 	if err != nil {
 		t.Fatalf("parent status: %v (%s)", err, out)
 	}
 	var status struct {
-		Held  bool                   `json:"held"`
-		Stale bool                   `json:"stale"`
-		Lock  kanban.IntegrationLock `json:"lock"`
+		Held  bool                    `json:"held"`
+		Stale bool                    `json:"stale"`
+		Lock  factory.IntegrationLock `json:"lock"`
 	}
 	if err := json.Unmarshal([]byte(out), &status); err != nil {
 		t.Fatalf("status --json is not valid JSON (%v): %s", err, out)

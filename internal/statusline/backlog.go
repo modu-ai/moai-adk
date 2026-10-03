@@ -1,10 +1,10 @@
 package statusline
 
 import (
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
-// BacklogCounts is the kanban backlog reduced to what a glance needs: how much
+// BacklogCounts is the factory backlog reduced to what a glance needs: how much
 // work is in flight and how much is waiting. Dropped items are deliberately not
 // counted — they are history, and a number that only ever grows is noise.
 type BacklogCounts struct {
@@ -13,7 +13,7 @@ type BacklogCounts struct {
 	Available bool // false when no backlog file could be read
 }
 
-// resolveBoardRoot returns the directory holding the project's kanban state.
+// resolveBoardRoot returns the directory holding the project's factory state.
 //
 // This is NOT always the session's working directory. `.moai/state/` is
 // gitignored, so it exists only in the primary checkout — a session working
@@ -33,7 +33,7 @@ func resolveBoardRoot(input *StdinData) string {
 
 // resolveBacklogCounts counts the backlog by state under boardRoot.
 //
-// It delegates to kanban.BacklogCountsForRoot rather than reading a file
+// It delegates to factory.BacklogCountsForRoot rather than reading a file
 // itself: the queue's storage is a database now, and a second reader here
 // would have to be kept in step with the store by hand — the exact drift the
 // single-seam rule exists to prevent. The two properties this render depends
@@ -45,6 +45,6 @@ func resolveBoardRoot(input *StdinData) string {
 // Constant-cost per render, on either layout: it must never grow with the
 // number of cards in a way that puts the render on a slow path.
 func resolveBacklogCounts(boardRoot string) BacklogCounts {
-	c := kanban.BacklogCountsForRoot(boardRoot)
+	c := factory.BacklogCountsForRoot(boardRoot)
 	return BacklogCounts{Picked: c.Picked, Queued: c.Queued, Available: c.Available}
 }

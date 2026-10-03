@@ -30,7 +30,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // newTodoRelateCmd — `moai todo relate <a> <b> --relation <r> [--note <text>]`
@@ -51,7 +51,7 @@ func newTodoRelateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&relation, "relation", "",
-		"One of: "+strings.Join(kanban.BacklogSemanticRelations, ", "))
+		"One of: "+strings.Join(factory.BacklogSemanticRelations, ", "))
 	cmd.Flags().StringVar(&note, "note", "",
 		"Free text recorded with the finding")
 	return cmd
@@ -62,13 +62,13 @@ func newTodoRelateCmd() *cobra.Command {
 func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) error {
 	if !isSemanticRelation(relation) {
 		return fmt.Errorf("todo relate: --relation must be one of %s (got %q)",
-			strings.Join(kanban.BacklogSemanticRelations, ", "), relation)
+			strings.Join(factory.BacklogSemanticRelations, ", "), relation)
 	}
 	if subject == related {
 		return fmt.Errorf("todo relate: a card cannot be related to itself (%s)", subject)
 	}
 	var index int
-	err := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
+	err := newTodoStore().Mutate(func(rec *factory.BacklogRecord) error {
 		for _, id := range []string{subject, related} {
 			if !todoCardExists(rec, id) {
 				return fmt.Errorf("todo relate: no card %s in the queue", id)
@@ -80,7 +80,7 @@ func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) 
 		// recorded findings — the record stays unchanged, and the error
 		// names both endpoints (waiter and target are exactly the two
 		// argument ids, whichever spelling the caller used).
-		if waiter, target, ok := kanban.WaitsOnOf(kanban.BacklogFinding{
+		if waiter, target, ok := factory.WaitsOnOf(factory.BacklogFinding{
 			SubjectID: subject,
 			RelatedID: related,
 			Relation:  relation,
@@ -90,11 +90,11 @@ func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) 
 					subject, relation, related, waiter, target)
 			}
 		}
-		finding := kanban.BacklogFinding{
+		finding := factory.BacklogFinding{
 			SubjectID: subject,
 			RelatedID: related,
 			Relation:  relation,
-			Source:    kanban.BacklogSourceAgent,
+			Source:    factory.BacklogSourceAgent,
 			Note:      note,
 			At:        time.Now().UTC().Format(time.RFC3339),
 		}
@@ -129,8 +129,8 @@ func newTodoUnrelateCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
-			var removed kanban.BacklogFinding
-			mutErr := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
+			var removed factory.BacklogFinding
+			mutErr := newTodoStore().Mutate(func(rec *factory.BacklogRecord) error {
 				if index > len(rec.Findings) {
 					return fmt.Errorf("todo unrelate: no finding %d (the queue has %d)",
 						index, len(rec.Findings))
@@ -154,7 +154,7 @@ func newTodoUnrelateCmd() *cobra.Command {
 // accepts. The mechanical relations are deliberately excluded: a hand-written
 // `near-duplicate` would claim a measurement nobody measured.
 func isSemanticRelation(r string) bool {
-	for _, allowed := range kanban.BacklogSemanticRelations {
+	for _, allowed := range factory.BacklogSemanticRelations {
 		if r == allowed {
 			return true
 		}
@@ -163,7 +163,7 @@ func isSemanticRelation(r string) bool {
 }
 
 // todoCardExists reports whether the queue holds a card with id.
-func todoCardExists(rec *kanban.BacklogRecord, id string) bool {
+func todoCardExists(rec *factory.BacklogRecord, id string) bool {
 	for _, it := range rec.Items {
 		if it.ID == id {
 			return true

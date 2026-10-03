@@ -44,7 +44,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -645,9 +645,9 @@ func newTUIFake(t *testing.T, run string, extraEnv ...string) *tuiFake {
 		t.Fatal(err)
 	}
 	f.env = append([]string{
-		config.EnvMoaiKanbanID + "=" + run,
-		config.EnvMoaiKanbanBackend + "=" + BackendCodex,
-		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
+		config.EnvFactoryRunID + "=" + run,
+		config.EnvFactoryBackend + "=" + BackendCodex,
+		config.EnvMoaiFactoryWorker + "=" + factory.FactoryLaneLabel(1),
 		tuiFakeRoleEnv + "=1",
 		tuiFakeLogEnv + "=" + f.logPath,
 		tuiFakeControlEnv + "=" + f.controlLog,
@@ -1728,7 +1728,7 @@ func TestManagedCodexTUILoopbackRoundTrip(t *testing.T) {
 		t.Fatalf("the managed lane endpoint is not bound to the thread id: %v", err)
 	}
 	leader := lane
-	leader.Role, leader.Slot = kanban.RoleLeader, kanban.RoleLeader
+	leader.Role, leader.Slot = factory.RoleLeader, factory.RoleLeader
 	leader.SessionUUID = "tui-loopback-leader"
 	leader.Generation = 1
 	leader, err = registerTUILoopbackLeader(ctx, t, store, leader)
@@ -1818,7 +1818,7 @@ func TestManagedTUINeverReachedWithoutOptIn(t *testing.T) {
 	ownerDirect := func(env ...string) {
 		_ = runManagedFactoryCodex(sentinelCodexBinaryPath, []string{sentinelCodexBinaryPath}, env, "", os.Stdin)
 	}
-	const run = config.EnvMoaiKanbanID + "=run-wire0001"
+	const run = config.EnvFactoryRunID + "=run-wire0001"
 	const lane = config.EnvMoaiFactoryWorker + "=lane-2"
 
 	t.Run("no_switch", func(t *testing.T) {

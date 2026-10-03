@@ -257,7 +257,7 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		}
 	}
 
-	// Kanban backlog counts. Read from the board root rather than the session's
+	// Factory backlog counts. Read from the board root rather than the session's
 	// own directory: `.moai/state/` is gitignored, so a worktree session would
 	// otherwise find nothing. Fail-open — an unreadable backlog renders nothing.
 	if input != nil {

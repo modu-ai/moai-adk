@@ -110,4 +110,4 @@ PASS 的判定标准是按层级划定的通过分数 —— **Tier S 0.75 · Ti
 - [`/moai plan`](/zh/workflow-commands/moai-plan) · [`/moai run`](/zh/workflow-commands/moai-run) · [`/moai sync`](/zh/workflow-commands/moai-sync) — 各阶段命令的执行细节
 - [开发方法论 (DDD/TDD)](/zh/core-concepts/ddd) — run 阶段遵循的两种方法论循环
 - [TRUST 5 质量框架](/zh/core-concepts/trust-5) — run 产出物必须通过的质量框架
-- [看板模式](/zh/advanced/kanban-mode) — 把这条生命周期放到多会话看板上滚动的形态
+- [工厂模式](/zh/advanced/factory-mode) — 把这条生命周期放到多条 lane 会话上滚动的形态

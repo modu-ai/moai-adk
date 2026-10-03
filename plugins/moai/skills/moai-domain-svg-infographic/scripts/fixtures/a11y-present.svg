@@ -1,0 +1,18 @@
+<!-- expect: -->
+<!-- Fixture: carries the full accessible-SVG contract. check-svg.mjs must exit 0. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="a11y-present-title a11y-present-desc">
+  <title id="a11y-present-title">Client to API token exchange</title>
+  <desc id="a11y-present-desc">A client obtains a short-lived token from the auth service and presents it to the API.</desc>
+  <defs>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 160 100 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#arrow)"/>
+  <rect x="40" y="70" width="120" height="60" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+  <text x="100" y="105" font-size="14" text-anchor="middle" fill="#141413">Client</text>
+  <rect x="240" y="70" width="120" height="60" rx="12" fill="#FBE9DF" stroke="#D97757"/>
+  <text x="300" y="105" font-size="14" text-anchor="middle" fill="#141413">API</text>
+</svg>

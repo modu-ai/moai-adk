@@ -10,7 +10,7 @@ import (
 
 // Card t1460 — the SPEC rows + audit findings are computed once and reused until
 // .moai/specs changes. Every request used to re-run spec.ListDocs + spec.Audit
-// over the whole catalog, which made /, /kanban and /specs take seconds.
+// over the whole catalog, which made /, /factory and /specs take seconds.
 
 // countingLoader returns a loader that counts its calls and yields one row whose
 // title is the call number, so a test can tell a cached result from a fresh one.

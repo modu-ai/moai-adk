@@ -110,4 +110,4 @@ sync 품질의 독립 심사입니다. **sync-auditor**가 방금 쓰인 코드�
 - [`/moai plan`](/ko/workflow-commands/moai-plan) · [`/moai run`](/ko/workflow-commands/moai-run) · [`/moai sync`](/ko/workflow-commands/moai-sync) — 각 페이즈 명령의 실행 세부
 - [개발 방법론 (DDD/TDD)](/ko/core-concepts/ddd) — run 페이즈가 따르는 두 방법론 사이클
 - [TRUST 5 품질](/ko/core-concepts/trust-5) — run 산출물이 통과해야 하는 품질 프레임
-- [칸반 모드](/ko/advanced/kanban-mode) — 이 라이프사이클을 다중 세션 보드 위에서 굴리는 형태
+- [팩토리 모드](/ko/advanced/factory-mode) — 이 라이프사이클을 여러 레인 세션으로 굴리는 형태

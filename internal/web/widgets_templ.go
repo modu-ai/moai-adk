@@ -833,14 +833,14 @@ func laneUnresolved(reason string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<span data-i18n=\"kanban.laneUnresolved\">Unresolved — no record can be attributed to this lane</span> <span class=\"panel__meta\" data-i18n=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<span data-i18n=\"factory.laneUnresolved\">Unresolved — no record can be attributed to this lane</span> <span class=\"panel__meta\" data-i18n=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var43 string
-		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.ResolveAttributeValue("kanban.laneUnresolved." + reason)
+		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.ResolveAttributeValue("factory.laneUnresolved." + reason)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `widgets.templ`, Line: 140, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `widgets.templ`, Line: 140, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
 		if templ_7745c5c3_Err != nil {
@@ -853,7 +853,7 @@ func laneUnresolved(reason string) templ.Component {
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(reason)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `widgets.templ`, Line: 140, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `widgets.templ`, Line: 140, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {

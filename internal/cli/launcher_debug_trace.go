@@ -45,7 +45,7 @@ const (
 	launchStepLocalInstr    = "local-instruction load"
 	launchStepWorktree      = "worktree materialization"
 	launchStepChildEnv      = "child-env assembly"
-	// The cc/glm phases (plan §F M3): the pre-launch parse, the kanban
+	// The cc/glm phases (plan §F M3): the pre-launch parse, the factory
 	// settings preparation, and the handoff to the backend launch seam.
 	launchStepEntryParse    = "entry parse"
 	launchStepSettingsPrep  = "settings prep"

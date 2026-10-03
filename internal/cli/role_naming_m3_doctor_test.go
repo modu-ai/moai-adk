@@ -12,12 +12,12 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
-func seedKanbanRecord(t *testing.T, root, sessionID, role string) {
+func seedFactoryRecord(t *testing.T, root, sessionID, role string) {
 	t.Helper()
-	path := kanban.RecordPath(root, sessionID)
+	path := factory.RecordPath(root, sessionID)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func seedKanbanRecord(t *testing.T, root, sessionID, role string) {
 
 func TestDoctorFactoryRunCheckRecognizesLeader(t *testing.T) {
 	root := t.TempDir()
-	seedKanbanRecord(t, root, "lead-session", "leader")
+	seedFactoryRecord(t, root, "lead-session", "leader")
 
 	check := checkFactoryRun(root, false)
 	if check.Status != uikit.CheckOK {
@@ -42,7 +42,7 @@ func TestDoctorFactoryRunCheckRecognizesLeader(t *testing.T) {
 
 func TestDoctorFactoryRunCheckRendersLegacyRelaunchLiteral(t *testing.T) {
 	root := t.TempDir()
-	seedKanbanRecord(t, root, "legacy-session", "lead")
+	seedFactoryRecord(t, root, "legacy-session", "lead")
 
 	check := checkFactoryRun(root, false)
 	if check.Status != uikit.CheckFail {

@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // factoryAmbientEnvKeys lists the factory/kanban signal variables a lane or
@@ -27,15 +27,15 @@ import (
 var factoryAmbientEnvKeys = []string{
 	config.EnvMoaiFactoryWorkers,
 	config.EnvMoaiFactoryWorker,
-	config.EnvMoaiKanban,
-	config.EnvMoaiKanbanID,
-	config.EnvMoaiKanbanSpec,
-	config.EnvMoaiKanbanLabel,
-	config.EnvMoaiKanbanSettingsInjected,
-	config.EnvMoaiKanbanLeadAddr,
-	config.EnvMoaiKanbanBackend,
-	config.EnvMoaiKanbanCard,
-	config.EnvMoaiKanbanLeadName,
+	retiredLeaderMarker,
+	config.EnvFactoryRunID,
+	retiredSpecMarker,
+	retiredLaneLabelMarker,
+	config.EnvFactorySettingsInjected,
+	config.EnvFactoryLeadAddr,
+	config.EnvFactoryBackend,
+	config.EnvFactoryCard,
+	config.EnvFactoryLeadName,
 	config.EnvClaudeCodeMaxConcurrentSubagents,
 }
 
@@ -65,7 +65,7 @@ func clearFactoryAmbientEnv() {
 
 // clearFactoryTestEnv isolates the factory signal variables from this test
 // binary's ambient environment, on the same t.Setenv-restore contract as
-// clearKanbanLauncherEnv (a developer running tests inside a factory session
+// clearFactoryLauncherEnv (a developer running tests inside a factory session
 // carries MOAI_FACTORY_* in the ambient env; the branches under test are
 // unconditional on them).
 func clearFactoryTestEnv(t *testing.T) {
@@ -99,7 +99,7 @@ func TestFactoryAmbientEnvClearedInTestMain(t *testing.T) {
 			"clear no longer covers factoryLaunchEnabled's gate keys")
 	}
 	for _, key := range []string{
-		config.EnvMoaiKanbanID,
+		config.EnvFactoryRunID,
 		config.EnvMoaiFactoryWorker,
 		config.EnvMoaiFactoryWorkers,
 	} {
@@ -120,107 +120,17 @@ func TestFactoryAmbientEnvClearedInTestMain(t *testing.T) {
 // TestCodexDirectPOSIXExecPreservesFactoryOwner in a lane session.
 func TestFactoryEnvPinnedSkipsTestMainClear(t *testing.T) {
 	t.Setenv(factoryEnvPinnedEnv, "1")
-	t.Setenv(config.EnvMoaiKanbanID, "pinned-run")
+	t.Setenv(config.EnvFactoryRunID, "pinned-run")
 	clearFactoryAmbientEnv()
-	if got := os.Getenv(config.EnvMoaiKanbanID); got != "pinned-run" {
+	if got := os.Getenv(config.EnvFactoryRunID); got != "pinned-run" {
 		t.Fatalf("%s=%q after clearFactoryAmbientEnv with pin marker; the "+
 			"marker must keep a parent-composed family intact",
-			config.EnvMoaiKanbanID, got)
-	}
-}
-
-// TestParseKanbanFlagUnifiedEntry is the v1.2.0 truth table: ONE -k token
-// selects either shape — bare/-k SPEC-ID is the kanban chain, a numeric
-// positional (or a worker-shape --name with no positional) is the factory.
-// The numeric discriminator is unambiguous: a SPEC identifier is never a bare
-// integer, and an invalid SUPPLIED count errors rather than silently becoming
-// a kanban SPEC identifier.
-func TestParseKanbanFlagUnifiedEntry(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name        string
-		args        []string
-		wantSpec    string
-		wantKanban  bool
-		wantFactory bool
-		wantWorkers int
-		wantRest    []string
-		wantErr     bool
-		errMarker   string
-	}{
-		{name: "absent", args: []string{"-p", "work"}, wantRest: []string{"-p", "work"}},
-		{name: "bare -k is kanban", args: []string{"-k"}, wantKanban: true},
-		{name: "long form is kanban", args: []string{"--kanban", "-b"}, wantKanban: true, wantRest: []string{"-b"}},
-		{name: "-k SPEC is kanban", args: []string{"-k", "SPEC-X-001", "--print"}, wantSpec: "SPEC-X-001", wantKanban: true, wantRest: []string{"--print"}},
-		{name: "positional flag is not a value", args: []string{"-k", "-b"}, wantKanban: true, wantRest: []string{"-b"}},
-		{name: "-k N is factory lead", args: []string{"-k", "4"}, wantKanban: true, wantFactory: true, wantWorkers: 4},
-		{name: "-k=N", args: []string{"-k=3"}, wantKanban: true, wantFactory: true, wantWorkers: 3},
-		{name: "--kanban N", args: []string{"--kanban", "12"}, wantKanban: true, wantFactory: true, wantWorkers: 12},
-		{name: "--kanban=N", args: []string{"--kanban=1"}, wantKanban: true, wantFactory: true, wantWorkers: 1},
-		{name: "-k N with lane name is factory lane", args: []string{"-k", "4", "--name", "worker-2"}, wantKanban: true, wantFactory: true, wantWorkers: 4, wantRest: []string{"--name", "worker-2"}},
-		{
-			// The count-less factory entry: the lane-shape NAME selects the
-			// factory, so the operator default applies. A count-less FACTORY
-			// LEADER does not exist — a bare -k is the kanban leader.
-			name: "bare -k with lane name takes the default", args: []string{"-k", "--name", "lane-2"},
-			wantKanban: true, wantFactory: true, wantWorkers: config.DefaultFactoryLanes, wantRest: []string{"--name", "lane-2"},
-		},
-		{name: "companion name stays kanban", args: []string{"-k", "--name", "plan"}, wantKanban: true, wantRest: []string{"--name", "plan"}},
-		{name: "zero count errors", args: []string{"-k", "0"}, wantErr: true, errMarker: "lane count of 1 or more"},
-		{name: "negative joined count errors", args: []string{"-k=-2"}, wantErr: true, errMarker: "lane count of 1 or more"},
-		{name: "joined non-numeric is not a spec form", args: []string{"-k=abc"}, wantErr: true, errMarker: "lane count of 1 or more"},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			p, err := parseKanbanFlag(c.args)
-			if c.wantErr {
-				if err == nil || !strings.Contains(err.Error(), c.errMarker) {
-					t.Fatalf("parseKanbanFlag(%v) error = %v, want containing %q", c.args, err, c.errMarker)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("parseKanbanFlag(%v) unexpected error: %v", c.args, err)
-			}
-			if p.Spec != c.wantSpec || p.KanbanEnabled != c.wantKanban ||
-				p.FactoryEnabled != c.wantFactory || p.FactoryLanes != c.wantWorkers {
-				t.Errorf("parseKanbanFlag(%v) = (spec %q, kanban %v, factory %v, workers %d), want (%q, %v, %v, %d)",
-					c.args, p.Spec, p.KanbanEnabled, p.FactoryEnabled, p.FactoryLanes,
-					c.wantSpec, c.wantKanban, c.wantFactory, c.wantWorkers)
-			}
-			wantRest := c.wantRest
-			if wantRest == nil {
-				wantRest = []string{}
-			}
-			if !slices.Equal(p.Rest, wantRest) {
-				t.Errorf("parseKanbanFlag(%v) rest = %v, want %v", c.args, p.Rest, wantRest)
-			}
-		})
-	}
-}
-
-// TestParseKanbanFlagPassThroughBoundary asserts the shared `--` discipline on
-// the unified parse: nothing past the marker is read (a lane name there
-// never selects the factory), and the marker plus everything after it is
-// forwarded verbatim.
-func TestParseKanbanFlagPassThroughBoundary(t *testing.T) {
-	t.Parallel()
-
-	args := []string{"--", "-k", "4", "--name", "worker-1"}
-	p, err := parseKanbanFlag(args)
-	if err != nil || p.KanbanEnabled || p.FactoryEnabled {
-		t.Fatalf("read past the pass-through marker: (%v, %v, %v)", err, p.KanbanEnabled, p.FactoryEnabled)
-	}
-	if !slices.Equal(p.Rest, args) {
-		t.Errorf("rest = %v, want %v verbatim", p.Rest, args)
+			config.EnvFactoryRunID, got)
 	}
 }
 
 // TestParseFactoryFlag is the t118 -f truth table: bare -f is enabled with
-// no count, -f N carries the count, -f lane-<n> carries the lane number,
+// no count, -f N carries the count, -l is the lane entry,
 // the `=`-joined forms work, and a SUPPLIED value that is neither a positive
 // integer nor a lane label errors (the factory has no SPEC shape to fall
 // into). Legacy spellings are refused on any letter case
@@ -245,27 +155,29 @@ func TestParseFactoryFlag(t *testing.T) {
 		{name: "long form bare", args: []string{"--factory", "-b"}, wantEnabled: true, wantRest: []string{"-b"}},
 		// The numeric count forms are RETIRED (operator goal 2026-09-16):
 		// a supplied number now errors naming the accepted shapes.
-		{name: "-f N errors post-N-removal", args: []string{"-f", "4"}, wantErr: true, errMarker: "role token -f lane"},
-		{name: "-f=N errors post-N-removal", args: []string{"-f=3"}, wantErr: true, errMarker: "role token -f lane"},
-		{name: "--factory N errors post-N-removal", args: []string{"--factory", "12"}, wantErr: true, errMarker: "role token -f lane"},
-		{name: "--factory=N errors post-N-removal", args: []string{"--factory=1"}, wantErr: true, errMarker: "role token -f lane"},
+		{name: "-f N errors post-N-removal", args: []string{"-f", "4"}, wantErr: true, errMarker: "takes no argument"},
+		{name: "-f=N errors post-N-removal", args: []string{"-f=3"}, wantErr: true, errMarker: "takes no argument"},
+		{name: "--factory N errors post-N-removal", args: []string{"--factory", "12"}, wantErr: true, errMarker: "takes no argument"},
+		{name: "--factory=N errors post-N-removal", args: []string{"--factory=1"}, wantErr: true, errMarker: "takes no argument"},
 		// Legacy spellings are REFUSED (REQ-RNC-003), any letter case.
-		{name: "-f worker refused", args: []string{"-f", "worker"}, wantErr: true, errMarker: "-f lane"},
-		{name: "-f=worker refused", args: []string{"-f=worker"}, wantErr: true, errMarker: "-f lane"},
-		{name: "-f agent refused", args: []string{"-f", "agent"}, wantErr: true, errMarker: "-f lane"},
-		{name: "-f=agent refused", args: []string{"-f=agent"}, wantErr: true, errMarker: "-f lane"},
-		{name: "-f WORKER refused", args: []string{"-f", "WORKER"}, wantErr: true, errMarker: "-f lane"},
-		{name: "-f AGENT refused", args: []string{"-f", "AGENT"}, wantErr: true, errMarker: "-f lane"},
-		{name: "-f lane role token", args: []string{"-f", "lane"}, wantEnabled: true, wantRole: true},
-		{name: "-f lane-2", args: []string{"-f", "lane-2"}, wantEnabled: true, wantWorkerNum: 2},
-		{name: "-f worker-2 refused naming lane-2", args: []string{"-f", "worker-2"}, wantErr: true, errMarker: "lane-2"},
-		{name: "-f=worker-3 refused naming lane-3", args: []string{"-f=worker-3"}, wantErr: true, errMarker: "lane-3"},
-		{name: "--factory=worker-7 refused naming lane-7", args: []string{"--factory=worker-7"}, wantErr: true, errMarker: "lane-7"},
+		{name: "-f worker refused", args: []string{"-f", "worker"}, wantErr: true, errMarker: "-l"},
+		{name: "-f=worker refused", args: []string{"-f=worker"}, wantErr: true, errMarker: "-l"},
+		{name: "-f agent refused", args: []string{"-f", "agent"}, wantErr: true, errMarker: "-l"},
+		{name: "-f=agent refused", args: []string{"-f=agent"}, wantErr: true, errMarker: "-l"},
+		{name: "-f WORKER refused", args: []string{"-f", "WORKER"}, wantErr: true, errMarker: "-l"},
+		{name: "-f AGENT refused", args: []string{"-f", "AGENT"}, wantErr: true, errMarker: "-l"},
+		{name: "-l lane entry", args: []string{"-l"}, wantEnabled: true, wantRole: true},
+		{name: "--lane lane entry", args: []string{"--lane", "-b"}, wantEnabled: true, wantRole: true, wantRest: []string{"-b"}},
+		{name: "-f lane refused naming -l", args: []string{"-f", "lane"}, wantErr: true, errMarker: "-l"},
+		{name: "-f lane-2 refused naming -l", args: []string{"-f", "lane-2"}, wantErr: true, errMarker: "-l"},
+		{name: "-f worker-2 refused naming lane-2", args: []string{"-f", "worker-2"}, wantErr: true, errMarker: "-l"},
+		{name: "-f=worker-3 refused naming lane-3", args: []string{"-f=worker-3"}, wantErr: true, errMarker: "-l"},
+		{name: "--factory=worker-7 refused naming lane-7", args: []string{"--factory=worker-7"}, wantErr: true, errMarker: "-l"},
 		{name: "positional flag is not a value", args: []string{"-f", "-b"}, wantEnabled: true, wantRest: []string{"-b"}},
-		{name: "zero count errors", args: []string{"-f", "0"}, wantErr: true, errMarker: "role token -f lane"},
-		{name: "negative joined count errors", args: []string{"-f=-2"}, wantErr: true, errMarker: "role token -f lane"},
-		{name: "non-numeric non-lane errors", args: []string{"-f", "SPEC-X-001"}, wantErr: true, errMarker: "lane label"},
-		{name: "worker zero errors", args: []string{"-f", "worker-0"}, wantErr: true, errMarker: "lane label"},
+		{name: "zero count errors", args: []string{"-f", "0"}, wantErr: true, errMarker: "takes no argument"},
+		{name: "negative joined count errors", args: []string{"-f=-2"}, wantErr: true, errMarker: "takes no argument"},
+		{name: "non-numeric non-lane errors", args: []string{"-f", "SPEC-X-001"}, wantErr: true, errMarker: "takes no argument"},
+		{name: "worker zero errors", args: []string{"-f", "worker-0"}, wantErr: true, errMarker: "takes no argument"},
 		{name: "lookalike long flag not stolen", args: []string{"--factory-reset"}, wantRest: []string{"--factory-reset"}},
 	}
 
@@ -315,9 +227,9 @@ func TestParseFactoryFlagPassThroughBoundary(t *testing.T) {
 
 // TestParseLauncherEntryMerge is the t118 merge truth table: -f alone
 // resolves the lead default, -f N carries N, -f worker-<n> desugars into the
-// --name lane form with an unknown (0) count, the -k shapes are untouched
-// when -f is absent, and -f plus -k (or plus an operator --name on the
-// lane form) is a conflict error.
+// --name lane form with an unknown (0) count, the retired -k spelling is
+// refused before the merge runs (alone or beside -f / -l), and -l plus an
+// operator --name on the lane form is a conflict error.
 func TestParseLauncherEntryMerge(t *testing.T) {
 	t.Parallel()
 
@@ -351,65 +263,65 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 
 	t.Run("-f N is retired post-N-removal", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "role token -f lane") {
+		if _, err := parseLauncherEntry([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "takes no argument") {
 			t.Errorf("parseLauncherEntry(-f 4) = %v, want the retired-count error", err)
 		}
 	})
 
-	t.Run("-f lane-n desugars to the lane form with unknown count", func(t *testing.T) {
+	t.Run("-l desugars to the lane form with unknown count", func(t *testing.T) {
 		t.Parallel()
-		p, err := parseLauncherEntry([]string{"-f", "lane-2", "-b"})
+		p, err := parseLauncherEntry([]string{"-l", "-b"})
 		if err != nil {
-			t.Fatalf("parseLauncherEntry(-f lane-2): %v", err)
+			t.Fatalf("parseLauncherEntry(-l): %v", err)
 		}
 		if !p.FactoryEnabled || p.FactoryLanes != 0 {
-			t.Errorf("-f lane-2 = (factory %v, workers %d), want (true, 0 unknown)", p.FactoryEnabled, p.FactoryLanes)
+			t.Errorf("-l = (factory %v, workers %d), want (true, 0 unknown)", p.FactoryEnabled, p.FactoryLanes)
 		}
 		label, ok := parseFactoryLaneLabel(p.Rest)
-		if !ok || label != "lane-2" {
-			t.Errorf("desugared rest %v carries label (%q, %v), want lane-2", p.Rest, label, ok)
+		if !ok {
+			t.Fatalf("desugared rest %v carries no lane label", p.Rest)
 		}
-		if !slices.Equal(p.Rest, []string{"-b", "--name", "lane-2"}) {
-			t.Errorf("desugared rest = %v, want [-b --name lane-2]", p.Rest)
+		if !slices.Equal(p.Rest, []string{"-b", "--name", label}) {
+			t.Errorf("desugared rest = %v, want [-b --name %s]", p.Rest, label)
 		}
 	})
 
 	t.Run("-f N --name lane-i is retired with the count form", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-f", "5", "--name", "lane-2"}); err == nil || !strings.Contains(err.Error(), "role token -f lane") {
+		if _, err := parseLauncherEntry([]string{"-f", "5", "--name", "lane-2"}); err == nil || !strings.Contains(err.Error(), "takes no argument") {
 			t.Errorf("parseLauncherEntry(-f 5 --name lane-2) = %v, want the retired-count error", err)
 		}
 	})
 
-	t.Run("-k shapes untouched without -f", func(t *testing.T) {
+	t.Run("-k is refused without -f", func(t *testing.T) {
 		t.Parallel()
 		p, err := parseLauncherEntry([]string{"-k", "4", "--name", "lane-2"})
-		if err != nil {
-			t.Fatalf("parseLauncherEntry(-k 4 --name lane-2): %v", err)
+		if err == nil || err.Error() != retiredEntryRefusal {
+			t.Fatalf("parseLauncherEntry(-k 4 --name lane-2) = (%+v, %v), want the retired-entry refusal", p, err)
 		}
-		if !p.FactoryEnabled || p.FactoryLanes != 4 || !p.KanbanEnabled {
-			t.Errorf("-k shape altered by the merge: %+v", p)
+		if p.FactoryEnabled || p.Rest != nil {
+			t.Errorf("the refused -k parse carries an entry: %+v", p)
 		}
 	})
 
-	t.Run("-f with -k is a conflict", func(t *testing.T) {
+	t.Run("-k beside -f or -l is the retired refusal", func(t *testing.T) {
 		t.Parallel()
 		for _, args := range [][]string{
-			{"-f", "lane", "-k"},
+			{"-l", "-k"},
 			{"-f", "-k", "SPEC-X-001"},
-			{"--factory=lane-2", "-k", "3"},
+			{"--lane", "-k", "3"},
 		} {
-			if _, err := parseLauncherEntry(args); err == nil || !strings.Contains(err.Error(), "at most one") {
-				t.Errorf("parseLauncherEntry(%v) = %v, want the one-entry-token conflict", args, err)
+			if _, err := parseLauncherEntry(args); err == nil || err.Error() != retiredEntryRefusal {
+				t.Errorf("parseLauncherEntry(%v) = %v, want the retired-entry refusal (it runs before the one-entry-token merge)", args, err)
 			}
 		}
 	})
 
-	t.Run("-f lane-n plus an operator --name is a conflict", func(t *testing.T) {
+	t.Run("-l plus an operator --name is a conflict", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-f", "lane-2", "--name", "lane-3"}); err == nil ||
-			!strings.Contains(err.Error(), "already names the lane") {
-			t.Errorf("parseLauncherEntry(-f lane-2 --name lane-3) = %v, want the naming conflict", err)
+		if _, err := parseLauncherEntry([]string{"-l", "--name", "lane-3"}); err == nil ||
+			!strings.Contains(err.Error(), "already names the role") {
+			t.Errorf("parseLauncherEntry(-l --name lane-3) = %v, want the naming conflict", err)
 		}
 	})
 
@@ -417,7 +329,7 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 		t.Parallel()
 		args := []string{"--", "-f"}
 		p, err := parseLauncherEntry(args)
-		if err != nil || p.FactoryEnabled || p.KanbanEnabled {
+		if err != nil || p.FactoryEnabled {
 			t.Fatalf("read past the pass-through marker: (%v, %+v)", err, p)
 		}
 		if !slices.Equal(p.Rest, args) {
@@ -426,10 +338,10 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 	})
 }
 
-// TestResolveFactoryBranch is the factory counterpart of the kanban §A.2
-// truth table: -f N plus a worker-shape name selects the lane branch, -f N
-// alone (or with a non-lane name) the lead branch, and no -f is a no-op
-// regardless of the name.
+// TestResolveFactoryBranch is the dispatch truth table: a factory entry plus a
+// lane-shape name selects the lane branch, a factory entry alone (or with a
+// non-lane name) the leader branch, and no factory entry is a no-op regardless
+// of the name.
 func TestResolveFactoryBranch(t *testing.T) {
 	t.Parallel()
 
@@ -451,8 +363,8 @@ func TestResolveFactoryBranch(t *testing.T) {
 }
 
 // TestParseFactoryLaneLabelRecognizesWithoutConsuming is the load-bearing
-// property shared with parseCompanionLabel: moai learns the label, and
-// claude still receives the flag.
+// property of the session-name parsers: moai learns the label, and claude
+// still receives the flag.
 func TestParseFactoryLaneLabelRecognizesWithoutConsuming(t *testing.T) {
 	t.Parallel()
 
@@ -501,13 +413,13 @@ func TestEnterFactoryLeadModeEnv(t *testing.T) {
 	if got := os.Getenv(config.EnvMoaiFactoryWorkers); got != "4" {
 		t.Errorf("MOAI_FACTORY_WORKERS = %q, want 4", got)
 	}
-	if got := os.Getenv(config.EnvMoaiKanbanID); got != "abc123" {
+	if got := os.Getenv(config.EnvFactoryRunID); got != "abc123" {
 		t.Errorf("MOAI_KANBAN_ID = %q, want the adopted run id abc123", got)
 	}
-	if got := os.Getenv(config.EnvMoaiKanbanLeadAddr); got != "/tmp/moai-socket-factory/abc123" {
+	if got := os.Getenv(config.EnvFactoryLeadAddr); got != "/tmp/moai-socket-factory/abc123" {
 		t.Errorf("MOAI_KANBAN_LEAD_ADDR = %q, want /tmp/moai-socket-factory/abc123 (the factory socket directory)", got)
 	}
-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanLabel, config.EnvMoaiFactoryWorker} {
+	for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvMoaiFactoryWorker} {
 		if _, present := os.LookupEnv(key); present {
 			t.Errorf("%s must stay unset on a factory lead (no kanban chain is seeded), got a value", key)
 		}
@@ -527,11 +439,11 @@ func TestEnterFactoryLeadModeMintsRunID(t *testing.T) {
 	restore := enterFactoryLeaderMode(2, "")
 	defer restore()
 
-	runID := os.Getenv(config.EnvMoaiKanbanID)
+	runID := os.Getenv(config.EnvFactoryRunID)
 	if runID == "" {
 		t.Fatal("MOAI_KANBAN_ID empty for a bare factory lead; expected a minted run id")
 	}
-	if _, ok := kanban.SplitLeaderLabel(kanban.RoleLeader + "-" + runID); !ok {
+	if _, ok := factory.SplitLeaderLabel(factory.RoleLeader + "-" + runID); !ok {
 		t.Errorf("minted run id %q does not round-trip through the lead label shape", runID)
 	}
 }
@@ -558,7 +470,7 @@ func TestEnterFactoryWorkerModeEnv(t *testing.T) {
 	if got := os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents); got != "10" {
 		t.Errorf("%s = %q, want 10 (the per-lane cap)", config.EnvClaudeCodeMaxConcurrentSubagents, got)
 	}
-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanLabel, config.EnvMoaiKanbanID} {
+	for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvFactoryRunID} {
 		if _, present := os.LookupEnv(key); present {
 			t.Errorf("%s must stay unset on a factory lane, got a value", key)
 		}
@@ -732,21 +644,19 @@ func TestReplaceNamedLabel(t *testing.T) {
 	})
 }
 
-// TestRejectFactoryOnCG asserts the FACTORY forms of BOTH entry tokens — the
-// v1.2.0 -k shapes and the t118 -f shapes — are rejected on cg with the
-// factory sentinel, while the plain kanban forms fall through to the kanban
-// rejection (rejectKanbanOnCG), and an invalid value or the -f+-k conflict
-// surfaces the parse error.
+// TestRejectFactoryOnCG asserts the factory entry forms (-f, -l and their long
+// spellings) are rejected on cg with the factory sentinel, that an invalid
+// value or a second entry token surfaces the parse error, and that the retired
+// -k spelling surfaces the retired-entry refusal (the entry parse refuses it
+// first).
 func TestRejectFactoryOnCG(t *testing.T) {
 	t.Parallel()
 
 	for _, args := range [][]string{
-		{"-k", "4"},
-		{"-k", "--name", "lane-1"},
 		{"-f"},
-		{"-f", "lane"},
-		{"-f", "lane-2"},
-		{"--factory=lane-3"},
+		{"-l"},
+		{"--lane"},
+		{"--factory"},
 	} {
 		if err := rejectFactoryOnCG(args); err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
 			t.Errorf("factory form %v on cg must carry the sentinel, got %v", args, err)
@@ -755,55 +665,29 @@ func TestRejectFactoryOnCG(t *testing.T) {
 	if err := rejectFactoryOnCG([]string{"-p", "work"}); err != nil {
 		t.Errorf("no entry token must pass, got %v", err)
 	}
-	if err := rejectFactoryOnCG([]string{"-k", "0"}); err == nil || !strings.Contains(err.Error(), "lane count of 1 or more") {
-		t.Errorf("invalid factory count must surface the parse error, got %v", err)
-	}
-	if err := rejectFactoryOnCG([]string{"-f", "SPEC-X-001"}); err == nil || !strings.Contains(err.Error(), "lane label") {
+	if err := rejectFactoryOnCG([]string{"-f", "SPEC-X-001"}); err == nil || !strings.Contains(err.Error(), "takes no argument") {
 		t.Errorf("invalid -f value must surface the parse error, got %v", err)
 	}
 	// The retired numeric count form surfaces the parse error on cg too.
-	if err := rejectFactoryOnCG([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "role token -f lane") {
+	if err := rejectFactoryOnCG([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "takes no argument") {
 		t.Errorf("retired -f N on cg must surface the parse error, got %v", err)
 	}
-	if err := rejectFactoryOnCG([]string{"-f", "lane-2", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
-		t.Errorf("-f plus -k on cg must surface the conflict, got %v", err)
+	if err := rejectFactoryOnCG([]string{"-l", "-f"}); err == nil || !strings.Contains(err.Error(), "at most one") {
+		t.Errorf("-l plus -f on cg must surface the conflict, got %v", err)
 	}
-	// The plain kanban forms belong to the kanban rejection, not this one.
-	if err := rejectFactoryOnCG([]string{"-k"}); err != nil {
-		t.Errorf("bare -k is kanban's to reject, got %v", err)
-	}
-	if err := rejectFactoryOnCG([]string{"-k", "SPEC-X-001"}); err != nil {
-		t.Errorf("-k SPEC is kanban's to reject, got %v", err)
-	}
-}
-
-// TestRejectKanbanOnCGLeavesFactoryForms is the other half of the cg split:
-// rejectKanbanOnCG fires for the kanban forms and deliberately passes the
-// factory forms through to rejectFactoryOnCG.
-func TestRejectKanbanOnCGLeavesFactoryForms(t *testing.T) {
-	t.Parallel()
-
-	if err := rejectKanbanOnCG([]string{"-k"}); err == nil || !strings.Contains(err.Error(), kanbanUnsupportedBackendSentinel) {
-		t.Errorf("bare -k on cg must carry the kanban sentinel, got %v", err)
-	}
-	if err := rejectKanbanOnCG([]string{"-k", "SPEC-X-001"}); err == nil {
-		t.Errorf("-k SPEC on cg must carry the kanban sentinel, got %v", err)
-	}
-	for _, args := range [][]string{
-		{"-k", "4"},
-		{"-k", "--name", "lane-2"},
-	} {
-		if err := rejectKanbanOnCG(args); err != nil {
-			t.Errorf("factory form %v is the factory rejection's, not kanban's, got %v", args, err)
+	// The retired -k spelling is the entry parse's refusal, whatever it sits beside.
+	for _, args := range [][]string{{"-k"}, {"-k", "4"}, {"-k", "--name", "lane-1"}, {"-l", "-k"}} {
+		if err := rejectFactoryOnCG(args); err == nil || err.Error() != retiredEntryRefusal {
+			t.Errorf("rejectFactoryOnCG(%v) = %v, want the retired-entry refusal", args, err)
 		}
 	}
 }
 
 // TestFactoryGenealogyInHelp is the binding genealogy AC (t118): both
 // launchers' help must state the full flag history — renamed to -k in #1513
-// (7f61332ef), retired v1.2.0, revived t118 — and must document the revived
-// -f entry forms (count form and incremental lane form). A user hunting
-// "what happened to -f" reads this text first.
+// (7f61332ef), retired v1.2.0, revived t118, with -k itself retired since — and
+// must document the -f and -l entry forms. A user hunting "what happened to
+// -f" reads this text first.
 func TestFactoryGenealogyInHelp(t *testing.T) {
 	t.Parallel()
 
@@ -811,8 +695,8 @@ func TestFactoryGenealogyInHelp(t *testing.T) {
 		for _, marker := range []string{
 			"--factory", "#1513", "7f61332ef", "RENAMED", "RETIRED",
 			"-f, --factory", // the lead entry (numeric count retired 2026-09-16)
-			"-f lane-<n>",   // the incremental single-lane form
-			"-k <N>",        // the v1.2.0 unified shapes remain documented
+			"-l, --lane",    // the lane entry
+			"-k <N>",        // the genealogy names the v1.2.0 count form
 			"t118",          // the revival names its own card
 		} {
 			if !strings.Contains(cmd, marker) {
@@ -858,12 +742,12 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 	origLaunch := unifiedLaunchFunc
 	unifiedLaunchFunc = func(_ string, _ string, args []string) error {
 		c.args = args
-		c.runID = os.Getenv(config.EnvMoaiKanbanID)
+		c.runID = os.Getenv(config.EnvFactoryRunID)
 		c.workers = os.Getenv(config.EnvMoaiFactoryWorkers)
 		c.worker = os.Getenv(config.EnvMoaiFactoryWorker)
-		c.addr = os.Getenv(config.EnvMoaiKanbanLeadAddr)
+		c.addr = os.Getenv(config.EnvFactoryLeadAddr)
 		c.cap = os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents)
-		c.leadName = os.Getenv(config.EnvMoaiKanbanLeadName)
+		c.leadName = os.Getenv(config.EnvFactoryLeadName)
 		return nil
 	}
 	origFn := findProjectRootFn
@@ -911,7 +795,7 @@ func TestCCFactoryEntryRecordsFailOpenRunMetadata(t *testing.T) {
 	if err := runCC(ccCmd, []string{"-f"}); err != nil {
 		t.Fatalf("runCC(-f): %v", err)
 	}
-	record, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
+	record, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -998,12 +882,12 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "role token -f lane") {
+		if err := runCC(ccCmd, []string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "takes no argument") {
 			t.Errorf("runCC(-f 4) = %v, want the retired-count error", err)
 		}
 	})
 
-	t.Run("-f lane-2 desugars into the lane branch", func(t *testing.T) {
+	t.Run("-l desugars into the lane branch", func(t *testing.T) {
 		// A lane joins exactly one active factory run and fails closed on zero
 		// (NO_ACTIVE_FACTORY) or several (AMBIGUOUS_FACTORY). The bare -f
 		// subtests above share the parent's project dir and each record a lead
@@ -1020,26 +904,26 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		c := installFactoryLaunchSeam(t)
 
 		const run = "run-cc-lane-entry"
-		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
+		if err := recordFactoryRunStart(root, run, factory.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
 			t.Fatalf("record factory run: %v", err)
 		}
 
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "lane-2"}); err != nil {
-			t.Fatalf("runCC(-f lane-2): %v", err)
+		if err := runCC(ccCmd, []string{"-l"}); err != nil {
+			t.Fatalf("runCC(-l): %v", err)
 		}
 		if c.runID != run {
-			t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
+			t.Errorf("%s at launch = %q, want the active run %q", config.EnvFactoryRunID, c.runID, run)
 		}
-		if c.worker != "lane-2" {
-			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-2", c.worker)
+		if c.worker != "lane-1" {
+			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-1", c.worker)
 		}
 		if c.workers != "0" {
 			t.Errorf("MOAI_FACTORY_WORKERS at launch = %q, want 0 (count unknown on the incremental form)", c.workers)
 		}
-		if !slices.Contains(c.args, "lane-2") {
+		if !slices.Contains(c.args, "lane-1") {
 			t.Errorf("the desugared --name must reach the launcher, got %v", c.args)
 		}
 		if c.cap != "10" {
@@ -1047,15 +931,15 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		}
 	})
 
-	t.Run("-f with -k errors before the launch", func(t *testing.T) {
+	t.Run("-l with -k errors before the launch", func(t *testing.T) {
 		clearFactoryTestEnv(t)
 		installFactoryLaunchSeam(t)
 
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "lane", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
-			t.Errorf("runCC(-f lane -k) = %v, want the one-entry-token conflict", err)
+		if err := runCC(ccCmd, []string{"-l", "-k"}); err == nil || err.Error() != retiredEntryRefusal {
+			t.Errorf("runCC(-l -k) = %v, want the retired-entry refusal", err)
 		}
 	})
 
@@ -1069,7 +953,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		c := installFactoryLaunchSeam(t)
 
 		const run = "run-cc-legacy-worker-entry"
-		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
+		if err := recordFactoryRunStart(root, run, factory.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
 			t.Fatalf("record factory run: %v", err)
 		}
 
@@ -1085,8 +969,8 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 	})
 }
 
-// TestGLM_FactoryLaneEntry mirrors the cc case for the glm command: the -f
-// lane form selects the lane branch there too (same parse, same
+// TestGLM_FactoryLaneEntry mirrors the cc case for the glm command: the -l
+// lane entry selects the lane branch there too (same parse, same
 // environment contract, GLM backend constant).
 func TestGLM_FactoryLaneEntry(t *testing.T) {
 	// SPEC-CLI-TEST-CWD-ISOLATION-001: the lane entry claims the worker name
@@ -1107,21 +991,21 @@ func TestGLM_FactoryLaneEntry(t *testing.T) {
 	// NO_ACTIVE_FACTORY when none is active, so the fixture records the run a
 	// lead would have started before the lane enters.
 	const run = "run-glm-lane-entry"
-	if err := recordFactoryRunStart(root, run, kanban.BackendGLM, "", homestate.LaneCapacityDerived); err != nil {
+	if err := recordFactoryRunStart(root, run, factory.BackendGLM, "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatalf("record factory run: %v", err)
 	}
 
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
-	if err := runGLM(glmCmd, []string{"-f", "lane-3"}); err != nil {
-		t.Fatalf("runGLM(-f lane-3): %v", err)
+	if err := runGLM(glmCmd, []string{"-l"}); err != nil {
+		t.Fatalf("runGLM(-l): %v", err)
 	}
 	if c.runID != run {
-		t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
+		t.Errorf("%s at launch = %q, want the active run %q", config.EnvFactoryRunID, c.runID, run)
 	}
-	if c.worker != "lane-3" {
-		t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-3", c.worker)
+	if c.worker != "lane-1" {
+		t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-1", c.worker)
 	}
 	if c.cap != "10" {
 		t.Errorf("%s at launch = %q, want 10 (the per-lane cap)", config.EnvClaudeCodeMaxConcurrentSubagents, c.cap)
@@ -1130,7 +1014,7 @@ func TestGLM_FactoryLaneEntry(t *testing.T) {
 
 // TestGLM_FactoryLeadRunIsJoinableByLane drives both halves of a GLM factory
 // through runGLM in one project: the run a bare -f lead starts must be the
-// active run a -f lane-<n> join resolves. A lead that records its run only in
+// active run a -l join resolves. A lead that records its run only in
 // the kanban store leaves the lane with NO_ACTIVE_FACTORY.
 func TestGLM_FactoryLeadRunIsJoinableByLane(t *testing.T) {
 	root := t.TempDir()
@@ -1155,8 +1039,8 @@ func TestGLM_FactoryLeadRunIsJoinableByLane(t *testing.T) {
 	}
 
 	clearFactoryTestEnv(t)
-	if err := runGLM(glmCmd, []string{"-f", "lane-3"}); err != nil {
-		t.Fatalf("runGLM(-f lane-3) after a GLM lead started run %q: %v", leadRun, err)
+	if err := runGLM(glmCmd, []string{"-l"}); err != nil {
+		t.Fatalf("runGLM(-l) after a GLM lead started run %q: %v", leadRun, err)
 	}
 	if c.runID != leadRun {
 		t.Errorf("lane joined run %q, want the GLM lead's run %q", c.runID, leadRun)
