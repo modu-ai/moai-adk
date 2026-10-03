@@ -274,3 +274,171 @@ Every row in section 2 was measured in this run (session 783a9ff3, manager-devel
 - The `moai spec lint` result with its judging-build coordinates (section 2.8).
 - The single allowed test-only field (`ownerCheck`) was spent on the owner lookup; the operator-held options D1-C, D2-B, D2-C and D3-A remain unselected and untouched; `internal/lockfile` and `observer.go` are byte-identical to `1e2151a38`.
 - Whether `.moai/reports/t1432/*` is pushed stays with the leader (B8).
+
+---
+
+# Amendment 0.4.1 run phase — the heal lock (M7 to M10)
+
+Run-phase takeover from lane-12 (stopped at its usage limit), in an isolated agent worktree
+(branch `worktree-agent-a3712f21dbd667f41`) that merged `WT-harness-retention-debt` @ `09a701ad2`
+into local `develop` @ `02f939b14` (merge `f040ffcd3`; one CHANGELOG conflict resolved by keeping
+both sides). The original tree `.moai/worktrees/t1432` was not modified. Platform of every
+measurement: darwin arm64, uid 501, go1.26.8; host load average 70 to 88 during M10 (other
+sessions' test runs). Nothing pushed, nothing merged into develop.
+
+## A1. Commits
+
+| Milestone | SHA | Content |
+|---|---|---|
+| merge | `f040ffcd3` | take over `WT-harness-retention-debt` |
+| M7 — intermediate red commit T2 | `46485ec48` | `retention_heallock_test.go` (new), B11 guard in the swap test, `red-baseline-amend.md` |
+| M8 | `84ea58d48` | `retention.go`, `retention_heal_unix.go`, `retention_heal_windows.go`, `.gitignore` |
+| M9 | `aa42a4398` | N1, N4 (`retention_owner_test.go`), N2 (`retention_tail_test.go`), D1 bound (`retention_heallock_test.go`) |
+| M10 | the commit carrying this section | verdict, progress, CHANGELOG wording, load-measurement draft |
+
+## A2. RED (M7, T2 `46485ec48`)
+
+Full record: `.moai/reports/t1432/red-baseline-amend.md`. AC-HRH-006 (b), (b2), AC-HRH-015 and the
+four AC-HRH-016 cases FAIL against the unmodified `retention.go`; (c) both variants, (d),
+AC-HRH-003 (b) and (c) and the guarded swap test PASS. Each matches its ledger cell (E-036 to
+E-038, E-047a, E-039, E-048a).
+
+## A3. GREEN (M8, tree `84ea58d48`)
+
+`go test -count=1 -race -v -timeout 300s -run "TestPrune[HCS]" ./internal/harness/` (50 `=== RUN`),
+`ok github.com/modu-ai/moai-adk/internal/harness 11.697s`:
+
+```
+--- PASS: TestPruneHealLockHeldPastTheBoundFailsClosed (2.02s)
+--- PASS: TestPruneHealLockHostileEntryFailsClosed (0.06s)
+    --- PASS: TestPruneHealLockHostileEntryFailsClosed/symlink (0.02s)
+    --- PASS: TestPruneHealLockHostileEntryFailsClosed/directory (0.01s)
+    --- PASS: TestPruneHealLockHostileEntryFailsClosed/fifo (0.02s)
+    --- PASS: TestPruneHealLockHostileEntryFailsClosed/not-owned (0.01s)
+--- PASS: TestPruneCommonPathCreatesNoHealLock (0.05s)
+--- PASS: TestPruneStateRemovalFailureInReadOnlyDirSkips (0.01s)
+--- PASS: TestPruneStateUnreplaceableInReadOnlyDirSkips (0.01s)
+--- PASS: TestPruneCommonPathIgnoresAHeldHealLock (0.05s)
+--- PASS: TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal (0.03s)
+--- PASS: TestPruneHealWaitsForASharedHolder (0.31s)
+--- PASS: TestPruneHealSerializesOnTheHealLock (0.33s)
+--- PASS: TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep (0.33s)
+```
+
+Sentinels after M8: `grep -c -F "heal lock gives no exclusion on Windows" internal/harness/retention.go` → `1`;
+`grep -c -F "heal window remains" internal/harness/retention.go` → `0`;
+`git check-ignore -v .moai/harness/usage-log.jsonl.prune-heal` → `.gitignore:353:.moai/harness/usage-log.jsonl.prune-heal`, exit 0.
+
+## A4. Mutation table (regenerated from the files at `84ea58d48`; M9 rows from `aa42a4398`)
+
+Each mutant is a scratch copy of the then-current file injected with `go test -overlay`
+(session scratch directory, not committed). Run: `-run "TestPrune[HCS]"` (M9 rows: the three M9 tests).
+
+| Mutant | Killed by (verbatim) |
+|---|---|
+| heal lock requested in shared mode (`LOCK_SH`) | only `TestPruneHealWaitsForASharedHolder`: `retention_heallock_test.go:426: the pruner returned (<nil>) while another descriptor held a shared heal lock: it did not request an exclusive lock` |
+| lock never taken (flock call replaced by a nil error) | `TestPruneHealSerializesOnTheHealLock` (`:116 ... it did not wait`), `TestPruneHealWaitsForASharedHolder` (`:426`), `TestPruneHealLockHeldPastTheBoundFailsClosed` (`:201 want an error naming <tmp>/.../usage-log.jsonl.prune-heal, got <nil>`) |
+| heal-lock error formatted with `%v` (no wrap) | `TestPruneStateUnreplaceableInReadOnlyDirSkips` (AC-HRH-003 b): `retention_statepath_test.go:177: error does not wrap a permission error: retention: prune heal lock <tmp>/.../usage-log.jsonl.prune-heal cannot be created: open ...` |
+| heal ignores the removal failure | `TestPruneStateRemovalFailureInReadOnlyDirSkips` (AC-HRH-003 c): `:498: the removal failure's cause is not wrapped (a heal that ignores the failure ends differently): retention: prune state entry <tmp>/... changed on every inspection...` |
+| heal lock taken on the common path when its file exists | `TestPruneCommonPathIgnoresAHeldHealLock`: `:394: the common-path prune took 2.009280042s while the heal lock was held: it waited for a lock it must not take`; also AC-HRH-015/016 (duplicate warning absent), (b2) and AC-HRH-003 (c) |
+| heal lock never released (`defer release()` dropped) | `TestPruneStateRemovalFailureInReadOnlyDirSkips`: `:522: the heal lock is still held after the prune returned: resource temporarily unavailable`. `TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep` (d) did NOT fail on this mutant in this run (the unreferenced descriptor can be closed by the garbage collector's finalizer, releasing the lock); not relied on |
+| blind 2 s sleep before a single try (audit debt D1) | survived at `84ea58d48` (`ok ... 7.937s`); after M9 killed by `:157: the pruner returned 1.699337708s after the heal lock was released, want under 1s: it did not poll for the lock` and `:452: ... 1.701022042s after the shared heal lock was released ...` |
+| N1: removal decided by modification time alone | `TestHealRemovalIsNotDecidedByModTimeAlone`: `retention_owner_test.go:332: removal of a changed entry with an equal modification time: removed=true err=<nil>, want false and nil` |
+| N2: empty tail writes a newline | `TestPruneWithoutLateEventAddsNoBlankLine`: `retention_tail_test.go:240: replacement log = "{...\"subject\":\"fresh\"...}\n\n": want exact...` |
+| N4: file arm removes directly, bypassing the conditional removal | `TestPruneHealFileArmKeepsAFreshStateFileSwappedInDuringTheHeal`: `retention_owner_test.go:392: the fresh state file was removed or replaced by the heal's file arm: err=<nil>` |
+
+Not built in this run (reasoned only, as in the delta audit): open following links, owner check
+skipped, hostile entry removed and recreated, unbounded wait, heal proceeding after the bound.
+Limit stated by the SPEC and unchanged: a lock released BEFORE the removal is not killed by any
+deterministic test; the race probe (A5) is its only guard.
+
+## A5. Race probe (Definition of Done 10, final tree `aa42a4398`)
+
+Overlays regenerated with this worktree's paths (session scratch). Each `go test -count=1 -v -timeout 300s -overlay <ov> -run <name> ./internal/harness/`:
+
+```
+zz_heal_race_probe_test.go:97: PROBE heal-window: trials=20000 heal_removed_the_swapped_in_fresh_entry=0 path_holds_F=20000 path_holds_other=0 heal_errors=0
+--- PASS: TestZZProbeHealWindow (49.70s)
+zz_heal_race_probe_nolock_test.go:75: PROBE heal-window-NOLOCK: trials=2346 heal_removed_the_swapped_in_fresh_entry=5 path_holds_F=2341 path_holds_other=0 heal_errors=0
+zz_audit_race_test.go:67: PROBE remove-window: trials=2474 helper_removed_the_swapped_in_fresh_entry=5 helper_first=2467 swap_first=2
+```
+
+The probe ran the full 20000 trials (no early stop, not on the deadline): 0 removals. The no-lock
+control (the draft with the swapper's two lock lines removed; scratch copy, not committed) and the
+unchanged bare-helper audit probe both reach 5 removals, so the probe can fail and the lock is what
+makes it pass. Pre-fix references 5/2135 and 5/1270 (lane-12 and the ledger).
+
+## A6. Verification batch (M10, tree `aa42a4398` plus the uncommitted M10 text edits; no Go file differs)
+
+| Command | Result |
+|---|---|
+| `go test -count=1 -race -timeout 30m ./internal/harness/...` | 15 packages `ok` (`internal/harness 11.270s`; `rosterguard 1226.148s` under host load), exit 0 |
+| `go test -race -count=5 -v -run "TestPruneHeal\|TestPruneCommonPath\|TestPruneStateRemovalFailureInReadOnlyDirSkips\|TestPruneStateUnreplaceableInReadOnlyDirSkips\|TestHealRemovalIsNotDecidedByModTimeAlone\|TestPruneWithoutLateEventAddsNoBlankLine" ./internal/harness/` | 65 `--- PASS` (13 tests × 5, AC-HRH-015 included), 0 FAIL, 0 SKIP, `ok ... 14.111s` |
+| `go vet ./internal/harness/ ./internal/lockfile/` | exit 0 |
+| `gofmt -l internal/harness/` | empty |
+| `GOOS=windows go build ./...` | exit 0 |
+| `GOOS=windows go vet ./internal/harness/... ./internal/lockfile/` | exit 0 |
+| `golangci-lint run ./internal/harness/` (v2.1.6) | `0 issues.`, exit 0 |
+| `git diff --quiet 7639c04c1 HEAD -- internal/lockfile internal/harness/observer.go` | exit 0 |
+| AC-HRH-009 `git log --format=%h -s -L ... 7639c04c1..HEAD` (and `1e2151a38..HEAD`) | empty |
+| DoD 9: `git log --diff-filter=A --format=%h -- internal/harness/retention_heallock_test.go` | `46485ec48` |
+| DoD 9: `git log --reverse --format=%h 7639c04c1..HEAD -- internal/harness/retention.go internal/harness/retention_heal_unix.go internal/harness/retention_heal_windows.go` | `84ea58d48` (non-empty) |
+| DoD 9: `git merge-base --is-ancestor 46485ec48 84ea58d48` | exit 0 |
+| DoD 9 control: `git merge-base --is-ancestor 84ea58d48 46485ec48` | exit 1 |
+
+DoD 9 was evaluated on this takeover branch, which carries the card branch plus local develop; the
+leader re-evaluates it on whatever branch is merged.
+
+## A7. Load measurement (Definition of Done 15) — REPORTED TO THE LEADER: every observation exceeds 5 s
+
+Instrument: `.moai/reports/t1432/amend-drafts/zz_load_measure_test.go` (committed, injected with
+`-overlay`). Fixture: synthetic log 65,800,120 bytes, 1 in 8 events older than the cut, a user-owned
+symlink at the state path, a test-owned descriptor holding the heal lock and releasing it 1.8 s
+after the call starts. Load: 16 CPU-busy goroutines in the test process, context deadline, stopped
+by `t.Cleanup`; whole run under `timeout`. Every observation returned `err=<nil>`, shrank the log to
+57,574,933 bytes (valid).
+
+Run 1 (`timeout 180 go test ... -timeout 150s`, 120 s load deadline):
+
+```
+MEASURE no-load #1: wall=14.38954125s  #2: wall=9.024902s  #3: wall=7.2170115s
+MEASURE load    #1: wall=17.848337292s #2: wall=17.711502833s #3: wall=23.42840225s
+```
+
+Run 2 (after the first exceeded 5 s: prune-only decomposition added; `timeout 330 ... -timeout 300s`, 200 s load deadline):
+
+```
+MEASURE no-load prune-only #1: wall=13.962545334s #2: wall=10.149629083s #3: wall=11.715824875s
+MEASURE no-load            #1: wall=14.557523958s #2: wall=24.747596583s #3: wall=33.613738625s
+MEASURE load               #1: wall=34.269506375s #2: wall=27.446193s    #3: wall=18.909516417s
+MEASURE load prune-only    #1: wall=13.1276555s   #2: wall=7.739591583s  #3: wall=9.635313292s
+```
+
+Reading: on this host the prune of a 65.8 MB log ALONE took 7.7 to 14.0 s, already above the 5 s
+hook timeout before any heal-lock wait; the heal-lock wait adds the holder's ~1.8 s on top. The
+"no-load" control is not unloaded: the host load average was 70 to 88 from other sessions
+throughout (`uptime` 12:43 and 12:48), so neither arm isolates this process, and the run-to-run
+spread (7 s to 34 s) is dominated by that external load. The t1425 lane's 1.79 s prune for a log of
+this size was not reproduced here (not re-measured on an idle machine). Consequence for the 2 s
+bound: the bound itself is not what crosses 5 s on this host; a large log's prune does, with or
+without the heal lock. Not accepted silently: this is the leader's decision.
+
+Stated unmeasured: real hook processes, an idle machine, a larger log, a holder stalling past
+1.8 s, the waiter-behind-another-prune case (same magnitude, not separately timed), Linux, Windows,
+a cold page cache, production frequency.
+
+## A8. Gaps
+
+- Windows runtime not observed (`GOOS=windows` build and vet only). Linux unobserved; CI on ubuntu-latest is the first run of the heal-lock tests (flock semantics, O_NOFOLLOW/O_NONBLOCK, FIFO create).
+- Skipped tests: none skipped in the heal-lock group on darwin uid 501 (0 SKIP in the count=5 run); `TestPruneStateRemovalFailureInReadOnlyDirSkips` and `TestPruneHealFileArmKeepsAFreshStateFileSwappedInDuringTheHeal` skip as uid 0 (not exercised).
+- The kanban environment variables were not scrubbed for the test runs: the worktree-isolation guard refused every compound form (`unset ... && go test`, `env -u ... go test`) and admitted only the plain command; `grep -rl MOAI_KANBAN internal/harness/` printed nothing.
+- Audit debt D2 (warning line on a create failure unpinned) not taken; D3, D4, D6 (SPEC text) not touched because the SPEC body is frozen for the plan-audit hash.
+- `moai spec lint` not run in this takeover.
+- Mutant copies, overlays and the no-lock probe variant live in the session scratch directory and are not committed (the committed drafts under `amend-drafts/` are the originals).
+- The never-released mutant was not killed by AC-HRH-006 (d) in this run (finalizer-dependent); it is killed by AC-HRH-003 (c).
+
+## A9. Residual-risk
+
+- The load measurement above: a large log's prune exceeds the 5 s hook timeout on a loaded host independent of the heal lock.
+- A process that does not honour the heal lock (an older installed binary during the upgrade window) still races the removal, as the no-lock control shows.
+- On Windows no heal runs (the owner check refuses every entry); the heal lock gives no exclusion there.

@@ -98,6 +98,21 @@ The one allowed unexported test-only field on the pruner (`ownerCheck`) was spen
 
 Windows runtime not observed; Linux unobserved. The heal burst, the residual loss window between the final tail reading and the rename, and whether a concurrent append can be seen half-complete are disclosed, not measured. The pre-existing FIFO-at-the-state-path hang is recorded, not repaired (`spec.md` §A, §E, §F). Reviewer-read parts: the F5 and F6 source sentences against REQ-HRH-010 and REQ-HRH-011, and the phrase naming the missing archive step. Coverage was not re-measured in the run. The run and sync phases pushed nothing and merged nothing; the leader session does that.
 
+### Amendment 0.4.1 run phase (M7 to M10)
+
+Run-phase takeover from lane-12 (stopped at its usage limit) in an isolated agent worktree, branch `worktree-agent-a3712f21dbd667f41`: merge `f040ffcd3` of `WT-harness-retention-debt` @ `09a701ad2` into local `develop` @ `02f939b14`. Full evidence: `.moai/reports/t1432/verdict.md` § "Amendment 0.4.1 run phase" (A1 to A9) and `.moai/reports/t1432/red-baseline-amend.md`. Platform: darwin arm64, uid 501, go1.26.8.
+
+Commits, one line: intermediate red commit T2=`46485ec48` (M7), M8 `84ea58d48`, M9 `aa42a4398`, M10 = the commit carrying this section.
+
+- M7: the heal-lock tests fail against the unmodified `retention.go` exactly as ledgered (AC-HRH-006 b, b2, AC-HRH-015, four AC-HRH-016 cases red; c, d, AC-HRH-003 b and c, the guarded swap test green).
+- M8: heal lock inside `internal/harness` (`retention_heal_unix.go` `!windows`, `retention_heal_windows.go` no-op twin), taken in `healStateEntry` after the ownership check, held only across `removeStateEntryIfUnchanged`; exclusive `LOCK_NB` poll every 10 ms up to 2 s on the real clock; `O_NOFOLLOW|O_NONBLOCK`, no truncate; `internal/lockfile` and `observer.go` byte-identical to `7639c04c1`. All M7 tests flip to PASS.
+- M9: N1, N2, N4 landed with their mutants killed; audit debt D1 taken (b and b2 now require a return within 1 s of the release; the blind-sleep mutant returns 1.70 s after it and is killed).
+- M10: full `./internal/harness/...` under `-race` 15 packages ok; heal-lock group `-race -count=5` 65 PASS / 0 FAIL / 0 SKIP; vet, gofmt, golangci-lint (0 issues), `GOOS=windows go build ./...` and `go vet` exit 0; AC-HRH-009 empty; DoD 9 ordering T2 → `84ea58d48` with its reversed control exit 1.
+- Race probe (DoD 10): 0 removals in 20000 trials through `healStateEntry`; no-lock control 5 in 2346, bare-helper control 5 in 2474.
+- Load measurement (DoD 15): every observation exceeds 5 s, including prune-only controls (7.7 to 14.0 s for the 65.8 MB prune alone on a host at load average 70 to 88); reported to the leader, not accepted silently.
+
+Deviations: (1) the CHANGELOG sentence "narrows but does not close" was rewritten to the closed state in M10 at the leader's instruction (DoD 13 assigns it to the amended sync; the probe showed 0); (2) the kanban environment was not scrubbed for the test runs because the worktree guard refused the compound forms (no harness test reads those variables); (3) audit debt D2 not taken; the SPEC body is unchanged.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -125,6 +140,33 @@ open_gaps:
   - heal burst, residual loss window and half-complete concurrent append not measured
   - pre-existing FIFO-at-the-state-path hang recorded, not repaired
   - carried plan-audit debt N1-N6, O4, O8, O9 (accepted)
+```
+
+### Amendment 0.4.1 run-phase audit-ready signal
+
+```yaml
+amendment_run_complete_at: 2026-10-03
+amendment_run_status: audit-ready   # pending the leader's decision on the load measurement (DoD 15)
+cycle_type: tdd
+branch: worktree-agent-a3712f21dbd667f41   # takeover of WT-harness-retention-debt; not merged into develop
+commits:
+  takeover_merge: f040ffcd3
+  m7_intermediate_red_T2: 46485ec48
+  m8: 84ea58d48
+  m9: aa42a4398
+heal_lock_tests: {race_count5_pass: 65, fail: 0, skip: 0}
+mutants: {run: 10, killed: 10}   # blind sleep killed only after M9; never-released killed by AC-HRH-003 c, not by 006 d
+race_probe: {trials: 20000, removals: 0, no_lock_control: "5/2346", bare_helper_control: "5/2474"}
+load_measurement: "every observation > 5 s (prune alone 7.7-14.0 s on a host at load average 70-88); reported to the leader"
+evidence:
+  - .moai/reports/t1432/red-baseline-amend.md
+  - .moai/reports/t1432/verdict.md   # Amendment 0.4.1 run phase, A1-A9
+  - .moai/reports/t1432/amend-drafts/zz_load_measure_test.go
+open_gaps:
+  - Windows runtime not observed (GOOS=windows build and vet only); Linux unobserved
+  - kanban environment not scrubbed for the test runs (guard refused compound forms)
+  - audit debt D2 not taken; D3, D4, D6 are SPEC text and the SPEC body is frozen
+  - moai spec lint not run in the takeover
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
