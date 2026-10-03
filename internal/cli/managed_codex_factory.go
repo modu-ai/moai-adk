@@ -220,6 +220,10 @@ type managedCodexAppClient struct {
 
 // write sends one JSON frame; gorilla/websocket allows a single concurrent
 // writer, and the call loop and the read goroutine are two.
+//
+// @MX:ANCHOR: [AUTO] the single path for every connection write (call, the initialized notification, server-request replies) — fan_in 3
+// @MX:REASON: gorilla/websocket forbids concurrent writers, so a write that bypasses writeMu races the read goroutine's replies with the call loop
+// @MX:SPEC: SPEC-FACTORY-MANAGED-HARDEN-001
 func (c *managedCodexAppClient) write(v any) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
