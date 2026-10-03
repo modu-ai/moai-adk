@@ -11,10 +11,12 @@ package harness
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -43,19 +45,67 @@ func blockedPruner(t *testing.T, dir string, now time.Time, logPath string) (rel
 		time.Sleep(time.Millisecond)
 	}
 	time.Sleep(300 * time.Millisecond)
-	return func() error {
+	var once sync.Once
+	var result error
+	release = func() error {
+		once.Do(func() { result = releaseBlockedPruner(t, fifo, done) })
+		return result
+	}
+	// A test that fails before calling release still unblocks the pruner and the FIFO.
+	t.Cleanup(func() { _ = release() })
+	return release
+}
+
+// releaseBlockedPruner drains the FIFO the pruner's archive step writes to and returns the prune
+// error. The whole wait is bounded: the blocking read open runs in a goroutine, and if the pruner
+// returns without ever opening the FIFO for writing (it failed before its archive step) or does not
+// reach that step in time, the reader is released by a non-blocking write open (which succeeds only
+// while a reader is blocked in its open), so the real error is reported instead of a test timeout.
+func releaseBlockedPruner(t *testing.T, fifo string, done <-chan error) error {
+	t.Helper()
+	const wait = 10 * time.Second
+	read := make(chan struct{})
+	go func() {
+		defer close(read)
 		f, err := os.OpenFile(fifo, os.O_RDONLY, 0)
-		if err == nil {
-			_, _ = io.Copy(io.Discard, f)
-			_ = f.Close()
+		if err != nil {
+			return
 		}
-		select {
-		case perr := <-done:
-			return perr
-		case <-time.After(10 * time.Second):
-			t.Fatalf("pruner did not finish")
-			return nil
+		_, _ = io.Copy(io.Discard, f)
+		_ = f.Close()
+	}()
+	unblockReader := func() {
+		tick := time.NewTicker(10 * time.Millisecond)
+		defer tick.Stop()
+		for {
+			if w, err := os.OpenFile(fifo, os.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
+				_ = w.Close()
+			}
+			select {
+			case <-read:
+				return
+			case <-tick.C:
+			}
 		}
+	}
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case perr := <-done:
+		unblockReader()
+		return perr
+	case <-read:
+	case <-timer.C:
+		unblockReader()
+		t.Errorf("the pruner did not reach its archive step within %v", wait)
+		return fmt.Errorf("pruner did not reach its archive step within %v", wait)
+	}
+	select {
+	case perr := <-done:
+		return perr
+	case <-timer.C:
+		t.Errorf("the pruner did not finish within %v of the release", wait)
+		return fmt.Errorf("pruner did not finish within %v", wait)
 	}
 }
 
