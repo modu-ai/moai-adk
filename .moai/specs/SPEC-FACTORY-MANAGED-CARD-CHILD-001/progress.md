@@ -130,9 +130,9 @@ run_complete_at: 2026-10-03
 run_head: see the progress/spec-status commit that follows `8ad13b2e8`
 commits: `409ced12c` (M1 RED + inert declarations + red-baseline.md), `a184aa89c` (M2 branch and launch shape), `8ad13b2e8` (M3 operator-input pump), plus this progress/status commit
 ac_status: AC-CC-001..011 and 013 observed PASS (table above); AC-CC-012 deferred to sync
-test_count_managed_selection: 88 (79 - 1 + 10), observed with `-list` in both selector forms
+test_count_managed_selection: 89 (79 - 1 + 11) after the sync-audit F1 repair adds `TestManagedOperatorInputPumpBoundsLineLength`; the run-phase measurement was 88 (79 - 1 + 10) at `8ad13b2e8`
 lint: golangci-lint v2.1.6 `0 issues.`; go vet exit 0; gofmt only the pre-existing `todo_classify_llm_test.go`
-mutations: mu1..mu11 all observed red (mu6 indirectly), one extra Close mutant
+mutations: mu1..mu11 all observed red (mu6 indirectly), one extra Close mutant; mu12 (pump line bound removed) observed red in the F1 repair
 open_items_for_leader: P-1 defect candidate (direct door `syscall.Exec` ends the legacy lane loop after card 1 on POSIX); follow-up card text for the card-start prompt gap is in this file above
 
 ## §E.4 Sync-phase Audit-Ready Signal
@@ -193,3 +193,9 @@ Not run as a scan in this sync. The run phase added `internal/cli/managed_operat
 
 - The operator guide states the unattended-lane limit and the P-1 defect candidate; both are SPEC-disclosed or run-measured, neither fixed here. A leader decision is still owed on whether a card-start-prompt follow-up and a P-1 card are issued.
 - The CHANGELOG parent entry (SPEC-FACTORY-MANAGED-SESSION-001) still says card children are never managed; it describes that SPEC's own close.
+
+## Sync-audit F1/F5 repair (card t1440)
+
+- F1: the pump bounds one buffered line at `managedOperatorLineLimit` (= `bufio.MaxScanTokenSize`, the driver scanner's limit); an oversize line is dropped and input ends, as the driver's scanner does. RED in red-baseline.md; mu12 observed red. Managed-scope selection count 88 -> 89.
+- F5: two stale comments in `codex_launcher.go` corrected (legacy direct door replaces the process via `syscall.Exec`; managed path keeps the launcher as parent). F3: `endManagedLanePump()` added to the test helper cleanup.
+- F2/F4 unchanged (known limits, documented by the docs step).

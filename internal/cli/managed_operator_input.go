@@ -15,6 +15,7 @@ package cli
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -25,6 +26,13 @@ import (
 // managedLaneOperatorSource is the operator-input source the lane loop's pump
 // reads (default: the process stdin). Tests point it at their own reader.
 var managedLaneOperatorSource io.Reader = os.Stdin
+
+// managedOperatorLineLimit bounds one operator line the pump buffers (newline
+// included). It mirrors the delivery driver's scanner in
+// managed_factory_session.go readManagedOperatorInput (bufio.NewScanner with its
+// default bufio.MaxScanTokenSize): an oversize line is not delivered and ends
+// the input there, so the pump never holds more than the driver would accept.
+const managedOperatorLineLimit = bufio.MaxScanTokenSize
 
 // managedOperatorPumpsCreated counts pumps built, so a test can show the
 // switch-off path builds none.
@@ -127,7 +135,7 @@ func (p *managedOperatorPump) attach() io.ReadCloser {
 // @MX:WARN: a goroutine over a blocking source read cannot be cancelled.
 // @MX:REASON: os.Stdin has no read deadline; the goroutine ends with the source or the process, and holds one line at most.
 func (p *managedOperatorPump) run() {
-	reader := bufio.NewReader(p.src)
+	reader := bufio.NewReaderSize(p.src, managedOperatorLineLimit)
 	for {
 		p.mu.Lock()
 		for p.hasPending && !p.stopped {
@@ -138,7 +146,14 @@ func (p *managedOperatorPump) run() {
 		if stopped {
 			return
 		}
-		line, err := reader.ReadString('\n')
+		// ReadSlice never buffers past the reader's size; a line that does not
+		// fit returns bufio.ErrBufferFull, handled like the driver's scanner
+		// handles bufio.ErrTooLong: nothing is delivered and input ends.
+		raw, err := reader.ReadSlice('\n')
+		line := string(raw)
+		if errors.Is(err, bufio.ErrBufferFull) {
+			line = ""
+		}
 		p.mu.Lock()
 		if line != "" && !p.stopped {
 			p.pending, p.hasPending = line, true

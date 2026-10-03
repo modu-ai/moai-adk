@@ -99,3 +99,14 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	1.184s
 
 - The RED run was against the tree with inert declarations (not against a tree without them); AC-CC-002's "baseline" arm is therefore the unchanged direct-door code plus inert declarations the loop never calls.
 - Windows: the fake App Server tests skip on Windows by design; the cross build is the evidence there.
+
+## RED arm of the pump line bound (sync-audit F1 repair, before the fix), `-run TestManagedOperatorInputPumpBoundsLineLength`
+
+Source: 2x `managedOperatorLineLimit` (131072) zero bytes, no newline. The constant is declared but the pump does not use it yet.
+
+```
+--- FAIL: TestManagedOperatorInputPumpBoundsLineLength (0.00s)
+    managed_operator_input_test.go:221: Read = 64 bytes, <nil>; want no line and io.EOF (the driver's scanner delivers nothing for an oversize token)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.028s
+```

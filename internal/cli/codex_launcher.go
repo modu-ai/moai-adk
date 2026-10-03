@@ -916,8 +916,10 @@ func enterCodexRelaunchJoin(root string, entry factoryFlagParse, timing *factory
 // condition is `next`'s no-card answer — which the REQ-SD-025 merge-ready
 // skip rule feeds, so a card the Codex harness cannot advance never
 // livelocks the loop. The child learns its card through MOAI_KANBAN_CARD
-// (REQ-SD-019); no process replacement happens on this path (design.md §6) —
-// the launcher stays the parent across every card.
+// (REQ-SD-019). The managed path (SPEC-FACTORY-MANAGED-CARD-CHILD-001) keeps
+// the launcher as the parent across every card; the legacy direct door does
+// not: its POSIX default implementation replaces the process via syscall.Exec
+// (codex_direct_posix.go:53), so that lane loop ends after the first card.
 // @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
 func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool) error {
 	// The loop drives the F1 lease machinery itself, so it inherits the
@@ -1019,9 +1021,10 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 
 // launchCodexCardSession starts ONE interactive Codex session whose working
 // directory is the card worktree (design.md D1): `codex -C <worktree>`, the
-// card worktree's local instruction files attached. The launcher stays the
-// parent and waits; the existing child-process launch form serves every
-// platform (design.md §6 — Windows needs no new syscall). Under debug mode
+// card worktree's local instruction files attached. On the managed path
+// the launcher stays the parent and waits; on the legacy direct door the POSIX
+// default implementation replaces the process via syscall.Exec
+// (codex_direct_posix.go:53) and Windows launches a child (design.md §6). Under debug mode
 // the child environment carries the RUST_LOG linkage (REQ-010/REQ-011).
 func launchCodexCardSession(binaryPath, wt, label, cardID, runID string, debug bool) error {
 	localArgs, err := codexLocalDeveloperInstructionArgs(wt)

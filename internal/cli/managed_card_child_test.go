@@ -130,6 +130,7 @@ func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
 	t.Cleanup(func() {
 		codexLookPath, codexDirectLaunchFn, managedFactoryCodexLaunchFunc, managedCodexCardLaunchFunc = prevLook, prevDirect, prevPlain, prevCard
 		codexWorktreeAnchorLock, managedLaneOperatorSource = prevAnchor, prevSource
+		endManagedLanePump() // a skip or fatal path may leave the process-global pump set
 	})
 	codexLookPath = func(string) (string, error) { return bin, nil }
 	codexWorktreeAnchorLock = func(string, int, string) error { h.anchorCalls.Add(1); return nil }

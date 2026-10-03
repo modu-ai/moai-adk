@@ -9,6 +9,7 @@ package cli
 import (
 	"errors"
 	"io"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -189,4 +190,37 @@ func TestManagedOperatorInputPumpDetachesEndedSession(t *testing.T) {
 		defer func() { _ = b.Close() }()
 		mustLine(t, b, "after\n")
 	})
+}
+
+// pumpCountingSource serves n zero bytes (no newline) and counts what it served.
+type pumpCountingSource struct {
+	left int
+	read atomic.Int64
+}
+
+func (c *pumpCountingSource) Read(b []byte) (int, error) {
+	if c.left == 0 {
+		return 0, io.EOF
+	}
+	n := min(len(b), c.left)
+	clear(b[:n])
+	c.left -= n
+	c.read.Add(int64(n))
+	return n, nil
+}
+
+// The driver's scanner stops at bufio.MaxScanTokenSize; the pump mirrors that
+// bound, so a newline-free stream cannot grow launcher memory.
+func TestManagedOperatorInputPumpBoundsLineLength(t *testing.T) {
+	src := &pumpCountingSource{left: 2 * managedOperatorLineLimit}
+	p := newManagedOperatorPump(src)
+	a := p.attach()
+	defer func() { _ = a.Close() }()
+	got, err := pumpRead(t, a, 64)
+	if got != "" || !errors.Is(err, io.EOF) {
+		t.Fatalf("Read = %d bytes, %v; want no line and io.EOF (the driver's scanner delivers nothing for an oversize token)", len(got), err)
+	}
+	if n := src.read.Load(); n > int64(managedOperatorLineLimit) {
+		t.Fatalf("pump consumed %d bytes from the source; bound is %d", n, managedOperatorLineLimit)
+	}
 }
