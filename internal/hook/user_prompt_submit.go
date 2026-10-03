@@ -165,7 +165,14 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 			additionalCtx += bindNotice
 		}
 	}
-	if factoryCtx, _, _ := factoryHookBatchForRun(ctx, input, EventUserPromptSubmit, reboundRun); factoryCtx != "" {
+	factoryCtx, _, inboxState := factoryHookBatchForRun(ctx, input, EventUserPromptSubmit, reboundRun)
+	if notice := surfaceFactoryInboxState(factoryHookRoot(input), input.SessionID, inboxState); notice != "" {
+		if factoryCtx != "" {
+			factoryCtx += "\n\n"
+		}
+		factoryCtx += notice
+	}
+	if factoryCtx != "" {
 		if additionalCtx != "" {
 			additionalCtx += "\n\n"
 		}
