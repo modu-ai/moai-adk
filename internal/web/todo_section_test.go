@@ -8,7 +8,7 @@ package web
 // X go". The badge is half of that decision, so it is asserted rather than
 // assumed.
 //
-// Every test here stubs kanban.HomeDirFn, which is process-global, so none run
+// Every test here stubs factory.HomeDirFn, which is process-global, so none run
 // in parallel.
 
 import (
@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // stubTodoHome points the queue resolution's home seam at a throwaway
@@ -29,16 +29,16 @@ import (
 func stubTodoHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
-	orig := kanban.HomeDirFn
-	kanban.HomeDirFn = func() (string, error) { return home, nil }
-	t.Cleanup(func() { kanban.HomeDirFn = orig })
+	orig := factory.HomeDirFn
+	factory.HomeDirFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { factory.HomeDirFn = orig })
 	return home
 }
 
 // writeBacklog writes raw bytes to root's backlog file, creating the directory.
 func writeBacklog(t *testing.T, root, body string) string {
 	t.Helper()
-	path := kanban.BacklogPathForRoot(root)
+	path := factory.BacklogPathForRoot(root)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir queue dir: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestTodoSectionListsAllThreeStates(t *testing.T) {
 
 // TestTodoSectionRendersRelations — card t1309: recorded findings render as
 // relation lines under the rows they name, keeping the recorded direction.
-// The finding JSON mirrors kanban.BacklogFinding's serialization contract.
+// The finding JSON mirrors factory.BacklogFinding's serialization contract.
 func TestTodoSectionRendersRelations(t *testing.T) {
 	stubTodoHome(t)
 	root := t.TempDir()
@@ -185,19 +185,19 @@ func TestTodoSectionEmptyStates(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 
-// TestTodoSectionCarriesExistingKanbanMarker — AC-WTQ-010 first half: the
-// section sits inside an element carrying the EXISTING data-live="kanban"
+// TestTodoSectionCarriesExistingFactoryMarker — AC-WTQ-010 first half: the
+// section sits inside an element carrying the EXISTING data-live="factory"
 // attribute that refresh() keys on. No new event name is introduced.
-func TestTodoSectionCarriesExistingKanbanMarker(t *testing.T) {
+func TestTodoSectionCarriesExistingFactoryMarker(t *testing.T) {
 	stubTodoHome(t)
 	root := t.TempDir()
 	writeBacklog(t, root, threeStateQueue)
 
 	body := todoBodyFor(t, root)
 
-	marker := strings.Index(body, `data-live="kanban"`)
+	marker := strings.Index(body, `data-live="factory"`)
 	if marker < 0 {
-		t.Fatal("the todo section carries no data-live=\"kanban\" marker")
+		t.Fatal("the todo section carries no data-live=\"factory\" marker")
 	}
 	if row := strings.Index(body, "data-todo-row"); row < marker {
 		t.Fatalf("a todo row (at %d) sits outside the data-live marker (at %d)", row, marker)
@@ -240,7 +240,7 @@ func TestTodoSectionReadsThroughToProjectLocalQueue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat local queue: %v", err)
 	}
-	fallbackRoot := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(root))
+	fallbackRoot := filepath.Join(home, ".moai", "todo", factory.TodoQueueProjectKey(root))
 	time.Sleep(10 * time.Millisecond)
 
 	body := todoBodyFor(t, root)
@@ -285,7 +285,7 @@ func TestConsoleRoutesLeaveBacklogUntouched(t *testing.T) {
 	a.recordLastProfile = func(string) error { return nil }
 	h := a.routes()
 	time.Sleep(10 * time.Millisecond)
-	for _, p := range []string{"/", "/kanban", "/specs", "/monitor", "/settings", "/todo"} {
+	for _, p := range []string{"/", "/factory", "/specs", "/monitor", "/settings", "/todo"} {
 		serveGet(t, h, p)
 	}
 

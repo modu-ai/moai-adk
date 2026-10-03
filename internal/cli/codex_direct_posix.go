@@ -30,7 +30,7 @@ func defaultCodexDirectLaunch(cmd *exec.Cmd) error {
 		if !codexExplicitFactoryEnv(cmd.Env) || launchEnvValue(cmd.Env, config.EnvMoaiFactoryWorker) != "" {
 			return nil
 		}
-		return clearFactoryRunOwner(cmd.Dir, launchEnvValue(cmd.Env, config.EnvMoaiKanbanID))
+		return clearFactoryRunOwner(cmd.Dir, launchEnvValue(cmd.Env, config.EnvFactoryRunID))
 	}
 	if cmd.Dir != "" {
 		if err := os.Chdir(cmd.Dir); err != nil {

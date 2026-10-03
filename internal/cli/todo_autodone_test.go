@@ -23,14 +23,14 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // autoDoneFixture is a todoFixture whose landed ref is pinned at chain
 // level 1 (the configured git_strategy.worktree_base_branch) to
 // `origin/develop`, and whose config file materializes that ref — so the
 // close lines name the ref the ACs spell.
-func autoDoneFixture(t *testing.T) (root string, store *kanban.BacklogStore) {
+func autoDoneFixture(t *testing.T) (root string, store *factory.BacklogStore) {
 	t.Helper()
 	root, store = todoFixture(t)
 	cfgDir := filepath.Join(root, ".moai", "config", "sections")
@@ -82,10 +82,10 @@ func materializeOriginDevelop(t *testing.T, root string) string {
 // seedCard appends a card with an EXPLICIT id, bypassing Add's issuance —
 // the collision and false-negative fixtures need ids the ACs spell (t901,
 // t902, ...), which the store only issues after the id space reaches them.
-func seedCard(t *testing.T, store *kanban.BacklogStore, id, text string, state kanban.BacklogState) {
+func seedCard(t *testing.T, store *factory.BacklogStore, id, text string, state factory.BacklogState) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items = append(rec.Items, kanban.BacklogItem{
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items = append(rec.Items, factory.BacklogItem{
 			ID: id, Text: text,
 			AddedAt: time.Now().UTC().Format(time.RFC3339),
 			State:   state,
@@ -100,13 +100,13 @@ func seedCard(t *testing.T, store *kanban.BacklogStore, id, text string, state k
 // NON-colliding archive entry (the store's identity layer refuses a record
 // holding the same id live AND archived, so the collision fixture injects
 // its predecessor through injectArchivedPredecessor below).
-func seedArchivedCard(t *testing.T, store *kanban.BacklogStore, id, text string) {
+func seedArchivedCard(t *testing.T, store *factory.BacklogStore, id, text string) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Archived = append(rec.Archived, kanban.BacklogArchiveEntry{
-			Item:     kanban.BacklogItem{ID: id, Text: text, State: kanban.BacklogStateQueued},
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Archived = append(rec.Archived, factory.BacklogArchiveEntry{
+			Item:     factory.BacklogItem{ID: id, Text: text, State: factory.BacklogStateQueued},
 			Position: 0,
-			Findings: []kanban.BacklogArchivedFinding{},
+			Findings: []factory.BacklogArchivedFinding{},
 		})
 		return nil
 	}); err != nil {
@@ -122,7 +122,7 @@ func seedArchivedCard(t *testing.T, store *kanban.BacklogStore, id, text string)
 // constructs it at the storage layer: the reads the scan performs see the
 // collision, and no write through the store is attempted while it holds
 // (the collision card skips, so the scan issues no mutation).
-func injectArchivedPredecessor(t *testing.T, store *kanban.BacklogStore, id, text string) {
+func injectArchivedPredecessor(t *testing.T, store *factory.BacklogStore, id, text string) {
 	t.Helper()
 	_, err := openQueueDB(t, store).Exec(
 		`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position)
@@ -150,7 +150,7 @@ func writeSpecFixture(t *testing.T, root, id, status string) string {
 
 // recordBytes is the whole-record comparison the dry-run criterion asserts
 // on: the full decoded record marshalled — not a field sample.
-func recordBytes(t *testing.T, store *kanban.BacklogStore) []byte {
+func recordBytes(t *testing.T, store *factory.BacklogStore) []byte {
 	t.Helper()
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -167,7 +167,7 @@ func recordBytes(t *testing.T, store *kanban.BacklogStore) []byte {
 // command resolves it.
 func scanLogPath(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(kanban.RuntimeStateDirForRoot(resolveTodoQueueRoot()), "auto-done-log.jsonl")
+	return filepath.Join(factory.RuntimeStateDirForRoot(resolveTodoQueueRoot()), "auto-done-log.jsonl")
 }
 
 // readLogRows decodes the execution log, tolerating an absent file (a scan
@@ -236,7 +236,7 @@ func installFetchCounter(t *testing.T) *int {
 }
 
 // liveItem returns the live item for id, failing when it is absent.
-func liveItem(t *testing.T, store *kanban.BacklogStore, id string) kanban.BacklogItem {
+func liveItem(t *testing.T, store *factory.BacklogStore, id string) factory.BacklogItem {
 	t.Helper()
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -248,7 +248,7 @@ func liveItem(t *testing.T, store *kanban.BacklogStore, id string) kanban.Backlo
 		}
 	}
 	t.Fatalf("card %s is not live in the queue", id)
-	return kanban.BacklogItem{}
+	return factory.BacklogItem{}
 }
 
 // AC-AD-001 — the scan evaluates ONLY live queued/picked items: the dropped
@@ -256,9 +256,9 @@ func liveItem(t *testing.T, store *kanban.BacklogStore, id string) kanban.Backlo
 // exactly the two closed ids.
 func TestTodoAutoDone_LiveFilter(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t901", "queued work", kanban.BacklogStateQueued)
-	seedCard(t, store, "t911", "picked work", kanban.BacklogStatePicked)
-	seedCard(t, store, "t912", "dropped work", kanban.BacklogStateDropped)
+	seedCard(t, store, "t901", "queued work", factory.BacklogStateQueued)
+	seedCard(t, store, "t911", "picked work", factory.BacklogStatePicked)
+	seedCard(t, store, "t912", "dropped work", factory.BacklogStateDropped)
 	seedArchivedCard(t, store, "t913", "already archived work")
 	commitOnRef(t, root, "Merge branch 'WT-x' into develop (card t901)")
 	commitOnRef(t, root, "Merge branch 'WT-y' into develop (card t911)")
@@ -282,7 +282,7 @@ func TestTodoAutoDone_LiveFilter(t *testing.T) {
 	if len(rec.Items) != 1 || rec.Items[0].ID != "t912" {
 		t.Fatalf("live items = %v, want only the dropped card", rec.Items)
 	}
-	if rec.Items[0].State != kanban.BacklogStateDropped {
+	if rec.Items[0].State != factory.BacklogStateDropped {
 		t.Errorf("dropped card state = %q, want dropped", rec.Items[0].State)
 	}
 	// The scan added EXACTLY the two closeable cards to the archive; the
@@ -323,7 +323,7 @@ func TestTodoAutoDone_LiveFilter(t *testing.T) {
 // line carries the full contract, and the log row names form and full SHA.
 func TestTodoAutoDone_FormRecordedSHA(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t921", "sha-recorded work", kanban.BacklogStateQueued)
+	seedCard(t, store, "t921", "sha-recorded work", factory.BacklogStateQueued)
 	// The delivering commit sits BELOW the ref head, so the form-1 evidence
 	// is genuinely a reachability answer, not a ref-position coincidence.
 	sha := commitOnRef(t, root, "chore: the delivering commit, naming no card")
@@ -343,8 +343,8 @@ func TestTodoAutoDone_FormRecordedSHA(t *testing.T) {
 		t.Errorf("stdout %q lacks close line %q", stdout, want)
 	}
 	row := lastLogRowFor(t, scanLogPath(t), "t921", "closed")
-	if row["form"] != kanban.AutoDoneFormSHA {
-		t.Errorf("log form = %v, want %q", row["form"], kanban.AutoDoneFormSHA)
+	if row["form"] != factory.AutoDoneFormSHA {
+		t.Errorf("log form = %v, want %q", row["form"], factory.AutoDoneFormSHA)
 	}
 	if row["recorded_sha"] != sha {
 		t.Errorf("log recorded_sha = %v, want the full resolved SHA %s", row["recorded_sha"], sha)
@@ -355,7 +355,7 @@ func TestTodoAutoDone_FormRecordedSHA(t *testing.T) {
 }
 
 // liveItemOK reports whether id is live (the inverse convenience).
-func liveItemOK(t *testing.T, store *kanban.BacklogStore, id string) (kanban.BacklogItem, bool) {
+func liveItemOK(t *testing.T, store *factory.BacklogStore, id string) (factory.BacklogItem, bool) {
 	t.Helper()
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -366,14 +366,14 @@ func liveItemOK(t *testing.T, store *kanban.BacklogStore, id string) (kanban.Bac
 			return it, true
 		}
 	}
-	return kanban.BacklogItem{}, false
+	return factory.BacklogItem{}, false
 }
 
 // AC-AD-003 — evidence form 2: an attributed subject closes, and the log row
 // carries the attributed subject line and that commit's SHA.
 func TestTodoAutoDone_FormSubjectAttribution(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t931", "subject-attributed work", kanban.BacklogStateQueued)
+	seedCard(t, store, "t931", "subject-attributed work", factory.BacklogStateQueued)
 	subject := "Merge WT-fixture into develop (card t931)"
 	sha := commitOnRef(t, root, subject)
 	materializeOriginDevelop(t, root)
@@ -388,8 +388,8 @@ func TestTodoAutoDone_FormSubjectAttribution(t *testing.T) {
 		t.Errorf("stdout %q lacks close line %q", stdout, want)
 	}
 	row := lastLogRowFor(t, scanLogPath(t), "t931", "closed")
-	if row["form"] != kanban.AutoDoneFormSubject {
-		t.Errorf("log form = %v, want %q", row["form"], kanban.AutoDoneFormSubject)
+	if row["form"] != factory.AutoDoneFormSubject {
+		t.Errorf("log form = %v, want %q", row["form"], factory.AutoDoneFormSubject)
 	}
 	if row["subject"] != subject {
 		t.Errorf("log subject = %v, want %q", row["subject"], subject)
@@ -406,7 +406,7 @@ func TestTodoAutoDone_CollisionSkipsAmbiguous(t *testing.T) {
 	// The predecessor carried t902 first; its `fix(t902)` commit IS on the
 	// landed ref. The id was then REISSUED to a live card with different
 	// text and no recorded SHA.
-	seedCard(t, store, "t902", "the reissued card's different text", kanban.BacklogStateQueued)
+	seedCard(t, store, "t902", "the reissued card's different text", factory.BacklogStateQueued)
 	commitOnRef(t, root, "fix(t902): the predecessor's landed work")
 	injectArchivedPredecessor(t, store, "t902", "the predecessor's text")
 	materializeOriginDevelop(t, root)
@@ -426,7 +426,7 @@ func TestTodoAutoDone_CollisionSkipsAmbiguous(t *testing.T) {
 // AC-AD-005 — guard M1 override: a recorded SHA disambiguates a reissued id.
 //
 // The decision layer's proof is TestAutoDoneDecide/"recorded SHA closes
-// through a collision" (internal/kanban). The CLI-level proof below runs the
+// through a collision" (internal/factory). The CLI-level proof below runs the
 // WHOLE scan over the injected reissue state: --dry-run exercises the
 // decision end-to-end and prints the close the scan would produce (dry-run
 // writes nothing, so the identity-invariant refusal cannot fire), and the
@@ -437,7 +437,7 @@ func TestTodoAutoDone_CollisionSkipsAmbiguous(t *testing.T) {
 // the live record holds no duplicate and the close applies.
 func TestTodoAutoDone_CollisionRecordedSHAOverrides(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t902", "the reissued card's different text", kanban.BacklogStateQueued)
+	seedCard(t, store, "t902", "the reissued card's different text", factory.BacklogStateQueued)
 	// The CURRENT card's own commit: reachable, attributing nothing (the
 	// recorded SHA is the disambiguation, not the subject stream).
 	c2 := commitOnRef(t, root, "chore: the reissued card's own delivery")
@@ -475,9 +475,9 @@ func TestTodoAutoDone_SpecNotCompletedSkips(t *testing.T) {
 	root, store := autoDoneFixture(t)
 	_ = writeSpecFixture(t, root, "SPEC-FIXTURE-IMP-001", "implemented")
 	_ = writeSpecFixture(t, root, "SPEC-FIXTURE-DONE-001", "completed")
-	seedCard(t, store, "t941", "run landed, sync pending", kanban.BacklogStatePicked)
-	seedCard(t, store, "t942", "run landed, sync done", kanban.BacklogStatePicked)
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	seedCard(t, store, "t941", "run landed, sync pending", factory.BacklogStatePicked)
+	seedCard(t, store, "t942", "run landed, sync done", factory.BacklogStatePicked)
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			switch rec.Items[i].ID {
 			case "t941":
@@ -518,8 +518,8 @@ func TestTodoAutoDone_SpecNotCompletedSkips(t *testing.T) {
 // completed: unknown is not a pass.
 func TestTodoAutoDone_SpecUnreadableIsNotCompleted(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t943", "spec directory missing", kanban.BacklogStateQueued)
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	seedCard(t, store, "t943", "spec directory missing", factory.BacklogStateQueued)
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == "t943" {
 				v := "SPEC-FIXTURE-ABSENT-001"
@@ -548,8 +548,8 @@ func TestTodoAutoDone_SpecUnreadableIsNotCompleted(t *testing.T) {
 // AC-AD-007 — guard M3: a non-landing declaration attributes nothing.
 func TestTodoAutoDone_NegationAttributesNothing(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t951", "attempt not merged", kanban.BacklogStateQueued)
-	seedCard(t, store, "t952", "notes not landed", kanban.BacklogStateQueued)
+	seedCard(t, store, "t951", "attempt not merged", factory.BacklogStateQueued)
+	seedCard(t, store, "t952", "notes not landed", factory.BacklogStateQueued)
 	commitOnRef(t, root, "fix(t951): attempt (not merged)")
 	commitOnRef(t, root, "docs(t952): notes (NOT landed)")
 	materializeOriginDevelop(t, root)
@@ -575,7 +575,7 @@ func TestTodoAutoDone_NegationAttributesNothing(t *testing.T) {
 // skip line is pinned, the exit code is 0, and no close line appears.
 func TestTodoAutoDone_InconclusiveNeverCloses(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t961", "eligible on every other axis", kanban.BacklogStateQueued)
+	seedCard(t, store, "t961", "eligible on every other axis", factory.BacklogStateQueued)
 	// The configured ref names origin/develop, but the fixture never
 	// materializes it — the landed ref is unresolvable.
 	commitOnRef(t, root, "fix(t961): work the unresolvable ref cannot see")
@@ -599,11 +599,11 @@ func TestTodoAutoDone_InconclusiveNeverCloses(t *testing.T) {
 // one skip line per skipped card, summary last, and factory state recorded
 // for the closed card.
 func TestTodoAutoDone_CloseLineContract(t *testing.T) {
-	t.Setenv(config.EnvMoaiKanbanID, "run-1")
+	t.Setenv(config.EnvFactoryRunID, "run-1")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t971", "closes", kanban.BacklogStateQueued)
-	seedCard(t, store, "t972", "skips", kanban.BacklogStateQueued)
+	seedCard(t, store, "t971", "closes", factory.BacklogStateQueued)
+	seedCard(t, store, "t972", "skips", factory.BacklogStateQueued)
 	commitOnRef(t, root, "fix(t971): landed work")
 	materializeOriginDevelop(t, root)
 
@@ -644,8 +644,8 @@ func TestTodoAutoDone_CloseLineContract(t *testing.T) {
 // skip rows, each carrying the required facts.
 func TestTodoAutoDone_ExecutionLog(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t981", "closes on subject", kanban.BacklogStateQueued)
-	seedCard(t, store, "t982", "skips", kanban.BacklogStateQueued)
+	seedCard(t, store, "t981", "closes on subject", factory.BacklogStateQueued)
+	seedCard(t, store, "t982", "skips", factory.BacklogStateQueued)
 	subject := "Merge branch 'WT-f' into develop (card t981)"
 	sha := commitOnRef(t, root, subject)
 	materializeOriginDevelop(t, root)
@@ -691,7 +691,7 @@ func TestTodoAutoDone_ExecutionLog(t *testing.T) {
 // refused.
 func TestTodoAutoDone_ReversalRow(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t991", "reversible work", kanban.BacklogStateQueued)
+	seedCard(t, store, "t991", "reversible work", factory.BacklogStateQueued)
 	commitOnRef(t, root, "fix(t991): landed work")
 	materializeOriginDevelop(t, root)
 
@@ -723,8 +723,8 @@ func TestTodoAutoDone_ReversalRow(t *testing.T) {
 // exactly the same close and skip lines the non-dry run produces.
 func TestTodoAutoDone_DryRunByteIdentity(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t995", "would close", kanban.BacklogStateQueued)
-	seedCard(t, store, "t996", "would skip", kanban.BacklogStateQueued)
+	seedCard(t, store, "t995", "would close", factory.BacklogStateQueued)
+	seedCard(t, store, "t996", "would skip", factory.BacklogStateQueued)
 	commitOnRef(t, root, "fix(t995): landed work")
 	materializeOriginDevelop(t, root)
 
@@ -753,7 +753,7 @@ func TestTodoAutoDone_DryRunByteIdentity(t *testing.T) {
 // AC-AD-013 — idempotence: the second scan closes nothing and reports zero.
 func TestTodoAutoDone_Idempotence(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t997", "closes once", kanban.BacklogStateQueued)
+	seedCard(t, store, "t997", "closes once", factory.BacklogStateQueued)
 	commitOnRef(t, root, "fix(t997): landed work")
 	materializeOriginDevelop(t, root)
 
@@ -779,8 +779,8 @@ func TestTodoAutoDone_Idempotence(t *testing.T) {
 // and the provenance value set stays closed at operator.
 func TestTodoAutoDone_NoLandingColumnWrites(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t998", "closes", kanban.BacklogStateQueued)
-	seedCard(t, store, "t999", "skips", kanban.BacklogStateQueued)
+	seedCard(t, store, "t998", "closes", factory.BacklogStateQueued)
+	seedCard(t, store, "t999", "skips", factory.BacklogStateQueued)
 	sha := commitOnRef(t, root, "fix(t998): landed work")
 	commitOnRef(t, root, "fix(t999): landed work too")
 	materializeOriginDevelop(t, root)
@@ -820,7 +820,7 @@ func TestTodoAutoDone_NoLandingColumnWrites(t *testing.T) {
 func TestTodoAutoDone_FetchBoundary(t *testing.T) {
 	t.Run("with --fetch runs exactly one fetch", func(t *testing.T) {
 		root, store := autoDoneFixture(t)
-		seedCard(t, store, "t9981", "fetch-scoped work", kanban.BacklogStateQueued)
+		seedCard(t, store, "t9981", "fetch-scoped work", factory.BacklogStateQueued)
 		commitOnRef(t, root, "fix(t9981): landed work")
 		materializeOriginDevelop(t, root)
 		count := installFetchCounter(t)
@@ -838,7 +838,7 @@ func TestTodoAutoDone_FetchBoundary(t *testing.T) {
 
 	t.Run("without --fetch runs zero fetches", func(t *testing.T) {
 		root, store := autoDoneFixture(t)
-		seedCard(t, store, "t9982", "offline-scoped work", kanban.BacklogStateQueued)
+		seedCard(t, store, "t9982", "offline-scoped work", factory.BacklogStateQueued)
 		commitOnRef(t, root, "fix(t9982): landed work")
 		materializeOriginDevelop(t, root)
 		count := installFetchCounter(t)
@@ -878,7 +878,7 @@ func TestTodoAutoDone_CloseSurfaceExclusivity(t *testing.T) {
 				hits[f] = n
 			}
 		}
-		// The store's own definition site is internal/kanban, outside this
+		// The store's own definition site is internal/factory, outside this
 		// glob; every CALL SITE in the CLI surface must sit in a file the
 		// allowlist's verb owns. The third close surface is the `--auto`
 		// serial cycle: it records the done transition on the worker's disk
@@ -902,7 +902,7 @@ func TestTodoAutoDone_CloseSurfaceExclusivity(t *testing.T) {
 
 	t.Run("todo landed transitions nothing", func(t *testing.T) {
 		root, store := autoDoneFixture(t)
-		seedCard(t, store, "t9983", "control card", kanban.BacklogStateQueued)
+		seedCard(t, store, "t9983", "control card", factory.BacklogStateQueued)
 		sha := commitOnRef(t, root, "fix(t9983): landing-eligible work")
 		materializeOriginDevelop(t, root)
 		beforeRec, err := store.LoadPure()
@@ -921,7 +921,7 @@ func TestTodoAutoDone_CloseSurfaceExclusivity(t *testing.T) {
 			t.Fatalf("live count changed: %d -> %d — recording evidence transitioned a card", len(beforeRec.Items), len(after.Items))
 		}
 		item := liveItem(t, store, "t9983")
-		if item.State != kanban.BacklogStateQueued || item.Text != "control card" {
+		if item.State != factory.BacklogStateQueued || item.Text != "control card" {
 			t.Errorf("control card changed: %+v", item)
 		}
 		if len(after.Archived) != 0 {
@@ -941,14 +941,14 @@ func TestTodoAutoDone_FalseNegativeShapes(t *testing.T) {
 	// Shape A (t603, landing commit d8b7836aa) — the comma-form trailing
 	// parenthetical: the card id opens the group, a non-card token follows
 	// the comma.
-	seedCard(t, store, "t6030", "comma-form card", kanban.BacklogStateQueued)
+	seedCard(t, store, "t6030", "comma-form card", factory.BacklogStateQueued)
 	commitOnRef(t, root, "fix(hooks): sync-phase 게이트의 C++ 검사 복구 (t6030, H08)")
 
 	// Shape B (t681, merge ae980ef2d / repair 4fb28a5c6) — the merge subject
 	// mentions the id in a NON-attributing position (mid-subject, no
 	// trailing group), the actual repair commit's subject carries NO id, and
 	// the card closes only on its recorded Landing.SHA.
-	seedCard(t, store, "t6031", "sha-only card", kanban.BacklogStateQueued)
+	seedCard(t, store, "t6031", "sha-only card", factory.BacklogStateQueued)
 	commitOnRef(t, root, "Merge branch 'WT-shape-b' (card t6031 work) into develop")
 	shapeBSha := commitOnRef(t, root, "chore: the actual repair, no id in sight")
 	materializeOriginDevelop(t, root)
@@ -970,7 +970,7 @@ func TestTodoAutoDone_FalseNegativeShapes(t *testing.T) {
 	// The contrast, judged by the SAME gates: attributing the comma form did
 	// not loosen the collision gate — a reissued id on subject evidence
 	// alone still skips.
-	seedCard(t, store, "t6032", "reissued text B", kanban.BacklogStateQueued)
+	seedCard(t, store, "t6032", "reissued text B", factory.BacklogStateQueued)
 	commitOnRef(t, root, "fix(t6032): some landed-looking work")
 	injectArchivedPredecessor(t, store, "t6032", "original text A")
 	materializeOriginDevelop(t, root)
@@ -1002,7 +1002,7 @@ func TestTodoAutoDone_ReissuedIDOlderCommitSkips(t *testing.T) {
 	// THEN the id is reissued: same id, different text, and NO predecessor
 	// anywhere in the store — DistinctTexts reads 1, so guard M1 stays
 	// silent (the exact reach gap the t684 verdict recorded).
-	seedCard(t, store, "t9988", "reissued text — a different card under a reused id", kanban.BacklogStateQueued)
+	seedCard(t, store, "t9988", "reissued text — a different card under a reused id", factory.BacklogStateQueued)
 	materializeOriginDevelop(t, root)
 
 	stdout, _, err := runTodo(t, "auto-done")
@@ -1025,7 +1025,7 @@ func TestTodoAutoDone_ReissuedIDOlderCommitSkips(t *testing.T) {
 // not-landed, never closes.
 func TestTodoAutoDone_RecordedSHAUnreachableSkips(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t9984", "recorded then left behind", kanban.BacklogStateQueued)
+	seedCard(t, store, "t9984", "recorded then left behind", factory.BacklogStateQueued)
 	commitOnRef(t, root, "chore: the delivering commit")
 	materializeOriginDevelop(t, root)
 	sha := gitOut(t, root, "rev-parse", "refs/remotes/origin/develop")
@@ -1052,8 +1052,8 @@ func TestTodoAutoDone_RecordedSHAUnreachableSkips(t *testing.T) {
 // The --json surface (plan §F M2): the same decisions, machine-readable.
 func TestTodoAutoDone_JSONOutput(t *testing.T) {
 	root, store := autoDoneFixture(t)
-	seedCard(t, store, "t9985", "closes", kanban.BacklogStateQueued)
-	seedCard(t, store, "t9986", "skips", kanban.BacklogStateQueued)
+	seedCard(t, store, "t9985", "closes", factory.BacklogStateQueued)
+	seedCard(t, store, "t9986", "skips", factory.BacklogStateQueued)
 	commitOnRef(t, root, "fix(t9985): landed work")
 	materializeOriginDevelop(t, root)
 
@@ -1078,7 +1078,7 @@ func TestTodoAutoDone_JSONOutput(t *testing.T) {
 	if report.Ref != "origin/develop" {
 		t.Errorf("report ref = %q, want origin/develop", report.Ref)
 	}
-	if len(report.Closed) != 1 || report.Closed[0].Card != "t9985" || report.Closed[0].Form != kanban.AutoDoneFormSubject {
+	if len(report.Closed) != 1 || report.Closed[0].Card != "t9985" || report.Closed[0].Form != factory.AutoDoneFormSubject {
 		t.Errorf("closed = %+v, want t9985 subject-attribution", report.Closed)
 	}
 	if len(report.Skipped) != 1 || report.Skipped[0].Card != "t9986" || report.Skipped[0].Reason == "" {
@@ -1097,7 +1097,7 @@ func TestTodoAutoDone_HelpDocumentsContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("help: %v", err)
 	}
-	for _, token := range kanban.AutoDoneSkipReasons() {
+	for _, token := range factory.AutoDoneSkipReasons() {
 		if !strings.Contains(stdout, token) {
 			t.Errorf("--help does not document skip token %q", token)
 		}

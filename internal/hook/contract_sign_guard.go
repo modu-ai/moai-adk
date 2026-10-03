@@ -53,7 +53,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // contractSignViolationPrefix is the deny sentinel the orchestrator matches.
@@ -148,7 +148,7 @@ func contractLaneGate() bool {
 	if os.Getenv(config.EnvMoaiFactoryWorker) != "" {
 		return true
 	}
-	return os.Getenv(config.EnvMoaiKanbanBackend) == kanban.BackendGPT
+	return os.Getenv(config.EnvFactoryBackend) == factory.BackendGPT
 }
 
 // CheckContractSignClassify classifies one command line under the contract

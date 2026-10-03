@@ -12,7 +12,7 @@ added_in: "v3.1"
 `/moai todo` and `moai todo` remain as **compatibility surfaces** for existing automation and scripts. The canonical names are [`/moai gtd`](/en/utility-commands/moai-gtd) and `moai gtd`; both names use the same SQLite queue, card IDs, ordering, archive, and restore behavior.
 {{< /callout >}}
 
-A **backlog queue** where you stack up what to do next, one line at a time. The kanban board's `backlog` column has no session assigned to it, so nobody pushes work into it on its own. Putting a card on the board is therefore always a human's judgment, and `/moai todo` is that window.
+A **backlog queue** where you stack up what to do next, one line at a time. The factory queue's `backlog` has no session assigned to it, so nobody pushes work into it on its own. Putting a card in the queue is therefore always a human's judgment, and `/moai todo` is that window.
 
 {{< callout type="info" >}}
 **One-line summary**: `/moai todo` records what to work on next. You add an item, view the list, archive completed work, and pick the next card. Picking does not create a SPEC; the card class determines the workflow.
@@ -26,7 +26,7 @@ A **backlog queue** where you stack up what to do next, one line at a time. The 
 
 A backlog item is **one line of intent**, not a SPEC or a plan. After a human picks it, Class A proceeds directly to close, Class B follows run → sync without a SPEC, and Class C follows plan → run → sync with SPEC authoring in plan.
 
-The queue is deliberately thin. It holds nothing that a SPEC, git history, or the board records better — only **what the human wants next**.
+The queue is deliberately thin. It holds nothing that a SPEC, git history, or the factory record records better — only **what the human wants next**.
 
 ```mermaid
 flowchart TD
@@ -119,7 +119,7 @@ For a regular project directory, the queue is stored in one SQLite database at `
 | `spec_id`                    | An optional link to a SPEC identifier. Filled when the pick records it via `--spec`; when the id is not yet known it stays `null` even in the `picked` state.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `runtime`                    | The latest run-start and card-assignment reports. `runs` and `assignments` are always arrays, and their UUID fields are logical projections of Todo identity; the runtime tables do not store separate UUID columns. `reported_state` is a report, not authority over the card's completed state.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `findings`                   | The records kept about **pairs** of cards. A relation belongs to the pair rather than to either card, which is why it lives here and not in an item. Always an array — a file written before this feature loads with an empty one, so "no findings" never has to be told apart from "no such feature". `source` is `mechanical` (a measured text similarity) or `agent` (a judgment written by a human or an agent). A finding leaves the file when its card does.                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `state`                      | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible. The only way an item **leaves the live queue** is an explicit `moai todo done` run by a human — nothing removes it automatically when its work completes. `done` does not delete the card and its findings; it **archives** them: they stop appearing in `list` / `next` / `why` / `analyze`, and `moai todo undone <n>` restores both, at the position the card held. Discarding is different from archiving: `moai todo drop <n> "<reason>"` moves a card to `dropped` while keeping it in the live queue file, prefixing its text with the reason, and `moai todo undrop <n>` reverses that exactly. A dropped card is not a pick candidate. |
+| `state`                      | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card handed to a lane". A picked item stays in the file so ongoing work is visible. The only way an item **leaves the live queue** is an explicit `moai todo done` run by a human — nothing removes it automatically when its work completes. `done` does not delete the card and its findings; it **archives** them: they stop appearing in `list` / `next` / `why` / `analyze`, and `moai todo undone <n>` restores both, at the position the card held. Discarding is different from archiving: `moai todo drop <n> "<reason>"` moves a card to `dropped` while keeping it in the live queue file, prefixing its text with the reason, and `moai todo undrop <n>` reverses that exactly. A dropped card is not a pick candidate. |
 
 Changes commit in a SQLite transaction under the queue lock, using WAL mode. A missing queue is an **empty queue**; unreadable or malformed data is reported and left untouched. The console displays an unavailable state when it cannot read the queue, rather than presenting a zero count.
 
@@ -148,17 +148,17 @@ You can also approve several cards at once — by pointing at the cards, or by s
 After a card is picked, it continues like this:
 
 1. The picked item is marked `picked` with one locked write: `moai todo next <n> [--spec <SPEC-ID>]`. When the identifier is already known, it is attached right here.
-2. Follow the kanban card class: A direct close, B run → sync without a SPEC, or C plan → run → sync with SPEC authoring in plan.
+2. Follow the card class: A direct close, B run → sync without a SPEC, or C plan → run → sync with SPEC authoring in plan.
 3. For a card that requires a SPEC, re-run `moai todo next <n> --spec <SPEC-ID>` once its identifier is known. This attachment is explicit; a picked card may legitimately have no SPEC.
 
-## Outside Kanban Mode
+## Outside Factory Mode
 
-`/moai todo` works as-is in an ordinary single session — it is just a queue. It does not dispatch, though. Without companion sessions there is nobody to instruct, so reading and writing the queue is all there is, and the rest proceeds by hand.
+`/moai todo` works as-is in an ordinary single session — it is just a queue. It does not dispatch, though. Without lane sessions there is nobody to instruct, so reading and writing the queue is all there is, and the rest proceeds by hand.
 
 ## Boundaries
 
 - **Not a work-management tool.** No priorities, no assignees, no deadlines, no dependency graph. Work that needs those belongs in an issue tracker or a SPEC.
-- **Not the board.** Which column a card sits in is held by the leader session and the SPEC status, not by this file.
+- **Not the run record.** Which stage a card is in is held by the lane carrying it and the SPEC status, not by this file.
 - **Not the source of truth for work in progress.** Once a card has a SPEC, the SPEC artifacts are the reference; the backlog item is only a pointer to it.
 - **It does not fill itself.** The tool never scrapes TODO comments, open issues, or audit findings into the queue. A human puts items in.
 - **The guidance surfaces can be switched off.** The session-start summary, the statusline TODO segment, and the automatic routing turn off with `workflow.todo.enabled: false` in `workflow.yaml` (see the [configuration reference](/en/advanced/config-sections/)). The command and its verbs keep working when off.
@@ -259,6 +259,6 @@ Both surfaces share the same storage layer. Mutations hold the sibling lock file
 
 ## Related documentation
 
-- [Kanban Mode](/en/advanced/kanban-mode) — the board cards leaving the backlog flow across
+- [Factory Mode](/en/advanced/factory-mode) — the lanes that take over the cards leaving the backlog
 - [`/moai` unified command](/en/utility-commands/moai) — the full subcommand map
 - [`/moai plan`](/en/workflow-commands/moai-plan) — the stage where a picked card becomes a SPEC

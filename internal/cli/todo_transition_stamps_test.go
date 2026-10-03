@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // stampOf returns the dereferenced stamp or "" when absent.
@@ -35,7 +35,7 @@ func TestTransitionStamps_PickedAtStampsAndClears(t *testing.T) {
 		t.Fatalf("load: %v", err)
 	}
 	first := rec.Items[0]
-	if first.State != kanban.BacklogStatePicked {
+	if first.State != factory.BacklogStatePicked {
 		t.Fatalf("state = %s, want picked", first.State)
 	}
 	if stampOf(first.PickedAt) == "" {
@@ -87,7 +87,7 @@ func TestTransitionStamps_NextPickStamps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if rec.Items[0].State != kanban.BacklogStatePicked || stampOf(rec.Items[0].PickedAt) == "" {
+	if rec.Items[0].State != factory.BacklogStatePicked || stampOf(rec.Items[0].PickedAt) == "" {
 		t.Fatalf("after next pick: state=%s picked_at=%q, want picked + a timestamp",
 			rec.Items[0].State, stampOf(rec.Items[0].PickedAt))
 	}
@@ -231,7 +231,7 @@ func TestTransitionStamps_GtdEngagePickAndGoalMissionPick(t *testing.T) {
 		}
 		for i := range rec.Items {
 			if rec.Items[i].ID == "t1" {
-				if rec.Items[i].State != kanban.BacklogStatePicked {
+				if rec.Items[i].State != factory.BacklogStatePicked {
 					t.Fatalf("state = %s, want picked after gtd engage --pick", rec.Items[i].State)
 				}
 				if stampOf(rec.Items[i].PickedAt) == "" {
@@ -255,7 +255,7 @@ func TestTransitionStamps_GtdEngagePickAndGoalMissionPick(t *testing.T) {
 		}
 		for i := range rec.Items {
 			if rec.Items[i].ID == cardID {
-				if rec.Items[i].State != kanban.BacklogStatePicked {
+				if rec.Items[i].State != factory.BacklogStatePicked {
 					t.Fatalf("state = %s, want picked after the mission pick", rec.Items[i].State)
 				}
 				if stampOf(rec.Items[i].PickedAt) == "" {

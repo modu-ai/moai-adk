@@ -30,7 +30,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoLLMHTTPDoer abstracts the classification POST so tests inject a canned
@@ -70,7 +70,7 @@ type todoLLMJudgment struct {
 	Reason   string `json:"reason"`
 }
 
-// llmCardDecider implements kanban.CardDecider over the configured GLM
+// llmCardDecider implements factory.CardDecider over the configured GLM
 // endpoint (REQ-TLD-001). It is stateless: the endpoint, credential, HTTP
 // client, and timeout resolve through the package seams above.
 type llmCardDecider struct{}
@@ -82,7 +82,7 @@ func newLLMCardDecider() llmCardDecider { return llmCardDecider{} }
 // judgment the entry points compute BEFORE the queue lock (REQ-TLD-005 /
 // plan OD-D). Every other decider — deterministic, static, unavailable —
 // resolves inside the locked write as before.
-func todoDeciderIsLLM(dec kanban.CardDecider) bool {
+func todoDeciderIsLLM(dec factory.CardDecider) bool {
 	_, ok := dec.(llmCardDecider)
 	return ok
 }
@@ -91,10 +91,10 @@ func todoDeciderIsLLM(dec kanban.CardDecider) bool {
 // returns the validated classification with its decider identity forced to
 // llm. Every failure is an error return — the caller's seam owns the
 // fail-safe degradation (OD-C).
-func (llmCardDecider) Classify(text string) (kanban.CardClassification, error) {
+func (llmCardDecider) Classify(text string) (factory.CardClassification, error) {
 	key := todoLLMKeyLoader()
 	if key == "" {
-		return kanban.CardClassification{}, errors.New("llm decider: GLM credential not configured")
+		return factory.CardClassification{}, errors.New("llm decider: GLM credential not configured")
 	}
 	body, err := json.Marshal(glmMessagesRequest{
 		Model:     glmTaskDefaultModel,
@@ -103,26 +103,26 @@ func (llmCardDecider) Classify(text string) (kanban.CardClassification, error) {
 		Messages:  []glmMessage{{Role: "user", Content: text}},
 	})
 	if err != nil {
-		return kanban.CardClassification{}, fmt.Errorf("llm decider: build request: %w", err)
+		return factory.CardClassification{}, fmt.Errorf("llm decider: build request: %w", err)
 	}
 	httpReq, err := http.NewRequest(http.MethodPost, todoLLMEndpoint(), bytes.NewReader(body))
 	if err != nil {
-		return kanban.CardClassification{}, fmt.Errorf("llm decider: build request: %w", err)
+		return factory.CardClassification{}, fmt.Errorf("llm decider: build request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("x-api-key", key)
 	httpReq.Header.Set("anthropic-version", glmAnthropicVersion)
 	resp, err := todoLLMHTTPClient.Do(httpReq)
 	if err != nil {
-		return kanban.CardClassification{}, fmt.Errorf("llm decider: request: %w", err)
+		return factory.CardClassification{}, fmt.Errorf("llm decider: request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return kanban.CardClassification{}, fmt.Errorf("llm decider: endpoint returned HTTP %d", resp.StatusCode)
+		return factory.CardClassification{}, fmt.Errorf("llm decider: endpoint returned HTTP %d", resp.StatusCode)
 	}
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return kanban.CardClassification{}, fmt.Errorf("llm decider: read response: %w", err)
+		return factory.CardClassification{}, fmt.Errorf("llm decider: read response: %w", err)
 	}
 	return parseTodoLLMJudgment(raw)
 }
@@ -131,10 +131,10 @@ func (llmCardDecider) Classify(text string) (kanban.CardClassification, error) {
 // envelope. The decider identity is forced to llm BEFORE validation, so a
 // claimed human/jev identity never fails the judgment and never reaches the
 // record (REQ-TLD-004).
-func parseTodoLLMJudgment(raw []byte) (kanban.CardClassification, error) {
+func parseTodoLLMJudgment(raw []byte) (factory.CardClassification, error) {
 	var env glmMessagesResponse
 	if err := json.Unmarshal(raw, &env); err != nil {
-		return kanban.CardClassification{}, fmt.Errorf("llm decider: malformed response: %w", err)
+		return factory.CardClassification{}, fmt.Errorf("llm decider: malformed response: %w", err)
 	}
 	text := ""
 	for i := range env.Content {
@@ -144,23 +144,23 @@ func parseTodoLLMJudgment(raw []byte) (kanban.CardClassification, error) {
 		}
 	}
 	if text == "" {
-		return kanban.CardClassification{}, errors.New("llm decider: response carried no text content")
+		return factory.CardClassification{}, errors.New("llm decider: response carried no text content")
 	}
 	var j todoLLMJudgment
 	if err := json.Unmarshal([]byte(extractJSONObject(text)), &j); err != nil {
-		return kanban.CardClassification{}, fmt.Errorf("llm decider: judgment json: %w", err)
+		return factory.CardClassification{}, fmt.Errorf("llm decider: judgment json: %w", err)
 	}
-	cls := kanban.CardClassification{
+	cls := factory.CardClassification{
 		Priority: j.Priority,
 		Blocked:  j.Blocked,
 		Mode:     j.Mode,
-		Decider:  kanban.DeciderIdentityLLM,
+		Decider:  factory.DeciderIdentityLLM,
 		Reason:   todoLLMSingleLineReason(j.Reason),
 	}
 	// The single validator, single spelling (C3): the closed sets are
 	// judged only here, through the existing kanban validator.
-	if err := kanban.ValidateCardClassification(cls); err != nil {
-		return kanban.CardClassification{}, fmt.Errorf("llm decider: %w", err)
+	if err := factory.ValidateCardClassification(cls); err != nil {
+		return factory.CardClassification{}, fmt.Errorf("llm decider: %w", err)
 	}
 	return cls, nil
 }
@@ -199,7 +199,7 @@ func todoLLMClassifySystemPrompt() string {
 // attachment. On judgment failure the ONE seam notice prints here and the
 // fail-safe default is carried — the fallback branch stays in the seam
 // (OD-C), never synthesized inside the decider.
-func todoPreClassifyLLM(dec kanban.CardDecider, text string, errOut io.Writer) kanban.CardDecider {
+func todoPreClassifyLLM(dec factory.CardDecider, text string, errOut io.Writer) factory.CardDecider {
 	llm, ok := dec.(llmCardDecider)
 	if !ok {
 		return dec
@@ -207,7 +207,7 @@ func todoPreClassifyLLM(dec kanban.CardDecider, text string, errOut io.Writer) k
 	cls, err := llm.Classify(text)
 	if err != nil {
 		_, _ = fmt.Fprintln(errOut, todoClassificationFallbackNotice)
-		cls = kanban.DefaultCardClassification()
+		cls = factory.DefaultCardClassification()
 	}
-	return kanban.StaticCardDecider{Class: cls}
+	return factory.StaticCardDecider{Class: cls}
 }

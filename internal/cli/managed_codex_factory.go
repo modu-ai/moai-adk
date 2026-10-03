@@ -46,9 +46,9 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 var errManagedCodexNonLoopback = errors.New("managed codex app server endpoint must be a loopback IP literal (127.0.0.0/8 or ::1) over ws://")
@@ -675,7 +675,7 @@ func newManagedCodexSession(bin string, args, env []string) (*managedCodexSessio
 	}
 	label := launchEnvValue(env, config.EnvMoaiFactoryWorker)
 	if label == "" {
-		label = kanban.RoleLeader
+		label = factory.RoleLeader
 	}
 	return &managedCodexSession{program: bin, appArgs: appArgs, model: model, env: env, label: label}, nil
 }
@@ -810,7 +810,7 @@ func (s *managedCodexSession) Close() error {
 // without process-global mutation (the entry points pass os.Stdin).
 func runManagedFactoryCodex(bin string, args, env []string, dir string, stdin io.Reader) (err error) {
 	root := launchProjectRoot()
-	runID := launchEnvValue(env, config.EnvMoaiKanbanID)
+	runID := launchEnvValue(env, config.EnvFactoryRunID)
 	if runID == "" {
 		return errors.New("factory managed session requires a factory run id")
 	}

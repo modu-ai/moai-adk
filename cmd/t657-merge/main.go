@@ -2,7 +2,7 @@
 // (SPEC-TODO-QUEUE-HOME-MERGE-001, plan.md §F/§H).
 //
 // This is deliberately NOT a user-facing CLI verb: the SPEC constrains the
-// merge to a one-off program reusing the internal/kanban store API. It
+// merge to a one-off program reusing the internal/factory store API. It
 // addresses the real stores ONLY by explicit absolute path flags
 // (REQ-TQM-018) and refuses relative paths.
 //
@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 type storeCensus struct {
@@ -49,7 +49,7 @@ func census(dir string) (*storeCensus, error) {
 	// backlog.json is the store's frozen compatibility name; the engine
 	// derives its own artifact as the sibling backlog.db.
 	queue := filepath.Join(abs, "backlog.json")
-	store := kanban.NewBacklogStore(queue)
+	store := factory.NewBacklogStore(queue)
 	rec, err := store.LoadPure()
 	if err != nil {
 		return nil, err
@@ -133,9 +133,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "-home, -project, -backup are required")
 		os.Exit(2)
 	}
-	paths := kanban.QueueMergePaths{HomeDir: *home, ProjectDir: *project, BackupDir: *backup}
+	paths := factory.QueueMergePaths{HomeDir: *home, ProjectDir: *project, BackupDir: *backup}
 
-	outcome, err := kanban.RunQueueMerge(paths, *dryRun || !*execute)
+	outcome, err := factory.RunQueueMerge(paths, *dryRun || !*execute)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "merge: %v\n", err)
 		os.Exit(1)

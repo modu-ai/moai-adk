@@ -218,7 +218,7 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 		// The landed annotation ADDS a third number; it never subtracts from
 		// the first. A card stays picked until auto-done or `moai todo done`
 		// actually closes it, and a landing is not a close: the count is
-		// kanban's subject attribution, which also credits a plan-only landing
+		// the factory's subject attribution, which also credits a plan-only landing
 		// and skips the auto-done close guards. Subtracting would report work
 		// as finished that nobody closed. "N of the picked have a landing
 		// commit — verify before done" is a prompt to reconcile, which is why

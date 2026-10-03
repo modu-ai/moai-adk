@@ -5,7 +5,7 @@ package cli
 // The gate must not review changes it cannot attribute (spec.md §0). The
 // scope discriminator (REQ-CGS-004) decides from ONE input only — the session
 // tree's current branch carrying the WT- prefix, the committed lane-protocol
-// invariant (kanban-dispatch § Isolation, gitflow-lane-protocol §1). Session
+// invariant (Factory Dispatch Protocol § Isolation, gitflow-lane-protocol §1). Session
 // env labels are observation context, never decision inputs (REQ-CGS-004,
 // decision-index Q2 CONFIRMED): stale labels survive /clear (card t1373) and
 // the label namespace is being reworked (t1378), so consuming a value here

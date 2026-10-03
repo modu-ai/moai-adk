@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 const debounce = 250 * time.Millisecond
@@ -30,10 +30,11 @@ var watchMap = map[string][]string{
 	"session": {".moai/state"},
 	"goal":    {".moai/state/goal"},
 	"verify":  {".moai/state/verify"},
-	// SSE event KEY stays "kanban" — it is a frontend-visible contract. Only
-	// the watched PATH moved with the state-directory rename.
-	"kanban": {".moai/state/todo"},
-	"config": {".moai/config/sections"},
+	// The SSE event KEY is a frontend-visible contract: assets/app.js lists it in
+	// EVENTS and the screens carry it as data-live, so the three move together
+	// (TestWebLiveKeyContract). The watched path is the todo queue.
+	"factory": {".moai/state/todo"},
+	"config":  {".moai/config/sections"},
 }
 
 // Hub 는 열린 SSE 연결 집합이다. 값을 나르지 않으므로 상태는 채널뿐이다.
@@ -240,9 +241,9 @@ func resolvedWatchPaths(root string) map[string]string {
 			pathEvent[abs] = event
 		}
 	}
-	pathEvent[kanban.StateDirForRoot(root)] = "kanban"
+	pathEvent[factory.StateDirForRoot(root)] = "factory"
 	if factoryDir, err := homestate.FactoryDir(root); err == nil {
-		pathEvent[factoryDir] = "kanban"
+		pathEvent[factoryDir] = "factory"
 	}
 	return pathEvent
 }

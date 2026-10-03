@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // appendAnalyzedCard classifies text against the queue and appends it,
@@ -35,16 +35,16 @@ import (
 // invariant invented for this path.
 //
 // The returned position counts queued cards, matching the store's own Add.
-func appendAnalyzedCard(rec *kanban.BacklogRecord, text string, state kanban.BacklogState, force bool) (kanban.BacklogItem, int, error) {
-	match := kanban.ClassifyCardText(text, rec.Items)
-	if match.Kind == kanban.BacklogMatchExact && !force {
-		return kanban.BacklogItem{}, 0, fmt.Errorf(
+func appendAnalyzedCard(rec *factory.BacklogRecord, text string, state factory.BacklogState, force bool) (factory.BacklogItem, int, error) {
+	match := factory.ClassifyCardText(text, rec.Items)
+	if match.Kind == factory.BacklogMatchExact && !force {
+		return factory.BacklogItem{}, 0, fmt.Errorf(
 			"todo add: %s already holds this card (%q) — pass --force to add it anyway",
 			match.ID, todoTextPrefix(todoCardText(rec, match.ID)))
 	}
 
 	rec.LastSeq++
-	item := kanban.BacklogItem{
+	item := factory.BacklogItem{
 		ID:      fmt.Sprintf("t%d", rec.LastSeq),
 		Text:    text,
 		AddedAt: time.Now().UTC().Format(time.RFC3339),
@@ -53,7 +53,7 @@ func appendAnalyzedCard(rec *kanban.BacklogRecord, text string, state kanban.Bac
 	// REQ-TST-004: entering the picked state stamps picked_at — add --pick
 	// is one of the two pick transitions, so its one locked write carries
 	// the stamp the live pick would.
-	if state == kanban.BacklogStatePicked {
+	if state == factory.BacklogStatePicked {
 		item.PickedAt = todoStampNow()
 	}
 	rec.Items = append(rec.Items, item)
@@ -62,25 +62,25 @@ func appendAnalyzedCard(rec *kanban.BacklogRecord, text string, state kanban.Bac
 	// admission the finding explains. A finding is a record and nothing
 	// more — neither branch below touches a field of the card it names.
 	switch match.Kind {
-	case kanban.BacklogMatchExact:
-		rec.AppendFindingOnce(kanban.BacklogFinding{
+	case factory.BacklogMatchExact:
+		rec.AppendFindingOnce(factory.BacklogFinding{
 			SubjectID: item.ID,
 			RelatedID: match.ID,
-			Relation:  kanban.BacklogRelationDuplicateForced,
-			Source:    kanban.BacklogSourceMechanical,
+			Relation:  factory.BacklogRelationDuplicateForced,
+			Source:    factory.BacklogSourceMechanical,
 			Score:     match.Score,
 			At:        item.AddedAt,
 		})
-	case kanban.BacklogMatchNear:
-		rec.AppendFindingOnce(kanban.BacklogFinding{
+	case factory.BacklogMatchNear:
+		rec.AppendFindingOnce(factory.BacklogFinding{
 			SubjectID: item.ID,
 			RelatedID: match.ID,
-			Relation:  kanban.BacklogRelationNearDuplicate,
-			Source:    kanban.BacklogSourceMechanical,
+			Relation:  factory.BacklogRelationNearDuplicate,
+			Source:    factory.BacklogSourceMechanical,
 			Score:     match.Score,
 			At:        item.AddedAt,
 		})
-	case kanban.BacklogMatchNone:
+	case factory.BacklogMatchNone:
 	}
 
 	// Consumer C (SPEC-JEV-CONSUMERS-001, REQ-JEVN-001): the model's
@@ -97,7 +97,7 @@ func appendAnalyzedCard(rec *kanban.BacklogRecord, text string, state kanban.Bac
 
 	pos := 0
 	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStateQueued {
+		if it.State == factory.BacklogStateQueued {
 			pos++
 		}
 	}
@@ -106,7 +106,7 @@ func appendAnalyzedCard(rec *kanban.BacklogRecord, text string, state kanban.Bac
 
 // todoCardText returns the text of the card with id, or the id itself when
 // no such card is present — a message is never worth a panic.
-func todoCardText(rec *kanban.BacklogRecord, id string) string {
+func todoCardText(rec *factory.BacklogRecord, id string) string {
 	for _, it := range rec.Items {
 		if it.ID == id {
 			return it.Text
@@ -132,7 +132,7 @@ func newTodoAnalyzeCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var pairs, recorded int
-			err := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
+			err := newTodoStore().Mutate(func(rec *factory.BacklogRecord) error {
 				pairs, recorded = analyzeQueue(rec)
 				return nil
 			})
@@ -155,28 +155,28 @@ func newTodoAnalyzeCmd() *cobra.Command {
 // is the same orientation the add path uses — so a finding `analyze` would
 // write for a pair `add` already recorded carries an identical tuple and is
 // deduplicated rather than doubled.
-func analyzeQueue(rec *kanban.BacklogRecord) (pairs, recorded int) {
+func analyzeQueue(rec *factory.BacklogRecord) (pairs, recorded int) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	// Prepare once per card while preserving the exact historical comparator:
 	// NFC/case/whitespace normalization and sets of normalized words.
 	normalized := make([]string, len(rec.Items))
 	tokens := make([]map[string]struct{}, len(rec.Items))
 	for i, item := range rec.Items {
-		if item.State == kanban.BacklogStateDropped {
+		if item.State == factory.BacklogStateDropped {
 			continue
 		}
-		normalized[i] = kanban.NormalizeCardText(item.Text)
+		normalized[i] = factory.NormalizeCardText(item.Text)
 		tokens[i] = make(map[string]struct{})
 		for _, token := range strings.Fields(normalized[i]) {
 			tokens[i][token] = struct{}{}
 		}
 	}
 	for j, subject := range rec.Items {
-		if subject.State == kanban.BacklogStateDropped {
+		if subject.State == factory.BacklogStateDropped {
 			continue
 		}
 		for i, related := range rec.Items[:j] {
-			if related.State == kanban.BacklogStateDropped {
+			if related.State == factory.BacklogStateDropped {
 				continue
 			}
 			pairs++
@@ -184,17 +184,17 @@ func analyzeQueue(rec *kanban.BacklogRecord) (pairs, recorded int) {
 			score := todoTokenSetScore(tokens[j], tokens[i])
 			switch {
 			case normalized[j] != "" && normalized[j] == normalized[i]:
-				relation, score = kanban.BacklogRelationDuplicateForced, 1
-			case score >= kanban.BacklogNearDuplicateThreshold && score < 1.0:
-				relation = kanban.BacklogRelationNearDuplicate
+				relation, score = factory.BacklogRelationDuplicateForced, 1
+			case score >= factory.BacklogNearDuplicateThreshold && score < 1.0:
+				relation = factory.BacklogRelationNearDuplicate
 			default:
 				continue
 			}
-			if rec.AppendFindingOnce(kanban.BacklogFinding{
+			if rec.AppendFindingOnce(factory.BacklogFinding{
 				SubjectID: subject.ID,
 				RelatedID: related.ID,
 				Relation:  relation,
-				Source:    kanban.BacklogSourceMechanical,
+				Source:    factory.BacklogSourceMechanical,
 				Score:     score,
 				At:        now,
 			}) {
@@ -230,13 +230,13 @@ func todoTokenSetScore(a, b map[string]struct{}) float64 {
 // for the same UNORDERED pair. It says nothing about whether anyone
 // reviewed the pair: the CLI cannot know who called it, so the only
 // honest claim available is "nothing agent-sourced was recorded here".
-func todoFindingLine(rec *kanban.BacklogRecord, cardID string, f kanban.BacklogFinding) string {
+func todoFindingLine(rec *factory.BacklogRecord, cardID string, f factory.BacklogFinding) string {
 	counterpart := f.RelatedID
 	if f.SubjectID != cardID {
 		counterpart = f.SubjectID
 	}
 	mark := ""
-	if f.Source == kanban.BacklogSourceMechanical && !rec.HasAgentFindingForPair(f) {
+	if f.Source == factory.BacklogSourceMechanical && !rec.HasAgentFindingForPair(f) {
 		mark = ", machine-only"
 	}
 	// The score is a measurement, so it is printed only where one was
@@ -257,9 +257,9 @@ func todoFindingLine(rec *kanban.BacklogRecord, cardID string, f kanban.BacklogF
 	// consumer.
 	score := ""
 	switch f.Source {
-	case kanban.BacklogSourceMechanical:
+	case factory.BacklogSourceMechanical:
 		score = fmt.Sprintf(", score %.2f", f.Score)
-	case kanban.BacklogSourceJev:
+	case factory.BacklogSourceJev:
 		score = jevFindingSignalFragment(f)
 	}
 	note := ""
@@ -273,7 +273,7 @@ func todoFindingLine(rec *kanban.BacklogRecord, cardID string, f kanban.BacklogF
 	// other relation is a judgement about the row's own card, so its
 	// suggestion keeps naming that row (card t1484).
 	target := cardID
-	if f.Relation == kanban.BacklogRelationNearDuplicate {
+	if f.Relation == factory.BacklogRelationNearDuplicate {
 		target = f.SubjectID
 	}
 	return fmt.Sprintf("\t↳ %s %s (%s%s%s)%s — moai todo drop %s | moai todo edit %s \"<text>\"",

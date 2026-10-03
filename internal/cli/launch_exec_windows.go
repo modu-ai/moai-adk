@@ -47,7 +47,7 @@ func execOrSpawnClaude(claudeBin string, args, env []string) error {
 	if err := child.Start(); err != nil {
 		return fmt.Errorf("launch claude on windows: %w", err)
 	}
-	runID := launchEnvValue(child.Env, config.EnvMoaiKanbanID)
+	runID := launchEnvValue(child.Env, config.EnvFactoryRunID)
 	childFingerprint, state := homestate.ProbeProcessIdentity(child.Process.Pid)
 	if state != homestate.ProcessIdentityLive {
 		_ = child.Process.Kill()

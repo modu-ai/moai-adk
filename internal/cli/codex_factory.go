@@ -2,18 +2,22 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// parseCodexFactoryEntry consumes only MoAI's tokens before --. A bare -f
-// leaves the next Codex verb in place; a lane value selects a factory lane.
+// parseCodexFactoryEntry consumes only MoAI's tokens before --: the lane entry
+// `-l` / `--lane` (it takes no argument, so the next Codex verb stays in place),
+// `--leader`, and `--factory-run`. `-f` / `--factory` is no Codex entry; the
+// classification (codexFactoryEntryClassify) refuses every shape of it before
+// this parse runs, so the parse leaves those tokens in the rest.
 func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagParse, err error) {
 	rest = make([]string, 0, len(head))
 	for i := 0; i < len(head); i++ {
@@ -39,81 +43,43 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 		// Same surface as the cc/glm parse (REQ-008, mirror parity): the
 		// legacy leader spelling refuses with the canonical form, and the
 		// post-loop gates keep --leader a lane-join-only, single-selector flag.
-		if token == leadFlagLong || token == leadFlagShort ||
-			strings.HasPrefix(token, leadFlagLong+"=") || strings.HasPrefix(token, leadFlagShort+"=") {
+		if token == leadFlagLong || strings.HasPrefix(token, leadFlagLong+"=") {
 			if entry.Lead != "" {
 				return nil, entry, fmt.Errorf("%s may appear only once", leadFlagLong)
 			}
 			switch {
 			case strings.HasPrefix(token, leadFlagLong+"="):
 				entry.Lead = strings.TrimPrefix(token, leadFlagLong+"=")
-			case strings.HasPrefix(token, leadFlagShort+"="):
-				entry.Lead = strings.TrimPrefix(token, leadFlagShort+"=")
 			case i+1 < len(head) && !strings.HasPrefix(head[i+1], "-"):
 				i++
 				entry.Lead = head[i]
 			default:
 				return nil, entry, fmt.Errorf("%s requires a leader label", leadFlagLong)
 			}
-			if kanban.IsLegacyLeaderSpelling(entry.Lead) {
+			if factory.IsLegacyLeaderSpelling(entry.Lead) {
 				return nil, entry, fmt.Errorf("%s %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
-					leadFlagLong, entry.Lead, kanban.LeaderLabel()+strings.TrimPrefix(entry.Lead, "lead"))
+					leadFlagLong, entry.Lead, factory.LeaderLabel()+strings.TrimPrefix(entry.Lead, "lead"))
 			}
 			continue
 		}
-		value, hasValue := "", false
-		switch {
-		case token == factoryFlagShort || token == factoryFlagLong:
-			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") && !codexHeadTokenIsVerb(head[i+1]) {
-				i++
-				value, hasValue = head[i], true
-			}
-		case strings.HasPrefix(token, factoryFlagShort+"="):
-			value, hasValue = strings.TrimPrefix(token, factoryFlagShort+"="), true
-		case strings.HasPrefix(token, factoryFlagLong+"="):
-			value, hasValue = strings.TrimPrefix(token, factoryFlagLong+"="), true
-		default:
-			rest = append(rest, token)
+		// The lane entry: it names the role and takes no argument (the
+		// classification refused any argument or second entry token already).
+		if token == laneFlagShort || token == laneFlagLong {
+			entry.Enabled, entry.LaneRole = true, true
 			continue
 		}
-		if entry.Enabled {
-			return nil, entry, fmt.Errorf("-f/--factory may appear only once")
-		}
-		entry.Enabled = true
-		if !hasValue {
-			continue
-		}
-		if value == factoryLaneRoleToken {
-			entry.LaneRole = true
-			continue
-		}
-		if n, ok := kanban.SplitFactoryLaneLabel(value); ok {
-			entry.LaneNumber, entry.LaneLabel = n, value
-			continue
-		}
-		if kanban.IsLegacyFactoryRoleValue(strings.ToLower(value)) {
-			return nil, entry, fmt.Errorf("%q is a legacy factory role; use -f lane", value)
-		}
-		return nil, entry, fmt.Errorf("%s, got %q", factoryFlagUsageError, value)
+		rest = append(rest, token)
 	}
 	if entry.RunID != "" && !entry.Enabled {
-		return nil, entry, fmt.Errorf("--factory-run requires -f/--factory")
-	}
-	if entry.RunID != "" && !entry.LaneRole && entry.LaneNumber == 0 {
-		return nil, entry, fmt.Errorf("--factory-run applies to a factory lane")
+		return nil, entry, fmt.Errorf("--factory-run requires -l/--lane")
 	}
 	if entry.Lead != "" && entry.RunID != "" {
 		return nil, entry, fmt.Errorf("%s and --factory-run name two different selectors; carry one", leadFlagLong)
 	}
-	if entry.Lead != "" && !entry.LaneRole && entry.LaneNumber == 0 {
-		return nil, entry, fmt.Errorf("%s applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target", leadFlagLong)
+	if entry.Lead != "" && !entry.Enabled {
+		return nil, entry, errors.New(leaderNeedsLaneEntry)
 	}
 	return rest, entry, nil
-}
-
-func codexHeadTokenIsVerb(token string) bool {
-	_, ok := codexVerbRouting[token]
-	return ok
 }
 
 // enterCodexFactory resolves the codex twin's factory entry. timing, when
@@ -144,9 +110,9 @@ func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunc
 	restoreFacts := exportFactoryLaunchFacts("", BackendCodex)
 	restore := func() { restoreFacts(); restoreRun() }
 	if lane {
-		runID := os.Getenv(config.EnvMoaiKanbanID)
+		runID := os.Getenv(config.EnvFactoryRunID)
 		endClaim := timing.begin(factoryStepLaneClaim)
-		claim, claimErr := kanban.ClaimFactoryLaneWithinWithBackend(root, entry.LaneLabel, entry.LaneRole,
+		claim, claimErr := factory.ClaimFactoryLaneWithinWithBackend(root, entry.LaneLabel, entry.LaneRole,
 			os.Getpid(), runID, factoryJoinLaneBound(root, runID), BackendCodex, factoryProcessAlive)
 		endClaim()
 		// Under debug the lane-claim step carries the claimed label and the
@@ -166,7 +132,7 @@ func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunc
 	// The codex leader carries no count form (bare -f): its runs record the
 	// derived-capacity marker, never a declared bound
 	// (SPEC-CODEX-LANE-SLOTS-001 REQ-004).
-	if err := recordFactoryRunStart(root, os.Getenv(config.EnvMoaiKanbanID), BackendCodex, "", homestate.LaneCapacityDerived); err != nil {
+	if err := recordFactoryRunStart(root, os.Getenv(config.EnvFactoryRunID), BackendCodex, "", homestate.LaneCapacityDerived); err != nil {
 		restoreMode()
 		restore()
 		return nil, fmt.Errorf("record Codex factory run: %w", err)
@@ -210,15 +176,15 @@ func recordedFactoryLaneCapacity(root, runID string) (capacity int, found bool) 
 }
 
 func codexFactoryEnv(entry factoryFlagParse) []string {
-	keys := []string{config.EnvMoaiKanbanID, config.EnvMoaiKanbanBackend, config.EnvMoaiFactoryWorkers}
+	keys := []string{config.EnvFactoryRunID, config.EnvFactoryBackend, config.EnvMoaiFactoryWorkers}
 	if entry.LaneRole || entry.LaneNumber > 0 {
 		keys = append(keys, config.EnvMoaiFactoryWorker)
 		// The discovery path exports the verified leader's name (REQ-009);
 		// ordinary joins never set it, and the loop below drops empty keys,
 		// so this is additive-only for the child's env.
-		keys = append(keys, config.EnvMoaiKanbanLeadName)
+		keys = append(keys, config.EnvFactoryLeadName)
 	} else {
-		keys = append(keys, config.EnvMoaiKanbanLeadAddr)
+		keys = append(keys, config.EnvFactoryLeadAddr)
 	}
 	env := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -233,7 +199,7 @@ func codexFactoryEnv(entry factoryFlagParse) []string {
 }
 
 func codexExplicitFactoryEnv(env []string) bool {
-	return factoryLaunchEnabled(env) && launchEnvValue(env, config.EnvMoaiKanbanBackend) == BackendCodex
+	return factoryLaunchEnabled(env) && launchEnvValue(env, config.EnvFactoryBackend) == BackendCodex
 }
 
 // A spawned launcher exits immediately; its lane claim must follow the Codex
@@ -250,7 +216,7 @@ func stampCodexLaneClaim(root string, env []string, childPID int) (err error) {
 	defer closeFactoryInto(&err, db, "factory state")
 	result, err := db.DB.ExecContext(context.Background(),
 		`UPDATE workers SET pid=?, heartbeat_at=? WHERE label=? AND pid=? AND run_id=?`,
-		childPID, time.Now().UTC().Format(time.RFC3339Nano), label, os.Getpid(), launchEnvValue(env, config.EnvMoaiKanbanID))
+		childPID, time.Now().UTC().Format(time.RFC3339Nano), label, os.Getpid(), launchEnvValue(env, config.EnvFactoryRunID))
 	if err != nil {
 		return err
 	}

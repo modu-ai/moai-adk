@@ -111,7 +111,7 @@ func TestApplyLaunchEffort(t *testing.T) {
 // a wrapper that scrubs the variable drops the entry (red), and one that pins a
 // profile effort replaces its value (red) — the exact defect card t595 removed.
 // The GLM half, where a wrapper still filters the environment, is
-// TestACFM023c_KanbanEnvReachesChildEnvironment.
+// TestACFM023c_FactoryEnvReachesChildEnvironment.
 func TestClaudeLaunchEnvPreservesInheritedEffort(t *testing.T) {
 	t.Parallel()
 
@@ -160,15 +160,15 @@ func TestLaunchEffortReachesGeneralInjection(t *testing.T) {
 	}
 }
 
-// TestLaunchEffortReachesKanbanInjection is the same link for the kanban /
+// TestLaunchEffortReachesFactoryInjection is the same link for the kanban /
 // factory lanes, whose args already carry an injected --settings by the time
 // they reach the general funnel — so the lane payload has to carry the effort
 // itself or a lane would launch with no profile effort at all.
-func TestLaunchEffortReachesKanbanInjection(t *testing.T) {
+func TestLaunchEffortReachesFactoryInjection(t *testing.T) {
 	withCrossSessionConfig(t, "")
 	withLaunchEffortPrefs(t, profile.ProfilePreferences{ModelPolicy: "high"}, nil)
 
-	flag, cleanup := prepareKanbanSettings("dev", []string{"-p", "dev"})
+	flag, cleanup := prepareFactorySettings("dev", []string{"-p", "dev"})
 	t.Cleanup(cleanup)
 	if len(flag) != 2 || flag[0] != settingsFlagLong {
 		t.Fatalf("flag = %v, want [--settings <path>]", flag)
@@ -243,13 +243,13 @@ func TestLaunchEffortMaxTravelsAsArgvOnGeneralInjection(t *testing.T) {
 	}
 }
 
-// TestLaunchEffortMaxTravelsAsArgvOnKanbanInjection is the same pin for the
+// TestLaunchEffortMaxTravelsAsArgvOnFactoryInjection is the same pin for the
 // kanban / factory lane injection.
-func TestLaunchEffortMaxTravelsAsArgvOnKanbanInjection(t *testing.T) {
+func TestLaunchEffortMaxTravelsAsArgvOnFactoryInjection(t *testing.T) {
 	withCrossSessionConfig(t, "")
 	withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
 
-	flag, cleanup := prepareKanbanSettings("dev", []string{"-p", "dev"})
+	flag, cleanup := prepareFactorySettings("dev", []string{"-p", "dev"})
 	t.Cleanup(cleanup)
 	effort, ok := injectedSettingsEffort(t, flag)
 	if !ok {
@@ -278,7 +278,7 @@ func TestLaunchEffortXHighStaysOnSettingsPath(t *testing.T) {
 		t.Errorf("args = %v carry %s; only max leaves the settings path", got, launchEffortFlag)
 	}
 
-	flag, cleanup := prepareKanbanSettings("dev", []string{"-p", "dev"})
+	flag, cleanup := prepareFactorySettings("dev", []string{"-p", "dev"})
 	t.Cleanup(cleanup)
 	if effort, _ := injectedSettingsEffort(t, flag); effort != "xhigh" {
 		t.Errorf("kanban settings %s = %v, want xhigh", effortSettingsKey, effort)
@@ -324,7 +324,7 @@ func TestLaunchEffortOperatorEffortAnywhereSuppressesInjection(t *testing.T) {
 		t.Run("kanban "+strings.Join(op, " "), func(t *testing.T) {
 			withCrossSessionConfig(t, "")
 			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
-			flag, cleanup := prepareKanbanSettings("dev", append([]string(nil), op...))
+			flag, cleanup := prepareFactorySettings("dev", append([]string(nil), op...))
 			t.Cleanup(cleanup)
 			if n := countEffortTokens(flag); n != 0 {
 				t.Errorf("op=%v injected=%v effortFlags=%d want 0", op, flag, n)
@@ -377,7 +377,7 @@ func TestLaunchEffortValuePositionEffortStillInjectsMax(t *testing.T) {
 		t.Run("kanban "+strings.Join(op, " "), func(t *testing.T) {
 			withCrossSessionConfig(t, "")
 			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
-			flag, cleanup := prepareKanbanSettings("dev", append([]string(nil), op...))
+			flag, cleanup := prepareFactorySettings("dev", append([]string(nil), op...))
 			t.Cleanup(cleanup)
 			if !hasMaxPair(flag) {
 				t.Errorf("op=%v injected=%v: want %s max", op, flag, launchEffortFlag)
