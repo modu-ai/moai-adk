@@ -66,6 +66,12 @@ const (
 	// EnvSkipBinaryUpdate skips binary self-update when set to "1".
 	EnvSkipBinaryUpdate = "MOAI_SKIP_BINARY_UPDATE"
 
+	// EnvSkipPluginInstall opts out of the moai plugin install step (SPEC-PLUGIN-
+	// MARKETPLACE-001 REQ-015) when set to "1" or "true"; an empty value or "0"
+	// does not opt out. Automated callers of `moai init` (the doctor embed-check
+	// re-entry, the e2e journeys) set it so they never act on a real profile.
+	EnvSkipPluginInstall = "MOAI_SKIP_PLUGIN_INSTALL"
+
 	// EnvGLMNoAutoTools skips automatic Z.AI MCP server enable on moai glm launch.
 	EnvGLMNoAutoTools = "MOAI_GLM_NO_AUTO_TOOLS"
 

@@ -48,6 +48,14 @@ func resolveLaunchClaudeBinary() (string, error) {
 	return claudeBin, nil
 }
 
+// claudeNotFoundError is the typed not-found class (RED stub).
+type claudeNotFoundError struct{}
+
+func (*claudeNotFoundError) Error() string { return "" }
+
+// resolveClaudeBinaryAt resolves the binary for a given project root (RED stub).
+func resolveClaudeBinaryAt(string) (string, error) { return "", nil }
+
 // validateClaudeBinaryPin validates an explicit binary pin. The path must
 // exist and point at an executable file; source names the configuration
 // surface the pin came from so the error tells the operator where to fix it.
