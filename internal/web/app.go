@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
@@ -25,6 +26,15 @@ import (
 // with the html/template renderer, so there is no runtime-parsed template handle.
 type app struct {
 	cfg Config
+
+	// saveMu serializes POST /save requests end to end (card t1446 N2, from
+	// the t1411 sync-audit round-2 finding N2). server.go's mutex guards only
+	// the listener field; without this lock a second save's persistence steps
+	// interleave with a first save still mid-handler, and a rolling-back
+	// request can revert another request's successful write. One app serves
+	// one project, so an app-level lock IS the per-project save lock. GET
+	// paths never take it — reads stay concurrent.
+	saveMu sync.Mutex
 
 	// hub fans SSE change-signals out to open browser connections. It carries no
 	// payload — the browser re-fetches the affected screen itself, so rendering

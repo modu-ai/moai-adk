@@ -149,7 +149,7 @@ detect_languages() {
     if [ -f "$root/Gemfile" ] || has_suffix '*.rb'; then add_language ruby; fi
     if [ -f "$root/composer.json" ] || has_suffix '*.php'; then add_language php; fi
     if [ -f "$root/mix.exs" ] || has_suffix '*.ex' || has_suffix '*.exs'; then add_language elixir; fi
-    if [ -f "$root/CMakeLists.txt" ] || [ -f "$root/Makefile" ] || has_suffix '*.cpp' || has_suffix '*.cc' || has_suffix '*.cxx' || has_suffix '*.h'; then add_language cpp; fi
+    if [ -f "$root/CMakeLists.txt" ] || [ -f "$root/Makefile" ] || has_suffix '*.cpp' || has_suffix '*.cc' || has_suffix '*.cxx' || has_suffix '*.h' || has_suffix '*.hpp' || has_suffix '*.hxx'; then add_language cpp; fi
     if [ -f "$root/build.sbt" ] || has_suffix '*.scala'; then add_language scala; fi
     if [ -f "$root/DESCRIPTION" ] || [ -f "$root/renv.lock" ] || has_suffix '*.R' || has_suffix '*.r'; then add_language r; fi
     if [ -f "$root/pubspec.yaml" ] || has_suffix '*.dart'; then add_language flutter; fi
@@ -749,6 +749,47 @@ find_go_module_roots() {
 $files
 GOFILES
 }
+# find_surviving_go_module_roots: every module root still present on disk,
+# discovered from the filesystem instead of the delta. The delta walk above
+# resolves a changed file to its OWNING module; when a changed file's whole
+# module is deleted its go.mod is gone with it and the walk resolves nothing.
+# The prune set mirrors has_suffix's, so discovery skips the
+# same heavy trees.
+find_surviving_go_module_roots() {
+    find "$PROJECT_ROOT" \
+        \( -name .git -o -name .hg -o -name .svn \
+           -o -name node_modules -o -name vendor \
+           -o -name .venv -o -name venv -o -name site-packages -o -name __pycache__ \
+           -o -name .tox -o -name .nox -o -name .mypy_cache -o -name .ruff_cache \
+           -o -name .pytest_cache \
+           -o -name dist -o -name build -o -name target -o -name .next -o -name .output \) -prune \
+        -o -type f -name go.mod -print 2>/dev/null | while IFS= read -r m; do
+            [ -n "$m" ] || continue
+            dirname "$m"
+        done
+}
+# resolve_go_roots: the go branch's module-root ladder. Delta
+# roots first — only what the sync commit actually touched gets checked. When
+# the walk resolves nothing because the changed files' module is deleted whole
+# (its go.mod is gone with its files), the surviving module roots stand in:
+# checking them is the t1392 concern (a deletion can break siblings that still
+# reference the removed symbols), and the bare root anchor would fail "does
+# not contain main module" on a healthy multi-module tree. Only a tree with no
+# go.mod anywhere keeps the root anchor — there its failure is a real one.
+resolve_go_roots() {
+    local roots
+    roots=$(find_go_module_roots)
+    if [ -n "$roots" ]; then
+        printf '%s\n' "$roots"
+        return 0
+    fi
+    roots=$(find_surviving_go_module_roots)
+    if [ -n "$roots" ]; then
+        printf '%s\n' "$roots"
+        return 0
+    fi
+    printf '%s\n' "$PROJECT_ROOT"
+}
 # find_cargo_manifest_dirs: the Rust counterpart of the Go module-root walk.
 # Detection recurses over *.rs (has_suffix), so a nested package under a root
 # without its own Cargo.toml is detected — and a root `cargo check` there
@@ -789,23 +830,18 @@ case "$checked_language" in
         # module — run_step merges each call's exit into the c1/c2 slots with
         # its worst-exit rule, so one broken module blocks no matter how many
         # others passed.
-        [ -n "$GO_ROOTS" ] || GO_ROOTS=$(find_go_module_roots)
-        if [ -n "$GO_ROOTS" ]; then
-            # Line-based read: $GO_ROOTS is newline-separated, and a plain
-            # for-loop word-splits on IFS — a module root containing a space
-            # shattered into per-word chdir failures (observed RED, card
-            # t1392). read -r preserves each whole line; the here-string feeds
-            # the already-computed variable (same idiom as the read loops
-            # above).
-            while IFS= read -r go_root; do
-                [ -n "$go_root" ] || continue
-                run_step go c1 go -C "$go_root" vet ./...
-                run_step go c2 go -C "$go_root" build ./...
-            done <<< "$GO_ROOTS"
-        else
-            run_step go c1 go -C "$PROJECT_ROOT" vet ./...
-            run_step go c2 go -C "$PROJECT_ROOT" build ./...
-        fi
+        [ -n "$GO_ROOTS" ] || GO_ROOTS=$(resolve_go_roots)
+        # Line-based read: $GO_ROOTS is newline-separated, and a plain
+        # for-loop word-splits on IFS — a module root containing a space
+        # shattered into per-word chdir failures (observed RED, card
+        # t1392). read -r preserves each whole line; the here-string feeds
+        # the already-computed variable (same idiom as the read loops
+        # above).
+        while IFS= read -r go_root; do
+            [ -n "$go_root" ] || continue
+            run_step go c1 go -C "$go_root" vet ./...
+            run_step go c2 go -C "$go_root" build ./...
+        done <<< "$GO_ROOTS"
         ;;
     python)
         C1_LABEL="ruff"

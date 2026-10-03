@@ -231,8 +231,11 @@ func runFactoryFallbackAllLanes(cmd *cobra.Command, store *factorylane.Store, as
 // newFactoryFallbackDeclareCommand records one fallback activation — exactly
 // one event per mode switch; while the lane is already in fallback the
 // declare is refused with nothing written (REQ-FLA-003). The switch ACT
-// itself — invoking /moai:todo --auto self-service pickup — is the lane's
-// doctrine move; this verb only makes it a recorded, queryable event.
+// itself — taking the next card through the lease, `moai factory next
+// [--card <id>]`, since a lane session may no longer run the serial `moai todo
+// --auto` cycle (SPEC-TODO-AUTO-PICK-001 REQ-TAU-008, superseding REQ-FLA-001's
+// reference to /moai:todo --auto in lane sessions) — is the lane's doctrine
+// move; this verb only makes it a recorded, queryable event.
 func newFactoryFallbackDeclareCommand() *cobra.Command {
 	var trigger, card string
 	cmd := &cobra.Command{
@@ -252,7 +255,7 @@ func newFactoryFallbackDeclareCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "fallback declared: trigger=%s card=%s at %s\nswitch to /moai:todo --auto self-service pickup (REQ-FLA-001)\n",
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "fallback declared: trigger=%s card=%s at %s\nswitch to self-service pickup through the lease: moai factory next [--card <id>]\n",
 				ev.Trigger, orDash(ev.Card), ev.At.Format(time.RFC3339))
 			return nil
 		},

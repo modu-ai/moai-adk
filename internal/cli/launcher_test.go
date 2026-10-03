@@ -466,6 +466,9 @@ func TestUnifiedLaunch_CG_WithTestMode(t *testing.T) {
 // forwarded all along, so the differential isolates the acceptEdits premise.
 func TestLaunchClaudeDefault_ForwardsPermissionModes(t *testing.T) {
 	fakeMoaiProject(t)
+	// Pin a stub binary: the launch resolves claude before the exec seam runs,
+	// and a CI runner has no claude on PATH.
+	t.Setenv(config.EnvClaudeBin, writeExecutable(t, filepath.Join(t.TempDir(), "claude-stub")))
 
 	origExec := execOrSpawnClaudeFunc
 	defer func() { execOrSpawnClaudeFunc = origExec }()
