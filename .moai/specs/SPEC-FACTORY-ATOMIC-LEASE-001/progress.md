@@ -189,3 +189,10 @@ verifies each round (own `git status`, HEAD, scoped test runs) before the next s
 baseline commit, RED commit); R2 = WM2; R3 = WM3 + WM4 (they land together); R4 = WM5; R5 = WM6 closure. The run starts after
 the autonomous plan->run Kickoff recorded in `.moai/reports/t1458/decision.md` (git-ignored) at HEAD b27652922, and after
 absorbing develop 2b9e4a4d0 (merge 09faf2965; the plan-artifact hashes were re-checked unchanged).
+
+## §G Resume Point (operator reboot, 2026-10-03)
+
+- HEAD before this record: 0eb3d5b0d (WM1 commit 1 of 3, seam-and-stub; verified by the orchestrator: build, windows build, vet x2, gofmt all exit 0).
+- Resume at WM1 commit 2 (AC-FAL-010 baseline on this tree), then WM1 commit 3 (RED). Then WM2, WM3+WM4, WM5, WM6 (§F).
+- Not landed: baseline and RED commits; no test files written. Slot go-test-cli-t1458 free. Nothing pushed or merged.
+- Evidence (git-ignored, this worktree only): .moai/reports/t1458/{plan-audit*.md, decision.md, wait.md, park.md}.
