@@ -52,6 +52,13 @@ func mirrorHealDeployedProject(t *testing.T) string {
 	writeTestFile(t, root, ".moai/config/sections/system.yaml",
 		"moai:\n  template_version: \"0.0.0\"\n")
 	writeTestFile(t, root, ".moai/manifest.json", "{}\n")
+	// SPEC-INIT-SHRINK-001: the heal machinery serves the LOCAL-mode
+	// population — the mirror's Path A resolves against an on-disk
+	// .claude/skills, which only a local deploy produces. Seed the record so
+	// the sync deploys the full local payload (a record-less project would
+	// take the migration's thin deploy and produce no mirror at all).
+	writeTestFile(t, root, ".moai/config/sections/llm.yaml",
+		"llm:\n  harness: claude\n  deployment_mode: local\n")
 	runTemplateSyncAt(t, root)
 
 	stamp, err := plan.GetProjectConfigVersion(root)

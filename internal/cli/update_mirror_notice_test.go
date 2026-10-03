@@ -233,7 +233,7 @@ func runTemplateSyncCapturing(t *testing.T, dep template.Deployer) (stdout, stde
 	t.Setenv("HOME", tmpDir)
 
 	prev := newTemplateSyncDeployer
-	newTemplateSyncDeployer = func(fs.FS) (template.Deployer, error) { return dep, nil }
+	newTemplateSyncDeployer = func(fs.FS, template.DeployMode) (template.Deployer, error) { return dep, nil }
 	t.Cleanup(func() { newTemplateSyncDeployer = prev })
 
 	var outBuf, errBuf bytes.Buffer
@@ -345,7 +345,7 @@ func TestSeamDefaultIsTheProductionDeployer(t *testing.T) {
 func TestSeamDefaultSatisfiesResultDeployer(t *testing.T) {
 	t.Parallel()
 
-	dep, err := newTemplateSyncDeployer(fstest.MapFS{})
+	dep, err := newTemplateSyncDeployer(fstest.MapFS{}, template.DeployModeLocal)
 	if err != nil {
 		t.Fatalf("construct deployer: %v", err)
 	}
