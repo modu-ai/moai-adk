@@ -411,6 +411,13 @@ func TestFactoryMsgSendOptionalIDsDefault(t *testing.T) {
 		t.Fatalf("same-key retry returned message %q, want the original %q", retry.ID, first.ID)
 	}
 
+	empty := send(map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+		"idempotency_key": "optional-ids-empty", "body": "ids empty",
+		"task_ref": "", "correlation_id": ""})
+	if empty.CorrelationID != "optional-ids-empty" || empty.TaskRef != "optional-ids-empty" {
+		t.Fatalf("empty ids = correlation %q task_ref %q, want the idempotency key", empty.CorrelationID, empty.TaskRef)
+	}
+
 	explicit := send(map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
 		"idempotency_key": "optional-ids-explicit", "body": "ids given",
 		"task_ref": "t1473", "correlation_id": "corr-1"})
