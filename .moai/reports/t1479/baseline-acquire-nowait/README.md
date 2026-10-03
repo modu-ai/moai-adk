@@ -1,8 +1,9 @@
 # Baseline — `moai integration acquire` without `--wait`, live foreign holder (card t1479, D9)
 
 Captured BEFORE any SPEC-MERGE-WINDOW-QUEUE-001 code change, and committed in its own commit
-ahead of the run phase (verification-claim-integrity §2.3). AC-MWQ-007 compares against these
-files.
+ahead of the run phase (verification-claim-integrity §2.3). AC-MWQ-010 (SPEC v0.5.0 numbering;
+AC-MWQ-007 when captured, AC-MWQ-011 in v0.3.0-v0.4.0) compares against these files. Only this
+reference was edited after capture; the captured bytes are unchanged since `3bc274dac`.
 
 ## Build under measurement
 
@@ -35,4 +36,4 @@ files.
 - the scratch fixture path → `<FIXTURE>`.
 
 The pid and the `since` timestamp come from the fixture record and are therefore already fixed; no
-other normalization was needed. The run phase's AC-MWQ-007 test applies the same two rules.
+other normalization was needed. The run phase's AC-MWQ-010 test applies the same two rules.

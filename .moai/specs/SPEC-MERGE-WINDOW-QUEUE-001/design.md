@@ -9,54 +9,58 @@ fields; absent fields read as today:
 
 | Field | Meaning |
 |---|---|
-| `queue[]` | ordered tickets: `session_id`, `session_name`, `card`, `enqueued_at`, `waiter_pid`, `waiter_start` (process start time), `heartbeat_at`, `state` (`waiting` / `between-slices` / `reserved`), `reentry_deadline` (between-slices), `ready_deadline` + `front_used` (reserved) |
+| `queue[]` | FIFO tickets: `session_id`, `session_name`, `card`, `enqueued_at`, `pid` + `pid_source: session-owner` (the owning session, resolved as `acquire` resolves it today), `waiter_pid`, `waiter_start` (process start time), `heartbeat_at` |
 | `lease_expires_at` | holder lease expiry (on by default, 30 min; zero disables) |
 
-The policy (`open` | `hold` + reason + setter + instant) is a sibling record beside the window
-record, so the guard's read of the window record is untouched (REQ-MWQ-025).
+Promotion copies the ticket's `session_id`, `session_name`, `card`, `pid`, and `pid_source` into the
+holder fields. The holder therefore keeps the exact semantics `Stale()` and `releasableBy` rely on
+(`internal/kanban/integration_lock.go:172-180`, `322-329`): liveness and self-release follow the
+owning session, never the waiter process, which exits as soon as `acquire --wait` returns.
 
-A published record may have **no holder and a non-empty queue** in exactly two cases: the policy is
-`hold` (REQ-MWQ-008), or every queued ticket is `reserved` and not yet ready (REQ-MWQ-020). In every
-other case, a mutation that frees the holder promotes in the same mutation.
+The policy (`open` | `hold` + reason + setter + instant) is a sibling record beside the window
+record, so the guard's read of the window record is untouched (REQ-MWQ-023).
+
+A published record has **no holder and a non-empty queue** only while the policy is `hold`
+(REQ-MWQ-007). Under `open`, every mutation that frees the holder promotes in the same mutation.
 
 ## D2 Lifecycle
 
 ```
-acquire --wait ─► [free, open, no ready ticket] ─────────────────────► holder
-              └► otherwise ─► ticket@tail (waiting, heartbeating)
-                    ├─ promoted (open policy) ───────────────────────► holder
-                    ├─ slice ends ─► between-slices ─(re-invoke ≤ deadline)─► waiting, same position
-                    ├─ total bound elapses ─► withdrawn, exit≠0
-                    └─ waiter gone / heartbeat stale / deadline passed ─► dropped at next mutation
-release / owner dead / lease expired ─► [open] promote first live+ready ticket
+acquire --wait ─► [free, open, empty queue] ─────────────────────► holder
+              └► otherwise ─► ticket@tail (waiter heartbeats every 15 s)
+                    ├─ promoted (open policy; owner pid stamped on holder) ─► holder
+                    ├─ bound elapses ─► withdrawn, exit≠0
+                    └─ owner gone / waiter gone / heartbeat > 60 s ─► dropped at next mutation
+release / owner dead / lease expired ─► [open] promote first live ticket
                                        └► [hold] no successor; queue intact until `policy open`
 ```
 
 Timeout vs promotion: both are written inside the mutation; the first written wins. A waiter that
 reads "promoted" after its own bound has elapsed releases immediately and reports it.
 
-## D3 Lane sequence (new order)
+## D3 Lane sequence
 
 ```
 lane worktree:   git merge develop (local), commit
                  moai integration remeasure -- <cmd>   (clean tree before+after, HEAD unchanged;
                  record keyed by HEAD^{tree}, base = absorbed develop SHA)
-                 moai integration acquire --wait --card <id>   (background, or --slice loop)
-integration wt:  identity check (record.base == develop tip AND card tip tree == record.tree;
-                 under candidate CI: REQ-CCI-011 landing check)
-                 ├─ equal ─► git merge --no-ff ─► verify merge^{tree} == record.tree ─► release
-                 └─ moved ─► release (next ready promoted) ─► reserved ticket ─► re-absorb, re-measure
-reserved:        not ready ─(record on current tip)─► ready ─► next promotion once
-                 ├─ not ready in 30 min ─► dropped ("readiness bound")
-                 ├─ base moved during its OWN re-measure, 2nd time in a row ─► tail, waiting
-                 ├─ base moved while ready and waiting for another holder ─► keeps front (not counted)
-                 └─ 3 consecutive requeues of any kind ─► tail + logged event
-liveness:        heartbeat 15 s · window 60 s · slice re-entry grace 120 s (M0 tighten-only)
+                 moai integration acquire --wait --card <id>   (run in the background)
+when holder:     moai integration merge --card <id>
+                 ├─ resolve WT- branch (SPEC-CANDIDATE-CI-001 REQ-CCI-004 contract)
+                 ├─ record.base == develop tip AND branch tip tree == record.tree ?
+                 │   ├─ yes ─► landing check (REQ-CCI-011; no-op when candidate_ci off)
+                 │   │         ─► git merge --no-ff ─► merge^{tree} == record.tree ─► release, exit 0
+                 │   └─ base moved ─► release (next live ticket promoted)
+                 │                    ─► exit re-measure-and-re-acquire code (names both SHAs)
+                 │                    ─► lane re-absorbs, re-measures, acquire --wait at the tail
 ```
 
-`moai factory complete` follows the same in-window steps and refuses up front without a valid
-record (REQ-MWQ-021). `merge-record.txt` stays as a merge-identity file and never counts as the
-re-measure (REQ-MWQ-022).
+The stale candidate is rebuilt only after this exit, never eagerly at queue entry
+(SPEC-CANDIDATE-CI-001's assignment to this SPEC).
+
+`moai factory complete` refuses up front without a valid record (REQ-MWQ-019) and performs the same
+in-window steps. `merge-record.txt` stays as a merge-identity file and never counts as the
+re-measure (REQ-MWQ-020).
 
 ## D4 Re-measure record
 
@@ -71,7 +75,7 @@ REQ-CCI-023) selects which is required:
 - candidate-CI form — `ci_run_id`, `ci_verdict` (green per SPEC-CANDIDATE-CI-001 REQ-CCI-009).
 
 Recognized runners and empty-sweep markers form a per-runner table owned by the verb; this
-repository's row is `go test -json` (count = `pass` events of tests; markers `no tests to run`,
+repository's row is `go test -json` (count = test `pass` events; markers `no tests to run`,
 `[no test files]`). Rows for other runners are additive and neutral.
 
 ## D5 Policy verb
@@ -84,9 +88,10 @@ runs the promotion mutation itself.
 
 | Caller | Before | After |
 |---|---|---|
-| `acquire` (no `--wait`) | refuse on live holder | identical to the committed fixture |
+| `acquire` (no `--wait`) | refuse on live holder | identical to the committed fixture; also refused while a live ticket is queued |
 | `release` | clears record | clears holder; promotes under `open`, keeps queue under `hold` |
-| `status` | holder only | holder + lease + policy + queue + recorded commands |
+| `status` | holder only | holder + lease + policy + queue |
 | session-end automerge | acquire force=false | identical (no `--wait`) |
 | PreToolUse guard | reads holder | identical decision on holder-only records |
 | `factory complete` | writes stand-in, substring gate | requires keyed record, structural gate |
+| lane merge into develop | manual `git merge --no-ff` in the integration worktree | `moai integration merge --card <id>` |

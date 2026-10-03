@@ -7,25 +7,27 @@
 ## §A Context
 
 See spec.md §A and research.md §R1-§R5. The operator approved FIFO self-acquire and the abolition
-of leader nomination on 2026-10-03 (decision-index Q1); the leader settled Q2-Q6 and the
-plan-audit iteration 1 decisions Q8-Q13 (mission contract 07d28c4b).
+of leader nomination on 2026-10-03 (decision-index Q1). Leader decisions (mission contract
+07d28c4b): Q2-Q16 across iterations, then Q17 (v0.5.0 scope reduction to plain FIFO) and Q18 (lane
+merge verb).
 
 ## §B Known issues carried in
 
 - The in-window re-measure duration figure is leader-measured, not re-measured here (spec.md §F).
 - SPEC-CANDIDATE-CI-001 (t1478) is not landed; `workflow.candidate_ci.enabled` absent reads as
-  false, so the local record form governs until it lands (REQ-MWQ-015).
-- Heartbeat 15 s, heartbeat window 60 s, re-entry grace 120 s are leader values (Q14); M0 may only
-  tighten them.
+  false, so the local record form governs and the landing check is a no-op until it lands. Its
+  REQ-CCI-004 branch resolution is a dependency of the merge verb (spec.md §F).
+- Heartbeat 15 s and window 60 s are leader values (Q14); M0 may only tighten them.
 
 ## §C Pre-flight (run phase)
 
 1. Re-read `git rev-parse --short HEAD`, `git branch --show-current`; absorb local develop.
 2. Re-run research.md §R1 cells on the run tree; any cell already GREEN means another card landed
    part of this scope — stop and report.
-3. Check whether t1478 has landed and whether its key path is still `workflow.candidate_ci.enabled`;
-   whichever card lands second verifies the shared path (research.md §R5).
-4. No open decision remains (Q14-Q16 settled in v0.4.0); re-read decision-index for any later row.
+3. Check whether t1478 has landed; if so, consume its REQ-CCI-004 resolver and REQ-CCI-011 landing
+   check; if not, implement the resolver behind the same contract and leave the landing check as
+   an absent no-op seam (research.md §R5).
+4. No open decision remains; re-read decision-index for any later row.
 5. The no-`--wait` baseline is already committed (`3bc274dac`,
    `.moai/reports/t1479/baseline-acquire-nowait/`); do not regenerate it after code changes.
 
@@ -37,9 +39,8 @@ plan-audit iteration 1 decisions Q8-Q13 (mission contract 07d28c4b).
 - Lane-local verification scoped to touched packages (`internal/kanban`, `internal/cli`,
   `internal/homestate`, `internal/factorylane`, `internal/hook`, `internal/config`), `-race` on the
   queue/promotion code; no local full suite.
-- A Bash tool call is capped at 10 minutes, below the 60-minute default wait. Lanes run
-  `acquire --wait` as a background command, or loop `acquire --wait --slice <d>` with slices under
-  the cap; REQ-MWQ-003 keeps the position across slices. The lane doctrine (M4) states this.
+- A Bash tool call is capped at 10 minutes, below the 60-minute default wait: lanes run
+  `acquire --wait` as a background command (stated in the M4 doctrine).
 
 ## §E Self-verification
 
@@ -50,73 +51,77 @@ progress.md §E.2.
 
 ### M0 — In-window duration baseline (Priority High, measurement only)
 - Manual simulation of the new in-window path on a fixture repository (a scratch clone with a card
-  branch that already absorbed develop): time `git merge-tree --write-tree` identity check +
-  `git merge --no-ff` + `git rev-parse <merge>^{tree}` comparison, N = 20 runs, reporting median and
-  maximum wall time. Output `.moai/reports/t1479/m0-window-duration.md` with the command and raw
-  timings, committed BEFORE the M1 code commit (verification-claim-integrity §2.3).
-- The result may only LOWER the 30-minute lease default (REQ-MWQ-009).
-- ACs: AC-MWQ-009 (M0 evidence clause).
+  branch that already absorbed develop): time the tree-identity check + `git merge --no-ff` +
+  `git rev-parse <merge>^{tree}` comparison, N = 20 runs, reporting median and maximum wall time.
+  Output `.moai/reports/t1479/m0-window-duration.md` with the command and raw timings, committed
+  BEFORE the M1 code commit (verification-claim-integrity §2.3).
+- The result may only LOWER the 30-minute lease default and tighten the 15 s / 60 s liveness values.
+- ACs: AC-MWQ-008 (M0 evidence clause).
 
-### M1 — Window record data model: queue, ticket liveness, lease, policy (Priority High)
-- Additive `queue[]` (state, waiter pid + start time, heartbeat), `lease_expires_at`, reserved
-  ticket readiness bound; policy sibling record; legacy-record read compatibility.
-- ACs: AC-MWQ-001, -009, -025.
+### M1 — Window record data model: FIFO queue, owner pid on tickets, lease, policy (Priority High)
+- Additive `queue[]` (owner pid + `pid_source`, waiter pid + start time, heartbeat),
+  `lease_expires_at`; policy sibling record; legacy-record read compatibility.
+- ACs: AC-MWQ-001, -008, -023.
 
 ### M2 — Re-measure record and the executing verb (Priority High)
 - `moai integration remeasure -- <command>` (name final at run): clean-tree and unchanged-HEAD
   checks before and after, captures command + exit code, recognized-report count, empty-sweep and
   unstructured-run refusal, build identity, key = `HEAD^{tree}` + absorbed base; one verifier for
   the local and candidate-CI forms selected by `workflow.candidate_ci.enabled`.
-- ACs: AC-MWQ-015, -016, -017.
+- ACs: AC-MWQ-014, -015, -016.
 
-### M3 — acquire --wait, slices, liveness drop, promotion, status (Priority High)
-- FIFO enqueue, total bound (bare 60m), `--slice` with still-queued exit and same-position resume,
-  heartbeat refresh, dead/stale/expired ticket drop, timeout-vs-promotion ordering, promotion on
-  release / dead owner / lease expiry, lease renewal, status human + JSON.
-- ACs: AC-MWQ-002 … -007, -010, -011, -012.
+### M3 — acquire --wait, liveness drop, promotion, status (Priority High)
+- FIFO enqueue, bound (bare 60m), heartbeat refresh, owner/waiter/heartbeat drop,
+  timeout-vs-promotion ordering, promotion with owner-pid stamping on release / dead owner / lease
+  expiry, lease renewal, no-`--wait` refusal while a ticket is queued, status human + JSON.
+- ACs: AC-MWQ-002 … -006, -009, -010, -011.
 
 ### M4 — Policy verb and the nomination doctrine (Priority High)
 - `moai integration policy open|hold`; lane-role refusal; hold suspends every promotion.
-- AGENTS.local.md §4.1 (line 221, the lane window procedure, the background/slice wait note) and
-  gitflow-lane-protocol.md §3/§6 carry the REQ-MWQ-014 sentence.
-- ACs: AC-MWQ-008, -013, -014.
+- AGENTS.local.md §4.1 (line 221, the lane window procedure, the background-wait note) and
+  gitflow-lane-protocol.md §3/§6 carry the two REQ-MWQ-013 sentences.
+- ACs: AC-MWQ-007, -012, -013.
 
-### M5 — Substantive completion gate (Priority High)
+### M5 — Lane merge verb (Priority High)
+- `moai integration merge --card <id>`: branch resolution, identity check, landing-check call,
+  `--no-ff` merge, merge-tree verification, release; base moved → release + re-measure-and-re-acquire
+  exit code. `moai factory complete` reuses the same in-window step.
+- ACs: AC-MWQ-017, -018.
+
+### M6 — Substantive completion gate (Priority High)
 - `factory complete` refuses without a keyed record; the stand-in never satisfies the gate;
   `verifyMerge` structural check; merge-readiness fourth condition with the command printed.
-- ACs: AC-MWQ-021, -022, -023.
-
-### M6 — In-window path: identity-only, base-move requeue, reserved tickets (Priority Medium)
-- Lane procedure and `factory complete` in-window steps reduced to identity check + `--no-ff`
-  (REQ-CCI-011 landing check under candidate CI); base moved → release + reserved ticket; readiness
-  bound; front-once; second move → tail.
-- ACs: AC-MWQ-018, -019, -020.
+- ACs: AC-MWQ-019, -020, -021.
 
 ### M7 — Distributed and local doctrine text (Priority Medium)
 - Template `kanban-dispatch-mechanics.md` § Integration (drop the announcement; describe queue +
-  policy + `acquire --wait`) → `make build` → local mirror; `.moai/docs/gitflow-integration-chain.md`
-  window bash re-ordered (re-measure before acquire).
-- ACs: AC-MWQ-024.
+  policy + `acquire --wait` + `integration merge`) → `make build` → local mirror;
+  `.moai/docs/gitflow-integration-chain.md` window bash re-ordered (re-measure before acquire,
+  merge through the verb).
+- ACs: AC-MWQ-022.
 
 ### M8 — Regression sweep (Priority Low)
 - Guard, session-end automerge, existing integration/factory tests unchanged; `-race` on M3.
-- ACs: AC-MWQ-011, -025, quality gates in acceptance.md §G.
+- ACs: AC-MWQ-010, -023, quality gates in acceptance.md §G.
 
 ## §G Risks
 
 | Risk | Mitigation |
 |---|---|
-| Waiter killed → orphan ticket promoted, window wedged | ticket liveness keyed to the waiter process (pid + start time) and heartbeat; dropped at next mutation (REQ-MWQ-004) |
-| Promotion races the bound | both decided in the mutation; late-observed promotion releases at once (REQ-MWQ-006) |
-| Bash 10-min cap below the 60-min wait | background run or slices that keep position (REQ-MWQ-003) |
-| Lease evicts a merging holder | 30-min default far above the identity + merge path; renewals; M0 may only shorten |
-| Requeue churn / starvation | reserved ticket that does not block, front-once, 30-min readiness bound; only own-re-measure moves count; three consecutive requeues → tail + log (REQ-MWQ-020); rule-model requeue measurement in M6 (research.md §R7) |
-| Release during hold empties the window | intended: queue intact, promotion resumes on `open` (REQ-MWQ-008) |
-| Empty or unstructured test runs pass the gate | refused by REQ-MWQ-016 |
-| Dirty tree measured under HEAD's key | refused by REQ-MWQ-017 |
-| Hook guard semantics drift | REQ-MWQ-025 regression on holder-only records |
+| Promoted holder read as stale once its waiter exits | owner-session pid stamped on promotion (REQ-MWQ-006, AC-MWQ-006 scenario 2) |
+| Waiter killed → orphan ticket promoted, window wedged | ticket dropped when owner or waiter is gone or heartbeat stale (REQ-MWQ-003) |
+| Promotion races the bound | both decided in the mutation; late-observed promotion releases at once (REQ-MWQ-005) |
+| Bash 10-min cap below the 60-min wait | background `acquire --wait`; an exited waiter re-enqueues at the tail (accepted) |
+| Lease evicts a merging holder | 30-min default far above a seconds-long in-window step; renewals; M0 may only shorten |
+| Repeated invalidation sends a lane to the tail each time | accepted with the scope reduction; residual risk in research.md §R7 |
+| Release during hold empties the window | intended: queue intact, promotion resumes on `open` (REQ-MWQ-007) |
+| Empty or unstructured test runs pass the gate | refused by REQ-MWQ-015 |
+| Dirty tree measured under HEAD's key | refused by REQ-MWQ-016 |
+| t1478 not landed when M5 runs | resolver behind the same contract, landing check absent no-op; reconciled by the second card |
+| Hook guard semantics drift | REQ-MWQ-023 regression on holder-only records |
 
 ## §H Cross-references
 
 spec.md · acceptance.md · design.md · research.md · decision-index.md · progress.md ·
-`.moai/reports/t1479/plan-audit-iter1.md` · SPEC-CANDIDATE-CI-001
+`.moai/reports/t1479/plan-audit-iter1.md` · `.moai/reports/t1479/plan-audit-iter2.md` ·
+SPEC-CANDIDATE-CI-001
