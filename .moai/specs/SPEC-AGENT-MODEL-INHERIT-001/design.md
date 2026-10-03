@@ -157,3 +157,9 @@ existing SessionEnd age-out — not a new card — bounds the accumulation. **No
 card is required on the evidence above**; the audit's "log accumulates indefinitely" residual is
 closed by the measured surviving entry. If the guard's write path is ever re-enabled, revisit this
 section before relying on the prune entry's retention threshold.
+
+**Addendum 2026-10-03 (spec.md v0.9.0, card t1476).** The premise above that the file stays
+unwritten was false: the observer appended one row per spawn already at the v0.6.0 amendment
+commit (`appendAuditJSONL`), and the v0.8.0 consumption contract added `override_consumption` to
+the row. REQ-AMI-009 now requires that row. The SessionEnd age-out in `prune_logs.go` is
+therefore the live growth bound, not a dormant safety net.
