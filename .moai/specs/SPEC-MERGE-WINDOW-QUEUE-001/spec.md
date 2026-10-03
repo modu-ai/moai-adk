@@ -171,13 +171,15 @@ to that tree.
   resolve the card's `WT-` branch the same way SPEC-CANDIDATE-CI-001 REQ-CCI-004 resolves it, pin
   the branch tip to one commit SHA, and then, in this order, require the card's re-measure record to
   be valid under REQ-MWQ-014/015, require the record's absorbed commit to equal the integration
-  branch tip, require the pinned SHA to have that absorbed commit as an ancestor, require the pinned
+  branch tip, require the pinned SHA to differ from that absorbed commit (where they are equal there
+  is nothing to merge, and the step refuses before invoking `git merge`), require the pinned SHA to
+  have that absorbed commit as an ancestor, require the pinned
   SHA's tree to equal the record's tree, call SPEC-CANDIDATE-CI-001's shared landing check
   (REQ-CCI-011; a no-op while `workflow.candidate_ci.enabled` is false) for that SHA, run
   `git merge --no-ff <pinned SHA>` into the integration branch (never the branch name), verify the
   merge commit's tree equals the record's tree, and release the window; it shall run no test suite.
 - **REQ-MWQ-018** (Event-driven) — **When** a REQ-MWQ-017 step fails, the merge step shall release
-  the window and exit with a code distinct per cause, of which there are nine: (1) record invalid;
+  the window and exit with a code distinct per cause, of which there are ten: (1) record invalid;
   (2) integration tip moved since the record's absorbed commit — the re-measure-and-re-acquire code,
   naming both SHAs, after which the lane re-absorbs, re-measures, and re-acquires at the tail, the
   only point at which a stale candidate is rebuilt, never eagerly at queue entry, as
@@ -185,7 +187,9 @@ to that tree.
   commit; (4) pinned tree differing from the record's tree; (5) landing-check refusal; (6) merge
   failure with the worktree clean after `git merge --abort`; (7) merge failure with the worktree
   still not clean after the abort; (8) any failure after the merge commit exists (a merge-tree
-  mismatch or a lookup error); (9) any other error before the merge. Causes 1-6 and 9 occur before
+  mismatch or a lookup error); (9) any other error before the merge; (10) nothing to merge — the
+  pinned SHA equals the record's absorbed commit, refused before `git merge` runs. Causes 1-6, 9
+  and 10 occur before
   the integration branch moves and promote the next live ticket on release; in causes 7 and 8 the
   merge step shall, before releasing, set the window policy to `hold` with a reason naming the cause
   (and, for 8, the merge commit SHA, which it leaves in place for the leader), so that no later
@@ -208,11 +212,11 @@ to that tree.
   branch and the card state unchanged; (4) otherwise it shall merge only by calling the REQ-MWQ-017
   merge step (replacing its own merge), with the step's release deferred until complete's state
   transitions are done, and, on success, record the card as merged-local; **When** the step fails,
-  the card state shall not change; and **When** the step succeeded but the state transition then
-  fails because the card's version or lease changed after step 1, complete shall leave the merge
+  the card state shall not change; and **When** any state transition fails after the merge commit
+  exists (including a card version or lease changed after step 1), complete shall leave the merge
   commit in place, set the window policy to `hold` with cause `post-merge-transition-conflict`
   naming the merge SHA (a system write in REQ-MWQ-018 cause 8's post-merge class), release the
-  window, and exit with its own code, distinct from the nine REQ-MWQ-018 codes.
+  window, and exit with its own code, distinct from the ten REQ-MWQ-018 codes.
 - **REQ-MWQ-020** (Unwanted) — `moai factory complete` shall not write a record that stands in for
   the re-measure; the merge identity it records shall be stored separately from, and shall never
   satisfy, the re-measure requirement.

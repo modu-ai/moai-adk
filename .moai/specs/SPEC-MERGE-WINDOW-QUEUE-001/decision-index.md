@@ -234,3 +234,13 @@ Operator verdict: 운영자 결정(2026-10-03, AskUserQuestion) — 좁은 범�
 - 선택: 병합 단계의 `hold` 쓰기를 REQ-012 레인 거부의 예외로 둔다. REQ-018과 AC-018의 종료 코드 수를 맞춘다. AC-018 병합 실패 행의 설정을 분명히 한다.
 
 반영(v0.7.0): REQ-MWQ-009, -017(보유자 확인 먼저·유효성·조상 관계 전제), -018(원인 9가지·병합 뒤 실패는 커밋 유지 + `hold`·시스템 쓰기), -019(게이트 순서 1–4·채택 조건), AC-MWQ-017 시나리오 4–5, AC-MWQ-018(9행 표·병합 커밋 유무 열·병합 seam 주입), AC-MWQ-019 시나리오 5–7, design.md D1·D3, plan.md M5·M6. REQ·AC 개수는 23/23 그대로다.
+
+### Q21: 고정 SHA·기록 base·develop 끝이 모두 같아 병합할 것이 없을 때(plan-audit 5차 codex P2) 어떻게 끝나는가?
+
+Label: FOUNDER
+
+Authority anchor: — (운영자 결정, 2026-10-03. 커밋된 근거가 없어 이 행이 첫 커밋 기록이다.)
+
+Why unresolved: 해당 없음 — 운영자가 결정했다. 5차 감사(`.moai/reports/t1479/plan-audit-iter5.md`)는 필수 codex 게이트에서만 FAIL했고, 지적은 P2 한 건이다. 세 값이 모두 같으면 조상 관계·트리 확인은 통과하지만, `git merge --no-ff`가 "Already up to date"로 끝나 병합 커밋이 생기지 않는데, 이때의 결말이 정해져 있지 않았다.
+
+Operator verdict: 운영자 결정(2026-10-03) — 한 줄 수정 후 해당 부분만 다시 읽는다. 고정 SHA가 기록의 base와 같으면(병합할 것이 없으면) 병합 단계는 `git merge`를 부르기 전에 거부하고, 창을 놓고, 고유 코드로 끝난다. REQ-019의 병합 뒤 절은 「병합 커밋이 생긴 뒤의 모든 상태 전이 실패」로 넓힌다. 다른 수정은 하지 않는다. 반영: REQ-MWQ-017(같은 값 거부), REQ-MWQ-018(원인 10, 코드 열 개), REQ-MWQ-019(병합 뒤 절 확장), AC-MWQ-018 10행, AC-MWQ-019 시나리오 8의 코드 수, design.md D3의 코드 수.

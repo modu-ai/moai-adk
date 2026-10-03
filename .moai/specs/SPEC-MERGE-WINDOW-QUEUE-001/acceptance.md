@@ -129,7 +129,7 @@
   valid record, When B runs the verb, Then it refuses, no merge commit is created, and the window
   record's bytes are unchanged.
 - **AC-MWQ-018** (maps REQ-MWQ-018) — Each row is a scenario run as holder B with C queued; in every
-  row the window is released, the exit code is distinct from every other row's (nine codes), and
+  row the window is released, the exit code is distinct from every other row's (ten codes), and
   the last two columns state whether a merge commit is on the integration branch afterwards and
   whether C is promoted:
 
@@ -144,6 +144,7 @@
   | 7 | merge failure, dirty | merge seam fails; abort seam leaves an untracked file | none | no — policy `hold`, reason names the worktree | policy setter is the merge step and card |
   | 8 | post-merge failure | merge succeeds; post-merge lookup seam errors | **yes — left in place** | no — policy `hold`, reason names the merge SHA | the merge commit's SHA equals the one in the hold reason |
   | 9 | other error | branch-resolution seam returns an unexpected error | none | yes | — |
+  | 10 | nothing to merge | pinned SHA = record base = develop tip | none — `git merge` never invoked (merge seam records zero calls) | yes | — |
 
 ### Completion gate
 
@@ -170,7 +171,7 @@
   card's version after the merge step succeeds, When complete's transition runs, Then the merge
   commit stays on the integration branch, the card state is unchanged, the policy is `hold` with
   cause `post-merge-transition-conflict` naming that merge SHA, no queued ticket is promoted, the
-  window is released only after the hold is written, and the exit code differs from the nine
+  window is released only after the hold is written, and the exit code differs from the ten
   AC-MWQ-018 codes.
 
 - **AC-MWQ-020** (maps REQ-MWQ-020) — Given complete wrote `merge-record.txt`, When that file is
