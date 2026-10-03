@@ -58,7 +58,7 @@ the lane/leader concern). GUARD shorthand = the anchored alternation of
 ```yaml
 run_evidence:
   measured_at: 2026-10-03
-  head: fa107a019 + repair pass (rp-*.txt are the binding set; base tree = post-sync close)
+  head: df828f92d (rp-*.txt are the binding set; base tree = post-sync close fa107a019)
   m1_scanner:
     file: internal/template/workflow_worktree_key_honesty_test.go
     first_run: "reader index ([./...]): 165 packages, 1423 files scanned, 0 type errors"
@@ -100,6 +100,7 @@ run_evidence:
 Three review surfaces converged on the same defects — **claude audit_multi leg,
 codex audit_multi leg, codex card-review (scope=card)**; codex executed overlay
 reproductions for the code repairs. All applied in one repair commit:
+`df828f92d` (full: `df828f92d39b2e3659a0184f4a8915bc45eac5eb`).
 
 | # | Repair | Surface |
 |---|--------|---------|
@@ -128,7 +129,7 @@ run_commits:
   - 568d8907c M1 AST scanner + expectation table + production honesty test
   - b82f8429a M2 alias characterization fixture + fixture-mode test
   - 27cf29e95 M4 run-phase gates green + progress evidence close
-  - (post-sync audit repair commit — repairs 1-8 + arms a-c, this commit)
+  - df828f92d post-sync audit repair commit — repairs 1-8 + mutation arms a-c
 m3_note: M3 is evidence-only (mutation matrix, no tracked-file change) — no commit.
 push_state: DEFERRED (factory leader batch-pushes local develop after integration)
 slot: go-test-internal-template released after the heavy-run batch
