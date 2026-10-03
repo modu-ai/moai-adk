@@ -54,46 +54,59 @@ edge is a likely textual merge conflict at integration, not a code dependency.
 | M | Commit | Status |
 |---|---|---|
 | M1 board + CLI | `fe9bcd7a6` | done |
-| M2 shared verdict predicate + doctrine (O9 disposed: spec-workflow hash-subject sentence, local + template) | `2bde7f65e` | done in code/rules; plan-auditor.md verdict-block fields BLOCKED (agent file, outside manager-develop scope) |
+| M2 shared verdict predicate + doctrine (debt O9 disposed) | `2bde7f65e` | done |
 | M7 bind cache + degraded inbox | `b387d9ff8` | done |
-| M3 audit decider | — | BLOCKED: SPEC defect D-RUN-1 below |
-| M0, M4, M5, M6, M8 | — | not started (M5 and the agent-file parts of M4/M6 are agent edits outside manager-develop scope) |
+| D-RUN-1 clarification (manager-spec role, leader ruling, mission contract 11c79e1a) | `818569869` | done — decision-index Q27 |
+| M4/M5 agent + config edits (plan-auditor/manager-spec/sync-auditor C1+C2, C3 via `make agents-emit`; ceiling policy config) | `27c41ffb8` | done |
+| M3 audit decider T8a + Amendments (debt O10: REQ-FDA-016's REQ-FR-019 amendment is evidenced in this commit beside AC-FDA-015) | `90d085183` | done |
+| M6 doctrine (watchdog, waits, recheck, MCP fallback, 4dim binding conditions) | `19dd5d9ce` | done |
+| M0 measurements | — | NOT RUN (gap) |
+| M8 mirror/neutrality sweep | this commit | done (no new SPEC/card/date token in added template lines) |
 
-### SPEC defect D-RUN-1 (stopped on)
+### SPEC defect D-RUN-1 — resolved
 
-REQ-FDA-014 requires "the card carries no open blocker and no operator hold", but the factory card
-record (`internal/homestate/card_record.go` `type Card`) carries no blocker or hold field, and
-design.md §5 names no source for either. Implementing T8a without a mechanical definition would
-either refuse always or drop a keep-set check. Needs manager-spec: name the source (queue `hold`
-state / `[보류` marker, progress wait records) before M3 starts.
+REQ-FDA-014's "open blocker / operator hold" had no source on the factory card record. Leader
+ruling (mission contract 11c79e1a): blocker = card record state `blocked`/`needs-decision`; hold =
+queue item state `hold`; unreadable source fails closed. Recorded as Q27 (`818569869`).
 
-### AC evidence (run so far)
+### AC matrix
 
 | AC | Command | Verbatim key output | Status |
 |---|---|---|---|
-| AC-FDA-001/002/003 | `go test -count=1 -race -cover ./internal/decision/...` | `ok  github.com/modu-ai/moai-adk/internal/decision 2.019s coverage: 85.6% of statements` | PASS |
-| AC-FDA-001 (CLI, lane refusal) | `go test -count=1 -run TestDecisionCmd ./internal/cli/` | `ok  github.com/modu-ai/moai-adk/internal/cli 1.603s` | PASS |
-| AC-FDA-009 | `go test -count=1 -cover ./internal/auditverdict/...` ; `go test -run TestFDA_T7 ./internal/homestate/` | `ok ... auditverdict 0.272s coverage: 100.0%` ; `ok ... homestate 3.396s` (RED before wiring: `label-only PASS at T7: err=<nil>`) | PASS (contract site applies label rule only — contract records only the label) |
-| AC-FDA-007 | `go test ./internal/template/` (batch-gate doctrine A30 re-anchored) | `ok  github.com/modu-ai/moai-adk/internal/template 215.578s` | PASS |
-| AC-FDA-006 | — | plan-auditor.md not edited | BLOCKED |
-| AC-FDA-020/021/022 | `go test -count=1 -race -run TestFDA_ ./internal/hook/` | `ok  github.com/modu-ai/moai-adk/internal/hook 16.998s` (RED: `cache hit opened the broker 1 time(s)`; `first degraded inbox claim was not surfaced: ""`) | PASS (M0(a) load measurement not run) |
-| others | — | — | not started / blocked |
+| 001/002/003 | `go test -count=1 -race -cover ./internal/decision/...` | `ok ... internal/decision 2.019s coverage: 85.6% of statements` | PASS |
+| 001 CLI lane refusal | `go test -run TestDecisionCmd ./internal/cli/` | `ok ... internal/cli 1.603s` | PASS |
+| 004 | `grep -c 'moai decision read'` watchdog SKILL (local+template) | 1 / 1 (was 0, P4) | PASS (doctrine) |
+| 005 | manager-spec C1/C2 carry `board:<record-id>` pin rule | `grep -c` = 3 per copy | PASS (doctrine; no fixture test) |
+| 006 | plan-auditor C1/C2 verdict fields | `blocking_count`, `must_pass_failed`, `fix_scope`, `defect_class`, `reread_hunks` present (P6/P11/P13 were exit=1) | PASS (doctrine) |
+| 007 | `go test ./internal/template/` (A30 re-anchored) | `ok ... internal/template 215.578s` | PASS |
+| 008 | sync-auditor C1/C2 section + `sync-audit-4dim.js` undisposed→FAIL | doctrine + script edit; no executed fixture | PARTIAL (4dim script not executed — gap) |
+| 009 | `go test -cover ./internal/auditverdict/...`; `-run TestFDA_T7 ./internal/homestate/` | `coverage: 100.0%`; `ok ... 3.396s` (RED `label-only PASS at T7: err=<nil>`) | PASS |
+| 010 | harness.yaml `plan_audit_ceiling_policy` both trees; `go test ./internal/config/` | `ok ... internal/config 6.429s` | PASS |
+| 011/012/013 | ceiling procedure text in plan-auditor + spec-workflow | doctrine only; no executable fixture (procedure is agent-driven) | PARTIAL |
+| 014 | `go test -run TestFDA_ ./internal/homestate/` + CLI hold test | `ok ... internal/homestate 19.440s`; `ok ... internal/cli 8.332s` | PASS (blocked/needs-decision arms: edge starts at kickoff, so such cards are refused as illegal transitions — no dedicated fixture) |
+| 015 | `go test ./internal/homestate/...` (AC-005 now 66/295) | `ok ... internal/homestate 125.189s` | PASS |
+| 016 | `go test -run 'TestFDA_|TestSD_AC016' ./internal/cli/` + Amendments rows | `ok ... internal/cli 8.332s` | PASS |
+| 017/018 | manager-spec C1/C2 Class/Default/product-level/DEFAULT-APPLIED at plan close | doctrine; decider fixtures in TestFDA_AuditDeciderFounderRows | PASS (doctrine + decider side) |
+| 019 | auto-semantics §14 + watchdog | doctrine; `workflow.watchdog.wait_recheck_minutes` key NOT added to workflow.yaml (operator note: do not commit workflow.yaml) | PARTIAL |
+| 020/021/022 | `go test -race -run TestFDA_ ./internal/hook/` | `ok ... internal/hook 16.998s` (RED `cache hit opened the broker 1 time(s)`) | PASS |
+| 023 | kanban-dispatch-detail `fallback=CLI` | doctrine (P23 was exit=1) | PASS (doctrine) |
+| 024 | push still human: CLI test case "push" with `--decider audit` refused | `ok ... internal/cli 8.332s` | PASS (RG) |
+| 025 | `make agents-emit`; `go test ./internal/template/agentemit/...` | `ok ... agentemit 0.458s` | PASS |
 
-Lint: `golangci-lint run` (v2.1.6) on hook, auditverdict, decision, contract, homestate, runtime → `0 issues.`
+Lint: `golangci-lint run` (v2.1.6) on cli, homestate, hook, auditverdict, decision, contract, runtime → `0 issues.`
+
+Pre-existing, not caused here: `TestStaleRunNoticeFactoryLegacyLabel` (hook, fails at base with env scrubbed); `TestDetectDefaultBranch` (internal/workflow, untouched package).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_status: partial — stopped on SPEC defect D-RUN-1
-run_commit_sha: b387d9ff8
-ac_pass_count: 8
-ac_blocked_or_open: 17
+run_status: complete-with-gaps
+run_commit_sha: 19dd5d9ce
+ac_pass_count: 21
+ac_partial: [AC-FDA-008, AC-FDA-011, AC-FDA-012, AC-FDA-013, AC-FDA-019]
+gaps: [M0 measurements not run, 4dim script not executed, wait_recheck_minutes config key absent, ceiling procedure untested mechanically]
 new_warnings_or_lints_introduced: 0
 ```
-
-## §E.3 Run-phase Audit-Ready Signal
-
-_<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
