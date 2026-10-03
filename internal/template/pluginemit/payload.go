@@ -67,24 +67,26 @@ func payload(view fs.FS, mcp MCPEntry) (map[string][]byte, error) {
 		return data, nil
 	}
 
-	if _, err := fs.Stat(view, skillsSource); err == nil {
-		err = fs.WalkDir(view, skillsSource, func(src string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
-				return err
-			}
-			data, err := read(src)
-			if err != nil {
-				return err
-			}
-			rel := strings.TrimSuffix(strings.TrimPrefix(src, skillsSource+"/"), templateSuffix)
-			out[path.Join(skillsDest, rel)] = data
-			return nil
-		})
+	err := fs.WalkDir(view, skillsSource, func(src string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil, fmt.Errorf("pluginemit: walk %s: %w", skillsSource, err)
+			if src == skillsSource && errors.Is(err, fs.ErrNotExist) {
+				return nil
+			}
+			return err
 		}
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return nil, fmt.Errorf("pluginemit: stat %s: %w", skillsSource, err)
+		if d.IsDir() {
+			return nil
+		}
+		data, err := read(src)
+		if err != nil {
+			return err
+		}
+		rel := strings.TrimSuffix(strings.TrimPrefix(src, skillsSource+"/"), templateSuffix)
+		out[path.Join(skillsDest, rel)] = data
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("pluginemit: walk %s: %w", skillsSource, err)
 	}
 
 	entries, err := fs.ReadDir(view, commandsSource)

@@ -49,8 +49,7 @@ var generatedRoots = []string{
 // the one part of the mode a committed file reliably carries. Windows has no
 // execute bit, so the mode comparison is not made there.
 //
-// @MX:ANCHOR: the read-only drift gate behind `make plugin-emit-check` and the golden test
-// @MX:REASON: fan_in >= 3 (golden test, drift test, Write's extra-file removal); a write here would regenerate silently and erase the evidence CI needs
+// @MX:NOTE: the read-only drift gate behind `make plugin-emit-check`; it must never write, because a write here would regenerate silently and erase the evidence CI needs
 func Drift(pub *Publication, root string) ([]Difference, error) {
 	var diffs []Difference
 	for _, p := range sortedPaths(pub.Files) {
