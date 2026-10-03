@@ -1,0 +1,12 @@
+package kanban
+
+// Plan-phase observation probe for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458).
+// Evidence, not source. Prints the queue lock's wait budget as the tree derives
+// it, so the figure the lease critical section is sized against is a measured
+// value and not a quoted one (the t1448 sync audit quoted 1.65s).
+
+import "testing"
+
+func TestT1458ProbeBoardLockBudget(t *testing.T) {
+	t.Logf("PROBE boardLockWaitBudget=%s writers=%d mutationCost=%s headroom=%d", boardLockWaitBudget, boardLockSupportedWriters, boardLockCIMutationCost, boardLockHeadroom)
+}

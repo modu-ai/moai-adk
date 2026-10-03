@@ -1,0 +1,265 @@
+package cli
+
+// Plan-phase observation probes for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458).
+//
+// This file is evidence, not source: it carries a .txt suffix so the build
+// never sees it, and `go test -overlay` maps it into internal/cli as a test
+// file for one run (see overlay-tree.json in this directory). It uses only
+// seams and helpers that already exist in the tree at the pinned plan HEAD
+// (factoryNominateBeforeRecord, nmRaceAtSeam, nmIsolatedWorktrees, ...), so it
+// compiles against an unmodified tree and every probe below FAILS there for the
+// stated reason. Probes for arms (a) and (c) need a seam the tree does not
+// have; they are described in plan.md section 3 and become the RED tests of
+// milestone M1.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"sort"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
+)
+
+func probeLeasedCount(t *testing.T, root string, ids ...string) (int, []string) {
+	t.Helper()
+	n := 0
+	var held []string
+	for _, id := range ids {
+		if !fcHasCard(t, root, id) {
+			continue
+		}
+		c := fcCard(t, root, id)
+		held = append(held, fmt.Sprintf("%s=%s/%s", id, c.State, c.LeaseHolder))
+		if c.State == homestate.CardLeased {
+			n++
+		}
+	}
+	return n, held
+}
+
+// M1 / F3(a): two lanes nominate two DIFFERENT serial cards at the same
+// instant, no serial card in flight. Exactly one may end leased.
+func TestT1458ProbeM1SerialTwoDistinct(t *testing.T) {
+	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	nmIsolatedWorktrees(t, "t1", "t2")
+	_ = nmRaceAtSeam(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t2"}})
+	n, held := probeLeasedCount(t, root, "t1", "t2")
+	t.Logf("PROBE M1 serial cards leased = %d rows=%v", n, held)
+	if n > 1 {
+		t.Errorf("serial exclusivity breached: %d serial cards are leased at once (%v)", n, held)
+	}
+}
+
+// M2 / F3(c), nominated arm: the operator holds the nominee after the
+// promotion and before the claim.
+func TestT1458ProbeM2HoldAfterPromotion(t *testing.T) {
+	root, store := nmQueuedNominee(t)
+	nmIsolatedWorktrees(t, "t1")
+	nmSetSeam(t, func(cardID string) error {
+		nmSetState(t, store, cardID, kanban.BacklogStateHold)
+		return nil
+	})
+	out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
+	q := nmQueueState(t, store, "t1")
+	state, holder := "", ""
+	if fcHasCard(t, root, "t1") {
+		c := fcCard(t, root, "t1")
+		state, holder = c.State, c.LeaseHolder
+	}
+	t.Logf("PROBE M2 err=%v queue=%s record=%s holder=%s stdout=%q stderr=%q", err, q, state, holder, out, stderr)
+	if q == kanban.BacklogStateHold && state == homestate.CardLeased {
+		t.Errorf("an operator write committed between the decision and the claim and the card was leased anyway: queue=%s record=%s holder=%s", q, state, holder)
+	}
+}
+
+// M3 / F14: after the promotion the operator unpicks and picks the same card
+// again, then the claim fails; the compensation must not revert that pick.
+func TestT1458ProbeM3ABAOperatorPick(t *testing.T) {
+	_, store := nmQueuedNominee(t)
+	nmSetSeam(t, func(cardID string) error {
+		nmSetState(t, store, cardID, kanban.BacklogStateQueued)
+		stamp := "2026-10-03T00:00:00Z"
+		if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+			for i := range r.Items {
+				if r.Items[i].ID == cardID {
+					r.Items[i].State = kanban.BacklogStatePicked
+					r.Items[i].PickedAt = &stamp
+					return nil
+				}
+			}
+			return fmt.Errorf("no card %s", cardID)
+		}); err != nil {
+			return err
+		}
+		return errors.New(nmInjected)
+	})
+	_, _, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
+	q := nmQueueState(t, store, "t1")
+	t.Logf("PROBE M3 err=%v queue=%s (the operator's fresh pick was picked)", err, q)
+	if q != kanban.BacklogStatePicked {
+		t.Errorf("the operator's fresh pick was reverted by the compensation: queue=%s want picked", q)
+	}
+}
+
+// M5: two lanes run the post-lease worktree step at the same instant in ONE
+// repository with the real worktree materializer. Also reports what a failed
+// step leaves behind.
+func TestT1458ProbeM5RenameCollision(t *testing.T) {
+	const iters = 20
+	failures, stranded, firstFailure := 0, 0, ""
+	for i := 0; i < iters; i++ {
+		root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		nmSetText(t, store, "t1", "alpha rename probe")
+		nmSetText(t, store, "t2", "beta rename probe")
+		far := "2099-01-01T00:00:00Z"
+		fcPlace(t, root,
+			homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: far, Stage: homestate.CardRun},
+			homestate.Card{CardID: "t2", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", LeaseExpiresAt: far, Stage: homestate.CardRun})
+		cards := []homestate.Card{fcCard(t, root, "t1"), fcCard(t, root, "t2")}
+		lanes := []string{"lane-1", "lane-2"}
+		errs := make([]error, 2)
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for k := range cards {
+			wg.Add(1)
+			go func(k int) {
+				defer wg.Done()
+				<-start
+				_, _, errs[k] = factoryEnsureCardWorktree(context.Background(), root, fcRun, cards[k], lanes[k], io.Discard)
+			}(k)
+		}
+		close(start)
+		wg.Wait()
+		bad := false
+		for k := range errs {
+			if errs[k] == nil {
+				continue
+			}
+			bad = true
+			id := cards[k].CardID
+			_, statErr := os.Lstat(filepath.Join(root, ".moai", "worktrees", id))
+			if statErr == nil && fcCard(t, root, id).WorktreePath == "" && factoryRefuseForeignWorktree(root, id) != nil {
+				stranded++
+			}
+			if firstFailure == "" {
+				firstFailure = errs[k].Error()
+			}
+		}
+		if bad {
+			failures++
+		}
+	}
+	t.Logf("PROBE M5 iterations=%d failed-iterations=%d stranded-dir-and-foreign-worktree-precheck-refusal=%d", iters, failures, stranded)
+	if failures > 0 {
+		t.Errorf("%d of %d concurrent worktree steps failed; first error: %.140s", failures, iters, firstFailure)
+	}
+}
+
+// M5 candidate fix: the same two-lane worktree step as above, with the whole
+// step (create + rename) serialized by one lock. An in-process mutex stands in
+// for a cross-process lock; the failures under test are collisions between two
+// git processes, so which kind of lock orders them does not change the
+// measurement. Also reports how long the step takes uncontended, which is what
+// serialization would cost each lane.
+func TestT1458ProbeM5SerializedStep(t *testing.T) {
+	const iters = 20
+	failures := 0
+	var stepDurs []time.Duration
+	for i := 0; i < iters; i++ {
+		root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		nmSetText(t, store, "t1", "alpha rename probe")
+		nmSetText(t, store, "t2", "beta rename probe")
+		far := "2099-01-01T00:00:00Z"
+		fcPlace(t, root,
+			homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: far, Stage: homestate.CardRun},
+			homestate.Card{CardID: "t2", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", LeaseExpiresAt: far, Stage: homestate.CardRun})
+		cards := []homestate.Card{fcCard(t, root, "t1"), fcCard(t, root, "t2")}
+		lanes := []string{"lane-1", "lane-2"}
+		errs := make([]error, 2)
+		durs := make([]time.Duration, 2)
+		var mu sync.Mutex
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for k := range cards {
+			wg.Add(1)
+			go func(k int) {
+				defer wg.Done()
+				<-start
+				mu.Lock()
+				defer mu.Unlock()
+				t0 := time.Now()
+				_, _, errs[k] = factoryEnsureCardWorktree(context.Background(), root, fcRun, cards[k], lanes[k], io.Discard)
+				durs[k] = time.Since(t0)
+			}(k)
+		}
+		close(start)
+		wg.Wait()
+		bad := false
+		for k := range errs {
+			if errs[k] != nil {
+				bad = true
+			}
+			stepDurs = append(stepDurs, durs[k])
+		}
+		if bad {
+			failures++
+		}
+	}
+	sort.Slice(stepDurs, func(i, j int) bool { return stepDurs[i] < stepDurs[j] })
+	t.Logf("PROBE M5-serialized iterations=%d failed-iterations=%d step-duration min=%s p50=%s max=%s", iters, failures, stepDurs[0], stepDurs[len(stepDurs)/2], stepDurs[len(stepDurs)-1])
+	if failures > 0 {
+		t.Errorf("%d of %d serialized worktree steps failed", failures, iters)
+	}
+}
+
+// M5 alternative: two lanes create their worktrees concurrently in ONE
+// repository, each with its FINAL WT- branch name given to `git worktree add
+// -b` (no rename afterwards). Reports how many iterations fail.
+func TestT1458ProbeM5FinalNameCreation(t *testing.T) {
+	const iters = 40
+	failures := 0
+	for i := 0; i < iters; i++ {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		t.Chdir(repo)
+		dests := []string{filepath.Join(t.TempDir(), "wt-a"), filepath.Join(t.TempDir(), "wt-b")}
+		branches := []string{"WT-final-alpha", "WT-final-beta"}
+		errs := make([]error, 2)
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for k := range dests {
+			wg.Add(1)
+			go func(k int) {
+				defer wg.Done()
+				<-start
+				_, errs[k] = gitWorktreeAddReal(dests[k], branches[k], "")
+			}(k)
+		}
+		close(start)
+		wg.Wait()
+		bad := false
+		for k := range errs {
+			if errs[k] != nil {
+				bad = true
+				t.Logf("iter %02d creation %s failed: %v", i, branches[k], errs[k])
+			}
+		}
+		if bad {
+			failures++
+		}
+	}
+	t.Logf("PROBE M5-final-name iterations=%d iterations with a failed creation=%d", iters, failures)
+	if failures > 0 {
+		t.Errorf("%d of %d concurrent final-name creations failed", failures, iters)
+	}
+}

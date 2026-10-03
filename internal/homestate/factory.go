@@ -157,10 +157,35 @@ func OpenFactory(projectRoot string) (*FactoryDB, error) {
 	return OpenFactoryPath(path)
 }
 
+// factoryBusyTimeoutDefault is the busy timeout every connection opened
+// through OpenFactory and OpenFactoryPath carries in its DSN.
+const factoryBusyTimeoutDefault = 5 * time.Second
+
+// OpenFactoryBounded is OpenFactory with a busy timeout of busy carried in the
+// connection's DSN instead of the default 5 s (SPEC-FACTORY-ATOMIC-LEASE-001
+// plan D2). A runtime PRAGMA does not substitute: it did not survive a
+// context-cancelled call, so the value rides the DSN. The lease path opens its
+// record connection through it so that a claim stalled behind another writer
+// overshoots its deadline by at most the busy timeout.
+func OpenFactoryBounded(projectRoot string, busy time.Duration) (*FactoryDB, error) {
+	if err := EnsureProjectLayout(projectRoot); err != nil {
+		return nil, err
+	}
+	path, err := FactoryDBPath(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	return openFactoryPathBusy(path, busy)
+}
+
 // OpenFactoryPath opens a factory database at an already-resolved path. It is
 // used by compatibility adapters whose public API historically accepted a
 // registry path rather than a project root.
 func OpenFactoryPath(path string) (*FactoryDB, error) {
+	return openFactoryPathBusy(path, factoryBusyTimeoutDefault)
+}
+
+func openFactoryPathBusy(path string, busy time.Duration) (*FactoryDB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}
@@ -168,7 +193,7 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 		return nil, err
 	}
 	values := url.Values{}
-	values.Add("_pragma", "busy_timeout(5000)")
+	values.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busy.Milliseconds()))
 	values.Add("_pragma", "journal_mode(WAL)")
 	values.Add("_pragma", "foreign_keys(ON)")
 	values.Add("_txlock", "immediate")

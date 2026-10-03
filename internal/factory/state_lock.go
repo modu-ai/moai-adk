@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -26,6 +27,115 @@ var ErrStateLockHeld = errors.New("factory state lock held")
 // IsStateLockHeld reports whether err is the contention sentinel.
 func IsStateLockHeld(err error) bool {
 	return errors.Is(err, ErrStateLockHeld)
+}
+
+// ErrStateLockUnsafePath is returned when the lock path would route the
+// owner-record write outside the project or onto a shared inode: a symlinked
+// lock file or ancestor directory, a hardlinked artifact, or a non-regular
+// file. It is a refusal, never contention.
+var ErrStateLockUnsafePath = errors.New("factory state lock path is unsafe")
+
+// stateLockProjectDirName is the project-state directory that bounds the
+// ancestor check: a lock path beneath a `.moai` directory is validated from its
+// immediate parent up to and including that `.moai`, and never above it (the OS
+// temp root or the project root may legitimately sit behind a symlink, e.g.
+// macOS /var -> /private/var).
+const stateLockProjectDirName = ".moai"
+
+// unsafeStateLockPath builds the refusal error for lockPath.
+func unsafeStateLockPath(lockPath, reason string) error {
+	return fmt.Errorf("%w: %s: %s", ErrStateLockUnsafePath, lockPath, reason)
+}
+
+// isLinkMode reports whether mode names a symlink or a Windows reparse-point
+// style irregular entry.
+func isLinkMode(mode os.FileMode) bool {
+	return mode&(os.ModeSymlink|os.ModeIrregular) != 0
+}
+
+// checkStateLockAncestors refuses a lock whose parent directory (or, when the
+// path lies beneath a `.moai` directory, any directory from the parent up to
+// and including `.moai`) is a symlink: such a link would redirect the lock
+// artifact — and its owner-record write — outside the project.
+//
+// Depth: when no `.moai` ancestor exists only the immediate parent is checked.
+// Ancestors above `.moai` are deliberately NOT checked (see
+// stateLockProjectDirName); a symlink there is a residual this opener cannot
+// distinguish from a legitimate one given only lockPath.
+//
+// A missing directory is not refused here; the subsequent open reports it.
+func checkStateLockAncestors(lockPath string) error {
+	parent := filepath.Dir(lockPath)
+	dirs := []string{parent}
+	for dir := parent; ; {
+		next := filepath.Dir(dir)
+		if next == dir {
+			// No `.moai` ancestor: immediate parent only.
+			dirs = dirs[:1]
+			break
+		}
+		if filepath.Base(dir) == stateLockProjectDirName {
+			break
+		}
+		dirs = append(dirs, next)
+		dir = next
+	}
+	for _, dir := range dirs {
+		info, err := os.Lstat(dir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return fmt.Errorf("inspect board lock directory %s: %w", dir, err)
+		}
+		if isLinkMode(info.Mode()) {
+			return unsafeStateLockPath(lockPath, "directory "+dir+" is a symlink")
+		}
+	}
+	return nil
+}
+
+// ensureStateLockDir creates lockPath's parent directory, but only after the
+// same ancestor Lstat chain the opener runs has proven no checked directory is
+// a symlink. os.MkdirAll follows links, so creating first and refusing in the
+// opener would already have created the lock directory OUTSIDE the project
+// through a symlinked `.moai`. The chain tolerates directories that do not
+// exist yet (checkStateLockAncestors skips ENOENT) and keeps its depth rule:
+// up to and including `.moai`, never above it. The opener repeats the check
+// (defense in depth); a swap between this check and the open stays the
+// accepted residual (card t1458).
+//
+// @MX:ANCHOR: [AUTO] Single pre-create guard for every caller that makes a state-lock directory (AcquireFactoryStepLock and BacklogStore.acquireLock, the queue lock).
+// @MX:REASON: a MkdirAll that runs before this check mutates the directory a symlinked ancestor points at, whatever the opener later refuses (card t1458 P2).
+// @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
+func ensureStateLockDir(lockPath string) error {
+	if err := checkStateLockAncestors(lockPath); err != nil {
+		return err
+	}
+	dir := filepath.Dir(lockPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("creating lock directory %s: %w", dir, err)
+	}
+	return nil
+}
+
+// checkStateLockArtifact refuses a pre-existing lock artifact that is a
+// symlink or any other non-regular file. An absent artifact is fine.
+func checkStateLockArtifact(lockPath string) error {
+	info, err := os.Lstat(lockPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("inspect board lock %s: %w", lockPath, err)
+	}
+	if isLinkMode(info.Mode()) {
+		return unsafeStateLockPath(lockPath, "lock file is a symlink")
+	}
+	if !info.Mode().IsRegular() {
+		return unsafeStateLockPath(lockPath, "lock file is not a regular file")
+	}
+	return nil
 }
 
 // ErrStateLockChangedHands is returned by the Windows stale-lock clear when the
