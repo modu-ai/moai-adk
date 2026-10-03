@@ -9,6 +9,8 @@ package harness
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -167,8 +169,12 @@ func TestPruneStateUnreplaceableInReadOnlyDirSkips(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	if err := NewRetention(logPath, archiveDir, func() time.Time { return now }).PruneStaleEntries(30); err == nil {
+	perr := NewRetention(logPath, archiveDir, func() time.Time { return now }).PruneStaleEntries(30)
+	if perr == nil {
 		t.Errorf("expected an error: the state file cannot be opened or replaced")
+	} else if !errors.Is(perr, fs.ErrPermission) {
+		// The error must carry the cause (the entry cannot be opened or removed), not a generic skip.
+		t.Errorf("error does not wrap a permission error: %v", perr)
 	}
 	logAfter, _ := os.ReadFile(logPath)
 	if !bytes.Equal(logBefore, logAfter) {

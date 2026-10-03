@@ -6,8 +6,10 @@ import (
 	"bufio"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,6 +58,11 @@ type Retention struct {
 
 	// nowFn is a function that returns current time (can inject mock-clock in tests).
 	nowFn func() time.Time
+
+	// ownerCheck reports whether the entry at a path is owned by the current user, reading the
+	// entry's own record without following a symbolic link. NewRetention installs
+	// entryOwnedByCurrentUser; tests replace it to reach the foreign-owned branch.
+	ownerCheck func(path string) bool
 }
 
 // NewRetention creates a Retention instance.
@@ -68,6 +75,7 @@ func NewRetention(logPath, archiveDir string, nowFn func() time.Time) *Retention
 		logPath:    logPath,
 		archiveDir: archiveDir,
 		nowFn:      nowFn,
+		ownerCheck: entryOwnedByCurrentUser,
 	}
 }
 
@@ -118,9 +126,9 @@ func (r *Retention) PruneStaleEntries(retentionDays int) error {
 // A kill mid-rewrite leaves an orphan usage-log-*.tmp; the lock holder sweeps the old ones
 // on the next cycle (sweepOrphanTmp).
 func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
-	sf, err := os.OpenFile(statePath, os.O_RDWR|os.O_CREATE, 0o644)
+	sf, err := r.openStateFile(statePath)
 	if err != nil {
-		return fmt.Errorf("retention: prune state open failed: %w", err)
+		return err
 	}
 	defer func() { _ = sf.Close() }()
 
@@ -146,6 +154,107 @@ func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
 	err = r.prune(retentionDays, now)
 	r.sweepOrphanTmp(now)
 	return err
+}
+
+// maxStateInspections bounds how often openStateFile inspects the state path before it gives up.
+const maxStateInspections = 3
+
+// openStateFile returns the opened, lockable state file at statePath.
+//
+// The path is inspected without following links. An absent path is created exclusively. A regular
+// file is opened read-write without create and must still be the inspected file. A symbolic link is
+// never opened: if the current user owns it, it is replaced by a regular file; otherwise it is left
+// byte-identical and the prune is skipped with an error and a warning. A regular file that cannot be
+// opened because of a permission error is handled the same way. Any other entry is opened as before,
+// so a directory keeps failing the open.
+//
+// @MX:WARN: [AUTO] This path removes an entry from the log directory.
+// @MX:REASON: [AUTO] Removal happens only for an entry the current user owns and only while it is still
+// the inspected entry (removeStateEntryIfUnchanged); a concurrent healer's fresh state file must survive.
+func (r *Retention) openStateFile(statePath string) (*os.File, error) {
+	for range maxStateInspections {
+		fi, err := os.Lstat(statePath)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			f, cerr := os.OpenFile(statePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+			if cerr == nil {
+				return f, nil
+			}
+			if errors.Is(cerr, fs.ErrExist) {
+				continue // another process created it first: inspect again
+			}
+			return nil, fmt.Errorf("retention: prune state open failed: %w", cerr)
+		case err != nil:
+			return nil, fmt.Errorf("retention: prune state open failed: %w", err)
+		case fi.Mode()&os.ModeSymlink != 0:
+			if err := r.healStateEntry(statePath, fi, "symbolic link"); err != nil {
+				return nil, err
+			}
+		case fi.Mode().IsRegular():
+			f, oerr := os.OpenFile(statePath, os.O_RDWR, 0o644)
+			if oerr == nil {
+				if of, serr := f.Stat(); serr == nil && os.SameFile(fi, of) {
+					return f, nil
+				}
+				_ = f.Close()
+				continue // swapped between inspection and open: inspect again
+			}
+			if errors.Is(oerr, fs.ErrNotExist) {
+				continue
+			}
+			if !errors.Is(oerr, fs.ErrPermission) {
+				return nil, fmt.Errorf("retention: prune state open failed: %w", oerr)
+			}
+			if err := r.healStateEntry(statePath, fi, "file"); err != nil {
+				return nil, err
+			}
+		default:
+			f, oerr := os.OpenFile(statePath, os.O_RDWR|os.O_CREATE, 0o644)
+			if oerr != nil {
+				return nil, fmt.Errorf("retention: prune state open failed: %w", oerr)
+			}
+			return f, nil
+		}
+	}
+	return nil, fmt.Errorf("retention: prune state entry %s changed on every inspection; prune skipped", statePath)
+}
+
+// healStateEntry removes the inspected state-path entry so openStateFile can create a regular
+// replacement, but only when the current user owns it. A foreign-owned entry, or one whose owner
+// cannot be determined, is left untouched: the prune is skipped with an error and one warning line.
+func (r *Retention) healStateEntry(statePath string, inspected os.FileInfo, kind string) error {
+	if !r.ownerCheck(statePath) {
+		fmt.Fprintf(os.Stderr, "[WARN] harness/retention: prune state %s %s is not owned by the current user or its owner cannot be determined; leaving it untouched and skipping the prune\n", kind, statePath)
+		return fmt.Errorf("retention: prune state %s %s is not owned by the current user; prune skipped", kind, statePath)
+	}
+	if _, err := removeStateEntryIfUnchanged(statePath, inspected); err != nil {
+		return fmt.Errorf("retention: prune state %s %s cannot be replaced: %w", kind, statePath, err)
+	}
+	return nil
+}
+
+// removeStateEntryIfUnchanged removes the entry at path only if it is still the inspected one: the
+// same file identity, type, permission mode and modification time. It reports whether it removed
+// anything; an entry that changed or vanished is left alone, so a state file created by a concurrent
+// healer is never removed.
+func removeStateEntryIfUnchanged(path string, inspected os.FileInfo) (bool, error) {
+	cur, err := os.Lstat(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, nil
+		}
+		return false, err
+	}
+	if !os.SameFile(inspected, cur) || inspected.Mode() != cur.Mode() || !inspected.ModTime().Equal(cur.ModTime()) {
+		return false, nil
+	}
+	if err := os.Remove(path); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // sweepOrphanTmp deletes usage-log-*.tmp files next to the log that are older than
