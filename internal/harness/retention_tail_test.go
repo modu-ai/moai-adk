@@ -91,6 +91,49 @@ func TestPruneCarriesLateEvents(t *testing.T) {
 	}
 }
 
+// TestPruneTailAlreadyTerminatedGetsNoExtraNewline compares raw bytes: a late event that already
+// ends with a newline is carried exactly, so the replacement log is the kept line followed by the
+// late bytes and nothing else (no blank line is added after the tail).
+func TestPruneTailAlreadyTerminatedGetsNoExtraNewline(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	writeStaleLog(t, logPath, now, "stale-1")
+	original, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read original log: %v", err)
+	}
+	staleLine, rest, found := bytes.Cut(original, []byte("\n"))
+	if !found || len(staleLine) == 0 || !bytes.HasSuffix(rest, []byte("\n")) {
+		t.Fatalf("unexpected original log layout: %q", original)
+	}
+	release := blockedPruner(t, dir, now, logPath)
+	lateEvt := Event{Timestamp: now, EventType: EventTypeFeedback, Subject: "late-event", ContextHash: "h", SchemaVersion: LogSchemaVersion}
+	if err := appendEventsJSONL(logPath, []Event{lateEvt}); err != nil {
+		t.Fatalf("append late: %v", err)
+	}
+	appended, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read appended log: %v", err)
+	}
+	late := appended[len(original):]
+	if len(late) == 0 || late[len(late)-1] != '\n' {
+		t.Fatalf("precondition: the late event must already end with a newline, got %q", late)
+	}
+	if err := release(); err != nil {
+		t.Errorf("pruner returned %v, want nil", err)
+	}
+	got, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read pruned log: %v", err)
+	}
+	want := append(append([]byte(nil), rest...), late...)
+	if !bytes.Equal(got, want) {
+		t.Errorf("pruned log bytes = %q, want %q (the kept line plus the late bytes, no extra blank line)", got, want)
+	}
+}
+
 // TestPruneTailPartialLineCarriedAndTerminated: a fragment without a
 // terminating newline that arrives during the prune is carried exactly once,
 // the replacement log ends with a newline, and the next append starts on its

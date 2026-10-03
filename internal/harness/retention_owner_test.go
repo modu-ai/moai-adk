@@ -170,6 +170,70 @@ func TestOwnerCheckDefault(t *testing.T) {
 	}
 }
 
+// TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal drives the whole path (prune, open of the
+// state file, heal) and pins that the heal removes the inspected entry only through the conditional
+// removal. The owner check runs inside the heal, before the removal, so the stand-in check renames a
+// fresh, healthy state file over the inspected link, as a concurrent healer would, and reports "owned".
+// The fresh file carries a still-fresh stamp, so the pruner adopts it and skips the prune; had the heal
+// removed the entry unconditionally, the fresh file would be gone and the pruner would create and stamp
+// a new one instead.
+func TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	archiveDir := filepath.Join(dir, "archive")
+	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	writeStaleLog(t, logPath, now, "stale-1")
+	logBefore, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read log: %v", err)
+	}
+	victim := filepath.Join(dir, "victim.txt")
+	if err := os.WriteFile(victim, []byte("v"), 0o644); err != nil {
+		t.Fatalf("write victim: %v", err)
+	}
+	statePath := logPath + pruneStateSuffix
+	if err := os.Symlink(victim, statePath); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	freshBytes := []byte(now.Add(-time.Second).UTC().Format(time.RFC3339Nano))
+	var freshInfo os.FileInfo
+	ret := NewRetention(logPath, archiveDir, func() time.Time { return now })
+	ret.ownerCheck = func(path string) bool {
+		fresh := filepath.Join(dir, "fresh.tmp")
+		if err := os.WriteFile(fresh, freshBytes, 0o644); err != nil {
+			t.Errorf("write fresh: %v", err)
+			return true
+		}
+		if err := os.Rename(fresh, path); err != nil {
+			t.Errorf("rename fresh: %v", err)
+			return true
+		}
+		if freshInfo, err = os.Lstat(path); err != nil {
+			t.Errorf("lstat fresh: %v", err)
+		}
+		return true
+	}
+
+	if perr := ret.PruneStaleEntries(30); perr != nil {
+		t.Errorf("prune returned %v, want nil", perr)
+	}
+	if freshInfo == nil {
+		t.Fatalf("the owner check never ran: the heal was not reached")
+	}
+	after, lerr := os.Lstat(statePath)
+	if lerr != nil || !os.SameFile(freshInfo, after) {
+		t.Fatalf("the fresh state file was removed or replaced by the heal: err=%v", lerr)
+	}
+	if got, _ := os.ReadFile(statePath); !bytes.Equal(got, freshBytes) {
+		t.Errorf("fresh state file content = %q, want %q", got, freshBytes)
+	}
+	if logAfter, _ := os.ReadFile(logPath); !bytes.Equal(logBefore, logAfter) {
+		t.Errorf("the log changed although the adopted stamp was fresh")
+	}
+}
+
 // TestHealDoesNotRemoveAFreshStateFile: a state file a concurrent healer renamed over the inspected
 // entry is never removed by this pruner's removal step; with the entry unchanged the step removes it.
 func TestHealDoesNotRemoveAFreshStateFile(t *testing.T) {
