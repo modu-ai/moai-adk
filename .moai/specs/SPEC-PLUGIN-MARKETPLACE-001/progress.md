@@ -432,6 +432,33 @@ Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketpla
 - `~/.moai` depth-1 entries can change on a live machine (NR-4): a non-zero `LEAK` will need its differing entries attributed (`diff` of the two dumps is printed) rather than assumed.
 - The `PENDING` line in normal mode is a standing reminder, not a gate: nothing fails if M3 forgets to replace it; the AC-018 (a) expectation that the line reads `PASS installer-calls-verb-by-installed-path` is what holds M3 to it.
 
+### M1 (emitter skeleton, manifests, MCP derivation, validation)
+
+Run-phase worker: `Agent(general-purpose)` carrying the manager-develop role text, `cycle_type=tdd`, in the card worktree. Scope: M1 only (REQ-001, 002, 003 and the derivation unit of REQ-007; exit AC-001, AC-002, AC-003).
+
+#### Pre-flight (recorded before any edit, 2026-10-03)
+
+```
+$ git rev-parse --show-toplevel
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435
+$ git rev-parse --short HEAD
+f22021fa3
+$ git branch --show-current
+WT-marketplace-core-plugin
+$ git status --short
+(empty)
+$ env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'
+(empty; grep exit 1)                                         # BI-1, start of the first measurement batch
+$ go build ./...                                             # exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                   # exit 0
+$ grep -c moai-factory-foreman internal/template/catalog.yaml
+0                                                            # t1399 not landed
+$ sh scripts/protected-set-hash.sh                           # before-line, before the first claude/codex-touching command
+PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190
+```
+
+B2 cross-SPEC scan (`grep -rn -i 'plugin' internal/template/*.go | grep -i 'retir\|supersed'`): no match. The wider `grep -r "Retired\|superseded" internal/template` matches ten unrelated files (model-policy, tool catalog, retired wrappers and similar); none concerns a plugin or marketplace emitter, so no conflict with a new `internal/template/pluginemit` package.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
