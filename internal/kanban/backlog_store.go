@@ -934,6 +934,35 @@ func joinBacklogReleaseErr(mutErr, relErr error, path string) error {
 	return errors.Join(mutErr, fmt.Errorf("mutate backlog %s: lock release failed: %w", path, relErr))
 }
 
+// errWithLockNotImplemented is what the compile-only stubs of
+// SPEC-FACTORY-ATOMIC-LEASE-001 WM1 return until milestone WM2 replaces them.
+var errWithLockNotImplemented = errors.New("not implemented: SPEC-FACTORY-ATOMIC-LEASE-001 WM2")
+
+// LockWaitBudget returns the queue lock's wait budget — the elapsed window a
+// writer polls for the lock before giving up. Compile-only stub (WM1): returns
+// 0 until WM2.
+func LockWaitBudget() time.Duration { return 0 }
+
+// LockedBacklog is the handle WithLock hands its callback while the queue
+// lock is held. Compile-only stub (WM1): every method returns the sentinel.
+type LockedBacklog struct{}
+
+// LoadPure is the non-adopting read of the locked handle. Stub (WM1).
+func (l *LockedBacklog) LoadPure() (*BacklogRecord, error) {
+	return nil, errWithLockNotImplemented
+}
+
+// Mutate is today's Mutate body without the lock acquisition. Stub (WM1).
+func (l *LockedBacklog) Mutate(mutate func(*BacklogRecord) error) error {
+	return errWithLockNotImplemented
+}
+
+// WithLock holds the queue's cross-process lock across fn. Compile-only stub
+// (WM1): it returns the sentinel without running fn.
+func (s *BacklogStore) WithLock(fn func(*LockedBacklog) error) error {
+	return errWithLockNotImplemented
+}
+
 // @MX:ANCHOR: [AUTO] Add — the id-issuing append every add-path verb calls
 // @MX:REASON: expected fan_in >= 3 (M2 add verb, tests, future importers); the only id issuer, and issuance outside the lock would mint duplicates
 //

@@ -35,6 +35,39 @@ var factoryCardNow = time.Now
 // the one point the compensation can undo. The default is inert.
 var factoryNominateBeforeRecord = func(cardID string) error { return nil }
 
+// factoryLeaseBeforeClaim is the test seam of the bare selection arms
+// (SPEC-FACTORY-ATOMIC-LEASE-001 plan WM1): every arm calls it immediately
+// before its claim — arm names "a", "b", "b2" and "c", with the card the arm is
+// about to claim — so a test can hold a lane between the arm's decision and its
+// claim, or start an operator write there. An error it returns ends the pass
+// like any other claim failure. The default is inert.
+var factoryLeaseBeforeClaim = func(arm, cardID string) error { return nil }
+
+// factoryLeaseAtPassEntry is the test seam at the entry of a selection pass,
+// before the pass reads the clock, the record or the queue. The default is
+// inert.
+var factoryLeaseAtPassEntry = func() {}
+
+// The lease path's claim bound and the worktree step's lock wait
+// (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3). The claim wait cap is the sum of
+// the claim's context deadline and the busy timeout its record connection
+// carries; it must stay within one third of the queue lock's wait budget
+// (kanban.LockWaitBudget). Nothing reads these constants outside tests until
+// the milestones that wire them.
+const (
+	factoryLeaseClaimDeadline    = 800 * time.Millisecond
+	factoryLeaseClaimBusyTimeout = 200 * time.Millisecond
+	factoryLeaseClaimWaitCap     = factoryLeaseClaimDeadline + factoryLeaseClaimBusyTimeout
+
+	// factoryWorktreeStepWaitDefault is the wait for the worktree-step lock:
+	// lanes (10) x the worst observed step (2.9 s) x headroom (2), taken as 60 s.
+	factoryWorktreeStepWaitDefault = 60 * time.Second
+)
+
+// factoryWorktreeStepWait is the wait factoryEnsureCardWorktree gives the
+// worktree-step lock; a test shortens it and restores it at cleanup.
+var factoryWorktreeStepWait = factoryWorktreeStepWaitDefault
+
 // factoryCardRoot is the project root the factory record and the queue share.
 func factoryCardRoot() string { return resolveTodoQueueRoot() }
 
@@ -450,6 +483,7 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 // while arms (b), (b2), and (c) — every arm that takes a NEW card — are
 // bypassed without a second predicate.
 func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool) (homestate.Card, bool, bool, error) {
+	factoryLeaseAtPassEntry()
 	// The clock is read BEFORE the record snapshot: a lease whose expiry the
 	// snapshot shows as already past was expired when the clock was read too,
 	// so a renewal landing after the snapshot cannot be read as an expiry. Read
@@ -504,6 +538,9 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if classOf(c.CardID).Mode == kanban.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
 			continue
 		}
+		if err := factoryLeaseBeforeClaim("a", c.CardID); err != nil {
+			return homestate.Card{}, false, false, err
+		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
 	}
 	if noNewCards {
@@ -529,6 +566,9 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if !inQueue || state != kanban.BacklogStatePicked {
 			continue
 		}
+		if err := factoryLeaseBeforeClaim("b", c.CardID); err != nil {
+			return homestate.Card{}, false, false, err
+		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
 	}
 	// (b2) a queue-picked card with no record row yet: record it, then claim.
@@ -542,6 +582,9 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if it.State == kanban.BacklogStatePicked && !recorded[it.ID] {
 			if !modeEligible(it.ID) {
 				continue
+			}
+			if err := factoryLeaseBeforeClaim("b2", it.ID); err != nil {
+				return homestate.Card{}, false, false, err
 			}
 			return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane)
 		}
@@ -587,6 +630,9 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	}
 	switch {
 	case promoted != "":
+		if err := factoryLeaseBeforeClaim("c", promoted); err != nil {
+			return homestate.Card{}, false, false, err
+		}
 		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane)
 	case sawQueued > 0:
 		// Queued cards existed but none was eligible (blocked, or serial with

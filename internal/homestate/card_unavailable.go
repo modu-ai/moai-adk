@@ -184,6 +184,18 @@ func lockRecordUnavailable(path string) (func(), error) {
 	return func() { _ = impl.release() }, nil
 }
 
+// WithBoundedReconcile marks ctx as the context of a lease claim's record
+// write, the one write path whose drift-log reconciliation never waits for the
+// log's lock (SPEC-FACTORY-ATOMIC-LEASE-001 REQ-FAL-014, plan D2). Compile-only
+// stub (WM1): it returns ctx unchanged until milestone WM4.
+func WithBoundedReconcile(ctx context.Context) context.Context { return ctx }
+
+// recordUnavailableAfterReadHook is a test seam for the claim-scoped
+// reconciliation: it is called between the unlocked read of the log and the
+// claim's try for the log's lock, and only on the claim-scoped path. It is nil
+// in production, and nothing calls it until milestone WM4.
+var recordUnavailableAfterReadHook func()
+
 // recordUnavailableRewriteHook is a test seam called between the rewrite's
 // read of the log and its replacement of the file. It is nil in production.
 var recordUnavailableRewriteHook func()

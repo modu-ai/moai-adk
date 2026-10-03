@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-ATOMIC-LEASE-001
 title: "Atomic lease across the queue store and the factory record — one critical section from the selection read to the claim, a bounded record wait, and a worktree step that no longer renames"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec (card t1458)
