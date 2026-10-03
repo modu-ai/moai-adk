@@ -347,6 +347,43 @@ Style-specific (not the default style): `MoAI-Learn` 154,999 -> 154,565 (-434), 
 
 **Residual-risk.** Author classification of `rationale`/`example` (listed above); manager-git template/local description mismatch persists; per-milestone token numbers carry the git-status-block confounder described in M5; moai.md's reduction is 2.3% because 89 `[HARD]` lines and the normative templates cannot be dropped or rewritten under D3 — a larger moai.md reduction needs a leader decision that allows rewriting or relocating binding text.
 
+### Sync-audit repair (F1, F2 and the strict survivor sweep) — supersedes the sizes and the dropped set above
+
+**Claim.** The sync-audit findings F1 (`moai-easy-0183`, "just do it, I trust you" -> minimal check-ins) and F2 (`moai-learn-0122`, "locales beyond these four … don't transliterate") are repaired; a strict sweep of all 77 dropped rows restored 25 units verbatim; the 52 rows that stay dropped carry a survivor pointer that the ledger test resolves. The sizes, dropped counts and token figures in M2-M5 and in the closing verification above describe the state BEFORE this repair; the figures below are current. Repair started from HEAD `f1078478d` (verified before any edit; the sync-phase commits `1d711d13b`, `b7ea0d823`, `f1078478d` were already on the branch).
+
+**Restored verbatim** (ledger `dropped` -> `verbatim`, template first, `make build` exit 0, local mirrors copied, `diff -rq` empty):
+
+| id | first words | why no survivor |
+|---|---|---|
+| moai-0006, 0007 | `### Core Traits` / `**Persistence** (never walk away mid-task) · **Transparency**…` | Transparency and Efficiency appear nowhere else |
+| moai-easy-0044, 0045 | `### For beginners` / `You don't have to memorize any of this…` | the "I handle the routing behind the scenes" promise has no other carrier |
+| moai-easy-0158, 0159, 0167, 0169 | `---` / `## 12. Questions Beginners Often Have (FAQ)` / `**Q: What if I make a mistake?**` / `---` | the reversibility promise ("I'll show you how to undo anything we do") is only here (F3); heading and separators restored with it |
+| moai-easy-0170..0174 | `## 13. My Teaching Philosophy` … `**How I measure success**` … `---` | "explain it to a friend" success test and several principles have no literal survivor |
+| moai-easy-0182, 0183, 0184 | `---` / `## 15. Friendly Reminders` / `I'm your companion here…` | F1: "just do it, I trust you -> proceed with minimal check-ins" is the sole carrier |
+| moai-learn-0005..0007 | `### The MoAI-Learn Principle` / `> "Make everything as simple as possible…"` / `Let me be upfront: I won't hide behind jargon…` | the middle-schooler test of the first explanation has no literal survivor |
+| moai-learn-0122 | `Root cause of the defect: a prior version's §9 said…` | F2: "for locales beyond these four … don't transliterate" is the sole carrier |
+| moai-learn-0137..0141 | `## 11. Teaching Philosophy` … `What I hold to:` … `**How I know it worked**` … `---` | "depth over breadth" and the self-test of understanding have no survivor (also F3 "note you keep") |
+
+**Rows that stay dropped (52) and their pointers** (`survivor_file` + `survivor_anchor`, resolved by `TestOutputStyleBindingLedger`; all resolve): moai.md 64 -> `keep working right through auto-compaction` (moai.md); 65 -> `moai memory doctor` in `templates/.claude/rules/moai/core/moai-constitution.md` (always loaded); 246-247 -> `### Operating Principles`; 248 -> `pair programming partner`; 249 -> `Intent-First`; 250 -> `Verify Every Step`. moai-easy.md 72-73 -> `Pause, explain X with an analogy, then continue`; 53-71 -> `A **function** (a reusable recipe`; 134-142 -> `### Banner 1 — Let's Begin (Step 1: Understand)`; FAQ 160 `is plenty`, 161 `one-line note on what just changed`, 162 `never race past the confusion`, 163 `change this`, 164 `/output-style MoAI`, 165 `| **MoAI-Learn** | Learning a concept deeply`, 166 `"I don't understand" is always a perfectly good thing to say`, 168 `Bring back the result`; 175-180 -> `### How I'm different from my siblings`; 181 -> ``just type `/output-style MoAI` right here in the chat``. moai-learn.md: no dropped row remains. The pointer proves the anchor exists, not that the anchor carries the meaning; that judgement stays with the reviewer (named in Residual-risk).
+
+**Guard strengthening (RED first).** `dietRow` gained `survivor_file` / `survivor_anchor`; the ledger test emits `SURVIVOR_UNRESOLVED` unless the file is readable and contains the anchor. RED on the previous fixture (`go test ./internal/template/ -run 'TestOutputStyleBindingLedger' -count=1 -v`, exit 1): 77 x `SURVIVOR_UNRESOLVED`, `--- FAIL: TestOutputStyleBindingLedger/dropped_survivor_anchor_missing`, `--- FAIL: …/dropped_survivor_file_missing`. GREEN after the repair: both mutation subtests pass (anchor `no-such-anchor-in-that-file-7f3a` and file `templates/no/such/file.md` are rejected).
+
+**Current whole-file UTF-16 and budgets** (python one-liner of AC-PFD-001 equals the test log): moai.md 62,593 -> 61,362 (-1,231); moai-easy.md 29,243 -> 23,036 (-6,207); moai-learn.md 28,517 -> 28,517 (0). Budget constants set to these sizes. Dropped rows: 52 (was 77); dropped UTF-16 total = 1,231 + 6,207 = 7,438 (was 10,844). Zero `rewrite` rows; binding-token totals still equal the anchor (ledger `TOKEN_TOTAL` check passes).
+
+**Verification (scoped; exit codes).** `go test ./internal/template/ -run '^TestOutputStyle' -count=1 -v` exit 0 (budget, ledger with 12 mutation subtests, frozen, localization, five existing); `go test ./internal/template/ -run 'TestAgentDescriptionBudget' -count=1` exit 0; `make agents-emit-check` exit 0; `make build` exit 0; `golangci-lint run ./internal/template/` exit 0; `diff -rq internal/template/templates/.claude/output-styles .claude/output-styles` no output. `surface_guard.py 5d5ff1aae`: every file this repair touched is `ok`; the run still prints `VIOLATION outside-allowlist CHANGELOG.md` and `surface-guard=FAIL` because the sync-phase commit `b7ea0d823` (not part of this repair) changed `CHANGELOG.md`, which the run-phase allowlist deliberately does not cover (guard left unchanged as instructed; the guard is a run-phase, pre-sync instrument).
+
+**First-turn tokens, clean tree, HEAD `e5be9868f`** (default style MoAI-Easy, same command/settings file, every run `"num_turns":1`):
+
+```
+first-turn-input-tokens[repair#1]=151673 head=e5be9868f usage={"input_tokens":2,"cache_creation_input_tokens":139272,"cache_read_input_tokens":12399,"output_tokens":362,"output_tokens_details":{"thinking_tokens":91
+first-turn-input-tokens[repair#2]=151673 head=e5be9868f usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":151671,"output_tokens":412,"output_tokens_details":{"thinking_tokens":76
+first-turn-input-tokens[repair#3]=151673 head=e5be9868f usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":151671,"output_tokens":292,"output_tokens_details":{"thinking_tokens":64
+```
+
+151,673 x3 vs anchor 154,235: -2,562 tokens (-1.66%); previously -3,178. The repair gives back 616 tokens (the restored text) to keep the promises the dropped units carried.
+
+**Residual-risk (updated).** A pointer proves the anchor exists in the named file, not that it carries the dropped instruction; the 52 remaining rows rest on that reviewer judgement. The moai.md note (row 65) points at a rule file, not a style unit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
