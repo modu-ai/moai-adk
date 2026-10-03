@@ -1224,6 +1224,126 @@ Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketpla
 - On Windows the first `install.bat` run against a release without the verb prints the manual-install warning; that is intended (RK-14) but unobserved.
 - The static guard reads shapes (`if`, `||`, `try`/`catch`, `exit /b 0`); a guard that is shaped right and behaves wrong in `install.ps1` or `install.bat` is not detectable locally.
 
+### M4 (doctor check, release coupling, runbook)
+
+Run-phase worker: `Agent(general-purpose)` carrying the manager-develop role text, `cycle_type=tdd`, in the card worktree. Scope: M4 only (AC-020 to AC-024). The first attempt of this worker was cut off by an API error before any edit; the second started from the clean tree at `2c958abdf` (the pre-flight below was taken in that second run, before the first edit, and the dumps and baselines are files in the session scratchpad).
+
+#### Pre-flight (before any edit)
+
+```
+$ git rev-parse --show-toplevel / --short HEAD / branch --show-current / git status --short
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435 ; 2c958abdf ; WT-marketplace-core-plugin ; (empty)
+$ env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'
+(empty; grep exit 1)     # BI-1, repeated before every measuring batch of this milestone, always empty
+$ go build ./...  -> exit 0 ; $ GOOS=windows GOARCH=amd64 go build ./... -> exit 0
+$ sh scripts/protected-set-hash.sh --dump <scratchpad>/m4/dump-before.txt
+PROTECTED-SET fadb4d78d3f55d2cbf7a2bc24575b751a81a91cf7856df3fac6ec02825680895 entries=190   # the dispatch baseline
+$ moai slot acquire --resource internal-cli-suite --max-duration 20m   # acquired; re-acquired for 40m later (the first bound passed)
+BEFORE (baseline, before any edit), saved as before-codex.txt / before-doctor.txt:
+  go test ./internal/cli -run '^TestCodex.*$' -count=1 -v        -> FAIL, 1232 verdict lines; the two failures are TestCodexAuditMCPTool and TestCodexTaskBackgroundHandshakeHonorsTaskBound (timing assertions: "start blocked for 1.000290084s", "background handshake outlived the 100ms task bound")
+  go test ./internal/cli -run '^(TestRunDiagnosticChecks.*|TestDoctorGolden_.*|TestBinaryLag_.*|TestDoctorCodex.*|TestVersionSyncListNamesOnlyExistingPaths)$' -count=1 -v -> ok, 17 PASS lines
+```
+
+#### Commits (tdd order, the commit graph witnesses RED before GREEN)
+
+| Step | SHA | Content |
+|------|-----|---------|
+| RED | `27f651909` | compiling stubs (`doctor_plugin_version.go`), `DefaultPluginVersionProbeTimeout` (a constant the tests need to compile), `doctor_plugin_version_test.go`, the golden harness scrub and `TestDoctorGolden_IgnoresCallerCodexHome`, the allowlist entry, `releasecheck_test.go` |
+| GREEN | `aff49b942` | the check, registry row, `main_test.go` Codex sandbox, `scripts/check-plugin-version.sh`, release.yml check 8, the runbook group, three regenerated goldens |
+| REFACTOR | `692614240` | the golden test pins the `CODEX_HOME` scrub directly (a mutant had survived) |
+| lint fix | `4eeb265f6` | one errcheck finding of golangci-lint v2.1.6 |
+
+#### RED (observed against the stubs, before GREEN)
+
+`go test ./internal/cli -list` on the selector `'^(TestCheckPluginVersion_.*|TestDoctorGolden_IgnoresCallerCodexHome|TestBinaryLag_AllowlistKeysAreLiveNames)$'` matched 7 tests (non-empty sweep). Run with `-v` at `27f651909`, all 7 top-level tests FAIL, with assertion messages (not compile failures):
+
+```
+--- FAIL: TestBinaryLag_AllowlistKeysAreLiveNames   binary_lag_test.go:303: allowlist key "pluginVersionCheckName" matches no registered check name in doctor.go at all ...
+--- FAIL: TestDoctorGolden_IgnoresCallerCodexHome   doctor_golden_test.go:481: doctor output has no "Plugin Version" row
+--- FAIL: TestCheckPluginVersion_ClaudeRead   /equal: got "ok" "stub", want ok naming 3.4.5 ; /user-scope-first: "ok" "stub", want ok naming the user scope
+--- FAIL: TestCheckPluginVersion_CodexRead    /registered-version: calls [], want exactly one `plugin list --json` ; /probe-bound-equals-constant: the probe ran with no deadline
+--- FAIL: TestCheckPluginVersion_Outcomes     /mismatch-warn: "ok" "stub", want warn ; /mismatch-names-both-and-remedy: message "stub" lacks "3.4.4" ...
+--- FAIL: TestCheckPluginVersion_OutputBounded /verbose-adds-detail: --verbose adds no detail
+--- FAIL: TestCheckPluginVersion_HomeIsolation /child-env-carries-resolved-home: runner calls [], want exactly one probe ;
+     /canary-home-not-touched: the check never resolved the Codex home through codexUserHomeDir (calls=0) ;
+     /testmain-sandbox-redirects-codex-home: codexUserHomeDir() returned the real home "/Users/goos"
+     (/registry-wide-starts-nothing PASSED against the stubs: with the stub check nothing starts anything; it is a guard whose teeth are the runner-execs mutant below, not a RED)
+```
+
+`go test ./internal/template/pluginemit -run '^(TestPluginVersionScript|TestReleaseWorkflowCallsPluginVersionCheck)$' -v`: 2 tests matched, both FAIL (`scripts/check-plugin-version.sh is absent`; `no non-comment line of a verify-provenance step runs scripts/check-plugin-version.sh with ${TAG}`). AC-023 (a) at the unchanged goldens: `grep -c 'Plugin Version'` printed `0` for the three goldens before the regeneration (the existing `MCP Server Version` row is the control, one per file).
+
+#### GREEN and the AC commands (HEAD `4eeb265f6` for the AC runs; the Go code is the one of `aff49b942`, the later commits touch tests only)
+
+| AC | Result | Command (its own) | Observed |
+|----|--------|-------------------|----------|
+| AC-020 | PASS | `go test ./internal/cli -run '^TestCheckPluginVersion_ClaudeRead$' -count=1 -v` | `--- PASS` with subtests `equal`, `v-prefix-normalized`, `prerelease-equal`, `claude-config-dir-honored`, `user-scope-first`, `no-subprocess` |
+| AC-021 (a) | PASS | `... -run '^TestCheckPluginVersion_CodexRead$' ...` | `--- PASS`, eight subtests as named in the criterion |
+| AC-021 (b) | PASS | under `<scratchpad>/m4/cx-021` (empty): `codex plugin marketplace add .`, `codex plugin add moai@moai-adk`, `codex plugin list --json`, all with `CODEX_HOME` set | `Added marketplace moai-adk ...`, `Added plugin moai ...`; the list holds `"pluginId": "moai@moai-adk"` and `"version": "3.1.3"`, equal to `plugins/moai/.codex-plugin/plugin.json` |
+| AC-021 (c) | PASS | `... -run '^TestCheckPluginVersion_HomeIsolation$' ...` | `--- PASS` with the four subtests `child-env-carries-resolved-home` (two cases), `canary-home-not-touched`, `registry-wide-starts-nothing` (positive control of its shims inside), `testmain-sandbox-redirects-codex-home` |
+| AC-022 (a) | PASS | `... -run '^TestCheckPluginVersion_Outcomes$' ...` | `--- PASS`, eight subtests |
+| AC-022 (b) | PASS | `CLAUDE_CONFIG_DIR=<m4/ch-022> CODEX_HOME=<m4/cx-022> bin/moai doctor --check "Plugin Version"` | exit 0; the box holds `info    Plugin Version  moai plugin not installed (run: moai plugin install)` and `Pass 0    Warn 0    Fail 0`. Also, with a registered Codex plugin (the cx-021 home, real `codex` on PATH, a non-test process): `ok      Plugin Version  moai plugin matches the binary 3.1.3 (Codex 3.1.3)`, `Pass 1    Warn 0    Fail 0` |
+| AC-023 (a) | PASS | `grep -c 'Plugin Version'` on the three goldens | `1`, `1`, `1` |
+| AC-023 (b) | PASS | the three guards together, one selector run (before: 17 PASS lines, after: 18, the new one is `TestDoctorGolden_IgnoresCallerCodexHome`) | `ok`; names and verdicts diffed line by line against `before-doctor.names`: the only difference is that one added `--- PASS` line |
+| AC-023 (c) | PASS | `... -run '^TestCheckPluginVersion_OutputBounded$' ...` | `--- PASS` |
+| AC-023 (d) | PASS | `... -run '^TestDoctorGolden_IgnoresCallerCodexHome$' ...`; `grep -n 'CODEX_HOME\|codexHomeEnvVar' internal/cli/doctor_golden_test.go` | `--- PASS`; the grep prints 8 lines |
+| AC-024 (a) | PASS | `go test ./internal/template/pluginemit -run '^TestPluginVersionScript$' -count=1 -v` | `--- PASS`, four subtests (`ssot-tag-accepted`, `bare-tag-accepted`, `other-tag-rejected-names-both`, `missing-argument-exit-2`) |
+| AC-024 (b) | PASS | `sh scripts/check-plugin-version.sh v9.9.9` | exit 1; `plugin version '3.1.3' (plugins/moai/.claude-plugin/plugin.json) != tag 'v9.9.9' (expected '9.9.9')` |
+| AC-024 (c) | PASS | `... -run '^TestReleaseWorkflowCallsPluginVersionCheck$' ...`; `grep -n check-plugin-version .github/workflows/release.yml` | `--- PASS`; line 126 |
+| AC-024 (d) | PASS (static) | `grep -n 'plugin-emit' .moai/docs/version-management.md`; `grep -n 'check-plugin-discoverable' ...` | line 148; line 149 |
+| AC-024 (e) | PASS | `... -run '^TestVersionSyncListNamesOnlyExistingPaths$' ...` | `--- PASS` (the group opens under its own bold label, `**Generated version carriers:**`) |
+
+Regression and broader runs, each `ok` with zero FAIL: the M3a and M3b selectors plus the M4 selectors in one run (`TestPluginInstallStep_*`, `TestPluginInstallCmd`, `TestInitPluginStep_*`, `TestPluginOptOutCallersEnumerated`, `TestInstallScriptsPluginStepGuarded`, `TestCheckPluginVersion_*`, `TestVersionSync...`, `TestBinaryLag_*`, `TestDoctorGolden_*`, `TestRunDiagnosticChecks*`): 32 PASS, 0 FAIL, `ok 47.023s`; `'^(TestDoctor.*|TestCheck.*Doctor.*|TestHookWiring.*|TestFlagSlot.*)$'` (the files that call the unfiltered registry): 79 PASS, 0 FAIL, `ok 96.402s`; `go test ./internal/template/pluginemit ./internal/config`: both `ok`; `sh scripts/test-plugin-install-step.sh bin/moai`: `RESULT pass=12 fail=0`, `LEAK=0` (its own bracket). `go build ./...` exit 0, `GOOS=windows GOARCH=amd64 go build ./...` exit 0, `golangci-lint run --timeout=5m ./internal/cli/ ./internal/config/ ./internal/template/pluginemit/` at v2.1.6: first run one errcheck finding (fixed in `4eeb265f6`), second run `0 issues.`.
+
+#### TestMain change, before and after (E4)
+
+`go test ./internal/cli -run '^TestCodex.*$' -count=1 -v` at `2c958abdf` (before) and at `aff49b942` (after), both saved: 1232 verdict lines each, `diff` of the sorted `--- PASS|FAIL|SKIP` names is empty (`CODEX_SAME`). Both runs fail the same two tests, `TestCodexAuditMCPTool` and `TestCodexTaskBackgroundHandshakeHonorsTaskBound`, on timing assertions; they fail identically before the change, so they are pre-existing in this environment and not caused by M4 (the cause was not investigated). `TestDoctorCodex*` ran inside the doctor selector: no difference except the one added test.
+
+#### Mutants (each applied to the GREEN tree, run, restored)
+
+Killed: the check starts `claude plugin list` (`ClaudeRead/no-subprocess`, `a PATH shim ran: "claude plugin list"`); the probe without a deadline (`CodexRead/probe-bound-equals-constant`); the check starts codex when it is absent from PATH (`CodexRead/codex-absent-no-spawn`); the check decides state from the cache directory (`CodexRead/registered-version` and `cache-without-registration`); the check resolves the Codex home with `os.UserHomeDir()` (`HomeIsolation/child-env-carries-resolved-home` both cases and `canary-home-not-touched`, calls=0); the check not registered in doctor.go (`TestDoctorGolden_NoColor`, `TestDoctorGolden_IgnoresCallerCodexHome`, `TestBinaryLag_AllowlistKeysAreLiveNames`); the script comparing with the leading `v` (`ssot-tag-accepted`); the script printing a mismatch and exiting 0 (`other-tag-rejected-names-both`); the release.yml step commented out (`TestReleaseWorkflowCallsPluginVersionCheck`); the default runner without the test-binary refusal (`HomeIsolation/registry-wide-starts-nothing`, `a registry-wide run started a tool: "codex plugin list --json"`); the `TestMain` redirect removed (`testmain-sandbox-redirects-codex-home`, `returned the real home`); the `CODEX_HOME` clear removed, run with `CODEX_HOME=/nonexistent/caller-codex` in the caller (the same subtest, `want unset`); the golden harness without its `CODEX_HOME` scrub (first run: NOT killed, see below; after the REFACTOR commit: `captureDoctorCmd left CODEX_HOME = ...`).
+
+Not killed by the test it was aimed at: AC-023 (a), the grep of the golden files, does not kill the unregistered-check mutant by itself, because the committed goldens already hold the row; the golden tests do (above). The golden-harness mutant survived until the REFACTOR commit because nothing renders `CODEX_HOME` while the harness stubs `codex` absent; the direct assertion closed it. Not attempted: a mutant that warns on a malformed registry (the `registry-malformed` and `registry-unknown-shape` subtests assert ok-or-info by construction; no separate mutant run).
+
+#### Protected-set bracket and BI-1
+
+BEFORE (`dump-before.txt`, before the first test run): `PROTECTED-SET fadb4d78d3f55d2cbf7a2bc24575b751a81a91cf7856df3fac6ec02825680895 entries=190`. AFTER (`dump-after.txt`, after the last run that could start a tool): `PROTECTED-SET 5cde0a2de458cbc4888265203feb2fa99e3c3de90f58995ca17da8a99c4926f1 entries=199`. They are not equal. `diff dump-before.txt dump-after.txt`:
+
+```
++ 9 directory entries: /Users/goos/.moai/claude-profiles/moai-adk/plugins/data/{browser-use,moai-accountant,moai-analyst,moai-coworker,moai-lawyer,moai-media,moai-officer,moai-seller,moai-threads-poster}-inline
+~ CONTENT hash of /Users/goos/.codex/config.toml moved (c993bb1b... -> 3b698216...)
+```
+
+The `config.toml` movement is the known foreign writer: `grep -c 't1435\|PluginInstall\|pluginemit\|moai@moai-adk\|m4/cx-0' ~/.codex/config.toml` printed `0`. The nine `-inline` directories are NOT the known pattern and LEAK=0 cannot be claimed. Facts: their mtimes are `13:31:41` to `13:31:42` (all within one second); my BEFORE dump was taken at 13:28 and the first test run after it, the `TestCodex*` baseline, started about 13:30 and ran for 469 s, so the creation falls inside a run on the UNEDITED tree; the names are the plugin set the host Claude session loads (they match the MCP-connection notice the session printed at start: `plugin:moai-accountant:dart`, `moai-analyst`, `moai-coworker`, `moai-media`), and none names `moai@moai-adk` or this card; the profile `moai-adk` is shared by every session started with that `CLAUDE_CONFIG_DIR`. Attribution to another Claude session sharing the profile is plausible and NOT proven: I did not keep the content of the directory set between runs, did not observe the creating process, and cannot exclude that a baseline `TestCodex*` test started a Claude process (no test of M4 does: `registry-wide-starts-nothing` and the refusing runner cover that, and the harness bracket of every harness run printed `LEAK=0`). See G-M4-1.
+
+#### Claim
+
+M4 delivers REQ-020 to REQ-024: the "Plugin Version" doctor check (Claude registry read with no subprocess, one bounded `codex plugin list --json` through the refusing runner with the resolved `CODEX_HOME`, `v` strip on both sides, warn only on positive mismatch, ok or info otherwise, one summary line and detail only under `--verbose`), registered in `doctor.go`, the three goldens and the allowlist; `TestMain` redirects `codexUserHomeDir` and clears `CODEX_HOME`; `scripts/check-plugin-version.sh` and check 8 of `verify-provenance`; the runbook group. OD-7 (warn) and OD-13 (list through the runner) are implemented at their accepted defaults.
+
+#### Evidence
+
+The commands and verbatim outputs are in the pre-flight, RED, AC-matrix, regression, TestMain comparison, mutant and bracket sections above.
+
+#### Baseline-attribution
+
+Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketplace-core-plugin`, base HEAD `2c958abdf`. RED measured at `27f651909`; the mutants, builds, lint and AC commands at the tree HEADs named in each section (`aff49b942` through `4eeb265f6`); all in this run. The judging build for `bin/moai` is `go build -o bin/moai ./cmd/moai` from this tree, invoked by path (no ldflags, so it reports the SSOT fallback `v3.1.3`, which is why the real-binary doctor run reads equal). The other judging tools are installed binaries resolved through PATH: `go` go1.26.8, `golangci-lint` v2.1.6, `codex` and `claude` (the latter not started by any M4 command).
+
+#### Gaps
+
+- G-M4-1: the protected-set bracket is not equal (see above): nine `plugins/data/*-inline` directories under the real `moai-adk` Claude profile appeared during the run; attributed to a foreign session by name, timing and absence of this lane's names, not proven.
+- G-M4-2: two commands were refused by the worktree guard as too complex (a `python3` heredoc followed by `git diff` in one invocation, and a pipe chain `go test ... | grep | sort | uniq | sort | head` after an `env` scan); each was re-run as plain separate commands, writing to a file where needed. Nothing was replaced by reading source.
+- G-M4-3: the two pre-existing `TestCodex*` failures (timing assertions) were not investigated; they are identical before and after.
+- G-M4-4: `claude plugin list`-style reads of a real Claude registry were not run (no `claude` command was started by M4); the registry shape is the one of P-08, observed at claude 2.1.287 only; the Claude half of the check is unit-tested against synthetic registries, and AC-020 has no real-shape command.
+- G-M4-5: release.yml check 8 was not run on a runner (the YAML parses in `TestReleaseWorkflowCallsPluginVersionCheck`, the script behavior is asserted by `TestPluginVersionScript`); the checkout-at-tag assumption of the step is the standard behavior of `actions/checkout` on a tag push and is unobserved here. The first line of the workflow's header comment still says "checks 5-7" (comment text left untouched).
+- G-M4-6: no mismatch row was produced by the real binary (the `bin/moai` fallback version equals the manifest); the mismatch text is covered by unit tests only.
+- G-M4-7: scope of local runs: only `-run` selectors of `internal/cli` (plus the two small packages `internal/template/pluginemit` and `internal/config` whole) and one lint of three packages; no `go test ./...` (AGENTS.md section 4).
+
+#### Residual-risk
+
+- The check reads one registry file and runs one process start on a machine with `codex`; a Codex CLI whose `plugin list --json` shape differs yields info, never a warn (RK-13), so a real mismatch can stay unreported after a format change.
+- An unfiltered registry run on a machine whose `CLAUDE_CONFIG_DIR` names a profile with an older `moai@moai-adk` registered prints a warn row in tests that count rows (none of the measured selectors does); `TestMain` clears `CODEX_HOME` but leaves `CLAUDE_CONFIG_DIR` alone, per the plan.
+- `TestMain` now clears `CODEX_HOME` for the whole `internal/cli` package run: a test that implicitly relied on an ambient value would change behavior; the before and after `TestCodex*` and doctor selectors are identical, other selectors of the package were not compared.
+- The version-script reads the manifest with `sed`; a manifest reformatted so `"version"` is not on a line of its own would exit 2 (fail closed).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
