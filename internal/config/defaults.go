@@ -818,6 +818,11 @@ const DefaultLaneMaxConcurrentSubagents = 10
 // degrades to the fail-safe default with the one-line notice (REQ-TLD-003).
 const DefaultTodoClassifyLLMTimeout = 10 * time.Second
 
+// DefaultTodoClassifyLLMMaxTokens bounds a single LLM classification
+// response (SPEC-TCD-LLM-DECIDER-001): the judgment is a three-field JSON
+// object plus a one-line reason — far below the audit pass's 4096 cap.
+const DefaultTodoClassifyLLMMaxTokens = 512
+
 // DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
 // job's in-flight HTTP call to end on its own. Derived from
 // DefaultCodexJobCancelGrace rather than restated: both windows bound the same
