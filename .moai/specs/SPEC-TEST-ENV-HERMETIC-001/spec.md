@@ -1,7 +1,7 @@
 ---
 id: SPEC-TEST-ENV-HERMETIC-001
 title: "Test env hermeticity sweep — tests that read the factory/kanban lane gate axes must not change verdict with the ambient env of the session that runs them"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -37,26 +37,33 @@ the suite.
 
 ### Observed evidence
 
-All figures below were measured on tree `2de0a2cb6` (branch `WT-test-env-hermetic-sweep`, no local
-change at measurement time) in a lane session whose ambient env carries
+All figures below were first measured on tree `2de0a2cb6` (branch `WT-test-env-hermetic-sweep`,
+no local change at measurement time) in a lane session whose ambient env carries
 `MOAI_FACTORY_ROLE=lane`, `MOAI_FACTORY_WORKER=lane-6`, `MOAI_FACTORY_WORKERS=0`,
 `MOAI_KANBAN_BACKEND=claude`, `MOAI_KANBAN_ID=tm9i7y`, `MOAI_AUTONOMY_TIER=fully-autonomous`,
-`MOAI_FACTORY_AUTO_DISPATCH=auto`. The deciding command and verbatim output of each item is
-carried in `acceptance.md` §D.0 (evidence ledger, ids E-1..E-5). The earlier local-only baseline
-`.moai/reports/t1356/baseline.md` (gitignored by operator directive 2026-09-14 — `.moai/reports/*`;
-it is never force-added) is cited as an on-disk measurement, not as a committed artifact; the
-ledger re-measures its two decisive facts so the committed record does not depend on it.
+`MOAI_FACTORY_AUTO_DISPATCH=auto` (plus `MOAI_KANBAN_SETTINGS_INJECTED=1` and an empty
+`MOAI_FACTORY_CLEAR_POLICY`). Iteration 2 re-measured the decisive commands on HEAD `a5a63a0bc`,
+whose Go sources are identical to `2de0a2cb6` (`git rev-list --count 2de0a2cb6..a5a63a0bc` = 1 and
+that commit's `git diff-tree` lists five SPEC-directory paths, no Go file). The deciding command
+and verbatim output of each item is carried in `acceptance.md` §D.0 (evidence ledger, ids
+E-1..E-7). The earlier local-only baseline `.moai/reports/t1356/baseline.md` (gitignored by
+operator directive 2026-09-14 — `.moai/reports/*`; it is never force-added) is context only: the
+ledger carries every fact the committed record relies on, including the cli scrubbed-arm green
+(E-1b), so the committed record does not depend on it.
 
 1. **internal/cli — three observed reds, single responsible axis.** `TestTodoClaim_LaneGovernance`,
    `TestTodoClaimMCP_Mirror`, and `TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit` fail
-   with `refused — lane boundary` when `MOAI_FACTORY_ROLE=lane` reaches the test binary (E-1).
-   Mechanism: the lane-refusal predicate in `internal/cli/factory_card.go:57-71` reads the role
-   marker; the package `TestMain` clears 12 factory/kanban keys (`factoryAmbientEnvKeys`,
-   `internal/cli/factory_test.go:27-40`) and that set does **not** contain `MOAI_FACTORY_ROLE`
-   (nor `MOAI_AUTONOMY_TIER`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`,
-   `MOAI_FACTORY_MANAGED`, all of which production code in the package references).
-   `TestTodoClaim_LaneGovernance` pins only the lane-label axis (`t.Setenv(EnvMoaiFactoryWorker, "")`),
-   which is exactly the partial pin the card names.
+   with `refused — lane boundary` when `MOAI_FACTORY_ROLE=lane` reaches the test binary (E-1), and
+   all three pass when that one axis is unset (E-1b). Mechanism: the lane-refusal predicate in
+   `internal/cli/factory_card.go:57-71` reads the role marker; the package `TestMain` clears 12 keys
+   (`factoryAmbientEnvKeys`, `internal/cli/factory_test.go:27-40`: 11 family axes plus
+   `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`) and that set does **not** contain `MOAI_FACTORY_ROLE`.
+   The family axes the set lacks are **six**: `MOAI_FACTORY_ROLE`, `MOAI_AUTONOMY_TIER`,
+   `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_FACTORY_MANAGED`, and
+   `MOAI_FACTORY_SLOW_LAUNCH_MS` (read at `internal/cli/factory_launch_timing.go:172`); production
+   code in the package references all six (§A.6). `TestTodoClaim_LaneGovernance` pins only the
+   lane-label axis (`t.Setenv(EnvMoaiFactoryWorker, "")`), which is exactly the partial pin the
+   card names.
 2. **internal/hook — two observed reds, responsible axes isolated by measurement.**
    `TestStaleRunNoticeLegacyLeaderSpelling` and `TestStaleRunNoticeLegacySessionRecord` fail
    (`staleRunNoticeFor = ""`) under a lane env (E-2). The package `TestMain`
@@ -82,14 +89,38 @@ ledger re-measures its two decisive facts so the committed record does not depen
    helpers — hook: 6 (`clearKanbanEnv`, `scrubKanbanEnv`, `sdScrubRuleEnv`, `m3ScrubEnv`,
    `srlGateEnv`, `rebindEnv`); cli: 10 (`clearFactoryAmbientEnv`, `clearFactoryTestEnv`,
    `sdLaneEnv`, `sdClearLaneEnv`, `sdScrubLauncherEnv`, `laneEnv`, `factoryLaneEnv`,
-   `qasLaneEnv`, `nmLaneEnv`, `clearKanbanLauncherEnv`). A precedent for a drift guard exists:
+   `qasLaneEnv`, `nmLaneEnv`, `clearKanbanLauncherEnv`) — one definition each, counted at HEAD
+   `a5a63a0bc`. A precedent for a drift guard exists:
    `internal/cli/ptycaptest/selfcheck_test.go` keeps its `kanbanVars` in step with
    `internal/config/envkeys.go`, and `internal/config/envkeys_factory_role_test.go` already
    enumerates the hook guard's `os.Getenv` call sites against a closed set.
-6. **Reach.** Production sources referencing the lane/kanban gate axes (measured with a
-   reference scan over the ten family constants): 22 files in `internal/cli`, 8 in
-   `internal/hook`, 3 in `internal/discovery`, 1 in `internal/cli/ptycaptest`. Test files
-   referencing the five gate-axis constants: 47 in `internal/cli`, 28 in `internal/hook`.
+6. **The axis family and its reach.** The guard's family is read by one rule: the constants in
+   `internal/config/envkeys.go` whose value starts with `MOAI_FACTORY_` or `MOAI_KANBAN`, plus
+   `MOAI_AUTONOMY_TIER`. At HEAD `a5a63a0bc` that rule yields **17** constants (the same 17 as the
+   name rule `Env(AutonomyTier|MoaiKanban*|MoaiFactory*|Factory*)`): `MOAI_AUTONOMY_TIER`,
+   `MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_ID`, `MOAI_KANBAN_LABEL`,
+   `MOAI_KANBAN_SETTINGS_INJECTED`, `MOAI_KANBAN_LEAD_ADDR`, `MOAI_KANBAN_BACKEND`,
+   `MOAI_KANBAN_CARD`, `MOAI_KANBAN_LEAD_NAME`, `MOAI_FACTORY_WORKERS`,
+   `MOAI_FACTORY_SLOW_LAUNCH_MS`, `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_MANAGED`,
+   `MOAI_FACTORY_ROLE`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`. Per package
+   (production = non-`_test.go` files in the package directory; a reference is the identifier
+   `config.<Name>`, or for the guard the quoted axis value):
+
+   | package | family axes referenced by production | covered by the test binary's start-up scrub today | not covered — decided by this SPEC |
+   |---------|---------------------------------------|---------------------------------------------------|-----------------------------------|
+   | `internal/cli` | **17** of 17 | **11** (Workers, Worker, Kanban, KanbanID, KanbanSpec, KanbanLabel, KanbanSettingsInjected, KanbanLeadAddr, KanbanBackend, KanbanCard, KanbanLeadName) | **6**: Role, AutonomyTier, ClearPolicy, AutoDispatch, Managed, SlowLaunchMS |
+   | `internal/hook` | **13** of 17 (Kanban, KanbanSpec, KanbanID, KanbanLabel, KanbanSettingsInjected, KanbanLeadAddr, KanbanBackend, KanbanCard, KanbanLeadName, Workers, Worker, Role, AutoDispatch) | **0** | **13** (the four unreferenced axes — AutonomyTier, ClearPolicy, Managed, SlowLaunchMS — are outside the guard's judgment) |
+   | `internal/discovery` | 1 (KanbanID) | no `TestMain` scrub | narrow lane-vs-scrubbed pair (E-7) |
+   | `internal/cli/ptycaptest` | 9 (the Kanban axes) | own drift guard | not measured here (R4) |
+
+   Reach, measured by one command per directory,
+   `grep -lE 'config\.Env(AutonomyTier|MoaiKanban[A-Za-z]*|MoaiFactory[A-Za-z]*|Factory[A-Za-z]*)\b' <dir>/*.go`
+   split into non-test and `_test.go` files at HEAD `a5a63a0bc`: `internal/cli` 24 production /
+   55 test files; `internal/hook` 9 / 33; `internal/discovery` 3 / 2; `internal/cli/ptycaptest`
+   1 / 1 (`internal/cli` production reaches 25 files when the one quoted literal
+   `"MOAI_AUTONOMY_TIER"` at `codex_sync_gate.go:262` is counted). Test files referencing the five
+   lane axes (`EnvFactoryRole`, `EnvMoaiFactoryWorker`, `EnvMoaiFactoryWorkers`,
+   `EnvMoaiKanbanBackend`, `EnvMoaiKanbanID`): 46 in `internal/cli`, 28 in `internal/hook`.
 
 ## §B Scope
 
@@ -98,7 +129,8 @@ ledger re-measures its two decisive facts so the committed record does not depen
   `internal/hook` (REQ-THE-001, REQ-THE-002).
 - Measuring — not assuming — which further tests flip under the lane env, by whole-package
   failing-set comparison, and fixing only those that measure red (REQ-THE-003, REQ-THE-004).
-- A recurrence guard in each of the two packages (REQ-THE-005) landed before the fix (REQ-THE-006).
+- A recurrence guard pair in each of the two packages — a coverage comparison and an
+  applied-behaviour probe (REQ-THE-005, REQ-THE-009) — landed before the fix (REQ-THE-006).
 - Preserving every test that sets a lane env itself (REQ-THE-007).
 
 **Out of Scope**: the items below.
@@ -119,9 +151,11 @@ ledger re-measures its two decisive facts so the committed record does not depen
 ### Out of Scope — other axes and other packages beyond the measured survey
 - Env axes unrelated to the lane/kanban gates (`CLAUDE_*`, `MOAI_HOME`, git env) are owned by
   their existing TestMain scrubs and are not revisited.
-- `internal/discovery` and `internal/cli/ptycaptest` also reference the axes in production code;
-  they are surveyed by one narrow lane-vs-scrubbed measurement (plan.md M4) and fixed only if a
-  test there measures red. `ptycaptest` already has its own drift guard.
+- `internal/discovery` references one axis in production code. Its narrow lane-vs-scrubbed pair
+  was measured at plan time (E-7: equal, 14 pass and 1 pre-existing helper skip in both arms) and
+  is re-recorded once in the baseline record commit (plan.md M1 c1); a contingent fix, if a test
+  there ever measures red, is an M4 pin. `internal/cli/ptycaptest` keeps its own drift guard and
+  is not measured here (R4).
 
 ### Out of Scope — a shared non-test helper package
 - A new importable test-support package under `internal/` (design Option C) is not part of the
@@ -142,24 +176,31 @@ carries the requirement layer only.
 - **REQ-THE-003** — **When** the run phase begins, the run shall measure the whole-package
   failing-test set of `internal/cli` and of `internal/hook` under a lane env and under a scrubbed
   env, both before and after the change, and shall record each command, exit code, failing-test
-  list, and the difference of the two lists, naming every failure that is identical in both arms
-  as env-unrelated.
+  list, the swept test count against the package's independently listed test count, and the
+  difference of the two failing lists, naming every failure that is identical in both arms as
+  env-unrelated and treating an arm that ends in a timeout panic, a goroutine-leak report, or a
+  non-test failure as no measurement.
 - **REQ-THE-004** — **When** the measurement of REQ-THE-003 shows a test that flips between the
   two arms and is not one of the five observed reds, the run shall fix that test only with its
   own RED/GREEN pair, and shall not skip, delete, or list any test as a substitute for a fix.
 - **REQ-THE-005** — **When** production code in a guarded package references a lane/kanban gate
-  axis that the package's test-binary scrub set does not cover and that carries no reasoned
-  exemption, the package's test run shall fail and shall name the uncovered axis.
-- **REQ-THE-006** — The recurrence guard of REQ-THE-005 shall land in a commit that is a strict
-  ancestor of every commit that changes either package's scrub set, so that the guard is red on
-  the tree that precedes the fix.
+  axis that the package's test binary does not strip at start-up and that carries no reasoned,
+  cited exemption, the package's test run shall fail and shall name the uncovered axis.
+- **REQ-THE-006** — The recurrence guards of REQ-THE-005 and REQ-THE-009 shall land in a commit
+  that is a strict ancestor of every other commit on the branch that changes a file under
+  `internal/`, and the whole-package baseline record shall land in a commit that is a strict
+  ancestor of that guard commit, so that the guards are red on the tree that precedes the fix.
 - **REQ-THE-007** — **Where** a test composes lane env deliberately (through its own helper, or
   through a re-executed child whose parent composed the env as payload), the hermeticity change
   shall leave that test's verdict unchanged.
 - **REQ-THE-008** — The change shall touch `*_test.go` files and this SPEC's artifacts only and
   shall introduce no new production env axis.
+- **REQ-THE-009** — **When** a guarded package's test binary is started with every lane/kanban
+  gate axis present in its environment and the binary's start-up scrub leaves a
+  production-referenced axis that carries no exemption still present, the package's test run
+  shall fail and shall name each such axis.
 
-REQ count 8 (Tier M ceiling 16). The brevity of the list is deliberate: the card is a follow-up
+REQ count 9 (Tier M ceiling 16). The brevity of the list is deliberate: the card is a follow-up
 sweep, and the verification weight sits in `acceptance.md`.
 
 ## §D Design Options Considered
@@ -169,17 +210,17 @@ gate-seeding helper. The package already uses a third idiom (a binary-wide scrub
 Three options are compared; **the lane lead decides from audit evidence** — nothing here is an
 operator decision.
 
-Measured sizes (this run, tree `2de0a2cb6`): cli has 10 scrub/seed helper definitions and 45
-`clearFactoryTestEnv(` call sites in 11 test files; hook has 6 helper definitions; 47 cli and 28
-hook test files reference the five gate-axis constants; the cli `TestMain` scrub set has 12 keys.
-Line counts below are estimates, not measurements.
+Measured sizes (HEAD `a5a63a0bc`): cli has 10 scrub/seed helper definitions and 44
+`clearFactoryTestEnv(` call sites (45 occurrences with its definition) in 11 test files; hook has 6
+helper definitions; 46 cli and 28 hook test files reference the five lane axes (§A.6); the cli
+`TestMain` scrub set has 12 keys. Line counts below are estimates, not measurements.
 
 | | **A — extend the package-level scrub** | **B — per-test `t.Setenv` pinning** | **C — shared seeding/scrubbing helper** |
 |---|---|---|---|
 | Content | Add the missing axes (at minimum `MOAI_FACTORY_ROLE`) to cli's existing scrub set; add an equivalent `TestMain` scrub to hook | Pin every axis a test's code path reads, inside each flip-prone test | One helper per package (or one shared package) that the existing helpers delegate to |
-| Sites touched (observed set only) | cli: 1 file (the key slice, a few entries); hook: 2 files (`TestMain` + a key set), plus the 2 guard files = **about 5 files** | 5 tests in 3 files (`todo_claim_test.go`, `todo_test.go`, `stale_run_m1_test.go`) | 16 helper bodies (10 cli + 6 hook) + 2 `TestMain` + helper definition(s) = **about 20 sites** |
+| Sites touched (observed set only) | cli: 2 files (`factory_test.go` key slice, a few entries, plus the new guard file); hook: 2 files (`main_test.go` `TestMain` plus the new guard file) = **4 files** | 5 tests in 3 files (`todo_claim_test.go`, `todo_test.go`, `stale_run_m1_test.go`) | 16 helper bodies (10 cli + 6 hook) + 2 `TestMain` + helper definition(s) = **about 20 sites** |
 | Sites touched (survey hypothesis) | unchanged — one set covers the whole binary | up to ~357 test functions (257 + ~100) across the cli files the survey counted, each re-measured | unchanged for the set, plus re-pointing of any helper whose key set differs on purpose |
-| Failure mode | A binary-wide scrub **hides** ambient dependence instead of pinning it: a test that reads an axis without pinning still passes, only because the binary stripped the value. Mitigated by the guard (REQ-THE-005) and by tests keeping their own pins where the axis is the subject | Per-test pins leave every **unmeasured** test exposed; a new test or a new axis re-opens the hazard. `t.Setenv` panics under `t.Parallel`, so parallel tests (e.g. `TestParseKanbanFlagUnifiedEntry`) cannot take it without dropping `t.Parallel` | Over-unification: the 16 existing helpers have non-identical key sets on purpose (some stamp a lane, some clear it, some forward to a child). A shared Option C package is a non-test addition to the production tree, in tension with REQ-THE-008 |
+| Failure mode | A binary-wide scrub **hides** ambient dependence instead of pinning it: a test that reads an axis without pinning still passes, only because the binary stripped the value. Mitigated by the guard pair (REQ-THE-005, REQ-THE-009) and by tests keeping their own pins where the axis is the subject | Per-test pins leave every **unmeasured** test exposed; a new test or a new axis re-opens the hazard. `t.Setenv` panics under `t.Parallel`, so parallel tests (e.g. `TestParseKanbanFlagUnifiedEntry`) cannot take it without dropping `t.Parallel` | Over-unification: the 16 existing helpers have non-identical key sets on purpose (some stamp a lane, some clear it, some forward to a child). A shared Option C package is a non-test addition to the production tree, in tension with REQ-THE-008 |
 | Precedent in tree | `clearFactoryAmbientEnv` in `TestMain` (card t1252) and the `CLAUDE_PROJECT_DIR` scrub in hook `TestMain` (card t1165) — the same bug class, same idiom | `b12538f0a` (card t1354) on one hook test | none |
 
 **Assessment (requested by the card; not an operator decision) — Option A, plus Option B only
@@ -191,57 +232,92 @@ functions), and Option A is the only option whose cost does not grow with the no
 **Precondition under which the recommendation holds**: (i) the M1 pre-fix whole-package pairs and
 the M4 post-fix pairs show that adding the missing axes to the scrub set flips **no** test red in
 the scrubbed arm (no test relies on the ambient value of an added axis); (ii) the re-executed
-child processes in `internal/hook` that compose their own env (`os.Args[0]` sites) do not carry a
-factory axis as payload — if one does, it takes the pin-marker pattern cli already has
-(`factoryEnvPinnedEnv`). If (i) or (ii) fails for a test, that test is handled with Option B and
-the exemption is recorded with its reason. Option C is not recommended while REQ-THE-008 stands;
-it is the right answer only if the lane lead lifts the test-files-only constraint (§H O6).
+child processes in `internal/hook` that compose their own env (four `os.Args[0]` sites, plan.md
+B9) do not carry a factory axis as payload — if one does, it takes the pin-marker pattern cli
+already has (`factoryEnvPinnedEnv`). If (i) or (ii) fails for a test, that test is handled with
+Option B and the exemption is recorded with its reason. Option C is not recommended while
+REQ-THE-008 stands; it is the right answer only if the lane lead lifts the test-files-only
+constraint (§H O6).
 
-## §E Recurrence Guard — three-part specification and continued firing
+## §E Recurrence Guard — specification, applied behaviour, and continued firing
 
 (Per `.claude/rules/moai/development/verification-completeness.md` §1.2 and §1.3.)
 
-The guard is one test per package (cli, hook). It compares **the lane/kanban gate axes that
-production code of the package references** against **the package's test-binary scrub set plus a
-small table of reasoned exemptions**, and fails when an axis is in neither.
+The guard is a pair of tests per package (cli, hook). Both read the same three inputs from the
+tree at test time: the **family** (§A.6, read from `internal/config/envkeys.go`), the
+**references** (family axes that production code of the package references), and the package's
+**scrub set** — the axes its test binary strips at start-up — plus a small **exemption table**.
 
+- **Coverage test (declared behaviour).** Fails when a referenced axis is in neither the scrub set
+  nor the exemption table, naming the axis and the production file that references it. An
+  exemption row is accepted only when its reason is non-empty **and** it cites a `*_test.go` file
+  in the package directory that exists and itself references the axis (a test that needs the
+  ambient value); an empty reason, an empty citation, or a citation to a file that is absent or
+  does not mention the axis is a failure, so a padded row does not pass. A citation shows that a
+  test reads the axis, not that it needs the ambient value — that last step is review's.
+- **Applied-behaviour test.** The declared scrub set proves a list, not that the binary applies
+  it: a package could fill the list and never call it. This test re-executes the package's own
+  test binary (`os.Args[0]` with a `-test.run` selector naming this test only) with an
+  environment it builds explicitly — the parent's env minus every family axis (and minus the cli
+  pin marker `factoryEnvPinnedEnv`, so the child is not pinned), plus every family axis set to a
+  sentinel value and a witness variable naming the axes it set. In the child the test asserts that
+  every referenced axis without an exemption is absent after the child's `TestMain` ran; the
+  parent requires the child to exit 0 with a `--- PASS` line for that test, and the witness list
+  to be non-empty, so a child that ran nothing is not a pass. The result does not depend on the
+  ambient env of the parent session, and the mechanism is test-file-only (a child process of the
+  test binary), so REQ-THE-008 holds; existing tests already re-execute the package binary the
+  same way (`internal/hook/slot_lease_guard_test.go:165`, `factory_handoff_race_test.go:38`,
+  `internal/cli/codex_launcher_exec_posix_test.go:100-123`). A source scan that `TestMain` calls
+  the scrub function was considered and not chosen: it passes on a call inside a comment or a
+  dead branch, which the child cannot.
 - **(a) WHEN it runs to be meaningful.** On every run of the package's tests that includes it:
   locally under any selector that matches it, and in CI on the full-package `go test` per OS
-  matrix (the verdict surface on `origin/develop`). The guard is a static comparison of two sets
-  read from the same tree, so it is meaningful at every commit that can change either side — it is
-  never scheduled at a moment where the two sides cannot yet differ. It is independent of the
-  ambient env, so unlike the five observed reds it is red on a plain shell too.
-- **(b) the INPUT that turns it red.** Any one of: (1) a production file in the package newly
-  references a lane/kanban gate axis constant — a constant in `internal/config/envkeys.go` whose
-  value starts with `MOAI_FACTORY_` or `MOAI_KANBAN`, or is `MOAI_AUTONOMY_TIER` — that is neither
-  in the scrub set nor in the exemption table; (2) an exemption row with an empty reason; (3) the
-  reference scan finds **zero** referenced axes, or the scrub set is empty (an empty sweep asserts
-  nothing, `verification-completeness.md` §1.1). Input (1) is the case that reintroduces the
-  card's hazard: a future axis added to production code with no matching scrub entry. The family
-  is read from `envkeys.go` at test time, so a new constant joins it without editing the guard.
-- **(c) who sees the red.** The author running the package's tests (exit code 1, a `--- FAIL` line
-  naming the uncovered axis constant and the production file that references it), the lane's
-  scoped verification run, and CI on `origin/develop`, which the leader reads.
+  matrix (the verdict surface on `origin/develop`). Both tests compare or apply state of the tree
+  they run on, so they are meaningful at every commit that can change either side — never
+  scheduled at a moment where the two sides cannot yet differ. Both are independent of the ambient
+  env, so unlike the five observed reds they are red on a plain shell too.
+- **(b) the INPUT that turns it red.** Any one of: (1) a production file newly references a family
+  axis that is in neither the scrub set nor the exemption table; (2) a padded exemption row
+  (empty reason, empty citation, or a citation to a file that does not reference the axis);
+  (3) the reference scan finds **zero** referenced axes, or the scrub set is empty (an empty sweep
+  asserts nothing, `verification-completeness.md` §1.1); (4) the binary's start-up scrub is not
+  applied — the child still sees a referenced axis; (5) the sibling package's guard file is absent
+  or no longer declares its guard tests. Inputs (1)-(2) reintroduce the card's hazard for a future
+  axis; input (4) is the hazard in the form a declared-only guard would miss. The family is read
+  from `envkeys.go` at test time, so a new constant joins it without editing the guard.
+- **(c) who sees the red.** The author running the package's tests (exit code 1, a `--- FAIL`
+  line naming the axis and, for the coverage test, the production file that references it), the
+  lane's scoped verification run, and CI on `origin/develop`, which the leader reads.
 - **Continued firing (§1.3).** *If this guard stopped running tomorrow, what would differ in what
-  a reader sees?* Two answers are built in and one residual is named. Built in: (1) the positive
-  control of input (3) makes a scan that has silently stopped matching (moved files, renamed
-  constants) go red instead of green; (2) CI runs the full package, so a narrow `-run` selector
-  cannot exclude it on the verdict surface. Residual, not eliminated: deleting or renaming the
-  guard test, or running only a selector that omits it locally, is not detected by the guard
-  itself — deletion shows in the diff and in review, and the AC-THE-005 ancestry check ties the
-  guard to the fix commits only at the time the SPEC closes. §H O4 records the alternative of
-  placing the check in `TestMain`, which rides every selector but fails every run of the package.
+  a reader sees?* Built in: (1) the liveness input (3) makes a scan that has silently stopped
+  matching (moved files, renamed constants) go red instead of green; (2) CI runs the full package,
+  so a narrow `-run` selector cannot exclude it on the verdict surface; (3) an **unasked
+  stale-guard signal** — each package's coverage test asserts that the sibling package's guard
+  file exists and declares its guard tests (a read of `../hook/lane_env_axes_test.go` from cli and
+  `../cli/factory_env_axes_test.go` from hook, the precedent being
+  `internal/config/envkeys_factory_role_test.go`), so deleting or renaming one guard turns the
+  other package's run red without anyone asking; (4) the closure gate lists both guard tests in
+  both packages with `go test -list` (acceptance.md §D.5). Residual, not eliminated: deleting both
+  guard files in one change, or running only a selector that omits them locally, is not detected
+  by the guards themselves; the removal-of-a-test clause of AC-THE-006 covers tests present at
+  `2de0a2cb6`, not the guards. Deletion shows in the diff and in review. §H O4 records the
+  alternative of placing the check in `TestMain`, which rides every selector but fails every run
+  of the package.
 
 ## §F Ordering evidence
 
 The baseline artifact `.moai/reports/t1356/baseline.md` is gitignored, so the commit graph cannot
 witness measure-before-change from a report commit (`verification-claim-integrity.md` §2.3). The
-ordering clause is therefore rewritten into what git can witness: the **guard test commit and the
-whole-package baseline record commit are strict ancestors of every commit that changes a scrub
-set or a test's env handling**, and the guard is red on the tree of its own commit. The baseline
-whole-package pairs are recorded in this SPEC's committed `progress.md` §E.2 (a committed carrier,
-unlike `.moai/reports/`) in a commit of their own. AC-THE-005 makes this checkable from `git log`
-and `git merge-base --is-ancestor`.
+ordering clause is therefore rewritten into what git can witness: three commits fixed in shape
+and order — the **baseline record commit** (progress.md only), the **guard commit** (the guard
+files only), and the **guard-red record commit** (progress.md only) — and the guard-red record
+commit is a strict ancestor of every other commit that touches `internal/`. The whole-package
+baseline pairs are recorded in this SPEC's committed `progress.md` §E.2 (a committed carrier,
+unlike `.moai/reports/`) in the baseline record commit; the guard's red on its own tree is
+recorded in the guard-red record commit. Nothing commits the gitignored baseline: no
+`git add -f`, no re-added negation. The exact subjects, the file-set checks, and the
+`git merge-base --is-ancestor` / `git rev-list --count` enumeration that make this checkable live
+in one place, AC-THE-005.
 
 ## §G Constraints and Residual Risks
 
@@ -255,7 +331,12 @@ and `git merge-base --is-ancestor`.
 - **Local verification is scoped to the change.** Only the two packages, the narrow selectors of
   `acceptance.md`, and the compile checks named in plan.md; full-suite judgment is CI on
   `origin/develop`.
-- **`t.TempDir()` for temp dirs; env axis names via `internal/config/envkeys.go` constants.**
+- **`t.TempDir()` for temp dirs; env axis names via `internal/config/envkeys.go` constants.** The
+  only literal forbidden in `internal/hook` by `internal/config/envkeys_factory_role_test.go:60`
+  is the exact quoted string `"MOAI_FACTORY_ROLE"` (the scan reads every `.go` file there, test
+  files included); a guard that matches the unquoted prefixes `MOAI_FACTORY_` / `MOAI_KANBAN` is
+  legal, and the one full name a guard needs, `MOAI_AUTONOMY_TIER`, is reached as
+  `config.EnvAutonomyTier`.
 - **`t.Setenv`/`t.Chdir` tests must not call `t.Parallel()`** (Go panics on the combination).
 - **No OTEL env is touched** (`internal/hook/CLAUDE.md`: never `t.Setenv("OTEL_EXPORTER_*")` in
   parallel tests); the change sets and clears only the lane/kanban axes.
@@ -273,13 +354,24 @@ and `git merge-base --is-ancestor`.
   packages' tests (plan.md M4). No per-OS key-set difference is claimed beyond that.
 - **R4 — the unmeasured set stays a hypothesis.** The ~357 nominated functions are not individually
   measured; their status is established only by the M1 baseline pairs and the M4 final pairs. A
-  flip-prone test reading an env var outside the family is not found by this sweep.
-- **R5 — Option A hides rather than pins.** Disclosed in §D; the guard converts "hidden" into
-  "the set of hidden axes is explicit and reviewed".
+  flip-prone test reading an env var outside the family is not found by this sweep, and
+  `internal/cli/ptycaptest` is covered only by its own drift guard.
+- **R5 — Option A hides rather than pins.** Disclosed in §D; the guard pair converts "hidden" into
+  "the set of hidden axes is explicit, applied, and reviewed".
 - **R6 — develop tip may carry env-unrelated reds.** A failure identical in both arms is named and
   classified env-unrelated (REQ-THE-003); it is neither fixed nor hidden here.
 - **R7 — machine load flips verdicts.** The lease serializes heavy runs; a verdict that changes
   between a repeated identical arm is reported as load noise, not attributed to env.
+- **R8 — the lane arm models the measuring session, not every possible lane.** The lane arm sets
+  the nine family axes the measuring session exported and unsets the other eight; a real lane with
+  a different subset is not reproduced by it. The coverage test, the applied-behaviour test, and
+  the scrubbed arm bound that gap: every referenced axis is declared stripped, shown stripped, and
+  no test goes red when stripped.
+- **R9 — in-process production stamping.** `enterFactoryLaneMode` (`internal/cli/factory.go:797-801`)
+  sets the lane worker, role, lane-count, clear-policy and dispatch markers in the process that
+  calls it and returns a restore function (the role stamp site is pinned by source in
+  `factory_m4_test.go:462-469`); the start-up scrub does not cover a marker stamped later in the
+  same binary, and no measurement here proves that none escapes a test.
 
 ## §H Open Questions (non-blocking)
 
@@ -287,16 +379,23 @@ and `git merge-base --is-ancestor`.
   (`MOAI_FACTORY_`, `MOAI_KANBAN`, `MOAI_AUTONOMY_TIER`; recommended in §E because a new constant
   joins automatically) or from an explicit list in the guard (simpler, but a new axis outside the
   list is invisible)? A future axis with a different prefix escapes the value-prefix rule.
-- **O2** — Which of `MOAI_AUTONOMY_TIER`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`,
-  `MOAI_FACTORY_MANAGED` belong in cli's scrub set versus the exemption table? Production
-  references them; whether any test depends on their ambient value is unmeasured. M2 decides by
-  measurement; an axis that a test legitimately reads from ambient takes an exemption with a reason.
+- **O2** — Which of the five cli axes other than the observed-red cause — `MOAI_AUTONOMY_TIER`,
+  `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_FACTORY_MANAGED`,
+  `MOAI_FACTORY_SLOW_LAUNCH_MS` — belong in cli's scrub set versus the exemption table?
+  Production references them. Static read at plan time: every test site that touches
+  `MOAI_FACTORY_SLOW_LAUNCH_MS` sets it itself (five `t.Setenv` sites in
+  `factory_launch_timing_test.go:20,71` and `codex_debug_composition_test.go:85,112,122`) and none
+  reads it from ambient; the other four are set or cleared by their tests the same way. Whether
+  any test depends on an ambient value is decided by the M4 whole-package scrubbed arm: a test that
+  goes red because the axis was stripped is the evidence for an exemption row (reason plus cited
+  test file); otherwise the axis stays in the scrub set.
 - **O3** — Should the guard be generalized into one cross-package registry check covering
-  `internal/discovery` (3 production files reference `MOAI_KANBAN_ID`) and any future package, or
-  stay one-per-package? Not decided; discovery gets a narrow measurement at M4.
-- **O4** — Guard placement: an ordinary test function (recommended; CI covers selector filtering)
-  or `TestMain` (rides every selector, as the cwd-residue guard of SPEC-CLI-TEST-CWD-ISOLATION-001
-  does, but fails unrelated narrow runs)?
+  `internal/discovery` (3 production files reference `MOAI_KANBAN_ID`; its narrow pair measured
+  equal at plan time, E-7) and any future package, or stay one-per-package? Not decided.
+- **O4** — Guard placement: an ordinary test function (recommended; CI covers selector filtering,
+  and the sibling-file check of §E adds an unasked stale-guard signal) or `TestMain` (rides every
+  selector, as the cwd-residue guard of SPEC-CLI-TEST-CWD-ISOLATION-001 does, but fails unrelated
+  narrow runs)?
 - **O5** — Should the six hook and ten cli per-test helpers later delegate to the package scrub
   set (a follow-up consolidation)? Left for a separate card; this SPEC adds no delegation.
 - **O6** — Is the card's "standardize a gate-seeding helper" option wanted enough to lift
@@ -305,21 +404,24 @@ and `git merge-base --is-ancestor`.
 ## §I Cross-References
 
 - `internal/cli/factory_card.go:57-71`, `internal/hook/contract_sign_guard.go:144-152`,
-  `internal/hook/stale_run_gate.go:259-260`, `internal/hook/session_stale_run.go:27-35,172-179` —
-  the production gates the evidence names.
-- `internal/cli/factory_test.go:27-77` (scrub set, `clearFactoryAmbientEnv`, `clearFactoryTestEnv`),
-  `internal/cli/main_test.go:349-361` (`TestMain` call), `internal/hook/main_test.go:67-96`
-  (`TestMain`).
+  `internal/hook/stale_run_gate.go:259-260`, `internal/hook/session_stale_run.go:27-35,172-179`,
+  `internal/cli/factory_launch_timing.go:172` — the production gates the evidence names.
+- `internal/cli/factory_test.go:27-77` (scrub set, pin marker, `clearFactoryAmbientEnv`,
+  `clearFactoryTestEnv`), `internal/cli/main_test.go:349-361` (`TestMain` call),
+  `internal/hook/main_test.go:67-96` (`TestMain`).
 - `internal/config/envkeys.go` (`EnvFactoryRole` etc.), `internal/config/envkeys_factory_role_test.go`,
   `internal/cli/ptycaptest/selfcheck_test.go:265-290` — constant SSOT and the two drift-guard precedents.
 - SPEC-CLI-TEST-CWD-ISOLATION-001 — sibling test-isolation SPEC (cwd residue), structure precedent.
 - `.claude/rules/moai/development/verification-completeness.md` §1.2, §1.3, §2, §2.1, §4;
   `.claude/rules/moai/core/verification-claim-integrity.md` §2.3;
   `.claude/rules/local/gitflow-lane-protocol.md` §8.
-- `.moai/reports/t1356/baseline.md` — local-only on-disk measurement (gitignored; not committed).
+- `.moai/reports/t1356/baseline.md` — local-only on-disk measurement (gitignored; not committed);
+  `.moai/reports/t1356/plan-audit.md` — the iteration-1 plan-audit report (local, gitignored,
+  cited by path only).
 
 ## §J HISTORY
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-10-03 | manager-spec | v0.1.0 plan-phase authoring (card t1356, Tier M, Class C). Evidence re-measured on tree `2de0a2cb6`: cli RED under `MOAI_FACTORY_ROLE=lane` (3 tests), hook RED under the lane env (2 tests), hook one-axis arms isolating the `MOAI_KANBAN_ID` ∧ `MOAI_FACTORY_WORKERS` conjunction, positive controls. Design Options A/B/C compared; recommendation stated with its precondition. Recurrence guard and ordering clause specified. |
+| 2026-10-03 | manager-spec | v0.2.0 plan-audit iteration 1 revision (FAIL 0.79 vs 0.80; findings F1-F13). Guard spec gains an applied-behaviour test and a tightened exemption rule (REQ-THE-005 reworded, REQ-THE-009 added, AC-THE-004 and AC-THE-008 release-blocking on adoption at M1); ordering check rewritten to enumerate every `internal/` commit with prescribed c1/c2/c2r shapes (REQ-THE-006 widened to match); the 17-axis family and per-package referenced/covered/undecided sets re-measured, the sixth cli axis `MOAI_FACTORY_SLOW_LAUNCH_MS` carried through §A, §H O2, decision-index Q4 and plan M2; reach figures replaced by a reproducible command; AC-THE-003 gains an independent swept-count floor; evidence ledger re-recorded with `-v` and full stdout (E-1, E-2), cli scrubbed arm added (E-1b), discovery narrow pair added (E-7); stale-guard signal, REQ-THE-008 judging point, and minor count corrections. |

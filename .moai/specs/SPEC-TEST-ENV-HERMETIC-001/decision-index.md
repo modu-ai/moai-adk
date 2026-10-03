@@ -17,7 +17,7 @@ Operator verdict:
 
 Label: FOUNDER
 Authority anchor: n/a (no anchor for this label)
-Why unresolved: a test function is filtered out by a narrow `-run` selector and relies on the CI full-package run; a `TestMain` check rides every selector but fails every narrow run of the package. The tradeoff is a product-posture preference, not a measurable fact (spec.md §E, §H O4).
+Why unresolved: a test function is filtered out by a narrow `-run` selector and relies on the CI full-package run (the plan adds a sibling-package file check and a closure-time `go test -list` as unasked stale-guard signals, spec.md §E); a `TestMain` check rides every selector but fails every narrow run of the package. The tradeoff is a product-posture preference, not a measurable fact (spec.md §E, §H O4).
 Operator verdict:
 
 ### Q3: How is the guard's axis family defined — by constant value prefix read from `internal/config/envkeys.go`, or by an explicit list?
@@ -27,18 +27,18 @@ Authority anchor: n/a (no anchor for this label)
 Why unresolved: a value-prefix rule picks up new axes automatically but misses a future axis with a different prefix; an explicit list never misses a listed axis but is blind to an unlisted one. Neither is settled by a committed rule (spec.md §H O1).
 Operator verdict:
 
-### Q4: Which of `MOAI_AUTONOMY_TIER`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_FACTORY_MANAGED` enter the cli scrub set and which take a reasoned exemption?
+### Q4: Which of `MOAI_AUTONOMY_TIER`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_FACTORY_MANAGED`, `MOAI_FACTORY_SLOW_LAUNCH_MS` enter the cli scrub set and which take a reasoned, cited exemption?
 
 Label: EVIDENCE-NEEDED
 Authority anchor: n/a (no anchor for this label)
-Why unresolved: production code in `internal/cli` references each, but whether any test depends on the ambient value is unmeasured; the M1 and M4 whole-package pairs decide it (spec.md §H O2).
+Why unresolved: these five and `MOAI_FACTORY_ROLE` (whose need is measured, acceptance.md E-1 / E-1b) are the six family axes `internal/cli` production code references and the test binary's start-up scrub does not cover (spec.md §A.6). Every test site that touches the five sets or clears the axis itself, but whether any test depends on an ambient value is unmeasured; the whole-package scrubbed arm at plan.md M4 decides it (spec.md §H O2).
 Operator verdict:
 
-### Q5: Does the sweep extend to `internal/discovery` and to a cross-package registry check?
+### Q5: Does the sweep extend to a cross-package registry check covering `internal/discovery` and any future package?
 
-Label: EVIDENCE-NEEDED
+Label: FOUNDER
 Authority anchor: n/a (no anchor for this label)
-Why unresolved: three production files in `internal/discovery` reference `MOAI_KANBAN_ID`; no test there has been measured under the lane env, so whether a flip exists is unknown (spec.md §H O3, plan.md M4).
+Why unresolved: the `internal/discovery` narrow lane-vs-scrubbed pair was measured at plan time and is equal (acceptance.md E-7), so the evidence question is answered for that package; what remains is a scope preference — one registry check across packages versus one guard pair per package — that no committed rule settles (spec.md §H O3).
 Operator verdict:
 
 ### Q6: Is a shared non-test seeding helper package wanted enough to lift the test-files-only constraint (REQ-THE-008)?
