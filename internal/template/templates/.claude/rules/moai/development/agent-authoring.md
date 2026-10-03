@@ -35,7 +35,7 @@ Cross-references:
 - `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (this section is the canonical agent namespace SSOT)
 - `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (skill counterpart)
 - `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (canonical generator contract)
-- `.moai/docs/dev-only-commands-isolation.md` § 검증 체크리스트 (maintainer-local verification — `.claude/agents/local/` 누출 negative test)
+- `.moai/docs/dev-only-commands-isolation.md` § 검증 체크리스트 (maintainer-local verification — `.claude/agents/local/` 누출 negative test; dev repositories only — not shipped)
 
 Platform Support: Windows ARM64 (`win32-arm64`) is natively supported. No WSL required for ARM-based Windows devices.
 
@@ -236,7 +236,7 @@ Builder agents: Read, Write, Edit, Grep, Glob
 Dynamic teammates (general-purpose): Inherit all tools from parent session. The spawn-time `mode` parameter is deprecated and ignored since Claude Code v2.1.213 (changelog-sourced); teammates inherit the parent session's permission mode.
 
 Notes:
-- Read-only enforcement for dynamic teammates rests on tool restriction, and the criterion is that **no tool in the list can write** — omitting `Write`/`Edit` is necessary but NOT sufficient. Three other channels reach the working tree on their own: `Bash` (a shell redirect writes any path), a write-capable MCP tool (`mcp__moai__codex_task` declares `WithReadOnlyHintAnnotation(false)` and modifies the working tree under the `workflow.codex.task.allow_write` project opt-in), and `Agent` (spawns a write-capable subagent). The built-in `Explore` omits `Write`/`Edit` yet carries `Bash`, so a list is not read-only merely because `Write`/`Edit` are absent from it. The deprecated spawn-time `mode` parameter is ignored (v2.1.213+), so tool restriction remains the only channel that carries the guarantee — which is why the list is audited against all three write paths, not one. A parent in `bypassPermissions`/`acceptEdits` takes precedence over any child permission setting. A list carrying `mcp__moai__codex_task` is read-only only while the project opt-in stays off; `manager-develop` carries it as a write-capable agent whose delegation is bounded by `.claude/skills/moai/workflows/run.md` § External Model Delegation.
+- Read-only enforcement for dynamic teammates rests on tool restriction, and the criterion is that **no tool in the list can write** — omitting `Write`/`Edit` is necessary but NOT sufficient. Three other channels reach the working tree on their own: `Bash` (a shell redirect writes any path), a write-capable MCP tool (`mcp__moai__codex_task` declares `WithReadOnlyHintAnnotation(false)` and modifies the working tree under the `workflow.codex.task.allow_write` project opt-in), and `Agent` (spawns a write-capable subagent). The built-in `Explore` omits `Write`/`Edit` yet carries `Bash`, so a list is not read-only merely because `Write`/`Edit` are absent from it. The deprecated spawn-time `mode` parameter is ignored (v2.1.213+), so tool restriction remains the only channel that carries the guarantee — which is why the list is audited against all three write paths, not one. A parent in `bypassPermissions`/`acceptEdits` takes precedence over any child permission setting. A list carrying `mcp__moai__codex_task` is read-only only while the project opt-in stays off; `manager-develop` carries it as a write-capable agent whose delegation is bounded by `.claude/skills/moai/workflows/run/external-delegation.md` § External Model Delegation.
 - Project-specific context is included in the spawn prompt, not preloaded skills
 - Teammates can self-load skills via Skill() tool when deeper documentation is needed
 
@@ -260,7 +260,7 @@ Invoke agents via Agent tool:
 For team mode invocation:
 - Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
 - Team cleanup is automatic on session exit; no explicit teardown call is needed
-- See team-plan.md and team-run.md for complete workflow examples
+- Workflow examples: `orchestration-mode-selection.md` §C (the former team-plan.md / team-run.md examples retired with the static team layer)
 
 ## Plugin Agent Limitations
 

@@ -212,6 +212,134 @@ func TestHandleSaveUserNameEditSplicesOneRow(t *testing.T) {
 	}
 }
 
+// noEditSectionFixtures reproduces the GitHub #1731 scenario's project shape:
+// every file carries comments, and each holds at least one key or block the
+// typed struct path historically dropped, rewrote, or back-filled:
+//   - user.yaml: the unmodeled github_username;
+//   - quality.yaml: the unmodeled session_effort_default with an inline note;
+//   - llm.yaml: a claude_models block, inline comments, and NO harness key and
+//     NO glm effort block (the issue saw `harness: claude` and an effort block
+//     appear after a no-edit save);
+//   - workflow.yaml: audit blocks WITHOUT claude/codex/glm pins (the issue saw
+//     empty model/effort pins appended);
+//   - git-strategy.yaml: a commented block (rewritten on v3.1.2);
+//   - git-convention.yaml: a commented convention.
+var noEditSectionFixtures = map[string]string{
+	"user.yaml": `user:
+  name: original # display name
+  github_username: example-user
+`,
+	"quality.yaml": `constitution:
+  development_mode: tdd
+  session_effort_default: xhigh  # local note
+  # hand-maintained comment
+`,
+	"llm.yaml": `# llm settings (user-maintained)
+llm:
+  mode: "" # empty = claude
+  # tier map the user keeps by hand
+  claude_models:
+    high: claude-opus-5-5 # pinned
+    medium: claude-sonnet-5-5
+    low: claude-haiku-4-5
+  glm:
+    models:
+      high: glm-5.3 # inline note
+`,
+	"workflow.yaml": `workflow:
+  # top-level comment
+  default_mode: ""
+  custom_note: keep-me
+  worktree:
+    auto_create: false # off on purpose
+    auto_merge: false
+  audit:
+    model: multi
+`,
+	"git-strategy.yaml": `# Git Strategy Settings
+git_strategy:
+  mode: manual # manual, personal, team
+  provider: github
+  # integration branch for card worktrees
+  worktree_base_branch: develop
+`,
+	"git-convention.yaml": `git_convention:
+  # convention comment
+  convention: auto
+`,
+}
+
+// snapshotSections reads every file under .moai/config/sections/ into a
+// name→content map, so a comparison also catches files a save creates.
+func snapshotSections(t *testing.T, root string) map[string]string {
+	t.Helper()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := make(map[string]string, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		out[e.Name()] = string(raw)
+	}
+	return out
+}
+
+// TestFullFormNoEditSaveIsByteIdentical is the GitHub #1731 scenario end to
+// end: render GET /settings, submit the whole #settings-form exactly as a
+// browser would with no field edited, and require every section file to stay
+// byte-identical (and no section file to appear). The full rendered form
+// carries every typed section, the workflow seam, and the llm agent-overrides
+// surface at once — the shape the field-subset tests above do not exercise.
+func TestFullFormNoEditSaveIsByteIdentical(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range noEditSectionFixtures {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	a := newLosslessApp(t, root)
+	before := snapshotSections(t, root)
+
+	form := extractBrowserSubmission(t, renderSettingsGET(a))
+	if len(form) < 10 {
+		t.Fatalf("rendered form submitted only %d fields — the extraction did not see the settings form", len(form))
+	}
+
+	rec := servePost(t, a.routes(), "/save", form)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("no-edit full-form save status = %d, want 200; body:\n%s", rec.Code, rec.Body.String())
+	}
+
+	after := snapshotSections(t, root)
+	for name, want := range before {
+		got, ok := after[name]
+		if !ok {
+			t.Errorf("%s removed by a no-edit save", name)
+			continue
+		}
+		if got != want {
+			t.Errorf("%s changed by a no-edit save (GitHub #1731)\n--- before ---\n%s\n--- after ---\n%s", name, want, got)
+		}
+	}
+	for name, got := range after {
+		if _, ok := before[name]; !ok {
+			t.Errorf("%s created by a no-edit save:\n%s", name, got)
+		}
+	}
+}
+
 // TestHandleSaveLLMEditIsolatesOtherSections carries AC-WSL-002 + AC-WSL-001
 // together through the full save path: a single llm field edit changes exactly
 // one llm.yaml line, and user.yaml / quality.yaml / git-convention.yaml stay

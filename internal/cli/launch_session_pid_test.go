@@ -92,12 +92,16 @@ func TestSessionPIDStamp_PlatformBoundary(t *testing.T) {
 // TestSessionPIDStamp_NotSetFromHooks encodes the hard boundary from the other
 // side: a hook subprocess exits within milliseconds of running, so a PID it
 // declares is dead before any reader probes it. No hook may write the variable.
+//
+// The sweep covers production sources only: a hook TEST legitimately seeds the
+// launcher-stamped variable (with the test process's own live PID) to stand in
+// for the launcher, which is not a hook declaring its PID.
 func TestSessionPIDStamp_NotSetFromHooks(t *testing.T) {
 	hookDir := filepath.Join(filepath.Dir(sessionPIDPackageDir(t)), "hook")
 
 	var offenders []string
 	err := filepath.WalkDir(hookDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return err
 		}
 		src := readSessionPIDSource(t, path)

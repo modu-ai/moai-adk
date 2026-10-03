@@ -6,6 +6,14 @@
 - plan_status: audit-ready (감사 계보: iter1 FAIL 0.69 D1-D13 → 수리 → iter2 FAIL 0.875 D14-D17 → 수리 → iter3 FAIL 0.90 D18 잔여 → 리드 승인 ② 1절 수리+델타 확인 → **PASS-delta GO**. 판정 파일: plan-audit.md·plan-audit-iter2.md·plan-audit-iter3.md·plan-audit-iter3-delta.md — 전부 .moai/reports/t1411/. 최종 아티팩트 기준 HEAD ccac1f555)
 - pre-flight baseline: 미측정 (§C Pre-flight 체크리스트 — run-phase 착수 시 최우선 기록)
 
+### v0.3.0 amendment plan-phase signal (card t1421)
+
+- plan_complete_at: 2026-10-03 — plan-audit iter1 **PASS-WITH-DEBT 0.89** (Tier M 기준 0.80 상회). 판정 파일: `.moai/reports/t1421/plan-audit.md` (iteration 1, v0.3.0 수정안 대상).
+- plan_status: audit-ready — D1-D3 수리 본 커밋 동반; lane이 iteration-2 델타 재확인(감사기 재개 — D1-D3 스코프)을 kickoff 게이트 전 수행.
+- adjudication-1: 예산 초과(REQ 20 / AC 19 > Tier M 상한 16/16)는 **기록 부채로 판정** — 분할·티어 상향 기각 근거는 plan.md §I.3 + spec.md `## Amendments` v0.3.0 블록 9행.
+- D1-D3 수리 (본 커밋): D1 — REQ-AFR-002 blanket 절을 옵트인 조건으로 제자리 한정(id 불변·재번호 없음, v0.2.0 REQ-AFR-007 축소 선례 형식). D2 — acceptance.md §D.3 소비-경계 2행을 v0.3.0 옵트인 경계 서술로 재기술(검증 커맨드 본문 불변). D3 — plan.md §D.5 model_backend_default 행에 v0.3.0 처분 병기 + §E 예산 행을 20/19 처분 기록으로 갱신.
+- D4-D9: **optional/deferred 기록 부채** — D4(decision-index Q2 흡수 주석)·D5(M11 wording에 "AC-AFR-016 sync-유예" 병기 권고)·D6(GEARS cosmetic — 다음 자연 본문 편집 시 정돈)·D7(AC-AFR-019 구체 grep은 M10 착지 시 핀 — 기준 자체 지시)·D8(progress.md §E.3 중복 헤딩 placeholder는 joint close에서 정리)·D9(권고 경고 — 복합 매핑 수동 검증 완료).
+
 ## §E.2 Run-phase Evidence
 
 ### Pre-flight (2026-10-02, HEAD a48216da1)
@@ -39,9 +47,76 @@
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-10-03
+run_commit_sha: 637574ed3  # the M10 commit — the last code-bearing tree this signal's evidence was measured against (M11's own record commit is docs-only)
+run_status: audit-ready
+scope: v0.3.0 amendment (card t1421) — milestones M7 → M8 → M9 (manager-develop) + M10 (manager-spec re-delegation, commit 637574ed3) + M11 verification (this signal)
+ac_pass_count: 4  # in-scope v0.3.0 ACs for run-phase: AC-AFR-014, AC-AFR-015, AC-AFR-017, AC-AFR-018 — §E.2 M11 block, -count=1 ledger on HEAD 637574ed3
+ac_fail_count: 0
+ac_pending_other_phase:
+  - AC-AFR-016  # sync-owned rules-text grep (REQ-AFR-017) — lands with the joint close (acceptance.md DoD item 5)
+ac_transcribed_this_phase:
+  - AC-AFR-019  # M10-owned AMI-001 link grep — transcribed in §E.2 M11 block (grep -c = 2 at HEAD 637574ed3; HISTORY :31 + exception paragraph :124)
+ac_count_basis: "v0.3.0 in-scope set only — the v0.1.0 13-AC set's PASS evidence is the prior close's §E.2 record, unchanged"
+builds:
+  linux: exit 0   # go build ./...
+  windows: exit 0 # GOOS=windows GOARCH=amd64 go build ./...
+lsp_run_gate: pass  # go vet ./internal/{web,cli,config,template,hook}/ ./internal/settings/... exit 0 — 0 errors (quality.yaml run gate proxy, M6 precedent)
+lint: 0 issues (golangci-lint run --timeout=4m, final tree; one lock-contention retry)
+coverage_new_code:
+  template.ResolveAgentOverrideConsumption: 100.0%
+  config.ValidateLLMYAMLSection: 90.9%
+  config.validateConsumeKeyBool: 94.1%
+  hook.classifyOverrideConsumption: 100.0%
+  hook.checkAgentModel: 100.0%
+suites_full_green:
+  - internal/config (ok 15.183s)
+  - internal/settings/... (ok — includes the untouched llmoverrides + agentfm packages)
+  - internal/template (ok 252.695s)
+  - internal/web (ok 93.790s)
+suites_handed_to_ci:
+  - internal/cli  # exceeds go test's default timeout locally: panicked 2x@10m0s + 1x@20m0s, zero --- FAIL across all runs (cumulative duration, not a hang); card delta verified scoped (ok 3.689s + ok 7.291s); M6 close precedent — scoped cli runs only
+  - internal/hook # exceeded 20m0s locally; agent-model scoped selectors all green (ok 1.417s); 4 failures in SessionStart/stale-run domains carry this lane's live session state (worker-70 / run tlwgk9 / --provider glm) — environment-coupled (t1350 class), zero files in this card's diff
+boundary_greps_new_hits: 0  # pre_tool.go:834 observer branch pre-existing — git diff 677bf469b..HEAD -- internal/hook/pre_tool.go is empty
+scope_envelope: 18 files in the §A/§I envelope; no .claude/rules/**, no SPEC-AGENT-MODEL-INHERIT-001 edits by run-phase (M10 was the manager-spec re-delegation), no runtime-managed paths
+m10_amendment_invariants:
+  ami001_progress_md_untouched: true
+  sync_commit_sha: "770cb02a9 (untouched)"
+  requirement_deletion_or_renumbering: none
+commit_strategy: M7..M11 per-milestone commits on WT-llm-override-contract (no push — lane/leader owns integration)
+recorded_by: manager-develop (run phase, card t1421)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
+
+SYNC-PHASE RE-CLOSE (joint 0.2.0 + 0.3.0 적층 수정안, 단일 close 커밋 — 2026-10-03, card t1421 sync lane, manager-docs). 0.1.0 close 시그널은 하단 Prior close 블록으로 보존되며, 그 `sync_commit_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3`는 spec.md `## Amendments`(v0.2.0·v0.3.0 `prior_completed_sha`)에 verbatim 보존돼 있다.
+
+```yaml
+sync_complete_at: 2026-10-03
+sync_commit_sha: a8c693b06  # D3 backfill: the pending-backfill placeholder written in the joint re-close commit replaced with the real close-commit SHA by the phase-owning agent (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_status: complete
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged  # 3-phase close대로 단일 sync 커밋에 흡수
+  implemented_to_completed: this commit  # spec.md frontmatter status+updated 만; 본문 섹션 무변경
+canary_compliance_check:
+  spec_body_untouched: true  # spec.md/plan.md/acceptance.md 본문 무변경; progress.md §E.2에는 sync 소관 AC-AFR-016 증거 행만 추가
+  runtime_files_untouched: true  # .moai/state, .moai/harness, .moai/cache 무변경
+b12_self_test_a: halt  # 사전 검사 `grep -c 'SPEC-WEB-AGENTFM-RESTORE-001' CHANGELOG.md` → `1` (t1411 v0.1.0 close 항목, CHANGELOG.md:44) — count ≥ 1로 B12 방출 정지; 본 sync는 CHANGELOG 미기입, v0.3.0 항목 초안문은 레인 보고로 리더 처분 대기
+b12_self_test_b: n/a-emission-halted  # 방출은 정지됐지만 기록용 측정: MOAI-AC-COUNTER(acceptance.md, tier M 소스) → stdout `19`, stderr `live=19 excluded=0 ambiguous=0` — 13(v0.1.0/v0.2.0 집합) + 6(AC-AFR-014..019) = 19, acceptance.md SSOT 일치
+b12_self_test_c: pass  # 경로 검증: 규칙 6파일(커밋 996202d70) + 구현 파일 7종(`internal/config/types.go` · `internal/template/agent_overrides_consume.go` · `internal/hook/agent_model_guard.go` · `internal/cli/doctor_served_model.go` · `internal/web/agentfm.go` · `internal/template/templates/.moai/config/sections/llm.yaml` · `internal/config/testdata/shipped_key_inventory.yaml`) — `ls` 전수 존재 실측
+mx_tag_validation:
+  added: 0  # sync-phase는 Go 소스 미터치 — 규칙 파일은 마크다운이라 @MX 면 없음
+  updated: 0
+  dangerous_patterns: 0
+docs_site_decision: out-of-scope-deferred  # v0.3.0 Out of Scope가 docs-site 페이지를 밖에 둠; REQ-AFR-015..020 어느 조항도 docs-site 면을 요구하지 않는다 — 신규 키의 사용자향 문서는 템플릿 llm.yaml 주석 블록(run-phase 착지). 페이지 미창작, 처분 기록
+codemap_refresh: not-triggered  # sync가 코드 소스를 건드리지 않는다 — codemap 재생성 방아쇠 없음
+joint_close:
+  companion: SPEC-AGENT-MODEL-INHERIT-001  # v0.7.0+v0.8.0 재close는 full-ID 강제에 따라 별도 close 커밋으로 동행 — 동 SPEC v0.8.0 Amendments 블록이 본 재close와의 joint re-close를 선언
+recorded_by: manager-docs (sync phase, card t1421)
+```
+
+### Prior close — 0.1.0 (card t1411, 2026-10-02) — 위 re-close로 대체, 그 close의 기록으로 보존
 
 ```yaml
 sync_complete_at: 2026-10-02
@@ -127,6 +202,13 @@ recorded_by: manager-docs (sync phase, card t1411)
 - **DoD 체크리스트(acceptance.md)**: (1) AC 13/13 PASS — 증거는 §E.2 각 행; (2) decision-index Q1-Q3 운영자 확인 완료(2026-10-02); (3) Out of Scope 미침수 — 커밋 범위가 §A.1 파일 맵 내(43파일 + SPEC 아티팩트); (4) LSP run 게이트 오류 0(vet 프록시 실측). 커버리지: 신규 패키지 internal/settings/agentfm 94.4% ≥ 85% 충족.
 - 최종 행: `go test ./internal/web/ ./internal/settings/... ./internal/template/` → web ok(cached) · settings ok 0.648s · settings/agentfm ok(cached) · settings/yamlpatch ok(cached) · template ok 134.556s — 전량 GREEN, exit 0.
 
+### Amendment (2026-10-03, card t1446) — REQ-AFR-007 narrowing (t1411 sync-audit round-2 N1)
+
+- manager-spec의 completed SPEC 재자리 수정 — SSOT 수정 전이 따름: `status: completed → in-progress` + `amendment_of`(자기참조) + version 0.2.0 + `updated: 2026-10-03` + HISTORY 0.2.0 행 + `## Amendments` 신설. `prior_completed_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3` — 기존 close의 `sync_commit_sha`(위 §E.4), 불변. 수정 전 spec.md 마지막 본문 커밋: `422524f5d` (2026-10-02, t1411 F5/F7 dispositions).
+- REQ-AFR-007 본문 축소: 영속-오류 원자 복원을 llm.yaml agent-overrides write pair(`llm.profile` + `llm.agent_overrides`)로 한정 — 검증-오류 원자 거절은 의미 불변, pair 밖 선행 단계는 문서화된 best-effort + 한계를 본문에 명시. N1 판정: 구 문구("any validation or persistence error … byte-identical")는 구현 수리보다 넓었다(위 M6-repair F3 행 — steps 7→8 pair snapshot/rollback이 구현 보장의 전부; step-6 schema 편집의 잔존은 수리 이전의 부분 영속). §D 원자성 제약 행 동기화. 이 쌍 이름("llm.yaml agent-overrides write pair (llm.profile + llm.agent_overrides)")은 동일 카드에서 정렬 중인 코드측 실패 배너 문구와 일치시킨다.
+- acceptance.md 무변경 판정: AC-AFR-004(REQ-AFR-006/007 유일 매핑)의 시나리오는 전부 검증-오류 거절이라 축소된 의미에서도 그대로 성립하고, 광역 영속-오류 원자성을 핀하는 기준은 없다(§D.2·§D.3·§D.4의 byte-identical 행은 검증 거절·preserve·no-op·frontmatter 무접촉 문맥). plan.md:42 사전-비행 프로브 행은 본 축소를 이미 예고한 기록이므로 불변.
+- 이 파일의 §E.2/§E.3/§E.4 증거는 불변 — 본 블록은 말미 추가 기록뿐이다. 재완료(→completed)는 본 수정과 별도의 후속 close 커밋 소관이다.
+
 ### M6-repair (2026-10-02, sync-audit FAIL 73/100 NO-GO 판정 .moai/reports/t1411/verdict.md 대응 — F1-F4)
 
 - **F1 [P1] 수리 — llmoverrides.go 블록 스플라이스의 빈 줄·컬럼-0 주석 오판**: 관측-RED 선행(회귀 테스트 4종 선작성 → verbatim RED `/tmp/t1411-f1-red.txt`, §E.2 전사): `TestWriteLLMAgentOverridesRealTemplateShape`/`BlankLineInsideBlock`/`Column0CommentInsideBlock`/`EndToEndTemplateFile` 전부 FAIL — `line 47: mapping key "agent_overrides" already defined at line 2`(실제 템플릿 픽스처)·`line 10: ...`(빈 줄 케이스)·`line 9: ...`(컬럼-0 주석 케이스) — 감사기 4중 재현과 동일 결함 양상 독립 재현. 수리: (a)키 탐색 루프와 몸통 범위 루프 모두 빈 줄·주석 행을 스킵(isBlankOrComment continue) — 영-들여쏘기 **내용** 행에서만 종단; (b)몸통 내 빈 줄·주석은 영역을 확장도 종단도 하지 않음(뒤에 오는 몸통-들여쏘기 내용만 확장 — 후행 공백·주석 보존); (c)스플라이스 결과를 기록 전 yaml 언마샬 검증(중복 키 → write refused). GREEN: 4종 회귀 + 기존 splice 테스트 전부 PASS. 판정문의 "실제 임베디드 템플릿 파일 FAIL — 출현 3회" 재현가도 본 수리로 소멸(EndToEndTemplateFile이 실제 템플릿 바이트 대상 공개 seam 경유 단일-키+핀 착지 단언).
@@ -136,3 +218,69 @@ recorded_by: manager-docs (sync phase, card t1411)
 - **§E.2 pre-flight 행 재기술**: F3의 증거 과대 교정 — 위 Pre-flight 행이 "원자" 결론 대신 실측 범위(무관-파일 보존)로 재작성됨.
 - **재검증**: 아래 M6-repair 재실행 행.
 - **M6-repair 재실행(환경세척 단일 복합 호출, -count=1, 이 트리·이 런)**: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `go test -count=1 ./internal/settings/ ./internal/settings/agentfm/ ./internal/harness/rosterguard/` → settings ok 1.151s · agentfm ok 0.297s · rosterguard ok 48.788s · `go test -count=1 ./internal/web/` → ok 73.261s · AC 선별 29테스트 PASS · gofmt 클린(F4 반영) · lint `0 issues.` (수리 파일 4패키지).
+
+### Amendment (2026-10-03, card t1421) — v0.3.0 opt-in spawn-consumption contract (REQ-AFR-015..020)
+
+- manager-spec의 in-progress SPEC 재자리 수정 — v0.2.0 수정안 위의 연속 수정: version 0.2.0 → 0.3.0, `updated: 2026-10-03`, HISTORY 0.3.0 행, `## Amendments` v0.3.0 블록. `status: in-progress` 유지(재전이 불요), `amendment_of` 자기참조 불변, `prior_completed_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3` 불변. 수정 전 spec.md 마지막 본문 커밋: `9c6056164` (2026-10-03, card t1446 v0.2.0 amendment).
+- 운영자 결정 기록: **옵트인 고정** (2026-10-03, lane AskUserQuestion 라운드, 카드 t1421) — decision-index Q4. `llm` 섹션 단일 옵트인 키 `llm.agent_overrides_consume`(기본 false)를 켠 세션만 스폰 시 소비; 오케스트레이터가 Agent() 호출에 model/effort 전달(유일 승인 소비 경로 — model-policy.md 해상 순서). 카드 본문이 승인 원문.
+- REQ-AFR-015..020 신설(6건 — console·doctor 가시성은 동일 요구의 두 검증 면으로 하나의 REQ-AFR-019에 병합) · AC-AFR-014..019 신설(6건). 기존 14 REQ·13 AC 무변경 — 삭제·재번호·AC 매핑 변경 없음. Out of Scope 런타임 소비 절 재기술 — Q2 공백이 본 수정안으로 경계. REQ 20 / AC 19 — Tier M 상한 초과분의 예산 처분은 plan.md §I.3 (분할·티어 상향 기각 근거 기록).
+- plan.md §I 신설 — 마일스톤 M7(옵트인 키·게이트·리졸버)→M8(훅 advise/audit)→M9(console·doctor 가시성)→M10(AMI-001 수정안, M5b 선례 manager-spec 재위임)→M11(전체 검증). 룰 텍스트 소비 조항(REQ-AFR-017, `.claude/rules/moai/core/agent-common-protocol.md` § Subagent Model and Effort)은 sync-phase 소관 — run-phase는 룰 파일을 건드리지 않는다.
+- **재close 처분**: 0.2.0 + 0.3.0 두 수정안의 재close는 **하나의 joint close 커밋** — 카드 t1446 재진입이 본 카드와 동행하며 둘이 함께 재close한다. 그때까지 §E.4의 `sync_commit_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3` 불변. AC-AFR-016(룰 텍스트 grep)·AC-AFR-019(AMI-001 링크 grep)의 증거는 각 소유 단계(sync·M10) 착지 후 §E에 전사.
+- 이 파일의 §E.2/§E.3/§E.4 증거는 불변 — 본 블록은 말미 추가 기록뿐이다. AC-count baseline 스냅샷(`.moai/reports/t338/ac-count-baseline.txt`)은 본 수정안과 같은 커밋에 재생성본이 동행한다(ac-count-baseline-refresh.md §3 같은 커밋 규칙 — 방아쇠 4행, SPEC 제자리 개정).
+
+### v0.3.0 run — M7 → M8 → M9 (2026-10-03, 카드 t1421, HEAD 677bf469b 기점)
+
+- **Pre-flight (§I.4, HEAD 677bf469b 트리)**: branch/HEAD `WT-llm-override-contract` / `677bf469b` 일치 · `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · lint `0 issues.` · 기준선 스코프 테스트(`TestShippedConfigKeysHaveReaders|TestShippedRetiredModelKeys`) GREEN · **훅 레코드 스키마 핀**(확장 전 `agentModelAuditRecord` 필드 6종): `timestamp, session_id, agent, declared_model, resolved_model, verdict` (`agent_model_guard.go:119-126`) · **옵트인 키 충돌 스캔**: `agent_overrides_consume` internal/·.moai/ 0히트 (충돌 없음) · [1m] 잔여: C4 문서화만 (생존 재현 프로브 없음 — plan §I.4 대로).
+
+- **M7 RED (구현 전, verbatim)** — `go test ./internal/config/ -run '^TestAgentOverridesConsumeKey$'`: `internal/config/agent_overrides_consume_test.go:41:29: NewDefaultConfig().LLM.AgentOverridesConsume undefined (type LLMConfig has no field or method AgentOverridesConsume)` + `:89:10: undefined: ValidateLLMYAMLSection` (외 2행 동일 계열) — build failed. `go test ./internal/template/ -run '^TestAgentOverridesConsumption$'`: `internal/template/agent_overrides_consume_test.go:37:10: undefined: ResolveAgentOverrideConsumption` (외 4행) — build failed. `go test ./internal/web/ -run '^TestAgentOverridesSave$'`: `--- FAIL: TestAgentOverridesSave/non-boolean_consume_value_is_an_atomic_reject` — `agent_overrides_test.go:385: the re-render must carry a per-field error naming the non-boolean key` (거절 합류 부재 — 저장이 무사 통과).
+- **M7 측정 발견 (yaml.v3 강제 변환)**: 프로브 실측 — `agent_overrides_consume: "yes"`(인용)과 `yes`(비인용) 모두 yaml.v3가 bool true로 **강제 디코드**(타입 오류 아님), `3`(int)만 `cannot unmarshal !!int` 오류. 태그 검사(`!!bool`)를 M7 검증기에 추가 — 인용 문자열이 연산자가 쓰지 않은 옵트인으로 침묵-변환되는 경로를 원자 거절로 닫는다 (구현 후 `"yes"` → ConfigTypeError key=agent_overrides_consume 실측).
+- **M7 GREEN**: `go test -count=1 ./internal/config/ -run '^TestAgentOverridesConsumeKey$'` → `ok` · `./internal/template/ -run '^TestAgentOverridesConsumption$'` → `ok` (4서브테스트 — override 승리·**셀-매핑 에이전트의 부재 항목=플레인 상속**(프로필 셀이 소비 경로에 새지 않음을 구별 단언)·inherit no-op·off 저장 전용) · `./internal/web/ -run '^TestAgentOverridesSave$'` → `ok` (신설 거절 서브테스트 포함). 인벤토리·strip 회귀: `TestShippedConfigKeysHaveReaders` GREEN(103s), `TestShippedRetiredModelKeys|TestStripRetiredModelKeys` GREEN, CLI `TestStripRetiredModelConfig|TestUpdateLLMYAML` GREEN — 신규 키는 strip 대상 아님 확인.
+- **M7 커버리지 후속 커밋(479f29e2a)**: 1차 검증기의 형태 가드가 타입 패스가 이미 보장하는 불도달 분기여 커버리지 미달(81.8%/69.6%) — 가드를 문서화된 전제로 접고 도달 경로 4케이스(빈 파일·llm 매핑 부재·키 부재·읽기 오류 표면) 테스트 착지. 신규 파일 커버리지: `ValidateLLMYAMLSection` 90.9% · `validateConsumeKeyBool` 94.1%.
+- **M8 RED (구현 전, verbatim)** — `go test ./internal/hook/ -run '^TestAgentModelGuardOverride$'`: 5서브테스트 전부 FAIL — `override_consumption = <nil>, want hit/miss/off/inherit` ×4 + `a miss must advise (non-blocking) that the pinned model was not applied` / `a spawn without a declaration under an active pin must still miss` — 레코드 필드와 advise가 아직 없음.
+- **M8 GREEN**: `^TestAgentModelGuardOverride$` 5서브테스트 PASS(hit·miss-차이선언+어드바이저리·miss-무선언·off 기존 6필드 보존·inherit no-op) · **internal/hook 전체 스위트 exit 0** (기존 observe/advise 계약 무손상 — 간접 검증 `TestAgentModelObserveNeverBlocks|TestAgentModelAdvisoryDoesNotBlock` 포함 GREEN) · 신규 코드 커버리지: `classifyOverrideConsumption` 100% · `checkAgentModel` 100%.
+- **M9 RED (구현 전, verbatim)** — web: `--- FAIL: TestAgentOverridesContractState/gate_off_renders_the_storage-only_state` — `with the gate off the sub-section must mark the storage-only contract state` + `the storage-only state carries its i18n key`. cli: `--- FAIL: TestDoctorServedModelConsumeState/unreadable_config_degrades_to_off` — `a nil config must read as the closed gate (fail-open)` (스위치 상태 행 부재 — 출력에 `agent_overrides_consume` 0히트).
+- **M9 GREEN**: web `^TestAgentOverridesContractState$` 2서브테스트 PASS(off=저장 전용 마크·on=소비 마크, 상호 배타) · cli `^TestDoctorServedModelConsumeState$` 3서브테스트 PASS(on/off/nil→off) + 기존 `TestServedModelCheck_Sweep|TestServedModelCheck_DefaultRunShowsHintOnly` GREEN · 센티널 가드 `TestWebConsole_NoPerAgentModelResolver|TestWebConsole_AuditNoForkedInterpreter` GREEN(생성물 0히트 계약 유지 — 상태 헬퍼는 센티널-허용 표면 파일 agentfm.go에 배치) · i18n 거버넌스(KeySetParity·Coverage Forward/Reverse·SubsetOfDictionary·GovernanceContract·AllowlistNoOrphans·UntranslatedValues) GREEN — 신규 키 2종×4locale 동반.
+- **최종 배치(HEAD 479f29e2a 트리)**: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · 경계 grep 신규 히트 0 (pre_tool.go:834의 `input.ToolName == "AskUserQuestion"` 관측 분기는 본 카드 미터치 사전존재 — `git diff 677bf469b..HEAD -- internal/hook/pre_tool.go` 빈 출력 실측) · AC 레저 전 커맨드 GREEN(EV-AFR-014 3커맨드 + AC-AFR-015/017/018 각 1커맨드).
+- 커밋: M7 `323e1aa66` · M8 `05ba101dc` · M9 `fae726050` · M7 커버리지 후속 `479f29e2a` — push 없음(레인/리더 통합 소관).
+
+### M11 — 전체 검증 스윕 (2026-10-03, HEAD 637574ed3 — M10 착지 후; 감사-레디 전사)
+
+- **M10 착지 검증 (§D.19 전사)**: 커밋 `637574ed3`은 `.moai/specs/SPEC-AGENT-MODEL-INHERIT-001/spec.md` 단일 파일만 수정 — 동 SPEC progress.md 미등장(`git show 637574ed3 -- <progress.md>` 빈 출력 실측), `sync_commit_sha: "770cb02a9"` 불변(progress.md:362 실측). AC-AFR-019 grep 증거(§D.19 — 커맨드 + verbatim 출력 + 트리 SHA): `grep -c "agent_overrides_consume" .moai/specs/SPEC-AGENT-MODEL-INHERIT-001/spec.md` → `2` (HEAD 637574ed3 트리) — 히트 1: HISTORY 0.8.0 행(:31), 히트 2: REQ-AMI-011 예외 문단 확장(:124, 구현 계약 7사실 전체 미러 — 옵트인 키·해상 의미·전달 경로·훅 필드·가시성·태그 거절·룰 비편집). `TestJevAmendmentLinkage` GREEN(`internal/contract/kickoff` `ok 4.203s`) — 본문·HISTORY·인용 3자 정합 기계 GREEN. 요구사항 삭제·재번호 없음(수정안 본문 서술 + 단일 파일 diff 실측).
+- **E1 최종 트리 레저(전부 `-count=1`, HEAD 637574ed3)**: `TestAgentOverridesConsumeKey` `ok 0.373s` · `TestShippedConfigKeysHaveReaders` `ok 4.386s` · web `TestAgentOverridesSave|TestAgentOverridesContractState` `ok 1.960s` · `TestAgentOverridesConsumption` `ok 0.473s` · `TestDoctorServedModelConsumeState` `ok 1.431s` · `TestAgentModelGuardOverride` `ok 0.948s` — 전부 PASS.
+- **스코프 스위트 전량(§I.5 M11)**: config `ok 15.183s` · settings(+agentfm+yamlpatch) 전부 `ok` · template `ok 252.695s` · web `ok 93.790s` — 전부 GREEN. **cli·hook 전체 스위트는 기계 시간 속성으로 로컬 완주 불가**: cli는 `panic: test timed out after 10m0s` 2회(601.429s·601.200s) + `-timeout=20m` 1회(1201.493s) — **3회 전부 타임아웃 패닉, `--- FAIL` 0건(20m 로그 전수 실측)**, 타임아웃 시점 running 테스트는 매번 다른 테스트(28s·1s)라 행(hang) 아닌 누적 시간 초과. hook은 `-timeout=20m` 1회(1201.016s) 타임아웃 + 4테스트 FAIL(하단 행). **origin/develop CI가 전체 스위트 판정의 설계 주체**(lane 검증 규율 §8 — M6 close 선례도 cli 선별만 측정). 본 카드의 cli/hook 델타는 선별 증거로 충족: cli `TestDoctorServedModelConsumeState|TestServedModelCheck_Sweep|TestServedModelCheck_DefaultRunShowsHintOnly|TestCodexResolution_IgnoresPerAgentLLMCells` `ok 3.689s` + `TestUpdateLLMYAML*|TestStripRetiredModelConfig*|TestJevAmendmentLinkage` `ok 7.291s`; hook `TestAgentModelGuardOverride|TestAgentModelObserveNeverBlocks|TestAgentModelAdvisoryDoesNotBlock|TestAgentModelNoAdvisory|TestAgentModelGuardFailsOpen|TestAppendAgentModelAudit` `ok 1.417s`.
+- **hook 4건 FAIL의 귀속 (본 카드 델타 외)**: `TestSessionStart_GuardLivenessAdvisoryArrivesWithNoOperatorInput`·`TestStaleRunNoticeLegacyLeaderSpelling`·`TestStaleRunNoticeFactoryLegacyLabel`·`TestSessionStart_DeferredScanJoinsWithinBound` — 실패 본문이 본 레인 세션의 생존 상태를 실어 나름(worker-70·run tlwgk9·`--provider glm` — 레인 env 세척(`unset MOAI_KANBAN … MOAI_FACTORY_WORKER`)으로도 미소멸 → home/상태 해석 경유의 환경-결합 거짓 적색, t1350 교훈 클래스; DeferredScan 1건은 879ms vs 250ms 바운드의 기계 부하 민감형). 4테스트 모두 본 카드 diff 미터치 파일(`git diff 677bf469b..HEAD`의 hook 변경은 agent_model_guard.go+테스트뿐 실측) — CI 판정 면에서 정산.
+- **§D.5/M11 스코프 스윕 잔여**: (a) §D.5 model_backend_default 행의 M11 재확인 — `TestCodexResolution_IgnoresPerAgentLLMCells` GREEN(`ok` 상기 배치) — 소비는 오케스트레이터 파라미터라 CLI 해상 기계 무관(D3 처분 대로) 확정. (b) 고아 주석 2종 — `agent_settings_test.go` B-2 마커 소멸 실측, `profile_setup_schema_options_test.go:119`은 M2 갱신본(재포트 사실 서술)로 잔존 — 위반 없음. (c) D5 권고(AC-AFR-016 sync-유예 병기) — acceptance.md DoD 5행이 소유 단계별 전사를 이미 규정: AC-AFR-019는 M10 착지로 본 행에서 전사 완료, AC-AFR-016은 sync 소유로 pending(정합 확인).
+- **E2/E4/E5**: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `go vet ./internal/{web,cli,config,template,hook}/ ./internal/settings/...` exit 0(LSP run 게이트 프록시 오류 0) · 경계 grep 본 카드 신규 히트 0(pre_tool.go:834 관측 분기는 사전존재 — diff 미터치 실측).
+- **E3 커버리지(최종 트리)**: `ResolveAgentOverrideConsumption` 100.0% · `ValidateLLMYAMLSection` 90.9% · `validateConsumeKeyBool` 94.1% · `classifyOverrideConsumption` 100.0% · `checkAgentModel` 100.0% — 신규 코드 전부 ≥85%(커밋당 80% 기준 상회).
+- **커밋 계보(카드 브랜치)**: `677bf469b`(Phase 4 기록) → `323e1aa66`(M7) → `05ba101dc`(M8) → `fae726050`(M9) → `479f29e2a`(M7 커버리지) → `a094758ae`(M7-M9 §E.2) → `637574ed3`(M10, manager-spec 재위임분) → 본 커밋(M11 기록). push 없음 — 레인/리더 통합 소관.
+
+### Sync-phase — AC-AFR-016 룰 텍스트 소비 조항 (2026-10-03, card t1421, manager-docs)
+
+- 규칙 텍스트 착지: 커밋 `996202d70` (REQ-AFR-017의 sync 소관 — REQ-AMD-001 계열). 3 규칙 표면 × 템플릿 미러 동행 6파일 단일 커밋: `agent-common-protocol.md` § Subagent Model and Effort에 소비 예외 문단 · `cache-aware-execution.md` 지시 5에 유일 승인 오버라이드 표면 명명(1.1.0→1.2.0, 지시 10 실질 무변경) · `model-policy.md` § Inherit-by-Default Convention에 소비 예외(spawn-time model 슬롯이 전달 채널 · 폐쇄집합 alias · [1m] 잔여 적용 · 기본 false=저장 전용). 미러 문안은 SPEC-ID·카드 토큰 없는 정중화 형태(§25 C1/C9) — 기계 가드 GREEN: `go test ./internal/template/ -run '^(TestTemplateNoInternalContentLeak|TestRuleTemplateMirrorDrift|TestSanitizedPairParity)$'` → `ok github.com/modu-ai/moai-adk/internal/template 4.545s` (이 트리·이 런). 사전 존재 노트: cache-aware-execution 쌍은 본 카드 이전부터 지시 4에서 갈라져 있었다(live가 context-clear-policy.md 참조, 미러 미참조) — 본 카드 미터치, 보고만.
+- **AC-AFR-016 증거 (§D.16 전사 — 커맨드 + verbatim 출력 + 트리 SHA `996202d70`)**:
+
+```
+$ grep -n "agent_overrides" .claude/rules/moai/core/agent-common-protocol.md
+103:Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort is doctrine-level only — the Agent tool carries no effort parameter. Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.
+exit=0
+$ grep -n "agent_overrides" internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
+103:Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort is doctrine-level only — the Agent tool carries no effort parameter. Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.
+exit=0
+$ grep -n "Subagents inherit the main session's model and effort" .claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
+.claude/rules/moai/core/agent-common-protocol.md:101:Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md:101:Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
+exit=0
+```
+
+- 판정: live 1히트(:103 소비 조항) + 미러 1히트(바이트 동일 — §D.16의 "한쪽 미러만의 0은 반대편을 확립하지 않는다" 이행) + 옵트인 off 기본 문장(상속 기본, 양면 :101) 생존 → **AC-AFR-016 PASS**.
+- B12 사전 검사: `grep -c 'SPEC-WEB-AGENTFM-RESTORE-001' CHANGELOG.md` → `1` (t1411 v0.1.0 close 항목, CHANGELOG.md:44) — count ≥ 1로 **B12 방출 정지**. 본 sync는 CHANGELOG를 기입하지 않는다; v0.3.0 항목 초안문은 레인 보고로 리더 처분 대기.
+- Live-identifier 계수(기록용 — 방출 정지와 무관하게 측정): MOAI-AC-COUNTER(acceptance.md, tier M 소스) → stdout `19`, stderr `live=19 excluded=0 ambiguous=0` — 13(v0.1.0/v0.2.0 집합) + 6(AC-AFR-014..019 신설) = 19, acceptance.md SSOT와 일치. 경로 검증: 규칙 6파일 + `internal/config/types.go` · `internal/template/agent_overrides_consume.go` · `internal/hook/agent_model_guard.go` · `internal/cli/doctor_served_model.go` · `internal/web/agentfm.go` · `internal/template/templates/.moai/config/sections/llm.yaml` · `internal/config/testdata/shipped_key_inventory.yaml` — `ls` 전수 존재 실측.
+
+## §F Phase 4 Mode Selection (card t1421, 2026-10-03)
+
+- **입력 파라미터**: tier M · scope 약 9파일(internal/config, internal/template + templates llm.yaml, internal/hook, internal/cli doctor, internal/web agentfm) · 도메인 4(config/template · hook · cli · web) · 언어 혼합 Go+YAML 템플릿+마크다운 · 병렬 이득 LOW(coding-heavy) · Agent Teams 사전요건: 미요청.
+- **모드 평가**: direct 미선정(비자명 다중 파일 코드) · fanout 미선정(coding-heavy — Anthropic coding-task caveat) · sweep 미선정(의미적 신규 코드, 기계적 균일 변환 아님) · agent-team 미선정(운영자 미요청) · **serial 선정**.
+- **Decision: serial** — manager-develop 역할 단일 작업자, 마일스톤 M7→M8→M9 직렬, M10은 소유권 교차 금지에 따른 manager-spec 재위임(레인이 배차), M11 전체 검증 동일 작업자 재개.
+- **근거**: 코딩 중심 작업은 직렬이 기본(Anthropic caveat); Tier M이므로 §A-E 위임 템플릿 전문 적용; 마일스톤별 TDD RED 라인이 plan.md §I에 규정.
+- **킥오프 게이트 확인(기본 자율 형태 충족)**: 독립 감사 교차 = plan-audit iter1 PASS-WITH-DEBT 0.89(Tier M 기준 0.80 상회, adjudication-1 예산 초과 기록 부채 수용) + iter2 델타 CONFIRMED(HEAD `4c27f07bf`, 신규 결함 0, 아티팩트 해시 델타 기록에 핀 — `.moai/reports/t1421/plan-audit-iter2-delta.md`) · 증거 기준 충족 · 미해결 블로커 0 · 선호 수집 완료(운영자 결정 decision-index Q4 — 옵트인 고정). `/moai run` Phase 1 캐시 기계(.moai/reports/plan-audit/ 스트림)는 레인 직접 배차 경로에서 가동되지 않으며, 킥오프 증거는 카드 디렉터리 감사 사슬(iter1 + iter2, 진입 HEAD와 동일 트리)로 대신한다 — sync 감사가 이 결정 기록을 재독한다.
+- **goal 미장착**: run.md autonomy의 ac_converge 옵션(MAY) 기각 — 백그라운드 작업자 진행은 완료 통지 기반이라 턴-종료 차단 goal은 대기 구간에서 헛돈다. 카드 진행 추적은 세션 작업 목록 + 통지로 수행.

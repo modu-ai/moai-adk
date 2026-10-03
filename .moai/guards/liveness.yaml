@@ -170,3 +170,12 @@ entries:
     window: 90d
     # Path-gated on the install scripts, which change rarely.
     measure: fired-with-effect
+
+  - kind: github-workflow
+    locator: .github/workflows/workflow-parse-guard.yaml
+    events: [push, pull_request]
+    window: 14d
+    # Runs on every push to main/develop and, on PRs, only when a dynamic-workflow
+    # script or the checker changes (card t1445 added the workflow without this
+    # entry — the census caught the omission).
+    measure: fired-with-effect

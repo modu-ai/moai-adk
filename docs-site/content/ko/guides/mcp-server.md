@@ -60,9 +60,9 @@ flowchart TD
 
 `staggeredStartup`은 서버가 순차적으로 시작되도록 조절하는 Claude Code 런타임 필드입니다. 서버가 여럿일 때 동시 기동 경쟁(race)을 막아 줍니다.
 
-### 네 가지 documented-but-disabled 엔트리
+### 다섯 가지 documented-but-disabled 엔트리
 
-배포 기본값은 `moai` 서버 하나만 활성입니다. 네 개의 외부 서버는 문서에 기록되어 있지만 비활성 상태로, `moai mcp add <이름>` 명령으로 켭니다.
+배포 기본값은 `moai` 서버 하나만 활성입니다. 다섯 개의 외부 서버는 문서에 기록되어 있지만 비활성 상태로, `moai mcp add <이름>` 명령으로 켭니다.
 
 | 서버 | 용도 | 활성화 |
 |------|------|--------|
@@ -70,6 +70,9 @@ flowchart TD
 | `chrome-devtools` | 헤드리스 브라우저 자동화 | `moai mcp add chrome-devtools` |
 | `playwright` | 브라우저 자동화 + E2E 테스트 | `moai mcp add playwright` |
 | `ast-grep` | 구조적 코드 검색 및 리팩터링 | `moai mcp add ast-grep` |
+| `aside` | 로그인된 브라우저에서 동작하는 선택형 브라우저 에이전트 (exec, repl) | `moai mcp add aside --command aside --args mcp --scope user` |
+
+`aside`는 선택 사항입니다. 기본 설정에는 들어 있지 않고, 어떤 워크플로도 이 서버를 전제로 하지 않습니다. 모든 프로젝트에 등록하려면 `moai mcp add aside --command aside --args mcp --scope user`를 실행하고, 현재 프로젝트에만 등록하려면 `--scope user`를 뺍니다. `aside mcp`는 도구 두 개를 제공합니다. `exec`는 로그인된 사이트에서 브라우저 에이전트를 실행하고, `repl`은 열려 있는 페이지에 Playwright 방식의 JavaScript를 실행합니다. 운영자 본인의 로그인된 브라우저 안에서 동작하므로 MoAI는 기본적으로 읽기 전용으로만 쓰고 `--permission full-access`는 쓰지 않습니다. `aside repl`에는 권한 플래그가 없으므로, REPL의 읽기 전용은 도구가 강제하는 것이 아니라 운영 규칙입니다. 상태를 바꾸는 단계는 운영자의 명시적 확인이 있어야 하며, 그 확인은 서브에이전트가 아니라 MoAI 오케스트레이터만 요청하고 실행합니다. MoAI는 Aside를 설치하지 않습니다. Aside 자체의 브라우저 스킬이 필요하면 운영자가 직접 `aside skills install`을 실행합니다. E2E 워크플로에서는 `/moai e2e --tool aside`로 지정했을 때만 쓰이며(명시 지정 전용, `CI=true`에서는 사용 불가), Aside가 없으면 아무 안내 없이 플랫폼 기본 툴체인으로 이어집니다.
 
 ### 중립성 계약
 
@@ -222,7 +225,7 @@ GLM 위임 도구군은 codex 위임과 같은 모양으로 super-advisor와 man
 |------|------|---------------|------------|
 | `mcp__moai__jev_ask` | 주어진 상태 하나에 대해 형식이 정해진 질문을 던지고 확률이 붙은 답을 받음 | 배포 기본값(`workflow.jev.enabled: false`)에서는 사용 불가 | — (MCP 전용) |
 
-도구 자체는 항상 등록되지만, 게이트가 꺼져 있으면 요청을 만들지도 네트워크를 호출하지도 않습니다. 답은 사람이 읽는 참고 신호일 뿐이며, 완료 판정·병합 승인·큐 변경·게이트 입력으로 쓰지 않습니다.
+도구 자체는 항상 등록되지만, 게이트가 꺼져 있으면 요청을 만들지도 네트워크를 호출하지도 않습니다. 답은 사람이 읽는 참고 신호이며, 그 자체로 완료 판정·병합 승인·큐 변경이 되지는 않습니다. 소프트웨어가 자동으로 쓰더라도 신호로만 쓰입니다 — 예를 들어 `moai todo --auto` 가 대기 카드를 살피는 순서, 또는 확인하거나 사람에게 넘기기만 하는 선택형 착수 교차 검증이 있습니다.
 
 ### 팩토리 메시징
 

@@ -60,9 +60,9 @@ flowchart TD
 
 `staggeredStartup` 是 Claude Code 运行时字段，用来调节服务器顺序启动。当服务器有多个时，它能防止同时启动的竞争（race）。
 
-### 四个 documented-but-disabled 条目
+### 五个 documented-but-disabled 条目
 
-部署默认值只有 `moai` 一个服务器处于活跃状态。四个外部服务器已写入文档但处于禁用状态，用 `moai mcp add <名称>` 命令来开启。
+部署默认值只有 `moai` 一个服务器处于活跃状态。五个外部服务器已写入文档但处于禁用状态，用 `moai mcp add <名称>` 命令来开启。
 
 | 服务器 | 用途 | 激活方式 |
 |------|------|--------|
@@ -70,6 +70,9 @@ flowchart TD
 | `chrome-devtools` | 无头浏览器自动化 | `moai mcp add chrome-devtools` |
 | `playwright` | 浏览器自动化 + E2E 测试 | `moai mcp add playwright` |
 | `ast-grep` | 结构化代码搜索和重构 | `moai mcp add ast-grep` |
+| `aside` | 在已登录浏览器中工作的可选浏览器代理（exec, repl） | `moai mcp add aside --command aside --args mcp --scope user` |
+
+`aside` 是可选项。它不在默认配置里，任何工作流也不以它为前提。要为所有项目注册，运行 `moai mcp add aside --command aside --args mcp --scope user`；只想注册到当前项目，就去掉 `--scope user`。`aside mcp` 提供两个工具：`exec` 在已登录的网站上运行浏览器代理，`repl` 对已打开的页面执行 Playwright 风格的 JavaScript。由于它在操作者自己已登录的浏览器里工作，MoAI 默认只读使用，且不使用 `--permission full-access`。`aside repl` 没有权限标志，所以 REPL 的只读使用是一条操作规则，而不是工具本身强制执行的限制。任何会改变状态的步骤都需要操作者明确确认，而这一确认只由 MoAI 编排器（绝不是子智能体）发起并执行。MoAI 不会安装 Aside；如需添加 Aside 自带的浏览器技能，由操作者自己运行 `aside skills install`。在 E2E 工作流中，只有明确传入 `/moai e2e --tool aside` 时才会用到 Aside（`CI=true` 时不可用），Aside 不存在时，工作流会不作任何提示地继续使用平台默认工具链。
 
 ### 中立性契约
 
@@ -222,7 +225,7 @@ GLM 委托工具族与 codex 委托同形，连线到 super-advisor 和 manager-
 |------|------|--------|----------|
 | `mcp__moai__jev_ask` | 针对给定的一个状态提出类型化问题，得到带概率的回答 | 发布默认值（`workflow.jev.enabled: false`）下不可用 | —（仅 MCP） |
 
-该工具始终注册，但门控关闭时既不构造请求，也不发起网络调用。回答只是供人阅读的参考信号，不用作完成判定、合并批准、队列变更或门控输入。
+该工具始终注册，但门控关闭时既不构造请求，也不发起网络调用。回答是供人阅读的参考信号，其本身不会成为完成判定、合并批准或队列变更。即使被自动使用，也只作为信号 — 例如 `moai todo --auto` 查看待办卡片的顺序，或只能确认或移交给人的可选启动交叉验证。
 
 ### 工厂消息
 
