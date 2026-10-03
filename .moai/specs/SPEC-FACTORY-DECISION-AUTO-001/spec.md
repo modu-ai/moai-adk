@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-DECISION-AUTO-001
 title: "Factory decision automation: decision board, PASS-WITH-DEBT admission, audit-ceiling policy, audit kickoff decider, FOUNDER defaults, wake latency, messaging degradation (card t1481)"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec

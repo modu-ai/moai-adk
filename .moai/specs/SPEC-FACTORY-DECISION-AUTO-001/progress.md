@@ -25,7 +25,28 @@ release_target: v3.2.0
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Kickoff decision record (autonomous form, auto-semantics §9.1)
+
+decision record: decided_by=claude+leader evidence_refs=.moai/reports/t1481/plan-audit-iter4.md;verdict=PASS;score=0.885;audited_sha=a13b83868;plan_artifacts_frozen_at=a13b83868 ladder_path=gate-row plan→run Kickoff (AUTONOMOUS, auto-semantics §9.1; leader decision under mission contract 07d28c4b)
+
+- Gaps: no codex audit receipt issued (`audit.gates.codex` not required in this tree).
+- Run agent: manager-develop role taken over by the plan session in this tree (the separately spawned run agent could not shell into the tree — worktree guard), cycle_type=tdd.
+
+### Sibling-SPEC dependency check
+
+`grep -rn "MERGE-WINDOW-QUEUE\|FACTORY-QUEUE-RECORD\|t1479\|t1480" .moai/specs/SPEC-FACTORY-DECISION-AUTO-001/*.md` →
+mentions only (research §1 evidence, decision-index Q16, spec §F Out of Scope for t1479); no
+design or acceptance criterion consumes code from SPEC-MERGE-WINDOW-QUEUE-001 (t1479) or
+SPEC-FACTORY-QUEUE-RECORD-001 (t1480). No milestone is blocked on them. Residual: t1480 also edits
+the SPEC-FACTORY-RECORD-001 state machine (`internal/homestate/card_transition.go`), so M3's T8a
+edge is a likely textual merge conflict at integration, not a code dependency.
+
+### Pre-flight baselines (plan §C) — tree cb8b7e03a
+
+| Command | Verbatim result |
+|---|---|
+| `go test -count=1 -timeout 30m ./internal/homestate/...` | `ok  	github.com/modu-ai/moai-adk/internal/homestate	95.547s` / `exit=0` |
+| `go test -count=1 -timeout 30m ./internal/contract/... ./internal/hook/... ./internal/runtime/...` | see the M1 commit's follow-up entry below |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
