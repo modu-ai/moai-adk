@@ -140,9 +140,9 @@ func TestRestampSeamIsCalledAtEveryNonReplaceCallSite(t *testing.T) {
 	const seamCall = "stampFactoryRunOwner("
 
 	required := []string{
-		"launch_exec_windows.go",  // spawn
-		"codex_direct_windows.go", // Codex child
-		"codex_launcher.go",       // Codex tmux pane
+		"launch_exec_windows.go", // spawn
+		"codex_direct_wait.go",   // Codex child (Windows door + POSIX lane-card launch, card t1488)
+		"codex_launcher.go",      // Codex tmux pane
 	}
 	for _, name := range required {
 		t.Run("required/"+name, func(t *testing.T) {
