@@ -127,7 +127,7 @@ new_warnings_or_lints_introduced: 0
 
 ```yaml
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 4293979c7
 sync_status: completed-with-recorded-debts
 changelog_entry_position: "CHANGELOG.md [Unreleased] ### Added (first entry)"
 frontmatter_status_transitions:
