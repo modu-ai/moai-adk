@@ -22,3 +22,11 @@ _<pending run-phase — manager-develop 소관>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — manager-docs 소관>_
+
+## §F Phase 4 Mode Selection
+
+- 입력 파라미터: tier=M · scope=7 소스 파일 + 7 테스트 파일(예상) · 도메인 수=2(internal/cli·internal/config Go + 훅 스크립트/템플릿) · 파일 언어 혼합=Go+shell·markdown · 병렬 이득=LOW(코딩 중심 — Anthropic 코딩 과제 병렬화 주의) · Agent Teams 전제=미충족(명시 요청 없음)
+- 모드 평가: direct=미선정(단일 자리수 자리표 이상, 의미 변경 있음) · fanout=미선정(코딩 중심, 도메인 2개로 3 미달) · sweep=미선정(30파일 미달·의미 변형 작업) · agent-team=미선정(명시 요청 없음)
+- **Decision: serial** — 마일스톤당 1회 서브에이전트 순차 배차
+- 근거: 코딩 중심 작업은 Anthropic 지침상 serial이 기본이고, 마일스톤 M1-M6이 config→handler→scope→템플릿 순으로 의존하는 단일 사슬이라 병렬 분해 이득이 없다. RED 테스트는 plan 단계에서 이미 저작돼 있어 manager-develop는 GREEN 전환 소관(새로 저작하지 않음).
+- 경계 메모: M4 착수 전 리더의 C5(pathspec 범위) 한 줄 확정 대기 — C5 답이 오기 전 M4 진행 보류. C1-C7 부채 처분(강화 vs 후속 카드)도 리더 답과 함께 run 배차 범위에 반영.
