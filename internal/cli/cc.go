@@ -150,6 +150,9 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// performs the mutations itself.
 	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
 		endEntry()
+		if err := refuseBadEntryBeforeSpawn(spawnArgs); err != nil {
+			return err
+		}
 		return spawnLaunch(cmd.OutOrStdout(), commandName, spawnArgs)
 	}
 

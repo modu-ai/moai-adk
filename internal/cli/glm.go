@@ -208,6 +208,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// See cc.go for the ordering rationale.
 	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
 		endEntry()
+		if err := refuseBadEntryBeforeSpawn(spawnArgs); err != nil {
+			return err
+		}
 		return spawnLaunch(cmd.OutOrStdout(), "glm", spawnArgs)
 	}
 

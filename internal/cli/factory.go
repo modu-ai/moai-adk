@@ -412,6 +412,23 @@ func parseLauncherEntry(args []string) (launcherEntryParse, error) {
 	return entry, nil
 }
 
+// refuseBadEntryBeforeSpawn is the --spawn pre-check (SPEC-LAUNCHER-ENTRY-FLAGS-001
+// REQ-002 and REQ-010: a refused entry launches nothing). The cc and glm spawn
+// branch re-issues the command in a new tmux window, so an entry the launcher
+// refuses is refused here, where the operator reads it, instead of inside a
+// window that closes with it. The check only parses: the registry it reads for
+// the next lane number is read-only, and nothing is written or launched. A
+// profile-flag error is left to the spawned session, which reports it as it
+// always has.
+func refuseBadEntryBeforeSpawn(spawnArgs []string) error {
+	_, rest, err := parseProfileFlag(spawnArgs)
+	if err != nil {
+		return nil
+	}
+	_, err = parseLauncherEntry(rest)
+	return err
+}
+
 // insertBeforePassthrough adds tokens to args ahead of the first `--` marker,
 // so a launcher-desugared flag never lands in the child's pass-through region
 // (where parseFactoryLaneLabel stops reading and the session would launch as a
