@@ -300,7 +300,7 @@ The delta audit (`.moai/reports/t1408/sync-audit-iter2.md`, local-only) returned
 
 sync_status: audit-ready (NOT audit-passed: sync-audit iteration 2 still stands as FAIL 82.2/100 and no sync audit has passed on this close; AC-MT-015 operator-held, NOT run)
 sync_complete_at: 2026-10-04
-sync_commit_sha: 56fcd510b   # backfilled in the following progress.md-only commit (a commit cannot cite its own hash)
+superseded_sync_commit_sha: 56fcd510b   # the final re-close after amendment 0.3.3 (backfill commit `c8cbf6f44`); superseded by the block below; key renamed so tools read the current close
 superseded_first_close: 985cedfb7 (the previous re-close; its SHA is the `superseded_sync_commit_sha` line of the preceding re-close block above, and `40aa3aedf` is the earlier one in the first block)
 head_at_signal: ab6b59aac (measured tree; the re-close edits were uncommitted when measured)
 tree: .claude/worktrees/t1408
@@ -319,4 +319,30 @@ All attributions are `(this run, this tree, HEAD ab6b59aac plus the uncommitted 
 
 - No re-audit after the amendment; no Go test run in this pass (documents only).
 - AC-MT-015 and every real-TUI behavior: not run.
+- The installed `moai` build's commit was not compared with this tree's HEAD, so the `spec lint` reading carries no build attribution.
+
+## §E.4 Sync-phase Audit-Ready Signal — re-close after the session-log hardening and amendment 0.3.4
+
+sync_status: audit-ready (PASS-WITH-DEBT by the leader's convergence rule was granted at `c8cbf6f44`, before this hardening; the hardening is NOT re-audited; AC-MT-015 operator-held, NOT run)
+sync_complete_at: 2026-10-04
+sync_commit_sha: pending-backfill   # canonical placeholder: this commit cannot cite its own hash; backfilled in a following progress.md-only commit
+superseded_first_close: 56fcd510b (the previous re-close; its SHA is the `superseded_sync_commit_sha` line of the preceding block)
+head_at_signal: 8ce99230a (measured tree; the re-close edits were uncommitted when measured)
+tree: .claude/worktrees/t1408
+branch: WT-managed-codex-tui-attach
+owner: manager-docs (sync-phase, re-close)
+card_commits: as in the previous blocks, plus hardening `0339d7460` · SPEC amendment 0.3.4 `8ce99230a` · this re-close (the commit carrying this block) · backfill (the next commit)
+docs_changed: `CHANGELOG.md` (single entry in place: aliases closed, debt 16, audit history, new coverage, reference list) · `.moai/docs/factory-managed-session.md` (the `tui-log-race` bullet rewritten; the O-3 sentence that the SPEC states only a narrow race is gone) · `.moai/specs/SPEC-FACTORY-MANAGED-TUI-001/spec.md` (frontmatter `status:` line only) · this block and the key rename in the preceding block
+docs_not_changed: spec.md body, plan.md, acceptance.md, design.md · every `.go` file
+frontmatter_status_transitions: spec.md `in-progress -> implemented -> completed` merged into this re-close commit; `updated: 2026-10-04` already the amendment date
+audit_status: plan-audit FAIL three times then PASS-WITH-DEBT by the leader's rule; sync-audit FAIL 76.2, FAIL 82.2, then PASS-WITH-DEBT by the leader's rule against `c8cbf6f44` (iteration 3, `.moai/reports/t1408/sync-audit-iter3.md`, local-only: Security 74, Functionality 92, Craft 90, Consistency 82, harmonic mean 83.9, below the 85 cut). No sync audit has passed on its own merits. The cross-model gate was never met (codex fail, claude diff-only fail, glm inconclusive; receipt rcpt-759348b6bedd29beca59355a). The hardening and amendment 0.3.4 come after that audit; only a `codex_review` at card scope by the lane is to close that loop.
+coverage: `managed_codex_tui.go` 235/253 statements = 92.9 percent (this run: `go test -race -count=1 -run Managed -coverprofile=... ./internal/cli`, statement count over the profile)
+
+All attributions are `(this run, this tree, HEAD 8ce99230a plus the uncommitted re-close edits, before the re-close commit)`.
+
+### Gaps
+
+- The hardening `0339d7460` and amendment 0.3.4 are not re-audited.
+- AC-MT-015 and every real-TUI behavior: not run, no terminal designated.
+- The repository-wide suite and codemaps freshness: not run.
 - The installed `moai` build's commit was not compared with this tree's HEAD, so the `spec lint` reading carries no build attribution.
