@@ -90,6 +90,34 @@ recorded_by: manager-develop (run phase, card t1421)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+SYNC-PHASE RE-CLOSE (joint 0.2.0 + 0.3.0 적층 수정안, 단일 close 커밋 — 2026-10-03, card t1421 sync lane, manager-docs). 0.1.0 close 시그널은 하단 Prior close 블록으로 보존되며, 그 `sync_commit_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3`는 spec.md `## Amendments`(v0.2.0·v0.3.0 `prior_completed_sha`)에 verbatim 보존돼 있다.
+
+```yaml
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill  # D3 placeholder — 커밋은 자기 SHA를 인용할 수 없다; 후속 chore(SPEC-...) 커밋에서 실제 close 커밋 SHA로 백필 (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_status: complete
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged  # 3-phase close대로 단일 sync 커밋에 흡수
+  implemented_to_completed: this commit  # spec.md frontmatter status+updated 만; 본문 섹션 무변경
+canary_compliance_check:
+  spec_body_untouched: true  # spec.md/plan.md/acceptance.md 본문 무변경; progress.md §E.2에는 sync 소관 AC-AFR-016 증거 행만 추가
+  runtime_files_untouched: true  # .moai/state, .moai/harness, .moai/cache 무변경
+b12_self_test_a: halt  # 사전 검사 `grep -c 'SPEC-WEB-AGENTFM-RESTORE-001' CHANGELOG.md` → `1` (t1411 v0.1.0 close 항목, CHANGELOG.md:44) — count ≥ 1로 B12 방출 정지; 본 sync는 CHANGELOG 미기입, v0.3.0 항목 초안문은 레인 보고로 리더 처분 대기
+b12_self_test_b: n/a-emission-halted  # 방출은 정지됐지만 기록용 측정: MOAI-AC-COUNTER(acceptance.md, tier M 소스) → stdout `19`, stderr `live=19 excluded=0 ambiguous=0` — 13(v0.1.0/v0.2.0 집합) + 6(AC-AFR-014..019) = 19, acceptance.md SSOT 일치
+b12_self_test_c: pass  # 경로 검증: 규칙 6파일(커밋 996202d70) + 구현 파일 7종(`internal/config/types.go` · `internal/template/agent_overrides_consume.go` · `internal/hook/agent_model_guard.go` · `internal/cli/doctor_served_model.go` · `internal/web/agentfm.go` · `internal/template/templates/.moai/config/sections/llm.yaml` · `internal/config/testdata/shipped_key_inventory.yaml`) — `ls` 전수 존재 실측
+mx_tag_validation:
+  added: 0  # sync-phase는 Go 소스 미터치 — 규칙 파일은 마크다운이라 @MX 면 없음
+  updated: 0
+  dangerous_patterns: 0
+docs_site_decision: out-of-scope-deferred  # v0.3.0 Out of Scope가 docs-site 페이지를 밖에 둠; REQ-AFR-015..020 어느 조항도 docs-site 면을 요구하지 않는다 — 신규 키의 사용자향 문서는 템플릿 llm.yaml 주석 블록(run-phase 착지). 페이지 미창작, 처분 기록
+codemap_refresh: not-triggered  # sync가 코드 소스를 건드리지 않는다 — codemap 재생성 방아쇠 없음
+joint_close:
+  companion: SPEC-AGENT-MODEL-INHERIT-001  # v0.7.0+v0.8.0 재close는 full-ID 강제에 따라 별도 close 커밋으로 동행 — 동 SPEC v0.8.0 Amendments 블록이 본 재close와의 joint re-close를 선언
+recorded_by: manager-docs (sync phase, card t1421)
+```
+
+### Prior close — 0.1.0 (card t1411, 2026-10-02) — 위 re-close로 대체, 그 close의 기록으로 보존
+
 ```yaml
 sync_complete_at: 2026-10-02
 sync_commit_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3  # D3-exempt backfill: the pending-backfill placeholder in the sync commit replaced with the real SHA by the phase-owning agent (spec-frontmatter-schema § SHA placeholder backfill exemption)
@@ -225,6 +253,28 @@ recorded_by: manager-docs (sync phase, card t1411)
 - **E2/E4/E5**: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `go vet ./internal/{web,cli,config,template,hook}/ ./internal/settings/...` exit 0(LSP run 게이트 프록시 오류 0) · 경계 grep 본 카드 신규 히트 0(pre_tool.go:834 관측 분기는 사전존재 — diff 미터치 실측).
 - **E3 커버리지(최종 트리)**: `ResolveAgentOverrideConsumption` 100.0% · `ValidateLLMYAMLSection` 90.9% · `validateConsumeKeyBool` 94.1% · `classifyOverrideConsumption` 100.0% · `checkAgentModel` 100.0% — 신규 코드 전부 ≥85%(커밋당 80% 기준 상회).
 - **커밋 계보(카드 브랜치)**: `677bf469b`(Phase 4 기록) → `323e1aa66`(M7) → `05ba101dc`(M8) → `fae726050`(M9) → `479f29e2a`(M7 커버리지) → `a094758ae`(M7-M9 §E.2) → `637574ed3`(M10, manager-spec 재위임분) → 본 커밋(M11 기록). push 없음 — 레인/리더 통합 소관.
+
+### Sync-phase — AC-AFR-016 룰 텍스트 소비 조항 (2026-10-03, card t1421, manager-docs)
+
+- 규칙 텍스트 착지: 커밋 `996202d70` (REQ-AFR-017의 sync 소관 — REQ-AMD-001 계열). 3 규칙 표면 × 템플릿 미러 동행 6파일 단일 커밋: `agent-common-protocol.md` § Subagent Model and Effort에 소비 예외 문단 · `cache-aware-execution.md` 지시 5에 유일 승인 오버라이드 표면 명명(1.1.0→1.2.0, 지시 10 실질 무변경) · `model-policy.md` § Inherit-by-Default Convention에 소비 예외(spawn-time model 슬롯이 전달 채널 · 폐쇄집합 alias · [1m] 잔여 적용 · 기본 false=저장 전용). 미러 문안은 SPEC-ID·카드 토큰 없는 정중화 형태(§25 C1/C9) — 기계 가드 GREEN: `go test ./internal/template/ -run '^(TestTemplateNoInternalContentLeak|TestRuleTemplateMirrorDrift|TestSanitizedPairParity)$'` → `ok github.com/modu-ai/moai-adk/internal/template 4.545s` (이 트리·이 런). 사전 존재 노트: cache-aware-execution 쌍은 본 카드 이전부터 지시 4에서 갈라져 있었다(live가 context-clear-policy.md 참조, 미러 미참조) — 본 카드 미터치, 보고만.
+- **AC-AFR-016 증거 (§D.16 전사 — 커맨드 + verbatim 출력 + 트리 SHA `996202d70`)**:
+
+```
+$ grep -n "agent_overrides" .claude/rules/moai/core/agent-common-protocol.md
+103:Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort is doctrine-level only — the Agent tool carries no effort parameter. Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.
+exit=0
+$ grep -n "agent_overrides" internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
+103:Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort is doctrine-level only — the Agent tool carries no effort parameter. Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.
+exit=0
+$ grep -n "Subagents inherit the main session's model and effort" .claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
+.claude/rules/moai/core/agent-common-protocol.md:101:Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md:101:Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
+exit=0
+```
+
+- 판정: live 1히트(:103 소비 조항) + 미러 1히트(바이트 동일 — §D.16의 "한쪽 미러만의 0은 반대편을 확립하지 않는다" 이행) + 옵트인 off 기본 문장(상속 기본, 양면 :101) 생존 → **AC-AFR-016 PASS**.
+- B12 사전 검사: `grep -c 'SPEC-WEB-AGENTFM-RESTORE-001' CHANGELOG.md` → `1` (t1411 v0.1.0 close 항목, CHANGELOG.md:44) — count ≥ 1로 **B12 방출 정지**. 본 sync는 CHANGELOG를 기입하지 않는다; v0.3.0 항목 초안문은 레인 보고로 리더 처분 대기.
+- Live-identifier 계수(기록용 — 방출 정지와 무관하게 측정): MOAI-AC-COUNTER(acceptance.md, tier M 소스) → stdout `19`, stderr `live=19 excluded=0 ambiguous=0` — 13(v0.1.0/v0.2.0 집합) + 6(AC-AFR-014..019 신설) = 19, acceptance.md SSOT와 일치. 경로 검증: 규칙 6파일 + `internal/config/types.go` · `internal/template/agent_overrides_consume.go` · `internal/hook/agent_model_guard.go` · `internal/cli/doctor_served_model.go` · `internal/web/agentfm.go` · `internal/template/templates/.moai/config/sections/llm.yaml` · `internal/config/testdata/shipped_key_inventory.yaml` — `ls` 전수 존재 실측.
 
 ## §F Phase 4 Mode Selection (card t1421, 2026-10-03)
 
