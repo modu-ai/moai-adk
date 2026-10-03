@@ -1,8 +1,8 @@
 ---
 id: SPEC-VERIFY-RUN-REUSE-001
 title: "moai verify run — 같은 작업 트리 상태에서 같은 테스트 명령 재실행 억제 (run-or-reuse 단일 동사)"
-version: "0.2.1"
-status: in-progress
+version: "0.2.2"
+status: completed
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec
@@ -27,6 +27,7 @@ tier: S
 | 0.1.0 | 2026-10-03 | 최초 작성 (draft). (c) 한정 Tier S. REQ 8·AC 8 (Tier S 상한). |
 | 0.2.0 | 2026-10-03 | plan-audit iter1 FAIL 0.76 반영: D1 AC 선택자 실행 개수 단언 + RED-now 칸 기록, D2 포터블 self-exec 헬퍼, D3 `--tool-version-cmd` 반복 플래그·직접 exec·자체 타임아웃·실패 시 unbound, D4 재사용=이전 관측 문구(REQ-008, AC-007), D6 프로세스 그룹 종료, D8 `--timeout` 기본값·`recorded_at` 의미, D12 SPEC id 만 인용, D13 잔여 위험 3건. |
 | 0.2.1 | 2026-10-03 | plan-audit iter2 N1 반영: AC-007 grep 패턴을 `-e` 로 전달(`--env` 옵션 오인 수정) + RED-now 실측(exit 1)·양성 대조(exit 0), AC-005 타임아웃 테스트를 서브테스트로 분리(PASS 줄 4), REQ-008 에 "재사용 결과는 Claim 이 아니라 Gap" 명시. |
+| 0.2.2 | 2026-10-03 | sync-phase 3-phase close: status in-progress → implemented → completed on the single sync commit (card t1452). No body change. |
 
 ## §A 배경과 문제
 
