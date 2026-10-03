@@ -17,7 +17,7 @@ import (
 
 // executeVerb runs a fresh verb command with args and returns its error and
 // the combined stderr/stdout capture.
-func executeVerb(t *testing.T, args ...string) (error, string) {
+func executeVerb(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 	cmd := newPluginCmd()
 	var out bytes.Buffer
@@ -25,7 +25,7 @@ func executeVerb(t *testing.T, args ...string) (error, string) {
 	cmd.SetErr(&out)
 	cmd.SetArgs(append([]string{"install"}, args...))
 	err := cmd.Execute()
-	return err, out.String()
+	return out.String(), err
 }
 
 func TestPluginInstallCmd(t *testing.T) {
@@ -38,8 +38,22 @@ func TestPluginInstallCmd(t *testing.T) {
 		if plugin == nil || plugin.Name() != "plugin" || plugin.GroupID != "tools" {
 			t.Fatalf("plugin noun missing or not in the tools help group: %+v", plugin)
 		}
-		if help := runRootHelpCapture(t); !strings.Contains(help, "plugin") {
-			t.Fatalf("root --help does not list the plugin command:\n%s", help)
+		// The production Execute path renders the grouped help through fang.
+		t.Setenv("NO_COLOR", "1")
+		buf := new(bytes.Buffer)
+		rootCmd.SetOut(buf)
+		rootCmd.SetErr(buf)
+		rootCmd.SetArgs([]string{"--help"})
+		defer func() {
+			rootCmd.SetOut(nil)
+			rootCmd.SetErr(nil)
+			rootCmd.SetArgs(nil)
+		}()
+		if err := runFang(context.Background(), rootCmd); err != nil {
+			t.Fatalf("runFang --help: %v", err)
+		}
+		if !strings.Contains(buf.String(), "\n    plugin ") {
+			t.Fatalf("root --help does not list the plugin command:\n%s", buf.String())
 		}
 	})
 	t.Run("help-names-opt-out", func(t *testing.T) {
@@ -54,7 +68,7 @@ func TestPluginInstallCmd(t *testing.T) {
 			return []byte("no"), errors.New("exit status 1")
 		}}
 		withPluginRunner(t, failing)
-		err, out := executeVerb(t)
+		out, err := executeVerb(t)
 		if err != nil {
 			t.Fatalf("verb returned %v after tool failures, want nil", err)
 		}
@@ -68,7 +82,7 @@ func TestPluginInstallCmd(t *testing.T) {
 		codexWiringLookPath = func(string) (string, error) { return "", os.ErrNotExist }
 		none := &fakePluginRunner{}
 		withPluginRunner(t, none)
-		err, out = executeVerb(t)
+		out, err = executeVerb(t)
 		if err != nil || len(none.calls) != 0 || pluginCountLines(out, "not found on PATH") != 2 {
 			t.Fatalf("no-tool run: err=%v calls=%d out:\n%s", err, len(none.calls), out)
 		}
@@ -78,7 +92,7 @@ func TestPluginInstallCmd(t *testing.T) {
 		t.Setenv(config.EnvSkipPluginInstall, "1")
 		optout := &fakePluginRunner{}
 		withPluginRunner(t, optout)
-		if err, _ = executeVerb(t); err != nil || len(optout.calls) != 0 {
+		if _, err = executeVerb(t); err != nil || len(optout.calls) != 0 {
 			t.Fatalf("opt-out run: err=%v calls=%d", err, len(optout.calls))
 		}
 	})
@@ -86,7 +100,7 @@ func TestPluginInstallCmd(t *testing.T) {
 		setupPluginTools(t)
 		r := &fakePluginRunner{}
 		withPluginRunner(t, r)
-		err, _ := executeVerb(t, "--no-such-flag")
+		_, err := executeVerb(t, "--no-such-flag")
 		if err == nil {
 			t.Fatal("unknown flag accepted")
 		}
@@ -98,7 +112,7 @@ func TestPluginInstallCmd(t *testing.T) {
 		e := setupPluginTools(t)
 		r := &fakePluginRunner{}
 		withPluginRunner(t, r)
-		if err, _ := executeVerb(t); err != nil {
+		if _, err := executeVerb(t); err != nil {
 			t.Fatalf("verb: %v", err)
 		}
 		if len(r.calls) != 4 || r.calls[0].bin != e.claudeBin || r.calls[2].bin != e.codexBin {
@@ -125,7 +139,7 @@ func TestPluginInstallCmd(t *testing.T) {
 		t.Setenv(config.EnvClaudeBin, "") // let the config pin decide
 		r := &fakePluginRunner{}
 		withPluginRunner(t, r)
-		if err, _ := executeVerb(t); err != nil {
+		if _, err := executeVerb(t); err != nil {
 			t.Fatalf("verb: %v", err)
 		}
 		if len(r.calls) == 0 || r.calls[0].bin != pin {

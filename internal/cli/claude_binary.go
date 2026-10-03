@@ -29,13 +29,35 @@ import (
 
 // resolveLaunchClaudeBinary resolves the binary launchClaudeDefault hands the
 // process over to. See the file comment for the resolution order and the
-// fail-loud contract.
+// fail-loud contract. The llm.claude_bin pin is read from the project the
+// working directory sits in.
 func resolveLaunchClaudeBinary() (string, error) {
+	root, err := findProjectRoot()
+	if err != nil {
+		root = ""
+	}
+	return resolveClaudeBinaryAt(root)
+}
+
+// claudeNotFoundError is the typed "no claude on PATH" class. The plugin
+// install step tells it apart from an invalid pin: the first is one skip line
+// (REQ-014), the second one guidance block (REQ-013). The message is the one
+// the launcher has always printed.
+type claudeNotFoundError struct{}
+
+func (*claudeNotFoundError) Error() string {
+	return "claude not found in PATH. Install Claude Code first"
+}
+
+// resolveClaudeBinaryAt is resolveLaunchClaudeBinary for an explicit project
+// root ("" = no project, so no config pin): `moai init` resolves the pin of the
+// project it initialises, not of whatever project the working directory is in.
+func resolveClaudeBinaryAt(projectRoot string) (string, error) {
 	if pin := os.Getenv(config.EnvClaudeBin); pin != "" {
 		return validateClaudeBinaryPin(pin, "env var "+config.EnvClaudeBin)
 	}
-	if root, err := findProjectRoot(); err == nil {
-		sectionsDir := filepath.Join(filepath.Clean(root), defs.MoAIDir, defs.SectionsSubdir)
+	if projectRoot != "" {
+		sectionsDir := filepath.Join(filepath.Clean(projectRoot), defs.MoAIDir, defs.SectionsSubdir)
 		if llm, err := loadLLMSectionOnly(sectionsDir); err == nil && llm.ClaudeBin != "" {
 			return validateClaudeBinaryPin(llm.ClaudeBin,
 				"llm.claude_bin in .moai/config/sections/llm.yaml")
@@ -43,18 +65,10 @@ func resolveLaunchClaudeBinary() (string, error) {
 	}
 	claudeBin, err := exec.LookPath("claude")
 	if err != nil {
-		return "", fmt.Errorf("claude not found in PATH. Install Claude Code first")
+		return "", &claudeNotFoundError{}
 	}
 	return claudeBin, nil
 }
-
-// claudeNotFoundError is the typed not-found class (RED stub).
-type claudeNotFoundError struct{}
-
-func (*claudeNotFoundError) Error() string { return "" }
-
-// resolveClaudeBinaryAt resolves the binary for a given project root (RED stub).
-func resolveClaudeBinaryAt(string) (string, error) { return "", nil }
 
 // validateClaudeBinaryPin validates an explicit binary pin. The path must
 // exist and point at an executable file; source names the configuration
