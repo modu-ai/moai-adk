@@ -49,7 +49,7 @@ func TestGoalAutoWorkflowContractAndMirrorParity(t *testing.T) {
 		"persisted blocked",
 		"active-session-only",
 		"external content",
-		"moai gpt",
+		"moai codex",
 	} {
 		if !strings.Contains(auto, required) {
 			t.Errorf("auto workflow missing contract token %q", required)
