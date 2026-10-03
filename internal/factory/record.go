@@ -45,21 +45,22 @@ const (
 // one-time relocation, which belongs to the `moai todo` command path.
 
 // @MX:ANCHOR: [AUTO] Factory session record schema — the cross-actor contract for a factory session
-// @MX:REASON: the launcher writes SessionID/SpecID/Backend/EnteredAt at launch while the orchestrator fills DeepScanDir/VerifyRung/VerifyReentries later; both sides plus the sync-phase dedup gate bind to these JSON keys, so a renamed key breaks readers this package cannot see
+// @MX:REASON: the session-start hook writes the identity fields (SessionID, SpecID, Role, Backend, EnteredAt, Lane, CardID) when a factory leader or lane session starts, while DeepScanDir/VerifyRung/VerifyReentries are defined here and written by no code in this repository; the sync-phase dedup gate and the readers bind to these JSON keys, so a renamed key breaks readers this package cannot see
 //
-// Record is the per-session factory state record persisted at
-// <state-dir>/<session>.json (see state_dir.go for the directory).
+// Record is the per-session record of a factory leader or lane session,
+// persisted at <state-dir>/<session>.json (see state_dir.go for the
+// directory).
 //
-// The three orchestrator-written fields (DeepScanDir, VerifyRung,
-// VerifyReentries) are filled in independently as the chain progresses, so a
-// record carrying some but not others is a normal intermediate state rather
-// than corruption.
+// The three verify fields (DeepScanDir, VerifyRung, VerifyReentries) are
+// defined by the schema but written by no code in this repository. They are
+// independent of one another, so a record carrying some but not others is a
+// normal intermediate state rather than corruption.
 type Record struct {
 	// SessionID keys the record and names its file. Required.
 	SessionID string `json:"session_id"`
 
-	// SpecID names the SPEC the chain targets. Empty is legitimate: it means
-	// the chain heads at plan-phase from the operator's first prompt.
+	// SpecID names a SPEC the session records. Empty is legitimate and is what
+	// the session-start hook writes: no launcher flag selects a SPEC.
 	SpecID string `json:"spec_id"`
 
 	// Role is the role this session occupies: "leader", or "lane" for a
@@ -77,18 +78,19 @@ type Record struct {
 	// Backend is the initial BackendClaude, BackendGLM, or BackendGPT.
 	Backend string `json:"backend"`
 
-	// EnteredAt is the RFC3339 instant the session entered the factory run.
+	// EnteredAt is the RFC3339 instant the session started as a factory leader
+	// or lane.
 	EnteredAt string `json:"entered_at"`
 
-	// DeepScanDir is the verify stage's results directory, written by the
-	// orchestrator once a scan has produced one.
+	// DeepScanDir is the verify stage's results directory. No code in this
+	// repository writes it.
 	DeepScanDir string `json:"deepscan_dir"`
 
 	// VerifyRung is the rung of the most recent readable verify result.
 	//
 	// It is a pointer so that "never recorded" (nil) stays distinguishable from
 	// "recorded as empty" (a pointer to ""). That distinction is load-bearing:
-	// because this record is best-effort and its three orchestrator-written
+	// because this record is best-effort and its three verify
 	// fields land independently, a record carrying DeepScanDir but no rung is
 	// reachable. Collapsing absent into empty would leave a consumer unable to
 	// tell a rung it never received from one it received blank — and the
@@ -125,7 +127,7 @@ type Record struct {
 
 // NewRecord builds a record for a session entering a factory run, stamping
 // EnteredAt with the current UTC instant in RFC3339. The three
-// orchestrator-written fields are deliberately left at their zero values —
+// verify fields are deliberately left at their zero values —
 // VerifyRung nil rather than empty — so a reader can tell they have not been
 // written yet.
 func NewRecord(sessionID, specID, backend string) *Record {

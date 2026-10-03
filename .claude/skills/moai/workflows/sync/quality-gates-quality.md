@@ -130,7 +130,7 @@ Purpose: Run a targeted security audit on changed files before PR creation. Catc
 
 #### Step 0.55.0: Factory dedup gate (conditional suppression of Step 0.55.1)
 
-Applies only to a sync entered from a factory chain, whose run-phase verify stage already ran a whole-repository deep security scan. The gate decides one thing: whether that scan's evidence may stand in for the Step 0.55.1 analysis below.
+Applies only to a sync whose run-phase recorded a verify result, which means the verify stage already ran a whole-repository deep security scan. The gate decides one thing: whether that scan's evidence may stand in for the Step 0.55.1 analysis below.
 
 **Scope of the suppression — Step 0.55.1 and nothing else.** A passing gate suppresses only the agent-invoked security analysis of Step 0.55.1. The dependency manifest-change observation below is a separate, hook-side mechanism that records whether a dependency manifest changed in the HEAD commit; a source-code deep scan does not substitute for it, so it runs whether or not this gate passes. It is informational, it never drives the gate decision, and it is not a vulnerability scan.
 
