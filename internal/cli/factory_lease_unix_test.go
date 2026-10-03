@@ -260,10 +260,13 @@ func flSnapshotTree(t *testing.T, root string) map[string]flFileStat {
 	return out
 }
 
-// TestFactoryLeaseSectionAllowedSet — AC-FAL-009 (iii): between the verb's start
-// and the creator stub's call the section runs no git subprocess (the shim's log
-// holds no line before the stub's marker) and writes no path under the project
-// root other than the queue store's and the factory record's own files.
+// TestFactoryLeaseSectionAllowedSet — AC-FAL-009 (iii): between the section's
+// entry and the creator stub's call the section runs no git subprocess (the
+// shim's log holds no line between the entry marker and the stub's marker) and
+// writes no path under the project root other than the queue store's and the
+// factory record's own files. The section's entry is the pass-entry seam; the
+// git processes the verb runs before it (the project's canonical-root lookups
+// while opening the record and building the queue store) are no part of it.
 func TestFactoryLeaseSectionAllowedSet(t *testing.T) {
 	for _, form := range []string{"nominated", "bare"} {
 		t.Run(form, func(t *testing.T) {
@@ -275,8 +278,19 @@ func TestFactoryLeaseSectionAllowedSet(t *testing.T) {
 			elog := &flEventLog{path: filepath.Join(t.TempDir(), "events.log")}
 			t.Setenv("FL_GIT_EVENT_LOG", elog.path)
 
-			before := flSnapshotTree(t, root)
-			var atStub map[string]flFileStat
+			// The section starts at the pass-entry seam: the git processes the
+			// verb runs BEFORE it (opening the record and building the queue
+			// store resolve the project's canonical root through git) belong to
+			// no section, and the files they create (the record database) are
+			// the record's own, so both baselines are taken where the section
+			// begins.
+			var before, atStub map[string]flFileStat
+			prevEntry := factoryLeaseAtPassEntry
+			factoryLeaseAtPassEntry = func() {
+				elog.add("section-enter")
+				before = flSnapshotTree(t, root)
+			}
+			t.Cleanup(func() { factoryLeaseAtPassEntry = prevEntry })
 			prevCreator := worktree.WorktreeCreator
 			worktree.WorktreeCreator = func(string, io.Writer) (string, error) {
 				elog.add("creator-stub")
@@ -295,27 +309,54 @@ func TestFactoryLeaseSectionAllowedSet(t *testing.T) {
 			if atStub == nil {
 				t.Fatal("the creator stub was never called")
 			}
-			lines := elog.lines(t)
-			for _, l := range lines {
-				if l == "creator-stub" {
-					break
-				}
-				t.Errorf("a git subprocess ran before the creator stub (inside the section): %q", l)
+			if before == nil {
+				t.Fatal("the lease section's entry seam was never reached")
 			}
+			lines := elog.lines(t)
+			enter, stub := -1, -1
+			for i, l := range lines {
+				switch l {
+				case "section-enter":
+					if enter < 0 {
+						enter = i
+					}
+				case "creator-stub":
+					stub = i
+				}
+			}
+			if enter < 0 || stub < enter {
+				t.Fatalf("the event log lacks the section-enter and creator-stub markers in order: %q", lines)
+			}
+			for _, l := range lines[enter+1 : stub] {
+				t.Errorf("a git subprocess ran inside the section (between its entry and the creator stub): %q", l)
+			}
+			t.Logf("%s: %d git log lines before the section (the record open and the store's canonical-root lookups), 0 inside it expected", form, enter)
 
+			// Paths are compared in their canonical spelling: the record's path is
+			// built from the canonical root (/private/var on macOS) while the walk
+			// reports the spelling of the temp directory (/var).
+			canon := func(p string) string {
+				if d, err := filepath.EvalSymlinks(filepath.Dir(p)); err == nil {
+					return filepath.Join(d, filepath.Base(p))
+				}
+				return p
+			}
 			allowed := map[string]bool{}
-			for _, p := range []string{store.EnginePath(), store.LockPath()} {
+			allow := func(p string) {
+				p = canon(p)
 				allowed[p], allowed[p+"-wal"], allowed[p+"-shm"], allowed[p+"-journal"] = true, true, true, true
 			}
+			allow(store.EnginePath())
+			allow(store.LockPath())
 			if dbPath, err := homestate.FactoryDBPath(root); err == nil {
-				allowed[dbPath], allowed[dbPath+"-wal"], allowed[dbPath+"-shm"], allowed[dbPath+"-journal"] = true, true, true, true
+				allow(dbPath)
 			}
 			var outside []string
 			for p, st := range atStub {
 				if b, ok := before[p]; ok && b == st {
 					continue
 				}
-				if !allowed[p] {
+				if !allowed[canon(p)] {
 					rel, _ := filepath.Rel(root, p)
 					outside = append(outside, rel)
 				}
@@ -431,13 +472,13 @@ func TestFactoryLeaseDriftLogStallBounded(t *testing.T) {
 			}
 
 			db := fcOpen(t, root)
-			if _, err := db.RecordCardWorktree(ctx, fcRun, card.CardID, t.TempDir(), "lane-1", time.Now()); err != nil {
+			if _, err := db.RecordCardWorktree(ctx, fcRun, card.CardID, t.TempDir(), "lane-1", factoryCardNow()); err != nil {
 				t.Fatalf("clause (iii): the ordinary write: %v", err)
 			}
 			if u, d := flUnreconciled(t, root), fcEventCount(t, root, "record.drift"); u != 0 || d != 1 {
 				t.Errorf("clause (iii): after one ordinary write, unreconciled=%d (want 0) record.drift-events=%d (want 1)", u, d)
 			}
-			if _, err := db.RenewLease(ctx, fcRun, card.CardID, "lane-1", time.Now()); err != nil {
+			if _, err := db.RenewLease(ctx, fcRun, card.CardID, "lane-1", factoryCardNow()); err != nil {
 				t.Fatalf("clause (iii): the further write: %v", err)
 			}
 			if d := fcEventCount(t, root, "record.drift"); d != 1 {
