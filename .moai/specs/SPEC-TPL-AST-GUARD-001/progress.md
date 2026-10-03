@@ -111,7 +111,31 @@ residuals:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-10-03
+sync_commit_sha: "pending-backfill-sync"
+sync_changes:
+  - CHANGELOG.md: exactly one [Unreleased]/### Added entry for the AST-based
+    workflow.worktree.* key-honesty guard + testdata characterization fixtures
+    (duplicate-guard grep -c "SPEC-TPL-AST-GUARD-001" CHANGELOG.md = 0 before append)
+  - spec.md frontmatter: status in-progress → completed (both transitions ride
+    this single sync commit — the 3-phase close); updated already 2026-10-03,
+    left unchanged; NO body edits
+  - progress.md: this §E.4 fill; the sync_commit_sha placeholder is backfilled
+    with the real SHA in the immediately following commit (D3 backfill exemption)
+skip_records:
+  mx_scan: >
+    Test-only change. Mechanical declaration scan of the four new files: the guard
+    test file declares only unexported identifiers plus the two Test* entry points
+    (test functions are not exported API); the three fixture files declare
+    AliasRead / PlainWriteOnly / CompoundAppend under testdata/, which the go tool
+    structurally excludes from builds and the import graph — no symbol reaches any
+    consumer, so no MX obligations fire. The @MX:NOTE authored by the run phase in
+    workflow_worktree_key_honesty_test.go (shared-helper extraction deferral, plan
+    D2) is retained unchanged.
+  readme_docs_site: skipped — internal test-only change, no user-facing surface
+```
 
 ## §F Phase 4 Mode Selection
 

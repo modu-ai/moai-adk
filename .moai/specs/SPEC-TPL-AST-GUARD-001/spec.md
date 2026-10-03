@@ -2,7 +2,7 @@
 id: SPEC-TPL-AST-GUARD-001
 title: "AST-based workflow.worktree.* key-honesty guard — type-resolved reader map, superseding the t682 text scan in role"
 version: "0.1.3"
-status: in-progress
+status: completed
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec
