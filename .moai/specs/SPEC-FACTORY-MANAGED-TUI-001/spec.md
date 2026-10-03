@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "Factory managed Codex session — operator TUI attach and the headless-to-interactive transition (SPEC-FACTORY-MANAGED-SESSION-001 Known debt 1, sync audit F2)"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -22,6 +22,7 @@ tags: "factory, managed-session, codex, tui, app-server, terminal-ownership, hea
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.3.0 | 2026-10-03 | manager-spec | Plan-audit iteration 2 delta revision (FAIL 0.86; scoped to D1-D5 and D7). Blocked-call release redesigned (WebSocket close, write deadline); AC-MT-015 made operator-held; t1408-before-t1459 decided; AC-MT-014 split and made checkable. See progress.md §E.1. |
 | 0.2.0 | 2026-10-03 | manager-spec | Plan-audit iteration 1 revision (FAIL 0.63, defects D1-D19; local report `.moai/reports/t1408/plan-audit-iter1.md`). Changed: REQ-MT-004/006/007/008/013/014 wording; AC-MT-016 added (AC 16); the stale-busy rule (deferral never self-clears); log-sink lifetime; D-9 merge-order text corrected against the held t1459 draft; M1 compile-stub RED strategy; milestone exits re-gated; EXCL-syscall clauses. Disposition table in progress.md §E.1. |
 | 0.1.0 | 2026-10-03 | manager-spec | Initial SPEC (card t1408). Pays Known debt 1 of the completed SPEC-FACTORY-MANAGED-SESSION-001 (independent sync audit `.moai/reports/t1375/sync-audit.md`, finding F2; operator decision 2026-10-02). The parent SPEC directories are not modified (design.md D-1). Hard-dependent on the landed SPEC-FACTORY-MANAGED-HARDEN-001 (server-request answering, per-turn failure isolation). |
 
@@ -82,7 +83,7 @@ Four changes inside the managed Codex owner and the delivery driver; the Claude/
 ### C.4 Portability and disclosure
 
 - **REQ-MT-012** — The delivery shall add no `syscall` reference to any `managed_*` source or test file (the parent SPEC's AC-MS-014 grep stays at 0 lines), shall keep the `GOOS=windows GOARCH=amd64` cross build passing, and shall leave `internal/factorymsg/store.go`, the directories of SPEC-FACTORY-MANAGED-SESSION-001 and SPEC-FACTORY-MANAGED-HARDEN-001, and the App Server approval arguments unchanged.
-- **REQ-MT-013** — The operator documentation `.moai/docs/factory-managed-session.md` and this SPEC's CHANGELOG entry shall state that Known debt 1 of SPEC-FACTORY-MANAGED-SESSION-001 is resolved only if AC-MT-015 has been recorded as observed (steps 1, 2, 3 and 6) and otherwise that it is addressed with real-TUI behavior unverified, shall state the opt-out, the log file location and the changed `/exit` and `/quit` handling, shall state the signal-handling gap as still open and owned by card t1459, and shall name every remaining limit without claiming behavior that was not observed; the remaining limits include the premises of §A.1 and the known debts of §H that no automated check observes.
+- **REQ-MT-013** — The operator documentation `.moai/docs/factory-managed-session.md` and this SPEC's CHANGELOG entry shall state that Known debt 1 of SPEC-FACTORY-MANAGED-SESSION-001 is addressed and that real-TUI behavior is unverified until the operator has run the operator-held check AC-MT-015 and recorded steps 1, 2, 3 and 6 as observed (only then may the word "resolved" be used), shall state the opt-out, the log file location and the changed `/exit` and `/quit` handling, shall state the signal-handling gap as still open and owned by card t1459, and shall name every remaining limit without claiming behavior that was not observed; the remaining limits include the premises of §A.1 and the known debts of §H that no automated check observes.
 - **REQ-MT-014** — The run phase shall first land one behavior-neutral commit of compile stubs (the symbols the tests need, with the unchanged headless behavior, so the existing suites stay green), and shall then land each reproduction test's RED baseline, as a named failing assertion per acceptance criterion, as the tracked file `.moai/specs/SPEC-FACTORY-MANAGED-TUI-001/red-baseline.md` together with the reproduction tests, in a commit that precedes every commit carrying a corresponding fix, so the commit graph witnesses the ordering (the stub commit carries no fix); `.moai/reports/t1408/` holds local copies only.
 
 EXCL-syscall: this SPEC introduces no `syscall` reference anywhere; the Windows cross build of AC-MT-012 is the proof, and the one place a platform primitive differs (`os.Interrupt` is unsupported on Windows) is handled by a kill-only path that needs no build constraint.

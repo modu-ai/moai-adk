@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "plan.md — implementation plan"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -39,7 +39,7 @@ The tests reference symbols that do not exist on the base, so without stubs the 
 1. **Stub commit S (behavior-neutral).** Adds only what the tests need to compile: the two environment constants and three duration constants, the package-private seams (terminal predicate, TUI stream fields, the three overridable durations), the `managedOperatorSurface` interface with an `AttachOperator` that reports "not attached" and a `Busy` that reports false, a probe function that reports unsupported, and the TUI-exit error symbol. Headless behavior is unchanged, so the existing suites stay green; S carries no fix.
 2. **RED commit R.** The fake codex helper and every test of AC-MT-001..009, 011 and 016 plus `red-baseline.md`. Each test must fail on a **named assertion** (a failing-subtest line, for example `--- FAIL: TestManagedCodexTUIAttachCommand/argv_exact ` with the trailing space), not on a build error: with S in place, "attach never happens" fails AC-MT-001's `argv_exact`, and so on. `red-baseline.md` records, per AC, the command, the observed stdout, the exit code and the tree SHA (the RED-now cell of verification-completeness §2.1).
 
-**M1 exit gate.** A delta check reads `red-baseline.md` and confirms a cell for every adoption-deferred AC before M2 starts (acceptance.md, "Three classes"). The mutants of acceptance.md §2 are confirmed per test here.
+**M1 exit gate.** The orchestrator, or the lane that wrote M1, runs the three-line delta-check command of acceptance.md §1.1 (AC-MT-014 M1 part) on `red-baseline.md` and pastes the result line into progress.md §E.2; M2 starts only when it reads 11 / 11-or-more / 0 and the stub-before-RED ancestry holds. No new audit role. The M1 Exit below is evaluable at the end of M1 from that command; the closing ancestry part of AC-MT-014 is re-run at M5. The mutants of acceptance.md §2 are confirmed per test here.
 Exit: AC-MT-014
 
 ### M2 — Interaction semantics and the minimal reaping path (highest change likelihood)
@@ -54,7 +54,7 @@ Exit: AC-MT-006, AC-MT-007
 
 ### M4 — Lifecycle completion
 
-Exit-status mapping through `exitCodeError` with the owner-asked-to-stop precedence, the server-death monitor, the TUI-exit channel that releases a blocked `turn/start` write or `waitTurn`, and the session-end stop of the TUI after the failure ceiling.
+Exit-status mapping through `exitCodeError` with the owner-asked-to-stop precedence, the server-death monitor, the wait goroutine that closes the WebSocket connection on TUI exit (releasing a blocked `turn/start` write and a waiting `waitTurn`) plus the per-write deadline, and the session-end stop of the TUI after the failure ceiling.
 Exit: AC-MT-008, AC-MT-009
 
 ### M5 — Integration and regression
@@ -87,7 +87,7 @@ Priorities: M1 High (fixed), M2 High, M3 High, M4 High, M5 Medium, M6 Medium. Co
 
 ## §F. Self-verification deliverables (run phase)
 
-E1 AC matrix with command and verbatim output for each of AC-MT-001..014 (015 is manual, labeled); E2 `go build ./...` and the `GOOS=windows` cross build exit codes; E3 coverage of the new file; E4 the zero-`syscall` and subagent-boundary greps; E5 lint new-versus-baseline; E6 commit SHAs and the local merge SHA; E7 blockers; E8 verbatim RED output before GREEN.
+E1 AC matrix with command and verbatim output for each of AC-MT-001..014 and 016 (015 is operator-held and manual, labeled); E2 `go build ./...` and the `GOOS=windows` cross build exit codes; E3 coverage of the new file; E4 the zero-`syscall` and subagent-boundary greps; E5 lint new-versus-baseline; E6 commit SHAs and the local merge SHA; E7 blockers; E8 verbatim RED output before GREEN.
 
 ## §G. Cross-references
 

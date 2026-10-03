@@ -4,7 +4,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: revised-after-plan-audit-iter1 (0.2.0, awaiting re-audit; iteration 2 of max 3)
+plan_status: revised-for-delta-audit (0.3.0; iteration 3, the leader-granted final delta audit scoped to D1-D5 and D7)
 plan_complete_at: 2026-10-03
 artifacts: spec.md (REQ 14) · plan.md · acceptance.md (AC 16) · design.md (D-1..D-10) · progress.md
 tier: M (see plan.md §A; LOC total at the ceiling, tier-up path stated)
@@ -41,6 +41,20 @@ Iteration 1: FAIL 0.63 at `7287e64f3` (local report `.moai/reports/t1408/plan-au
 | D17 bundled REQ-MT-007, cross-refs | Cross-references fixed (D-8, §A.1); REQ-MT-007 not split (REQ count and AC traceability stay stable; optional). |
 | D18 unnamed subtests, P6-false, AC-MT-014 placeholders | Fixed: AC-MT-003 subtests named; `frames_not_delivered` added; AC-MT-014 states one row per fix commit. |
 | D19 ownership list drift | Fixed: CHANGELOG and the help-text fixture in plan.md and here. |
+
+### Plan-audit iteration 2 (FAIL 0.86) and the delta revision 0.3.0 (iteration 3 = final delta audit)
+
+Local report `.moai/reports/t1408/plan-audit-iter2.md` (not committed). Leader decisions baked in: AC-MT-015 is operator-held (keep-set), not release-blocking, recorded as "operator confirmation pending, no terminal designated" in the sync-phase deliverable; t1408 lands before t1459 (decided, no hedging); the opt-out `MOAI_FACTORY_MANAGED_TUI` stays, default ON inside the managed gate.
+
+| Defect | Disposition |
+|---|---|
+| D1 blocked write not releasable by a channel | Fixed: design.md D-8 "Releasing a blocked call" — the wait goroutine closes the WebSocket connection on TUI exit; a per-write deadline is the secondary device; `Close` stays single-goroutine; AC-MT-008 `blocked_turn_start_released` blocks the write and proves it. D-9 row and plan.md M4 follow. |
+| D2 CN-4 CONFLICT from the H1 | Fixed: the AC range is removed from the acceptance.md H1. Exit/AC ordering re-read by hand: M1 exit AC-MT-014 (M1 part), M2 001-005 and 016, M3 006-007, M4 008-009, M5 010-012 (and the closing part of 014), M6 013; no acceptance clause orders a criterion across those exits. |
+| D3 M1 gate unmechanized | Fixed: the orchestrator or the M1 lane runs the stated three-line command (acceptance.md §1.1) and records it in §E.2; AC-MT-014 split into an M1-evaluable part and a closing part re-run at M5. |
+| D4 AC-MT-014 claims more than it checks | Fixed: 11 rows, 11 or more `--- FAIL: Test` lines, zero `undefined:`/`build failed`; "tree SHA" is S's commit SHA with the R tests applied. |
+| D5 E1/E4 flips | Fixed: E1 gets `--exclude='*_test.go'`; E4 is noted to flip at S. |
+| D7 plan.md §F | Fixed: "AC-MT-001..014 and 016 (015 operator-held)". |
+| D6 and other optional | Not touched (D6 residual stays a Gap: the sync audit reads the anchored lines). |
 
 ## §E.2 Run-phase Evidence
 
