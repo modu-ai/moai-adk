@@ -33,7 +33,9 @@ not by an exit status. 15 criteria (Tier M ceiling 16), tracing all 14 requireme
   of that round under the SPEC directory (the probes and overlays are `evidence/probe-reconcile_test.go.txt`
   with `overlay-homestate-reconcile.json`, and `evidence/probe-arma-hold_test.go.txt` with `overlay-arma.json`);
   `git diff --name-only 2de0a2cb613b04765a1554f86685a3b48e0be806..HEAD -- internal cmd` printed nothing
-  there too, so the Go files equal the pin.
+  there too, so the Go files equal the pin. Row L24 was observed in the exception repair (iteration 4) on HEAD
+  `9f73f4cdf7af24af493edfb9e629f70aac915133`, with the same empty diff, from a scratch probe that is not in the
+  repository (the row says so).
 - **S4 — the pass condition of every `go test` Command in this file.** Every Command carries `-v`, and
   its output is judged by what it printed, not by its exit status or its package line, because a selector
   that sweeps nothing prints `ok` and exits 0 (ledger L10 shows both, verbatim). A run passes only when:
@@ -48,8 +50,8 @@ not by an exit status. 15 criteria (Tier M ceiling 16), tracing all 14 requireme
 
 ## Evidence ledger (RED-now observations and context)
 
-Rows `L1`–`L8` were observed on the pin; `L9`–`L18` in iteration 2 and `L19`–`L23` in the override round,
-on trees whose Go files equal it. After
+Rows `L1`–`L8` were observed on the pin; `L9`–`L18` in iteration 2, `L19`–`L23` in the override round and
+`L24` in the iteration-4 exception repair, on trees whose Go files equal it. After
 the run they are history by design: each describes the pinned tree and prints something else on a tree
 that carries the linked milestone. Output is quoted exactly as the tool printed it; where a stream is
 abridged the row says so and says what was elided. Every command below is the exact command that
@@ -656,6 +658,50 @@ Six names swept, six `--- PASS` at the left margin, no `--- FAIL`, no `--- SKIP`
 indented and uncounted). These are the tests that already pin how the log is appended, reconciled and
 rewritten for every record write; AC-FAL-015 holds the same six green after the change.
 
+### L24 — the verb's card-worktree record write waits for a held drift-log lock, and two new test names sweep nothing (exception repair, iteration 4; the observation behind AC-FAL-015 clause (vii) and spec §F R18)
+
+```
+$ go test ./internal/homestate -overlay=<session scratchpad>/iter4/overlay.json -run '^TestT1458Iter4ProbeWorktreeWriteWaits$' -count=3 -v -timeout 4m
+[abridged to the PROBE lines and the package line; the "=== RUN" lines and the "--- PASS" lines (2.45s, 2.22s, 2.25s) are elided]
+    zz_t1458_iter4_wt_probe_test.go:31: PROBE control (no lock held, 1 unreconciled entry): elapsed=1.606834ms err=<nil> unreconciled-after=0 record.drift-events=1
+    zz_t1458_iter4_wt_probe_test.go:46: PROBE RecordCardWorktree, 1 unreconciled entry, log lock held 2s: elapsed=2.000664s err=<nil> unreconciled-after=0 record.drift-events=2
+    zz_t1458_iter4_wt_probe_test.go:31: PROBE control (no lock held, 1 unreconciled entry): elapsed=887.667µs err=<nil> unreconciled-after=0 record.drift-events=1
+    zz_t1458_iter4_wt_probe_test.go:46: PROBE RecordCardWorktree, 1 unreconciled entry, log lock held 2s: elapsed=2.001453875s err=<nil> unreconciled-after=0 record.drift-events=2
+    zz_t1458_iter4_wt_probe_test.go:31: PROBE control (no lock held, 1 unreconciled entry): elapsed=608.5µs err=<nil> unreconciled-after=0 record.drift-events=1
+    zz_t1458_iter4_wt_probe_test.go:46: PROBE RecordCardWorktree, 1 unreconciled entry, log lock held 2s: elapsed=2.00064875s err=<nil> unreconciled-after=0 record.drift-events=2
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/homestate	7.296s
+exit: not captured (the worktree guard refuses a trailing `echo`); the run printed `PASS` and the `ok` line
+tree: 9f73f4cdf7af24af493edfb9e629f70aac915133 (git diff --name-only 2de0a2cb613b04765a1554f86685a3b48e0be806..HEAD -- internal cmd printed nothing: the Go files equal the pin)
+
+$ go test ./internal/homestate ./internal/cli -run '^(TestRecordWriteReconcileBoundedRereadsUnderLock|TestFactoryLeaseDriftLogVerbWorktreeWriteWaits)$' -count=1 -v -timeout 25m
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/homestate	0.397s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.461s [no tests to run]
+exit: not captured, as above
+tree: 9f73f4cdf7af24af493edfb9e629f70aac915133
+```
+
+Reading. The first command's probe is a **scratch file in the author's session scratchpad, not in the
+repository** (`evidence/` is outside the file list of this exception repair), so this row is not
+re-executable from the tree; it reuses the committed probe's helpers by mapping both files in with one
+overlay (the committed file at its repository-relative path, the scratch file by absolute path). It makes a
+card leased through the claim's three writes, appends one unreconciled drift-log entry for the run, holds
+the log's lock for 2 s with a timer, then calls `RecordCardWorktree` — the ordinary write the verb makes
+after its lease. It returned after 2.0007 s, 2.0015 s and 2.0006 s (3 of 3), with `unreconciled-after=0`
+and `record.drift-events=2` (the control's one plus the held entry's one: reconciled once, not
+duplicated). The plan-audit's iteration 3 measured the same call independently with its own scratch probe
+(audit-measured, its Evidence 2 probe B, not a ledger row here): 2.004 s, 2.001 s and 2.003 s, 3 of 3,
+`unreconciled-after=0`. Both are the card-worktree write waiting for the lock and then reconciling, at the
+record level; neither drives the verb, so clause (vii)'s verb-level test is what WM1 adds, and its first
+in-repository observation is recorded there. This row is context for §F R18 and the green-at-the-pin
+behavior clause (vii) pins, never a RED-now cell. The second command is the swept-count RED of the two
+names iteration 4 added (L21 covers the others): two `PASS`/`ok` lines with nothing run — the vacuous green
+S4 refuses (its exit status was not captured, so none is claimed); quoted verbatim, nothing elided.
+
 ## Criteria
 
 Classification: AC-FAL-001 to -009, -011 and -015 are **release-blocking** (AC-FAL-011's and AC-FAL-015's
@@ -1017,7 +1063,7 @@ ms (the margin AC-FAL-007 states; the self-contention guard of plan D4); and a q
 **Covers**: AC-FAL-012 maps REQ-FAL-011
 
 **Given** the run and sync records, **When** read at the sync phase, **Then** `spec.md` §F still lists
-R1–R17; the `progress.md` §E.4 signal and this SPEC's `CHANGELOG.md` entry each name which of M1–M5 closed
+R1–R18; the `progress.md` §E.4 signal and this SPEC's `CHANGELOG.md` entry each name which of M1–M5 closed
 and each §F window that remains open; and every use of "atomic" in that CHANGELOG entry carries
 "within the critical section" (or "across the critical section" for the section itself) in the same
 sentence.
@@ -1103,54 +1149,120 @@ that no other clause covers); and, at every point before that, none of the three
 Let `C` and the 500 ms margin be as in AC-FAL-007 (`C` is `factoryLeaseClaimWaitCap`, 1.0 s at the starting
 values).
 
-**Given** a drift log beside the factory record holding **one unreconciled entry for the run**, its lock
-(`record-unavailable.jsonl.lock`) held by the test, in three fixtures: (a) a queued nominee and the lock
-held for longer than three times `C`; (b) queued parallelizable cards for bare arm (c) and the same hold;
-(c) at the record-write level, the lock held for 1.5 s while two record writes are made for the run — one
-through the lease claim's opt-in (the marker the section sets on the claim's context, plan D2) and one
-through the ordinary path, as `factory assign` makes it,
-**When** (a) a lane nominates the card, (b) a lane runs bare `factory next`, (c) both writes are made
-while the lock is held,
+**Observation points — which level each clause is observed at.** `factoryNextNominate` (the nominated
+form) and `factoryNextLeaseOnceGated` (the bare form) return the leased card **before** the worktree step:
+the verb calls `factoryEnsureCardWorktree` only after one of them has returned a lease, and that step ends in
+`db.RecordCardWorktree`, an ordinary record write that REQ-FAL-014's last sentence keeps waiting for the
+log's lock (`factory_card.go` lines 1083–1112 and 407–430; the MCP tool path, `mcp_factory_card.go` lines
+149–172, has the same order). So clauses (i) to (iii) are observed **at the return of the lease function**,
+by tests that call the function directly. **"Exit 0", standard output and the verb's output are not
+observed in them** — a function has none, and at the verb level a correct implementation cannot return
+within `C` + 500 ms while the lock is held longer than three times `C`, because the verb's own
+card-worktree write waits for it. The existing nomination tests drive the verb (`qasRunNext`, judged by
+`nmExit` and the captured streams), so a lease-function test is new code that builds its fixture with the
+same helpers (`nmBase`, `nmLaneEnv`) and calls the function; clause (vii) is the verb-level clause and uses
+the verb driver; clauses (iv) and (vi) are observed at the record write, in `internal/homestate`.
+
+**Given** a drift log beside the factory record holding **one unreconciled entry for the run**
+(`record-unavailable.jsonl`) and, in fixtures (a) to (d), its lock (`record-unavailable.jsonl.lock`) held
+by the test, in five fixtures:
+
+- (a) *lease function, nominated form* — a queued nominee; the test calls `factoryNextNominate` directly;
+  the lock is held across that call only and released by the test after it returns, with a backstop timer
+  at more than three times `C` that releases it if the call has not returned (so a call that waits fails
+  the bound instead of hanging);
+- (b) *lease function, bare form* — queued parallelizable cards for bare arm (c); the test calls
+  `factoryNextLeaseOnceGated` directly; the same hold and backstop;
+- (c) *record level* — the lock held for 1.5 s while two record writes are made for the run, one through the
+  lease claim's opt-in (the marker the section sets on the claim's context, plan D2) and one through the
+  ordinary path, as `factory assign` makes it;
+- (d) *verb level* — fixtures (a) and (b) again, each driven through the verb (`factory next --card <id>`
+  and bare `factory next`, by `qasRunNext`) with the worktree creator stubbed (`nmIsolatedWorktrees`), the
+  lock held for 2 s from before the verb starts by a timer that records the instant and then releases the
+  lock;
+- (e) *record level, re-read* — the entry is unreconciled when the claim's write reads the log, and a test
+  seam between that unlocked read and the claim's try for the lock (plan D2 step 3, WM1: an inert package
+  variable in `internal/homestate`, e.g. `recordUnavailableAfterReadHook`, the name the implementer's)
+  marks the entry reconciled — the mark another writer's post-commit step makes — while the lock is free,
+
+**When** (a) a lane nominates the card, (b) a lane runs the bare selection pass, (c) both record writes are
+made while the lock is held, (d) a lane runs the verb, (e) one record write is made through the claim's
+opt-in,
 **Then**
 
-- (i) in (a) and (b) the lease returns within `C` + 500 ms and **succeeds** — exit 0, the card `leased`: a
-  skipped reconciliation is not a refusal and not an error, and the verb's output is unchanged — and the
-  queue's lock is acquirable immediately afterwards;
-- (ii) the entry is **still unreconciled** after the lease and **no `record.drift` event** was appended
-  for it (the skip leaves no half-done reconciliation: the events and the mark are both withheld);
-- (iii) once the lock is released, the next record write for the run — the claim's own next write or an
-  ordinary write — reconciles the entry **exactly once**: one `record.drift` event per entry in total, the
-  entry marked reconciled, and a further write appends nothing more;
-- (iv) in (c) the write made through the claim's opt-in returns within 500 ms and leaves the entry
-  unreconciled, while the write made through the ordinary path **waits** until the lock is released (it
+- (i) *(lease function)* in (a) and (b) the function returns within `C` + 500 ms with a nil error and the
+  leased card — `(card, nil)` from `factoryNextNominate`, `(card, true, nil)` from
+  `factoryNextLeaseOnceGated` — and the card's row is `leased` to the lane: a skipped reconciliation is not
+  a refusal and not an error. The queue's lock is acquirable immediately afterwards. The clause says
+  nothing about exit status or output; those are clause (vii)'s;
+- (ii) *(lease function)* the entry is **still unreconciled** after the function returns and **no
+  `record.drift` event** was appended for it (the skip leaves no half-done reconciliation: the events and
+  the mark are both withheld);
+- (iii) *(lease function, then one ordinary write)* once the test has released the lock, one ordinary record
+  write for the run made by the test — the call the verb makes next, `RecordCardWorktree`, serves — reconciles
+  the entry **exactly once**: one `record.drift` event per entry in total, the entry marked reconciled, and a
+  further write appends nothing more;
+- (iv) *(record level)* in (c) the write made through the claim's opt-in returns within 500 ms and leaves the
+  entry unreconciled, while the write made through the ordinary path **waits** until the lock is released (it
   returns not before the 1.5 s hold ends) and then reconciles the entry — one event, the entry marked: the
-  skip is the claim's alone (REQ-FAL-014's last sentence, spec §H DL-7); and
-- (v) the tree's six existing tests of the log's append, reconcile and rewrite behavior stay green (L23).
+  skip is the claim's alone (REQ-FAL-014's last sentence, spec §H DL-7);
+- (v) the tree's six existing tests of the log's append, reconcile and rewrite behavior stay green (L23);
+- (vi) *(record level)* in (e) the claim's write appends **no** `record.drift` event for the entry and the entry
+  stays marked: the write re-read the log under the lock, found the entry already reconciled, and an entry is
+  reconciled only if it is still unreconciled there (REQ-FAL-014). The test counts `record.drift` events for the
+  entry and expects 0 — the "other writer" of this fixture appends no event, the seam only marks the entry — so
+  any event is the claim's repeat; and
+- (vii) *(verb)* in (d), for each form, the verb exits 0 with its output unchanged, the card is `leased` with
+  its worktree recorded, and the verb's own card-worktree record write — the ordinary path, which REQ-FAL-014's
+  last sentence keeps as it is — **waited** for the held lock and then reconciled: the verb returned **not
+  before** the instant the test's timer released the lock and **within the 500 ms margin after it**, and once it
+  returned the log's unreconciled count for the run is 0 with exactly one `record.drift` event for the entry.
+  The measured expectation this clause encodes is the card-worktree write's, at record level: with one
+  unreconciled entry and the log's lock held 2 s it returned after 2.000–2.004 s with `unreconciled-after=0`
+  (audit-measured — plan-audit iteration 3, probe B, 2.004 s, 2.001 s and 2.003 s, a scratch probe not in the
+  repository — and this author's re-measurement of the same call, ledger L24: 2.0007 s, 2.0015 s and 2.0006 s).
 
-- **Command** (two plain calls): (1) `go test ./internal/homestate ./internal/cli -run '^(TestRecordWriteReconcileBoundedSkipsOnContention|TestRecordWriteReconcileDefaultStillWaits|TestFactoryLeaseDriftLogStallBounded)$' -count=10 -race -v -timeout 25m` (S1, S2) — clauses (i) to (iv); the first two names live in `internal/homestate` (fixture (c), clauses (ii) to (iv)) and the third in `internal/cli` (fixtures (a) and (b), clauses (i) to (iii)). Pass condition: S4 with N = 10, each of the three names printing `--- PASS` ten times. (2) `go test ./internal/homestate -run '^(TestFR_RecordUnavailableLogAndReconcile|TestFR_UnavailableTornLineSkippedAndReported|TestFR_UnavailableLogAppendSurvivesRewrite|TestFR_UnavailableLogConcurrentAppendsNoLoss|TestAppendRecordUnavailableFailureModes|TestMarkRecordUnavailableReconciledFailureModes)$' -count=1 -v -timeout 25m` — clause (v); S4 with N = 1, six names (the baseline is L23).
+- **Command** (two plain calls): (1) `go test ./internal/homestate ./internal/cli -run '^(TestRecordWriteReconcileBoundedSkipsOnContention|TestRecordWriteReconcileDefaultStillWaits|TestRecordWriteReconcileBoundedRereadsUnderLock|TestFactoryLeaseDriftLogStallBounded|TestFactoryLeaseDriftLogVerbWorktreeWriteWaits)$' -count=10 -race -v -timeout 25m` (S1, S2) — clauses (i) to (iv), (vi) and (vii); the first two names live in `internal/homestate` (fixture (c), clauses (ii) to (iv)), the third in `internal/homestate` (fixture (e), clause (vi)), and two in `internal/cli`: `TestFactoryLeaseDriftLogStallBounded` (fixtures (a) and (b), called at the lease function, clauses (i) to (iii)) and `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits` (fixture (d), driven through the verb, clause (vii)). Pass condition: S4 with N = 10, each of the five names printing `--- PASS` ten times. (2) `go test ./internal/homestate -run '^(TestFR_RecordUnavailableLogAndReconcile|TestFR_UnavailableTornLineSkippedAndReported|TestFR_UnavailableLogAppendSurvivesRewrite|TestFR_UnavailableLogConcurrentAppendsNoLoss|TestAppendRecordUnavailableFailureModes|TestMarkRecordUnavailableReconciledFailureModes)$' -count=1 -v -timeout 25m` — clause (v); S4 with N = 1, six names (the baseline is L23).
 - **RED-now cell**: **L19.** At the pin, with one unreconciled entry and the log lock held for 3 s, the claim's
   three writes under an 800 ms deadline returned after 3.016 s, 3.009 s and 3.002 s (limit 1.3 s) — the
   bound clause is red; the write made under the held lock reconciled by waiting (`unreconciled-after=0`,
   two events) — the skip clause is red; and the control (no lock held) reconciled in 4.4–9.8 ms, so the
   fixture does trigger the reconciliation. The retry predicate is green at the pin (`unreconciled=0`,
-  two events: one per entry) and is the guard the fix must keep green. L21 shows the three new names sweep
-  0 tests at the pin, so S4(a) and S4(c) fail by construction as well. The probe is at the record-write
-  level, which is where the wait lives (every claim write is a `withCardTx`, spec §A.2 O15); the
-  criterion's lease-level tests (fixtures (a) and (b)) arrive in WM1 and are not themselves observed red.
-  Swept count at WM1: to be recorded at WM1.
+  two events: one per entry) and is the guard the fix must keep green. L21 shows three of the five names
+  sweep 0 tests at the pin and L24's second command shows the other two sweep 0, so S4(a) and S4(c) fail by
+  construction as well. The probe is at the record-write level, which is where the wait lives (every claim
+  write is a `withCardTx`, spec §A.2 O15); the criterion's tests at the lease function and at the verb
+  (fixtures (a), (b) and (d)) and the re-read test (fixture (e)) arrive in WM1 and are not themselves
+  observed red. Clause (vii) has no RED-now cell by nature: it pins today's behavior, which L24 observed
+  green at record level, so it is a regression guard inside this release-blocking criterion and must pass
+  at the WM1 seam-and-stub tree and after every later commit. Clause (vi) has none at the pin either: its
+  test needs the seam of fixture (e), which the tree does not have, so no probe was made for it (the
+  leader allowed no new probe requirement for this round); its first observation — and the reason it is red
+  at the seam-and-stub tree, if it is — is **to be recorded at WM1**, and no expected output is claimed
+  here. Swept count at WM1: to be recorded at WM1.
 - **Green-path cell**: WM4 — the claim-scoped non-waiting reconciliation lands with the busy-timeout open
   variant and the claim deadline, and WM3 alone must not be integrated without it (plan WM4). After it,
-  (i) returns in a few milliseconds and the three names print `--- PASS` ten times each.
+  (i) returns in a few milliseconds and the five names print `--- PASS` ten times each; (vi) goes green
+  with the re-read step of plan D2 step 3, and (vii) stays green throughout.
 - **Mutation**: MU15 (the claim's reconciliation made to wait for the log's lock, as the pin does) turns (i)
   red — the lease runs the holder's whole hold, at least three times `C`; MU16 (the skip applied to every
   record write) turns the ordinary-path half of (iv) red — the ordinary write returns before the hold ends
   and leaves the entry unreconciled; MU17 (the skip decided after the drift events were appended) turns (ii)
-  red — an event exists for the unreconciled entry — and (iii) red — the next write appends a second one.
+  red — an event exists for the unreconciled entry — and (iii) red — the next write appends a second one;
+  MU19 (the bounded flow reconciles from its pre-lock snapshot, with no re-read under the lock) turns (vi)
+  red — the claim appends an event for an entry another writer already marked; MU20 (the skip leaks onto
+  the verb's card-worktree record write — the marker set on a context that write also receives, or scoped
+  to the connection instead of to the claim's three writes) turns (vii) red — the verb returns before the
+  hold ends and leaves the entry unreconciled.
 - **Not claimed**: a skipped reconciliation is delayed, not lost, but a lane that never writes the record
   again leaves its entries to a later write by someone else (spec §F R16); the reconciliation's own work
   once the lock is obtained is not bounded by the cap and grows with the log's length (measured 0.15–0.26 s
-  at 2000 entries, L19); and a drift entry for a run other than the lease's own is not touched by this
-  criterion (unchanged).
+  at 2000 entries, L19); a drift entry for a run other than the lease's own is not touched by this
+  criterion (unchanged); the verb's own card-worktree write, `factory stage`, `complete` and the lease
+  renewal still wait for a held log lock with no bound (clause (vii) pins that the card-worktree write waits
+  and reconciles, not that it is bounded; spec §F R18); and clause (vi) forces the mark between the claim's
+  read and its lock with a seam, not the overlap of two live writers, which can still reconcile one entry
+  twice (spec §F R16).
 
 ## Edge cases
 

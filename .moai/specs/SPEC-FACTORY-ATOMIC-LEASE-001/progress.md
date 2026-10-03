@@ -10,13 +10,17 @@ run phase (manager-develop) and §E.4 to the sync phase (manager-docs).
 - plan_start_head: 2de0a2cb613b04765a1554f86685a3b48e0be806
 - artifacts: spec.md (14 requirements), plan.md (6 work milestones), acceptance.md (15 criteria), evidence/
   (ten probes and their overlays, re-executable from the repository root)
-- plan_audit: iteration 1 FAIL 0.79; iteration 2 FAIL 0.81; override-round delta audit not run — to be run
-  by plan-auditor; no verdict is claimed here. (Iteration 1: Tier M threshold 0.80, audited tree
-  `db692601307c28b6d1dd905ab1ab6f6d9bd1e974`, no must-pass criterion failed, the score was driven by
-  Testability 0.55 and Clarity 0.70. Iteration 2: audited tree `c8b716fed24564a685188dc94b3f446ac9fc79c8`,
-  no must-pass criterion failed, three must-fix defects PA2-M1 to PA2-M3 and seven PA2-N1 to PA2-N7; the
-  leader granted one extra repair round and one delta audit past the Tier M ceiling of 2, and accepts no
-  PASS-with-debt on it.)
+- plan_audit: iteration 1 FAIL 0.79; iteration 2 FAIL 0.81; iteration 3 FAIL 0.83; four-hunk confirmation
+  not run — to be run by plan-auditor; no verdict is claimed here. (Iteration 1: Tier M threshold 0.80,
+  audited tree `db692601307c28b6d1dd905ab1ab6f6d9bd1e974`, no must-pass criterion failed, the score was
+  driven by Testability 0.55 and Clarity 0.70. Iteration 2: audited tree
+  `c8b716fed24564a685188dc94b3f446ac9fc79c8`, no must-pass criterion failed, three must-fix defects PA2-M1
+  to PA2-M3 and seven PA2-N1 to PA2-N7; the leader granted one extra repair round and one delta audit past
+  the Tier M ceiling of 2, and accepts no PASS-with-debt on it. Iteration 3, that delta audit: audited tree
+  `9f73f4cdf7af24af493edfb9e629f70aac915133`, no must-pass criterion failed, one must-fix defect I3-M1 and
+  three should-fix defects I3-S1 to I3-S3, five notes I3-N1 to I3-N5. The leader's "Decision 2" approved an
+  exception to "a second ceiling hit parks the card": this repair of four hunks, then a re-read of those
+  four hunks only; if that confirmation is also blocked the card is parked.)
 
 ### 2026-10-03 — iteration 2 repair (spec.md 0.2.0)
 
@@ -100,6 +104,58 @@ a drift log larger than 2000 entries; whether another process's log append is de
 held lock; the `moai` build from this tree (the installed `0732cc699` judged the lint); the plan-audit's
 own L13 and L14 re-executions that §A.1 and L13/L14 cite (they are reported to this author, not in the
 ledger).
+
+### 2026-10-03 — exception repair (iteration 4) (spec.md 0.3.1)
+
+Scope: exactly the four hunks of the leader's "Decision 2" (the plan-audit's iteration-3 ids I3-M1 and
+I3-S1 to I3-S3; the notes I3-N1 to I3-N5 were left alone, they are optional). No Go source, other SPEC,
+doctrine file or `.moai/reports/` file was edited; the HEAD this repair read and measured is
+`9f73f4cdf7af24af493edfb9e629f70aac915133` (Go files equal the plan-start tree). Tool provenance for
+`moai spec lint` (`verification-claim-integrity.md` §2.2): the installed build is `0732cc699`
+(`v3.2.0-rc.27`, built 2026-10-03T03:34:50Z, from `moai version`); `git merge-base --is-ancestor 0732cc699
+HEAD` and `git merge-base --is-ancestor HEAD 0732cc699` each exited 1, so the build is not a strict ancestor
+of HEAD, and `git diff --name-only HEAD 0732cc699 -- internal/spec` printed nothing, so the lint source it
+carries equals the tree's; the tree's own build was not made. With that build, `moai spec lint
+SPEC-FACTORY-ATOMIC-LEASE-001` and the same with `--strict` each printed `✓ No findings — all SPEC
+documents are valid` and exited 0 after the edits above.
+
+| Finding | Where it was fixed | How a re-reader checks it |
+|---|---|---|
+| I3-M1 (AC-FAL-015 (i)–(iii) unsatisfiable at the verb) | acceptance AC-FAL-015: a new "Observation points" paragraph, five fixtures (a)–(e) each naming its level, clauses (i)–(iii) restated at the return of `factoryNextNominate` / `factoryNextLeaseOnceGated` with "exit 0 / the verb's output" expressly not observed there, new clause (vii) (the verb's own card-worktree record write waits for the held lock and then reconciles, with probe B's measured expectation), Command, RED-now, green-path, mutation and Not-claimed cells updated; ledger L24; plan §7 MU20, WM1 test list | read AC-FAL-015 "Observation points" and clauses (i)–(iii), (vii) against `factory_card.go` 1083–1112 and 407–430 (the verb calls `factoryEnsureCardWorktree` only after a lease function returned, and that step ends in `db.RecordCardWorktree`); re-run L24's first command shape (the probe is a scratch file, see L24) |
+| I3-S1 ("no entry reconciled twice") | spec REQ-FAL-014 (the over-claim replaced by the re-read guarantee); spec §F R16 (the cross-writer window named, audit-measured 2 duplicate events in 3 of 3 runs); acceptance AC-FAL-015 fixture (e) and clause (vi); plan §7 MU19, D2 step 3, WM1 seam and test list | read REQ-FAL-014's third clause and R16's "second window"; AC-FAL-015 (vi) and MU19 |
+| I3-S2 (REQ-FAL-009 carve-outs) | spec REQ-FAL-009: the lead-in no longer names the skip; the four carve-outs are a numbered list | read REQ-FAL-009; each of the four items equals one of the four things the audit listed |
+| I3-S3 (DL-6 provenance) | spec §H: DL-6 and DL-7 under "Decided (leader, 2026-10-03)" with the provenance "decision.md Decision 2"; the "Taken by the repair author" heading removed (it would be empty); DL-7 carries the leader's added instruction; spec §F R18 added for the limit | read §H DL-6, DL-7 and R18; DL-4 is still open |
+
+Mechanical consequences of those four, listed so none is a surprise: spec HISTORY 0.3.1 and the frontmatter
+`version`; spec §B.5 and the §F introduction mention R18; acceptance AC-FAL-012 counts R1–R18; acceptance
+S3 and the ledger header name L24; plan.md's header note and §6 R-K. The counts stay at 14 requirements and
+15 criteria (Tier M ceilings 16 and 16); the mutants are now MU1–MU20.
+
+Observations made in this repair (commands and verbatim output are ledger row L24): the card-worktree
+record write, with one unreconciled entry and the drift log's lock held 2 s, returned after 2.0007 s,
+2.0015 s and 2.0006 s with `unreconciled-after=0` (3 of 3; the plan-audit's own probe B printed 2.004 s,
+2.001 s and 2.003 s — audit-measured, not a ledger row); the two test names added in this repair
+(`TestRecordWriteReconcileBoundedRereadsUnderLock`, `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits`)
+sweep 0 tests at the pin. The probe is a scratch file outside the repository (`evidence/` was outside the
+file list of this repair); the exit status of both `go test` runs was not captured (the worktree guard
+refuses a trailing `echo`), and the rows say so.
+
+Decisions taken in this repair beyond the leader's record, for the leader to see: (1) the test seam of
+AC-FAL-015 fixture (e) — an inert package variable between the log's unlocked read and the claim's try for
+its lock — is a new line item of the WM1 seam-and-stub commit, because no deterministic test of the
+re-read step exists without one; (2) the cross-writer window is named in R16 and the leader's DL-7 limit
+is a separate R18, not folded into R16, so each reads as one residual; (3) new clauses (vi) and (vii)
+were appended after (v) so no existing clause number, and no cross-reference to one, changed; (4) two
+mutants were added, MU19 (no re-read under the lock) and MU20 (the skip reaching the verb's worktree write),
+the second being the "connection-scoped cousin" of MU16 the audit named; (5) the verb-level fixture holds
+the lock 2 s, the value of the measured probe, and bounds the verb's return by that hold plus the same
+500 ms margin as AC-FAL-007, a labeled heuristic.
+
+Not observed in this repair, stated so nobody reads silence as a pass: any test of AC-FAL-015 clauses (i)–(iii),
+(vi) or (vii) (they arrive in WM1; clause (vi) has no RED-now observation and none is claimed — its test needs
+the seam); the overlap of two live writers in the narrow gap between a commit and its mark (only the audit's
+state-forcing probe A exists); the mutants; Windows; any behavior after the fix; the verb itself under a held
+drift-log lock (L24 is record level); the four-hunk confirmation by a plan-auditor.
 
 ## §E.2 Run-phase Evidence
 

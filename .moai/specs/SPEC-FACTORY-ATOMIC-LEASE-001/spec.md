@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-ATOMIC-LEASE-001
 title: "Atomic lease across the queue store and the factory record — one critical section from the selection read to the claim, a bounded record wait, and a worktree step that no longer renames"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -66,6 +66,20 @@ related_specs: [SPEC-FACTORY-SELF-DISPATCH-001, SPEC-TODO-HOLD-STATE-001, SPEC-B
   named runs; REQ-FAL-007 says "file or process I/O". §H records DL-1 to DL-3 as decided (leader,
   2026-10-03). Requirement count 14, criterion count 15 (Tier M ceilings 16 / 16). The defect-by-defect
   map is in `progress.md` §E.1.
+- 0.3.1 — 2026-10-03 — exception repair (iteration 4) after the independent plan-audit's iteration 3
+  returned FAIL 0.83 against the Tier M threshold 0.80 on one must-fix defect (the audit's own id I3-M1) and
+  three should-fix defects (I3-S1 to I3-S3); the leader approved an exception to "a second ceiling hit parks
+  the card" for exactly four hunks and a re-read of those four hunks only (the leader's decision record,
+  "Decision 2", an untracked local file named for provenance and not cited as authority). Changes in this
+  file: **I3-S1** — REQ-FAL-014's "no entry reconciled twice" is replaced by what the claim's flow
+  guarantees (it re-reads the log under the lock and reconciles an entry only if it is still unreconciled),
+  and §F R16 names the cross-writer window the flow does not close. **I3-S2** — REQ-FAL-009's carve-outs
+  are an enumerated list of four, with the skip stated once. **I3-S3** — §H DL-6's provenance is the
+  leader's Decision 2; DL-7 is recorded as decided with the leader's added instruction, whose limit is the
+  new §F R18. **I3-M1** — repaired in `acceptance.md` AC-FAL-015 (clauses restated at the lease function's
+  return, two clauses added), with the mirror in `plan.md` §7; no requirement changed. Mechanical
+  consequences: §B.5 and §F's introduction mention R18, and AC-FAL-012 counts it. Requirement count 14,
+  criterion count 15 (Tier M ceilings 16 / 16). The finding-by-finding map is in `progress.md` §E.1.
 
 ## §A Context
 
@@ -311,8 +325,8 @@ A NEW SPEC, citing the completed SPECs it supersedes or narrows through `depends
 It is not an atomic commit across two databases. The queue commit and the record commits are still two
 separate commits; the section makes every other participant wait while they happen and orders the
 compensation inside it. A lane killed inside the section, a record writer that never takes the queue
-lock, a stalled record and a skipped drift-log reconciliation (R16) are named in §F and are not claimed
-closed.
+lock, a stalled record, a skipped drift-log reconciliation (R16) and the record writes that keep waiting
+for a held drift-log lock (R18) are named in §F and are not claimed closed.
 
 ## §C Requirements
 
@@ -385,17 +399,20 @@ Fourteen requirements, GEARS notation. Every `REQ-FAL-NNN` is traced by at least
 
 ### Module D — What stays true
 
-- **REQ-FAL-009** (Ubiquitous): Outside the interleavings REQ-FAL-002 to REQ-FAL-006 close and the
-  skip REQ-FAL-014 states,
+- **REQ-FAL-009** (Ubiquitous): Outside the interleavings REQ-FAL-002 to REQ-FAL-006 close,
   `moai factory next` shall behave as before — arm order, candidate choice, output text, the closed set
   of twelve refusal tokens (none added), exit codes, the quota hold, the Codex backend skip, a lane's
   own re-lease of its assigned card (which reads no queue item state, §F R17), and the non-adopting
   reads the lease path makes today (its decision reads stay pure reads and migrate no queue layout).
-  The only carve-outs are the two outcomes REQ-FAL-006 states — a busy record or a busy queue lock
-  (which ends a lane process's run, §F R5), and the detail of the `raced` refusal when the cause is a
-  cap hit — the claim's skip of the drift-log reconciliation on contention (REQ-FAL-014), and the
-  one-time adoption of a legacy queue state directory, which constructing the section's queue store
-  performs, before any lock opens, on the bare arms that built only non-adopting stores before (§F R13).
+  The carve-outs are exactly the four below and no others:
+  1. a busy store ends the pass (REQ-FAL-006) — the factory record's write lock not obtained within the
+     lease-claim wait cap, or the queue's lock not obtained within its wait budget: the nominated form
+     reports the `raced` refusal and the bare form an error, which ends a lane process's run (§F R5);
+  2. the detail of the `raced` refusal when the cause is a cap hit (REQ-FAL-006);
+  3. the claim's skip of the drift-log reconciliation on contention (REQ-FAL-014); and
+  4. the one-time adoption of a legacy queue state directory, which constructing the section's queue
+     store performs, before any lock opens, on the bare arms that built only non-adopting stores before
+     (§F R13).
 - **REQ-FAL-010** (Ubiquitous): The lease path shall take the queue's lock before it writes the factory
   record and never the reverse; no code path shall wait for the queue's lock while holding a
   factory-record write transaction; and the non-test files of `internal/homestate` shall not depend on
@@ -425,14 +442,17 @@ Fourteen requirements, GEARS notation. Every `REQ-FAL-NNN` is traced by at least
   without waiting; **when** that lock is held by another party, the write shall skip the reconciliation
   for that write — it shall append no `record.drift` event and mark no entry reconciled — and the
   entries shall stay unreconciled for a later write, the claim's own next write included; **when** the
-  lock is obtained, the write shall reconcile exactly as every other record write does (one
-  `record.drift` event per unreconciled entry, committed with the write or not at all, the entries
-  marked reconciled once the write has committed, and no entry reconciled twice). The skip shall apply
+  lock is obtained, the write shall re-read the log under the lock and reconcile an entry only if it is
+  still unreconciled there (one `record.drift` event per such entry, committed with the write or not at
+  all, and the entries marked reconciled once the write has committed). That re-read is the whole of
+  the guarantee against a repeat: two writers that overlap between one's commit and its mark can still
+  reconcile one entry twice, as every record write can today (§F R16). The skip shall apply
   to the claim's three record writes only: every other record write — `factory stage`, its lease
   renewal, `factory complete`, `factory assign`, `factory decide`, the dispatch mirror and the lease
   path's own card-worktree record write after the section — shall keep today's behavior, including
-  waiting for the log's lock. *(Plan-audit iteration 2 defect PA2-M1, not the symptom M1 of §A.1; the
-  mechanism is plan D2, the measurement §A.2 O15, the choice of scope §H DL-7.)*
+  waiting for the log's lock (AC-FAL-015 clause (vii) observes the last of these at the verb; §F R18).
+  *(Plan-audit iteration 2 defect PA2-M1, not the symptom M1 of §A.1; the mechanism is plan D2, the
+  measurement §A.2 O15, the choice of scope §H DL-7.)*
 
 ## §D Out of Scope
 
@@ -520,8 +540,8 @@ over its `spec.md` printed nothing in the override round).
 ## §F Gaps and residual risks
 
 Stated plainly. A window not closed here is not closed; nothing in this SPEC's records may say
-otherwise (REQ-FAL-011). R1 to R12 keep their 0.1.0 numbers; R13 to R15 were added in 0.2.0 and R16 and
-R17 in 0.3.0.
+otherwise (REQ-FAL-011). R1 to R12 keep their 0.1.0 numbers; R13 to R15 were added in 0.2.0, R16 and
+R17 in 0.3.0 and R18 in 0.3.1.
 
 - **R1 — a lane process killed inside the section.** The lock is a `flock` released when the process dies
   (read, `board_lock_unix.go`), so nothing wedges, but a death between the queue promotion and the claim
@@ -648,7 +668,20 @@ R17 in 0.3.0.
   0.002–0.028 s for one entry, 0.018–0.100 s for 200 and 0.151–0.260 s for 2000 (L19, three runs): inside
   AC-FAL-007's 500 ms margin at those sizes and proportional to the log's length beyond them, which was
   not measured. While the claim's write holds the log's lock another process's append to the log waits
-  for it, bounded by one write. No window beyond these is claimed closed. Not closed.
+  for it, bounded by one write. **A second window, named here because REQ-FAL-014's re-read does not
+  close it: an entry can be reconciled twice when two writers overlap.** The re-read under the lock
+  (REQ-FAL-014) stops the claim from reconciling an entry that is already marked. It cannot stop two
+  writers that overlap between one's commit and its mark: an ordinary record write reads the log without
+  the lock, appends its events inside its transaction and marks the entries only after the commit
+  (`withCardTx` and `reconcileUnavailable`, read), so a second writer that reads the log in that gap sees
+  the entry still unreconciled and appends a second `record.drift` event for it. The claim's bounded
+  flow can do the same when it obtains the lock after another writer's commit and before that writer's
+  mark — its re-read still finds the entry unreconciled (read, not run). This is today's behavior on every
+  record write and is not changed here. Measured by the plan-audit's iteration 3, not by this SPEC's
+  author (audit-measured, probe A, a scratch probe that is not in the repository): two ordinary writes
+  for one run, overlapping between the first's commit and its mark, appended 2 `record.drift` events for
+  the one entry with `unreconciled-after=0`, in 3 of 3 runs. No window beyond these is claimed closed.
+  Not closed.
 - **R17 — arm (a) re-leases its own assigned card without reading the queue item's state.** A card whose
   row is `assigned` to the lane and whose queue item is `hold` is leased by bare arm (a): the arm never
   reads the item's state (`factory_card.go`, the loop over `cards` that precedes the `noNewCards`
@@ -659,6 +692,20 @@ R17 in 0.3.0.
   item in arm (a) would change preserved behavior and is out of scope (§D). The end state
   `queue=hold record=leased` is therefore reachable through arm (a) by an operator write that preceded
   the section as well as, through every arm, by one that followed it (R10). Not closed.
+- **R18 — the record writes that keep waiting for a held drift-log lock: a lane's verb can still stall on
+  it, only the queue is protected.** REQ-FAL-014 bounds the claim's three record writes and nothing else.
+  Every other record write is an ordinary `withCardTx` write that waits for the log's lock, with no bound,
+  when an unreconciled entry for its run exists: the lease path's own card-worktree record write after the
+  section (`RecordCardWorktree`, run by every caller of `factoryEnsureCardWorktree` after a lease), `factory
+  stage` and its lease renewal, `factory complete`, `factory assign`, `factory decide` and the dispatch
+  mirror (the callers listed in §H DL-7). The card-worktree write was measured: with one unreconciled entry
+  and the log's lock held 2 s it returned after 2.000–2.004 s with the entry reconciled afterwards
+  (audit-measured, iteration 3's probe B: 2.004 s, 2.001 s, 2.003 s, 3 of 3; re-measured by this author,
+  ledger L24: 2.0007 s, 2.0015 s, 2.0006 s, 3 of 3). The others share that code path and were not measured
+  one by one (read). So a log lock held for a long time still holds a lane's `factory next` after its
+  lease succeeded, and holds `stage`, `complete` and the renewal, while it no longer holds the queue or
+  the claim. This SPEC does not protect the unattended lane loop from those waits: that belongs to cards
+  t1480 and t1482 (the lane supervisor), as the leader decided (§H DL-7). Not closed.
 
 ## §G Cross-references
 
@@ -680,9 +727,10 @@ an answer; each is written to the choice below, so an overrule is an edit to the
 ### Decided (leader, 2026-10-03)
 
 DL-1 to DL-3 were put to the leader as open decisions in 0.2.0 and approved at the defaults written
-below; DL-5 and DL-6 were decided in the override round. Provenance: the leader's decision record for
-card t1458 dated 2026-10-03 (an untracked local file, named for provenance and not cited as authority —
-the text below states what was decided).
+below; DL-5 was decided in the override round; DL-6 and DL-7 were decided by the leader's second decision
+(iteration 4). Provenance: the leader's decision record for card t1458 dated 2026-10-03 (an untracked
+local file, named for provenance and not cited as authority — the text below states what was decided):
+its first decision (items 1 to 5) for DL-1 to DL-3 and DL-5, and its "Decision 2" for DL-6 and DL-7.
 
 - **DL-1 — the bare form on a busy record or a busy queue lock (audit D8). Decided: default.** Chosen:
   the pass ends at once, without re-selecting, and the verb reports an error (exit 1; the queue lock's
@@ -723,16 +771,17 @@ the text below states what was decided).
   then holds unchanged. Reason given: an unbounded lock on every record write would block the
   factory-autonomy unattended lane loop that is starting. Written as REQ-FAL-014, with §F R16 for what
   stays open. The choice between the two forms of the bound is DL-7.
-- **DL-6 — bare arm (a) is narrowed out of REQ-FAL-003's second clause.** Decided at the leader's
-  dispatch (repaired as the plan-audit's defect PA2-M3 wrote it): REQ-FAL-003's "read it and refuse" half
-  now binds the arms that read the queue item's state, and arm (a)'s re-lease of its own assigned card
-  stays as it is, with the residual stated (§F R17). Alternative not taken: arm (a) reads the item's
-  state and refuses a held card — a behavior change to REQ-FAL-009, a candidate for a follow-up card.
-
-### Taken by the repair author under the leader's delegation (overrulable)
-
-- **DL-7 — the form and the scope of REQ-FAL-014.** The leader left two choices open: non-blocking or a
-  short deadline, and global or opt-in. Chosen: **non-blocking** — it adds nothing to the lease-claim
+- **DL-6 — bare arm (a) is narrowed out of REQ-FAL-003's second clause.** Decided (leader, 2026-10-03,
+  decision.md Decision 2): a hold that preceded the section still being leased through arm (a) is as
+  intended, per REQ-FAL-009's "arm (a) unchanged". REQ-FAL-003's "read it and refuse" half binds the
+  arms that read the queue item's state, and arm (a)'s re-lease of its own assigned card stays as it is,
+  with the residual stated (§F R17). The serial-slot decision itself is changed by card t1480, not
+  here (the leader's statement). Alternative not taken: arm (a) reads the item's state and refuses a
+  held card — a behavior change to REQ-FAL-009, a candidate for a follow-up card.
+- **DL-7 — the form and the scope of REQ-FAL-014.** Decided (leader, 2026-10-03, decision.md Decision 2):
+  the smaller change stands — a non-blocking try, opted into by the claim's three writes only. The leader
+  left two choices open in the first decision: non-blocking or a short deadline, and global or opt-in.
+  Chosen: **non-blocking** — it adds nothing to the lease-claim
   wait cap, where a deadline would add to it and force `3 × cap ≤ budget` to be re-derived; the cost is
   that any momentary holder of the log's lock (an append in flight, another process's rewrite) causes a
   skip. **Opt-in per call, for the claim's three writes only** — not every record write. Evidence from
@@ -744,8 +793,12 @@ the text below states what was decided).
   mirror's failed writes are what the log exists to reconcile; a global skip would change reconciliation
   for all of those callers to bound a wait only the claim suffers inside the queue lock. The scope is
   per call and not per connection because the card-worktree record write after the section may share the
-  lease path's connection and must keep waiting. Overrule: an edit to REQ-FAL-014, plan D2, AC-FAL-015
-  and mutant MU16.
+  lease path's connection and must keep waiting. **The leader's added instruction:** the writes that stay
+  unbounded — the lease path's own `RecordCardWorktree` and `factory stage`, `complete` and lease
+  renewal — keep waiting for a held drift-log lock; protecting the unattended lane loop from those waits
+  belongs to cards t1480 and t1482 (the lane supervisor), and that limit is written into the SPEC's
+  residual risks (§F R18). Overrule: an edit to REQ-FAL-014, plan D2, AC-FAL-015 and mutants MU16 and
+  MU20.
 
 ### Open decisions for the leader
 

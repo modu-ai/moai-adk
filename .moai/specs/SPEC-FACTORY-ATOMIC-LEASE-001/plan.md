@@ -1,9 +1,11 @@
 # SPEC-FACTORY-ATOMIC-LEASE-001 — Plan
 
 Tier M. Card t1458, plan-start HEAD `2de0a2cb613b04765a1554f86685a3b48e0be806` (branch
-`WT-atomic-lease`, worktree `.claude/worktrees/t1458`). Version 0.3.0 of the plan (override-round repair
-after the independent plan-audit's iteration 2; the defect map is in `progress.md` §E.1; the audit's own
-defect ids are written `PA2-M1`… so they never collide with the card's scope items M1–M5 below). Sections
+`WT-atomic-lease`, worktree `.claude/worktrees/t1458`). Version 0.3.1 of the plan (override-round repair
+after the independent plan-audit's iteration 2, then the iteration-4 exception repair after its iteration
+3: only D2's step 3 and its "what stays unbounded" bullet, the WM1 seam and test list, WM4's test count,
+§6 R-K and the §7 mutant table changed, for I3-M1, I3-S1 and the leader's DL-7 limit; the defect map is in `progress.md` §E.1; the audit's own defect ids are written `PA2-M1`… and `I3-M1`… so
+they never collide with the card's scope items M1–M5 below). Sections
 and milestones are
 ordered by **decision reversibility** — the decisions most likely to change come first (the lock
 primitive's interface, the bounded-claim semantics a lane sees, the creator interface shared by four
@@ -126,8 +128,11 @@ nothing else changes:
   waiting**; a holder means skip the whole reconciliation for this write — no events, no mark — and run the
   write as if the log were empty. (3) With the lock held, **re-read the log under it** (the unlocked read
   may be stale: another process may have reconciled in between, and a second reconcile would duplicate the
-  events), append one event per entry inside the transaction as today, and keep the lock through the
-  commit. (4) After the commit mark the entries reconciled and release the lock (the existing rewrite, run
+  events), reconcile an entry only if it is still unreconciled in that re-read, append one event per such
+  entry inside the transaction as today, and keep the lock through the commit. Step 3 is pinned by
+  AC-FAL-015 clause (vi) and mutant MU19; its test needs one inert seam between step (1)'s read and
+  step (2)'s try, which the WM1 stub list carries. The re-read does not close the overlap of two live
+  writers (spec §F R16). (4) After the commit mark the entries reconciled and release the lock (the existing rewrite, run
   while the lock is already held); on a rollback release it without marking. The decision to skip is taken
   **before** any event is appended: skipping only the mark after events were appended would make the next
   write append them again (mutant MU17).
@@ -146,7 +151,10 @@ nothing else changes:
 - **What stays unbounded:** the reconciliation's own work once the lock is obtained (a file read, N event
   appends under the claim's context, a rewrite — measured 0.15–0.26 s at 2000 entries, L19) and the
   lock's hold from the try to the end of the rewrite, during which another process's log append waits.
-  Both are named in spec §F R16, not closed.
+  Both are named in spec §F R16, not closed. The ordinary writes that never get the marker — the lease
+  path's own `RecordCardWorktree`, `factory stage`, `complete` and lease renewal, `assign`, `decide`, the
+  mirror — keep waiting for a held log lock with no bound; protecting the unattended lane loop from
+  that is cards t1480 and t1482's, per the leader (spec §H DL-7, §F R18).
 
 **D3 — the worktree-step lock (WM5).** `factoryEnsureCardWorktree` takes a dedicated cross-process lock
 around the creator call and the `git branch -m` rename together, and releases it before
@@ -261,7 +269,11 @@ witnesses the order (`verification-claim-integrity.md` §2.3):
    - `internal/homestate`: the claim marker `WithBoundedReconcile(ctx context.Context) context.Context`
      (D2), stubbed as the identity function — the tests of AC-FAL-015 then fail alone on the bound and
      skip predicates, which is the stated reason (L19 shows the same predicates red on the unmodified
-     tree).
+     tree); and the inert test seam `recordUnavailableAfterReadHook func()` (the name is the
+     implementer's), a package variable that is nil in production and called between the unlocked read of
+     the log and the claim's try for its lock, which fixture (e) of AC-FAL-015 sets to mark the entry
+     reconciled (clause (vi)). The seam is called only on the claim-scoped path, so no ordinary write
+     sees it.
    - Not in this commit: any behavior, and any test.
 2. **The baseline commit.** On the seam-and-stub tree, take the AC-FAL-010 baseline — the family's
    `-list` dump and the `--- PASS` count of one `-v` run of it (68 names and 68 passes were measured at
@@ -319,8 +331,15 @@ witnesses the order (`verification-claim-integrity.md` §2.3):
   line 10, ledger L16, so a guard written the natural way would be red on arrival) and
   `TestFactoryLeaseSectionRejectsNestedMutate`; and, from the override round,
   `TestFactoryLeaseArmAKeepsHeldAssignedCard` (AC-FAL-003 clause (iii), a guard that pins spec §F R17),
-  `TestFactoryLeaseDriftLogStallBounded` (`internal/cli`) and `TestRecordWriteReconcileBoundedSkipsOnContention`
-  and `TestRecordWriteReconcileDefaultStillWaits` (`internal/homestate`) for AC-FAL-015. The drift-log
+  `TestFactoryLeaseDriftLogStallBounded` and `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits`
+  (`internal/cli`) and `TestRecordWriteReconcileBoundedSkipsOnContention`,
+  `TestRecordWriteReconcileDefaultStillWaits` and `TestRecordWriteReconcileBoundedRereadsUnderLock`
+  (`internal/homestate`) for AC-FAL-015. The levels differ and the criterion says which clause is observed
+  at which: `TestFactoryLeaseDriftLogStallBounded` **calls the lease functions directly**
+  (`factoryNextNominate`, `factoryNextLeaseOnceGated`; no existing test does — the nomination tests drive
+  the verb through `qasRunNext` and `nmExit`) and builds its fixture with `nmBase` and `nmLaneEnv`;
+  `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits` drives the verb through `qasRunNext` with the creator
+  stubbed by `nmIsolatedWorktrees`; the three `internal/homestate` tests are record-level. The drift-log
   fixtures hold the log's lock with the same primitive the log uses: in `internal/homestate` through
   `lockRecordUnavailable`; in `internal/cli` through an `flock` on `RecordUnavailablePath(root)` plus
   `.lock`, in a unix-tagged test helper (the Windows build compiles test files too).
@@ -352,7 +371,7 @@ existing DSN builder (`factory.go`); (2) the claim-scoped non-waiting reconcilia
 function replacing the WM1 stub, the reconciliation step of `withCardTx` (`card_transition.go`), the
 reconciliation and rewrite helpers (`card_unavailable.go`), and the non-waiting form of the admission-lock
 primitive (`admission_lock_unix.go`, `admission_lock_windows.go`; `GOOS=windows GOARCH=amd64 go build
-./...` is the Windows check). Tests first: the two `internal/homestate` tests of AC-FAL-015 and the six
+./...` is the Windows check). Tests first: the three `internal/homestate` tests of AC-FAL-015 and the six
 existing tests of L23 stay green (the preservation half). `factory_card.go`: the cap constants become
 live, the claim deadline, the marker set on the claim's context, the outcome mapping of D2 (nominated:
 `raced` with the busy-store detail; bare: stop at once with an error). Flips AC-FAL-007, AC-FAL-008 and
@@ -428,7 +447,7 @@ the old tests built by hand.
   change drift reconciliation for `factory stage`, `complete`, `assign`, `decide` and the dispatch mirror.
   Mitigation: the marker is read in one place and defaults to the existing flow; the six existing tests of
   the log (ledger L23) are the preservation selector of AC-FAL-015 (v); the ordinary-path half of
-  AC-FAL-015 (iv) and mutant MU16 pin it.
+  AC-FAL-015 (iv) with mutant MU16, and the verb-level clause (vii) with mutant MU20, pin it.
 - **R-L — the bounded flow keeps the log's lock across one write's transaction.** Another process's append
   to the log waits for it, bounded by one write; the lock order is queue → record → log with no cycle (D2).
   The Windows form of the non-waiting primitive is compile-verified only (spec §F R3).
@@ -455,6 +474,8 @@ the old tests built by hand.
 | MU16 | apply the skip to every record write, not only the claim's | AC-FAL-015 clause (iv) (`TestRecordWriteReconcileDefaultStillWaits`) |
 | MU17 | decide the skip after the drift events were appended (skip only the mark) | AC-FAL-015 clauses (ii) and (iii) (`TestRecordWriteReconcileBoundedSkipsOnContention`) |
 | MU18 | make arm (a) refuse a card whose queue item is held | AC-FAL-003 clause (iii) (`TestFactoryLeaseArmAKeepsHeldAssignedCard`) — a behavior change the SPEC does not make, so this mutant must be caught as a guard |
+| MU19 | make the bounded flow reconcile from the unlocked read, with no re-read under the lock | AC-FAL-015 clause (vi) (`TestRecordWriteReconcileBoundedRereadsUnderLock`) |
+| MU20 | let the skip reach the verb's card-worktree record write (the marker set on a context that write also receives, or scoped to the connection) | AC-FAL-015 clause (vii) (`TestFactoryLeaseDriftLogVerbWorktreeWriteWaits`) |
 
 Two mutants named only inside a criterion's own cell stay there because they test a deletion rather than
 an edit: AC-FAL-012's deleted R6 paragraph and AC-FAL-014's deleted Amendments entry (both sync-phase
