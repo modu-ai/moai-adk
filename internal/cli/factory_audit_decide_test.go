@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // AC-FDA-016 — a lane may run exactly `factory decide <card> --gate kickoff
@@ -13,7 +13,7 @@ import (
 // lane; every other lane decide stays refused at the lane boundary.
 func TestFDA_LaneAuditDecideAdmission(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	fcPlace(t, root,
 		homestate.Card{CardID: "t1", State: homestate.CardKickoff, OwnerLabel: "lane-1", DecisionGate: homestate.DecisionGateKickoff},
 		homestate.Card{CardID: "t2", State: homestate.CardKickoff, OwnerLabel: "lane-2", DecisionGate: homestate.DecisionGateKickoff},
@@ -46,7 +46,7 @@ func TestFDA_LaneAuditDecideAdmission(t *testing.T) {
 // AC-FDA-014 — the queue hold arm is read at the decision point.
 func TestFDA_AuditDecideReadsTheQueueHold(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateHold)
+	fcQueue(t, store, factory.BacklogStateHold)
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardKickoff, OwnerLabel: "worker-1", DecisionGate: homestate.DecisionGateKickoff})
 	sdClearLaneEnv(t)
 	out, _, _ := runFactory(t, "decide", "t1", "--gate", "kickoff", "--choice", "approve", "--decider", "audit", "--run", fcRun)

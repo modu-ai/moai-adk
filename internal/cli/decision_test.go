@@ -37,7 +37,7 @@ func decisionProject(t *testing.T) string {
 func TestDecisionCmd_RecordThenReadFromTheProjectBoard(t *testing.T) {
 	t.Setenv(config.EnvFactoryRole, "")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 	root := decisionProject(t)
 	_, stderr, err := runDecision(t, "record", "--project-root", root, "--scope", "card:t1", "--kind", "ruling",
 		"--body", "one delta round", "--evidence", ".moai/reports/t1/x.md", "--ladder", "②", "--decided-by", "claude+leader")
@@ -64,7 +64,7 @@ func TestDecisionCmd_LaneCannotRecordButCanRead(t *testing.T) {
 	root := decisionProject(t)
 	t.Setenv(config.EnvFactoryRole, "")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 	if _, _, err := runDecision(t, "record", "--project-root", root, "--scope", "standing", "--kind", "standing-rule",
 		"--predicate", "always", "--body", "x", "--evidence", "y", "--ladder", "②", "--decided-by", "claude+leader"); err != nil {
 		t.Fatalf("leader record: %v", err)
