@@ -296,3 +296,25 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Plan→run Kickoff (decision record, auto-semantics §10), written by the lane at HEAD 1f30f7798 on 2026-10-03:
+
+decision record: decided_by=claude lane-9 orchestrator (card t1435) acting on the leader's disposition evidence_refs=.moai/reports/t1435/plan-audit-iter4-delta.md (PASS-WITH-DEBT 0.87, audited_sha 58ee0bdb2, plan-artifact hash 9052d51b01fc9b409adf25c720bc897f81254cf1b7dab30e676e7e754ac5e20b),leader cross-session message (approval to enter run with PASS-WITH-DEBT, 2026-10-03) ladder_path=plan→run Kickoff row; the §9.1 wording is PASS, so the PASS-WITH-DEBT entry rests on operator approval 10-03 (relayed by the leader)
+
+- Plan-artifact hash unchanged since the verdict: `git diff 58ee0bdb2..HEAD -- spec.md plan.md acceptance.md design.md research.md` printed 0 lines (HEAD 1f30f7798; only progress.md changed). The plan phase records audit-ready: plan-audit-iter4-delta.md PASS-WITH-DEBT; no open blocker. The SPEC's plan artifacts are not touched by the decision record.
+- Binding run-phase instructions carried from the verdict: BI-1 (env pre-flight at the start of every measurement, `unset` of any hit in the same compound invocation; at dispatch, 2026-10-03: `env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'` printed nothing in this lane); BI-2 (first run task: the decoy-directory existence assertion before the omit-flag negative control, abort without running the installer if a decoy is missing); BI-3 (discoverable script: pid-named poison, recording wrapper, local-path grep, (e) labelled static).
+
+Mode evaluation (inputs: tier L, about 30 hand-authored files, 4 milestones plus the BI-2 first task, coding-heavy, one working tree, Go + shell + manifests):
+
+| Mode | Selected | Reason |
+|---|---|---|
+| direct | no | not trivial |
+| serial | yes | coding-heavy, one writer per tree, milestone-ordered dependencies (M1 → M4) |
+| fanout | no | read-only research is done; the writers share one tree |
+| sweep | no | not a uniform mechanical transform |
+
+Decision: serial
+
+Justification: one write-capable agent per milestone, sequentially, in this card worktree (one writer per tree). Deviation recorded: the run-phase workers are spawned as `Agent(general-purpose)` carrying the manager-develop role text, not as `manager-develop`, because a typed `manager-develop` spawn auto-isolates into its own L1 worktree and cannot write the card tree (observed on t1318 and recorded in t1434's progress.md §E.2; not re-measured here). Their commits carry `Authored-By-Agent: general-purpose`, so the ownership-transition lint reports the `draft → in-progress` flip as unattributed rather than as owned by manager-develop.
