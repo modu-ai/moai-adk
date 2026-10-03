@@ -9,6 +9,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/auditverdict"
+	"github.com/modu-ai/moai-adk/internal/runtime"
 )
 
 var (
@@ -155,6 +158,37 @@ func parseAuditVerdict(path string, raw []byte, evidenceSHA string) (auditVerdic
 		return out, evidenceErr("verdict file %s audited %s, not the recorded evidence commit %q", path, out.AuditedSHA, recorded)
 	}
 	return out, nil
+}
+
+// admitCardVerdict applies the shared admission predicate to a verdict file
+// the guard already located. A sync-audit card (T13) keeps the label-only
+// check; a plan-audit card (T7) is checked on every plan field, with the
+// tier threshold and plan-artifact hash read from the card's SPEC directory
+// in its worktree. A card without a valid SPEC id cannot bind the hash and
+// is refused.
+func admitCardVerdict(cur Card, path string) (bool, string) {
+	if cur.State != CardPlanAudit {
+		return admitVerdictFile(cur, path, auditverdict.PhaseSync)
+	}
+	return admitVerdictFile(cur, path, auditverdict.PhasePlan)
+}
+
+func admitVerdictFile(cur Card, path string, phase auditverdict.Phase) (bool, string) {
+	raw, err := readBoundedFile(path)
+	if err != nil {
+		return false, err.Error()
+	}
+	fields := auditverdict.Parse(raw)
+	if phase == auditverdict.PhaseSync {
+		return auditverdict.Admit(fields, auditverdict.PhaseSync, 0, false)
+	}
+	if !specIDPattern.MatchString(cur.SpecID) {
+		return false, fmt.Sprintf("card carries no valid SPEC id (%q), so the plan-artifact hash cannot be checked", cur.SpecID)
+	}
+	specDir := filepath.Join(cur.WorktreePath, ".moai", "specs", cur.SpecID)
+	current, err := runtime.NewInMemoryCache().ComputeHash(specDir)
+	hashOK := err == nil && fields.PlanArtifactHash != "" && fields.PlanArtifactHash == current
+	return auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(specDir), hashOK)
 }
 
 func readBoundedFile(path string) ([]byte, error) {

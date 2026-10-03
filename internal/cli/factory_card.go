@@ -2158,11 +2158,15 @@ func newFactoryDecideCommand() *cobra.Command {
 			// REQ-SD-016: a session for which lane refusal holds — a lane by
 			// marker, label, or Codex backend — cannot record decisions. The
 			// guard runs before any card row is read or written.
-			if factoryLaneRefusal() {
+			// The one lane exception: a kickoff approval by the audit decider,
+			// admitted per card only when the lane is the card's record owner
+			// (checked in decideOne).
+			auditApprove := decider == homestate.DeciderAudit && gate == "kickoff" && choice == "approve"
+			if factoryLaneRefusal() && !auditApprove {
 				return factoryDecideLaneRefusal()
 			}
-			if decider != homestate.DeciderHuman {
-				return fmt.Errorf("factory decide: decider %q is not accepted; F1 records only %q decisions", decider, homestate.DeciderHuman)
+			if decider != homestate.DeciderHuman && !auditApprove {
+				return fmt.Errorf("factory decide: decider %q is not accepted here; %q decides every gate and %q only --gate kickoff --choice approve", decider, homestate.DeciderHuman, homestate.DeciderAudit)
 			}
 			switch {
 			case gate == "kickoff" && (choice == "approve" || choice == "reject"):
@@ -2175,12 +2179,15 @@ func newFactoryDecideCommand() *cobra.Command {
 			if ctx == nil {
 				ctx = context.Background()
 			}
+			if auditApprove {
+				return factoryAuditDecideCards(ctx, factoryCardRoot(), cmd.OutOrStdout(), args, run)
+			}
 			return factoryDecideCards(ctx, factoryCardRoot(), cmd.OutOrStdout(), args, gate, choice, run)
 		},
 	}
 	cmd.Flags().StringVar(&gate, "gate", "", "decision gate: kickoff or push")
 	cmd.Flags().StringVar(&choice, "choice", "", "approve|reject (kickoff), or resume|block|unblock|abandon")
-	cmd.Flags().StringVar(&decider, "decider", homestate.DeciderHuman, "who decided (F1 accepts only human)")
+	cmd.Flags().StringVar(&decider, "decider", homestate.DeciderHuman, "who decided: human, or audit (kickoff approve only, on verdict-file evidence)")
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
 }

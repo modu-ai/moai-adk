@@ -45,6 +45,17 @@ const (
 // DeciderHuman is the only decider F1 accepts.
 const DeciderHuman = "human"
 
+// DeciderAudit approves a Kickoff on verdict-file evidence (edge T8a only).
+const DeciderAudit = "audit"
+
+// Queue-hold readings the caller passes for an audit approval. Only a clear
+// reading admits; an unread or unreadable queue fails closed.
+const (
+	QueueHoldClear      = "clear"
+	QueueHoldHeld       = "hold"
+	QueueHoldUnreadable = "unreadable"
+)
+
 var cardStates = []string{
 	CardPicked, CardAssigned, CardLeased, CardPlan, CardPlanAudit, CardKickoff,
 	CardRun, CardSync, CardSyncAudit, CardMergeReady, CardMerging, CardMergedLocal,
