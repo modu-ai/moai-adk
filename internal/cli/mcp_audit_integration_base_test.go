@@ -92,8 +92,8 @@ func TestAuditBaseBranch_ConfiguredIntegrationBaseWins(t *testing.T) {
 
 	t.Run("codex_audit_sends_and_reports_develop", func(t *testing.T) {
 		sess, res := runNativeAudit(t, repo, codexTargetBaseBranch)
-		if got := sentTargetBranch(t, sess); got != "develop" {
-			t.Errorf("target.branch = %q, want %q", got, "develop")
+		if got := sentTargetBranch(t, sess); got != developTip {
+			t.Errorf("target.branch = %q, want the develop merge base %s", got, developTip)
 		}
 		base := reviewOutputField(res, "review_base")
 		if !strings.Contains(base, "develop") || !strings.Contains(base, developTip) {
@@ -114,8 +114,9 @@ func TestAuditBaseBranch_NoConfigKeepsRemoteDefaultHead(t *testing.T) {
 	if got != mainSHA {
 		t.Errorf("merge base = %s, want main %s", got, mainSHA)
 	}
-	if name, _ := resolveReviewBaseBranchName(repo); name != "main" {
-		t.Errorf("base branch = %q, want %q", name, "main")
+	// The selected ref is reported as it was selected: origin/HEAD → origin/main.
+	if name, _ := resolveReviewBaseBranchName(repo); name != "origin/main" {
+		t.Errorf("base ref = %q, want %q", name, "origin/main")
 	}
 }
 
@@ -128,7 +129,7 @@ func TestAuditBaseBranch_UnresolvableConfigFallsThrough(t *testing.T) {
 	if got, _ := resolveReviewMergeBase(repo); got != mainSHA {
 		t.Errorf("merge base = %s, want main %s", got, mainSHA)
 	}
-	if name, _ := resolveReviewBaseBranchName(repo); name != "main" {
-		t.Errorf("base branch = %q, want %q", name, "main")
+	if name, _ := resolveReviewBaseBranchName(repo); name != "origin/main" {
+		t.Errorf("base ref = %q, want %q", name, "origin/main")
 	}
 }

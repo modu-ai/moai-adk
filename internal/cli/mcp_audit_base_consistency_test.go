@@ -57,8 +57,8 @@ func TestAuditBaseBranch_UnrelatedConfiguredBaseFallsThroughForBothBackends(t *t
 	if err != nil {
 		t.Fatalf("resolveReviewMergeBase: %v", err)
 	}
-	if codexBranch != "main" || glmBase != mainSHA {
-		t.Errorf("backends disagree or did not fall through: codex target.branch = %q, GLM merge base = %s; want both on main (%s)", codexBranch, glmBase, mainSHA)
+	if codexBranch != mainSHA || glmBase != mainSHA {
+		t.Errorf("backends disagree or did not fall through: codex target.branch = %q, GLM merge base = %s; want both on main's merge base %s", codexBranch, glmBase, mainSHA)
 	}
 	if base := reviewOutputField(res, "review_base"); !strings.Contains(base, "main") || !strings.Contains(base, mainSHA) {
 		t.Errorf("review_base = %q, want main with merge base %s", base, mainSHA)

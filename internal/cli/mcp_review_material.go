@@ -103,17 +103,34 @@ func collectReviewDiffAt(root string, base reviewBase) (string, error) {
 }
 
 // reviewBase is ONE resolution of the base a baseBranch review is measured
-// against: the branch NAME codex is sent and the merge-base COMMIT the GLM diff
-// is measured from. They are resolved together so the two backends can never
-// land on different steps of the chain (card t1426 review finding 1).
+// against: the ref that was actually selected and the merge-base COMMIT both
+// backends compare from — GLM measures its diff from it, codex is sent it as the
+// baseBranch target. Resolved together so the backends can never land on
+// different steps of the chain (card t1426).
+//
+// Ref is the selected ref in its short, resolvable form — `develop` for a local
+// branch, `origin/develop` for a remote-tracking one — never a bare name that
+// was only true of a different ref.
 type reviewBase struct {
-	Name      string
+	Ref       string
 	MergeBase string
 }
 
 // String renders the base for a result's review_base field.
 func (b reviewBase) String() string {
-	return b.Name + " (merge base " + b.MergeBase + ")"
+	return b.Ref + " (merge base " + b.MergeBase + ")"
+}
+
+// shortReviewRef turns a full ref the resolver selected into the short form git
+// resolves to that same ref: refs/heads/X → X, refs/remotes/O/X → O/X.
+func shortReviewRef(ref string) string {
+	if s, ok := strings.CutPrefix(ref, "refs/heads/"); ok {
+		return s
+	}
+	if s, ok := strings.CutPrefix(ref, "refs/remotes/"); ok {
+		return s
+	}
+	return ref
 }
 
 // resolveReviewBase walks the base chain once and returns the first step whose
@@ -132,36 +149,32 @@ func (b reviewBase) String() string {
 //
 // A project that never configured step 0 resolves as before.
 //
-// [HARD] A name is returned only after it is confirmed to resolve as a ref in
-// this tree (SPEC-CODEX-REVIEW-TARGET-001). Stripping the `origin/` prefix off a
-// symbolic-ref yields a string, not a guarantee: the remote-tracking ref can
-// exist while nothing by that name does, and codex sent a name it cannot find
-// reports `inconclusive`.
+// [HARD] A ref is returned only after it is confirmed to resolve in this tree
+// (SPEC-CODEX-REVIEW-TARGET-001), and it is returned as the ref that was
+// selected: a base that exists only as origin/develop is reported as
+// origin/develop, because the bare name `develop` does not resolve there.
 func resolveReviewBase(root string) (reviewBase, error) {
-	type step struct {
-		name string
-		refs []string
-	}
-	var steps []step
+	// Each step lists the refs it may be satisfied by, in preference order.
+	var steps [][]string
 	if name := config.LoadWorktreeBaseBranch(root); name != "" {
-		steps = append(steps, step{name, []string{"refs/heads/" + name, "refs/remotes/origin/" + name}})
+		steps = append(steps, []string{"refs/heads/" + name, "refs/remotes/origin/" + name})
 	}
 	if out, err := runReviewGit(root, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"); err == nil {
 		if name := strings.TrimPrefix(strings.TrimSpace(out), "origin/"); name != "" {
-			steps = append(steps, step{name, []string{"refs/remotes/origin/" + name, "refs/heads/" + name}})
+			steps = append(steps, []string{"refs/remotes/origin/" + name, "refs/heads/" + name})
 		}
 	}
-	steps = append(steps, step{"main", []string{"refs/remotes/origin/main", "refs/heads/main"}})
+	steps = append(steps, []string{"refs/remotes/origin/main", "refs/heads/main"})
 
 	var lastErr error
-	for _, s := range steps {
-		for _, ref := range s.refs {
+	for _, refs := range steps {
+		for _, ref := range refs {
 			if _, err := runReviewGit(root, "rev-parse", "--verify", "--quiet", ref); err != nil {
 				continue // the name does not resolve through this ref
 			}
 			out, err := runReviewGit(root, "merge-base", ref, "HEAD")
 			if err == nil && strings.TrimSpace(out) != "" {
-				return reviewBase{Name: s.name, MergeBase: strings.TrimSpace(out)}, nil
+				return reviewBase{Ref: shortReviewRef(ref), MergeBase: strings.TrimSpace(out)}, nil
 			}
 			lastErr = err
 		}
@@ -178,12 +191,12 @@ func resolveReviewMergeBase(root string) (string, error) {
 	return b.MergeBase, err
 }
 
-// resolveReviewBaseBranchName is the name half of resolveReviewBase. It exists
-// because codex's baseBranch review target is a branch name; it reads the SAME
-// single resolution as the merge base, so the backends cannot diverge.
+// resolveReviewBaseBranchName is the ref half of resolveReviewBase (the
+// audit_multi receipt records it); it reads the SAME single resolution as the
+// merge base, so the two can never disagree.
 func resolveReviewBaseBranchName(root string) (string, error) {
 	b, err := resolveReviewBase(root)
-	return b.Name, err
+	return b.Ref, err
 }
 
 // runReviewGit runs one git command in the named tree and returns its stdout. It

@@ -1234,11 +1234,13 @@ func coerceCodexReviewTarget(v any, root string) (map[string]any, error) {
 	case codexTargetUncommitted:
 		return map[string]any{"type": codexTargetUncommitted}, nil
 	case codexTargetBaseBranch:
-		branch, err := resolveReviewBaseBranchName(root)
+		// The resolved merge-base SHA, not a branch name: codex compares from
+		// exactly the commit the GLM backend measures from (card t1426).
+		base, err := resolveReviewBase(root)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"type": codexTargetBaseBranch, "branch": branch}, nil
+		return map[string]any{"type": codexTargetBaseBranch, "branch": base.MergeBase}, nil
 	default:
 		return nil, fmt.Errorf("review target %q needs fields this server cannot supply", s)
 	}
@@ -1951,16 +1953,19 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		"model":  model,
 		"cwd":    root,
 	}
-	// A baseBranch review resolves its base ONCE, before the call: the branch
-	// codex is sent and the base review_base reports are the same resolution,
-	// so a base ref moving while codex works cannot make them disagree (t1426).
-	// An unresolvable base leaves the bare target in place; coercion then
-	// fails the request open exactly as before.
+	// A native baseBranch review resolves its base ONCE, before the call, and
+	// codex is sent the captured merge-base SHA rather than a branch name it
+	// would re-resolve later — so review_base names exactly the commit codex
+	// compared against, even if the base ref moves meanwhile (t1426). This is
+	// the shape the review gate's card scope already sends (reviewRequestParams).
+	// An unresolvable base leaves the bare target in place; coercion then fails
+	// the request open exactly as before. Adversarial mode (turn/start) carries
+	// no target and names no base, so it records no review_base.
 	var base *reviewBase
-	if target == codexTargetBaseBranch {
+	if target == codexTargetBaseBranch && mode != codexModeAdversarial {
 		if b, err := resolveReviewBase(root); err == nil {
 			base = &b
-			params["target"] = map[string]any{"type": codexTargetBaseBranch, "branch": b.Name}
+			params["target"] = map[string]any{"type": codexTargetBaseBranch, "branch": b.MergeBase}
 		}
 	}
 	if mode == codexModeAdversarial {

@@ -198,18 +198,19 @@ func TestCodexAudit_NativeBaseBranchCarriesBranch(t *testing.T) {
 // ─── AC-CRT-002 ───
 
 // TestCodexAudit_BaseBranchResolutionChain — AC-CRT-002 / REQ-CRT-003.
-// The chain is the one resolveReviewMergeBase uses, read at the NAME layer:
-// the remote default head, then `main`. Card t1426 superseded spec.md §A.7:
-// git_strategy.worktree_base_branch is now step 0 when set and resolvable.
+// The chain is resolveReviewBase's: the remote default head, then `main`. Card
+// t1426 superseded spec.md §A.7 twice over: git_strategy.worktree_base_branch is
+// now step 0 when set and resolvable, and codex is sent the resolved merge-base
+// SHA (not a branch name), while review_base names the ref that was selected.
+// Every fixture here forks at HEAD, so the SHA alone cannot tell the steps
+// apart — the selected ref in review_base is what each sub-test discriminates on.
 func TestCodexAudit_BaseBranchResolutionChain(t *testing.T) {
 	t.Run("step1_remote_default_head", func(t *testing.T) {
 		repo := newReviewTargetRepo(t)
 		seedRemoteMain(t, repo)
 
-		sess, _ := runNativeAudit(t, repo, codexTargetBaseBranch)
-		if got := sentTargetBranch(t, sess); got != "main" {
-			t.Errorf("target.branch = %q, want %q (origin/HEAD → origin/main, prefix stripped)", got, "main")
-		}
+		sess, res := runNativeAudit(t, repo, codexTargetBaseBranch)
+		assertSentReviewBase(t, repo, sess, res, "origin/main")
 	})
 
 	t.Run("step2_main_when_remote_head_absent", func(t *testing.T) {
@@ -217,10 +218,8 @@ func TestCodexAudit_BaseBranchResolutionChain(t *testing.T) {
 		// No origin/HEAD at all; `main` exists as a local branch.
 		reviewTargetGit(t, repo, "branch", "main")
 
-		sess, _ := runNativeAudit(t, repo, codexTargetBaseBranch)
-		if got := sentTargetBranch(t, sess); got != "main" {
-			t.Errorf("target.branch = %q, want %q — a missing step 1 must not become a silent skip", got, "main")
-		}
+		sess, res := runNativeAudit(t, repo, codexTargetBaseBranch)
+		assertSentReviewBase(t, repo, sess, res, "main")
 	})
 
 	// Card t1426 reverses the spec.md §A.7 non-read clause: the configured
@@ -239,10 +238,8 @@ func TestCodexAudit_BaseBranchResolutionChain(t *testing.T) {
 			t.Fatalf("fixture is not divergent: LoadWorktreeBaseBranch = %q, want %q", got, "divergent-base")
 		}
 
-		sess, _ := runNativeAudit(t, repo, codexTargetBaseBranch)
-		if got := sentTargetBranch(t, sess); got != "divergent-base" {
-			t.Errorf("target.branch = %q, want %q — the configured integration base is step 0 (card t1426)", got, "divergent-base")
-		}
+		sess, res := runNativeAudit(t, repo, codexTargetBaseBranch)
+		assertSentReviewBase(t, repo, sess, res, "divergent-base")
 	})
 
 	// Each step confirms the name it is about to return resolves as a ref in
@@ -254,11 +251,23 @@ func TestCodexAudit_BaseBranchResolutionChain(t *testing.T) {
 		reviewTargetGit(t, repo, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/ghost")
 		reviewTargetGit(t, repo, "branch", "main")
 
-		sess, _ := runNativeAudit(t, repo, codexTargetBaseBranch)
-		if got := sentTargetBranch(t, sess); got != "main" {
-			t.Errorf("target.branch = %q, want %q — an unresolvable name must not be returned", got, "main")
-		}
+		sess, res := runNativeAudit(t, repo, codexTargetBaseBranch)
+		assertSentReviewBase(t, repo, sess, res, "main")
 	})
+}
+
+// assertSentReviewBase checks the two halves of one resolution: codex was sent
+// the merge-base SHA of wantRef with HEAD, and review_base names wantRef with
+// that same SHA.
+func assertSentReviewBase(t *testing.T, repo string, sess *fakeCodexSession, res *mcp.CallToolResult, wantRef string) {
+	t.Helper()
+	wantSHA := reviewTargetGitOut(t, repo, "merge-base", wantRef, "HEAD")
+	if got := sentTargetBranch(t, sess); got != wantSHA {
+		t.Errorf("target.branch = %q, want the merge base of %s with HEAD (%s)", got, wantRef, wantSHA)
+	}
+	if got, want := reviewOutputField(res, "review_base"), wantRef+" (merge base "+wantSHA+")"; got != want {
+		t.Errorf("review_base = %q, want %q", got, want)
+	}
 }
 
 // sentTargetBranch extracts params.target.branch from the serialized
