@@ -368,3 +368,140 @@ func TestSyncGateSkipNotice_ToolAbsentNotifies_AllFourLanguages(t *testing.T) {
 		})
 	}
 }
+
+// --- card t1413: a GOFLAGS change must not replay a stored outcome ---
+//
+// The worktree-content key carried the delta set, the ignored sources, and the
+// checker-tool presence tokens — but not the compile environment. go vet and
+// go build read GOFLAGS (build tags via -tags, module mode, ...), so a fail
+// recorded under one value replayed, checks never re-running, after GOFLAGS
+// changed to a value under which the tree actually passes. Observed RED
+// (blocking mode): `decision=block-redelivered` with zero check steps on the
+// second run. The fix rides GOFLAGS into the key verbatim, the same argument
+// the tool-presence tokens already make: the stored verdict was never the
+// verdict of this environment.
+//
+// Sentinel on failure: SYNC_GATE_STALE_ENV_REPLAY
+
+// gateEnvScrubTools: gateSkipScrubTools plus go — this fixture runs the real
+// toolchain, because the defect is precisely that the environment changes what
+// the real toolchain reports. A stubbed go would make both arms identical and
+// prove nothing.
+var gateEnvScrubTools = append(append([]string{}, gateSkipScrubTools...), "go")
+
+// gateEnvFixture writes the t1413 module: broken.go carries a build error under
+// no tag, so an empty GOFLAGS fails the checks, and GOFLAGS=-tags=vetfix
+// excludes the file, so the same tree passes.
+func gateEnvFixture(t *testing.T, dir string) {
+	t.Helper()
+	files := map[string]string{
+		"go.mod":    "module t1413fixture\n\ngo 1.21\n",
+		"main.go":   "package main\n\nfunc main() {}\n",
+		"broken.go": "//go:build !vetfix\n\npackage main\n\nfunc broken() { undefinedSymbol() }\n",
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-c", "user.email=t1413@example.invalid", "-c", "user.name=t1413"}, args...)...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+	}
+	git("init", "--quiet")
+	git("add", ".")
+	git("commit", "--quiet", "-m", "docs: sync-phase fixture")
+}
+
+// gateEnvRun runs the gate once in dir under the given GOFLAGS and returns
+// stdout and the record body. The env is fully replaced (the gateSkipRun
+// hermetic pattern): no lane or ambient variable can color either arm.
+func gateEnvRun(t *testing.T, dir, bin, home, goflags string) (string, string) {
+	t.Helper()
+	gate := filepath.Join(hocProjectRoot(t), "internal", "template", "templates",
+		".claude", "hooks", "moai", "sync-phase-quality-gate.sh")
+	cmd := exec.Command("bash", gate)
+	cmd.Dir = dir
+	cmd.Env = []string{
+		"PATH=" + bin,
+		"HOME=" + home,
+		"TMPDIR=" + t.TempDir(),
+		"CLAUDE_PROJECT_DIR=" + dir,
+		"MOAI_SYNC_GATE_BLOCKING=1",
+		"MOAI_AUTONOMY_TIER=",
+		"GOFLAGS=" + goflags,
+	}
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("run gate: %v\nstderr: %s", err, stderr.String())
+	}
+	record, _ := os.ReadFile(filepath.Join(dir, ".moai", "state", "sync-quality-gate.last"))
+	return stdout.String(), strings.TrimRight(string(record), "\n")
+}
+
+// A GOFLAGS change must flip the worktree key and force a re-gate: the second
+// run re-runs the checks, the tree passes under the new value, and the record
+// moves to pass with a NEW key — not a replay of the stored fail under the
+// same key.
+func TestSyncGateRecordKey_GoFlagsChangeForcesReGate(t *testing.T) {
+	gateExitRequire(t)
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH")
+	}
+	dir := t.TempDir()
+	bin := filepath.Join(t.TempDir(), "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatalf("mkdir bin: %v", err)
+	}
+	for _, tool := range gateEnvScrubTools {
+		host, err := exec.LookPath(tool)
+		if err != nil {
+			t.Skipf("%s not on PATH (host lacks a gate dependency)", tool)
+		}
+		if err := os.Symlink(host, filepath.Join(bin, tool)); err != nil {
+			b, rerr := os.ReadFile(host)
+			if rerr != nil {
+				t.Fatalf("copy %s: %v", host, rerr)
+			}
+			if err := os.WriteFile(filepath.Join(bin, tool), b, 0o755); err != nil {
+				t.Fatalf("write %s: %v", tool, err)
+			}
+		}
+	}
+	home := t.TempDir() // shared: the go build cache warms across both runs
+	gateEnvFixture(t, dir)
+
+	// Arm 1 — default GOFLAGS: broken.go compiles in, the checks block, the
+	// outcome is recorded as fail.
+	out1, rec1 := gateEnvRun(t, dir, bin, home, "")
+	if !strings.Contains(out1, `"decision":"block"`) {
+		t.Fatalf("premise: the broken tree did not block under an empty GOFLAGS.\nout: %q", out1)
+	}
+	f1 := strings.Fields(rec1)
+	if len(f1) < 3 || f1[1] != "fail" {
+		t.Fatalf("premise: no fail record after the blocked run; record = %q", rec1)
+	}
+
+	// Arm 2 — GOFLAGS=-tags=vetfix excludes broken.go: the tree passes. The
+	// stored record names the OLD key, so it must not match anymore.
+	out2, rec2 := gateEnvRun(t, dir, bin, home, "-tags=vetfix")
+	f2 := strings.Fields(rec2)
+	if strings.Contains(out2, `"decision":"block"`) {
+		t.Errorf("SYNC_GATE_STALE_ENV_REPLAY: the stale fail blocked after GOFLAGS changed to a passing value.\nout: %q", out2)
+	}
+	if len(f2) < 3 {
+		t.Fatalf("no record after the second run; record = %q", rec2)
+	}
+	if f1[2] == f2[2] {
+		t.Errorf("SYNC_GATE_STALE_ENV_REPLAY: GOFLAGS change left the worktree key identical (%s) — the key misses the compile environment", f1[2])
+	}
+	if f2[1] != "pass" {
+		t.Errorf("SYNC_GATE_STALE_ENV_REPLAY: the re-gated tree must record pass under -tags=vetfix; record = %q", rec2)
+	}
+}
