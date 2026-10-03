@@ -242,6 +242,7 @@ func TestIsPrimaryCheckoutGitSymlinkedSubdirectory(t *testing.T) {
 		t.Errorf("control: a linked worktree must stay non-primary")
 	}
 }
+
 // --- N5: the config-only probe reads untracked files at file level ---------
 
 // newUntrackedSeedRepo builds a seeded repository (one committed source file)
