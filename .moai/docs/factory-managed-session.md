@@ -1,7 +1,7 @@
 # Factory 관리 세션 (managed session) 사용 안내
 
-관리 세션을 켜면 `moai cc -f` / `moai glm -f` / `moai codex` 의 Factory 런치가, 레인(`lane-<n>`)과
-리더(`-l/--leader`) 세션을 MoAI가 직접 소유하는 "관리 세션"으로 뜬다. 평범한 대화형
+관리 세션을 켜면 리더(`moai cc -f` / `moai glm -f`)와 레인(`moai cc -l` / `moai glm -l` / `moai codex -l`,
+`lane-<n>`)의 Factory 런치가, 그 세션을 MoAI가 직접 소유하는 "관리 세션"으로 뜬다. 평범한 대화형
 세션과 달리 런처가 세션 프로세스의 부모로 남아, 브로커(`internal/factorymsg`)에 쌓인
 수신 메시지를 세션이 한가할 때 알아서 넘겨준다. **관리 세션은 기본적으로 꺼져 있고,
 명시적으로 켜야만 동작한다.** 이 문서는 켜는 방법, 운영자가 눈으로 보게 되는 동작, 지켜야 할
@@ -21,9 +21,9 @@
 
 ## 켜도 닿지 않는 범위
 
-- Claude / GLM 은 `moai cc -f` / `moai glm -f` 런치가 스위치가 있을 때만 관리 세션으로 들어간다.
+- Claude / GLM 은 `moai cc -f|-l` / `moai glm -f|-l` 런치가 스위치가 있을 때만 관리 세션으로 들어간다.
 - Codex 는 프로세스 환경에 이미 스탬프와 스위치가 함께 있는 평범한 `moai codex` 실행에서만 분기한다.
-  `moai codex -f lane` 이 띄우는 카드 자식 세션은 스위치 값과 관계없이 관리되지 않고 직접 exec 경로로 간다.
+  `moai codex -l` 레인이 띄우는 카드 자식 세션은 스위치 값과 관계없이 관리되지 않고 직접 exec 경로로 간다.
 - 관리되는 Codex 런치는 런처의 이후 디버그 추적 단계와 `RUST_LOG` 주입을 건너뛴다.
 - 스위치를 켠 상태에서 Claude / GLM 의 `--continue` / `-c` 는 오류로 거부된다. 관리 세션이 런치 형태를
   직접 정하기 때문이고, `--continue` 는 일반 런치의 이어 하기 기능이다.
@@ -55,7 +55,7 @@
   명령행에만 들어간다. 프로젝트 설정의 `default_tools_approval_mode = "writes"` 는 건드리지
   않는다. 옛 Factory 세대가 프로젝트 전역에 승인 오버라이드를 남겨 두었다면 `moai doctor`
   가 경고만 하고 사용자 소유 설정 파일은 고쳐 쓰지 않는다.
-- **어휘는 정규형만 쓴다.** 레인은 `-f lane` / `-f lane-<n>`, 리더 탐색은 `-l/--leader`.
+- **어휘는 정규형만 쓴다.** 레인 합류는 인자 없는 `-l`/`--lane`, 리더 지정은 `-l`/`--lane`과 함께 쓰는 긴 형태 `--leader <이름>`.
   `agent-<n>` / `worker-<n>` 이름은 되살리지 않는다.
 - **범위는 전달까지다.** 카드 완료 판정, 병합 자동화, 컨트롤러 재알림은 관리 세션의 일이
   아니다(SPEC-FACTORY-CONTROLLER-001 소관).
