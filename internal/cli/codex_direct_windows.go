@@ -3,14 +3,8 @@
 package cli
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"os"
 	"os/exec"
-
-	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // codexDirectAnchorPID is the pid the worktree lock names on the direct
@@ -22,51 +16,4 @@ func codexDirectAnchorPID() int { return os.Getpid() }
 
 // defaultCodexDirectLaunch starts Codex and waits for it; the child's exit
 // code reaches the caller through the returned error.
-func defaultCodexDirectLaunch(cmd *exec.Cmd) error {
-	if err := cmd.Start(); err != nil {
-		if codexExplicitFactoryEnv(cmd.Env) && launchEnvValue(cmd.Env, config.EnvMoaiFactoryWorker) == "" {
-			return errors.Join(err, clearFactoryRunOwner(cmd.Dir, launchEnvValue(cmd.Env, config.EnvFactoryRunID)))
-		}
-		return err
-	}
-	if codexExplicitFactoryEnv(cmd.Env) {
-		runID := ""
-		if launchEnvValue(cmd.Env, config.EnvMoaiFactoryWorker) == "" {
-			runID = launchEnvValue(cmd.Env, config.EnvFactoryRunID)
-		}
-		clearOwner := func() error {
-			if runID == "" {
-				return nil
-			}
-			return clearFactoryRunOwner(cmd.Dir, runID)
-		}
-		start, state := homestate.ProbeProcessIdentity(cmd.Process.Pid)
-		if state != homestate.ProcessIdentityLive || start == "" {
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
-			return errors.Join(errors.New("codex child process identity unavailable"), clearOwner())
-		}
-		pending, err := registerFactoryLaunchPending(context.Background(), cmd.Dir, cmd.Env, cmd.Process.Pid, start)
-		if err != nil {
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
-			return fmt.Errorf("register factory launch-pending endpoint: %w", errors.Join(err, clearOwner()))
-		}
-		fail := func(err error) error {
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
-			return errors.Join(err, rollbackFactoryLaunchPending(context.Background(), cmd.Dir, pending), clearOwner())
-		}
-		if launchEnvValue(cmd.Env, config.EnvMoaiFactoryWorker) != "" {
-			if err := stampCodexLaneClaim(cmd.Dir, cmd.Env, cmd.Process.Pid); err != nil {
-				return fail(err)
-			}
-		}
-		if runID != "" {
-			if err := stampFactoryRunOwner(cmd.Dir, runID, cmd.Process.Pid, start); err != nil {
-				return fail(err)
-			}
-		}
-	}
-	return cmd.Wait()
-}
+func defaultCodexDirectLaunch(cmd *exec.Cmd) error { return codexStartAndWait(cmd) }
