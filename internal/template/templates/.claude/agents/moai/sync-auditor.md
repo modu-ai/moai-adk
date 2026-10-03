@@ -119,6 +119,10 @@ Chasing every optional finding produces the failure mode this brake exists to pr
 
 A FAIL verdict is driven by **blocking** findings and the must-pass firewall. An all-optional findings list does not by itself convert a PASS into a FAIL.
 
+## Binding Run Conditions
+
+[HARD] When the SPEC's `progress.md` carries a `Binding run conditions` heading (debts copied from a `PASS-WITH-DEBT` plan verdict), re-read every item and report each as disposed (with its evidence) or undisposed. An undisposed binding condition is a failed must-pass criterion: the sync verdict is `FAIL` whatever the scores.
+
 ## Evaluator Profile Loading
 
 At invocation, load the active evaluator profile to determine dimension weights and thresholds:

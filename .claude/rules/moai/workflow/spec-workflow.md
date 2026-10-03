@@ -155,7 +155,7 @@ Tier field in frontmatter: optional. The `tier:` YAML field carries the classifi
 
 Section A-E delegation template (`manager-develop-prompt-template.md`): REQUIRED for Tier M/L delegations, OPTIONAL for Tier S. Tier S delegations MAY use minimal prompts (~500-800 tokens) covering only goal + deliverables + constraints + self-verification. See `.claude/rules/moai/development/manager-develop-prompt-template.md` § Applicability.
 
-plan-auditor escalation: iter(N+1) aggregate score lower than iter(N) triggers a STOP signal and scope-reduction proposal — no unconditional further iteration. Maximum 3 plan-auditor iterations per SPEC plan-phase; after iter3, escalate via PASS-with-debt OR scope-reduction OR explicit user override. See `.claude/agents/moai/plan-auditor.md` § Retry Loop Contract.
+plan-auditor escalation: iter(N+1) aggregate score lower than iter(N) triggers a STOP signal and scope-reduction proposal — no unconditional further iteration. The tier ceiling in `harness.plan_audit_tier_ceilings` is the only iteration cap; a ceiling hit follows `harness.plan_audit_ceiling_policy` (automatic delta rounds, then a hold record plus a split proposal) in every session. See `.claude/agents/moai/plan-auditor.md` § Retry Loop Contract.
 
 Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigation: plan-auditor first-pass score regression triggers a tier-up suggestion to the user; the Tier field is recorded in the SPEC for retrospective audit.
 
