@@ -56,3 +56,29 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+```yaml
+logged_by: lane-14 orchestrator (card t1377)
+logged_at: 2026-10-03
+inputs:
+  tier: M
+  scope_files: 4 (1 guard test + 3 testdata fixtures)
+  domain_count: 1 (internal/template Go test)
+  language_mix: "100% Go"
+  concurrency_benefit: LOW (coding-heavy, inter-file dependency scanner->fixtures->mutations)
+  agent_teams_prereqs: not requested
+mode_evaluation:
+  direct: not selected (non-trivial multi-file deliverable)
+  serial: SELECTED (coding-heavy per Anthropic coding-task parallelism caveat; single manager-develop over milestones M1-M4)
+  fanout: not selected (not multi-domain research)
+  sweep: not selected (not >=30-file mechanical transform)
+decision: serial
+justification: >
+  The deliverable is one interdependent Go test file plus fixtures with a strict
+  mutation-evidence sequence; parallel spawns add reconciliation cost with no
+  research fan-out benefit. Serial single-agent delegation per Milestone is the
+  default fallback and matches Anthropic's coding-task parallelism caveat.
+kickoff_gate: MET (leader decision .moai/reports/t1377/kickoff-decision.md — PASS-WITH-DEBT 0.94 accepted; delta-PASS re-pin 72e196d7 @ 73524bb35; Phase 1 BYPASSED per leader item 4)
+```
