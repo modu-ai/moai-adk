@@ -8,7 +8,9 @@ package cli
 // Routing facts the Codex tests rest on (measured on this tree):
 //   - `moai codex -f lane` routes to runCodexFactoryLane and returns before
 //     runCodexLaunch; its per-card children launch through
-//     launchCodexCardSession → codexDirectLaunchFn, never the divert.
+//     launchCodexCardSession → managedCodexCardLaunchFunc when the switch and
+//     the stamps are on, and → codexDirectLaunchFn otherwise (never the plain
+//     divert; SPEC-FACTORY-MANAGED-CARD-CHILD-001, managed_card_child_test.go).
 //   - every other `-f` form is refused before any launch, so runCodexLaunch
 //     never sees factoryEntry.Enabled from the real flag entry.
 //   - the only reachable Codex divert shape is a plain `moai codex` run
@@ -20,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/spf13/cobra"
 )
 
@@ -182,42 +183,4 @@ func TestManagedCodexLaunchSkipsLaterDebugSteps(t *testing.T) {
 			t.Errorf("managed env carries an injected %s", config.EnvRustLog)
 		}
 	})
-}
-
-// `moai codex -f lane` is a supervising loop: even with the switch and the
-// stamps set, each card child launches through the direct-door seam and the
-// managed owner is never consulted (the loop bypasses runCodexLaunch).
-func TestManagedSwitchDoesNotReachCodexLaneLoop(t *testing.T) {
-	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
-	t.Chdir(root)
-	sdScrubLauncherEnv(t)
-	managedOptIn(t)
-	t.Setenv(config.EnvMoaiKanbanID, fcRun)
-	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
-
-	managedCalls, directCalls := 0, 0
-	prevLook, prevDirect, prevManaged := codexLookPath, codexDirectLaunchFn, managedFactoryCodexLaunchFunc
-	codexLookPath = func(string) (string, error) { return "/sentinel/codex", nil }
-	codexDirectLaunchFn = func(c *exec.Cmd) error {
-		directCalls++
-		env := sdEnvOf(t, c.Env)
-		sdCodexSessionWork(t, root, env[config.EnvMoaiKanbanCard])
-		return nil
-	}
-	managedFactoryCodexLaunchFunc = func(string, []string, []string, string) error { managedCalls++; return nil }
-	t.Cleanup(func() {
-		codexLookPath, codexDirectLaunchFn, managedFactoryCodexLaunchFunc = prevLook, prevDirect, prevManaged
-	})
-
-	if _, _, err := runCodexCmd(t, "-f", "lane"); err != nil {
-		t.Fatalf("codex lane: %v", err)
-	}
-	if managedCalls != 0 {
-		t.Fatalf("managed owner consulted by the lane loop: %d calls", managedCalls)
-	}
-	if directCalls != 2 {
-		t.Fatalf("direct-door launches = %d, want 2 (one per picked card)", directCalls)
-	}
 }

@@ -1004,7 +1004,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 			return fmt.Errorf("codex lane: %w", err)
 		}
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), filepath.Base(wt))
-		if err := launchCodexCardSession(binaryPath, wt, label, card.CardID, debug); err != nil {
+		if err := launchCodexCardSession(binaryPath, wt, label, card.CardID, runID, debug); err != nil {
 			// On that session's exit, continue with the next card
 			// (REQ-SD-003): a child that failed to start or exited non-zero
 			// does not stop the loop; its card stays leased until expiry.
@@ -1019,7 +1019,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 // parent and waits; the existing child-process launch form serves every
 // platform (design.md §6 — Windows needs no new syscall). Under debug mode
 // the child environment carries the RUST_LOG linkage (REQ-010/REQ-011).
-func launchCodexCardSession(binaryPath, wt, label, cardID string, debug bool) error {
+func launchCodexCardSession(binaryPath, wt, label, cardID, runID string, debug bool) error {
 	localArgs, err := codexLocalDeveloperInstructionArgs(wt)
 	if err != nil {
 		return fmt.Errorf("load Codex local instructions: %w", err)
@@ -1031,6 +1031,17 @@ func launchCodexCardSession(binaryPath, wt, label, cardID string, debug bool) er
 				return err
 			}
 		}
+	}
+	// SPEC-FACTORY-MANAGED-CARD-CHILD-001: the explicit managed opt-in plus the
+	// factory stamps (the same two predicates the plain divert reads) send the
+	// card child to the managed Codex owner, started in the card worktree. The
+	// owner refuses -C, so the argv carries only the local instruction pair; the
+	// run id the owner requires rides the child environment. The launcher stays
+	// the parent and the lane claim holder: no anchor lock, no claim rewrite.
+	// Without the switch the direct door below is reached exactly as before.
+	if factoryManagedRequested(os.Environ()) && factoryLaunchEnabled(os.Environ()) {
+		env := append(codexCardLaunchEnv(label, cardID), config.EnvMoaiKanbanID+"="+runID)
+		return managedCodexCardLaunchFunc(binaryPath, append([]string{binaryPath}, localArgs...), env, wt)
 	}
 	req := codexLaunchRequest{Program: binaryPath, Args: args, Dir: wt, Debug: debug}
 	c := exec.Command(req.Program, req.Args...)
@@ -1185,7 +1196,9 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	// child (REQ-MS-012) — instead of the doors below. Stamps alone or the
 	// switch alone stay on the ordinary doors, and the tmux --spawn door never
 	// diverts. `moai codex -f lane` card children never reach this code:
-	// runCodexFactoryLane launches them through the direct door.
+	// runCodexFactoryLane starts them itself, through the lane managed seam
+	// (managedCodexCardLaunchFunc) when the same switch is on and through the
+	// direct door otherwise.
 	if !spawn && factoryManagedRequested(os.Environ()) && factoryLaunchEnabled(os.Environ()) {
 		if worktree.present {
 			// Same anchor discipline as the direct door: the lock names the
