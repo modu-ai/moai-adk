@@ -166,6 +166,12 @@
   runs, Then it refuses, the merge-step seam records zero calls, and everything is unchanged.
   Scenario 7 (foreign card lease): Given another lane holds the card's lease, When the caller runs
   complete, Then it refuses, the merge-step seam records zero calls, and everything is unchanged.
+  Scenario 8 (post-merge transition conflict): Given step 1 passes and the test hook bumps the
+  card's version after the merge step succeeds, When complete's transition runs, Then the merge
+  commit stays on the integration branch, the card state is unchanged, the policy is `hold` with
+  cause `post-merge-transition-conflict` naming that merge SHA, no queued ticket is promoted, the
+  window is released only after the hold is written, and the exit code differs from the nine
+  AC-MWQ-018 codes.
 
 - **AC-MWQ-020** (maps REQ-MWQ-020) — Given complete wrote `merge-record.txt`, When that file is
   offered as the re-measure, Then the gate rejects it.

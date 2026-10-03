@@ -89,8 +89,11 @@ factory complete <card>
   │       and whose tree == a VALID record's tree ─► record merged-local from it (no merge step)
   │       (a branch with commits after that merge is not adopted → continue)
   ├─ (3) no valid record for the current candidate tree ─► refuse; develop and card unchanged
-  └─ (4) call the merge step above ─► success ─► merging → merged-local transitions
-                                   └─ any failure ─► card unchanged, exit with the step's code
+  └─ (4) call the merge step above (its release deferred until the transitions below are done)
+        ├─ success ─► merging → merged-local transitions ─► release
+        │     └─ transition fails (version/lease changed after (1)) ─► leave merge commit,
+        │        policy hold(post-merge-transition-conflict, merge SHA) ─► release ─► exit TRANSITION-CONFLICT
+        └─ any failure ─► card unchanged, exit with the step's code
 ```
 
 `merge-record.txt` stays as a merge-identity file and never counts as the re-measure (REQ-MWQ-020).
