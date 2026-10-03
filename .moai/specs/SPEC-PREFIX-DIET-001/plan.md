@@ -24,7 +24,7 @@ updated: 2026-10-03
 | D1 | `skillListingBudgetFraction` — **변경하지 않음**. `0.01` 측정(−7,194, −4.7%, 단일 실행)은 운영자 결정 항목으로 기록만 한다 | 닫힘(리더) | — |
 | D2 | `moai.md` §6 `Session Boundary Handoff` 를 동결에 포함 | 닫힘(리더 확정) | — |
 | D3 | `[HARD]` 줄 압축 재작성 — **하지 않음**. `dropped`(rationale·example)/`verbatim` 만 | 닫힘(리더) | — |
-| D4 | 파일별 축약 목표(초안 — **`spec.md` REQ-PFD-002 의 실측값이 대체한다**: moai.md 61,362 · moai-easy.md 23,036 · moai-learn.md 28,517; 초안 파일 전체 UTF-16: `moai-easy.md` ≤ 21,000 · `moai-learn.md` ≤ 20,000 · `moai.md` ≤ 45,000)와 에이전트 설명 상한(초안: 합 ≤ 9,500 · 단일 ≤ 1,200). D3 때문에 목표는 M0 의 `rationale`+`example` 합계를 넘을 수 없다(REQ-PFD-002) | 열림 — 비차단 | 리더, M0 끝 |
+| D4 | 파일별 축약 목표(초안 — **`spec.md` REQ-PFD-002 의 실측값이 대체한다**: moai.md 61,362 · moai-easy.md 23,586 · moai-learn.md 28,517; 초안 파일 전체 UTF-16: `moai-easy.md` ≤ 21,000 · `moai-learn.md` ≤ 20,000 · `moai.md` ≤ 45,000)와 에이전트 설명 상한(초안: 합 ≤ 9,500 · 단일 ≤ 1,200). D3 때문에 목표는 M0 의 `rationale`+`example` 합계를 넘을 수 없다(REQ-PFD-002) | 열림 — 비차단 | 리더, M0 끝 |
 | D5 | 로컬 에이전트 `description:` 이 템플릿과 이미 다른 2개(`manager-git`, `manager-spec`)를 어느 쪽 문구로 맞출지 | 열림 — 비차단 | 리더, M4 시작 |
 
 초안 목표는 상한 측정(−11,033 토큰, 본문 전체 제거)의 일부만 노린다는 뜻이며, 근거가 없고 M0 의 측정이 대체한다. 재작성이 막혀 있어 `[HARD]` 줄이 많은 파일(`moai.md` 89줄)은 목표에 못 미칠 수 있고, 그 경우 REQ-PFD-002 가 목표를 낮춰 리더에게 보고하게 한다.
