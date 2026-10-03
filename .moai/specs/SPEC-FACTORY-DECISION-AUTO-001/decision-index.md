@@ -6,7 +6,8 @@ include in v3.2.0). The label `LEADER-DECIDED` records that provenance, as the l
 is outside the four-label vocabulary the current manager-spec contract allows (`DECIDED`,
 `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER`) until REQ-FDA-005 lands. Its anchor is the mission
 contract plus the leader's ruling, which the committed register does not yet admit. Each row keeps
-its original Detect → Explain text. REQ numbers below follow spec.md v0.2.0.
+its original Detect → Explain text. REQ numbers below follow spec.md v0.3.0. Where a later row
+narrows an earlier one, the later row governs (Q19 narrows Q10; Q20/Q21 make Q16 mechanical).
 
 ### Q1: Should lanes append to the decision board, or only the leader?
 
@@ -158,3 +159,73 @@ release-blocking (on the dependency path of a card in an operator-approved relea
 blocking finding of class `ac-wording`, and auditor-listed `reread_hunks`. It also needs a leader
 `card:` board record, and grants a hunk-limited fix plus re-read confirmation. Reflected in
 REQ-FDA-013.
+
+### Q17: Whose authority admits `factory decide <card> --decider audit`, and how does run get a lease? (iter2 N1)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N1
+Why unresolved: A kickoff card holds no lease (`internal/homestate/fr_lease_test.go:148-162`), so
+"the card its own lease holds" could never match.
+Operator verdict: Authority is the card record owner (the lane label persisted on the row through
+T7), not the lease. T8a moves kickoff→run and re-leases the card to that same owner atomically in one
+transition, binding the lease as the normal lease path does. Reflected in REQ-FDA-015/016.
+
+### Q18: Is decision-index.md covered by the audited plan-artifact hash? (iter2 N2)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N2
+Why unresolved: The digest inputs exclude decision-index.md (P25), so a post-audit reclassification
+of a product-level row could pass the decider.
+Operator verdict: decision-index.md is part of the plan-artifact hash. Any change after the audited SHA
+invalidates the audit (decider refuses on hash mismatch). It is removed from REQ-FDA-011's
+delta-exempt list. Consequence recorded in REQ-FDA-018: DEFAULT-APPLIED is filled at plan close,
+before the audit, so the audited hash covers it.
+Note from manager-spec: this placement is the author's reading of how N2 and N3 compose. The leader
+can overrule it.
+
+### Q19: Which empty FOUNDER rows block the audit decider? (iter2 N3)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N3
+Why unresolved: An implementation-level row with no Default and an empty verdict passed the decider.
+Operator verdict: Any FOUNDER row with an empty verdict, regardless of class. Only rows with a recorded
+verdict or DEFAULT-APPLIED pass. Reflected in REQ-FDA-014.
+
+### Q20: How is "release-blocking" decided mechanically? (iter2 N4)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N4
+Why unresolved: No relation kinds and no release-scope field were named.
+Operator verdict: The leader writes a standing board record of kind `release-scope` listing card ids
+for a release. A card is release-blocking iff it is listed there, or reachable from a listed card
+through `relate` edges of kind `depends` or `blocks` (the todo relate vocabulary only). No contract
+schema change. Reflected in REQ-FDA-002/013.
+
+### Q21: What fields and exit does the exception use? (iter2 N5)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N5
+Why unresolved: `defect_class` and `reread_hunks` were consumed but never emitted, and the re-read exit
+was undefined.
+Operator verdict: Add `defect_class`, `reread_hunks` (file + anchor list) and `blocking_count` to the
+REQ-FDA-006 verdict block, and P13 greps those names. The re-read confirmation is a full verdict block
+with `scope: reread` that must pass the phase predicate. The hold is released by a board record whose
+`resolves` names the hold id. The hunk limit is checked by diffing the two audited SHAs against
+`reread_hunks` (nothing else changed except progress and reports). Reflected in REQ-FDA-006/013.
+
+### Q22: Are AC-FDA-019/020 release-blocking? (iter2 N6)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N6
+Why unresolved: They were labelled RG, but they assert new behavior.
+Operator verdict: Release-blocking, each with a RED probe of today's behavior: P28 (wait records carry
+no id) and P29 (only the recurring carrier) for 019; P30 (Open on every bind) for 020. M0 values move to
+measurement notes.
+
+### Q23: Does T13 change? (iter2 N7)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N7
+Why unresolved: REQ-FDA-009 named undefined "sync thresholds" at T13.
+Operator verdict: T13 behavior is unchanged except the D8 binding-condition must-pass, which reaches
+T13 through the sync verdict label. Reflected in REQ-FDA-009 and AC-FDA-009.

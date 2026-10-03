@@ -36,17 +36,17 @@ Each milestone closes with its ACs' green cells (acceptance.md §D), scoped pack
 
 | M | Priority | Scope | REQs | ACs |
 |---|---|---|---|---|
-| M0 | High | **Measurement baseline, committed before any implementation commit**: (a) degraded-notice rate under load on the current bind path, re-measured after M7 with the cache (Q5); (b) cache-write cost of a 5-minute one-shot recheck vs. longer delays (Q4), which may raise the default but never below 5. The M0 commit is the baseline of RG AC-FDA-019/020 | 019, 020 | 019, 020 |
+| M0 | High | **Measurement baseline, committed before any implementation commit**: (a) degraded-notice rate under load on the current bind path, re-measured after M7 with the cache (Q5); (b) cache-write cost of a 5-minute one-shot recheck vs. longer delays (Q4), which may raise the default but never below 5. Both feed acceptance.md § Measurement notes | 019, 020 | — (measurement notes) |
 | M1 | High | **Board data model + CLI**: record shape incl. `resolves`, kinds, location, append/lock, `record`/`read`, lane refusal, statuses | 001-003 | 001-003 |
-| M2 | High | **Admission predicate**: characterize T7/T13 tests; shared `AdmitVerdict(phase)`; three call sites; auditor verdict-block fields (`must_pass_failed`, `blocking_findings`, `fix_scope`, `debts`, `defect_class`, `reread_hunks`); §9.1/§9.2 edit | 006, 007, 009 | 006, 007, 009 |
-| M3 | High | **Audit kickoff decider**: `DeciderAudit`; edge kickoff→run keeping lease; guard re-checks predicate, `audited_sha`, hash, audit-ready, blocker/hold, open product-level rows; `factory decide` lane admission for own card only; Amendments row on SPEC-FACTORY-SELF-DISPATCH-001 | 014-016 | 014-016 |
+| M2 | High | **Admission predicate**: characterize T7/T13 tests; shared `AdmitVerdict(phase)`; three call sites; auditor verdict-block fields (`must_pass_failed`, `blocking_count`, `scope`, `fix_scope`, `defect_class`, `reread_hunks`, `debts` with `dispose_in`); `decision-index.md` added to the plan-artifact digest inputs; T13 label-only check kept and characterized; §9.1/§9.2 edit | 006, 007, 009 | 006, 007, 009 |
+| M3 | High | **Audit kickoff decider**: `DeciderAudit`; edge T8a kickoff→run that leases the card to its record owner in the same transaction (kickoff holds no lease today, `fr_lease_test.go:148-162`); guard re-checks predicate, `audited_sha`, digest incl. decision-index, audit-ready, blocker/hold, any empty FOUNDER verdict; `factory decide` lane admission when the lane is the record owner; Amendments row on SPEC-FACTORY-SELF-DISPATCH-001 | 014-016 | 014-016 |
 | M4 | High | **Ceiling policy**: config key; auditor/spec-workflow text; procedure for every session (mechanical delta eligibility, final hit = ceiling + rounds, non-lane notice); release-blocking AC-wording exception | 010-013 | 010-013 |
 | M5 | Medium | **Authority register + FOUNDER defaults**: manager-spec (C2 first, C1, `make agents-emit` for C3) incl. the clause narrowed to judgment calls; kickoff step; pin format; Class/Default/Alternate; product-level definition; DEFAULT-APPLIED | 005, 017, 018 | 005, 017, 018 |
 | M6 | Medium | **Watchdog + doctrine wiring**: board read at step ②, record-before-message; binding run conditions copy + re-read by `sync-audit-4dim.js` and sync-auditor (undisposed = FAIL); wait ids + `resolves`; one-shot recheck; MCP intake comparison | 004, 008, 019, 023 | 004, 008, 019, 023 |
 | M7 | Medium | **Hook messaging hygiene**: bind cache behind the run-state probe, retirement invalidation, degraded warn log + rate-limited notice | 020-022 | 020-022 |
 | M8 | Low | **Mirror + regression sweep**: template mirrors, `make build`, `make agents-emit`, keep-set regression guard | 024, 025 | 024, 025 |
 
-Decisions Q1-Q15 were settled by the leader on 2026-10-03 (decision-index.md).
+Decisions Q1-Q23 were settled by the leader on 2026-10-03 (decision-index.md).
 
 Dependencies: M0(a) before M7; M0(b) before M6 fixes the default delay. M2 before M3 (the guard uses
 the predicate), M4 (verdict fields), and M6 (sync re-read). M1 before M5 (pins cite board records) and
@@ -56,7 +56,8 @@ M6. M7 is independent of M1-M6.
 
 | Risk | Mitigation |
 |---|---|
-| A lane self-approves Kickoff on a forged verdict file | the guard binds `audited_sha` to the evidence SHA, recomputes the plan-artifact hash, and refuses on any open blocker, hold, or product-level row; the sync audit re-reads the decision record |
+| A lane self-approves Kickoff on a forged verdict file or a post-audit decision-index edit | the guard binds `audited_sha` to the evidence SHA, recomputes the digest (decision-index included), and refuses on any open blocker, hold, or empty FOUNDER verdict; the sync audit re-reads the decision record |
+| T8a lease write diverges from the normal lease path | T8a reuses the `guardLeaseAcquire` writes and registered-worker check; AC-FDA-015 runs the real chain |
 | T7 behavior change breaks factory tests | characterize first (M2); the change is deliberate and named in REQ-FDA-009 |
 | Board becomes a second queue | closed kind enum; no card-creating kind; queue verbs untouched |
 | One-shot recheck multiplies cache writes | re-armed only while the wait is open; 5-minute floor; M0(b) measures the cost |

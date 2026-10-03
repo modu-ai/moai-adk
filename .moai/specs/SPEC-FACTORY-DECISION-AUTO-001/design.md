@@ -22,7 +22,9 @@ interleave a line.
 ```
 
 Kinds (closed enumeration): `ruling`, `standing-rule`, `wait-resolution`, `hold`,
-`split-proposal-ack`, `ceiling-exception`, `supersede`. A `standing` scope requires a predicate in
+`split-proposal-ack`, `ceiling-exception`, `release-scope`, `supersede`. A `release-scope` record is
+`standing` and carries structured fields `release` (e.g. `v3.2.0`) and `cards` (card-id list); the
+leader writes it when the operator approves a release scope. A `standing` scope requires a predicate in
 `body` stating the situation it governs (e.g. "plan verdict admitted by the plan-phase predicate,
 hash unchanged → Kickoff autonomous"). `supersedes` and `resolves` must name an existing record id or
 wait id; `record` refuses an unknown reference. `read` also renders each record in the §10 one-line
@@ -66,15 +68,17 @@ is used by `internal/contract/rules.go`, `internal/contract/kickoff/decide.go`, 
 
 | Phase | Label | Admitted when |
 |---|---|---|
-| plan | `PASS` | score ≥ tier plan threshold (S 0.75 / M 0.80 / L 0.85), `must_pass_failed` = 0, `blocking_findings` = 0, plan-artifact hash matches |
+| plan | `PASS` | score ≥ tier plan threshold (S 0.75 / M 0.80 / L 0.85), `must_pass_failed` = 0, `blocking_count` = 0, plan-artifact hash matches |
 | plan | `PASS-WITH-DEBT` | the PASS conditions AND `debts` with ≥ 1 item, each carrying `id`, `description`, `dispose_in` (`run` or `sync`) |
-| sync | `PASS`, `PASS-WITH-DEBT` | the existing sync thresholds and semantics (unchanged); binding run conditions all disposed (§3.1) |
+| sync (T13) | `PASS`, `PASS-WITH-DEBT` | label only — today's check, unchanged (decision-index Q23). The binding-condition must-pass (§3.1) reaches T13 only because the sync auditors emit `FAIL` |
 | both | `FAIL`, `INCONCLUSIVE`, `BYPASSED`, absent | never |
 
 Today T7 admits on the label alone, so plain PASS at T7 gains the score, must-pass, and blocking
 checks. Run M2 characterizes the existing T7/T13 tests before the change. The plan-auditor's verdict
-block gains `must_pass_failed`, `blocking_findings`, `fix_scope`, `debts`, and (on final hits)
-`defect_class` and `reread_hunks`. Doctrine: §9.1 "verdict is PASS" becomes "verdict admitted by the
+block gains `must_pass_failed`, `blocking_count`, `scope` (`full`/`delta`/`reread`), `fix_scope`,
+`defect_class` (closed enum: `ac-wording`, `design`, `traceability`, `format`, `other`),
+`reread_hunks`, and `debts`. The plan-artifact digest input list (`internal/runtime/audit_cache.go`,
+P25) gains `decision-index.md`, so any edit after the audited SHA is a hash mismatch. Doctrine: §9.1 "verdict is PASS" becomes "verdict admitted by the
 plan-phase predicate". §9.2's blocked list drops bare PASS-WITH-DEBT and adds "PASS-WITH-DEBT not
 admitted by the predicate".
 
@@ -98,41 +102,60 @@ harness:
 
 - **Who.** Every session that runs a plan audit (lane, kanban companion, or plain orchestrator).
 - **Delta eligibility (mechanical).** The ceiling-hit verdict lists `fix_scope` entries
-  (`<file>#<anchor>`, where an anchor is a markdown heading slug or a REQ/AC id). After the fix, the
-  session computes `git diff --name-only` and the per-file hunk ranges between the ceiling-hit
-  `audited_sha` and the delta round's `audited_sha`. It is eligible iff every changed hunk falls inside
-  a `fix_scope` anchor's section, or the file is `progress.md`, `decision-index.md`, or under
-  `.moai/reports/`, and the REQ id set and AC id set extracted at both SHAs are identical. A missing
-  `fix_scope`, an unreachable SHA, or any other failed check makes it ineligible.
+  (`<file>#<anchor>`). An anchor's hunk range is its markdown heading section; for a REQ id it is the
+  requirement bullet through the next bullet; for an AC id it is the matrix row plus that id's
+  scenario section. After the fix, the session computes the per-file hunk ranges of
+  `git diff` between the ceiling-hit `audited_sha` and the delta round's `audited_sha`. It is eligible
+  iff every changed hunk falls inside a `fix_scope` anchor range or in `progress.md` or
+  `.moai/reports/**`, and the REQ id set and AC id set extracted at both SHAs are identical. Any
+  `decision-index.md` change makes it ineligible (decision-index Q18). A missing `fix_scope`, an
+  unreachable SHA, or any other failed check makes it ineligible.
 - **Final hit.** Iteration count = tier ceiling + `auto_delta_rounds` without admission, an
-  ineligible delta, or a score-regression STOP → hold wait record + split proposal. A lane writes them
-  to the card evidence path; a non-lane orchestrator writes them to the SPEC's `progress.md`, tells the
-  user, and may offer an override through the question channel (the only question asked).
+  ineligible delta, or a score-regression STOP → hold wait record (with an id) + split proposal. A
+  lane writes them to the card evidence path; a non-lane orchestrator writes them to the SPEC's
+  `progress.md`, tells the user, asks at most an override question, and labels the split proposal
+  informational.
 - **Release-blocking AC-wording exception.** A final hit is excepted only when all three hold:
-  1. The card is release-blocking: a queue relation path leads from it to a card inside a release
-     scope that a mission contract or a standing board record marks operator-approved.
-  2. The final verdict has `blocking_findings: 1` and `defect_class: ac-wording`.
-  3. The verdict lists `reread_hunks`.
+  1. **Release-blocking.** The card id is in the `cards` list of a non-superseded `release-scope`
+     record, or it is reachable from a listed card L by walking todo relation edges backward along
+     "waits on": `L depends X` or `X blocks L` makes X reachable, transitively (cycle-safe, each card
+     visited once). Only `depends` and `blocks` count; `contains`, `absorbs`, `replaces`, and
+     `conflicts` do not.
+  2. **Single AC-wording defect.** The final verdict has `blocking_count: 1` and that finding's
+     `defect_class: ac-wording`.
+  3. **Re-read hunks listed.** The verdict lists `reread_hunks` (file + anchor).
 
   The leader then writes a `card:<id>` board record of kind `ceiling-exception`. The session changes
-  only the listed hunks, and the auditor returns a re-read confirmation verdict scoped to those hunks
-  instead of a full re-audit. Without the board record the hold stands.
+  only `reread_hunks` ranges, verified by the same diff rule as delta eligibility with `reread_hunks`
+  in place of `fix_scope`. The auditor emits a full verdict block with `scope: reread` at the fix SHA,
+  and that block must pass the plan-phase predicate. A board record whose `resolves` names the hold's
+  wait id releases the hold. A missing piece leaves the hold.
 
 The auditor's "Max 3" text and spec-workflow `:158` are rewritten to cite the tier map and the policy.
 
 ## 5. Factory audit decider (decision-index Q6, Q10)
 
 - `homestate.DeciderAudit = "audit"`.
-- New edge `T8a {CardKickoff → CardRun, guardKickoffAudit}`. The guard: loads the card's plan-audit
-  verdict through the existing evidence reader (`audited_sha` == evidence SHA); applies
-  `AdmitVerdict(…, PhasePlan, tier)`; recomputes the plan-artifact hash; requires audit-ready status
-  in `progress.md` §E.1; requires no open blocker and no operator hold on the card row; and parses
-  `decision-index.md` for a `Class: product-level` row (or a row with no Class) whose operator verdict
-  is empty. Any failure refuses with a reason and leaves T8 (human) available. Lease and owner fields
-  carry over unchanged. T8 is untouched.
+- New edge `T8a {CardKickoff → CardRun, guardKickoffAudit}`. The guard:
+  - loads the card's plan-audit verdict through the existing evidence reader (`audited_sha` ==
+    evidence SHA) and applies `AdmitVerdict(…, PhasePlan, tier)`;
+  - recomputes the plan-artifact hash, whose inputs now include `decision-index.md`;
+  - requires audit-ready status in `progress.md` §E.1;
+  - requires no open blocker and no operator hold on the card row;
+  - parses `decision-index.md` and refuses on any `FOUNDER` row, of either class, whose
+    `Operator verdict:` is empty (decision-index Q19).
+
+  Any failure refuses with a reason and leaves T8 (human) available.
+- **Lease at kickoff.** A kickoff card holds no lease (`fr_lease_test.go:148-162`, P26). T8a performs
+  the move and the lease in one transaction: `LeaseHolder` = the row's `OwnerLabel` (set at assignment,
+  `card_transition.go:432`, persisted through T7), heartbeat = now,
+  `LeaseExpiresAt` = now + `FactoryLeaseDuration`, and the worker's heartbeat is updated. These are the
+  same writes `guardLeaseAcquire` makes (`:434-446`), including the registered-worker check. T8 is
+  untouched.
 - `factory decide`: `--decider audit` is admitted only with `--gate kickoff --choice approve`. Under
-  lane refusal it is admitted only when the caller's lease holds the named card. All other lane calls
-  still return `factoryDecideLaneRefusal()`. The push gate keeps requiring `human`.
+  lane refusal it is admitted only when the caller's lane label equals the card's `OwnerLabel`
+  (decision-index Q17). All other lane calls still return `factoryDecideLaneRefusal()`. The push gate
+  keeps requiring `human`.
 
 ## 6. FOUNDER defaults (decision-index Q2, Q3)
 
@@ -151,9 +174,13 @@ Operator verdict:
 
 Published Default rule (ordered): the option that preserves current behavior; else the option whose
 undo is a single revert of this SPEC's own commits; else the option with the smaller user-visible
-surface. A row the rule cannot rank carries no Default and blocks. `product-level` (closed list): a
-change to a shipped command's default user-visible behavior, removal of a user-facing feature, or a
-change to a template default. Kickoff writes `Operator verdict: DEFAULT-APPLIED <UTC> <runner+role>`.
+surface. A row the rule cannot rank carries no Default and blocks. `product-level` (closed list,
+which assigns the Class): a change to a shipped command's default user-visible behavior, removal of a
+user-facing feature, or a change to a template default. A row with no `Class:` line is treated as
+product-level, a fail-closed fallback. The authoring session writes
+`Operator verdict: DEFAULT-APPLIED <UTC> <runner+role>` at plan close, before the plan audit, so the
+audited digest covers it (decision-index Q18). After the audit, the operator's verdict on a remaining
+row changes the digest; that card then reaches run only through the `human` Kickoff path.
 
 The manager-spec clause "never carries an embedded recommendation or preferred answer" is amended:
 it governs judgment calls only, and a Default selected by the published rule is a policy
