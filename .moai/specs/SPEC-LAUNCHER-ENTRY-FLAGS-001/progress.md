@@ -2325,7 +2325,24 @@ open items for the audit: Gaps 1 to 8 of the section above; the AC-018 and other
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready (documentation and lifecycle close done; the Gaps below are unobserved, not passes)
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill
+sync_head_before_commit: 8cb40200e (branch WT-launcher-entry-flags); the sync commit cannot cite its own hash, so it carries the pending-backfill placeholder and the lane backfills the real SHA in the next commit (the schema's D3 backfill exemption)
+changelog_entry_position: CHANGELOG.md `[Unreleased]` / first `### Added`, first bullet (ordinary entry, plan.md §B.3a option A: no release-note file)
+changelog_self_test_a: pass (pre-write `grep -c 'SPEC-LAUNCHER-ENTRY-FLAGS-001' CHANGELOG.md` printed 0; no earlier entry)
+changelog_self_test_b: pass (25 live AC headings AC-001..AC-025 in acceptance.md; the entry states 25)
+changelog_self_test_c: pass (every file path the entry names was confirmed by `ls`, including the four-locale docs pages)
+sync_phase_artifacts: CHANGELOG.md entry; this signal; spec.md frontmatter `status: in-progress → completed` and `updated: 2026-10-03` on the single sync commit (the `implemented → completed` close rides this commit). Codemaps, README, docs-site and `.moai/project` docs were not touched in the sync phase: the docs were done in M11, and codemaps are a separate debt card.
+
+Gaps (unobserved):
+1. `.moai/project/codemaps` still names the old package path `internal/kanban` (plan debt D-A8). `/moai codemaps` is a separate debt card the integration release hook issues; `moai graph check` freshness is expected stale until that card lands.
+2. `assets/images/moai-web-overview.png` (embedded by all four READMEs) is a stale screenshot that needs a maintainer re-capture.
+3. The README headings say v3.2 while the badge and `hugo.toml` say v3.1.3; the release sync reconciles them.
+4. A non-factory session that carries only a legacy leader label now receives no stale-run notice (REQ-013 and AC-014 do not cover it); an operator notice is needed.
+5. The suites listed as not run in §E.2 Gaps (the whole `internal/cli` suite, a clean whole-package `internal/factory` run, golangci-lint after the absorption, any Windows test run) stay unrun; the verdict on them is CI's.
+
+Residual-risk: the sync audit judges AC-018 and the other criteria re-scoped in spec.md §A.4, and the cached plan-audit PASS no longer matches the plan-artifact hash (§E.2 Gap 8). A late develop merge that adds a `kanban.` qualifier or an import of the old package path would merge textually clean and break the build; the integration window re-measures the import grep and `go build ./...` on the merged tree.
 
 ## §G Plan-phase Premise Verification
 

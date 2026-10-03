@@ -2,7 +2,7 @@
 id: SPEC-LAUNCHER-ENTRY-FLAGS-001
 title: "Launcher entry flags on the backend verbs (-f leader, -l lane), removal of Kanban Mode, and the factory-vocabulary rename of everything that carried the kanban name"
 version: "0.9.0"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-03
 author: manager-spec
