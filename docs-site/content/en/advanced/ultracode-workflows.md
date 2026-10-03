@@ -112,7 +112,7 @@ Enables **automatic workflow generation** for all substantive work in the curren
 - Automatic workflow generation enabled
 - The optimal orchestration primitive is chosen per task
 
-It is an on/off toggle, and turning it on or off does not change the reasoning effort. Turn it off with `/effort ultracode off`. A toggle made with the command applies to the current session only; to start every session with it on, set `"ultracode": true` in a settings file (v2.1.284 or later).
+It is an on/off toggle, and turning it on or off does not change the reasoning effort. Turn it off with `/effort ultracode off`. A toggle made with the command applies to the current session only; to start every session with it on, set `"ultracode": true` in a settings file (since v2.1.284 the key leaves the effort level unchanged).
 
 **When to use**:
 - Very complex multi-phase work
