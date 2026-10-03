@@ -2,7 +2,7 @@
 id: SPEC-PREFIX-DIET-001
 title: "세션 시작 prefix 다이어트 2단계 — 출력 스타일 파일 축약과 에이전트 설명 상한"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec

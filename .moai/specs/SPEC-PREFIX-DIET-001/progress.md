@@ -392,10 +392,11 @@ run_milestones: M0 (baseline ledger front, own commit before any edit) · M1 (ke
 run_headline: default-style first-turn input tokens 154,235 -> 151,057 (-3,178, -2.06%); per-style: MoAI-Learn -434, MoAI -453
 run_open_for_leader: D4 targets (all three below the plan drafts, REQ-PFD-002), D5 manager-git, SPEC-text gaps (REQ-PFD-013/AC-PFD-012 catalog surface; AC-PFD-015 unmapped; spec.md line 139 count)
 
-## §E.4 Sync-phase Audit-Ready Signal
+## §E.4 Sync-phase Audit-Ready Signal — SUPERSEDED (kept as history; the re-close signal below is current)
 
+superseded_by: the re-close §E.4 block below, after the sync-audit FAIL 81.7 repair and the 0.4.0 in-place amendment; the figures in this first block (-3,178 / -2.06% and the pre-repair sizes) were replaced by §E.2 "Sync-audit repair"
 sync_complete_at: 2026-10-03
-sync_commit_sha: b7ea0d823e9d
+prior_sync_commit_sha: b7ea0d823e9d
 sync_status: complete (sync-audit and the leader's evidence read are still owed; this record claims neither)
 b12_self_test_a: PASS — `grep -c "SPEC-PREFIX-DIET-001" CHANGELOG.md` printed `0` before the entry was written (no duplicate)
 b12_self_test_b: PASS with a named deviation — ac_source=`.moai/specs/SPEC-PREFIX-DIET-001/acceptance.md`, tier=M; live count 16 (AC-PFD-001..016), no `[RETIRED]`/`[REF]` token and no `moai-ac-prefix` line in the file (`grep -c -F` -> 0 for each), so no identifier is ambiguous; the CHANGELOG entry states 16. The deviation: the worktree guard refused `awk -f`, so the contract's awk counter was not executed; the count was rebuilt from `grep -o -E "AC-[A-Z0-9]+-[0-9]+[a-z]?"` (28 occurrences, 16 distinct ids, 001..016) by hand
@@ -453,3 +454,44 @@ The last row is the sync-phase edit itself: `CHANGELOG.md` is a mandated sync de
 - **Guard vs CHANGELOG.** `surface_guard.py` reports `VIOLATION outside-allowlist CHANGELOG.md` once the sync entry exists; run it against the run-phase HEAD to get PASS. A `manager-spec` amendment (allow `CHANGELOG.md` in the sync phase, or state the guard is run-phase only) would remove the ambiguity.
 - **Routing quality of shortened descriptions.** `TestAgentFrontmatterAudit` and the golden Codex test cannot judge whether a routing hint that lived only in a removed phrase (for example `manager-lead`'s lane-label wording) is still found at selection time; it is now only in the agent body, which loads on spawn.
 - **Not pushed.** The branch is local; integration and the remote CI verdict are the leader's.
+
+## §E.4 Sync-phase Audit-Ready Signal — re-close (current; supersedes the block above)
+
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill
+sync_status: complete (the first sync-audit FAILED at 81.7, receipt rcpt-8cf2e184c500ae809e6bd8cd; a new sync-audit of the repaired tree and the leader's evidence read are still owed, and this record claims neither)
+b12_self_test_a: PASS — `grep -c "SPEC-PREFIX-DIET-001" CHANGELOG.md` prints `1` (counts lines): this run corrects the single existing t1450 entry in place, so 1 is the expected count and no second entry was added
+b12_self_test_b: PASS with the same named deviation as the first block — ac_source=`.moai/specs/SPEC-PREFIX-DIET-001/acceptance.md`, tier=M; the awk counter was not run (worktree guard refuses `awk -f`); `grep -o -E "AC-[A-Z0-9]+-[0-9]+[a-z]?"` printed 28 occurrences of 16 distinct ids (AC-PFD-001..016), `grep -c -F "[REF]"` and `grep -c -F "[RETIRED]"` both print `0`, so none is ambiguous; the CHANGELOG entry still states 16
+b12_self_test_c: PASS — `ls` of the 17 paths the CHANGELOG entry names returned every path, no error (the re-run was needed because the repair rewrote three style templates, two test files, the ledger fixture and `catalog.yaml`)
+changelog_entry_position: unchanged — `CHANGELOG.md` `[Unreleased]` -> first `### Changed` block, first entry; corrected in place (commit range, token result, sizes, restored units, mutation-case count, survivor-pointer rule, closing sentence)
+frontmatter_status_transitions: `spec.md` `in-progress -> implemented -> completed` on this ONE re-close commit, the amendment re-close of `completed -> in-progress (amendment)` (version 0.4.0, `amendment_of: SPEC-PREFIX-DIET-001`, `## Amendments` records `prior_completed_sha: b7ea0d823`). `plan.md`, `acceptance.md` and `progress.md` carry no `status:` (§ Artifact Statelessness); their `updated:` already reads 2026-10-03. No body of `spec.md` / `plan.md` / `acceptance.md` was edited
+canary_compliance_check: not applicable
+
+### Evidence-bearing report (re-close)
+
+**Claim.** (1) After the repair the guard tests, the agent-description guard, the Codex golden and the package lint are green on the final tree. (2) The SPEC lints clean. (3) The CHANGELOG entry now states the repaired numbers and no stale pre-repair figure except the deliberate "superseded" sentence. (4) One guard line is red and expected.
+
+**Evidence** (this run, cwd = worktree root, HEAD `812cc20e7` plus only this re-close's uncommitted edits to `CHANGELOG.md` and `progress.md`; a tool result without an error is recorded as exit 0, the Bash tool prints a code only on failure):
+
+```
+go test ./internal/template/ -run '^TestOutputStyle' -count=1 -v             exit 0
+  --- PASS: TestOutputStylesCharBudget   (moai 61362 / moai-easy 23036 / moai-learn 28517)
+  --- PASS: TestOutputStyleBindingLedger (12 mutation subtests, incl. dropped_survivor_anchor_missing and dropped_survivor_file_missing)
+  --- PASS: TestOutputStyleHandoffUnitsFrozen  --- PASS: TestOutputStyleLocalizationTableParity
+  --- PASS: the five TestOutputStyles* parity tests        ok  github.com/modu-ai/moai-adk/internal/template  0.249s
+go test ./internal/template/ -run 'TestAgentDescriptionBudget' -count=1 -v   exit 0
+  agent-description-total=10460 largest=1815 agents=12    --- PASS: TestAgentDescriptionBudget (+ oversized subtest)
+make agents-emit-check                                                        exit 0   ok  .../template/agentemit  0.153s
+moai spec lint .moai/specs/SPEC-PREFIX-DIET-001                               exit 0   "No findings — all SPEC documents are valid"
+golangci-lint run ./internal/template/                                        exit 0   "0 issues."
+python3 .moai/specs/SPEC-PREFIX-DIET-001/surface_guard.py 5d5ff1aae           exit 1   every file `ok` except `VIOLATION outside-allowlist CHANGELOG.md` -> surface-guard=FAIL
+grep -c -E "151,057|3,178|61,149|21,350|27,010|2\.06%|2\.3%" CHANGELOG.md     prints 2: line 180 is the deliberate "An earlier -3,178 / -2.06% ... is superseded" sentence; the other hit is an unrelated entry (`runCodexReviewGate` 92.3%)
+```
+
+The guard's red line is the expected one: REQ-PFD-013 (0.4.0) states `CHANGELOG.md` is a sync-phase deliverable outside the run-phase allowlist, and the guard was not edited. The guard also lists `tools/diet_restore.py` as `ok`.
+
+**Baseline-attribution.** All rows: this run, worktree `t1450`, branch `WT-prefix-diet-stage2`, HEAD `812cc20e7`. Tool provenance: Go tests, `make agents-emit-check` and `golangci-lint` ran from this tree's source. `moai spec lint` ran with the installed `moai` v3.2.0-rc.27 (commit `0732cc699`, from `moai version` in the first sync pass); that build is a strict ancestor of HEAD and `git diff --stat 0732cc699 HEAD -- internal/spec` printed nothing in the first pass, so the SPEC lint code was identical then; it was not re-compared against `812cc20e7` in this pass. Token and size figures are NOT re-measured here: they are the repair-phase measurements in §E.2 "Sync-audit repair" (HEAD `e5be9868f`, clean tree, three identical single-call runs 154,235 -> 151,673, -2,562, -1.66%; whole-file UTF-16 61,362 / 23,036 / 28,517; 52 dropped rows, 7,438 units, zero rewrite rows).
+
+**Gaps.** (1) The AC counter's awk script was not run (guard refusal); 16 comes from `grep -o` output reduced by hand. (2) No new sync-audit was run by this agent. (3) The `MoAI` and `MoAI-Learn` first-turn effects were not re-measured after the repair, so the CHANGELOG states none. (4) `spec audit` (MCP) and a final `moai spec lint` after this §E.4 was written are reported in the hand-off message, not recorded here. (5) The installed `moai` build was not re-compared with `812cc20e7`. (6) Codex and other harnesses were not measured.
+
+**Residual-risk.** A survivor pointer proves its anchor exists in the named file, not that the anchor carries the dropped instruction; the 52 rows that stay dropped rest on reviewer judgement (§E.2 "Sync-audit repair"). Still open from the first close: D5 (`manager-git` description differs between template 553 and local 533, unedited), the `plan.md` draft targets (manager-spec's to amend), the routing quality of the four shortened agent descriptions (no test can judge it), and the per-milestone token figures of M2-M4, which predate the repair and were taken on dirty trees (only the repaired clean-tree headline is like-for-like). Not pushed; integration and the remote CI verdict are the leader's.
