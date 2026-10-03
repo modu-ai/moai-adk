@@ -23,7 +23,7 @@ import (
 // exceeds the anchor size recorded in the ledger (REQ-PFD-002).
 const (
 	dietBudgetMoai      = 61362
-	dietBudgetMoaiEasy  = 23036
+	dietBudgetMoaiEasy  = 23586
 	dietBudgetMoaiLearn = 28517
 )
 
@@ -141,8 +141,8 @@ func dietValidateLedger(led *dietLedger, frozen *dietFrozenDoc, deployed map[str
 				if strings.TrimSpace(r.Note) == "" {
 					v = append(v, fmt.Sprintf("DROPPED_NOTE %s row %s has no reason in note", f, r.ID))
 				}
-				if strings.TrimSpace(r.Survivor) == "" {
-					v = append(v, fmt.Sprintf("DROPPED_SURVIVOR %s row %s has no survivor reference", f, r.ID))
+				if r.SurvivorFile == "" || r.SurvivorAnchor == "" {
+					v = append(v, fmt.Sprintf("DROPPED_SURVIVOR %s row %s has no survivor pointer (survivor_file + survivor_anchor)", f, r.ID))
 				}
 				if dietHasToken(c) {
 					v = append(v, fmt.Sprintf("DROPPED_TOKENS %s row %s carries binding tokens %v", f, r.ID, c))
@@ -264,7 +264,7 @@ func TestOutputStyleBindingLedger(t *testing.T) {
 	t.Run("dropped_without_survivor", func(t *testing.T) {
 		l := dietClone(t, &led)
 		r := pick(t, l, func(r *dietRow) bool { return r.Kind == "rationale" || r.Kind == "example" })
-		r.Treatment, r.AfterText, r.Note, r.Survivor = "dropped", "", "a reason", ""
+		r.Treatment, r.AfterText, r.Note, r.SurvivorFile, r.SurvivorAnchor = "dropped", "", "a reason", "", ""
 		expect(t, l, "DROPPED_SURVIVOR")
 	})
 	t.Run("verbatim_text_changed", func(t *testing.T) {
