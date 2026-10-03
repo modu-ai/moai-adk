@@ -1,17 +1,19 @@
-// Package pluginemit generates the moai marketplace and the manifests of the
-// derived moai core plugin (SPEC-PLUGIN-MARKETPLACE-001).
+// Package pluginemit generates the moai marketplace and the derived moai core
+// plugin (SPEC-PLUGIN-MARKETPLACE-001).
 //
 // The generator reads the embedded template tree and the version SSOT
-// (pkg/version.Version) and writes four manifests: the Claude and Codex
-// marketplace manifests at the repository root, and the Claude and Codex
-// plugin manifests under the plugin root. Every version it writes is the
-// SSOT value with its leading "v" stripped, and the Codex manifest's MCP entry
-// is copied from the template .mcp.json, so neither can drift from its source.
+// (pkg/version.Version) and produces the Claude and Codex marketplace manifests
+// at the repository root, the Claude and Codex plugin manifests under the
+// plugin root, and the plugin payload (the core-tier skills, the commands
+// laid out flat, and one .mcp.json). Every version it writes is the SSOT value
+// with its leading "v" stripped, and the MCP entry is copied from the template
+// .mcp.json, so neither can drift from its source. No component name is held in
+// the generator: the payload follows the template tree.
 //
 // Output is deterministic: fixed field order, two-space JSON indentation, LF
-// newlines, a trailing newline and no timestamp. The package never writes
-// files itself; the golden test writes them behind PLUGIN_EMIT_UPDATE, and the
-// committed files are never edited by hand.
+// newlines, a trailing newline and no timestamp. Emit never writes files; Write
+// (reached through `make plugin-emit`) is the one regeneration path, Drift the
+// read-only check, and the committed tree is never edited by hand.
 package pluginemit
 
 import (
@@ -74,9 +76,11 @@ type Publication struct {
 	Modes map[string]fs.FileMode
 }
 
-// Emit produces the four manifests from the template tree and the version.
-// raw is the raw embed layout: catalog.yaml at its root and the template tree
-// under templates/. On any error it returns (nil, err): no partial set.
+// Emit produces the four manifests and the payload from the template tree and
+// the version. raw is the raw embed layout: catalog.yaml at its root and the
+// template tree under templates/; the payload is read through the same tier view
+// `moai init` deploys (the core tier, default pending OD-8). On any error it
+// returns (nil, err): no partial set.
 //
 // @MX:NOTE: sole entry point of the plugin generator; the golden tests and `make plugin-emit-check` judge its output
 func Emit(raw fs.FS, opts Options) (*Publication, error) {
@@ -113,6 +117,15 @@ func Emit(raw fs.FS, opts Options) (*Publication, error) {
 			return nil, fmt.Errorf("pluginemit: marshal %s: %w", path, err)
 		}
 		pub.Files[path] = data
+	}
+	files, err := payload(view, mcp)
+	if err != nil {
+		return nil, err
+	}
+	for path, data := range files {
+		pub.Files[path] = data
+	}
+	for path := range pub.Files {
 		pub.Modes[path] = modeFor(path)
 	}
 	return pub, nil

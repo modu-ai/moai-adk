@@ -31,7 +31,7 @@ all: lint test build ## Run lint, test, and build
 templ-generate: ## Generate *_templ.go from *.templ sources (pure-Go codegen, no Node)
 	go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
 
-build: agents-emit-check commands-emit-check tool-policy-drift-check templ-generate ## Build the binary
+build: agents-emit-check commands-emit-check plugin-emit-check tool-policy-drift-check templ-generate ## Build the binary
 	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
@@ -59,16 +59,17 @@ commands-emit-check: ## Verify the committed published command skills match the 
 	@COMMAND_EMIT_UPDATE= go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
 		|| { printf 'command-skill drift: committed .agents/skills/moai-*/SKILL.md differ from the command source layer — run `make commands-emit`\n' >&2; exit 1; }
 
-plugin-emit: ## Regenerate the moai marketplace and plugin manifests from the template tree and the version SSOT
+plugin-emit: ## Regenerate the moai marketplace, plugin manifests and plugin payload from the template tree and the version SSOT
 	PLUGIN_EMIT_UPDATE=1 go test ./internal/template/pluginemit/... -run 'Test(ManifestsGolden|GoldenCommittedArtifactsMatchEmission)$$'
 
-# Read-only drift check for the generated marketplace and plugin manifests, in
-# the same position as commands-emit-check. It NEVER writes: regeneration stays
+# Read-only drift check for the generated marketplace, plugin manifests and
+# plugin payload (byte, mode, missing-file and extra-file differences), wired
+# ahead of `build` like commands-emit-check. It NEVER writes: regeneration stays
 # behind the explicit `plugin-emit` verb, and PLUGIN_EMIT_UPDATE is scrubbed so
 # an inherited value cannot flip this into the regeneration branch.
-plugin-emit-check: ## Verify the committed marketplace and plugin manifests match the generator (read-only; never regenerates)
+plugin-emit-check: ## Verify the committed marketplace, plugin manifests and payload match the generator (read-only; never regenerates)
 	@PLUGIN_EMIT_UPDATE= go test ./internal/template/pluginemit/... -run 'Test(GoldenCommittedArtifactsMatchEmission|CommittedVersionMatchesSSOT)$$' -count=1 \
-		|| { printf 'plugin-emit drift: committed marketplace and plugin manifests differ from the generator — run `make plugin-emit`\n' >&2; exit 1; }
+		|| { printf 'plugin-emit drift: committed marketplace, plugin manifests or plugin payload differ from the generator — run `make plugin-emit`\n' >&2; exit 1; }
 
 # Read-only drift check between tool-policy.yaml and the permissions block of
 # the working-tree .claude/settings.json, in the same position as

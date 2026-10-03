@@ -228,7 +228,8 @@ func TestCheckPluginDiscoverable(t *testing.T) {
 		if info, err := os.Stat(src); err != nil || !info.IsDir() {
 			t.Errorf("marketplace source %q is not an existing local directory", src)
 		}
-		wantRoot, _ := filepath.EvalSymlinks(repoRoot)
+		repoAbs, _ := filepath.Abs(repoRoot)
+		wantRoot, _ := filepath.EvalSymlinks(repoAbs)
 		if gotRoot, _ := filepath.EvalSymlinks(src); gotRoot != wantRoot {
 			t.Errorf("marketplace source resolves to %q, want the repository root %q", gotRoot, wantRoot)
 		}
@@ -256,10 +257,9 @@ func TestCheckPluginDiscoverable(t *testing.T) {
 		}
 
 		// Every call ran from a scratch working directory outside the repository.
-		repoAbs, _ := filepath.EvalSymlinks(repoRoot)
 		for _, cwd := range r.lines("cwd: ") {
 			resolved, _ := filepath.EvalSymlinks(cwd)
-			if resolved == repoAbs || strings.HasPrefix(resolved, repoAbs+string(os.PathSeparator)) {
+			if resolved == wantRoot || strings.HasPrefix(resolved, wantRoot+string(os.PathSeparator)) {
 				t.Errorf("a call ran from %q, inside the repository", cwd)
 			}
 		}
