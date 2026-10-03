@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "design.md — TUI attach design decisions"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -100,7 +100,7 @@ Measured behaviors that shape the preconditions (P3, tree `2b9e4a4d0`, codex-cli
 The TUI draws on the terminal; any other writer corrupts the screen. Three writers exist today (P10, measured): `managedLogf` defaulting to `os.Stderr`, the App Server child with `cmd.Stderr = os.Stderr`, and one direct `fmt.Fprintln(os.Stderr, "Factory inbox:", err)` in the driver. REQ-MT-006 moves all three to a session log file while attached.
 
 - **File.** `.moai/logs/factory-managed-<run-id>-<label>.log` under the project root, mode 0600, append. `.moai/logs/` is gitignored (`.gitignore:399`, measured). The path is printed once on stderr before the TUI starts. The file is kept after the session for post-mortem.
-- **Mechanism.** The owner entry already has the single log seam `managedLogOutput` (HARDEN-001's only test seam); production stores a synchronized writer there while attached and clears it when the TUI has ended. The driver's direct `Factory inbox:` line moves onto `managedLogf`. The App Server child's stderr is chosen before `Start`, which is why the attach decision (D-4) is made before `Start`: the `cmd.Stderr` line is the only edit in the `Start` region (D-9).
+- **Mechanism.** The owner entry already has the single log seam `managedLogOutput` (HARDEN-001's only test seam); production stores a synchronized writer there while attached and clears it as soon as the TUI child has been reaped (D-8 step 2), so the teardown lines that follow go to the terminal again. The App Server child keeps writing to the file for its whole life, because a child's stderr is fixed when it starts. If the TUI then fails to start, the headless fallback is "as today" except for that stderr: it stays in the file and the launcher prints the path once (REQ-MT-004). The driver's direct `Factory inbox:` line moves onto `managedLogf`. The App Server child's stderr is chosen before `Start`, which is why the attach decision (D-4) is made before `Start`: the `cmd.Stderr` line is the only edit in the `Start` region (D-9).
 - **Why a file and not `/dev/null`.** The HARDEN-001 log lines are the only evidence of a declined MoAI elicitation, which is the silent redelivery loop that SPEC was written to expose. Discarding them would re-open that gap. They are not on the screen any more, and the documentation must say where they are (REQ-MT-013, known debt 7).
 - **Writer safety.** The sink is a mutex-guarded writer (HARDEN-001's rule that the atomic pointer protects the load only).
 
@@ -112,7 +112,7 @@ The TUI draws on the terminal; any other writer corrupts the screen. Three write
 
 **Decision.**
 - The reader keeps a set of active turn ids from `turn/started` and `turn/completed` of every turn, and exposes `busy := len(active) > 0`. Frames of turns the owner did not start never enter the event channel; frames of the owner's own armed window do, exactly as now.
-- A stale-busy ceiling: when the thread has been continuously busy for longer than `DefaultManagedCodexTurnTimeout` (the existing 10-minute bound), busy reads as false and one log line is written, so a lost `turn/completed` frame cannot starve delivery. No new constant.
+- **Busy never clears by time.** When the thread has been continuously busy for longer than the warn interval (default `DefaultManagedCodexTurnTimeout`, 10 minutes; a package-private overridable duration, D-10), the owner writes one log line per elapsed interval and keeps deferring. Rationale: releasing a stale flag would let the launcher `turn/start` into a legitimate long operator turn, which by P5 steers the broker prompt into it — the hazard this whole deferral exists to prevent. The price is that a lost `turn/completed` frame starves delivery until the log line is noticed (known debt 13); that is chosen over silent steering. `TestManagedCodexBusyLongTurnKeepsDeferring` pins the rule.
 - The driver reaches `busy` through the optional capability interface of D-8 and skips its claim step while busy. Claims therefore happen only at idle and are delivered at once, which also keeps the 2-minute claim lease from expiring while a batch waits.
 - A deferred batch is not claimed, so nothing is lost; the next idle tick claims it.
 
@@ -134,7 +134,7 @@ The TUI draws on the terminal; any other writer corrupts the screen. Three write
 
 **Precedence.** The TUI's exit status is reported only if the TUI ended before the owner asked it to stop. An owner-initiated stop must not turn into the TUI's interrupt-induced status. A `DeliverTurn` blocked inside the owner when the TUI exits is released by a TUI-exit channel the client selects on (a small addition next to `done`), and the driver then returns the TUI's result; the owner never calls `Close` from a second goroutine, which stays unsafe until t1459 makes it concurrency-safe.
 
-**Teardown order (one fixed order).** (1) stop the TUI: `os.Interrupt` to the process, wait up to `DefaultManagedCodexTUIStopGrace` (working name, `defaults.go`, UNMEASURED), then `Kill`, then `Wait`; on Windows `Signal(os.Interrupt)` is unsupported and the owner goes straight to `Kill`; (2) shut the WS client down; (3) kill and wait for the App Server; (4) remove the token directory; (5) clear the log sink. The TUI goes first so it does not render a dying server and so the terminal returns before the launcher exits. `stopTUI` is idempotent behind its own small mutex, because the monitor goroutine and `Close` can both reach it.
+**Teardown order (one fixed order).** (1) stop the TUI and reap it: `os.Interrupt` to the process, wait up to `DefaultManagedCodexTUIStopGrace` (working name, `defaults.go`, UNMEASURED), then `Kill`, then `Wait`; on Windows `Signal(os.Interrupt)` is unsupported and the owner goes straight to `Kill`; (2) shut the WS client down; (3) kill and wait for the App Server; (4) remove the token directory. Between (1) and (2) the log sink is cleared (the TUI is reaped, the terminal is free), so teardown lines reach the terminal. The TUI goes first so it does not render a dying server and so the terminal returns before the launcher exits. `stopTUI` is idempotent behind its own small mutex, because the monitor goroutine and `Close` can both reach it.
 
 **Why interrupt before kill.** A killed TUI cannot restore the terminal; an interrupted one may. Whether it does is not observed (known debt 5).
 
@@ -144,20 +144,30 @@ The TUI draws on the terminal; any other writer corrupts the screen. Three write
 
 ## D-9 — Composition with t1459 and t1410, and the merge-order interaction
 
-Measured surfaces (tree `2b9e4a4d0`; t1459's draft read from `git show 2e41b007c:.moai/specs/SPEC-FACTORY-MANAGED-SIGNAL-001/...`, not in this tree):
+Measured surfaces (tree `2b9e4a4d0`; t1459's draft read from `git show 2e41b007c:.moai/specs/SPEC-FACTORY-MANAGED-SIGNAL-001/design.md`, not in this tree). Re-measured here: `driveManagedFactorySession(` occurs 14 times in 6 files (definition and non-test calls in `managed_factory_session.go` and `managed_codex_factory.go`, plus 4 + 2 + 4 + 1 in four test files); t1459's draft counted 10 in 5 files on its own tree.
+
+**What t1459 changes in the driver (from its design D-1).** `driveManagedFactorySession(ctx, …)` takes `ctx` as the new first argument at every call site; the idle select and the queue-processing loop gain `ctx.Done()`; on a `DeliverTurn` error the driver checks `ctx.Err() != nil` before classification and returns an interruption-named error that counts as no turn failure and writes no failure log line. It keeps the `managedSession` methods and the `DeliverTurn` signature unchanged. So the driver signature is **not** stable across the two cards.
 
 | This SPEC edits | File | Overlaps |
 |---|---|---|
-| New TUI code (attach, stop, probe, log sink, optional interface impl) | new `internal/cli/managed_codex_tui.go` | none |
-| One struct field on `managedCodexSession` | `managed_codex_factory.go` struct | t1459 adds lock/closed fields in the same struct |
-| One line `s.cmd.Stderr = os.Stderr` → the session's chosen writer | `Start`, line 689 | t1410 F8 edits the `cmd.Start` failure branch at lines 690-696 directly below; t1459 rewrites `Start` |
-| One call `s.stopTUI()` as the first step of `Close` | `Close` | t1459 rewrites `Close` (its O17–O19) |
-| Reader changes (busy set, drop non-owned lifecycle frames, request scoping) | `read()` and the turn-window helpers | none in t1459/t1410 (HARDEN-001 owns them and is landed) |
-| Driver: optional-interface block, `Factory inbox:` line to `managedLogf` | `managed_factory_session.go` | none |
+| New TUI code (attach, stop, probe, log sink, optional interface impl) | new `managed_codex_tui.go` | none |
+| One struct field on `managedCodexSession` | `managed_codex_factory.go` struct | t1459 adds lock and closed fields in the same struct |
+| One line `s.cmd.Stderr = os.Stderr` → the session's chosen writer | `Start`, line 689 | t1410 F8 edits the `cmd.Start` failure branch at 690-696 directly below; t1459 rewrites `Start` |
+| One call `s.stopTUI()` as the first step of `Close` | `Close` | t1459 rewrites `Close` (its O17-O19) |
+| Reader changes (busy set, drop non-owned lifecycle frames, request scoping) | `read()` and the window helpers | none (HARDEN-001 owns them and is landed) |
+| TUI-exit channel the client selects on beside `done` | `call()` and `waitTurn()` | t1459's ctx-driven release of blocked calls goes through `Close` and `done`; both are release paths for the same blocked call and must not double-report |
+| Server-death monitor goroutine calling `stopTUI` while `Close` can run | new file, plus `read()` exit signal | `stopTUI` has its own mutex and is independent of t1459's lock `L`; t1459 must call it from O19 without holding `L` across the wait |
+| Driver: optional-interface block after the priming turn, no stdin reader when attached, busy-gated claim, new select case, `Factory inbox:` line to `managedLogf` | `managed_factory_session.go` `driveManagedFactorySession` | **t1459 edits the same function**: ctx first argument at all call sites, `ctx.Done()` in the idle select and queue loop, interruption check before classification |
+| Calls of the driver in the new tests | `managed_codex_tui_test.go` | every call needs t1459's new leading `ctx`; absorbed by calling the driver through one local helper in that file (a one-line change later) |
 | Constants | `defaults.go` after line 130; `envkeys.go` | t1410 F9 changes the value at `:117`; adding after `:130` avoids the text conflict |
 | Tests | new `managed_codex_tui_test.go` with its own fake codex role | t1410 shares `serveFakeRPC`; this SPEC does not edit it |
 
-**t1459 (F5, held).** t1459's draft treats the session as two published resources (child process, token directory) behind a lock `L`, with a fixed teardown table (O19). The TUI is a third. Recommended landing order is **t1408 first**: t1459 is on hold, and its plan then gains two deltas — O19 gets "stop TUI" as its first step, and the signal-delivered rule R-E must win over the TUI exit status (a signal that tore the TUI down reports the interruption, not the TUI's interrupt-induced status). If t1459 lands first, this SPEC's run phase rebases onto its `Close`: `stopTUI` becomes the first step inside the O19 body, and `AttachOperator` publishes the TUI field under `L` at attach time. Either order works because the TUI code is isolated in one file and meets `Close` at one line. This is design intent, not a verified merge; the run-phase merge will re-measure the three overlap lines. The open question for the leader is whether to confirm t1408-first.
+**Recommended order: t1408 first, because t1459 is on hold and resumes with a refreshed plan; the order is not free.** What each side owes:
+
+- *If t1408 lands first* — t1459 owes: add `ctx` at the new call sites (the local test helper makes this one line); put `ctx.Done()` into the TUI-exit select case beside the existing ones; make the interruption check run before the TUI-exit mapping, and the R-E signal-delivered rule win over the TUI exit status (a signal that tore the TUI down reports the interruption, not the TUI's interrupt-induced status); add "stop TUI and reap" as the first step of O19 and the TUI field to its publication block under `L`; confirm that its release of a blocked call and this SPEC's TUI-exit channel do not double-report.
+- *If t1459 lands first* — t1408 owes: rebase onto the `ctx` signature (the helper absorbs the tests), insert `stopTUI` as the first step inside the O19 body, publish the TUI field under `L` at attach time, and add `ctx.Done()` to its new select case.
+
+Verified: the line-level overlaps above and the count of call sites. Not verified: that either order merges cleanly; the run-phase merge re-measures. The open question for the leader is whether to confirm t1408 first.
 
 **t1410 (F8/F9/F13, queued).** F8 edits token-directory cleanup on `Start` failure paths; the attach happens after a successful `Start` and reads the token file only then, so the two do not interact. F13 touches `managedCodexAppReady`, which this SPEC does not touch. F9 changes `DefaultManagedCodexReadyTimeout`'s value; the dial `HandshakeTimeout` still uses it and the probe has its own constant. The shared fake in `managed_codex_factory_test.go` is why this SPEC puts its fake codex in a new file.
 
@@ -169,7 +179,7 @@ Measured surfaces (tree `2b9e4a4d0`; t1459's draft read from `git show 2e41b007c
 
 - **Zero `syscall`.** The new file uses `os/exec`, `os.Interrupt`, `os.Process`, `isatty` (already in `go.mod` and used in `internal/cli`). No `syscall.` text appears in any `managed_*` file, test files included (the parent grep covers `managed_*.go` and so `managed_*_test.go`). Test fixtures check process liveness through the owner's recorded wait result or `exec.Command("kill","-0",…)`, not `syscall.Signal(0)`.
 - **Windows.** `Signal(os.Interrupt)` returns an error on Windows; the stop goes straight to `Kill`. The re-exec fixtures are POSIX-shell shims and skip on Windows, as the existing managed tests do; the cross build is the Windows proof.
-- **Seams (package-private, production defaults real).** (1) terminal predicate `func(*os.File) bool`, default `isatty`; (2) the TUI's stdout/stderr destinations as session fields, default the process streams; (3) the existing `managedLogOutput`. The fake codex is a re-exec of the test binary, one helper with an App Server role and a TUI role, so the "program" the owner launches for both `app-server` and `resume` is the same shim, as in production where both are the one codex binary. The helper's log is a single append-only file, so cross-process ordering assertions read one sequence.
+- **Seams (package-private, production defaults real).** (1) terminal predicate `func(*os.File) bool`, default `isatty`; (2) the TUI's stdout/stderr destinations as session fields, default the process streams; (3) the existing `managedLogOutput`; (4) three overridable durations, each a package-private variable initialized from its `defaults.go` constant: the busy warn interval (`DefaultManagedCodexTurnTimeout`), the TUI stop grace, and the probe timeout, so tests run the timing rules in milliseconds under the 5 s watchdog. EXCL-syscall: none of this uses `syscall`. The fake codex is a re-exec of the test binary, one helper with an App Server role and a TUI role, so the "program" the owner launches for both `app-server` and `resume` is the same shim, as in production where both are the one codex binary. The helper's log is a single append-only file, so cross-process ordering assertions read one sequence.
 - **Hardcoding.** `MOAI_FACTORY_APP_SERVER_TOKEN` and `MOAI_FACTORY_MANAGED_TUI` are `envkeys.go` constants; the probe timeout and stop grace are `defaults.go` constants with UNMEASURED comments, like the sibling `DefaultManaged*` values.
 
 ## Premises that rest on prior art or inference

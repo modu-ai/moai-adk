@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "plan.md — implementation plan"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -13,10 +13,10 @@ tier: M
 ## §A. Context and tier
 
 - **Tree**: branch `WT-managed-codex-tui-attach` @ `2b9e4a4d0`, worktree `.claude/worktrees/t1408`, clean at plan start. Card t1408; every commit carries the card id.
-- **Artifacts**: `spec.md` (REQ 14), `acceptance.md` (AC 15), `design.md` (D-1..D-10), `plan.md`, `progress.md`.
+- **Artifacts**: `spec.md` (REQ 14), `acceptance.md` (AC 16), `design.md` (D-1..D-10), `plan.md`, `progress.md`.
 - **Tier M.** Estimate (assumption-based, not measured): production ~350 lines (new `managed_codex_tui.go` ~220, edits ~130 in the two existing files and two config files), tests ~700. About 11 files affected (5-15 is Tier M). The LOC total sits at the Tier M ceiling; no constitutional change and no research.md need (the codebase research is the premise ledger in `spec.md` §A.1 and `design.md`). If the plan auditor reads it as Tier L, add research.md; nothing else changes.
 - **PRESERVE**: `internal/factorymsg/store.go`; both parent SPEC directories; `factoryMoAIMCPApprovalArgs` and the App Server command line; the HARDEN-001 answer table; `codex_launcher.go` (card t1440's); `launch_exec_*.go`; the Claude/GLM stream owners.
-- **Ownership boundaries (leader constraint)**: edits only in `managed_codex_factory.go`, `managed_factory_session.go`, new `managed_codex_tui.go` / `managed_codex_tui_test.go`, `internal/config/defaults.go`, `internal/config/envkeys.go`, the operator doc (one minimal separate bullet edit), CHANGELOG. Do not create `managed_operator_input.go` or `managed_card_child_test.go`.
+- **Ownership boundaries (leader constraint)**: edits only in `managed_codex_factory.go`, `managed_factory_session.go`, new `managed_codex_tui.go` / `managed_codex_tui_test.go`, `internal/config/defaults.go`, `internal/config/envkeys.go`, the test fixture `internal/cli/testdata/codex-0.160.0/resume-help.txt` (vendored `codex resume --help` text), the operator doc (one minimal separate bullet edit), CHANGELOG. Do not create `managed_operator_input.go` or `managed_card_child_test.go`.
 
 ## §B. Pre-flight (re-run before the run phase)
 
@@ -30,14 +30,42 @@ codex resume --help
 
 Measured in this plan run (tree `2b9e4a4d0`): `codex --version` → `codex-cli 0.160.0`; `codex resume --help` lists `--remote` and `--remote-auth-token-env` (0.040 s); the evidence ledger of `acceptance.md` §1.2 holds the grep baselines; managed top-level test names by `grep -h '^func Test' internal/cli/*_test.go` filtered on `Managed|managed`: 79 (a proxy for `go test -list`; the run phase re-measures with `-list`).
 
-## §C. Milestones (ordered by how likely the decision is to change, after the fixed M1)
+## §C. Milestones (after the fixed M1, ordered by how likely the decision is to change)
 
-- **M1 — RED baseline (fixed first by REQ-MT-014).** Write the fake codex helper (`managed_codex_tui_test.go`: App Server role, TUI role, shared append log) and every reproduction test of AC-MT-001..011; observe each RED on the unchanged production code; land the tests and `red-baseline.md` in one commit before any production change. Adopts each AC's RED-now cell.
-- **M2 — Interaction semantics (highest change likelihood).** The attach and the operator-visible flow: capability probe and preconditions, fallback notices, opt-out, terminal ownership (no stdin reader), log diversion to the session file, the optional capability interface on the driver, constants. Files: `managed_codex_tui.go`, the pre-`Start` decision in `runManagedFactoryCodex`, the one `cmd.Stderr` line in `Start`, the driver's optional-interface block and the `Factory inbox:` line, `defaults.go`, `envkeys.go`. Gate: AC-MT-001..005, 010.
-- **M3 — Shared-thread concurrency.** Busy set and stale ceiling, reader no longer feeds the event channel with frames of turns the owner did not start, owned-turn set and request scoping. Files: `managed_codex_factory.go` reader and window helpers. Gate: AC-MT-006, 007; run with `-race`.
-- **M4 — Lifecycle.** TUI wait goroutine, exit status via `exitCodeError`, server-death monitor, `stopTUI` as the first step of `Close`, TUI-exit release of a blocked `DeliverTurn`. Gate: AC-MT-008, 009.
-- **M5 — Integration and regression.** Loopback round trip (AC-MT-011), the managed regression set, `GOOS=windows` cross build, zero-`syscall` grep, `gofmt`/`vet`/lint. Gate: AC-MT-010, 012.
-- **M6 — Disclosure and hand-off.** Operator document (one minimal separate bullet edit in "알려진 한계", plus the opt-out, log path, `/exit` `/quit` and probe notes), CHANGELOG (B12 discipline), the manual check procedure file for AC-MT-015, sync hand-off. Gate: AC-MT-013, 014.
+### M1 — Compile stubs, then the RED baseline (fixed first by REQ-MT-014)
+
+The tests reference symbols that do not exist on the base, so without stubs the whole `internal/cli` test binary fails to build and every RED is the same build error. M1 therefore has two commits:
+
+1. **Stub commit S (behavior-neutral).** Adds only what the tests need to compile: the two environment constants and three duration constants, the package-private seams (terminal predicate, TUI stream fields, the three overridable durations), the `managedOperatorSurface` interface with an `AttachOperator` that reports "not attached" and a `Busy` that reports false, a probe function that reports unsupported, and the TUI-exit error symbol. Headless behavior is unchanged, so the existing suites stay green; S carries no fix.
+2. **RED commit R.** The fake codex helper and every test of AC-MT-001..009, 011 and 016 plus `red-baseline.md`. Each test must fail on a **named assertion** (a failing-subtest line, for example `--- FAIL: TestManagedCodexTUIAttachCommand/argv_exact ` with the trailing space), not on a build error: with S in place, "attach never happens" fails AC-MT-001's `argv_exact`, and so on. `red-baseline.md` records, per AC, the command, the observed stdout, the exit code and the tree SHA (the RED-now cell of verification-completeness §2.1).
+
+**M1 exit gate.** A delta check reads `red-baseline.md` and confirms a cell for every adoption-deferred AC before M2 starts (acceptance.md, "Three classes"). The mutants of acceptance.md §2 are confirmed per test here.
+Exit: AC-MT-014
+
+### M2 — Interaction semantics and the minimal reaping path (highest change likelihood)
+
+Capability probe and preconditions, fallback notices (including the TUI-start failure exception), opt-out, terminal ownership (no stdin reader), log diversion to the session file with the sink cleared at reap, the optional capability interface on the driver, and the **minimal TUI wait and stop path** (a wait goroutine that ends the attached driver on TUI exit with the raw result, and `stopTUI` as the first step of `Close`), because AC-MT-001, 002, 004 and 005 start a fake TUI the owner must be able to reap. Files: `managed_codex_tui.go`, the pre-`Start` decision in `runManagedFactoryCodex`, the one `cmd.Stderr` line in `Start`, the driver's optional-interface block and the `Factory inbox:` line, `defaults.go`, `envkeys.go`.
+Exit: AC-MT-001, AC-MT-002, AC-MT-003, AC-MT-004, AC-MT-005, AC-MT-016
+
+### M3 — Shared-thread concurrency
+
+Busy set (never cleared by time, warn lines), the reader no longer feeds the event channel with frames of turns the owner did not start, the owned-turn set and request scoping with the outstanding-`turn/start` exception. Files: `managed_codex_factory.go` reader and window helpers. Run with `-race`.
+Exit: AC-MT-006, AC-MT-007
+
+### M4 — Lifecycle completion
+
+Exit-status mapping through `exitCodeError` with the owner-asked-to-stop precedence, the server-death monitor, the TUI-exit channel that releases a blocked `turn/start` write or `waitTurn`, and the session-end stop of the TUI after the failure ceiling.
+Exit: AC-MT-008, AC-MT-009
+
+### M5 — Integration and regression
+
+The loopback round trip, the managed regression set, the `GOOS=windows` cross build, the zero-`syscall` grep, `gofmt`/`vet`/lint.
+Exit: AC-MT-010, AC-MT-011, AC-MT-012
+
+### M6 — Disclosure and hand-off
+
+Operator document (one minimal separate bullet edit in "알려진 한계", plus the anchored disclosure lines of acceptance.md §1.3), CHANGELOG (B12 discipline, anchors), the manual check procedure file for AC-MT-015, sync hand-off. AC-MT-015 is manual and is not bound to a milestone exit.
+Exit: AC-MT-013
 
 Priorities: M1 High (fixed), M2 High, M3 High, M4 High, M5 Medium, M6 Medium. Commit subjects `feat(SPEC-FACTORY-MANAGED-TUI-001): M<n> … (card t1408)`.
 
