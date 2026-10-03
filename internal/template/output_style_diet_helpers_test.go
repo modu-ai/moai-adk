@@ -217,6 +217,11 @@ type dietRow struct {
 	Treatment  string `json:"treatment"`
 	Survivor   string `json:"survivor"`
 	Note       string `json:"note"`
+	// SurvivorFile and SurvivorAnchor form the survivor pointer of a dropped row: a file under the
+	// package directory (the deployed style or an always-loaded rule template) and a substring that
+	// must exist in it. The pointer is what the ledger test resolves; Survivor is prose for readers.
+	SurvivorFile   string `json:"survivor_file"`
+	SurvivorAnchor string `json:"survivor_anchor"`
 }
 
 type dietFrozenRef struct {

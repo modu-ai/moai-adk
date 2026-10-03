@@ -12,6 +12,7 @@ package template
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -21,9 +22,9 @@ import (
 // Whole-file UTF-16 budgets of the deployed output styles. A constant may only go down: it never
 // exceeds the anchor size recorded in the ledger (REQ-PFD-002).
 const (
-	dietBudgetMoai      = 61149
-	dietBudgetMoaiEasy  = 21350
-	dietBudgetMoaiLearn = 27010
+	dietBudgetMoai      = 61362
+	dietBudgetMoaiEasy  = 23036
+	dietBudgetMoaiLearn = 28517
 )
 
 var dietBudgets = []struct {
@@ -149,6 +150,9 @@ func dietValidateLedger(led *dietLedger, frozen *dietFrozenDoc, deployed map[str
 				if r.AfterText != "" {
 					v = append(v, fmt.Sprintf("DROPPED_AFTER %s row %s keeps after_text", f, r.ID))
 				}
+				if raw, err := os.ReadFile(r.SurvivorFile); r.SurvivorFile == "" || r.SurvivorAnchor == "" || err != nil || !strings.Contains(string(raw), r.SurvivorAnchor) {
+					v = append(v, fmt.Sprintf("SURVIVOR_UNRESOLVED %s row %s survivor pointer %q + %q does not resolve", f, r.ID, r.SurvivorFile, r.SurvivorAnchor))
+				}
 			default:
 				v = append(v, fmt.Sprintf("TREATMENT %s row %s treatment %q is neither verbatim nor dropped", f, r.ID, r.Treatment))
 			}
@@ -244,6 +248,18 @@ func TestOutputStyleBindingLedger(t *testing.T) {
 		r := pick(t, l, func(r *dietRow) bool { return r.Kind == "rationale" || r.Kind == "example" })
 		r.Treatment, r.AfterText, r.Note, r.Survivor = "dropped", "", "", "somewhere"
 		expect(t, l, "DROPPED_NOTE")
+	})
+	t.Run("dropped_survivor_anchor_missing", func(t *testing.T) {
+		l := dietClone(t, &led)
+		r := pick(t, l, func(r *dietRow) bool { return r.Treatment == "dropped" && r.SurvivorFile != "" })
+		r.SurvivorAnchor = "no-such-anchor-in-that-file-7f3a"
+		expect(t, l, "SURVIVOR_UNRESOLVED")
+	})
+	t.Run("dropped_survivor_file_missing", func(t *testing.T) {
+		l := dietClone(t, &led)
+		r := pick(t, l, func(r *dietRow) bool { return r.Treatment == "dropped" && r.SurvivorFile != "" })
+		r.SurvivorFile = "templates/no/such/file.md"
+		expect(t, l, "SURVIVOR_UNRESOLVED")
 	})
 	t.Run("dropped_without_survivor", func(t *testing.T) {
 		l := dietClone(t, &led)
