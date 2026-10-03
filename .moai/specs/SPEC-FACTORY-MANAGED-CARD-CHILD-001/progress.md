@@ -204,9 +204,9 @@ Not run as a scan in this sync. The run phase added `internal/cli/managed_operat
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill
+sync_commit_sha: 6137ee935
 superseded_first_close: 68b4690df (the first sync commit; the independent sync audit `.moai/reports/t1440/sync-audit.md` returned FAIL on finding F1 and this re-close supersedes it; its backfilled SHA is the `superseded_sync_commit_sha` line of the first §E.4 block above)
-head_at_signal: 047922bf8 (measured tree; this re-close commit cannot cite its own hash, so `sync_commit_sha` is the canonical placeholder `pending-backfill` and the real SHA is backfilled in a following progress.md-only commit — never left empty)
+head_at_signal: 047922bf8 (measured tree; this re-close commit cannot cite its own hash, so `sync_commit_sha` is the canonical placeholder `pending-backfill` and the real SHA is backfilled in a following progress.md-only commit — never left empty) (since backfilled: see the `sync_commit_sha` line above)
 tree: .claude/worktrees/t1440
 branch: WT-codex-card-managed-path
 owner: manager-docs (sync-phase, re-close)
