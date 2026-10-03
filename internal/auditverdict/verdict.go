@@ -6,6 +6,7 @@ package auditverdict
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -84,7 +85,9 @@ func Parse(raw []byte) Fields {
 		case "verdict":
 			f.Label = value
 		case "overall_score", "score":
-			if s, err := strconv.ParseFloat(value, 64); err == nil {
+			// A score is a finite number in [0, 1]; NaN, ±Inf, and out-of-range
+			// values stay unparsed so the threshold comparison never sees them.
+			if s, err := strconv.ParseFloat(value, 64); err == nil && !math.IsNaN(s) && !math.IsInf(s, 0) && s >= 0 && s <= 1 {
 				f.Score, f.ScoreOK = s, true
 			}
 		case "must_pass_failed":

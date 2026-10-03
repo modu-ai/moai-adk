@@ -134,6 +134,11 @@ func newDecisionReadCmd() *cobra.Command {
 			for _, r := range res.Records {
 				_, _ = fmt.Fprintln(out, r.Line())
 				_, _ = fmt.Fprintf(out, "  body: %s\n", r.Body)
+				for _, kv := range [][2]string{{"predicate", r.Predicate}, {"supersedes", r.Supersedes}, {"resolves", r.Resolves}, {"release", r.Release}, {"cards", strings.Join(r.Cards, ",")}} {
+					if kv[1] != "" {
+						_, _ = fmt.Fprintf(out, "  %s: %s\n", kv[0], kv[1])
+					}
+				}
 			}
 			return nil
 		},

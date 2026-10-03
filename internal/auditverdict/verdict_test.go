@@ -111,6 +111,17 @@ func TestPlanThreshold_ReadsTheSpecTier(t *testing.T) {
 	}
 }
 
+// Sync-audit F1: a non-finite or out-of-range score must never pass the
+// threshold comparison.
+func TestAdmit_RefusesNonFiniteAndOutOfRangeScores(t *testing.T) {
+	for _, s := range []string{"NaN", "nan", "+Inf", "-Inf", "Inf", "1.5", "-0.1"} {
+		raw := strings.Replace(planPass, "Overall Score: 0.90", "Overall Score: "+s, 1)
+		if ok, _ := admitPlan(raw, true); ok {
+			t.Errorf("score %q admitted", s)
+		}
+	}
+}
+
 func TestAdmitLabel(t *testing.T) {
 	for label, want := range map[string]bool{"PASS": true, "PASS-WITH-DEBT": true, "FAIL": false, "": false, "BYPASSED": false} {
 		if AdmitLabel(label) != want {

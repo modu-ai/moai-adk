@@ -106,7 +106,7 @@ func frWriteVerdictsFor(t *testing.T, repo frRepo, cardID, from string) {
 	case CardKickoff:
 		// T8a (kickoff → run, audit decider) re-reads the plan verdict and
 		// the audit-ready signal.
-		frWrite(t, filepath.Join(repo.Dir, ".moai", "specs", frSpecID, "progress.md"), "## §E.1 Plan-phase Audit-Ready Signal\n\nready\n")
+		frWrite(t, filepath.Join(repo.Dir, ".moai", "specs", frSpecID, "progress.md"), "## §E.1 Plan-phase Audit-Ready Signal\n\naudit_ready: true\n")
 		frWriteVerdict(t, repo.Dir, cardID, "plan-audit.md", "PASS", repo.Commit)
 	}
 }

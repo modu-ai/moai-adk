@@ -21,6 +21,7 @@ recorded_debts:
 open_decisions: none — Q1-Q26 LEADER-DECIDED 2026-10-03 (mission contract 07d28c4b)
 evidence_needed_in_run: M0(a) degraded-notice rate with/without bind cache (Q5); M0(b) recheck cache cost (Q4)
 release_target: v3.2.0
+audit_ready: true
 ```
 
 ## §E.2 Run-phase Evidence
@@ -97,6 +98,18 @@ Lint: `golangci-lint run` (v2.1.6) on cli, homestate, hook, auditverdict, decisi
 
 Pre-existing, not caused here: `TestStaleRunNoticeFactoryLegacyLabel` (hook, fails at base with env scrubbed); `TestDetectDefaultBranch` (internal/workflow, untouched package).
 
+### Sync-audit FAIL 72 repair (`.moai/reports/t1481/sync-audit.md`)
+
+| Finding | Fix | RED (before) | GREEN (after) |
+|---|---|---|---|
+| F1 NaN/±Inf/out-of-range score passed the threshold | `auditverdict.Parse` accepts only finite scores in [0,1] | `score "+Inf" admitted`, `score "1.5" admitted`; decider: `NaN score: audit approval accepted, want refusal` | `ok …auditverdict 1.283s` (-race) |
+| F2 DEFAULT-APPLIED restriction skipped for non-FOUNDER labels | restriction runs before the label branch | `DECIDED row holding DEFAULT-APPLIED on product-level: audit approval accepted, want refusal` | `ok …homestate 109.381s` (-race, full package) |
+| F3 any non-empty §E.1 counted as audit-ready | requires the explicit `audit_ready: true` line | `audit_ready false: audit approval accepted, want refusal` | same run |
+| F4 `decision read` hid fields | prints predicate/supersedes/resolves/release/cards | — (display only) | `ok …cli 15.091s` (-race, TestFDA_/TestDecisionCmd/TestFR_AC015/TestSD_AC016) |
+
+golangci-lint v2.1.6 on auditverdict, homestate, cli: `0 issues.` This SPEC's §E.1 now carries
+`audit_ready: true`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -129,6 +142,7 @@ new_warnings_or_lints_introduced: 0
 sync_complete_at: 2026-10-03
 sync_commit_sha: 4293979c7
 sync_status: completed-with-recorded-debts
+sync_audit: FAIL 72 (.moai/reports/t1481/sync-audit.md) — F1-F4 repaired after the sync commit (see §E.2 repair table); re-audit pending
 changelog_entry_position: "CHANGELOG.md [Unreleased] ### Added (first entry)"
 frontmatter_status_transitions:
   spec.md: in-progress -> completed (merged implemented+completed, single sync commit)

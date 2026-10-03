@@ -53,8 +53,13 @@ func auditReadyRecorded(path string) bool {
 	if _, rest, ok := strings.Cut(section, "\n"); ok {
 		section = rest
 	}
-	body := strings.TrimSpace(section)
-	return body != "" && !strings.Contains(body, "_<pending")
+	// Only the explicit signal counts; a non-empty section is not readiness.
+	for _, line := range strings.Split(section, "\n") {
+		if strings.TrimSpace(line) == "audit_ready: true" {
+			return true
+		}
+	}
+	return false
 }
 
 // founderRowRefusal reads decision-index.md (absent means no rows) and
@@ -85,15 +90,17 @@ func founderRowRefusal(path string) string {
 				verdict = strings.TrimSpace(strings.TrimPrefix(line, "Operator verdict:"))
 			}
 		}
+		head, _, _ := strings.Cut(strings.TrimSpace(block), "\n")
+		// The DEFAULT-APPLIED restriction binds every row whatever its label:
+		// a relabelled row must not carry a default the rule never allowed.
+		if strings.HasPrefix(verdict, "DEFAULT-APPLIED") && (class != "implementation-level" || !hasDefault) {
+			return fmt.Sprintf("row %q holds DEFAULT-APPLIED outside an implementation-level row with a Default", head)
+		}
 		if label != "FOUNDER" {
 			continue
 		}
-		head, _, _ := strings.Cut(strings.TrimSpace(block), "\n")
 		if !hasVerdictLine || verdict == "" {
 			return fmt.Sprintf("FOUNDER row %q has an empty verdict", head)
-		}
-		if strings.HasPrefix(verdict, "DEFAULT-APPLIED") && (class != "implementation-level" || !hasDefault) {
-			return fmt.Sprintf("FOUNDER row %q holds DEFAULT-APPLIED outside an implementation-level row with a Default", head)
 		}
 	}
 	return ""

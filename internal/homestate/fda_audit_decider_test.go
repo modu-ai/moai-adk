@@ -17,7 +17,7 @@ type fdaKickoff struct {
 	card Card
 }
 
-const fdaProgressReady = "# progress\n\n## §E.1 Plan-phase Audit-Ready Signal\n\n```yaml\nplan_audit: PASS\n```\n\n## §E.2 Run-phase Evidence\n\n_<pending run-phase>_\n"
+const fdaProgressReady = "# progress\n\n## §E.1 Plan-phase Audit-Ready Signal\n\n```yaml\naudit_ready: true\n```\n\n## §E.2 Run-phase Evidence\n\n_<pending run-phase>_\n"
 
 func newFDAKickoff(t *testing.T, id string) fdaKickoff {
 	t.Helper()
@@ -92,6 +92,34 @@ func TestFDA_AuditDeciderRefusals(t *testing.T) {
 			if got, herr := f.db.Transition(context.Background(), TransitionRequest{RunID: frRun, CardID: "r", To: CardAssigned,
 				ExpectedVersion: f.card.Version, Actor: "operator", Decider: DeciderHuman, Now: frNow}); herr != nil || got.State != CardAssigned {
 				t.Fatalf("human path after refusal: state=%s err=%v", got.State, herr)
+			}
+		})
+	}
+}
+
+// Sync-audit F1/F2/F3 — gate bypasses closed at the decider.
+func TestFDA_AuditDeciderClosesSyncAuditBypasses(t *testing.T) {
+	cases := map[string]func(t *testing.T, f fdaKickoff){
+		"NaN score": func(t *testing.T, f fdaKickoff) {
+			p := filepath.Join(f.repo.Dir, ".moai", "reports", f.card.CardID, "plan-audit.md")
+			frWrite(t, p, strings.Replace(frReadAbs(t, p), "Overall Score: 0.90", "Overall Score: NaN", 1))
+		},
+		"DECIDED row holding DEFAULT-APPLIED on product-level": func(t *testing.T, f fdaKickoff) {
+			dir := filepath.Join(f.repo.Dir, ".moai", "specs", frSpecID)
+			frWrite(t, filepath.Join(dir, "decision-index.md"), "### Q1: x?\nLabel: DECIDED\nClass: product-level\nOperator verdict: DEFAULT-APPLIED x\n")
+			frWriteVerdict(t, f.repo.Dir, f.card.CardID, "plan-audit.md", "PASS", f.repo.Commit)
+		},
+		"audit_ready false": func(t *testing.T, f fdaKickoff) {
+			frWrite(t, filepath.Join(f.repo.Dir, ".moai", "specs", frSpecID, "progress.md"),
+				"## §E.1 Plan-phase Audit-Ready Signal\n\n```yaml\naudit_ready: false\n```\n")
+		},
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := newFDAKickoff(t, "b")
+			mutate(t, f)
+			if _, err := f.approve(DeciderAudit, QueueHoldClear); err == nil {
+				t.Fatalf("%s: audit approval accepted, want refusal", name)
 			}
 		})
 	}
