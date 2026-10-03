@@ -119,7 +119,7 @@ Do not switch on all lanes at once. Bring up the first lane, wait until it actua
 
 ## Lane numbers and the run record
 
-Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A new lane takes **one past the highest live lane** and does not fill a gap: with live lane-1 and lane-3, the new lane is lane-4. A dead lane's claim no longer blocks a number. When a run recorded a fixed lane count, `moai codex -l` takes the lowest free number inside that count. Because lane numbers are assigned automatically, combining `--name`/`-n` with `-l` is an error.
+Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A new lane takes **one past the highest live lane** and does not fill a gap: with live lane-1 and lane-3, the new lane is lane-4. A dead lane's claim no longer blocks a number. Because lane numbers are assigned automatically, combining `--name`/`-n` with `-l` is an error.
 
 The leader's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice tells you the actual path. When a leader or lane session starts, it writes one session record to `.moai/state/todo/<session-id>.json` holding its role, backend, and entry time.
 
