@@ -153,6 +153,45 @@ func TestSpecCache_InvalidateDuringScanIsNotLost(t *testing.T) {
 	}
 }
 
+// A request that arrives AFTER a spec event must not join a scan that started
+// before it: that scan may have read the pre-change files, and the SSE re-fetch
+// the event triggers would otherwise end on stale data (codex review of
+// b2c6af74c, card t1460).
+func TestSpecCache_RequestAfterEventDoesNotJoinPreEventScan(t *testing.T) {
+	var calls atomic.Int32
+	release := make(chan struct{})
+	entered := make(chan struct{}, 1)
+	c := newSpecCache(func(root string) ([]SpecRowVM, map[string][]FindingVM, error) {
+		n := calls.Add(1)
+		status := "completed"
+		if n == 1 {
+			status = "draft" // the first scan read the files before the change
+			entered <- struct{}{}
+			<-release
+		}
+		return []SpecRowVM{{ID: "SPEC-X-001", Status: status}}, nil, nil
+	}, time.Hour)
+
+	firstDone := make(chan struct{})
+	go func() { _, _, _ = c.get("/root"); close(firstDone) }()
+	<-entered
+	c.invalidate() // the spec event lands while the first scan is still running
+
+	after := make(chan []SpecRowVM, 1)
+	go func() { rows, _, _ := c.get("/root"); after <- rows }()
+	time.Sleep(20 * time.Millisecond) // give the post-event request time to join, if it would
+	close(release)
+	<-firstDone
+	rows := <-after
+
+	if rows[0].Status != "completed" {
+		t.Fatalf("post-event request status=%s, scans=%d; want completed", rows[0].Status, calls.Load())
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("scans=%d, want 2 (one pre-event, one post-event)", got)
+	}
+}
+
 // (c) N concurrent loads trigger one scan.
 func TestSpecCache_ConcurrentLoadsScanOnce(t *testing.T) {
 	var calls atomic.Int32
