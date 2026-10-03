@@ -96,7 +96,7 @@ exit=1
 
 The AC cell is not edited (manager-spec owns it); this line is the current-tree observation.
 
-**Guard tests on the unedited tree** (`go test ./internal/template/ -run '^TestOutputStyle' -count=1 -v`, exit 0): `--- PASS: TestOutputStylesCharBudget` (+3 subtests), `--- PASS: TestOutputStyleBindingLedger` (+9 mutation subtests: missing_anchor_unit_row, binding_unit_relabeled, binding_row_dropped, normative_row_dropped, dropped_without_note, dropped_without_survivor, verbatim_text_changed, dropped_with_tokens, file_total_token_lost, rewrite_row_rejected), `--- PASS: TestOutputStyleHandoffUnitsFrozen` (+ the one-character-mutation subtest), `--- PASS: TestOutputStyleLocalizationTableParity` (+ one_cell_mutation_is_caught, removed_row_is_caught), and the five pre-existing `TestOutputStyles*` all `--- PASS`.
+**Guard tests on the unedited tree** (`go test ./internal/template/ -run '^TestOutputStyle' -count=1 -v`, exit 0): `--- PASS: TestOutputStylesCharBudget` (+3 subtests), `--- PASS: TestOutputStyleBindingLedger` (+10 mutation subtests: missing_anchor_unit_row, binding_unit_relabeled, binding_row_dropped, normative_row_dropped, dropped_without_note, dropped_without_survivor, verbatim_text_changed, dropped_with_tokens, file_total_token_lost, rewrite_row_rejected), `--- PASS: TestOutputStyleHandoffUnitsFrozen` (+ the one-character-mutation subtest), `--- PASS: TestOutputStyleLocalizationTableParity` (+ one_cell_mutation_is_caught, removed_row_is_caught), and the five pre-existing `TestOutputStyles*` all `--- PASS`.
 
 **Carried SPEC-text debts (plan-audit iter3, not edited here):** D2 — AC-PFD-015 maps to no REQ; D3 — spec.md line 139 still says `AC-PFD-001 ~ AC-PFD-015` while acceptance.md carries 016.
 
@@ -230,9 +230,130 @@ Before 168,841 x3, after 168,388 x3 (single-call runs), reduction 453 tokens (-0
 
 **Baseline-attribution / Gaps / Residual-risk.** As M3. The dropped Core Traits / persistence note / Service Philosophy units are author-classified rationale; the note (unit 65) points at `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature, where the content already lives (named as survivor together with the retained persistence paragraph, unit 63).
 
+### M5 — agent description cap, then closing measurement
+
+**D5 decision (leader decision pending — default taken, flagged).** `manager-spec`: the only template/local difference is the dated phrase `per the 2026-05-25 Anthropic catalog consolidation` in the local copy; the template is the cleaner text, so the template was shortened and the local block set equal to it. `manager-git`: the template (553) and local (533) texts differ in substance (template: "invoked for PR creation only when the SPEC is Tier L or the operator selects `--pr` … Route A"; local: "owns every push and delivery decision … explicitly configured WT integration route"). Choosing one text is a delivery-route policy decision, not a size matter, and the agent is small, so `manager-git` was NOT edited and the pre-existing mismatch is reported to the leader (carried gap).
+
+**RED** (`go test ./internal/template/ -run 'TestAgentDescriptionBudget' -count=1 -v`, exit 1, on the unedited agent files, caps 10,460 / 1,815 already in the test):
+
+```
+agent_description_budget_test.go:143: agent-description-total=11155 largest=2182 agents=12
+agent_description_budget_test.go:149: AGENT_OVER_CAP manager-lead.md description is 2182 UTF-16 units, over the per-agent cap 1815
+agent_description_budget_test.go:149: AGENT_OVER_TOTAL the description blocks total 11155 UTF-16 units, over the budget 10460
+--- FAIL: TestAgentDescriptionBudget (0.00s)
+```
+
+The Go block extractor measures 11,155 / 2,182, equal to the python extractor of plan.md section C (anchor values). Caps are fixed at the achieved values (ratchet): sum 10,460, per-agent 1,815 — both below 11,155 / 2,182.
+
+**GREEN.** Only the `description:` block of four agents changed (template and local mirror carry the identical block; script `tools/agent_desc_apply.py`): manager-lead 2,182 -> 1,815, manager-docs 1,552 -> 1,383, manager-develop 1,094 -> 1,066, manager-spec 1,022 (template) / 1,033 (local) -> 891; total 11,155 -> 10,460 (-695, -6.2%). Role statement, invocation trigger and every `NOT for:` clause kept: `grep -c 'NOT for:'` per template agent = builder-harness 1, e2e-tester 1, manager-design 1, manager-develop 1, manager-docs 1, manager-git 1, manager-lead 1, manager-spec 2, manager-todo 1, plan-auditor 1, super-advisor 3, sync-auditor 1 (equal to EL-7). Removed: dated/provenance phrases (catalog-consolidation history), the lane-label detail and the `Evidence is read before advancing; /clear between phases` sentence of manager-lead's Role B (the lane naming `lane-1` appears twice and `/clear` several times in the agent body, `grep -c "lane-1"` -> 2, and the kanban-dispatch rule the description points at carries both), and parenthetical restatements.
+
+```
+make agents-emit                                   exit 0   (regenerated 4 TOMLs: manager-develop/docs/lead/spec.toml)
+make build                                         exit 0   (rewrote exactly four `hash:` lines in internal/template/catalog.yaml)
+make agents-emit-check                             exit 0
+go test ./internal/template/ -run 'TestAgentDescriptionBudget' -count=1 -v      exit 0
+agent-description-total=10460 largest=1815 agents=12
+--- PASS: TestAgentDescriptionBudget (+ oversized_description_names_file_and_size)
+go test ./internal/template/ -run 'TestAgentFrontmatterAudit' -count=1 -v       exit 0   --- PASS: TestAgentFrontmatterAudit
+go test ./internal/template/agentemit/... -run 'TestGoldenCommittedArtifactsMatchEmission' -count=1 -v    exit 0   --- PASS
+```
+
+Description blocks of the four edited agents, template vs local, compared with the plan.md section C extractor: identical (all four).
+
+**Closing first-turn tokens** (clean tree, HEAD `c1443d00c`, default style `MoAI-Easy`, same command and settings file as M0; M5 itself is below the like-for-like noise floor and is not separately measured — see Gaps):
+
+```
+first-turn-input-tokens[final#1]=151057 head=c1443d00c usage={"input_tokens":2,"cache_creation_input_tokens":138656,"cache_read_input_tokens":12399,"output_tokens":332,"output_tokens_details":{"thinking_tokens":51   ("num_turns":1)
+first-turn-input-tokens[final#2]=151057 head=c1443d00c usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":151055,"output_tokens":305,"output_tokens_details":{"thinking_tokens":71   ("num_turns":1)
+first-turn-input-tokens[final#3]=303342 head=c1443d00c usage={"input_tokens":4,"cache_creation_input_tokens":1228,"cache_read_input_tokens":302110,"output_tokens":684,"output_tokens_details":{"thinking_tokens":198   ("num_turns":2; excluded)
+first-turn-input-tokens[final#4]=151057 head=c1443d00c usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":151055,"output_tokens":517,"output_tokens_details":{"thinking_tokens":147   ("num_turns":1)
+```
+
+Single-call runs: min = median = max = 151,057; anchor single-call runs 154,235 (x3). Reduction -3,178 tokens (-2.06%).
+result: first-turn-nonregression=true
+
+| milestone | state measured | default-style first-turn tokens | note |
+|---|---|---|---|
+| anchor | clean, `e5523d672` | 154,235 | min = median = max over 3 single-call runs |
+| M2 | 5 modified files uncommitted | 151,407 | -2,828 vs anchor |
+| M5 uncommitted (one run, not used) | 15 modified files uncommitted | 151,435 | `first-turn-input-tokens[M5-dirty#1]=151435 usage={"input_tokens":2,"cache_creation_input_tokens":139034,"cache_read_input_tokens":12399,"output_tokens":609,"output_tokens_details":{"thinking_tokens":135` (`"num_turns":1`); +28 vs M2 although the descriptions were shorter — the git-status block listed 15 changed files, which is what made me re-measure on a clean tree |
+| M5 final | clean, `c1443d00c` | 151,057 | -3,178 vs anchor; -350 vs M2 (agent-description cut -695 UTF-16 plus git-status-block difference) |
+
+Style-specific (not the default style): `MoAI-Learn` 154,999 -> 154,565 (-434), `MoAI` 168,841 -> 168,388 (-453).
+
+**Gaps / noise (honest limits).** (1) The prompt carries Claude Code's git-status snapshot (branch, changed files, last five commit subjects), so a like-for-like comparison needs equal git state: anchor and final were measured on clean trees (different last-five-commit subjects), M2/M3/M4 after-runs on trees with 5 uncommitted modified files (each listed line adds tokens), so those per-milestone reductions UNDERSTATE the true reduction by roughly the tokens of the listed file lines (tens of tokens); the headline anchor-vs-final comparison is clean-vs-clean. (2) M5's own effect (-695 UTF-16, estimated about -170 tokens) was not measured like-for-like and is not claimed. (3) The number of model calls per `claude -p ok` run varies (1, 2 or 3); only single-call runs are compared, multi-call runs are listed and excluded. (4) Single account/time window. (5) Hooks are off in this measurement, so SessionStart-injected context is not included.
+
+**Residual-risk.** Shortened agent descriptions keep role, trigger and `NOT for:`, but a routing hint that lived only in a removed phrase (for example manager-lead's lane-label wording) is now only in the agent body, which loads on spawn rather than at selection time; `TestAgentFrontmatterAudit` and the golden Codex test cannot judge routing quality.
+
+### Closing verification — acceptance criteria and exported ledger
+
+**Claim.** AC-PFD-001..016 hold on the final tree (HEAD at the time of the last test run = the M5 commit `c1443d00c` plus two uncommitted files at that moment: this file and a one-line unused-variable removal in `output_style_diet_helpers_test.go`, both committed afterwards). Package regression: baseline and final both `ok`.
+
+| AC | result | evidence (this run, this tree) |
+|---|---|---|
+| 001 | PASS | `grep -rl TestOutputStylesCharBudget internal/template` -> `internal/template/output_style_diet_test.go`; `--- PASS: TestOutputStylesCharBudget`; `output-style=moai 61149`, `output-style=moai-easy 21350`, `output-style=moai-learn 27010`; python UTF-16 per file prints 61149 / 21350 / 27010 (anchor 62593 / 29243 / 28517) |
+| 002 | PASS | `--- PASS: TestOutputStyleBindingLedger` with the ten mutation subtests, each asserting the targeted check fired (`MISSING_ROW`, `KIND_MISMATCH`, `DROPPED_KIND` x2, `DROPPED_NOTE`, `DROPPED_SURVIVOR`, `VERBATIM_DIFF`, `DROPPED_TOKENS`, `TOKEN_TOTAL`, `TREATMENT`) |
+| 003 | PASS | `python3 -c "…sum(1 for r in …['rows'] if r['treatment']=='rewrite')"` -> `0`, exit 0; `rewrite_row_rejected` subtest `--- PASS` |
+| 004 | PASS | AC-004 one-liner: moai `HARD=89 MUST_NOT=4 MUST=27 shall=0`, moai-easy `HARD=33 MUST_NOT=0 MUST=0 shall=0`, moai-learn `HARD=24 MUST_NOT=0 MUST=7 shall=0` (equal to EL-10); mutant probe: removing one `[HARD]` from moai-easy.md text gives `HARD=32` |
+| 005 | PASS | `--- PASS: TestOutputStyleHandoffUnitsFrozen` (3 sections; the one-character-mutation subtest names section and both hashes) and `--- PASS: TestOutputStyleLocalizationTableParity` (13 tables; one-cell and removed-row mutation subtests) |
+| 006 | PASS | `diff -rq internal/template/templates/.claude/output-styles .claude/output-styles` -> no output, exit 0; `--- PASS` for `TestOutputStylesEncoding`, `TestOutputStylesFallbackDocsContract`, `TestOutputStylesExactlyThree`, `TestOutputStylesFrontmatterSchema`, `TestOutputStylesTemplateLiveParity` (run through the `^TestOutputStyle` prefix, see the command-form note); `make build` exit 0 at M2, M3, M4, M5 |
+| 007 | PASS | line counts per file (SPEC/card, date, hex hash, language names) via python equivalents of the four `grep -cE` expressions (the guard refuses a quoted `|`): moai 15/0/0/3, moai-easy 0/0/0/0, moai-learn 0/1/0/1 = EL-9 |
+| 008 | PASS | `settings.json.tmpl:414: "skillListingBudgetFraction": 0.02,` and `.claude/settings.json:410: …0.02,`; `git diff --numstat 5d5ff1aae HEAD -- <both>` -> no output |
+| 009 | PASS | `--- PASS: TestAgentDescriptionBudget`, total 10,460 < 11,155, largest 1,815 < 2,182; the oversize mutation names `manager-develop.md` and the size |
+| 010 | PASS | `NOT for:` counts equal EL-7 (listed in M5); `--- PASS: TestAgentFrontmatterAudit`; template-vs-local description blocks of the four edited agents identical |
+| 011 | PASS | the first-turn token lines of M0, M1, M2, M3, M4, M5 (`grep -c` on the line prefix -> 29 lines, 29 raw `usage` JSON carriers) each carry the raw `usage` JSON; anchor and final each have three single-call runs; `result: first-turn-nonregression=true` (151,057 <= 154,235) |
+| 012 | PASS | `surface_guard.py 5d5ff1aae` -> exit 0, 32 `ok` lines, `surface-guard=PASS`; positive controls below |
+| 013 | PASS | `"outputStyle": "MoAI-Easy"` at `settings.json.tmpl:418` and `.claude/settings.json:417`; `git diff --numstat` on both settings files -> no output; `git diff --name-only 5d5ff1aae HEAD -- <skills, rules, CLAUDE.md, AGENTS*, internal/hook>` -> no output; `git merge-base --is-ancestor 5d5ff1aae HEAD` -> exit 0 |
+| 014 | PASS | baseline `ok … internal/template 135.858s`, `ok … internal/config 10.811s` (exit 0) -> final `ok … internal/template 146.983s`, `ok … internal/config 6.057s` (exit 0): no new `FAIL` name |
+| 015 | PASS | `bin/moai spec lint .moai/specs/SPEC-PREFIX-DIET-001/spec.md` (binary built from this tree) -> `✓ No findings — all SPEC documents are valid`, exit 0; `grep -c '^## §E\.' progress.md` -> 4 |
+| 016 | PASS | `AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run 'TestGoldenCommittedArtifactsMatchEmission' -count=1 -v` -> `--- PASS`; `make agents-emit-check` exit 0; the four TOMLs changed in the M5 commit; the RED side of this property is the plan-phase observation EL-14 (mismatch before `make agents-emit`) — re-observed here only as the passing end state |
+
+`golangci-lint run ./internal/template/` (v2.1.6): first run flagged one `unused` variable in the new helper (`dietTokenNames`), removed; second run exit 0.
+
+**AC-012 positive controls** (each applied on top of the final tree, observed, then restored with `git checkout --`/`rm`; `git status --short` showed only this SPEC's pending edits afterwards; outputs read from `surface_guard.py 5d5ff1aae`):
+
+| mutation | observed output | exit |
+|---|---|---|
+| forbidden surfaces `output-styles agents codex-tomls` (command-line args) | 18 x `VIOLATION forbidden-surface …`, `surface-guard=FAIL` | 1 |
+| `echo mutant >>` to template `manager-todo.md` (body) | `VIOLATION agent-body-or-nondescription-frontmatter-changed agents internal/template/templates/.claude/agents/moai/manager-todo.md` | 1 |
+| `name: MoAI-Easy` -> `MoAI-Easyx` in the moai-easy.md template frontmatter | `VIOLATION frontmatter-changed output-styles internal/template/templates/.claude/output-styles/moai/moai-easy.md` | 1 |
+| `.claude/settings.json` `skillListingBudgetFraction` 0.02 -> 0.01 | `VIOLATION outside-allowlist .claude/settings.json` | 1 |
+| new file `.claude/rules/x.md` | `VIOLATION outside-allowlist .claude/rules/x.md` | 1 |
+| catalog.yaml: hash line of the UNEDITED `manager-todo` entry changed | `VIOLATION catalog-change-beyond-edited-agent-hashes (hash-of-unedited-entry templates/.claude/agents/moai/manager-todo.md) catalog-hashes internal/template/catalog.yaml` | 1 |
+| catalog.yaml: `tier: core` -> `tier: corex` on that entry | `VIOLATION catalog-change-beyond-edited-agent-hashes (non-hash-line - tier: core; non-hash-line + tier: corex) …` | 1 |
+
+**Exported `dropped` ledger rows** (77 rows, 10,844 UTF-16 units in 16 contiguous groups; every row is in `internal/template/testdata/output_style_ledger.json` with `before_text`, `note` and `survivor`; groups listed so the sync-audit and the leader can read them without opening 548 rows):
+
+| file | units | rows | kind | UTF-16 | content (first unit lines) | survivor | reason |
+|---|---|---|---|---|---|---|---|
+| moai.md | 6-7 | 2 | rationale | 213 | ### Core Traits; **Persistence** (never walk away mid-task) · **Transparenc | moai.md section 1 'Operating Principles' | core-trait list restates principles 3 and 5 and the language rule of section 9 |
+| moai.md | 64-65 | 2 | rationale | 722 | This is the 2026 Anthropic-recommended persistence pattern; > Note: the memory directory is a **native Claude Code aut | moai.md section 6 persistence paragraph (memory directory path) and .claude/rules/moai/workflow/moai-memory.md | provenance claim and an explanatory note pointing at the memory rule; the persistence behaviour itself survives |
+| moai.md | 246-250 | 5 | rationale | 509 | ## 12. Service Philosophy; I'm a **pair programming orchestrator**, not a task-runner; Every time we work together, I aim for: ... | moai.md section 1 'Operating Principles' | service philosophy restates the operating principles of section 1 |
+| moai-easy.md | 44-45 | 2 | rationale | 230 | ### For beginners; You don't have to memorize any of this — honestly, don't e | moai-easy.md section 5 'In plain words' / 'When I delegate vs. do it myself' | reassurance for beginners; the delegation behaviour is stated in the surviving section 5 units |
+| moai-easy.md | 53-71 | 19 | example | 1299 | ### Examples; / Term / Plain-language explanation /; /------/----------------------------/ ... | moai-easy.md section 6 'How it works' (the first-mention pattern and its blockquote example) | sixteen sample glossary entries; the plain-language rule itself and a worked first-mention example survive |
+| moai-easy.md | 72-73 | 2 | rationale | 249 | ### When to slow down; If you ever go "wait, what does X mean?" — I'll stop right | moai-easy.md section 11 table row 'Lost on a term' and section 6 'How it works' | restates the pause-and-explain behaviour that the section 11 table row already specifies |
+| moai-easy.md | 134-142 | 9 | example | 2578 | ## 10. Banner Examples (What Each Looks Like in Real Use); Let me give you a quick tour of each banner in action, so ; ### Banner 1 — Let's Begin ... | moai-easy.md section 7 banner skeletons (Banner 1-6 templates) | worked instances of the six banners; the skeleton of each banner survives in section 7 |
+| moai-easy.md | 158-169 | 12 | rationale | 1780 | ## 12. Questions Beginners Often Have (FAQ); **Q: Do I need to know how to code to use MoAI-Easy?**; **Q: Will you explain what the code does?** ... | moai-easy.md section 1 (switching styles, who I am), section 4 (check step), section 5 (delegation), section 11 (I'm lost) | FAQ restating answers already given in sections 1, 4, 5 and 11; switch mechanism survives in section 1 |
+| moai-easy.md | 170-174 | 5 | rationale | 782 | ## 13. My Teaching Philosophy; > *"You don't have to know everything. You just have to kn; Here's what I believe: ... | moai-easy.md section 2 'My Promise to You (Operating Principles)' | teaching philosophy restates the operating principles of section 2 |
+| moai-easy.md | 175-182 | 8 | rationale | 553 | ## 14. Quick Reference — When to Switch Styles; / If you want... / Switch to /; /----------------/-----------/ ... | moai-easy.md section 1 sibling table and switch instruction | style-switch quick reference duplicates the section 1 sibling table and the /output-style switch mechanism |
+| moai-easy.md | 183-184 | 2 | rationale | 422 | ## 15. Friendly Reminders; I'm your companion here. We go at your pace — always. | moai-easy.md section 11 situation table | friendly reminders restate the section 11 situation/response table |
+| moai-learn.md | 5-7 | 3 | rationale | 334 | ### The MoAI-Learn Principle; > *"Make everything as simple as possible, but no simpler.; Let me be upfront: I won't hide behind jargon on the first | moai-learn.md section 1 'Core Mission' and section 3 'Phase 2 - Teach' | principle quote and upfront-honesty paragraph restate the jargon-free first-pass rule of Phase 2 |
+| moai-learn.md | 122-122 | 1 | rationale | 411 | Root cause of the defect: a prior version's §9 said "trans | moai-learn.md section 8 anti-pattern catalogue intro (units before the table) | root-cause narrative for the catalogue; the HARD violation statement and the catalogue itself survive |
+| moai-learn.md | 137-141 | 5 | rationale | 762 | ## 11. Teaching Philosophy; > *"The important thing is never to stop questioning. Curi; What I hold to: ... | moai-learn.md section 1 'Core Mission' and section 3 phase units | teaching philosophy restates the mission bullets and the five-phase protocol |
+
+**Review pointers for the sync-audit / leader (known weak survivors).** (a) moai-easy FAQ row "What if I make a mistake?" (code is reversible through version control) has only a partial survivor: section 2 principle 4 and section 3 "No big surprises" survive, the explicit version-control reassurance does not. (b) moai-easy section 14 dropped the explicit `/output-style MoAI-Learn` switch text; the generic switch mechanism for MoAI survives in section 1 and the runtime lists all styles under `/output-style`. (c) moai.md unit 65 (the memory-store note) cites a rule file as survivor, not a unit of the same file; the retained unit 63 still names the memory path.
+
+**Gaps (whole run).** The leader's confirmation of the D4 targets and of D5 (manager-git) is still open. The installed `moai` binary was not compared with HEAD; `bin/moai` was built from the tree and used for `spec lint`. `go vet` was run, `golangci-lint` on `./internal/template/` only. The independence of the two extractors is bounded by one author. Codex and other harnesses were not measured (SPEC section H gap unchanged). The AC-014 package run started before the one-line unused-variable removal; the four new tests and the budget test were re-run afterwards (exit 0).
+
+**Residual-risk.** Author classification of `rationale`/`example` (listed above); manager-git template/local description mismatch persists; per-milestone token numbers carry the git-status-block confounder described in M5; moai.md's reduction is 2.3% because 89 `[HARD]` lines and the normative templates cannot be dropped or rewritten under D3 — a larger moai.md reduction needs a leader decision that allows rewriting or relocating binding text.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_artifacts: output-style ledger fixtures (`internal/template/testdata/output_style_{ledger,frozen,localization}.json`), guard tests (`internal/template/output_style_diet_test.go`, `output_style_diet_helpers_test.go`, `agent_description_budget_test.go`), guard script `surface_guard.py`, tools `tools/diet_ledger.py` and `tools/agent_desc_apply.py`
+run_milestones: M0 (baseline ledger front, own commit before any edit) · M1 (key guard, no change) · M2 moai-easy -7,893 · M3 moai-learn -1,507 · M4 moai -1,444 · M5 agent descriptions -695 and caps
+run_headline: default-style first-turn input tokens 154,235 -> 151,057 (-3,178, -2.06%); per-style: MoAI-Learn -434, MoAI -453
+run_open_for_leader: D4 targets (all three below the plan drafts, REQ-PFD-002), D5 manager-git, SPEC-text gaps (REQ-PFD-013/AC-PFD-012 catalog surface; AC-PFD-015 unmapped; spec.md line 139 count)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

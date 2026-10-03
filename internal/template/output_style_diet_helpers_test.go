@@ -24,8 +24,7 @@ var dietStyleFiles = []string{"moai.md", "moai-easy.md", "moai-learn.md"}
 // dietStyleTemplateDir is the template source directory, relative to the package directory.
 const dietStyleTemplateDir = "templates/.claude/output-styles/moai"
 
-// Binding tokens, in the order of the counter returned by dietTokenCounts.
-var dietTokenNames = [4]string{"[HARD]", "MUST NOT", "MUST", "shall "}
+// The counter returned by dietTokenCounts holds, in order: [HARD], MUST NOT, MUST, "shall ".
 
 var (
 	dietHeadingRe = regexp.MustCompile(`^#{1,6}\s`)
