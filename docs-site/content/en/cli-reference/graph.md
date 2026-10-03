@@ -109,6 +109,6 @@ CI backs this discipline mechanically: the graph-freshness workflow verifies the
 
 ## Related docs
 
-- [Kanban Mode](/en/advanced/kanban-mode) — the card flow the milestone-card cross-check watches over
+- [Factory Mode](/en/advanced/factory-mode) — the card flow the milestone-card cross-check watches over
 - [`/moai mx`](/en/utility-commands/moai-mx) — the origin of @MX tags and `@MX:SPEC` links
 - [Navigator](/en/core-concepts/navigator) — the other graph binding design decisions, SPECs, and symbols (nav-graph.json)

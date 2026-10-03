@@ -31,7 +31,7 @@ $ moai tokens record --transcript <路径> --json
 |--------|------|
 | `--transcript <路径>` | 要汇总的 Claude Code 转录文件 |
 | `--session <id>` | 用会话标识符指定转录 |
-| `--card <卡片>` | 把这笔用量归入的看板卡片（如 `t12`） |
+| `--card <卡片>` | 把这笔用量归入的队列卡片（如 `t12`） |
 | `--role <角色>` | 会话的角色（如 `run`, `sync`, `lane-3`） |
 | `--json` | 同时把记录以 JSON 输出到标准输出 |
 
@@ -45,10 +45,10 @@ $ moai tokens record --transcript <路径> --json
 
 ## 什么时候记录
 
-按设计，这是卡片或会话**收尾时点**的记录。看板 run 里每结束一张卡片记一次、单会话里结束一件大工作时记一次，卡片之间的成本比较才能成立。这条命令本身不消耗 token —— 它是对已发生用量从转录里重新清点的记账。
+按设计，这是卡片或会话**收尾时点**的记录。工厂 run 里每结束一张卡片记一次、单会话里结束一件大工作时记一次，卡片之间的成本比较才能成立。这条命令本身不消耗 token —— 它是对已发生用量从转录里重新清点的记账。
 
 ## 相关文档
 
 - [token 经济学概览](/zh/advanced/tokenomics-overview) — 为什么指派比单价更重要
 - [状态栏](/zh/advanced/statusline) — 会话进行中查看用量的位置
-- [看板模式](/zh/advanced/kanban-mode) — 以卡片、泳道为单位归集成本的 run 形态
+- [工厂模式](/zh/advanced/factory-mode) — 以卡片、泳道为单位归集成本的 run 形态
