@@ -262,6 +262,12 @@ fi
 # THIS entry alone, never the full set — the two committed/tracked diff arms,
 # which would otherwise carry the committed and tracked legs of the same
 # parked tree into the delta.
+# The find-based checker sweeps prune the same tree, for cache-key parity:
+# the content key (worktree_content_id) excludes reports, so a checker
+# verdict recorded while a parked fixture there was broken is keyed WITHOUT
+# that fixture — fixing the fixture would then change neither HEAD nor the
+# key, and the stored failure would replay stale-fail. The sweeps and the key
+# must read the same trees.
 WCI_REPORTS_EXCLUDE=':(top,exclude).moai/reports'
 WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs'
     ':(top,exclude).moai/worktrees' ':(top,exclude).claude/worktrees'
@@ -895,11 +901,11 @@ case "$checked_language" in
         # The compiler's status is captured BEFORE the output is truncated: in
         # `javac … | head -20` the pipeline's status is head's, so a failed compile
         # was recorded as c1=0. The same shape applies to kotlinc and scalac.
-        run_step javac c1 sh -c 'out=$(find . -name "*.java" -exec javac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
+        run_step javac c1 sh -c 'out=$(find . -path ./.moai/reports -prune -o -name "*.java" -exec javac -cp "$(find . -path ./.moai/reports -prune -o -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
         ;;
     kotlin)
         C1_LABEL="kotlinc"
-        run_step kotlinc c1 sh -c 'out=$(find . -name "*.kt" -exec kotlinc -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
+        run_step kotlinc c1 sh -c 'out=$(find . -path ./.moai/reports -prune -o -name "*.kt" -exec kotlinc -cp "$(find . -path ./.moai/reports -prune -o -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
         ;;
     csharp)
         C1_LABEL="dotnet build"
@@ -911,11 +917,11 @@ case "$checked_language" in
         # separately and the failures are summed. `-exec … \;` cannot carry this:
         # find exits 0 however many invocations failed. The `{} +` batch hands the
         # files to a loop whose non-zero exit find does propagate.
-        run_step ruby c1 find . -name "*.rb" -exec sh -c 'rc=0; for f do ruby -c "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
+        run_step ruby c1 find . -path ./.moai/reports -prune -o -name "*.rb" -exec sh -c 'rc=0; for f do ruby -c "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
         ;;
     php)
         C1_LABEL="php syntax"
-        run_step php c1 find . -name "*.php" -exec sh -c 'rc=0; for f do php -l "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
+        run_step php c1 find . -path ./.moai/reports -prune -o -name "*.php" -exec sh -c 'rc=0; for f do php -l "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
         ;;
     elixir)
         C1_LABEL="mix compile"
@@ -949,7 +955,7 @@ case "$checked_language" in
         #              scanning headers converts a correct project into a gate
         #              failure. The residual asymmetry is recorded rather than traded
         #              for false positives; see .moai/reports/t663/verdict.md.
-        run_step g++ c1 sh -c 'out=$(find . \( -name "*.cpp" -o -name "*.cc" -o -name "*.cxx" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc/*.cxx found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
+        run_step g++ c1 sh -c 'out=$(find . -path ./.moai/reports -prune -o \( -name "*.cpp" -o -name "*.cc" -o -name "*.cxx" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc/*.cxx found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
         # Per-check logs live in GATE_TMPDIR, which the EXIT trap removes, and nothing
         # reads them — so the zero-target case is promoted to the audit log here. Without
         # it, "checked nothing" and "checked everything and it passed" are both a silent
@@ -960,14 +966,14 @@ case "$checked_language" in
         ;;
     scala)
         C1_LABEL="scalac"
-        run_step scalac c1 sh -c 'out=$(find . -name "*.scala" -exec scalac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
+        run_step scalac c1 sh -c 'out=$(find . -path ./.moai/reports -prune -o -name "*.scala" -exec scalac -cp "$(find . -path ./.moai/reports -prune -o -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
         ;;
     r)
         C1_LABEL="R syntax"
         # A loop fed by a pipe reports only its LAST iteration, so a broken file
         # followed by a valid one passed. The loop reads a here-document instead
         # (no subshell), and every parse failure is summed into rc.
-        run_step R c1 sh -c 'files=$(find . -name "*.R" -o -name "*.r" | head -5); rc=0
+        run_step R c1 sh -c 'files=$(find . -path ./.moai/reports -prune -o \( -name "*.R" -o -name "*.r" \) -print | head -5); rc=0
 while IFS= read -r f; do
     [ -n "$f" ] || continue
     Rscript -e "parse(\"$f\")" 2>&1 || rc=1
