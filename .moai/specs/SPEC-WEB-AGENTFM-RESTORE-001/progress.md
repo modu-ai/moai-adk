@@ -94,7 +94,7 @@ SYNC-PHASE RE-CLOSE (joint 0.2.0 + 0.3.0 적층 수정안, 단일 close 커밋 �
 
 ```yaml
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill  # D3 placeholder — 커밋은 자기 SHA를 인용할 수 없다; 후속 chore(SPEC-...) 커밋에서 실제 close 커밋 SHA로 백필 (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_commit_sha: a8c693b06  # D3 backfill: the pending-backfill placeholder written in the joint re-close commit replaced with the real close-commit SHA by the phase-owning agent (spec-frontmatter-schema § SHA placeholder backfill exemption)
 sync_status: complete
 frontmatter_status_transitions:
   in_progress_to_implemented: merged  # 3-phase close대로 단일 sync 커밋에 흡수
