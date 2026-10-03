@@ -472,6 +472,37 @@ run and released after each: `moai slot status` free). Summary files `wm6-final-
 - **Gaps.** No `codex_review` scope=card pass was possible from this role. `board_lock_clear_windows.go` still reads the artifact with
   `os.ReadFile` (a symlinked artifact is read, not written, and `os.Remove` removes the link itself); not changed.
 
+### P2 repair after leader codex_audit 2 (card t1458, tree bbd99bff9 + RED `8cb7deb25` + this repair)
+
+- **Reproduction.** With `<root>/.moai` a symlink to an external EMPTY directory, `AcquireBoardLock` and `AcquireFactoryStepLock` ran
+  `os.MkdirAll` on the lock's parent before the opener's refusal, so `state` was created OUTSIDE the project through the link; with a
+  real `.moai` and `.moai/state` linked, `AcquireBoardLock` created `kanban-board` there. The acquisition was refused afterwards, but
+  the external directory was already mutated. RED commit `8cb7deb25` (`board_lock_symlink_mkdir_test.go`): 3 failing sub-tests, e.g.
+  `external dir ... gained entries through the link: state` (both entry points) and `... gained entries through the link: kanban-board`
+  (board.lock, `.moai/state` linked; the step lock's parent IS `.moai/state`, so that variant was already clean). Raw: `p2-red.txt`.
+- **Fix.** One helper in `board_lock.go`, `ensureBoardLockDir(lockPath)`: it runs `checkBoardLockAncestors` (ENOENT tolerated, so a path
+  whose directories do not exist yet works) and only then `os.MkdirAll`. `AcquireBoardLock` and `AcquireFactoryStepLock` call it instead of
+  their own `MkdirAll`. The opener keeps its own check (defense in depth). Windows needs no separate change: the helper and callers are
+  platform-neutral; the Windows opener is untouched.
+- **Depth rule unchanged.** Immediate parent up to and including `.moai`, nothing above; the project root and the OS temp root may still
+  be symlinks (`TestBoardLockSymlinkedProjectRootAllowed` green). Residual unchanged and leader-accepted: a parent swapped between the
+  Lstat and the open or mkdir.
+- **Verification (raw `.moai/reports/t1458/p2-*.txt`).** New tests: `-run ^TestBoardLock` exit 0 (3 new tests plus positive control).
+  `go test -race -count=3 -timeout 30m ./internal/kanban/...` exit 0 (`ok ... 811.164s`). `internal/cli` under `-race`: `^TestFactoryEnsureCardWorktree`
+  exit 0 (52.3s), `^TestFactoryLeaseSection` exit 0 (26.4s), `^TestFactoryLeaseSerial` exit 0 (13.1s); slot `internal-cli-suite` held and released
+  (`free`). AC-FAL-010: fresh `-list` 68 names equals the baseline name for name; 68 `--- PASS`, 0 FAIL, 0 SKIP under the env scrub
+  (run as the seven family prefixes `^TestFactoryNext`, `^TestTodoLane`, `^TestTodoNonLane`, `^TestFactoryFallback`, `^TestAutoPick`,
+  `^TestAutoRank`, `^TestAutoHelp`, because the worktree guard refuses the 68-name alternation; the PASS names equal the list). gofmt empty,
+  `go vet` exit 0, golangci-lint v2.1.6 0 issues. `GOOS=windows` build and vet of `internal/kanban`, `internal/cli`, `internal/homestate`
+  exit 0 (compile-verified only; no Windows test was run).
+- **Mutation (go -overlay scratch copies; tracked files byte-identical, sha256 and `git status` equal).** Replace the helper call in
+  `AcquireBoardLock` with a bare `MkdirAll`: 2 RED, both `board.lock` sub-tests. Same in `AcquireFactoryStepLock`: 1 RED, the
+  `factory-step-lock` sub-test (`.moai` linked). Each mutant turns only its own entry point RED.
+- **Allowed-file-set deviation.** `board_lock.go` and `factory_step_lock.go` edits stay in the leader-ordered deviation recorded in the P1 block.
+- **CHANGELOG.** The entry makes no claim about lock-path safety; left untouched.
+- **Gaps.** No Windows execution. No `codex_review` pass from this role. Other `MkdirAll` callers of kanban state (`board_store.go`,
+  `board_recover.go`, `record.go`) were not examined or changed.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: complete

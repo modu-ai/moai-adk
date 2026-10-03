@@ -90,6 +90,30 @@ func checkBoardLockAncestors(lockPath string) error {
 	return nil
 }
 
+// ensureBoardLockDir creates lockPath's parent directory, but only after the
+// same ancestor Lstat chain the opener runs has proven no checked directory is
+// a symlink. os.MkdirAll follows links, so creating first and refusing in the
+// opener would already have created `state` / `kanban-board` OUTSIDE the
+// project through a symlinked `.moai`. The chain tolerates directories that do
+// not exist yet (checkBoardLockAncestors skips ENOENT) and keeps its depth
+// rule: up to and including `.moai`, never above it. The opener repeats the
+// check (defense in depth); a swap between this check and the open stays the
+// accepted residual (card t1458).
+//
+// @MX:ANCHOR: [AUTO] Single pre-create guard for every caller that makes a board-lock directory (AcquireBoardLock, AcquireFactoryStepLock).
+// @MX:REASON: a MkdirAll that runs before this check mutates the directory a symlinked ancestor points at, whatever the opener later refuses (card t1458 P2).
+// @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
+func ensureBoardLockDir(lockPath string) error {
+	if err := checkBoardLockAncestors(lockPath); err != nil {
+		return err
+	}
+	dir := filepath.Dir(lockPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("creating lock directory %s: %w", dir, err)
+	}
+	return nil
+}
+
 // checkBoardLockArtifact refuses a pre-existing lock artifact that is a
 // symlink or any other non-regular file. An absent artifact is fine.
 func checkBoardLockArtifact(lockPath string) error {
@@ -158,11 +182,10 @@ type boardLockImpl interface {
 // The acquiring process records its identity in the artifact as part of the
 // acquisition, so an artifact always names its current owner.
 func AcquireBoardLock(root string) (*BoardLock, error) {
-	dir := BoardDir(root)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, fmt.Errorf("acquire board lock: creating board dir: %w", err)
-	}
 	path := boardLockPath(root)
+	if err := ensureBoardLockDir(path); err != nil {
+		return nil, fmt.Errorf("acquire board lock: %w", err)
+	}
 	impl, err := acquireBoardLockImpl(path)
 	if err != nil {
 		return nil, err

@@ -2,7 +2,6 @@ package kanban
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 )
@@ -29,8 +28,8 @@ var factoryStepLockRelPath = filepath.Join(".moai", "state", "factory-worktree-s
 func AcquireFactoryStepLock(root string, wait time.Duration) (release func() error, err error) {
 	noop := func() error { return nil }
 	path := filepath.Join(root, factoryStepLockRelPath)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return noop, fmt.Errorf("worktree step lock: creating state dir: %w", err)
+	if err := ensureBoardLockDir(path); err != nil {
+		return noop, fmt.Errorf("worktree step lock: %w", err)
 	}
 	deadline := time.Now().Add(wait)
 	for attempt := 0; ; attempt++ {
