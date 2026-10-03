@@ -143,7 +143,11 @@ The auditor's "Max 3" text and spec-workflow `:158` are rewritten to cite the ti
   - requires audit-ready status in `progress.md` §E.1;
   - requires no open blocker and no operator hold on the card row;
   - parses `decision-index.md` and refuses on any `FOUNDER` row, of either class, whose
-    `Operator verdict:` is empty (decision-index Q19).
+    `Operator verdict:` is empty (decision-index Q19);
+  - refuses on any row whose verdict is `DEFAULT-APPLIED` unless that row carries
+    `Class: implementation-level` and a `Default:` line (decision-index Q24) — a product-level row, a
+    Class-less row, or a Default-less row holding `DEFAULT-APPLIED` is a refusal even though the
+    audited hash covers it.
 
   Any failure refuses with a reason and leaves T8 (human) available.
 - **Lease at kickoff.** A kickoff card holds no lease (`fr_lease_test.go:148-162`, P26). T8a performs
@@ -152,6 +156,17 @@ The auditor's "Max 3" text and spec-workflow `:158` are rewritten to cite the ti
   `LeaseExpiresAt` = now + `FactoryLeaseDuration`, and the worker's heartbeat is updated. These are the
   same writes `guardLeaseAcquire` makes (`:434-446`), including the registered-worker check. T8 is
   untouched.
+- **SPEC-FACTORY-RECORD-001 reconciliation (decision-index Q25).** T8a is a new requested edge, so
+  REQ-FR-004's transition table gains it and the AC-005 edge-count test
+  (`internal/homestate/fr_transition_test.go:124,147`, and the `@MX:ANCHOR` at
+  `card_transition.go:92-93`) moves from 65 accepted / 296 refused to 66 / 295 of 361 pairs.
+  REQ-FR-019 gains: decider `audit` is admitted on T8a only, and `human` keeps T8 → `assigned`. Both
+  are Amendments rows on that SPEC, written in M3.
+- **Digest-input widening (O6, intended).** Adding `decision-index.md` to the plan-artifact digest
+  inputs (`internal/runtime/audit_cache.go`) also widens the `/moai run` Phase 1 skip-cache key, so an
+  existing SPEC that carries a decision-index sees one cache miss and is re-audited. That is intended:
+  a decision-index the audit did not cover must not pass a cached verdict. M2 updates the hash-subject
+  sentence in `spec-workflow.md` (local + template) to name `decision-index.md`.
 - `factory decide`: `--decider audit` is admitted only with `--gate kickoff --choice approve`. Under
   lane refusal it is admitted only when the caller's lane label equals the card's `OwnerLabel`
   (decision-index Q17). All other lane calls still return `factoryDecideLaneRefusal()`. The push gate
@@ -179,8 +194,11 @@ which assigns the Class): a change to a shipped command's default user-visible b
 user-facing feature, or a change to a template default. A row with no `Class:` line is treated as
 product-level, a fail-closed fallback. The authoring session writes
 `Operator verdict: DEFAULT-APPLIED <UTC> <runner+role>` at plan close, before the plan audit, so the
-audited digest covers it (decision-index Q18). After the audit, the operator's verdict on a remaining
-row changes the digest; that card then reaches run only through the `human` Kickoff path.
+audited digest covers it (decision-index Q18). The decider still checks that each `DEFAULT-APPLIED`
+row is implementation-level with a `Default:` line (Q24), because the hash proves only that the fill
+was audited, not that it was legitimate. A verdict recorded after the audited SHA changes the digest,
+so that card reaches run only through the `human` Kickoff path. An operator verdict recorded before
+the audited SHA is covered by the hash and passes (Q19, Q26).
 
 The manager-spec clause "never carries an embedded recommendation or preferred answer" is amended:
 it governs judgment calls only, and a Default selected by the published rule is a policy

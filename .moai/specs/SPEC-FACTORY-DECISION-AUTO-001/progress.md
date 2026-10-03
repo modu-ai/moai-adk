@@ -10,11 +10,11 @@ branch: WT-decision-automation
 base: d7112d005
 probe_tree: 5d094991fb586b9c4aadee33b663fe92b686ff18
 artifacts: [spec.md, plan.md, acceptance.md, design.md, research.md, progress.md, decision-index.md]
-spec_version: 0.3.0
+spec_version: 0.4.0
 req_count: 25
 ac_count: 25 (24 release-blocking, 1 RG)
-plan_audit: iter1 FAIL 0.74 (.moai/reports/t1481/plan-audit-iter1.md); iter2 FAIL 0.80 (.moai/reports/t1481/plan-audit-iter2.md); revision 0.3.0 addresses N1-N7 + O1-O4; iter3 (Tier L ceiling) pending (orchestrator-owned)
-open_decisions: none — Q1-Q23 LEADER-DECIDED 2026-10-03 (mission contract 07d28c4b)
+plan_audit: iter1 FAIL 0.74 (.moai/reports/t1481/plan-audit-iter1.md); iter2 FAIL 0.80 (.moai/reports/t1481/plan-audit-iter2.md); revision 0.3.0 addresses N1-N7 + O1-O4; iter3 FAIL 0.83 (.moai/reports/t1481/plan-audit-iter3.md, Tier L ceiling, no regression); leader-ruled one delta round; revision 0.4.0 addresses N8-N11 + O6 within the iter3 fix_scope; delta audit pending (orchestrator-owned)
+open_decisions: none — Q1-Q26 LEADER-DECIDED 2026-10-03 (mission contract 07d28c4b)
 evidence_needed_in_run: M0(a) degraded-notice rate with/without bind cache (Q5); M0(b) recheck cache cost (Q4)
 release_target: v3.2.0
 ```

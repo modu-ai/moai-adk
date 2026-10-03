@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-DECISION-AUTO-001
 title: "Factory decision automation: decision board, PASS-WITH-DEBT admission, audit-ceiling policy, audit kickoff decider, FOUNDER defaults, wake latency, messaging degradation (card t1481)"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -12,7 +12,7 @@ module: "internal/decision, internal/cli, internal/contract, internal/homestate,
 lifecycle: spec-anchored
 tags: "factory, autonomy, decision-board, pass-with-debt, audit-ceiling, kickoff, founder-default, wake-latency, factory-messaging, t1481"
 tier: L
-related_specs: [SPEC-DECISION-AUTHORITY-001, SPEC-FACTORY-SELF-DISPATCH-001, SPEC-AUTONOMY-GATE-REWIRE-001, SPEC-AUTONOMY-BATCH-GATE-001, SPEC-FACTORY-STALE-RUN-HEAL-001, SPEC-SYNC-PARALLEL-DOCS-001]
+related_specs: [SPEC-DECISION-AUTHORITY-001, SPEC-FACTORY-RECORD-001, SPEC-FACTORY-SELF-DISPATCH-001, SPEC-AUTONOMY-GATE-REWIRE-001, SPEC-AUTONOMY-BATCH-GATE-001, SPEC-FACTORY-STALE-RUN-HEAL-001, SPEC-SYNC-PARALLEL-DOCS-001]
 ---
 
 # SPEC-FACTORY-DECISION-AUTO-001 — Codify the Leader's Recurring Rulings
@@ -25,6 +25,7 @@ related_specs: [SPEC-DECISION-AUTHORITY-001, SPEC-FACTORY-SELF-DISPATCH-001, SPE
 | 0.1.1 | 2026-10-03 | manager-spec | Leader decisions Q1-Q7 recorded (mission contract 07d28c4b; operator 2026-10-03: implement now, include in v3.2.0). Q1 board writes leader-only. Q2 manager-spec no-recommendation clause narrowed to judgment calls. Q3 product-level defined. Q4 one-shot recheck, 5 min floor. Q5 no degraded notice on an already-bound session; run M0 measures. Q6 REQ-SD-016 narrowed to the single `--decider audit` own-card shape. Q7 hold + split only. Observed one-delta-round rulings added as evidence. Plan gains M0. |
 | 0.2.0 | 2026-10-03 | manager-spec | Plan-audit iter1 FAIL 0.74 (`.moai/reports/t1481/plan-audit-iter1.md`) revised in the auditor's order with leader decisions D2-D10 (decision-index Q8-Q15): D4 audit decider re-checks audit-ready, blocker/hold, open product-level FOUNDER rows and the `audited_sha` binding (D11); D5 bind cache never skips the run-state probe, retirement invalidates (new REQ); D2/D3 phase-scoped predicate with explicit fields incl. a must-pass field; D6 mechanical delta eligibility by `fix_scope` diff and identical REQ/AC id sets; D7 policy binds every session, final hit = ceiling + `auto_delta_rounds`; D8 binding run conditions re-read by sync-audit-4dim and sync-auditor, undisposed = must-pass FAIL; D10 waits resolve only by a `resolves` reference. New: the release-blocking AC-wording exception observed on t1458 (three conditions, board record). D12 recast REQ-FDA-024; D13 removed "may". RED-now ledger re-measured with command, verbatim stdout and exit code at `ba2033d22`. REQs renumbered (merges: board verbs+lane refusal; watchdog read+record-before-message) so REQ-FDA-NNN ↔ AC-FDA-NNN; 25/25. |
 | 0.3.0 | 2026-10-03 | manager-spec | Plan-audit iter2 FAIL 0.80 (`.moai/reports/t1481/plan-audit-iter2.md`) closed with leader decisions N1-N7 (decision-index Q17-Q23). N1 audit-decider authority = card record owner; T8a moves kickoff→run and leases to that owner atomically (baseline: kickoff holds no lease, `fr_lease_test.go:148-162`). N2 `decision-index.md` joins the plan-artifact hash input set and leaves REQ-FDA-011's exemption; DEFAULT-APPLIED therefore fills at plan close, before the audit. N3 decider refuses on any empty FOUNDER verdict. N4 release-blocking = listed in a `release-scope` standing board record or reachable through `depends`/`blocks` relation edges. N5 `defect_class`, `reread_hunks`, `blocking_count` (renamed from `blocking_findings`) and `scope` added to the verdict block; re-read = full `scope: reread` verdict admitted by the predicate; hunk limit diff-checked; hold released by `resolves`. N6 AC-FDA-019/020 release-blocking with probes of today's behavior; M0 values moved to measurement notes. N7 T13 label-only check unchanged. O1 `dispose_in`; O2 Class fail-closed fallback wording; O3 anchor hunk ranges; O4 split proposal informational outside a factory. |
+| 0.4.0 | 2026-10-03 | manager-spec | Plan-audit iter3 FAIL 0.83 (`.moai/reports/t1481/plan-audit-iter3.md`); leader-ruled single delta round confined to the auditor's fix_scope (decision-index Q24-Q26). N8 DEFAULT-APPLIED passes the decider only on an implementation-level row carrying a `Default:` line. N9 SPEC-FACTORY-RECORD-001 added to related_specs; Amendments to REQ-FR-004 (T8a edge, AC-005 count 65/296 → 66/295) and REQ-FR-019 (decider `audit` on T8a only) obligated. N10 REQ-FDA-018 narrowed to verdicts recorded after the audited SHA. N11 §B item 5 aligned with REQ-FDA-015. O6 the widened run Phase 1 skip-cache key stated as intended (design §5). |
 
 ## §A Context and Problem
 
@@ -73,8 +74,8 @@ a lane reads without waiting:
    code sites; enumerated debts become binding run conditions re-read by both sync verdict owners.
 4. **Audit-ceiling policy** — automatic delta rounds under a mechanical eligibility test; the final
    hit becomes a hold record plus a split proposal, with one narrow release-blocking exception.
-5. **Factory `audit` kickoff decider** — kickoff approve by verdict-file evidence, kickoff→run
-   keeping the lease, refused whenever a keep-set or product-level condition is open.
+5. **Factory `audit` kickoff decider** — kickoff approve by verdict-file evidence, kickoff→run,
+   leasing the card to its record owner, refused whenever a keep-set or product-level condition is open.
 6. **FOUNDER defaults** — implementation-level rows carrying a rule-selected Default are recorded
    DEFAULT-APPLIED; only product-level verdicts block Kickoff.
 7. **Wait recheck** — a one-shot recheck re-armed while a wait-on-leader record is open.
@@ -191,7 +192,10 @@ The keep-set is unchanged and stays human (§C.9).
   `decision-index.md`, so any change to it after the audited SHA is a mismatch — audit-ready status is
   recorded, the card carries no open blocker and no operator hold, and the SPEC's `decision-index.md`
   holds no `FOUNDER` row of either class whose verdict is empty (only a recorded verdict or a
-  `DEFAULT-APPLIED` verdict passes); on any failed condition it shall refuse and leave the `human`
+  `DEFAULT-APPLIED` verdict passes), and every row holding a `DEFAULT-APPLIED` verdict carries
+  `Class: implementation-level` and a `Default:` line — a `DEFAULT-APPLIED` verdict on a
+  `product-level` row, on a row with no `Class:` line, or on a row with no `Default:` line refuses;
+  on any failed condition it shall refuse and leave the `human`
   Kickoff path as the only route, and it shall reject every decider value other than `human` and
   `audit`.
 - **REQ-FDA-015** (Event-driven) — When a kickoff is approved by the `audit` decider, the card shall
@@ -199,11 +203,17 @@ The keep-set is unchanged and stays human (§C.9).
   owner (the owner label persisted on the card row through T7) exactly as the normal lease path binds
   one; the `human` decider path shall keep its present behavior. A kickoff card holds no lease today
   (`internal/homestate/fr_lease_test.go:148-162`), which this transition preserves up to the move.
+  SPEC-FACTORY-RECORD-001 shall carry an Amendments row on REQ-FR-004 adding the T8a edge (kickoff →
+  run) to its transition table, with its AC-005 requested-pair count moving from 65 accepted / 296
+  refused to 66 accepted / 295 refused.
 - **REQ-FDA-016** (Event-driven) — When a lane session whose label is the card's record owner invokes
   `factory decide` for that card with `--gate kickoff --choice approve --decider audit`, the command
   shall admit the call;
   every other lane invocation of `factory decide` shall remain refused, and REQ-SD-016 of
-  SPEC-FACTORY-SELF-DISPATCH-001 shall carry an Amendments row naming this single exception.
+  SPEC-FACTORY-SELF-DISPATCH-001 shall carry an Amendments row naming this single exception;
+  REQ-FR-019 of SPEC-FACTORY-RECORD-001 shall carry an Amendments row admitting decider `audit` on
+  the T8a edge only (an `audit` approval moves the card to `run` with the owner's lease) while the
+  `human` decider path to `assigned` stays unchanged.
 
 ### C.6 FOUNDER defaults
 
@@ -220,8 +230,9 @@ The keep-set is unchanged and stays human (§C.9).
   authoring session shall fill the verdict line with `DEFAULT-APPLIED`, the UTC time, and the deciding
   runner and role, so the audited hash covers the applied default; a `product-level` row, or an
   `implementation-level` row without a `Default:` line, shall stay empty, block the autonomous Kickoff,
-  and be routed to the operator, whose recorded verdict then reaches run only through the `human`
-  Kickoff path. A row is `product-level` exactly when its decision changes a shipped command's default
+  and be routed to the operator; a verdict recorded after the audited SHA reaches run only through the
+  `human` Kickoff path, while a verdict recorded before the audited SHA is covered by the audited hash
+  and passes the `audit` decider under REQ-FDA-014. A row is `product-level` exactly when its decision changes a shipped command's default
   user-visible behavior, removes a user-facing feature, or changes a template default; every other row
   is `implementation-level`.
 

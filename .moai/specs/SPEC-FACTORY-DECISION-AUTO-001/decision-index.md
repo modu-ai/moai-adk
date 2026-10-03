@@ -229,3 +229,39 @@ Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N7
 Why unresolved: REQ-FDA-009 named undefined "sync thresholds" at T13.
 Operator verdict: T13 behavior is unchanged except the D8 binding-condition must-pass, which reaches
 T13 through the sync verdict label. Reflected in REQ-FDA-009 and AC-FDA-009.
+
+### Q24: Which rows may carry DEFAULT-APPLIED and still pass the decider? (iter3 N8)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N8
+Why unresolved: Once DEFAULT-APPLIED was filled before the audit and covered by the hash, a
+product-level, Class-less, or Default-less row filled DEFAULT-APPLIED would pass every mechanical
+check.
+Operator verdict: DEFAULT-APPLIED counts only on a row whose Class is implementation-level and which
+carries a `Default:` line. A product-level row, a row with no Class line, or a row with no Default
+line holding DEFAULT-APPLIED makes the decider refuse. Three refusal fixtures go in AC-FDA-014, one
+also in AC-FDA-018. Reflected in REQ-FDA-014.
+
+### Q25: Is the `audit` decider an operator-held question? (iter3 N9)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N9
+Why unresolved: SPEC-FACTORY-RECORD-001 records the operator's decider set as
+`human | llm | llm+jev`, and `audit` lies outside it. REQ-FR-019 refuses any decider other than
+`human`.
+Operator verdict: It is not an operator-held question. The operator's 2026-10-03 directive to
+automate factory decisions and `auto-semantics.md` §9 ("factory decide: kickoff approve/reject —
+AUTONOMOUS") already classify Kickoff as autonomous. The `human` decider path stays available, and
+keep-set cases still require it. SPEC-FACTORY-RECORD-001 is added to related_specs, and Amendments
+rows are planned on REQ-FR-004 (new T8a edge; AC-005 accepted-pair count) and REQ-FR-019 (decider
+`audit` accepted only on T8a; an `audit` approval goes to run with the lease). AC-FDA-015 asserts the
+new count. Reflected in REQ-FDA-015/016.
+
+### Q26: Does a recorded operator verdict pass the decider? (iter3 N10)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 07d28c4b — leader ruling 2026-10-03 N10
+Why unresolved: REQ-FDA-014 (a recorded verdict passes) and REQ-FDA-018 (a recorded verdict goes
+only through the human path) contradicted each other.
+Operator verdict: Keep Q19. Narrow REQ-FDA-018 to "a verdict recorded after the audited SHA goes only
+through the human path". A verdict recorded before the audited SHA is covered by the hash and passes.
