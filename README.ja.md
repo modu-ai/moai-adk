@@ -279,6 +279,10 @@ cd my-project
 | `gpt` | Codex のみのデプロイ: `AGENTS.md` と Codex サーフェス（`.codex/`、`.agents/skills/`、`.moai/`）のみ。`.claude/` ツリー、`CLAUDE.md`、`.mcp.json` は生成されません。Claude 専用ランタイム機能（AskUserQuestion、サブエージェント、output style、スラッシュコマンド、Workflow スクリプト）は利用できません |
 | `both` | `claude` デプロイに `.codex/` 接続を追加。`.mcp.json` のプロビジョニングは強制有効化されます |
 
+#### デプロイモード: プラグイン既定とフルローカルデプロイ
+
+既定の経路（プラグインモード）では、スキルとコマンドをプロジェクトにコピーしません — moai プラグインが運びます。`.claude/` サーフェスの残り（エージェント、ルール、フック登録、設定）は従来どおりデプロイされます。スキルとコマンドをローカルファイルに残したいときは `--no-plugin`（フルローカルデプロイ — `.mcp.json` の moai エントリと Codex ミラーを含む）を、オプションパックのカタログまでローカルに展開するなら `--all` を使います。デプロイモードは `.moai/config/sections/llm.yaml` の `deployment_mode` に記録され、`moai update` はその記録に従って同じ範囲を保ちます。プラグインのインストールが確認できなかったプロジェクトは、安全側の `local` として記録されます。
+
 
 > **GPT ゲートウェイの撤回（2026-09-16）。** 内蔵トランスレーションゲートウェイで GPT モデルを
 > Claude Code に載せていた旧 `moai gpt` ランチャーは削除されました。GPT モデルはネイティブハーネスの

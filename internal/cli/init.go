@@ -36,11 +36,18 @@ import (
 // "MOAI_DISTRIBUTE_ALL=1", and "SPEC-V3R4-CATALOG-005" so downstream tooling
 // (moai doctor) can pattern-match on them. See SPEC-V3R4-CATALOG-002 REQ-021
 // and acceptance scenario S1.
+//
+// SPEC-INIT-SHRINK-001 (REQ-021): the notice also names the plugin carrier —
+// on the default path skills and commands deploy no local copies and ride
+// the moai plugin instead; --no-plugin and --all keep a full local deploy.
 func emitSlimModeNotice(out io.Writer) {
 	_, _ = fmt.Fprintln(out,
 		"Deploying core templates only (slim mode). "+
 			"Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. "+
 			"Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).")
+	_, _ = fmt.Fprintln(out,
+		"Skills and commands ride the moai plugin on the default path (no local copies). "+
+			"Use --no-plugin or --all for a full local deploy.")
 }
 
 var initCmd = &cobra.Command{
@@ -82,8 +89,8 @@ func init() {
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
-	initCmd.Flags().Bool("no-plugin", false, "Skip installing the moai plugin into Claude Code / Codex (also MOAI_SKIP_PLUGIN_INSTALL=1)")
-	initCmd.Flags().Bool("all", false, "Deploy all catalog entries (core + optional packs + harness-generated). Bypasses slim mode (SPEC-V3R4-CATALOG-002).")
+	initCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin and deploy the FULL local payload (skills, commands, .mcp.json moai entry, Codex mirror). Also MOAI_SKIP_PLUGIN_INSTALL=1. Default (plugin mode) deploys no local skills or commands — they ride the moai plugin")
+	initCmd.Flags().Bool("all", false, "Deploy all catalog tiers locally (a full local deploy: the --no-plugin payload plus optional-pack entries). Bypasses slim mode (SPEC-V3R4-CATALOG-002)")
 
 	// The two wizard mode flags are retired (REQ-WIZ-018): the wizard presents
 	// the same three pages to every user, so there is no mode to select.
@@ -415,6 +422,40 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 	return v == "1" || strings.EqualFold(v, "true")
 }
 
+// resolveInitDeployMode resolves the run's deploy mode (SPEC-INIT-SHRINK-001
+// REQ-001/REQ-003/REQ-007, OD-5/OD-7 settled (a)): the opt-out surface
+// (--no-plugin flag or MOAI_SKIP_PLUGIN_INSTALL, the t1435 OD-5 pin) and the
+// --all flag (a local full deploy — OD-7 settled (a)) select the local
+// payload; everything else is the default plugin path.
+func resolveInitDeployMode(cmd *cobra.Command) template.DeployMode {
+	if getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv() || shouldDistributeAll(cmd) {
+		return template.DeployModeLocal
+	}
+	return template.DeployModePlugin
+}
+
+// emitShrinkInstallGuidance prints the one guidance block of REQ-004: the
+// post-install probe did not demonstrate this run's install, so both
+// recourses are named. Recourse 1 names the flags that actually work — a
+// plain re-run fails "project already initialized", so --force is required
+// alongside --no-plugin, and the block states what force re-initialization
+// moves (card t1438 review finding 6). Fail-open — it never changes the
+// init result.
+func emitShrinkInstallGuidance(errOut io.Writer) {
+	_, _ = fmt.Fprintln(errOut, "note: the moai plugin install could not be demonstrated for this run.")
+	_, _ = fmt.Fprintln(errOut, "      Skills and commands are NOT deployed locally on the plugin path;")
+	_, _ = fmt.Fprintln(errOut, "      pick a recourse to keep them available:")
+	_, _ = fmt.Fprintln(errOut, "        1. re-run with --no-plugin --force for a full local deploy (a plain")
+	_, _ = fmt.Fprintln(errOut, "           re-run fails: the project already counts as initialized). --force")
+	_, _ = fmt.Fprintln(errOut, "           re-initialization moves the existing .moai/ to .moai-backups/<timestamp>/")
+	_, _ = fmt.Fprintln(errOut, "           and redeploys the MoAI-managed template files from scratch; your")
+	_, _ = fmt.Fprintln(errOut, "           manifest is carried forward, so user-modified files keep their")
+	_, _ = fmt.Fprintln(errOut, "           user_modified protection, or")
+	_, _ = fmt.Fprintln(errOut, "        2. install the plugin manually:")
+	_, _ = fmt.Fprintln(errOut, "           claude plugin marketplace add "+pluginMarketplaceSource+" ; claude plugin install "+pluginRef)
+	_, _ = fmt.Fprintln(errOut, "           codex  plugin marketplace add "+pluginMarketplaceSource+" ; codex  plugin add "+pluginRef)
+}
+
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
 // @MX:REASON: [AUTO] fan_in=3, called from init.go init(), coverage_test.go, init_coverage_test.go
 // runInit executes the project initialization workflow.
@@ -695,10 +736,18 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		cmd.Flags().Changed("llm"), getStringFlag(cmd, "llm"), wizardResult,
 	)
 
+	// SPEC-INIT-SHRINK-001 (REQ-001/REQ-003/REQ-007, OD-5/OD-7): resolve the
+	// deploy mode ONCE, here — the initializer's scaffold (below), the
+	// deployer option, and the mode record all read this local.
+	deployMode := resolveInitDeployMode(cmd)
+
 	// SPEC-INIT-HARNESS-001 (REQ-IH-005): the initializer suppresses every
 	// claude-surface write while the selection is codex — the .claude/ scaffold
 	// and CLAUDE.md never materialize under the project root.
 	opts.Harness = string(agentWiringSelection)
+	// SPEC-INIT-SHRINK-001 (REQ-001): the initializer skips the dropped-root
+	// scaffold shells on the plugin path, matching the deployer's file set.
+	opts.DeployMode = string(deployMode)
 
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {
@@ -745,21 +794,34 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// file set; the slim/full split lives entirely inside .claude/** which
 	// harnessFS hides). claude and both keep the deployers below untouched
 	// (REQ-IH-003/004).
+	//
+	// SPEC-INIT-SHRINK-001 M2 (REQ-001/REQ-003/REQ-006/REQ-007): the deploy
+	// mode rides through as an option — local (opt-out or --all) is today's
+	// payload; plugin (the default) carries no .claude/skills or
+	// .claude/commands file. The mirror policy stays at its conservative
+	// default (re-home: real directory copies, never dangling links) until
+	// Codex's actual execution of plugin-borne skills is verified (OD-6
+	// settled (a) + condition; the REQ-008 measurement proves listing, not
+	// execution).
+	// deployMode is resolved once above (beside opts.Harness); the deployer
+	// family receives it as an option — the split is an option, not a
+	// constructor axis.
+	modeOpts := []template.DeployerOption{template.WithDeployMode(deployMode)}
 	switch agentWiringSelection {
 	case agentWiringGPT:
-		deployer, err = template.NewCodexOnlyDeployerWithRenderer(cat, renderer)
+		deployer, err = template.NewCodexOnlyDeployerWithRenderer(cat, renderer, modeOpts...)
 	case agentWiringBoth:
 		if shouldDistributeAll(cmd) {
-			deployer, err = template.NewDualHarnessDeployerWithRenderer(cat, renderer)
+			deployer, err = template.NewDualHarnessDeployerWithRenderer(cat, renderer, modeOpts...)
 		} else {
-			deployer, err = template.NewDualHarnessSlimDeployerWithRenderer(cat, renderer)
+			deployer, err = template.NewDualHarnessSlimDeployerWithRenderer(cat, renderer, modeOpts...)
 			emitSlimModeNotice(cmd.OutOrStdout())
 		}
 	default:
 		if shouldDistributeAll(cmd) {
-			deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer)
+			deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer, modeOpts...)
 		} else {
-			deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer)
+			deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer, modeOpts...)
 			emitSlimModeNotice(cmd.OutOrStdout())
 		}
 	}
@@ -919,7 +981,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	}
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
-		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count()))
+		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count(), string(deployMode)))
 
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
@@ -947,6 +1009,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// re-deployment (REQ-IH-010) read the key instead of inferring claude.
 	if err := template.ApplyHarness(opts.ProjectRoot, string(agentWiringSelection)); err != nil {
 		p.Warn("Failed to apply harness: %v", err)
+	}
+
+	// SPEC-INIT-SHRINK-001 (REQ-009, OD-5 settled (a)): persist the resolved
+	// deploy mode beside the harness value, on every init run including
+	// re-init — plugin when the default deploy ran, local under the opt-out
+	// or --all. Update reads this key (REQ-016) instead of inferring the
+	// mode; the update flow's restore step re-asserts it from the pre-update
+	// backup so the .moai/config Clean wipe cannot cost it.
+	if err := template.ApplyDeployMode(opts.ProjectRoot, string(deployMode)); err != nil {
+		p.Warn("Failed to apply deploy mode: %v", err)
 	}
 
 	// Scaffold .moai/evolution/ directory structure (R2: Directory Scaffolding).
@@ -990,9 +1062,45 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// harness itself is a different rule, resolved upstream in
 	// resolveAgentWiringWithWizard rather than here.
 	//
-	// The former plan.md §B Decision B1 ("mcp_provision is asked
-	// unconditionally, even under codex") is superseded: the question no
-	// longer exists, so there is no wizard answer for the harness to override.
+	// SPEC-PLUGIN-MARKETPLACE-001 REQ-010, wired through the SPEC-INIT-SHRINK-001
+	// probe (design §2.4): install the moai plugin into the tool(s) the
+	// harness selects, after the deployment is complete, and read the
+	// observable outcome from the post-install list-surface probe. Fail-open
+	// (REQ-013/014): guidance and skip lines go to stderr and never change
+	// the init result; --no-plugin and MOAI_SKIP_PLUGIN_INSTALL opt out.
+	installOutcome := runInitPluginInstallProbed(cmd.ErrOrStderr(), agentWiringSelection, opts.ProjectRoot, getBoolFlag(cmd, "no-plugin"))
+
+	// SPEC-INIT-SHRINK-001 REQ-004: on the default path, an install whose
+	// diff does not demonstrate success gets the one guidance block naming
+	// both recourses. The opt-out path is REQ-003's full local deploy and
+	// never triggers guidance; the exit status is unchanged either way.
+	if deployMode == template.DeployModePlugin && installOutcome == probeOutcomeNotDemonstrated {
+		emitShrinkInstallGuidance(cmd.ErrOrStderr())
+	}
+
+	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn opts.MCPProvision
+	// into the single neutral .mcp.json entry. The interactive path sets it
+	// true with no wizard question (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-005);
+	// the non-interactive path leaves it false and skips the ensure-entry call
+	// (REQ-IQW-006).
+	// SPEC-CODEX-WIRING-001 D3 stacks on top, restated by
+	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-009/010) now that the harness is
+	// itself a wizard axis: the harness selection is the more specific
+	// declaration about the MCP surface, and it wins WHEREVER IT CAME FROM —
+	// flag or wizard. codex declines provisioning (the user declared their
+	// harness is Codex, and the moai MCP server is registered for them through
+	// .codex/config.toml instead), both forces it on, claude leaves the
+	// opts.MCPProvision default intact. Flag-over-wizard precedence for the
+	// harness itself is a different rule, resolved upstream in
+	// resolveAgentWiringWithWizard rather than here.
+	//
+	// SPEC-INIT-SHRINK-001 REQ-005 (OD-1 settled (c), design §2.3): the call
+	// is sequenced AFTER the install step so it can read the probe outcome.
+	// On the plugin path a probe-confirmed install writes no project `moai`
+	// entry (the plugin is the sole carrier); on not-demonstrated — and on
+	// opted-out, i.e. the whole local path — the entry is written as the
+	// fallback carrier. On the init surface the deploy file set and the mode
+	// record never key on the probe (REQ-001/REQ-009).
 	// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
 	// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
 	mcpDeclined := !opts.MCPProvision
@@ -1002,6 +1110,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	case agentWiringBoth:
 		mcpDeclined = false
 	}
+	if deployMode == template.DeployModePlugin && installOutcome == probeOutcomeConfirmed {
+		mcpDeclined = true
+	}
 	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined)
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
@@ -1010,12 +1121,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// the Codex trust guidance. Adjacent to the .mcp.json provisioning call
 	// so both harness sides of the init tail read as one unit.
 	wireCodexUnlessClaude(cmd, agentWiringSelection, opts.ProjectRoot)
-
-	// SPEC-PLUGIN-MARKETPLACE-001 REQ-010: install the moai plugin into the
-	// tool(s) the harness selects, after the deployment is complete. Fail-open
-	// (REQ-013/014): guidance and skip lines go to stderr and never change the
-	// init result; --no-plugin and MOAI_SKIP_PLUGIN_INSTALL opt out.
-	runPluginInstallStepForInit(cmd, agentWiringSelection, opts.ProjectRoot)
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects

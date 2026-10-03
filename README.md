@@ -279,6 +279,10 @@ The wizard asks which agent harness to deploy and wire; `--llm` gives the same c
 | `gpt` | Codex only deployment: `AGENTS.md` and Codex surfaces (`.codex/`, `.agents/skills/`, `.moai/`) only. No `.claude/` tree, no `CLAUDE.md`, no `.mcp.json`. Claude-only runtime features (AskUserQuestion, sub-agent spawning, output styles, slash commands, Workflow scripts) are not available |
 | `both` | Same `claude` deployment plus `.codex/` wiring; `.mcp.json` provisioning forced on |
 
+#### Deploy mode: plugin default and full local deploy
+
+On the default path (plugin mode), skills and commands are not copied into the project — the moai plugin carries them. The rest of the `.claude/` surface (agents, rules, hook registration, settings) deploys as today. To keep skills and commands as local files use `--no-plugin` (a full local deploy — including the `.mcp.json` moai entry and the Codex mirror); `--all` deploys every catalog tier locally as well. The deploy mode is recorded as `deployment_mode` in `.moai/config/sections/llm.yaml`, and `moai update` keeps the same scope per that record. A project whose plugin install could not be demonstrated is recorded on the safe side, as `local`.
+
 ```bash
 moai init my-project --llm gpt   # Codex-only project
 ```

@@ -26,10 +26,13 @@ Accepts at most 1 argument.
 
 | Flag | Description |
 |--------|------|
-| `--all` | Deploy the full catalog (core + optional packs + harness artifacts). The default is core-only slim mode |
+| `--all` | A full local deploy: every catalog tier locally (the `--no-plugin` payload plus optional packs). The default without it is core-only slim mode |
+| `--no-plugin` | Skip the moai plugin and deploy the FULL local payload (skills, commands, the `.mcp.json` moai entry, the Codex mirror). Also `MOAI_SKIP_PLUGIN_INSTALL=1`. On the default (plugin) path no local skills or commands deploy — the moai plugin carries them |
 | `--force` | Re-initialize an existing project (backs up the current `.moai/`) |
 | `--no-hooks` | Skip git hook installation |
 | `--llm <claude\|codex\|both>` | Select the LLM harness to wire (default: `claude`) |
+
+The resolved deploy mode is recorded as `deployment_mode` in `.moai/config/sections/llm.yaml` (`plugin` or `local`), and `moai update` keeps the same scope per that record. A project whose plugin install could not be demonstrated is recorded on the safe side, as `local`.
 
 ### Project defaults
 

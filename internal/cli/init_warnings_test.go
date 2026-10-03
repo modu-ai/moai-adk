@@ -102,7 +102,7 @@ func TestInitStdoutCleanWarningChannel(t *testing.T) {
 // next-action sequence and the warning-summary pointer (REQ-TUX2-016,
 // AC-TUX2-014).
 func TestCompletionCardNextActions(t *testing.T) {
-	card := buildInitSuccessCard("myproj", 12, 96, 0)
+	card := buildInitSuccessCard("myproj", 12, 96, 0, "plugin")
 	for _, want := range []string{"cd myproj", "moai cc", "/moai plan", "12", "96"} {
 		if !strings.Contains(card, want) {
 			t.Errorf("completion card must carry %q, got:\n%s", want, card)
@@ -112,7 +112,7 @@ func TestCompletionCardNextActions(t *testing.T) {
 		t.Errorf("zero-warning card must not mention warnings, got:\n%s", card)
 	}
 
-	withWarn := buildInitSuccessCard("myproj", 12, 96, 3)
+	withWarn := buildInitSuccessCard("myproj", 12, 96, 3, "plugin")
 	if !strings.Contains(withWarn, "3 warning") {
 		t.Errorf("card must point to the stderr warning summary when warnings exist, got:\n%s", withWarn)
 	}
@@ -127,7 +127,7 @@ func TestCompletionCardNextActions(t *testing.T) {
 // RenderKeyValueLines "Directories  N created" form.
 func TestInitSuccessCard_TuiBoxPillLanguage(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
-	card := buildInitSuccessCard("proj", 3, 7, 0)
+	card := buildInitSuccessCard("proj", 3, 7, 0, "local")
 
 	// Count summary rendered via tui.Pill (NO_COLOR bracketed form).
 	for _, want := range []string{"[3 dirs]", "[7 files]"} {

@@ -279,6 +279,10 @@ cd my-project
 | `gpt` | 仅 Codex 部署：只安装 `AGENTS.md` 与 Codex 表面（`.codex/`、`.agents/skills/`、`.moai/`）。不会生成 `.claude/` 目录、`CLAUDE.md` 和 `.mcp.json`。Claude 专属运行时功能（AskUserQuestion、子代理、output style、斜杠命令、Workflow 脚本）不可用 |
 | `both` | 在 `claude` 部署之上追加 `.codex/` 接入。`.mcp.json` 供应强制开启 |
 
+#### 部署模式：插件默认与完整本地部署
+
+默认路径（插件模式）下，技能与命令不再复制进项目 —— 由 moai 插件承载。`.claude/` 表面的其余部分（代理、规则、钩子注册、设置）照旧部署。要把技能和命令保留为本地文件，用 `--no-plugin`（完整本地部署 —— 含 `.mcp.json` 的 moai 条目与 Codex 镜像）；要把可选包目录也一并本地部署，用 `--all`。部署模式记录在 `.moai/config/sections/llm.yaml` 的 `deployment_mode`，`moai update` 按该记录保持同样的范围。插件安装未能得到确认的项目会记录在安全的一侧，即 `local`。
+
 
 > **GPT 网关已撤回（2026-09-16）。** 通过内置翻译网关把 GPT 模型接入 Claude Code 的旧 `moai gpt`
 > 启动器已移除。GPT 模型请通过原生 harness 使用：`moai codex`（Codex CLI）。上方的 `--llm gpt`
