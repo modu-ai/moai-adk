@@ -45,7 +45,9 @@
 |---|---|---|
 | 유사 카드 상위 3 | live(dropped 포함, 접두사 제거) + 보관 카드 | `measure=token-set-jaccard`, 점수, 상태(`live`·`dropped`·`archived` 중 하나), 본문 앞 60자, dropped 이면 사유 |
 | 같은 구성요소의 열린 카드 | 열린 카드(queued·picked·hold)의 본문 경로와 예상 파일 | `measure=component`, 구성요소 키, 카드 id·상태 |
-| 진행 중 레인과의 예상 파일 겹침 | 신규 카드의 예상 파일 × 진행 중 레인 카드의 예상 파일(없으면 레인 브랜치의 변경 파일) | `measure=file-overlap`, 겹친 경로. 입력이 없으면 `unmeasured` 와 이유 |
+| 진행 중 레인과의 예상 파일 겹침 | 신규 카드의 예상 파일 × 진행 중 레인 카드(picked, 레인 배정 있음)의 예상 파일 — 아래 "예상 파일" 정의 | `measure=file-overlap`; 공유 경로마다 한 항목(진행 중 카드 id·레인·경로). 입력이 있는 비교에서 겹침이 없으면 `none`(줄을 쓰지 않는다), 후보에 입력이 없거나 비교할 진행 중 카드에 입력이 하나도 없으면 `unmeasured` 와 이유 |
+
+**예상 파일(겹침 항목의 입력).** 카드의 예상 파일은 (i) 본문이 이름으로 대는 저장소 경로 토큰(읽기 전용 추출 — 저장하지 않는다, D13)과 (ii) M2 이후 `issuance.files` 의 합집합이다. 진행 중 레인 카드는 여기에 (iii) 그 레인 브랜치의 변경 파일(`git diff --name-only`, 시간 상한 안에서만; §3.4)을 더한다. 오늘은 `files` 속성이 어느 카드에도 없고 본문 경로가 열린 카드 37장 중 12장에만 있으므로(SB06) 대부분 `unmeasured` 로 나가며, 양성 겹침은 고정 입력 시험으로 관측한다(`acceptance.md` AC-TCI-002 (e), AC-TCI-003 (f)(g)). 허브 체인(§7.2)은 (ii) 만 읽는다 — 본문 추출은 재현율이 낮고(SB06 32%) 저장되지 않는 추론이라 체인을 만들지 않는다.
 | 이미 덮는 완료 SPEC | `status: completed` 인 SPEC 의 `card:`·`module:`·제목·태그 | `measure=spec-heuristic`, 표지 `heuristic` |
 
 ### 3.2 척도와 하한
@@ -92,7 +94,7 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 
 ### 4.2 닿는 곳 (모두 한 마일스톤 M2 의 한 커밋 묶음)
 
-카드 표 둘과 finding 표 둘은 **같은 규율**을 받는다 — 이주, 순수 읽기, 보관 왕복, parity, 동결 튜플, 큐 병합. 아래 줄 번호는 이터레이션 2 가 `1894984c3` 에서 `git grep` 으로 읽은 위치다.
+카드 표 둘과 finding 표 둘은 **같은 규율**을 받는다 — 이주, 순수 읽기, 보관 왕복, parity, 동결 튜플, 큐 병합. 아래 줄 번호는 이터레이션 2 가 `1894984c3` 에서 `git grep` 으로 읽은 위치다(이터레이션 3 의 핀 `ad02a5677` 과 제품 경로가 같다 — `acceptance.md` G20 이 두 커밋 사이 `internal`·`cmd`·`.claude` 의 변화 없음을 읽었다).
 
 | 닿는 곳 | 위치 | 이유 |
 |---|---|---|
@@ -141,7 +143,7 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 | `supersedes` | 새 → 옛 | `replaces`, `gtd_relations.supersedes`·`replaces` |
 | `relates-to` | 대칭 | `contains`, `absorbs`, `conflicts`(원래 이름을 한정어로), `gtd_relations.related_to`·`supported_by`·`contains`·`absorbs`·`conflicts` |
 
-**쓰는 길.** `todo relate` 는 오늘 여섯 이름(`contains`·`absorbs`·`replaces`·`conflicts`·`blocks`·`depends`)을 받는다. 이 SPEC 은 새 쓰기 이름 `duplicates`·`supersedes`·`relates-to` 를 더해 기존 `findings` 어휘를 확장한다(오래된 행은 그대로 읽힌다, REQ-TCI-017). `merged-into` 는 `todo merge`(M4)만 쓰고 `relate` 는 쓰지 않는다 — 접는 동사가 접는 기록의 유일한 작성자여야 "분석은 접지 않는다"는 불변식이 유지된다. `parent-of`·`follow-up-of` 는 쓰지 않고 속성에서 투영한다(D10).
+**쓰는 길.** `todo relate` 는 오늘 여섯 이름(`contains`·`absorbs`·`replaces`·`conflicts`·`blocks`·`depends`)을 받는다. 이 SPEC 은 새 쓰기 이름 `duplicates`·`supersedes`·`relates-to` 를 더해 기존 `findings` 어휘를 확장한다(오래된 행은 그대로 읽힌다, REQ-TCI-017). `merged-into` 는 `todo merge`(M4)만 쓰고 `relate` 는 쓰지 않는다 — 접는 동사가 접는 기록의 유일한 작성자여야 "분석은 접지 않는다"는 불변식이 유지된다. `parent-of`·`follow-up-of` 는 쓰지 않고 속성에서 투영한다(D10). 그래서 `relate` 의 쓰기 가능 집합은 오늘의 여섯 이름(`BacklogSemanticRelations`)에 `duplicates`·`supersedes`·`relates-to` 셋만 더한 아홉이고, 일곱 종류 어휘 전체가 쓰기 가능 집합이 되어서는 안 된다 — `relate` 에 준 `parent-of`·`follow-up-of`·`merged-into` 는 오늘처럼 `--relation must be one of … (got "<값>")` 로 거절돼야 하고(`internal/cli/todo_relate.go:63-65`), 이 불변식을 `TestTodoRelateRefusesProjectionKinds` 가 붙든다(`acceptance.md` AC-TCI-013 (f)).
 
 ### 5.3 종류별 제약
 
@@ -196,7 +198,7 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 | `cards` 행 | 묶음 식별·순번·레인 속성(`ALTER TABLE … ADD COLUMN` 목록에 추가) |
 | 적재 동사 | `moai factory bundle <lane> <card>…`: 각 카드의 레코드를 만들고(`RecordPicked`), 묶음 속성과 `HintAfter`(앞 멤버)를 채우고, 첫 멤버만 레인에 할당한다 |
 | 선택 호 | (1) 묶음 멤버가 선행 미병합이면 오류 대신 건너뛴다, (2) 묶음 레인이 다르면 건너뛴다, (3) 레인은 자기 묶음의 다음 멤버를 소유자 없는 picked 카드보다 우선한다 |
-| 허브 체인 | 레코드 생성 시점(`RecordPicked`)에 새 카드의 예상 파일이 **임베드된 허브 목록**(§7.4)의 경로를 담고 같은 허브 파일을 담은 열린 카드가 있으면 `HintAfter` 를 그 카드로 채운다 |
+| 허브 체인 | 레코드 생성 시점(`RecordPicked`)에 새 카드의 `files` 속성(명시 입력)이 **임베드된 허브 목록**(§7.4)의 경로를 담고 같은 허브 파일을 `files` 속성에 담은 열린 카드가 있으면 `HintAfter` 를 그 카드로 채운다 — 본문 경로 추출은 읽지 않는다(§3.1) |
 
 직렬 슬롯 의미(전군 단일 슬롯)는 그대로다. keep-set 은 파일 겹침을 읽지 않는다 — 허브 체인은 레코드 생성의 입력이지 keep-set 이나 선택의 입력이 아니다. 임대 선택 호가 묶음 속성을 읽는 것은 REQ-TAU-013 의 "새 입력이 임대 경로를 고치지 않는다"와 맞지 않으므로 개정 행 A3 에 기록한다. 선택 호 변경은 비묶음 카드의 동작이 같음을 골든으로 증명한다.
 
@@ -206,7 +208,7 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 
 ### 7.4 허브 목록의 출하 형태 (D1 대응)
 
-허브 체인은 출하되는 제품 동작이므로 그 입력은 사용자 프로젝트에 없는 SPEC·reports 경로를 읽을 수 없다. 입력은 `internal/homestate/hub_files.txt`(한 줄에 경로 하나, `#` 주석 허용)를 `go:embed` 로 묶은 데이터 파일이고, M0 가 만드는 추적되는 `baseline/hub-files.txt` 의 경로 열이다. 두 사본을 시험이 대조하고 목록의 각 경로를 기준선이 기록한 단일 호출 명령으로 다시 잰다(§12). 사용자 프로젝트에서는 목록의 경로가 존재하지 않아 체인이 만들어지지 않는다 — 사용자별 허브 설정은 범위 밖이다.
+허브 체인은 출하되는 제품 동작이므로 그 입력은 사용자 프로젝트에 없는 SPEC·reports 경로를 읽을 수 없다. 입력은 `internal/homestate/hub_files.txt`(한 줄에 경로 하나, `#` 주석 허용)를 `go:embed` 로 묶은 데이터 파일이고, M0 가 만드는 추적되는 `baseline/hub-files.txt` 의 경로 열이다. 두 사본을 시험이 대조하고 목록의 각 경로를 기준선이 기록한 단일 호출 명령으로 다시 잰다(§12). 목록의 경로가 존재하지 않는 프로젝트에서는 체인이 만들어지지 않는다. 그러나 목록의 경로가 사용자 프로젝트에도 있는지는 **검증하지 못했다** — 후보에는 흔한 Go 배치인 `internal/config/defaults.go` 가 들어 있고(`git ls-files -- internal/config/defaults.go` 가 이 저장소의 경로를 출력한다), 이 저장소는 다른 프로젝트를 볼 수 없다. 그런 프로젝트에서 두 열린 카드가 `--files` 로 같은 경로를 명시하면 이 저장소의 측정에서 나온 직렬화가 적용된다 — 영향은 두 카드를 한 줄로 세우는 순서 지정이고 거절이 아니며, 입력은 명시 `files` 속성뿐이다(본문 추출은 체인을 만들지 않는다, §3.1). 수용된 잔여이고 사용자별 허브 설정은 범위 밖이다(`spec.md` §G).
 
 ## §8 M5 규칙 설계
 
@@ -433,12 +435,14 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 ### 12.3 시험이 하는 일 (REQ-TCI-020 의 근거 사슬)
 
 - `TestHubFileListFromBaseline` — 임베드 목록의 경로 집합이 추적되는 `baseline/hub-files.txt` 의 경로 집합과 같다. 기준선 파일이 없으면 **실패**한다(건너뛰지 않는다 — 건너뛰는 시험은 목록을 아무것도 대조하지 않은 채 통과로 읽힌다).
-- `TestHubFileListMatchesMeasuringCommand` — 기준선이 적은 각 경로의 단일 호출 측정 명령(`git log --first-parent --since=<S> --until=<U> --format=%H <develop 팁 SHA> -- <path>` 의 출력 줄 수; 통합 브랜치 자체를 읽으므로 first-parent 가 맞다)을 기록된 develop 팁 SHA 에서 다시 돌려 기록된 개수와 비교한다. 그 SHA 를 클론이 갖지 않으면 사유를 출력하고 건너뛴다 — 건너뜀은 통과가 아니라 공백이며 레인의 전체 이력 클론에서는 통과해야 한다. 이 시험은 목록에 **오른** 경로가 기록 개수를 만족하는지(건전성)만 잰다. 목록에서 **빠진** 허브(완전성)는 M0 스크립트 실행 기록에만 기댄다 — 수용된 공백이다.
-- `TestHubFileLoaderReadsNoProjectPath` — 목록 적재 코드가 `.moai/specs`·`.moai/reports` 경로 리터럴을 읽지 않고 임베드 데이터만 쓴다는 정적 검사.
+- `TestHubFileListMatchesMeasuringCommand` — 기준선이 적은 각 경로의 단일 호출 측정 명령(`git log --first-parent --since=<S> --until=<U> --format=%H <develop 팁 SHA> -- <path>` 의 출력 줄 수; 통합 브랜치 자체를 읽으므로 first-parent 가 맞다)을 기록된 develop 팁 SHA 에서 다시 돌려 기록된 개수와 비교한다. 그 SHA 를 클론이 갖지 않으면 사유를 출력하고 건너뛴다 — 건너뜀은 통과가 아니라 공백이며 레인의 전체 이력 클론에서는 통과해야 한다. 건너뜀은 `ok` 로 출력돼 묻지 않으면 보이지 않으므로(`verification-completeness.md` §1.3) 환경 변수 `CI` 가 있는 실행에서는 건너뛰지 않고 실패한다 — CI 의 test 작업은 `fetch-depth: 0` 이다(`.github/workflows/ci.yml:131`). 이 시험은 목록에 **오른** 경로가 기록 개수를 만족하는지(건전성)만 잰다. 목록에서 **빠진** 허브(완전성)는 M0 스크립트 실행 기록에만 기댄다 — 수용된 공백이다.
+- `TestHubFileMeasurementSkipPolicy` — 위 건너뜀/실패 결정이 순수 함수이고 표로 읽는다: SHA 없음 + `CI` 미설정 → 건너뜀, SHA 없음 + `CI` 설정 → 실패, SHA 있음 → 실행.
+- `TestHubFileLoaderReadsNoProjectPath` — 목록 적재 코드가 `.moai` 문자열 리터럴을 읽지 않고 임베드 데이터만 쓴다는 정적 검사. 경로를 조각으로 조립하는 적재는 이 검사를 피한다.
+- `TestHubFileLoaderIgnoresProjectTree` — 동작 검사: 빈 임시 디렉터리와, `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/baseline/hub-files.txt`·`.moai/reports/` 아래에 표식 경로를 심은 임시 디렉터리를 각각 작업 디렉터리로 삼아 적재해 두 결과가 같고 임베드 목록과 같으며 표식이 없다. 한계: 작업 디렉터리와 리터럴만 본다 — 실행 파일 위치나 `$HOME` 에서 경로를 만드는 적재는 둘 다 통과한다(수용; 적재가 `go:embed` 한 함수라는 설계와 리뷰가 닫는다).
 
 ### 12.4 순서 증인
 
-기준선 커밋 `B` 는 `baseline/` 아래 파일만 담는 **자기 커밋**이고 제품 경로를 바꾸는 어떤 커밋보다 앞서야 한다. 증인은 커밋 그래프이고 읽는 명령은 `acceptance.md` AC-TCI-001 의 순서 증인 1~4 와 완료 정의 #2 다(기준선 커밋 찾기, 자기 커밋 증명, 변경 커밋이 모두 B 의 후손임을 보이는 두 개수의 일치, 측정 트리 대 B 의 부모). 기준선이 무시되는 경로에 있으면 이 증인이 존재할 수 없다.
+기준선 커밋 `B` 는 `baseline/` 아래 파일만 담는 **자기 커밋**이고 제품 경로를 바꾸는 어떤 커밋보다 앞서야 한다. 증인은 커밋 그래프이고 읽는 명령은 `acceptance.md` AC-TCI-001 의 순서 증인 1~5 와 완료 정의 #2 다(기준선 커밋 찾기, 자기 커밋 증명, B 뒤의 변경 커밋이 모두 B 의 후손임을 보이는 두 개수의 일치, 측정 트리 `card-head:` 대 B 의 부모, **B 보다 앞선 제품 커밋이 0 개임**). 증인 3 은 범위 `B^..HEAD` 만 보므로 B 앞의 제품 커밋을 보지 못한다 — 증인 5(`git rev-list --count --grep=t1454 <B>^ -- internal cmd .claude` = 0)가 앞쪽을 본다. 제품 커밋은 카드 id 를 메시지에 담고 `internal`·`cmd`·`.claude` 를 바꾸는 커밋이고 `.moai/` 만 바꾸는 SPEC·기준선 커밋은 세지 않는다 — 경로 필터는 정의의 일부다(필터가 없으면 `t1454` 를 적은 다른 카드의 SPEC plan 커밋이 센다: `acceptance.md` C27). 기준선이 무시되는 경로에 있으면 이 증인이 존재할 수 없다. 카드 id 없는 제품 커밋은 증인 3·5 가 못 보는 수용된 잔여다(MU-110).
 
 ### 12.5 M5 초안
 
@@ -460,10 +464,13 @@ Mode B 의 초안(`anchors.md`, `card-issuance.md`, `card-issuance-thresholds.md
 
 ### 13.3 술어와 판독
 
-술어를 말로 하면 **"t1453 의 병합을 기록한 커밋이 HEAD 의 조상이다"**(어느 부모 경로로든). 판독은 `plan.md` §F.8 의 다섯 가지다 — (1) `--first-parent` 없는 개수, (2) 발견한 SHA 를 고정하고 `git merge-base --is-ancestor <S> HEAD`, (3) 양성 대조 t1448·t1344, (4) 같은 명령의 `--first-parent` 형태보다 엄격히 큰 일반 병합 수(이식 가능한 런타임 대조: 핀에서 333 대 214), (5) 제목 형태가 다를 때의 직접 SHA 판독. 판독 4 가 "눈먼 선택자 방지"를 맡는다 — 선택자가 첫 부모 경로 밖의 커밋을 본다는 증거가 없으면 게이트는 "미측정 = 미충족"이다.
+술어를 말로 하면 **"t1453 의 착지 병합 — develop 을 그 브랜치에 흡수하는 병합이 아닌 것 — 을 기록한 커밋이 HEAD 의 조상이다"**(어느 부모 경로로든). 판독은 `plan.md` §F.8 의 다섯 가지다 — (1) `--first-parent` 없는 제목 커밋 수 `T` 에서 그 가운데 `absorb` 를 담은 흡수 방향 병합 수 `A` 를 뺀 착지 후보, (2) 후보 목록에서 `absorb` 없는 줄의 SHA 를 고정하고 `git rev-list --no-walk --count -E -i --grep=absorb <S>` 가 0 이며 `git merge-base --is-ancestor <S> HEAD`, (3) 양성 대조 t1448·t1344(그리고 t1448 의 `A` 가 0), (4) 같은 명령의 `--first-parent` 형태보다 엄격히 큰 일반 병합 수(이식 가능한 런타임 대조: 핀에서 333 대 214), (5) 제목 형태가 다를 때의 직접 SHA 판독. 판독 4 가 "눈먼 선택자 방지"를, 판독 1 의 `A` 가 "착지 없이 열림 방지"를 맡는다 — 선택자가 첫 부모 경로 밖의 커밋을 본다는 증거가 없으면 게이트는 "미측정 = 미충족"이다.
+
+**흡수 방향 병합이 왜 문제인가.** 이터레이션 2 의 선택자는 제목 grep 이라 `merge(t1453): absorb … into WT-github-flow-default` 도 센다. 미푸시 브랜치 `WT-github-flow-default` 가 그런 커밋 다섯 개를 이미 갖고 있고(`acceptance.md` G23), 카드 브랜치가 미착지 코드에 기대려고 그 브랜치를 병합하면(kanban-dispatch 의 새 카드 조항) 이 다섯이 HEAD 에서 닿는다. 같은 두 질의를 흡수 병합 `b05c3be90…` 에 걸면 `T` 가 5, `A` 가 5 라 후보가 0 이고(C28·C29), 실제 착지 병합(t1448)은 `A` 가 0 이다(C30). 이터레이션 2 설계 §13.4 의 "그런 커밋은 이 카드의 브랜치에 존재하지 않는다고 가정한다"는 가정은 그 브랜치에 실제로 존재한다는 관측 앞에서 폐기했다.
 
 ### 13.4 한계
 
-- 판독 1 은 `merge(t1453)`·`Merge card t1453` 같은 제목 형태를 가정한다. t1453 이 다른 제목으로 착지하면 판독 1 이 0 으로 남아 게이트가 닫힌 채 읽히고(안전한 방향: Mode B) 판독 5 가 보완한다.
-- 고정 SHA 대조 네 행(C17~C20)은 미푸시 브랜치의 객체가 필요하다. 이식 가능한 대조는 판독 4 의 부등식이다.
-- 어느 부모 경로로든 닿는 grep 은 카드 브랜치 안에서 만든 `merge(t1453)` 제목의 커밋도 센다. 그런 커밋은 이 카드가 아니라 t1453 의 작업이므로 이 카드의 브랜치에 존재하지 않는다고 가정한다 — 판독 2 가 SHA 를 `progress.md` 에 적어 사람이 그 출처를 읽을 수 있게 한다.
+- 판독 1 은 `merge(t1453)`·`Merge card t1453` 같은 제목 형태를 가정한다. t1453 이 다른 제목으로, 또는 빨리감기·스쿼시로 착지하면 판독 1 이 0 으로 남아 게이트가 닫힌 채 읽히고(안전한 방향: Mode B) 판독 5 가 보완한다. 착지 병합의 메시지에 `absorb` 라는 낱말이 들어 있으면 `A` 가 그것을 흡수 병합으로 세어 후보에서 빼므로 역시 닫힌 쪽(안전한 방향)이다.
+- 고정 SHA 대조 행(C17~C20, C28·C29·C31)은 미푸시 브랜치의 객체가 필요하다. 이식 가능한 대조는 판독 4 의 부등식이다.
+- 착지가 되돌려진(revert) 경우는 원래 병합이 조상으로 남아 게이트가 열린 채로 읽힌다 — 이 이력에 되돌림 사례가 없어 측정하지 못한 추정이다. 판독 2 가 SHA 를 `progress.md` 에 적어 리더가 그 출처를 읽을 수 있다.
+- 후보 목록에서 `absorb` 없는 줄을 고르는 것(판독 2)은 사람이 읽는 단계다 — 목록이 여러 줄이면 각 줄의 SHA 에 점검 질의를 건다.

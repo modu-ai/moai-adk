@@ -129,7 +129,7 @@ G1 (empty) 종료 0 · G2 `TestTodoListJSON_GoldenByteIdentity` + `ok …/intern
 
 #### 점검 목록 (이 에이전트가 실행해 읽은 것)
 
-- NEEDS-CLARIFICATION 표지: `grep -n "NEEDS CLARIFICATION" <SPEC 파일 여덟 개>` 종료 1(적중 0). 새로 들어오지 않았다.
+- 미해결 질문 표지(계획 문서 규약의 대문자 표지): SPEC 파일 여덟 개에 대한 `grep` 이 종료 1(적중 0)이었다. 새로 들어오지 않았다.
 - `status:` 필드: `grep -n "^status:"` 를 `spec.md` 를 뺀 일곱 형제 파일에 걸어 종료 1(적중 0). `decision-index.md` 에 `status:` 가 없다.
 - 요구·기준 추적성은 `git grep` 이 아니라 `grep` 으로 읽었다(작업트리 가드가 awk 프로그램을 거부한다고 지시받았고 awk 를 쓰지 않았다): 요구 24개 모두 `**Covers**` 줄에서 하나 이상 인용된다(AC-001→001, -002→002, -003→002·006, -004→003, -005→004, -006→005, -007→006, -008→007·008·009, -009→007, -010→010, -011→011, -012→012·017, -013→013, -014→014, -015→015, -016→016, -017→018, -018→019, -019→020, -020→021·022, -021→021, -022→023, -023→024, -024→참조). 새 REQ 는 더하지 않았다.
 - 개수: `grep -c -E "^- \*\*REQ-TCI-[0-9]+\*\*" spec.md` 가 24, `grep -c -E "^## AC-TCI-[0-9]+" acceptance.md` 가 24. 요구 24 ≤ 25, 기준 24 ≤ 25, 모듈 5. 기준 분류 = 출시 차단 20 + 조건부 1(AC-TCI-021) + 회귀 가드 3(AC-TCI-007·009·023).
@@ -155,3 +155,78 @@ G1 (empty) 종료 0 · G2 `TestTodoListJSON_GoldenByteIdentity` + `ok …/intern
 #### 트리 상태
 
 마지막 확인은 아래 `git status --short` 한 번이다(오케스트레이터가 커밋한다; 커밋·푸시·SPEC 디렉터리 밖 파일 변경 없음).
+
+### 이터레이션 3 기록 (감사 FAIL 0.82 — Tier L 기준 0.85, 마지막 허용 반복 — 대응, 이 에이전트가 한 일만)
+
+**범위와 경계.** 대상은 이터레이션 2 감사의 지적 D15~D25(이 SPEC 의 결정 D1~D15 와 별개 번호)이고 SPEC 디렉터리 밖은 건드리지 않았다. 커밋·푸시를 하지 않았고 `plan_complete_at`·`plan_status: audit-ready` 를 쓰지 않았으며(§E.1 은 비어 있다, §E.2~§E.4 는 자리 표시만 남아 있다) `.moai/reports/t1454/` 는 읽기만 했다. spec.md `version` 을 `"0.3.0"` 으로 올리고 HISTORY 에 0.3.0 행을 더했다. 감사 보고서의 모든 근거를 편집 전에 이 트리에서 다시 읽었다.
+
+**측정 트리와 판정 도구.** 트리 `ad02a56779473afc2ef72e9ecfe16d517a297a7b`(브랜치 `WT-card-issuance-overlap-graph`). 시작 시 `git rev-parse HEAD` 가 이 SHA, `git status --short` 는 빈 출력. 증거 행은 설치된 일반 `git`·`ls`·`wc`·`cmp`·`go test -list`(도구가 트리 빌드가 아니므로 judging-build 좌표 없음)로 읽었고, 전 행을 `acceptance.md` 의 원문 명령 그대로 한 스크립트가 셸 없이(`shlex`) 실행했다. lint 와 `spec audit` 는 이 트리 `ad02a5677` 에서 `go build -o /tmp/moai-t1454 ./cmd/moai`(종료 0)로 만든 빌드를 **경로로** 호출했다. 설치된 `moai` 는 쓰지 않았다. 이 세션의 셸은 레인 표지가 있고 worktree 가드가 `awk`·heredoc 복합 호출을 거절하므로 `grep`·`python3 <파일>` 로 대체했다(대체한 것: 순서·추적성 점검의 awk 동사 — 점검 목록 참조).
+
+#### 지적별 처분과 재검증
+
+| 지적 | 처분 | 파일 | 이 반복이 다시 읽은 근거 |
+|---|---|---|---|
+| D15 순서 증인이 B 앞의 제품 커밋을 못 봄 | **수정** | acceptance.md(AC-TCI-001 증인 3 문장 정정·증인 4 `card-head:` 정의·증인 5 추가, C23~C27, MU-94·MU-110, 완료 정의 #2), plan.md(§D, F.2, R14, F.12), design.md §12.3·12.4, spec-compact.md | C23 `0`, C24 `3`, C25 `0`, C26 `0`, C27 `2` (전부 종료 0, 고정 SHA 위). 감사의 `0`·`0`·`3` 이 재현됐다 |
+| D16 REQ-TCI-002(c) 양성 겹침 기준 없음 | **수정** | spec.md(Module A "예상 파일" 용어), acceptance.md(AC-TCI-002 (e), AC-TCI-003 (f)(g)·시험 8개, L37~L39, MU-95~98), plan.md F.3, design.md §3.1, spec-compact.md | AC-TCI-003 의 필수 시험에 `unmeasured` 시험만 있음을 문면에서 읽었다. L37~L39 는 새 시험 이름의 부재(종료 1) |
+| D17 REQ-TCI-013 마지막 절 기준 없음 | **수정** | acceptance.md(AC-TCI-013 (f)·시험 5개, L40, MU-99~102), plan.md F.5, design.md §5.2, spec-compact.md | `BacklogSemanticRelations` 여섯 이름과 `internal/cli/todo_relate.go:63-65` 의 거절 문장을 읽었다. 기존 시험 `TestRelateAndUnrelateRefusals` 를 레인 변수를 지우고 돌려 PASS(G25) |
+| D18 속성 없는 카드의 저장 형태 | **수정** | acceptance.md(AC-TCI-008 (g)·시험 13개, L41·L42, MU-103·104), plan.md F.4, spec-compact.md | 독립 Go 프로그램이 값 형 `omitempty` 구조체 필드는 `{"id":"t1","issuance":{}}`, 포인터 형은 `{"id":"t1"}` 를 냄을 관측 |
+| D19 개수 귀속 | **수정** | spec.md §A.1·§G, plan.md F.2, acceptance.md AC-001 (d), research.md §10 | 이 반복이 14:41 에 읽은 값: `WT-` 브랜치 367, 워크트리 89, `.moai/specs` 디렉터리 1,031, `card:` 를 가진 SPEC 33 |
+| D20 게이트 선택자 | **수정** | acceptance.md(L21·C8·C9·C19~C22 앵커·SHA 핀, C28~C32, G23, AC-TCI-020 판독 1~5, MU-107·112), plan.md F.8·§G, design.md §13, spec.md REQ-TCI-021·§G, spec-compact.md, decision-index.md Q1 | C28 `5`, C29 `5`(착지 후보 0), C30 `0`(t1448 후보 1), C31 `1`, C32 `0`. 감사가 본 흡수 병합 다섯 개 재현(G23) |
+| D21 AC-022(d) | **수정(한계 명시)** | acceptance.md(AC-TCI-022 (d)·MU-109·MU-113), plan.md F.7, spec-compact.md | 문면 판정(변이가 `//`·`url(` 을 통과) — 코드 없음 |
+| D22 허브 목록 전제 | **좁힘 — 검증하지 못한 수용 잔여로 격하** | spec.md(§F Out of Scope·§G), design.md §7.2·7.4, plan.md R15, acceptance.md AC-TCI-019 | `git ls-files -- internal/config/defaults.go` 가 이 저장소의 경로를 출력하고 `git ls-files | grep -c 'defaults.go$'` 는 4. 사용자 프로젝트는 볼 수 없어 명령으로 확인하지 못했다. 입력을 명시 `files` 속성으로 좁혀 노출을 줄였다 |
+| D23 정적 스캔·건너뜀 | **수정(한계 명시)** | acceptance.md(AC-TCI-019 (d)(f)·시험 7개, L43·L44, MU-105·106·111), design.md §12.3, plan.md F.6 | `.github/workflows/ci.yml:131` 의 test 작업이 `fetch-depth: 0` 임을 `grep -n fetch-depth` 로 읽었다 |
+| D24 `tree:` 출처·`ls` 문장 | **수정** | acceptance.md(L11, AC-001 `card-head:`, G12), research.md §10 항목 17 | 이 셸의 `ls .moai/reports/t1454` 는 파일 이름 둘만 출력(종료 0) |
+| D25 시험 패키지 귀속 | **수정 + 새 오류 하나 발견** | plan.md §D·F.8 단계 6, acceptance.md AC-TCI-021 (f)(g) | `todo_skill_doc_parity_test.go`·`todo_classify_doc_parity_test.go` 는 `internal/cli`, `TestGoldenCommittedArtifactsMatchEmission` 은 `internal/template/agentemit`(G21 은 `internal/template` 에서 이름 3개, G22 는 `agentemit` 에서 1개) — AC-TCI-021 (f) 의 이터레이션 2 문면은 이 시험을 `internal/template` 에서 찾았다 |
+
+이 밖에 이 반복이 새로 찾은 것: **plan §D 의 SCRUB 접두사가 팩토리 레인에서 부족하다.** 레인 가드(`factoryLaneRefusal`)는 `MOAI_FACTORY_ROLE`·`MOAI_FACTORY_WORKER`·`MOAI_KANBAN_BACKEND` 를 읽는데 이터레이션 2 의 SCRUB 는 kanban 변수 다섯만 지웠다. 그 접두사로 돌린 기존 시험 `TestRelateAndUnrelateRefusals` 는 `lane boundary` 거절로 붉었고(G24, 종료 1) 팩토리 변수까지 지우자 통과했다(G25, 종료 0). plan §D 를 아홉 변수로 고쳤다.
+
+#### 원장 재실행 (acceptance.md 의 L·C·G 전 행, 이 트리 `ad02a5677`)
+
+실행: `python3 <scratchpad>/ledger.py` — 문서 표의 `| L`·`| C`·`| G` 행에서 명령을 그대로 뽑아 `shlex` 로 나누어 실행하고 문서의 stdout·종료 코드와 대조한다. 결과: **99행(L1~L44, C1~C32, G1~G20·G23, 펜스 G21·G22) 모두 문서와 일치**, 불일치 0. 출력(요약): L1~L20·L25~L27·L28~L30·L32·L33·L35~L44 는 stdout 비어 있음·종료 1(L1·L22·L23·L31·L34 는 stderr `did not match any file(s) known to git`); L21 `0`(종료 0); L24 `   40037 .claude/skills/moai/workflows/gtd.md`; C1~C16 은 문서의 값; C17 종료 1, C18 종료 0, C19 `0`, C20 `1`, C21 `333`, C22 `214`, C23 `0`, C24 `3`, C25 `0`, C26 `0`, C27 `2`, C28 `5`, C29 `5`, C30 `0`, C31 `1`, C32 `0`; G1 비어 있음; G2·G3 이름 + `ok`(시간 `1.468s`·`0.502s`); G4 `28301`; G5 `28092`; G6 `43138`; G7 `differ: char 25113, line 181` 종료 1; G8 비어 있음; G9 `2de0a2cb613b…`; G10 `4315f0d0e974…`; G11 두 부모; G12 파일 이름 둘; G13 종료 1; G14 `.gitignore:235:…` 종료 0; G15~G18 비어 있음·종료 1; G19 `2de0a2cb613b…`; G20 비어 있음; G21 이름 3개 + `ok`(`0.448s`); G22 이름 1개 + `ok`(`0.450s`); G23 다섯 줄. 재현되지 않아 회귀 가드로 내릴 행: **없다**.
+
+**출력이나 명령이 이터레이션 2 와 달라진 행.** 값이 바뀐 행은 없다(G2·G3·G21·G22 의 `ok` 줄 시간만 다르다). 명령·귀속이 바뀐 행: L21, C8, C9(핀한 SHA·id 뒤 `[^0-9]`), C19~C22(앵커·핀), G9(핀한 SHA 쌍; 움직이는 형태는 G19 로 이유와 함께 보존), G10(핀), G12(셸 의존 문장). 새 행: L37~L44, C23~C32, G19~G25. 움직이는 ref 를 그대로 둔 곳: G19, AC-TCI-020 의 게이트 판독, AC-TCI-020 Mode B·AC-TCI-021 (b) 의 `git merge-base develop HEAD` — 질문이 "지금 작업 트리에서 닿는가"·"지금 흡수한 기준이 무엇인가"라 뒤집힘이 신호이므로(`verification-completeness.md` §4 의 판별 질문) 핀하지 않았고 이유를 각 자리에 적었다.
+
+**D15 증인 5 의 실제 출력(실제 이력, 고정 SHA).** 질의: `git rev-list --count --grep=t1454 <B>^ -- internal cmd .claude` 의 형태를 이 카드의 첫 plan 커밋에 건 C23 이 `0`. "기준선이 제품 커밋 뒤에 착지" 변이의 형태는 카드 t1460 을 대역으로 같은 형태를 `1894984c3` 에 건 C24 가 `3`. 같은 이력을 증인 3 의 범위로 보면 C25·C26 이 `0`·`0`. 아직 `B` 가 없으므로 이 카드 자신의 B 에 대한 값은 M0 가 낸다.
+
+#### lint 와 감사 도구
+
+| 명령 | 종료 | 출력 |
+|---|---|---|
+| `/tmp/moai-t1454 spec lint .moai/specs/SPEC-TODO-CARD-ISSUANCE-001` | 0 | `INFO OwnershipTransitionUnmeasured spec.md … commit 1894984c3254d62f2d57ced961fef8af63eb59c8 … has no Authored-By-Agent trailer` 다음 `0 error(s), 0 warning(s)` |
+| `/tmp/moai-t1454 spec lint --strict .moai/specs/SPEC-TODO-CARD-ISSUANCE-001` | 0 | 같은 INFO 한 줄과 `0 error(s), 0 warning(s)` |
+| 양성 대조: 사본(scratchpad)의 `phase:` 를 `plan` 으로 바꿔 같은 lint | 1 | `ERROR FrontmatterPhaseInvalid … phase "plan"` 과 `1 error(s), 0 warning(s)` |
+| `mcp__moai__spec_audit`(이 SPEC, `project_root` = 이 워크트리) | — | `drift_findings` 에 `EraAutoDetected`(INFO, `H-5`) 하나, `modern_era_clean: 1` (서빙 빌드는 `v3.2.0-rc.25` 로 트리보다 오래돼 보조 증거일 뿐이다) |
+| `go test ./internal/spec -run '^TestACCounterFullCorpusMatchesBaseline$' -count=1` | 0 | `ok  github.com/modu-ai/moai-adk/internal/spec 9.084s` |
+
+lint 는 이 문서 편집을 모두 마친 뒤 다시 돌렸다(아래 최종 점검 줄).
+
+#### 변이 탐침 (추가·변경한 기준마다)
+
+**명령으로 실행해 관측한 것**: MU-94 의 형태(C23~C27, 대역 카드), MU-107 의 형태(C28~C32, 고정 SHA), MU-108 의 형태(G21·G22), MU-103 의 메커니즘(독립 Go 프로그램), MU-99~102 의 전제(G25 — 오늘의 `relate` 가 범위 밖 값을 거절). **읽기로 판정한 것**(코드가 없어 변이를 만들어 돌리지 못했다): MU-95~102 의 기준 단언, MU-104~106, MU-109. **돌리지 못한 것과 이유**: 가짜 저장소에서 MU-94 의 "제품 커밋 → 기준선 → 이후 커밋" 전체 순서를 만드는 일은 worktree 가드가 다른 저장소의 `git` 을 거절할 수 있어 하지 않았다 — 대역 카드의 실제 이력으로 질의 형태를 관측하는 것으로 대신했다.
+
+변이 총수: 113개 명명 = 105개 기준이 잡음 + 8개 수용(MU-74~77, MU-110~113). 이터레이션 3 이 새로 이름 붙인 것은 20개(MU-94~113)이고 16개는 기준이 잡는다.
+
+#### 점검 목록 (이 에이전트가 실행해 읽은 것)
+
+- 개수: `python3 <scratchpad>/xcheck.py` — 요구 `spec.md` 24·`spec-compact.md` 24, 수용 기준 `acceptance.md` 24·`spec-compact.md` 24; 기준별 "필수 시험 N개" 의 이름 수가 N 과 같고 green-path 의 `-run` 가지 이름 집합과 일치(AC-002 2, -003 8, -004 3, -005 2, -006 3, -008 13, -010 3, -011 3, -012 2, -013 5, -014 3, -015 4, -016 5, -017 3, -018 4, -019 7, -022 4 — 불일치 0); 필수 시험 이름이 plan.md 에 있는지(없는 것은 기존 시험 `TestSD_AC014_MCPMatchesCLIWithProjectRoot` 하나이고 plan 은 `^…$` 형태로 인용한다). 분류: 출시 차단 20(-001~006, -008, -010~020, -022, -024) + 조건부 1(-021) + 회귀 가드 3(-007, -009, -023).
+- 미해결 질문 표지: `grep -n -i -E 'NEEDS[ -]CLARIFICATION'` 을 SPEC 디렉터리의 `*.md` 에 걸어 편집 전 적중이 이 파일의 서술 한 줄뿐이었고 그 줄을 표지 없는 문장으로 고친 뒤 0 이다(최종 점검 줄이 다시 읽는다).
+- `status:` 필드: `grep -n -E '^status:'` 를 `spec.md` 를 뺀 일곱 형제 파일에 걸어 적중 0(종료 1). `decision-index.md` 에 `status:` 가 없다.
+- 템플릿 경로의 카드 id: 이 반복이 `internal/template/templates/` 아래 어떤 파일도 편집하지 않았다(SPEC 디렉터리만 변경 — 위 `git status --short`). 계획의 파일 목록에 새 `t####` 를 템플릿 사본에 더하는 항목이 없음을 읽었다(plan §D 템플릿 가드, REQ-TCI-021 의 "no card id … in any template copy").
+- 추적성: 요구 24개 모두 `**Covers**` 줄에서 하나 이상 인용된다(awk 동사 대신 `grep`·`python3` 로 읽었다; AC-TCI-002 의 REQ-TCI-002 인용은 그대로, 새 기준은 새 REQ 를 더하지 않았다).
+- 순서 점검(CN-4 의 awk 동사 대체): `grep -n -i -E 'before|after|first|prior to|앞서|먼저'` 대신 AC-TCI-001 증인 1~5, plan §D·F.2·F.12, 완료 정의 #2 를 직접 읽어 M0 → 제품 커밋 순서가 plan 과 acceptance 에서 같음을 확인했다(증인 5 가 앞쪽을 본다).
+- 교차 모순 점검: 증인 개수(1~5)·`card-head:`·게이트 판독(1(a)(b), 2, 3, 4, 5)·시험 개수·변이 개수·핀(`ad02a5677`)을 spec·plan·design·acceptance·decision-index·spec-compact 에서 대조했다. 남은 "증인 1~4" 는 MU-94 문장 안의 의도된 서술 둘뿐이다.
+
+#### 공백 (관측하지 못한 것)
+
+1. green-path 셀의 통과 출력은 **모양**일 뿐이다 — 새 시험 이름이 아직 없어 어느 것도 실행하지 않았다.
+2. D16~D18·D21·D23 의 변이는 기준 문면에 대한 읽기 판정이다. 이 카드 자신의 B 에 대한 증인 1~5 는 M0 이전이라 실행하지 못했다(대역 이력으로 질의 형태만 관측).
+3. 출하 허브 목록과 사용자 프로젝트의 경로 겹침, 카드→파일 간선의 로컬/CI 일치, 허브 목록의 완전성, 어휘 이웃의 정밀도는 측정하지 못했다(`spec.md` §G).
+4. 게이트의 고정 SHA 대조 행(C17~C20, C28·C29·C31)은 미푸시 브랜치의 객체가 있는 클론에서만 재현된다. 착지 되돌림(revert)·t1453 착지 제목 형태는 확인하지 못했다.
+5. 큐 쪽 baseline 수치와 스냅숏 위 figure 35개는 이 반복에서 다시 재지 않았다(M0 의 몫). `go test ./...` 는 돌리지 않았고 `go test` 는 `-list`, `TestACCounterFullCorpusMatchesBaseline`, `TestRelateAndUnrelateRefusals`(G24·G25)에만 썼다.
+6. 설치된 `moai` 와 서빙 중인 MCP 빌드는 트리 HEAD 보다 오래돼 판정에 쓰지 않았다(MCP `spec_audit` 는 보조 증거).
+
+#### 이터레이션 3 트리 상태
+
+**최종 점검(모든 편집 뒤).** 원장 재실행 99행 일치·불일치 0, `spec lint` 종료 0(`0 error(s), 0 warning(s)`), `--strict` 종료 0(같은 출력), 미해결 질문 표지 grep 종료 1(적중 0), `spec.md` 를 뺀 일곱 파일의 `^status:` grep 종료 1(적중 0), `spec.md` 는 `version: "0.3.0"`·`status: draft`, 요구 24·수용 기준 24.
+
+작업 시작 시 `git status --short` 는 빈 출력이었고, 모든 편집을 마친 뒤 마지막으로 읽은 값은 SPEC 디렉터리의 수정 파일 여덟(`acceptance.md`, `decision-index.md`, `design.md`, `plan.md`, `progress.md`, `research.md`, `spec-compact.md`, `spec.md`)뿐이다. HEAD 는 여전히 `ad02a5677`·브랜치 `WT-card-issuance-overlap-graph` 이고 커밋·푸시·SPEC 디렉터리 밖 파일 변경은 없다.
