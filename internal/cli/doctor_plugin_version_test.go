@@ -388,7 +388,7 @@ func pvHashTree(t *testing.T, root string) string {
 		}
 		n++
 		rel, _ := filepath.Rel(root, p)
-		fmt.Fprintf(h, "%s|%v\n", rel, d.IsDir())
+		_, _ = fmt.Fprintf(h, "%s|%v\n", rel, d.IsDir())
 		if !d.IsDir() {
 			b, rerr := os.ReadFile(p)
 			if rerr != nil {
