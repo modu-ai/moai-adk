@@ -987,6 +987,10 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
 	defer restoreKanbanLabel()
 
+	// The managed card children of this loop share one operator-input pump,
+	// built when the first of them asks for input and released here.
+	defer endManagedLanePump()
+
 	ctx := cmd.Context()
 	if ctx == nil {
 		ctx = context.Background()
