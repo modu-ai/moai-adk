@@ -38,6 +38,23 @@
   post-merge outcome (commit left, `hold`); holder check reads first and refuses before any queue
   mutation. 23 REQ / 23 AC.
 
+- Final re-read (`.moai/reports/t1479/plan-audit-final.md`, verbatim copy): one critical (data loss
+  on an added path colliding with an ignored/untracked file) fixed as REQ-MWQ-018 cause 13
+  (thirteen codes, AC-MWQ-018 row 13). Per the Q22 convergence rule the remaining non-critical
+  findings are run-phase obligations:
+  - **O1** — separate the adoption path's failure handling from the merge step's: a
+    post-adoption transition failure must not release or alter a window held by another session
+    (release only when the caller is the holder); add a test that a foreign holder's window record
+    bytes are unchanged.
+  - **O2** — run the pre- and post-merge clean checks as
+    `git status --porcelain --untracked-files=all` (overrides `status.showUntrackedFiles`), with a
+    regression case under `status.showUntrackedFiles=no`.
+  - **O3** — implement AC-MWQ-018 row 8b by injecting the dirty state / autostash residue through a
+    seam after the cause-12 pre-check passes (a pre-existing local edit would trip cause 12 first),
+    and assert `hold` is written before release.
+  - **O4** — pin the merge verb card gate's "version as read" to the same read REQ-MWQ-019 step 1
+    uses.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

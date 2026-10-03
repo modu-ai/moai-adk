@@ -178,12 +178,14 @@ to that tree.
   is nothing to merge, and the step refuses before invoking `git merge`), require the pinned SHA to
   have that absorbed commit as an ancestor, require the pinned
   SHA's tree to equal the record's tree, call SPEC-CANDIDATE-CI-001's shared landing check
-  (REQ-CCI-011; a no-op while `workflow.candidate_ci.enabled` is false) for that SHA, run
+  (REQ-CCI-011; a no-op while `workflow.candidate_ci.enabled` is false) for that SHA, require that
+  no path the pinned SHA newly adds relative to the integration branch tip already exists in the
+  integration worktree as an ignored or untracked file or directory (leaving such bytes untouched), run
   `git merge --no-ff <pinned SHA>` into the integration branch (never the branch name), verify the
   merge commit's tree equals the record's tree and the integration worktree is clean again, and
   release the window; it shall run no test suite.
 - **REQ-MWQ-018** (Event-driven) — **When** a REQ-MWQ-017 step fails, the merge step shall release
-  the window and exit with a code distinct per cause, of which there are twelve: (1) record invalid;
+  the window and exit with a code distinct per cause, of which there are thirteen: (1) record invalid;
   (2) integration tip moved since the record's absorbed commit — the re-measure-and-re-acquire code,
   naming both SHAs, after which the lane re-absorbs, re-measures, and re-acquires at the tail, the
   only point at which a stale candidate is rebuilt, never eagerly at queue entry, as
@@ -196,7 +198,9 @@ to that tree.
   the record's absorbed commit, refused before `git merge` runs; (11) card gate refused (card not
   `merge-ready`, caller not holding the card's unexpired lease, version changed, or requested card ≠
   window card), with the card and the integration branch untouched; (12) integration worktree not
-  clean before the merge. Causes 1-6 and 9-12 occur before
+  clean before the merge; (13) a path the pinned SHA adds already exists in the integration
+  worktree as an ignored or untracked file or directory — refused before `git merge` with that
+  file's bytes untouched. Causes 1-6 and 9-13 occur before
   the integration branch moves and promote the next live ticket on release; in causes 7 and 8 the
   merge step shall, before releasing, set the window policy to `hold` with a reason naming the cause
   (and, for 8, the merge commit SHA, which it leaves in place for the leader), so that no later
@@ -223,7 +227,7 @@ to that tree.
   exists (including a card version or lease changed after step 1), complete shall leave the merge
   commit in place, set the window policy to `hold` with cause `post-merge-transition-conflict`
   naming the merge SHA (a system write in REQ-MWQ-018 cause 8's post-merge class), release the
-  window, and exit with its own code, distinct from the twelve REQ-MWQ-018 codes.
+  window, and exit with its own code, distinct from the thirteen REQ-MWQ-018 codes.
 - **REQ-MWQ-020** (Unwanted) — `moai factory complete` shall not write a record that stands in for
   the re-measure; the merge identity it records shall be stored separately from, and shall never
   satisfy, the re-measure requirement.

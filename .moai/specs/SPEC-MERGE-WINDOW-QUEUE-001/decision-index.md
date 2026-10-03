@@ -261,3 +261,13 @@ Operator verdict: 리더 결정(LEADER-DECIDED, 미션 계약 11c79e1a).
 - **수렴 규칙**: 이번이 마지막 plan 라운드다. 이후에 나오는 치명적이지 않은 지적은 run 단계로 넘기는 기록된 의무로 다루고, 판정은 PASS-WITH-DEBT로 한다.
 
 반영: REQ-MWQ-017(카드 게이트·카드 일치·병합 전후 깨끗한 트리), REQ-MWQ-018(원인 11·12, 원인 8에 병합 뒤 더러움 포함, 코드 열두 개), REQ-MWQ-019(코드 수), AC-MWQ-018 행 11a–11c·12·8b, AC-MWQ-019 시나리오 8의 코드 수, design.md D3의 코드 수.
+
+### Q23: 최종 재독(`.moai/reports/t1479/plan-audit-final.md`)에서 나온 치명 지적 한 건(데이터 유실)은 어떻게 닫는가?
+
+Label: FOUNDER
+
+Authority anchor: — (리더 결정, 미션 계약 11c79e1a. Q22 수렴 규칙 「치명 지적은 반드시 고친다」를 적용했다.)
+
+Why unresolved: 해당 없음 — 리더가 결정했다. 고정 SHA가 새로 추가하는 경로가 통합 워크트리에 무시되었거나 추적되지 않은 파일로 이미 있으면, 병합하는 과정에서 그 파일의 내용을 잃을 수 있다.
+
+Operator verdict: 리더 결정(LEADER-DECIDED, 미션 계약 11c79e1a). REQ-MWQ-017은 `git merge` 전에 고정 SHA가 통합 브랜치 끝보다 새로 추가하는 경로를 계산한다. 그중 하나라도 통합 워크트리에 무시되었거나 추적되지 않은 파일·디렉터리로 이미 있으면, 원인 13(고유 코드)으로 병합 전에 거부하고, 그 파일의 내용은 건드리지 않은 채 창을 놓는다. 원인 수는 열셋으로 맞춘다. 남은 치명적이지 않은 지적 O1–O4는 Q22 규칙에 따라 run 단계 의무로 progress.md §E.1에 기록한다. 반영: REQ-MWQ-017, REQ-MWQ-018(원인 13, 열세 개), REQ-MWQ-019(코드 수), AC-MWQ-018 13행, AC-MWQ-019 시나리오 8의 코드 수, design.md D3, progress.md.

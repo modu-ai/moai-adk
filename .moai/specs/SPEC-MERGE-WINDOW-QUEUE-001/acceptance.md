@@ -129,7 +129,7 @@
   valid record, When B runs the verb, Then it refuses, no merge commit is created, and the window
   record's bytes are unchanged.
 - **AC-MWQ-018** (maps REQ-MWQ-018) — Each row is a scenario run as holder B with C queued; in every
-  row the window is released, the exit code is distinct from every other row's (twelve codes; rows 11a-11c share code 11), and
+  row the window is released, the exit code is distinct from every other row's (thirteen codes; rows 11a-11c share code 11), and
   the last two columns state whether a merge commit is on the integration branch afterwards and
   whether C is promoted:
 
@@ -149,6 +149,7 @@
   | 11b | card gate: not merge-ready | card t0002 still in its sync-audit state | none | yes | card state and version unchanged |
   | 11c | card ≠ window card | window record's card is t0003, verb called with `--card t0002` | none | yes | both cards unchanged |
   | 12 | dirty before merge | integration worktree has an untracked file | none — `git merge` never invoked | yes | — |
+  | 13 | added path collides with ignored file | pinned SHA adds `runtime.local`; the integration worktree holds an ignored `runtime.local` with known bytes | none — `git merge` never invoked | yes | the ignored file's bytes are unchanged (checksum equal before and after); window released |
   | 8b | dirty after merge (cause 8) | `merge.autostash=true` + conflicting local edit fixture; merge commit created, autostash residue left | **yes — left in place** | no — policy `hold`, reason names the cause and merge SHA | exit code is cause 8's |
 
 ### Completion gate
@@ -176,7 +177,7 @@
   card's version after the merge step succeeds, When complete's transition runs, Then the merge
   commit stays on the integration branch, the card state is unchanged, the policy is `hold` with
   cause `post-merge-transition-conflict` naming that merge SHA, no queued ticket is promoted, the
-  window is released only after the hold is written, and the exit code differs from the twelve
+  window is released only after the hold is written, and the exit code differs from the thirteen
   AC-MWQ-018 codes.
 
 - **AC-MWQ-020** (maps REQ-MWQ-020) — Given complete wrote `merge-record.txt`, When that file is
