@@ -377,6 +377,14 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				// Only an error the owner marked turn-scoped is isolated; every
 				// other error is session-fatal, as before.
 				if !errors.Is(err, errManagedTurnFailed) {
+					// A TUI that ended on its own released this call by closing
+					// the connection; its recorded status, not the connection
+					// error, is the session's result (REQ-MT-010).
+					select {
+					case res := <-tuiDone:
+						return res
+					default:
+					}
 					return err
 				}
 				consecutiveFailures++

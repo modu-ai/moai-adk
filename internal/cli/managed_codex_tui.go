@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,6 +30,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/mattn/go-isatty"
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -55,6 +57,10 @@ var (
 	// connection write.
 	managedWriteBarrier func(v any)
 )
+
+// errManagedCodexConnectionClosed is what the driver returns when the App
+// Server connection ended under a running TUI.
+var errManagedCodexConnectionClosed = errors.New("managed codex app server connection closed")
 
 const (
 	// managedTUINoticeFormat is the single stderr line a skipped or failed attach
@@ -138,6 +144,7 @@ type managedCodexTUI struct {
 	done     chan error
 	reaped   chan struct{}
 	stopping bool
+	exited   bool
 
 	// The sink pair is written by attach before the child's wait goroutine
 	// starts and read after it; mu orders the other readers.
@@ -145,6 +152,7 @@ type managedCodexTUI struct {
 	prevLog *io.Writer
 
 	closeLogOnce sync.Once
+	finishOnce   sync.Once
 }
 
 // planOperatorTUI makes the attach decision before Start (REQ-MT-003,
@@ -291,7 +299,7 @@ func (t *managedCodexTUI) attach(s *managedCodexSession) (<-chan error, bool) {
 	t.cmd, t.done, t.reaped = cmd, done, reaped
 	t.mu.Unlock()
 	t.attached.Store(true)
-	go t.wait(cmd, done, reaped)
+	go t.wait(cmd, s.client, reaped)
 	return done, true
 }
 
@@ -307,20 +315,84 @@ func (t *managedCodexTUI) giveUp(reason string) {
 // wait reaps the TUI child. The sink is restored the moment the child is gone,
 // so the teardown lines that follow reach the terminal again (REQ-MT-006).
 //
+// When the TUI ends on its own (the owner did not ask it to stop) its exit
+// status is recorded first and the App Server connection is closed after: a
+// blocked turn/start write or a waiting turn can only be released by closing
+// the connection, and the driver then finds the status already recorded and
+// returns it instead of the connection error (REQ-MT-010). This goroutine
+// calls only the connection's Close, never the session's, which stays
+// single-goroutine and idempotent.
+//
 // @MX:WARN: [AUTO] goroutine that outlives the attach call; it ends only when the child exits, and stop waits on its reaped channel
 // @MX:REASON: stop and Close must not return before this goroutine has reaped the child, or a TUI process could outlive the launcher
 // @MX:SPEC: SPEC-FACTORY-MANAGED-TUI-001
-func (t *managedCodexTUI) wait(cmd *exec.Cmd, done chan<- error, reaped chan<- struct{}) {
-	waitErr := cmd.Wait()
+func (t *managedCodexTUI) wait(cmd *exec.Cmd, client *managedCodexAppClient, reaped chan<- struct{}) {
+	_ = cmd.Wait()
 	t.mu.Lock()
 	stopping := t.stopping
+	t.exited = true
 	t.mu.Unlock()
 	t.restoreLog()
 	if !stopping {
-		done <- waitErr
+		t.finish(managedTUIExitError(cmd.ProcessState))
+		client.closeConnection()
 	}
 	close(reaped)
 }
+
+// finish delivers the single end-of-TUI result to the driver; the first caller
+// wins (the TUI's own exit, or the lost-connection error).
+func (t *managedCodexTUI) finish(err error) {
+	t.finishOnce.Do(func() {
+		t.mu.Lock()
+		done := t.done
+		t.mu.Unlock()
+		done <- err
+	})
+}
+
+// connectionLost runs when the App Server connection closed while the TUI
+// might still run: the TUI is stopped (interrupt, grace, kill) and the driver
+// is told the connection is gone — only after the child is reaped, so the owner
+// never returns while a TUI process is alive (REQ-MT-011).
+//
+// @MX:WARN: [AUTO] started from the connection's read goroutine exit and outlives it; it blocks until the TUI child is reaped
+// @MX:REASON: the stop can wait the whole grace period, which must never run on the read goroutine's own exit path
+// @MX:SPEC: SPEC-FACTORY-MANAGED-TUI-001
+func (t *managedCodexTUI) connectionLost() {
+	t.stop()
+	t.finish(errManagedCodexConnectionClosed)
+}
+
+// tuiConnectionLost is the client's exit signal: the server-death monitor. It
+// does nothing for a session without a running TUI, and nothing when the
+// connection ended because the TUI exited or the owner asked it to stop.
+func (s *managedCodexSession) tuiConnectionLost() {
+	t := s.tui
+	if t == nil || !t.attached.Load() {
+		return
+	}
+	t.mu.Lock()
+	over := t.exited || t.stopping
+	t.mu.Unlock()
+	if !over {
+		go t.connectionLost()
+	}
+}
+
+// newAppClient builds the App Server client with the operator-attach hooks:
+// the seams are snapshotted here so no goroutine reads a package variable.
+func (s *managedCodexSession) newAppClient(conn *websocket.Conn) *managedCodexAppClient {
+	return &managedCodexAppClient{
+		conn: conn, events: make(chan managedCodexAppReply, 32), done: make(chan struct{}),
+		writeDeadline: managedWriteDeadline, writeBarrier: managedWriteBarrier, onExit: s.tuiConnectionLost,
+	}
+}
+
+// closeConnection closes the WebSocket connection itself, which gorilla allows
+// concurrently with a blocked write: the write returns an error and the read
+// goroutine ends, releasing a waiting turn.
+func (c *managedCodexAppClient) closeConnection() { _ = c.conn.Close() }
 
 // stop interrupts the TUI, waits the grace period, kills it, and waits for the
 // reap. Idempotent: the connection-lost path and Close can both reach it.
@@ -531,6 +603,19 @@ func (c *managedCodexAppClient) leavesForOperator(req managedCodexAppReply) bool
 	return left
 }
 
-// managedTUIExitError is the M2 placeholder: the exit-status mapping lands with
-// the lifecycle milestone.
-func managedTUIExitError(state *os.ProcessState) error { return nil }
+// managedTUIExitError maps the TUI's exit to the launcher's: nil for status 0,
+// the TUI's own status otherwise, and 1 when a signal ended it (Go reports -1
+// for a signaled process; no platform primitive is needed).
+func managedTUIExitError(state *os.ProcessState) error {
+	if state == nil {
+		return &exitCodeError{code: 1, msg: "operator TUI ended without an exit status"}
+	}
+	switch code := state.ExitCode(); {
+	case code == 0:
+		return nil
+	case code < 0:
+		return &exitCodeError{code: 1, msg: "operator TUI ended by a signal"}
+	default:
+		return &exitCodeError{code: code, msg: fmt.Sprintf("operator TUI exited with status %d", code)}
+	}
+}

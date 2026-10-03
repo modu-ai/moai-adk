@@ -1509,8 +1509,14 @@ func TestManagedCodexTUIExitEndsSession(t *testing.T) {
 		f := newTUIFake(t, "tui-session-error", tuiFakeStatusesEnv+"=completed,failed,failed,failed")
 		sess := f.newSession()
 		claims := &tuiClaims{always: true}
+		done := f.drive(sess, claims)
+		// The failing batches start only once the TUI is up, so the session ends
+		// under a running TUI.
+		if !f.waitLog("tui-pid", tuiAttachWait) {
+			t.Errorf("the TUI never started, so the precedence rule is unobserved")
+		}
 		claims.release.Store(true)
-		ok, driveErr := tuiAwait(f.drive(sess, claims), tuiRunWait)
+		ok, driveErr := tuiAwait(done, tuiRunWait)
 		if !ok {
 			t.Fatalf("the driver did not end after the consecutive-failure ceiling")
 		}
@@ -1521,8 +1527,10 @@ func TestManagedCodexTUIExitEndsSession(t *testing.T) {
 		if code, isCoder := tuiExitCode(err); isCoder {
 			t.Errorf("the interrupt-induced TUI status (%d) must not replace the driver's error: %v", code, err)
 		}
-		if !f.waitLog("tui-start", time.Second) {
-			t.Errorf("the TUI never started, so the precedence rule is unobserved")
+		// Positive control: the owner's stop did interrupt the TUI (its exit
+		// status 3), so the status that did not surface existed.
+		if !strings.Contains(f.logText(), "tui-interrupted") {
+			t.Errorf("the owner's stop never interrupted the TUI, so the precedence rule is unobserved")
 		}
 	})
 
@@ -1662,8 +1670,12 @@ func TestManagedCodexSessionEndStopsTUI(t *testing.T) {
 				tuiFakeTUIModeEnv+"="+tc.mode, tuiFakeStatusesEnv+"=completed,failed,failed,failed")
 			sess := f.newSession()
 			claims := &tuiClaims{always: true}
+			done := f.drive(sess, claims)
+			if !f.waitLog("tui-pid", tuiAttachWait) {
+				t.Errorf("the TUI never started within %s", tuiAttachWait)
+			}
 			claims.release.Store(true)
-			ok, driveErr := tuiAwait(f.drive(sess, claims), tuiRunWait)
+			ok, driveErr := tuiAwait(done, tuiRunWait)
 			if !ok {
 				t.Fatalf("the driver did not end after the consecutive-failure ceiling")
 			}

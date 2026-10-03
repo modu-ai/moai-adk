@@ -227,6 +227,14 @@ type managedCodexAppClient struct {
 	busySince time.Time
 	lastWarn  time.Time
 	busyWarn  time.Duration
+
+	// Set once by newAppClient before the read goroutine starts and read-only
+	// afterwards: the per-write deadline (a stuck write ends as a connection
+	// error), the test barrier at write entry, and the read goroutine's exit
+	// signal (the operator TUI's server-death monitor).
+	writeDeadline time.Duration
+	writeBarrier  func(v any)
+	onExit        func()
 }
 
 // write sends one JSON frame; gorilla/websocket allows a single concurrent
@@ -236,8 +244,14 @@ type managedCodexAppClient struct {
 // @MX:REASON: gorilla/websocket forbids concurrent writers, so a write that bypasses writeMu races the read goroutine's replies with the call loop
 // @MX:SPEC: SPEC-FACTORY-MANAGED-HARDEN-001
 func (c *managedCodexAppClient) write(v any) error {
+	if c.writeBarrier != nil {
+		c.writeBarrier(v)
+	}
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
+	if c.writeDeadline > 0 {
+		_ = c.conn.SetWriteDeadline(time.Now().Add(c.writeDeadline))
+	}
 	return c.conn.WriteJSON(v)
 }
 
@@ -432,7 +446,12 @@ func (c *managedCodexAppClient) answerServerRequest(req managedCodexAppReply) er
 // @MX:WARN: [AUTO] the read goroutine outlives the calls that start it and its only stop signal is the done channel
 // @MX:REASON: a blocked events send would leak the goroutine after Close if it did not select on done — keep the select when touching read()
 func (c *managedCodexAppClient) read() {
-	defer close(c.events)
+	defer func() {
+		close(c.events)
+		if c.onExit != nil {
+			c.onExit()
+		}
+	}()
 	for {
 		var event managedCodexAppReply
 		if err := c.conn.ReadJSON(&event); err != nil {
@@ -735,7 +754,7 @@ func (s *managedCodexSession) Start() error {
 	if err != nil {
 		return err
 	}
-	s.client = &managedCodexAppClient{conn: conn, events: make(chan managedCodexAppReply, 32), done: make(chan struct{})}
+	s.client = s.newAppClient(conn)
 	go s.client.read()
 	if _, err := s.client.call(readyCtx, "initialize", map[string]any{
 		"clientInfo": map[string]string{"name": "moai_factory", "title": "MoAI Factory", "version": "1"},
