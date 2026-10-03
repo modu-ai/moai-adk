@@ -196,6 +196,88 @@ F8·F9·F13 모두 이 카드의 F3·F4 변경에 의존하지 않는다(줄 번
 
 **미관측(Gaps)**: ① mu5 의 `--- FAIL: TestManagedCodexConcurrentWrites` 줄(도구 출력 잘림; 경합 보고와 exit 1 은 관측) ② 라이브 Codex(`serverName` 값 포함, design.md D-1 Gap) ③ `X == prevTurnID` 중복 완료 프레임 방어(G5, 시험 행 없음) ④ 쓰기 막힘 상한(공시한 한계) ⑤ 회귀 `--- PASS` 최상위 개수는 직접 세지 않았다(`-v` 출력을 파일로 돌릴 수 없는 레인 가드 때문; `-list` 74개 − `-skip` 3개 = 71개 실행, SKIP 3, FAIL 0 에서 산술로만 도출) ⑥ AC-MH-013 의 config/guardstate/template 인접 패키지는 M4 몫이라 이 마일스톤에서 돌리지 않았다.
 
+### M3 — F4 턴 단위 실패 격리와 elicitation 판정 연결 (card t1409, manager-develop, cycle_type=tdd)
+
+귀속은 모두 `(this run, this tree, HEAD 0f852b527 위의 M3 작업 트리, 커밋 전)` 이다. 모든 `go test` 는 환경 정리 접두(`unset MOAI_KANBAN … MOAI_KANBAN_BACKEND && go test …`)를 붙인 단일 호출이고 출력은 파일로 돌려 읽었다(스크래치 파일은 인용 대상이 아니며 필요한 줄만 아래에 옮겼다). 변경 파일: `internal/cli/managed_factory_session.go`(표식 오류 `errManagedTurnFailed`, `pumpManagedStreamTurn` 의 `result.is_error` 표식, 드라이버 배달 루프의 격리·연속 횟수·상한·로그), `internal/cli/managed_codex_factory.go`(`observe` 가 완료 이벤트의 판정을 `brokerFailed` 표에 담고 `waitTurn` 이 비완료 종료와 판정을 표식 오류로 반환), `internal/config/defaults.go`(`DefaultManagedSessionMaxConsecutiveTurnFailures = 3`, `DefaultManagedCodexTurnTimeout` 바로 뒤, UNMEASURED 주석), `internal/cli/managed_hardening_test.go`(새 시험 4개 + M1 시험 둘의 단언 보강). `Close`·`Start()` 자원 생성부·`store.go`·`factoryMoAIMCPApprovalArgs`·부모 SPEC·`managedSession` 인터페이스·`driveManagedFactorySession` 시그니처는 건드리지 않았다.
+
+**TDD 순서 정직 기록.** (1) RED-now 구조 확인: 상수를 더하기 전 `grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/config/defaults.go` → 출력 없음, exit 1. (2) 시험이 컴파일되도록 **심볼 선언만** 먼저 더했다(상수 값과 미사용 `errManagedTurnFailed` 변수; 어떤 동작도 바꾸지 않음). (3) 시험을 모두 쓴 뒤 그 트리(HEAD `0f852b527` + 심볼 선언)에서 RED 를 관측했다. (4) 그 다음에야 표식 부착·드라이버·`waitTurn` 코드를 썼다. 심볼 선언은 RED 관측 전에 있었고 동작 코드는 후에 있었다.
+
+| 항목 | 명령 | 관측 | exit |
+|---|---|---|---|
+| 사전: 빌드 | `go build ./...` / `GOOS=windows GOARCH=amd64 go build ./...` | 출력 없음 / 출력 없음 | 0 / 0 |
+| 사전: 선택 수 | `go test ./internal/cli -list '^.*(Managed\|managed).*$'` 를 `grep -c '^Test'` 로 센 값 | `74` (기대 74) | — |
+| 시험 7개 선택 확인 | `go test ./internal/cli -list '^(TestManagedTurnFailureClassification\|TestManagedBrokerNameMatchesApprovalArgs\|TestManagedDriverConsecutiveFailureCeiling\|TestManagedFailedTurnLeavesClaimUntouched\|TestManagedDriverIsolatesTurnFailure\|TestManagedCodexDeclinedBrokerElicitationFailsTurn\|TestManagedCodexNonCompletedTurnIsolated)$'` | 이름 7줄 + `ok … 1.793s` | 0 |
+
+**RED (M2 트리 + 심볼 선언, 동작 코드 없음)** — `go test -race ./internal/cli -run '^(위 7개)$' -count=1 -v`, exit 1, `FAIL … 26.410s`. 붉은 것은 전부 시험 소유 단언 또는 시험 소유 5 s 폴링 상한이고 컴파일 오류·패키지 타임아웃은 없었다.
+
+| 시험 / 하위 케이스 | 결정 출력(원문 줄) | 붉은 이유 |
+|---|---|---|
+| `TestManagedCodexDeclinedBrokerElicitationFailsTurn` 3개 | `DeliverTurn = nil for a turn whose MoAI broker elicitation was declined, want a non-nil error` | 기준 `waitTurn` 이 `completed` 턴에 nil |
+| `TestManagedDriverIsolatesTurnFailure` | `driver returned managed Factory turn failed: overloaded after one failed turn, want it to keep delivering …` · `turns delivered = [… "op-fails"], want [… "op-fails" "op-succeeds"]` · `log has no line starting "Factory turn failed (1/3 consecutive): " within 5s` | 드라이버가 첫 오류에서 반환, 로그 없음 |
+| `TestManagedCodexNonCompletedTurnIsolated` | `driver returned managed codex turn fake-turn-2 ended as failed after a non-completed turn …` · `turn "op-interrupted" was never delivered` · `turn "op-normal" was never delivered` | 드라이버가 `failed` 에서 반환 |
+| 분류 #1 `stream_is_error_after_priming` | `an is_error stream result = managed Factory turn failed: overloaded, want a turn-scoped error (errors.Is errManagedTurnFailed)` + 드라이버 계속·로그 단언 | 표식 없음, 드라이버 반환 |
+| 분류 #2 `codex_failed_or_interrupted` | `a turn that ended failed = … want a turn-scoped error` / `… interrupted …` | 표식 없음 |
+| 분류 #3 `codex_moai_elicitation_turn_completed` | `DeliverTurn = <nil>, want a turn-scoped error for a completed turn with a declined broker elicitation` | 판정 미연결 |
+| 분류 #12 `normal_turn_after_declined_turn` | `the declined turn T1 = <nil>, want a turn-scoped error` (이 판의 #12 는 이후 변경됨 — 아래 발견 1) | 판정 미연결 |
+| 분류 #13 `elicitation_after_turn_start_response` | `a request before turn/started = <nil>, want it to fail T2 with a turn-scoped error` | 판정 미연결 |
+| 분류 #14 `two_requests_in_one_turn` | `two requests in one turn = <nil>, want exactly one turn-scoped failure` | 판정 미연결 |
+| 분류 #17 `string_jsonrpc_id_request_counts` | `T2 = <nil>, want a turn-scoped failure: the JSON-RPC id form does not matter to attribution` | 판정 미연결 |
+| 연속 실패 `at_ceiling_returns` | `driver error "managed Factory turn failed: overloaded #1" does not state the count ("3 consecutive")` · `2 turns delivered, want the priming turn plus 3` · `no "Factory turn failed (3/3 consecutive): " line …` | 첫 오류에서 반환, 횟수·로그 없음 |
+| 연속 실패 `below_ceiling_continues` | `driver returned … overloaded #1 after 2 failures (below the ceiling), want it to deliver the next turn and end nil on /exit` | 첫 오류에서 반환 |
+| 연속 실패 `success_resets` | `0 lines of "Factory turn failed (1/3 consecutive): ", want 2 …` | 로그·리셋 없음 |
+
+RED 에서 **이미 초록이었던 것(기준 드라이버가 모든 오류를 반환하고 표식·판정이 아직 없어 "nil 이 기대인 행"과 "세션 치명 행"이 자명하게 통과)**: 분류 #4(G2 가드), #5·#6·#7·#9(mu14 가 채택), #8(mu16), #10(mu9), #11(mu19·mu20), #15(mu10), #16(mu11), `TestManagedBrokerNameMatchesApprovalArgs`(G3 가드), `TestManagedFailedTurnLeavesClaimUntouched`(AC-MH-008 G1 가드 — 라벨대로 수리 전에도 초록). 이 행들의 채택은 아래 변이 확인이다.
+
+**GREEN (같은 7개 시험, 동작 코드 작성 뒤)** — `go test -race ./internal/cli -run '^(위 7개)$' -count=1 -v`, exit 0, `ok  github.com/modu-ai/moai-adk/internal/cli  7.817s`: 최상위 `--- PASS` 7개, 분류 하위 17개·연속 실패 하위 3개·`DeclinedBrokerElicitationFailsTurn` 하위 3개 PASS, `WARNING: DATA RACE` 0건. (이후 #12 를 조정해 분류 시험만 다시 돌려 `ok … 3.147s`, exit 0.)
+
+**변이 확인 mu6–mu20 + P1** (한 번에 하나, 편집기로 적용·복구. 시험 파일 `managed_hardening_test.go` 의 변이 전 사본과 프로덕션 3파일의 변이 전 사본을 작업 트리 밖에 떠 두었고, 복구마다 네 파일 모두 `cmp` 출력 없음과 `git diff --stat` 동일(`4 files changed, 654 insertions(+), 13 deletions(-)`)을 확인했다). 명령은 모두 `go test -race ./internal/cli -run '^(위 7개)$' -count=1 -v`(mu9 만 M2 의 `TestManagedCodexCompletionEventCarriesBrokerVerdict` 를 더함), exit 1.
+
+| 변이 | 편집(한 곳) | 결정 출력 | 붉은 케이스(관측) |
+|---|---|---|---|
+| mu6 | `armTurn` 의 `c.brokerDeclined = 0` 삭제 | `the next, normal turn T2 = managed Factory turn failed: … completed but a MoAI broker elicitation was declined during it, want nil (armTurn resets the count)` | #12 만 |
+| mu7 | `noteElicitation` 조건에 `c.turnID == ""` 추가 | `a request before turn/started = <nil>, want it to fail T2 …` | #13, M1 `…FailsTurn/request_before_turn_started` |
+| mu8 | `declined := c.brokerDeclined > 0` → `== 1` | `two requests in one turn = <nil>, want exactly one turn-scoped failure` | #14, M1 `…FailsTurn/two_requests_in_one_turn` |
+| mu9 | `noteElicitation` 의 `serverName != moaiMCPServerKey` 비교 삭제 | `log has no "serverName=\"other-server\" turn=none broker_declined=0"` (시험 소유 5 s 폴링 상한) | #10, M2 `…CompletionEventCarriesBrokerVerdict/other_server_request` |
+| mu10 | `noteElicitation` 의 `requestTurn != "" && requestTurn == c.prevTurnID` 갈래(3줄) 삭제 — design.md D-1:67 귀속 규칙 (2)의 비교(아래 발견 2) | `a late request of the previous turn was not logged uncounted within 5s` (5 s 폴링 상한) | #15 만 |
+| mu11 | `noteElicitation` 의 `requestTurn != c.turnID` 갈래(3줄) 삭제 | `a request for another turn was not logged uncounted within 5s` (5 s 폴링 상한) | #16 만 |
+| mu12 | `waitTurn` 의 `brokerFailed := c.brokerFailed[turnID]` → `:= false` | `DeliverTurn = <nil>, want a turn-scoped error for a completed turn …`, `T2 = <nil>, want a turn-scoped failure …` | #3, #13, #14, #17, M1 `…FailsTurn` 3개. #11·#12·#15·#16 초록 |
+| mu13 | 드라이버 `!errors.Is(err, errManagedTurnFailed)` → `err != nil` (첫 오류에서 반환, `:345-347` 과 같은 결과) | `driver returned managed Factory turn failed: overloaded after one failed turn …` | AC-MH-005, #1, `below_ceiling_continues`; 추가로 M1 두 시험과 `at_ceiling_returns`·`success_resets` 도 붉음(SPEC 이 허용한 "붉을 수 있음") |
+| mu14 | 드라이버 분류 조건을 `if false` 로(표식 없는 오류도 로그 후 계속) | `driver returned <nil>, want the session-fatal error containing "managed session output closed"` 등 | #5, #6, #7, #9 만 (#4 는 G2 로 초록) |
+| mu15 | `waitTurn` 비완료 종료 오류에서 `%w` 표식 제거 | `a turn that ended failed = managed codex turn T1 ended as failed, want a turn-scoped error` / `… interrupted …` | #2(`failed`·`interrupted` 각각), M1 `TestManagedCodexNonCompletedTurnIsolated` |
+| mu16 | `waitTurn` 의 `ctx.Done()` 분기가 `fmt.Errorf("%w: %w", errManagedTurnFailed, ctx.Err())` 반환 | `a per-turn timeout managed Factory turn failed: context deadline exceeded carries the turn-scoped marker, want session-fatal` | #8 만 |
+| mu17 | 성공 턴의 `consecutiveFailures = 0` 삭제 | `driver returned 3 consecutive managed Factory turn failures, last: … one more, want a success to reset the count so the last failure is 1/3` | `success_resets` 만 |
+| mu18 | `consecutiveFailures >= N` → `> N` | `driver returned nil after 3 consecutive turn-scoped failures, want the last failure` | `at_ceiling_returns` 만 |
+| mu19 | `noteTurnCompleted` 의 `c.open = false` 삭제 | `the trailing request was not logged with turn=none within 5s` (5 s 폴링 상한) | #11 만 (`waitTurn` nil 단언은 초록 — 판정이 먼저 이벤트에 실렸다) |
+| mu20 | 닫힌 창 분기에서 브로커 요청이면 `c.brokerDeclined++` (3줄 삽입, 발견 3) | `the trailing request was counted: want serverName="moai" turn=none broker_declined=0` (값 단언, 0.01 s) | #11 만 (mu19 와 달리 `turn=none` 대기는 통과) |
+| P1 | `DefaultManagedSessionMaxConsecutiveTurnFailures` 를 일시적으로 2 로 | `--- PASS: TestManagedDriverConsecutiveFailureCeiling` 와 하위 3개 PASS, `ok … 2.915s`, exit 0 | 드라이버가 숫자를 박지 않았음 |
+
+구조 확인(DoD 4 의 `grep`): `grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/config/defaults.go` → `:122`(주석)·`:130`(정의), exit 0 (RED-now 는 출력 없음 exit 1). `grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/cli/managed_factory_session.go` → `:364`(로그)·`:365`(비교), exit 0. 이 상수를 참조하는 파일은 `defaults.go`·`managed_factory_session.go`·`managed_hardening_test.go` 셋뿐. `managed_factory_session.go` 에 맨 숫자 `3` 없음(`grep -nE '[^A-Za-z0-9_"/.-]3[^0-9]'` → exit 1).
+
+**정적·경계·회귀**
+
+| 항목 | 명령 | 관측 | exit |
+|---|---|---|---|
+| 형식 | `gofmt -l` 을 건드린 4파일에 | 출력 없음 | 0 |
+| vet | `go vet ./internal/cli ./internal/config` | 출력 없음 | 0 |
+| Windows | `GOOS=windows GOARCH=amd64 go build ./...` / `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` | 출력 없음 / 출력 없음 | 0 / 0 |
+| lint | `golangci-lint run --allow-serial-runners --timeout=10m ./internal/cli/... ./internal/config/...` (`golangci-lint has version v2.1.6 built with go1.26.8`) | `0 issues.` (첫 호출은 `Error: parallel golangci-lint is running` 으로 거부되어 exit 3 — 다른 세션의 실행 때문이며 재시도는 직렬 대기 플래그) | 0 |
+| config | `go test ./internal/config -count=1` | `ok  github.com/modu-ai/moai-adk/internal/config  35.366s` | 0 |
+| 경계 | `grep -rn 'syscall\.' internal/cli/managed_*.go` (양성 대조 `grep -n 'syscall\.' internal/cli/mcp_server.go` → `:123` 1줄) / `grep -n 'AskUserQuestion' internal/cli/managed_codex_factory.go internal/cli/managed_factory_session.go` | 출력 0줄 / 출력 0줄 | 1 / 1 |
+| 선택 수 | `go test ./internal/cli -list '^.*(Managed\|managed).*$'` 를 `grep -c '^Test'` 로 센 값 | `78` (74 + 새 4: `TestManagedTurnFailureClassification`, `TestManagedBrokerNameMatchesApprovalArgs`, `TestManagedDriverConsecutiveFailureCeiling`, `TestManagedFailedTurnLeavesClaimUntouched`) | — |
+| 회귀 | `go test -race ./internal/cli -run '^.*(Managed\|managed).*$' -count=1 -v` | 최상위 `--- PASS` 75, `--- SKIP` 3(`TestManagedCodexFakeAppServer`, `TestManagedCodexFactoryBrokerLive`, `TestManagedLoopbackChild`), `--- FAIL` 0, `WARNING: DATA RACE` 0, 끝 줄 `ok  github.com/modu-ai/moai-adk/internal/cli  45.286s` (75 + 3 = 78) | 0 |
+
+**발견(SPEC 을 고치지 않고 기록)**
+1. **mu12 대 #12.** #12 의 첫 판에는 선행 조건으로 "T1 이 표식 오류로 실패"를 단언했고, 그러면 mu12 가 #12 도 붉혔다 — acceptance.md §2.4 mu12 행은 #12 가 초록이어야 한다고 적었다. #12 에서 T1 단언을 빼(T1 의 실패는 #3·#13·#14 가 고정) SPEC 대로 맞춘 뒤 mu12 와 mu6 을 다시 돌렸다: mu12 → #3·#13·#14·#17 만, mu6 → #12 만. 위 표의 mu6·mu12 줄은 재실행 결과다.
+2. **mu10 의 두 `prevTurnID` 비교(N3).** design.md D-1:67(귀속 규칙 (2))의 `requestTurn == c.prevTurnID` 를 골랐다. `noteTurnCompleted` 의 `id == c.prevTurnID`(design.md:68, G5)는 시험 행·변이를 두지 않는 방어라서 변이하지 않았다.
+3. **mu20 은 한 줄 편집이 아니다(N11).** 내 구조에서는 닫힌 창과 비브로커 요청이 한 `if` 를 공유하므로 3줄 삽입으로 적용했다.
+4. **#8 의 마감.** design.md 는 50ms 마감 컨텍스트라 했는데 150ms 를 썼다 — `-race` 부하에서도 가짜 서버가 `turn/start` 에 먼저 답해 `waitTurn` 의 `ctx.Done()` 분기(mu16 의 표적)가 마감을 맞게 하려는 선택이다. 마감 안에 답이 안 오면 `call()` 의 `ctx.Err()` 가 같은 `context.DeadlineExceeded` 를 내므로 단언은 통과하되 mu16 탐지력이 약해진다(관측: mu16 은 붉었다).
+5. **블로킹 호출 목록(N5).** `waitTurn` 은 `hardenWaitTurn`(고루틴 + 5 s watchdog)으로 부른다. 연속 실패 시험·분류 시험의 드라이버 호출은 `hardenRunDriver`(5 s watchdog, stdin 끝 `/exit`)다.
+6. **AC-MH-007 의 `-race`(N10).** `success_resets` 가 로그 줄을 읽으므로 이 시험은 `-race` 로 돌렸다.
+7. **#7 `write_failure`** 는 실제 `pumpManagedStreamTurn` 을 닫힌 stdin 으로 돌려 실제 쓰기 오류를 만든다(기존 `managedClosedPipe` 재사용).
+8. **`TestManagedFailedTurnLeavesClaimUntouched`(G1)** 는 수리 전 드라이버가 실패 턴 오류를 그대로 반환해도 통과하도록(`nil` 또는 표식 오류 허용) 썼다 — 불변 가드이고, 단언은 행 `claimed`·`acknowledged` 0·원래 claim token 으로 `ReadBody` 성공이다.
+
+**미관측(Gaps)**: ① 운영자 stdout 에 로그가 쓰이지 않는다는 AC-MH-005 의 문장은 단언하지 않았다(`os.Stdout` 전역을 가로채지 않는다는 이 SPEC 의 규약; 로그 경로는 `managedLogf` 하나이고 `os.Stdout` 을 참조하지 않는다는 것은 소스 판독) ② 실제 codex 세션에서 거부 응답 뒤 모델 행동과 요청의 `serverName` 값(design.md D-1 Gap) ③ `X == prevTurnID` 중복 완료 프레임 방어(G5, 시험 행 없음) ④ 쓰기 막힘 상한(공시한 한계) ⑤ AC-MH-013 의 guardstate·template 인접 패키지와 AC-MH-009 의 전체 재측정은 M4 몫이라 이 마일스톤에서 돌리지 않았다 ⑥ mu1–mu5 는 M2 몫이고 이 마일스톤에서 다시 돌리지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

@@ -201,6 +201,9 @@ type managedCodexAppClient struct {
 	done      chan struct{}
 	nextID    int
 	completed map[string]string
+	// brokerFailed holds the read goroutine's verdict per completed turn id; only
+	// the consumer (call and waitTurn) touches it, like completed.
+	brokerFailed map[string]bool
 
 	writeMu sync.Mutex
 
@@ -443,6 +446,12 @@ func (c *managedCodexAppClient) observe(event managedCodexAppReply) {
 			c.completed = map[string]string{}
 		}
 		c.completed[payload.Turn.ID] = payload.Turn.Status
+		if event.brokerDeclined {
+			if c.brokerFailed == nil {
+				c.brokerFailed = map[string]bool{}
+			}
+			c.brokerFailed[payload.Turn.ID] = true
+		}
 	}
 }
 
@@ -475,14 +484,23 @@ func (c *managedCodexAppClient) call(ctx context.Context, method string, params 
 }
 
 // waitTurn blocks until the named turn completes. A completion already
-// folded into the table resolves immediately; a turn that ended in any other
-// state fails the delivery.
+// folded into the table resolves immediately. Two outcomes are turn-scoped
+// failures (errManagedTurnFailed): a turn that ended in any state other than
+// completed, and a turn the App Server marked completed but that carries a
+// declined MoAI broker elicitation — the receipt tool may never have run. The
+// timeout and connection errors below stay unmarked, so they remain
+// session-fatal.
 func (c *managedCodexAppClient) waitTurn(ctx context.Context, turnID string) error {
 	for {
 		if status, ok := c.completed[turnID]; ok {
+			brokerFailed := c.brokerFailed[turnID]
 			delete(c.completed, turnID)
+			delete(c.brokerFailed, turnID)
 			if status != "completed" {
-				return fmt.Errorf("managed codex turn %s ended as %s", turnID, status)
+				return fmt.Errorf("%w: managed codex turn %s ended as %s", errManagedTurnFailed, turnID, status)
+			}
+			if brokerFailed {
+				return fmt.Errorf("%w: managed codex turn %s completed but a MoAI broker elicitation was declined during it", errManagedTurnFailed, turnID)
 			}
 			return nil
 		}

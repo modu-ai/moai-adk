@@ -32,7 +32,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 const (
@@ -71,6 +73,19 @@ func (s *hardenLogSink) snapshot() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.buf.String()
+}
+
+// hardenLogCapture points the owner's log output at a fresh synchronized sink
+// and restores the default on cleanup. A test that also starts a client
+// registers this FIRST (cleanups run LIFO), so the client is shut down and its
+// read goroutine awaited before the pointer is restored.
+func hardenLogCapture(t *testing.T) *hardenLogSink {
+	t.Helper()
+	sink := &hardenLogSink{}
+	var sinkWriter io.Writer = sink
+	managedLogOutput.Store(&sinkWriter)
+	t.Cleanup(func() { managedLogOutput.Store(nil) })
+	return sink
 }
 
 // waitFor polls until the sink holds the substring or hardenLogWait elapses.
@@ -119,10 +134,7 @@ type hardenServer struct {
 // goroutine of this pair can write to a later test's sink.
 func newHardenPair(t *testing.T) (*managedCodexAppClient, *hardenServer) {
 	t.Helper()
-	sink := &hardenLogSink{}
-	var sinkWriter io.Writer = sink
-	managedLogOutput.Store(&sinkWriter)
-	t.Cleanup(func() { managedLogOutput.Store(nil) })
+	sink := hardenLogCapture(t)
 	accepted := make(chan *websocket.Conn, 1)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
@@ -724,8 +736,8 @@ func TestManagedCodexCompletionEventCarriesBrokerVerdict(t *testing.T) {
 // of AC-MH-006 #13/#14: a MoAI-broker elicitation that arrives during a turn
 // the App Server then marks `completed` must still surface as a failed
 // delivery, or the unwritten receipt turns into a silent redelivery loop. The
-// base owner returns nil. The assertion is only "a non-nil error" — the marker
-// symbol does not exist on the base API (M3 adds it and tightens this).
+// base owner returns nil. M1 asserted only "a non-nil error" because the marker
+// symbol did not exist yet; M3 tightens it to the turn-scoped marker.
 func TestManagedCodexDeclinedBrokerElicitationFailsTurn(t *testing.T) {
 	elicitation := func(turnID any) map[string]any {
 		return map[string]any{"threadId": "th-broker", "turnId": turnID, "serverName": moaiMCPServerKey, "message": "approve factory_msg_receipt?"}
@@ -764,6 +776,9 @@ func TestManagedCodexDeclinedBrokerElicitationFailsTurn(t *testing.T) {
 			case err := <-done:
 				if err == nil {
 					t.Fatal("DeliverTurn = nil for a turn whose MoAI broker elicitation was declined, want a non-nil error")
+				}
+				if !errors.Is(err, errManagedTurnFailed) {
+					t.Fatalf("DeliverTurn = %v, want a turn-scoped error (errors.Is errManagedTurnFailed) so the driver isolates it", err)
 				}
 			case <-time.After(hardenWatchdog):
 				t.Fatalf("DeliverTurn did not return within %s", hardenWatchdog)
@@ -806,9 +821,10 @@ func (s *hardenStreamSession) delivered() []string {
 // third succeeds. The driver must deliver the third turn instead of returning
 // at the second; the base driver returns the second turn's error.
 //
-// The `Factory turn failed (1/` log-line assertion arrives with the log seam
-// in M3.
+// M3 adds the operator-visible record: one `Factory turn failed (1/N` line on
+// the owner's log output (never stdout) for the failed turn.
 func TestManagedDriverIsolatesTurnFailure(t *testing.T) {
+	sink := hardenLogCapture(t)
 	sess := &hardenStreamSession{outputs: []string{
 		`{"type":"result","is_error":false}` + "\n",
 		`{"type":"result","result":"overloaded","is_error":true}` + "\n",
@@ -831,6 +847,10 @@ func TestManagedDriverIsolatesTurnFailure(t *testing.T) {
 	want := []string{managedPrimingPrompt, "op-fails", "op-succeeds"}
 	if got := sess.delivered(); !reflect.DeepEqual(got, want) {
 		t.Errorf("turns delivered = %q, want %q", got, want)
+	}
+	wantLine := fmt.Sprintf("Factory turn failed (1/%d consecutive): ", config.DefaultManagedSessionMaxConsecutiveTurnFailures)
+	if !sink.waitFor(wantLine) {
+		t.Errorf("log has no line starting %q within %s; log:\n%s", wantLine, hardenLogWait, sink.snapshot())
 	}
 }
 
@@ -878,5 +898,576 @@ func TestManagedCodexNonCompletedTurnIsolated(t *testing.T) {
 		if !strings.Contains(string(log), "turn-prompt "+prompt+"\n") {
 			t.Errorf("turn %q was never delivered to the app server:\n%s", prompt, log)
 		}
+	}
+}
+
+// hardenFuncSession is a managedSession whose Nth delivery runs the Nth script
+// function (priming turn first). A delivery past the end of the script fails
+// with an UNMARKED error, so a driver that runs past what the test planned ends
+// the session instead of hanging.
+type hardenFuncSession struct {
+	mu      sync.Mutex
+	turns   []func(prompt string) error
+	prompts []string
+}
+
+func (s *hardenFuncSession) Start() error { return nil }
+func (s *hardenFuncSession) Close() error { return nil }
+
+func (s *hardenFuncSession) DeliverTurn(prompt string) error {
+	s.mu.Lock()
+	index := len(s.prompts)
+	s.prompts = append(s.prompts, prompt)
+	s.mu.Unlock()
+	if index >= len(s.turns) {
+		return errors.New("hardening script exhausted")
+	}
+	return s.turns[index](prompt)
+}
+
+func (s *hardenFuncSession) delivered() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.prompts...)
+}
+
+func hardenTurnOK(string) error { return nil }
+
+// hardenTurnFails ends the turn with a turn-scoped (marked) failure.
+func hardenTurnFails(cause string) func(string) error {
+	return func(string) error { return fmt.Errorf("%w: %s", errManagedTurnFailed, cause) }
+}
+
+// hardenTurnErrors ends the turn with the given error as is.
+func hardenTurnErrors(err error) func(string) error {
+	return func(string) error { return err }
+}
+
+// hardenRunDriver runs the real delivery driver over sess with stdin as the
+// operator input and no broker claims, bounded by the 5 s watchdog. stdin must
+// end with /exit so a driver that continues where the test expects a return
+// ends with nil instead of hanging.
+func hardenRunDriver(t *testing.T, sess managedSession, stdin string) error {
+	t.Helper()
+	noClaim := func() ([]factorymsg.Claim, error) { return nil, nil }
+	toPrompt := func([]factorymsg.Claim) string { return "inbox" }
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- driveManagedFactorySession(sess, strings.NewReader(stdin), make(chan time.Time), noClaim, toPrompt)
+	}()
+	select {
+	case err := <-errCh:
+		return err
+	case <-time.After(hardenWatchdog):
+		t.Fatalf("driver did not return within %s", hardenWatchdog)
+		return nil
+	}
+}
+
+// hardenWaitTurn runs waitTurn in a goroutine under the 5 s watchdog.
+func hardenWaitTurn(t *testing.T, client *managedCodexAppClient, turnID string) error {
+	t.Helper()
+	done := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*hardenWatchdog)
+		defer cancel()
+		done <- client.waitTurn(ctx, turnID)
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(hardenWatchdog):
+		t.Fatalf("waitTurn(%s) did not return within %s", turnID, hardenWatchdog)
+		return nil
+	}
+}
+
+func hardenBrokerElicitation(turnID any) map[string]any {
+	return map[string]any{"threadId": "th-class", "turnId": turnID, "serverName": moaiMCPServerKey, "message": "approve factory_msg_receipt?"}
+}
+
+const hardenElicitationMethod = "mcpServer/elicitation/request"
+
+// TestManagedTurnFailureClassification is AC-MH-005 / AC-MH-006: which failures
+// are turn-scoped (the driver isolates them) and which stay session-fatal, and
+// how a declined MoAI broker elicitation is attributed to a turn. Rows #1-#10
+// go through the owner or the driver; rows #11-#17 drive the client's turn window
+// directly with the consumer held back so the read goroutine runs ahead of it.
+// Row names follow acceptance.md §1.3.
+func TestManagedTurnFailureClassification(t *testing.T) {
+	ceiling := config.DefaultManagedSessionMaxConsecutiveTurnFailures
+	failedLine := func(k int) string {
+		return fmt.Sprintf("Factory turn failed (%d/%d consecutive): ", k, ceiling)
+	}
+	// sessionFatalRow runs a driver whose second turn fails with `turn`'s error:
+	// the driver must return that error, deliver nothing after it, and log no
+	// turn-failure line.
+	sessionFatalRow := func(t *testing.T, turn func(string) error, wantText string) {
+		t.Helper()
+		sink := hardenLogCapture(t)
+		sess := &hardenFuncSession{turns: []func(string) error{hardenTurnOK, turn, hardenTurnOK}}
+		err := hardenRunDriver(t, sess, "op-fails\nop-later\n/exit\n")
+		if err == nil || !strings.Contains(err.Error(), wantText) {
+			t.Errorf("driver returned %v, want the session-fatal error containing %q", err, wantText)
+		}
+		if err != nil && errors.Is(err, errManagedTurnFailed) {
+			t.Errorf("session-fatal error %v carries the turn-scoped marker", err)
+		}
+		if got, want := sess.delivered(), []string{managedPrimingPrompt, "op-fails"}; !reflect.DeepEqual(got, want) {
+			t.Errorf("turns delivered = %q, want %q (nothing after a session-fatal failure)", got, want)
+		}
+		if log := sink.snapshot(); strings.Contains(log, "Factory turn failed") {
+			t.Errorf("a session-fatal failure logged a turn-failure line:\n%s", log)
+		}
+	}
+	// cleanTurn scripts a turn the App Server both starts and completes under
+	// the given status, for the client-level rows.
+	cleanTurn := func(srv *hardenServer, turnID, status string) {
+		srv.turnStarted(turnID)
+		srv.turnCompleted(turnID, status)
+	}
+
+	t.Run("stream_is_error_after_priming", func(t *testing.T) {
+		pumpErr := pumpManagedStreamTurn(strings.NewReader(`{"type":"result","result":"overloaded","is_error":true}`+"\n"), io.Discard, io.Discard, "p")
+		if !errors.Is(pumpErr, errManagedTurnFailed) {
+			t.Errorf("an is_error stream result = %v, want a turn-scoped error (errors.Is errManagedTurnFailed)", pumpErr)
+		}
+		sink := hardenLogCapture(t)
+		sess := &hardenStreamSession{outputs: []string{
+			`{"type":"result","is_error":false}` + "\n",
+			`{"type":"result","result":"overloaded","is_error":true}` + "\n",
+			`{"type":"result","is_error":false}` + "\n",
+		}}
+		if err := hardenRunDriver(t, sess, "op-fails\nop-succeeds\n/exit\n"); err != nil {
+			t.Errorf("driver returned %v, want it to continue past the failed turn", err)
+		}
+		if got, want := sess.delivered(), []string{managedPrimingPrompt, "op-fails", "op-succeeds"}; !reflect.DeepEqual(got, want) {
+			t.Errorf("turns delivered = %q, want %q", got, want)
+		}
+		if !sink.waitFor(failedLine(1)) {
+			t.Errorf("no %q line; log:\n%s", failedLine(1), sink.snapshot())
+		}
+	})
+
+	t.Run("codex_failed_or_interrupted", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		for i, status := range []string{"failed", "interrupted"} {
+			turnID := fmt.Sprintf("T%d", i+1)
+			client.armTurn()
+			cleanTurn(srv, turnID, status)
+			err := hardenWaitTurn(t, client, turnID)
+			if err == nil {
+				t.Errorf("a turn that ended %s returned nil", status)
+				continue
+			}
+			if !errors.Is(err, errManagedTurnFailed) {
+				t.Errorf("a turn that ended %s = %v, want a turn-scoped error", status, err)
+			}
+			if !strings.Contains(err.Error(), "ended as "+status) {
+				t.Errorf("error %q does not name the %s status", err, status)
+			}
+		}
+	})
+
+	t.Run("codex_moai_elicitation_turn_completed", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		sess := &managedCodexSession{client: client, threadID: "th-class"}
+		done := hardenDeliver(sess, "turn needing a broker tool")
+		srv.startTurn("T1")
+		srv.turnStarted("T1")
+		srv.request(601, hardenElicitationMethod, hardenBrokerElicitation(nil))
+		srv.turnCompleted("T1", "completed")
+		select {
+		case err := <-done:
+			if !errors.Is(err, errManagedTurnFailed) {
+				t.Errorf("DeliverTurn = %v, want a turn-scoped error for a completed turn with a declined broker elicitation", err)
+			}
+		case <-time.After(hardenWatchdog):
+			t.Fatalf("DeliverTurn did not return within %s", hardenWatchdog)
+		}
+		want := `serverName="moai" turn=T1 broker_declined=1`
+		if !srv.log.waitFor(want) {
+			t.Errorf("log has no %q; log:\n%s", want, srv.log.snapshot())
+		}
+	})
+
+	t.Run("priming_is_error", func(t *testing.T) {
+		// Invariant guard G2 (acceptance.md §2.5): the priming turn returns before
+		// the loop whatever its error says, so no driver mutation reaches this row.
+		sess := &hardenStreamSession{outputs: []string{
+			`{"type":"result","result":"priming overloaded","is_error":true}` + "\n",
+			`{"type":"result","is_error":false}` + "\n",
+		}}
+		err := hardenRunDriver(t, sess, "op-1\n/exit\n")
+		if err == nil || !strings.Contains(err.Error(), "priming overloaded") {
+			t.Errorf("driver returned %v, want the priming failure (session-fatal)", err)
+		}
+		if got, want := sess.delivered(), []string{managedPrimingPrompt}; !reflect.DeepEqual(got, want) {
+			t.Errorf("turns delivered = %q, want only the priming turn", got)
+		}
+	})
+
+	t.Run("stream_closed", func(t *testing.T) {
+		sessionFatalRow(t, hardenTurnErrors(errManagedStreamClosed), errManagedStreamClosed.Error())
+	})
+
+	t.Run("codex_connection_closed", func(t *testing.T) {
+		sessionFatalRow(t, hardenTurnErrors(errors.New("managed codex app server connection closed")), "connection closed")
+	})
+
+	t.Run("write_failure", func(t *testing.T) {
+		// A real pump over a child stdin that refuses writes.
+		writeFails := func(prompt string) error {
+			return pumpManagedStreamTurn(strings.NewReader(`{"type":"result","is_error":false}`+"\n"), io.Discard, managedClosedPipe{}, prompt)
+		}
+		sessionFatalRow(t, writeFails, "pipe closed")
+	})
+
+	t.Run("codex_timeout", func(t *testing.T) {
+		// startTurn already takes its context: a short deadline gives the
+		// per-turn timeout without a seam. The server answers turn/start and
+		// never completes the turn, so waitTurn is what the deadline ends.
+		client, srv := newHardenPair(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+		defer cancel()
+		errCh := make(chan error, 1)
+		go func() { errCh <- client.startTurn(ctx, "th-timeout", "never completes") }()
+		srv.startTurn("T1")
+		srv.turnStarted("T1")
+		select {
+		case err := <-errCh:
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Errorf("startTurn = %v, want context.DeadlineExceeded", err)
+			}
+			if errors.Is(err, errManagedTurnFailed) {
+				t.Errorf("a per-turn timeout %v carries the turn-scoped marker, want session-fatal", err)
+			}
+		case <-time.After(hardenWatchdog):
+			t.Fatalf("startTurn did not return within %s of its 150ms deadline", hardenWatchdog)
+		}
+	})
+
+	t.Run("unclassified_error", func(t *testing.T) {
+		sessionFatalRow(t, hardenTurnErrors(errors.New("unclassified owner failure")), "unclassified owner failure")
+	})
+
+	t.Run("other_server_elicitation", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		sess := &managedCodexSession{client: client, threadID: "th-class"}
+		done := hardenDeliver(sess, "turn with an unrelated elicitation")
+		srv.startTurn("T1")
+		srv.turnStarted("T1")
+		other := hardenBrokerElicitation(nil)
+		other["serverName"] = "other-server"
+		srv.request(602, hardenElicitationMethod, other)
+		want := `serverName="other-server" turn=none broker_declined=0`
+		if !srv.log.waitFor(want) {
+			t.Fatalf("log has no %q; log:\n%s", want, srv.log.snapshot())
+		}
+		srv.turnCompleted("T1", "completed")
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Errorf("DeliverTurn = %v, want nil: only the MoAI broker's elicitation fails a turn", err)
+			}
+		case <-time.After(hardenWatchdog):
+			t.Fatalf("DeliverTurn did not return within %s", hardenWatchdog)
+		}
+	})
+
+	t.Run("between_turns_reader_ahead", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		cleanTurn(srv, "T1", "completed")
+		srv.request(701, hardenElicitationMethod, hardenBrokerElicitation(nil))
+		// Hold the consumer back until the read goroutine has processed the
+		// trailing request, so it is provably ahead of waitTurn.
+		const head = `serverName="moai" turn=none broker_declined=`
+		if !srv.log.waitFor(head) {
+			t.Fatalf("the trailing request was not logged with turn=none within %s; log:\n%s", hardenLogWait, srv.log.snapshot())
+		}
+		if !strings.Contains(srv.log.snapshot(), head+"0\n") {
+			t.Errorf("the trailing request was counted: want %s0; log:\n%s", head, srv.log.snapshot())
+		}
+		if err := hardenWaitTurn(t, client, "T1"); err != nil {
+			t.Errorf("waitTurn = %v, want nil: a request after the completion frame fails no turn", err)
+		}
+	})
+
+	t.Run("normal_turn_after_declined_turn", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		srv.turnStarted("T1")
+		srv.request(711, hardenElicitationMethod, hardenBrokerElicitation(nil))
+		srv.turnCompleted("T1", "completed")
+		// T1's own failure is pinned by rows #3, #13 and #14; this row only needs
+		// it consumed, so it observes the reset and nothing else.
+		_ = hardenWaitTurn(t, client, "T1")
+		client.armTurn()
+		cleanTurn(srv, "T2", "completed")
+		if err := hardenWaitTurn(t, client, "T2"); err != nil {
+			t.Errorf("the next, normal turn T2 = %v, want nil (armTurn resets the count)", err)
+		}
+	})
+
+	t.Run("elicitation_after_turn_start_response", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		srv.request(721, hardenElicitationMethod, hardenBrokerElicitation(nil))
+		cleanTurn(srv, "T2", "completed")
+		if err := hardenWaitTurn(t, client, "T2"); !errors.Is(err, errManagedTurnFailed) {
+			t.Errorf("a request before turn/started = %v, want it to fail T2 with a turn-scoped error", err)
+		}
+	})
+
+	t.Run("two_requests_in_one_turn", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		srv.turnStarted("T1")
+		srv.request(731, hardenElicitationMethod, hardenBrokerElicitation(nil))
+		srv.request(732, hardenElicitationMethod, hardenBrokerElicitation("T1"))
+		// The second line shows the window count, which tells "failed once" from
+		// "counted per request".
+		const second = `serverName="moai" turn=T1 broker_declined=2`
+		if !srv.log.waitFor(second) {
+			t.Fatalf("log has no %q within %s; log:\n%s", second, hardenLogWait, srv.log.snapshot())
+		}
+		srv.turnCompleted("T1", "completed")
+		err := hardenWaitTurn(t, client, "T1")
+		if !errors.Is(err, errManagedTurnFailed) {
+			t.Fatalf("two requests in one turn = %v, want exactly one turn-scoped failure", err)
+		}
+	})
+
+	t.Run("late_previous_turn_id_before_turn_started", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		cleanTurn(srv, "T1", "completed")
+		if err := hardenWaitTurn(t, client, "T1"); err != nil {
+			t.Fatalf("T1 = %v, want nil", err)
+		}
+		client.armTurn()
+		srv.request(741, hardenElicitationMethod, hardenBrokerElicitation("T1"))
+		const head = `serverName="moai" turn=none broker_declined=`
+		if !srv.log.waitFor(head) {
+			t.Fatalf("a late request of the previous turn was not logged uncounted within %s; log:\n%s", hardenLogWait, srv.log.snapshot())
+		}
+		if !strings.Contains(srv.log.snapshot(), head+"0\n") {
+			t.Errorf("the previous turn's late request was counted; log:\n%s", srv.log.snapshot())
+		}
+		cleanTurn(srv, "T2", "completed")
+		if err := hardenWaitTurn(t, client, "T2"); err != nil {
+			t.Errorf("T2 = %v, want nil: a request carrying the previous turn's id fails no turn", err)
+		}
+	})
+
+	t.Run("turn_id_mismatch_in_open_window", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		srv.turnStarted("T2")
+		srv.request(751, hardenElicitationMethod, hardenBrokerElicitation("T9"))
+		const head = `serverName="moai" turn=none broker_declined=`
+		if !srv.log.waitFor(head) {
+			t.Fatalf("a request for another turn was not logged uncounted within %s; log:\n%s", hardenLogWait, srv.log.snapshot())
+		}
+		srv.turnCompleted("T2", "completed")
+		if err := hardenWaitTurn(t, client, "T2"); err != nil {
+			t.Errorf("T2 = %v, want nil: a request carrying another turn's id fails no turn", err)
+		}
+	})
+
+	t.Run("string_jsonrpc_id_request_counts", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		srv.turnStarted("T2")
+		srv.request("srv-9", hardenElicitationMethod, hardenBrokerElicitation("T2"))
+		reply, ok := srv.awaitReply(`"srv-9"`, hardenWatchdog)
+		if !ok {
+			t.Fatalf("the string-id elicitation got no answer within %s", hardenWatchdog)
+		}
+		if string(reply.ID) != `"srv-9"` {
+			t.Errorf("answer id %s, want the string id echoed back", reply.ID)
+		}
+		srv.turnCompleted("T2", "completed")
+		if err := hardenWaitTurn(t, client, "T2"); !errors.Is(err, errManagedTurnFailed) {
+			t.Errorf("T2 = %v, want a turn-scoped failure: the JSON-RPC id form does not matter to attribution", err)
+		}
+	})
+}
+
+// TestManagedBrokerNameMatchesApprovalArgs pins that the server name the owner
+// compares elicitation requests against (moaiMCPServerKey) is the same name the
+// owned App Server's approval overrides address (mcp_servers.<key>.…). The
+// approval arguments are not edited by this SPEC; if the two names ever
+// diverge, the broker-elicitation verdict would silently stop matching.
+func TestManagedBrokerNameMatchesApprovalArgs(t *testing.T) {
+	if moaiMCPServerName != moaiMCPServerKey {
+		t.Errorf("moaiMCPServerName %q and moaiMCPServerKey %q diverged", moaiMCPServerName, moaiMCPServerKey)
+	}
+	args := factoryMoAIMCPApprovalArgs()
+	prefix := "mcp_servers." + moaiMCPServerKey + "."
+	overrides := 0
+	for i, arg := range args {
+		if arg == "-c" {
+			continue
+		}
+		overrides++
+		if !strings.HasPrefix(arg, prefix) {
+			t.Errorf("approval override %d %q does not address %q", i, arg, prefix)
+		}
+	}
+	if overrides == 0 {
+		t.Fatal("factoryMoAIMCPApprovalArgs carries no override: the name pin swept nothing")
+	}
+}
+
+// TestManagedDriverConsecutiveFailureCeiling is AC-MH-007: N consecutive
+// turn-scoped failures end the session with the last error and its count, N-1
+// do not, and a success resets the count. N is read from the config constant so
+// the driver cannot get away with a literal.
+func TestManagedDriverConsecutiveFailureCeiling(t *testing.T) {
+	n := config.DefaultManagedSessionMaxConsecutiveTurnFailures
+	if n < 2 {
+		t.Fatalf("ceiling %d: the success_resets scenario needs at least 2", n)
+	}
+	failedLine := func(k int) string {
+		return fmt.Sprintf("Factory turn failed (%d/%d consecutive): ", k, n)
+	}
+	opLines := func(k int) string {
+		var b strings.Builder
+		for i := 1; i <= k; i++ {
+			fmt.Fprintf(&b, "op-%d\n", i)
+		}
+		return b.String()
+	}
+	script := func(steps ...func(string) error) []func(string) error {
+		return append([]func(string) error{hardenTurnOK}, steps...)
+	}
+	fails := func(k int) []func(string) error {
+		out := make([]func(string) error, k)
+		for i := range out {
+			out[i] = hardenTurnFails(fmt.Sprintf("overloaded #%d", i+1))
+		}
+		return out
+	}
+
+	t.Run("at_ceiling_returns", func(t *testing.T) {
+		sink := hardenLogCapture(t)
+		sess := &hardenFuncSession{turns: script(fails(n)...)}
+		err := hardenRunDriver(t, sess, opLines(n)+"/exit\n")
+		if err == nil {
+			t.Fatalf("driver returned nil after %d consecutive turn-scoped failures, want the last failure", n)
+		}
+		if !errors.Is(err, errManagedTurnFailed) {
+			t.Errorf("driver returned %v, want the last turn-scoped failure", err)
+		}
+		if want := fmt.Sprintf("%d consecutive", n); !strings.Contains(err.Error(), want) {
+			t.Errorf("driver error %q does not state the count (%q)", err, want)
+		}
+		if want := fmt.Sprintf("overloaded #%d", n); !strings.Contains(err.Error(), want) {
+			t.Errorf("driver error %q is not the LAST failure (%q)", err, want)
+		}
+		if got := len(sess.delivered()); got != 1+n {
+			t.Errorf("%d turns delivered, want the priming turn plus %d", got, n)
+		}
+		if !sink.waitFor(failedLine(n)) {
+			t.Errorf("no %q line for the failure that reached the ceiling; log:\n%s", failedLine(n), sink.snapshot())
+		}
+	})
+
+	t.Run("below_ceiling_continues", func(t *testing.T) {
+		sink := hardenLogCapture(t)
+		sess := &hardenFuncSession{turns: script(append(fails(n-1), hardenTurnOK)...)}
+		if err := hardenRunDriver(t, sess, opLines(n)+"/exit\n"); err != nil {
+			t.Errorf("driver returned %v after %d failures (below the ceiling), want it to deliver the next turn and end nil on /exit", err, n-1)
+		}
+		if got := len(sess.delivered()); got != 1+(n-1)+1 {
+			t.Errorf("%d turns delivered, want the priming turn, %d failures and one success", got, n-1)
+		}
+		if !sink.waitFor(failedLine(n - 1)) {
+			t.Errorf("no %q line; log:\n%s", failedLine(n-1), sink.snapshot())
+		}
+	})
+
+	t.Run("success_resets", func(t *testing.T) {
+		sink := hardenLogCapture(t)
+		steps := append(fails(n-1), hardenTurnOK, hardenTurnFails("one more"))
+		sess := &hardenFuncSession{turns: script(steps...)}
+		if err := hardenRunDriver(t, sess, opLines(n+1)+"/exit\n"); err != nil {
+			t.Errorf("driver returned %v, want a success to reset the count so the last failure is 1/%d", err, n)
+		}
+		log := sink.snapshot()
+		if got := strings.Count(log, failedLine(1)); got != 2 {
+			t.Errorf("%d lines of %q, want 2 (the first failure and the one after the reset); log:\n%s", got, failedLine(1), log)
+		}
+		if strings.Contains(log, failedLine(n)) {
+			t.Errorf("the count reached %d despite the intervening success; log:\n%s", n, log)
+		}
+	})
+}
+
+// TestManagedFailedTurnLeavesClaimUntouched is AC-MH-008, an INVARIANT GUARD: it
+// is green on the base tree as well, because the managed layer has no handle on
+// the broker row. A turn that carried a claimed message fails; the row must stay
+// claimed with the same token, never acknowledged, released or re-addressed by
+// this layer (redelivery after the lease is the broker's policy, covered by
+// internal/factorymsg TestDispatchResultExactlyOnce).
+func TestManagedFailedTurnLeavesClaimUntouched(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, run := t.TempDir(), "managed-claim-untouched"
+	activateManagedRun(t, root, run)
+	store, lane, env := seedManagedInbox(t, root, run, "poison body")
+	defer closeOnCleanup(t, "factory message broker", store)
+	hardenLogCapture(t)
+	claim, toPrompt := managedFactoryInboxWiring(store, os.Getpid(), homestate.CurrentProcessFingerprint(), run)
+
+	sess := &hardenFuncSession{turns: []func(string) error{hardenTurnOK, hardenTurnFails("model overloaded")}}
+	pr, pw := io.Pipe()
+	t.Cleanup(func() { _ = pw.Close() })
+	idle := make(chan time.Time, 8)
+	errCh := make(chan error, 1)
+	go func() { errCh <- driveManagedFactorySession(sess, pr, idle, claim, toPrompt) }()
+
+	idle <- time.Time{}
+	deadline := time.After(hardenWatchdog)
+	for len(sess.delivered()) < 2 {
+		select {
+		case <-deadline:
+			t.Fatalf("the claimed inbox turn was not delivered within %s", hardenWatchdog)
+		case <-time.After(hardenLogPoll):
+		}
+	}
+	token := ""
+	for _, field := range strings.Fields(sess.delivered()[1]) {
+		if strings.HasPrefix(field, "claim_token=") {
+			token = strings.TrimPrefix(field, "claim_token=")
+		}
+	}
+	if token == "" {
+		t.Fatalf("the inbox prompt carries no claim token: %q", sess.delivered()[1])
+	}
+	go func() { _, _ = pw.Write([]byte("/exit\n")) }()
+	select {
+	case err := <-errCh:
+		// Before the driver isolates turn failures it returns the failed turn's
+		// error; after, it ends nil on /exit. Either way nothing touches the row.
+		if err != nil && !errors.Is(err, errManagedTurnFailed) {
+			t.Errorf("driver returned %v, want nil or the failed turn's own error", err)
+		}
+	case <-time.After(hardenWatchdog):
+		t.Fatalf("driver did not return within %s", hardenWatchdog)
+	}
+
+	status, err := store.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Claimed != 1 || status.Pending != 0 || status.Acknowledged != 0 || status.DeadLetter != 0 {
+		t.Errorf("broker status after the failed turn = claimed %d pending %d acknowledged %d dead %d, want the one message still claimed",
+			status.Claimed, status.Pending, status.Acknowledged, status.DeadLetter)
+	}
+	body, err := store.ReadBody(context.Background(), lane, env.ID, token)
+	if err != nil || string(body) != "poison body" {
+		t.Errorf("ReadBody with the original claim token = %q, %v; want the body (the claim token is unchanged)", body, err)
 	}
 }
