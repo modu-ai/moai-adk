@@ -235,6 +235,36 @@ Commit order (the graph witnesses it): RED `2997abc29` (tests only), then GREEN 
   28.80, many concurrent `cli.test` processes from other lanes) passed 2 of 3 (the failing iteration `nominated`, 658.5 ms).
   The 500 ms margin is the plan's labeled heuristic and is not loosened here. Evidence `wm2-cli-rerun-driftverb.txt`.
 
+### WM3 + WM4 — the lease section and the bounded claim (card t1458)
+
+Commits in order: `fd70b9123` (homestate: bounded drift-log reconcile, DSN busy-timeout open `OpenFactoryBounded`,
+non-waiting admission lock, settle step in `withCardTx`), `2016bad1a` (test repair, below), `daed5dd09` (`factory_card.go`
+section + bounded claim, moved tests). Tool: `go` from PATH, lane environment scrubbed in each invocation (scratchpad scripts).
+
+- RED to GREEN, `internal/cli` (`wm3-cli-lease2.txt`, `wm3-ac010-final.txt`, `wm4-cli-lease-race.txt`): SectionRejectsNestedMutate,
+  OperatorWriteWaitsForSection, ArmCOperatorHold, CompensationKeepsOperatorPick, SectionRecordWritesPerArm,
+  SerialDistinctNomineesExactlyOne, SerialBareLanesExactlyOne, SerialCrossProcessExactlyOne, OwnAssignedSerialSiblingsExactlyOne,
+  SectionAllowedSet, RecordStallBounded, MidClaimStallBounded, QueueLockStallBounded, DriftLogStallBounded. `internal/homestate`
+  (`wm4-homestate-reconcile.txt`, `-race`, exit 0): BoundedSkipsOnContention, BoundedRereadsUnderLock. Guards still green:
+  ArmAKeepsHeldAssignedCard, SectionExcludesWorktreeStep, WorktreeStepWaitDerivation, CapWithinBoardBudget, DriftLogVerbWorktreeWriteWaits,
+  DefaultStillWaits, HomestateDoesNotImportKanban.
+- Still RED (WM5 only): TestFactoryEnsureCardWorktreeConcurrentRealMaterializer, TestFactoryEnsureCardWorktreeStepLockBounded.
+- Two WM1 tests were red for the wrong reason and were repaired in `2016bad1a` (no timing bound touched): `SectionAllowedSet` scanned git
+  from the verb's start (the record open and store construction run 68 project-root git lines before any section, already in
+  `red-cli.txt`) and compared `/var` with `/private/var`; it now measures from the pass-entry seam (the nominated lease calls it
+  too) and compares canonical paths. `DriftLogStallBounded` clause (iii) used the wall clock against a lease issued under the
+  fixture's frozen clock; it uses `factoryCardNow`.
+- Plan section 5 moves done: tolerant race helper (`nmRaceAtSeamTolerant`), item-moved test via operator goroutine, compensate table
+  inside a section; the lock-wait subtest was REMOVED (recorded in the test's comment), as plan section 5 states.
+- Preservation: AC-FAL-010 68-name selector, `-count=1 -v`, exit 0, `ok internal/cli 158.882s`, PASS 68, FAIL 0, SKIP 0, no-tests 0,
+  names identical to the WM1 baseline (`wm3-ac010-final.txt`). DATA RACE 0 there is vacuous (no `-race`); the lease selector under `-race`
+  exited 0 with 0 DATA RACE (`wm4-cli-lease-race.txt`). All factory/mcp-factory test files: PASS 257, FAIL 2 (the WM5 two), SKIP 4
+  (`wm3-cli-factoryfiles.txt`, taken before the two lint-only test edits). Full `internal/homestate` `-race`: exit 0, 137 PASS (`wm4-homestate-pkg.txt`).
+- gofmt clean, `go vet` (kanban, homestate, cli) rc 0, `golangci-lint` v2.1.6 rc 0 (0 issues), `GOOS=windows` build and vet rc 0 (`wm3-static-*.txt`).
+- Not claimed: mutants MU1-MU7, MU9-MU20 (WM6); hold-time distribution (AC-FAL-009 iv, WM6); the Windows non-waiting lock beyond compile;
+  a lock-release failure after a committed lease is not reported (the lease stays valid); a claim on a loaded machine can read as busy at
+  the 800 ms deadline by design.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
@@ -264,10 +294,9 @@ baseline commit, RED commit); R2 = WM2; R3 = WM3 + WM4 (they land together); R4 
 the autonomous plan->run Kickoff recorded in `.moai/reports/t1458/decision.md` (git-ignored) at HEAD b27652922, and after
 absorbing develop 2b9e4a4d0 (merge 09faf2965; the plan-artifact hashes were re-checked unchanged).
 
-## §G Resume Point (after WM2, 2026-10-03)
+## §G Resume Point (after WM3+WM4, 2026-10-03)
 
 - WM1 landed in order: 0eb3d5b0d (seam-and-stub), 807eabe20 (AC-FAL-010 baseline, 68 PASS), 1a4ef6402 (RED). WM2 landed in order: 2997abc29 (RED tests), f8cc4b978 (primitive), then the docs commit carrying this section (find its SHA with `git log`).
-- Resume at WM3+WM4 together (lease path inside `WithLock`, and the bounded claim; they land together, §4 plan), then WM5, WM6 (§F). Baseline floor for the final AC-FAL-010 run: 68 (re-measured after WM2: 68).
-- WM3 reminder: the section's store is `todoStoreAt(root)` constructed before `WithLock`; inside the section call only `LockedBacklog.Mutate`/`LoadPure`, never the public `Mutate` (self-contention, plan D1); the handle must not outlive `fn` (no guard exists, by design).
-- Not done: any lease-path behavior change (nothing in `internal/cli` calls `WithLock` yet). Slot internal-cli-suite released. Nothing pushed or merged.
 - Evidence (git-ignored, this worktree only): .moai/reports/t1458/{baseline-*.txt, red-*.txt, plan-audit*.md, decision.md, park.md}.
+- WM3+WM4 landed: fd70b9123 (homestate), 2016bad1a (two WM1 test repairs), daed5dd09 (lease section + bounded claim), then the docs commit carrying this section. Slot internal-cli-suite released. Nothing pushed or merged.
+- Resume at WM5 (round R4): `kanban.AcquireFactoryStepLock` replaces the stub in `internal/kanban/factory_step_lock.go` (reuse `acquireBoardLockImpl`, separate lock file `<root>/.moai/state/factory-worktree-step.lock`, wait via `factoryWorktreeStepWait`), `factoryEnsureCardWorktree` takes it around creator + `git branch -m` and releases before `RecordCardWorktree`. Tests still RED: TestFactoryEnsureCardWorktreeConcurrentRealMaterializer, TestFactoryEnsureCardWorktreeStepLockBounded. Then WM6 closure (mutants, hold-time distribution, AC-FAL-013 diff measure). AC-FAL-010 floor stays 68.
