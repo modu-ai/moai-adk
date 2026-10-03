@@ -201,10 +201,6 @@ func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt
 	return r, nil
 }
 
-func init() {
-	verifyExtraCommands = append(verifyExtraCommands, newVerifyCodexReviewCmd)
-}
-
 func newVerifyCodexReviewCmd(projectRoot *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "codex-review",
