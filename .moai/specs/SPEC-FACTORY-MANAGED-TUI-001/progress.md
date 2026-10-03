@@ -109,7 +109,7 @@ Command form: the lane's worktree guard refuses a dollar sign in a command, so `
 | 007 | `-run '^TestManagedCodexServerRequestScopingWithTUI'` | exit 0, 6 subtests PASS |
 | 008 | `-run '^TestManagedCodexTUIExitEndsSession'` | exit 0, 6 subtests PASS |
 | 009 | `-run '^TestManagedCodexServerDeathStopsTUI'`, `'^TestManagedCodexSessionEndStopsTUI'` | exit 0 each |
-| 010 | `go test ./internal/cli -run '^Name' -count=1 -v` for `TestFactoryManagedRequested`, `TestManagedLaunchRequiresOptIn`, `TestManagedCodexLaunchRequiresOptIn`, `TestManagedSwitchDoesNotReachCodexLaneLoop` (each listed once by `-list`) | exit 0, 4 PASS |
+| 010 | `go test ./internal/cli -run '^Name' -count=1 -v` for `TestFactoryManagedRequested`, `TestManagedLaunchRequiresOptIn`, `TestManagedCodexLaunchRequiresOptIn`, `TestManagedSwitchDoesNotReachCodexLaneLoop` (each listed once by `-list`) | exit 0, 4 PASS |  [Correction in the re-close: card t1440 removed `TestManagedSwitchDoesNotReachCodexLaneLoop` upstream (`a184aa89c`); AC-MT-010 now names the four surviving opt-in tests, `TestFactoryManagedRequested`, `TestManagedLaunchRequiresOptIn`, `TestManagedCodexLaunchRequiresOptIn` and `TestManagedTUINeverReachedWithoutOptIn`, per SPEC 0.3.2. The cell above is the original run record.]
 | 011 | `-run '^TestManagedCodexTUILoopbackRoundTrip'` | exit 0 |
 | 012 | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
 | 012 | `grep -rn 'syscall\.' internal/cli/managed_*.go` | no lines, exit 1 (positive control `grep -ln 'syscall\.' internal/cli/launch_exec_posix.go` prints that path, exit 0) |
@@ -124,6 +124,8 @@ Repetition: every one of the 15 tests also ran `-race -count=5` as its own invoc
 Static: `golangci-lint run ./internal/cli/... ./internal/config/...` v2.1.6 gives `0 issues.` (six findings of the first run, all in new code, were fixed in `82ae15be1`); `go vet ./internal/cli/... ./internal/config/...` is clean; `go build ./...` exit 0; `gofmt -l internal/cli internal/config` lists only `internal/cli/todo_classify_llm_test.go`, which this card did not touch (baseline state).
 
 Coverage of `managed_codex_tui.go` by the managed set (`-run Managed -coverprofile`): 208 of 224 statements, 92.9 percent (measured before the gate re-check and the test-only fixes; the later commits add 5 statements, all exercised by AC-016).
+
+[Correction in the re-close: the 208 of 224 figure above is stale for the current tree. The re-close measured 219 of 241 statements, 90.9 percent, after the F5 and F6 repairs added code and tests (see the re-close block in section E.4). The original line is kept as the run-phase record.]
 
 ### RED output (E8)
 
@@ -191,7 +193,7 @@ m1_to_mN_commit_strategy: stub S, RED R, one commit per milestone M2..M4, two M5
 
 sync_status: audit-ready (AC-MT-015 operator-held, NOT run; real TUI behavior never observed)
 sync_complete_at: 2026-10-03
-sync_commit_sha: 40aa3aedf   # backfilled in the following progress.md-only commit (a commit cannot cite its own hash)
+superseded_sync_commit_sha: 40aa3aedf   # the first sync commit (backfill commit 3ca47fbe3); the independent sync audit returned FAIL 76.2 and the re-close block below supersedes it; the key was renamed from `sync_commit_sha` so tools read the current close
 head_at_signal: 71befeeb9 (measured tree, = the card branch after absorbing local develop 1da5e4fc6; the sync edits were uncommitted when measured)
 tree: .claude/worktrees/t1408
 branch: WT-managed-codex-tui-attach
@@ -236,3 +238,51 @@ All attributions are `(this run, this tree, HEAD 71befeeb9 plus the uncommitted 
 - The attach may not work with a real codex (frame delivery to the launcher, request routing with two connections, resume by thread id, terminal restoration).
 - The attach touches the same lines as cards t1459 and t1410; the second to land must re-measure.
 
+## §E.4 Sync-phase Audit-Ready Signal — re-close after the sync-audit iteration 1 FAIL
+
+sync_status: audit-ready (NOT audit-passed: no sync audit has passed on this close yet; AC-MT-015 operator-held, NOT run)
+sync_complete_at: 2026-10-04
+sync_commit_sha: pending-backfill   # canonical placeholder: this re-close commit cannot cite its own hash; backfilled in a following progress.md-only commit
+superseded_first_close: 40aa3aedf (the first sync commit; the independent sync audit `.moai/reports/t1408/sync-audit.md`, local-only, returned FAIL 76.2/100 against `3ca47fbe3`; its SHA is the `superseded_sync_commit_sha` line of the first section E.4 block above)
+head_at_signal: 6f6d69349 (measured tree; the re-close edits were uncommitted when measured)
+tree: .claude/worktrees/t1408
+branch: WT-managed-codex-tui-attach
+owner: manager-docs (sync-phase, re-close)
+card_commits: run `d222d310e` `fdcf28056` `c0d46d96f` `5e50715a8` `c1c17cdd5` `82ae15be1` `1194c3415` `c8ebb353c` `44b0d1822` `d6b710690` · develop absorb `71befeeb9` · first sync `40aa3aedf` (superseded) · backfill `3ca47fbe3` · gofmt repair `b1ec7c725` · F5/F6 repair `42a952661` · SPEC amendment 0.3.2 `febfbeb0c` and `6f6d69349` · re-close (the commit carrying this block) · backfill (the next commit)
+ac_source: .moai/specs/SPEC-FACTORY-MANAGED-TUI-001/acceptance.md (tier M, state `resolved`, non-empty)
+docs_changed: `CHANGELOG.md` (the single existing entry edited in place; audit status, repair and amendment SHAs, F5/F6 fixed, F4 and the log-open race as known limits, measured coverage) · `.moai/docs/factory-managed-session.md` (two known-limit bullets for SPEC debts 14 and 15 so REQ-MT-013 holds; the card-child bullet now quotes the old sentence `Codex 관리 세션은 화면에 아무것도 보여 주지 않는다` scoped to card children, because the completed SPEC-FACTORY-MANAGED-CARD-CHILD-001 AC-CC-012 expects that sentence to be present and the first close had dropped it, a regression the amended AC-MT-013 no longer constrains) · `.moai/specs/SPEC-FACTORY-MANAGED-TUI-001/spec.md` (frontmatter `status:` line only) · this block, the key rename in the first block, and two correction notes in section E.2
+docs_not_changed: spec.md body, plan.md, acceptance.md, design.md (manager-spec's amendment stands) · every `.go` file
+frontmatter_status_transitions: spec.md `in-progress -> implemented -> completed` merged into this re-close commit (the amendment had set `in-progress`; `amendment_of` and `prior_completed_sha` are untouched); `updated: 2026-10-04` already the amendment date
+changelog_entry_position: unchanged (single entry, first item under Added)
+b12_self_test_a: re-close edits the single existing entry in place; `grep -c 'SPEC-FACTORY-MANAGED-TUI-001' CHANGELOG.md` -> `1`
+b12_self_test_b: B12 counter on acceptance.md -> see the table below; the entry states 14 requirements and 16 acceptance criteria
+b12_self_test_c: the entry adds no new file path beyond `internal/cli/managed_codex_tui_repair_test.go`, which exists; every SHA it cites was read from `git log`
+canary_compliance_check: not applicable
+audit_status: iteration 1 FAIL 76.2/100 (Functionality 72, must-pass); the cross-model gate (claude plus codex) was not met (codex failed twice, no independent claude backend run established). F1 and F7 were SPEC-text defects repaired by the amendment; F2 gofmt repaired in `b1ec7c725`; F5 and F6 fixed in `42a952661`; F4 deliberately not fixed (SPEC debt 14); the log-open race is SPEC debt 15. No re-audit has been run.
+
+All attributions are `(this run, this tree, HEAD 6f6d69349 plus the uncommitted re-close edits, before the re-close commit)`.
+
+### Evidence
+
+| Check | Command | Observed |
+|---|---|---|
+| SPEC lint | `moai spec lint .moai/specs/SPEC-FACTORY-MANAGED-TUI-001` | no findings, exit 0 |
+| AC count (B12) | counter from `manager-docs.md` on acceptance.md | `16`, `live=16 excluded=0 ambiguous=0` |
+| CHANGELOG | `grep -c 'SPEC-FACTORY-MANAGED-TUI-001' CHANGELOG.md` / `grep -c 'anchor:tui-' CHANGELOG.md` | `1` / `7` |
+| Operator document anchors | `grep -c 'anchor:tui-' .moai/docs/factory-managed-session.md` | `13`; `anchor:tui-signals.*t1459` 1; `anchor:tui-unobserved.*미관측` 3; old sentence `화면에는 아무것도 나타나지 않는다` 0 (AC-MT-013); `Codex 관리 세션은 화면에 아무것도 보여 주지 않는다` 1 (AC-CC-012 of CARD-CHILD-001); `런처는 시그널을 처리하지 않는다` 1 |
+| Managed regression | lane env scrubbed, `timeout 900 go test -race -count=1 -run Managed -coverprofile=... ./internal/cli` | `ok  github.com/modu-ai/moai-adk/internal/cli  161.807s`, exit 0 |
+| Coverage of `managed_codex_tui.go` | awk over the profile by statement count, cross-checked with `go tool cover -func` | `219/241 = 90.9%` (equals the repair lane's figure; the audit's 208/226 predates the repair) |
+| Build | `go build ./...` | exit 0 |
+
+### Gaps
+
+- No sync audit has passed on this close. Iteration 1 was FAIL 76.2 and the cross-model gate (claude plus codex) was unmet; this re-close has not been re-audited.
+- AC-MT-015 and every real-TUI behavior: not run, no terminal designated.
+- Codemaps freshness and the repository-wide suite: not run (CI owns the suite).
+- The installed `moai` binary's commit was not compared with this tree's HEAD, so the `spec lint` reading carries no judging-build attribution.
+- The F5, F6 and gofmt repairs were not re-verified individually here beyond the managed-scope run passing.
+
+### Residual-risk
+
+- F4 (armed-window misattribution) and the log-open race remain, disclosed as SPEC debts 14 and 15.
+- Real-TUI behavior may differ from the fake codex; the hotspot merge with t1459 and t1410 still needs a re-measure by whichever lands second.
