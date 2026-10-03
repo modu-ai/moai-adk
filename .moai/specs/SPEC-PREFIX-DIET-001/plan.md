@@ -1,7 +1,7 @@
 ---
 id: SPEC-PREFIX-DIET-001
 title: "plan — 세션 시작 prefix 다이어트 2단계"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-10-03
 updated: 2026-10-03
 ---
@@ -46,7 +46,7 @@ python3 -c "import re,sys;t=open(sys.argv[1],encoding='utf-8').read().split('---
 ```
 
 - **단위 추출기와 구속 토큰 개수 규칙은 이 SPEC 이 정의한다**(`spec.md` §B). `SPEC-ALWAYS-LOADED-BUDGET-001` 의 추출기는 이 트리에 없고(`git show WT-always-loaded-budget:<경로>` 로만 읽을 수 있다) 재사용에 기대지 않는다. 추출기는 `internal/template` 의 이 SPEC 테스트 헬퍼로 구현하고, 같은 규칙(구속 토큰 개수)을 AC-PFD-004 의 독립 `python3` 명령이 따로 구현해 두 구현이 서로를 대조한다.
-- **점검기**: `.moai/specs/SPEC-PREFIX-DIET-001/surface_guard.py`(이 plan 에 커밋됨). 실행: 워크트리 루트에서 `python3 .moai/specs/SPEC-PREFIX-DIET-001/surface_guard.py <BASE>`. 변경·신규 파일이 허용 표면 밖이면 위반, 출력 스타일은 frontmatter 불변, 에이전트는 본문과 `description:` 외 frontmatter 불변, 설정은 `skillListingBudgetFraction` 줄 외 불변. 허용목록에 새 경로가 필요하면(예: `make build` 가 추적 파일을 갱신) 그 경로와 이유를 `progress.md` 에 적고 점검기를 같은 커밋에서 고친다 — 조용히 넓히지 않는다.
+- **점검기**: `.moai/specs/SPEC-PREFIX-DIET-001/surface_guard.py`(이 plan 에 커밋됨). 실행: 워크트리 루트에서 `python3 .moai/specs/SPEC-PREFIX-DIET-001/surface_guard.py <BASE>`. 변경·신규 파일이 허용 표면 밖이면 위반, 출력 스타일은 frontmatter 불변, 에이전트는 본문과 `description:` 외 frontmatter 불변. 허용 표면은 출력 스타일·에이전트·생성 Codex TOML(`internal/template/templates/.codex/agents/moai/*.toml`)·이 SPEC 의 테스트와 고정물·문서뿐이며, **설정 파일 두 개는 허용목록에 없어 어떤 변경이든 위반**이다(키 예외 없음). 허용목록에 새 경로가 필요하면(예: `make build` 가 추적 파일을 갱신) 그 경로와 이유를 `progress.md` 에 적고 점검기를 같은 커밋에서 고친다 — 조용히 넓히지 않는다.
 - 무거운 측정(`claude -p`)은 실계정 호출이다. 한 조건당 3회로 제한하고 조건을 직렬로 돌린다.
 
 ## §D. 제약과 위험
@@ -56,6 +56,7 @@ python3 -c "import re,sys;t=open(sys.argv[1],encoding='utf-8').read().split('---
 - **의미 손실**: 재작성을 금지(D3)하고 `dropped` 는 `rationale`·`example` 에만 허용한다. 남는 위험은 작성자가 `normative` 단위를 `rationale` 로 오분류해 지우는 경우이며 기계가 못 잡는다 — `dropped` 행 목록 반출과 sync-audit·리더 검토로 막는다.
 - **t1469 와의 충돌**: 카드 t1469 가 세션 핸드오프 규칙을 다시 쓰면 동결 단위 고정물과 렌더 절이 함께 바뀐다. 고정물 갱신은 그 카드의 커밋이 맡는다.
 - **측정 잡음**: 단일 실행 수치는 분산을 모른다. 이 SPEC 은 조건당 3회 실행으로 분산을 처음 잰다(REQ-PFD-012). 3회 범위가 기대 감소폭보다 넓으면 그 마일스톤의 토큰 효과는 "측정 불가"로 보고하고 크기 지표(UTF-16)만 주장한다.
+- **생성 TOML 드리프트**: 설명 편집 뒤 `make agents-emit` 을 빠뜨리면 `make build` 가 실패한다(재현됨). M5 3b 가 막는다.
 - **에이전트 사본 불일치**: 로컬 에이전트 본문은 12개 중 10개가 템플릿과 다르다(`spec.md` §A.2). 이 SPEC 이 만든 것이 아니므로 본문은 건드리지 않는다.
 - **범위 점검기 오탐**: develop 을 흡수하면 앵커 기준 점검이 남의 변경을 위반으로 읽는다. 기준 SHA 를 읽는 시점에 `git merge-base develop HEAD` 로 다시 구한다(병합 전 평가 전용).
 
@@ -98,6 +99,7 @@ M2 와 같은 순서. 동결 단위 두 개(§6, §8)는 해시가 앵커와 같
 1. D5 판정 반영. 로컬이 템플릿보다 새로운 문구를 가졌으면 템플릿에 먼저 옮긴다.
 2. RED: `TestAgentDescriptionBudget`(합계·단일 상한 상수, D4)를 만들어 앵커에서 FAIL 하는 출력을 기록.
 3. GREEN: 큰 설명부터(`manager-lead` 2,182 · `manager-docs` 1,552 · `manager-develop` 1,094 · `manager-spec` 1,022) 줄인다. 역할·트리거·`NOT for:` 는 남긴다(REQ-PFD-011). 편집한 에이전트의 `description:` 블록만 로컬 사본과 같게 맞춘다.
+3b. **`make agents-emit`**: 설명을 줄이면 `make build` 의 `agents-emit-check` 가 golden 해시 불일치로 실패한다(이 plan 에서 재현 — `spec.md` §H). 설명 편집 뒤 `make agents-emit` 을 돌려 `internal/template/templates/.codex/agents/moai/<이름>.toml` 을 재생성하고 같은 커밋에 포함한다. 생성 파일은 점검기 허용목록(`codex-tomls`)에 있다. 이후 `make agents-emit-check` 와 AC-PFD-016 을 재관측한다. 로컬 `.codex/agents/moai` 는 이 트리에 없다.
 4. 마감: 최종 트리에서 §D.2 프로토콜로 3회 측정, 마일스톤별 전/후 표 기록, 패키지 단위 회귀 대조, `make build`, 점검기 최종 PASS 와 양성 대조(AC-PFD-012), `acceptance.md` 의 모든 AC 를 명령 그대로 재실행해 축자 출력 기록. `dropped` 행 목록 반출.
 
 ## §G. 안티패턴

@@ -1,7 +1,8 @@
 # Path-allowlist + content guard for SPEC-PREFIX-DIET-001 (run-phase, pre-merge evaluation only).
 # Usage (worktree root): python3 .moai/specs/SPEC-PREFIX-DIET-001/surface_guard.py <BASE-SHA> [forbidden-surface ...]
-# Surfaces: output-styles, settings, agents, tests, docs. A forbidden surface turns any change on it into a
-# violation (positive control). Anything outside the allowlist is a violation by default.
+# Surfaces: output-styles, agents, codex-tomls, tests, docs. A forbidden surface turns any change on it
+# into a violation (positive control). Anything outside the allowlist is a violation by default --
+# both settings files are deliberately NOT on the allowlist, so ANY settings change is a violation.
 # Exit 0 + final line "surface-guard=PASS" only when every changed or new file passes; otherwise exit 1.
 import re
 import subprocess
@@ -34,8 +35,8 @@ def drop_description(fm):
 
 SURFACES = [
     ("output-styles", r"^(internal/template/templates/)?\.claude/output-styles/moai/(moai|moai-easy|moai-learn)\.md$"),
-    ("settings", r"^(internal/template/templates/\.claude/settings\.json\.tmpl|\.claude/settings\.json)$"),
     ("agents", r"^(internal/template/templates/)?\.claude/agents/moai/[a-z-]+\.md$"),
+    ("codex-tomls", r"^internal/template/templates/\.codex/agents/moai/[a-z-]+\.toml$"),
     ("tests", r"^internal/template/((output_style|prefix_diet|agent_description)[a-z_]*_test\.go|testdata/(output_style|prefix_diet)[a-z_]*\.(json|txt))$"),
     ("docs", r"^\.moai/(specs/SPEC-PREFIX-DIET-001|reports/t1450)/"),
 ]
@@ -54,7 +55,7 @@ for p in sorted(names):
         bad += 1
         continue
     msg = "ok"
-    if surf in ("output-styles", "agents", "settings"):
+    if surf in ("output-styles", "agents"):
         old = show(p)
         new = open(p, encoding="utf-8").read()
         if old is None:
@@ -65,11 +66,6 @@ for p in sorted(names):
             body(old) != body(new) or drop_description(frontmatter(old)) != drop_description(frontmatter(new))
         ):
             msg = "VIOLATION agent-body-or-nondescription-frontmatter-changed"
-        elif surf == "settings":
-            d = git("diff", "-U0", base, "--", p).splitlines()
-            ch = [l for l in d if l[:1] in "+-" and not l.startswith(("+++", "---"))]
-            if any("skillListingBudgetFraction" not in l for l in ch):
-                msg = "VIOLATION settings-line-other-than-skillListingBudgetFraction"
     if msg != "ok":
         bad += 1
     print(msg + " " + surf + " " + p)

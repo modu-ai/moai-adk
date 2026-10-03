@@ -1,7 +1,7 @@
 ---
 id: SPEC-PREFIX-DIET-001
 title: "세션 시작 prefix 다이어트 2단계 — 출력 스타일 파일 축약과 에이전트 설명 상한"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -21,6 +21,7 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-002, SPEC
 
 | 날짜 | 버전 | 변경 | 작성자 |
 |---|---|---|---|
+| 2026-10-03 | 0.3.0 | plan-audit 2회차 FAIL 0.88(MP-8, `.moai/reports/t1450/plan-audit-iter2.md`) 수리(리더가 3회차 델타를 허용). D1 AC-PFD-004·012 의 RED-now 칸이 초록 조건과 같은 출력이었으므로 두 AC 를 **RG 로 재분류**하고 릴리스 차단에서 뺐다. D2 점검기에서 `skillListingBudgetFraction` 키 예외를 없앴다 — 설정 파일 두 개를 허용목록에서 제거해 **어떤 설정 변경도 위반**이다. 점검기의 ruff 지적(E401·E741)을 동작 변경 없이 수리하고 PASS/FAIL 출력을 재관측했다. 에이전트 설명을 줄이면 `make build` 의 `agents-emit-check` 가 golden 해시 불일치로 실패함을 직접 재현(관측)했고, M5 에 `make agents-emit` 단계와 생성 TOML(`internal/template/templates/.codex/agents/moai/*.toml`)의 허용목록 등재(REQ-PFD-011·013)를 넣었다. AC-PFD-016(agents-emit-check 회귀 가드) 추가. REQ 13 · AC 16. | manager-spec |
 | 2026-10-03 | 0.2.0 | plan-audit 1회차 FAIL 0.78(`.moai/reports/t1450/plan-audit-iter1.md`)과 리더 판정(미션 계약 `11c79e1a`) 반영. D1 계수 단위를 출력 스타일 **파일 전체 UTF-16** 하나로 통일(REQ-PFD-001·002, §A.2). D2 리더 결정: `skillListingBudgetFraction` 은 **변경하지 않는다** — 키는 `0.02` 그대로 두고 가드하며, `0.01` 측정은 운영자 결정 항목으로만 기록한다(항목 (c) 는 에이전트 설명 상한뿐). D3 리더 결정: `[HARD]` 줄은 `dropped`/`verbatim` 만 — 압축 재작성 없음, 원장에 `rewrite` 행 0(REQ-PFD-003). D4 단위별 구속 토큰 개수 검사와 추출기 명세를 이 SPEC 에 둔다(§B, REQ-PFD-004). D5 제외를 경로 허용목록 점검기(`surface_guard.py`)와 표면별 명령으로 강제(REQ-PFD-013). D6 §D.3 lint 기록 정정. D7 AC-PFD-007 이 날짜·해시·언어 편향까지 덮음. D8 `SPEC-ALWAYS-LOADED-BUDGET-001` 은 이 트리에 없어 `git show WT-always-loaded-budget:<경로>` 로만 인용. 카드의 에이전트 설명 합계 18.2K 를 실측 11,155(템플릿)/11,146(로컬)로 정정. REQ 13 · AC 15 로 정리. | manager-spec |
 | 2026-10-03 | 0.1.0 | 최초 작성. 카드 t1450(클래스 C, Tier M). 기준 트리 `5d5ff1aae`(= develop `2b9e4a4d0` + 카드 t1449 병합). | manager-spec |
 
@@ -113,12 +114,12 @@ claude -p ok --output-format json --model claude-opus-5-5 --settings <disableAll
 
 - **REQ-PFD-009** (Unwanted) — The change shall not alter the value of `skillListingBudgetFraction` (`0.02` in `settings.json.tmpl` and in `.claude/settings.json`) nor modify either settings file; the `0.01` measurement of §A.1 is recorded as an operator decision item only.
 - **REQ-PFD-010** (Ubiquitous) — The template test suite shall carry a test named `TestAgentDescriptionBudget` that sums the UTF-16 length of the `description:` block of every agent under `internal/template/templates/.claude/agents/moai/` and fails when the sum exceeds the total constant or any single description exceeds the per-agent cap constant, naming the offending file and size; both constants are recorded in `progress.md` §E.2 at M0 and shall be below the anchor values (sum 11,155; largest 2,182).
-- **REQ-PFD-011** (Unwanted) — A shortened agent description shall not remove the agent's phase or role statement, its invocation trigger, or any of its `NOT for:` clauses (anchor per-file counts: 1 for ten agents, 2 for `manager-spec`, 3 for `super-advisor`), and `TestAgentFrontmatterAudit` shall still pass.
+- **REQ-PFD-011** (Unwanted) — A shortened agent description shall not remove the agent's phase or role statement, its invocation trigger, or any of its `NOT for:` clauses (anchor per-file counts: 1 for ten agents, 2 for `manager-spec`, 3 for `super-advisor`), `TestAgentFrontmatterAudit` shall still pass, and every edited agent's generated Codex TOML under `internal/template/templates/.codex/agents/moai/` shall be regenerated with `make agents-emit` so that `agents-emit-check` (part of `make build`) passes.
 
 ### C.3 측정과 경계
 
 - **REQ-PFD-012** (Ubiquitous) — The run phase shall measure the first-turn input tokens with the identical command of §A.1 run from the worktree root, three runs per condition, first reproducing the anchor baseline (M0) and then measuring after each milestone that changed a file and on the final tree, recording each run's verbatim `usage` JSON and the summed figure in `progress.md` §E.2, and when none of the three M0 anchor reproductions falls within 1% of 154,219 the run phase shall stop before any edit and report the three values to the leader.
-- **REQ-PFD-013** (Unwanted) — The change shall not touch any path outside the allowlist of `surface_guard.py` — the three output-style files and their local mirrors (frontmatter unchanged), the twelve agent definitions and their local mirrors (body and every frontmatter field other than `description:` unchanged), this SPEC's tests and fixtures, this SPEC's directory and `.moai/reports/t1450/` — and therefore shall not change the `outputStyle` value, any settings key, any `SKILL.md`, any rule, `CLAUDE.md`, `AGENTS*`, or hook code; the guard shall exit 0 with `surface-guard=PASS` on the final tree and exit 1 on a positive-control mutant.
+- **REQ-PFD-013** (Unwanted) — The change shall not touch any path outside the allowlist of `surface_guard.py` — the three output-style files and their local mirrors (frontmatter unchanged), the twelve agent definitions and their local mirrors (body and every frontmatter field other than `description:` unchanged), the generated Codex agent TOMLs under `internal/template/templates/.codex/agents/moai/`, this SPEC's tests and fixtures, this SPEC's directory and `.moai/reports/t1450/` — and therefore shall not change either settings file (the guard allowlists neither, so any settings change is a violation, the `skillListingBudgetFraction` line included), the `outputStyle` value, any `SKILL.md`, any rule, `CLAUDE.md`, `AGENTS*`, or hook code; the guard shall exit 0 with `surface-guard=PASS` on the final tree and exit 1 on a positive-control mutant.
 
 ---
 
@@ -177,4 +178,5 @@ claude -p ok --output-format json --model claude-opus-5-5 --settings <disableAll
 - `rationale`/`example` 오분류(`normative` 단위를 지우는 경우)는 기계가 못 잡는다 — 반출 목록의 사람 검토로만 막는다.
 - 구속 토큰 개수 검사는 토큰 손실만 잡는다. 주체·예외 조항의 손실은 `[HARD]` 줄을 재작성하지 않으므로(`verbatim` 만) 발생하지 않는다는 구조적 이유로 막는다.
 - Codex 등 다른 하네스가 영향 밖이라는 판단은 `AGENTS.md` 계약 문면을 읽은 것이며 측정이 아니다.
-- 점검기의 양성 대조는 두 가지를 이 plan 에서 관측했다 — (a) `docs` 표면 금지 시 exit 1, (b) 에이전트 본문(`manager-todo.md`)에 한 줄을 덧붙인 변이에서 `VIOLATION agent-body-or-nondescription-frontmatter-changed` 와 exit 1(관측 뒤 `git checkout --` 로 복원). 출력 스타일 frontmatter 변이와 설정 파일 키 외 줄 변이의 FAIL 은 관측하지 못했다 — 실행 단계가 AC-PFD-012 에서 관측한다.
+- 점검기의 양성 대조를 이 plan 에서 관측했다(모두 관측 뒤 `git checkout --` 로 복원, `git status --short` 로 확인) — (a) `docs` 표면 금지 시 exit 1, (b) 에이전트 본문 한 줄 덧붙임 → `VIOLATION agent-body-or-nondescription-frontmatter-changed`, exit 1, (c) `.claude/settings.json` 의 `skillListingBudgetFraction` 0.02→0.01 → `VIOLATION outside-allowlist .claude/settings.json`, exit 1, (d) 출력 스타일 frontmatter `name:` 변이 → `VIOLATION frontmatter-changed`, exit 1. 허용목록 밖 새 파일 변이는 별도로 관측하지 않았다((c) 가 같은 `outside-allowlist` 분기를 탄다).
+- `agents-emit-check` 실패는 이 plan 에서 재현했다(관측): `manager-todo.md` 의 `description:` 첫 줄에 `(probe)` 를 덧붙이자 `AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run '^TestGoldenCommittedArtifactsMatchEmission$' -count=1 -v` 가 `.codex/agents/moai/manager-todo.toml: committed artifact differs from emission (sha256 mismatch)`, `--- FAIL: TestGoldenCommittedArtifactsMatchEmission `, `FAIL` 이고, `make agents-emit` 뒤 같은 명령이 `--- PASS`. `make agents-emit` 은 `internal/template/templates/.codex/agents/moai/manager-todo.toml` 한 파일만 바꿨다. 변이는 복원했다. 로컬 `.codex/agents/moai` 디렉터리는 이 트리에 없다. 12개 전체·실제 축약 편집에서의 생성 파일 집합은 관측하지 않았다(실행 단계 몫).
