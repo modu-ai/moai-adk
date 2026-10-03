@@ -104,7 +104,7 @@ open_gaps:
 ```yaml
 sync_complete_at: 2026-10-03
 sync_status: audit-ready
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; the leader's merge report carries the real SHA
+sync_commit_sha: 5bb35abe8165e8d5fc5cbab6b246ac6a82646cb8   # backfilled after the sync commit (5bb35abe8); a commit cannot cite its own hash
 changelog_path: CHANGELOG.md   # [Unreleased] ### Fixed, first entry
 ac_source: .moai/specs/SPEC-HARNESS-RETENTION-HARDEN-001/acceptance.md   # tier M
 ac_count: 14   # live AC-HRH identifiers in acceptance.md (14 distinct, no [RETIRED] or [REF] marker present)
