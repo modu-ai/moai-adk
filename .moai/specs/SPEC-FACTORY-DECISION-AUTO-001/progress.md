@@ -108,6 +108,35 @@ gaps: [M0 measurements not run, 4dim script not executed, wait_recheck_minutes c
 new_warnings_or_lints_introduced: 0
 ```
 
+### Residual-risk (leader decision, mission contract 11c79e1a)
+
+- **Landing order: this card lands LAST among the v3.2.0 cards.** After it lands, any plan-audit
+  verdict lacking `must_pass_failed`, `blocking_count`, or `plan_artifact_hash` is refused at
+  Kickoff and at T7. Cards in flight with an older verdict must be re-audited; landing earlier would
+  stall them.
+- Any SPEC carrying `decision-index.md` takes one skip-cache miss (hash input widened).
+- Expected textual conflict with t1480 in `internal/homestate/card_transition.go` (T8a edge).
+
+### Recorded debts (leader decision; no new work in this card)
+
+- AC-FDA-008, 011, 012, 013, 019 PARTIAL (see matrix); M0 measurements not run.
+- `workflow.watchdog.wait_recheck_minutes` key → follow-up card (workflow.yaml is not committed in
+  card trees right now).
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill-sync
+sync_status: completed-with-recorded-debts
+changelog_entry_position: "CHANGELOG.md [Unreleased] ### Added (first entry)"
+frontmatter_status_transitions:
+  spec.md: in-progress -> completed (merged implemented+completed, single sync commit)
+amended_specs:
+  SPEC-FACTORY-RECORD-001: stays completed — Amendments row only; the amended behavior (T8a, AC-005 66/295) is implemented and tested in this card (homestate package ok)
+  SPEC-FACTORY-SELF-DISPATCH-001: stays completed — Amendments row only; the REQ-SD-016 exception is tested here (TestFDA_LaneAuditDecideAdmission, TestSD_AC016 ok)
+b12_self_test:
+  pre_emission_grep: "grep -c SPEC-FACTORY-DECISION-AUTO-001 CHANGELOG.md -> 0 before emission"
+  ac_count_match: "entry states 25 ACs; acceptance.md matrix rows = 25"
+  file_paths_verified: ".moai/specs/SPEC-FACTORY-DECISION-AUTO-001/spec.md exists"
+```
