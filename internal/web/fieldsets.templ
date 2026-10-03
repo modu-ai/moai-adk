@@ -271,6 +271,15 @@ templ fieldsetAgentFM(view pageView) {
 		if agentFMIsGLMBackend(view.LLM) {
 			<p class="panel__help" data-i18n="agentfm.glmnote">Under a GLM backend every sub-agent inherits the session model (llm.glm.models), so effort is the only per-agent axis — each row shows the z.ai reasoning state its effort collapses to. The runtime delivers one session-wide reasoning value; these states record per-agent intent.</p>
 		}
+		// Contract-state chip (v0.3.0 M9, REQ-AFR-019): the overrides map is
+		// storage-only unless llm.agent_overrides_consume is on — state which
+		// one this session is in, so a stored pin is never silently read as a
+		// live one.
+		if agentFMConsumeOn(view.LLM) {
+			<p class="panel__help" data-contract-state="consume-on" data-i18n="agentfm.consume.on">Spawn consumption is ON: the orchestrator consults these overrides before each subagent spawn and passes the configured model on the Agent() call.</p>
+		} else {
+			<p class="panel__help" data-contract-state="consume-off" data-i18n="agentfm.consume.off">Stored overrides only: spawn consumption is off, so these pins stay console-stored — every subagent keeps the session model/effort it inherits.</p>
+		}
 		<div class="field">
 			<div class="field__head">
 				<span class="field__label" data-i18n="agentfm.tier.title">Performance tier</span>

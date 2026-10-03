@@ -407,6 +407,61 @@ func asMap(t *testing.T, v any) map[string]any {
 	return m
 }
 
+// TestAgentOverridesContractState covers AC-AFR-018 (REQ-AFR-019,
+// SPEC-WEB-AGENTFM-RESTORE-001 v0.3.0 M9, card t1421): the agentfm
+// sub-section marks the spawn-consumption contract state — a stored override
+// must never render as if it were live when the gate is off (the
+// silence-misreading the visibility requirement forbids).
+func TestAgentOverridesContractState(t *testing.T) {
+	getSettings := func(t *testing.T, a *app) string {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+		req.Host = "127.0.0.1:8080"
+		rec := httptest.NewRecorder()
+		a.routes().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET /settings status = %d", rec.Code)
+		}
+		return rec.Body.String()
+	}
+
+	t.Run("gate off renders the storage-only state", func(t *testing.T) {
+		t.Parallel()
+		a, root := seedAgentOverridesProject(t)
+		writeLLMYAML(t, root, "llm:\n  mode: \"\"\n  glm_env_var: GLM_API_KEY\n"+
+			"  agent_overrides:\n    manager-develop:\n      model: opus\n      effort: xhigh\n")
+
+		body := getSettings(t, a)
+		if !strings.Contains(body, `data-contract-state="consume-off"`) {
+			t.Error("with the gate off the sub-section must mark the storage-only contract state")
+		}
+		if !strings.Contains(body, `data-i18n="agentfm.consume.off"`) {
+			t.Error("the storage-only state carries its i18n key")
+		}
+		if strings.Contains(body, `data-contract-state="consume-on"`) {
+			t.Error("a closed gate must not render the consuming state")
+		}
+	})
+
+	t.Run("gate on renders the consuming state", func(t *testing.T) {
+		t.Parallel()
+		a, root := seedAgentOverridesProject(t)
+		writeLLMYAML(t, root, "llm:\n  mode: \"\"\n  glm_env_var: GLM_API_KEY\n"+
+			"  agent_overrides_consume: true\n"+
+			"  agent_overrides:\n    manager-develop:\n      model: opus\n      effort: xhigh\n")
+
+		body := getSettings(t, a)
+		if !strings.Contains(body, `data-contract-state="consume-on"`) {
+			t.Error("with the opt-in on the sub-section must mark the consuming contract state")
+		}
+		if !strings.Contains(body, `data-i18n="agentfm.consume.on"`) {
+			t.Error("the consuming state carries its i18n key")
+		}
+		if strings.Contains(body, `data-contract-state="consume-off"`) {
+			t.Error("an open gate must not render the storage-only state")
+		}
+	})
+}
 
 // TestAgentFrontmatterUntouched covers AC-AFR-005 (REQ-AFR-005): a fully
 // legal submission — a tier change plus an override pin — leaves every agent
