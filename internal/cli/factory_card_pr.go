@@ -201,10 +201,14 @@ func factoryPRReadiness(out io.Writer, root string, card homestate.Card, lane, c
 	if _, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+target); err == nil {
 		ref = "origin/" + target
 	}
+	specDir := ""
+	if card.SpecID != "" { // a SPEC-less card reads its verdict file (empty SpecDir)
+		specDir = filepath.Join(wt, ".moai", "specs", card.SpecID)
+	}
 	run, err := factorylane.EvaluateMergeTriple(factorylane.MergeTripleInput{
 		Lane:    lane,
 		Card:    card.CardID,
-		SpecDir: filepath.Join(wt, ".moai", "specs", card.SpecID),
+		SpecDir: specDir,
 		Branch:  cardBranch,
 		Develop: ref,
 		RepoDir: wt,
