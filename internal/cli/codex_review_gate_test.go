@@ -337,6 +337,28 @@ func TestCodexReviewGate_SubcommandRegistered(t *testing.T) {
 	t.Errorf("subcommand 'codex-review-gate' not registered under `moai hook`")
 }
 
+// TestCodexReviewGateNonGitDirNoPrimarySkip pins REQ-CGSC-006: a session tree
+// whose primary-versus-linked status cannot be established (a non-git
+// directory) does not take the primary-checkout skip — the gate keeps the
+// pre-SPEC behavior of that state (the self-gate runs, the review is consulted)
+// and no policy skip row is logged, the reason riding the scope basis.
+func TestCodexReviewGateNonGitDirNoPrimarySkip(t *testing.T) {
+	withChangeDetector(t, true)
+	p := newOwnershipProbe(t)
+	skips := captureTreeScopeSkips(t)
+
+	out := gatePath(t, "/proj", "/proj")
+	if out == nil || out.Decision != hook.DecisionBlock {
+		t.Fatalf("an undecidable tree must keep the pre-SPEC review behavior (the probe review fails), got %+v", out)
+	}
+	if p.detects != 1 {
+		t.Errorf("the primary skip must not fire for an undecidable tree: the self-gate must run exactly once, got %d detector calls", p.detects)
+	}
+	if len(*skips) != 0 {
+		t.Errorf("no policy skip row expected for an undecidable tree, got %d", len(*skips))
+	}
+}
+
 // TestHasReviewableChanges_RuntimePathsExcluded proves the change detector
 // ignores runtime-managed paths (.moai/state, .moai/cache, agent-memory, etc.)
 // so a session whose only working-tree drift is hook-written state does NOT
