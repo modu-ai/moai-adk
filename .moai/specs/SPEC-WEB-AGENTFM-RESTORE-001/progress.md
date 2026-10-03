@@ -160,3 +160,12 @@ recorded_by: manager-docs (sync phase, card t1411)
 - plan.md §I 신설 — 마일스톤 M7(옵트인 키·게이트·리졸버)→M8(훅 advise/audit)→M9(console·doctor 가시성)→M10(AMI-001 수정안, M5b 선례 manager-spec 재위임)→M11(전체 검증). 룰 텍스트 소비 조항(REQ-AFR-017, `.claude/rules/moai/core/agent-common-protocol.md` § Subagent Model and Effort)은 sync-phase 소관 — run-phase는 룰 파일을 건드리지 않는다.
 - **재close 처분**: 0.2.0 + 0.3.0 두 수정안의 재close는 **하나의 joint close 커밋** — 카드 t1446 재진입이 본 카드와 동행하며 둘이 함께 재close한다. 그때까지 §E.4의 `sync_commit_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3` 불변. AC-AFR-016(룰 텍스트 grep)·AC-AFR-019(AMI-001 링크 grep)의 증거는 각 소유 단계(sync·M10) 착지 후 §E에 전사.
 - 이 파일의 §E.2/§E.3/§E.4 증거는 불변 — 본 블록은 말미 추가 기록뿐이다. AC-count baseline 스냅샷(`.moai/reports/t338/ac-count-baseline.txt`)은 본 수정안과 같은 커밋에 재생성본이 동행한다(ac-count-baseline-refresh.md §3 같은 커밋 규칙 — 방아쇠 4행, SPEC 제자리 개정).
+
+## §F Phase 4 Mode Selection (card t1421, 2026-10-03)
+
+- **입력 파라미터**: tier M · scope 약 9파일(internal/config, internal/template + templates llm.yaml, internal/hook, internal/cli doctor, internal/web agentfm) · 도메인 4(config/template · hook · cli · web) · 언어 혼합 Go+YAML 템플릿+마크다운 · 병렬 이득 LOW(coding-heavy) · Agent Teams 사전요건: 미요청.
+- **모드 평가**: direct 미선정(비자명 다중 파일 코드) · fanout 미선정(coding-heavy — Anthropic coding-task caveat) · sweep 미선정(의미적 신규 코드, 기계적 균일 변환 아님) · agent-team 미선정(운영자 미요청) · **serial 선정**.
+- **Decision: serial** — manager-develop 역할 단일 작업자, 마일스톤 M7→M8→M9 직렬, M10은 소유권 교차 금지에 따른 manager-spec 재위임(레인이 배차), M11 전체 검증 동일 작업자 재개.
+- **근거**: 코딩 중심 작업은 직렬이 기본(Anthropic caveat); Tier M이므로 §A-E 위임 템플릿 전문 적용; 마일스톤별 TDD RED 라인이 plan.md §I에 규정.
+- **킥오프 게이트 확인(기본 자율 형태 충족)**: 독립 감사 교차 = plan-audit iter1 PASS-WITH-DEBT 0.89(Tier M 기준 0.80 상회, adjudication-1 예산 초과 기록 부채 수용) + iter2 델타 CONFIRMED(HEAD `4c27f07bf`, 신규 결함 0, 아티팩트 해시 델타 기록에 핀 — `.moai/reports/t1421/plan-audit-iter2-delta.md`) · 증거 기준 충족 · 미해결 블로커 0 · 선호 수집 완료(운영자 결정 decision-index Q4 — 옵트인 고정). `/moai run` Phase 1 캐시 기계(.moai/reports/plan-audit/ 스트림)는 레인 직접 배차 경로에서 가동되지 않으며, 킥오프 증거는 카드 디렉터리 감사 사슬(iter1 + iter2, 진입 HEAD와 동일 트리)로 대신한다 — sync 감사가 이 결정 기록을 재독한다.
+- **goal 미장착**: run.md autonomy의 ac_converge 옵션(MAY) 기각 — 백그라운드 작업자 진행은 완료 통지 기반이라 턴-종료 차단 goal은 대기 구간에서 헛돈다. 카드 진행 추적은 세션 작업 목록 + 통지로 수행.
