@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
+	"github.com/modu-ai/moai-adk/internal/runtime"
 )
 
 // frRepoRoot is the repository root relative to this package directory.
@@ -106,6 +107,21 @@ func TestFR_AC020_VerdictLineProducer(t *testing.T) {
 	body := "# Plan audit\n\nProse verdict: the plan holds.\n\n" +
 		strings.Replace(verdictTmpl, formatLine[len("verdict: "):], "PASS", 1) + "\n" +
 		shaTmpl[:strings.Index(shaTmpl, "<")] + repo.Commit + "\n"
+	// The plan-audit field block the convention adds for the shared admission
+	// predicate, filled with values that satisfy it.
+	planHash, err := runtime.NewInMemoryCache().ComputeHash(filepath.Join(repo.Dir, ".moai", "specs", frSpecID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for prefix, value := range map[string]string{
+		"overall_score: <": "0.90", "must_pass_failed: <": "0", "blocking_count: <": "0", "plan_artifact_hash: <": planHash,
+	} {
+		tmpl := frExampleLine(convention, prefix)
+		if tmpl == "" {
+			t.Fatalf("convention example line %q missing", prefix)
+		}
+		body += tmpl[:strings.Index(tmpl, "<")] + value + "\n"
+	}
 	frWrite(t, filepath.Join(repo.Dir, ".moai", "reports", "producer", "plan-audit.md"), body)
 	if v, sha, err := ParseAuditVerdictFile("plan-audit.md", []byte(body), repo.Commit); err != nil || v != "PASS" || sha != repo.Commit {
 		t.Fatalf("E-VERDICT on the example = (%q, %q, %v), want PASS / %s", v, sha, err, repo.Commit)

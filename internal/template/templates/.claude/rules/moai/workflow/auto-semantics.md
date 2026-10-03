@@ -203,11 +203,20 @@ carries its justification right here, in this inventory.
 ### 9.1 The default-autonomous Kickoff transition
 
 plan→run entry is AUTONOMOUS when ALL of the following hold: the independent
-plan-audit verdict is PASS (FAIL and INCONCLUSIVE stay hard blocks — the §7
-authority-gate invariant), the SPEC's plan phase records audit-ready status,
+plan-audit verdict is admitted by the plan-phase admission predicate — a
+`PASS` or `PASS-WITH-DEBT` label with `must_pass_failed: 0`,
+`blocking_count: 0`, a score at or above the tier's plan threshold, a
+plan-artifact hash that binds the current plan artifacts, and for
+`PASS-WITH-DEBT` at least one enumerated debt (FAIL, INCONCLUSIVE, BYPASSED,
+and an absent verdict stay hard blocks — the §7 authority-gate invariant;
+`.moai/docs/audit-artifact-convention.md` carries the field format), the
+SPEC's plan phase records audit-ready status,
 the plan-artifact hashes are unchanged since that verdict, and no blocker is
 open. The transition writes a decision record (§10) that the sync audit
-re-reads. Keep-set cases keep the operator answer; the contract-signing path
+re-reads. A `PASS-WITH-DEBT` Kickoff copies every enumerated debt into the
+SPEC's `progress.md` under a `Binding run conditions` heading; both sync
+verdict owners re-read them, and an undisposed condition is a failed must-pass
+criterion that caps the sync verdict at FAIL. Keep-set cases keep the operator answer; the contract-signing path
 stays as the voluntary equivalent form. Operator-form Kickoff rows that wait
 together are presented through §9.2.
 
@@ -239,9 +248,9 @@ The batch gate summary is a presentation form for operator-form decisions, not a
 
 **Approvable, blocked, reserved**
 
-- A row is approvable only when all four hold: its most recent independent plan-audit verdict is PASS, the plan phase records audit-ready status, the plan-artifact hashes are unchanged since that verdict, and no blocker is open. Every other row is reported as blocked and excluded from the single approval.
+- A row is approvable only when all four hold: its most recent independent plan-audit verdict is admitted by the plan-phase admission predicate (§9.1 — `PASS` or `PASS-WITH-DEBT`), the plan phase records audit-ready status, the plan-artifact hashes are unchanged since that verdict, and no blocker is open. Every other row is reported as blocked and excluded from the single approval.
 - The verdict must be independent, produced by the plan-auditor; a PASS stated by the session that authored the plan artifacts is blocked.
-- Blocked states are: PASS-WITH-DEBT, BYPASSED, FAIL, INCONCLUSIVE, an absent verdict, audit-ready status not recorded, a plan-artifact hash changed since the verdict, and an open blocker.
+- Blocked states are: PASS-WITH-DEBT not admitted by the predicate, BYPASSED, FAIL, INCONCLUSIVE, an absent verdict, audit-ready status not recorded, a plan-artifact hash changed since the verdict, and an open blocker.
 - A row is reserved, and handled individually outside the single approval, when it falls in a keep-set category (environment-impossible, operator-held, or an irreversible operation on an external shared system) or in a power the leader session keeps: final PASS/FAIL verdicts, final merge approval, operator gates, card issuance and `done` through queue mutations, CodeRabbit slot-wait adjudication, and cross-session dispute coordination. The operator gates item does not include the operator-form plan→run Kickoff row: that row is reserved only when it falls in a keep-set category, and otherwise it is a summary row classified by the approvability rule above.
 
 **Records**

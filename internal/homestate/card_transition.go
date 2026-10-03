@@ -467,8 +467,10 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		if err != nil {
 			return plan, err
 		}
-		if edge.guard == guardVerdictPass && v.Verdict != "PASS" && v.Verdict != "PASS-WITH-DEBT" {
-			return plan, fmt.Errorf("%w: verdict file %s reads %s", ErrEvidence, v.Path, v.Verdict)
+		if edge.guard == guardVerdictPass {
+			if ok, reason := admitCardVerdict(cur, v.Path); !ok {
+				return plan, fmt.Errorf("%w: verdict file %s: %s", ErrEvidence, v.Path, reason)
+			}
 		}
 		plan.evidence["verdict_file"], plan.evidence["verdict"], plan.evidence["audited_sha"] = v.Path, v.Verdict, v.AuditedSHA
 		if edge.guard == guardVerdictPass && req.To == CardKickoff {

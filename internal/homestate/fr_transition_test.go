@@ -56,7 +56,7 @@ func frExpectedEdges() map[[2]string]bool {
 // frFixtureCard places a card in `from` with every field a guard could read set
 // to a value that satisfies it for the target `to`.
 func frFixtureCard(repo frRepo, cardID, from, to string) Card {
-	c := Card{RunID: frRun, CardID: cardID, State: from, OwnerLabel: "worker-1", WorktreePath: repo.Dir, EvidenceSHA: repo.Commit}
+	c := Card{RunID: frRun, CardID: cardID, State: from, OwnerLabel: "worker-1", WorktreePath: repo.Dir, EvidenceSHA: repo.Commit, SpecID: frSpecID}
 	if IsLeaseHoldingState(from) {
 		c.LeaseHolder = "worker-1"
 		c.LeaseExpiresAt = frLeaseUntil(time.Hour)
