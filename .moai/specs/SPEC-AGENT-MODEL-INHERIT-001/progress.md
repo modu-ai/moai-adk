@@ -363,7 +363,7 @@ SYNC-PHASE RE-CLOSE (v0.9.0 in-place amendment — 2026-10-03, card t1476, manag
 
 ```yaml
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill-sync  # backfilled by manager-docs in the follow-up commit (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_commit_sha: 8cccbafb4  # D3 backfill: placeholder from the re-close commit replaced by manager-docs in the follow-up commit (spec-frontmatter-schema § SHA placeholder backfill exemption)
 sync_status: complete
 close_scope: v0.9.0 (REQ-AMI-009 + AC-AMI-009 wording, design §G addendum, guard test) — amendment commits 93cd34131 + 44104ce81; 25 REQ / 25 AC unchanged
 frontmatter_status_transitions:
