@@ -2,7 +2,7 @@
 id: SPEC-VERIFY-RUN-REUSE-001
 title: "moai verify run — 같은 작업 트리 상태에서 같은 테스트 명령 재실행 억제 (run-or-reuse 단일 동사)"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec
