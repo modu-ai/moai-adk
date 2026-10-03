@@ -168,3 +168,24 @@ _pending run-phase_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase_
+
+## §F Phase 4 Mode Selection
+
+Input parameters: tier M; scope about 12 Go files in `internal/cli`, `internal/kanban`, `internal/homestate` plus their tests;
+domain count 3 (CLI lease verbs, queue store, factory record); file mix 100% Go; concurrency benefit LOW (coding-heavy, ordered
+milestones with a shared file `internal/cli/factory_card.go`); Agent Teams prerequisites not applicable (not requested).
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | not selected | semantic change across three packages |
+| serial | **selected** | coding-heavy, milestones depend on each other (WM2 primitive before WM3, WM3 with WM4) |
+| fanout | not selected | write-capable work in one tree; one writer per working tree |
+| sweep | not selected | not a uniform mechanical transform |
+
+Decision: serial
+
+Justification: the milestones share one tree and one hot file; a single write-capable agent runs at a time. The orchestrator
+verifies each round (own `git status`, HEAD, scoped test runs) before the next spawn. Rounds: R1 = WM1 (seam-and-stub commit,
+baseline commit, RED commit); R2 = WM2; R3 = WM3 + WM4 (they land together); R4 = WM5; R5 = WM6 closure. The run starts after
+the autonomous plan->run Kickoff recorded in `.moai/reports/t1458/decision.md` (git-ignored) at HEAD b27652922, and after
+absorbing develop 2b9e4a4d0 (merge 09faf2965; the plan-artifact hashes were re-checked unchanged).
