@@ -1344,6 +1344,103 @@ Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketplac
 - `TestMain` now clears `CODEX_HOME` for the whole `internal/cli` package run: a test that implicitly relied on an ambient value would change behavior; the before and after `TestCodex*` and doctor selectors are identical, other selectors of the package were not compared.
 - The version-script reads the manifest with `sed`; a manifest reformatted so `"version"` is not on a line of its own would exit 2 (fail closed).
 
+### F14 repair
+
+Scope: the single blocking finding F14 of `.moai/reports/t1435/sync-audit.md` (a pre-existing test builds the production binary and runs `init` without the plugin opt-out). F1..F13 untouched. No SPEC artifact edited; no install script or Go install-step logic touched. Tree HEAD at start: `c37918133`. Commits (this card, not pushed): RED `c427b0c67`, GREEN `362782101`; no REFACTOR was needed.
+
+#### Claim
+
+1. `TestPluginOptOutCallersEnumeratedInTests` (new, same file as the original guard) sweeps every `_test.go` under `internal/`, `cmd/`, `pkg/` for `exec.Command` / `exec.CommandContext` calls that run a built binary's `init` and requires `--no-plugin` on the call (or a `MOAI_SKIP_PLUGIN_INSTALL` / `config.EnvSkipPluginInstall` reference in the enclosing top-level declaration). git is told apart by the command argument alone (literal `git`, a path ending in `/git`, or an identifier, field or call whose name contains `git`).
+2. It fails with a file:line on the pre-fix tree and passes on the fixed tree.
+3. `prepareOperationalProject` now passes `--no-plugin`; the stub-harness recorder is empty after `TestFactoryOperationalFixtureUsesProductionInit` and held the two `codex plugin ...` calls before the fix.
+4. No other caller of this class exists in the tree (list under Evidence).
+
+#### Evidence
+
+RED, commit `c427b0c67` (own commit, before the fix; test only):
+
+```
+$ go test ./internal/cli -count=1 -v -run 'TestPluginOptOutCallersEnumerated'
+=== RUN   TestPluginOptOutCallersEnumerated
+--- PASS: TestPluginOptOutCallersEnumerated (0.28s)
+=== RUN   TestPluginOptOutCallersEnumeratedInTests
+    plugin_install_guard_test.go:332: internal/cli/factory_operational_live_test.go:94 runs a built binary's `init` without the plugin opt-out; pass "--no-plugin" (or set MOAI_SKIP_PLUGIN_INSTALL=1 on that command): a real codex/claude on PATH would be driven against the real home
+--- FAIL: TestPluginOptOutCallersEnumeratedInTests (0.44s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.559s
+exit 1
+```
+
+Two tests matched the selector (not an empty sweep). The in-test positive control (a synthetic `viol_test.go` must be reported as `viol_test.go:4`; flag, env, git and git-named-variable sources must not be) and the blind-sweep guards (at least 500 test sources scanned, at least 10 `git init` exec calls classified and skipped, at least 1 built-binary `init` call seen) ran before the real sweep and held.
+
+Stub-harness contrast (`scratchpad/stub-harness.sh`: recording stubs named `codex` and `claude` first on PATH, every `MOAI_*`, `CLAUDE_*`, `CODEX_*` name unset by live enumeration, then scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `MOAI_HOME`; `HOME` inherited and never set; the recorder was shown to record two control probes and then truncated):
+
+```
+pre-fix tree (HEAD c427b0c67):
+--- PASS: TestFactoryOperationalFixtureUsesProductionInit (9.81s)
+== recorder after the test ==
+recorder lines: 2
+codex plugin marketplace add modu-ai/moai-adk | CODEX_HOME=UNSET
+codex plugin add moai@moai-adk | CODEX_HOME=UNSET
+
+fixed tree (working tree after the one-line change, then HEAD 362782101):
+--- PASS: TestFactoryOperationalFixtureUsesProductionInit (12.35s)
+== recorder after the test ==
+recorder lines: 0
+```
+
+GREEN, commit `362782101`:
+
+```
+$ go test ./internal/cli -count=1 -v -run 'TestPluginOptOutCallersEnumerated|TestInstallScriptsPluginStepGuarded|TestPluginInstallStep_|TestInitPluginStep_'
+--- PASS: TestPluginOptOutCallersEnumerated (0.86s)
+--- PASS: TestPluginOptOutCallersEnumeratedInTests (1.48s)
+--- PASS: TestInstallScriptsPluginStepGuarded (0.01s)
+--- PASS: TestPluginInstallStep_Sequence (0.03s)
+--- PASS: TestPluginInstallStep_Environment (0.02s)
+--- PASS: TestPluginInstallStep_FailOpen (0.06s)
+--- PASS: TestPluginInstallStep_ToolAbsent (0.01s)
+--- PASS: TestPluginInstallStep_OptOut (0.08s)
+--- PASS: TestPluginInstallStep_NoRealRunnerUnderTest (4.94s)
+--- PASS: TestInitPluginStep_AfterDeployment (1.22s)
+--- PASS: TestInitPluginStep_OptOut (4.81s)
+--- PASS: TestInitPluginStep_HarnessGating (8.61s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	23.327s
+```
+
+Other measurements of this run: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run ./internal/cli/` (v2.1.6, the CI version) printed `0 issues.` exit 0; `moai slot acquire` / `release --resource internal-cli-suite` taken and returned.
+
+Callers of the class, found by reading, not only by the sweep (`grep -rn '"init"' internal cmd --include='*_test.go'`, `exec.Command*` with `...` spread and a non-git command, every `go build -o` test, shell scripts, Makefile, workflows):
+
+| Caller | Status |
+|---|---|
+| `internal/cli/factory_operational_live_test.go:94` (`prepareOperationalProject`, reached from `TestFactoryOperationalFixtureUsesProductionInit`) | fixed (`--no-plugin`) |
+| `internal/cli/doctor_agentemit_embed.go:353` (non-test, `extractEmissionViaInit`) | already opted out (REQ-016 caller; `MOAI_SKIP_PLUGIN_INSTALL=1`, pinned by `TestPluginOptOutCallersEnumerated` and `TestDoctorAgentEmitEmbed_SetsPluginOptOut`) |
+| `e2e/cli/tux3_journeys.sh:104`, `:115` | already opted out (`MOAI_SKIP_PLUGIN_INSTALL=1` on the line; pinned by the same test) |
+| the other `exec.Command*("git"|gitBin|gitPath, ..., "init", ...)` hits in about 30 test files | `git init`, not this class (the sweep classified and skipped them) |
+| tests that `go build` the production binary and run it with other verbs: `doctor_exitcode_codex_test.go` (`doctor`), `mcp_server_test.go` (`mcp-server`), `integration_lock_owner_liveness_test.go` (`integration ...`), `spec_lint_test.go` (`spec lint`, via `slRunBinary(... args ...)`; callers read), `hook/perf/harness_test.go` (`hook pre-tool`), `factory_live_test.go` (`glm --` and codex, live-gated; `moai` used as the MCP server command) | not this class (no `init` verb; read) |
+| `scripts/test-plugin-install-step.sh`, `scripts/check-plugin-discoverable.sh` | not this class (run the installers or read a tree, never `moai init`; they carry their own scrubs, AC-018/AC-025) |
+| in-process `init` through cobra or `RunInit` inside a Go test binary | covered by the REQ-017 refusal (the test binary), not by this sweep |
+| `Makefile`, `.github/workflows/*`, `install.sh`, `install.ps1`, `install.bat`, `.moai`/template scripts: matches for `moai init` are echo text or comments only | not callers |
+
+#### Baseline-attribution
+
+Measured in this run (2026-10-03), against the tree whose HEAD was `c37918133` at start, `c427b0c67` for the RED run and the pre-fix stub run, and `362782101` (plus this progress.md edit, uncommitted at the time of measurement) for the GREEN, selector, build and lint runs. The tool measurements are Go test runs of the tree's own source (`go test` compiles the tree under measurement) and the installed `golangci-lint` v2.1.6, which is the CI version; no `moai` binary from `PATH` judged the tree (the production binary in the stub run is built by the test from the tree). Protected-set bracket: `sh scripts/protected-set-hash.sh --dump` before and after my measurements, `diff` exit 0 (empty), both `PROTECTED-SET cb7048839b4c87fb7cd3664a5673828311aa8710da64c9b2247f56be884a191d entries=201`, so LEAK=0 and no foreign writer moved an entry during this run (the earlier recorded baseline was 199 entries at 13:50; this run's own before-dump is the baseline here). BI-1 scan (`env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'`) printed nothing (exit 1) before the first measurement and after the last.
+
+#### Gaps
+
+- The env-form of the opt-out is accepted by reference to the enclosing top-level declaration, so a function that references `EnvSkipPluginInstall` for another purpose (a scrub, a comment) and runs an unrelated `init` child would pass; an env handed in through a parameter cannot be proven, so the fixture uses the `--no-plugin` argument. A command run through a shell string (`sh -c "<moai> init"`) and an argument list built elsewhere and spread with `...` are not seen (the `init` literal is not in the call); I read every spread caller of a non-git command by hand (table above) and found none carrying `init`, but that is a reading, not a sweep.
+- The stub harness recorded the calls of `codex` and `claude` found by `PATH` lookup; a caller using an absolute path or the `CLAUDE_BIN` pin would not be seen by it (the child's install step resolves `codex` through `exec.LookPath` and `claude` through the pin or `LookPath`; the harness unset every `CLAUDE_*` name, so no pin was set).
+- Not re-run: the other Windows-only or CI-only paths; `TestFactoryOperationalFixtureUsesProductionInit` was run only under the stub harness, never with a real `codex` or `claude` on `PATH` (by instruction).
+- Not done, by scope: REQ-016's wording still names two callers; the amendment that makes it cover test fixtures that run the production binary is `manager-spec`'s and the leader's decision (audit F14 item (c)). F1..F13 are untouched.
+- The `go test` selector lines above were read through `tail` or from a redirected file; the first selector run after the fix was piped through `tail` (its exit code was not captured, the `PASS` and `ok` lines are the evidence), and the five-selector run was redirected to a file with exit 0.
+
+#### Residual-risk
+
+- The sweep is lexical: a future test that starts the production binary's `init` through a helper that takes the verb as a parameter, or through `sh -c`, escapes it, and REQ-017 does not cover a child that is not a test binary. A broader net would be a process-level one (the install step refusing when it detects an automated parent), which this repair does not add (no change to the Go install-step logic).
+- The plugin step still runs on a developer machine that runs the production binary's `init` by hand with a real `codex` on `PATH`; that is the product behavior, not a leak.
+- The real Codex home held no moai-adk marketplace or plugin at the F14 measurement, and the protected-set bracket of this run is equal; no real-home write by this test was ever observed, only the stub's record of what a real run would have started.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
