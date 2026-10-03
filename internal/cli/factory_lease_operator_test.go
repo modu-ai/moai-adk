@@ -151,7 +151,7 @@ func TestFactoryLeaseArmAKeepsHeldAssignedCard(t *testing.T) {
 	q := nmQueueState(t, store, "t1")
 	state, holder := flRow(t, root, "t1")
 	t.Logf("arm-a-hold err=%v queue=%s record=%s holder=%s stdout=%q stderr=%q", err, q, state, holder, out, stderr)
-	if !(q == kanban.BacklogStateHold && state == homestate.CardLeased && holder == "lane-1") {
+	if q != kanban.BacklogStateHold || state != homestate.CardLeased || holder != "lane-1" {
 		t.Errorf("arm (a) no longer leases a held card whose row is assigned to the lane: queue=%s record=%s holder=%s (a deliberate change must amend the SPEC, spec §F R17)", q, state, holder)
 	}
 }

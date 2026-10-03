@@ -18,9 +18,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -494,64 +494,29 @@ type nmLaneResult struct {
 	err         error
 }
 
-// nmRaceAtSeam runs each lane's `factory next --card <card>` concurrently and
-// holds every invocation at the nomination seam — after any promotion, before
-// the first record write — until all of them have arrived, so the claims
-// contend for real. A lane label is read once at the start of an invocation,
-// so the label is switched between launches, after the previous invocation
-// has reached the seam. An invocation that ends before reaching the seam
-// (today: the flag does not exist) fails the test with its error.
-func nmRaceAtSeam(t *testing.T, lanes []nmLaneRun) []nmLaneResult {
+// nmRaceAtSeamTolerant runs each lane's `factory next --card <card>`
+// concurrently and holds every invocation at the nomination seam — after any
+// promotion, before the first record write — until all of them have arrived or
+// the tolerant gate's grace window has passed (SPEC-FACTORY-ATOMIC-LEASE-001
+// plan §5). The seam sits inside the lease section, where only one lane can be:
+// the strict form of this helper (release only when every lane has arrived)
+// would wait forever on the second lane, so the gate lets the first lane go
+// after the grace window and the second proceeds in order once the lock is free.
+// A lane label is read once at the start of an invocation, so the label is
+// switched between launches (flRaceLanes).
+func nmRaceAtSeamTolerant(t *testing.T, lanes []nmLaneRun) []nmLaneResult {
 	t.Helper()
-	arrived := make(chan struct{}, len(lanes))
-	release := make(chan struct{})
+	g := newFLGate(len(lanes))
 	prev := factoryNominateBeforeRecord
 	factoryNominateBeforeRecord = func(string) error {
-		arrived <- struct{}{}
-		<-release
+		g.hold(strconv.Itoa(flGoroutineID()))
 		return nil
 	}
 	t.Cleanup(func() { factoryNominateBeforeRecord = prev })
-
-	done := make(chan nmLaneResult, len(lanes))
-	started := 0
-	drain := func() {
-		close(release)
-		for ; started > 0; started-- {
-			select {
-			case <-done:
-			case <-time.After(30 * time.Second):
-				return
-			}
-		}
-	}
-	for _, l := range lanes {
-		nmLaneEnv(t, l.label, "")
-		started++
-		go func(l nmLaneRun) {
-			out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", l.card)
-			done <- nmLaneResult{lane: l.label, card: l.card, out: out, stderr: stderr, err: err}
-		}(l)
-		select {
-		case <-arrived:
-		case r := <-done:
-			started--
-			drain()
-			t.Fatalf("lane %s's nomination of %s ended before reaching the seam: err=%v stderr=%q", r.lane, r.card, r.err, r.stderr)
-		case <-time.After(30 * time.Second):
-			drain()
-			t.Fatalf("lane %s's nomination of %s never reached the seam", l.label, l.card)
-		}
-	}
-	close(release)
-	var results []nmLaneResult
-	for range lanes {
-		select {
-		case r := <-done:
-			results = append(results, r)
-		case <-time.After(60 * time.Second):
-			t.Fatal("a raced nomination never finished")
-		}
+	raced := flRaceLanes(t, g, lanes)
+	results := make([]nmLaneResult, 0, len(raced))
+	for _, r := range raced {
+		results = append(results, nmLaneResult(r))
 	}
 	return results
 }
@@ -589,7 +554,7 @@ func nmIsolatedWorktrees(t *testing.T, cards ...string) {
 func TestFactoryNextNominateConcurrentLanes(t *testing.T) {
 	root, _ := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
 	nmIsolatedWorktrees(t, "t1", "t2")
-	results := nmRaceAtSeam(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t2"}})
+	results := nmRaceAtSeamTolerant(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t2"}})
 	for _, r := range results {
 		if r.err != nil {
 			t.Errorf("lane %s nominating %s errored: %v (stderr %q)", r.lane, r.card, r.err, r.stderr)
@@ -604,7 +569,7 @@ func TestFactoryNextNominateConcurrentLanes(t *testing.T) {
 // different candidate and succeeds.
 func TestFactoryNextNominateSameCardExactlyOne(t *testing.T) {
 	root, _ := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-	results := nmRaceAtSeam(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t1"}})
+	results := nmRaceAtSeamTolerant(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t1"}})
 
 	var winners, losers []nmLaneResult
 	for _, r := range results {
@@ -944,14 +909,27 @@ func TestFactoryNextNominateClaimRefusedRollsBack(t *testing.T) {
 func TestFactoryNextNominateCompensationFailure(t *testing.T) {
 	t.Run("item-moved", func(t *testing.T) {
 		root, store := nmQueuedNominee(t)
+		var op *flOp
+		inside := false
 		nmSetSeam(t, func(cardID string) error {
-			// An operator drop between the promotion and the compensation.
-			nmSetState(t, store, cardID, kanban.BacklogStateDropped)
+			// An operator drop between the promotion and the compensation. The
+			// write is started from a goroutine (the section holds the queue lock
+			// here, so a synchronous write would wait out the whole budget): it
+			// applies after the verb, and the compensation must not overwrite it.
+			op = flStartState(store, cardID, kanban.BacklogStateDropped)
+			inside = op.within(flWindow)
 			return errors.New(nmInjected)
 		})
 		_, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
+		if op == nil {
+			t.Fatal("the nomination seam was never reached")
+		}
+		flJoin(t, []*flOp{op})
 		if err == nil || !strings.Contains(err.Error(), nmInjected) {
 			t.Fatalf("the original failure was not reported: err=%v stderr=%q", err, stderr)
+		}
+		if inside {
+			t.Errorf("the operator's drop completed inside the section (the seam returned only after the write finished)")
 		}
 		if got := nmQueueState(t, store, "t1"); got != kanban.BacklogStateDropped {
 			t.Errorf("t1 queue state = %s, want dropped (the compensation must not overwrite the operator's change)", got)
@@ -963,12 +941,16 @@ func TestFactoryNextNominateCompensationFailure(t *testing.T) {
 }
 
 // TestFactoryNextNominateCompensateRechecksRecord — the compensation reads the
-// factory-record row INSIDE the queue lock, so a lease that lands while the
-// compensation waits for that lock is seen: the queue item is not restored to
-// `queued` under a card the factory holds (a restored `queued` item could be
-// claimed a second time). The table calls the compensation directly with the
-// state pre-arranged; the last test holds the queue lock from the test and lets
-// the lease land during the wait.
+// factory-record row under the queue lock and acts on it: the queue item is not
+// restored to `queued` under a card the factory holds (a restored `queued` item
+// could be claimed a second time). The table calls the compensation directly,
+// inside a lease section opened by the test, with the state pre-arranged.
+//
+// SPEC-FACTORY-ATOMIC-LEASE-001 plan §5 removed this test's lock-wait subtest:
+// it modeled a lease landing while the compensation waits for the queue lock, a
+// window the section removes (the compensation no longer takes the lock; it
+// runs inside the hold that made the promotion). The operator-write analogue is
+// TestFactoryLeaseCompensationKeepsOperatorPick.
 func TestFactoryNextNominateCompensateRechecksRecord(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -993,7 +975,14 @@ func TestFactoryNextNominateCompensateRechecksRecord(t *testing.T) {
 				fcPlace(t, root, row)
 			}
 			db := fcOpen(t, root)
-			other, err := factoryNominateCompensate(context.Background(), db, root, fcRun, "lane-1", "t1", c.promoted)
+			var other bool
+			var err error
+			if lockErr := todoStoreAt(root).WithLock(func(l *kanban.LockedBacklog) error {
+				other, err = factoryNominateCompensate(context.Background(), l, db, fcRun, "lane-1", "t1", c.promoted)
+				return nil
+			}); lockErr != nil {
+				t.Fatalf("the lease section: %v", lockErr)
+			}
 			if err != nil {
 				t.Fatalf("compensation: %v", err)
 			}
@@ -1005,58 +994,6 @@ func TestFactoryNextNominateCompensateRechecksRecord(t *testing.T) {
 			}
 		})
 	}
-
-	t.Run("a lease landing while the compensation waits for the queue lock", func(t *testing.T) {
-		root, store := nmBase(t, kanban.BacklogStatePicked)
-		db := fcOpen(t, root)
-
-		// The test holds the queue lock.
-		locked, unlock := make(chan struct{}), make(chan struct{})
-		held := make(chan error, 1)
-		go func() {
-			held <- todoStoreAt(root).Mutate(func(*kanban.BacklogRecord) error {
-				close(locked)
-				<-unlock
-				return nil
-			})
-		}()
-		<-locked
-
-		type outcome struct {
-			other bool
-			err   error
-		}
-		done := make(chan outcome, 1)
-		go func() {
-			other, err := factoryNominateCompensate(context.Background(), db, root, fcRun, "lane-1", "t1", true)
-			done <- outcome{other, err}
-		}()
-		// Give the compensation time to reach the queue lock (a read of the
-		// record made before the wait would see no row), then let another lane
-		// lease the card and release the lock. The in-lock re-read makes the
-		// outcome independent of how long the wait took.
-		time.Sleep(400 * time.Millisecond)
-		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", Stage: homestate.CardRun})
-		close(unlock)
-		if err := <-held; err != nil {
-			t.Fatalf("the lock holder: %v", err)
-		}
-		select {
-		case r := <-done:
-			if r.err != nil {
-				t.Fatalf("compensation: %v", r.err)
-			}
-			if !r.other {
-				t.Errorf("another holder = false, want true (lane-2 leased the card during the wait)")
-			}
-		case <-time.After(30 * time.Second):
-			t.Fatal("the compensation never finished")
-		}
-		if got := nmQueueState(t, store, "t1"); got != kanban.BacklogStatePicked {
-			t.Errorf("t1 queue state = %s, want picked: restoring queued under lane-2's lease lets a second actor claim the item", got)
-		}
-		nmAssertLeased(t, root, "t1", "lane-2")
-	})
 }
 
 // TestFactoryNextNominateBlankCardIsAnError — a blank `--card` (CLI) or a blank
