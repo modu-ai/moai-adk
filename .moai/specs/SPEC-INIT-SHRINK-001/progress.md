@@ -129,7 +129,7 @@ _<pending run-phase>_
 
 ```yaml
 sync_complete_at: 2026-10-04
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: c1623e65c
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-INIT-SHRINK-001' CHANGELOG.md → 0 (pre-emission clear; post-emission 1, entry appended under [Unreleased] ### Added, last row)"
 b12_self_test_b: "MOAI-AC-COUNTER (awk, AC_FILE=.moai/specs/SPEC-INIT-SHRINK-001/acceptance.md) → stdout 21, live=21 excluded=0 ambiguous=0; CHANGELOG entry states 21 acceptance criteria (AC-001..021)"
