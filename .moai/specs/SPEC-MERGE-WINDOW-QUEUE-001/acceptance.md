@@ -123,32 +123,49 @@
   branch name. Scenario 3: Given `workflow.candidate_ci.enabled` false, Then the injected
   landing-check seam records zero calls; Given it true, Then it records exactly one call, for the
   pinned SHA, before the integration branch ref moves. Scenario 4 (non-holder): Given C does not hold
-  the window, When C runs the verb, Then it refuses and the window record's bytes are unchanged.
+  the window (C may read the record to decide), When C runs the verb, Then it refuses and the window
+  record's bytes are unchanged — including a queued ticket whose waiter is gone, which is not dropped
+  by C's call. Scenario 5 (expired lease): Given B holds the window with an expired lease and a
+  valid record, When B runs the verb, Then it refuses, no merge commit is created, and the window
+  record's bytes are unchanged.
 - **AC-MWQ-018** (maps REQ-MWQ-018) — Each row is a scenario run as holder B with C queued; in every
-  row no merge commit remains on the integration branch, the window is released, C is promoted (or,
-  in the last row, the policy is `hold`), and the exit code is distinct from every other row's:
+  row the window is released, the exit code is distinct from every other row's (nine codes), and
+  the last two columns state whether a merge commit is on the integration branch afterwards and
+  whether C is promoted:
 
-  | Cause | Setup | Extra expectation |
-  |---|---|---|
-  | base moved | develop advanced X → Y after the record | message names X and Y; B re-acquiring after re-measure is at the tail |
-  | tree mismatch | pinned tree ≠ record tree | — |
-  | landing refusal | landing-check seam refuses (key true) | integration tip unchanged |
-  | merge failure | conflicting change on develop and a matching record | `git merge --abort` ran; `git status --porcelain` in the integration worktree is empty; no `MERGE_HEAD` |
-  | other error | merge-step runner returns an unexpected error | — |
-  | abort leaves dirt | abort seam leaves an untracked file | policy is `hold` with a reason naming the worktree; C is not promoted |
+  | # | Cause | Setup | Merge commit afterwards | C promoted | Extra expectation |
+  |---|---|---|---|---|---|
+  | 1 | record invalid | record with exit 3 (or count 0) | none — integration tip unchanged | yes | — |
+  | 2 | base moved | develop advanced X → Y after the record | none | yes | message names X and Y; B re-acquiring after re-measure is at the tail |
+  | 3 | ancestry | pinned SHA rebuilt so it does not descend from the record's base, tree still equal | none | yes | — |
+  | 4 | tree mismatch | pinned tree ≠ record tree | none | yes | — |
+  | 5 | landing refusal | landing-check seam refuses (key true) | none | yes | — |
+  | 6 | merge failure, clean | merge seam fails and leaves `MERGE_HEAD` | none | yes | `git merge --abort` ran; `git status --porcelain` in the integration worktree empty; no `MERGE_HEAD` |
+  | 7 | merge failure, dirty | merge seam fails; abort seam leaves an untracked file | none | no — policy `hold`, reason names the worktree | policy setter is the merge step and card |
+  | 8 | post-merge failure | merge succeeds; post-merge lookup seam errors | **yes — left in place** | no — policy `hold`, reason names the merge SHA | the merge commit's SHA equals the one in the hold reason |
+  | 9 | other error | branch-resolution seam returns an unexpected error | none | yes | — |
 
 ### Completion gate
 
-- **AC-MWQ-019** (maps REQ-MWQ-019) — Scenario 1: Given a card with no record, When `moai factory
-  complete <card>` runs, Then it refuses, the card state version is unchanged, and the integration
-  tip is unchanged. Scenario 2 (one merge path): Given a valid record and an unmoved base, When
-  complete runs, Then the instrumented merge-step seam records exactly one call, no other merge
+- **AC-MWQ-019** (maps REQ-MWQ-019) — In every scenario "unchanged" means the integration tip and
+  the card's state and version read the same after the call as before it.
+  Scenario 1: Given a card with no record, When `moai factory complete <card>` runs, Then it refuses
+  and everything is unchanged. Scenario 2 (one merge path): Given a valid record and an unmoved base,
+  When complete runs, Then the instrumented merge-step seam records exactly one call, no other merge
   invocation occurs, and the card is merged-local. Scenario 3 (moved base): Given develop advanced
-  past the record's base, When complete runs, Then no merge commit is created, the card state
-  version is unchanged, and the exit code is the re-measure-and-re-acquire code. Scenario 4 (verb
-  then complete): Given the lane merged card t0002 through `moai integration merge` and develop then
+  past the record's base, When complete runs, Then no merge commit is created, everything is
+  unchanged, and the exit code is the re-measure-and-re-acquire code. Scenario 4 (verb then
+  complete): Given the lane merged card t0002 through `moai integration merge` and develop then
   advanced further, When complete runs, Then the merge-step seam records zero calls, no re-measure
-  is required, and the card is merged-local with the existing merge commit's SHA.
+  is required, and the card is merged-local with the existing merge commit's SHA. Scenario 5
+  (fixture — verb, new commit, complete): Given the lane merged card t0002 through the verb and then
+  committed once more on its `WT-` branch, When complete runs, Then it does not adopt the earlier
+  merge (its second parent is no longer the branch tip): with no valid record for the new tip it
+  refuses with everything unchanged, and the merge-step seam records zero calls. Scenario 6 (expired
+  card lease): Given the caller's card lease has expired and a valid record exists, When complete
+  runs, Then it refuses, the merge-step seam records zero calls, and everything is unchanged.
+  Scenario 7 (foreign card lease): Given another lane holds the card's lease, When the caller runs
+  complete, Then it refuses, the merge-step seam records zero calls, and everything is unchanged.
 
 - **AC-MWQ-020** (maps REQ-MWQ-020) — Given complete wrote `merge-record.txt`, When that file is
   offered as the re-measure, Then the gate rejects it.

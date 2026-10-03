@@ -31,6 +31,12 @@
   path (complete calls the merge step, adopts a prior landing), SHA pinning and per-cause failure
   exits with abort + clean check (else `hold`), integration target on tickets and copied at
   promotion; O1/O2 one-liners, O3/O4 noted in research §R5. 23 REQ / 23 AC.
+- Plan audit iteration 4: FAIL 0.75, claude + codex agree (`.moai/reports/t1479/plan-audit-iter4.md`,
+  verbatim copy). Operator decision Q20 (AskUserQuestion 2026-10-03): one more narrow delta round, no
+  new REQ. v0.7.0: complete's card gates before develop moves; adoption tied to the branch's current
+  tip and a valid record, with the clause order in REQ-MWQ-019; ancestry precondition plus a defined
+  post-merge outcome (commit left, `hold`); holder check reads first and refuses before any queue
+  mutation. 23 REQ / 23 AC.
 
 ## §E.2 Run-phase Evidence
 

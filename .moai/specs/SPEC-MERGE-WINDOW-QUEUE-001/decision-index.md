@@ -213,3 +213,24 @@ Why unresolved: 해당 없음 — 리더가 결정했다. plan-audit 3차(0.75, 
 Operator verdict: 리더 결정(LEADER-DECIDED, 2026-10-03, 미션 계약 07d28c4b — 감사자의 fix_scope 안에서 한 번의 델타 라운드, 범위 변경 없음). B1: 병합 경로는 하나다. `moai factory complete`는 `moai integration merge --card <id>`와 같은 창 안 단계(base 확인·트리 항등·landing check·고정 SHA 병합·release)를 불러 병합하고, 그 뒤 카드를 merged-local로 기록한다. `factory_card.go:1409`의 자체 병합은 그 호출로 바뀌어 게이트가 언제나 병합보다 먼저 돈다. 같은 카드를 `integration merge`로 이미 병합한 뒤의 complete는 그 카드 브랜치의 병합 커밋이 develop에서 닿는지 확인하고 상태만 기록한다(재측정 루프 없음). 독트린(REQ-013): 레인은 `integration merge` 또는 그것을 부르는 `factory complete`로만 병합하며, AGENTS.local.md:219와 gitflow-lane-protocol.md:99를 같은 뜻으로 고친다. B2: 창 안 실패는 모두 창을 놓고 원인마다 다른 코드로 끝난다(트리 불일치, landing check 거부, 병합 충돌 — `git merge --abort` 후 통합 트리가 깨끗한지 확인하고 놓는다 — 그 밖의 오류). 보유자가 아닌 호출은 잠금을 건드리지 않고 거부한다. 병합은 항등 확인 때 고정한 SHA로 한다(`git merge --no-ff <sha>`, 브랜치 이름은 쓰지 않는다). B3: 티켓은 acquire 때 branch·branch_source·worktree를 기록하고, 승격이 그것을 보유자 기록에 복사한다. 그래서 승격된 보유자에게도 factory complete의 `lock.Branch` 소유 확인이 성립한다(AC 픽스처 추가). O1–O4는 한 줄로 끝나는 곳만 고친다. 반영: REQ-MWQ-001, -003, -006, -009, -013, -017, -018, -019, AC-MWQ-001, -003, -006, -009, -013, -017, -018, -019, design.md D1·D3, plan.md M5·M6, research.md §R5(O3·O4).
 
 작성자 메모(manager-spec): 리더 지시는 「abort 후 깨끗한지 확인하고 놓는다」까지였고, 확인이 실패하는 경우는 정하지 않았다. 감사자 B2가 「더러운 트리 위로 조용히 승격하지 않는다」는 선택지로 `hold`를 제시했고, REQ-MWQ-018은 그 경우 정책을 `hold`로 두고 놓는다고 적었다. 리더가 다른 결말을 원하면 이 한 절만 바꾸면 된다.
+
+### Q20: plan-audit 4차(0.75, claude·codex 일치) 뒤에 한 번 더 고치는가?
+
+Label: FOUNDER
+
+Authority anchor: — (결정은 2026-10-03 운영자의 AskUserQuestion 답으로 내려졌고, 커밋된 트리에 그 기록이 없다. 이 행이 첫 커밋 기록이다.)
+
+Why unresolved: 해당 없음 — 운영자가 결정했다. 감사는 막힘 네 건을 찾았다(`.moai/reports/t1479/plan-audit-iter4.md`).
+- C1: 3차 수리 뒤 complete의 카드 게이트가 develop이 움직인 다음에 돈다.
+- C2: 채택(adoption) 조건이 브랜치의 현재 끝과 유효 기록에 묶이지 않았고, 절의 우선순위가 정해지지 않았다.
+- C3: 병합 커밋이 생긴 뒤의 실패가 정의되지 않았다.
+- C4: 보유자가 아닌 호출의 거부와 「병합도 대기열 변경」이 서로 모순된다.
+
+Operator verdict: 운영자 결정(2026-10-03, AskUserQuestion) — 좁은 범위로 델타 한 라운드를 더 돈다. 새 REQ는 만들지 않는다. 리더 결정(LEADER-DECIDED, 미션 계약 07d28c4b)으로 받은 수정 지시는 다음과 같다.
+- C1: complete의 모든 카드 게이트(T14 리스 보유자·버전 확인)는 develop이 움직이기 전에 돈다. REQ-019를 고치고 design·plan을 맞추며, 만료된 리스와 남의 리스 AC를 둔다.
+- C2: 채택하려면 병합 커밋의 두 번째 부모가 카드 브랜치의 **현재** 끝이어야 하고(이후 커밋이 있으면 채택하지 않고 재병합 경로로 간다), 기록이 REQ-014/015로 유효해야 한다. 거부 절은 채택보다 먼저 평가하고, 순서는 design에서 REQ-019 본문으로 옮긴다. 「동사 병합 → 추가 커밋 → 채택 안 됨」 픽스처 AC를 둔다.
+- C3: 병합 커밋이 생긴 뒤의 실패는 결말을 정한다. 병합 커밋을 그대로 두고, 원인을 담아 `hold`를 걸고, 창을 놓고, 고유 코드로 끝난다. AC-018은 REQ가 보장하지 않는 「병합 커밋이 남지 않는다」를 주장하지 않는다.
+- C4: 보유자 판정을 위한 읽기는 허용하고, 쓰기·대기열 변경은 허용하지 않는다. REQ-009·D1과 REQ-017의 순서를 하나로 맞춘다.
+- 선택: 병합 단계의 `hold` 쓰기를 REQ-012 레인 거부의 예외로 둔다. REQ-018과 AC-018의 종료 코드 수를 맞춘다. AC-018 병합 실패 행의 설정을 분명히 한다.
+
+반영(v0.7.0): REQ-MWQ-009, -017(보유자 확인 먼저·유효성·조상 관계 전제), -018(원인 9가지·병합 뒤 실패는 커밋 유지 + `hold`·시스템 쓰기), -019(게이트 순서 1–4·채택 조건), AC-MWQ-017 시나리오 4–5, AC-MWQ-018(9행 표·병합 커밋 유무 열·병합 seam 주입), AC-MWQ-019 시나리오 5–7, design.md D1·D3, plan.md M5·M6. REQ·AC 개수는 23/23 그대로다.

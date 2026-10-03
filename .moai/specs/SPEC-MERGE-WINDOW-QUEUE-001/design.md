@@ -19,8 +19,10 @@ semantics `Stale()` and `releasableBy` rely on (`internal/kanban/integration_loc
 exits as soon as `acquire --wait` returns — and the target `factory complete` reads
 (`lock.Branch != ""` at `factory_card.go:1335`, `BranchSource` at `:1351`).
 
-Every window verb is a queue mutation: `acquire`, `release`, `status`, `policy`, and `merge` apply
-the drop rules and promotion before doing their own work.
+Every window verb is a queue mutation: `acquire`, `release`, `status`, and `policy` apply the drop
+rules and promotion before doing their own work. `merge` is the exception in order only: it reads
+the record to decide holdership first, refuses a non-holder or an expired-lease holder with the
+record unchanged, and applies drops (and renews its own lease) only after that check passes.
 
 The policy (`open` | `hold` + reason + setter + instant) is a sibling record beside the window
 record, so the guard's read of the window record is untouched (REQ-MWQ-023).
@@ -50,32 +52,45 @@ lane worktree:   git merge develop (local), commit
                  moai integration remeasure -- <cmd>   (clean tree before+after, HEAD unchanged;
                  record keyed by HEAD^{tree}, base = absorbed develop SHA)
                  moai integration acquire --wait --card <id>   (run in the background)
-when holder:     moai integration merge --card <id>      (non-holder → refuse, lock untouched)
-                 ├─ resolve WT- branch (SPEC-CANDIDATE-CI-001 REQ-CCI-004 contract)
-                 ├─ pin SHA = branch tip (read once)
-                 ├─ base moved?          ─► release ─► exit RE-MEASURE (names both SHAs) ─► lane re-measures, tail
-                 ├─ SHA^{tree} ≠ record? ─► release ─► exit TREE-MISMATCH
-                 ├─ landing check(SHA)   ─► refused ─► release ─► exit LANDING-REFUSED
-                 ├─ git merge --no-ff SHA ─► fails ─► git merge --abort
-                 │                                    ├─ worktree clean ─► release ─► exit MERGE-FAILED
-                 │                                    └─ still dirty    ─► policy hold(reason) ─► release ─► exit MERGE-DIRTY
-                 ├─ merge^{tree} == record.tree ─► release, exit 0
-                 └─ any other error ─► release ─► exit OTHER
+moai integration merge --card <id>
+  read record ─► not holder, or own lease expired ─► refuse, record unchanged (no drops, no promotion)
+  holder ─► renew lease, apply drops
+  ├─ resolve WT- branch (SPEC-CANDIDATE-CI-001 REQ-CCI-004 contract); pin SHA = branch tip (read once)
+  │   pre-merge checks, in order — each failure: release, promote next, distinct exit
+  ├─ (1) record valid (REQ-014/015)?                  ─► no ─► exit RECORD-INVALID
+  ├─ (2) record.base == develop tip?                  ─► no ─► exit RE-MEASURE (names both SHAs) ─► lane re-measures, tail
+  ├─ (3) record.base is an ancestor of SHA?           ─► no ─► exit ANCESTRY
+  ├─ (4) SHA^{tree} == record.tree?                   ─► no ─► exit TREE-MISMATCH
+  ├─ (5) landing check(SHA) (no-op when key off)      ─► refused ─► exit LANDING-REFUSED
+  ├─ (6/7) git merge --no-ff SHA ─► fails ─► git merge --abort
+  │                                      ├─ worktree clean ─► exit MERGE-FAILED (next promoted)
+  │                                      └─ still dirty    ─► policy hold(reason, setter=merge step+card) ─► exit MERGE-DIRTY
+  ├─ (8) after the merge commit exists: merge^{tree} ≠ record.tree or any lookup error
+  │         ─► leave the merge commit, policy hold(reason names cause + merge SHA) ─► release ─► exit POST-MERGE
+  ├─ (9) any other error before the merge ─► exit OTHER (next promoted)
+  └─ success ─► release, exit 0
 ```
 
-Exit-code names are placeholders; the run phase assigns distinct values. The stale candidate is
-rebuilt only after the RE-MEASURE exit, never eagerly at queue entry (SPEC-CANDIDATE-CI-001's
-assignment to this SPEC).
+With checks (2)-(4) passing, `git merge --no-ff SHA` onto a tip equal to `record.base` produces
+`SHA^{tree}`, so cause 8's tree mismatch is unreachable by construction; cause 8 still exists for
+lookup and I/O errors after the commit, and its `hold` stops the queue on a develop the leader must
+inspect. Exit-code names are placeholders; the run phase assigns nine distinct values. The stale
+candidate is rebuilt only after the RE-MEASURE exit, never eagerly at queue entry
+(SPEC-CANDIDATE-CI-001's assignment to this SPEC).
 
-`moai factory complete` has no merge of its own any more:
+`moai factory complete` has no merge of its own any more, and every gate precedes any move of
+develop:
 
 ```
 factory complete <card>
-  ├─ merge commit of this card's branch already reachable from develop?  (lane used `integration merge`)
-  │     └─ yes ─► record merged-local from that commit; no merge step, no fresh re-measure
-  ├─ no valid re-measure record ─► refuse (card state and develop unchanged)
-  └─ call the merge step above ─► success ─► merging → merged-local transitions
-                                └─ any failure ─► card state unchanged, exit with the step's code
+  ├─ (1) card gates (today's T14 preconditions): merge-ready, caller holds the card lease,
+  │       lease unexpired, version as read ─► any fails ─► refuse; develop and card unchanged
+  ├─ (2) adoption: develop holds a merge commit whose 2nd parent == WT- branch CURRENT tip
+  │       and whose tree == a VALID record's tree ─► record merged-local from it (no merge step)
+  │       (a branch with commits after that merge is not adopted → continue)
+  ├─ (3) no valid record for the current candidate tree ─► refuse; develop and card unchanged
+  └─ (4) call the merge step above ─► success ─► merging → merged-local transitions
+                                   └─ any failure ─► card unchanged, exit with the step's code
 ```
 
 `merge-record.txt` stays as a merge-identity file and never counts as the re-measure (REQ-MWQ-020).

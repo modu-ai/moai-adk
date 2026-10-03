@@ -83,18 +83,23 @@ progress.md §E.2.
 - ACs: AC-MWQ-007, -012, -013.
 
 ### M5 — Lane merge verb (Priority High)
-- `moai integration merge --card <id>`: non-holder refusal without touching the lock, branch
-  resolution, SHA pinned once, base / tree / landing checks on that SHA, `git merge --no-ff <sha>`,
-  merge-tree verification, release; every failure releases with a distinct exit code; merge failure
-  → `git merge --abort` + clean-worktree check, else policy `hold` before release.
+- `moai integration merge --card <id>`: holder check first (read only; a non-holder or an
+  expired-lease holder is refused with the record unchanged), then lease renewal and drops; branch
+  resolution, SHA pinned once; pre-merge checks in order — record validity, base equals tip, SHA
+  descends from base, tree identity, landing check — then `git merge --no-ff <sha>`, merge-tree
+  verification, release; nine causes with distinct exit codes; merge failure → `git merge --abort` +
+  clean-worktree check, else `hold`; any failure after the merge commit exists leaves the commit,
+  sets `hold` naming the SHA, releases.
 - ACs: AC-MWQ-017, -018.
 
 ### M6 — Substantive completion gate on the one merge path (Priority High)
-- `factory complete`: its own merge (`factory_card.go:1409`) replaced by a call to the M5 step, card
-  transitions only after the step succeeds; adoption of a landing already made by
-  `integration merge` (merge commit of the card branch reachable from develop) without a merge or a
-  fresh re-measure; refusal without a keyed record; the stand-in never satisfies the gate;
-  `verifyMerge` structural check; merge-readiness fourth condition with the command printed.
+- `factory complete` in the REQ-MWQ-019 order, every gate before develop moves: (1) card gates read
+  without transitioning (merge-ready, own unexpired card lease, version); (2) adoption only of a
+  merge commit whose second parent is the branch's current tip and whose tree matches a valid
+  record; (3) refusal without a valid record for the current candidate tree; (4) the M5 step
+  replacing its own merge (`factory_card.go:1409`), with the merging → merged-local transitions only
+  after it succeeds. The stand-in never satisfies the gate; `verifyMerge` structural check;
+  merge-readiness fourth condition with the command printed.
 - ACs: AC-MWQ-019, -020, -021.
 
 ### M7 — Distributed and local doctrine text (Priority Medium)
