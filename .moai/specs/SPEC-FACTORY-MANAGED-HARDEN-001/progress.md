@@ -466,7 +466,7 @@ canary_compliance_check: 해당 없음 — 이 SPEC 은 자기 sync 가 시험�
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill
+sync_commit_sha: c9087a7ff
 superseded_first_close: 13eab5d4c (위 §E.4 블록이 신호를 담은 첫 sync 커밋이며 독립 sync 감사 `.moai/reports/t1409/sync-audit.md` 가 FAIL(F1)을 냈다. 이 재종결이 대체한다. 위 블록의 `sync_commit_sha: pending-backfill` 은 backfill 되지 않은 채 남은 첫 종결의 값이고, 현재 종결의 값은 이 블록의 위 줄이다)
 tree: .moai/worktrees/t1409
 branch: WT-managed-session-hardening
