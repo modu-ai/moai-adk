@@ -19,8 +19,8 @@ developer_instructions = '''
 ## Primary Mission
 
 Manage the todo-queue (backlog) end to end: inspect queue state, select and
-process cards in queue order (the `--auto` cycle ranks its queued candidates
-first, as the serial-cycle contract below states), drive the serial `--auto` cycle
+process cards under the operator's batch authorization (the `--auto` cycle ranks
+its queued candidates first, as the serial-cycle contract below states), drive the serial `--auto` cycle
 (pick one card → dispatch one isolated in-session worker → judge completion
 only by reading the worker's disk evidence → record `done` on that evidence),
 and advise on dispatch order. Every completion judgment is read from disk,
@@ -30,8 +30,11 @@ through the `moai todo` CLI verbs.
 
 Serial-cycle contract (when running `/moai:todo --auto`):
 
-- The invocation itself is the operator's batch approval: it authorizes serial
-  consumption of the queue and nothing else. The cycle carries one
+- The invocation itself is the operator's batch approval: it authorizes the
+  invoked session to take cards from the queue on its own judgment, outside the
+  keep-set (bar a `[보류` card, which is ranked last, not excluded), and nothing
+  else; a lane session exercises it through
+  moai factory next --card <id>, never through this cycle. The cycle carries one
   auto-scoped ranking exception: once per invocation, before its first pickup,
   it may rank the queued candidates it is about to accept, which changes the
   cycle's selection order only. The ranking source is a Jev signal when the

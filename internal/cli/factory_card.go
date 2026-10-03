@@ -241,7 +241,7 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // are merely `assigned`, which would otherwise wedge every leader-assigned
 // serial card against the others with nothing in flight. Every path that takes
 // a NEW card, the nominated lease included, passes false.
-func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) kanban.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
+func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
 	for _, c := range cards {
 		if c.CardID == cardID {
 			continue
@@ -249,7 +249,7 @@ func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string)
 		if ignoreAssigned && c.State == homestate.CardAssigned {
 			continue
 		}
-		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
+		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == factory.ClassModeSerial {
 			return true
 		}
 	}
@@ -501,7 +501,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if skip(c) {
 			continue
 		}
-		if classOf(c.CardID).Mode == kanban.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
+		if classOf(c.CardID).Mode == factory.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
 			continue
 		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
@@ -569,11 +569,11 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 				if factoryQueuedHoldMarked(*it) {
 					continue
 				}
-				cls := kanban.EffectiveCardClassification(*it)
+				cls := factory.EffectiveCardClassification(*it)
 				if cls.Blocked {
 					continue
 				}
-				if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
+				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
 					continue
 				}
 				it.State = factory.BacklogStatePicked
@@ -718,8 +718,8 @@ func factoryRefusal(token, format string, args ...any) *factoryNominateRefusal {
 // unnominated promotion arm share (the serial cycle demotes the same cards
 // through autoRankHoldMarked). A card in any other queue state is not a
 // marker card: the marker parks a card the lease would otherwise promote.
-func factoryQueuedHoldMarked(it kanban.BacklogItem) bool {
-	return it.State == kanban.BacklogStateQueued && autoRankHoldMarked(it.Text)
+func factoryQueuedHoldMarked(it factory.BacklogItem) bool {
+	return it.State == factory.BacklogStateQueued && autoRankHoldMarked(it.Text)
 }
 
 // factoryRecordRefusal maps a factory-record row to the refusal it earns for
@@ -768,12 +768,12 @@ func factoryRowHolder(row homestate.Card) string {
 //
 // @MX:NOTE: [AUTO] The shared keep-set predicate of the nominated lease; positive enumeration of the leasable queue states, so a state added later is refused, never leased. Fan-in 2 (validation and the in-lock re-validation) — a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-TODO-AUTO-PICK-001
-func factoryKeepSetRefusal(it kanban.BacklogItem, row *homestate.Card, lane string, serialHeld bool) *factoryNominateRefusal {
+func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane string, serialHeld bool) *factoryNominateRefusal {
 	switch it.State {
-	case kanban.BacklogStateQueued, kanban.BacklogStatePicked:
-	case kanban.BacklogStateDropped:
+	case factory.BacklogStateQueued, factory.BacklogStatePicked:
+	case factory.BacklogStateDropped:
 		return factoryRefusal(factoryRefuseDropped, "the card was dropped from the queue")
-	case kanban.BacklogStateHold:
+	case factory.BacklogStateHold:
 		return factoryRefusal(factoryRefuseHeld, "the card is held (moai gtd hold); only the operator releases it")
 	default:
 		return factoryRefusal(factoryRefuseHeld, "the card's queue state is %s, which no lease path takes", it.State)
@@ -786,7 +786,7 @@ func factoryKeepSetRefusal(it kanban.BacklogItem, row *homestate.Card, lane stri
 	if factoryQueuedHoldMarked(it) {
 		return factoryRefusal(factoryRefuseHoldMarker, "the card's text opens with the hold marker %s; the operator parked it", autoRankHoldMarker)
 	}
-	if kanban.EffectiveCardClassification(it).Blocked {
+	if factory.EffectiveCardClassification(it).Blocked {
 		return factoryRefusal(factoryRefuseBlocked, "the card's classification is blocked; the nominated lease refuses it, the operator decides it")
 	}
 	if serialHeld {
@@ -797,7 +797,7 @@ func factoryKeepSetRefusal(it kanban.BacklogItem, row *homestate.Card, lane stri
 
 // factoryNominee is what the read-only validation read about the nominee.
 type factoryNominee struct {
-	item       kanban.BacklogItem
+	item       factory.BacklogItem
 	row        *homestate.Card // nil when the factory record has no row for the card
 	serialHeld bool
 }
@@ -834,8 +834,8 @@ func factoryNextValidate(ctx context.Context, db *homestate.FactoryDB, root, run
 			break
 		}
 	}
-	classOf := func(id string) kanban.CardClassification { return factoryQueueClassification(queueRec, id) }
-	nom.serialHeld = classOf(cardID).Mode == kanban.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, false)
+	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(queueRec, id) }
+	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, false)
 	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
 		return nom, r, nil
 	}
@@ -896,20 +896,20 @@ func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHo
 	}
 
 	promoted := false
-	if nom.item.State == kanban.BacklogStateQueued {
+	if nom.item.State == factory.BacklogStateQueued {
 		var lost *factoryNominateRefusal
-		if err := todoStoreAt(root).Mutate(func(r *kanban.BacklogRecord) error {
+		if err := todoStoreAt(root).Mutate(func(r *factory.BacklogRecord) error {
 			for i := range r.Items {
 				it := &r.Items[i]
 				if it.ID != cardID {
 					continue
 				}
-				if it.State == kanban.BacklogStateQueued {
+				if it.State == factory.BacklogStateQueued {
 					if ref := factoryKeepSetRefusal(*it, nom.row, lane, nom.serialHeld); ref != nil {
 						lost = ref
 						return nil
 					}
-					it.State = kanban.BacklogStatePicked
+					it.State = factory.BacklogStatePicked
 					promoted = true
 					return nil
 				}
@@ -974,7 +974,7 @@ func factoryNominateCompensate(ctx context.Context, db *homestate.FactoryDB, roo
 		return false, nil
 	}
 	otherHolder := false
-	if err := todoStoreAt(root).Mutate(func(r *kanban.BacklogRecord) error {
+	if err := todoStoreAt(root).Mutate(func(r *factory.BacklogRecord) error {
 		var row *homestate.Card
 		cur, err := db.LoadCard(ctx, runID, cardID)
 		switch {
@@ -991,8 +991,8 @@ func factoryNominateCompensate(ctx context.Context, db *homestate.FactoryDB, roo
 			return nil
 		}
 		for i := range r.Items {
-			if r.Items[i].ID == cardID && r.Items[i].State == kanban.BacklogStatePicked {
-				r.Items[i].State = kanban.BacklogStateQueued
+			if r.Items[i].ID == cardID && r.Items[i].State == factory.BacklogStatePicked {
+				r.Items[i].State = factory.BacklogStateQueued
 			}
 		}
 		return nil
