@@ -14,6 +14,7 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -158,6 +159,178 @@ func TestPluginOptOutCallersEnumerated(t *testing.T) {
 	}
 	if runs < 2 {
 		t.Fatalf("empty sweep: found %d `'$BIN' init` runs in tux3_journeys.sh, want at least 2", runs)
+	}
+}
+
+// initChildSweep is the result of scanning Go sources for built-binary `init`
+// children (F14: a test that builds the production binary and runs `init`
+// escapes REQ-017's refusal, because the child is not a Go test binary).
+type initChildSweep struct {
+	violations []string // "<name>:<line>" of calls that run a built binary's init without the opt-out
+	binaryInit int      // exec calls carrying the "init" verb classified as a built binary (compliant or not)
+	gitInit    int      // exec calls carrying the "init" verb classified as git and skipped
+}
+
+// isGitCommand tells `git init` from a built moai binary's `init` by the
+// command (first exec argument) alone: the literal "git" (or a path ending in
+// /git), or an identifier, field or call whose name contains "git" (gitBin,
+// f.gitPath, testGitBinary(t)). Anything else is treated as a built binary.
+func isGitCommand(expr ast.Expr) bool {
+	var name string
+	switch e := expr.(type) {
+	case *ast.BasicLit:
+		if e.Kind != token.STRING {
+			return false
+		}
+		v, _ := strconv.Unquote(e.Value)
+		return path.Base(v) == "git"
+	case *ast.Ident:
+		name = e.Name
+	case *ast.SelectorExpr:
+		name = e.Sel.Name
+	case *ast.CallExpr:
+		switch f := e.Fun.(type) {
+		case *ast.Ident:
+			name = f.Name
+		case *ast.SelectorExpr:
+			name = f.Sel.Name
+		}
+	}
+	return strings.Contains(strings.ToLower(name), "git")
+}
+
+// builtBinaryInitChildren scans sources (name -> source) for exec.Command /
+// exec.CommandContext calls whose literal arguments carry the "init" verb.
+// A call whose command is git (isGitCommand) is skipped. Every other call must
+// carry the opt-out: a "--no-plugin" argument on that call, or a reference to
+// config.EnvSkipPluginInstall / MOAI_SKIP_PLUGIN_INSTALL inside the top-level
+// declaration that encloses it (the environment set on that command; an env
+// handed in through a parameter cannot be proven here, so pass --no-plugin).
+//
+// Shapes it cannot see: an argument list built elsewhere and spread with `...`
+// (the "init" literal is then not in the call), and `sh -c "<moai> init"`.
+func builtBinaryInitChildren(t *testing.T, sources map[string]string) initChildSweep {
+	t.Helper()
+	var res initChildSweep
+	for name, src := range sources {
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, name, src, parser.SkipObjectResolution)
+		if err != nil {
+			t.Fatalf("parse %s: %v", name, err)
+		}
+		for _, decl := range file.Decls {
+			region := src[fset.Position(decl.Pos()).Offset:fset.Position(decl.End()).Offset]
+			envOptOut := strings.Contains(region, "EnvSkipPluginInstall") || strings.Contains(region, config.EnvSkipPluginInstall)
+			ast.Inspect(decl, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				sel, ok := call.Fun.(*ast.SelectorExpr)
+				if !ok {
+					return true
+				}
+				pkg, ok := sel.X.(*ast.Ident)
+				if !ok || pkg.Name != "exec" || (sel.Sel.Name != "Command" && sel.Sel.Name != "CommandContext") {
+					return true
+				}
+				args := call.Args
+				if sel.Sel.Name == "CommandContext" && len(args) > 0 {
+					args = args[1:]
+				}
+				if len(args) == 0 {
+					return true
+				}
+				hasInit, hasFlag := false, false
+				for _, a := range args[1:] {
+					if lit, ok := a.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+						switch v, _ := strconv.Unquote(lit.Value); v {
+						case "init":
+							hasInit = true
+						case "--no-plugin":
+							hasFlag = true
+						}
+					}
+				}
+				if !hasInit {
+					return true
+				}
+				if isGitCommand(args[0]) {
+					res.gitInit++
+					return true
+				}
+				res.binaryInit++
+				if !hasFlag && !envOptOut {
+					res.violations = append(res.violations, name+":"+strconv.Itoa(fset.Position(call.Pos()).Line))
+				}
+				return true
+			})
+		}
+	}
+	sort.Strings(res.violations)
+	return res
+}
+
+// TestPluginOptOutCallersEnumeratedInTests (F14): the test-file twin of the
+// enumeration above. Any _test.go that runs a built binary's `init` carries the
+// opt-out, so an ordinary `go test` never starts a real `codex plugin` command.
+func TestPluginOptOutCallersEnumeratedInTests(t *testing.T) {
+	// Positive control: a violation is reported with its file:line; opt-outs
+	// and git are not. Line numbers are those of the call in each source.
+	control := map[string]string{
+		"viol_test.go":   "package x\nimport (\"context\";\"os/exec\")\nfunc f(bin string){\n\t_ = exec.CommandContext(context.Background(), bin, \"init\", \"--root\", \"p\")\n}\n",
+		"flag_test.go":   "package x\nimport \"os/exec\"\nfunc f(bin string){ _ = exec.Command(bin, \"init\", \"--no-plugin\") }\n",
+		"env_test.go":    "package x\nimport (\"os/exec\";\"github.com/modu-ai/moai-adk/internal/config\")\nfunc f(bin string){\n\tc := exec.Command(bin, \"init\")\n\tc.Env = append(c.Env, config.EnvSkipPluginInstall+\"=1\")\n}\n",
+		"git_test.go":    "package x\nimport \"os/exec\"\nfunc f(){ _ = exec.Command(\"git\", \"init\"); _ = exec.Command(\"/usr/bin/git\", \"init\") }\n",
+		"gitvar_test.go": "package x\nimport \"os/exec\"\nfunc f(gitBin string){ _ = exec.Command(gitBin, \"-C\", \"d\", \"init\") }\n",
+		"other_test.go":  "package x\nimport \"os/exec\"\nfunc f(bin string){ _ = exec.Command(bin, \"version\") }\n",
+	}
+	got := builtBinaryInitChildren(t, control)
+	if want := "viol_test.go:4"; strings.Join(got.violations, ",") != want {
+		t.Fatalf("scan positive control: violations = %v, want [%s]", got.violations, want)
+	}
+	if got.binaryInit != 3 || got.gitInit != 3 {
+		t.Fatalf("scan positive control: binaryInit=%d gitInit=%d, want 3 and 3", got.binaryInit, got.gitInit)
+	}
+
+	// Real sweep over every _test.go under internal/, cmd/ and pkg/.
+	sources := map[string]string{}
+	for _, root := range []string{"internal", "cmd", "pkg"} {
+		dir := filepath.Join("..", "..", root)
+		if _, err := os.Stat(dir); err != nil {
+			continue
+		}
+		walkErr := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() || !strings.HasSuffix(p, "_test.go") {
+				return nil
+			}
+			b, rerr := os.ReadFile(p)
+			if rerr != nil {
+				return rerr
+			}
+			sources[filepath.ToSlash(strings.TrimPrefix(p, ".."+string(filepath.Separator)+".."+string(filepath.Separator)))] = string(b)
+			return nil
+		})
+		if walkErr != nil {
+			t.Fatalf("walk %s: %v", root, walkErr)
+		}
+	}
+	if len(sources) < 500 {
+		t.Fatalf("empty sweep: only %d test sources scanned", len(sources))
+	}
+	res := builtBinaryInitChildren(t, sources)
+	if res.gitInit < 10 {
+		t.Fatalf("blind sweep: saw only %d `git init` exec calls across %d test files (the tree has dozens)", res.gitInit, len(sources))
+	}
+	if res.binaryInit < 1 {
+		t.Fatalf("blind sweep: saw no built-binary `init` child across %d test files (prepareOperationalProject is one)", len(sources))
+	}
+	for _, v := range res.violations {
+		t.Errorf("%s runs a built binary's `init` without the plugin opt-out; pass \"--no-plugin\" (or set %s=1 on that command): a real codex/claude on PATH would be driven against the real home",
+			v, config.EnvSkipPluginInstall)
 	}
 }
 
