@@ -11,8 +11,11 @@
 - SPEC id regex check (Bash) → `PASS`; uniqueness: no `MERGE-WINDOW` entry in this tree's or the
   develop worktree's `.moai/specs/`.
 - RED-now baseline cells E1-E10 measured on that tree (research.md §R1).
-- Open decisions for the leader/operator: decision-index.md Q2-Q6 (Q1 = recorded operator
-  approval).
+- Decisions: Q1 = recorded operator approval; Q2-Q6 = leader decisions (mission contract
+  07d28c4b) recorded in the verdict lines and folded into spec.md v0.2.0 (REQ-MWQ-005, -009,
+  -009a, -021, -021a, -021b, -024, -032), acceptance.md (AC-MWQ-005a, -009, -009a, -021, -021a,
+  -021b, -024, -032), plan.md (new M0 lease-baseline milestone; M1/M2/M3/M6). Target v3.2.0.
+  No open decision blocks run entry.
 - Plan audit not run (card instruction).
 
 ## §E.2 Run-phase Evidence

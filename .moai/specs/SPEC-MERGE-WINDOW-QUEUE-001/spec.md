@@ -1,7 +1,7 @@
 ---
 id: SPEC-MERGE-WINDOW-QUEUE-001
 title: "Merge-window automation — FIFO acquire queue, leader nomination abolished, re-measure moved out of the window, substantive complete gate, gated integration push"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -23,6 +23,7 @@ related_specs: [SPEC-INTEGRATION-LOCK-ATOMIC-001, SPEC-INTEGRATION-LOCK-LIVENESS
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1.0 | 2026-10-03 | manager-spec | Initial draft — card t1479 (Tier L). Operator approval 2026-10-03 (leader session df44e022, AskUserQuestion): "병합 창 선착순 대기열" — leader window nomination abolished, immediate implementation. Recorded in decision-index.md Q1. |
+| 0.2.0 | 2026-10-03 | manager-spec | Leader decisions Q2-Q6 (mission contract 07d28c4b; operator: implement now, include in v3.2.0): lease on by default at 30 min, renewed by window verbs, shorten-only after run M0 measurement (REQ-MWQ-009/009a); bare `--wait` bound 60 min (REQ-MWQ-005); requeue keeps a front slot once, a second consecutive move goes to the tail (REQ-MWQ-024); candidate-CI form required when t1478's setting is on, local form otherwise, one verifier (REQ-MWQ-021/021a); test count only when the tool reports one, zero reported = refusal (REQ-MWQ-021b). |
 
 ## §A Background
 
@@ -82,7 +83,8 @@ requires a measurement keyed to that tree; and the leader's batch push becomes o
   holder, exactly as today's stale takeover records it.
 - **REQ-MWQ-005** (Event-driven) — **When** a waiting caller's bound elapses before it is promoted,
   the acquire verb shall remove the caller's own ticket and exit non-zero, naming the holder, the
-  caller's last queue position, and the bound.
+  caller's last queue position, and the bound; **When** `--wait` is given without a bound, the
+  bound shall be 60 minutes.
 - **REQ-MWQ-006** (Ubiquitous) — `moai integration status` shall show the holder, the holder's
   lease expiry, the window policy, and every queued ticket in order with its position and liveness,
   in both the human form and the `--json` form.
@@ -92,10 +94,13 @@ requires a measurement keyed to that tree; and the leader's batch push becomes o
   ticket, and a caller that already holds a ticket shall not gain a second one by re-invoking
   acquire; `--force` shall remain the only path that takes a live holder's window and shall keep
   recording what it displaced.
-- **REQ-MWQ-009** (Capability gate) — **Where** a window lease duration is configured to a non-zero
-  value, acquire shall stamp the holder record with a lease expiry and the holder shall be able to
-  renew it; **Where** the duration is zero or absent, the holder's validity shall be decided by
-  owning-session liveness alone, exactly as today.
+- **REQ-MWQ-009** (Ubiquitous) — The window lease shall be on by default with a 30-minute duration:
+  acquire and promotion shall stamp the holder record with a lease expiry, and every window verb the
+  holder invokes (acquire refresh, status, merge-path steps, release) shall renew it; a holder whose
+  owning process is gone OR whose lease has expired shall be stale. The default may be lowered only
+  on the in-window duration measured in run milestone M0; it shall not be raised by this SPEC.
+- **REQ-MWQ-009a** (Capability gate) — **Where** the configured lease duration is zero, the holder's
+  validity shall be decided by owning-session liveness alone, exactly as before this SPEC.
 
 ### C.2 Window policy — nomination abolished
 
@@ -119,10 +124,18 @@ requires a measurement keyed to that tree; and the leader's batch push becomes o
   integration branch tip, or — where the pre-landing candidate path of card t1478 is available —
   the tree of that candidate commit.
 - **REQ-MWQ-021** (Ubiquitous) — A re-measure record shall be keyed by the candidate tree SHA and
-  shall carry the integration-branch commit that was absorbed, the command that was run, its exit
-  code, and either a test count greater than zero or the id of a candidate CI run whose conclusion
-  is success; the command and exit code shall be captured by the moai verb that executed the
-  command rather than asserted by the caller.
+  shall carry the integration-branch commit that was absorbed; one verifier shall accept both record
+  forms below. The local form shall always carry the command that was run and its exit code,
+  captured by the moai verb that executed the command rather than asserted by the caller. The
+  candidate-CI form shall carry the id of a candidate CI run whose conclusion is success.
+- **REQ-MWQ-021a** (Capability gate) — **Where** the candidate-CI setting introduced by card t1478
+  is on, the verifier shall require the candidate-CI form; **Where** it is off or absent, the
+  verifier shall require the local form.
+- **REQ-MWQ-021b** (Event-driven) — **When** the executed command's tool emits a recognized
+  structured test report (in this repository, `go test -json`), the local form shall also carry
+  the reported test count, and a reported count of zero shall make the record invalid; **When** the
+  tool emits no recognized report, the record shall carry the command and exit code only and shall
+  be valid on exit code zero.
 - **REQ-MWQ-022** (State-driven) — **While** a lane holds the window, the merge path shall perform
   only the tree-identity check against the re-measure record and the `--no-ff` merge, followed by
   the existing merge-tree identity verification; it shall run no test suite inside the window.
@@ -130,6 +143,11 @@ requires a measurement keyed to that tree; and the leader's batch push becomes o
   re-measure record's absorbed commit, the merge path shall not merge; it shall release the window
   (promoting the next ticket) and report that a re-absorb and re-measure are required, naming the
   recorded and the current integration-branch SHAs.
+- **REQ-MWQ-024** (Event-driven) — **When** a holder is requeued under REQ-MWQ-023 and its previous
+  holding was not itself a requeue re-entry, the window record shall keep a reserved front-of-queue
+  ticket for it, so that after re-absorbing and re-measuring it re-enters ahead of every other
+  ticket once; **When** the integration branch moves again during that re-entry, its ticket shall
+  go to the tail of the queue.
 
 ### C.4 Substantive completion gate
 
@@ -140,9 +158,10 @@ requires a measurement keyed to that tree; and the leader's batch push becomes o
   the re-measure; the merge identity it records shall be stored separately from, and shall never
   satisfy, the re-measure requirement.
 - **REQ-MWQ-032** (Ubiquitous) — The merge-gate reader shall accept a merge only when the
-  re-measure record's tree equals the merge commit's tree, the recorded exit code is zero, and the
-  record carries a positive test count or a successful candidate CI run id; containing the merge
-  SHA as text shall no longer be sufficient.
+  re-measure record's tree equals the merge commit's tree and the record is valid under
+  REQ-MWQ-021/021a/021b (local form: exit code zero, and a positive count wherever a count was
+  reported; candidate-CI form: a successful run id); containing the merge SHA as text shall no
+  longer be sufficient.
 - **REQ-MWQ-033** (Ubiquitous) — The merge-readiness pre-checks (`moai factory merge ready`) shall
   include the re-measure record's presence and validity as a named condition alongside the existing
   sync-audit, conflict-free, and tree-identity conditions.

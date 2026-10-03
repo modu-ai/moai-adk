@@ -51,10 +51,21 @@ file but is never accepted as the re-measure (REQ-MWQ-031).
 ## D4 Re-measure record
 
 Written under the card's evidence directory, keyed by the candidate tree SHA. Fields: `tree`,
-`base` (absorbed integration-branch commit), `command`, `exit_code`, `test_count` or
-`ci_run_id` + `ci_conclusion`, `measured_at`, `measured_by` (build provenance of the moai binary,
-per verification-claim-integrity §2.2). The executing verb captures command and exit code; the
-test-count source is decision-index Q6.
+`base` (absorbed integration-branch commit), `measured_at`, `measured_by` (build provenance of
+the moai binary, per verification-claim-integrity §2.2), and one of two forms:
+
+- local form — `command`, `exit_code` (always, captured by the executing verb), plus `test_count`
+  only when the tool emitted a recognized structured report (`go test -json` in this repository);
+  a reported zero invalidates the record;
+- candidate-CI form — `ci_run_id` + `ci_conclusion` (success required).
+
+One verifier reads both. Which form is required follows t1478's candidate-CI setting: on → CI
+form, off or absent → local form (decision-index Q5/Q6).
+
+Lease (Q2): 30 min by default, stamped on acquire/promotion, renewed by every window verb the
+holder invokes; zero disables. Wait bound (Q3): bare `--wait` = 60 min. Requeue (Q4): a holder
+released by a base move gets a one-time front reservation; a second consecutive move sends it to
+the tail.
 
 ## D5 Policy verb
 

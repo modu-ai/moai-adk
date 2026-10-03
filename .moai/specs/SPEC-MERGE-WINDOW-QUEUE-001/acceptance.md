@@ -25,6 +25,9 @@
 - **AC-MWQ-005** (maps REQ-MWQ-005) — Given A holds indefinitely, When B runs `acquire --wait=<short bound>`, Then
   B exits non-zero after the bound, the message names A, B's last position, and the bound, and B's
   ticket is no longer in the queue.
+- **AC-MWQ-005a** (maps REQ-MWQ-005) — Given `acquire --wait` with no bound and an injected clock,
+  When the clock passes 59m59s, Then B is still waiting; When it passes 60m, Then B exits non-zero
+  naming its queue position and its ticket is withdrawn.
 - **AC-MWQ-006** (maps REQ-MWQ-006) — Given a holder with lease, a hold policy, and two tickets, When `status` and
   `status --json` run, Then both show holder, lease expiry, policy with reason, and both tickets in
   order with positions and liveness.
@@ -34,9 +37,12 @@
 - **AC-MWQ-008** (maps REQ-MWQ-008) — Given B is queued behind A, When B invokes `acquire --wait` again, Then the
   queue still holds exactly one ticket for B at its original position; and Given C is queued after
   B, When any promotion occurs, Then C is never promoted while B is live and queued.
-- **AC-MWQ-009** (maps REQ-MWQ-009) — Given a configured non-zero lease and an expired holder lease with a live owner
-  process, When B (queued) polls, Then B is promoted and the displaced holder is recorded; and
-  Given lease duration zero, When the same record ages past any duration, Then the holder stays.
+- **AC-MWQ-009** (maps REQ-MWQ-009) — Given no lease setting (shipped default) and an injected
+  clock, When A acquires, Then the record's lease expiry is acquire time + 30m; When A runs
+  `status` at +20m, Then the expiry moves to +50m; When the clock passes the expiry with A's owner
+  process still live and B queued, Then B's poll promotes B and records A as displaced.
+- **AC-MWQ-009a** (maps REQ-MWQ-009a) — Given lease duration configured to zero, When the record
+  ages past any duration with a live owner, Then the holder stays.
 
 ### Policy (REQ-MWQ-010 … -013)
 
@@ -58,15 +64,26 @@
 
 - **AC-MWQ-020** (maps REQ-MWQ-020) — Given a card worktree that absorbed develop at SHA X, When the re-measure verb
   runs a command, Then the record's `tree` equals `git rev-parse HEAD^{tree}` and `base` equals X.
-- **AC-MWQ-021** (maps REQ-MWQ-021) — Given a command exiting 3, When the verb runs it, Then the record carries exit
-  code 3 as observed (not a caller argument); and Given a record with test count 0 and no CI run
-  id, Then it is classified invalid.
+- **AC-MWQ-021** (maps REQ-MWQ-021) — Given a command exiting 3, When the verb runs it, Then the
+  record carries exit code 3 as observed (not a caller argument) and the verifier rejects it; Given
+  a local-form record and a candidate-CI-form record for the same tree, Then the same verifier
+  function classifies both.
+- **AC-MWQ-021a** (maps REQ-MWQ-021a) — Given the candidate-CI setting on, Then a valid local-form
+  record is rejected and a record with a successful run id is accepted; Given the setting off or
+  absent, Then the reverse holds.
+- **AC-MWQ-021b** (maps REQ-MWQ-021b) — Given `go test -json` output reporting 4 passed tests and
+  exit 0, Then the record carries count 4 and is valid; Given a `-json` report with zero tests and
+  exit 0, Then the record is invalid; Given a command emitting no recognized report with exit 0,
+  Then the record carries command + exit only and is valid.
 - **AC-MWQ-022** (maps REQ-MWQ-022) — Given a valid record and an unmoved base, When the in-window merge path runs,
   Then no test command is executed inside the window (instrumented runner records zero test
   invocations between acquire and release) and the merge tree equals the record tree.
 - **AC-MWQ-023** (maps REQ-MWQ-023) — Given a valid record with base X and develop advanced to Y, When the in-window
   merge path runs, Then no merge commit is created, the window is released and the next ticket
   promoted, and the message names X and Y.
+- **AC-MWQ-024** (maps REQ-MWQ-024) — Given A requeued under AC-MWQ-023 with B and C queued, When
+  A re-measures and re-enters, Then A is promoted before B and C; Given A re-enters and develop
+  moves again before A merges, Then A's ticket goes behind C.
 
 ### Completion gate (REQ-MWQ-030 … -033)
 
@@ -75,8 +92,9 @@
   unchanged.
 - **AC-MWQ-031** (maps REQ-MWQ-031) — Given complete previously wrote `merge-record.txt`, When that file is offered
   as the re-measure, Then the gate rejects it.
-- **AC-MWQ-032** (maps REQ-MWQ-032) — Given a merge whose tree equals the record tree with exit 0 and test count 5,
-  Then the reader accepts; Given a file that merely contains the merge SHA prefix, Then the reader
+- **AC-MWQ-032** (maps REQ-MWQ-032) — Given a merge whose tree equals the record tree with exit 0
+  and reported test count 5, Then the reader accepts; Given the same with a reported count of 0,
+  Then it rejects; Given a file that merely contains the merge SHA prefix, Then the reader
   rejects (this is RED on the plan tree — research.md §R1 E5).
 - **AC-MWQ-033** (maps REQ-MWQ-033) — Given a card without a record, When `moai factory merge ready` runs, Then the
   verdict names the re-measure condition as failing alongside the three existing conditions.
@@ -112,14 +130,14 @@
 
 ## §F Traceability
 
-Each REQ-MWQ-NNN maps to AC-MWQ-NNN with the same number; REQ-MWQ-002 additionally maps to
-AC-MWQ-002a and REQ-MWQ-003 to AC-MWQ-003a.
+Each REQ-MWQ-NNN maps to AC-MWQ-NNN with the same number (lettered REQs to the same-lettered
+AC); REQ-MWQ-002, -003 and -005 additionally map to AC-MWQ-002a, -003a and -005a.
 
 | REQ group | REQs | ACs |
 |---|---|---|
-| Queue | 001-009 | 001-009, 002a, 003a |
+| Queue | 001-009, 009a | 001-009, 002a, 003a, 005a, 009a |
 | Policy | 010-013 | 010-013 |
-| Re-measure | 020-023 | 020-023 |
+| Re-measure | 020-024, 021a, 021b | 020-024, 021a, 021b |
 | Completion gate | 030-033 | 030-033 |
 | Push | 040-044 | 040-044 |
 | Doctrine / compat | 050-051 | 050-051 |
