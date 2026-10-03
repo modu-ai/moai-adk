@@ -166,6 +166,36 @@ F8·F9·F13 모두 이 카드의 F3·F4 변경에 의존하지 않는다(줄 번
 
 미관측: 시험 6개의 GREEN 경로(M2·M3 몫), 로그 이음새 단언(이음새는 M2/M3 이 도입), 라이브 Codex. `gofmt -l internal/cli` 는 기준 트리의 기존 파일 `internal/cli/mcp_claude.go` 한 줄을 낸다(이 카드가 만든 것이 아니다).
 
+### M2 — F3 서버 요청 응답 (card t1409, manager-develop, cycle_type=tdd)
+
+귀속은 모두 `(this run, this tree, HEAD f042a05a0 위의 M2 작업 트리, 커밋 전)` 이다. 모든 `go test` 는 환경 정리 접두(`unset MOAI_KANBAN … MOAI_KANBAN_BACKEND && go test …`)를 붙인 단일 호출이다. 변경 파일: `internal/cli/managed_codex_factory.go`(프레임 분류·`id` 원문 보존·읽기 고루틴 응답·정책표·쓰기 뮤텍스·턴 창·로그 이음새 `managedLogOutput`), `internal/cli/managed_hardening_test.go`(로그 sink·정책 시험의 로그 단언·`TestManagedCodexConcurrentWrites`·`TestManagedCodexCompletionEventCarriesBrokerVerdict`). `defaults.go`·`Close`·`Start()` 자원 생성부·`store.go`·부모 SPEC 은 건드리지 않았다.
+
+| 항목 | 명령 | 관측 | exit |
+|---|---|---|---|
+| 사전: 빌드 | `go build ./...` / `GOOS=windows GOARCH=amd64 go build ./...` | 출력 없음 / 출력 없음 | 0 / 0 |
+| 사전: 선택 수 | `go test ./internal/cli -list '^.*(Managed\|managed).*$'` 를 `grep -c '^Test'` 로 센 값 | `72` (M1 직후) → M2 뒤 `74` (`ConcurrentWrites`·`CompletionEventCarriesBrokerVerdict` 추가) | — |
+| GREEN: M1 시험 3개 | `go test -race ./internal/cli -run '^(TestManagedCodexServerRequestPolicy\|TestManagedCodexTurnSurvivesServerRequest\|TestManagedCodexServerRequestIDCollision)$' -count=1 -v` | 세 시험 `--- PASS`, 하위 11 + 2 + 2 개 PASS, `ok … 3.347s` (M1 RED 원문: `red-baseline.md`, 같은 세 시험이 `--- FAIL`) | 0 |
+| GREEN: AC-MH-001..004 + 판정 시험 | `go test -race ./internal/cli -run '^(TestManagedCodexServerRequestPolicy\|TestManagedCodexTurnSurvivesServerRequest\|TestManagedCodexServerRequestIDCollision\|TestManagedCodexConcurrentWrites\|TestManagedCodexCompletionEventCarriesBrokerVerdict)$' -count=1 -v` (선행 `-list` 로 이름 5개 확인) | 5개 최상위 `--- PASS`(정책 11 하위, 경합 200 라운드 `PASS (0.38s)`, 판정 3 하위), `WARNING: DATA RACE` 0건, `ok … 3.852s` | 0 |
+| M3 시험 3개는 계속 RED | `go test -race ./internal/cli -run '^(TestManagedCodexDeclinedBrokerElicitationFailsTurn\|TestManagedDriverIsolatesTurnFailure\|TestManagedCodexNonCompletedTurnIsolated)$' -count=1 -v` | 세 시험 `--- FAIL`, 이유는 M1 과 같음(`DeliverTurn = nil …`, `turns delivered` 2개, `op-interrupted`·`op-normal` 미전달) | 1 |
+| 회귀 | `go test -race ./internal/cli -run '^.*(Managed\|managed).*$' -skip '^(…M3 시험 3개…)$' -count=1 -v` | `-list` 74개 중 M3 3개 제외, `--- FAIL` 0건, `--- SKIP` 3건(기존 3건: `TestManagedCodexFakeAppServer`, `TestManagedCodexFactoryBrokerLive`, `TestManagedLoopbackChild`), `ok  github.com/modu-ai/moai-adk/internal/cli  131.919s` | 0 |
+| 정적 | `gofmt -l internal/cli/managed_codex_factory.go internal/cli/managed_hardening_test.go` / `go vet ./internal/cli` / `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` / `GOOS=windows GOARCH=amd64 go build ./...` | 출력 없음 ×4 | 0 ×4 |
+| lint | `golangci-lint run --timeout=5m ./internal/cli/...` (`golangci-lint has version v2.1.6 built with go1.26.8`) | 1차 `QF1001: could apply De Morgan's law` 2건(`noteElicitation` 조건식) → `switch` 로 재작성 후 `0 issues.` | 1 → 0 |
+| 경계 | `grep -rn 'syscall\.' internal/cli/managed_*.go` (양성 대조 `grep -n 'syscall\.' internal/cli/mcp_server.go` → `:123` 1줄) / `grep -rn 'AskUserQuestion' internal/cli/managed_codex_factory.go internal/cli/managed_factory_session.go` | 출력 0줄 / 출력 0줄 | 1 / 1 |
+
+**TDD 순서 정직 기록**: 앞 세 시험(M1)은 RED 가 `red-baseline.md` 에 이미 있다. 프로덕션 코드를 먼저 쓰고 그 뒤에 새 단언(로그 줄 단언, `TestManagedCodexConcurrentWrites`, 판정 시험)을 붙였으므로 그 단언들의 RED 를 "코드 없는 트리"에서는 보지 못했다 — 대신 변이로 관측했다: 로그 줄 단언의 RED = mu4(11개 전부 붉음), 경합 시험의 RED = mu5(acceptance.md §2.1 면제 (1)이 정한 채택 경로). 판정 시험(`CompletionEventCarriesBrokerVerdict`)은 SPEC 이 정하지 않은 M2 보조 시험이며 변이로 채택하지 않았다(M3 의 AC-MH-006 #11–#17 이 정본).
+
+**변이 확인 mu1–mu5** (한 번에 하나, 편집기로 적용·복구; 복구 뒤 `git diff --stat` 와 `cmp`(변이 전에 떠 둔 사본) 로 변이 전 상태 복원을 확인. 변이 전 `git diff --stat`: `managed_codex_factory.go | 260 +++…`, `managed_hardening_test.go | 240 +++…`, `2 files changed, 461 insertions(+), 39 deletions(-)`; 복구 뒤 mu1·mu2·mu3·mu5 는 같은 줄·`cmp` 출력 없음, mu4 는 `cmp` 출력 없음만 확인했다. 변이 뒤 lint 지적(`noteElicitation` 의 De Morgan 2건)을 고치려 그 함수 조건식을 `switch` 로 다시 썼고(어느 변이도 그 줄을 건드리지 않음), 그 뒤에 위 표의 회귀·M3 RED·정적 검사를 돌렸다). 명령은 모두 `go test -race ./internal/cli -run '^TestManagedCodexServerRequestPolicy$' -count=1 -v`(mu5 만 `'^TestManagedCodexConcurrentWrites$'`), 트리 HEAD `f042a05a0` + M2 작업 트리, exit 1.
+
+| 변이 | 편집(한 곳) | 결정 출력 | 붉은 케이스(관측) |
+|---|---|---|---|
+| mu1 | 결정 다섯 종류의 응답 값을 `accept`/`approved` 로 | `result {"decision":"accept"}, want {"decision":"decline"}` 등, 최상위 `answer to request 101 grants approval: {"decision":"accept"}` | 하위 5개: `command_execution_approval`, `file_change_approval`, `mcp_elicitation`, `legacy_apply_patch_approval`, `legacy_exec_command_approval`. 나머지 6개 `--- PASS` |
+| mu2 | 모든 method 를 `-32000` 오류로 답함(`answerServerRequest` 한 줄) | `answered with error {Code:-32000 …}, want result …`, 미지 method: `error code -32000 …, want -32601` | 하위 8개(결과 응답 7종 + `unknown_method`) 붉음, 오류 3종(`tool_request_user_input`, `chatgpt_token_refresh`, `attestation_generate`) `--- PASS` |
+| mu3 | `-32000` ↔ `-32601` 상수값 교환 | `error code -32601 (…), want -32000` ×3, `error code -32000 (…), want -32601` | 하위 4개(`tool_request_user_input`, `chatgpt_token_refresh`, `attestation_generate`, `unknown_method`)만 붉음, 나머지 7개 `--- PASS` |
+| mu4 | 응답 로그 줄을 쓰지 않음(`managedLogf` → `_ = line`) | `log has no line "Factory server request answered: \"…\" -> …" within 5s` ×11, `--- FAIL: TestManagedCodexServerRequestPolicy (55.60s)` | 하위 11개 전부 붉음(각 5.0 s 상한 — 시험 자신의 폴링 상한) |
+| mu5 | 연결 쓰기 뮤텍스 제거(`write` 의 `Lock`/`Unlock` 두 줄) | `WARNING: DATA RACE`, 쓰는 쪽 스택 `managedCodexAppClient.write()` ← `answerServerRequest()`(읽기 고루틴)와 `write()` ← `call()`(시험 고루틴), `gorilla/websocket (*Conn).beginMessage`·`flushFrame` 읽기/쓰기 경합 (출력이 길어 도구가 중간을 잘라 `--- FAIL` 줄 자체는 확인하지 못함) | `TestManagedCodexConcurrentWrites` 붉음(첫 실행에서, 재시도 불필요). exit 1 |
+
+**미관측(Gaps)**: ① mu5 의 `--- FAIL: TestManagedCodexConcurrentWrites` 줄(도구 출력 잘림; 경합 보고와 exit 1 은 관측) ② 라이브 Codex(`serverName` 값 포함, design.md D-1 Gap) ③ `X == prevTurnID` 중복 완료 프레임 방어(G5, 시험 행 없음) ④ 쓰기 막힘 상한(공시한 한계) ⑤ 회귀 `--- PASS` 최상위 개수는 직접 세지 않았다(`-v` 출력을 파일로 돌릴 수 없는 레인 가드 때문; `-list` 74개 − `-skip` 3개 = 71개 실행, SKIP 3, FAIL 0 에서 산술로만 도출) ⑥ AC-MH-013 의 config/guardstate/template 인접 패키지는 M4 몫이라 이 마일스톤에서 돌리지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

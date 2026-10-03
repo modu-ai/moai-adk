@@ -14,9 +14,11 @@ package cli
 // closes the connection so a blocked call is released and nothing leaks.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -45,7 +47,45 @@ const (
 	// hardenQuietWindow is the "exactly once" window: one polling tick of the
 	// repo itself (DefaultManagedSessionPollInterval = 500ms).
 	hardenQuietWindow = 500 * time.Millisecond
+	// hardenLogPoll and hardenLogWait bound every log-line assertion: a polling
+	// wait, never a read that depends on the order of log line and answer.
+	hardenLogPoll = 10 * time.Millisecond
+	hardenLogWait = 5 * time.Second
 )
+
+// hardenLogSink is the writer a test stores in managedLogOutput. Writes and
+// snapshot reads share one mutex, so a reader goroutine logging while the test
+// polls is race-free; tests never touch the raw buffer.
+type hardenLogSink struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (s *hardenLogSink) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.Write(p)
+}
+
+func (s *hardenLogSink) snapshot() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.String()
+}
+
+// waitFor polls until the sink holds the substring or hardenLogWait elapses.
+func (s *hardenLogSink) waitFor(substr string) bool {
+	deadline := time.Now().Add(hardenLogWait)
+	for {
+		if strings.Contains(s.snapshot(), substr) {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(hardenLogPoll)
+	}
+}
 
 // hardenFrame is one frame the client wrote, as the fake server reads it. ID is
 // kept raw so integer and string ids both survive and replies compare byte-wise.
@@ -68,14 +108,21 @@ type hardenServer struct {
 	t      *testing.T
 	conn   *websocket.Conn
 	frames chan hardenFrame
+	log    *hardenLogSink
 }
 
 // newHardenPair joins a started managedCodexAppClient (read goroutine running)
-// to the server end the test drives. Cleanup order is LIFO: the client is shut
+// to the server end the test drives, and points the owner's log output at a
+// fresh synchronized sink (srv.log). Cleanup order is LIFO: the client is shut
 // down and its read goroutine awaited first, then the server connection and
-// listener close.
+// listener close, and only then is the log output pointer restored — so no
+// goroutine of this pair can write to a later test's sink.
 func newHardenPair(t *testing.T) (*managedCodexAppClient, *hardenServer) {
 	t.Helper()
+	sink := &hardenLogSink{}
+	var sinkWriter io.Writer = sink
+	managedLogOutput.Store(&sinkWriter)
+	t.Cleanup(func() { managedLogOutput.Store(nil) })
 	accepted := make(chan *websocket.Conn, 1)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
@@ -99,7 +146,7 @@ func newHardenPair(t *testing.T) (*managedCodexAppClient, *hardenServer) {
 	}
 	t.Cleanup(func() { _ = serverConn.Close() })
 
-	server := &hardenServer{t: t, conn: serverConn, frames: make(chan hardenFrame, 256)}
+	server := &hardenServer{t: t, conn: serverConn, frames: make(chan hardenFrame, 256), log: sink}
 	go server.readFrames()
 
 	client := &managedCodexAppClient{conn: conn, events: make(chan managedCodexAppReply, 32), done: make(chan struct{})}
@@ -282,10 +329,12 @@ func hardenWantError(code int) func(*testing.T, hardenFrame) {
 
 // hardenPolicyRow is one design.md D-1 response-policy row.
 type hardenPolicyRow struct {
-	name   string
-	method string
-	params map[string]any
-	check  func(*testing.T, hardenFrame)
+	name    string
+	method  string
+	params  map[string]any
+	check   func(*testing.T, hardenFrame)
+	outcome string // the log token after "->"
+	logTail string // what follows the token on the log line (elicitation only)
 }
 
 // hardenPolicyRows is the design.md D-1 response policy as data: ten listed
@@ -300,11 +349,11 @@ func hardenPolicyRows() []hardenPolicyRow {
 		return params
 	}
 	return []hardenPolicyRow{
-		{"command_execution_approval", "item/commandExecution/requestApproval", base(nil), hardenWantResult(`{"decision":"decline"}`)},
-		{"file_change_approval", "item/fileChange/requestApproval", base(nil), hardenWantResult(`{"decision":"decline"}`)},
-		{"permissions_approval", "item/permissions/requestApproval", base(nil), hardenWantResult(`{"permissions":{}}`)},
-		{"mcp_elicitation", "mcpServer/elicitation/request", base(map[string]any{"serverName": "other-server", "message": "need input"}), hardenWantResult(`{"action":"decline"}`)},
-		{"tool_request_user_input", "item/tool/requestUserInput", base(nil), hardenWantError(-32000)},
+		{"command_execution_approval", "item/commandExecution/requestApproval", base(nil), hardenWantResult(`{"decision":"decline"}`), "decline", ""},
+		{"file_change_approval", "item/fileChange/requestApproval", base(nil), hardenWantResult(`{"decision":"decline"}`), "decline", ""},
+		{"permissions_approval", "item/permissions/requestApproval", base(nil), hardenWantResult(`{"permissions":{}}`), "empty", ""},
+		{"mcp_elicitation", "mcpServer/elicitation/request", base(map[string]any{"serverName": "other-server", "message": "need input"}), hardenWantResult(`{"action":"decline"}`), "decline", ` serverName="other-server" turn=none broker_declined=0`},
+		{"tool_request_user_input", "item/tool/requestUserInput", base(nil), hardenWantError(-32000), "error", ""},
 		{"dynamic_tool_call", "item/tool/call", base(map[string]any{"tool": "t", "arguments": map[string]any{}}), func(t *testing.T, f hardenFrame) {
 			t.Helper()
 			if f.Error != nil {
@@ -325,23 +374,23 @@ func hardenPolicyRows() []hardenPolicyRow {
 			if len(result.ContentItems) == 0 || result.ContentItems[0].Type != "inputText" {
 				t.Fatalf("result %s, want an inputText content item", f.Result)
 			}
-		}},
-		{"chatgpt_token_refresh", "account/chatgptAuthTokens/refresh", base(nil), hardenWantError(-32000)},
-		{"attestation_generate", "attestation/generate", base(nil), hardenWantError(-32000)},
-		{"legacy_apply_patch_approval", "applyPatchApproval", base(nil), hardenWantResult(`{"decision":"denied"}`)},
-		{"legacy_exec_command_approval", "execCommandApproval", base(nil), hardenWantResult(`{"decision":"denied"}`)},
-		{"unknown_method", "item/unlisted/needsAnswer", base(nil), hardenWantError(-32601)},
+		}, "failed", ""},
+		{"chatgpt_token_refresh", "account/chatgptAuthTokens/refresh", base(nil), hardenWantError(-32000), "error", ""},
+		{"attestation_generate", "attestation/generate", base(nil), hardenWantError(-32000), "error", ""},
+		{"legacy_apply_patch_approval", "applyPatchApproval", base(nil), hardenWantResult(`{"decision":"denied"}`), "denied", ""},
+		{"legacy_exec_command_approval", "execCommandApproval", base(nil), hardenWantResult(`{"decision":"denied"}`), "denied", ""},
+		{"unknown_method", "item/unlisted/needsAnswer", base(nil), hardenWantError(-32601), "error", ""},
 	}
 }
 
-// TestManagedCodexServerRequestPolicy is AC-MH-001's M1 form: during one turn
-// the fake server sends ten listed server requests and one unlisted method,
-// each with an integer id. The owner must answer each exactly once, with the
-// same id, per the D-1 policy table. The base owner never answers, so the fake
-// server records the absence after hardenReplyWait.
-//
-// The per-request log-line assertions (design.md D-1 log seam) arrive with the
-// seam in M2; the seam does not exist on the base API.
+// TestManagedCodexServerRequestPolicy is AC-MH-001: during one turn the fake
+// server sends ten listed server requests and one unlisted method, each with an
+// integer id. The owner must answer each exactly once, with the same id, per
+// the D-1 policy table, and leave one log line per answered request carrying
+// the quoted method (the elicitation line also carries serverName, turn and
+// broker_declined). The M1 form of this test had no log seam; M2 added it, and
+// on the base owner (no answers) the fake server records the absence after
+// hardenReplyWait.
 func TestManagedCodexServerRequestPolicy(t *testing.T) {
 	client, srv := newHardenPair(t)
 	sess := &managedCodexSession{client: client, threadID: "th-policy"}
@@ -383,6 +432,14 @@ func TestManagedCodexServerRequestPolicy(t *testing.T) {
 				t.Fatalf("no answer to server request %s (%s) within %s: the owner does not answer server-originated requests", ids[i], row.method, hardenReplyWait)
 			}
 			row.check(t, reply)
+			wantLine := fmt.Sprintf("Factory server request answered: %q -> %s%s\n", row.method, row.outcome, row.logTail)
+			if !srv.log.waitFor(wantLine) {
+				t.Fatalf("log has no line %q within %s; log:\n%s", strings.TrimSuffix(wantLine, "\n"), hardenLogWait, srv.log.snapshot())
+			}
+			prefix := fmt.Sprintf("Factory server request answered: %q ->", row.method)
+			if n := strings.Count(srv.log.snapshot(), prefix); n != 1 {
+				t.Fatalf("%d log lines for %s, want exactly one", n, row.method)
+			}
 		})
 	}
 }
@@ -528,6 +585,137 @@ func TestManagedCodexServerRequestIDCollision(t *testing.T) {
 		srv.send(map[string]any{"id": follow.ID, "result": map[string]any{}})
 		if res := await(t, next, "second call"); res.err != nil {
 			t.Fatalf("second call = %v, want success after the string-id request", res.err)
+		}
+	})
+}
+
+// TestManagedCodexConcurrentWrites is AC-MH-004: the read goroutine writes the
+// answers to server requests while another goroutine's call() writes its own
+// frame. A connection write that is not serialized shows up as a data race
+// report under -race or as gorilla's concurrent-write panic. Each round fires
+// five server requests together with one client call so the writes overlap,
+// and ends only when all five answers and the call's response have arrived. The
+// round count is the repeat that turns a schedule-dependent race into a likely
+// one (acceptance.md AC-MH-004).
+func TestManagedCodexConcurrentWrites(t *testing.T) {
+	const (
+		rounds           = 200
+		requestsPerRound = 5
+	)
+	client, srv := newHardenPair(t)
+	for round := 0; round < rounds; round++ {
+		callDone := make(chan error, 1)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), hardenWatchdog)
+			defer cancel()
+			_, err := client.call(ctx, "thread/name/set", map[string]any{"round": round})
+			callDone <- err
+		}()
+		for k := 0; k < requestsPerRound; k++ {
+			srv.request(10000+round*requestsPerRound+k, "item/commandExecution/requestApproval",
+				map[string]any{"threadId": "th-race", "turnId": "T1", "itemId": "i"})
+		}
+		answered, responded := 0, false
+		timer := time.After(hardenWatchdog)
+		for answered < requestsPerRound || !responded {
+			select {
+			case frame, ok := <-srv.frames:
+				if !ok {
+					t.Fatalf("round %d: connection closed with %d of %d answers", round, answered, requestsPerRound)
+				}
+				switch {
+				case frame.isReply():
+					answered++
+				case frame.Method == "thread/name/set":
+					srv.send(map[string]any{"id": frame.ID, "result": map[string]any{}})
+					responded = true
+				}
+			case <-timer:
+				t.Fatalf("round %d: %d of %d answers and call frame seen=%v within %s", round, answered, requestsPerRound, responded, hardenWatchdog)
+			}
+		}
+		select {
+		case err := <-callDone:
+			if err != nil {
+				t.Fatalf("round %d: call = %v, want the response to arrive", round, err)
+			}
+		case <-time.After(hardenWatchdog):
+			t.Fatalf("round %d: call did not return within %s", round, hardenWatchdog)
+		}
+	}
+}
+
+// TestManagedCodexCompletionEventCarriesBrokerVerdict checks the read
+// goroutine's turn window at client level (design.md D-1 decision 3): the
+// verdict that a declined MoAI broker elicitation belongs to the turn rides on
+// that turn's completion event, a request from any other server does not count,
+// and a request that arrives after the window closed is logged without a turn
+// and does not leak into the next one. Turning the verdict into a marked
+// DeliverTurn error is M3.
+func TestManagedCodexCompletionEventCarriesBrokerVerdict(t *testing.T) {
+	elicitation := func(serverName string) map[string]any {
+		return map[string]any{"threadId": "th-verdict", "turnId": nil, "serverName": serverName, "message": "approve?"}
+	}
+	completion := func(t *testing.T, client *managedCodexAppClient) managedCodexAppReply {
+		t.Helper()
+		timer := time.After(hardenWatchdog)
+		for {
+			select {
+			case event, ok := <-client.events:
+				if !ok {
+					t.Fatal("events closed before a turn/completed event arrived")
+				}
+				if event.Method == "turn/completed" {
+					return event
+				}
+			case <-timer:
+				t.Fatalf("no turn/completed event within %s", hardenWatchdog)
+			}
+		}
+	}
+	t.Run("broker_request_in_window", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		srv.turnStarted("T1")
+		srv.request(501, "mcpServer/elicitation/request", elicitation(moaiMCPServerKey))
+		if !srv.log.waitFor(`serverName="moai" turn=T1 broker_declined=1`) {
+			t.Fatalf("the broker request was not attributed to T1; log:\n%s", srv.log.snapshot())
+		}
+		srv.turnCompleted("T1", "completed")
+		if event := completion(t, client); !event.brokerDeclined {
+			t.Fatal("completion event of the turn with a declined broker elicitation carries no verdict")
+		}
+	})
+	t.Run("other_server_request", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		srv.turnStarted("T1")
+		srv.request(502, "mcpServer/elicitation/request", elicitation("other-server"))
+		if !srv.log.waitFor(`serverName="other-server" turn=none broker_declined=0`) {
+			t.Fatalf("log has no uncounted line for the other server; log:\n%s", srv.log.snapshot())
+		}
+		srv.turnCompleted("T1", "completed")
+		if event := completion(t, client); event.brokerDeclined {
+			t.Fatal("a request from a server other than the MoAI broker made the turn fail")
+		}
+	})
+	t.Run("request_after_window_closed", func(t *testing.T) {
+		client, srv := newHardenPair(t)
+		client.armTurn()
+		srv.turnStarted("T1")
+		srv.turnCompleted("T1", "completed")
+		if event := completion(t, client); event.brokerDeclined {
+			t.Fatal("a turn without a broker request carries a verdict")
+		}
+		srv.request(503, "mcpServer/elicitation/request", elicitation(moaiMCPServerKey))
+		if !srv.log.waitFor(`serverName="moai" turn=none broker_declined=0`) {
+			t.Fatalf("the trailing request was counted or unlogged; log:\n%s", srv.log.snapshot())
+		}
+		client.armTurn()
+		srv.turnStarted("T2")
+		srv.turnCompleted("T2", "completed")
+		if event := completion(t, client); event.brokerDeclined {
+			t.Fatal("a request that arrived between turns made the next turn fail")
 		}
 	})
 }
