@@ -258,6 +258,13 @@ var managedFactoryCodexLaunchFunc = func(bin string, args, env []string, dir str
 	return runManagedFactoryCodex(bin, args, env, dir, os.Stdin)
 }
 
+// managedCodexCardLaunchFunc is the lane loop's managed-launch seam
+// (SPEC-FACTORY-MANAGED-CARD-CHILD-001): same four arguments as the plain
+// divert seam above, but a separate variable — its default body owns the
+// operator-input sharing between the loop's successive managed sessions, and
+// the plain divert's stdin stays untouched.
+var managedCodexCardLaunchFunc = defaultManagedCodexCardLaunch
+
 // defaultCodexSpawnLaunch opens a detached tmux window running codex
 // directly. The command string is shell-quoted token-by-token so a tail
 // containing spaces, quotes, or $ survives the round trip.
