@@ -46,7 +46,7 @@ import (
 const watchWindow = 16 * time.Second
 
 // legacyForemanWatchScript is the PRE-REPAIR block, pinned verbatim from
-// `.claude/skills/moai-kanban-foreman/SKILL.md` as it shipped at
+// `.claude/skills/moai-factory-foreman/SKILL.md` as it shipped at
 // origin/develop@ad272be20. It exists so the falsifiability condition can
 // be demonstrated rather than asserted.
 const legacyForemanWatchScript = `f=.moai/state/todo/backlog.json
@@ -63,8 +63,8 @@ done`
 // foremanSkillPaths are the two copies of the skill that must agree
 // (AC-BJD-011). Paths are relative to this package directory.
 var foremanSkillPaths = map[string]string{
-	"local":    "../../.claude/skills/moai-kanban-foreman/SKILL.md",
-	"template": "../../internal/template/templates/.claude/skills/moai-kanban-foreman/SKILL.md",
+	"local":    "../../.claude/skills/moai-factory-foreman/SKILL.md",
+	"template": "../../internal/template/templates/.claude/skills/moai-factory-foreman/SKILL.md",
 }
 
 // extractForemanWatchScript returns the queue-watch shell block from a

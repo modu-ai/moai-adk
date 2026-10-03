@@ -652,7 +652,10 @@ func TestContractModeAlwaysLoadedBudget(t *testing.T) {
 // grKickoffClasses is the research §1.2 classification of every document
 // carrying "Kickoff" at the base: E (emitter), R (reference), H (homonym),
 // L (local-only harness). It is a measurement of the base tree and is
-// re-measured whenever the base is re-absorbed.
+// re-measured whenever the base is re-absorbed. The keys are document paths AT
+// THE ABSORBED BASE REF: the pre-rename kanban-dispatch.md key stays because the
+// base still carries that file, and the renamed factory-dispatch.md key is added
+// beside it — never swap one for the other.
 var grKickoffClasses = map[string]string{
 	"CLAUDE.md": "E",
 	".claude/rules/moai/workflow/orchestration-mode-selection.md": "E",
@@ -677,6 +680,7 @@ var grKickoffClasses = map[string]string{
 	".claude/rules/moai/workflow/dynamic-workflows.md":            "R",
 	".claude/rules/moai/workflow/cadence-bridge.md":               "R",
 	".claude/rules/moai/workflow/kanban-dispatch.md":              "R",
+	".claude/rules/moai/workflow/factory-dispatch.md":             "R",
 	".claude/rules/moai/workflow/cache-aware-execution.md":        "R",
 	".claude/rules/moai/workflow/archived-agent-rejection.md":     "R",
 	".claude/rules/moai/development/coding-standards.md":          "R",

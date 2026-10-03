@@ -24,7 +24,7 @@ Rules for subagents:
 
 Rationale: subagents run in isolated, stateless contexts — prompting there is a dead channel, and the orchestrator stays the user's single point of contact (CLAUDE.md §8).
 
-**Lane sessions are orchestrator-class, not subagent-class.** A kanban companion or factory lane holds the question channel for its own card through the factory leader, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the leader is not the lane's user. A specialist spawn's working-tree attachment is a **runtime decision** the lane neither controls nor predicts, so the lane verifies where each spawn's work landed before advancing the card stage; when it landed in an isolated agent worktree, the lane reconciles it into the lane tree by `kanban-dispatch-mechanics.md` § Reconciling an isolated specialist spawn. That reconciliation grants merge, harvest, and record authority only — never editing authority over SPEC-artifact bodies. Normative home: `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority.
+**Lane sessions are orchestrator-class, not subagent-class.** A factory lane holds the question channel for its own card through the factory leader, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the leader is not the lane's user. A specialist spawn's working-tree attachment is a **runtime decision** the lane neither controls nor predicts, so the lane verifies where each spawn's work landed before advancing the card stage; when it landed in an isolated agent worktree, the lane reconciles it into the lane tree by `factory-dispatch-mechanics.md` § Reconciling an isolated specialist spawn. That reconciliation grants merge, harvest, and record authority only — never editing authority over SPEC-artifact bodies. Normative home: `.claude/rules/moai/workflow/factory-dispatch.md` § Lane spawn authority.
 
 ### Hook Invocation Surface
 
@@ -72,7 +72,7 @@ under the User Interaction Boundary H2.
 
 Output language rules:
 - Analysis, documentation, reports: User's conversation_language
-- Cross-session messages a human observes (a kanban dispatch the operator watches): User's conversation_language; identifiers, paths, commands, and flags stay verbatim. An `Agent()` subagent prompt reaches no human and stays English
+- Cross-session messages a human observes (a factory dispatch the operator watches): User's conversation_language; identifiers, paths, commands, and flags stay verbatim. An `Agent()` subagent prompt reaches no human and stays English
 - Code examples/syntax, skill names, technical identifiers, function/variable/class names: Always English
 - Code comments: Per code_comments setting in language.yaml (default: English); commit messages: Per git_commit_messages setting
 

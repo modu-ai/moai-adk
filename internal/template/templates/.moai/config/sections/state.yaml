@@ -3,7 +3,7 @@
 # The directory path is not configurable: ".moai/state" is a hardcoded literal in the
 # state-path resolver and the worktree state guard, which are its single source of truth.
 #
-# state.session_record_retention_days bounds the age of kanban session records
+# state.session_record_retention_days bounds the age of factory session records
 # (<state-dir>/<session>.json), pruned at SessionStart. Default: 30 days when
 # omitted; an explicit 0 disables the prune. Example:
 #

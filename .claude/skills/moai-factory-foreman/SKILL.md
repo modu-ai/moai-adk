@@ -1,14 +1,14 @@
 ---
-name: moai-kanban-foreman
+name: moai-factory-foreman
 description: >
-  One unattended kanban foreman iteration: watch the backlog queue, dispatch
+  One unattended factory foreman iteration: watch the backlog queue, dispatch
   the next operator-picked card to an isolated worker, collect completion
   evidence on read (not on claims), and report. This is the body the
   project's loop.md driver invokes each iteration of a bare /loop; it can
   also be invoked directly to test one cycle by hand.
 
 when_to_use: >
-  Use when a bare /loop kanban foreman iteration fires (the loop.md driver
+  Use when a bare /loop factory foreman iteration fires (the loop.md driver
   points here), or when the operator asks for a single manual foreman pass
   over the backlog queue.
 
@@ -21,20 +21,20 @@ metadata:
   version: "1.0.0"
   category: "workflow"
   status: "active"
-  tags: "kanban, foreman, loop, backlog, dispatch, unattended"
+  tags: "factory, foreman, loop, backlog, dispatch, unattended"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
 ---
 
-# Kanban Foreman Loop Iteration
+# Factory Foreman Loop Iteration
 
-One unattended pass of the kanban foreman: watch the backlog queue, dispatch
+One unattended pass of the factory foreman: watch the backlog queue, dispatch
 the next operator-picked card to an isolated worker, collect completion
 evidence, report. The queue surface is `moai gtd`; the dispatch protocol and
-card classes live in the kanban dispatch rule (`.claude/rules/moai/workflow/kanban-dispatch.md`).
-`foreman` — an auxiliary role of the leader: the unattended watcher that dispatches the already-picked card to an isolated worker when no leader session holds the board.
+card classes live in the factory dispatch rule (`.claude/rules/moai/workflow/factory-dispatch.md`).
+`foreman` — an auxiliary role of the leader: the unattended watcher that dispatches the already-picked card to an isolated worker when no leader session is holding the queue.
 
 ## Running unattended
 
@@ -48,7 +48,7 @@ Deployment: start a session in the project, run bare `/loop`, then
 background the session — loop tasks carry over to the background session and
 keep running without a terminal. `Esc` cancels the pending wakeup of a
 waiting loop. A recurring loop expires seven days after creation; restart it
-when the board still needs a foreman. Background monitors do not survive a
+when the queue still needs a foreman. Background monitors do not survive a
 session resume — the first iteration after a resume re-arms the queue watch.
 
 The session's permission settings must already allow what this loop uses
@@ -101,7 +101,7 @@ not something this loop can do for itself.
    - `command`:
 
      ```sh
-     # The queue directory, resolved the way kanban.StateDirForRoot does for a
+     # The queue directory, resolved the way factory.StateDirForRoot does for a
      # standard git-repository project: <moai-home>/db/<project-key>/todo,
      # keyed by the repository's canonical (primary-checkout) root.
      mh=${MOAI_HOME:-$HOME/.moai}
@@ -139,7 +139,7 @@ not something this loop can do for itself.
    input schema, so treat a shorter-than-requested expiry there as expected
    rather than as a fault.
 
-   The watch resolves the queue directory the way `kanban.StateDirForRoot`
+   The watch resolves the queue directory the way `factory.StateDirForRoot`
    does for a standard git-repository project — a project-keyed directory
    under the moai home (`MOAI_HOME` when that is set to an absolute path,
    otherwise `~/.moai`), keyed by the primary checkout's root — so a linked

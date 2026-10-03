@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: e11ff796a7710a0569a2cea7ee1fab9dd3bedc2b127659c2de3fcb5dc57d477b
+              hash: 87d96b24f60622f2c7331711ba0ca99a4811afcc828f860a6feaf1af138e069d
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -38,15 +38,15 @@ catalog:
               path: templates/.claude/skills/moai-harness-learner/
               hash: 5eb87524f6abb6d5a2d2a89c7faca407becc15fee19dd2c384931b41b5b4df96
               version: 1.0.0
-            - name: moai-kanban-foreman
+            - name: moai-factory-foreman
               tier: core
-              path: templates/.claude/skills/moai-kanban-foreman/
-              hash: de8216f7c41e87612320ace66e63bd530badfc4492f7145485e8947e6adf8dcc
+              path: templates/.claude/skills/moai-factory-foreman/
+              hash: 8805ae1b2c986a609ade5f2ffd3d276a12b74b2f6fb38c3be59743155d6f1c23
               version: 1.0.0
             - name: moai-lane-watchdog
               tier: core
               path: templates/.claude/skills/moai-lane-watchdog/
-              hash: 3a1604ef1336e3a3456f6d53970d5df3796b614b265658d8d4d604911254f490
+              hash: a7e8dcce78eaf5be59cf92967fae45dc6b40e015599f418cc3204d6d7397cda7
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
@@ -152,7 +152,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: 48e617b09550a044546ac30fb1f12ad39a2596af56458e897a8442a8544ee007
+              hash: de4e1e61898622b7987d15ab9bd8e30823677cd48978c2e24e927434bb793f12
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -172,7 +172,7 @@ catalog:
             - name: manager-todo
               tier: core
               path: templates/.claude/agents/moai/manager-todo.md
-              hash: 6cf817ab5aad6d01aa70c391c657586dc4f92f000e9e74562706e5d3f65d79c0
+              hash: 53bbfaf53dd5bd6456eb9b1f05e7618174bad5950304da9f54aa5ec5245f4650
               version: 1.0.0
             - name: manager-design
               tier: core

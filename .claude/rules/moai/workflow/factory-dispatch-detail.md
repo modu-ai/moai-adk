@@ -1,53 +1,31 @@
 ---
-description: "Detail companion for kanban-dispatch.md — terminology, board table, card classes, dispatch-cycle naming, sync-gate review-lens table, /clear message structure, isolation rationale, verification-load incident record, sub-agent-first design intent, manager-lead working mode, per-card fan-out, Factory in-lane 3-stage, pre-dispatch cross-check rationale, PR-title carrier measurements, pre-merge settings-drift assertion"
-paths: "**/kanban-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md"
+description: "Detail companion for factory-dispatch.md — terminology, card classes, dispatch-cycle naming, sync-gate review-lens table, /clear message structure, isolation rationale, verification-load incident record, sub-agent-first design intent, manager-lead working mode, sub-agent execution within a lane, Factory in-lane 3-stage, pre-dispatch cross-check rationale, PR-title carrier measurements, pre-merge settings-drift assertion"
+paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md"
 ---
 
-# Kanban Dispatch — Detail Companion
+# Factory Dispatch — Detail Companion
 
-> Detail companion of `kanban-dispatch.md` (the always-loaded stub). The stub keeps every [HARD] rule, prohibition, and cross-reference; this file owns the long tables, the dispatch-cycle walkthrough, incident narratives, and worked rationale. Load when moving a card between columns, classifying a card, or choosing review lenses for a sync dispatch.
+> Detail companion of `factory-dispatch.md` (the always-loaded stub). The stub keeps every [HARD] rule, prohibition, and cross-reference; this file owns the long tables, the dispatch-cycle walkthrough, incident narratives, and worked rationale. Load when classifying a card, routing a card to a lane, or choosing review lenses for a card's sync gate.
 
 ## Design intent — sub-agent-first token discipline
 
 The factory leader and lane sessions keep **only orchestration** in their context windows. Every unit of real work — research, authoring, implementation, verification sweeps — is delegated to `Agent()` sub-agents; the verbose output (tool results, file dumps, test logs) stays in their window, and only summaries return to the session. The token rationale: a session surviving an entire card — or a Factory Mode batch — would otherwise accumulate every card's raw output on the always-loaded prefix. The sections below express this structurally.
 
-## Terminology — the board vocabulary
+## Terminology — the factory vocabulary
 
-`kanban-dispatch.md`, `sprint-round-naming.md`, and the operating notes share a working vocabulary that previously had no definition anywhere. Each term gets one definition and one example; the sections below assume these meanings.
+`factory-dispatch.md`, `sprint-round-naming.md`, and the operating notes share a working vocabulary. Each term gets one definition and one example; the sections below assume these meanings.
 
 | Term | Definition | Example |
 |---|---|---|
-| **lane** | One parallel work stream that carries a card end to end: one session paired with one worktree. A lane is a swimlane — a band reserved for one stream of work; parallel streams never interleave and never share a working tree. "Lane-local verification" = that lane runs only the tests its own change can affect. | The `run` session working in worktree `.claude/worktrees/t0` is one lane. |
-| **card** | One unit of work on the board, entered by the operator via `/moai gtd "<description>"` and referred to by a short id. A card owns one worktree, one progress record, and its completion evidence. | `t0` — a one-line fix card. |
-| **column** | One stage of the board, in fixed order `backlog → plan → run → sync → done`. The three working columns each map to exactly one companion role; the review verdict lives inside the sync gate. | `/moai run <SPEC-ID>` happens in the `run` column. |
-| **backlog** | The entry queue of the board. No session owns it by design — work enters only when the operator puts it there. | `/moai gtd "rename hint is stale"` appends a card to the backlog. |
-| **leader** | The single coordinating session (`moai cc -k`). Moves cards between columns on evidence it read itself, asks the operator to `/clear` companions between phases, never writes code. | The session that dispatched a card with its worktree instruction. |
-| **companion** | A session launched by hand, one terminal at a time (`moai cc -k --name <role>`), owning one column's work at a time. Named by its bare role; a second live session claiming the same role takes the next free number. | `plan`, `run`, `sync`. |
-| **run-id** | The short identifier the leader prints at launch. It lives in `MOAI_KANBAN_ID` and the leader socket path — no session name carries it, the leader's included (t133): every session is named by its role, and a second live claim on a role takes the next free number. | `a1b2c3` — printed in the leader's bootstrap notice; the session itself is named `leader`. |
-| **worktree** | The isolated checkout where a card's work happens — created by `moai worktree new` or a supported launcher and entered through one, never raw `git worktree add`. The directory carries the card id; the branch carries `WT-<slug>` (shape: the stub § Isolation is provisioned by MoAI). A worktree outlives a phase: one spans run through sync. | `.claude/worktrees/t0` on branch `WT-todo-queue`. |
-| **dispatch** | The leader's instruction to one companion: a pointer (card id, SPEC id, phase command, completion signal), never a copy of the work. Written in the operator's conversation_language. | "card: t0 — wt: EnterWorktree(t0) … evidence: .moai/reports/t0/". |
+| **lane** | One parallel work stream that carries a card end to end: one session paired with one worktree. A lane is a swimlane — a band reserved for one stream of work; parallel streams never interleave and never share a working tree. "Lane-local verification" = that lane runs only the tests its own change can affect. | `lane-2` working in worktree `.moai/worktrees/t0` is one lane. |
+| **card** | One unit of work in the queue, entered by the operator via `/moai gtd "<description>"` and referred to by a short id. A card owns one worktree, one progress record, and its completion evidence. | `t0` — a one-line fix card. |
+| **backlog** | The entry queue. No session owns it by design — work enters only when the operator puts it there. | `/moai gtd "rename hint is stale"` appends a card to the backlog. |
+| **leader** | The single coordinating session (`moai cc -f`). Routes cards to lanes on evidence it read itself, asks the operator to `/clear` a lane between cards, never writes code. | The session that dispatched a card with its worktree instruction. |
+| **run-id** | The short identifier the leader prints at launch. It lives in `MOAI_KANBAN_ID` and the leader socket path — no session name carries it, the leader's included (t133): a lane is named `lane-<n>`, and a second live claim on a label takes the next free number. | `a1b2c3` — printed in the leader's bootstrap notice; the session itself is named `leader`. |
+| **worktree** | The isolated checkout where a card's work happens — created by `moai worktree new` or a supported launcher and entered through one, never a raw worktree add. The directory carries the card id; the branch carries `WT-<slug>` (shape: the stub § Isolation is provisioned by MoAI). A worktree outlives a stage: one spans plan through sync. | `.claude/worktrees/t0` on branch `WT-todo-queue`. |
+| **dispatch** | The leader's instruction to one lane: a pointer (card id, SPEC id, entry command, completion signal), never a copy of the work. Written in the operator's conversation_language. | "card: t0 — wt: EnterWorktree(t0) … evidence: .moai/reports/t0/". |
 
-The pair most easily confused: a **column** names a phase of the work (`run`); a **lane** names who carries one card through those phases (the `run` session in `.claude/worktrees/t0`). One is a stage on the board, the other is a stream through the stages.
-
-Factory Mode lanes are labelled `lane-1..lane-N` (`lane-<n>` is the session label, and `-f lane` joins as the next free one). a factory lane owns a card end to end (§ Factory in-lane 3-stage), where a Kanban lane carries one column's cards.
-
-## The board
-
-Five columns, fixed and ordered:
-
-```
-backlog → plan → run → sync → done
-```
-
-Owners per column below (the definitions live in § Terminology — the board vocabulary); `review` is not a column — the verdict is absorbed by the sync gate, which runs the lenses itself (§ Review lens selection).
-
-| Column | Owning role | What happens there |
-|---|---|---|
-| `backlog` | *none* — a queue | Work waits. Entry is an operator act (see the stub). |
-| `plan` | `plan` | SPEC authored (`/moai plan`), then plan-audited. |
-| `run` | `run` | Implementation (`/moai run <SPEC-ID>`). |
-| `sync` | `sync` | Review verdict (lenses per card), docs, CHANGELOG, PR (`/moai sync <SPEC-ID>`). |
-| `done` | *none* — terminal | Card closed. Nothing is dispatched here. |
+Factory Mode lanes are labelled `lane-<n>`; a lane owns a card end to end (§ Factory in-lane 3-stage).
 
 ## Report milestones ↔ queue cards
 
@@ -61,53 +39,53 @@ moai graph build && moai graph query --milestones-no-card
 
 It writes the report-milestone and milestone-card edges from each report's Card Cross-Check table and lists every milestone whose claimed card is missing from the live queue (queued/picked; dropped does not qualify). "Not in live queue" covers both completed and never-issued cards — resolve each flag with `git log --oneline --grep 'merge: <card-id>'` before issuing a new card.
 
-## Card classes — not every card needs every column
+## Card classes — not every card needs every stage
 
-Most of what accumulates in the backlog is chores: a one-line fix, a stale reference, a renamed flag. Sending those through `plan → run → sync` costs more in ceremony than the change is worth. The leader classifies each card as it leaves `backlog` and names the class in the dispatch.
+Most of what accumulates in the backlog is chores: a one-line fix, a stale reference, a renamed flag. Sending those through `plan → run → sync` costs more in ceremony than the change is worth. The leader classifies each card as it leaves `backlog` and names the entry stage in the dispatch.
 
 | Class | Shape | Path |
 |---|---|---|
-| A — direct close | The change is one file and one line, there is no design judgement in it, and CI catches the regression | One session carries the card through to a pull request; `plan` is skipped |
+| A — direct close | The change is one file and one line, there is no design judgement in it, and CI catches the regression | One lane carries the card through to a pull request; `plan` is skipped |
 | B — defect, cause unknown | Something is wrong and the cause has not been established | `run → sync`; `plan` is skipped, so no SPEC exists |
-| C — design change | The change contains a decision, or spans subsystems | All three working columns |
+| C — design change | The change contains a decision, or spans subsystems | All three stages |
 
 The Class-A evidence rule is the same shape as the CodeRabbit section of the stub: a class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
 
-Class A inverts where the parallelism comes from: handing three sessions a whole card each puts three cards in flight; pipelining one card through three columns puts one, and pipelining repays its handoff cost only when each column does substantial work — the Class C case (research fan-out during `plan` is Class-C-only for the same reason). Per-card fan-out (§ Per-card fan-out and sub-agent execution) is the across-cards axis layered on top; Factory Mode replaces the between-session pipelining entirely (§ Factory in-lane 3-stage).
+The parallelism comes from the across-cards axis: each lane carries a whole card, so three lanes put three cards in flight (§ Sub-agent execution within a lane for the within-card axis; § Factory in-lane 3-stage for the stages). Research fan-out during `plan` is Class-C-only.
 
 ## The dispatch cycle
 
-Each arrow below is one dispatch from the leader to one companion session:
+Each dispatch is one send from the leader to one lane session, and the lane carries the card from there:
 
 ```
-[operator picks a card]  →  plan  →  run  →  sync  →  [leader marks done]
+[operator picks a card]  →  leader routes WHOLE to a free lane  →  lane: plan → run → sync  →  [leader reads evidence, marks done]
 ```
 
-Dispatch is addressed by session name. Companions are named by their bare role; a name held by a live session is bumped to the next free number, and no run id travels in any session name, the leader's included (one run per machine; the id lives in `MOAI_KANBAN_ID` and the leader socket). `ListAgents` lists live sessions and says when it could not check them all; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
+Dispatch is addressed by session name. Lanes are named `lane-<n>`; a label held by a live session is bumped to the next free number, and no run id travels in any session name, the leader's included (one run per machine; the id lives in `MOAI_KANBAN_ID` and the leader socket). `ListAgents` lists live sessions and says when it could not check them all; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
 
 A bare name fails in two different ways, and only one of them announces itself. The refusal case is the harmless one: the runtime cannot pick between same-named sessions, says so, and the send is re-issued with the short reference the listing prints. The other case says nothing at all.
 
-**The silent case — an in-process mailbox takes the name.** While the team namespace is active (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, which ships enabled in settings and in the distributed template), a name carried by both a live companion session and an in-process teammate mailbox resolves to the **mailbox**. Nobody reads it, the companion never learns a dispatch existed, and the send reports success. The result's shape is the only separator:
+**The silent case — an in-process mailbox takes the name.** While the team namespace is active (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, which ships enabled in settings and in the distributed template), a name carried by both a live lane session and an in-process teammate mailbox resolves to the **mailbox**. Nobody reads it, the lane never learns a dispatch existed, and the send reports success. The result's shape is the only separator:
 
 | Result shape | Where the dispatch went |
 |---|---|
-| no `routing` object — the result names the peer (`… (another Claude session on this machine)`) | the companion session — **delivered** |
+| no `routing` object — the result names the peer (`… (another Claude session on this machine)`) | the lane session — **delivered** |
 | a `routing` object, e.g. `routing: {sender: "team-lead", target: "@<name>"}` | an in-process team mailbox — **lost** |
 
-So read a `routing` object as a failure signal and re-send to the `name [ref]` the listing printed. The two rows are not equally measured: the absent-`routing` row is directly observed — dispatches arriving normally, repeatedly — while the present-`routing` row rests on one reported contrast experiment. That is enough to act on (re-sending a delivered message costs one duplicate; missing a lost one stalls a board), but it is one measurement rather than a pattern.
+So read a `routing` object as a failure signal and re-send to the `name [ref]` the listing printed. The two rows are not equally measured: the absent-`routing` row is directly observed — dispatches arriving normally, repeatedly — while the present-`routing` row rests on one reported contrast experiment. That is enough to act on (re-sending a delivered message costs one duplicate; missing a lost one stalls a run), but it is one measurement rather than a pattern.
 
-Detecting the collision is the second line of defence. The first is not creating it: the leader spawns its coordination agent unnamed precisely so no in-process teammate ever carries a name a companion session also answers to (§ The leader works through manager-lead). Where that holds, this section never fires.
+Detecting the collision is the second line of defence. The first is not creating it: the leader spawns its coordination agent unnamed precisely so no in-process teammate ever carries a name a lane session also answers to (§ The leader works through manager-lead). Where that holds, this section never fires.
 
-**The collision is conditional, not universal.** A name no in-process teammate shares still delivers on the bare form — so "always address by reference" would be a false rule, and the binding one is *read the result*. Where a spawned teammate plausibly shares a companion's role-shaped name, address by `name [ref]` from the first send rather than after a lost one.
+**The collision is conditional, not universal.** A name no in-process teammate shares still delivers on the bare form — so "always address by reference" would be a false rule, and the binding one is *read the result*. Where a spawned teammate plausibly shares a lane's label, address by `name [ref]` from the first send rather than after a lost one.
 
-This does not soften what moves the board. The queue on disk is still the delegation, evidence on disk is still what advances a card, and a dispatch that silently missed shows up as a card that never progressed — the message was only ever a nudge. Messaging-side mechanism: `cross-session-messaging-detail.md` § Addressing, sending, and replying.
+This does not soften what moves a card. The queue on disk is still the delegation, evidence on disk is still what advances a card, and a dispatch that silently missed shows up as a card that never progressed — the message was only ever a nudge. Messaging-side mechanism: `cross-session-messaging-detail.md` § Addressing, sending, and replying.
 
-**A listing is not always complete, and an incomplete one cannot prove absence.** From Claude Code 2.1.234 the listing says when your account's session list was too long to check completely, rather than leaving unseen sessions to read as absent. That disclosure is what the stub's fault clause turns on: the leader concludes a role is empty from a listing that checked everywhere, and a listing that reports it could not is a **gap** — it re-checks and reports the gap, never a fault. Concluding otherwise reports a running companion as dead, which is the failure the upstream change exists to prevent, and is an unobserved absence claim under `verification-claim-integrity.md` §1 (the absence of a signal is not evidence of its subject's absence). This binds only the *absence* direction: a session the listing DOES show is present whatever else it could not reach.
+**A listing is not always complete, and an incomplete one cannot prove absence.** From Claude Code 2.1.234 the listing says when your account's session list was too long to check completely, rather than leaving unseen sessions to read as absent. That disclosure is what the stub's fault clause turns on: the leader concludes a lane is empty from a listing that checked everywhere, and a listing that reports it could not is a **gap** — it re-checks and reports the gap, never a fault. Concluding otherwise reports a running lane as dead, which is the failure the upstream change exists to prevent, and is an unobserved absence claim under `verification-claim-integrity.md` §1 (the absence of a signal is not evidence of its subject's absence). This binds only the *absence* direction: a session the listing DOES show is present whatever else it could not reach.
 
 
-Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
+Each instruction carries, at minimum: the card, the SPEC ID once one exists, the entry command to run, and the completion signal to write. Keep it a pointer, not a copy — the lane reads the SPEC artifacts itself rather than receiving them inline.
 
-**`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the leader reads the sync session's completion evidence and records the terminal transition itself.
+**`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the leader reads the lane's completion evidence and records the terminal transition itself.
 
 ### Dispatch language — classification rationale
 
@@ -118,11 +96,11 @@ Each instruction carries, at minimum: the card, the SPEC ID once one exists, the
 
 ### Dispatch format — rationale
 
-The address-block format (normative statement lives in the stub) is the "pointer, not a copy" rule above made mechanical: every field is an address the companion resolves by reading what it names. It also settles the Dispatch language rule by construction — a block of pure addresses has nothing to translate, while the leader's reports to the operator (progress notes, `/clear` requests) remain in the operator's `conversation_language`.
+The address-block format (normative statement lives in the stub) is the "pointer, not a copy" rule above made mechanical: every field is an address the lane resolves by reading what it names. It also settles the Dispatch language rule by construction — a block of pure addresses has nothing to translate, while the leader's reports to the operator (progress notes, `/clear` requests) remain in the operator's `conversation_language`.
 
 ## The leader works through manager-lead
 
-The `-k` / `-f` leader session does not draft its own coordination: it spawns the `manager-lead` agent (renamed from `manager-kanban`) and works through it. The split:
+The factory leader session does not draft its own coordination: it spawns the `manager-lead` agent and works through it. The split:
 
 - **Dialogue.** manager-lead holds the operator conversation — card selection, `/clear` prompts, blocker surfacing. The blocker-report discipline is unchanged (`agent-common-protocol.md` § Blocker Report Format): manager-lead returns blocker reports, and the session's `AskUserQuestion` remains the user channel. The rename moves no part of the user channel into the agent.
 - **Dispatch.** manager-lead routes cards and reads evidence in the background while the dialogue continues — neither the conversation nor the lane coordination blocks the other, because sub-agents run in the background by default and the session stays free between their returns.
@@ -131,7 +109,7 @@ The `-k` / `-f` leader session does not draft its own coordination: it spawns th
 
 ### Deputy mode — background coordination off the leader's turn
 
-The leader's turn loop is the scarcest surface on the board: a dispatch send, a CI watch, and a CodeRabbit poll each occupy it serially, and an occupied leader judges nothing else. The deputy exists to move that occupancy. The leader session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface).
+The leader's turn loop is the scarcest surface in a factory run: a dispatch send, a CI watch, and a CodeRabbit poll each occupy it serially, and an occupied leader judges nothing else. The deputy exists to move that occupancy. The leader session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface).
 
 **Why the deputy is resident rather than optional.** An optional mechanism is one a loaded leader never reaches for: the spawn's turn is the same turn the queue waits on, so the delegation is deferred exactly when it would pay most. Making the spawn a batch-start obligation (stub § Deputy dispatch surface) removes the decision from the moment of pressure. The cost is one background agent per batch whether or not it is needed — an unused deputy costs one spawn; an unspawned one costs every dispatch after it.
 
@@ -161,17 +139,14 @@ The retained powers — final verdicts, final merge approval, operator gates, ca
 
 Messaging stays a nudge (stub § The delegation channel is the queue, § Completion is read, never trusted). The rename changes who drafts the coordination, not what counts as delegated or as done.
 
-## Per-card fan-out and sub-agent execution
+## Sub-agent execution within a lane
 
-Two distinct fan-out axes exist; do not conflate them:
-
-- **Across cards (per-card fan-out).** A lane holds several cards in one column by giving each card's work to a parallel `Agent()` worker. The plan lane authors SPECs for several cards at once; each worker writes only inside its own card directory (`.moai/specs/<SPEC-ID>/`), which is why parallel writes cannot collide. Run and sync lanes use the same pattern for parallelizable per-card work.
-- **Within a card (stages as sub-agents).** The lane session orchestrates only: each stage's execution — plan authoring, run implementation, sync sweeps — is spawned as `Agent()` sub-agents whose output stays in their windows. The lane merges and inspects results through the evidence they write, not by absorbing their transcripts.
+The lane session orchestrates only: each stage's execution — plan authoring, run implementation, sync sweeps — is spawned as `Agent()` sub-agents whose output stays in their windows. The lane merges and inspects results through the evidence they write, not by absorbing their transcripts. Across cards the parallelism is the lanes themselves: one card per lane, one worktree per card.
 
 Discipline:
 
 - **Ceiling: 10 concurrent agents per lane.** The launcher injects `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` at that value; a lane does not raise it.
-- **Parallel fan-out is for read-heavy work plus per-card-isolated writes.** Never run multiple write-capable agents on the SAME card concurrently — one card, one writer at a time; cards in parallel, stages of one card in series. (Intra-card research fan-out during `plan` remains Class-C-only — § Card classes.)
+- **Parallel fan-out is for read-heavy work plus isolated writes.** Never run multiple write-capable agents on the SAME card concurrently — one card, one writer at a time; stages of one card in series. (Intra-card research fan-out during `plan` remains Class-C-only — § Card classes.)
 - **Write-capable sub-agents spawned in parallel MUST carry `isolation: "worktree"`** (the Agent tool's isolation parameter), so concurrent file writes cannot collide even outside the card directories: each write agent works in its own worktree copy, and the lane integrates via evidence and merge. Read-only fan-out (investigation, audits) stays unisolated — worktree setup cost buys nothing there. L1 `Agent(isolation: "worktree")` semantics, the relative-path prompt rule, and the lifecycle are owned by `worktree-integration.md` and are cross-referenced, not restated here; the stub's "dispose only after the remote merge lands" and "exit the previous worktree before a new card's" rules remain the SSOT for card worktrees.
 - **Verification stays lane-local.** The full suite is CI's job (stub § Verification load is lane-local).
 - **Stagger same-type spawns**: spawn one worker first and the rest once it has started producing, so the later spawns read the first one's prompt cache (`cache-aware-execution.md` directive 2).
@@ -179,18 +154,18 @@ Discipline:
 
 ## Factory in-lane 3-stage
 
-Factory Mode (`moai cc -f <N>` / `moai glm -f <N>`) trades the per-column board for whole-card ownership: one leader plus `lane-1..lane-N` sessions, each lane owning one card end to end. Lanes are launched by hand like kanban companions; the leader keeps the run-id, the queue, and the verdict.
+Factory Mode (`moai cc -f` / `moai glm -f` for the leader, `-l` for each lane) rests on whole-card ownership: one leader plus `lane-<n>` sessions, each lane owning one card end to end. Lanes are launched by hand; the leader keeps the run-id, the queue, and the verdict.
 
-- **Routing.** The leader routes a card WHOLE to a free lane — free means the lane's previous card reached `done` and its evidence was read. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block is unchanged; `cmd` names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
-- **Serial stages, sub-agent execution.** Plan completes before run begins, run before sync — a lane never runs two stages of the same card concurrently. Within a stage it fans out sub-agents per § Per-card fan-out and sub-agent execution.
+- **Routing.** The leader routes a card WHOLE to a free lane — free means the lane's previous card reached `done` and its evidence was read. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block carries `cmd`, which names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
+- **Serial stages, sub-agent execution.** Plan completes before run begins, run before sync — a lane never runs two stages of the same card concurrently. Within a stage it fans out sub-agents per § Sub-agent execution within a lane.
 - **Standing spawn authority (card t224's normative home).** The lane's right to those sub-agent spawns is standing, not per-dispatch: the SessionStart join notice carries the authority sentence verbatim, and the runtime's default "don't spawn unless the user asks" guidance does not bind a lane (the leader is not the lane's user, so leader approval can neither grant nor revoke what the bootstrap grants). Scope is the Status Transition Ownership Matrix's specialist for the stage at hand; depth is one — spawned agents are leaves. Observed defect this closes: two tk8hce lanes refused to spawn `manager-spec` and edited SPEC bodies directly, routing artifact writes around the ownership matrix.
-- **Classes collapse into the lane.** A/B/C still name which ceremonies a card skips (B skips `plan` and carries no SPEC; A goes straight to the close), but the "wholesale vs serial hand-off" distinction between sessions disappears — there are no per-column sessions to hand off to. Every lane runs the serial stages for whatever its card still needs.
-- **The `/clear` boundary is between cards, not phases.** The between-phases hand-off disappears (that is the point of the mode); the between-cards one does not — a factory lane is cleared once its card reaches `done`, before the next card is routed to it, exactly as the stub's `/clear` rule requires.
-- **Evidence, verdict, integration unchanged.** The lane writes the same completion signals; the leader still reads evidence and owns the final PASS/FAIL; release-branch integration is still lane work under the stub's rules. The deputy surface applies unchanged too: a factory leader may delegate dispatch sends and watches to the coordination deputy exactly as a kanban leader does (§ The leader works through manager-lead → Deputy mode), while the leader keeps the verdict and the batch pull request.
+- **Classes name the entry stage.** A/B/C name which ceremonies a card skips (B skips `plan` and carries no SPEC; A goes straight to the close); no card changes sessions. Every lane runs the serial stages for whatever its card still needs.
+- **The `/clear` boundary is between cards.** A factory lane is cleared once its card reaches `done`, before the next card is routed to it, exactly as the stub's `/clear` rule requires.
+- **Evidence, verdict, integration unchanged.** The lane writes the same completion signals; the leader still reads evidence and owns the final PASS/FAIL; release-branch integration is still lane work under the stub's rules. The deputy surface applies too: the factory leader may delegate dispatch sends and watches to the coordination deputy (§ The leader works through manager-lead → Deputy mode), while the leader keeps the verdict and the batch pull request.
 
 ## The card-review stage
 
-A lane closes its card through an ordered list of stages. The list fixes where the card-scope self-review sits, whichever column set or factory lane carries the card:
+A lane closes its card through an ordered list of stages. The list fixes where the card-scope self-review sits, whichever factory lane carries the card:
 
 1. `[run-exit]` Run convergence and lane-local verification (stub § Verification load is lane-local).
 2. `[card-review]` The card-scope self-review described below.
@@ -204,13 +179,13 @@ Running `[card-review]`:
 - **Evidence.** The result is written to `.moai/reports/<card-id>/card-review.md` with the backend, the base commit, the verdict, the findings, and a disposition for each finding (fixed, carried over, or not adopted with the reason). The card's progress record cites that path.
 - **Ceiling.** After a repair the lane re-reviews at most 2 times, the same ceiling as the run-exit verify gate's re-entry limit. A finding still open at the ceiling is written down with its disposition and raised to the leader; the lane does not widen the ceiling.
 - **Advisory.** The result carries no authority: the card's PASS/FAIL stays with the leader's evidence read and the independent audit. A missing reviewer or an `inconclusive` result is recorded as "review not performed", never as a pass. The stage is a card step rather than a turn-end hook, so it never blocks a turn.
-- **Continued firing.** A stage that silently stops being run shows at the leader's completion read: the declared evidence list names `card-review.md`, and a card whose progress record neither cites it nor records why it is absent stays in its column (stub § Completion is read, never trusted). No hook enforces the file; the leader's read is the answer to what would look different if the stage stopped.
+- **Continued firing.** A stage that silently stops being run shows at the leader's completion read: the declared evidence list names `card-review.md`, and a card whose progress record neither cites it nor records why it is absent stays in its stage (stub § Completion is read, never trusted). No hook enforces the file; the leader's read is the answer to what would look different if the stage stopped.
 - **One review per diff.** A repository that also enables the card-scope turn-end gate for its lanes reviews the same card diff twice; enable one of the two.
 - **The leader.** A leader reviews its own internal output with the same tools at `scope: uncommitted`. In the primary checkout that scope covers the whole shared working tree, which may include another session's work.
 
 ## The verdict's home
 
-The stub keeps the norm — the final PASS/FAIL verdict is the leader's, read from evidence on disk, never delegated to the lane that produced the work. The division is structural, not ceremonial: where the board's lanes run on a different backend than the leader, the lane sessions cannot commission judgment work onto the leader's backend, so the verdict has a home in the leader even when the execution has none.
+The stub keeps the norm — the final PASS/FAIL verdict is the leader's, read from evidence on disk, never delegated to the lane that produced the work. The division is structural, not ceremonial: where the lanes run on a different backend than the leader, the lane sessions cannot commission judgment work onto the leader's backend, so the verdict has a home in the leader even when the execution has none.
 
 ## CodeRabbit endpoint measurement
 
@@ -220,7 +195,7 @@ Branch protection is not the lever: the status state is `success` precisely in t
 
 ## Review lens selection
 
-`review` is not one thing. The leader picks the lenses from what the card actually changed, and states the choice in the `sync` dispatch so the sync gate runs that review rather than re-deriving it:
+`review` is not one thing. The leader picks the lenses from what the card actually changed, and states the choice in the dispatch so the sync gate runs that review rather than re-deriving it:
 
 | Card touched | Lenses to instruct |
 |---|---|
@@ -231,20 +206,20 @@ Branch protection is not the lever: the status state is `success` precisely in t
 | UI or design-system surface | `--design`, and `--critique` after the build |
 | Small, local, low-risk diff | no flag — the default 4-perspective pass is enough |
 
-## The `/clear` handoff between phases — message structure
+## The `/clear` handoff between cards — message structure
 
 The leader's message to the operator states three things, in this order:
 
-1. **What closed** — the card, the phase, and the evidence that was read.
+1. **What closed** — the card and the evidence that was read.
 2. **Which session to `/clear`** — by name, so the operator clears the right terminal.
-3. **What happens next** — the column the card moves to, and which session will be instructed once the clear is done.
+3. **What happens next** — the next card the lane is routed, and which lane will be instructed once the clear is done.
 
 ## Isolation rationale
 
 Two properties make the shared checkout the wrong place for a card:
 
 - Several sessions read it at once, so a branch switch, a `git stash`, or a `git add -A` there sweeps another session's uncommitted work into a commit never meant to carry it.
-- A card outlives a phase — its worktree spans run through sync, which is why disposal triggers on the merge rather than the phase finishing.
+- A card outlives a stage — its worktree spans plan through sync, which is why disposal triggers on the merge rather than the stage finishing.
 
 ## The pre-merge settings-drift assertion
 

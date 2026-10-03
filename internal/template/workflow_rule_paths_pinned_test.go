@@ -28,7 +28,7 @@ func TestWorkflowRulePathsPinned(t *testing.T) {
 		".claude/rules/moai/workflow/spec-workflow.md":            "**/.moai/specs/**,**/.moai/config/sections/quality.yaml",
 		".claude/rules/moai/workflow/worktree-integration.md":     "**/.claude/agents/**,**/.claude/worktrees/**,**/.moai/worktrees/**,**/.claude/teams/**",
 		".claude/rules/moai/workflow/session-handoff-examples.md": "**/session-handoff.md",
-		".claude/rules/moai/workflow/kanban-dispatch-detail.md":   "**/kanban-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md",
+		".claude/rules/moai/workflow/factory-dispatch-detail.md":  "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md",
 	}
 
 	fsys, err := EmbeddedTemplates()

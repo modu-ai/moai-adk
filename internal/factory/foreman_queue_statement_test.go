@@ -33,7 +33,7 @@ import (
 // foremanSkillRelPath is the skill's path from this package directory. The
 // TEMPLATE source tree is the subject: the deployed local copy is byte-identical
 // by parity test elsewhere, and the template is what every future project gets.
-var foremanSkillRelPath = filepath.Join("..", "template", "templates", ".claude", "skills", "moai-kanban-foreman", "SKILL.md")
+var foremanSkillRelPath = filepath.Join("..", "template", "templates", ".claude", "skills", "moai-factory-foreman", "SKILL.md")
 
 // extractForemanWatchResolution pulls the sh fence out of the skill and returns
 // its resolution prologue — the lines that compute the queue directory $d,
