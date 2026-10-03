@@ -1,15 +1,11 @@
 # card-review — t1481 (SPEC-FACTORY-DECISION-AUTO-001)
 
-verdict: review not performed
+verdict: inconclusive
 
-- Requested: `codex_review` with `scope: card`, `project_root` = this tree.
-- Backend: none reached. The `codex_review` MCP tool is not in this session's tool list, so the
-  card-scope call could not be made.
-- Fallback checked: `moai verify codex-review --help` exposes only `--project-root` and reviews the
-  tree's *uncommitted* changes; this tree is clean (all card work is committed), so the fallback
-  would review nothing and cannot stand in for a card-scope review.
-- Base commit: not resolved (no review ran).
-- Findings: none (no review ran). Per kanban-dispatch-detail § card-review, a missing reviewer is
-  recorded as "review not performed", never as a pass.
-- Disposition: the leader runs `codex_review scope=card project_root=<this tree>` from a session
-  that carries the tool, or accepts the gap.
+- First attempt (manager session): review not performed — the `codex_review` MCP tool was not in
+  that session's tool list, and the `moai verify codex-review` fallback reviews only uncommitted
+  changes (the tree was clean).
+- Leader-run attempt: codex card review inconclusive (blank output).
+- Findings: none recorded (no review output). A missing or blank review is recorded as not
+  performed / inconclusive, never as a pass. The independent sync audit chain (FAIL 72 → 78 → 80 →
+  PASS-WITH-DEBT 88, `.moai/reports/t1481/sync-audit*.md`) carries the card's review evidence.

@@ -180,9 +180,25 @@ new_warnings_or_lints_introduced: 0
 
 ```yaml
 sync_complete_at: 2026-10-03
-sync_commit_sha: 4293979c7
-sync_status: re-close pending — spec.md reverted to in-progress until a sync audit passes
-sync_audit: FAIL 72 (.moai/reports/t1481/sync-audit.md) → F1-F4 repaired; re-audit FAIL 78 (.moai/reports/t1481/sync-audit-2.md) → N1-N3 repaired; next re-audit pending
+first_sync_commit_sha: 4293979c7
+sync_commit_sha: pending-backfill-sync
+sync_status: completed-with-recorded-debts (re-close after sync audit PASS-WITH-DEBT 88)
+sync_audit_chain:
+  - FAIL 72 (.moai/reports/t1481/sync-audit.md) → F1-F4 repaired (1b732c265)
+  - FAIL 78 (.moai/reports/t1481/sync-audit-2.md) → N1-N3 repaired, spec reverted to in-progress (7b5a85141)
+  - FAIL 80 (.moai/reports/t1481/sync-audit-3.md) → B1, D2 repaired (b8cd707d0)
+  - PASS-WITH-DEBT 88 (.moai/reports/t1481/sync-audit-4.md) — receipts none (no local codex gate config; accepted gap)
+landing_order: this card lands LAST among the v3.2.0 cards (older plan verdicts are refused at Kickoff/T7)
+debts:
+  - D1: no writer emits audit_ready: true; the audit decider stays inert until the plan-close step writes it
+  - D3: queue hold read is not atomic across backlog.db and factory.db → t1458 atomic lease
+  - D4: tier read from anywhere in spec.md, not only frontmatter
+  - D5: only the first §E.1 section is checked
+  - D6: plan artifacts edited after audited SHA a13b83868 (818569869); delta plan re-audit owed
+  - F1 residual: case-variant key ordering in the verdict parser
+  - doc wording: the convention's "exactly once" no longer matches equal-repeat admission
+  - AC-FDA-008/011/012/013/019 PARTIAL; M0 not run; watchdog config key follow-up
+codex_card_review: inconclusive (blank output)
 changelog_entry_position: "CHANGELOG.md [Unreleased] ### Added (first entry)"
 frontmatter_status_transitions:
   spec.md: "in-progress -> completed at 4293979c7, then reverted to in-progress at 7b5a85141 after sync-audit FAIL 78; re-close pending"
