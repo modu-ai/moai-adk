@@ -903,6 +903,18 @@
 - path: "llm.glm.base_url"
   class: W
   evidence: reader
+- path: "llm.glm.effort.fable"
+  class: W
+  evidence: reader
+- path: "llm.glm.effort.high"
+  class: W
+  evidence: reader
+- path: "llm.glm.effort.low"
+  class: W
+  evidence: reader
+- path: "llm.glm.effort.medium"
+  class: W
+  evidence: reader
 - path: "llm.glm.models.fable"
   class: W
   evidence: reader
