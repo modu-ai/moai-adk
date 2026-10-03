@@ -811,6 +811,13 @@ const DefaultFactorySlowLaunchThreshold = 2 * time.Second
 // construction rather than by operator restraint.
 const DefaultLaneMaxConcurrentSubagents = 10
 
+// DefaultTodoClassifyLLMTimeout is the HTTP timeout ceiling of the LLM
+// classification decider (SPEC-TCD-LLM-DECIDER-001 REQ-TLD-006). An
+// interactive add cannot wait out the audit path's 120s ceiling
+// (glmAuditHTTPTimeout): past this bound the judgment fails and the add
+// degrades to the fail-safe default with the one-line notice (REQ-TLD-003).
+const DefaultTodoClassifyLLMTimeout = 10 * time.Second
+
 // DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
 // job's in-flight HTTP call to end on its own. Derived from
 // DefaultCodexJobCancelGrace rather than restated: both windows bound the same

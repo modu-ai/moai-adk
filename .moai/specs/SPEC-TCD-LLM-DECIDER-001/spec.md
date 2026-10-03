@@ -2,7 +2,7 @@
 id: SPEC-TCD-LLM-DECIDER-001
 title: "LLM-based card-classification decider at the todo add seam — a GLM-backed Decider(llm) implementation fulfilling the deferred half of REQ-TCD-012"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec (card t1352)

@@ -749,6 +749,9 @@ func newTodoAddCmd() *cobra.Command {
 			// REQ-TCD-004: the supplied classification is validated BEFORE
 			// the locked write — an out-of-set value or the jev identity is
 			// a usage refusal with nothing written.
+			// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002: --classification-file
+			// outranks the standing selection; without a supplied file the
+			// standing decider resolves from MOAI_TODO_DECIDER.
 			dec := todoCardDecider
 			if scan.haveClassFile {
 				resolved, err := todoDeciderFromClassificationFile(scan.classFile)
@@ -756,6 +759,12 @@ func newTodoAddCmd() *cobra.Command {
 					return err
 				}
 				dec = resolved
+			} else {
+				selected, err := todoDeciderFromEnv()
+				if err != nil {
+					return err
+				}
+				dec = selected
 			}
 			if scan.pick {
 				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec)
@@ -786,7 +795,15 @@ func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec kanban.Ca
 // invocation resolves; the MCP surface passes the package default.
 func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
 	if dec == nil {
-		dec = todoCardDecider
+		// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002: the MCP todo_add surface
+		// resolves the same standing decider the CLI path resolves, so the
+		// MOAI_TODO_DECIDER selection applies to both surfaces through this
+		// one nil branch.
+		selected, err := todoDeciderFromEnv()
+		if err != nil {
+			return err
+		}
+		dec = selected
 	}
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
