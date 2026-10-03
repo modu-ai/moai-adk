@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-RETENTION-HARDEN-001
 title: "Harness usage-log retention hardening — state-file symlink and permission faults, late-event loss during prune, lock-limit disclosure, and the two test gaps the t1425 audits left open"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec
