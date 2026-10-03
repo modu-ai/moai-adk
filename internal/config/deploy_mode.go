@@ -38,6 +38,10 @@ func IsValidDeployMode(value string) bool {
 	return ok
 }
 
+// @MX:ANCHOR: [AUTO] deploy-mode record reader — the single read seam for the
+// deployment_mode key; every mode-scoped consumer routes through it
+// @MX:REASON: [AUTO] fan_in=4 (update_template_sync deployer selection + restore re-assert + migration trigger, update_mirror_heal heal gate)
+// @MX:SPEC: SPEC-INIT-SHRINK-001
 // ReadDeployMode returns the recorded deployment_mode for the project rooted
 // at projectRoot: the file value when it is a member of the closed set, ""
 // otherwise. An absent file, an absent key, or an out-of-set value all read

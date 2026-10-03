@@ -127,7 +127,22 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-04
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-INIT-SHRINK-001' CHANGELOG.md → 0 (pre-emission clear; post-emission 1, entry appended under [Unreleased] ### Added, last row)"
+b12_self_test_b: "MOAI-AC-COUNTER (awk, AC_FILE=.moai/specs/SPEC-INIT-SHRINK-001/acceptance.md) → stdout 21, live=21 excluded=0 ambiguous=0; CHANGELOG entry states 21 acceptance criteria (AC-001..021)"
+b12_self_test_c: "ls of every CHANGELOG-named path → all exist: internal/config/deploy_mode.go, internal/template/apply_deploy_mode.go, internal/template/deployer_mode.go, internal/cli/update/migrate_classify.go, internal/cli/update_migrate.go, internal/cli/plugin_probe.go, internal/cli/update_mirror_heal.go, internal/cli/update_template_sync.go, internal/cli/update_dryrun_preview.go, scripts/check-bare-name-resolution.sh, README.md, README.ko.md, README.ja.md, README.zh.md, docs-site/content/{en,ko,ja,zh}/cli-reference/init.md"
+changelog_entry_position: "[Unreleased] ### Added, last row (appended to the newest Added block)"
+frontmatter_status_transitions:
+  - in-progress → completed (spec.md, status: only — updated: 2026-10-04 already current; zero body edits)
+mx_tag_deltas: "+2 @MX:ANCHOR (config.ReadDeployMode fan_in=4 NEW; template.ApplyDeployMode fan_in=4 NOTE→ANCHOR+REASON) · 0 stale @MX:TODO found in the new files · owning-test existence re-verified for all 21 ACs incl. AC-021's guard TestInitDocsDescribeThinDeploy"
+doc_surface_validation: "README ×4 deploy-mode sections present (line ~282-284 per locale); docs-site cli-reference/init.md ×4 locale parity 5 h2 / 4 h3 each, 'no-plugin' ×2 per page"
+backfill_note: "real sync_commit_sha backfilled in a following chore commit per the D3 SHA-placeholder exemption"
+```
+
+Sync-phase evidence summary: the sync-audit verdict for this close is written by the auditor to `.moai/reports/t1438/sync-audit.md` (after this commit); the run-phase per-milestone selector evidence this close rests on is §E.2 above.
 
 ## §F Phase 4 Mode Selection
 

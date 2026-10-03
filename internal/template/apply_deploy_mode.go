@@ -35,10 +35,12 @@ var deployModeLineRegex = regexp.MustCompile(`(?m)^(\s*)deployment_mode:\s*["']?
 // one of the closed-set names (config.IsValidDeployMode); an out-of-set
 // value is an error, never a silent write.
 //
-// @MX:NOTE: [AUTO] deploy-mode record entry point (SPEC-INIT-SHRINK-001
+// @MX:ANCHOR: [AUTO] deploy-mode record write side (SPEC-INIT-SHRINK-001
 // REQ-009); init writes the resolved value on every run, and update's
 // restore step re-asserts it from the pre-update backup so the
 // .moai/config Clean wipe cannot cost the key (OD-5 settled condition).
+// @MX:REASON: [AUTO] fan_in=4 (init deploy write, update restore re-assert, update mode migration writes)
+// @MX:SPEC: SPEC-INIT-SHRINK-001
 func ApplyDeployMode(projectRoot, mode string) error {
 	if !config.IsValidDeployMode(mode) {
 		return fmt.Errorf("invalid deployment_mode value %q: must be one of plugin, local", mode)
