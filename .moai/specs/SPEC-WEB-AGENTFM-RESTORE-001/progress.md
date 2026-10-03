@@ -47,7 +47,46 @@
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-10-03
+run_commit_sha: 637574ed3  # the M10 commit — the last code-bearing tree this signal's evidence was measured against (M11's own record commit is docs-only)
+run_status: audit-ready
+scope: v0.3.0 amendment (card t1421) — milestones M7 → M8 → M9 (manager-develop) + M10 (manager-spec re-delegation, commit 637574ed3) + M11 verification (this signal)
+ac_pass_count: 4  # in-scope v0.3.0 ACs for run-phase: AC-AFR-014, AC-AFR-015, AC-AFR-017, AC-AFR-018 — §E.2 M11 block, -count=1 ledger on HEAD 637574ed3
+ac_fail_count: 0
+ac_pending_other_phase:
+  - AC-AFR-016  # sync-owned rules-text grep (REQ-AFR-017) — lands with the joint close (acceptance.md DoD item 5)
+ac_transcribed_this_phase:
+  - AC-AFR-019  # M10-owned AMI-001 link grep — transcribed in §E.2 M11 block (grep -c = 2 at HEAD 637574ed3; HISTORY :31 + exception paragraph :124)
+ac_count_basis: "v0.3.0 in-scope set only — the v0.1.0 13-AC set's PASS evidence is the prior close's §E.2 record, unchanged"
+builds:
+  linux: exit 0   # go build ./...
+  windows: exit 0 # GOOS=windows GOARCH=amd64 go build ./...
+lsp_run_gate: pass  # go vet ./internal/{web,cli,config,template,hook}/ ./internal/settings/... exit 0 — 0 errors (quality.yaml run gate proxy, M6 precedent)
+lint: 0 issues (golangci-lint run --timeout=4m, final tree; one lock-contention retry)
+coverage_new_code:
+  template.ResolveAgentOverrideConsumption: 100.0%
+  config.ValidateLLMYAMLSection: 90.9%
+  config.validateConsumeKeyBool: 94.1%
+  hook.classifyOverrideConsumption: 100.0%
+  hook.checkAgentModel: 100.0%
+suites_full_green:
+  - internal/config (ok 15.183s)
+  - internal/settings/... (ok — includes the untouched llmoverrides + agentfm packages)
+  - internal/template (ok 252.695s)
+  - internal/web (ok 93.790s)
+suites_handed_to_ci:
+  - internal/cli  # exceeds go test's default timeout locally: panicked 2x@10m0s + 1x@20m0s, zero --- FAIL across all runs (cumulative duration, not a hang); card delta verified scoped (ok 3.689s + ok 7.291s); M6 close precedent — scoped cli runs only
+  - internal/hook # exceeded 20m0s locally; agent-model scoped selectors all green (ok 1.417s); 4 failures in SessionStart/stale-run domains carry this lane's live session state (worker-70 / run tlwgk9 / --provider glm) — environment-coupled (t1350 class), zero files in this card's diff
+boundary_greps_new_hits: 0  # pre_tool.go:834 observer branch pre-existing — git diff 677bf469b..HEAD -- internal/hook/pre_tool.go is empty
+scope_envelope: 18 files in the §A/§I envelope; no .claude/rules/**, no SPEC-AGENT-MODEL-INHERIT-001 edits by run-phase (M10 was the manager-spec re-delegation), no runtime-managed paths
+m10_amendment_invariants:
+  ami001_progress_md_untouched: true
+  sync_commit_sha: "770cb02a9 (untouched)"
+  requirement_deletion_or_renumbering: none
+commit_strategy: M7..M11 per-milestone commits on WT-llm-override-contract (no push — lane/leader owns integration)
+recorded_by: manager-develop (run phase, card t1421)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
@@ -175,6 +214,17 @@ recorded_by: manager-docs (sync phase, card t1411)
 - **M9 GREEN**: web `^TestAgentOverridesContractState$` 2서브테스트 PASS(off=저장 전용 마크·on=소비 마크, 상호 배타) · cli `^TestDoctorServedModelConsumeState$` 3서브테스트 PASS(on/off/nil→off) + 기존 `TestServedModelCheck_Sweep|TestServedModelCheck_DefaultRunShowsHintOnly` GREEN · 센티널 가드 `TestWebConsole_NoPerAgentModelResolver|TestWebConsole_AuditNoForkedInterpreter` GREEN(생성물 0히트 계약 유지 — 상태 헬퍼는 센티널-허용 표면 파일 agentfm.go에 배치) · i18n 거버넌스(KeySetParity·Coverage Forward/Reverse·SubsetOfDictionary·GovernanceContract·AllowlistNoOrphans·UntranslatedValues) GREEN — 신규 키 2종×4locale 동반.
 - **최종 배치(HEAD 479f29e2a 트리)**: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · 경계 grep 신규 히트 0 (pre_tool.go:834의 `input.ToolName == "AskUserQuestion"` 관측 분기는 본 카드 미터치 사전존재 — `git diff 677bf469b..HEAD -- internal/hook/pre_tool.go` 빈 출력 실측) · AC 레저 전 커맨드 GREEN(EV-AFR-014 3커맨드 + AC-AFR-015/017/018 각 1커맨드).
 - 커밋: M7 `323e1aa66` · M8 `05ba101dc` · M9 `fae726050` · M7 커버리지 후속 `479f29e2a` — push 없음(레인/리더 통합 소관).
+
+### M11 — 전체 검증 스윕 (2026-10-03, HEAD 637574ed3 — M10 착지 후; 감사-레디 전사)
+
+- **M10 착지 검증 (§D.19 전사)**: 커밋 `637574ed3`은 `.moai/specs/SPEC-AGENT-MODEL-INHERIT-001/spec.md` 단일 파일만 수정 — 동 SPEC progress.md 미등장(`git show 637574ed3 -- <progress.md>` 빈 출력 실측), `sync_commit_sha: "770cb02a9"` 불변(progress.md:362 실측). AC-AFR-019 grep 증거(§D.19 — 커맨드 + verbatim 출력 + 트리 SHA): `grep -c "agent_overrides_consume" .moai/specs/SPEC-AGENT-MODEL-INHERIT-001/spec.md` → `2` (HEAD 637574ed3 트리) — 히트 1: HISTORY 0.8.0 행(:31), 히트 2: REQ-AMI-011 예외 문단 확장(:124, 구현 계약 7사실 전체 미러 — 옵트인 키·해상 의미·전달 경로·훅 필드·가시성·태그 거절·룰 비편집). `TestJevAmendmentLinkage` GREEN(`internal/contract/kickoff` `ok 4.203s`) — 본문·HISTORY·인용 3자 정합 기계 GREEN. 요구사항 삭제·재번호 없음(수정안 본문 서술 + 단일 파일 diff 실측).
+- **E1 최종 트리 레저(전부 `-count=1`, HEAD 637574ed3)**: `TestAgentOverridesConsumeKey` `ok 0.373s` · `TestShippedConfigKeysHaveReaders` `ok 4.386s` · web `TestAgentOverridesSave|TestAgentOverridesContractState` `ok 1.960s` · `TestAgentOverridesConsumption` `ok 0.473s` · `TestDoctorServedModelConsumeState` `ok 1.431s` · `TestAgentModelGuardOverride` `ok 0.948s` — 전부 PASS.
+- **스코프 스위트 전량(§I.5 M11)**: config `ok 15.183s` · settings(+agentfm+yamlpatch) 전부 `ok` · template `ok 252.695s` · web `ok 93.790s` — 전부 GREEN. **cli·hook 전체 스위트는 기계 시간 속성으로 로컬 완주 불가**: cli는 `panic: test timed out after 10m0s` 2회(601.429s·601.200s) + `-timeout=20m` 1회(1201.493s) — **3회 전부 타임아웃 패닉, `--- FAIL` 0건(20m 로그 전수 실측)**, 타임아웃 시점 running 테스트는 매번 다른 테스트(28s·1s)라 행(hang) 아닌 누적 시간 초과. hook은 `-timeout=20m` 1회(1201.016s) 타임아웃 + 4테스트 FAIL(하단 행). **origin/develop CI가 전체 스위트 판정의 설계 주체**(lane 검증 규율 §8 — M6 close 선례도 cli 선별만 측정). 본 카드의 cli/hook 델타는 선별 증거로 충족: cli `TestDoctorServedModelConsumeState|TestServedModelCheck_Sweep|TestServedModelCheck_DefaultRunShowsHintOnly|TestCodexResolution_IgnoresPerAgentLLMCells` `ok 3.689s` + `TestUpdateLLMYAML*|TestStripRetiredModelConfig*|TestJevAmendmentLinkage` `ok 7.291s`; hook `TestAgentModelGuardOverride|TestAgentModelObserveNeverBlocks|TestAgentModelAdvisoryDoesNotBlock|TestAgentModelNoAdvisory|TestAgentModelGuardFailsOpen|TestAppendAgentModelAudit` `ok 1.417s`.
+- **hook 4건 FAIL의 귀속 (본 카드 델타 외)**: `TestSessionStart_GuardLivenessAdvisoryArrivesWithNoOperatorInput`·`TestStaleRunNoticeLegacyLeaderSpelling`·`TestStaleRunNoticeFactoryLegacyLabel`·`TestSessionStart_DeferredScanJoinsWithinBound` — 실패 본문이 본 레인 세션의 생존 상태를 실어 나름(worker-70·run tlwgk9·`--provider glm` — 레인 env 세척(`unset MOAI_KANBAN … MOAI_FACTORY_WORKER`)으로도 미소멸 → home/상태 해석 경유의 환경-결합 거짓 적색, t1350 교훈 클래스; DeferredScan 1건은 879ms vs 250ms 바운드의 기계 부하 민감형). 4테스트 모두 본 카드 diff 미터치 파일(`git diff 677bf469b..HEAD`의 hook 변경은 agent_model_guard.go+테스트뿐 실측) — CI 판정 면에서 정산.
+- **§D.5/M11 스코프 스윕 잔여**: (a) §D.5 model_backend_default 행의 M11 재확인 — `TestCodexResolution_IgnoresPerAgentLLMCells` GREEN(`ok` 상기 배치) — 소비는 오케스트레이터 파라미터라 CLI 해상 기계 무관(D3 처분 대로) 확정. (b) 고아 주석 2종 — `agent_settings_test.go` B-2 마커 소멸 실측, `profile_setup_schema_options_test.go:119`은 M2 갱신본(재포트 사실 서술)로 잔존 — 위반 없음. (c) D5 권고(AC-AFR-016 sync-유예 병기) — acceptance.md DoD 5행이 소유 단계별 전사를 이미 규정: AC-AFR-019는 M10 착지로 본 행에서 전사 완료, AC-AFR-016은 sync 소유로 pending(정합 확인).
+- **E2/E4/E5**: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `go vet ./internal/{web,cli,config,template,hook}/ ./internal/settings/...` exit 0(LSP run 게이트 프록시 오류 0) · 경계 grep 본 카드 신규 히트 0(pre_tool.go:834 관측 분기는 사전존재 — diff 미터치 실측).
+- **E3 커버리지(최종 트리)**: `ResolveAgentOverrideConsumption` 100.0% · `ValidateLLMYAMLSection` 90.9% · `validateConsumeKeyBool` 94.1% · `classifyOverrideConsumption` 100.0% · `checkAgentModel` 100.0% — 신규 코드 전부 ≥85%(커밋당 80% 기준 상회).
+- **커밋 계보(카드 브랜치)**: `677bf469b`(Phase 4 기록) → `323e1aa66`(M7) → `05ba101dc`(M8) → `fae726050`(M9) → `479f29e2a`(M7 커버리지) → `a094758ae`(M7-M9 §E.2) → `637574ed3`(M10, manager-spec 재위임분) → 본 커밋(M11 기록). push 없음 — 레인/리더 통합 소관.
 
 ## §F Phase 4 Mode Selection (card t1421, 2026-10-03)
 
