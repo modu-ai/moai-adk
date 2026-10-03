@@ -23,8 +23,8 @@ func TestLegacyKanbanRouteRedirects(t *testing.T) {
 
 	t.Run("GET redirects to /factory with no page body", func(t *testing.T) {
 		rec := serveGet(t, h, "/kanban")
-		if rec.Code < 300 || rec.Code > 399 {
-			t.Fatalf("GET /kanban status = %d, want a 3xx redirect\nbody:\n%s", rec.Code, rec.Body.String())
+		if rec.Code != http.StatusMovedPermanently {
+			t.Fatalf("GET /kanban status = %d, want 301 (a retired path is cached by the browser)\nbody:\n%s", rec.Code, rec.Body.String())
 		}
 		if got := rec.Header().Get("Location"); got != "/factory" {
 			t.Errorf("GET /kanban Location = %q, want /factory", got)

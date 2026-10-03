@@ -76,7 +76,7 @@ var (
 	backtickSpan      = regexp.MustCompile("`([^`]+)`")
 	launcherSpan      = regexp.MustCompile(`^moai (cc|glm|codex) -`)
 	blockCapSpan      = regexp.MustCompile("`" + config.EnvClaudeCodeStopHookBlockCap + `=(\d+)` + "`")
-	recordSectionHead = regexp.MustCompile("(?m)^## Session record\\s*$")
+	recordSectionHead = regexp.MustCompile(`(?m)^## Session record\s*$`)
 	nextSectionHead   = regexp.MustCompile("(?m)^## ")
 )
 
