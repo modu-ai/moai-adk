@@ -189,4 +189,50 @@ m1_to_mN_commit_strategy: stub S, RED R, one commit per milestone M2..M4, two M5
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync phase_
+sync_status: audit-ready (AC-MT-015 operator-held, NOT run; real TUI behavior never observed)
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill   # canonical placeholder: this commit cannot cite its own hash; backfilled in the following progress.md-only commit
+head_at_signal: 71befeeb9 (measured tree, = the card branch after absorbing local develop 1da5e4fc6; the sync edits were uncommitted when measured)
+tree: .claude/worktrees/t1408
+branch: WT-managed-codex-tui-attach
+owner: manager-docs (sync-phase)
+ac_source: .moai/specs/SPEC-FACTORY-MANAGED-TUI-001/acceptance.md (tier M, state `resolved`, non-empty)
+docs_changed: `CHANGELOG.md` (the run-phase draft rewritten in place: complete run SHA list, card-child headless bullet, merge-hotspot bullet, honest AC-MT-015 and debt wording; still one entry) · `.moai/specs/SPEC-FACTORY-MANAGED-TUI-001/spec.md` (frontmatter `status:` line only) · this section
+docs_not_changed: `.moai/docs/factory-managed-session.md` (read against the code after the merge, nothing found wrong; see below) · plan.md, acceptance.md, design.md, red-baseline.md, manual-check.md (no `status:` field; `updated:` already 2026-10-03) · every `.go` file, `internal/cli/codex_launcher.go`
+changelog_entry_position: `[Unreleased]` -> `### Added`, first item, directly above SPEC-FACTORY-MANAGED-CARD-CHILD-001 (t1440)
+frontmatter_status_transitions: spec.md `in-progress -> implemented -> completed` merged into this single sync commit (frontmatter records `status: completed`); `updated: 2026-10-03` unchanged (already the sync date)
+b12_self_test_a: before the edit the run-phase draft was already present (count 1, so no duplicate emission was possible); after the edit `grep -c 'SPEC-FACTORY-MANAGED-TUI-001' CHANGELOG.md` -> `1`
+b12_self_test_b: B12 counter on acceptance.md -> stdout `16`, stderr `live=16 excluded=0 ambiguous=0`, exit 0; `grep -oE '^- \*\*REQ-MT-[0-9]{3}\*\*' spec.md | sort -u | wc -l` -> `14`; the entry states 14 requirements and 16 acceptance criteria
+b12_self_test_c: every path the entry cites exists (`internal/cli/managed_codex_tui.go`, `managed_codex_factory.go`, `managed_factory_session.go`, `managed_codex_tui_test.go`, `internal/config/defaults.go`, `internal/config/envkeys.go`, the operator document, `manual-check.md`, `progress.md`, `red-baseline.md`); the run SHAs were read from `git log` of this tree
+canary_compliance_check: not applicable
+ac_mt_013: operator-document and CHANGELOG anchors re-counted at this HEAD (table below)
+ac_mt_015: NOT RUN. Record: "operator confirmation pending, no terminal designated" (`manual-check.md`). Steps 1, 2, 3 and 6 are unobserved.
+known_debt_1_of_SESSION_001: addressed, unverified (fake codex only)
+
+All attributions are `(this run, this tree, HEAD 71befeeb9 plus the uncommitted sync edits, before the sync commit)`.
+
+### Evidence
+
+| Check | Command | Observed |
+|---|---|---|
+| SPEC lint | `moai spec lint .moai/specs/SPEC-FACTORY-MANAGED-TUI-001` | `No findings - all SPEC documents are valid`, exit 0 |
+| AC count (B12) | counter from `manager-docs.md` on acceptance.md | `16`, `live=16 excluded=0 ambiguous=0`, exit 0 |
+| REQ count | `grep -oE '^- \*\*REQ-MT-[0-9]{3}\*\*' spec.md` piped to `sort -u` and `wc -l` | `14` |
+| CHANGELOG | `grep -c 'SPEC-FACTORY-MANAGED-TUI-001' CHANGELOG.md` / `grep -c 'anchor:tui-' CHANGELOG.md` | `1` / `6` (acceptance needs 1+ and 5+) |
+| Merge-tree managed regression | lane env scrubbed, `go test -race -count=1 -run Managed ./internal/cli` | `ok  github.com/modu-ai/moai-adk/internal/cli  163.582s`, exit 0 |
+| Public docs | `grep -rlE "MOAI_FACTORY_MANAGED|factory-managed|managed Codex|App Server" internal/template/templates docs-site/content README.md README.ko.md README.ja.md README.zh.md` | no file listed; the headless/no-TUI wording grep over the same trees (`headless|no TUI|헤드리스` filtered by `managed|codex`) hit only `e2e-tester.toml:128` (unrelated browser headless/headed note). No public statement to fix. |
+| Operator-doc accuracy | read lines 46, 48, 75-86, 119 of `.moai/docs/factory-managed-session.md` against `operatorTUIPreconditions` (`managed_codex_tui.go:185-204`) | opt-out values, stdin/stdout terminal checks, `--remote` probe and the card-child headless bullet all match the code; nothing edited |
+| Spec drift (repo-wide) | `moai spec drift --no-cache --count` | `177` (repo-wide baseline, not attributed to this SPEC) |
+
+### Gaps
+
+- AC-MT-015 and every real-TUI behavior: not run, no terminal designated.
+- Codemaps freshness and the repository-wide test suite: not run here (CI on the integration branch owns the suite; codemaps regeneration was not requested).
+- The `moai` binary used for `spec lint` / `spec drift` is the installed v3.2.0-rc.27; its commit was not compared with this tree's HEAD, so these two tool readings carry no judging-build attribution.
+- The card-child headless statement is read from code, not observed on a lane terminal.
+
+### Residual-risk
+
+- The attach may not work with a real codex (frame delivery to the launcher, request routing with two connections, resume by thread id, terminal restoration).
+- The attach touches the same lines as cards t1459 and t1410; the second to land must re-measure.
+
