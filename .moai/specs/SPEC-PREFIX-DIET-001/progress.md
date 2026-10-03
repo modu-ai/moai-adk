@@ -358,7 +358,7 @@ run_open_for_leader: D4 targets (all three below the plan drafts, REQ-PFD-002), 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill
+sync_commit_sha: b7ea0d823e9d
 sync_status: complete (sync-audit and the leader's evidence read are still owed; this record claims neither)
 b12_self_test_a: PASS — `grep -c "SPEC-PREFIX-DIET-001" CHANGELOG.md` printed `0` before the entry was written (no duplicate)
 b12_self_test_b: PASS with a named deviation — ac_source=`.moai/specs/SPEC-PREFIX-DIET-001/acceptance.md`, tier=M; live count 16 (AC-PFD-001..016), no `[RETIRED]`/`[REF]` token and no `moai-ac-prefix` line in the file (`grep -c -F` -> 0 for each), so no identifier is ambiguous; the CHANGELOG entry states 16. The deviation: the worktree guard refused `awk -f`, so the contract's awk counter was not executed; the count was rebuilt from `grep -o -E "AC-[A-Z0-9]+-[0-9]+[a-z]?"` (28 occurrences, 16 distinct ids, 001..016) by hand
