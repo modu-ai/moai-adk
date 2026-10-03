@@ -71,3 +71,21 @@ def test_real_non_ancestor_is_reported_not_ancestor(tmp_path, monkeypatch):
     monkeypatch.setattr(triage, "INTEGRATION", "develop")
     _, obs = triage.measure("t0000", "premise `side_probe_fn` in side.go")
     assert "NOT an ancestor" in obs
+
+
+def test_symbol_is_counted_as_a_fixed_string_not_a_regex(tmp_path, monkeypatch):
+    # Card t1419: a card symbol is a literal, never a pattern. `foo.bar`
+    # treated as a regex also matches `fooXbar` (the `.` is a wildcard), so
+    # the file count over-reports presence. Only lit.go holds the literal.
+    work = tmp_path / "repo"
+    work.mkdir()
+    (work / "lit.go").write_text("package probe\n\n// foo.bar(\n")
+    (work / "wild.go").write_text("package probe\n\n// fooXbar\n")
+    _git(work, "init", "-q", ".")
+    _git(work, "add", "lit.go", "wild.go")
+    _git(work, "commit", "-q", "-m", "add probes")
+    _git(work, "branch", "develop")
+    monkeypatch.chdir(work)
+    monkeypatch.setattr(triage, "INTEGRATION", "develop")
+    _, obs = triage.measure("t0000", "premise `foo.bar` in lit.go")
+    assert "'foo.bar': 1 file(s) contain it in develop" in obs, obs
