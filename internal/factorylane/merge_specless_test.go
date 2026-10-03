@@ -161,6 +161,23 @@ func TestMergeTripleSpecLessVerdict(t *testing.T) {
 			wants: []string{wantPath, "unreadable"},
 		},
 		{
+			name: "specless_evidence_directory_is_unreadable",
+			setup: func(t *testing.T, r specLessRepo, head string) string {
+				if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+					t.Skip("file permissions cannot make a directory unreadable here")
+				}
+				r.write(t, r.verdictRel(), verdictBody("PASS", head))
+				dir := filepath.Join(r.dir, ".moai", "reports", r.card)
+				if err := os.Chmod(dir, 0o000); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+				return ""
+			},
+			pass:  false,
+			wants: []string{wantPath, "unreadable"},
+		},
+		{
 			name: "specless_verdict_path_is_a_directory",
 			setup: func(t *testing.T, r specLessRepo, head string) string {
 				if err := os.MkdirAll(filepath.Join(r.dir, r.verdictRel()), 0o755); err != nil {
@@ -219,6 +236,17 @@ func TestMergeTripleSpecLessVerdict(t *testing.T) {
 			wants: []string{wantPath, "audited_sha", "stale", "card.txt"},
 		},
 		{
+			name: "specless_pass_but_head_moved_in_another_cards_evidence_directory",
+			setup: func(t *testing.T, r specLessRepo, head string) string {
+				r.write(t, r.verdictRel(), verdictBody("PASS", head))
+				r.write(t, filepath.Join(".moai", "reports", "t8", "verdict.md"), "another card's evidence\n")
+				r.commit(t, "another card's evidence lands after the audited commit")
+				return ""
+			},
+			pass:  false,
+			wants: []string{wantPath, "audited_sha", "stale", ".moai/reports/t8/verdict.md"},
+		},
+		{
 			name: "specless_audited_sha_names_no_commit",
 			setup: func(t *testing.T, r specLessRepo, head string) string {
 				r.write(t, r.verdictRel(), verdictBody("PASS", strings.Repeat("a", 40)))
@@ -273,15 +301,19 @@ func TestMergeTripleSpecLessVerdict(t *testing.T) {
 	}
 }
 
-// A card id that is not a safe path segment is refused before any path is built.
+// A card id that is not a safe path segment is refused before any path is built —
+// even when a valid verdict file sits at the path the id would resolve to.
 func TestMergeTripleSpecLessRefusesUnsafeCardID(t *testing.T) {
-	for _, card := range []string{"", "../t9", "a/b", "-x"} {
+	for _, card := range []string{"", "../t9", "a/b", "-x", "t9/.."} {
 		r, head := newSpecLessRepo(t)
-		r.write(t, r.verdictRel(), verdictBody("PASS", head))
 		r.card = card
+		r.write(t, filepath.Join(".moai", "reports", card, "verdict.md"), verdictBody("PASS", head))
 		run := evalSpecLess(t, r, "")
 		if run.Checks[0].Passed {
 			t.Errorf("card %q: sync-audit passed on an unsafe card id", card)
+		}
+		if !strings.Contains(run.Checks[0].Detail, "not a safe path segment") {
+			t.Errorf("card %q: detail does not name the unsafe id: %s", card, run.Checks[0].Detail)
 		}
 	}
 }
