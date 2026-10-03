@@ -177,10 +177,17 @@ Ordered inside the update flow's existing step table; the Clean step stays the r
    content different, or no usable record (absent/stale, conservatively — RK-9) → `modified`
    (archive-then-remove). The P-19/P-21 rules decide ownership only among template-carried
    files; on their own they never route a file into a removal class.
-3. **Archive** (REQ-012): `modified` items are archived first — skill directories through
-   `archiveSkill` (which already refuses symlinks and aborts the run's drift contract safely), and
-   standalone files (commands, mirror files) through the same layout with a file-level archive
-   root. **Any archive failure aborts before the removal step runs** — the P-08 REQ-UDS-008 rule.
+3. **Archive** (REQ-012): `modified` items are archived first, and the archive unit is the
+   classified file — never a directory. Classification is per-file (step 2), and the archive step
+   copies only the files the classifier placed in the modified set; a directory-level copy that
+   overrides the per-file classification results is prohibited — it would archive
+   template-identical and foreign members of the same skill directory, violating REQ-013's
+   never-archived clause and OD-3 (a)'s identical-no-archive condition. For a skill directory the
+   classified modified members are archived through `archiveSkill` (which already refuses symlinks
+   and aborts the run's drift contract safely), preserving the directory layout in the archive
+   while its identical and foreign members are not copied; standalone files (commands, mirror
+   files) archive through the same layout with a file-level archive root. **Any archive failure
+   aborts before the removal step runs** — the P-08 REQ-UDS-008 rule.
 4. **Removal** (REQ-011/REQ-013): `identical` items are removed (no archive — the plugin and the
    template render are the recovery source); `foreign` items and symlinks are never in the
    removal list. The binding invariant: **the removal executor's scope is exactly the classified
@@ -201,8 +208,13 @@ Ordered inside the update flow's existing step table; the Clean step stays the r
    identical items are removed without backup per OD-3 (a) — the P-08 exemption is moot by
    construction, not by FS scoping. The abort-before-removal contract is unchanged. On a
    `local`-outcome migration run (`not-demonstrated` / `opted-out`) nothing is removed by the
-   migration and the normal Clean walk runs as today — the local deploy redeploys the full
-   payload.
+   migration and the dropped roots are excluded from the run's removal paths — the same
+   suppression REQ-011 states for a migration run — so the deployed copies stand untouched: no
+   dedupe, no removal, and the record is written `local` (OD-4 settled (a, amended)). The two
+   arms differ only in the deploy: on `opted-out` the full local payload deploys through update's
+   normal local path as today (REQ-016/REQ-017 — the deploy scope is today's, not the removal
+   machinery); on `not-demonstrated` nothing redeploys into the dropped roots and the copies the
+   project already has remain in place.
 5. **Record write**: the migration ends by writing the mode record (`plugin` after a confirmed
    install, or `local` under the opt-out — in which case steps 2-4 are skipped entirely — or
    `local` when the probe does not demonstrate this-install success (`not-demonstrated`),

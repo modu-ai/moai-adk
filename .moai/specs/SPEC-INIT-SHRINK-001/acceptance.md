@@ -23,7 +23,15 @@ each criterion here is a binary-testable Given/When/Then with the same number.
   criteria's RED-now cells were re-observed on the repair tree `5c380a251` (L-06 and L-16 carry
   the fresh runs). AC-010 and AC-013's fixture and rationale wording was tightened to the
   template-carriage predicate (D-12) without changing their asserted classification behavior, so
-  their pins stand per the unchanged-assertion rule.
+  their pins stand per the unchanged-assertion rule. A fourth same-day repair — the
+  leader-disposition repair (D-14..D-17, 2026-10-04) — changed the asserted behavior of AC-004
+  (its Given re-keyed onto the probe's `not-demonstrated` arm; the opt-out arm removed — the
+  opt-out path is REQ-003's full local deploy and never triggers guidance) and AC-012 (the
+  archive unit restated as the classified file, never a whole directory); their RED-now cells
+  were re-observed on the repair tree `d7bc4e539` (L-05 and L-13 carry the fresh runs). The D-15
+  surfaces (AC-011's OD-3 fold sentence and the RK-9 Edge bullet) were qualified with the
+  template-carriage predicate without changing their asserted classification behavior, so their
+  pins stand per the unchanged-assertion rule.
 - **Two cells per criterion** (`verification-completeness.md` §2): a RED-now cell — the criterion's
   own command observed red on this tree, with the reason it is red, in the Evidence Ledger — and a
   green-path cell naming the milestone that flips it and the passing output. Where the RED-now
@@ -55,7 +63,7 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 | AC-001 | REQ-001 thin default deploy set | M2 | L-01 |
 | AC-002 | REQ-002 template sources retained | M2 | L-03 |
 | AC-003 | REQ-003 `--no-plugin` full local payload | M2 | L-04 |
-| AC-004 | REQ-004 skipped/failed install guidance | M2 | L-05 |
+| AC-004 | REQ-004 not-demonstrated install guidance | M2 | L-05 |
 | AC-005 | REQ-005 `.mcp.json` policy (OD-1 settled (c)) | M2 | L-06 |
 | AC-006 | REQ-006 Codex mirror policy (OD-6 settled (a) + condition) | M2 | L-07 |
 | AC-007 | REQ-007 `--all` semantics (OD-7 settled (a)) | M2 | L-08 |
@@ -114,13 +122,14 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 - **Alternate (OD-6 (b)/(c)):** the mirror arm of the fixture expectation changes per the mirror
   verdict; the skills/commands/MCP arms do not.
 
-### AC-004 — Skipped/failed install guidance (REQ-004)
+### AC-004 — Not-demonstrated install guidance on the default path (REQ-004)
 
-- **Given** the default path with the install step stubbed to fail (or the opt-out set so it is
-  skipped), **When** init completes deployment, **Then** exactly one guidance block names both
+- **Given** the default path with the install step stubbed so the post-install list-surface probe
+  reads `not-demonstrated` (the plugin ref never enters the post-execution surface of its pre/post
+  diff), **When** init completes deployment, **Then** exactly one guidance block names both
   recourses (`--no-plugin` re-run; the manual install commands) and the init exit status is 0.
 - **Verify:** `go test ./internal/cli -run '^TestShrinkInitGuidanceOnMissingPlugin$' -count=1 -v`
-  (GREEN path, M2). RED-now: L-05.
+  (GREEN path, M2). RED-now: L-05 (re-observed 2026-10-04 — see the ledger).
 
 ### AC-005 — `.mcp.json` policy on the default path (REQ-005, OD-1 settled (c) 2026-10-03)
 
@@ -209,9 +218,11 @@ each criterion here is a binary-testable Given/When/Then with the same number.
   classified-set-scoped executor (REQ-011; design §3 step 4): the removal list the executor
   processed is the classified set, and the global managed-roots walk did not run over the dropped
   roots in this run.
-- **OD-3 conditions folded here:** a file whose manifest entry is missing or stale classifies
-  modified (archive-then-remove via REQ-010/REQ-012) and never enters this removal set; removal
-  runs only after every archive in the batch has succeeded (REQ-012).
+- **OD-3 conditions folded here:** a template-carried file whose manifest entry is missing or
+  stale classifies modified (archive-then-remove via REQ-010/REQ-012) and never enters this
+  removal set; a file the template render does not carry is foreign under REQ-010 whatever its
+  manifest state and is never classified for removal or archive; removal runs only after every
+  archive in the batch has succeeded (REQ-012).
 - **Verify:** `go test ./internal/cli -run '^TestMigrationRemovesIdenticalDroppedComponents$' -count=1 -v`.
 - **Alternates not taken (recorded):** (b) the no-archive expectation would flip, (c) the
   criterion would assert report-only output.
@@ -323,13 +334,19 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 
 ## Edge Cases
 
-- **Manifest absent or stale on an old project** (RK-9): every dropped-root file under a missing
-  record classifies modified — archived, never silently removed.
+- **Manifest absent or stale on an old project** (RK-9): every template-carried dropped-root file
+  under a missing record classifies modified — archived, never silently removed; dropped-root
+  files the template render does not carry (a user-created `moai-custom` skill included) are
+  foreign under REQ-010 whatever the record — preserved, never archived, never removed.
 - **Foreign skill whose name starts with `moai-`**: the migration's class gate is template
   carriage — a user skill named `moai-custom` is foreign because the template render does not
   carry it, regardless of manifest tracking or the P-19/P-21 managed-name match (those rules stay
   the name gate for update's existing protection and decide only identical-vs-modified among
-  template-carried files; template absence alone is foreign, always preserved byte-for-byte).
+  template-carried files; template absence alone is foreign — the migration run itself preserves
+  it byte-for-byte, never removing or archiving it (REQ-013); beyond that run the file is subject
+  to update's existing local-path behavior (REQ-017 — today's merge scope, and the Clean walk's
+  P-08 backup-then-remove), which this card does not change: the preservation guarantee is the
+  migration run plus REQ-017's machinery, not a byte-for-byte promise for every future update).
 - **A project already migrated, then `--no-plugin` re-init**: the init re-entry redeploys the full
   local payload and flips the record to `local` — the documented switch surface (REQ-018), not a
   migration defect.
@@ -401,8 +418,18 @@ redirect-and-echo bundles).
   - Command: `go test ./internal/cli -run '^TestNoPluginPathDeploysFullLocalPayload$' -count=1 -v`
   - Stdout: `PASS` / `ok  	...internal/cli	1.312s [no tests to run]`. Exit 0; red by the
     PASS-line rule. Flipped by M2.
-- **L-05** (AC-004) — the AC-004 test does not exist; same no-tests-to-run shape as L-04 (the
-  AC-004 anchor will be captured at M2 authoring; the shape cell L-04 stands for the form).
+- **L-05** (AC-004; re-observed 2026-10-04 at tree `d7bc4e539` — the D-14 repair re-keyed the
+  criterion's Given onto the probe's `not-demonstrated` arm and removed the opt-out arm, so the
+  cell was re-measured with its own selector)
+  - Command: `go test ./internal/cli -run '^TestShrinkInitGuidanceOnMissingPlugin$' -count=1 -v`
+  - Stdout (verbatim, at tree `d7bc4e539`):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	0.787s [no tests to run]
+    ```
+  - Exit code: 0; red by the PASS-line rule (the criterion's named test does not exist yet).
+    Flipped by M2.
 - **L-06** (AC-005; re-observed 2026-10-03 — the OD-1 (c) amendment added the conditional third
   arm to the criterion's assertion, so the cell was re-measured)
   - Command: `go test ./internal/cli -run '^TestDefaultPathMcpEntryPolicy$' -count=1 -v`
@@ -476,6 +503,15 @@ redirect-and-echo bundles).
     ```
   - Exit code: 0; red by the PASS-line rule. Flipped by M3. The negative control (pre-fix silent
     deletion) is a subtest shown failing before the fix lands.
+  - D-17-repair re-observation (2026-10-04, tree `d7bc4e539` — the repair restated the archive
+    unit as the classified file, never a whole directory, sharpening the criterion's assertion):
+    same command, verbatim stdout:
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	0.667s [no tests to run]
+    ```
+    exit 0 — same no-tests-to-run shape.
 - **L-14** (AC-013; own selector, observed 2026-10-03 at tree `a1f17b038` — the cross-model repair
   (D-7) strengthened the criterion's Given to a glob-hit foreign name, so the cell moved off the
   L-01 shape onto its own command)
