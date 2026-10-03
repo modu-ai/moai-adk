@@ -1,6 +1,13 @@
 package kanban
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+// errStepLockNotImplemented is what the compile-only stub of
+// SPEC-FACTORY-ATOMIC-LEASE-001 WM1 returns until milestone WM5 replaces it.
+var errStepLockNotImplemented = errors.New("not implemented: SPEC-FACTORY-ATOMIC-LEASE-001 WM5")
 
 // AcquireFactoryStepLock takes the cross-process lock that serializes the
 // worktree step of a factory lease (SPEC-FACTORY-ATOMIC-LEASE-001 plan D3),
@@ -10,5 +17,5 @@ import "time"
 // (a test that calls it must never meet a nil function) and the sentinel error
 // until milestone WM5 replaces it.
 func AcquireFactoryStepLock(root string, wait time.Duration) (release func() error, err error) {
-	return func() error { return nil }, errWithLockNotImplemented
+	return func() error { return nil }, errStepLockNotImplemented
 }
