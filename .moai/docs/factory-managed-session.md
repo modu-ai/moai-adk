@@ -36,9 +36,9 @@
 |---|---|
 | 런치 분기 | 스위치(`MOAI_FACTORY_MANAGED`)와 Factory 스탬프(`MOAI_KANBAN_ID` 등)가 모두 있는 레인/리더 런치만 관리 소유자로 분기한다. 둘 중 하나라도 없는 런치는 예전 exec 경로 그대로다. |
 | Claude / GLM | 런처가 `--print` + stream-JSON 입출력 플래그를 직접 붙이고, 연산자가 같은 플래그를 덮어쓰려 하면 거부한다. |
-| Codex | 런처가 로컬 App Server를 헤드리스로 직접 띄워 루프백 WebSocket으로 붙는다. TUI는 붙지 않으므로 화면에는 아무것도 나타나지 않는다(아래 "알려진 한계"). App Server는 런치 디렉터리(프로젝트 루트, `-w`를 쓰면 그 워크트리)에서 시작한다. |
+| Codex | 런처가 로컬 App Server를 직접 띄워 루프백 WebSocket으로 붙는다. 터미널과 `codex` 기능 조건이 맞으면 같은 App Server·같은 스레드에 Codex TUI 를 두 번째 클라이언트로 붙이고, 조건이 맞지 않으면 예전처럼 헤드리스로 남는다(아래 "알려진 한계"의 TUI 항목들). App Server는 런치 디렉터리(프로젝트 루트, `-w`를 쓰면 그 워크트리)에서 시작한다. |
 | 전달 방식 | 세션이 한가할 때만 브로커에서 한 묶음을 claim하고, 다음 턴 프롬프트에 **메타데이터만**(메시지 id, claim 토큰, 종류, 보낸 슬롯, task 참조) 넣는다. 본문은 프롬프트에 들어가지 않고, 모델이 claim 토큰으로 `factory_msg_body` 를 호출해 읽는다. |
-| 직렬 처리 | 연산자 입력과 브로커 수신 메시지는 한 줄짜리 턴 큐에서 도착한 순서대로(FIFO) 처리된다. 작업 중인 세션은 끼어들기를 당하지 않으며, 연산자 입력이라고 해서 앞서 가지도 않는다. 이미 claim한 inbox 묶음이 있으면 그 뒤에 도착한 연산자 입력은 묶음 다음 차례가 된다. |
+| 직렬 처리 | 연산자 입력과 브로커 수신 메시지는 한 줄짜리 턴 큐에서 도착한 순서대로(FIFO) 처리된다. 작업 중인 세션은 끼어들기를 당하지 않으며, 연산자 입력이라고 해서 앞서 가지도 않는다. 이미 claim한 inbox 묶음이 있으면 그 뒤에 도착한 연산자 입력은 묶음 다음 차례가 된다. Codex TUI 가 붙은 동안에는 연산자 입력이 TUI 로 가므로 이 큐를 거치지 않는다(아래 TUI 항목). |
 | 영수증 | 모델이 처리 뒤 `factory_msg_receipt` 로 영수증을 남기면 브로커가 "전달됨"으로 기록한다. 영수증은 **전달 증거**일 뿐 카드 완료 판정이 아니다. 판정은 수신 세션이 본문을 보고 내린다. |
 | 런치 실패 | 시작에 실패한 런치는 launch-pending 등록을 되돌려서, 영구적인 대기 행이 남지 않는다. |
 | 서버 요청 응답 (Codex) | 소유자는 App Server가 먼저 보내는 요청에 전부 답한다. 명령 실행·파일 변경 승인과 MCP elicitation 은 `decline` 으로 거부한다. 레거시 승인 두 종(`applyPatchApproval`, `execCommandApproval`)은 스키마가 정한 객체 `{"decision":{"denied":{"rejection":"<고정 영어 문구>"}}}` 로 거부한다. 문자열 `"denied"` 는 codex 0.160.0 스키마에 없는 값이라 쓰지 않고, 문자열 `abort` 는 턴을 끊으므로 쓰지 않는다. 권한 요청에는 빈 권한을, 동적 도구 호출에는 `success:false` 결과를 돌려준다. 사용자 입력·인증 토큰 갱신·attestation 요청은 JSON-RPC 오류(`-32000`)로, 표에 없는 method 는 `-32601` 오류로 답한다. 어느 답도 무언가를 허용하지 않는다. 결과를 돌려주는 답 일곱 종의 결과 본문은 vendoring 한 codex 0.160.0 응답 스키마(`internal/cli/testdata/codex-0.160.0/`)에 대해 시험으로 검증한다. 오류로 답하는 세 종과 미지 method 폴백은 시험이 오류 객체를 다시 조립해 `JSONRPCError.json` 에 대조하므로, 와이어에서 필수 필드가 빠져도 이 가드는 잡지 못한다(오류 코드와 메시지는 정책 시험이 정확한 값으로 따로 단언한다). 답한 요청마다 stderr 에 `Factory server request answered: …` 한 줄이 남는다. 서버 요청의 id가 대기 중인 클라이언트 id와 같거나 문자열이어도 응답으로 오인하지 않고 읽기 루프도 끊기지 않으며, 연결 쓰기는 뮤텍스 하나를 거친다. |
@@ -65,7 +65,17 @@
 
 ## 알려진 한계
 
-- **Codex 관리 세션은 화면에 아무것도 보여 주지 않는다.** 소유자가 TUI 없는 헤드리스 App Server라서, 관리 세션으로 뜬 `moai codex`는 모델 출력이 터미널에 나오지 않는다. 소스를 읽어 확인한 내용이며 실제 실행으로 관측한 것은 아니다. TUI 부착은 후속 카드 t1408 에서 다룬다.
+- <!-- anchor:tui-debt-status --> **Codex TUI 부착(`SPEC-FACTORY-MANAGED-TUI-001`, 카드 t1408): 알려진 부채 1은 `addressed`, 실제 TUI 동작은 `unverified`.** 관리 세션이 화면에 아무것도 보여 주지 않던 문제를 다루는 변경이 들어왔다. 통과한 것은 가짜 codex 를 상대로 한 시험뿐이고 실제 TUI 를 돌려 본 관측은 없다. 운영자가 수동 점검 AC-MT-015 를 실행해 1·2·3·6단계를 관측으로 기록하기 전에는 이 부채를 "해결됨"이라고 쓰지 않는다.
+- <!-- anchor:tui-opt-out --> **TUI 부착은 `MOAI_FACTORY_MANAGED_TUI` 로 끈다.** 관리 게이트(`MOAI_FACTORY_MANAGED` + Factory 스탬프) 안에서는 기본으로 TUI 를 붙인다. `MOAI_FACTORY_MANAGED_TUI` 를 `0`, `false`, `off`(대소문자와 앞뒤 공백은 무시) 중 하나로 두면 예전처럼 헤드리스로 남고 안내 한 줄만 찍힌다. 두 번째 옵트인이 아니라 게이트 안에서 새 동작만 끄는 장치다.
+- <!-- anchor:tui-log-file --> **TUI 가 떠 있는 동안 런처 출력은 로그 파일로 간다.** 터미널은 TUI 가 쓰므로 런처의 운영자용 로그 줄과 App Server 의 stderr 는 프로젝트의 `.moai/logs/factory-managed-<run-id>-<레인 라벨>.log` 에 쌓이고, 경로는 TUI 가 뜨기 전에 stderr 에 한 번 찍힌다. `Factory server request answered: …`, `Factory turn failed …` 같은 HARDEN-001 의 흔적도 이 동안에는 화면이 아니라 이 파일에 있다. TUI 가 끝나면 이후 런처 로그 줄은 다시 터미널로 나오고 App Server 의 stderr 는 끝까지 파일에 남는다.
+- <!-- anchor:tui-quit --> **TUI 가 붙은 동안 `/exit`·`/quit` 는 런처 명령이 아니다.** 터미널 입력은 TUI 가 받는다. 런처는 stdin 을 읽지 않고 `/exit`·`/quit` 도 해석하지 않으므로 세션은 TUI 의 `/quit` 같은 자체 명령으로 끝낸다. TUI 종료 상태가 런처 종료 코드가 되고(0 이면 0, 시그널로 끝나면 1), 연산자 입력은 런처의 턴 큐를 거치지 않는다. 헤드리스로 남은 경우(옵트아웃·조건 불충족)는 기존 그대로다.
+- <!-- anchor:tui-probe --> **부착 조건은 버전이 아니라 기능 탐지로 정한다.** stdin 과 stdout 이 모두 터미널이고 `codex resume --help` 출력에 `--remote` 와 `--remote-auth-token-env` 가 둘 다 있을 때만 붙인다. 하나라도 어긋나거나 TUI 를 띄우지 못하면 헤드리스로 이어 가며 이유를 밝힌 안내 한 줄을 stderr 에 한 번 찍는다. 이 경우 종료 상태는 달라지지 않는다.
+- <!-- anchor:tui-signals --> **시그널 공백은 그대로 열려 있다.** TUI 부착은 이 공백을 닫지 않는다. 런처가 속한 프로세스 그룹에 SIGHUP·SIGINT 가 가면 정리 코드 없이 끝나 App Server 가 남을 수 있다. 시그널 처리와 `Start`/`Close` 재설계는 계속 카드 t1459 가 맡는다.
+- <!-- anchor:tui-unobserved --> **미관측 1 — 런처 연결이 TUI 가 시작한 턴의 수명주기 프레임을 받는지.** 받지 못하면 런처는 스레드가 바쁜 것을 알 수 없어 브로커 묶음을 미루지 못하고 진행 중인 턴에 합류시킬 수 있다(교착은 아니다). 가짜 서버로만 확인했다.
+- <!-- anchor:tui-unobserved --> **미관측 2 — 두 연결이 한 스레드를 구독할 때 서버 요청이 어디로 가는지.** turnId 로 범위를 가르는 규칙은 어느 경로에서도 성립하게 만들었지만, turnId 가 없는 요청 네 종(과 turnId 가 null 인 elicitation)은 예전의 자동 응답을 유지하므로 서버가 두 연결에 모두 보내면 운영자의 답과 경합할 수 있다.
+- <!-- anchor:tui-unobserved --> **미관측 3 — 실제 TUI 의 동작.** `codex resume --remote` 가 스레드 id 로 실행 중인 스레드를 찾는지, 런처가 시작한 턴을 화면에 그리는지, `/quit` 가 0 으로 끝나는지, 인터럽트 뒤 kill 로 끝낸 TUI 가 터미널을 복구하는지, 터미널 감지가 실제 tty 에서 맞는지는 시험이 보지 못한다.
+- <!-- anchor:tui-manual-check --> **수동 점검 AC-MT-015 는 운영자 몫이고 CI 에서 돌지 않는다.** 터미널이 지정되지 않아 현재 기록은 "operator confirmation pending, no terminal designated" 이다. 절차는 `.moai/specs/SPEC-FACTORY-MANAGED-TUI-001/acceptance.md` §4, 결과는 `.moai/reports/t1408/manual-attach-check.md` 에 남긴다.
+- <!-- anchor:tui-limits --> **TUI 부착의 나머지 한계.** 활성 턴이 길면 브로커 묶음은 그 턴이 끝날 때까지 미뤄지고 시간으로 풀리지 않는다(`turn/completed` 프레임을 잃으면 중계가 굶고, 단서는 로그 파일의 반복 줄뿐이다). 한가함 확인과 `turn/start` 사이의 경주 구간에 운영자가 시작한 턴에는 합류한다. 런처 자신의 `turn/start` 가 끝나기 전에 도착해 turn id 를 모르는 요청은 런처의 턴으로 보고 거부한다. 토큰은 TUI 자식 프로세스의 환경에 있어 같은 사용자의 프로세스 조회로 보일 수 있다. Windows 실행과 codex 버전 범위는 인증하지 않았다.
 - **런처는 시그널을 처리하지 않는다.** 런처 프로세스가 SIGTERM이나 SIGHUP으로 끝나면 정리 코드가 돌지 않아 자식 프로세스와 임시 파일이 남을 수 있다. 이 공백은 해결되지 않았다. 시그널 처리와 `Start`/`Close` 수명주기는 카드 t1459 가 맡는다.
 - **실제 codex 세션에서는 관측하지 않았다.** 서버 요청 응답과 턴 단위 실패 격리는 가짜 App Server를 상대로 한 시험으로만 확인했다. 실제 세션에서 거부 응답 뒤 모델이 어떻게 움직이는지, elicitation 요청의 `serverName` 에 `moai` 가 실리는지(귀속 판정이 기대는 값이다)는 확인하지 못했다. 레거시 승인 요청에 돌려주는 거부 객체 `{"decision":{"denied":{"rejection":…}}}` 는 vendoring 한 스키마에 대한 유효성만 확인했고, 어떤 실제 codex 세션도 그 객체를 받아 본 적이 없다. 서버가 그 객체를 받은 뒤 실제로 어떻게 처리하는지는 알지 못한다.
 - **독 메시지는 TTL까지 재배달될 수 있다.** 턴 단위 실패가 연속으로 쌓이면 세션이 끝나지만, 그 사이에 성공한 턴(운영자 입력이나 다른 메시지)이 끼면 횟수가 0으로 돌아간다. 매번 턴을 실패시키는 메시지는 lease(2분)가 끝날 때마다 다시 배달되어 TTL(최대 7일)에 닿을 때까지 이어질 수 있다. 관리 계층은 claim을 풀거나 되돌리지 않고 브로커에도 시도 횟수 상한이 없다.
@@ -91,6 +101,7 @@
   `TestManagedCodexFactoryBrokerLive` 가 실행하고, 두 값이 없으면 skip 으로 통과한다.
 - 서버 요청 응답은 `go test -race ./internal/cli -run '^TestManagedCodexServerRequestPolicy$'` 로, 턴 단위 실패 격리와 연속 실패 상한은 `go test -race ./internal/cli -run '^TestManagedDriverIsolatesTurnFailure$'` 와 `go test ./internal/cli -run '^TestManagedDriverConsecutiveFailureCeiling$'` 로 가짜 서버를 상대로 검증된다. 이 시험은 실제 codex 세션을 쓰지 않는다.
 - 서버 요청에 돌려주는 결과 본문(일곱 종)의 모양이 codex 0.160.0 스키마를 지키는지는 `go test ./internal/cli -run '^TestManagedServerRequestPolicyMatchesCodexSchema$'` 로 확인한다. `codex` 바이너리도 네트워크도 필요 없고, `internal/cli/testdata/codex-0.160.0/` 에 vendoring 한 스키마 사본을 쓴다. 최소 지원 codex 버전이 올라가면 사본을 다시 만들고(생성 명령은 그 폴더의 `README.md`) 시험을 다시 돌려야 한다. 이 시험은 모양만 보며, 스키마상 유효한 오답(`abort`, accept 계열)은 `TestManagedCodexServerRequestPolicy` 의 정확한 응답 단언이 잡는다.
+- TUI 부착은 `go test -race ./internal/cli -run '^TestManagedCodexTUIAttachCommand$'` 같은 시험들이 가짜 codex(테스트 바이너리를 다시 실행하는 App Server·TUI 겸용 헬퍼)를 상대로 확인한다. 실제 TUI 는 쓰지 않는다. 실제 터미널 확인 절차는 `.moai/specs/SPEC-FACTORY-MANAGED-TUI-001/manual-check.md`.
 - 메시지가 오지 않을 때: `factory_msg_status` 도구로 브로커 상태(대기/확인 수)를 먼저
   보고, 레인이 launch-pending 에 머물러 있는지 확인한다.
 
