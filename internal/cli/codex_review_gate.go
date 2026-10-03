@@ -329,6 +329,23 @@ func normalizeFindingPath(file, dir string) string {
 	return p
 }
 
+// reviewExclusionRoot returns the tree the finding-path exclusion comparison
+// anchors on (card-review repair round 2, N3): the GIT REPOSITORY ROOT of the
+// reviewed scope's tree, never the scope dir itself. A session sitting in a
+// subdirectory made an absolute repo-root config path relativize to a "../"
+// form that escapes the exclusion sets, and a config-only FAIL stayed BLOCK.
+// Fail-open to dir when the root cannot be resolved (a non-git dir), so the
+// anchor never moves on an unreadable tree.
+func reviewExclusionRoot(dir string) string {
+	if dir == "" {
+		return dir
+	}
+	if root, err := reviewScopeGit(dir, "rev-parse", "--show-toplevel"); err == nil && root != "" {
+		return root
+	}
+	return dir
+}
+
 // runtimeConfigOnlyFindings reports whether EVERY finding of a review targets
 // only the runtime-managed configuration surfaces, and returns the distinct
 // targets when so (REQ-CGSC-008). A review with no findings at all is NOT
@@ -345,10 +362,11 @@ func runtimeConfigOnlyFindings(findings []Finding, dir string) ([]string, bool) 
 	if len(findings) == 0 {
 		return nil, false
 	}
+	anchor := reviewExclusionRoot(dir)
 	var targets []string
 	seen := make(map[string]bool)
 	for _, f := range findings {
-		file := normalizeFindingPath(f.File, dir)
+		file := normalizeFindingPath(f.File, anchor)
 		if file == "" || !isTreeRuntimeConfigPath(file) {
 			return nil, false
 		}

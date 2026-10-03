@@ -31,6 +31,9 @@ package cli
 //	tests it repairs.)
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -98,6 +101,97 @@ func TestCodexReviewGateMultiPathFindingKeepsStrictDisposition(t *testing.T) {
 	}
 	if strings.Contains(diagnostics, "runtime-managed") {
 		t.Errorf("no reclassification may be recorded for an ambiguous-anchor finding; diagnostics: %q", diagnostics)
+	}
+}
+
+// --- N3: the exclusion comparison anchors on the repo root -----------------
+
+// r2RepoWithSubdir builds a real git repository with a reviewable uncommitted
+// source change and a subdirectory the session sits in, plus the config that
+// keeps the distributed primary skip inert (the tree under test resolves
+// primary either way; N3 exercises the exclusion ANCHOR, not the skip).
+func r2RepoWithSubdir(t *testing.T) (root, sub string) {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	root = t.TempDir()
+	cardScopeGit(t, root, "init", "-q", "-b", "main")
+	writeCardFile(t, root, "main.go", "package main\n")
+	cardScopeGit(t, root, "add", "-A")
+	cardScopeGit(t, root, "commit", "-q", "-m", "seed")
+	// a reviewable uncommitted source change keeps the scoped self-gate firing
+	// so the gate actually reaches the review and its findings.
+	writeCardFile(t, root, "main.go", "package main\n\n// drifted\n")
+	sub = filepath.Join(root, "internal")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeOwnershipConfigWithPrimary(t, root, "", "review")
+	return root, sub
+}
+
+// TestCodexReviewGateRuntimeDriftFindingAnchoredToRepoRoot pins N3: with the
+// session sitting in <root>/internal, an absolute config finding reported
+// against the repo root must normalize into the reclassification — the
+// comparison anchors on the GIT REPOSITORY ROOT, not the session tree.
+//
+// Control: a finding anchored OUTSIDE the repository relativizes to a "../"
+// form no exclusion set matches and keeps the block — anchoring on the root
+// must not widen the exclusion to every absolute path.
+func TestCodexReviewGateRuntimeDriftFindingAnchoredToRepoRoot(t *testing.T) {
+	root, sub := r2RepoWithSubdir(t)
+
+	// Premise: the scope resolves from the subdirectory as a tree session, and
+	// git's repo-root answer matches the spelling the fixture composes —
+	// macOS temp dirs sit behind a symlink, so both sides must resolve.
+	scope := reviewScopeResolver(sub)
+	if scope.Class != reviewScopeTree || scope.Dir != sub {
+		t.Fatalf("premise: the subdirectory session must resolve to a tree scope rooted at the subdirectory, got %+v", scope)
+	}
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatalf("eval fixture root: %v", err)
+	}
+	if got := cardScopeGit(t, sub, "rev-parse", "--show-toplevel"); got != resolvedRoot {
+		t.Fatalf("premise: git repo root %q does not match the resolved fixture root %q", got, resolvedRoot)
+	}
+
+	anchoredText := "- [P1] `" + filepath.ToSlash(filepath.Join(resolvedRoot, ".claude", "settings.json")) +
+		":13` personal PATH entry drifted\n"
+
+	withChangeDetector(t, true)
+	withCodexSession(t, codexSessionScript(anchoredText))
+	read := captureGateDiagnostics(t)
+	out, err := HandleCodexReviewGate(&hook.HookInput{SessionID: "sess-n3", CWD: sub}, true, root)
+	if err != nil {
+		t.Fatalf("gate error: %v", err)
+	}
+	diagnostics := read()
+	if out == nil || out.Decision == hook.DecisionBlock {
+		t.Errorf("an absolute config finding must anchor on the repo root and reclassify even from a subdirectory session, got %+v", out)
+	}
+	if !strings.Contains(diagnostics, "runtime-managed") || !strings.Contains(diagnostics, ".claude/settings.json") {
+		t.Errorf("the reclassification row must name the config target; diagnostics: %q", diagnostics)
+	}
+
+	// Control: outside-the-repo anchors keep the strict block.
+	outside := t.TempDir()
+	outsideText := "- [P1] `" + filepath.ToSlash(filepath.Join(outside, ".claude", "settings.json")) +
+		":1` some other tree's settings\n"
+	withChangeDetector(t, true)
+	withCodexSession(t, codexSessionScript(outsideText))
+	readOut := captureGateDiagnostics(t)
+	outOut, err := HandleCodexReviewGate(&hook.HookInput{SessionID: "sess-n3-ctl", CWD: sub}, true, root)
+	if err != nil {
+		t.Fatalf("gate error (control): %v", err)
+	}
+	diagnosticsOut := readOut()
+	if outOut == nil || outOut.Decision != hook.DecisionBlock {
+		t.Errorf("control: a finding anchored outside the repository must keep the block, got %+v", outOut)
+	}
+	if strings.Contains(diagnosticsOut, "runtime-managed") {
+		t.Errorf("control: no reclassification may be recorded for an outside-the-repo anchor; diagnostics: %q", diagnosticsOut)
 	}
 }
 
