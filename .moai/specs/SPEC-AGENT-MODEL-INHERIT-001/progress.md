@@ -359,6 +359,29 @@ target (PASS-WITH-DEBT).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+SYNC-PHASE RE-CLOSE (v0.9.0 in-place amendment — 2026-10-03, card t1476, manager-docs). Closes the v0.9.0 amendment (REQ-AMI-009 / AC-AMI-009 reworded to the shipped per-spawn audit row; design §G addendum; guard test `TestAgentModelAuditRowPerSpawn`). The joint 0.7.0+0.8.0 re-close block below is preserved as the prior close; its `sync_commit_sha: ad0454dec` is the v0.9.0 Amendments `prior_completed_sha`, verbatim.
+
+```yaml
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill-sync  # backfilled by manager-docs in the follow-up commit (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_status: complete
+close_scope: v0.9.0 (REQ-AMI-009 + AC-AMI-009 wording, design §G addendum, guard test) — amendment commits 93cd34131 + 44104ce81; 25 REQ / 25 AC unchanged
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged  # 3-phase close — absorbed into this single sync commit
+  implemented_to_completed: this commit  # spec.md frontmatter status + updated only
+b12_self_test_a: no-emission-this-close  # no behaviour change — the amendment aligns requirement text with code already shipped; same disposition as the t1421 joint re-close
+b12_self_test_b: n/a-no-emission
+b12_self_test_c: n/a-no-emission
+card_review: codex scope=card — iter-1 fail (P2 prune-bound claim, fixed in 44104ce81), iter-2 pass (.moai/reports/t1476/card-review.md)
+mx_tag_validation:
+  added: 0
+  updated: 0
+  dangerous_patterns: 0
+recorded_by: manager-docs (sync phase, card t1476)
+```
+
+### Prior close — joint 0.7.0 + 0.8.0 (card t1421 sync lane, 2026-10-03) — superseded by the re-close above, preserved as its record
+
 SYNC-PHASE RE-CLOSE (joint v0.7.0 + v0.8.0 적층 수정안 — 2026-10-03, card t1421 sync lane, manager-docs; 본 SPEC의 v0.8.0 `## Amendments` 블록이 선언한 joint re-close 이행 — 0.7.0(v0.7.0 console-surface 예외)·0.8.0(v0.8.0 소비 계약 예외) 두 층이 함께 재close한다). 0.6.0 close 시그널은 하단 Prior close 블록으로 보존되며, 그 `sync_commit_sha: "770cb02a9"`는 v0.7.0·v0.8.0 Amendments의 `prior_completed_sha`로 verbatim 보존.
 
 ```yaml

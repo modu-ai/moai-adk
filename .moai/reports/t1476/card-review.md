@@ -11,4 +11,7 @@ Confirmed by reading: `internal/hook/prune_logs.go:169-171` — `if name == agen
 
 Disposition: **fixed once** — design.md §G addendum, the REQ-AMI-009 v0.9.0 sub-bullet, and the Amendments scope row 3 now state that the age-out removes only an idle file and that growth under continuous use is an open residual. Codex's repro itself was not re-run here (Gap).
 
-No re-review run (single fix round per dispatch).
+## Re-review (iter-2, coordinator request)
+
+- `mcp__moai__codex_review` scope=card, same base `2b9e4a4d0`, HEAD `44104ce81`.
+- Verdict: **pass** — `{"verdict":"pass","summary":"Verdict: pass","findings":[]}`. The P2 fix is confirmed.
