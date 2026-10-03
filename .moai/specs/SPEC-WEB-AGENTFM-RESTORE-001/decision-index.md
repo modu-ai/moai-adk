@@ -22,3 +22,10 @@ Label: FOUNDER
 Authority anchor: (해당 없음 — 13탭 계약은 `internal/web/tab_layout_test.go` `wantTabOrder`와 `primary_surface_test.go` `>13<`이 규정하지만, 어느 패널에 놓을지는 어느 커밋 문서도 정하지 않는다)
 Why unresolved: 디스패치 지시는 "기존 FieldDef 서브섹션 기계(또는 유사 마커 패턴) 공유 선호"까지이고 설계는 이를 따랐으나(spec.md §C-3), 그 기계를 놓을 패널 위치(llm 패널 vs workflow 패널 vs 14번째 탭)는 판단 여지가 남는다. 설계는 파일 정합성(llm.yaml 저장)을 근거로 llm 패널을 골랐으나, 운영자가 티어 차트 옆 workflow 패널 배치를 원하면 M4 이전에 수정이 가장 싸다.
 Operator verdict: llm 패널 서브섹션 확정 (2026-10-02 운영자, lane AskUserQuestion 라운드) — 설계 초안(llm 패널 서브섹션)을 그대로 확정한다. 설계 변경 불요; 판정만 기록.
+
+## Q4: 복원된 `llm.agent_overrides`의 스폰-소비를 어떤 계약 형태로 이 SPEC의 v0.3.0 수정안에 넣는가?
+
+Label: FOUNDER
+Authority anchor: 카드 t1421 본문 — "에이전트별 model/effort 고정을 실제 서브에이전트 스폰에 반영하는 계약 설계" (운영자가 큐에 발행한 요청 원문 — Q2가 발행한 후속 카드 자체). 기계 근거는 커밋 트리로 검증 가능: `internal/config/types.go:319`(스폰-경로 소비자 0), `internal/hook/agent_model_guard.go`(observe/advise 2층, 구 차단층 의도 제거).
+Why unresolved: 카드는 소비 계약의 방향만 지시하고 계약 형태(상시 소비 vs 옵트인, 소비 주체, 키 위치)는 열어 두었다. 상시 소비는 REQ-AFR-002(상속 기본)와 충돌하고, 전역 env 핀(`CLAUDE_CODE_SUBAGENT_MODEL`)은 [1m] 자격 문제와 전역 핀 문제를 동반한다(model-policy.md § Inherit-by-Default Convention) — 형태 선택은 운영자 몫이다.
+Operator verdict: **옵트인 고정** (2026-10-03 운영자, lane AskUserQuestion 라운드, 카드 t1421) — `llm` 섹션 단일 명시 키(기본 off)를 켠 세션만 스폰 시 소비하고, 오케스트레이터가 Agent() 호출에 설정된 model/effort를 전달한다(유일 승인 소비 경로). 키 없는 세션은 상속 기본 유지. Q2의 기존 판정(후속 카드 발행, 2026-10-02)은 유효 — 본 카드가 그 후속이며 이 공백을 소진한다. plan.md §I 설계와 일치 — 설계 변경 없음.

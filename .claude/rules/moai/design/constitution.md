@@ -161,7 +161,7 @@ When a new learning contradicts an existing rule or heuristic:
 - Flag the contradiction with both the old and new rule text
 - Present both options to the user with context
 - Never silently override an existing rule
-- Record the resolution in .moai/research/evolution-log.md
+- Record the resolution in .moai/research/evolution-log.md (create it if absent)
 
 ### Layer 4: Rate Limiter
 
@@ -246,7 +246,7 @@ When a learning reaches Rule tier (5+ observations, confidence >= 0.80):
 
 5. **Application**: On approval, the change is applied
    - Learning status updated to "graduated"
-   - Evolution logged in .moai/research/evolution-log.md
+   - Evolution logged in .moai/research/evolution-log.md (create it if absent)
 
 6. **Verification**: Post-application validation — regression check on next project run
 
@@ -411,7 +411,7 @@ If the GAN loop reaches max_iterations without passing:
 
 If a graduated learning causes regression:
 - Automatic rollback triggered when next project score drops > 0.10
-- Reverted change logged in .moai/research/evolution-log.md
+- Reverted change logged in .moai/research/evolution-log.md (create it if absent)
 - Learning status changed to "rolled-back"
 - Learning cannot be re-proposed for 30 days (staleness_window_days from design.yaml)
 

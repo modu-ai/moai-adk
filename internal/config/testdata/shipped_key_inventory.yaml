@@ -894,6 +894,9 @@
 - path: "llm.agent_overrides"
   class: R
   evidence: none
+- path: "llm.agent_overrides_consume"
+  class: W
+  evidence: "reader: template.ResolveAgentOverrideConsumption (v0.3.0 spawn-consumption gate) + hook advise compare + web console contract-state chip and save-path strict reject + cli doctor served-model switch state"
 - path: "llm.claude_bin"
   class: W
   evidence: reader
