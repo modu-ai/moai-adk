@@ -30,3 +30,4 @@ _<pending sync-phase — manager-docs 소관>_
 - **Decision: serial** — 마일스톤당 1회 서브에이전트 순차 배차
 - 근거: 코딩 중심 작업은 Anthropic 지침상 serial이 기본이고, 마일스톤 M1-M6이 config→handler→scope→템플릿 순으로 의존하는 단일 사슬이라 병렬 분해 이득이 없다. RED 테스트는 plan 단계에서 이미 저작돼 있어 manager-develop는 GREEN 전환 소관(새로 저작하지 않음).
 - 경계 메모: M4 착수 전 리더의 C5(pathspec 범위) 한 줄 확정 대기 — C5 답이 오기 전 M4 진행 보류. C1-C7 부채 처분(강화 vs 후속 카드)도 리더 답과 함께 run 배차 범위에 반영.
+- C5 처분(2026-10-03 리더): ①②팔 모두 reports 항목만 건다(WCI_EXCLUDES 전체 아님) — M4 보류 해제. C1-C7은 run 범위 밖(후속 카드). 상세: .moai/reports/t1404/kickoff-decision.md 덧붙임.
