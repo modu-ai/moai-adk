@@ -137,4 +137,59 @@ open_items_for_leader: P-1 defect candidate (direct door `syscall.Exec` ends the
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill
+head_at_signal: af80023fe (measured tree; this sync commit cannot cite its own hash, so `sync_commit_sha` is the canonical placeholder `pending-backfill` and the real SHA is backfilled in a following commit — never left empty)
+tree: .claude/worktrees/t1440
+branch: WT-codex-card-managed-path
+owner: manager-docs (sync-phase)
+ac_source: .moai/specs/SPEC-FACTORY-MANAGED-CARD-CHILD-001/acceptance.md (tier M, state `resolved`, non-empty)
+docs_changed: `.moai/docs/factory-managed-session.md` · `CHANGELOG.md` · `.moai/specs/SPEC-FACTORY-MANAGED-CARD-CHILD-001/spec.md` (frontmatter `status:` line only) · this §E.4
+docs_not_changed: no template mirror exists (`ls internal/template/templates/.moai/docs/factory-managed-session.md` -> No such file, exit 1; `git grep -ln factory-managed-session -- "*_test.go" "*.sh" Makefile .github` -> no output, exit 1, so no test or CI file pins the guide); plan.md, acceptance.md, design.md, decision-index.md, red-baseline.md (no `status:` field per the artifact-statelessness rule; their `updated:` is already 2026-10-03); the parent and HARDEN SPEC directories; every `.go` file
+changelog_entry_position: `[Unreleased]` -> `### Added`, first item (above SPEC-TCD-LLM-DECIDER-001). The parent SPEC-FACTORY-MANAGED-SESSION-001 entry still carries its historical "card children are never managed" sentence; it was left as written (it described the tree at its own close) and is not corrected here
+frontmatter_status_transitions: spec.md `in-progress -> implemented -> completed` merged into this single sync commit (frontmatter records `status: completed`); `updated: 2026-10-03` unchanged (already the sync date). plan.md, acceptance.md, design.md and progress.md carry no `status:` field, so nothing to change
+b12_self_test_a: pre-emission `grep -c 'SPEC-FACTORY-MANAGED-CARD-CHILD-001' CHANGELOG.md` -> `0`, exit 1; post-emission -> `1`, exit 0
+b12_self_test_b: B12 counter on acceptance.md (tier M) -> stdout `13`, stderr `live=13 excluded=0 ambiguous=0`, exit 0; REQ count `grep -oE '^- \*\*REQ-CC-[0-9]{3}\*\*' spec.md | sort -u | wc -l` -> `14`; the CHANGELOG entry states 14 requirements and 13 acceptance criteria
+b12_self_test_c: every path the CHANGELOG entry cites was checked with `ls` and exists (`internal/cli/codex_launcher.go`, `managed_operator_input.go`, `managed_card_child_test.go`, `managed_operator_input_test.go`, `managed_optin_test.go`, `managed_codex_factory.go`, `managed_factory_session.go`, `internal/factorymsg/store.go`, `internal/cli/codex_direct_posix.go`, the operator guide, `progress.md`, `red-baseline.md`)
+canary_compliance_check: not applicable — this SPEC defines no forward-looking policy that its own sync would test
+ac_cc_012: PASS (see the grep table below)
+
+All attributions are `(this run, this tree, HEAD af80023fe plus the uncommitted sync edits, before the sync commit)`. The sync changed no production or test code.
+
+### Evidence
+
+| Item | Command | Observed | exit |
+|---|---|---|---|
+| AC-CC-012 old sentence 1 absent | `grep -c "카드 자식 세션은 스위치 값과 관계없이 관리되지 않고" .moai/docs/factory-managed-session.md` | `0` | 1 |
+| positive control for the above | `git grep -c "<same phrase>" e1f790d7e -- .moai/docs/factory-managed-session.md` | `e1f790d7e:.moai/docs/factory-managed-session.md:1` | 0 |
+| AC-CC-012 old sentence 2 absent | `grep -c "Codex 레인 카드 자식과 디버그 추적에 관리 계층을 연결하는 일은 아직 카드가 없는 후속 과제다" <guide>` | `0` | 1 |
+| positive control for the above | `git grep -c "<same phrase>" e1f790d7e -- <guide>` | `e1f790d7e:.moai/docs/factory-managed-session.md:1` | 0 |
+| AC-CC-012 anchors present | `grep -c` per phrase on the guide: `SPEC-FACTORY-MANAGED-CARD-CHILD-001` / `Codex 관리 세션은 화면에 아무것도 보여 주지 않는다` / `런처는 시그널을 처리하지 않는다` / `t1408` / `t1459` / `무인 레인은 첫 카드 이후로 진행하지 않는다` | `4` / `1` / `1` / `1` / `1` / `1` | 0 each |
+| AC-CC-012 CHANGELOG entry | `grep -c "SPEC-FACTORY-MANAGED-CARD-CHILD-001" CHANGELOG.md` | `1` | 0 |
+| managed selection count | `unset <scrub list> && go test ./internal/cli -list '^.*(Managed\|managed).*$'` redirected to a file, then `grep -c '^Test'` (the `\|` in this cell is a literal `\|` of the original command) | `88`, last line `ok  github.com/modu-ai/moai-adk/internal/cli  0.790s`, no `no tests to run` | 0 |
+| owner, driver, store, parent, HARDEN untouched | `git diff --stat e1f790d7e -- internal/cli/managed_codex_factory.go internal/cli/managed_factory_session.go internal/factorymsg/store.go .moai/specs/SPEC-FACTORY-MANAGED-SESSION-001 .moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001` | no output | 0 |
+| installed `moai` lag | `moai version`; `git merge-base --is-ancestor 0732cc699 HEAD` | `v3.2.0-rc.27 archive/t1401-504-g0732cc699 built 2026-10-03T03:34:50Z`; exit 0 (the installed build is a strict ancestor of HEAD, so it can lack newer checks) | 0 / 0 |
+| `moai spec lint SPEC-FACTORY-MANAGED-CARD-CHILD-001` (installed build) | as written | `✓ No findings — all SPEC documents are valid` | 0 |
+| same lint, build made from this tree | `go build -o <scratch>/moai-t1440 ./cmd/moai` (exit 0), then `<scratch>/moai-t1440 spec lint SPEC-FACTORY-MANAGED-CARD-CHILD-001` | `✓ No findings — all SPEC documents are valid` | 0 |
+| codemaps freshness | `<scratch>/moai-t1440 graph check` | `codemaps metric=described-source-diff value=43 threshold=40 verdict=stale`; mx-index and edges `absent` (fresh-worktree state); citations `fresh`; overall exit 1. The report lists `internal/cli/codex_launcher.go` and `managed_operator_input.go` among the described-worthy files and says this sync change contributes 0 of them | 1 |
+
+The stale codemaps verdict is a Gap, not a defect claim: no baseline on the run base was measured, so whether the run commits moved it past 40 is not known. Regenerating codemaps is separate card work and was not done here.
+
+### MX tag validation (sync sub-step; sync cannot edit `.go`, so findings are reported, not applied)
+
+Not run as a scan in this sync. The run phase added `internal/cli/managed_operator_input.go` (209 lines, new) and edited `internal/cli/codex_launcher.go`; their tags were not inspected here. This is a Gap, left to the next MX pass.
+
+### Gaps
+
+- No markdown linter is installed (`which markdownlint markdownlint-cli2` -> not found), so the guide and CHANGELOG were not linted.
+- The codemaps verdict above is unattributed to this card (no run-base measurement).
+- MX tags on the two changed `.go` files were not inspected.
+- `go test` was run for the `-list` selection count only; the behavior tests were not re-run in sync (run-phase §E.2 holds those).
+- No real codex, headed terminal or unattended lane was exercised; the guide says so for each affected statement.
+- The Windows direct door was not read or measured (the guide says so).
+
+### Residual-risk
+
+- The operator guide states the unattended-lane limit and the P-1 defect candidate; both are SPEC-disclosed or run-measured, neither fixed here. A leader decision is still owed on whether a card-start-prompt follow-up and a P-1 card are issued.
+- The CHANGELOG parent entry (SPEC-FACTORY-MANAGED-SESSION-001) still says card children are never managed; it describes that SPEC's own close.
