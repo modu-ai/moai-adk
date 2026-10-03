@@ -476,3 +476,9 @@ t1407(`46be0b8c8`)·t1448(로컬 develop `4315f0d0e`)·이 카드의 M2-B 가 `i
 - develop→main PR 병합(운영자·리더), develop 보호·삭제.
 - main 필수 체크 목록에서 `Release PR Multi-OS Gate` 제거(D-22).
 - 리더 몫: develop push 세 번(런북 0·2·4단계), 레인 정지와 재기동.
+
+## §K 대기 기록 (2026-10-03, 운영자 재부팅 공지)
+
+- 상태: run 진행 중, 대기. 브랜치 `WT-github-flow-default` @ `2a5f9c91c`(이 기록 커밋 직전), 미푸시, 워크트리 keep.
+- 대기 사유: t1399 개명(internal/kanban→internal/factory, kanban-dispatch*.md→factory-dispatch*.md) 미착지 — 2026-10-03 `origin/develop` `2b9e4a4d0` 에서 `kanban-dispatch*.md` 3개·`internal/kanban` 존재 실측. t1469 규칙 분할과 M4 순서는 리더 회신 대기. 절체는 배치 경계에서만(운영자·리더 소관).
+- 재개 지점: t1399 착지 공지 → `git fetch origin develop` → 로컬 develop 흡수 → 개명 후 경로로 가드 표면·허용목록 재도출 → M4 잔여 → M5 → 수정안 A-2(§J.5 C1~C13·C5′) → 델타 plan-audit → 최종 sync·sync-audit → 병합 전 리더 보고.
