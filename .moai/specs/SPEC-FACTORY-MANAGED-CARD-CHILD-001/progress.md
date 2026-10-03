@@ -256,3 +256,15 @@ All attributions are `(this run, this tree, HEAD 047922bf8 plus the uncommitted 
 - F2 goroutine leak and the F4 window remain as disclosed debt; neither is fixed.
 - P-1 (the legacy direct door replaces the launcher process on POSIX) stays an open defect candidate for a leader decision.
 - The sync-audit verdict on this re-close is still owed to the independent auditor; this block states the author's evidence, not an audit result.
+
+## §E.5 Merge-tree re-measure after absorbing develop 97c905858 (lane-17, card t1440)
+
+Tree f5cd06324 (merge commit absorbing local develop 97c905858 into WT-codex-card-managed-path). Environment scrubbed (unset of the MOAI_FACTORY_* and MOAI_KANBAN_* names present in the lane session) in one compound invocation per selector.
+
+- conflicts resolved: codex_launcher.go (comment only; `-f lane` -> `-l`), managed_optin_test.go (develop-side renamed copy of the deleted TestManagedSwitchDoesNotReachCodexLaneLoop dropped, factory import dropped), factory-managed-session.md, CHANGELOG.md (both entries kept).
+- adaptations to develop t1399/t1488: config.EnvMoaiKanban{ID,Card,Backend} -> config.EnvFactory{RunID,Card,Backend}; internal/kanban -> internal/factory; the lane child env no longer carries MOAI_KANBAN_LABEL (expected literal env in AC-CC-002 updated); the test harness enters the lane loop with `-l` (the `-f lane` form is refused by develop); F5 comments, guide and CHANGELOG P-1 wording updated: after t1488 the direct door waits for the child when the card env is present (codex_direct_posix.go:33-35, codex_direct_wait.go).
+- go build ./...: exit 0; GOOS=windows GOARCH=amd64 go build ./...: exit 0; go vet ./internal/cli: exit 0; golangci-lint v2.1.6 run ./internal/cli/...: 0 issues.
+- go test ./internal/cli -run anaged: ok 74.718s; -list anaged count: 93 (89 at 047922bf8 plus 4 managed-named tests that develop added).
+- TestManagedCardChild*: ok 56.497s; TestManagedOperatorInput* -race -count=3: ok 2.513s; t1488 TestCodexLaneLoopDefaultLaunchContinuesAfterFirstCard: ok 4.084s; TestCodexDirectPOSIX*: ok 1.189s.
+- red tests named by the leader (TestCodex1718Fixtures_WidenedContent, TestWSR006_ReviewGateRootMatrix): FAIL on this tree and FAIL on the develop tree (go -C .claude/worktrees/develop test, same selectors), and this card diff touches neither codex finding parsing nor the review gate root code: pre-existing, not caused by this card. Not measured: whether the develop worktree had uncommitted changes.
+- Gaps: whole internal/cli suite not run (CI verdict); Windows runtime not exercised; no real codex session.
