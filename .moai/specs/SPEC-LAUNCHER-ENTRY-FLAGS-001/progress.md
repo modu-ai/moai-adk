@@ -2327,8 +2327,8 @@ open items for the audit: Gaps 1 to 8 of the section above; the AC-018 and other
 
 sync_status: audit-ready (documentation and lifecycle close done; the Gaps below are unobserved, not passes)
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill
-sync_head_before_commit: 8cb40200e (branch WT-launcher-entry-flags); the sync commit cannot cite its own hash, so it carries the pending-backfill placeholder and the lane backfills the real SHA in the next commit (the schema's D3 backfill exemption)
+sync_commit_sha: b6d8a4003
+sync_head_before_commit: 8cb40200e (branch WT-launcher-entry-flags); the sync commit cannot cite its own hash, so it carried the pending-backfill placeholder and the SHA above was backfilled afterwards (the schema's D3 backfill exemption); it is the commit `b6d8a4003 docs(SPEC-LAUNCHER-ENTRY-FLAGS-001): sync-phase artifacts, 3-phase close (t1399)`
 changelog_entry_position: CHANGELOG.md `[Unreleased]` / first `### Added`, first bullet (ordinary entry, plan.md §B.3a option A: no release-note file)
 changelog_self_test_a: pass (pre-write `grep -c 'SPEC-LAUNCHER-ENTRY-FLAGS-001' CHANGELOG.md` printed 0; no earlier entry)
 changelog_self_test_b: pass (25 live AC headings AC-001..AC-025 in acceptance.md; the entry states 25)
@@ -2340,7 +2340,17 @@ Gaps (unobserved):
 2. `assets/images/moai-web-overview.png` (embedded by all four READMEs) is a stale screenshot that needs a maintainer re-capture.
 3. The README headings say v3.2 while the badge and `hugo.toml` say v3.1.3; the release sync reconciles them.
 4. A non-factory session that carries only a legacy leader label now receives no stale-run notice (REQ-013 and AC-014 do not cover it); an operator notice is needed.
-5. The suites listed as not run in §E.2 Gaps (the whole `internal/cli` suite, a clean whole-package `internal/factory` run, golangci-lint after the absorption, any Windows test run) stay unrun; the verdict on them is CI's.
+5. The suites listed as not run in §E.2 Gaps (the whole `internal/cli` suite, a clean whole-package `internal/factory` run, any Windows test run) stay unrun; the verdict on them is CI's. `golangci-lint` v2.1.6 was run after the absorption by the lane (`0 issues.` over cli, hook, factory, web, config, template, statusline, discovery, factorymsg, homestate, spec, codexwiring at `666fb5566`; over `./internal/cli/...` again at `97a9d6e00`) and by the delta auditor over the whole module.
+
+#### Sync-audit history (independent, cold; verdict files are local evidence under `.moai/reports/t1399/`)
+
+| Iteration | Audited HEAD | Verdict | Score | What it found | What the lane did |
+|---|---|---|---|---|---|
+| 1 | `b6d8a4003` | FAIL | 82.5 | F1 MUST-FIX: `staticcheck S1007` in `factory_skill_assertions_test.go:79` (CI's required lint); F2 SHOULD-FIX: `--spawn` returns before the entry parse; F3..F10 low/advisory; all five §A.4 narrowings judged legitimate; 25 of 30 mutants went red | F1 and F5 fixed in `666fb5566` (lint then `0 issues.`; the 301 pin observed red on a 302 mutant by the delta auditor) |
+| 2 (delta) | `666fb5566` | FAIL | 83.0 | F2 reclassified blocking after a runtime repro (12 refused shapes with `--spawn` opened a tmux window and returned success on cc and glm: REQ-002 and REQ-010 violated in letter and effect; AC-003 and AC-011 passed only because their shapes did not include `--spawn`); F4 low: docs said "next free number" where cc and glm take one past the highest live lane; `audit_multi` overall fail (codex on F2 and F4; claude and glm inconclusive) | F2 fixed in `97a9d6e00`, test first and observed red (all 16 refused shapes "was accepted"), green after (22 subtests), positive control green before and after; F4 fixed in `68ecd5d3d` and `5bd5fb701` (eight pages) with AC-025 re-scoped to locale lockstep in `fc98066c0` (spec.md v0.9.1, section A.5) |
+| 3 (delta) | the HEAD after this section's commit | pending | pending | pending | pending |
+
+Accepted debt carried to the leader (spec.md section A.5, D-B1..D-B8): F3 (AC-018 guard 2 blind to a CJK spelling beside a citation), F6 (operator-name shapes beside `-l` unpinned, = D-A5), F7 (three stale comments), F8 (caller-less `FactoryFreeSlots`, `ReadCardStatus`, `rejectFactoryOnCG`, `DefaultFactoryLanes`), F9 (legacy-label sessions get no stale-run notice; operator notice needed), F10 (plan-audit cache invalid), and the informal "next free lane" wording that survives in READMEs, home pages, the run page, and the skill.
 
 Residual-risk: the sync audit judges AC-018 and the other criteria re-scoped in spec.md §A.4, and the cached plan-audit PASS no longer matches the plan-artifact hash (§E.2 Gap 8). A late develop merge that adds a `kanban.` qualifier or an import of the old package path would merge textually clean and break the build; the integration window re-measures the import grep and `go build ./...` on the merged tree.
 
