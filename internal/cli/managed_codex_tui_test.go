@@ -414,12 +414,17 @@ func tuiFakeTUIMain(args []string) {
 	tuiFakeWatchParent()
 	bound := "none"
 	if root, run := os.Getenv(tuiFakeRootEnv), os.Getenv(tuiFakeRunEnv); root != "" && run != "" {
-		if store, err := factorymsg.Open(root, run); err == nil {
-			if st, err := store.Status(context.Background()); err == nil {
-				for _, lane := range st.Lanes {
-					if lane.BindingState == factorymsg.BindingBound {
-						bound = lane.SessionUUID
-					}
+		store, err := factorymsg.Open(root, run)
+		if err != nil {
+			fakeAppendLog(logPath, "tui-broker-error open "+err.Error())
+		} else {
+			st, err := store.Status(context.Background())
+			if err != nil {
+				fakeAppendLog(logPath, "tui-broker-error status "+err.Error())
+			}
+			for _, lane := range st.Lanes {
+				if lane.BindingState == factorymsg.BindingBound {
+					bound = lane.SessionUUID
 				}
 			}
 			_ = store.Close()
@@ -640,6 +645,11 @@ func newTUIFake(t *testing.T, run string, extraEnv ...string) *tuiFake {
 		tuiFakeLogEnv + "=" + f.logPath,
 		tuiFakeControlEnv + "=" + f.controlLog,
 		tuiFakeHelpFileEnv + "=" + helpFile,
+		// The fake processes open the same on-disk broker store as the owner: the
+		// sandbox marker makes the re-executed test binary keep this MOAI_HOME
+		// instead of creating its own (main_test.go sandboxMoaiHome).
+		"MOAI_HOME=" + os.Getenv("MOAI_HOME"),
+		moaiHomeSandboxEnv + "=" + os.Getenv("MOAI_HOME"),
 	}, extraEnv...)
 	return f
 }
@@ -990,7 +1000,7 @@ func TestManagedCodexTUIStartsAfterPrimingAndBind(t *testing.T) {
 		}
 		bound := tuiLines(log, "tui-start bound=")
 		if len(bound) != 1 || bound[0] != fakeAppServerThreadID {
-			t.Errorf("at TUI start the broker endpoint was bound to %q, want %q", bound, fakeAppServerThreadID)
+			t.Errorf("at TUI start the broker endpoint was bound to %q, want %q:\n%s", bound, fakeAppServerThreadID, log)
 		}
 	})
 	t.Run("priming_failure_never_attaches", func(t *testing.T) {
@@ -1121,7 +1131,7 @@ func TestManagedCodexTUIPreconditionsAndFallback(t *testing.T) {
 				if strings.Contains(term, "fake-appserver-stderr-line") {
 					t.Errorf("the App Server stderr reached the terminal stand-in")
 				}
-				if n := strings.Count(term, "log file "); n != 1 {
+				if n := strings.Count(term, "log file:"); n != 1 {
 					t.Errorf("the log file path was printed %d times, want once:\n%s", n, term)
 				}
 			}

@@ -3,15 +3,30 @@ package cli
 // managed_codex_tui.go — SPEC-FACTORY-MANAGED-TUI-001: the operator TUI attach
 // of the managed Codex session owner.
 //
-// M1 compile stubs (behavior-neutral): the symbols the reproduction tests need
-// so the package test binary builds, with the headless behavior unchanged.
-// The attach decision, the TUI child, the log diversion and the busy tracking
-// are filled in by the later milestones.
+// The owner is a headless App Server client (SPEC-FACTORY-MANAGED-SESSION-001
+// Amendment 1). This file attaches the Codex TUI as a second client of the
+// SAME owned App Server, resuming the thread the broker endpoint is bound to,
+// and owns everything the attach changes: the capability probe and the
+// fallback notices, who owns the terminal, where the launcher's own output
+// goes, and the TUI child's start and stop.
+//
+// Zero-syscall (REQ-MT-012): os/exec, os.Interrupt, os.Process and isatty only,
+// so the Windows cross build stays on one code path (os.Interrupt is
+// unsupported there and the stop falls straight through to Kill).
 
 import (
+	"bytes"
+	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/mattn/go-isatty"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -34,12 +49,19 @@ var (
 	managedCodexTUICommand = exec.Command
 	// managedCodexRemoteProbe asks the codex binary whether `resume` offers the
 	// remote options; the second result names the reason when it does not.
-	managedCodexRemoteProbe = func(program string, env []string, dir string) (bool, string) {
-		return false, "capability probe not implemented"
-	}
+	managedCodexRemoteProbe = probeManagedCodexRemote
 	// managedWriteBarrier is a test hook called at the entry of every App Server
 	// connection write.
 	managedWriteBarrier func(v any)
+)
+
+const (
+	// managedTUINoticeFormat is the single stderr line a skipped or failed attach
+	// writes (REQ-MT-004).
+	managedTUINoticeFormat = "Factory managed session: operator TUI not attached (%s); continuing headless"
+	// managedTUILogFormat names the session log file, printed once before the
+	// TUI could start (REQ-MT-006).
+	managedTUILogFormat = "Factory managed session log file: %s"
 )
 
 // managedOperatorSurface is the optional capability the Codex owner offers the
@@ -47,9 +69,8 @@ var (
 // interface itself is unchanged.
 type managedOperatorSurface interface {
 	// AttachOperator starts the operator TUI when the session planned one. The
-	// channel delivers the single end-of-TUI result (the TUI's exit mapped to an
-	// error, or the lost-connection error); attached is false for a headless
-	// session.
+	// channel delivers the single end-of-TUI result; attached is false for a
+	// headless session.
 	AttachOperator() (done <-chan error, attached bool)
 	// Busy reports whether the thread has an active turn.
 	Busy() bool
@@ -57,20 +78,307 @@ type managedOperatorSurface interface {
 
 var _ managedOperatorSurface = (*managedCodexSession)(nil)
 
-// AttachOperator is the M1 stub: a session never attaches.
-func (s *managedCodexSession) AttachOperator() (<-chan error, bool) { return nil, false }
+var (
+	managedRemoteOption      = regexp.MustCompile(`(?m)^\s*(?:-\w,\s*)?--remote(?:[\s=<\[]|$)`)
+	managedRemoteTokenOption = regexp.MustCompile(`(?m)^\s*(?:-\w,\s*)?--remote-auth-token-env(?:[\s=<\[]|$)`)
+)
 
-// Busy is the M1 stub: the thread is never busy.
+// managedCodexRemoteSupport reports whether a `codex resume --help` text offers
+// both the --remote and the --remote-auth-token-env option. Feature detection,
+// not a version list: the help text is what the binary actually offers.
+func managedCodexRemoteSupport(help string) bool {
+	return managedRemoteOption.MatchString(help) && managedRemoteTokenOption.MatchString(help)
+}
+
+// probeManagedCodexRemote runs `codex resume --help` under the probe timeout
+// and reads the options out of it.
+func probeManagedCodexRemote(program string, env []string, dir string) (bool, string) {
+	ctx, cancel := context.WithTimeout(context.Background(), managedProbeTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, program, "resume", "--help")
+	cmd.Env = env
+	cmd.Dir = dir
+	// A killed child must not leave Wait blocked on a pipe a grandchild holds.
+	cmd.WaitDelay = managedProbeTimeout
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if ctx.Err() != nil {
+		return false, "capability probe timed out after " + managedProbeTimeout.String()
+	}
+	if err != nil {
+		return false, "capability probe failed: " + err.Error()
+	}
+	if !managedCodexRemoteSupport(out.String()) {
+		return false, "codex resume does not offer --remote and --remote-auth-token-env"
+	}
+	return true, ""
+}
+
+// managedCodexTUI is the operator TUI of one managed Codex session: the
+// session log file the launcher's output moves to, and the TUI child once it
+// runs.
+type managedCodexTUI struct {
+	stdin     *os.File
+	logFile   *os.File
+	logPath   string
+	stopGrace time.Duration
+
+	// attached is set once the TUI child runs; it gates every behavior that only
+	// holds while a human is at the terminal.
+	attached atomic.Bool
+
+	// stopMu serializes stop: the connection-lost path and Close can both reach
+	// it, and a second caller must find the child already reaped.
+	stopMu sync.Mutex
+
+	mu       sync.Mutex
+	cmd      *exec.Cmd
+	done     chan error
+	reaped   chan struct{}
+	stopping bool
+
+	// The sink pair is written by attach before the child's wait goroutine
+	// starts and read after it; mu orders the other readers.
+	sinkPtr *io.Writer
+	prevLog *io.Writer
+
+	closeLogOnce sync.Once
+}
+
+// planOperatorTUI makes the attach decision before Start (REQ-MT-003,
+// REQ-MT-004): any failed precondition prints exactly one notice and leaves the
+// session headless. When the TUI is planned the session log file is opened now,
+// because the App Server child's stderr is fixed when it starts.
+func (s *managedCodexSession) planOperatorTUI(root, runID string, stdin io.Reader) {
+	in, reason := s.operatorTUIPreconditions(stdin)
+	if reason != "" {
+		managedLogf(managedTUINoticeFormat, reason)
+		return
+	}
+	file, path, err := openManagedTUILog(root, runID, s.label)
+	if err != nil {
+		managedLogf(managedTUINoticeFormat, "session log file unavailable: "+err.Error())
+		return
+	}
+	managedLogf(managedTUILogFormat, path)
+	s.tui = &managedCodexTUI{stdin: in, logFile: file, logPath: path, stopGrace: managedTUIStopGrace}
+}
+
+// operatorTUIPreconditions evaluates the three attach preconditions cheapest
+// first, so an opt-out or a missing terminal never spawns the probe.
+func (s *managedCodexSession) operatorTUIPreconditions(stdin io.Reader) (*os.File, string) {
+	switch v := strings.ToLower(strings.TrimSpace(launchEnvValue(s.env, config.EnvMoaiFactoryManagedTUI))); v {
+	case "0", "false", "off":
+		return nil, fmt.Sprintf("disabled by %s=%s", config.EnvMoaiFactoryManagedTUI, v)
+	}
+	in, ok := stdin.(*os.File)
+	if !ok || in == nil {
+		return nil, "stdin is not a file"
+	}
+	if !managedTerminalCheck(in) {
+		return nil, "stdin is not a terminal"
+	}
+	if !managedTerminalCheck(os.Stdout) {
+		return nil, "stdout is not a terminal"
+	}
+	if supported, why := managedCodexRemoteProbe(s.program, s.env, s.dir); !supported {
+		return nil, why
+	}
+	return in, ""
+}
+
+// openManagedTUILog opens the session log file under the project's
+// .moai/logs/ directory (gitignored), mode 0600, append.
+func openManagedTUILog(root, runID, label string) (*os.File, string, error) {
+	dir := filepath.Join(root, ".moai", "logs")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, "", err
+	}
+	path := filepath.Join(dir, "factory-managed-"+managedLogNamePart(runID)+"-"+managedLogNamePart(label)+".log")
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return nil, "", err
+	}
+	return f, path, nil
+}
+
+// managedLogNamePart keeps a run id or lane label usable as a file name part.
+func managedLogNamePart(v string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_', r == '.':
+			return r
+		}
+		return '-'
+	}, v)
+}
+
+// appServerStderr is where the App Server child's stderr goes: the session log
+// file when a TUI is planned (the terminal belongs to the TUI), else the
+// terminal.
+func (s *managedCodexSession) appServerStderr() io.Writer {
+	if s.tui != nil && s.tui.logFile != nil {
+		return s.tui.logFile
+	}
+	return os.Stderr
+}
+
+// managedCodexListenURL reads the --listen address out of the App Server
+// command line the owner generated.
+func managedCodexListenURL(args []string) string {
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "--listen" {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
+// AttachOperator starts the planned operator TUI (REQ-MT-001): after the
+// priming turn, on the thread the broker endpoint is bound to. The token
+// travels only as the value of an environment variable whose name is on the
+// command line (REQ-MT-002); none of the launcher-generated approval overrides
+// reach the TUI (REQ-MT-009).
+func (s *managedCodexSession) AttachOperator() (<-chan error, bool) {
+	t := s.tui
+	if t == nil || s.cmd == nil || s.client == nil {
+		return nil, false
+	}
+	return t.attach(s)
+}
+
+func (t *managedCodexTUI) attach(s *managedCodexSession) (<-chan error, bool) {
+	t.mu.Lock()
+	if t.cmd != nil {
+		done := t.done
+		t.mu.Unlock()
+		return done, true
+	}
+	t.mu.Unlock()
+
+	token, err := os.ReadFile(filepath.Join(s.tokenDir, "token"))
+	url := managedCodexListenURL(s.cmd.Args)
+	if err != nil || url == "" {
+		t.giveUp("capability token or address unavailable")
+		return nil, false
+	}
+	args := []string{"resume", "--remote", url, "--remote-auth-token-env", config.EnvMoaiFactoryAppServerToken}
+	args = append(args, s.appArgs...)
+	if s.model != "" {
+		args = append(args, "-m", s.model)
+	}
+	args = append(args, s.threadID)
+	cmd := managedCodexTUICommand(s.program, args...)
+	cmd.Env = append(append([]string(nil), s.env...), config.EnvMoaiFactoryAppServerToken+"="+string(token))
+	cmd.Dir = s.dir
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = t.stdin, os.Stdout, os.Stderr
+
+	// The launcher stops writing to the terminal before the TUI draws on it.
+	var sink io.Writer = t.logFile
+	t.sinkPtr = &sink
+	t.prevLog = managedLogOutput.Swap(t.sinkPtr)
+	if err := cmd.Start(); err != nil {
+		t.giveUp("TUI could not start: " + err.Error())
+		return nil, false
+	}
+	done := make(chan error, 1)
+	reaped := make(chan struct{})
+	t.mu.Lock()
+	t.cmd, t.done, t.reaped = cmd, done, reaped
+	t.mu.Unlock()
+	t.attached.Store(true)
+	go t.wait(cmd, done, reaped)
+	return done, true
+}
+
+// giveUp falls back to the headless session after a late attach failure: the
+// terminal sink is restored, the notice is the one stderr line, and the App
+// Server's stderr stays in the log file it already writes (REQ-MT-004).
+func (t *managedCodexTUI) giveUp(reason string) {
+	t.restoreLog()
+	t.closeLog()
+	managedLogf(managedTUINoticeFormat, reason)
+}
+
+// wait reaps the TUI child. The sink is restored the moment the child is gone,
+// so the teardown lines that follow reach the terminal again (REQ-MT-006).
+//
+// @MX:WARN: [AUTO] goroutine that outlives the attach call; it ends only when the child exits, and stop waits on its reaped channel
+// @MX:REASON: stop and Close must not return before this goroutine has reaped the child, or a TUI process could outlive the launcher
+// @MX:SPEC: SPEC-FACTORY-MANAGED-TUI-001
+func (t *managedCodexTUI) wait(cmd *exec.Cmd, done chan<- error, reaped chan<- struct{}) {
+	waitErr := cmd.Wait()
+	t.mu.Lock()
+	stopping := t.stopping
+	t.mu.Unlock()
+	t.restoreLog()
+	if !stopping {
+		done <- waitErr
+	}
+	close(reaped)
+}
+
+// stop interrupts the TUI, waits the grace period, kills it, and waits for the
+// reap. Idempotent: the connection-lost path and Close can both reach it.
+func (t *managedCodexTUI) stop() {
+	t.stopMu.Lock()
+	defer t.stopMu.Unlock()
+	t.mu.Lock()
+	cmd, reaped := t.cmd, t.reaped
+	if cmd != nil {
+		t.stopping = true
+	}
+	t.mu.Unlock()
+	if cmd != nil {
+		select {
+		case <-reaped:
+		default:
+			// An interrupt lets a TUI that handles it restore the terminal;
+			// where the platform cannot deliver one, the child is killed.
+			if err := cmd.Process.Signal(os.Interrupt); err != nil {
+				_ = cmd.Process.Kill()
+			}
+			select {
+			case <-reaped:
+			case <-time.After(t.stopGrace):
+				_ = cmd.Process.Kill()
+				<-reaped
+			}
+		}
+	}
+	t.restoreLog()
+	t.closeLog()
+}
+
+// restoreLog puts the log destination back, but only if it is still ours.
+func (t *managedCodexTUI) restoreLog() {
+	if t.sinkPtr != nil {
+		managedLogOutput.CompareAndSwap(t.sinkPtr, t.prevLog)
+	}
+}
+
+func (t *managedCodexTUI) closeLog() {
+	t.closeLogOnce.Do(func() {
+		if t.logFile != nil {
+			_ = t.logFile.Close()
+		}
+	})
+}
+
+// stopTUI is the first step of the session teardown: the TUI goes first so it
+// does not render a dying server and the terminal returns before the launcher
+// exits.
+func (s *managedCodexSession) stopTUI() {
+	if s.tui != nil {
+		s.tui.stop()
+	}
+}
+
+// Busy is the M2 placeholder: busy tracking lands with the shared-thread
+// milestone.
 func (s *managedCodexSession) Busy() bool { return false }
 
-// planOperatorTUI is the M1 stub: the pre-Start attach decision plans nothing.
-func (s *managedCodexSession) planOperatorTUI(root, runID string, stdin io.Reader) {}
-
-// stopTUI is the M1 stub: there is never a TUI child to stop.
-func (s *managedCodexSession) stopTUI() {}
-
-// managedCodexRemoteSupport is the M1 stub: no help text offers the options.
-func managedCodexRemoteSupport(help string) bool { return false }
-
-// managedTUIExitError is the M1 stub: no exit status maps to an error.
+// managedTUIExitError is the M2 placeholder: the exit-status mapping lands with
+// the lifecycle milestone.
 func managedTUIExitError(state *os.ProcessState) error { return nil }

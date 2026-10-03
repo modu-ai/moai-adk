@@ -310,8 +310,20 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 	if err := s.DeliverTurn(managedPrimingPrompt); err != nil {
 		return err
 	}
-	inputs := make(chan string, managedOperatorInputBuffer)
-	go readManagedOperatorInput(in, inputs)
+	// While an operator TUI is attached it owns the terminal: the driver reads
+	// no stdin and interprets no /exit or /quit (SPEC-FACTORY-MANAGED-TUI-001
+	// REQ-MT-005). A nil inputs channel never becomes ready in the selects below.
+	var tuiDone <-chan error
+	if op, ok := s.(managedOperatorSurface); ok {
+		if done, attached := op.AttachOperator(); attached {
+			tuiDone = done
+		}
+	}
+	var inputs chan string
+	if tuiDone == nil {
+		inputs = make(chan string, managedOperatorInputBuffer)
+		go readManagedOperatorInput(in, inputs)
+	}
 	absorb := func(line string, ok bool) bool {
 		if !ok {
 			inputs = nil
@@ -336,6 +348,8 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				if absorb(line, ok) {
 					return nil
 				}
+			case res := <-tuiDone:
+				return res
 			case <-idle:
 			}
 		} else {
@@ -346,6 +360,8 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				if absorb(line, ok) {
 					return nil
 				}
+			case res := <-tuiDone:
+				return res
 			default:
 			}
 		}
@@ -372,7 +388,7 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 		claims, err := claim()
 		if err != nil {
 			if err.Error() != lastInboxErr {
-				fmt.Fprintln(os.Stderr, "Factory inbox:", err)
+				managedLogf("Factory inbox: %v", err)
 				lastInboxErr = err.Error()
 			}
 			continue

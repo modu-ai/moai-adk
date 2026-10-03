@@ -626,10 +626,10 @@ func managedCodexAppServerArgs(url, tokenFile string, operatorArgs []string) []s
 // control connection. It implements the M1 managedSession interface: Start
 // spawns and handshakes, DeliverTurn injects one turn, Close tears the child
 // down. This surface is headless on purpose — the managed session is the
-// delivery loop's backend. TUI attach is not delivered by
-// SPEC-FACTORY-MANAGED-SESSION-001 and is owed to a follow-up card, so model
-// output renders wherever the app server's own thread view renders it, not
-// on our stdout.
+// delivery loop's backend. When the operator TUI attach is planned
+// (SPEC-FACTORY-MANAGED-TUI-001, managed_codex_tui.go) the TUI renders the
+// thread on the operator's terminal; otherwise model output renders wherever
+// the app server's own thread view renders it, not on our stdout.
 type managedCodexSession struct {
 	program  string
 	appArgs  []string
@@ -643,6 +643,8 @@ type managedCodexSession struct {
 	threadID string
 	started  bool
 	closed   bool
+	// tui is the planned operator TUI (nil for a headless session).
+	tui *managedCodexTUI
 }
 
 // newManagedCodexSession builds the session without starting it: operator
@@ -686,7 +688,7 @@ func (s *managedCodexSession) Start() error {
 	s.cmd = exec.Command(s.program, args...)
 	s.cmd.Env = s.env
 	s.cmd.Dir = s.dir
-	s.cmd.Stderr = os.Stderr
+	s.cmd.Stderr = s.appServerStderr()
 	if err := s.cmd.Start(); err != nil {
 		// No child exists, so the deferred Close will not run its teardown:
 		// drop the token directory here instead.
@@ -759,6 +761,7 @@ func (s *managedCodexSession) DeliverTurn(prompt string) error {
 // token directory removed — the ownership model's teardown half, idempotent
 // like its stream sibling.
 func (s *managedCodexSession) Close() error {
+	s.stopTUI()
 	if !s.started || s.closed {
 		return nil
 	}
@@ -803,8 +806,12 @@ func runManagedFactoryCodex(bin string, args, env []string, dir string, stdin io
 		return err
 	}
 	session.dir = dir
+	// The attach decision comes before Start: it fixes where the App Server's
+	// stderr goes (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-004, REQ-MT-006).
+	session.planOperatorTUI(root, runID, stdin)
 	pending, err := registerFactoryLaunchPending(context.Background(), root, launchEnv, ownerPID, ownerStart)
 	if err != nil {
+		session.stopTUI()
 		return err
 	}
 	// REQ-MS-002: until the launcher binds the thread id itself, a failed
