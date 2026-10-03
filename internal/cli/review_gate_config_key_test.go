@@ -120,6 +120,9 @@ func TestReviewGateReaders_AgreeWithConfigLoader(t *testing.T) {
 			if got, want := readCodexReviewGateTreeScope(dir), config.NormalizeCodexReviewGateTreeScope(cfg.Workflow.Codex.ReviewGate.TreeScope); got != want {
 				t.Errorf("tree_scope reader = %v, config loader = %v (schema drift)", got, want)
 			}
+			if got, want := readCodexReviewGatePrimaryScope(dir), config.NormalizeCodexReviewGatePrimaryScope(cfg.Workflow.Codex.ReviewGate.PrimaryScope); got != want {
+				t.Errorf("primary_scope reader = %v, config loader = %v (schema drift)", got, want)
+			}
 		})
 	}
 }

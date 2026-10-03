@@ -14,12 +14,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // installTodoCardDecider replaces the add path's classification seam for the
 // test's duration.
-func installTodoCardDecider(t *testing.T, dec kanban.CardDecider) {
+func installTodoCardDecider(t *testing.T, dec factory.CardDecider) {
 	t.Helper()
 	old := todoCardDecider
 	todoCardDecider = dec
@@ -30,20 +30,20 @@ func installTodoCardDecider(t *testing.T, dec kanban.CardDecider) {
 // unavailable.
 type failingCardDecider struct{}
 
-func (failingCardDecider) Classify(string) (kanban.CardClassification, error) {
-	return kanban.CardClassification{}, errors.New("decider unavailable (injected)")
+func (failingCardDecider) Classify(string) (factory.CardClassification, error) {
+	return factory.CardClassification{}, errors.New("decider unavailable (injected)")
 }
 
 // judgementCardDecider is the healthy positive control: it returns a real
 // judgment.
-func judgementCardDecider(prio, mode string, blocked bool) kanban.CardDecider {
-	return kanban.StaticCardDecider{Class: kanban.CardClassification{
-		Priority: prio, Blocked: blocked, Mode: mode, Decider: kanban.DeciderIdentityLLM,
+func judgementCardDecider(prio, mode string, blocked bool) factory.CardDecider {
+	return factory.StaticCardDecider{Class: factory.CardClassification{
+		Priority: prio, Blocked: blocked, Mode: mode, Decider: factory.DeciderIdentityLLM,
 		Reason: "injected healthy judgment",
 	}}
 }
 
-func queueOrder(t *testing.T, store *kanban.BacklogStore) []string {
+func queueOrder(t *testing.T, store *factory.BacklogStore) []string {
 	t.Helper()
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -51,7 +51,7 @@ func queueOrder(t *testing.T, store *kanban.BacklogStore) []string {
 	}
 	var ids []string
 	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStateQueued {
+		if it.State == factory.BacklogStateQueued {
 			ids = append(ids, it.ID)
 		}
 	}
@@ -63,7 +63,7 @@ func queueOrder(t *testing.T, store *kanban.BacklogStore) []string {
 // that appends it, and the --json queue read carries every field.
 func TestTodoAddRecordsClassificationInLockedWrite(t *testing.T) {
 	_, store := todoFixture(t)
-	installTodoCardDecider(t, judgementCardDecider(kanban.ClassPriorityHigh, kanban.ClassModeParallelizable, false))
+	installTodoCardDecider(t, judgementCardDecider(factory.ClassPriorityHigh, factory.ClassModeParallelizable, false))
 
 	out, _, err := runTodo(t, "add", "classified card")
 	if err != nil {
@@ -90,7 +90,7 @@ func TestTodoAddRecordsClassificationInLockedWrite(t *testing.T) {
 		if c == nil {
 			t.Fatalf("card %s carries no classification", id)
 		}
-		if c.Priority != kanban.ClassPriorityHigh || c.Blocked || c.Mode != kanban.ClassModeParallelizable || c.Decider != kanban.DeciderIdentityLLM {
+		if c.Priority != factory.ClassPriorityHigh || c.Blocked || c.Mode != factory.ClassModeParallelizable || c.Decider != factory.DeciderIdentityLLM {
 			t.Errorf("card %s classification = %+v, want the decider's judgment", id, c)
 		}
 		if c.ClassifiedAt == "" {
@@ -137,7 +137,7 @@ func TestTodoAddDeciderFailureFallsBackWithNotice(t *testing.T) {
 			if c == nil {
 				t.Fatalf("fallback card %s carries no classification", id)
 			}
-			want := kanban.DefaultCardClassification()
+			want := factory.DefaultCardClassification()
 			if c.Priority != want.Priority || c.Blocked != want.Blocked || c.Mode != want.Mode || c.Decider != want.Decider {
 				t.Errorf("fallback classification = %+v, want the fail-safe defaults %+v", c, want)
 			}
@@ -146,7 +146,7 @@ func TestTodoAddDeciderFailureFallsBackWithNotice(t *testing.T) {
 
 	t.Run("positive control: healthy decider records its real judgment", func(t *testing.T) {
 		_, store := todoFixture(t)
-		installTodoCardDecider(t, judgementCardDecider(kanban.ClassPriorityLow, kanban.ClassModeParallelizable, true))
+		installTodoCardDecider(t, judgementCardDecider(factory.ClassPriorityLow, factory.ClassModeParallelizable, true))
 
 		out, _, err := runTodo(t, "add", "healthy judgment card")
 		if err != nil {
@@ -162,7 +162,7 @@ func TestTodoAddDeciderFailureFallsBackWithNotice(t *testing.T) {
 				continue
 			}
 			c := it.Classification
-			if c == nil || c.Priority != kanban.ClassPriorityLow || !c.Blocked || c.Mode != kanban.ClassModeParallelizable || c.Decider != kanban.DeciderIdentityLLM {
+			if c == nil || c.Priority != factory.ClassPriorityLow || !c.Blocked || c.Mode != factory.ClassModeParallelizable || c.Decider != factory.DeciderIdentityLLM {
 				t.Errorf("healthy-decider classification = %+v, want the decider's real judgment (NOT the fail-safe default)", c)
 			}
 		}
@@ -174,7 +174,7 @@ func TestTodoAddDeciderFailureFallsBackWithNotice(t *testing.T) {
 // prints no fallback notice.
 func TestTodoAddDefaultDeciderPrintsNoNotice(t *testing.T) {
 	_, store := todoFixture(t)
-	installTodoCardDecider(t, kanban.DefaultCardDecider{})
+	installTodoCardDecider(t, factory.DefaultCardDecider{})
 
 	out, errOut, err := runTodo(t, "add", "plain card")
 	if err != nil {
@@ -189,7 +189,7 @@ func TestTodoAddDefaultDeciderPrintsNoNotice(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, it := range rec.Items {
-		if it.ID == id && (it.Classification == nil || it.Classification.Decider != kanban.DeciderIdentityDefault) {
+		if it.ID == id && (it.Classification == nil || it.Classification.Decider != factory.DeciderIdentityDefault) {
 			t.Errorf("plain add classification = %+v, want decider=default", it.Classification)
 		}
 	}
@@ -221,7 +221,7 @@ func TestTodoAddClassificationFileValidatesAndRecords(t *testing.T) {
 			t.Fatal(err)
 		}
 		c := rec.Items[0].Classification
-		if c == nil || c.Priority != kanban.ClassPriorityLow || !c.Blocked || c.Mode != kanban.ClassModeParallelizable || c.Decider != kanban.DeciderIdentityHuman {
+		if c == nil || c.Priority != factory.ClassPriorityLow || !c.Blocked || c.Mode != factory.ClassModeParallelizable || c.Decider != factory.DeciderIdentityHuman {
 			t.Errorf("supplied classification = %+v, want the supplied judgment recorded", c)
 		}
 	})
@@ -273,7 +273,7 @@ func TestTodoAddClassificationFileUnavailableFallsBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(rec.Items) != 1 || rec.Items[0].ID != id || rec.Items[0].Classification == nil ||
-		rec.Items[0].Classification.Decider != kanban.DeciderIdentityDefault {
+		rec.Items[0].Classification.Decider != factory.DeciderIdentityDefault {
 		t.Errorf("fallback add recorded %+v, want one card with the default classification", rec.Items)
 	}
 }
@@ -286,7 +286,7 @@ func TestTodoAddSortsQueueAndPrintsSortedPosition(t *testing.T) {
 	_, store := todoFixture(t)
 	installTodoCardDecider(t, failingCardDecider{}) // replaced per add below
 
-	add := func(text string, dec kanban.CardDecider) string {
+	add := func(text string, dec factory.CardDecider) string {
 		t.Helper()
 		installTodoCardDecider(t, dec)
 		out, _, err := runTodo(t, "add", text)
@@ -296,16 +296,16 @@ func TestTodoAddSortsQueueAndPrintsSortedPosition(t *testing.T) {
 		return strings.TrimSpace(strings.SplitN(out, " ", 2)[0])
 	}
 	high := func(text string) string {
-		return add(text, kanban.StaticCardDecider{Class: kanban.CardClassification{Priority: kanban.ClassPriorityHigh, Mode: kanban.ClassModeSerial, Decider: kanban.DeciderIdentityLLM}})
+		return add(text, factory.StaticCardDecider{Class: factory.CardClassification{Priority: factory.ClassPriorityHigh, Mode: factory.ClassModeSerial, Decider: factory.DeciderIdentityLLM}})
 	}
 	normal := func(text string) string {
-		return add(text, kanban.StaticCardDecider{Class: kanban.CardClassification{Priority: kanban.ClassPriorityNormal, Mode: kanban.ClassModeSerial, Decider: kanban.DeciderIdentityLLM}})
+		return add(text, factory.StaticCardDecider{Class: factory.CardClassification{Priority: factory.ClassPriorityNormal, Mode: factory.ClassModeSerial, Decider: factory.DeciderIdentityLLM}})
 	}
 	low := func(text string) string {
-		return add(text, kanban.StaticCardDecider{Class: kanban.CardClassification{Priority: kanban.ClassPriorityLow, Mode: kanban.ClassModeSerial, Decider: kanban.DeciderIdentityLLM}})
+		return add(text, factory.StaticCardDecider{Class: factory.CardClassification{Priority: factory.ClassPriorityLow, Mode: factory.ClassModeSerial, Decider: factory.DeciderIdentityLLM}})
 	}
 	blockedNormal := func(text string) string {
-		return add(text, kanban.StaticCardDecider{Class: kanban.CardClassification{Priority: kanban.ClassPriorityNormal, Blocked: true, Mode: kanban.ClassModeSerial, Decider: kanban.DeciderIdentityLLM}})
+		return add(text, factory.StaticCardDecider{Class: factory.CardClassification{Priority: factory.ClassPriorityNormal, Blocked: true, Mode: factory.ClassModeSerial, Decider: factory.DeciderIdentityLLM}})
 	}
 
 	idA := normal("A normal")
@@ -322,7 +322,7 @@ func TestTodoAddSortsQueueAndPrintsSortedPosition(t *testing.T) {
 	// AC-TCD-006: the next add prints its sorted position. E is high, B is
 	// high — same rank, so E lands right after B in insertion order: position
 	// 2 in the sorted order B, E, A, C, D (never the append index 5).
-	installTodoCardDecider(t, kanban.StaticCardDecider{Class: kanban.CardClassification{Priority: kanban.ClassPriorityHigh, Mode: kanban.ClassModeSerial, Decider: kanban.DeciderIdentityLLM}})
+	installTodoCardDecider(t, factory.StaticCardDecider{Class: factory.CardClassification{Priority: factory.ClassPriorityHigh, Mode: factory.ClassModeSerial, Decider: factory.DeciderIdentityLLM}})
 	out, _, err := runTodo(t, "add", "E high")
 	if err != nil {
 		t.Fatalf("add E: %v", err)
@@ -360,14 +360,14 @@ func TestTodoAddSortsQueueAndPrintsSortedPosition(t *testing.T) {
 // stays sorted (an unclassified card ranks normal, which sorts ahead of an
 // existing low card).
 func TestTodoStoreAddKeepsQueueSorted(t *testing.T) {
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(t.TempDir()))
+	store := factory.NewBacklogStore(factory.BacklogPathForRoot(t.TempDir()))
 	lowID := ""
 	if _, _, err := store.Add("seed low"); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
-			c := kanban.CardClassification{Priority: kanban.ClassPriorityLow, Mode: kanban.ClassModeSerial, Decider: kanban.DeciderIdentityLLM}
+			c := factory.CardClassification{Priority: factory.ClassPriorityLow, Mode: factory.ClassModeSerial, Decider: factory.DeciderIdentityLLM}
 			rec.Items[i].Classification = &c
 		}
 		return nil

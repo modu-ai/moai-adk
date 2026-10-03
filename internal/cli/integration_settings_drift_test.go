@@ -4,7 +4,7 @@ package cli
 //
 // AC-PSD-009 through AC-PSD-013 live here: they are assertions about the two
 // CLI surfaces (the `acquire` precondition and the `preflight` verb), and none
-// of them can be made in internal/kanban because the config-gated refusal and
+// of them can be made in internal/factory because the config-gated refusal and
 // the three-state JSON only exist at this layer.
 //
 // No verdict below is read from a process exit code (AC-PSD-006 keeps that
@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -115,16 +115,16 @@ func runIntegrationIn(t *testing.T, worktree, root string, args ...string) (stri
 }
 
 func lockPathFor(root string) string {
-	return filepath.Join(root, ".moai", "state", kanban.IntegrationLockFileName)
+	return filepath.Join(root, ".moai", "state", factory.IntegrationLockFileName)
 }
 
-func readLockRecord(t *testing.T, root string) kanban.IntegrationLock {
+func readLockRecord(t *testing.T, root string) factory.IntegrationLock {
 	t.Helper()
 	data, err := os.ReadFile(lockPathFor(root))
 	if err != nil {
 		t.Fatalf("read lock record: %v", err)
 	}
-	var lock kanban.IntegrationLock
+	var lock factory.IntegrationLock
 	if err := json.Unmarshal(data, &lock); err != nil {
 		t.Fatalf("lock record is not JSON: %v", err)
 	}
@@ -133,7 +133,7 @@ func readLockRecord(t *testing.T, root string) kanban.IntegrationLock {
 
 func driftLedgerLines(t *testing.T, root string) []string {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(kanban.SettingsDriftDir(root), kanban.SettingsDriftLedgerName))
+	data, err := os.ReadFile(filepath.Join(factory.SettingsDriftDir(root), factory.SettingsDriftLedgerName))
 	if err != nil {
 		t.Fatalf("read ledger: %v", err)
 	}
@@ -237,14 +237,14 @@ func TestAcquireRefusalLeavesAnExistingLockByteIdentical(t *testing.T) {
 // there is not exactly one.
 func preservedCopyPath(t *testing.T, root string) string {
 	t.Helper()
-	entries, err := os.ReadDir(kanban.SettingsDriftDir(root))
+	entries, err := os.ReadDir(factory.SettingsDriftDir(root))
 	if err != nil {
 		t.Fatalf("read preserve dir: %v", err)
 	}
 	var found []string
 	for _, e := range entries {
-		if e.Name() != kanban.SettingsDriftLedgerName {
-			found = append(found, filepath.Join(kanban.SettingsDriftDir(root), e.Name()))
+		if e.Name() != factory.SettingsDriftLedgerName {
+			found = append(found, filepath.Join(factory.SettingsDriftDir(root), e.Name()))
 		}
 	}
 	if len(found) != 1 {
@@ -324,8 +324,8 @@ func TestPreflightUndeterminedOnPredicateFailure(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &raw); err != nil {
 		t.Fatalf("preflight --json is not JSON (%v): %s", err, out)
 	}
-	if raw["status"] != string(kanban.SettingsDriftUndetermined) {
-		t.Errorf("status: got %v, want %q", raw["status"], kanban.SettingsDriftUndetermined)
+	if raw["status"] != string(factory.SettingsDriftUndetermined) {
+		t.Errorf("status: got %v, want %q", raw["status"], factory.SettingsDriftUndetermined)
 	}
 	if _, present := raw["match_count"]; present {
 		t.Errorf("match_count is present under undetermined (%v); a 0 there reads as a pass", raw["match_count"])
@@ -348,7 +348,7 @@ func TestPreflightKeepsDriftVerdictWhenPreservationFails(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".moai", "state"), 0o755); err != nil {
 		t.Fatalf("mkdir state: %v", err)
 	}
-	if err := os.WriteFile(kanban.SettingsDriftDir(root), []byte("not a directory\n"), 0o644); err != nil {
+	if err := os.WriteFile(factory.SettingsDriftDir(root), []byte("not a directory\n"), 0o644); err != nil {
 		t.Fatalf("occupy preserve dir: %v", err)
 	}
 
@@ -358,8 +358,8 @@ func TestPreflightKeepsDriftVerdictWhenPreservationFails(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &raw); err != nil {
 		t.Fatalf("preflight --json is not JSON (%v): %s", err, out)
 	}
-	if raw["status"] != string(kanban.SettingsDriftDetected) {
-		t.Errorf("status: got %v, want %q (a preservation failure must not flip the verdict)", raw["status"], kanban.SettingsDriftDetected)
+	if raw["status"] != string(factory.SettingsDriftDetected) {
+		t.Errorf("status: got %v, want %q (a preservation failure must not flip the verdict)", raw["status"], factory.SettingsDriftDetected)
 	}
 	if mc, ok := raw["match_count"].(float64); !ok || int(mc) != 1 {
 		t.Errorf("match_count: got %v, want 1", raw["match_count"])
@@ -383,8 +383,8 @@ func TestPreflightReportsCleanAndDrift(t *testing.T) {
 	if jsonErr := json.Unmarshal([]byte(out), &cleanRaw); jsonErr != nil {
 		t.Fatalf("preflight --json is not JSON (%v): %s", jsonErr, out)
 	}
-	if cleanRaw["status"] != string(kanban.SettingsDriftClean) {
-		t.Errorf("clean status: got %v, want %q", cleanRaw["status"], kanban.SettingsDriftClean)
+	if cleanRaw["status"] != string(factory.SettingsDriftClean) {
+		t.Errorf("clean status: got %v, want %q", cleanRaw["status"], factory.SettingsDriftClean)
 	}
 	if mc, ok := cleanRaw["match_count"].(float64); !ok || int(mc) != 0 {
 		t.Errorf("clean match_count: got %v, want 0", cleanRaw["match_count"])
@@ -397,8 +397,8 @@ func TestPreflightReportsCleanAndDrift(t *testing.T) {
 	if jsonErr := json.Unmarshal([]byte(out2), &dirtyRaw); jsonErr != nil {
 		t.Fatalf("preflight --json is not JSON (%v): %s", jsonErr, out2)
 	}
-	if dirtyRaw["status"] != string(kanban.SettingsDriftDetected) {
-		t.Errorf("dirty status: got %v, want %q", dirtyRaw["status"], kanban.SettingsDriftDetected)
+	if dirtyRaw["status"] != string(factory.SettingsDriftDetected) {
+		t.Errorf("dirty status: got %v, want %q", dirtyRaw["status"], factory.SettingsDriftDetected)
 	}
 	if mc, ok := dirtyRaw["match_count"].(float64); !ok || int(mc) != 1 {
 		t.Errorf("dirty match_count: got %v, want 1", dirtyRaw["match_count"])
@@ -516,7 +516,7 @@ func TestAcquireCleanTreeIsUnchanged(t *testing.T) {
 	if !strings.Contains(out, "acquired") {
 		t.Errorf("acquire output changed shape on the clean path: %s", out)
 	}
-	if _, statErr := os.Stat(kanban.SettingsDriftDir(root)); statErr == nil {
+	if _, statErr := os.Stat(factory.SettingsDriftDir(root)); statErr == nil {
 		t.Errorf("a clean tree created the preservation directory")
 	}
 }

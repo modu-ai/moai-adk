@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 const (
@@ -95,12 +95,12 @@ func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
 	t.Helper()
 	root, store := fcFixture(t)
 	sdScrubLauncherEnv(t)
-	states := make([]kanban.BacklogState, opts.cards)
+	states := make([]factory.BacklogState, opts.cards)
 	for i := range states {
-		states[i] = kanban.BacklogStatePicked
+		states[i] = factory.BacklogStatePicked
 	}
 	fcQueue(t, store, states...)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	if opts.localInstruction != "" {
 		if err := os.WriteFile(filepath.Join(root, "AGENTS.local.md"), []byte(opts.localInstruction), 0o600); err != nil {
 			t.Fatal(err)
@@ -110,7 +110,7 @@ func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
 	}
 	t.Chdir(root)
 	setManagedSwitch(t, opts.managed)
-	t.Setenv(config.EnvMoaiKanbanID, fcRun)
+	t.Setenv(config.EnvFactoryRunID, fcRun)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 
 	h := &cardChildLoop{t: t, root: root}
@@ -141,7 +141,7 @@ func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
 	codexDirectLaunchFn = func(c *exec.Cmd) error {
 		i := len(h.direct)
 		h.direct = append(h.direct, c)
-		sdCodexSessionWork(t, root, sdEnvOf(t, c.Env)[config.EnvMoaiKanbanCard])
+		sdCodexSessionWork(t, root, sdEnvOf(t, c.Env)[config.EnvFactoryCard])
 		if h.directResult != nil {
 			return h.directResult(i)
 		}
@@ -153,7 +153,7 @@ func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
 			h.managed = append(h.managed, cardChildCall{bin: bin, args: args, env: env, dir: dir})
 			err := orig(bin, args, env, dir)
 			if !opts.noWork {
-				sdCodexSessionWork(t, root, launchEnvValue(env, config.EnvMoaiKanbanCard))
+				sdCodexSessionWork(t, root, launchEnvValue(env, config.EnvFactoryCard))
 			}
 			return err
 		}
@@ -164,7 +164,7 @@ func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
 		h.managed = append(h.managed, cardChildCall{
 			bin: bin, args: append([]string(nil), args...), env: append([]string(nil), env...), dir: dir,
 		})
-		sdCodexSessionWork(t, root, launchEnvValue(env, config.EnvMoaiKanbanCard))
+		sdCodexSessionWork(t, root, launchEnvValue(env, config.EnvFactoryCard))
 		if h.managedResult != nil {
 			return h.managedResult(i)
 		}
@@ -176,7 +176,7 @@ func newCardChildLoop(t *testing.T, opts cardChildOpts) *cardChildLoop {
 // run drives `moai codex -f lane` and returns stdout, stderr and the error.
 func (h *cardChildLoop) run() (string, string, error) {
 	h.t.Helper()
-	return runCodexCmd(h.t, "-f", "lane")
+	return runCodexCmd(h.t, "-l")
 }
 
 // AC-CC-001 — switch on + lane stamps: each leased card's child goes through
@@ -201,8 +201,8 @@ func TestManagedCardChildLaneLoopUsesManagedOwner(t *testing.T) {
 				if card.WorktreePath == "" || h.managed[i].dir != card.WorktreePath {
 					t.Errorf("call %d: dir = %q, want card %s's worktree %q", i, h.managed[i].dir, id, card.WorktreePath)
 				}
-				if got := launchEnvValue(h.managed[i].env, config.EnvMoaiKanbanCard); got != id {
-					t.Errorf("call %d: %s = %q, want %q", i, config.EnvMoaiKanbanCard, got, id)
+				if got := launchEnvValue(h.managed[i].env, config.EnvFactoryCard); got != id {
+					t.Errorf("call %d: %s = %q, want %q", i, config.EnvFactoryCard, got, id)
 				}
 			}
 		})
@@ -276,9 +276,8 @@ func TestManagedCardChildSwitchOffKeepsDirectDoor(t *testing.T) {
 					"CODEX_HOME="+codexHome,
 					config.EnvFactoryRole+"=lane",
 					config.EnvMoaiFactoryWorker+"="+label,
-					config.EnvMoaiKanbanLabel+"="+label,
-					config.EnvMoaiKanbanBackend+"=gpt",
-					config.EnvMoaiKanbanCard+"="+id,
+					config.EnvFactoryBackend+"=gpt",
+					config.EnvFactoryCard+"="+id,
 				)
 				if !equalStrings(c.Env, wantEnv) {
 					t.Errorf("card %s: Env = %q\nwant %q", id, c.Env, wantEnv)
@@ -415,10 +414,9 @@ func TestManagedCardChildEnvCarriesIdentity(t *testing.T) {
 	for key, want := range map[string]string{
 		config.EnvFactoryRole:       config.FactoryRoleLane,
 		config.EnvMoaiFactoryWorker: label,
-		config.EnvMoaiKanbanLabel:   label,
-		config.EnvMoaiKanbanBackend: kanban.BackendGPT,
-		config.EnvMoaiKanbanCard:    "t1",
-		config.EnvMoaiKanbanID:      fcRun,
+		config.EnvFactoryBackend:    factory.BackendGPT,
+		config.EnvFactoryCard:       "t1",
+		config.EnvFactoryRunID:      fcRun,
 	} {
 		if got := launchEnvValue(env, key); got != want {
 			t.Errorf("env %s = %q, want %q", key, got, want)
@@ -544,9 +542,9 @@ func TestManagedCardChildSecondCardRebinds(t *testing.T) {
 		h := newCardChildLoop(t, cardChildOpts{cards: 1, managed: strPtr("1")})
 		start := homestate.CurrentProcessFingerprint()
 		env := []string{
-			config.EnvMoaiKanbanID + "=" + fcRun,
-			config.EnvMoaiKanbanBackend + "=" + kanban.BackendGPT,
-			config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
+			config.EnvFactoryRunID + "=" + fcRun,
+			config.EnvFactoryBackend + "=" + factory.BackendGPT,
+			config.EnvMoaiFactoryWorker + "=" + factory.FactoryLaneLabel(1),
 		}
 		if _, err := registerFactoryLaunchPending(context.Background(), h.root, env, os.Getpid(), start); err != nil {
 			t.Fatal(err)
@@ -600,7 +598,7 @@ func TestManagedCardChildDeliversInboxThroughLoop(t *testing.T) {
 		Slot: lane.Slot, SessionUUID: lane.SessionUUID, Generation: lane.Generation, PID: lane.PID, ProcessStart: lane.ProcessStart,
 	}
 	from, err := store.RegisterPeer(context.Background(), factorymsg.Peer{
-		ProjectKey: to.ProjectKey, RunID: fcRun, Backend: kanban.BackendClaude, Role: kanban.RoleLeader, Slot: kanban.RoleLeader,
+		ProjectKey: to.ProjectKey, RunID: fcRun, Backend: factory.BackendClaude, Role: factory.RoleLeader, Slot: factory.RoleLeader,
 		SessionUUID: "card-child-leader", Generation: 1, PID: os.Getppid(), ProcessStart: senderStart,
 	})
 	if err != nil {

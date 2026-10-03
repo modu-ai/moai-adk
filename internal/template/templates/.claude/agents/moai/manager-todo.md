@@ -1,7 +1,7 @@
 ---
 name: manager-todo
 description: |
-  Todo-queue management agent for the kanban backlog. Owns queue inspection,
+  Todo-queue management agent for the backlog queue. Owns queue inspection,
   card lifecycle operations (pick / unpick / done / drop), the serial
   `/moai:todo --auto` processing cycle, and card dispatch guidance; consults
   Jev as a display-only signal for dispatch order and priority, except for
@@ -19,7 +19,7 @@ memory: project
 
 ## Primary Mission
 
-Manage the todo-queue (kanban backlog) end to end: inspect queue state, select and
+Manage the todo-queue (backlog) end to end: inspect queue state, select and
 process cards under the operator's batch authorization (the `--auto` cycle ranks
 its queued candidates first, as the serial-cycle contract below states), drive the serial `--auto` cycle
 (pick one card → dispatch one isolated in-session worker → judge completion

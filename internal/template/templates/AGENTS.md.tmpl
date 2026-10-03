@@ -129,7 +129,7 @@ session operates through `git -C <absolute-worktree-path>` and direct file opera
 invoke `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. Never create a tree with bare
 `git worktree add`.
 
-**Codex factory lanes (`-f lane`)** use the card worktree
+**Codex factory lanes (`moai codex -l`)** use the card worktree
 selected by their supervising launcher. The launcher starts each interactive Codex child
 with that worktree as its working directory (`codex -C <absolute-worktree-path>`). A Codex
 child already in the card worktree continues there. A direct `codex -C` child reads the worktree's
@@ -180,6 +180,14 @@ into the next command — each invocation is a fresh process.
 **Batch independent read-only verifications rather than serializing them** across turns. Serialize
 only for a genuine dependency: one command's output feeding another, writes to the same path, or
 shared-state mutation.
+
+**Run repeated verification through `moai verify run`**: it executes a command once per
+working-tree state and reuses a passing result within its TTL (default 10 minutes), so list the
+environment variables (`--env NAME,...`) and the toolchain identity (`--tool-version-cmd`) the
+result depends on — a reuse is bounded by the TTL and by what is bound. A reuse is a prior
+observation, not one made in this run: a verdict citing it names the key and `recorded_at`
+from the reuse notice and lists "output not re-observed" under Gaps — a reused result is a Gap,
+not a Claim — and a claim that needs verbatim output runs the command directly.
 
 **A CodeRabbit row in `gh pr checks` is not evidence that a review ran** — the status reads
 `success` and prints `pass` identically whether or not one did. Count the row only when BOTH hold:

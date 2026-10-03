@@ -1,0 +1,20 @@
+<!-- expect: -->
+<!-- C4 arrival-only: the A4 hierarchy stem emits every child connector from the identical point (200,70) on the parent bottom edge. The three arrivals land on three different children. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c4-tree-stem-title c4-tree-stem-desc">
+  <title id="c4-tree-stem-title">Hierarchy stem</title>
+  <desc id="c4-tree-stem-desc">A parent node branches down to three children from one stem point.</desc>
+  <defs>
+    <marker id="c4-tree-stem-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <rect x="140" y="30" width="120" height="40" fill="#FAF9F5" stroke="#D9CDBE"/>
+  <path d="M 200 70 V 110 H 90 V 140" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-tree-stem-arrow)"/>
+  <path d="M 200 70 V 140" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-tree-stem-arrow)"/>
+  <path d="M 200 70 V 110 H 310 V 140" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-tree-stem-arrow)"/>
+  <rect x="40" y="150" width="100" height="40" fill="#FBE9DF" stroke="#D97757"/>
+  <rect x="150" y="150" width="100" height="40" fill="#FBE9DF" stroke="#D97757"/>
+  <rect x="260" y="150" width="100" height="40" fill="#FBE9DF" stroke="#D97757"/>
+</svg>

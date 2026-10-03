@@ -6,7 +6,7 @@ package cli
 // the launch on its ordinary door.
 //
 // Routing facts the Codex tests rest on (measured on this tree):
-//   - `moai codex -f lane` routes to runCodexFactoryLane and returns before
+//   - `moai codex -l` routes to runCodexFactoryLane and returns before
 //     runCodexLaunch; its per-card children launch through
 //     launchCodexCardSession → managedCodexCardLaunchFunc when the switch and
 //     the stamps are on, and → codexDirectLaunchFn otherwise (never the plain

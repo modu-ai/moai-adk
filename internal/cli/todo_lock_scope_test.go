@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -69,7 +69,7 @@ func addAtRoot(root string, text string) error {
 // signature.)
 func TestTodoAdd_LLMJudgmentsOverlapOutsideLock(t *testing.T) {
 	root, store := todoFixture(t)
-	t.Setenv(config.EnvTodoDecider, kanban.DeciderIdentityLLM)
+	t.Setenv(config.EnvTodoDecider, factory.DeciderIdentityLLM)
 	server, rec := slowLLMServer(t, 1500*time.Millisecond)
 	withTodoLLMSeams(t, server.URL+glmMessagesPath, todoLLMHTTPClient, fakeKeyLoader())
 
@@ -110,7 +110,7 @@ func TestTodoAdd_LLMJudgmentsOverlapOutsideLock(t *testing.T) {
 			t.Errorf("card %s admitted with no classification", it.ID)
 			continue
 		}
-		if c.Decider != kanban.DeciderIdentityLLM || c.Priority != kanban.ClassPriorityHigh {
+		if c.Decider != factory.DeciderIdentityLLM || c.Priority != factory.ClassPriorityHigh {
 			t.Errorf("card %s classification = %+v, want the model judgment (decider llm, high)", it.ID, c)
 		}
 		classified++
@@ -132,7 +132,7 @@ func TestTodoAdd_LLMJudgmentsOverlapOutsideLock(t *testing.T) {
 // the in-flight judgment never deadlocks or errors the reader.
 func TestTodoAdd_ListReadCompletesDuringLLMJudgment(t *testing.T) {
 	root, _ := todoFixture(t)
-	t.Setenv(config.EnvTodoDecider, kanban.DeciderIdentityLLM)
+	t.Setenv(config.EnvTodoDecider, factory.DeciderIdentityLLM)
 	server, rec := slowLLMServer(t, 1200*time.Millisecond)
 	withTodoLLMSeams(t, server.URL+glmMessagesPath, todoLLMHTTPClient, fakeKeyLoader())
 
@@ -172,7 +172,7 @@ func TestTodoAdd_ListReadCompletesDuringLLMJudgment(t *testing.T) {
 func TestTodoAdd_LLMFailureDegradesWithExactlyOneNotice(t *testing.T) {
 	t.Run("append path", func(t *testing.T) {
 		_, store := todoFixture(t)
-		t.Setenv(config.EnvTodoDecider, kanban.DeciderIdentityLLM)
+		t.Setenv(config.EnvTodoDecider, factory.DeciderIdentityLLM)
 		server, _ := llmServer(t, http.StatusInternalServerError, "boom")
 		withTodoLLMSeams(t, server.URL+glmMessagesPath, todoLLMHTTPClient, fakeKeyLoader())
 
@@ -193,7 +193,7 @@ func TestTodoAdd_LLMFailureDegradesWithExactlyOneNotice(t *testing.T) {
 				continue
 			}
 			c := it.Classification
-			want := kanban.DefaultCardClassification()
+			want := factory.DefaultCardClassification()
 			if c == nil || c.Priority != want.Priority || c.Blocked != want.Blocked || c.Mode != want.Mode || c.Decider != want.Decider {
 				t.Errorf("failed-LLM classification = %+v, want the fail-safe defaults", c)
 			}
@@ -201,7 +201,7 @@ func TestTodoAdd_LLMFailureDegradesWithExactlyOneNotice(t *testing.T) {
 	})
 	t.Run("pick path", func(t *testing.T) {
 		_, store := todoFixture(t)
-		t.Setenv(config.EnvTodoDecider, kanban.DeciderIdentityLLM)
+		t.Setenv(config.EnvTodoDecider, factory.DeciderIdentityLLM)
 		server, _ := llmServer(t, http.StatusInternalServerError, "boom")
 		withTodoLLMSeams(t, server.URL+glmMessagesPath, todoLLMHTTPClient, fakeKeyLoader())
 
@@ -222,7 +222,7 @@ func TestTodoAdd_LLMFailureDegradesWithExactlyOneNotice(t *testing.T) {
 				continue
 			}
 			c := it.Classification
-			if c == nil || c.Decider != kanban.DeciderIdentityDefault {
+			if c == nil || c.Decider != factory.DeciderIdentityDefault {
 				t.Errorf("failed-LLM pick classification = %+v, want the fail-safe default", c)
 			}
 		}

@@ -35,7 +35,7 @@ criteria + a written decision record), where this inventory says so.
 
 | Surface | Coverage | Boundary statement |
 |---|---|---|
-| lane (factory / kanban worker session, `moai cc` / `moai glm` / `moai codex`) | **COVERED** — this document + the watchdog skill | the full semantics below |
+| lane (factory worker session, `moai cc` / `moai glm` / `moai codex`) | **COVERED** — this document + the watchdog skill | the full semantics below |
 | queue batch cycle (`todo --auto`) | boundary only | an operator-unused batch cycle with a 30-minute evidence deadline + automatic unpick of an unprogressing picked card. Its bounded-wait shape is cited as design PRECEDENT for the watchdog window — nothing more. The queue surface keeps its own owner and its own mechanics; this document does not redefine them |
 | mission loop (`goal --auto`) | boundary only | already bounded — turn ceiling, stagnation guard, wall-clock bound; untouched |
 
@@ -355,7 +355,7 @@ progress resumes only on evidence.
 ## 15. Cross-references
 
 - `.claude/skills/moai-lane-watchdog/` — the executable carrier (one watchdog iteration)
-- `.claude/rules/moai/workflow/kanban-dispatch.md` — the dispatch protocol; the explicit-wait posture at dispatch
+- `.claude/rules/moai/workflow/factory-dispatch.md` — the dispatch protocol; the explicit-wait posture at dispatch
 - `.claude/rules/moai/workflow/cross-session-messaging.md` — the reply-independence boundary step ⑤ rests on
 - `.claude/rules/moai/core/agent-common-protocol.md` — the retry ceiling the shell-error remedy inherits
 - `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` — the checkpoint-return convention the accidental-stop remedy follows

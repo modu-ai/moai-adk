@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestTodoAuditPRIncompleteIsUnknown(t *testing.T) {
@@ -21,9 +21,9 @@ func TestTodoAuditPRIncompleteIsUnknown(t *testing.T) {
 			}
 			spy := &spyRunner{prJSON: "[]"}
 			if saturated {
-				prs := make([]kanban.PRRecord, todoPROpenPRLimit)
+				prs := make([]factory.PRRecord, todoPROpenPRLimit)
 				for i := range prs {
-					prs[i] = kanban.PRRecord{Number: i + 1, Title: fmt.Sprintf("unrelated %d", i), State: "OPEN"}
+					prs[i] = factory.PRRecord{Number: i + 1, Title: fmt.Sprintf("unrelated %d", i), State: "OPEN"}
 				}
 				raw, _ := json.Marshal(prs)
 				spy.prJSON = string(raw)
@@ -102,7 +102,7 @@ func TestTodoAuditPickDropped(t *testing.T) {
 	before, _ := store.Load()
 	out, _, err := runTodo(t, "next", "t1")
 	rec, loadErr := store.Load()
-	if err == nil || loadErr != nil || rec.Items[0].State != kanban.BacklogStateDropped || rec.Items[0].Text != before.Items[0].Text {
+	if err == nil || loadErr != nil || rec.Items[0].State != factory.BacklogStateDropped || rec.Items[0].Text != before.Items[0].Text {
 		t.Fatalf("stdout=%q err=%v rec=%+v load=%v", out, err, rec, loadErr)
 	}
 }
@@ -183,10 +183,10 @@ func TestTodoAuditAnalyzeAllocationBound(t *testing.T) {
 	}
 }
 
-func auditAnalysisRecord(n int) *kanban.BacklogRecord {
-	rec := &kanban.BacklogRecord{}
+func auditAnalysisRecord(n int) *factory.BacklogRecord {
+	rec := &factory.BacklogRecord{}
 	for i := 0; i < n; i++ {
-		rec.Items = append(rec.Items, kanban.BacklogItem{ID: fmt.Sprintf("t%d", i+1), State: kanban.BacklogStateQueued, Text: fmt.Sprintf("unique%d task%d implement%d fixture%d", i, i, i, i)})
+		rec.Items = append(rec.Items, factory.BacklogItem{ID: fmt.Sprintf("t%d", i+1), State: factory.BacklogStateQueued, Text: fmt.Sprintf("unique%d task%d implement%d fixture%d", i, i, i, i)})
 	}
 	return rec
 }
@@ -216,7 +216,7 @@ func TestTodoAuditDropReasonSingleLine(t *testing.T) {
 
 func TestTodoAuditFindingNoteSingleLine(t *testing.T) {
 	rec := auditAnalysisRecord(2)
-	f := kanban.BacklogFinding{SubjectID: "t1", RelatedID: "t2", Note: "reason\nsecond\tcolumn"}
+	f := factory.BacklogFinding{SubjectID: "t1", RelatedID: "t2", Note: "reason\nsecond\tcolumn"}
 	out := todoFindingLine(rec, "t1", f)
 	if strings.Contains(out, "\n") || strings.Count(out, "\t") != 1 {
 		t.Fatalf("finding=%q", out)
@@ -278,14 +278,14 @@ func TestTodoAuditPreparedAnalysisMatchesComparator(t *testing.T) {
 	texts := []string{"CAFÉ ship", "café ship", "fix gate now", " fix  gate now ", "gate now fix", "fix gate now please", "", "   ", "repeat repeat", "repeat", "한국어 카드", "다른 카드"}
 	for _, a := range texts {
 		for _, b := range texts {
-			rec := &kanban.BacklogRecord{Items: []kanban.BacklogItem{{ID: "t1", Text: a, State: kanban.BacklogStateQueued}, {ID: "t2", Text: b, State: kanban.BacklogStateQueued}}}
-			score := kanban.TokenSetJaccard(a, b)
+			rec := &factory.BacklogRecord{Items: []factory.BacklogItem{{ID: "t1", Text: a, State: factory.BacklogStateQueued}, {ID: "t2", Text: b, State: factory.BacklogStateQueued}}}
+			score := factory.TokenSetJaccard(a, b)
 			want := ""
-			if kanban.NormalizeCardText(a) != "" && kanban.NormalizeCardText(a) == kanban.NormalizeCardText(b) {
-				want = kanban.BacklogRelationDuplicateForced
+			if factory.NormalizeCardText(a) != "" && factory.NormalizeCardText(a) == factory.NormalizeCardText(b) {
+				want = factory.BacklogRelationDuplicateForced
 				score = 1
-			} else if score >= kanban.BacklogNearDuplicateThreshold && score < 1 {
-				want = kanban.BacklogRelationNearDuplicate
+			} else if score >= factory.BacklogNearDuplicateThreshold && score < 1 {
+				want = factory.BacklogRelationNearDuplicate
 			}
 			pairs, recorded := analyzeQueue(rec)
 			if pairs != 1 || (recorded == 0) != (want == "") {

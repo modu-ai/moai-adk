@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // activateManagedRun provisions the factory state row ValidateActiveRun
@@ -57,7 +57,7 @@ func seedManagedInbox(t *testing.T, root, run, body string) (*factorymsg.Store, 
 	}
 	lane := factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude",
-		Role: kanban.RoleLane, Slot: kanban.FactoryLaneLabel(1), SessionUUID: "managed-lane",
+		Role: factory.RoleLane, Slot: factory.FactoryLaneLabel(1), SessionUUID: "managed-lane",
 		Generation: 1, PID: os.Getpid(), ProcessStart: start,
 	}
 	lane, err = store.RegisterPeer(context.Background(), lane)
@@ -69,7 +69,7 @@ func seedManagedInbox(t *testing.T, root, run, body string) (*factorymsg.Store, 
 		t.Fatal("test parent process identity unavailable")
 	}
 	leader := lane
-	leader.Role, leader.Slot = kanban.RoleLeader, kanban.RoleLeader
+	leader.Role, leader.Slot = factory.RoleLeader, factory.RoleLeader
 	leader.SessionUUID = "managed-leader"
 	leader.PID, leader.ProcessStart = os.Getppid(), senderStart
 	leader.Generation = 1
@@ -143,7 +143,7 @@ func TestManagedQueueSerializesOperatorAndInbox(t *testing.T) {
 				return nil, nil
 			}
 			return []factorymsg.Claim{{
-				Envelope:   factorymsg.Envelope{ID: "m1", Kind: factorymsg.KindStatusRequest, SenderSlot: kanban.FactoryLaneLabel(1), TaskRef: "t1"},
+				Envelope:   factorymsg.Envelope{ID: "m1", Kind: factorymsg.KindStatusRequest, SenderSlot: factory.FactoryLaneLabel(1), TaskRef: "t1"},
 				ClaimToken: "tok-1",
 			}}, nil
 		}
@@ -228,7 +228,7 @@ func TestManagedQueueSerializesOperatorAndInbox(t *testing.T) {
 			}
 			time.Sleep(150 * time.Millisecond)
 			return []factorymsg.Claim{{
-				Envelope:   factorymsg.Envelope{ID: "m2", Kind: factorymsg.KindStatusRequest, SenderSlot: kanban.FactoryLaneLabel(1), TaskRef: "t1"},
+				Envelope:   factorymsg.Envelope{ID: "m2", Kind: factorymsg.KindStatusRequest, SenderSlot: factory.FactoryLaneLabel(1), TaskRef: "t1"},
 				ClaimToken: "tok-2",
 			}}, nil
 		}
@@ -461,9 +461,9 @@ func TestManagedLaunchPendingRollback(t *testing.T) {
 	// launch-pending row is visible, so the zero assertion below is not an
 	// empty sweep.
 	env := []string{
-		config.EnvMoaiKanbanID + "=" + run,
-		config.EnvMoaiKanbanBackend + "=claude",
-		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
+		config.EnvFactoryRunID + "=" + run,
+		config.EnvFactoryBackend + "=claude",
+		config.EnvMoaiFactoryWorker + "=" + factory.FactoryLaneLabel(1),
 	}
 	pending, err := registerFactoryLaunchPending(context.Background(), root, env, os.Getpid(), start)
 	if err != nil {
@@ -705,9 +705,9 @@ func TestManagedStreamSessionOwnerRuns(t *testing.T) {
 	activateManagedRun(t, root, run)
 	backend := writeManagedFakeBackend(t, `{"type":"result","is_error":false}`)
 	env := []string{
-		config.EnvMoaiKanbanID + "=" + run,
-		config.EnvMoaiKanbanBackend + "=claude",
-		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
+		config.EnvFactoryRunID + "=" + run,
+		config.EnvFactoryBackend + "=claude",
+		config.EnvMoaiFactoryWorker + "=" + factory.FactoryLaneLabel(1),
 	}
 	stdinR, stdinW, err := os.Pipe()
 	if err != nil {
@@ -734,7 +734,7 @@ func TestManagedStreamSessionOwnerRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(roster.Lanes) != 1 || roster.Lanes[0].BindingState != factorymsg.BindingLaunchPending ||
-		roster.Lanes[0].Slot != kanban.FactoryLaneLabel(1) {
+		roster.Lanes[0].Slot != factory.FactoryLaneLabel(1) {
 		t.Fatalf("roster after a clean run = %+v, want the lane-1 launch-pending row", roster.Lanes)
 	}
 

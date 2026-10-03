@@ -1,8 +1,8 @@
 // todo_queue_read.go — the console's SINGLE read seam onto the backlog queue.
 //
 // This is the only file in internal/web that names a backlog-store symbol
-// (`kanban.ResolveTodoQueueRoot`, `kanban.NewBacklogStore`,
-// `kanban.BacklogPathForRoot`, `kanban.BacklogItem`); `todo_queue_read_test.go`
+// (`factory.ResolveTodoQueueRoot`, `factory.NewBacklogStore`,
+// `factory.BacklogPathForRoot`, `factory.BacklogItem`); `todo_queue_read_test.go`
 // asserts that mechanically. The view model calls readTodoQueue and never the
 // store, so the queue's SQLite storage and legacy read-through are swapped
 // by changing this function and nothing else.
@@ -12,7 +12,7 @@
 package web
 
 import (
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // readTodoQueue resolves the backlog queue for the served project and reads it.
@@ -23,16 +23,16 @@ import (
 // (REQ-WTQ-001, REQ-WTQ-004). Calling the adopting Load here would make a page
 // render perform the one-time storage cutover, which is the `moai todo`
 // command path's act. Adoption stays reachable only from there. The read itself
-// takes no lock — lock-guarded writes and id issuance belong to
-// SPEC-KANBAN-TODO-CLI-001, and the console is a consumer.
+// takes no lock — lock-guarded writes and id issuance belong to the
+// `moai todo` command, and the console is a consumer.
 //
 // An absent queue is empty; a failed read is unavailable, never a zero count.
 // The view receives no raw error text. All three states are
 // returned, none filtered out (resolved decision G-5); ordering is the store's.
 func readTodoQueue(projectRoot string) TodoVM {
-	root := kanban.ResolveTodoQueueRoot(projectRoot)
+	root := factory.ResolveTodoQueueRoot(projectRoot)
 	vm := TodoVM{Root: root}
-	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
+	rec, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()
 	if err != nil {
 		vm.Unavailable = true
 		return vm
@@ -60,7 +60,7 @@ func readTodoQueue(projectRoot string) TodoVM {
 // row the recorded direction reads forward ("blocks t2"), and on the
 // counterpart's row the original direction is kept and marked as the other
 // side of the record ("t1 blocks this").
-func todoRelationCell(f kanban.BacklogFinding, self string) string {
+func todoRelationCell(f factory.BacklogFinding, self string) string {
 	if f.SubjectID == self {
 		return f.Relation + " " + f.RelatedID + " (" + f.Source + ")"
 	}

@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // AC-TSP-010 — `moai todo add "-f hello world"` creates the card with the
@@ -64,7 +64,7 @@ func TestTodoAddPick(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if len(rec.Items) != 1 || rec.Items[0].State != kanban.BacklogStatePicked {
+	if len(rec.Items) != 1 || rec.Items[0].State != factory.BacklogStatePicked {
 		t.Errorf("record = %+v, want one picked item", rec.Items)
 	}
 }

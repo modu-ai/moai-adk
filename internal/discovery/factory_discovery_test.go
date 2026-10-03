@@ -78,7 +78,7 @@ func liveLeader(pid int, runID, dir string) fakeProcess {
 		state:       homestate.ProcessIdentityLive,
 		argv:        []string{"claude", "--permission-mode", "default", "--name", "leader"},
 		argvOK:      true,
-		env:         map[string]string{config.EnvMoaiKanbanID: runID},
+		env:         map[string]string{config.EnvFactoryRunID: runID},
 		envOK:       true,
 		cwd:         dir,
 		cwdOK:       true,

@@ -147,7 +147,7 @@ func TestHostGateControlMatrix(t *testing.T) {
 // loopback control proves each refusal is the Host gate: the same method on the
 // same route from a loopback Host is not refused.
 func TestHostGateCoversEveryRouteAndMethod(t *testing.T) {
-	routes := []string{"/", "/kanban", "/monitor", "/todo", "/specs", "/settings", "/events", "/static/app.js"}
+	routes := []string{"/", "/factory", "/monitor", "/todo", "/specs", "/settings", "/events", "/static/app.js"}
 	methods := []string{http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodDelete}
 	h := newTestApp(t).routes()
 

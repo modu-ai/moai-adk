@@ -88,7 +88,7 @@ func TestTodoWatcherRegistersLateDirectories(t *testing.T) {
 			for {
 				select {
 				case event := <-ch:
-					if event == "kanban" {
+					if event == "factory" {
 						return
 					}
 				case <-deadline:

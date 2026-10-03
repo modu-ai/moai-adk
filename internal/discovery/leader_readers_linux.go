@@ -40,11 +40,11 @@ func platformEnv(ctx context.Context, pid int) (map[string]string, bool) {
 	}
 	env := map[string]string{}
 	for _, token := range fields {
-		if key, value, found := strings.Cut(token, "="); found && key == config.EnvMoaiKanbanID {
+		if key, value, found := strings.Cut(token, "="); found && key == config.EnvFactoryRunID {
 			env[key] = value
 		}
 	}
-	if env[config.EnvMoaiKanbanID] == "" {
+	if env[config.EnvFactoryRunID] == "" {
 		return nil, false
 	}
 	return env, true

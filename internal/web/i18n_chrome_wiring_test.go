@@ -11,7 +11,7 @@ import (
 // reintroduce retired operational links to the primary surface.
 
 // TestOverviewPrimarySurfaceWiring asserts that Overview is a focused entry
-// point for health, Todo, Settings, and safe quick actions. Kanban, Specs, and
+// point for health, Todo, Settings, and safe quick actions. Factory, Specs, and
 // Monitor remain separately testable routes but are not primary navigation.
 func TestOverviewPrimarySurfaceWiring(t *testing.T) {
 	t.Parallel()
@@ -45,7 +45,7 @@ func TestOverviewPrimarySurfaceWiring(t *testing.T) {
 			t.Errorf("overview markup is missing %s", want)
 		}
 	}
-	for _, retired := range []string{`href="/kanban"`, `href="/specs"`, `href="/monitor"`} {
+	for _, retired := range []string{`href="/factory"`, `href="/specs"`, `href="/monitor"`} {
 		if strings.Contains(html, retired) {
 			t.Errorf("overview primary surface exposes retired navigation link %s", retired)
 		}

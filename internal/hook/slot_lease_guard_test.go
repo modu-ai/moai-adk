@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 const (
@@ -86,14 +86,14 @@ func slotGuardConfig(enabled bool) config.SlotLeaseConfig {
 
 // liveForeignLease is held by s-1 with a live owner (this test process) and an
 // unelapsed bound.
-func liveForeignLease() kanban.SlotLease {
+func liveForeignLease() factory.SlotLease {
 	now := time.Now().UTC()
-	return kanban.SlotLease{
+	return factory.SlotLease{
 		Resource:    slotGuardResource,
 		SessionID:   "s-1",
 		SessionName: "lane-s-1",
 		PID:         os.Getpid(),
-		PIDSource:   kanban.PIDSourceSessionOwner,
+		PIDSource:   factory.PIDSourceSessionOwner,
 		Command:     "heavy-suite",
 		AcquiredAt:  now.Add(-time.Minute).Format(time.RFC3339),
 		MaxDuration: time.Hour.String(),
@@ -105,7 +105,7 @@ func slotGuardRecordPath(root, resource string) string {
 	return filepath.Join(root, ".moai", "state", "slot-leases", resource+".json")
 }
 
-func seedSlotGuardLease(t *testing.T, root string, lease kanban.SlotLease) {
+func seedSlotGuardLease(t *testing.T, root string, lease factory.SlotLease) {
 	t.Helper()
 	path := slotGuardRecordPath(root, lease.Resource)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -167,7 +167,7 @@ func exitedChildPID(t *testing.T) int {
 		t.Fatalf("running the dummy child: %v", err)
 	}
 	pid := cmd.Process.Pid
-	if kanban.FactoryProcessAlive(pid) {
+	if factory.FactoryProcessAlive(pid) {
 		t.Skipf("pid %d of an exited child reads live (reused); the stale row is not exercisable", pid)
 	}
 	return pid

@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // runRelaunch executes `moai factory relaunch <args>` and returns stdout,
@@ -57,11 +57,11 @@ func TestFactoryRelaunchDryRunMatrix(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"cc pinned lane", []string{"--lane", "lane-3", "--provider", "cc"}, "moai cc -f lane-3"},
-		{"glm pinned lane", []string{"--lane", "lane-3", "--provider", "glm"}, "moai glm -f lane-3"},
-		{"cc pinned lane and run", []string{"--lane", "lane-3", "--provider", "cc", "--run", "runA"}, "moai cc -f lane-3 --factory-run runA"},
-		{"cc lane omitted", []string{"--provider", "cc"}, "moai cc -f lane"},
-		{"codex", []string{"--provider", "codex"}, "moai codex -f lane"},
+		{"cc pinned lane", []string{"--lane", "lane-3", "--provider", "cc"}, "moai cc -l"},
+		{"glm pinned lane", []string{"--lane", "lane-3", "--provider", "glm"}, "moai glm -l"},
+		{"cc pinned lane and run", []string{"--lane", "lane-3", "--provider", "cc", "--run", "runA"}, "moai cc -l --factory-run runA"},
+		{"cc lane omitted", []string{"--provider", "cc"}, "moai cc -l"},
+		{"codex", []string{"--provider", "codex"}, "moai codex -l"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -113,7 +113,7 @@ func TestFactoryRelaunchRefusesLegacyAndCodexPins(t *testing.T) {
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 
-	if stdout, stderr, err := runRelaunch(t, "--dry-run", "--lane", "lane-3", "--provider", "cc"); err != nil || stdout != "moai cc -f lane-3\n" {
+	if stdout, stderr, err := runRelaunch(t, "--dry-run", "--lane", "lane-3", "--provider", "cc"); err != nil || stdout != "moai cc -l\n" {
 		t.Fatalf("positive control failed: stdout=%q stderr=%q err=%v", stdout, stderr, err)
 	}
 	refused := []struct {
@@ -219,7 +219,7 @@ func TestFactoryRelaunchFromRunRetiresDeadOwnerOnly(t *testing.T) {
 			if err != nil {
 				t.Fatalf("relaunch --from-run %s: %v (stderr %q)", tc.fromRun, err, stderr)
 			}
-			if want := [][]string{{"cc", "-f", "lane"}}; !reflect.DeepEqual(*captured, want) {
+			if want := [][]string{{"cc", "-l"}}; !reflect.DeepEqual(*captured, want) {
 				t.Errorf("launch argv = %v, want %v", *captured, want)
 			}
 			if !strings.Contains(stdout+stderr, tc.wantOutcome) {
@@ -270,7 +270,7 @@ func TestFactoryRelaunchDoesNotMutateRunRecords(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dry-run: %v", err)
 	}
-	if stdout != "moai cc -f lane\n" || stderr != "" {
+	if stdout != "moai cc -l\n" || stderr != "" {
 		t.Errorf("stdout=%q stderr=%q, want exactly the launch line", stdout, stderr)
 	}
 	rowsAfter, eventsAfter := runRows(t, root)
@@ -306,7 +306,7 @@ func TestRelaunchCommandRoundTrip(t *testing.T) {
 		for _, lane := range []string{"", "lane-3"} {
 			for _, fromRun := range []string{"", "runX"} {
 				for _, run := range []string{"", "runY"} {
-					c := kanban.RelaunchCommand{Provider: provider, Lane: lane, Run: run, FromRun: fromRun}
+					c := factory.RelaunchCommand{Provider: provider, Lane: lane, Run: run, FromRun: fromRun}
 					line := c.Line()
 					argv := strings.Fields(strings.TrimPrefix(line, "moai factory "))
 					stdout, stderr, err := runRelaunch(t, append(argv[1:], "--dry-run")...)
@@ -336,14 +336,54 @@ func TestFactoryRelaunchLaunchesProviderEntry(t *testing.T) {
 	if _, _, err := runRelaunch(t, "--provider", "glm", "--lane", "lane-3", "--run", "runA"); err != nil {
 		t.Fatalf("relaunch: %v", err)
 	}
-	if want := [][]string{{"glm", "-f", "lane-3", "--factory-run", "runA"}}; !reflect.DeepEqual(*captured, want) {
+	if want := [][]string{{"glm", "-l", "--factory-run", "runA"}}; !reflect.DeepEqual(*captured, want) {
 		t.Errorf("launch argv = %v, want %v", *captured, want)
 	}
 	if _, _, err := runRelaunch(t, "--provider", "codex"); err != nil {
 		t.Fatalf("relaunch codex: %v", err)
 	}
-	if len(*captured) != 2 || !reflect.DeepEqual((*captured)[1], []string{"codex", "-f", "lane"}) {
-		t.Errorf("launches = %v, want the codex launch [codex -f lane] second", *captured)
+	if len(*captured) != 2 || !reflect.DeepEqual((*captured)[1], []string{"codex", "-l"}) {
+		t.Errorf("launches = %v, want the codex launch [codex -l] second", *captured)
+	}
+}
+
+// The lane entry `-l` takes no argument, so a supplied --lane cannot pin the
+// join: the verb says so once on stderr before launching, leaves stdout and the
+// launched argv alone, and stays silent when --lane is not supplied.
+func TestFactoryRelaunchLaneIsIgnoredWithNote(t *testing.T) {
+	root := runOwnerSandbox(t)
+	t.Chdir(root)
+	const note = "--lane lane-3 is ignored"
+	for _, provider := range []string{"cc", "glm"} {
+		captured := captureRelaunchLaunch(t)
+		stdout, stderr, err := runRelaunch(t, "--provider", provider, "--lane", "lane-3", "--run", "runA")
+		if err != nil {
+			t.Fatalf("%s relaunch with --lane: %v", provider, err)
+		}
+		if got := strings.Count(stderr, note); got != 1 {
+			t.Errorf("%s: stderr carries the --lane note %d times, want exactly once:\n%s", provider, got, stderr)
+		}
+		if !strings.Contains(stderr, "next free lane") || !strings.Contains(stderr, "-l takes no argument") {
+			t.Errorf("%s: note does not state the next-free-lane join and the reason:\n%s", provider, stderr)
+		}
+		if stdout != "" {
+			t.Errorf("%s: stdout = %q, want empty", provider, stdout)
+		}
+		if want := [][]string{{provider, "-l", "--factory-run", "runA"}}; !reflect.DeepEqual(*captured, want) {
+			t.Errorf("%s: launch argv = %v, want %v (no lane in the argv)", provider, *captured, want)
+		}
+
+		captured = captureRelaunchLaunch(t)
+		_, stderr, err = runRelaunch(t, "--provider", provider, "--run", "runA")
+		if err != nil {
+			t.Fatalf("%s relaunch without --lane: %v", provider, err)
+		}
+		if strings.Contains(stderr, "--lane") {
+			t.Errorf("%s: stderr mentions --lane although none was supplied:\n%s", provider, stderr)
+		}
+		if want := [][]string{{provider, "-l", "--factory-run", "runA"}}; !reflect.DeepEqual(*captured, want) {
+			t.Errorf("%s: launch argv without --lane = %v, want %v", provider, *captured, want)
+		}
 	}
 }
 
@@ -364,7 +404,7 @@ func TestFactoryRelaunchSurfacesLaunchFailure(t *testing.T) {
 
 	factoryRelaunchExecFn = func(*exec.Cmd) error { return errors.New("cannot start") }
 	_, _, err = runRelaunch(t, "--provider", "glm", "--lane", "lane-2")
-	if err == nil || !strings.Contains(err.Error(), "moai glm -f lane-2") || !strings.Contains(err.Error(), "cannot start") {
+	if err == nil || !strings.Contains(err.Error(), "moai glm -l") || !strings.Contains(err.Error(), "cannot start") {
 		t.Errorf("launch failure surfaced as %v, want the launch line and the cause", err)
 	}
 }

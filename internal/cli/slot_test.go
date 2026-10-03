@@ -218,7 +218,7 @@ func TestSlotCLI_RefusesWithoutSessionID(t *testing.T) {
 }
 
 // plan-audit N1 — the CLI resolves its root with the SAME function the guard
-// uses (kanban.ResolveSlotLeaseRoot): a CLAUDE_PROJECT_DIR pointing into a
+// uses (factory.ResolveSlotLeaseRoot): a CLAUDE_PROJECT_DIR pointing into a
 // linked worktree still writes the record into the primary checkout, where the
 // guard reads it.
 func TestSlotCLI_RootNormalizesWorktreeProjectDir(t *testing.T) {

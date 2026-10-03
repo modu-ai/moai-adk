@@ -53,6 +53,11 @@ func cardScopeGit(t *testing.T, dir string, args ...string) string {
 func TestCodexReviewGate_TreeScopeRequestShapeUnchanged(t *testing.T) {
 	f := newStopFixture(t) // branch "main" — not a card branch
 	f.dirty(t, "tree scope regression")
+	// The whole-tree review this shape pin rides now requires the explicit
+	// primary_scope restore: the distributed default skips a primary-checkout
+	// tree session (REQ-CGSC-002 / REQ-CGSC-004).
+	f.write(t, filepath.Join(".moai", "config", "sections", "workflow.yaml"),
+		"workflow:\n  codex:\n    review_gate:\n      primary_scope: review\n")
 
 	sess := withCodexSession(t, codexSessionScript("- [P1] tree scope findings"))
 
@@ -218,6 +223,9 @@ func TestCodexReviewGate_CardScopeRequestIsCardDiff(t *testing.T) {
 // at the discriminator and at the assembled request.
 func TestCodexReviewGate_StaleEnvKeepsTreeScope(t *testing.T) {
 	f := newCardScopeFixture(t)
+	// The primary role tree is reviewed here, so the explicit primary_scope
+	// restore rides along (the distributed default skips it, REQ-CGSC-002/004).
+	writeOwnershipConfigWithPrimary(t, f.primary, "", "review")
 
 	t.Setenv(config.EnvMoaiFactoryWorker, "worker-9-stale")
 	s1 := reviewScopeResolver(f.primary)

@@ -177,7 +177,7 @@ When a `sweep` Workflow agent or a goal-loop turn agent lacks a required input, 
 
 ### §C.4 Factory lanes (default 8) are not `fanout`
 
-`moai glm -k <N>` factory mode runs a fleet of independent lane sessions (tmux panes) — N is an operator-side fleet size (the count-less lane entry, a bare `-k --name lane-<i>`, defaults to 8), not subagent fan-out. The count sits under the factory's own lane-registry / free-slot discipline (registry prune, live-claim probe, staggered activation), not under `fanout`'s advisory band: 8 is a legal fleet size precisely because these lanes are queue-polling sessions, not `Agent()` calls inside one orchestrator turn. Where a factory leader (or any lane session) DOES invoke `glm_task` / `Agent()` fan-out from its own session, that spawn surface is ordinary subagent fan-out: limit 1 (the runtime subagent cap, default 20) is the hard bound and the stagger-spawn discipline governs same-type spawns, exactly as for `fanout` (§C.2).
+`moai glm -f` factory mode runs a fleet of independent lane sessions (tmux panes, joined one at a time with `-l`) — the fleet size is operator-side, not subagent fan-out. The count sits under the factory's own lane-registry / free-slot discipline (registry prune, live-claim probe, staggered activation), not under `fanout`'s advisory band: 8 is a legal fleet size precisely because these lanes are queue-polling sessions, not `Agent()` calls inside one orchestrator turn. Where a factory leader (or any lane session) DOES invoke `glm_task` / `Agent()` fan-out from its own session, that spawn surface is ordinary subagent fan-out: limit 1 (the runtime subagent cap, default 20) is the hard bound and the stagger-spawn discipline governs same-type spawns, exactly as for `fanout` (§C.2).
 
 ---
 

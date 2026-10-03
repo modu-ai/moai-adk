@@ -113,8 +113,9 @@ const (
 	// DefaultManagedCodexReadyTimeout bounds one Codex App Server handshake —
 	// process spawn, /readyz wait, loopback WS dial, initialize, thread start
 	// (SPEC-FACTORY-MANAGED-SESSION-001 AC-MS-001). It also bounds the WS
-	// handshake itself.
-	DefaultManagedCodexReadyTimeout = 10 * time.Second
+	// handshake itself. UNMEASURED: the 30 s value is a relaxation of the
+	// former 10 s with no cold-start data behind it (card t1410, F9).
+	DefaultManagedCodexReadyTimeout = 30 * time.Second
 	// DefaultManagedCodexTurnTimeout bounds one injected turn: a turn that
 	// never completes fails the delivery instead of holding the serial queue
 	// forever; the store's claim lease owns redelivery afterwards.
@@ -186,6 +187,23 @@ const (
 	// literal at two dispatcher call sites in internal/cli/hook.go; this is the
 	// single source of truth.
 	DefaultHookDispatcherTimeout = 30 * time.Second
+
+	// Per-command bound of the plugin install step: it limits ONE `claude
+	// plugin` / `codex plugin` command (SPEC-PLUGIN-MARKETPLACE-001 REQ-013).
+	// Four commands in the worst case make RK-15's 240-second ceiling a visible
+	// number rather than a literal in a call. A chosen value, not a measured one.
+	DefaultPluginInstallCommandTimeout = 60 * time.Second
+
+	// DefaultPluginCommandWaitDelay is how long a plugin command's output pipes
+	// may stay open after its context ends before the runner stops waiting for
+	// them (a grandchild holding the pipe must not outlive the bound).
+	DefaultPluginCommandWaitDelay = 2 * time.Second
+
+	// DefaultPluginVersionProbeTimeout bounds the one `codex plugin list --json`
+	// the "Plugin Version" doctor check starts (SPEC-PLUGIN-MARKETPLACE-001
+	// REQ-021). The command measured 0.02 s; the bound only stops a hang from
+	// stalling an on-demand `moai doctor`. A chosen value, not a measured one.
+	DefaultPluginVersionProbeTimeout = 3 * time.Second
 
 	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
 	// failure Stops under the Claude harness that keep the fail-closed deny;
@@ -439,7 +457,7 @@ const (
 
 	// DefaultSessionRecordRetentionDays is the shipped default for the
 	// project-tier `state.session_record_retention_days` key (card t1312):
-	// the age bound past which SessionStart prunes kanban session records.
+	// the age bound past which SessionStart prunes factory session records.
 	// It mirrors DefaultHomeCleanRetentionDays — the same 30-day window the
 	// home tier already ships — because the consumers (doctor Factory Run,
 	// the web ops console, the stale-run hook) need liveness only and no
@@ -632,6 +650,18 @@ const (
 	CodexReviewGateTreeScopeSkip   = "skip"
 )
 
+// Values of workflow.codex.review_gate.primary_scope
+// (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-004): what the codex review gate does
+// for a tree-scope session whose tree is the repository's primary working
+// tree. Skip is the distributed default — a primary checkout's non-card
+// changes have no card to attribute them to (REQ-CGSC-002); Review is the
+// explicit restore axis that keeps the pre-SPEC whole-tree review. Single
+// source of truth for both names.
+const (
+	CodexReviewGatePrimaryScopeSkip   = "skip"
+	CodexReviewGatePrimaryScopeReview = "review"
+)
+
 // NormalizeCodexReviewGateTreeScope maps a raw tree_scope value onto the policy:
 // only "skip", compared without regard to case or surrounding whitespace, reads
 // as skip; an empty, unknown or misspelled value reads as review, so a mistyped
@@ -642,6 +672,23 @@ func NormalizeCodexReviewGateTreeScope(value string) string {
 		return CodexReviewGateTreeScopeSkip
 	}
 	return CodexReviewGateTreeScopeReview
+}
+
+// NormalizeCodexReviewGatePrimaryScope maps a raw primary_scope value onto the
+// policy (the §F.2 disposition table): only an explicit "review", compared
+// without regard to case or surrounding whitespace, restores the pre-SPEC
+// whole-tree review; every other read outcome — an empty, unknown or
+// misspelled value, a missing key — leaves the default skip in force, because
+// the gate does not review a primary checkout's unattributable changes
+// (REQ-CGSC-002). The fail direction is deliberately REVERSED from
+// NormalizeCodexReviewGateTreeScope: there the default reviews, here it skips.
+// The config loader and the gate's hand-rolled reader both go through this one
+// function.
+func NormalizeCodexReviewGatePrimaryScope(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), CodexReviewGatePrimaryScopeReview) {
+		return CodexReviewGatePrimaryScopeReview
+	}
+	return CodexReviewGatePrimaryScopeSkip
 }
 
 // DefaultMultiReviewGateTimeout is the per-call timeout for the multi-model
@@ -781,8 +828,8 @@ var (
 	DefaultSessionMsgMaxPending = 64
 )
 
-// DefaultFactoryLanes is the fan-out size the count-less `-k --name
-// lane-<n>` form takes when the operator supplies no count
+// DefaultFactoryLanes is the fan-out size the legacy count-less `-k` lane
+// entry takes when the operator supplies no count
 // (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 leader loop). The value 8 is
 // the operator-decided factory default for that legacy entry — large enough to
 // keep a card queue draining, small enough to sit under the session-count a
@@ -793,7 +840,7 @@ const DefaultFactoryLanes = 8
 // DefaultFactoryLeaderLanes is the leader fan-out a bare `-f` / `--factory`
 // (no count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived
 // -f entry starts the minimal factory — leader plus lane-1 — which the
-// operator then grows one lane at a time with `-f lane-<n>`, so the
+// operator then grows one lane at a time with `-l`, so the
 // count-less default is 1, not the legacy form's 8 (DefaultFactoryLanes).
 //
 // Its role is the LEADER FAN-OUT DEFAULT only (SPEC-CODEX-LANE-SLOTS-001,
@@ -813,7 +860,7 @@ const DefaultFactoryLeaderLanes = 1
 const DefaultFactorySlowLaunchThreshold = 2 * time.Second
 
 // DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
-// the launcher seeds on kanban companion and factory lane sessions (t118,
+// the launcher seeds on factory lane sessions (t118,
 // operator-confirmed architecture: each lane runs up to 10 agents in
 // parallel). It rides CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS (runtime default
 // 20) so N lanes fanning out simultaneously divide the machine's capacity by
@@ -1352,8 +1399,9 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` under internal/template/templates/.
 		Codex: CodexConfig{
 			ReviewGate: CodexReviewGateConfig{
-				Enabled:   false,
-				TreeScope: CodexReviewGateTreeScopeReview,
+				Enabled:      false,
+				TreeScope:    CodexReviewGateTreeScopeReview,
+				PrimaryScope: CodexReviewGatePrimaryScopeSkip,
 			},
 			// SPEC-CODEX-PHASE2-001 (REQ-CX2-007 / REQ-CX2-015): the codex_task
 			// write mode ships default-OFF. A local opt-in belongs in local

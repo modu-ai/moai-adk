@@ -13,7 +13,7 @@ import (
 	"unicode"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // recheckRuleTokens are locale-independent: the tool names, the watchdog skill
@@ -47,12 +47,12 @@ func scriptRunes(s string, table *unicode.RangeTable) int {
 }
 
 func TestLaneRuleCarriesStandingRecheckCron(t *testing.T) {
-	for _, backend := range []string{kanban.BackendClaude, kanban.BackendGLM} {
+	for _, backend := range []string{factory.BackendClaude, factory.BackendGLM} {
 		for _, dispatch := range []string{config.FactoryDispatchAuto, config.FactoryDispatchManual} {
 			for _, source := range []string{"startup", "clear"} {
 				for _, lang := range []string{"en", "ko", "ja", "zh"} {
 					t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
-					t.Setenv(config.EnvMoaiKanbanBackend, backend)
+					t.Setenv(config.EnvFactoryBackend, backend)
 					t.Setenv(config.EnvFactoryAutoDispatch, dispatch)
 					rule := factoryLaneRuleForSource(source, lang)
 					if rule == "" {
@@ -78,8 +78,8 @@ func TestLaneRuleCarriesStandingRecheckCron(t *testing.T) {
 // one — an instruction naming a tool the harness lacks would be a dead letter.
 func TestLaneRuleOmitsCronOnCodexLane(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
-	t.Setenv(config.EnvMoaiKanbanCard, "t9")
+	t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
+	t.Setenv(config.EnvFactoryCard, "t9")
 	rule := factoryLaneRuleForSource("startup", "en")
 	if rule == "" {
 		t.Fatal("backend gpt: no owned-card rule injected on startup")

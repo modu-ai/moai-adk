@@ -4,7 +4,7 @@ package cli
 // exit codes that separate held from busy, status in every state, the list
 // form, release, and input refusals. Written after the M3 implementation as
 // surface coverage; the behavioural decisions they exercise were pinned RED
-// in internal/kanban during M1.
+// in internal/factory during M1.
 
 import (
 	"encoding/json"
@@ -16,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // seedSlotCLILease writes a record straight to the pinned path.
-func seedSlotCLILease(t *testing.T, root string, lease kanban.SlotLease) {
+func seedSlotCLILease(t *testing.T, root string, lease factory.SlotLease) {
 	t.Helper()
 	path := filepath.Join(root, ".moai", "state", "slot-leases", lease.Resource+".json")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -35,10 +35,10 @@ func seedSlotCLILease(t *testing.T, root string, lease kanban.SlotLease) {
 	}
 }
 
-func slotCLILease(resource, session string, pid int, expires time.Time) kanban.SlotLease {
-	return kanban.SlotLease{
+func slotCLILease(resource, session string, pid int, expires time.Time) factory.SlotLease {
+	return factory.SlotLease{
 		Resource: resource, SessionID: session, SessionName: "lane-" + session, PID: pid,
-		PIDSource: kanban.PIDSourceSessionOwner, Command: "heavy-suite",
+		PIDSource: factory.PIDSourceSessionOwner, Command: "heavy-suite",
 		AcquiredAt:  time.Now().UTC().Add(-time.Minute).Format(time.RFC3339),
 		MaxDuration: time.Hour.String(), ExpiresAt: expires.UTC().Format(time.RFC3339),
 	}
@@ -51,15 +51,15 @@ func TestSlotCLI_HeldAndBusyCarryDistinctExitCodes(t *testing.T) {
 	if code, ok := ResolveExitCode(err); !ok || code != slotExitHeld {
 		t.Errorf("acquire over a live holder: exit code (%d, %v), want %d", code, ok, slotExitHeld)
 	}
-	if !kanban.IsSlotLeaseHeld(err) || !strings.Contains(err.Error(), "lane-s-1") {
+	if !factory.IsSlotLeaseHeld(err) || !strings.Contains(err.Error(), "lane-s-1") {
 		t.Errorf("held error = %v, want the held sentinel naming the holder", err)
 	}
 
-	busy := slotResult(fmt.Errorf("%w (waited 1s): x", kanban.ErrSlotLeaseBusy))
+	busy := slotResult(fmt.Errorf("%w (waited 1s): x", factory.ErrSlotLeaseBusy))
 	if code, ok := ResolveExitCode(busy); !ok || code != slotExitBusy {
 		t.Errorf("busy: exit code (%d, %v), want %d", code, ok, slotExitBusy)
 	}
-	if !kanban.IsSlotLeaseBusy(busy) || kanban.IsSlotLeaseHeld(busy) || !strings.Contains(busy.Error(), "retry") {
+	if !factory.IsSlotLeaseBusy(busy) || factory.IsSlotLeaseHeld(busy) || !strings.Contains(busy.Error(), "retry") {
 		t.Errorf("busy error = %v, want the busy sentinel (not held) and a retry hint", busy)
 	}
 	plain := errors.New("other")
@@ -71,7 +71,7 @@ func TestSlotCLI_HeldAndBusyCarryDistinctExitCodes(t *testing.T) {
 func TestSlotCLI_StatusStatesAndList(t *testing.T) {
 	root := t.TempDir()
 	dead := 0x7FFFFFF0
-	if kanban.FactoryProcessAlive(dead) {
+	if factory.FactoryProcessAlive(dead) {
 		t.Skip("seeded dead pid is live on this machine")
 	}
 	seedSlotCLILease(t, root, slotCLILease("held-one", "s-1", os.Getpid(), time.Now().Add(time.Hour)))
@@ -137,7 +137,7 @@ func TestSlotCLI_ReleaseRoundTripAndRefusals(t *testing.T) {
 	if rec["max_duration"] != (30 * time.Minute).String() {
 		t.Errorf("acquire without --max-duration recorded %v, want the configured default 30m0s", rec["max_duration"])
 	}
-	if _, err := runSlotCLI(t, root, "release", "--resource", "demo", "--session", "s-2"); !kanban.IsSlotLeaseForeign(err) {
+	if _, err := runSlotCLI(t, root, "release", "--resource", "demo", "--session", "s-2"); !factory.IsSlotLeaseForeign(err) {
 		t.Errorf("foreign release: err = %v, want the foreign sentinel", err)
 	}
 	if _, err := runSlotCLI(t, root, "release", "--resource", "demo"); err == nil || !strings.Contains(err.Error(), "--session") {
@@ -151,7 +151,7 @@ func TestSlotCLI_ReleaseRoundTripAndRefusals(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil || got["released"] != true {
 		t.Errorf("release --json = %s (err %v)", out, err)
 	}
-	if _, err := runSlotCLI(t, root, "release", "--resource", "demo", "--session", "s-1"); !kanban.IsSlotLeaseNotHeld(err) {
+	if _, err := runSlotCLI(t, root, "release", "--resource", "demo", "--session", "s-1"); !factory.IsSlotLeaseNotHeld(err) {
 		t.Errorf("empty release: err = %v, want the not-held sentinel", err)
 	}
 	if _, err := runSlotCLI(t, root, "acquire", "--resource", "demo", "--session", "s-1"); err != nil {
@@ -169,12 +169,12 @@ func TestSlotCLI_InputRefusals(t *testing.T) {
 		{"release", "--resource", "Bad Name", "--session", "s-1"},
 		{"status", "--resource", "a/b"},
 	} {
-		if _, err := runSlotCLI(t, root, args...); !kanban.IsSlotResourceNameInvalid(err) {
+		if _, err := runSlotCLI(t, root, args...); !factory.IsSlotResourceNameInvalid(err) {
 			t.Errorf("%v: err = %v, want the invalid-name sentinel", args, err)
 		}
 	}
 	for _, bound := range []string{"0", "-1m", "soon"} {
-		if _, err := runSlotCLI(t, root, "acquire", "--resource", "demo", "--session", "s-1", "--max-duration", bound); !errors.Is(err, kanban.ErrSlotLeaseBoundInvalid) {
+		if _, err := runSlotCLI(t, root, "acquire", "--resource", "demo", "--session", "s-1", "--max-duration", bound); !errors.Is(err, factory.ErrSlotLeaseBoundInvalid) {
 			t.Errorf("--max-duration %s: err = %v, want ErrSlotLeaseBoundInvalid", bound, err)
 		}
 	}

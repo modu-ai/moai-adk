@@ -713,7 +713,7 @@
 (function () {
   "use strict";
 
-  var EVENTS = ["spec", "session", "goal", "verify", "kanban", "config"];
+  var EVENTS = ["spec", "session", "goal", "verify", "factory", "config"];
   var POLL_MS = 30000;
   var pollTimer = null;
   var failures = 0;

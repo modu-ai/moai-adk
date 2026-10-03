@@ -172,6 +172,10 @@ func init() {
 	// SPEC-TELEMETRY-001: register telemetry subcommand
 	rootCmd.AddCommand(telemetryCmd)
 
+	// SPEC-PLUGIN-MARKETPLACE-001 REQ-019: the plugin noun group; its one leaf,
+	// `moai plugin install`, is what the install scripts call.
+	rootCmd.AddCommand(newPluginCmd())
+
 	// SPEC-V3R2-CON-001: register constitution subcommand
 	rootCmd.AddCommand(newConstitutionCmd())
 
@@ -181,7 +185,7 @@ func init() {
 	// SPEC-CI-VERDICT-PRODUCER-001: register the CI verdict producer verb
 	rootCmd.AddCommand(newCIVerdictCmd(defaultGhRunner))
 
-	// kanban t86: register tokens subcommand (per-pool token accounting seed)
+	// card t86: register tokens subcommand (per-pool token accounting seed)
 	rootCmd.AddCommand(newTokensCmd())
 
 	// SPEC-V3R2-RT-004 REQ-031: register clean subcommand

@@ -15,7 +15,7 @@ description: "从磁盘计算跨多个 SPEC 的史诗里程碑进度的 moai epi
 moai epic status <prefix> [OPTIONS]
 ```
 
-`<prefix>` 是必填参数，即标识该史诗的 SPEC-ID 前缀。例如传入 `KANBAN` 时，作用对象是 `.moai/specs/SPEC-KANBAN-*/spec.md`。
+`<prefix>` 是必填参数，即标识该史诗的 SPEC-ID 前缀。例如传入 `FACTORY` 时，作用对象是 `.moai/specs/SPEC-FACTORY-*/spec.md`。
 
 ## 读取什么
 
@@ -38,16 +38,16 @@ moai epic status <prefix> [OPTIONS]
 
 ## 示例
 
-默认输出是供人阅读的进度看板。
+默认输出是供人阅读的进度总览。
 
 ```bash
-$ moai epic status KANBAN
-🎯 KANBAN ▓▓▓▓▓░░░░░ 2/4 (50%)
-Epic progress:   KANBAN
-  🟢 M0 M0                            SPEC-KANBAN-RENAME-001 (completed)
-  ⬜ M1 M1                             SPEC-KANBAN-BOOTSTRAP-001 (draft)
-  ⬜ M2 M2                             SPEC-KANBAN-WORKTREE-001 (draft)
-  🟢 M3 M3                            SPEC-KANBAN-BOARD-001 (completed)
+$ moai epic status FACTORY
+🎯 FACTORY ▓▓▓▓▓░░░░░ 2/4 (50%)
+Epic progress:   FACTORY
+  🟢 M0 M0                            SPEC-FACTORY-RENAME-001 (completed)
+  ⬜ M1 M1                             SPEC-FACTORY-BOOTSTRAP-001 (draft)
+  ⬜ M2 M2                             SPEC-FACTORY-WORKTREE-001 (draft)
+  🟢 M3 M3                            SPEC-FACTORY-LANES-001 (completed)
 ```
 
 若一个标记都没有，它会照实写明，并改为列出匹配到的 SPEC。
@@ -62,17 +62,17 @@ untracked_specs: SPEC-DESIGN-DOCS-001, SPEC-DESIGN-DOCS-V31-001
 `--json` 输出脚本可以依赖的固定形状。
 
 ```bash
-$ moai epic status KANBAN --json
+$ moai epic status FACTORY --json
 {
-  "epic": "KANBAN",
-  "epic_token": "KANBAN",
+  "epic": "FACTORY",
+  "epic_token": "FACTORY",
   "milestones": [
     {
       "id": "M0",
       "label": "M0",
       "status": "done",
       "covered": true,
-      "spec_id": "SPEC-KANBAN-RENAME-001",
+      "spec_id": "SPEC-FACTORY-RENAME-001",
       "spec_status": "completed",
       "sync_commit_sha": "144573336d07da19f4b8a50aa26c38db2704afb5"
     }
@@ -81,7 +81,7 @@ $ moai epic status KANBAN --json
   "total": 4,
   "pct": 50,
   "extra_mx": [],
-  "untracked_specs": ["SPEC-KANBAN-TODO-CLI-001"],
+  "untracked_specs": ["SPEC-FACTORY-TODO-CLI-001"],
   "baseline_attribution": "3b9b3bf9959669c4bfc43da313e25bca61f910a2"
 }
 ```

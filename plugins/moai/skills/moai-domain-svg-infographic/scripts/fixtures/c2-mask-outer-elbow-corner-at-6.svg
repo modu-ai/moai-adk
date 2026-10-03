@@ -1,0 +1,16 @@
+<!-- expect: -->
+<!-- C2 on the convex side of a Q elbow (r = 8): the mask corner (142.5, 57.5) sits 6.36 units from the subdivided curve, inside the 6-10 band. Measured against the un-subdivided control point (140,60) it would read 3.54 and be reported SVG070 on compliant geometry. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c2-mask-outer-elbow-corner-at-6-title c2-mask-outer-elbow-corner-at-6-desc">
+  <title id="c2-mask-outer-elbow-corner-at-6-title">Retry branch</title>
+  <desc id="c2-mask-outer-elbow-corner-at-6-desc">A connector turns a rounded corner and carries a masked label outside the bend.</desc>
+  <defs>
+    <marker id="c2-mask-outer-elbow-corner-at-6-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 60 60 H 132 Q 140 60 140 68 V 160" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c2-mask-outer-elbow-corner-at-6-arrow)"/>
+  <rect x="142.5" y="37.5" width="80" height="20" fill="#FFFFFF"/>
+  <text x="182.5" y="51.5" font-size="11" text-anchor="middle" fill="#141413">retry</text>
+</svg>
