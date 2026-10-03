@@ -122,7 +122,7 @@ session operates through `git -C <absolute-worktree-path>` and direct file opera
 invoke `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. Never create a tree with bare
 `git worktree add`.
 
-**Codex factory lanes (`-f lane`)** use the card worktree
+**Codex factory lanes (`moai codex -l`)** use the card worktree
 selected by their supervising launcher. The launcher starts each interactive Codex child
 with that worktree as its working directory (`codex -C <absolute-worktree-path>`). A Codex
 child already in the card worktree continues there. A direct `codex -C` child reads the worktree's

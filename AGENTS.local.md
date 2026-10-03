@@ -212,9 +212,9 @@ local/main
 - 로컬 rc 빌드의 `rc.N` 번호 정책·무태그 원칙·`BUILD_ID` 빌드 식별: `.moai/docs/version-management.md` — **Local RC Numbering** 절
 - 병합 후 로컬 develop 갱신(판정 기준·BranchGuard 안전 경로): `.claude/rules/local/gitflow-lane-protocol.md` — **develop 갱신** 절 (그 절이 §9 rc 런북을 교차참조한다)
 
-**[HARD] -k / -f 모드 레인 의무**
+**[HARD] -f / -l 모드 레인 의무**
 
-Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리더에게 로컬 develop 병합을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
+Factory(리더 `moai cc -f` · 레인 `moai cc -l`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리더에게 로컬 develop 병합을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
 
 - **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `develop`에 병합한다(OD-2). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐 변경(`add`, `drop`, `done`, `edit` 등) 금지와 `moai contract sign` 금지는 바꾸지 않는다(카드 임대만 `moai factory next`로 허용 — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
@@ -291,7 +291,7 @@ See: `.moai/docs/hook-development.md` — shell-script-only hook pattern, hook w
 
 ### [HARD] 사용 중 버그·개선 발견 → 즉시 `/moai:feedback`
 
-MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 족족 `/moai:feedback`으로 피드백을 제출한다 — 세션을 마친 뒤 몰아서 남기지 않는다. 대상: `moai` CLI 동작, 훅, 템플릿, 스킬, 에이전트, 팩토리·칸반 운영 결함 전반. 재현 명령과 관측된 출력을 함께 남긴다. 구분: 유지자에게 보고할 사안은 `/moai:feedback`, 작업으로 예정할 사안은 `/moai todo add`.
+MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 족족 `/moai:feedback`으로 피드백을 제출한다 — 세션을 마친 뒤 몰아서 남기지 않는다. 대상: `moai` CLI 동작, 훅, 템플릿, 스킬, 에이전트, 팩토리 운영 결함 전반. 재현 명령과 관측된 출력을 함께 남긴다. 구분: 유지자에게 보고할 사안은 `/moai:feedback`, 작업으로 예정할 사안은 `/moai todo add`.
 
 ---
 
@@ -445,7 +445,7 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 ## 29. Jev (TypeSafe System One) — 로컬 전용
 
-[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. `-k`/`-f` 리더는 묵은 카드 배차 전에 `scripts/jev/triage.sh <id>`, 레인 질문으로 멈췄을 때 `scripts/jev/route.sh < 질문`을 자율 실행한다. 출력은 판단 자료일 뿐이다. 완료·병합·큐 변경·운영자 게이트에는 Jev를 판정 근거로 쓰지 않는다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
+[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. `-f` 리더는 묵은 카드 배차 전에 `scripts/jev/triage.sh <id>`, 레인 질문으로 멈췄을 때 `scripts/jev/route.sh < 질문`을 자율 실행한다. 출력은 판단 자료일 뿐이다. 완료·병합·큐 변경·운영자 게이트에는 Jev를 판정 근거로 쓰지 않는다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
 
 ## 30. 배차 전 전제 판정 (며칠 지난 카드)
 
