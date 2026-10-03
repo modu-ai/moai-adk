@@ -104,6 +104,40 @@ AC-VRR-008 (`git diff --name-only 2b9e4a4d0 HEAD`, 17 lines at the time of measu
 - Test runtime: each helper spawn runs the cli package `TestMain` (about 0.3s); the 14 CLI tests take about 47s together.
 - `exitCodeError` text `verify run: command exited with code N` is printed by the root error path on a non-zero command exit (extra stderr line after the command's own output).
 
+### §E.2 revision — sync-audit F0 (registration) and F6 (tool-identity group kill), commit `a05ec62de`
+
+Cause (F0): `verify.go` `init()` called `newVerifyCmd()` before `verify_run.go` `init()` appended to `verifyExtraCommands` (files init alphabetically), so the verb was never registered; every earlier test built the command directly. Fix: `cmd.AddCommand(newVerifyRunCmd(&projectRoot))` in `newVerifyCmd`, init append dropped. F6: `verifyRunPrepare(cmd)` now also applies to the `--tool-version-cmd` command. F1 (Ctrl-C) stays recorded debt, not implemented.
+
+RED, observed before the fix (tree = HEAD `710e0eed5` + the 3 new tests):
+`go test -v -run '^(TestVerifyRunRegisteredOnRoot|TestVerifyRunThroughRootCommand|TestVerifyRunToolVersionGrandchildKilled)$' -count=1 ./internal/cli/`
+```
+--- FAIL: TestVerifyRunRegisteredOnRoot (0.00s)        (rootCmd.Find(verify run) returned the `verify` command itself)
+--- FAIL: TestVerifyRunThroughRootCommand (0.42s)      (first run printed the verify help text, not "counted")
+--- FAIL: TestVerifyRunToolVersionGrandchildKilled (3.97s)  (the tool-version grandchild survived the timeout: its marker file exists)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	5.339s
+```
+
+GREEN on the final tree, env-scrubbed (`unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -v -run '^(TestVerifyRun[A-Za-z0-9]*|TestVerifyHelpListsVerbs|TestVerifyRegisteredOnRoot|TestVerifyRecordThenCheckFresh)$' -count=1 ./internal/cli/`): 20 top-level `--- PASS` lines (17 VerifyRun tests incl. the 3 new, plus the 3 existing verify tests) and the 2 `TimeoutAndNotFound` subtest lines, `--- SKIP: TestVerifyRunHelperProcess` (the helper), no `[no tests to run]`, `ok  	github.com/modu-ai/moai-adk/internal/cli	38.930s`. The acceptance.md PASS-line counts are unchanged (no AC selector name was added or removed; the 3 new tests are outside the AC selectors), so acceptance.md was not edited.
+
+Real binary, built from this tree (`go build -o <scratch>/moai-t ./cmd/moai`, scratch repo with a committed `.gitignore` containing `.moai/`), env-scrubbed:
+```
+$ moai-t verify run --project-root <repo> -- echo hi
+verify run: miss (no snapshot recorded for the current tree)
+hi                                   exit=0
+$ (same command again)
+verify run: reuse key=4663871e1bbf204e700486b6385a209a3edccf43:6e340b9cffb37a98 recorded_at=2026-10-03T20:15:26+09:00 duration_ms=5     exit=0 (no "hi")
+$ moai-t verify run --project-root <repo> -- false
+verify run: miss (no entry recorded for this command)      exit=1
+$ moai-t verify run --help | head -3   -> "Run <command...> in the project root, unless a passing result ..."
+```
+A first attempt in a scratch repo WITHOUT `.gitignore` for `.moai/` missed on every run (three snapshots under three keys): the store directory itself is an untracked path and moves the tree key. That is the Key() contract (the real project and the test fixtures ignore `.moai/`), not a defect of the verb, but a project that does not gitignore `.moai/` never gets a reuse.
+
+Quality batch on the final tree: `go vet ./internal/verify ./internal/cli` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=5m ./internal/verify/... ./internal/cli/` (v2.1.6) `0 issues.`; `gofmt -l` on the three changed files empty.
+
+Pre-existing, out of this card: `verify sync-gate` (verify_receipts.go) has the same init-order defect on this base and is NOT registered. Evidence from the built binary: `moai-t verify sync-gate --help` prints the parent `verify` help ("Shared diagnostic snapshot contract. ...") instead of the sync-gate help; its registration was deliberately left unchanged.
+
+Gaps: Windows execution of the new tests unobserved (build only); the F6 test is Unix-only (skipped on Windows, residual risk §D-5); real-binary check was `echo`/`false`, not a real long test suite.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
