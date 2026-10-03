@@ -266,11 +266,16 @@ func todoFindingLine(rec *kanban.BacklogRecord, cardID string, f kanban.BacklogF
 	if f.Note != "" {
 		note = fmt.Sprintf(" — %s", todoPRCell(f.Note))
 	}
-	// The drop/edit suggestion names the finding's SUBJECT — the card whose
-	// admission the finding explains — never cardID. The line is rendered
-	// under both ends of the pair, and filling the suggestion with the row
-	// it sits under told the operator, beneath the original card, to drop
-	// the original (card t1470, GitHub #1732).
+	// A near-duplicate finding explains a card's ADMISSION, so its drop/edit
+	// suggestion names the finding's SUBJECT — the newer card — on both rows;
+	// filling it with the row it sits under told the operator, beneath the
+	// original card, to drop the original (card t1470, GitHub #1732). Every
+	// other relation is a judgement about the row's own card, so its
+	// suggestion keeps naming that row (card t1484).
+	target := cardID
+	if f.Relation == kanban.BacklogRelationNearDuplicate {
+		target = f.SubjectID
+	}
 	return fmt.Sprintf("\t↳ %s %s (%s%s%s)%s — moai todo drop %s | moai todo edit %s \"<text>\"",
-		f.Relation, counterpart, f.Source, score, mark, note, f.SubjectID, f.SubjectID)
+		f.Relation, counterpart, f.Source, score, mark, note, target, target)
 }
