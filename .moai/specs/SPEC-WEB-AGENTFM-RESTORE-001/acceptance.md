@@ -6,17 +6,17 @@ Tier M 인수 계층. 각 AC는 Given-When-Then으로 기술되고 검증 명령
 
 | AC | 요구 | 제목 | 검증 |
 |---|---|---|---|
-| AC-AFR-001 | REQ-AFR-001 | 서브섹션 렌더 (12행·마커) | `go test ./internal/web/ -run 'TestAgentOverridesSubsection'` |
-| AC-AFR-002 | REQ-AFR-003 | tier 선택 → llm.profile 저장 | `go test ./internal/web/ -run 'TestPerfTierSave'` |
-| AC-AFR-003 | REQ-AFR-004/002 | override pin/clear + 상속 기본 | `go test ./internal/web/ -run 'TestAgentOverridesSave'` |
-| AC-AFR-004 | REQ-AFR-006/007 | 집합 외 값 원자 거절 | `go test ./internal/web/ -run 'TestAgentOverridesSave'` (거절 케이스) |
-| AC-AFR-005 | REQ-AFR-005 | 프론트매터 무접촉 | `go test ./internal/web/ -run 'TestAgentFrontmatterUntouched'` |
+| AC-AFR-001 | REQ-AFR-001 | 서브섹션 렌더 (12행·마커) | EV-AFR-001 레저 (1커맨드) |
+| AC-AFR-002 | REQ-AFR-003 | tier 선택 → llm.profile 저장 | `go test ./internal/web/ -run '^TestPerfTierSave$'` |
+| AC-AFR-003 | REQ-AFR-004/002 | override pin/clear + 상속 기본 | `go test ./internal/web/ -run '^TestAgentOverridesSave$'` |
+| AC-AFR-004 | REQ-AFR-006/007 | 집합 외 값 원자 거절 | `go test ./internal/web/ -run '^TestAgentOverridesSave$'` (거절 케이스) |
+| AC-AFR-005 | REQ-AFR-005 | 프론트매터 무접촉 | `go test ./internal/web/ -run '^TestAgentFrontmatterUntouched$'` |
 | AC-AFR-006 | REQ-AFR-008 | update strip 정합 | EV-AFR-006 레저 (4커맨드) |
-| AC-AFR-007 | REQ-AFR-011 | i18n 4-locale + agentdesc 면제 | `go test ./internal/web/ -run 'TestI18n'` |
+| AC-AFR-007 | REQ-AFR-011 | i18n 4-locale + agentdesc 면제 | EV-AFR-007 레저 (1커맨드) |
 | AC-AFR-008 | REQ-AFR-013 | 13탭 계약 무변경 | EV-AFR-008 레저 (1커맨드) |
-| AC-AFR-009 | REQ-AFR-009 | haiku effort 잠금 | `go test ./internal/web/ -run 'TestHaikuEffortLock'` |
-| AC-AFR-010 | REQ-AFR-010 | GLM reasoning 표시 | `go test ./internal/web/ -run 'TestGLMReasoningColumn'` |
-| AC-AFR-011 | REQ-AFR-012 | 저장 seam 주입 가능 | `go test ./internal/web/ -run 'TestAgentOverridesSeams'` |
+| AC-AFR-009 | REQ-AFR-009 | haiku effort 잠금 | `go test ./internal/web/ -run '^TestHaikuEffortLock$'` |
+| AC-AFR-010 | REQ-AFR-010 | GLM reasoning 표시 | `go test ./internal/web/ -run '^TestGLMReasoningColumn$'` |
+| AC-AFR-011 | REQ-AFR-012 | 저장 seam 주입 가능 | `go test ./internal/web/ -run '^TestAgentOverridesSeams$'` |
 | AC-AFR-012 | REQ-AFR-001/013 | 락 반전 완결 | grep 증거: 구 absent 어설션 0히트 + 신규 존재 어설션 목록 (§D.12) |
 | AC-AFR-013 | REQ-AFR-014 | 수정안 링크 | grep 증거: AMI-001 HISTORY 행 + 본문 예외 문단 (§D.13 — 소유 마일스톤 M5b) |
 | AC-AFR-014 | REQ-AFR-015 | 옵트인 키 (기본 off·거절 합류·템플릿 수재) | EV-AFR-014 레저 (3커맨드) |
@@ -33,14 +33,20 @@ Tier M 인수 계층. 각 AC는 Given-When-Then으로 기술되고 검증 명령
 빈 스윕 금지 (verification-completeness §1.1): 각 실행의 증거 출력에서 `[no tests to run]`이 관측되면 **실패**로 판정한다. 실행 테스트 수 하한 — EV-AFR-006 ≥ 4 (행당 1건 이상), EV-AFR-008 ≥ 3 (선택자 3명 일치), EV-AFR-012는 0히트 기대(grep exit 1이 정상 패스, exit 2는 오류). `ok`와 함께 0이 아닌 테스트 카운트가 보여야 PASS로 읽는다.
 
 ```
+EV-AFR-001 (AC-AFR-001 — REQ-AFR-001, 실행 테스트 ≥ 2):
+go test ./internal/web/ -run '^TestAgentOverridesSubsection$|^TestAgentOverridesSubsectionStates$'
+
 EV-AFR-006 (AC-AFR-006 — REQ-AFR-008, 실행 테스트 ≥ 4):
-go test ./internal/template/ -run 'RetiredModelKeys'
-go test ./internal/config/  -run 'TestShippedConfigKeysHaveReaders'
-go test ./internal/cli/     -run 'TestUpdateLLMYAML'
-go test ./internal/cli/     -run 'TestStripRetiredModel'
+go test ./internal/template/ -run '^TestShippedRetiredModelKeys_IncludesReshippedConsoleKeys$|^TestStripRetiredModelKeys_RemovesEveryKeyAndItsCommentBlock$|^TestStripRetiredModelKeys_FlagsUserEditedOverrides$|^TestStripRetiredModelKeys_MultiLineFlowMapping$|^TestStripRetiredModelKeys_AbsentKeysAndFilesAreNoOps$|^TestStripRetiredModelKeys_KeepsCRLFLineEndings$|^TestStripRetiredModelKeys_LeavesShippedKeys$|^TestShippedRetiredModelKeys_ReadsTheEmbeddedTemplate$'
+go test ./internal/config/  -run '^TestShippedConfigKeysHaveReaders$'
+go test ./internal/cli/     -run '^TestUpdateLLMYAMLPreserveTemplateSync$|^TestUpdateLLMYAMLNewKeyDelivery$|^TestUpdateLLMYAMLFirstDeployCalm$|^TestUpdateLLMYAMLCommentsSurvive$'
+go test ./internal/cli/     -run '^TestStripRetiredModelConfig_ReportsEachKeyOnceAsRemoved$|^TestStripRetiredModelConfigOnVersionMatch_BacksUpThenStrips$|^TestStripRetiredModelConfigOnVersionMatch_NoOpWithoutMatchOrKeys$|^TestStripRetiredModelConfig_ReshippedConsoleKeysSurvive$|^TestStripRetiredModelConfig_LeavesKeysTheTemplateStillShips$'
+
+EV-AFR-007 (AC-AFR-007 — REQ-AFR-011, 실행 테스트 ≥ 15):
+go test ./internal/web/ -run '^TestI18nUntranslatedValues$|^TestI18nUntranslatedDetectorNegativeControl$|^TestI18nAllowlistNoOrphans$|^TestI18nAllowlistShape$|^TestI18nEndonymInvariants$|^TestI18nKeyCoverageForward$|^TestI18nKeyCoverageReverse$|^TestI18nParserSpecialKeys$|^TestI18nGovernanceContractPresent$|^TestI18nDictionaryEmbedded$|^TestI18nGoEmbedEnumeratesDictionary$|^TestI18nLoadDefault$|^TestI18nKeySetParity$|^TestI18nSegmentKeysRemovedFromWebDictionary$|^TestI18nSlug$'
 
 EV-AFR-008 (AC-AFR-008 — REQ-AFR-013, 실행 테스트 ≥ 3):
-go test ./internal/web/ -run 'TestConsoleTabsOrder|TestTabPanelRenderOrderMatchesTabs|TestSettingsPageHeaderKeepsAllThirteenTabs'
+go test ./internal/web/ -run '^TestConsoleTabsOrder$|^TestTabPanelRenderOrderMatchesTabs$|^TestSettingsPageHeaderKeepsAllThirteenTabs$'
 
 EV-AFR-012 (AC-AFR-012 — §D.12 반전-후 상태 핀; sync-audit F5 재기술 — 리터럴 0히트 기기는 기준선에서도 성립 불가):
 grep -rn 'TestAgentSettingsTab_IsNotRendered\|TestAgentSettingsFields_ArePostedWithoutEffect' internal/web/
@@ -81,7 +87,7 @@ go test ./internal/cli/ -run '^TestDoctorServedModelConsumeState$'
 - **Given** 제출에 변화가 없는 상태 **When** 저장 **Then** llm.yaml은 byte-identical이다 (no-op 스킵).
 - **Given** 매트릭스 비멤버 이름 제출 **When** 저장 **Then** override가 생기지 않는다.
 - **Given** `llm.agent_overrides`에 항목이 없는 에이전트 **When** 행 해상 **Then** 렌더는 프로필-매트릭스 셀 값으로 해상한다(REQ-AFR-001) — pin/clear 대비 기준도 동일한 프로필-매트릭스 해상이다(REQ-AFR-004, no-op byte-identical 보존). REQ-AFR-002의 세션 model/effort 해상은 스폰 경로 한정이며(런타임 소비는 Out of Scope — decision-index Q2, 후속 카드 t1421) 콘솔 표시와 혼동하지 않는다.
-- **Given** 복원된 저장 경로 **When** `go test ./internal/cli/ -run 'TestCodexResolution_IgnoresPerAgentLLMCells'` (`internal/cli/model_backend_default_test.go:28`) **Then** 스폰-경로 무시 계약이 green으로 유지된다 — 본 SPEC이 스폰 경로를 바꾸지 않음을 관측 (REQ-AFR-002, regression-guard; `[no tests to run]`은 실패).
+- **Given** 복원된 저장 경로 **When** `go test ./internal/cli/ -run '^TestCodexResolution_IgnoresPerAgentLLMCells$'` (`internal/cli/model_backend_default_test.go:28`) **Then** 스폰-경로 무시 계약이 green으로 유지된다 — 본 SPEC이 스폰 경로를 바꾸지 않음을 관측 (REQ-AFR-002, regression-guard; `[no tests to run]`은 실패).
 
 ## §D.4 AC-AFR-004 — 원자 거절
 
