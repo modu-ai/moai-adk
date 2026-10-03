@@ -1,7 +1,7 @@
 ---
 id: SPEC-TEST-ENV-HERMETIC-001
 title: "Test env hermeticity sweep — tests that read the factory/kanban lane gate axes must not change verdict with the ambient env of the session that runs them"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -46,7 +46,7 @@ no local change at measurement time) in a lane session whose ambient env carries
 whose Go sources are identical to `2de0a2cb6` (`git rev-list --count 2de0a2cb6..a5a63a0bc` = 1 and
 that commit's `git diff-tree` lists five SPEC-directory paths, no Go file). The deciding command
 and verbatim output of each item is carried in `acceptance.md` §D.0 (evidence ledger, ids
-E-1..E-7). The earlier local-only baseline `.moai/reports/t1356/baseline.md` (gitignored by
+E-1..E-8). The earlier local-only baseline `.moai/reports/t1356/baseline.md` (gitignored by
 operator directive 2026-09-14 — `.moai/reports/*`; it is never force-added) is context only: the
 ledger carries every fact the committed record relies on, including the cli scrubbed-arm green
 (E-1b), so the committed record does not depend on it.
@@ -103,8 +103,12 @@ ledger carries every fact the committed record relies on, including the cli scru
    `MOAI_KANBAN_CARD`, `MOAI_KANBAN_LEAD_NAME`, `MOAI_FACTORY_WORKERS`,
    `MOAI_FACTORY_SLOW_LAUNCH_MS`, `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_MANAGED`,
    `MOAI_FACTORY_ROLE`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`. Per package
-   (production = non-`_test.go` files in the package directory; a reference is the identifier
-   `config.<Name>`, or for the guard the quoted axis value):
+   (production = non-`_test.go` files in the package directory; a **reference** is either the
+   identifier `config.<Name>` **or** the axis's quoted literal value — either form counts, so
+   `os.Getenv("MOAI_AUTONOMY_TIER")` at `internal/cli/codex_sync_gate.go:262` is not missed; the
+   counts below hold under either form, because the one quoted literal in `internal/cli` is also
+   referenced by identifier and `internal/hook` production carries no quoted family literal at
+   HEAD `669cf18c9`):
 
    | package | family axes referenced by production | covered by the test binary's start-up scrub today | not covered — decided by this SPEC |
    |---------|---------------------------------------|---------------------------------------------------|-----------------------------------|
@@ -177,9 +181,12 @@ carries the requirement layer only.
   failing-test set of `internal/cli` and of `internal/hook` under a lane env and under a scrubbed
   env, both before and after the change, and shall record each command, exit code, failing-test
   list, the swept test count against the package's independently listed test count, and the
-  difference of the two failing lists, naming every failure that is identical in both arms as
-  env-unrelated and treating an arm that ends in a timeout panic, a goroutine-leak report, or a
-  non-test failure as no measurement.
+  difference of the two failing lists, treating an arm that ends in a timeout panic, a
+  goroutine-leak report, or a non-test failure as no measurement; the run shall name a failure
+  env-unrelated only when it is identical in both arms **and** present in the c1 (pre-guard tree)
+  failing set of the same arm type, and shall record the difference `final − c1` of each final-tree
+  arm's failing names against that c1 set and require it empty — a name absent from c1 is a
+  regression caused by the change, not an env-unrelated failure.
 - **REQ-THE-004** — **When** the measurement of REQ-THE-003 shows a test that flips between the
   two arms and is not one of the five observed reds, the run shall fix that test only with its
   own RED/GREEN pair, and shall not skip, delete, or list any test as a substitute for a fix.
@@ -195,10 +202,10 @@ carries the requirement layer only.
   shall leave that test's verdict unchanged.
 - **REQ-THE-008** — The change shall touch `*_test.go` files and this SPEC's artifacts only and
   shall introduce no new production env axis.
-- **REQ-THE-009** — **When** a guarded package's test binary is started with every lane/kanban
-  gate axis present in its environment and the binary's start-up scrub leaves a
-  production-referenced axis that carries no exemption still present, the package's test run
-  shall fail and shall name each such axis.
+- **REQ-THE-009** — **When** the guarded package's applied-behaviour test starts the package
+  test binary with every lane/kanban gate axis present in its environment and the binary's
+  start-up scrub leaves a production-referenced axis that carries no exemption still present, the
+  applied-behaviour test shall fail and shall name each such axis.
 
 REQ count 9 (Tier M ceiling 16). The brevity of the list is deliberate: the card is a follow-up
 sweep, and the verification weight sits in `acceptance.md`.
@@ -254,7 +261,16 @@ tree at test time: the **family** (§A.6, read from `internal/config/envkeys.go`
   in the package directory that exists and itself references the axis (a test that needs the
   ambient value); an empty reason, an empty citation, or a citation to a file that is absent or
   does not mention the axis is a failure, so a padded row does not pass. A citation shows that a
-  test reads the axis, not that it needs the ambient value — that last step is review's.
+  test reads the axis, not that it needs the ambient value — that last step is review's, and the
+  evidence review is given is a closure obligation (acceptance.md §D.5): each surviving
+  exemption row cites the M4 whole-package scrubbed-arm test that went red when that axis was
+  stripped. The one variant these checks cannot see is therefore named, not claimed closed: an
+  axis with no scrub plus an exemption row citing an existing test file that references it
+  passes both this test and the applied-behaviour test (both skip exempt axes). The reference
+  scan counts a reference by either form of §A.6 (identifier or quoted literal) and sees Go
+  source only (§G R4). The comparison always runs to completion: every liveness assertion of
+  input (3) reports with `t.Errorf` (never `t.Fatalf` or `FailNow` ahead of the comparison), so
+  one red carries every message that applies.
 - **Applied-behaviour test.** The declared scrub set proves a list, not that the binary applies
   it: a package could fill the list and never call it. This test re-executes the package's own
   test binary (`os.Args[0]` with a `-test.run` selector naming this test only) with an
@@ -279,8 +295,15 @@ tree at test time: the **family** (§A.6, read from `internal/config/envkeys.go`
 - **(b) the INPUT that turns it red.** Any one of: (1) a production file newly references a family
   axis that is in neither the scrub set nor the exemption table; (2) a padded exemption row
   (empty reason, empty citation, or a citation to a file that does not reference the axis);
-  (3) the reference scan finds **zero** referenced axes, or the scrub set is empty (an empty sweep
-  asserts nothing, `verification-completeness.md` §1.1); (4) the binary's start-up scrub is not
+  (3) a liveness input of the coverage test — the reference scan finds **zero** referenced axes,
+  or the scrub set is empty, or the family read from `envkeys.go` has fewer members than the
+  floor recorded at c2 (**17**, §A.6) (an empty sweep asserts nothing,
+  `verification-completeness.md` §1.1; a scan that silently drops most constants would otherwise
+  stay green on `referenced >= 1`). Each of the three is its own `t.Errorf`, so the hook coverage
+  test at c2 — whose scrub set is deliberately empty (plan.md D5) — carries **both** the
+  empty-scrub-set message and the thirteen uncovered-axis names; the cli coverage test at c2
+  (non-empty scrub set) carries the six uncovered-axis names only. A deliberate edit that
+  removes a family constant lowers the floor in the same change; (4) the binary's start-up scrub is not
   applied — the child still sees a referenced axis; (5) the sibling package's guard file is absent
   or no longer declares its guard tests. Inputs (1)-(2) reintroduce the card's hazard for a future
   axis; input (4) is the hazard in the form a declared-only guard would miss. The family is read
@@ -327,7 +350,10 @@ in one place, AC-THE-005.
   heavy-test --max-duration <cap>` … `moai slot release --resource heavy-test`, per
   `.claude/rules/local/gitflow-lane-protocol.md` §8), runs as **one compound invocation**
   `unset <VARS> && go test …` for the scrubbed arm, and never as `go test ./...`. The cap is the
-  holder's own declared bound and is set above the whole-package runtime recorded at M1.
+  holder's own declared bound: `max(20m, 1.5 x the longest whole-package runtime recorded so far
+  in progress.md §E.2)` (20m before any runtime exists — the first c1 arm — and recomputed for
+  each later lease), and `go test -timeout` is set strictly below it (the cap minus 2m), so the
+  lease cannot lapse at the instant the test timeout fires.
 - **Local verification is scoped to the change.** Only the two packages, the narrow selectors of
   `acceptance.md`, and the compile checks named in plan.md; full-suite judgment is CI on
   `origin/develop`.
@@ -355,11 +381,16 @@ in one place, AC-THE-005.
 - **R4 — the unmeasured set stays a hypothesis.** The ~357 nominated functions are not individually
   measured; their status is established only by the M1 baseline pairs and the M4 final pairs. A
   flip-prone test reading an env var outside the family is not found by this sweep, and
-  `internal/cli/ptycaptest` is covered only by its own drift guard.
+  `internal/cli/ptycaptest` is covered only by its own drift guard. The guard pair sees **Go
+  references only**: a hook test that executes a shell gate and hands it a family value as
+  payload (`tierEnv(...)` in `internal/hook/sync_gate_failstate_test.go:303`) is outside both
+  tests, and a family axis read only by a non-Go program is invisible to the reference scan.
 - **R5 — Option A hides rather than pins.** Disclosed in §D; the guard pair converts "hidden" into
   "the set of hidden axes is explicit, applied, and reviewed".
-- **R6 — develop tip may carry env-unrelated reds.** A failure identical in both arms is named and
-  classified env-unrelated (REQ-THE-003); it is neither fixed nor hidden here.
+- **R6 — develop tip may carry env-unrelated reds.** A failure identical in both arms **and**
+  present in the c1 baseline of the same arm type is named and classified env-unrelated
+  (REQ-THE-003); it is neither fixed nor hidden here. A failure identical in both final arms but
+  absent from c1 is a change-induced regression, never env-unrelated (AC-THE-003 clause (e)).
 - **R7 — machine load flips verdicts.** The lease serializes heavy runs; a verdict that changes
   between a repeated identical arm is reported as load noise, not attributed to env.
 - **R8 — the lane arm models the measuring session, not every possible lane.** The lane arm sets
@@ -388,7 +419,9 @@ in one place, AC-THE-005.
   reads it from ambient; the other four are set or cleared by their tests the same way. Whether
   any test depends on an ambient value is decided by the M4 whole-package scrubbed arm: a test that
   goes red because the axis was stripped is the evidence for an exemption row (reason plus cited
-  test file); otherwise the axis stays in the scrub set.
+  test file); otherwise the axis stays in the scrub set. The final exemption tables, and for each
+  surviving row the name of that red test, are listed in progress.md §E.2 at closure
+  (acceptance.md §D.5); an empty table needs no row.
 - **O3** — Should the guard be generalized into one cross-package registry check covering
   `internal/discovery` (3 production files reference `MOAI_KANBAN_ID`; its narrow pair measured
   equal at plan time, E-7) and any future package, or stay one-per-package? Not decided.
@@ -416,12 +449,13 @@ in one place, AC-THE-005.
   `.claude/rules/moai/core/verification-claim-integrity.md` §2.3;
   `.claude/rules/local/gitflow-lane-protocol.md` §8.
 - `.moai/reports/t1356/baseline.md` — local-only on-disk measurement (gitignored; not committed);
-  `.moai/reports/t1356/plan-audit.md` — the iteration-1 plan-audit report (local, gitignored,
-  cited by path only).
+  `.moai/reports/t1356/plan-audit.md` and `.moai/reports/t1356/plan-audit-iter2.md` — the
+  iteration-1 and iteration-2 plan-audit reports (local, gitignored, cited by path only).
 
 ## §J HISTORY
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-10-03 | manager-spec | v0.1.0 plan-phase authoring (card t1356, Tier M, Class C). Evidence re-measured on tree `2de0a2cb6`: cli RED under `MOAI_FACTORY_ROLE=lane` (3 tests), hook RED under the lane env (2 tests), hook one-axis arms isolating the `MOAI_KANBAN_ID` ∧ `MOAI_FACTORY_WORKERS` conjunction, positive controls. Design Options A/B/C compared; recommendation stated with its precondition. Recurrence guard and ordering clause specified. |
-| 2026-10-03 | manager-spec | v0.2.0 plan-audit iteration 1 revision (FAIL 0.79 vs 0.80; findings F1-F13). Guard spec gains an applied-behaviour test and a tightened exemption rule (REQ-THE-005 reworded, REQ-THE-009 added, AC-THE-004 and AC-THE-008 release-blocking on adoption at M1); ordering check rewritten to enumerate every `internal/` commit with prescribed c1/c2/c2r shapes (REQ-THE-006 widened to match); the 17-axis family and per-package referenced/covered/undecided sets re-measured, the sixth cli axis `MOAI_FACTORY_SLOW_LAUNCH_MS` carried through §A, §H O2, decision-index Q4 and plan M2; reach figures replaced by a reproducible command; AC-THE-003 gains an independent swept-count floor; evidence ledger re-recorded with `-v` and full stdout (E-1, E-2), cli scrubbed arm added (E-1b), discovery narrow pair added (E-7); stale-guard signal, REQ-THE-008 judging point, and minor count corrections. |
+| 2026-10-03 | manager-spec | v0.2.0 plan-audit iteration 1 revision (FAIL 0.79 vs 0.80; findings F1-F13). Guard spec gains an applied-behaviour test and a tightened exemption rule (REQ-THE-005 reworded, REQ-THE-009 added, AC-THE-004 and AC-THE-008 added as guard criteria whose cell is completed at the c2r record); ordering check rewritten to enumerate every `internal/` commit with prescribed c1/c2/c2r shapes (REQ-THE-006 widened to match); the 17-axis family and per-package referenced/covered/undecided sets re-measured, the sixth cli axis `MOAI_FACTORY_SLOW_LAUNCH_MS` carried through §A, §H O2, decision-index Q4 and plan M2; reach figures replaced by a reproducible command; AC-THE-003 gains an independent swept-count floor; evidence ledger re-recorded with `-v` and full stdout (E-1, E-2), cli scrubbed arm added (E-1b), discovery narrow pair added (E-7); stale-guard signal, REQ-THE-008 judging point, and minor count corrections. |
+| 2026-10-03 | manager-spec | v0.3.0 plan-audit iteration 2 revision (FAIL 0.86 vs 0.80, driven by one must-fix mutant hole; findings D1-D11; this feeds the final permitted audit). REQ-THE-003 and AC-THE-003 gain the c1-containment clause (e): a failure is env-unrelated only when identical in both arms and present in the c1 failing set of the same arm type, with the `final − c1` difference recorded and required empty (R6 reworded to match); AC-THE-004's mutant-probe text no longer overstates closure (the unscrubbed-axis-plus-padded-citation variant is named and left to review, with a closure DoD item listing the final exemption tables and each surviving row's red test); the hook coverage test's c2 red carries both the empty-scrub-set liveness message and the thirteen axis names (liveness uses `t.Errorf`); the class label of AC-THE-004 and AC-THE-008 is relabelled (the v0.2.0 \"on adoption\" label is retired) and one phrase is used across AC-THE-003, 004 and 008 for a cell completed by a later record; an AC-THE-005 step 7 content witness on the c2r commit; AC-THE-004 and AC-THE-008 bound to the M4 exit; lease cap and `-timeout` relation stated; the guard's reference rule pinned (identifier or quoted literal) with a family-size liveness floor of 17; REQ-THE-009's trigger reworded; the E-5 control gets an explicit upper bound and plan-time `go test -list` counts are recorded (E-8). |

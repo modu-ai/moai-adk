@@ -17,7 +17,8 @@ Priorities are High / Medium / Low; no time estimates.
   (the decision gate is on in `.moai/config/sections/interview.yaml`).
 - **Development mode**: TDD — the RED guard commit precedes the fix commits (REQ-THE-006).
 - **Evidence status**: the five observed reds, the cli scrubbed arm, the hook one-axis arms and
-  the discovery narrow pair are carried in acceptance.md §D.0 (ledger E-1..E-7).
+  the discovery narrow pair, and the plan-time listed counts are carried in acceptance.md §D.0
+  (ledger E-1..E-8).
   `.moai/reports/t1356/baseline.md` and `.moai/reports/t1356/plan-audit.md` are local-only and
   gitignored; never `git add -f` them and never re-add a gitignore negation.
 - **PRESERVE**: every production file; `internal/cli/ptycaptest/` (own guard); the six hook and ten
@@ -86,14 +87,16 @@ Then, one command per call:
 4. `GOOS=windows GOARCH=amd64 go vet ./internal/cli ./internal/hook` and `golangci-lint run
    --timeout=2m` baselines (distinguish NEW from pre-existing findings later).
 5. Acquire the lease before any whole-package run: `moai slot status --resource heavy-test`, then
-   `moai slot acquire --resource heavy-test --max-duration 20m`; release with `moai slot release
-   --resource heavy-test` immediately after each arm. Exit 3 = held by another session: report and
-   wait, never `--force`.
-6. Independent test counts: `go test -list '.*' ./internal/cli` and `go test -list '.*'
-   ./internal/hook` as plain commands (B3); L = number of output lines beginning `Test`, `Example`
-   or `Fuzz` (benchmarks excluded). Recorded as L0 for the pre-guard tree. (Not measured at plan
-   time: whole-package test binaries were not compiled while the machine load average was above
-   60.)
+   `moai slot acquire --resource heavy-test --max-duration <cap>` with `<cap>` = `max(20m, 1.5 x
+   the longest whole-package runtime recorded so far in progress.md §E.2)` (20m for the first c1
+   arm, recomputed for each later lease), and run `go test` with `-timeout` = the cap minus 2m, so
+   the timeout is strictly below the lease; release with `moai slot release --resource heavy-test`
+   immediately after each arm. Exit 3 = held by another session: report and wait, never `--force`.
+6. Independent test counts: `go test -list '.*' ./internal/cli > <file>` and `go test -list '.*'
+   ./internal/hook > <file>` as plain commands (B3), then `grep -cE '^(Test|Example|Fuzz)' <file>`;
+   L = number of output lines beginning `Test`, `Example` or `Fuzz` (benchmarks excluded).
+   Recorded as L0 for the pre-guard tree. Plan-time figures at `669cf18c9`: cli 4884, hook 1322
+   (acceptance.md E-8); `go test -list` runs no test and takes seconds on a warm build cache.
 
 ## §D Constraints (Hard)
 
@@ -132,16 +135,29 @@ Then, one command per call:
   does not depend on the ambient env.
 - **D3 — coverage logic is a pure comparison over inputs**, so it is exercised on synthetic inputs
   (uncovered axis, exempted axis with reason and citation, exemption with empty reason, exemption
-  citing an absent file or a file that does not mention the axis, empty reference set), and the
-  same comparison runs once against the real tree. The synthetic cases are the re-executable RED
-  once the guards are committed.
+  citing an absent file or a file that does not mention the axis, empty reference set, family below
+  the floor), and the same comparison runs once against the real tree. The synthetic cases are the
+  re-executable RED once the guards are committed. A reference is counted by either form of
+  spec.md §A.6 — the identifier `config.<Name>` or the axis's quoted literal value — so a literal
+  such as `os.Getenv("MOAI_AUTONOMY_TIER")` (`internal/cli/codex_sync_gate.go:262`) is not missed;
+  the guard reads the axis values from `envkeys.go` and builds the quoted needle at run time, so no
+  quoted `"MOAI_FACTORY_ROLE"` literal appears in `internal/hook` source (the one literal that
+  `internal/config/envkeys_factory_role_test.go:60` forbids there, spec.md §G).
 - **D4 — guards are ordinary test functions, not `TestMain`** (spec.md §H O4). Liveness: the
-  coverage test asserts its own swept count (non-zero references found, non-empty scrub set) and
-  prints it under `-v`; it also asserts that the sibling package's guard file exists and declares
-  its guard tests (the unasked stale-guard signal, spec.md §E).
+  coverage test asserts its own swept count (non-zero references found, non-empty scrub set, family
+  size at least the floor 17 recorded at c2) and prints it under `-v`; every liveness assertion
+  reports with `t.Errorf`, so the comparison always runs to completion; it also asserts that the
+  sibling package's guard file exists and declares its guard tests (the unasked stale-guard
+  signal, spec.md §E). The floor is a constant in the guard file, lowered in the same change that
+  deliberately removes a family constant; the reference scan sees Go source only (spec.md §G R4).
 - **D5 — hook scrub-set variable is declared empty in c2** (so the tree compiles and the guards are
   red for the right reason: the set is empty against referenced axes) and filled in c4; the scrub
-  function and its `TestMain` call are added in c4, not c2, so c2 carries no unused symbol.
+  function and its `TestMain` call are added in c4, not c2, so c2 carries no unused symbol. The
+  hook coverage test is therefore red at c2 for **two** reasons, both reported because liveness
+  uses `t.Errorf` (D4): the empty-scrub-set liveness message and the thirteen uncovered-axis
+  names; the cli coverage test at c2 (non-empty scrub set) carries the six axis names only; the
+  applied tests carry the surviving axes. The c2r record states which message(s) the observed red
+  carries, per package and per test.
 - **D6 — the whole-package arms are real arms.** The lane arm reproduces the measuring session's
   family env and unsets the other family axes; the scrubbed arm unsets the full family; both run
   the whole package with no `-run` selector, and each arm's swept count is checked against the
@@ -153,11 +169,23 @@ Then, one command per call:
   plus the witness) and runs `os.Args[0] -test.run=^<ThisTest>$ -test.v`; in the child it asserts
   absence of every referenced non-exempt axis after the child's `TestMain`. The probe never calls
   the scrub function itself — only `TestMain` may, or the check proves nothing. Chosen over a
-  source scan of `TestMain` because it reads behaviour, not text (spec.md §E).
+  source scan of `TestMain` because it reads behaviour, not text (spec.md §E). Three mechanics
+  the probe carries: (a) the child runs under a bounded `context.WithTimeout`
+  (`exec.CommandContext`), as the existing precedent does at
+  `internal/cli/codex_launcher_exec_posix_test.go:121` (20 s); the cli child's `TestMain` also runs
+  `warmUpCommandTree` (`internal/cli/main_test.go:380`), which is slow at a machine load near 50,
+  so the bound is sized from a child runtime measured and recorded under that load, never below
+  the precedent's 20 s; (b) the parent logs the child's combined output **on success as well as
+  on failure** (`t.Log`), because AC-THE-008 requires a child `--- PASS:` line visible in the log;
+  (c) the family axes are removed from the child env by **case-insensitive** key comparison,
+  because Windows env names are case-insensitive and the CI matrix includes Windows (spec.md R3).
 - **D8 — exemption rows are `{axis, reason, citation}`.** The coverage test requires a non-empty
   reason and a citation naming a `*_test.go` file in the package directory that exists and
   references the axis; the table starts empty and a row is added only when a measurement shows a
-  test needing the ambient value.
+  test needing the ambient value — the M4 whole-package scrubbed-arm test that went red when the
+  axis was stripped, named in progress.md §E.2 beside the row (acceptance.md §D.5). A citation
+  alone does not prove that need, and the variant of an unscrubbed axis plus a padded row with a
+  real citation is left to review (acceptance.md §D.1).
 - **D9 — guard test names (fixed so AC commands are exact).** cli: `TestFactoryEnvAxesCovered`
   (coverage) and `TestFactoryEnvAxesScrubApplied` (applied); hook: `TestLaneEnvAxesCovered` and
   `TestLaneEnvAxesScrubApplied`.
@@ -169,8 +197,10 @@ Files (exact):
 - c1 (record only, subject and file set per §D.1): progress.md §E.2 baseline — L0 for both packages
   (§C step 6); the whole-package pairs of `internal/cli` and `internal/hook` on the pre-guard tree
   (4 leased runs, acceptance.md §D.3), each with command, exit code, failing-test list, terminal
-  top-level count T against L, lease acquire/release lines; the hook child census; the discovery
-  narrow pair re-recorded (E-7 is the plan-time measurement); the session family env read.
+  top-level count T against L, lease acquire/release lines, and the sorted failing-name file of
+  each arm (acceptance.md §D.3 commands 6-7, copied verbatim — the c1 side of clause (e)); the
+  hook child census; the discovery narrow pair re-recorded (E-7 is the plan-time measurement);
+  the session family env read.
 - c2 (guards): `internal/cli/factory_env_axes_test.go` (new — cli coverage test and applied test;
   reads `factoryAmbientEnvKeys` from `factory_test.go`); `internal/hook/lane_env_axes_test.go`
   (new — hook coverage test and applied test, the **empty** scrub-set declaration, and the
@@ -178,7 +208,12 @@ Files (exact):
 - c2r (record only): progress.md §E.2 — for each package the coverage test and the applied test run
   on the c2 tree, on a plain shell and under the lane env (it must be red in both, being
   ambient-independent): command, verbatim output naming the uncovered axes (expected from spec.md
-  §A.6: six cli axes, thirteen hook axes), exit code, and the c2 SHA.
+  §A.6: six cli axes, thirteen hook axes), exit code, and the c2 SHA. For each coverage test the
+  cell states which message(s) the observed red carries — expected: the hook coverage test, the
+  empty-scrub-set liveness message **and** the thirteen axis names (D5); the cli coverage test,
+  the six axis names only. The record is written so that the content witness of AC-THE-005
+  (acceptance.md §D.8 step 7) holds: each of the four guard-test `--- FAIL:` lines is present and
+  the c2 SHA is named.
 Steps: pre-flight (§C); record c1; write c2; run each guard pair and record the **red**; record c2r.
 Exit: AC-THE-005
 
@@ -216,8 +251,9 @@ eight referenced axes (`MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_LABEL`,
 an arm that removes one of them cannot move those two tests — and are decided by the guard pair
 and AC-THE-003's whole-package scrubbed arm. Then apply and run the narrow AC command of
 AC-THE-002 under the explicit lane env → green with 2 `--- PASS`; the positive control, the hook
-coverage test and the hook applied test green.
-Exit: AC-THE-002, AC-THE-004, AC-THE-007, AC-THE-008
+coverage test and the hook applied test green (the green path of AC-THE-004 and AC-THE-008, which
+are bound to the M4 exit because their mutation probes run there).
+Exit: AC-THE-002, AC-THE-007
 
 ### M4 — Contingent per-test pins, remaining survey, whole-package pairs, mutation probes — Priority Medium
 Files: only those measured red by the M1 baseline pairs that M2/M3 did not already fix (named in
@@ -226,7 +262,10 @@ Steps: (1) `go test -list` L1 for both packages (L1 ≥ L0 + 2 for the two guard
 the final whole-package pairs on the post-M3 tree under the lease — cli lane arm, cli scrubbed arm,
 hook lane arm, hook scrubbed arm — with the validity checks of acceptance.md §D.3 (T = L, no timeout
 panic / goroutine-leak / non-test failure line), recording failing sets and their difference
-(AC-THE-003); (2) for any test still differing: RED/GREEN pair, Option-B pin with `t.Setenv` of
+(AC-THE-003), and the c1-containment check of clause (e) for each arm type of each package
+(acceptance.md §D.3 commands 6-8: `final − c1` by `comm -13`, required empty; a name outside c1
+is a change-induced regression, not env-unrelated); (2) for any test still differing:
+RED/GREEN pair, Option-B pin with `t.Setenv` of
 every axis the code path reads, `t.Parallel()` dropped where B1 applies, no skip; an axis a test
 legitimately reads from ambient takes an exemption row (D8) instead; (3) mutation probes, each
 recorded and then reverted (confirmed by an empty `git diff --stat`): P1 remove one axis from a
@@ -236,8 +275,12 @@ P3 pad an exemption row (reason "n/a", citation to a file that does not mention 
 coverage test red; P4 point the reference scan at an empty directory → liveness red; P5 move one
 guard file aside → the sibling package's coverage test red; (4) `go vet` + Windows `GOOS=windows
 GOARCH=amd64 go vet ./internal/cli ./internal/hook` + `golangci-lint run` delta vs the §C baselines;
-(5) the AC-THE-005 / AC-THE-006 checks from `git log`; (6) populate progress.md §E.2/§E.3.
-Exit: AC-THE-003, AC-THE-006
+(5) the AC-THE-005 / AC-THE-006 checks from `git log` — for AC-THE-005 the step 6 enumeration is
+re-evaluated here (M1 evaluated the shape, the chain and the step 7 content witness); (6) list the
+final exemption tables of both guard files in progress.md §E.2 with, for each surviving row, the
+name of the whole-package scrubbed-arm test that went red when that axis was stripped (an empty
+table needs no row); (7) populate progress.md §E.2/§E.3.
+Exit: AC-THE-003, AC-THE-004, AC-THE-006, AC-THE-008
 
 ### M5 — Sync — Priority Low
 manager-docs owns `progress.md` §E.4 and the `implemented → completed` transition on the single
@@ -264,6 +307,9 @@ The leader integrates per the git-flow lane protocol and pushes in batch.
   listed count L catches it.
 - **AP-11** — an applied-behaviour probe that calls the scrub function itself, or runs with the
   parent's ambient env: it then proves the function works, not that `TestMain` applies it.
+- **AP-12** — naming a failure env-unrelated because it is identical in both final arms, without
+  checking that it is in the c1 failing set of the same arm type (clause (e)): a change-induced
+  failure can be identical in both arms.
 
 ## §H Cross-References
 
