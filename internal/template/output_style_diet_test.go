@@ -22,7 +22,7 @@ import (
 // exceeds the anchor size recorded in the ledger (REQ-PFD-002).
 const (
 	dietBudgetMoai      = 62593
-	dietBudgetMoaiEasy  = 29243
+	dietBudgetMoaiEasy  = 21350
 	dietBudgetMoaiLearn = 28517
 )
 

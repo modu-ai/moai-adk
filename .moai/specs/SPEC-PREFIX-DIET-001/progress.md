@@ -106,6 +106,76 @@ The AC cell is not edited (manager-spec owns it); this line is the current-tree 
 
 **Residual-risk.** Author-side misclassification of a `normative` unit as `rationale` is not machine-detectable; the full `dropped` list (source, reason, survivor) is exported in the final section of §E.2 for the sync-audit and the leader.
 
+### M1 — `skillListingBudgetFraction` key guard (no change; operator decision item)
+
+**Claim.** The key stays `0.02` in both settings files and neither file is modified; the `0.01` measurement is recorded as an OPERATOR DECISION ITEM only (leader decision D1).
+
+**Evidence.**
+
+```
+grep -n '"skillListingBudgetFraction"' internal/template/templates/.claude/settings.json.tmpl .claude/settings.json
+internal/template/templates/.claude/settings.json.tmpl:414:  "skillListingBudgetFraction": 0.02,
+.claude/settings.json:410:  "skillListingBudgetFraction": 0.02,
+
+git diff --numstat 5d5ff1aae HEAD -- internal/template/templates/.claude/settings.json.tmpl .claude/settings.json        (exit 0, no output)
+```
+
+Operator-item measurement, re-run on this tree (settings file `{"disableAllHooks": true, "skillListingBudgetFraction": 0.01}`, HEAD `089d6fe51`, same command form as M0):
+
+```
+first-turn-input-tokens[budget0.01#1]=147310 head=089d6fe51 usage={"input_tokens":2,"cache_creation_input_tokens":134909,"cache_read_input_tokens":12399,"output_tokens":415,"output_tokens_details":{"thinking_tokens":124   ("num_turns":1)
+```
+
+147,310 vs this run's anchor 154,235 = -6,925 (-4.5%); the leader's carried figure was 147,025 / -7,194 (-4.7%). One run, variance unknown. Effect on skill-discovery quality: NOT measured. Nothing was changed; the decision belongs to the operator.
+
+### M2 — `moai-easy.md` (default style; the only milestone with a default-user token effect)
+
+**Claim.** `moai-easy.md` is reduced from 29,243 to 21,350 UTF-16 units (-7,893, the whole droppable total) by dropping `rationale`/`example` units only; every binding token is retained; the frozen Banner 7 section and the localization table are byte-identical; template and local copy are identical; the first-turn input tokens fall by 2,828 (-1.83%) under the default `MoAI-Easy` style.
+
+**RED** (budget constant lowered to 21,350 before the edit, `go test ./internal/template/ -run 'TestOutputStylesCharBudget' -count=1 -v`, exit 1; the `$`-anchored pattern is refused by the guard, so the name is unanchored and selects only this test):
+
+```
+    output_style_diet_test.go:46: output-style=moai-easy 29243
+    output_style_diet_test.go:48: output style moai-easy.md is 29243 UTF-16 units, over its budget 21350
+--- FAIL: TestOutputStylesCharBudget (0.00s)
+    --- PASS: TestOutputStylesCharBudget/moai
+    --- FAIL: TestOutputStylesCharBudget/moai-easy (0.00s)
+    --- PASS: TestOutputStylesCharBudget/moai-learn
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.420s
+```
+
+**GREEN.** Template edit by `python3 .moai/specs/SPEC-PREFIX-DIET-001/tools/diet_ledger.py apply moai-easy.md` (output `apply ok moai-easy.md utf16 29243 -> 21350`); the same call flips the planned rows to `dropped` in the ledger with reason + survivor. Dropped units (ids `moai-easy-NNNN`): 44-45, 53-71, 72-73, 134-142, 158-184 (the `---` units 142, 158, 169, 174, 182 are separators of dropped sections). Then `make build` (exit 0; `catalog.yaml` unchanged, `git status --short` shows only the three files below), local mirror `cp` of the template file, and:
+
+```
+diff -rq internal/template/templates/.claude/output-styles .claude/output-styles        (no output, exit 0)
+go test ./internal/template/ -run '^TestOutputStyle' -count=1 -v                        (exit 0)
+--- PASS: TestOutputStylesCharBudget (output-style=moai 62593 / moai-easy 21350 / moai-learn 28517)
+--- PASS: TestOutputStyleBindingLedger        --- PASS: TestOutputStyleHandoffUnitsFrozen
+--- PASS: TestOutputStyleLocalizationTableParity
+--- PASS: TestOutputStylesExactlyThree / FallbackDocsContract / Encoding / FrontmatterSchema / TemplateLiveParity
+```
+
+Binding tokens after the edit: the ledger test's `TOKEN_TOTAL` check equals the anchor (`[33 0 0 0]` for moai-easy.md). Guard (`surface_guard.py 5d5ff1aae`, exit 0): `ok output-styles` for the template file and the local copy, `surface-guard=PASS`. Gap-free side note: the edited file ends with one extra blank line (the unit preceding the dropped tail keeps its own trailing blank line — rewrite is forbidden, so it stays).
+
+**First-turn tokens, default style MoAI-Easy** (HEAD `089d6fe51` + the M2 edit in the worktree; same command as M0; the `num_turns` field is read so a multi-call run is not mixed in — three multi-call runs (2, 2 and 3 calls) were observed and excluded, listed for honesty):
+
+```
+first-turn-input-tokens[M2#1]=151407 usage={"input_tokens":2,"cache_creation_input_tokens":139006,"cache_read_input_tokens":12399,"output_tokens":498,"output_tokens_details":{"thinking_tokens":113   ("num_turns":1)
+first-turn-input-tokens[M2#2]=303991 usage={"input_tokens":4,"cache_creation_input_tokens":1177,"cache_read_input_tokens":302810,"output_tokens":839,"output_tokens_details":{"thinking_tokens":155   ("num_turns":2; excluded)
+first-turn-input-tokens[M2#3]=304044 usage={"input_tokens":4,"cache_creation_input_tokens":1231,"cache_read_input_tokens":302810,"output_tokens":871,"output_tokens_details":{"thinking_tokens":197   ("num_turns":2; excluded)
+first-turn-input-tokens[M2#4]=151407 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":151405,"output_tokens":592,"output_tokens_details":{"thinking_tokens":108   ("num_turns":1)
+first-turn-input-tokens[M2#5]=304201 usage={"input_tokens":4,"cache_creation_input_tokens":1387,"cache_read_input_tokens":302810,"output_tokens":909,"output_tokens_details":{"thinking_tokens":179   ("num_turns":3; excluded)
+first-turn-input-tokens[M2#6]=151407 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":151405,"output_tokens":386,"output_tokens_details":{"thinking_tokens":109   ("num_turns":1)
+```
+
+Single-call runs: min = median = max = 151,407. Anchor single-call runs: 154,235 (x3). Reduction = 2,828 tokens (-1.83%); spread 0, so the effect is measurable. (Run #2/#3 were issued in one parallel turn by mistake; each is a separate plain invocation and the account cache is shared, which does not change the summed fields.) The upper bound for this surface was -11,033 (`outputStyle=default`, whole body removed); this milestone realises 25.6% of it without rewriting any binding line.
+
+**Baseline-attribution.** This run, worktree `t1450`; anchor sizes from `5d5ff1aae`; token baseline = M0 anchor runs in this section, same command and settings file. Tool provenance: `make build` produced `bin/moai` from this tree (`-X …Commit=089d6fe51`); no measurement in this milestone relied on an installed `moai` binary.
+
+**Gaps.** Single account/time window; cache state differs between runs (the first run wrote the cache). The M2 conclusion rests on three single-call runs of equal value. `moai-easy.md` is what a default-style user loads; users who selected `MoAI` or `MoAI-Learn` see no change from this milestone.
+
+**Residual-risk.** The dropped FAQ/philosophy/quick-reference/example units are classified `rationale`/`example` by the author; the survivor named per row is where the information remains. Dropped section numbers leave gaps (`§10`, `§12`-`§15`) because renumbering would rewrite kept lines; no kept unit references a dropped section number (checked with `grep -n "§1[0-5]"`).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
