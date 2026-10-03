@@ -1234,7 +1234,7 @@ func coerceCodexReviewTarget(v any, root string) (map[string]any, error) {
 	case codexTargetUncommitted:
 		return map[string]any{"type": codexTargetUncommitted}, nil
 	case codexTargetBaseBranch:
-		// The resolved merge-base SHA, not a branch name: codex compares from
+		// The resolved merge base SHA, not a branch name: codex compares from
 		// exactly the commit the GLM backend measures from (card t1426).
 		base, err := resolveReviewBase(root)
 		if err != nil {
@@ -1954,7 +1954,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		"cwd":    root,
 	}
 	// A native baseBranch review resolves its base ONCE, before the call, and
-	// codex is sent the captured merge-base SHA rather than a branch name it
+	// codex is sent the captured merge base SHA rather than a branch name it
 	// would re-resolve later — so review_base names exactly the commit codex
 	// compared against, even if the base ref moves meanwhile (t1426). This is
 	// the shape the review gate's card scope already sends (reviewRequestParams).
