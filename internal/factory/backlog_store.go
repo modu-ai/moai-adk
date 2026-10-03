@@ -873,9 +873,24 @@ func (s *BacklogStore) migrateUnderLock(lockHeld bool) error {
 // engine never writes it — in the steady state it is simply absent, so naming
 // it hands the operator a file that is not there. Card t899 lost half an
 // investigation to that path before the real cause was found (card t910).
-func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
-	// @MX:WARN: [TID:TX] Identity schema, UUID backfill, and the card record must commit in one writer transaction.
-	// @MX:REASON: [TID:TX] MaxOpenConns(1) forbids e.db re-entry while that transaction is active; every identity query uses its *sql.Tx.
+func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) error {
+	return s.WithLock(func(l *LockedBacklog) error {
+		return l.Mutate(mutate)
+	})
+}
+
+// @MX:ANCHOR: [AUTO] WithLock — the one place the queue's cross-process lock is taken for a mutation
+// @MX:REASON: expected fan_in >= 3 (Mutate, the factory lease section, tests); a second acquisition path would let two sections order differently against the same lock
+// @MX:WARN: [AUTO] WithLock — the lock is a non-reentrant flock on its own descriptor, so calling the public Mutate inside fn waits out the whole budget and errors
+// @MX:REASON: inside fn mutate only through the handle (LockedBacklog.Mutate); the handle must not outlive fn, since the lock is released when fn returns
+//
+// WithLock holds the queue's lock across fn (SPEC-FACTORY-ATOMIC-LEASE-001
+// plan D1): it acquires through acquireLock — the same wait policy and the
+// same timeout error as Mutate — refuses a relocated queue exactly as Mutate
+// does, runs fn with a LockedBacklog, and releases on every exit, a panic
+// included. A release failure is JOINED into the result, as in Mutate. fn's own
+// error is returned unwrapped, so callers can match it with errors.Is.
+func (s *BacklogStore) WithLock(fn func(*LockedBacklog) error) (err error) {
 	lock, err := s.acquireLock()
 	if err != nil {
 		return err
@@ -888,7 +903,34 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 	} else if !os.IsNotExist(readErr) {
 		return readErr
 	}
+	return fn(&LockedBacklog{s: s})
+}
 
+// LockedBacklog is the handle WithLock lends its callback while the queue lock
+// is held. It offers the non-adopting read and the guarded mutation, and no
+// adopting read: BacklogStore.Load adopts (migrates, relocates), and the lease
+// path it serves reads with LoadPure, which never does (plan D1, mutant MU8).
+type LockedBacklog struct {
+	s *BacklogStore
+}
+
+// LoadPure reads the queue without adopting it, a fresh read each call.
+func (l *LockedBacklog) LoadPure() (*BacklogRecord, error) {
+	return l.s.LoadPure()
+}
+
+// Mutate is today's Mutate body without the lock acquisition: it loads the
+// record, applies mutate in place, and atomically writes the result. Returning
+// an error from mutate aborts with the file unchanged.
+func (l *LockedBacklog) Mutate(mutate func(*BacklogRecord) error) error {
+	return l.s.mutateLocked(mutate)
+}
+
+// mutateLocked is the read-modify-write body of Mutate; the caller holds the
+// queue lock.
+func (s *BacklogStore) mutateLocked(mutate func(*BacklogRecord) error) error {
+	// @MX:WARN: [TID:TX] Identity schema, UUID backfill, and the card record must commit in one writer transaction.
+	// @MX:REASON: [TID:TX] MaxOpenConns(1) forbids e.db re-entry while that transaction is active; every identity query uses its *sql.Tx.
 	eng, err := s.openEngine(true)
 	if err != nil {
 		return err
@@ -933,6 +975,12 @@ func joinBacklogReleaseErr(mutErr, relErr error, path string) error {
 	}
 	return errors.Join(mutErr, fmt.Errorf("mutate backlog %s: lock release failed: %w", path, relErr))
 }
+
+// LockWaitBudget returns the queue lock's wait budget — the elapsed window a
+// writer polls for the lock before giving up. It is the accessor a bound over
+// the lock derives from (SPEC-FACTORY-ATOMIC-LEASE-001 plan D1/D2), so the
+// bound never copies the number.
+func LockWaitBudget() time.Duration { return stateLockWaitBudget }
 
 // @MX:ANCHOR: [AUTO] Add — the id-issuing append every add-path verb calls
 // @MX:REASON: expected fan_in >= 3 (M2 add verb, tests, future importers); the only id issuer, and issuance outside the lock would mint duplicates
@@ -1252,7 +1300,13 @@ func derefOr(s *string, fallback string) string {
 // genuinely stuck holder surfaces as an error rather than a hang. The timeout
 // error names the lock artifact so the operator can act on the right file.
 func (s *BacklogStore) acquireLock() (*StateLock, error) {
-	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
+	// The ancestor check runs before the directory is created: MkdirAll follows
+	// a symlinked `.moai` and would create the queue directory outside the
+	// project before the opener refused (card t1458).
+	if err := ensureStateLockDir(s.LockPath()); err != nil {
+		if errors.Is(err, ErrStateLockUnsafePath) {
+			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), err)
+		}
 		return nil, fmt.Errorf("mutate backlog %s: creating dir: %w", s.EnginePath(), err)
 	}
 	var lastErr error

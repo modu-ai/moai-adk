@@ -236,6 +236,29 @@ type managedCodexAppClient struct {
 	turnID         string
 	prevTurnID     string
 	brokerDeclined int
+
+	// Operator-attach state (SPEC-FACTORY-MANAGED-TUI-001), guarded by mu: the
+	// turns the thread has running whichever client started them (busy), the
+	// turns the owner started (owned), and whether an operator TUI is attached
+	// (scoping).
+	scoping   bool
+	active    map[string]struct{}
+	owned     map[string]struct{}
+	busySince time.Time
+	lastWarn  time.Time
+	busyWarn  time.Duration
+
+	// Set once by newAppClient before the read goroutine starts and read-only
+	// afterwards: the per-write deadline (a stuck write ends as a connection
+	// error), the test barrier at write entry, and the read goroutine's exit
+	// signal (the operator TUI's server-death monitor).
+	writeDeadline time.Duration
+	writeBarrier  func(v any)
+	onExit        func()
+
+	// readEnded is set by the read goroutine just before onExit, so a monitor
+	// that starts after the reader already ended can still see the loss.
+	readEnded atomic.Bool
 }
 
 // write sends one JSON frame; gorilla/websocket allows a single concurrent
@@ -245,8 +268,14 @@ type managedCodexAppClient struct {
 // @MX:REASON: gorilla/websocket forbids concurrent writers, so a write that bypasses writeMu races the read goroutine's replies with the call loop
 // @MX:SPEC: SPEC-FACTORY-MANAGED-HARDEN-001
 func (c *managedCodexAppClient) write(v any) error {
+	if c.writeBarrier != nil {
+		c.writeBarrier(v)
+	}
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
+	if c.writeDeadline > 0 {
+		_ = c.conn.SetWriteDeadline(time.Now().Add(c.writeDeadline))
+	}
 	return c.conn.WriteJSON(v)
 }
 
@@ -277,14 +306,19 @@ func managedTurnFrame(params json.RawMessage) (id, status string) {
 	return payload.Turn.ID, payload.Turn.Status
 }
 
-// noteTurnStarted records the id of the turn the open window belongs to.
-func (c *managedCodexAppClient) noteTurnStarted(params json.RawMessage) {
+// noteTurnStarted records the id of the turn the open window belongs to and
+// reports whether the frame belongs on the event channel: while an operator TUI
+// is attached, a turn the owner did not start is not the owner's to wait on.
+func (c *managedCodexAppClient) noteTurnStarted(params json.RawMessage) (forward bool) {
 	id, _ := managedTurnFrame(params)
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.trackStartedLocked(id)
 	if c.open && c.turnID == "" && id != "" {
 		c.turnID = id
+		c.markOwnedLocked(id)
 	}
+	return c.forwardsLocked(id)
 }
 
 // noteTurnCompleted closes the window for the completed turn and returns the
@@ -398,6 +432,9 @@ var managedUnknownRequestPolicy = managedServerRequestPolicy{outcome: "error", e
 // trace exists by the time the server sees the answer; the reply echoes the
 // request id verbatim. The turn-window lock is released before the write.
 func (c *managedCodexAppClient) answerServerRequest(req managedCodexAppReply) error {
+	if c.leavesForOperator(req) {
+		return nil
+	}
 	policy, ok := managedServerRequestPolicies[req.Method]
 	if !ok {
 		policy = managedUnknownRequestPolicy
@@ -433,11 +470,20 @@ func (c *managedCodexAppClient) answerServerRequest(req managedCodexAppReply) er
 // @MX:WARN: [AUTO] the read goroutine outlives the calls that start it and its only stop signal is the done channel
 // @MX:REASON: a blocked events send would leak the goroutine after Close if it did not select on done — keep the select when touching read()
 func (c *managedCodexAppClient) read() {
-	defer close(c.events)
+	defer func() {
+		close(c.events)
+		c.readEnded.Store(true)
+		if c.onExit != nil {
+			c.onExit()
+		}
+	}()
 	for {
 		var event managedCodexAppReply
 		if err := c.conn.ReadJSON(&event); err != nil {
 			return
+		}
+		if event.Method == "" && event.hasID() {
+			c.noteTurnStartResponse(event.Result)
 		}
 		switch {
 		case event.hasID() && event.Method != "":
@@ -449,9 +495,15 @@ func (c *managedCodexAppClient) read() {
 			}
 			continue
 		case event.Method == "turn/started":
-			c.noteTurnStarted(event.Params)
+			if !c.noteTurnStarted(event.Params) {
+				continue
+			}
 		case event.Method == "turn/completed":
+			forward := c.trackTurnCompleted(event.Params)
 			event.brokerDeclined = c.noteTurnCompleted(event.Params)
+			if !forward {
+				continue
+			}
 		case event.Method != "" || !event.hasID():
 			// Streaming item deltas and id-less frames belong to the
 			// interactive surface, not the delivery path.
@@ -646,10 +698,10 @@ func managedCodexAppServerArgs(url, tokenFile string, operatorArgs []string) []s
 // control connection. It implements the M1 managedSession interface: Start
 // spawns and handshakes, DeliverTurn injects one turn, Close tears the child
 // down. This surface is headless on purpose — the managed session is the
-// delivery loop's backend. TUI attach is not delivered by
-// SPEC-FACTORY-MANAGED-SESSION-001 and is owed to a follow-up card, so model
-// output renders wherever the app server's own thread view renders it, not
-// on our stdout.
+// delivery loop's backend. When the operator TUI attach is planned
+// (SPEC-FACTORY-MANAGED-TUI-001, managed_codex_tui.go) the TUI renders the
+// thread on the operator's terminal; otherwise model output renders wherever
+// the app server's own thread view renders it, not on our stdout.
 type managedCodexSession struct {
 	program  string
 	appArgs  []string
@@ -663,6 +715,8 @@ type managedCodexSession struct {
 	threadID string
 	started  bool
 	closed   bool
+	// tui is the planned operator TUI (nil for a headless session).
+	tui *managedCodexTUI
 }
 
 // newManagedCodexSession builds the session without starting it: operator
@@ -714,7 +768,7 @@ func (s *managedCodexSession) Start() error {
 	s.cmd = exec.Command(s.program, args...)
 	s.cmd.Env = s.env
 	s.cmd.Dir = s.dir
-	s.cmd.Stderr = os.Stderr
+	s.cmd.Stderr = s.appServerStderr()
 	if err := s.cmd.Start(); err != nil {
 		return fmt.Errorf("start managed Factory codex app server: %w", err)
 	}
@@ -729,7 +783,7 @@ func (s *managedCodexSession) Start() error {
 	if err != nil {
 		return err
 	}
-	s.client = &managedCodexAppClient{conn: conn, events: make(chan managedCodexAppReply, 32), done: make(chan struct{})}
+	s.client = s.newAppClient(conn)
 	go s.client.read()
 	if _, err := s.client.call(readyCtx, "initialize", map[string]any{
 		"clientInfo": map[string]string{"name": "moai_factory", "title": "MoAI Factory", "version": "1"},
@@ -783,6 +837,7 @@ func (s *managedCodexSession) DeliverTurn(prompt string) error {
 // token directory removed — the ownership model's teardown half, idempotent
 // like its stream sibling.
 func (s *managedCodexSession) Close() error {
+	s.stopTUI()
 	if !s.started || s.closed {
 		return nil
 	}
@@ -827,8 +882,12 @@ func runManagedFactoryCodex(bin string, args, env []string, dir string, stdin io
 		return err
 	}
 	session.dir = dir
+	// The attach decision comes before Start: it fixes where the App Server's
+	// stderr goes (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-004, REQ-MT-006).
+	session.planOperatorTUI(root, runID, stdin)
 	pending, err := registerFactoryLaunchPending(context.Background(), root, launchEnv, ownerPID, ownerStart)
 	if err != nil {
+		session.stopTUI()
 		return err
 	}
 	// REQ-MS-002: until the launcher binds the thread id itself, a failed

@@ -52,7 +52,17 @@ func (f *atomicFileStateLock) release() error {
 
 // acquireStateLockImpl creates lockPath with O_CREATE|O_EXCL — atomic on
 // NTFS — and records this process's identity IN the artifact (REQ-KB-023).
+//
+// Before the atomic create it refuses a symlinked ancestor (up to `.moai`) and a
+// pre-existing symlink or non-regular artifact, wrapping ErrStateLockUnsafePath.
+// A pre-existing regular file is contention and still reports ErrStateLockHeld.
 func acquireStateLockImpl(lockPath string) (stateLockImpl, error) {
+	if err := checkStateLockAncestors(lockPath); err != nil {
+		return nil, err
+	}
+	if err := checkStateLockArtifact(lockPath); err != nil {
+		return nil, err
+	}
 	transientLeft := boardLockTransientRetries
 	for {
 		file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o644)

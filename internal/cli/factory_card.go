@@ -35,6 +35,39 @@ var factoryCardNow = time.Now
 // the one point the compensation can undo. The default is inert.
 var factoryNominateBeforeRecord = func(cardID string) error { return nil }
 
+// factoryLeaseBeforeClaim is the test seam of the bare selection arms
+// (SPEC-FACTORY-ATOMIC-LEASE-001 plan WM1): every arm calls it immediately
+// before its claim — arm names "a", "b", "b2" and "c", with the card the arm is
+// about to claim — so a test can hold a lane between the arm's decision and its
+// claim, or start an operator write there. An error it returns ends the pass
+// like any other claim failure. The default is inert.
+var factoryLeaseBeforeClaim = func(arm, cardID string) error { return nil }
+
+// factoryLeaseAtPassEntry is the test seam at the entry of the lease section —
+// a selection pass or a nominated lease — before it reads the clock, the record
+// or the queue. The default is inert.
+var factoryLeaseAtPassEntry = func() {}
+
+// The lease path's claim bound and the worktree step's lock wait
+// (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3). The claim wait cap is the sum of
+// the claim's context deadline and the busy timeout its record connection
+// carries; it must stay within one third of the queue lock's wait budget
+// (factory.LockWaitBudget). The worktree step takes its lock for at most
+// factoryWorktreeStepWait (factoryCreateAndRenameWorktree).
+const (
+	factoryLeaseClaimDeadline    = 800 * time.Millisecond
+	factoryLeaseClaimBusyTimeout = 200 * time.Millisecond
+	factoryLeaseClaimWaitCap     = factoryLeaseClaimDeadline + factoryLeaseClaimBusyTimeout
+
+	// factoryWorktreeStepWaitDefault is the wait for the worktree-step lock:
+	// lanes (10) x the worst observed step (2.9 s) x headroom (2), taken as 60 s.
+	factoryWorktreeStepWaitDefault = 60 * time.Second
+)
+
+// factoryWorktreeStepWait is the wait factoryEnsureCardWorktree gives the
+// worktree-step lock; a test shortens it and restores it at cleanup.
+var factoryWorktreeStepWait = factoryWorktreeStepWaitDefault
+
 // factoryCardRoot is the project root the factory record and the queue share.
 func factoryCardRoot() string { return resolveTodoQueueRoot() }
 
@@ -295,25 +328,100 @@ func factoryNextLeaseOnce(ctx context.Context, root, runID, lane string) (homest
 // @MX:NOTE: [AUTO] The gated lease entry point — the noNewCards boolean is the quota gate's whole effect on card selection; the ungated factoryNextLeaseOnce must stay for the relaunch and Codex loops. Fan-in 3 (the next verb, the factory_next MCP handler, the ungated wrapper) — kept a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-QUOTA-AWARE-SCHEDULING-001
 func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, noNewCards bool) (homestate.Card, bool, error) {
-	db, err := homestate.OpenFactory(root)
+	// The record connection carries the claim's busy timeout and is opened
+	// before the section, so a slow open never lengthens the lock's hold.
+	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
 	if err != nil {
 		return homestate.Card{}, false, fmt.Errorf("open factory record: %w", err)
 	}
 	defer func() { _ = db.Close() }()
+	store := todoStoreAt(root)
 	skip := factoryNextSkipForBackend()
 	for attempt := 0; attempt < factoryNextSelectionAttempts; attempt++ {
-		card, leased, raced, err := factoryNextSelectAndLease(ctx, db, root, runID, lane, skip, noNewCards)
-		if err != nil {
-			return homestate.Card{}, false, err
+		var (
+			card          homestate.Card
+			leased, raced bool
+			passErr       error
+		)
+		ran, lockErr := factoryLeaseSection(store, func(l *factory.LockedBacklog) {
+			card, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)
+		})
+		if !ran {
+			// A queue lock that could not be taken ends the pass at once with an
+			// error: re-selecting would keep the verb waiting one more budget per
+			// attempt and then report an empty queue it never read.
+			return homestate.Card{}, false, factoryQueueLockError(lockErr)
+		}
+		if passErr != nil {
+			return homestate.Card{}, false, passErr
 		}
 		if leased {
+			// A failed lock release after a committed lease does not undo the lease;
+			// reporting it would orphan the card, and the next queue write meets the
+			// held lock loudly.
 			return card, true, nil
+		}
+		if lockErr != nil {
+			return homestate.Card{}, false, lockErr
 		}
 		if !raced {
 			return homestate.Card{}, false, nil
 		}
 	}
 	return homestate.Card{}, false, nil
+}
+
+// factoryLeaseSection runs fn inside the lease section: the queue's own
+// cross-process lock held across the whole selection pass or nominated lease
+// (SPEC-FACTORY-ATOMIC-LEASE-001), so the decision and the claim share one
+// exclusion with every queue writer. ran reports whether fn was entered; when
+// it is false err is the lock's acquisition failure, and when it is true err is
+// at most the lock's release failure.
+//
+// @MX:WARN: [AUTO] the lease section holds the queue lock across a factory-record write, so its worst hold is the claim wait cap plus one promotion and one restore
+// @MX:REASON: inside fn the queue is read and written only through the handle (a public Mutate waits out the whole budget on the section's own descriptor), and nothing here may start a git process or create a worktree (REQ-FAL-007)
+// @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
+func factoryLeaseSection(store *factory.BacklogStore, fn func(*factory.LockedBacklog)) (ran bool, err error) {
+	err = store.WithLock(func(l *factory.LockedBacklog) error {
+		ran = true
+		fn(l)
+		return nil
+	})
+	return ran, err
+}
+
+// factoryQueueLockError names a queue lock the lease could not take.
+func factoryQueueLockError(err error) error {
+	if factory.IsStateLockHeld(err) {
+		return fmt.Errorf("factory next: the queue lock stayed held for the whole %s wait budget, so nothing was leased: %w", factory.LockWaitBudget(), err)
+	}
+	return fmt.Errorf("factory next: take the queue lock: %w", err)
+}
+
+// errFactoryRecordBusy marks a claim that gave up because the factory record
+// stayed busy for the claim's whole wait cap.
+var errFactoryRecordBusy = errors.New("the factory record stayed busy")
+
+// factoryClaimContext bounds one claim — RecordPicked and the two transitions
+// taken together — by factoryLeaseClaimDeadline, and marks it so that none of
+// its record writes waits for the drift log's lock (plan D2). The record
+// connection's own busy timeout bounds how far past the deadline one write can
+// run; a child of an already-bounded claim context cannot extend it.
+func factoryClaimContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(homestate.WithBoundedReconcile(ctx), factoryLeaseClaimDeadline)
+}
+
+// factoryClaimFailure marks a claim write's error as the busy-record outcome
+// when the claim's deadline has passed; a stale version or a holder mismatch is
+// the lost race the caller already retries, and any other error stays as it is.
+func factoryClaimFailure(claimCtx context.Context, err error) error {
+	if errors.Is(err, homestate.ErrStaleVersion) || errors.Is(err, homestate.ErrLeaseHolder) {
+		return err
+	}
+	if errors.Is(claimCtx.Err(), context.DeadlineExceeded) {
+		return fmt.Errorf("%w for %s: %v", errFactoryRecordBusy, factoryLeaseClaimWaitCap, err)
+	}
+	return err
 }
 
 // factoryRefuseForeignWorktree is the REQ-SD-011 refusal: the card's landing
@@ -412,13 +520,9 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 		return "", false, errors.New("worktree creator is not initialized")
 	}
 	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID))
-	wt, err := worktree.WorktreeCreator(card.CardID, out)
+	wt, err := factoryCreateAndRenameWorktree(root, card.CardID, slug, out)
 	if err != nil {
-		return "", false, fmt.Errorf("create the card worktree: %w", err)
-	}
-	rename := exec.Command("git", "-C", wt, "branch", "-m", SessionWorktreeBranchPrefix+slug)
-	if outb, err := rename.CombinedOutput(); err != nil {
-		return "", false, fmt.Errorf("rename the card worktree branch: %v: %s", err, strings.TrimSpace(string(outb)))
+		return "", false, err
 	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
@@ -429,6 +533,32 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 		return "", false, fmt.Errorf("record the card worktree: %w", err)
 	}
 	return wt, true, nil
+}
+
+// factoryCreateAndRenameWorktree runs the creator and the in-place branch
+// rename under the worktree-step lock (SPEC-FACTORY-ATOMIC-LEASE-001 plan D3):
+// two lanes creating a worktree at the same instant collided in git's own ref
+// and worktree bookkeeping, so the step is serialized across processes. The
+// lock is released before the caller's record write, and a wait that runs out
+// fails the step with nothing created.
+//
+// @MX:NOTE: [AUTO] The lock covers the creator and `git branch -m` only; the record write stays outside it (D3, lock order).
+// @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
+func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (string, error) {
+	release, err := factory.AcquireFactoryStepLock(root, factoryWorktreeStepWait)
+	if err != nil {
+		return "", fmt.Errorf("serialize the card worktree step: %w", err)
+	}
+	defer func() { _ = release() }()
+	wt, err := worktree.WorktreeCreator(cardID, out)
+	if err != nil {
+		return "", fmt.Errorf("create the card worktree: %w", err)
+	}
+	rename := exec.Command("git", "-C", wt, "branch", "-m", SessionWorktreeBranchPrefix+slug)
+	if outb, err := rename.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("rename the card worktree branch: %v: %s", err, strings.TrimSpace(string(outb)))
+	}
+	return wt, nil
 }
 
 // factoryNextSelectAndLease runs one selection pass. raced reports that
@@ -449,7 +579,12 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 // the pass after arm (a), so a card already assigned to this lane still leases
 // while arms (b), (b2), and (c) — every arm that takes a NEW card — are
 // bypassed without a second predicate.
-func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool) (homestate.Card, bool, bool, error) {
+//
+// The pass runs inside the lease section (factoryLeaseSection): l is the handle
+// of the queue lock the caller holds, every queue read and write goes through
+// it, and the claim is made before the section ends.
+func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool) (homestate.Card, bool, bool, error) {
+	factoryLeaseAtPassEntry()
 	// The clock is read BEFORE the record snapshot: a lease whose expiry the
 	// snapshot shows as already past was expired when the clock was read too,
 	// so a renewal landing after the snapshot cannot be read as an expiry. Read
@@ -467,7 +602,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	// One pure queue read for the classification snapshot. A failed read is
 	// not silently swallowed: selection refuses rather than guessing modes
 	// (a nil record would read every card as its default — silent, wrong).
-	queueRec, err := todoReadStoreAt(root).LoadPure()
+	queueRec, err := l.LoadPure()
 	if err != nil {
 		return homestate.Card{}, false, false, fmt.Errorf("read the queue for classification: %w", err)
 	}
@@ -504,6 +639,9 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if classOf(c.CardID).Mode == factory.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
 			continue
 		}
+		if err := factoryLeaseBeforeClaim("a", c.CardID); err != nil {
+			return homestate.Card{}, false, false, err
+		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
 	}
 	if noNewCards {
@@ -522,26 +660,27 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if !modeEligible(c.CardID) {
 			continue
 		}
-		state, inQueue, err := queueItemState(root, c.CardID)
-		if err != nil {
-			return homestate.Card{}, false, false, err
-		}
+		state, inQueue := queueItemStateIn(queueRec, c.CardID)
 		if !inQueue || state != factory.BacklogStatePicked {
 			continue
+		}
+		if err := factoryLeaseBeforeClaim("b", c.CardID); err != nil {
+			return homestate.Card{}, false, false, err
 		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
 	}
 	// (b2) a queue-picked card with no record row yet: record it, then claim.
-	rec, err := todoReadStoreAt(root).LoadPure()
-	if err != nil {
-		return homestate.Card{}, false, false, err
-	}
-	for _, it := range rec.Items {
+	// The queue cannot have changed since the pass's one read: the section holds
+	// its lock, so arm (b2) reads the same record.
+	for _, it := range queueRec.Items {
 		// Positive enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-012): the
 		// state this arm claims is named; every other state falls through.
 		if it.State == factory.BacklogStatePicked && !recorded[it.ID] {
 			if !modeEligible(it.ID) {
 				continue
+			}
+			if err := factoryLeaseBeforeClaim("b2", it.ID); err != nil {
+				return homestate.Card{}, false, false, err
 			}
 			return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane)
 		}
@@ -554,7 +693,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	// serial card is skipped while another serial card is in flight.
 	var promoted string
 	sawQueued := 0
-	if err := todoStoreAt(root).Mutate(func(r *factory.BacklogRecord) error {
+	if err := l.Mutate(func(r *factory.BacklogRecord) error {
 		for i := range r.Items {
 			it := &r.Items[i]
 			// Positive enumeration (REQ-THS-012): the state this arm promotes
@@ -587,6 +726,9 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	}
 	switch {
 	case promoted != "":
+		if err := factoryLeaseBeforeClaim("c", promoted); err != nil {
+			return homestate.Card{}, false, false, err
+		}
 		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane)
 	case sawQueued > 0:
 		// Queued cards existed but none was eligible (blocked, or serial with
@@ -602,9 +744,11 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
 func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID, lane string) (homestate.Card, bool, bool, error) {
+	ctx, cancel := factoryClaimContext(ctx)
+	defer cancel()
 	fresh, err := db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "factory-next", factoryCardNow())
 	if err != nil {
-		return factoryNextClaimRefused(err)
+		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
 	}
 	// RecordPicked returns the existing row unchanged when fields are empty —
 	// whatever state it is in (card_picked.go). Both callers are queue-picked
@@ -623,6 +767,8 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 // the edges: a card with no recorded worktree whose landing directory is
 // already taken by a foreign tree is refused, and no row changes.
 func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID string, cur homestate.Card, lane string) (homestate.Card, bool, bool, error) {
+	ctx, cancel := factoryClaimContext(ctx)
+	defer cancel()
 	c := cur
 	if strings.TrimSpace(c.WorktreePath) == "" {
 		if err := factoryRefuseForeignWorktree(root, c.CardID); err != nil {
@@ -635,7 +781,7 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 			ExpectedVersion: c.Version, Actor: "factory-next", Owner: lane, Now: factoryCardNow(),
 		})
 		if err != nil {
-			return factoryNextClaimRefused(err)
+			return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
 		}
 		c = next
 	}
@@ -644,7 +790,7 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 		ExpectedVersion: c.Version, Actor: lane, Now: factoryCardNow(),
 	})
 	if err != nil {
-		return factoryNextClaimRefused(err)
+		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
 	}
 	return leased, true, false, nil
 }
@@ -802,12 +948,13 @@ type factoryNominee struct {
 	serialHeld bool
 }
 
-// factoryNextValidate is step 1 of the nominated lease: one pure queue read,
-// one factory-record read, and the read-only foreign-worktree precheck decide
-// every § C.2 token that can be decided before a write. It writes nothing.
-func factoryNextValidate(ctx context.Context, db *homestate.FactoryDB, root, runID, lane, cardID, quotaHold string) (factoryNominee, *factoryNominateRefusal, error) {
+// factoryNextValidate is step 1 of the nominated lease: one pure queue read
+// through the section's locked handle, one factory-record read, and the
+// read-only foreign-worktree precheck decide every § C.2 token that can be
+// decided before a write. It writes nothing.
+func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, root, runID, lane, cardID, quotaHold string) (factoryNominee, *factoryNominateRefusal, error) {
 	var nom factoryNominee
-	queueRec, err := todoReadStoreAt(root).LoadPure()
+	queueRec, err := l.LoadPure()
 	if err != nil {
 		return nom, nil, fmt.Errorf("read the queue: %w", err)
 	}
@@ -881,13 +1028,42 @@ func factoryNextValidate(ctx context.Context, db *homestate.FactoryDB, root, run
 // @MX:NOTE: [AUTO] The nominated lease entry point — shared by the `next --card` verb and the factory_next MCP handler (one implementation per verb, design.md §3); the single seam factoryNominateBeforeRecord sits between the promotion and RecordPicked. Fan-in 2 — a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-TODO-AUTO-PICK-001
 func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHold string) (homestate.Card, error) {
-	db, err := homestate.OpenFactory(root)
+	// Opened before the section with the claim's busy timeout in its DSN (see
+	// factoryNextLeaseOnceGated).
+	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
 	if err != nil {
 		return homestate.Card{}, fmt.Errorf("open factory record: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
-	nom, refusal, err := factoryNextValidate(ctx, db, root, runID, lane, cardID, quotaHold)
+	var (
+		card    homestate.Card
+		outcome error
+	)
+	ran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *factory.LockedBacklog) {
+		card, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)
+	})
+	switch {
+	case !ran:
+		if factory.IsStateLockHeld(lockErr) {
+			return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "the queue lock stayed held for the whole %s wait budget, so %s was not leased; retry", factory.LockWaitBudget(), cardID)
+		}
+		return homestate.Card{}, fmt.Errorf("take the queue lock: %w", lockErr)
+	case outcome != nil:
+		return homestate.Card{}, outcome
+	}
+	// A failed lock release after a committed lease does not undo the lease;
+	// reporting it would orphan the card, and the next queue write meets the
+	// held lock loudly.
+	return card, nil
+}
+
+// factoryNominateInSection runs steps 1 to 4 of the nominated lease inside the
+// lease section: validation reads the queue and the record under the lock, so
+// the decision and the claim see one queue state with no writer between them.
+func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, root, runID, lane, cardID, quotaHold string) (homestate.Card, error) {
+	factoryLeaseAtPassEntry()
+	nom, refusal, err := factoryNextValidate(ctx, l, db, root, runID, lane, cardID, quotaHold)
 	if err != nil {
 		return homestate.Card{}, err
 	}
@@ -898,17 +1074,13 @@ func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHo
 	promoted := false
 	if nom.item.State == factory.BacklogStateQueued {
 		var lost *factoryNominateRefusal
-		if err := todoStoreAt(root).Mutate(func(r *factory.BacklogRecord) error {
+		if err := l.Mutate(func(r *factory.BacklogRecord) error {
 			for i := range r.Items {
 				it := &r.Items[i]
 				if it.ID != cardID {
 					continue
 				}
 				if it.State == factory.BacklogStateQueued {
-					if ref := factoryKeepSetRefusal(*it, nom.row, lane, nom.serialHeld); ref != nil {
-						lost = ref
-						return nil
-					}
 					it.State = factory.BacklogStatePicked
 					promoted = true
 					return nil
@@ -932,10 +1104,12 @@ func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHo
 	if claimErr == nil && leased {
 		return card, nil
 	}
-	otherHolder, cerr := factoryNominateCompensate(ctx, db, root, runID, lane, cardID, promoted)
+	otherHolder, cerr := factoryNominateCompensate(ctx, l, db, runID, lane, cardID, promoted)
 	switch {
 	case cerr != nil:
 		return homestate.Card{}, cerr
+	case errors.Is(claimErr, errFactoryRecordBusy):
+		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "the factory record was busy for the whole %s claim wait cap, so %s was not leased; retry", factoryLeaseClaimWaitCap, cardID)
 	case otherHolder || claimErr == nil:
 		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "another lane leased or claimed %s first", cardID)
 	default:
@@ -962,19 +1136,19 @@ func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, roo
 // `queued` in one write that does nothing when the item is no longer `picked`,
 // only while the record shows no row, or a row at `picked` with no owner. It
 // reports whether another holder owns the card (their queue state is left
-// alone). The record row is read INSIDE the queue lock, so a lease that lands
-// while the compensation waits for that lock is seen and the queue item is
-// left `picked` under it (a restored `queued` item could be claimed a second
-// time); a lease landing after that read, before the write, is the two-store
-// window the spec accepts. A failure of the restoring write — or of the
-// record read — is returned as a non-token error naming the card; the card
-// then stays `picked` and unowned.
-func factoryNominateCompensate(ctx context.Context, db *homestate.FactoryDB, root, runID, lane, cardID string, promoted bool) (bool, error) {
+// alone). It runs inside the lease section, through the section's locked
+// handle l: the promotion and its undo share one lock hold, so no operator
+// write can land between them and be overwritten by the restore. The record row
+// is read under that lock; a lease landing after the read, before the write, is
+// the two-store window the spec accepts. A failure of the restoring write — or
+// of the record read — is returned as a non-token error naming the card; the
+// card then stays `picked` and unowned.
+func factoryNominateCompensate(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, runID, lane, cardID string, promoted bool) (bool, error) {
 	if !promoted {
 		return false, nil
 	}
 	otherHolder := false
-	if err := todoStoreAt(root).Mutate(func(r *factory.BacklogRecord) error {
+	if err := l.Mutate(func(r *factory.BacklogRecord) error {
 		var row *homestate.Card
 		cur, err := db.LoadCard(ctx, runID, cardID)
 		switch {
@@ -1648,17 +1822,25 @@ func queueItemState(root, cardID string) (factory.BacklogState, bool, error) {
 	if err != nil {
 		return "", false, err
 	}
+	state, ok := queueItemStateIn(record, cardID)
+	return state, ok, nil
+}
+
+// queueItemStateIn is queueItemState's search over a record already in hand —
+// the live items, then the archive. The lease section reads the queue once
+// through its locked handle and searches that record.
+func queueItemStateIn(record *factory.BacklogRecord, cardID string) (factory.BacklogState, bool) {
 	for _, item := range record.Items {
 		if item.ID == cardID {
-			return item.State, true, nil
+			return item.State, true
 		}
 	}
 	for _, entry := range record.Archived {
 		if entry.Item.ID == cardID {
-			return entry.Item.State, true, nil
+			return entry.Item.State, true
 		}
 	}
-	return "", false, nil
+	return "", false
 }
 
 // requireQueuePicked is the REQ-FR-022 precondition: only a card whose queue

@@ -310,8 +310,23 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 	if err := s.DeliverTurn(managedPrimingPrompt); err != nil {
 		return err
 	}
-	inputs := make(chan string, managedOperatorInputBuffer)
-	go readManagedOperatorInput(in, inputs)
+	// While an operator TUI is attached it owns the terminal: the driver reads
+	// no stdin and interprets no /exit or /quit (SPEC-FACTORY-MANAGED-TUI-001
+	// REQ-MT-005). A nil inputs channel never becomes ready in the selects below.
+	var (
+		surface managedOperatorSurface
+		tuiDone <-chan error
+	)
+	if op, ok := s.(managedOperatorSurface); ok {
+		if done, attached := op.AttachOperator(); attached {
+			surface, tuiDone = op, done
+		}
+	}
+	var inputs chan string
+	if tuiDone == nil {
+		inputs = make(chan string, managedOperatorInputBuffer)
+		go readManagedOperatorInput(in, inputs)
+	}
 	absorb := func(line string, ok bool) bool {
 		if !ok {
 			inputs = nil
@@ -336,6 +351,8 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				if absorb(line, ok) {
 					return nil
 				}
+			case res := <-tuiDone:
+				return res
 			case <-idle:
 			}
 		} else {
@@ -346,6 +363,8 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				if absorb(line, ok) {
 					return nil
 				}
+			case res := <-tuiDone:
+				return res
 			default:
 			}
 		}
@@ -358,6 +377,14 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				// Only an error the owner marked turn-scoped is isolated; every
 				// other error is session-fatal, as before.
 				if !errors.Is(err, errManagedTurnFailed) {
+					// A TUI that ended on its own released this call by closing
+					// the connection; its recorded status, not the connection
+					// error, is the session's result (REQ-MT-010).
+					select {
+					case res := <-tuiDone:
+						return res
+					default:
+					}
 					return err
 				}
 				consecutiveFailures++
@@ -369,10 +396,16 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 			}
 			consecutiveFailures = 0
 		}
+		// With an operator TUI attached, a batch is claimed only while no turn is
+		// active, so it is deferred (not dropped) behind an operator turn and the
+		// claim lease cannot expire while it waits (REQ-MT-007).
+		if surface != nil && surface.Busy() {
+			continue
+		}
 		claims, err := claim()
 		if err != nil {
 			if err.Error() != lastInboxErr {
-				fmt.Fprintln(os.Stderr, "Factory inbox:", err)
+				managedLogf("Factory inbox: %v", err)
 				lastInboxErr = err.Error()
 			}
 			continue
