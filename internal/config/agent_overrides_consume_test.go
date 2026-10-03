@@ -104,4 +104,34 @@ func TestAgentOverridesConsumeKey(t *testing.T) {
 			t.Errorf("a greenfield project has no llm.yaml to reject: %v", err)
 		}
 	})
+
+	t.Run("empty llm.yaml is not a rejection", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		writeConsumeFixture(t, dir, "")
+		if err := ValidateLLMYAMLSection(dir); err != nil {
+			t.Errorf("an empty section file has nothing to reject: %v", err)
+		}
+	})
+
+	t.Run("llm.yaml without an llm mapping is not a rejection", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		writeConsumeFixture(t, dir, "# only a comment\nother: 1\n")
+		if err := ValidateLLMYAMLSection(dir); err != nil {
+			t.Errorf("a file with no llm mapping has nothing to reject: %v", err)
+		}
+	})
+
+	t.Run("unreadable llm.yaml surfaces the read error", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		sections := filepath.Join(dir, ".moai", "config", "sections")
+		if err := os.MkdirAll(filepath.Join(sections, "llm.yaml"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := ValidateLLMYAMLSection(dir); err == nil {
+			t.Error("a read failure (a directory in the file's place) must surface, not pass silently")
+		}
+	})
 }

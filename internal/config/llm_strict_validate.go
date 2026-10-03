@@ -63,28 +63,22 @@ func ValidateLLMYAMLSection(projectRoot string) error {
 }
 
 // validateConsumeKeyBool requires a stored agent_overrides_consume scalar to
-// carry the !!bool tag (see the file header for the coercion it closes). A
-// file that does not parse as yaml is left to the typed pass.
+// carry the !!bool tag (see the file header for the coercion it closes). It
+// runs AFTER the typed pass, so everything structurally ill-formed (a
+// non-mapping document, a scalar llm value, an unparseable file) has already
+// been rejected upstream — the shape checks here exist only to walk safely,
+// and an absent key (at either level) is nothing to reject.
 func validateConsumeKeyBool(data []byte, path string) *ConfigTypeError {
 	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil
-	}
-	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
+	if err := yaml.Unmarshal(data, &doc); err != nil || doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
 		return nil
 	}
 	root := doc.Content[0]
-	if root.Kind != yaml.MappingNode {
-		return nil
-	}
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		if root.Content[i].Value != "llm" {
 			continue
 		}
 		llm := root.Content[i+1]
-		if llm.Kind != yaml.MappingNode {
-			return nil // the typed pass owns structural mismatches
-		}
 		for j := 0; j+1 < len(llm.Content); j += 2 {
 			if llm.Content[j].Value != consumeKey {
 				continue
