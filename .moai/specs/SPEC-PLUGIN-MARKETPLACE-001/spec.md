@@ -2,7 +2,7 @@
 id: SPEC-PLUGIN-MARKETPLACE-001
 title: "Make modu-ai/moai-adk a marketplace that carries a derived moai core plugin, installed at init and install time and version-checked by doctor"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec

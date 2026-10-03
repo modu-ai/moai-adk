@@ -287,7 +287,26 @@ and `<n4>` is `<s>/n4`.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### R0 (BI-2: decoy preconditions of the installer cases and the omit-flag negative control)
+
+Run-phase worker: `Agent(general-purpose)` carrying the manager-develop role text, `cycle_type=tdd`, in the card worktree.
+
+#### Pre-flight (recorded before any edit, 2026-10-03)
+
+```
+$ git rev-parse --show-toplevel
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435
+$ git rev-parse HEAD
+45edfc6fd2fda3914e085fdd1b0c0e9c5ddf4e6b
+$ git branch --show-current
+WT-marketplace-core-plugin
+$ git status --short
+(empty)
+$ env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'
+(empty; grep exit 1)                                         # BI-1, start of the first measurement
+$ grep -c moai-factory-foreman internal/template/catalog.yaml
+0                                                            # base does not contain t1399
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
