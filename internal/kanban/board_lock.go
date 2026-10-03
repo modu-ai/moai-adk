@@ -24,6 +24,12 @@ import (
 // the board-wide lock.
 var ErrBoardLockHeld = errors.New("kanban board lock held")
 
+// ErrBoardLockUnsafePath is returned when the lock path would route the
+// owner-record write outside the project or onto a shared inode: a symlinked
+// lock file or ancestor directory, a hardlinked artifact, or a non-regular
+// file. It is a refusal, never contention.
+var ErrBoardLockUnsafePath = errors.New("kanban board lock path is unsafe")
+
 // IsBoardLockHeld reports whether err is the contention sentinel.
 func IsBoardLockHeld(err error) bool {
 	return errors.Is(err, ErrBoardLockHeld)
