@@ -627,40 +627,74 @@ func TestCodexAuditLaunchRoleEligibility(t *testing.T) {
 	if r := runAudit(t, codexAuditRequest{Role: writer, ProjectRoot: repo.a, Root: repo.a1}); r.res.ExitCode == 0 || len(fake.calls(t)) != before {
 		t.Fatalf("%s with a tampered read-only file was launched", writer)
 	}
+	// A drifted or missing project copy of a read-only role is no longer a
+	// refusal: the launcher reads the role from the binary's embedded
+	// templates (TestCodexAuditLaunchRoleFromEmbedded, card t1471).
+}
 
-	// A read-only contract role whose file drifted to a writing sandbox is refused.
-	var reader string
-	for _, r := range roles {
-		if want[r] {
-			reader = r
-			break
-		}
-	}
-	readerFile := filepath.Join(repo.a1, ".codex", "agents", "moai", reader+".toml")
-	readerSrc, err := os.ReadFile(readerFile)
+// TestCodexAuditLaunchRoleFromEmbedded pins that the role file content comes
+// from the binary's embedded templates, the same source eligibility is
+// derived from — not from the project's .codex/ copy, which a Claude-profile
+// project never refreshes (GitHub #1735, card t1471).
+func TestCodexAuditLaunchRoleFromEmbedded(t *testing.T) {
+	const role = "plan-auditor"
+	fsys, err := template.EmbeddedTemplates()
 	if err != nil {
 		t.Fatal(err)
 	}
-	drifted := regexp.MustCompile(`(?m)^sandbox_mode = "[^"]*"$`).ReplaceAllString(string(readerSrc), `sandbox_mode = "workspace-write"`)
-	if err := os.WriteFile(readerFile, []byte(drifted), 0o644); err != nil {
+	embedded, err := fs.ReadFile(fsys, ".codex/agents/moai/"+role+".toml")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if r := runAudit(t, codexAuditRequest{Role: reader, ProjectRoot: repo.a, Root: repo.a1}); r.res.ExitCode == 0 || len(fake.calls(t)) != before {
-		t.Fatalf("%s with a drifted writing file was launched", reader)
+	if !regexp.MustCompile(`(?m)^sandbox_mode = "read-only"$`).Match(embedded) {
+		t.Fatalf("embedded %s is not read-only — the premise of this test is gone", role)
 	}
-	if err := os.WriteFile(readerFile, readerSrc, 0o644); err != nil {
-		t.Fatal(err)
+	instrJSON, _ := json.Marshal(roleLiteral(t, string(embedded), "developer_instructions"))
+	wantArg := "developer_instructions=" + string(instrJSON)
+
+	assertEmbeddedLaunch := func(t *testing.T, repo auditRepo, fake *fakeCodex) {
+		t.Helper()
+		r := runAudit(t, codexAuditRequest{Role: role, ProjectRoot: repo.a, Root: repo.a1})
+		if r.res.ExitCode != 0 {
+			t.Fatalf("launch refused: code=%d stderr=%q", r.res.ExitCode, r.stderr)
+		}
+		ex := fake.execCalls(t)
+		if len(ex) != 1 {
+			t.Fatalf("exec called %d times, want 1", len(ex))
+		}
+		found := false
+		for _, a := range ex[0] {
+			if a == wantArg {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("exec argv does not carry the embedded %s instructions", role)
+		}
 	}
 
-	// A contract read-only role whose role file is missing is rejected too.
-	missing := reader
-	if err := os.Remove(filepath.Join(repo.a1, ".codex", "agents", "moai", missing+".toml")); err != nil {
-		t.Fatal(err)
-	}
-	r := runAudit(t, codexAuditRequest{Role: missing, ProjectRoot: repo.a, Root: repo.a1})
-	if r.res.ExitCode == 0 || len(fake.calls(t)) != before || !strings.Contains(r.stderr, missing) {
-		t.Fatalf("role with no emitted file: code=%d calls %d→%d stderr=%q", r.res.ExitCode, before, len(fake.calls(t)), r.stderr)
-	}
+	t.Run("stale workspace-write project copy", func(t *testing.T) {
+		repo := newAuditRepo(t)
+		fake := installFakeCodex(t)
+		file := filepath.Join(repo.a1, ".codex", "agents", "moai", role+".toml")
+		stale := regexp.MustCompile(`(?m)^sandbox_mode = "[^"]*"$`).ReplaceAllString(string(embedded), `sandbox_mode = "workspace-write"`)
+		stale = strings.Replace(stale, "developer_instructions = '''\n", "developer_instructions = '''\nSTALE PROJECT COPY\n", 1)
+		if err := os.WriteFile(file, []byte(stale), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		assertEmbeddedLaunch(t, repo, fake)
+	})
+
+	t.Run("no project copy", func(t *testing.T) {
+		repo := newAuditRepo(t)
+		fake := installFakeCodex(t)
+		for _, root := range []string{repo.a, repo.a1, repo.a2} {
+			if err := os.RemoveAll(filepath.Join(root, ".codex")); err != nil {
+				t.Fatal(err)
+			}
+		}
+		assertEmbeddedLaunch(t, repo, fake)
+	})
 }
 
 func auditSortedKeys(m map[string]bool) []string {
