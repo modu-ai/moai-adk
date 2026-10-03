@@ -160,6 +160,12 @@ type managedCodexTUI struct {
 // session headless. When the TUI is planned the session log file is opened now,
 // because the App Server child's stderr is fixed when it starts.
 func (s *managedCodexSession) planOperatorTUI(root, runID string, stdin io.Reader) {
+	// Outside the managed-session gate (the switch and the factory stamps, both
+	// unchanged) the owner neither probes nor attaches nor prints a notice
+	// (REQ-MT-001); the launcher's divert enforces the same gate one layer up.
+	if !factoryManagedRequested(s.env) || !factoryLaunchEnabled(s.env) {
+		return
+	}
 	in, reason := s.operatorTUIPreconditions(stdin)
 	if reason != "" {
 		managedLogf(managedTUINoticeFormat, reason)

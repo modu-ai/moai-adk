@@ -645,6 +645,7 @@ func newTUIFake(t *testing.T, run string, extraEnv ...string) *tuiFake {
 		tuiFakeLogEnv + "=" + f.logPath,
 		tuiFakeControlEnv + "=" + f.controlLog,
 		tuiFakeHelpFileEnv + "=" + helpFile,
+		config.EnvMoaiFactoryManaged + "=1",
 		// The fake processes open the same on-disk broker store as the owner: the
 		// sandbox marker makes the re-executed test binary keep this MOAI_HOME
 		// instead of creating its own (main_test.go sandboxMoaiHome).
@@ -1803,12 +1804,22 @@ func TestManagedTUINeverReachedWithoutOptIn(t *testing.T) {
 	launch := func(t *testing.T) error {
 		return runCodex(&cobra.Command{Use: "codex"}, []string{"cli"})
 	}
+	// ownerDirect reaches the owner entry itself with a launch environment that
+	// is outside the gate: the owner enforces the same gate as the divert, so a
+	// direct caller never triggers the probe either. The sentinel binary does not
+	// exist, so a run that gets past the decision ends at its Start.
+	ownerDirect := func(env ...string) {
+		_ = runManagedFactoryCodex(sentinelCodexBinaryPath, []string{sentinelCodexBinaryPath}, env, "", os.Stdin)
+	}
+	const run = config.EnvMoaiKanbanID + "=run-wire0001"
+	const lane = config.EnvMoaiFactoryWorker + "=lane-2"
 
 	t.Run("no_switch", func(t *testing.T) {
 		probes, spawns, direct := ownerRoute(t)
 		if err := launch(t); err != nil {
 			t.Fatal(err)
 		}
+		ownerDirect(run, lane)
 		if probes.Load() != 0 || spawns.Load() != 0 || *direct != 1 {
 			t.Errorf("probe=%d tui spawns=%d direct door=%d, want 0/0/1", probes.Load(), spawns.Load(), *direct)
 		}
@@ -1819,6 +1830,7 @@ func TestManagedTUINeverReachedWithoutOptIn(t *testing.T) {
 		if err := launch(t); err != nil {
 			t.Fatal(err)
 		}
+		ownerDirect(config.EnvMoaiFactoryManaged+"=1", run)
 		if probes.Load() != 0 || spawns.Load() != 0 || *direct != 1 {
 			t.Errorf("probe=%d tui spawns=%d direct door=%d, want 0/0/1", probes.Load(), spawns.Load(), *direct)
 		}
@@ -1829,6 +1841,7 @@ func TestManagedTUINeverReachedWithoutOptIn(t *testing.T) {
 		if err := launch(t); err != nil {
 			t.Fatal(err)
 		}
+		ownerDirect(run, lane)
 		if probes.Load() != 0 || spawns.Load() != 0 || *direct != 1 {
 			t.Errorf("probe=%d tui spawns=%d direct door=%d, want 0/0/1", probes.Load(), spawns.Load(), *direct)
 		}
