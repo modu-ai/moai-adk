@@ -114,7 +114,7 @@ run_commits: see §E.2 (M1 verify decision functions, M2 verb, M3 doctrine sente
 
 sync_status: complete (3-phase close: in-progress -> implemented -> completed on the single sync commit)
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill (a commit cannot contain its own SHA; backfilled by the follow-up commit per the D3 placeholder pattern)
+sync_commit_sha: 45c1ee2fc (backfilled per D3 placeholder pattern)
 sync_commit_subject: docs(SPEC-VERIFY-RUN-REUSE-001): sync-phase - 3-phase close (card t1452)
 docs_changed: CHANGELOG.md (Unreleased/Added entry)
 docs_gap: docs-site/** names `moai verify` only inside the 4-locale MCP-server guide table (docs-site/content/{en,ko,ja,zh}/guides/mcp-server.md); no CLI verb list exists. A new verb row there would need a 4-locale same-PR edit, so it was NOT made and is recorded as a Gap.
