@@ -8,6 +8,12 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 - **Tree pin.** Every ledger entry below was measured in this worktree session at tree `3f3ebb763`
   (branch `WT-moai-init-slim`). A pin is never re-quoted at a later tree without re-measuring
   (`verification-completeness.md` §4).
+- **Amendment re-observation (2026-10-03).** Incorporating the settled OD-1..OD-8 leader verdicts
+  changed the asserted behavior of AC-005, AC-006, AC-008, AC-009, AC-012, AC-015, AC-016, and
+  AC-021. Their RED-now cells were re-observed on the current tree `3906f985b` (post-absorb:
+  develop 6770c714f, incl. t1435 completed in-tree and the t1399 rename) — the entries below carry
+  the re-measured output, exit code, and pin. Cells whose assertions did not change keep the
+  original `3f3ebb763` pin.
 - **Two cells per criterion** (`verification-completeness.md` §2): a RED-now cell — the criterion's
   own command observed red on this tree, with the reason it is red, in the Evidence Ledger — and a
   green-path cell naming the milestone that flips it and the passing output. Where the RED-now
@@ -27,8 +33,10 @@ each criterion here is a binary-testable Given/When/Then with the same number.
   set and the tree under verification. The one real-runtime surface is the REQ-008 measurement
   script (local fixture, `--plugin-dir`, no marketplace network), which carries the scrub and the
   protected-set hash of REQ-020.
-- **Defaults.** A criterion bound to an Open Decision carries `default pending OD-n` and an
-  `Alternate` line stating how it changes if the verdict differs (`spec.md` §5 marker table).
+- **Defaults.** At authoring, a criterion bound to an Open Decision carried `default pending OD-n`
+  and an `Alternate` line stating how it changes if the verdict differs (`spec.md` §5 marker
+  table). Since the 2026-10-03 settlement all eight verdicts are in, so each such criterion now
+  carries its settled branch and an `Alternates not taken (recorded)` line instead.
 - **Static checks are labelled static.** A text check proves a token or shape is present, not that
   behavior holds; where a criterion carries one it says so, and a behavior check sits beside it.
 
@@ -38,17 +46,17 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 | AC-002 | REQ-002 template sources retained | M2 | L-03 |
 | AC-003 | REQ-003 `--no-plugin` full local payload | M2 | L-04 |
 | AC-004 | REQ-004 skipped/failed install guidance | M2 | L-05 |
-| AC-005 | REQ-005 `.mcp.json` policy (default pending OD-1) | M2 | L-06 |
-| AC-006 | REQ-006 Codex mirror policy (default pending OD-6) | M2 | L-07 |
-| AC-007 | REQ-007 `--all` semantics (default pending OD-7) | M2 | L-08 |
-| AC-008 | REQ-008 resolution gate (default pending OD-2) | M1 | L-09 |
-| AC-009 | REQ-009 deploy-mode record (default pending OD-5) | M1 | L-10 |
+| AC-005 | REQ-005 `.mcp.json` policy (OD-1 settled (c)) | M2 | L-06 |
+| AC-006 | REQ-006 Codex mirror policy (OD-6 settled (a) + condition) | M2 | L-07 |
+| AC-007 | REQ-007 `--all` semantics (OD-7 settled (a)) | M2 | L-08 |
+| AC-008 | REQ-008 resolution gate (OD-2 settled (a) + condition) | M1 | L-09 |
+| AC-009 | REQ-009 deploy-mode record (OD-5 settled (a) + condition) | M1 | L-10 |
 | AC-010 | REQ-010 migration classification | M1 | L-11 |
-| AC-011 | REQ-011 identical removal + count (default pending OD-3) | M3 | L-12 |
+| AC-011 | REQ-011 identical removal + count (OD-3 settled (a) + conditions) | M3 | L-12 |
 | AC-012 | REQ-012 archive-before-removal, abort-on-backup-failure | M3 | L-13 |
 | AC-013 | REQ-013 foreign untouched, symlink refusal | M1 | L-14 |
 | AC-014 | REQ-014 idempotence | M3 | L-15 |
-| AC-015 | REQ-015 migration trigger (default pending OD-4) | M3 | L-16 |
+| AC-015 | REQ-015 migration trigger (OD-4 settled (a, amended)) | M3 | L-16 |
 | AC-016 | REQ-016 update mode-scoped deployer + honest accounting | M3 | L-17 |
 | AC-017 | REQ-017 local-mode update keeps full scope | M3 | L-18 |
 | AC-018 | REQ-018 mode switch only via init | M3 | L-19 |
@@ -104,60 +112,71 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 - **Verify:** `go test ./internal/cli -run '^TestShrinkInitGuidanceOnMissingPlugin$' -count=1 -v`
   (GREEN path, M2). RED-now: L-05.
 
-### AC-005 — `.mcp.json` policy on the default path (REQ-005, default pending OD-1)
+### AC-005 — `.mcp.json` policy on the default path (REQ-005, OD-1 settled (c) 2026-10-03)
 
 - **Given** the default path, **When** init provisions the project `.mcp.json`, **Then** the file
-  carries `context7` and `staggeredStartup` and (default) carries no `moai` entry; on the
-  `--no-plugin` path it carries the `moai` entry with `command: moai, args: [mcp-server]`;
-  an explicit `--llm gpt` run still declines the project entry.
+  carries `context7` and `staggeredStartup`; the `moai` entry is present exactly when the plugin
+  install step failed or was skipped (the conditional fallback write — a plugin-less Claude user
+  keeps the project carrier) and absent when the install is confirmed (the plugin is the sole
+  carrier); on the `--no-plugin` path it carries the `moai` entry with `command: moai,
+  args: [mcp-server]`; an explicit `--llm gpt` run still declines the project entry.
 - **Verify:** `go test ./internal/cli -run '^TestDefaultPathMcpEntryPolicy$' -count=1 -v` —
-  expected `--- PASS:` present, exit 0.
-- **Alternate (OD-1 (b)):** the default-path arm flips to expect the `moai` entry present;
-  (OD-1 (c)) a third arm expects it exactly when the install step failed.
+  expected `--- PASS:` present, exit 0. Three arms: install skip/fail → entry present; confirmed
+  install → entry absent; `--no-plugin` → entry present.
+- **Alternates not taken (recorded):** (b) the default-path arm would flip to expect the `moai`
+  entry present on every run; (c) was taken.
 
-### AC-006 — Codex mirror policy (REQ-006, default pending OD-6)
+### AC-006 — Codex mirror policy (REQ-006, OD-6 settled (a) + condition 2026-10-03)
 
 - **Given** the deploy-mode split of M2, **When** a plugin-mode deploy runs, **Then** no
-  `.agents/skills` entry is created and none is left behind; when a local-mode deploy runs (and on
-  a codex-only project), the mirror deploys exactly as today (symlink-or-copy, P-11/P-12).
+  `.agents/skills` entry is created and none is left behind — and that absence holds only after
+  Codex is verified to actually execute plugin-borne skills (the REQ-008 Codex question or an
+  equivalent actual-execution check); where that verification cannot be produced, the mirror stays
+  deployed on every path. When a local-mode deploy runs (and on a codex-only project), the mirror
+  deploys exactly as today (symlink-or-copy, P-11/P-12).
 - **Verify:** `go test ./internal/template -run '^TestCodexMirrorFollowsDeployMode$' -count=1 -v`
-  — expected `--- PASS:` present, exit 0.
-- **Alternate (OD-6 (b)/(c)):** the plugin-mode arm flips to always-deploy, or the local arm is
-  void with migration removal on local projects too.
+  — expected `--- PASS:` present, exit 0 (the verification-gated arm included).
+- **Alternates not taken (recorded):** (b) always-deploy, (c) retire on every path.
 
-### AC-007 — `--all` semantics (REQ-007, default pending OD-7)
+### AC-007 — `--all` semantics (REQ-007, OD-7 settled (a) 2026-10-03)
 
-- **Given** `--all` (default pending OD-7: a local full deploy), **When** init runs with `--all`,
+- **Given** `--all` (OD-7 settled (a): a local full deploy), **When** init runs with `--all`,
   **Then** the deployed set is the `--no-plugin` payload plus the optional-pack catalog entries,
   and the mode record reads `local`.
 - **Verify:** `go test ./internal/cli -run '^TestAllFlagDeploysAllTiersLocally$' -count=1 -v`.
-- **Alternate (OD-7 (b)/(c)):** the expectation narrows to the optional-pack delta, or asserts the
-  deprecation notice.
+- **Alternates not taken (recorded):** (b) the expectation would narrow to the optional-pack
+  delta, (c) it would assert the deprecation notice.
 
-### AC-008 — Resolution gate (REQ-008, default pending OD-2)
+### AC-008 — Resolution gate (REQ-008, OD-2 settled (a) + condition 2026-10-03)
 
 - **Given** the M1 harness, **When** `scripts/check-bare-name-resolution.sh <fixture>` runs against
   a local fixture plugin under scratch config homes, **Then** it prints one `PASS`/`FAIL <case>`
   line per question (bare-skill resolution, plugin-command-body `Skill("moai")` resolution, Codex
   generated-skill naming), a final `RESULT pass=<n> fail=<m>`, and its verdict is recorded in
-  `progress.md` §E.2 **before** the M2 flip merges; the scaffold instruction files reference only
-  names resolvable in each deployment mode.
+  `progress.md` §E.2 **before** the M2 flip merges; and (OD-2 settled condition) BOTH the scaffold
+  instruction files AND the plugin command bodies reference only the names that test proves
+  resolvable in each deployment mode — the mode-aware rewrite ships only proven-resolvable names,
+  per mode.
 - **Verify (a):** `sh scripts/check-bare-name-resolution.sh <fixture-dir>` — expected `RESULT
-  pass=3 fail=0` (or the recorded verdict routing OD-2).
+  pass=3 fail=0` (or the recorded verdict routing the rewrite scope).
 - **Verify (b):** `go test ./internal/cli -run '^TestResolutionGateHarness$' -count=1 -v` — the
   harness line-shape and negative-control test.
-- **Alternate (OD-2):** the recorded verdict routes to (a) mode-aware rewrite (the instruction-file
-  sweep joins M2), (b) partial shrink, or (c) hold — each changes which M2 deliverables merge, not
-  this criterion's harness shape.
+- **Alternates not taken (recorded):** (b) partial shrink and (c) hold would change which M2
+  deliverables merge, not this criterion's harness shape; (a) was taken with its both-surfaces
+  condition.
 
-### AC-009 — Deploy-mode record (REQ-009, default pending OD-5)
+### AC-009 — Deploy-mode record (REQ-009, OD-5 settled (a) + condition 2026-10-03)
 
 - **Given** init run on a scratch project (default and `--no-plugin`/`--all` variants), **When** it
-  completes, **Then** the OD-5 key holds `plugin` or `local` matching the run, on re-init too, and
-  the update path reads it through the same seam.
-- **Verify:** `go test ./internal/cli -run '^TestDeployModeRecordRoundTrip$' -count=1 -v`.
-- **Alternate (OD-5 (b)/(c)):** the key location moves, or the record is an inference — every
-  criterion naming the key retargets.
+  completes, **Then** the OD-5 key (`deployment_mode` in `.moai/config/sections/llm.yaml`) holds
+  `plugin` or `local` matching the run, on re-init too, and the update path reads it through the
+  same seam; and after a full update cycle (Clean → redeploy → restore, P-06/P-07) a re-read
+  returns the same value — the recorded `deployment_mode` survives update's redeploy/restore
+  process.
+- **Verify:** `go test ./internal/cli -run '^TestDeployModeRecordRoundTrip$' -count=1 -v` (the
+  survival arm asserts the post-update re-read).
+- **Alternates not taken (recorded):** (b) the key location moves, (c) the record is an
+  inference — every criterion naming the key retargets.
 
 ### AC-010 — Migration classification (REQ-010)
 
@@ -167,24 +186,28 @@ each criterion here is a binary-testable Given/When/Then with the same number.
   and the three printed counts match.
 - **Verify:** `go test ./internal/cli -run '^TestMigrationClassification$' -count=1 -v`.
 
-### AC-011 — Identical removal + count (REQ-011, default pending OD-3)
+### AC-011 — Identical removal + count (REQ-011, OD-3 settled (a) + conditions 2026-10-03)
 
 - **Given** a classified set holding template-identical dropped components, **When** the migration
   runs, **Then** they are removed from the project tree, the removed count is printed, and no
   archive copy of an identical component is written.
+- **OD-3 conditions folded here:** a file whose manifest entry is missing or stale classifies
+  modified (archive-then-remove via REQ-010/REQ-012) and never enters this removal set; removal
+  runs only after every archive in the batch has succeeded (REQ-012).
 - **Verify:** `go test ./internal/cli -run '^TestMigrationRemovesIdenticalDroppedComponents$' -count=1 -v`.
-- **Alternate (OD-3 (b)/(c)):** the no-archive expectation flips, or the criterion asserts
-  report-only output.
+- **Alternates not taken (recorded):** (b) the no-archive expectation would flip, (c) the
+  criterion would assert report-only output.
 
 ### AC-012 — Archive-before-removal (REQ-012)
 
 - **Given** a classified set holding one modified skill directory and one modified command file,
   **When** the migration runs, **Then** both are archived (skill through the `archiveSkill`
   layout; the command file into the standalone-file archive) before removal, the archived copies
-  byte-match the pre-run content, and an injected archive-write failure aborts with nothing
-  removed. The negative control: on the pre-fix tree, the same modified skill is deleted with no
-  archive copy (the P-08 exemption) — the control must be shown failing before the fix and passing
-  after.
+  byte-match the pre-run content; and removal runs only after EVERY archive in the batch has
+  succeeded (OD-3 settled condition, 2026-10-03) — an injected archive-write failure anywhere in
+  the batch aborts with nothing removed. The negative control: on the pre-fix tree, the same
+  modified skill is deleted with no archive copy (the P-08 exemption) — the control must be shown
+  failing before the fix and passing after.
 - **Verify:** `go test ./internal/cli -run '^TestMigrationArchivesModifiedBeforeRemoval$' -count=1 -v`
   (carries the negative-control subtest).
 
@@ -201,21 +224,24 @@ each criterion here is a binary-testable Given/When/Then with the same number.
   **Then** it removes nothing, archives nothing, and reports zero counts.
 - **Verify:** `go test ./internal/cli -run '^TestMigrationIdempotent$' -count=1 -v`.
 
-### AC-015 — Migration trigger (REQ-015, default pending OD-4)
+### AC-015 — Migration trigger (REQ-015, OD-4 settled (a, amended) 2026-10-03)
 
-- **Given** a fixture project with no mode record, **When** update runs, **Then** (default) the
-  install step runs fail-open under the opt-out before classification, the dedupe follows it, and
-  the record is written `plugin`; with the opt-out set, the full local payload deploys, nothing is
-  removed, and the record is written `local`.
-- **Verify:** `go test ./internal/cli -run '^TestUpdateMigratesLegacyProject$' -count=1 -v`.
-- **Alternate (OD-4 (b)/(c)):** the plugin arm becomes guidance-plus-local-record, or names
-  `moai migrate`.
+- **Given** a fixture project with no mode record, **When** update runs, **Then** the install step
+  runs fail-open under the opt-out before classification, the dedupe follows it, and the record is
+  written `plugin`; but when the install step fails, nothing is deduped or removed, the record is
+  written `local`, and no path records `plugin`; with the opt-out set, the full local payload
+  deploys, nothing is removed, and the record is written `local`.
+- **Verify:** `go test ./internal/cli -run '^TestUpdateMigratesLegacyProject$' -count=1 -v`
+  (three arms: confirmed install; failed install; opt-out).
+- **Alternates not taken (recorded):** (b) guidance-plus-local-record, (c) `moai migrate`.
 
 ### AC-016 — Update mode-scoped deployer + honest accounting (REQ-016)
 
 - **Given** a `plugin`-mode project, **When** update's template sync runs, **Then** the selected
-  deployer is the thin one, no dropped component is re-deployed, and the outcome summary counts
-  what this run actually deployed and removed (a zero-redeploy run reports zero).
+  deployer is the thin one, no dropped component is re-deployed, the outcome summary counts
+  what this run actually deployed and removed (a zero-redeploy run reports zero), and the recorded
+  `deployment_mode` value is byte-identical after the run (REQ-016's survival clause, OD-5
+  condition).
 - **Verify:** `go test ./internal/cli -run '^TestUpdatePluginModeSkipsDroppedRedeploy$' -count=1 -v`.
 
 ### AC-017 — Local-mode update keeps full scope (REQ-017)
@@ -255,7 +281,8 @@ each criterion here is a binary-testable Given/When/Then with the same number.
   success card describe the thin deploy and both paths (static: a grep-guard test), the README and
   docs-site init pages name `--no-plugin` and the plugin carrier, and every file-set-asserting
   surface (settings snapshot, template-count, dry-run preview, e2e journey) passes against the
-  post-shrink tree in the same change set.
+  post-shrink tree in the same change set; and this card's report deliverable states the t1466
+  handover scope (OD-8 settled (a) — REQ-008 resolvability only; no broader sweep joins this SPEC).
 - **Verify (a):** `go test ./internal/cli -run '^TestInitDocsDescribeThinDeploy$' -count=1 -v`
   (static grep guard).
 - **Verify (b):** `go test ./internal/cli -run '^TestUpdateDryRunPreviewGoldens$' -count=1 -v` (or
@@ -300,8 +327,10 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 
 ## Evidence Ledger (RED-now cells)
 
-Each entry: command (single invocation), verbatim stdout, exit code, tree SHA `3f3ebb763`.
-Exit codes were read from the tool result (the worktree guard refuses redirect-and-echo bundles).
+Each entry: command (single invocation), verbatim stdout, exit code, tree SHA. Entries measured at
+the authoring pin carry SHA `3f3ebb763`; the re-observed entries of the 2026-10-03 amendment carry
+`3906f985b`. Exit codes were read from the tool result (the worktree guard refuses
+redirect-and-echo bundles).
 
 - **L-01** (AC-001, AC-016 GREEN-path anchors)
   - Command: `go test ./internal/cli -run '^TestDefaultDeploySetExcludesSkillsAndCommands$' -count=1 -v`
@@ -312,6 +341,11 @@ Exit codes were read from the tool result (the worktree guard refuses redirect-a
     ```
   - Exit code: 0. Red reason: the criterion's named test does not exist yet — red by the
     PASS-line rule. Flipped by M2 (AC-001).
+  - Amendment note (2026-10-03): re-run at `3906f985b` for the OD-verdict incorporation produced
+    the identical shape — `testing: warning: no tests to run` / `PASS` /
+    `ok github.com/modu-ai/moai-adk/internal/cli 0.777s [no tests to run]`, exit 0 — and serves as
+    the fresh form observation cited by L-09, L-16, and L-23. This entry's own pin (AC-001's
+    assertion did not change) stays `3f3ebb763`.
 - **L-02** (shared positive control)
   - Command: `go test ./internal/cli -run '^TestLegacySkillIDsNotEmbedded$' -count=1 -v`
   - Stdout (verbatim, tail):
@@ -334,36 +368,74 @@ Exit codes were read from the tool result (the worktree guard refuses redirect-a
     PASS-line rule. Flipped by M2.
 - **L-05** (AC-004) — the AC-004 test does not exist; same no-tests-to-run shape as L-04 (the
   AC-004 anchor will be captured at M2 authoring; the shape cell L-04 stands for the form).
-- **L-06** (AC-005)
+- **L-06** (AC-005; re-observed 2026-10-03 — the OD-1 (c) amendment added the conditional third
+  arm to the criterion's assertion, so the cell was re-measured)
   - Command: `go test ./internal/cli -run '^TestDefaultPathMcpEntryPolicy$' -count=1 -v`
-  - Stdout: `PASS` / `ok  	...internal/cli	1.338s [no tests to run]`. Exit 0; red by the
-    PASS-line rule. Flipped by M2.
-- **L-07** (AC-006)
+  - Stdout (verbatim, at tree `3906f985b`):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	1.040s [no tests to run]
+    ```
+  - Exit code: 0; red by the PASS-line rule (the criterion's named test does not exist yet).
+    Flipped by M2.
+- **L-07** (AC-006; re-observed 2026-10-03 — the OD-6 verification-gated arm changed the
+  criterion's assertion, so the cell was re-measured)
   - Command: `go test ./internal/template -run '^TestCodexMirrorFollowsDeployMode$' -count=1 -v`
-  - Stdout: `PASS` / `ok  	...internal/template	0.291s [no tests to run]`. Exit 0; red by the
-    PASS-line rule. Flipped by M2.
+  - Stdout (verbatim, at tree `3906f985b`):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/template	0.374s [no tests to run]
+    ```
+  - Exit code: 0; red by the PASS-line rule. Flipped by M2.
 - **L-08** (AC-007) — the AC-007 test does not exist; the L-01 shape cell stands for the form
   (internal/cli package, anchored `-run`).
 - **L-09** (AC-008) — the harness script and its Go wrapper test do not exist; the L-01 shape cell
   stands for the form; the script's own `isolation-*` negative controls are M1 deliverables.
-- **L-10** (AC-009)
+  Re-observed 2026-10-03 at `3906f985b` via the L-01 form (the OD-2 both-surfaces amendment changed
+  this criterion's assertion): the L-01 command's fresh run printed `testing: warning: no tests to
+  run` / `PASS` / `ok github.com/modu-ai/moai-adk/internal/cli 0.777s [no tests to run]`, exit 0 —
+  same no-tests-to-run shape; the harness test still does not exist.
+- **L-10** (AC-009; re-observed 2026-10-03 — the OD-5 survival arm changed the criterion's
+  assertion, so the cell was re-measured)
   - Command: `go test ./internal/cli -run '^TestDeployModeRecordRoundTrip$' -count=1 -v`
-  - Stdout: `PASS` / `ok  	...internal/cli	1.354s [no tests to run]`. Exit 0; red by the
-    PASS-line rule. Flipped by M1.
+  - Stdout (verbatim, at tree `3906f985b`):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	1.092s [no tests to run]
+    ```
+  - Exit code: 0; red by the PASS-line rule. Flipped by M1.
 - **L-11** (AC-010) — the AC-010 test does not exist; L-01 shape cell stands for the form.
 - **L-12** (AC-011) — the AC-011 test does not exist; L-01 shape cell stands for the form.
-- **L-13** (AC-012)
+- **L-13** (AC-012; re-observed 2026-10-03 — the OD-3 every-archive-in-the-batch condition
+  strengthened the criterion's assertion, so the cell was re-measured)
   - Command: `go test ./internal/cli -run '^TestMigrationArchivesModifiedBeforeRemoval$' -count=1 -v`
-  - Stdout: `PASS` / `ok  	...internal/cli	1.362s [no tests to run]`. Exit 0; red by the
-    PASS-line rule. Flipped by M3. The negative control (pre-fix silent deletion) is a subtest
-    shown failing before the fix lands.
+  - Stdout (verbatim, at tree `3906f985b`):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	0.788s [no tests to run]
+    ```
+  - Exit code: 0; red by the PASS-line rule. Flipped by M3. The negative control (pre-fix silent
+    deletion) is a subtest shown failing before the fix lands.
 - **L-14** (AC-013) — the AC-013 test does not exist; L-01 shape cell stands for the form.
 - **L-15** (AC-014) — the AC-014 test does not exist; L-01 shape cell stands for the form.
 - **L-16** (AC-015) — the AC-015 test does not exist; L-01 shape cell stands for the form.
-- **L-17** (AC-016)
+  Re-observed 2026-10-03 at `3906f985b` via the L-01 form (the OD-4 (a, amended) install-failure
+  arm changed this criterion's assertion): the L-01 command's fresh run printed the identical
+  no-tests-to-run shape (`...internal/cli 0.777s [no tests to run]`), exit 0.
+- **L-17** (AC-016; re-observed 2026-10-03 — the OD-5 survival clause extended the criterion's
+  assertion, so the cell was re-measured)
   - Command: `go test ./internal/cli -run '^TestUpdatePluginModeSkipsDroppedRedeploy$' -count=1 -v`
-  - Stdout: `PASS` / `ok  	...internal/cli	1.542s [no tests to run]`. Exit 0; red by the
-    PASS-line rule. Flipped by M3.
+  - Stdout (verbatim, at tree `3906f985b`):
+    ```
+    testing: warning: no tests to run
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	0.818s [no tests to run]
+    ```
+  - Exit code: 0; red by the PASS-line rule. Flipped by M3.
 - **L-18** (AC-017) — the AC-017 test does not exist; L-01 shape cell stands for the form.
 - **L-19** (AC-018) — the AC-018 test does not exist; L-01 shape cell stands for the form.
 - **L-20** (AC-019) — the AC-019 test does not exist; L-01 shape cell stands for the form.
@@ -374,6 +446,9 @@ Exit codes were read from the tool result (the worktree guard refuses redirect-a
 - **L-22** (AC-020) — the measurement script's isolation cases do not exist yet (script is an M1
   deliverable); L-09's disposition covers the shape.
 - **L-23** (AC-021) — the AC-021 guard tests do not exist; L-01 shape cell stands for the form.
+  Re-observed 2026-10-03 at `3906f985b` via the L-01 form (the OD-8 handover-scope clause extended
+  this criterion's assertion): the L-01 command's fresh run printed the identical no-tests-to-run
+  shape (`...internal/cli 0.777s [no tests to run]`), exit 0.
 - **L-24** (AC-002 premise pins, positive evidence at the pin tree)
   - Commands and deciding outputs (each a single invocation):
     - `ls internal/template/templates/.claude/skills/ | grep -c .` → `41`

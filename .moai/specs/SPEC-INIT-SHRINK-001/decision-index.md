@@ -5,7 +5,9 @@ decision surfaced while assembling card t1438 that no operator answer in the int
 Rows state what is unresolved and why; none carries a preferred answer. Options for every row are
 enumerated in `spec.md` §5 (Q-n is OD-n there), and `spec.md` §5's marker table lists, for each
 row, the requirement clauses that carry its default and what changes if the verdict differs.
-`Operator verdict` is empty at authoring and is read by the Kickoff gate. Label vocabulary:
+`Operator verdict` lines were empty at authoring; on 2026-10-03 the leader settled all eight rows
+(codex-informed, relayed via lane) and the rulings are recorded verbatim on each row below — the
+Kickoff gate reads them. Label vocabulary:
 DECIDED / POLICY-COVERED / EVIDENCE-NEEDED / FOUNDER.
 
 **Authority note (per the leader's dispatch of 2026-10-03):** operator-gate-level decisions for
@@ -32,7 +34,7 @@ still asks the question the pin does not answer.
   `gpt` + plugin project holds two registrations whose combined effect is UNMEASURED. Default path
   and `--no-plugin` path may legitimately differ; which split the operator wants is a product call
   the evidence does not make.
-- Operator verdict:
+- Operator verdict: SETTLED (c) by leader ruling, 2026-10-03 (codex-informed, relayed via lane): the default path omits the project `moai` entry from `.mcp.json` ONLY when the plugin install step is confirmed to have succeeded; when the install failed or is unconfirmed, the entry stays. Leader rationale: a plugin-less Claude user must not lose functionality.
 
 ## Q2: If the REQ-008 measurement shows bare names do NOT resolve to namespaced plugin components, what ships?
 
@@ -45,7 +47,7 @@ still asks the question the pin does not answer.
   t1435 §1.5-3 named the resolution question "load-bearing at t1438" without deciding it. Rewriting
   references, keeping a partial scaffold, or holding the flip are all consistent with the card text;
   the cost and risk differ materially.
-- Operator verdict:
+- Operator verdict: SETTLED (a) by leader ruling, 2026-10-03, with a condition: BOTH the scaffold references AND the plugin command bodies must pass an actual name-resolution verification test; the mode-aware rewrite ships only what the test proves resolvable in each deployment mode.
 
 ## Q3: What does the migration remove and what does it back up?
 
@@ -57,7 +59,7 @@ still asks the question the pin does not answer.
   derivation input, so the exemption would silently apply. Removing identical copies without
   archive, archiving everything, or a two-step report-then-remove release are all defensible; the
   operator's tolerance for archive bulk vs recovery convenience is not decidable from evidence.
-- Operator verdict:
+- Operator verdict: SETTLED (a) by leader ruling, 2026-10-03, with three conditions: a file whose manifest entry is missing or stale is classified as modified (archive-then-remove); removal runs only after EVERY archive in the batch has succeeded; foreign files AND symlinks are preserved untouched.
 
 ## Q4: What is the migration surface for a project with no deploy-mode record (every pre-shrink project)?
 
@@ -70,7 +72,7 @@ still asks the question the pin does not answer.
   templates only); keeping update offline makes the plugin switch an explicit init re-run; a
   dedicated `moai migrate` verb adds surface. The card text asks for an 이행 경로 with 중복 제거·백업
   but does not pick the surface.
-- Operator verdict:
+- Operator verdict: SETTLED (a, amended) by leader ruling, 2026-10-03: update performs the migration, but when the install step fails the migration MUST NOT dedupe or remove anything and MUST keep `deployment_mode: local`; REQ-015 is amended so no path records `plugin` when the install step failed.
 
 ## Q5: Where does the deploy-mode record live, so update never infers it?
 
@@ -81,7 +83,7 @@ still asks the question the pin does not answer.
   section file and a manifest-derived inference are both consistent with the card. The choice
   binds every consumer criterion (REQ-009/016 and their ACs), so it is pinned before M1 rather
   than improvised.
-- Operator verdict:
+- Operator verdict: SETTLED (a) by leader ruling, 2026-10-03, with a condition: the recorded value must be tested to survive update's redeploy/restore process.
 
 ## Q6: What happens to the Codex command-skill mirror (`.agents/skills`) after the shrink?
 
@@ -94,7 +96,7 @@ still asks the question the pin does not answer.
   path" (P-11), and a codex-only project re-homes skills as real directories (P-12). Follow-the-mode,
   always-deploy, and retire-entirely each leave a different residue for `local`-mode and codex-only
   users.
-- Operator verdict:
+- Operator verdict: SETTLED (a) by leader ruling, 2026-10-03, with a condition: plugin-mode mirror removal happens only after Codex is verified to actually execute skills; where that verification cannot be produced, the local mirror stays.
 
 ## Q7: What does `--all` mean after the shrink?
 
@@ -105,7 +107,7 @@ still asks the question the pin does not answer.
   entries have no plugin home. Whether `--all` becomes the local full-deploy escape hatch, widens
   only the tier while the plugin stays the carrier, or is deprecated is a product call with
   different docs and migration consequences.
-- Operator verdict:
+- Operator verdict: SETTLED (a) by leader ruling, 2026-10-03: `--all` is the local full deploy (every catalog tier locally, the `--no-plugin` payload plus the wider tier).
 
 ## Q8: Who owns instruction-file consistency beyond name resolution?
 
@@ -118,4 +120,4 @@ still asks the question the pin does not answer.
   interface). Absorbing t1466's moved-component scope here, deferring wholly to it, or doing only
   what the flip mechanically forces are all open; the boundary between two cards is the operator's
   to draw.
-- Operator verdict:
+- Operator verdict: SETTLED (a) by leader ruling, 2026-10-03: this card owns REQ-008 resolvability only; the broader instruction-file sweep defers to t1466, and the handover scope is stated in this card's report.

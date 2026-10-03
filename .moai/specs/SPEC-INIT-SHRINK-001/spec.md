@@ -22,6 +22,7 @@ depends_on: [SPEC-PLUGIN-MARKETPLACE-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-03 | manager-spec | Initial plan-phase draft (card t1438, Class C, Mods design card 5 of 6, operator instruction 2026-10-02). Built on the t1434 verdict (SPEC-PLUGIN-LOAD-SCOPE-001, completed) and the binding OD-1..OD-14 pins of SPEC-PLUGIN-MARKETPLACE-001 (t1435, in flight; operator batch acceptance 2026-10-03 via leader relay). Every mechanism premise was observed in this worktree session at base tree `3f3ebb763`; observations are P-01..P-21 with commands in `research.md`. The card text's 스킬·에이전트·명령 list is reconciled with the t1435 OD-3 pin in §1.2. Every design detail the card text and the inputs do not fix is an Open Decision (§5), never an assumption. |
+| 0.1.0 | 2026-10-03 | manager-spec | Amendment (still draft, pre-audit): the OD-1..OD-8 leader verdicts (2026-10-03, codex-informed; `decision-index.md` Q1..Q8) are incorporated into the clauses and criteria they carry (§5 Settlement) — no REQ/AC count change; the RED-now cells whose assertions changed were re-observed at tree `3906f985b`; the t1435 dependency status was refreshed post-absorb. |
 
 ## 1. Background and Premise
 
@@ -120,32 +121,34 @@ All rows were observed by the author in this worktree session at base tree `3f3e
 
 ## 2. Requirements (GEARS)
 
-Each requirement has exactly one acceptance criterion with the same number in `acceptance.md`. A
-clause marked "default pending OD-n" is the behavior taken when no operator verdict exists for that
-decision in §5; the marker table in §5 lists every such clause and what changes if the verdict
-differs.
+Each requirement has exactly one acceptance criterion with the same number in `acceptance.md`. At
+authoring, clauses carried a `default pending OD-n` marker for the behavior taken when no operator
+verdict existed for that decision in §5. On 2026-10-03 the leader settled all eight decisions
+(codex-informed; the rulings are verbatim on the `Operator verdict:` lines of `decision-index.md`
+Q1..Q8), and every marked clause below now states its settled branch — see §5 Settlement. No
+requirement or criterion count changed: the verdicts' conditions folded into the existing rows.
 
-- REQ-001: (Ubiquitous) The default init deploy — the deploy set used when the plugin opt-out is not set — shall carry no `.claude/skills/**` and no `.claude/commands/**` files, and shall otherwise carry the same components the default deploy carries today (`.claude/agents/**`, `.claude/rules/**`, the hooks registration in `settings.json.tmpl`, `.claude/output-styles/**`, `.claude/workflows/**`, `.claude/loop.md`, `CLAUDE.md`, `AGENTS.md`, `.moai/**`, `.gitignore`, `.claudeignore`, `.worktreeinclude`, `.git_hooks/**`, `.github/**`, `.codex/**`), with the Codex mirror of REQ-006 and the `.mcp.json` moai entry of REQ-005 decided by their own clauses (default pending OD-1 and OD-6).
+- REQ-001: (Ubiquitous) The default init deploy — the deploy set used when the plugin opt-out is not set — shall carry no `.claude/skills/**` and no `.claude/commands/**` files, and shall otherwise carry the same components the default deploy carries today (`.claude/agents/**`, `.claude/rules/**`, the hooks registration in `settings.json.tmpl`, `.claude/output-styles/**`, `.claude/workflows/**`, `.claude/loop.md`, `CLAUDE.md`, `AGENTS.md`, `.moai/**`, `.gitignore`, `.claudeignore`, `.worktreeinclude`, `.git_hooks/**`, `.github/**`, `.codex/**`), with the Codex mirror of REQ-006 and the `.mcp.json` moai entry of REQ-005 decided by their own clauses (OD-1 settled (c) and OD-6 settled (a) with its Codex-execution condition — see those clauses).
 - REQ-002: (Ubiquitous) The embedded template tree shall retain every skill and command source it carries today — they remain the derivation source of the plugin payload (t1435 REQ-004/005) and the deploy source of the `--no-plugin` and `--all` paths — so that `internal/template/catalog.yaml`, the slim-mode catalog routing (P-05), and the `commands-emit`/`agents-emit` golden machinery keep passing unchanged as data.
 - REQ-003: (Event-driven) When the plugin opt-out is set (t1435 OD-5 pin: the `--no-plugin` flag of `moai init`, or `MOAI_SKIP_PLUGIN_INSTALL=1`/`true`), init shall deploy the full local payload — the same file set today's default deploys, including `.claude/skills/**`, `.claude/commands/**`, the project `.mcp.json` moai entry, and the Codex mirror — so that a user who declines the plugin loses no capability.
 - REQ-004: (Event-driven) When the default init deploy completes and the plugin install step was skipped, or ran and did not exit 0, init shall print one guidance block naming both recourses (re-running with `--no-plugin` for a full local deploy; the t1435 manual-install commands) and shall leave the exit status of the init unchanged.
-- REQ-005: (Ubiquitous) On the default init deploy the project `.mcp.json` shall keep the `context7` server and the `staggeredStartup` block of the template (P-16) and the `moai` entry shall follow OD-1 (default pending OD-1: the default deploy writes no project `moai` entry — the plugin carries it); an explicit decline (`--llm gpt` project-entry decline, non-interactive absence) shall keep its present meaning for the project file, and on the `--no-plugin` path the moai entry shall be written as today.
-- REQ-006: (Ubiquitous) The Codex command-skill mirror shall follow the deploy mode (default pending OD-6: plugin mode deploys no `.agents/skills` mirror and deploys no symlink or copy under it; `--no-plugin` and every local deploy, codex-only re-homing included (P-12), deploy the mirror exactly as today); a mirror entry left behind by a mode transition shall be removed by the migration of REQ-010..014, never left dangling.
-- REQ-007: (Ubiquitous) The `--all` flag shall keep naming a local full deploy (default pending OD-7: `--all` deploys every catalog tier locally and carries the same skills-and-commands payload as `--no-plugin`, superseding slim-mode hiding for that run), so that optional-pack catalog entries (P-02: 13 `optional-pack` entries), which the core-only plugin does not carry (t1435 OD-8 pin), remain reachable.
-- REQ-008: (Event-driven) When the default init deploy or the migration of an existing project is prepared for release, the bare-name resolution measurement shall have run and its verdict shall have been recorded in `progress.md` §E.2 before the flip merges: the measurement drives the real tool runtimes under scratch config homes (the t1434 `--plugin-dir` route) with no scaffold copies present and answers three questions — does `Skill("<bare-skill-name>")` resolve to the namespaced plugin skill, does a plugin command body's bare `Skill("moai")` resolve, and what names Codex lists for plugin-borne components — and the scaffold-shipped instruction files (`CLAUDE.md`, `AGENTS.md.tmpl`, the seven referencing rule files of P-17) shall, after the flip, reference only names resolvable in each deployment mode (default pending OD-2).
-- REQ-009: (Ubiquitous) Init shall persist the resolved deploy mode of the project — `plugin` when the default deploy ran, `local` when the opt-out or `--all` path ran — in the config key OD-5 names (default pending OD-5: `deployment_mode` in `.moai/config/sections/llm.yaml`, read and written through the same config seam as `llm.harness`), on every init run including re-init, so that update never infers the mode.
-- REQ-010: (Event-driven) When update runs the migration, it shall classify every deployed file under the dropped component roots (`.claude/skills/**`, `.claude/commands/**`, and the mirror of REQ-006) into exactly three classes before removing anything — template-identical: the file's manifest record (P-13) shows it managed and not user-modified and its content equals the current template render for the project's context; modified: managed, and content differs from that render, or the manifest record is absent or stale for it; foreign: not managed under P-19/P-21 (a user direct-added skill or command) — and shall print the three counts.
-- REQ-011: (Event-driven) When the migration holds template-identical classified files, it shall remove them from the project tree and report the removed count, without archiving copies identical to the template render (default pending OD-3).
-- REQ-012: (Event-driven) When the migration holds modified classified files, it shall archive each one — skill directories through the `archiveSkill` contract (P-09: idempotent, drift-checked, symlink-refusing) and standalone command or mirror files into an archive directory of the same layout — before any removal, and shall abort the migration before removing anything when an archive write fails, so that a modified deployed component is never deleted without its archived copy; the raw template's continued carriage of the source (REQ-002) shall not exempt these files from backup the way P-08 exempts template-carried files today.
+- REQ-005: (Ubiquitous) On the default init deploy the project `.mcp.json` shall keep the `context7` server and the `staggeredStartup` block of the template (P-16) and the `moai` entry shall follow OD-1, settled (c) 2026-10-03: the default deploy writes the project `moai` entry only when the plugin install step failed or was skipped — the entry is the fallback carrier for a plugin-less Claude user — and when the install step is confirmed to have succeeded no project `moai` entry is written (the plugin is the sole carrier); an explicit decline (`--llm gpt` project-entry decline, non-interactive absence) shall keep its present meaning for the project file, and on the `--no-plugin` path the moai entry shall be written as today.
+- REQ-006: (Ubiquitous) The Codex command-skill mirror shall follow the deploy mode (OD-6 settled (a) 2026-10-03, with its condition: plugin mode deploys no `.agents/skills` mirror and deploys no symlink or copy under it — but only after Codex is verified to actually execute plugin-borne skills, and where that verification cannot be produced the local mirror stays deployed on every path; `--no-plugin` and every local deploy, codex-only re-homing included (P-12), deploy the mirror exactly as today); a mirror entry left behind by a mode transition shall be removed by the migration of REQ-010..014, never left dangling, and that removal is under the same verification condition.
+- REQ-007: (Ubiquitous) The `--all` flag shall keep naming a local full deploy (OD-7 settled (a) 2026-10-03: `--all` deploys every catalog tier locally and carries the same skills-and-commands payload as `--no-plugin` plus the wider tier, superseding slim-mode hiding for that run), so that optional-pack catalog entries (P-02: 13 `optional-pack` entries), which the core-only plugin does not carry (t1435 OD-8 pin), remain reachable.
+- REQ-008: (Event-driven) When the default init deploy or the migration of an existing project is prepared for release, the bare-name resolution measurement shall have run and its verdict shall have been recorded in `progress.md` §E.2 before the flip merges: the measurement drives the real tool runtimes under scratch config homes (the t1434 `--plugin-dir` route) with no scaffold copies present and answers three questions — does `Skill("<bare-skill-name>")` resolve to the namespaced plugin skill, does a plugin command body's bare `Skill("moai")` resolve, and what names Codex lists for plugin-borne components — and (OD-2 settled (a) 2026-10-03, with its condition) BOTH the scaffold-shipped instruction files (`CLAUDE.md`, `AGENTS.md.tmpl`, the seven referencing rule files of P-17) AND the plugin command bodies shall pass an actual name-resolution verification test, and after the flip shall reference only the names that test proves resolvable in each deployment mode — the mode-aware reference rewrite ships only what the test proves resolvable, per mode.
+- REQ-009: (Ubiquitous) Init shall persist the resolved deploy mode of the project — `plugin` when the default deploy ran, `local` when the opt-out or `--all` path ran — in the config key OD-5 names (settled (a) 2026-10-03: `deployment_mode` in `.moai/config/sections/llm.yaml`, read and written through the same config seam as `llm.harness`), on every init run including re-init, so that update never infers the mode; and the recorded value shall survive update's redeploy/restore process unchanged (OD-5 settled condition: the Clean step's `.moai/config` root wipe (P-07) must not cost the key — a re-read after the full update cycle returns the recorded value byte-identical).
+- REQ-010: (Event-driven) When update runs the migration, it shall classify every deployed file under the dropped component roots (`.claude/skills/**`, `.claude/commands/**`, and the mirror of REQ-006) into exactly three classes before removing anything — template-identical: the file's manifest record (P-13) shows it managed and not user-modified and its content equals the current template render for the project's context; modified: managed, and content differs from that render, or the manifest record is absent or stale for it; foreign: not managed under P-19/P-21 (a user direct-added skill or command) — and shall print the three counts; a symlink is never classified for removal — foreign files and symlinks are preserved untouched (REQ-013 carries the prohibition; OD-3 settled condition, 2026-10-03).
+- REQ-011: (Event-driven) When the migration holds template-identical classified files, it shall remove them from the project tree and report the removed count, without archiving copies identical to the template render (OD-3 settled (a) 2026-10-03; the REQ-010 routing sends absent-or-stale-manifest files to the modified class — archive-then-remove — never into this removal set).
+- REQ-012: (Event-driven) When the migration holds modified classified files, it shall archive each one — skill directories through the `archiveSkill` contract (P-09: idempotent, drift-checked, symlink-refusing) and standalone command or mirror files into an archive directory of the same layout — before any removal; removal shall run only after EVERY archive in the batch has succeeded (OD-3 settled condition, 2026-10-03) — any single archive-write failure aborts the migration before anything is removed — so that a modified deployed component is never deleted without its archived copy; the raw template's continued carriage of the source (REQ-002) shall not exempt these files from backup the way P-08 exempts template-carried files today.
 - REQ-013: (Unwanted) The migration shall not remove, modify, or archive any file outside the classified sets of REQ-010, and shall not follow or dereference a symlink while classifying, archiving, or removing (the REQ-SEC-003 rule of P-09).
 - REQ-014: (Event-driven) When update runs the migration a second time on a project it already migrated, it shall remove nothing further, archive nothing further, and report zero counts.
-- REQ-015: (Event-driven) When update runs on a project with no deploy-mode record — every project initialized before this SPEC's init — it shall run the migration path (default pending OD-4: run the t1435 plugin install step first, fail-open and under the same opt-out, then classify, then remove and archive per REQ-011/012, then write the mode record `plugin`; under the opt-out it deploys the full local payload, writes the record `local`, and removes nothing).
-- REQ-016: (Ubiquitous) The update template-sync deployer shall be selected by the project's mode record (P-05 construction, OD-5 key): a `plugin`-mode project deploys the thin set of REQ-001, a `local`-mode project deploys the full set of REQ-003, and the outcome accounting (`managedRedeployCount`, `restoredSet`, `preCleanFiles`, P-06) shall report what this run actually deployed and removed — a run that re-deployed no dropped component shall not count one.
+- REQ-015: (Event-driven) When update runs on a project with no deploy-mode record — every project initialized before this SPEC's init — it shall run the migration path (OD-4 settled (a, amended) 2026-10-03: update performs the migration — run the t1435 plugin install step first, fail-open and under the same opt-out; on install success, then classify, then remove and archive per REQ-011/012, then write the mode record `plugin`; but when the install step fails the migration MUST NOT dedupe or remove anything, MUST keep `deployment_mode: local`, and no path records `plugin` when the install step failed; under the opt-out it deploys the full local payload, writes the record `local`, and removes nothing).
+- REQ-016: (Ubiquitous) The update template-sync deployer shall be selected by the project's mode record (P-05 construction, OD-5 key): a `plugin`-mode project deploys the thin set of REQ-001, a `local`-mode project deploys the full set of REQ-003, and the outcome accounting (`managedRedeployCount`, `restoredSet`, `preCleanFiles`, P-06) shall report what this run actually deployed and removed — a run that re-deployed no dropped component shall not count one; and the mode record the selection reads shall survive the run's Clean/redeploy/restore cycle unchanged (OD-5 settled condition, 2026-10-03: REQ-018's no-flip rule holds through the mechanics — the `.moai/config` Clean root (P-07) does not cost the recorded key).
 - REQ-017: (Event-driven) When update runs on a `local`-mode project, it shall keep today's full merge scope (deploy, 3-way merge, snapshot semantics of P-20 unchanged), so that the opt-out and `--all` populations see no update-scope regression.
 - REQ-018: (Event-driven) When a user wants to switch a project's deploy mode after initialization, the only supported surface shall be a re-run of `moai init` (`--force` re-init from scratch, or the documented init re-entry), and update shall print that guidance and change no mode record by itself.
 - REQ-019: (Unwanted) Update shall not resurrect a dropped component on a `plugin`-mode project: no run of update, with or without `--force`, shall re-create `.claude/skills/**`, `.claude/commands/**`, or a mirror entry the thin deploy does not carry.
 - REQ-020: (State-driven) While the verification of this SPEC runs — its acceptance commands and its harness scripts — it shall not reach a real Claude or Codex profile, a real `$HOME/.claude/settings.json`, or the network, and shall report a failure when it does: isolation uses scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `MOAI_HOME` (never a `HOME` assignment, which the worktree guard refuses and no script may set), the default external-command runner refuses to exec under a test binary (the t1435 REQ-017 seam, reused), the one script that runs the real tool runtimes for the REQ-008 measurement applies a live-enumerated environment scrub and a before/after protected-set hash with directory entries, and no harness case runs the real binary's `moai init` (the t1435 OD-14 verdict, inherited).
-- REQ-021: (Ubiquitous) The user-facing surfaces that describe the deploy shall describe the shrink: the `init` flag help and success card, the README and docs-site init pages, and every guarded test that asserts a deployed file set (the settings snapshot, template-count, update dry-run preview, and e2e journey assertions) shall be updated in the same change set that flips the default, so that no guard asserts the pre-shrink file set after the flip lands.
+- REQ-021: (Ubiquitous) The user-facing surfaces that describe the deploy shall describe the shrink: the `init` flag help and success card, the README and docs-site init pages, and every guarded test that asserts a deployed file set (the settings snapshot, template-count, update dry-run preview, and e2e journey assertions) shall be updated in the same change set that flips the default, so that no guard asserts the pre-shrink file set after the flip lands; and per OD-8 settled (a) 2026-10-03 this card's report deliverable states the t1466 handover scope (instruction-file consistency beyond REQ-008 name resolution defers to t1466 — no broader sweep joins this SPEC).
 
 ## 3. Constraints
 
@@ -160,9 +163,10 @@ differs.
 - Run-phase dependency (leader-designated): this card's run phase is sequenced after
   SPEC-PLUGIN-MARKETPLACE-001 lands on `develop`. Its REQ-015/REQ-016 (install step attached to
   init), REQ-017 (test-binary runner refusal), REQ-018 (installer verb and opt-out) and its
-  `--no-plugin` flag are consumed here by reference; at this tree they do not exist (P-18). Until
-  the landing, this SPEC's plan is authored against the pins, and any contradiction found at
-  t1435's landing is a blocker report, not a local improvisation.
+  `--no-plugin` flag are consumed here by reference; at the authoring pin 3f3ebb763 they did not
+  exist (P-18). t1435 is `completed` in this tree since the 2026-10-03 absorb of develop 6770c714f;
+  the consumed surfaces are verified by name at run-phase pre-flight, and any contradiction found
+  there is a blocker report, not a local improvisation.
 - The worktree guard refuses a `HOME=` prefix and refuses `pwsh` (t1435 P-36), and repository
   doctrine says moving a command into a script file is not a way round it. Verification isolation
   uses the explicit seams only: scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `MOAI_HOME`, working
@@ -205,7 +209,8 @@ differs.
 
 - The broader instruction-drift cleanup of deployed templates is card t1466 (leader-issued
   2026-10-03, per t1418 verdict H1). This card ensures names referenced by the shipped instruction
-  files resolve in each deployment mode (REQ-008) and defers the rest to t1466's approach (OD-8).
+  files resolve in each deployment mode (REQ-008) and defers the rest to t1466's approach (OD-8,
+  settled (a) 2026-10-03).
 
 ### Out of Scope — Branch-flow narratives
 
@@ -224,7 +229,8 @@ decision surfaced while assembling card t1438 that no committed artifact in the 
 settles as written; none carries a recommendation. Rows are mirrored in `decision-index.md`
 (Q-n = OD-n), whose verdict lines the Kickoff gate reads. Per the leader's dispatch of
 2026-10-03, operator-gate-level decisions for this card are set by the leader on audit evidence;
-no verdict line is invented here.
+no verdict line is invented here. All eight rows were settled by the leader on 2026-10-03 — see
+Settlement below.
 
 | OD | Question | Options | Default if unanswered | Who decides |
 |----|----------|---------|-----------------------|-------------|
@@ -253,6 +259,25 @@ with the same number) carries the marker and an `Alternate` line.
 | OD-7 | REQ-007 | (b) REQ-007's payload narrows to the optional-pack entries; (c) REQ-007 becomes a deprecation notice and the `--all` criteria assert the notice |
 | OD-8 | REQ-008 (scope sentence), REQ-021 | (b) the full sweep joins this card's milestones and t1466's moved-component scope is absorbed; (c) REQ-008's instruction-file sentence is void, resolvability applies to component bodies only |
 
+### Settlement (leader rulings, 2026-10-03, codex-informed)
+
+All eight rows were settled on 2026-10-03; the rulings are recorded verbatim on the `Operator
+verdict:` line of each `decision-index.md` row (Q-n = OD-n) and are the authoritative content.
+Branches taken and their conditions, now folded into the clauses of §2:
+
+| OD | Verdict | Where it landed |
+|----|---------|-----------------|
+| OD-1 | (c) | REQ-005's conditional write: the project `moai` entry is written only when the install step failed or was skipped; confirmed install → no project entry (the plugin is the sole carrier); `--no-plugin` unchanged |
+| OD-2 | (a) + condition | REQ-008: BOTH the scaffold references AND the plugin command bodies pass an actual name-resolution verification test; the mode-aware rewrite ships only what the test proves resolvable, per mode |
+| OD-3 | (a) + three conditions | REQ-010..012: an absent-or-stale manifest entry classifies modified (archive-then-remove); removal runs only after EVERY archive in the batch succeeded; foreign files AND symlinks preserved untouched (REQ-013) |
+| OD-4 | (a, amended) | REQ-015: update performs the migration; when the install step fails — no dedupe, no removal, `deployment_mode: local` kept, and no path records `plugin` |
+| OD-5 | (a) + condition | REQ-009/REQ-016: the recorded `deployment_mode` value survives update's redeploy/restore process |
+| OD-6 | (a) + condition | REQ-006: plugin-mode mirror removal only after Codex is verified to actually execute skills; where that verification cannot be produced, the local mirror stays |
+| OD-7 | (a) | REQ-007 stands as written — `--all` is the local full deploy |
+| OD-8 | (a) | REQ-021: the report deliverable states the t1466 handover scope; no broader sweep joins this SPEC |
+
+The marker table above remains the record of what each non-taken branch would have changed.
+
 ## 6. Risks
 
 | # | Risk | Observed or inferred | Handling |
@@ -272,8 +297,9 @@ with the same number) carries the marker and an `Alternate` line.
 
 ## 7. Dependencies and Prior Art
 
-- `depends_on`: SPEC-PLUGIN-MARKETPLACE-001 (status `in-progress`; run-phase sequencing after its
-  landing is leader-designated). Its OD-1..OD-14 verdicts (operator batch 2026-10-03, via leader
+- `depends_on`: SPEC-PLUGIN-MARKETPLACE-001 (status `completed` in this tree since the 2026-10-03
+  absorb of develop 6770c714f; it read `in-progress` at the authoring pin 3f3ebb763 — P-18.
+  Run-phase sequencing after its landing is leader-designated). Its OD-1..OD-14 verdicts (operator batch 2026-10-03, via leader
   relay) are binding pins for this card: OD-1 (install on by default until this card ends it),
   OD-2 (MCP entry only), OD-3 (no agents), OD-5 (opt-out surface), OD-8 (core tier), OD-9
   (harness gating), OD-11 (English-only payload), OD-14 (no real-binary init harness case).

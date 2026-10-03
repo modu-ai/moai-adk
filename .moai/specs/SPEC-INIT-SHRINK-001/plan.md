@@ -46,7 +46,7 @@ change what the flip deploys and rewrite); the flip does not merge before the ve
 
 | Deliverable | Files | Requirement |
 |---|---|---|
-| Deploy-mode key: `deployment_mode: plugin\|local` in `.moai/config/sections/llm.yaml` (default pending OD-5), reader/writer beside `ReadHarness`/`ApplyHarness` | `internal/config/` (reader), `internal/template/` (ApplyDeployMode beside ApplyHarness), tests | REQ-009 |
+| Deploy-mode key: `deployment_mode: plugin\|local` in `.moai/config/sections/llm.yaml` (OD-5 settled (a) 2026-10-03), reader/writer beside `ReadHarness`/`ApplyHarness` | `internal/config/` (reader), `internal/template/` (ApplyDeployMode beside ApplyHarness), tests | REQ-009 |
 | Migration classification types: `identical` / `modified` / `foreign` over the dropped roots, manifest-first with conservative absence routing (RK-9); archive layout constants (`.moai/archive/skills/<tag>/…`, standalone-file variant) | `internal/cli/update/migrate_classify.go` (new), `internal/cli/update/migrate_classify_test.go`, `internal/cli/update/defs` constants | REQ-010 |
 | Resolution-gate harness: `scripts/check-bare-name-resolution.sh <fixture-dir>` — drives the real tool runtimes under scratch config homes (t1434 `--plugin-dir` route; no `HOME=`; live-enumerated env scrub; before/after protected-set hash) answering the three questions of REQ-008; plus `internal/cli` Go wrapper test `TestResolutionGateHarness` asserting the script's PASS/FAIL/RESULT line shape and its negative control | `scripts/check-bare-name-resolution.sh`, `scripts/test-bare-name-resolution.sh` (self-test + negative control), `internal/cli/update/migrate_classify_test.go` or a dedicated `resolution_gate_test.go` | REQ-008, REQ-020 |
 | Guard: classification disjointness — foreign files never classified identical/modified (the P-10 guard precedent) | same test file | REQ-013 |
@@ -59,8 +59,8 @@ ACs: AC-008, AC-009, AC-010, AC-013, AC-020 (harness halves).
 |---|---|---|
 | Deployer file-set split: a deploy-mode option on the Claude/Dual/Codex deployer family that excludes `.claude/skills/**` and `.claude/commands/**` from `ListTemplates`/deploy walk on the plugin path; local path unchanged byte-for-byte | `internal/template/deployer.go`, `internal/template/harness_fs.go` (option plumb-through), `internal/template/deployer_mode_test.go` (new) | REQ-001, REQ-002, REQ-003 |
 | `init` wiring: default path selects the thin deployer (respecting slim/full catalog routing, P-05); `--no-plugin` and `--all` select the local deployer; mode record written on every run; success-card and slim-mode notice text updated | `internal/cli/init.go`, `internal/cli/init_workflow_flags.go` (if flag registration lives there), `internal/cli/init_mode_test.go` (new) | REQ-001, REQ-003, REQ-007, REQ-009 |
-| MCP-entry policy on the default path (default pending OD-1: no project `moai` entry; context7 + staggeredStartup preserved; `--no-plugin` writes as today; decline semantics restated) | `internal/cli/init.go` (`provisionMCPEntryUnlessDeclined` call site), `internal/cli/init_mcp_policy_test.go` (new) | REQ-005 |
-| Codex mirror policy (default pending OD-6: plugin mode deploys no mirror and creates no `.agents/skills` entries; local mode deploys as today) | `internal/template/skill_mirror.go` / `deployer.go` option, `internal/template/skill_mirror_mode_test.go` (new) | REQ-006 |
+| MCP-entry policy on the default path (OD-1 settled (c) 2026-10-03: the project `moai` entry is written only when the install step failed or was skipped — a confirmed install writes no entry, the plugin is the sole carrier; context7 + staggeredStartup preserved; `--no-plugin` writes as today; decline semantics restated) | `internal/cli/init.go` (`provisionMCPEntryUnlessDeclined` call site, sequenced after the install step so it can observe the outcome), `internal/cli/init_mcp_policy_test.go` (new) | REQ-005 |
+| Codex mirror policy (OD-6 settled (a) + condition 2026-10-03: plugin mode deploys no mirror and creates no `.agents/skills` entries — gated on the Codex actual-execution verification, and the mirror stays where that verification cannot be produced; local mode deploys as today) | `internal/template/skill_mirror.go` / `deployer.go` option, `internal/template/skill_mirror_mode_test.go` (new) | REQ-006 |
 | Guidance block: skipped/failed install on the default path names both recourses, fail-open | `internal/cli/init.go`, covered in `init_mode_test.go` | REQ-004 |
 
 ACs: AC-001..AC-007 (minus AC-008), AC-009 re-verified end to end.
@@ -69,7 +69,7 @@ ACs: AC-001..AC-007 (minus AC-008), AC-009 re-verified end to end.
 
 | Deliverable | Files | Requirement |
 |---|---|---|
-| Update deployer selection by mode record (`newTemplateSyncDeployer` reads the OD-5 key); absent record → migration path (default pending OD-4): install step fail-open under the opt-out, then classify, then remove/archive per REQ-011/012, then write the record | `internal/cli/update_template_sync.go`, `internal/cli/update_migrate.go` (new), `internal/cli/update_migrate_test.go` (new) | REQ-015, REQ-016 |
+| Update deployer selection by mode record (`newTemplateSyncDeployer` reads the OD-5 key); absent record → migration path (OD-4 settled (a, amended) 2026-10-03): install step fail-open under the opt-out; on install success, classify, then remove/archive per REQ-011/012 (removal only after every archive in the batch succeeded), then write the record `plugin`; on install failure — no dedupe, no removal, record `local`, and no path records `plugin` | `internal/cli/update_template_sync.go`, `internal/cli/update_migrate.go` (new), `internal/cli/update_migrate_test.go` (new) | REQ-015, REQ-016 |
 | Archive-then-remove: modified classified files archived through `archiveSkill` semantics **before** the Clean step removes them; the raw-template backup exemption (P-08) must not apply to dropped components — the migration hands Clean a deploy-set-scoped template FS or pre-removes through its own guarded path; archive-write failure aborts before any removal | `internal/cli/update/deploy/deploy.go` (backupThenRemove scope fix or its bypass), `internal/cli/update_migrate.go`, tests | REQ-012 |
 | Removal + reporting: identical files removed with counts; foreign untouched; idempotence (second run: zero removals, zero archives) | same files | REQ-011, REQ-013, REQ-014 |
 | No resurrection: plugin-mode update never re-creates dropped components; mode switch guidance printed (update never flips the record) | same files | REQ-018, REQ-019 |
@@ -110,15 +110,18 @@ ACs: AC-021 closes; AC-016/AC-017 re-verified on the updated surfaces.
 
 - Pre-flight: `git rev-parse --short HEAD` + `git branch --show-current` re-read; `go build ./...`;
   the anchor probes of `acceptance.md`'s ledger re-run for the affected packages.
-- Land-order dependency: t1435 lands on `develop` first (leader-designated). If this card's run
-  starts before that landing, the run is a blocker — the install step, `--no-plugin` flag, and
-  runner seam this card consumes do not exist yet (P-18).
+- Land-order dependency: t1435 lands on `develop` first (leader-designated). It is `completed` in
+  this tree since the 2026-10-03 absorb of develop 6770c714f (at the authoring pin 3f3ebb763 the
+  consumed install step, `--no-plugin` flag, and runner seam did not exist — P-18); run-phase
+  pre-flight verifies each consumed surface by its landed name before M1 starts.
 - t1399 note: the t1399 rename wave has landed in this base; if a sibling card renames a skill or
   command again, the plugin derivation (t1435) turns its own emit-check red, and this card's
   classification compares against the render of whatever tree it runs on — no hand list exists to
   go stale (the P-10 lesson).
-- If the REQ-008 verdict arrives "unresolved", do NOT improvise: record the verdict, and route OD-2
-  back to the leader (blocker report) before M2 merges.
+- OD-2 is settled (a) with its both-surfaces condition (2026-10-03): the measurement's recorded
+  verdict routes M2's rewrite scope per that settlement, shipping only what the test proves
+  resolvable in each mode. A measurement that arrives unresolved or non-reproducing is NOT
+  improvised around — record it and route back to the leader (blocker report) before M2 merges.
 
 ## 6. Constraints for manager-develop
 

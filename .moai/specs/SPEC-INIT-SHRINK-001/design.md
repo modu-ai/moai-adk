@@ -21,7 +21,7 @@ New units, deliberately few:
 - `internal/cli/update/migrate_classify.go` — the classifier (REQ-010) and its three classes.
 - `internal/cli/update_migrate.go` — the trigger wiring in the update flow (REQ-015).
 - `scripts/check-bare-name-resolution.sh` (+ its self-test script) — the REQ-008 measurement.
-- `deployment_mode` config key (OD-5 default) beside `llm.harness`.
+- `deployment_mode` config key (OD-5 settled (a) 2026-10-03) beside `llm.harness`.
 
 ## 2. The deploy-mode split
 
@@ -34,8 +34,11 @@ DeployMode: plugin | local
 ```
 
 - `plugin` — the default path: the deploy walk skips `.claude/skills/**` and `.claude/commands/**`
-  (REQ-001); the skill mirror is disabled (OD-6 default); the project `.mcp.json` render carries no
-  `moai` entry (OD-1 default).
+  (REQ-001); the skill mirror is disabled once the Codex actual-execution verification is produced
+  (OD-6 settled (a) + condition — where the verification cannot be produced, the mirror stays
+  deployed); the project `.mcp.json` render carries no `moai` entry when the install step is
+  confirmed (OD-1 settled (c): the entry is written as the fallback carrier when the install step
+  failed or was skipped).
 - `local` — the `--no-plugin` and `--all` paths: today's payload byte-for-byte (REQ-003, REQ-007).
 
 Slim-mode composition: slim/full governs which catalog entries the **local** deploy carries (core
@@ -60,10 +63,11 @@ and the mirror stays off (OD-6 default).
 ### 2.3 The MCP entry
 
 `provisionMCPEntryUnlessDeclined` (P-15) keeps its signature and its decline table; on the plugin
-path the ensure-entry call is skipped for the `moai` server only — the template `.mcp.json` render
-that the deploy wrote already lacks the entry (the exclusion is a render-time filter, matching how
-the file is deployed), so the provision call's only remaining work on the default path is
-`context7` + `staggeredStartup` repair. On `local` mode everything is as today. The `--llm gpt`
+path the ensure-entry call for the `moai` server is skipped only when the install step is confirmed
+(OD-1 settled (c) — the render-time filter stands on the confirmed path); when the install step
+failed or was skipped, the provision call writes the project `moai` entry as the fallback carrier,
+which requires the provision call to run after the install step and observe its outcome. On
+`local` mode everything is as today. The `--llm gpt`
 project-entry decline is unaffected (OD-1); the Codex `config.toml` wiring is untouched on every
 path.
 
@@ -75,7 +79,8 @@ Ordered inside the update flow's existing step table; the Clean step stays the r
    (`update_template_sync.go:180-189`) has passed (the post-shrink binary bumped the version). The
    mode record is read: present → no migration (the deployer split of §2.2 governs). Absent → the
    migration path runs: install step fail-open under the opt-out (the t1435 step, sequenced after
-   its landing), then classification.
+   its landing); an install-step failure ends the migration there with the record written `local`
+   and steps 2-4 unexecuted (OD-4 settled (a, amended)); on install success, then classification.
 2. **Classification** (REQ-010): for every file under the dropped roots
    (`.claude/skills/**`, `.claude/commands/**`, the mirror), compare the on-disk content with the
    template **render for this project's context** — the same render the deployer would write. The
@@ -94,14 +99,17 @@ Ordered inside the update flow's existing step table; the Clean step stays the r
    silently apply to dropped components. Alternative accepted at design time: pre-remove the
    modified set through the migration's own guarded path before Clean runs — chosen only if the
    scoped-FS hand-off proves invasive; the abort-before-removal contract is identical either way.
-5. **Record write**: the migration ends by writing the mode record (`plugin`, or `local` under the
-   opt-out — in which case steps 2-4 are skipped entirely).
+5. **Record write**: the migration ends by writing the mode record (`plugin` after a confirmed
+   install, or `local` under the opt-out — in which case steps 2-4 are skipped entirely — or
+   `local` when the install step failed, OD-4's amended condition).
 6. **Idempotence** (REQ-014): a migrated project has a record, so step 1 short-circuits; a
    record-bearing project re-running the classifier sees an empty removed-root delta and prints
    zero counts.
 
-Mirror entries: symlink mirror entries are removed as part of the dropped roots under OD-6 (a);
-they are never dereferenced (P-11's constraint; the archive contract already refuses them).
+Mirror entries: symlink mirror entries are removed as part of the dropped roots under OD-6
+settled (a) + condition — the removal happens only after Codex is verified to actually execute
+plugin-borne skills, and where the verification cannot be produced the mirror stays; the entries
+are never dereferenced (P-11's constraint; the archive contract already refuses them).
 
 ## 4. The resolution gate
 
@@ -128,6 +136,13 @@ the runtime routes t1434 validated:
   the harness — it is the OD-2 input; the blocker is merging the flip without a recorded verdict.
 
 ## 5. Alternatives and where each Open Decision lands
+
+Settled 2026-10-03 (verbatim rulings in `decision-index.md` Q1..Q8; branch summary in `spec.md` §5
+Settlement): OD-1 (c), OD-2 (a) + condition, OD-3 (a) + three conditions, OD-4 (a, amended),
+OD-5 (a) + condition, OD-6 (a) + condition, OD-7 (a), OD-8 (a). The "Where the default lands"
+column below describes the authoring-time defaults; the taken branches supersede it where they
+differ — for OD-1 the (c) alternative is now the landing (the provision call runs after the
+install step and observes its outcome, §2.3).
 
 | OD | Design pressure | Where the default lands | Where the alternatives would land |
 |----|-----------------|-------------------------|-----------------------------------|
