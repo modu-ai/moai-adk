@@ -47,6 +47,23 @@ red_tests: internal/cli/codex_review_gate_primary_scope_red_test.go(AC-001·005�
 - 미러 중성성: 신규 주석 카드 id 0(`grep -c t1404` = 0), 기존 `t1392` 6건 불변.
 - 범위 침범: `git diff 45a397e72..HEAD --stat` 16파일 전부 plan §A.5 범위(설정 3·cli 9·게이트 스크립트 쌍둔 2·spec.md frontmatter 2행·config 테스트 1) + 테스트 적응 5파일. 디버그 잔재 스캔 0.
 
+### §E.2 추가 — card-review 수리 라운드 (codex_review 5발견, 2026-10-03)
+
+카드 리뷰(advisory codex, base `2de0a2cb6`, `.moai/reports/t1404/card-review.md` **fail** — P1 1건·P2 4건)의 수리 라운드. 5건 전부 **확증** — 각 건 최소 재현 테스트가 수리 전 적색 → 수리 후 녹색으로 관측됐고(아래 원문 요지), 기각분은 0이다. spec·plan·acceptance 본문 무변경, sync 게이트 스크립트 쌍둔(M4 표면) 무접촉.
+
+| # | 판정 | 재현 (수리 전 적색 → 수리 후 녹색) | 수리 |
+|---|------|-----------------------------------|------|
+| R1 | 확증 (P1) | `TestMultiReviewGateConfigOnlyChangesStillReadStoredFail` — 설정 표면 전용 변경 + 저장된 required FAIL에서 ALLOW 관측(수리 전) → BLOCK(수리 후) | 트리 전용 배제를 공용 `reviewableFromPorcelain`에서 빼고 트리 스코프 전용 조합(`reviewGateScopedChangeDetector` 트리 팔 + `treeConfigOnlyFromPorcelain`·`treeConfigOnlyChanges` 신설 프로브)으로 이동 — 다중 리뷰 게이트(핸들러+member 7)와 카드 경로는 기준 검사 가능성 유지 |
+| R2 | 확증 (P2) | `TestProduceCodexReviewReceipt_TreeDriftFindingsReclassified` — 수신 프로듀서가 `verdict: fail` 기록(수리 전) → `pass` + 채널 재분류 행(수리 후) | `produceCodexReviewReceipt`가 Claude 게이트 7-pre와 같은 재분류 결정을 트리 스코프에서 함께 수행(REQ-CGSC-008 양팔 — decision-index Q3). 카드 스코프는 fail 유지 |
+| R3 | 확증 (P2) | `TestCodexReviewGateRuntimeDriftFindingsAbsolutePathsReclassified` — 절대 경로(`/proj/.claude/settings.json`) 발견이 BLOCK 잔존(수리 전) → 재분류 ALLOW(수리 후) | `runtimeConfigOnlyFindings`가 앵커를 `scope.Dir` 기준 정규화(`normalizeFindingPath` 신설 — 절대경로→트리 상대, `./` 제거, 트리 밖은 닫힘 방향 BLOCK) |
+| R4 | 확증 (P2) | `TestTreeRuntimeConfigPathExactSettingsMatch` — `.claude/settings.json.template`·`.bak`가 배제됨(수리 전) → 검사 가능 유지(수리 후) | 설정 파일은 정확 일치(`reviewGateTreeConfigExactPaths`), `.moai/config/` 디렉터리만 접두사(`reviewGateTreeConfigDirPrefixes`). 주: 리뷰어가 예로 든 `settings.json.template`는 본 트리 추적 파일이 아니나(`settings.json.tmpl`이 추적본), 접두어 과잉 자체는 구조적 결함으로 확증 |
+| R5 | 확증 (P2) | `TestReviewableFromPorcelainRenameKeepsDestination` — rename `.claude/settings.json -> main.go`에서 목적지까지 배제(수리 전) → 검사 가능(수리 후) | 트리 프로브의 rename 레코드는 양쪽 모두 배제일 때만 설정 전용으로 판정(공용 파서는 기준 형태 유지) — 목적지가 소스의 배제를 상속하지 않음 |
+
+- 계약 테스트 적응 1건: `TestReviewableFromPorcelainRuntimeConfigOnlyFalse`(이름 보존 — AC-CGSC-007 인용 축)이 R1 이동에 맞춰 `treeConfigOnlyFromPorcelain`을 대상으로 하고 rename 양다리(수리 R5)를 추가. AC-CGSC-007의 관측 형태(설정 전용=무검사·소스 대조군=검사)는 동일. 나머지 계약 4건(AC-001·005·008·010) 무변경 무접촉.
+- 수리 테스트 7건 신설: 위 표 5건 + `TestTreeScopedSelfGateSkipsConfigOnlyTree`(REQ-CGSC-007 엔드투엔드 보존 핀) + 적응 테스트의 rename 다리. 파일: `codex_review_gate_scoping_repair_test.go` · `codex_review_receipt_scoping_repair_test.go`(R2 — 커밋별 컴파일 유지를 위해 분리).
+- 수리 전 적색 원문 요지(전건 본 실행, HEAD `d4e90c588` 트리): R1 `config-only changes must not silence a stored required FAIL; got ... Decision: (빈 ALLOW)` · R2 `got verdict fail` · R3 `an absolute-path config finding must normalize into the reclassification, got ... Decision:block` · R4 `path ".claude/settings.json.template" must stay reviewable` · R5 `a rename into an ordinary source path must stay reviewable...`. 수리 후 동일 셀렉터 6테스트 전부 PASS(`ok github.com/modu-ai/moai-adk/internal/cli 5.564s`).
+- 공유 리스트 불변 재확인: `reviewGateRuntimePrefixes` 6항목 무변경(AC-CGSC-009), 카드 경로 필터·수신 바인딩 무접촉.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
