@@ -137,18 +137,41 @@ func ReadRecordUnavailable(root, runID string) ([]RecordUnavailableEntry, int, e
 }
 
 // reconcileUnavailable appends one `record.drift` event per unreconciled log
-// entry of runID inside the caller's transaction, and returns the post-commit
-// step that marks those entries reconciled. The drift event names the
-// dispatched card and lane and the factory record's state for that card as
-// this write found it, or "absent".
-func (f *FactoryDB) reconcileUnavailable(ctx context.Context, tx *sql.Tx, runID string, now time.Time) (func(), error) {
+// entry of runID inside the caller's transaction, and returns the settle step
+// withCardTx runs once the transaction is over: settle(true) after the commit
+// marks those entries reconciled, settle(false) on any other outcome releases
+// whatever the reconciliation holds (nothing, in the waiting flow). The drift
+// event names the dispatched card and lane and the factory record's state for
+// that card as this write found it, or "absent". A context carrying
+// WithBoundedReconcile takes the claim's non-waiting flow instead.
+func (f *FactoryDB) reconcileUnavailable(ctx context.Context, tx *sql.Tx, runID string, now time.Time) (func(committed bool), error) {
 	path := filepath.Join(filepath.Dir(f.Path), recordUnavailableFile)
+	if boundedReconcile(ctx) {
+		return f.reconcileUnavailableBounded(ctx, tx, path, runID, now)
+	}
 	entries, _, err := readRecordUnavailableFile(path)
 	if err != nil || len(entries) == 0 {
 		// An unreadable log never blocks a factory-record write. Torn lines
 		// are skipped by the reader, so valid entries still reconcile.
 		return nil, nil
 	}
+	ids, err := f.appendDriftEvents(ctx, tx, runID, entries, now)
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return func(committed bool) {
+		if committed {
+			_ = markRecordUnavailableReconciled(path, ids)
+		}
+	}, nil
+}
+
+// appendDriftEvents appends one `record.drift` event per unreconciled entry of
+// runID inside tx and returns the ids of the entries it covered.
+func (f *FactoryDB) appendDriftEvents(ctx context.Context, tx *sql.Tx, runID string, entries []RecordUnavailableEntry, now time.Time) (map[string]bool, error) {
 	ids := map[string]bool{}
 	for _, e := range entries {
 		if e.Reconciled || e.RunID != runID {
@@ -167,10 +190,7 @@ func (f *FactoryDB) reconcileUnavailable(ctx context.Context, tx *sql.Tx, runID 
 		}
 		ids[e.ID] = true
 	}
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	return func() { _ = markRecordUnavailableReconciled(path, ids) }, nil
+	return ids, nil
 }
 
 // lockRecordUnavailable takes the exclusive lock (the admission-lock
@@ -184,16 +204,93 @@ func lockRecordUnavailable(path string) (func(), error) {
 	return func() { _ = impl.release() }, nil
 }
 
+// tryLockRecordUnavailable is lockRecordUnavailable without the wait: held
+// reports whether another holder has the lock, in which case no lock is taken.
+func tryLockRecordUnavailable(path string) (unlock func(), held bool, err error) {
+	impl, ok, err := tryAcquireAdmissionLock(path + ".lock")
+	if err != nil {
+		return nil, false, fmt.Errorf("lock %s: %w", filepath.Base(path), err)
+	}
+	if !ok {
+		return nil, true, nil
+	}
+	return func() { _ = impl.release() }, false, nil
+}
+
+type boundedReconcileKey struct{}
+
 // WithBoundedReconcile marks ctx as the context of a lease claim's record
 // write, the one write path whose drift-log reconciliation never waits for the
-// log's lock (SPEC-FACTORY-ATOMIC-LEASE-001 REQ-FAL-014, plan D2). Compile-only
-// stub (WM1): it returns ctx unchanged until milestone WM4.
-func WithBoundedReconcile(ctx context.Context) context.Context { return ctx }
+// log's lock (SPEC-FACTORY-ATOMIC-LEASE-001 REQ-FAL-014, plan D2). The marker
+// rides the context of one call, never the connection, so every write that
+// does not receive it keeps the waiting flow.
+func WithBoundedReconcile(ctx context.Context) context.Context {
+	return context.WithValue(ctx, boundedReconcileKey{}, true)
+}
+
+func boundedReconcile(ctx context.Context) bool {
+	v, _ := ctx.Value(boundedReconcileKey{}).(bool)
+	return v
+}
+
+// reconcileUnavailableBounded is the claim's flow (plan D2): (1) the unlocked
+// read finding no unreconciled entry for the run means no lock, no event and no
+// mark; (2) otherwise the log's lock is tried without waiting, and a holder
+// means the whole reconciliation is skipped for this write — no events, no
+// mark; (3) with the lock held the log is re-read under it, an entry is
+// reconciled only if it is still unreconciled there, and the lock is kept
+// through the commit; (4) settle(true) marks the entries under the held lock
+// and releases it, settle(false) releases it without marking. The skip is
+// decided before any event is appended, so a skipped write never leaves events
+// that the next write would append again.
+//
+// @MX:WARN: [AUTO] holds the drift log's lock across one record write's transaction while the record's write lock is held
+// @MX:REASON: lock order is queue lock, then record write lock, then drift-log lock, and no path holds the log's lock and then waits for the record; a settle that never runs would leak the lock until the process ends
+// @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
+func (f *FactoryDB) reconcileUnavailableBounded(ctx context.Context, tx *sql.Tx, path, runID string, now time.Time) (func(committed bool), error) {
+	pending := func(entries []RecordUnavailableEntry) bool {
+		for _, e := range entries {
+			if !e.Reconciled && e.RunID == runID {
+				return true
+			}
+		}
+		return false
+	}
+	entries, _, err := readRecordUnavailableFile(path)
+	if err != nil || !pending(entries) {
+		return nil, nil
+	}
+	if recordUnavailableAfterReadHook != nil {
+		recordUnavailableAfterReadHook()
+	}
+	unlock, held, err := tryLockRecordUnavailable(path)
+	if err != nil || held {
+		// A lock that cannot be tried never blocks the claim, and a holder
+		// leaves the entries for a later write.
+		return nil, nil
+	}
+	entries, _, err = readRecordUnavailableFile(path)
+	if err != nil || !pending(entries) {
+		unlock()
+		return nil, nil
+	}
+	ids, err := f.appendDriftEvents(ctx, tx, runID, entries, now)
+	if err != nil {
+		unlock()
+		return nil, err
+	}
+	return func(committed bool) {
+		if committed {
+			_ = rewriteRecordUnavailableReconciledLocked(path, ids)
+		}
+		unlock()
+	}, nil
+}
 
 // recordUnavailableAfterReadHook is a test seam for the claim-scoped
 // reconciliation: it is called between the unlocked read of the log and the
 // claim's try for the log's lock, and only on the claim-scoped path. It is nil
-// in production, and nothing calls it until milestone WM4.
+// in production.
 var recordUnavailableAfterReadHook func()
 
 // recordUnavailableRewriteHook is a test seam called between the rewrite's
@@ -210,6 +307,14 @@ func markRecordUnavailableReconciled(path string, ids map[string]bool) error {
 		return err
 	}
 	defer unlock()
+	return rewriteRecordUnavailableReconciledLocked(path, ids)
+}
+
+// rewriteRecordUnavailableReconciledLocked is the rewrite of
+// markRecordUnavailableReconciled for a caller that already holds the log's
+// lock (the lock is a non-reentrant flock, so taking it again would wait on the
+// caller's own descriptor).
+func rewriteRecordUnavailableReconciledLocked(path string, ids map[string]bool) error {
 	// Torn lines the reader skipped drop out here: the rewrite is the one
 	// place the log self-heals.
 	entries, _, err := readRecordUnavailableFile(path)
