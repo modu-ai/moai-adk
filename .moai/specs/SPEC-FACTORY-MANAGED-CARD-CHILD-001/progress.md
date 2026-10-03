@@ -139,8 +139,8 @@ open_items_for_leader: P-1 defect candidate (direct door `syscall.Exec` ends the
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-03
-sync_commit_sha: 68b4690df
-head_at_signal: af80023fe (measured tree; this sync commit cannot cite its own hash, so `sync_commit_sha` is the canonical placeholder `pending-backfill` and the real SHA is backfilled in a following commit — never left empty)
+superseded_sync_commit_sha: 68b4690df (the first sync commit, returned by the independent sync audit finding F1 and superseded by the re-close block below; the key was renamed from `sync_commit_sha` so tools read the current close; the value was `pending-backfill` when this line was written and was backfilled to the real SHA by `b8848be59`)
+head_at_signal: af80023fe (measured tree; this sync commit cannot cite its own hash, so `sync_commit_sha` is the canonical placeholder `pending-backfill` and the real SHA is backfilled in a following commit — never left empty) (since backfilled: see the `superseded_sync_commit_sha` line above and the `sync_commit_sha` line of the re-close block)
 tree: .claude/worktrees/t1440
 branch: WT-codex-card-managed-path
 owner: manager-docs (sync-phase)
@@ -199,3 +199,60 @@ Not run as a scan in this sync. The run phase added `internal/cli/managed_operat
 - F1: the pump bounds one buffered line at `managedOperatorLineLimit` (= `bufio.MaxScanTokenSize`, the driver scanner's limit); an oversize line is dropped and input ends, as the driver's scanner does. RED in red-baseline.md; mu12 observed red. Managed-scope selection count 88 -> 89.
 - F5: two stale comments in `codex_launcher.go` corrected (legacy direct door replaces the process via `syscall.Exec`; managed path keeps the launcher as parent). F3: `endManagedLanePump()` added to the test helper cleanup.
 - F2/F4 unchanged (known limits, documented by the docs step).
+
+## §E.4 Sync-phase Audit-Ready Signal — re-close after the sync-audit F1 repair
+
+sync_status: audit-ready
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill
+superseded_first_close: 68b4690df (the first sync commit; the independent sync audit `.moai/reports/t1440/sync-audit.md` returned FAIL on finding F1 and this re-close supersedes it; its backfilled SHA is the `superseded_sync_commit_sha` line of the first §E.4 block above)
+head_at_signal: 047922bf8 (measured tree; this re-close commit cannot cite its own hash, so `sync_commit_sha` is the canonical placeholder `pending-backfill` and the real SHA is backfilled in a following progress.md-only commit — never left empty)
+tree: .claude/worktrees/t1440
+branch: WT-codex-card-managed-path
+owner: manager-docs (sync-phase, re-close)
+card_commits: M1 `409ced12c` · M2 `a184aa89c` · M3 `8ad13b2e8` · run evidence `af80023fe` · first sync `68b4690df` (superseded) · first backfill `b8848be59` · F1/F5/F3 repair `047922bf8` · re-close (the commit carrying this block) · backfill (the next commit)
+ac_source: .moai/specs/SPEC-FACTORY-MANAGED-CARD-CHILD-001/acceptance.md (tier M, state `resolved`, non-empty)
+docs_changed: `.moai/docs/factory-managed-session.md` (per-line bound and F4 window added to the operator-input bullet; new F2 known-limit bullet) · `CHANGELOG.md` (the single existing entry edited in place; count stays 1) · this §E.4 re-close block and the `superseded_sync_commit_sha` rename in the first block
+docs_not_changed: `spec.md` (`status: completed` already, `updated: 2026-10-03` already the sync date; no transition is owed on a re-close) · plan.md, acceptance.md, design.md, decision-index.md, red-baseline.md, every `.go` file
+frontmatter_status_transitions: none — spec.md stays `status: completed`
+counts_at_head: 14 REQ · 13 AC · 89 managed-scope selected test names · 12 mutants (mu1..mu11, mu12 from the F1 repair; plus one extra Close mutant recorded as `extra` in §E.2)
+b12_self_test_a: re-close edits the single existing entry in place; `grep -c 'SPEC-FACTORY-MANAGED-CARD-CHILD-001' CHANGELOG.md` -> `1`, exit 0 (count stays 1, no second entry)
+b12_self_test_b: B12 counter on acceptance.md (tier M) -> stdout `13`, stderr `live=13 excluded=0 ambiguous=0`, exit 0; `grep -oE '^- \*\*REQ-CC-[0-9]{3}\*\*' spec.md | sort -u | wc -l` -> `14`; the CHANGELOG entry states 14 requirements and 13 acceptance criteria
+b12_self_test_c: the CHANGELOG entry adds no new file path beyond those the first close verified (`ls` then); the added references are `internal/cli/managed_factory_session.go` (exists, frozen) and the commit `047922bf8` (exists)
+canary_compliance_check: not applicable
+
+All attributions are `(this run, this tree, HEAD 047922bf8 plus the uncommitted re-close edits, before the re-close commit)`.
+
+### Audit finding disposition (`.moai/reports/t1440/sync-audit.md`)
+
+- F1 [Medium, blocking] pump line bound: repaired in `047922bf8` (`managedOperatorLineLimit` = `bufio.MaxScanTokenSize`; oversize line dropped, input ends); `TestManagedOperatorInputPumpBoundsLineLength` added, mu12 observed red in the repair; the guide's operator-input bullet and the CHANGELOG entry now state the bound.
+- F2 [Medium, optional] owner input goroutine blocked on a full 8-slot channel after a fatal end: accepted as debt (needs the owner/driver files REQ-CC-008 freezes); disclosed as a new known-limit bullet in the guide and as limit (6) in the CHANGELOG entry. The auditor reproduced it; this re-close did not.
+- F3 [Low] test helper leaves the process-global pump set: repaired in `047922bf8` (`endManagedLanePump()` in the helper cleanup). Not re-observed here.
+- F4 [Low] adapter closes after the owner's own teardown on a fatal end: disclosed in the guide and as limit (7) in the CHANGELOG entry; read from code, not observed by the auditor or by this re-close.
+- F5 [Low] two stale comments in `codex_launcher.go`: corrected in `047922bf8`.
+
+### Evidence (this run)
+
+| Item | Command | Observed | exit |
+|---|---|---|---|
+| managed selection count at HEAD | `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/cli -list '^.*(Managed\|managed).*$'` redirected to a scratch file, then `grep -c '^Test'` (`\|` in this cell is a literal `\|` of the original command) | `89`; last line `ok  github.com/modu-ai/moai-adk/internal/cli  0.822s` | 0 |
+| pump tests | same scrub `&& go test ./internal/cli -run '^TestManagedOperatorInput' -count=1 -v` | `--- PASS: TestManagedOperatorInputPumpDetachesEndedSession (0.15s)`, `--- PASS: TestManagedOperatorInputPumpBoundsLineLength (0.00s)`, `ok ... 1.244s` | 0 |
+| installed `moai` lag | `moai version`; `git merge-base --is-ancestor 0732cc699 HEAD` | `v3.2.0-rc.27 archive/t1401-504-g0732cc699 built 2026-10-03T03:34:50Z`; exit 0 (strict ancestor of HEAD, so it can lack newer checks) | 0 |
+| `moai spec lint SPEC-FACTORY-MANAGED-CARD-CHILD-001` (installed build) | as written | `✓ No findings — all SPEC documents are valid` | 0 |
+| same lint, build made from this tree | `go build -o <scratch>/moai-t1440 ./cmd/moai` (exit 0), then `<scratch>/moai-t1440 spec lint SPEC-FACTORY-MANAGED-CARD-CHILD-001` | `✓ No findings — all SPEC documents are valid` | 0 |
+
+### Gaps (not observed in this re-close)
+
+- The whole managed-scope run was not repeated at 89 names (it passed at 88 names before the repair, `ok 94.580s`); only `TestManagedOperatorInput*` was re-run.
+- mu12 was not re-applied here; its red observation is the repair commit's record in red-baseline.md.
+- `golangci-lint`, `go vet`, the Windows cross build and `gofmt -l` were not re-run on the repair delta in this re-close.
+- No markdown linter is installed, so the guide, CHANGELOG and this block were not linted.
+- F2 and F3 were not re-observed; F4 was never observed by anyone (code reading only).
+- MX tags on the changed `.go` files were not inspected (sync cannot edit `.go`).
+- No real codex, headed terminal or unattended lane was exercised.
+
+### Residual-risk
+
+- F2 goroutine leak and the F4 window remain as disclosed debt; neither is fixed.
+- P-1 (the legacy direct door replaces the launcher process on POSIX) stays an open defect candidate for a leader decision.
+- The sync-audit verdict on this re-close is still owed to the independent auditor; this block states the author's evidence, not an audit result.
