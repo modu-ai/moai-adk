@@ -201,6 +201,9 @@ func TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal(t *testing.T) {
 	var freshInfo os.FileInfo
 	ret := NewRetention(logPath, archiveDir, func() time.Time { return now })
 	ret.ownerCheck = func(path string) bool {
+		if path != statePath {
+			return true
+		}
 		fresh := filepath.Join(dir, "fresh.tmp")
 		if err := os.WriteFile(fresh, freshBytes, 0o644); err != nil {
 			t.Errorf("write fresh: %v", err)
