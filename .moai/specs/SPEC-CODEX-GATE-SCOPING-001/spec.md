@@ -2,7 +2,7 @@
 id: SPEC-CODEX-GATE-SCOPING-001
 title: "codex 리뷰 게이트의 비카드 검사 한계를 primary 체크아웃과 런타임 관리 표면으로 좁힌다"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-03
 author: manager-spec
