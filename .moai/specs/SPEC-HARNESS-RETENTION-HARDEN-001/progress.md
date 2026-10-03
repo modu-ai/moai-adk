@@ -19,6 +19,23 @@ Plan-audit iteration 2 optional findings left open in revision 0.3.0 (taken: O1,
 - O8 (AC-007 checks `late-event` by substring, so a mutant that re-encodes a late line passes): needs a changed test shape and a re-derived E-003; beyond this last pass.
 - O9 (AC-012 does not pin the phrase naming the missing archive step): judged by reading; pinning a phrase needs the N1 fix to exist first.
 
+### Amendment 0.4.0 plan-phase note
+
+```yaml
+amendment_plan_status: pending-delta-plan-audit   # the amended passages are written; a cold plan-auditor delta audit has not run
+amendment_plan_complete_at: 2026-10-03
+amendment_of: SPEC-HARNESS-RETENTION-HARDEN-001   # in place, self-referential
+prior_completed_version: "0.3.0"
+prior_completed_sha: 5bb35abe8165e8d5fc5cbab6b246ac6a82646cb8   # the prior close's sync_commit_sha, recorded in the sync section below and cited in spec.md `### Amendments`
+amendment_base_tree: 7639c04c1   # tree the amendment was written and measured on
+amendment_scope: spec.md D4.c (default flipped to a heal lock), REQ-HRH-005 (rewritten), REQ-HRH-010 (one clause), REQ-HRH-016 (new); acceptance.md AC-HRH-006 (rewritten), -008 (optional case d), -010 (one sentinel), -011 (one clause), -015 and -016 (new), ledger E-032 to E-046; plan.md M7 to M10; decision-index.md Q4 verdict line, relayed verdicts item 8, row Q9
+counts: {req: 16, ac: 16}   # Tier M ceilings 16 / 16, counted independently; at 0.3.0: 15 / 14
+open_for_leader_before_run: decision-index row Q9 (the 2 s wait bound, an engineering choice not measured under load); plan.md B12 (hoist the amendment's scratch drafts to a tracked evidence path); the sentence of Definition of Done 13 (CHANGELOG, residual-risk record) is owned by the amended sync
+plan_artifact_hash: changed   # spec.md changed, so any cached plan-audit PASS verdict is invalid; one delta plan-audit must pass before M7
+```
+
+The run and sync sections below are the prior close (0.3.0) and are left as they were; the amended run and sync phases append their own evidence when they run. The status in `spec.md` is `in-progress` for the amendment; `sync_commit_sha` below is the prior close's value and stays until the amended sync replaces it.
+
 ## §E.2 Run-phase Evidence
 
 Recorded at sync from `.moai/reports/t1432/verdict.md` (run-phase verdict, commit `668900855`), `.moai/reports/t1432/red-baseline.md` and `.moai/reports/t1432/run-evidence-m1-m3.md`. Platform of every run-phase measurement: darwin arm64, uid 501, go1.26.8. Linux and Windows runtime were not observed. Per-section commands, verbatim outputs and exit codes are in `verdict.md` section 2; this section carries the pointers and the sync-phase re-measurements.

@@ -4,6 +4,8 @@ Verification layer for `spec.md` §C. Every criterion is `Given … When … The
 
 **Document-level pin.** Every RED-now cell below was measured on tree `db6d88a2a` (committed HEAD of `WT-harness-retention-debt` when the plan was first written; its Go code is identical to base `1e2151a38`, `git diff --quiet 1e2151a38 db6d88a2a -- internal cmd` exit 0). A ledger entry that carries another SHA says so: the entries re-run for revision 0.3.0 carry `2ebc10f8f`, whose Go code is also identical to base (ledger E-031).
 
+**Amendment 0.4.0 pin [0.4.0].** Every RED-now, green-at-base and survivor cell the amendment adds (ledger E-032 to E-046, below the original ledger) was measured on tree `7639c04c1` (committed HEAD of `WT-harness-retention-debt` when the amendment was written, clean status before and after; it carries the card's run and sync commits and no heal-lock code). A cell that carries another SHA says so. The amended or new criteria are AC-HRH-006 (rewritten), AC-HRH-008 (optional case d), AC-HRH-010 (one sentinel), AC-HRH-011 (one clause), AC-HRH-015 and AC-HRH-016 (new); every other criterion and ledger entry is the 0.3.0 text, kept as history. The amendment's drafts live in the session scratch directory `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/783a9ff3-1235-40b6-8b28-8f6b61be9e2c/scratchpad/t1432-amend/` and are instruments, not part of the change (Gap G-9).
+
 **Classes.** Each criterion carries one class:
 
 - **RB (release-blocking)** — a behaviour-changing criterion whose RED was observed on the pre-implementation tree (ledger id in the RED-now column) and which a named milestone flips.
@@ -24,15 +26,17 @@ Verification layer for `spec.md` §C. Every criterion is `Given … When … The
 | AC-HRH-003 | REQ-HRH-003 | F7 boundary | RG | E-012 (case b green at base); case a is the existing test | stays green; mutation proof at M2 |
 | AC-HRH-004 | REQ-HRH-003, 004 | Q4 refusal and warning | RG | not obtainable: needs the owner seam (Gap G-1) | `--- PASS` at M2 plus three mutants killed at M2 |
 | AC-HRH-005 | REQ-HRH-001, 003, 004 | Q4 default owner check, link-owner rule | RG | not obtainable: symbol absent (Gap G-1) | `--- PASS` at M2 plus three mutants killed at M2 |
-| AC-HRH-006 | REQ-HRH-005 | heal safety | RG | not obtainable: helper absent (Gap G-1) | `--- PASS` at M2 plus one mutant killed at M2 |
+| AC-HRH-006 [0.4.0] | REQ-HRH-005 | heal safety, heal-lock serialization | RB (case b); RG (cases a, c, d); optional M9 (case e) | case b: E-036 (exit 1, `did not wait`, entry replaced); case a green at base (E-040); cases c, d green at base (E-039); case e survivors E-044 | case b flips at M8: `--- PASS`, exit 0; cases a, c, d stay green; mutants killed at M8 |
 | AC-HRH-007 | REQ-HRH-006 | event loss | RB | E-003 (exit 1, `late-event count = 0`) | flips at M1: `--- PASS`, exit 0 |
-| AC-HRH-008 | REQ-HRH-007 | event loss, terminator | RB (cases b, c); RG (case a) | E-004, E-005 (exit 1); case a green at base | flips at M1: `--- PASS`, exit 0 |
+| AC-HRH-008 | REQ-HRH-007 | event loss, terminator | RB (cases b, c); RG (case a); optional M9 (case d) [0.4.0] | E-004, E-005 (exit 1); case a green at base; case d survivor E-044 (N2) | flips at M1: `--- PASS`, exit 0; case d adopted at M9 |
 | AC-HRH-009 | REQ-HRH-008 | append and pre-lock path | RG | E-013 green at base, E-028 (the `-L` form); controls E-014, E-029, E-015, E-030 | stays exit 0 |
-| AC-HRH-010 | REQ-HRH-009, 010, 011 | disclosure | RB | E-010 (`0`, exit 1), E-011 (`1`, exit 0) | flips at M5: each sentinel count ≥ 1, old sentence 0 |
-| AC-HRH-011 | REQ-HRH-012 | cross-platform | RG | E-016 green at base; controls E-017, E-018 | stays exit 0 |
+| AC-HRH-010 | REQ-HRH-009, 010, 011 | disclosure | RB | E-010 (`0`, exit 1), E-011 (`1`, exit 0); the ninth sentinel (0.4.0): E-041 (`0`, exit 1) | flips at M5 (eight sentinels) and M8 (the ninth, `heal lock gives no exclusion on Windows`): each sentinel count ≥ 1, old sentence 0 |
+| AC-HRH-011 | REQ-HRH-012 | cross-platform | RG | E-016 green at base; controls E-017, E-018; heal-lock controls E-043 (0.4.0) | stays exit 0 |
 | AC-HRH-012 | REQ-HRH-013 | N1 | RB | E-009 (exit 1, `panic: test timed out after 40s`) | flips at M4: fails in ≤ 15 s under mD |
 | AC-HRH-013 | REQ-HRH-014 | N2 / mB | RB (survivor RED) | E-006 survives (exit 0), E-007 killed by the draft (exit 1) | lands at M0: `--- PASS` unmutated (E-020), fails under mB |
 | AC-HRH-014 | REQ-HRH-015 | N2 / mC | RB (survivor RED) | E-008 survives (exit 0); kill not obtainable (Gap G-2) | flips at M3: `--- PASS` unmutated, fails under mC |
+| AC-HRH-015 [0.4.0] | REQ-HRH-016 | heal lock, contention timeout | RB | E-037 (exit 1, error `<nil>`, entry replaced, no warning) | flips at M8: `--- PASS`, exit 0, three mutants killed |
+| AC-HRH-016 [0.4.0] | REQ-HRH-016 | heal lock, hostile heal-lock entry | RB | E-038 (exit 1, four subtests red, no hang) | flips at M8: `--- PASS`, exit 0, three mutants killed |
 
 ## Acceptance scenarios
 
@@ -78,13 +82,23 @@ Verification layer for `spec.md` §C. Every criterion is `Given … When … The
 - Verify: `go test -count=1 -v -run '^TestOwnerCheckDefault$' ./internal/harness/` prints `--- PASS` and exits 0 (file carries `//go:build !windows`); `GOOS=windows go build ./internal/harness/` exits 0 (AC-HRH-011).
 - Class RG: the symbol is absent at base (G-1). Adoption proof at M2: three mutants must each fail this test. (1) A check that always answers "owned" fails (b) and (e). (2) A check that reads the owner of the entry a link points at (a follow-the-link stat) fails (d): the link owned by the current user and pointing at `/` reads as not owned; this mutant passes AC-HRH-001..004 and -006, which use a user-owned target or an injected answer (plan-audit iteration 2, finding B2). (3) A check that treats every symbolic link as owned fails (e); it passes (d), which is why (e) exists. Limitations stated, not hidden: the wiring and steps (b), (d) are pinned only where the test user is not root, and (e) only where a foreign-owned link is among the candidates (darwin: `/var`, `/tmp`, `/etc`); the reverse case, a foreign-owned link pointing at a user-owned target, cannot be built by a non-root user and is covered only through (e) and the injected-check test AC-HRH-004.
 
-### AC-HRH-006 — A concurrent healer's fresh state file is never removed (REQ-HRH-005)
+### AC-HRH-006 [0.4.0] — Healers serialize on the heal lock; a concurrent healer's fresh state file is never removed (REQ-HRH-005)
 
-- **Given** a symbolic link owned by the user at the state path that the heal helper has inspected, and then a stand-in for a concurrent healer that creates a healthy regular state file elsewhere in the directory and renames it over the link (so the new file's identity differs from the inspected link's),
-- **When** the helper is asked to remove the inspected entry,
-- **Then** it does not remove the new file (same identity and bytes afterwards) and reports that the entry changed; with the entry unchanged the same call removes it.
-- Verify: `go test -count=1 -v -run '^TestHealDoesNotRemoveAFreshStateFile$' ./internal/harness/` prints `--- PASS` and exits 0. The rename keeps the old link alive while the new file is created, so the two identities cannot coincide through inode reuse.
-- Class RG: the helper is absent at base (G-1). Adoption proof at M2: a mutant with an unconditional removal fails. This deterministic interleaving is the proof for two concurrent healers; the burst of N processes is not exercised and not measured (`spec.md` §F).
+Rewritten in 0.4.0. Case (a) is the 0.3.0 criterion kept as case (a); cases (b) to (d) are new; case (e) is optional (plan M9).
+
+- **(a) Given** a symbolic link owned by the user at the state path that the heal helper has inspected, and then a stand-in for a concurrent healer that creates a healthy regular state file elsewhere in the directory and renames it over the link (so the new file's identity differs from the inspected link's), **when** the helper is asked to remove the inspected entry, **then** it does not remove the new file (same identity and bytes afterwards) and reports that the entry changed; with the entry unchanged the same call removes it.
+  - Verify: `go test -count=1 -v -run '^(TestHealDoesNotRemoveAFreshStateFile|TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal)$' ./internal/harness/` prints two `--- PASS` lines and exits 0 (E-040). The rename keeps the old link alive while the new file is created, so the two identities cannot coincide through inode reuse.
+- **(b) Given** a faulty symbolic link owned by the current user at the state path, a log with one stale event, and another descriptor holding an exclusive `flock` on `<log>.prune-heal`, **when** `PruneStaleEntries(30)` starts, **then** (i) after 300 ms the pruner has not returned and the state-path entry is still the inspected link (same file identity, same type); and **when** the holder then renames a fresh, healthy regular state file carrying a still-fresh stamp over the link (as a winning healer would) and releases the lock, **then** (ii) the pruner returns nil, the fresh file has the same identity and bytes, and the log is byte-identical (the pruner re-inspected under the lock, did not remove the winner's file and adopted its stamp).
+  - Verify: `go test -count=1 -v -run '^TestPruneHealSerializesOnTheHealLock$' ./internal/harness/` prints `--- PASS` and exits 0. The file carries `//go:build !windows`, takes the lock itself with `syscall.Flock`, and names the heal-lock file by the literal `.prune-heal`, so it compiles against the unmodified package (M7).
+  - Why (i) cannot be falsely red: a slow runner only delays the pruner, which is blocked on the lock either way; it can make (i) pass vacuously only if the pruner has not yet reached the lock, which (ii) then covers (the pruner must still end with the winner's file intact). Step (ii) can be falsely red only if the test itself is stalled for longer than the 2 s bound between (i) and the release, so that the pruner legitimately times out; not measured under load (Gap G-12).
+- **(c) Given** an absent state path, and a healthy regular state file whose stamp is expired, **when** `PruneStaleEntries(30)` runs on each, **then** the prune runs (the stale event is gone from the log) and no heal-lock entry exists afterwards.
+  - Verify: `go test -count=1 -v -run '^TestPruneCommonPathCreatesNoHealLock$' ./internal/harness/` prints `--- PASS` and exits 0 (E-039).
+- **(d) Given** a faulty symbolic link owned by the current user and a month archive path made a FIFO so the pruner blocks in its archive step after it has healed the entry and stamped, **when** the test, with the pruner blocked there, takes a non-blocking exclusive `flock` on `<log>.prune-heal`, **then** the `flock` succeeds (the heal lock is held only across the re-inspection and the removal, never across the prune).
+  - Verify: `go test -count=1 -v -run '^TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep$' ./internal/harness/` prints `--- PASS` and exits 0 (E-039; the file carries `//go:build !windows`).
+- **(e) Optional, plan M9, Priority Low (N1 and N4 of `sync-audit-delta.md`).** The removal helper does not remove a swapped-in file whose modification time equals the inspected entry's (a `Chtimes` on the fresh file before the removal call), and the file arm of the heal (an unwritable regular file) removes the entry only through the conditional removal (a stand-in owner check renames a fresh stamped file over it). Verify: `go test -count=1 -v -run '^(TestHealRemovalIsNotDecidedByModTimeAlone|TestPruneHealFileArmKeepsAFreshStateFileSwappedInDuringTheHeal)$' ./internal/harness/`. Survivor RED: E-044 (mutants N1 and N4 pass the whole package); kills and unmutated passes observed with drafts: E-045. If M9 is not done, the two items are listed as carried debt in the verdict; they are never silently dropped.
+- RED-now: E-036, case (b), exit 1. Red for the stated reason: no heal lock exists at this tree, so the pruner heals at once (`the pruner returned (<nil>) while another descriptor held the heal lock: it did not wait`; `the state-path entry was removed or replaced while the heal lock was held by another descriptor`). Cases (a), (c), (d) are green at base (E-040, E-039): they pin behaviour the change must keep, and case (d) is vacuous at base (no lock is taken at all) and earns its adoption from its mutant.
+- Class: RB for case (b); RG for (a), (c), (d); optional for (e). Mutant probe, to be run at M8 and pasted failing into the verdict: heal lock never taken (fails (b): the RED-now itself); heal lock taken on the common path (fails (c)); heal lock held across the prune (fails (d)); for (a) a removal that is unconditional (fails (a)). **Stated limit:** a mutant that releases the lock before the removal, or takes it after the re-inspection, satisfies (b) to (d) and is not killed by any deterministic test, because no seam sits between the re-inspection and the removal; it is covered by the post-fix race probe (Definition of Done 10, an expectation until measured) and by review.
+- The raw race cannot be reproduced deterministically without a seam inside the helper, so (b) is the contract test: at this tree it fails because the lock is not honoured, after the change it passes because the lock serializes. The statistical evidence is the probe, DoD 10: pre-fix, through the production entry point and with a lock-honouring swapper, 5 removals in 1270 trials (E-035); post-fix expectation, 0 removals in at least 20000 trials with no early stop. The audit's own probe (E-034) calls the bare removal helper and will still count removals after the change, by design (the lock is taken by its caller); it is a control, not the post-fix evidence.
 
 ### AC-HRH-007 — A late event survives the prune (REQ-HRH-006)
 
@@ -101,6 +115,7 @@ Verification layer for `spec.md` §C. Every criterion is `Given … When … The
 - **Then** in (a) the replacement equals what the baseline writes (the existing `TestPruneKeepsUnparsedLinesVerbatim` and `TestPruneNothingStaleLeavesLogUntouched` pass unmodified); in (b) the fragment occurs exactly once, the replacement ends with a newline, and the appended event is on its own line and parses; in (c) the final stale event is still in the log after this prune (the prune rewrites the log because the other stale event is archived, and the rewrite adds the terminator) and is gone after a prune one interval later.
 - Verify: `go test -count=1 -v -run '^(TestPruneKeepsUnparsedLinesVerbatim|TestPruneNothingStaleLeavesLogUntouched|TestPruneTailPartialLineCarriedAndTerminated|TestPruneStaleFinalLineWithoutNewlineWaitsOneInterval)$' ./internal/harness/` prints four top-level `--- PASS` lines (`TestPruneKeepsUnparsedLinesVerbatim` also prints one indented `--- PASS` line per subtest) and exits 0 (the new tests carry `//go:build !windows`).
 - RED-now: E-004 (fragment occurs 0 times) and E-005 (the stale final line is archived at once, so it is absent), both exit 1; case a is green at base and is the pin. Mutants (probed against the drafts): a verbatim tail copy with no terminator fails (b) at its last assertion; classifying the final unterminated line fails (c). When the final unterminated stale line is the only stale event, see Edge cases.
+- **(d) Optional, plan M9, Priority Low (N2 of `sync-audit-delta.md`) [0.4.0].** **Given** a log with one stale and one fresh event and nothing appended during the prune, **when** the prune runs, **then** the replacement log is exactly the kept line: one newline in total and no trailing blank line (a raw-byte check; the log readers drop blank lines, so only a raw count sees one). Verify: `go test -count=1 -v -run '^TestPruneWithoutLateEventAddsNoBlankLine$' ./internal/harness/`. Survivor RED: E-044 (mutant N2, a newline written when the tail is empty, passes the whole package); kill and unmutated pass observed with a draft: E-045. If M9 is not done the item is carried debt in the verdict.
 
 ### AC-HRH-009 — The append path and the pre-lock path gain nothing (REQ-HRH-008)
 
@@ -115,15 +130,16 @@ Verification layer for `spec.md` §C. Every criterion is `Given … When … The
 - **Given** the final `internal/harness/retention.go`,
 - **When** it is searched for the sentinel phrases below, one per obligation,
 - **Then** each sentinel occurs at least once, the old sentence occurs 0 times, no card id appears in the file, and a reviewer reads the F5 and F6 sentences against REQ-HRH-010 and REQ-HRH-011 (the sentinels alone do not prove that the sentences state the obligations).
-- Sentinels: `residual window` (REQ-HRH-009); `no cross-process exclusion`, `burst of hook processes`, `F5: not reproduced, not measured` (REQ-HRH-010); `lock waiters block with no timeout`, `5 s hook timeout`, `appended before the wait`, `F6: not reproduced, not measured` (REQ-HRH-011).
+- Sentinels: `residual window` (REQ-HRH-009); `no cross-process exclusion`, `burst of hook processes`, `F5: not reproduced, not measured` (REQ-HRH-010); `lock waiters block with no timeout`, `5 s hook timeout`, `appended before the wait`, `F6: not reproduced, not measured` (REQ-HRH-011); `heal lock gives no exclusion on Windows` (REQ-HRH-010, the clause added in 0.4.0) [0.4.0].
 - Verify, one command per sentinel: `grep -c -F "<sentinel>" internal/harness/retention.go` prints a number ≥ 1 for each; `grep -c -F "events other hooks append in that window are lost" internal/harness/retention.go` prints 0; `grep -c -E 't1[0-9]{3}' internal/harness/retention.go` prints 0 (base: `0`, exit 1, so the guard keeps card ids out of source; card history belongs to the decision record).
-- RED-now: E-010 (the eight sentinels together match 0 lines at base, exit 1) and E-011 (the old sentence matches 1 line, exit 0). The `async` obligation of REQ-HRH-011 and the sentence-level reading are reviewer-read; this is stated as the pass condition, not hidden.
+- RED-now: E-010 (the eight sentinels together match 0 lines at base, exit 1) and E-011 (the old sentence matches 1 line, exit 0). For the ninth sentinel (0.4.0): E-041, `grep -c -F "heal lock gives no exclusion on Windows" internal/harness/retention.go` prints `0` and exits 1 on tree `7639c04c1`, where the other eight are already present (landed at M5); it flips at M8, with the heal-lock code, to a count of at least 1. The `async` obligation of REQ-HRH-011 and the sentence-level reading are reviewer-read; this is stated as the pass condition, not hidden.
 
 ### AC-HRH-011 — The shared lock package is untouched and Windows builds, vets and compiles the tests (REQ-HRH-012)
 
 - **Given** the final tree,
 - **Then** every file under `internal/lockfile` is byte-identical to the base, and `internal/harness` and `internal/lockfile` build and vet for Windows, vet compiling their test files, so a FIFO test without a `//go:build !windows` constraint, or a POSIX-only production file without a Windows twin, fails here.
 - Verify: `git diff --quiet 1e2151a38 -- internal/lockfile` exits 0; `GOOS=windows go build ./internal/harness/ ./internal/lockfile/` exits 0; `GOOS=windows go vet ./internal/harness/ ./internal/lockfile/` exits 0. Verification level: build and vet only (no Windows runtime).
+- **[0.4.0] The heal-lock files are covered by the same two commands.** The new POSIX-only production code (the heal-lock helper: `syscall.Flock`, `O_NOFOLLOW`, `O_NONBLOCK`) lives in `retention_heal_unix.go` (`//go:build !windows`) with a `retention_heal_windows.go` twin defining the same symbol, and `retention_heallock_test.go` carries `//go:build !windows`; a missing twin or a missing tag makes the Windows build or vet fail. Level: build and vet only; Windows runtime not observed, and the twin's "acquires no exclusion" behaviour is reviewer-read. This clause is a regression-guard with no RED-now of its own (the twin cannot differ before it exists); its positive controls are E-043: with an untagged test file calling `syscall.Flock` the Windows vet exits 1 (`undefined: syscall.Flock`), and with the draft heal-lock tests (tagged) it exits 0.
 - Class RG (green at base, E-016). Positive controls: with an untagged FIFO test file the Windows vet exits 1 (E-017) and with the draft files tagged it exits 0 (E-018). Why this is the only per-card guard: the `test` job in `.github/workflows/ci.yml` runs on `ubuntu-latest` only (`:125`), and its Windows leg is a cross-compile of the binary (`go build`, test files not compiled, `:509`, `:545`); the three-OS `go vet ./...` and `go test` run in `.github/workflows/release-pr-multi-os.yml` (matrix `:98`, steps `:152`, `:210`) at release time (READ, not run here), so a Windows test-file compile error would otherwise surface at release.
 
 ### AC-HRH-012 — A pruner that never archives fails the killed-pruner test quickly (REQ-HRH-013)
@@ -150,12 +166,32 @@ Verification layer for `spec.md` §C. Every criterion is `Given … When … The
 - Verify: `go test -count=1 -v -run '^TestPruneStampWriteFailureSkipsPrune$' ./internal/harness/` prints `--- PASS` and exits 0 unmutated, and exits 1 under mC. The test file carries `//go:build !windows`; the outcome, not the mechanism, is the criterion, so a different seam that produces the same failure satisfies it.
 - RED-now: a survivor RED. E-008: the whole package with mC applied prints `ok` and exits 0. The kill observation needs the extracted locked phase, which exists only after M3 (Gap G-2). Linux behaviour of a read-only handle is not observed; if it differs, the seam choice in `spec.md` §B D5 is revisited before M3.
 
+### AC-HRH-015 [0.4.0] — A heal lock held past the bound fails closed within the bound (REQ-HRH-016)
+
+- **Given** a faulty symbolic link owned by the current user at the state path (pointing at a 64-byte victim), a log with one stale event, and another descriptor that holds an exclusive `flock` on `<log>.prune-heal` for the whole call,
+- **When** `PruneStaleEntries(30)` runs with standard error captured, bounded by a hard cap of 8 s so that an unbounded wait fails the test instead of hanging it,
+- **Then** the call returns in under 4.5 s (the bound is 2 s, the hook timeout 5 s) with a non-nil error naming the heal-lock path; the state-path entry is unchanged (same file identity, same mode, still a link); the victim is unchanged; the log is byte-identical and no archive directory exists; standard error holds exactly one line that starts with `[WARN] harness/retention:` and contains the heal-lock path; and the heal-lock entry is the same regular file, still empty (not removed, replaced or truncated).
+- Verify: `go test -count=1 -v -run '^TestPruneHealLockHeldPastTheBoundFailsClosed$' ./internal/harness/` prints `--- PASS` and exits 0. The test is serial (no `t.Parallel()`) because it swaps `os.Stderr`, and its file carries `//go:build !windows`.
+- RED-now: E-037, exit 1. Red for the stated reason: no heal lock exists at this tree, so the pruner heals at once (`want an error naming …prune-heal, got <nil>`; `the state-path entry was removed or replaced although the heal lock was not acquired`; `log changed`; no warning), after 0.03 s, far inside the ceiling, so the failure is in the outcome and not in the timing.
+- Mutant probe, at M8, each pasted failing into the verdict: an unbounded blocking wait (fails the 4.5 s ceiling after the 8 s cap); the heal proceeding after the bound (fails: the entry is replaced); no error or no warning (fails). The ceiling assertion could be falsely red on a runner so loaded that the 2 s wait stretches past 4.5 s; not measured under load (Gap G-12). The criterion pins an upper bound; that a waiter does wait for a lock that is released in time is pinned by AC-HRH-006 (b).
+
+### AC-HRH-016 [0.4.0] — A hostile heal-lock entry fails closed, is never followed, truncated or removed, and adds no hang path (REQ-HRH-016)
+
+- **Given** a faulty symbolic link owned by the current user at the state path and, at the heal-lock path `<log>.prune-heal`, (a) a symbolic link to a 64-byte victim file, (b) a directory, (c) a FIFO, (d) a regular file for which the pruner's owner check answers "not owned" (the check replaced through the existing test-only field by one that says "owned" for every path except the heal-lock path),
+- **When** `PruneStaleEntries(30)` runs in each case with standard error captured, the call bounded at 4.5 s,
+- **Then** each call returns (no hang) with a non-nil error naming the heal-lock path; the state-path entry is unchanged; the state-path victim is unchanged; the log is byte-identical; standard error holds exactly one line that starts with `[WARN] harness/retention:` and contains the heal-lock path; and the heal-lock entry is untouched: in (a) still a link, with the victim behind it byte-identical (never followed, never truncated); in (b) still a directory; in (c) still a FIFO; in (d) the same regular file, still empty.
+- Verify: `go test -count=1 -v -run '^TestPruneHealLockHostileEntryFailsClosed$' ./internal/harness/` prints `--- PASS` for the test and for its four subtests, and exits 0 (serial, `//go:build !windows`).
+- RED-now: E-038, exit 1, four subtests red. Red for the stated reason: the unmodified pruner never looks at the heal-lock path, so it heals the state-path link at once and every assertion about the outcome fails (`want an error naming …prune-heal, got <nil>`; `the state-path entry was removed or replaced although the heal lock was unusable`; `log changed`; no warning).
+- Limits, stated and not hidden: the FIFO subtest pins the outcome (fail closed, return within the cap), not the mechanism; on darwin an `O_RDWR` open of a FIFO does not block (E-032 P3), so the cap would catch a hang only on a platform where it does (Linux not observed). The interleavings between the inspection and the open (a link or FIFO swapped in) cannot be forced without a seam and are not pinned (`spec.md` §F). The real owner check on the heal-lock file is the one pinned by AC-HRH-005; (d) pins the wiring from the heal lock to the owner check, not the check.
+- Mutant probe, at M8, each pasted failing into the verdict: the heal-lock open follows links (fails (a): the victim is opened and the heal proceeds); the heal-lock owner check skipped (fails (d)); a hostile heal-lock entry removed and recreated, as the state entry is (fails (a), (b), (c)).
+
 ## Edge cases
 
 - The effective uid is 0, or the platform is Windows: permission, ownership and symbolic-link tests skip or are excluded by their build constraint; the build/vet criterion (AC-HRH-011) still runs.
 - The state path is a symbolic link to a directory or to a path that does not exist: the link (owned by the current user) is removed, never followed, and the prune continues; the target is untouched. A user-owned link to a root-owned directory such as `/` is healed the same way, because the link's own owner decides (AC-HRH-005 (d)).
 - A FIFO at the state path, or a link to a FIFO: outside this SPEC. `PruneStaleEntries` blocks in the lock-free pre-check (OBSERVED, E-025; `spec.md` §E, §F); no criterion pins or repairs it and none uses a FIFO at the state path.
-- Two processes meet the same fault at the same instant: the pruner removes an entry only if it is still the one it inspected; the residual gap and the unmeasured burst are disclosed (`spec.md` §F, AC-HRH-006).
+- Two processes meet the same fault at the same instant [0.4.0]: healers serialize on the heal lock and the pruner removes an entry only if, under the lock, it is still the one it inspected; a waiter that finds the winner's fresh file leaves it and adopts it (AC-HRH-006 b). The heal window remains on Windows and against a binary that does not honour the lock, and the production frequency of the window and of lock timeouts is unmeasured (`spec.md` §F). A lock that cannot be used fails closed (AC-HRH-015, AC-HRH-016).
+- The heal-lock entry is a leftover, empty regular file from an earlier heal [0.4.0]: it is reused; the common path never opens it, and a heal that finds it opens it without truncating it.
 - A late line is malformed JSON: it is carried verbatim like any other tail bytes, with the terminator the rule adds only when missing.
 - Late events older than the retention cutoff: carried, kept in the log, and archived by a later interval's prune.
 - The final unterminated line is the only stale event: the prune classifies nothing as stale, returns without a rewrite and adds no terminator, so the line stays unclassified until an append completes it or a later prune rewrites the log (`spec.md` §B D3); stated, not pinned by a test.
@@ -166,6 +202,7 @@ Verification layer for `spec.md` §C. Every criterion is `Given … When … The
 - `go test -race -count=1 -v ./internal/harness/` exits 0 and every pre-existing `TestPrune*` function passes; `git diff --name-only 1e2151a38 -- 'internal/harness/*_test.go'` lists only `retention_killed_test.go` among test files that existed at the base.
 - `internal/harness` package coverage stays at or above the 85 percent TRUST 5 floor (the t1425 delta audit measured 87.5 percent, `sync-audit-delta.md`); the new branches (heal, ownership refusal, tail-carry, locked-phase seam) are covered by AC-HRH-001..008 and -014.
 - `go test -race -count=20` on the killed-pruner and concurrent-process tests exits 0.
+- [0.4.0] `go test -race -count=5` on the heal-lock tests of AC-HRH-006 (b to d) and AC-HRH-016 exits 0, and AC-HRH-015 once under `-race` (its run spends the 2 s bound by design); `go vet ./internal/harness/ ./internal/lockfile/`, `GOOS=windows go build` and `GOOS=windows go vet` of both packages exit 0; `git diff --quiet 7639c04c1 -- internal/lockfile internal/harness/observer.go` exits 0 and the AC-HRH-009 `git log -L` form over `7639c04c1..HEAD` prints nothing.
 
 ## Evidence ledger (plan-phase measurements)
 
@@ -512,6 +549,281 @@ Gaps recorded by the ledger:
 - **G-7** The B3 probe files (`zz_b3_fifo_state_test.go`, `overlay-b3.json`, `probe-b3.out`) are in `.moai/reports/t1432/red-now-drafts/` but untracked at this revision; the leader force-adds them. The overlay names a scratch copy of the probe (`zz_fifo_state_test.go`), identical in content.
 - **G-8** E-026 and E-027 are darwin only: the Linux owner of root-owned symbolic links, and whether a Linux CI runner finds a candidate for AC-HRH-005 (e), are not observed.
 
+## Evidence ledger — amendment 0.4.0 [0.4.0]
+
+Entries E-032 to E-046, all measured in this session on tree `7639c04c1` (`git rev-parse --short HEAD` printed `7639c04c1`, `git branch --show-current` printed `WT-harness-retention-debt`, `git status --short` empty before the runs and empty after them). `S` below abbreviates the session scratch directory `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/783a9ff3-1235-40b6-8b28-8f6b61be9e2c/scratchpad`; every command spells it out literally in the run, and the cited commands here replace it by `S` only to keep lines short (the draft files are under `S/t1432-amend/`; the audit's probe under `S/audit/`). Package test runs held the slot lease `go-test-internal-harness` (acquired and released; `moai slot status` read `free` before and after). Each package test command was run as one compound invocation `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test …; echo "exit: $?"`; the `unset` prefix and the `echo` suffix are not part of the cited command, and the `exit:` field is that suffix's value. Where no `exit:` line was printed the tool reports a non-zero status explicitly and printed none, which is exit 0. Overlay commands read overlay JSON files that map a path inside `internal/harness/` to a draft or mutant source in `S/t1432-amend/` (Gap G-9); the committed tree was never modified.
+
+```
+id: E-032   criterion: spec.md §A heal-lock primitives (platform premises of AC-HRH-015, AC-HRH-016)   tree: 7639c04c1
+command: go run S/t1432-amend/prim/main.go
+note: a standalone stdlib program (draft instrument, not in the tree); darwin arm64, uid 501, go1.26.8; it opens two descriptors of one file, a symbolic link, a FIFO, a directory and a dangling link, as the heal-lock helper would
+stdout:
+P1 first_lock_err=<nil> second_nb_err=resource temporarily unavailable second_is_EWOULDBLOCK=true
+P1 after_first_closed_second_nb_err=<nil>
+P2 open_symlink_nofollow_err=open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/prim5270296/link: too many levels of symbolic links opened=false
+P2 victim_bytes="VICTIM-BYTES"
+P3 open_fifo_returned=true stat_err=<nil> is_regular=false mode=prw-r--r--
+P4 open_dir_rdwr_err=open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/prim5270296/adir: is a directory opened=false
+P5 create_excl_over_dangling_err=open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/prim5270296/dangling: file exists opened=false target_created=false
+exit: 0
+```
+
+```
+id: E-033   criterion: spec.md §A heal-lock primitives (compile reach)   tree: 7639c04c1
+command: env GOOS=linux go vet S/t1432-amend/prim/main.go
+stdout: (empty)
+exit: 0
+note: compile and vet only, for the symbols syscall.Flock, LOCK_NB, O_NOFOLLOW, O_NONBLOCK, EWOULDBLOCK; Linux runtime not observed.
+command: env GOOS=windows go doc syscall.Flock
+stdout:
+doc: no symbol Flock in package syscall
+exit: 1
+command: env GOOS=windows go doc syscall.O_NOFOLLOW
+stdout:
+doc: no symbol O_NOFOLLOW in package syscall
+exit: 1
+```
+
+```
+id: E-034   criterion: spec.md §A "Heal window" (the first audit probe re-run unchanged)   tree: 7639c04c1
+command: go test -count=1 -v -timeout 150s -overlay S/audit/ov_race.json -run '^TestZZProbeRemoveWindow$' ./internal/harness/
+note: the audit's probe (`S/audit/zz_audit_race_test.go`, one swap per trial against the bare helper removeStateEntryIfUnchanged, stops after 5 violations); not mine, re-run unchanged. The figure is the trial count at which the 5th removal occurred, not a rate.
+stdout:
+=== RUN   TestZZProbeRemoveWindow
+    zz_audit_race_test.go:67: PROBE remove-window: trials=2135 helper_removed_the_swapped_in_fresh_entry=5 helper_first=2119 swap_first=11
+--- PASS: TestZZProbeRemoveWindow (7.28s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/harness	8.318s
+exit: 0
+```
+
+```
+id: E-035   criterion: spec.md §A "Heal window"; AC-HRH-006 (b), definition of done 10 (the pre-fix control of the post-fix probe)   tree: 7639c04c1
+command: go test -count=1 -v -timeout 120s -overlay S/t1432-amend/overlay-healprobe.json -run '^TestZZProbeHealWindow$' ./internal/harness/
+note: draft `zz_heal_race_probe_test.go`. Through the production entry point healStateEntry; the swapper takes an exclusive flock on <log>.prune-heal around its rename of a fresh file over the inspected link, i.e. it behaves as a healer that honours the heal lock. At this tree the production code ignores that lock, so the result is the pre-fix control. Stops after 5 violations (a violation is a trial after which the state path is absent: the heal removed the swapped-in file).
+stdout:
+=== RUN   TestZZProbeHealWindow
+    zz_heal_race_probe_test.go:93: PROBE heal-window: trials=1270 heal_removed_the_swapped_in_fresh_entry=5 path_holds_F=1265 path_holds_other=0 heal_errors=0
+--- PASS: TestZZProbeHealWindow (4.12s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/harness	5.243s
+exit: 0
+```
+
+```
+id: E-036   criterion: AC-HRH-006 (b)   tree: 7639c04c1
+command: go test -count=1 -overlay S/t1432-amend/overlay-heallock.json -run '^TestPruneHealSerializesOnTheHealLock$' ./internal/harness/
+note: draft `zz_heallock_test.go`; the test takes the heal lock itself (syscall.Flock on the literal <log>.prune-heal), so it compiles against the unmodified package
+stdout:
+--- FAIL: TestPruneHealSerializesOnTheHealLock (0.01s)
+    zz_heallock_test.go:102: the pruner returned (<nil>) while another descriptor held the heal lock: it did not wait
+    zz_heallock_test.go:106: the state-path entry was removed or replaced while the heal lock was held by another descriptor: err=<nil>
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/harness	0.789s
+FAIL
+exit: 1
+```
+
+```
+id: E-037   criterion: AC-HRH-015   tree: 7639c04c1
+command: go test -count=1 -overlay S/t1432-amend/overlay-heallock.json -run '^TestPruneHealLockHeldPastTheBoundFailsClosed$' ./internal/harness/
+note: the temporary-directory path in the messages is trimmed to `<tmp>`; everything else is verbatim. This is the second run, with the 8 s hang cap added to the draft; the first run (without the cap) printed the same failing lines.
+stdout:
+--- FAIL: TestPruneHealLockHeldPastTheBoundFailsClosed (0.03s)
+    zz_heallock_test.go:187: want an error naming <tmp>/001/usage-log.jsonl.prune-heal, got <nil>
+    zz_heallock_test.go:190: the state-path entry was removed or replaced although the heal lock was not acquired: err=<nil>
+    zz_heallock_test.go:196: log changed
+    zz_heallock_test.go:199: archive directory exists: <nil>
+    zz_heallock_test.go:202: want exactly one warning line naming <tmp>/001/usage-log.jsonl.prune-heal, got ""
+FAIL
+FAIL	github.com/modu-ui/moai-adk/internal/harness	0.892s
+FAIL
+exit: 1
+```
+
+```
+id: E-038   criterion: AC-HRH-016   tree: 7639c04c1
+command: go test -count=1 -v -overlay S/t1432-amend/overlay-heallock.json -run '^TestPruneHealLockHostileEntryFailsClosed$' ./internal/harness/
+note: trimmed to the deciding lines: the symlink subtest's four failure lines (the other three subtests print the same four lines with their own paths) and the summary; `<tmp>` stands for the temporary directory
+stdout:
+=== RUN   TestPruneHealLockHostileEntryFailsClosed/symlink
+    zz_heallock_test.go:277: want an error naming <tmp>/001/usage-log.jsonl.prune-heal, got <nil>
+    zz_heallock_test.go:280: the state-path entry was removed or replaced although the heal lock was unusable: err=<nil>
+    zz_heallock_test.go:286: log changed
+    zz_heallock_test.go:289: want exactly one warning line naming <tmp>/001/usage-log.jsonl.prune-heal, got ""
+--- FAIL: TestPruneHealLockHostileEntryFailsClosed (0.10s)
+    --- FAIL: TestPruneHealLockHostileEntryFailsClosed/symlink (0.02s)
+    --- FAIL: TestPruneHealLockHostileEntryFailsClosed/directory (0.00s)
+    --- FAIL: TestPruneHealLockHostileEntryFailsClosed/fifo (0.03s)
+    --- FAIL: TestPruneHealLockHostileEntryFailsClosed/not-owned (0.05s)
+FAIL
+FAIL	github.com/modu-ui/moai-adk/internal/harness	0.947s
+FAIL
+exit: 1
+```
+
+```
+id: E-039   criterion: AC-HRH-006 (c) and (d), green at base (regression-guards)   tree: 7639c04c1
+command: go test -count=1 -v -overlay S/t1432-amend/overlay-heallock.json -run '^TestPruneCommonPathCreatesNoHealLock$' ./internal/harness/
+stdout:
+=== RUN   TestPruneCommonPathCreatesNoHealLock
+=== RUN   TestPruneCommonPathCreatesNoHealLock/absent
+=== RUN   TestPruneCommonPathCreatesNoHealLock/healthy-expired-stamp
+--- PASS: TestPruneCommonPathCreatesNoHealLock (0.07s)
+    --- PASS: TestPruneCommonPathCreatesNoHealLock/absent (0.07s)
+    --- PASS: TestPruneCommonPathCreatesNoHealLock/healthy-expired-stamp (0.01s)
+PASS
+ok  	github.com/modu-ui/moai-adk/internal/harness	1.044s
+exit: 0
+command: go test -count=1 -v -overlay S/t1432-amend/overlay-heallock.json -run '^TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep$' ./internal/harness/
+stdout:
+=== RUN   TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep
+=== PAUSE TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep
+=== CONT  TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep
+--- PASS: TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep (0.31s)
+PASS
+ok  	github.com/modu-ui/moai-adk/internal/harness	0.926s
+exit: 0
+note: both pass at base because no heal lock exists; (d) is vacuous at base and earns adoption from its mutant (heal lock held across the prune), to be run at M8. A swept-count run of all five draft test names printed `--- FAIL` for AC-HRH-006 (b), AC-HRH-015, AC-HRH-016 (and its four subtests) and `--- PASS` for (c) and (d), so no name selected zero tests.
+```
+
+```
+id: E-040   criterion: AC-HRH-006 (a), green at base   tree: 7639c04c1
+command: go test -count=1 -v -run '^(TestHealDoesNotRemoveAFreshStateFile|TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal)$' ./internal/harness/
+stdout:
+=== RUN   TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal
+=== PAUSE TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal
+=== RUN   TestHealDoesNotRemoveAFreshStateFile
+=== PAUSE TestHealDoesNotRemoveAFreshStateFile
+=== CONT  TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal
+=== CONT  TestHealDoesNotRemoveAFreshStateFile
+--- PASS: TestHealDoesNotRemoveAFreshStateFile (0.01s)
+--- PASS: TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal (0.02s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/harness	1.198s
+exit: 0
+```
+
+```
+id: E-041   criterion: AC-HRH-010, the ninth sentinel   tree: 7639c04c1
+command: grep -c -F "heal lock gives no exclusion on Windows" internal/harness/retention.go
+stdout:
+0
+exit: 1
+```
+
+```
+id: E-042   criterion: definition of done 11 (the heal-lock path is gitignored)   tree: 7639c04c1
+command: git check-ignore -v .moai/harness/usage-log.jsonl.prune-heal
+stdout: (empty)
+exit: 1
+command: git check-ignore -v .moai/harness/usage-log.jsonl.prune-state
+stdout:
+.gitignore:352:.moai/harness/usage-log.jsonl.prune-state	.moai/harness/usage-log.jsonl.prune-state
+exit: 0
+note: the second command is the positive control: the state-file path is ignored, by the exact line `.gitignore:352`; the heal-lock path is not ignored at this tree.
+command: grep -n "harness\|prune" internal/template/templates/.gitignore
+stdout:
+219:!.agents/skills/moai-harness/
+exit: 0
+note: the distributed template carries no `.prune-state` entry (its one `harness` line is an unrelated allow-list line), so the template is not changed.
+```
+
+```
+id: E-043   criterion: AC-HRH-011 clause (heal-lock files), controls   tree: 7639c04c1
+command: env GOOS=windows go vet ./internal/harness/ ./internal/lockfile/
+stdout: (empty)
+exit: 0
+command: env GOOS=windows go vet -overlay S/t1432-amend/overlay-untagged-flock.json ./internal/harness/
+stdout:
+# github.com/modu-ai/moai-adk/internal/harness [github.com/modu-ai/moai-adk/internal/harness.test]
+S/t1432-amend/zz_untagged_flock_test.go:19:14: undefined: syscall.Flock
+S/t1432-amend/zz_untagged_flock_test.go:19:41: undefined: syscall.LOCK_EX
+S/t1432-amend/zz_untagged_flock_test.go:19:57: undefined: syscall.LOCK_NB
+exit: 1
+command: env GOOS=windows go vet -overlay S/t1432-amend/overlay-heallock.json ./internal/harness/
+stdout: (empty)
+exit: 0
+note: the second command is the control (a test file calling syscall.Flock with no //go:build !windows constraint breaks the Windows vet); the third injects the tagged draft heal-lock tests and passes. Build and vet only; Windows runtime not observed.
+```
+
+```
+id: E-044   criterion: AC-HRH-006 (e), AC-HRH-008 (d) (survivor RED: the three test-debt mutants pass the whole package)   tree: 7639c04c1
+note: each mutant is a copy of the tree's `retention.go` edited in the scratch directory (`S/t1432-amend/mut/`), applied with an overlay; the tree never held a mutant. N1: the identity comparison in removeStateEntryIfUnchanged reduced to the modification time only (violates D4.c). N2: appendLogTail writes a newline when the tail is empty. N4: the "file" arm of healStateEntry calls os.Remove directly (the symbolic-link arm keeps the conditional removal). The same three survive in `sync-audit-delta.md` (D4, D6, D5; its figures not relied on).
+command: go test -count=1 -overlay S/t1432-amend/mut/overlay-N1.json ./internal/harness/
+stdout:
+ok  	github.com/modu-ai/moai-adk/internal/harness	6.144s
+exit: 0
+command: go test -count=1 -overlay S/t1432-amend/mut/overlay-N2.json ./internal/harness/
+stdout:
+ok  	github.com/modu-ai/moai-adk/internal/harness	6.691s
+exit: 0
+command: go test -count=1 -overlay S/t1432-amend/mut/overlay-N4.json ./internal/harness/
+stdout:
+ok  	github.com/modu-ai/moai-adk/internal/harness	8.247s
+exit: 0
+```
+
+```
+id: E-045   criterion: AC-HRH-006 (e), AC-HRH-008 (d) (kill observation with drafts)   tree: 7639c04c1
+command: go test -count=1 -v -overlay S/t1432-amend/overlay-m9.json -run '^(TestHealRemovalIsNotDecidedByModTimeAlone|TestPruneHealFileArmKeepsAFreshStateFileSwappedInDuringTheHeal|TestPruneWithoutLateEventAddsNoBlankLine)$' ./internal/harness/
+note: draft `zz_m9_test.go`, unmutated; the three `=== RUN`, `=== PAUSE` and `=== CONT` lines are trimmed
+stdout:
+--- PASS: TestHealRemovalIsNotDecidedByModTimeAlone (0.03s)
+--- PASS: TestPruneWithoutLateEventAddsNoBlankLine (0.03s)
+--- PASS: TestPruneHealFileArmKeepsAFreshStateFileSwappedInDuringTheHeal (0.03s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/harness	1.060s
+exit: 0
+command: go test -count=1 -v -overlay S/t1432-amend/mut/overlay-m9-N1.json -run '^TestHealRemovalIsNotDecidedByModTimeAlone$' ./internal/harness/
+stdout (trimmed to the failing lines):
+    zz_m9_test.go:56: removal of a changed entry with an equal modification time: removed=true err=<nil>, want false and nil
+    zz_m9_test.go:59: fresh state file was removed or changed: ""
+--- FAIL: TestHealRemovalIsNotDecidedByModTimeAlone (0.02s)
+exit: 1
+command: go test -count=1 -v -overlay S/t1432-amend/mut/overlay-m9-N2.json -run '^TestPruneWithoutLateEventAddsNoBlankLine$' ./internal/harness/
+stdout (trimmed to the failing lines):
+    zz_m9_test.go:135: replacement log = "{\"timestamp\":\"2026-10-01T00:00:00Z\",\"event_type\":\"feedback\",\"subject\":\"fresh\",\"context_hash\":\"h\",\"tier_increment\":0,\"schema_version\":\"v2.1\"}\n\n": want exactly one newline-terminated kept line and no blank line
+--- FAIL: TestPruneWithoutLateEventAddsNoBlankLine (0.02s)
+exit: 1
+command: go test -count=1 -v -overlay S/t1432-amend/mut/overlay-m9-N4.json -run '^TestPruneHealFileArmKeepsAFreshStateFileSwappedInDuringTheHeal$' ./internal/harness/
+stdout (trimmed to the failing lines):
+    zz_m9_test.go:109: the fresh state file was removed or replaced by the heal's file arm: err=<nil>
+--- FAIL: TestPruneHealFileArmKeepsAFreshStateFileSwappedInDuringTheHeal (0.03s)
+exit: 1
+```
+
+```
+id: E-046   criterion: definition of done 9 (the amendment's ordering check, and its controls)   tree: 7639c04c1
+command: git log --reverse --format=%h 7639c04c1..HEAD -- internal/harness/retention.go internal/harness/retention_heal_unix.go internal/harness/retention_heal_windows.go
+stdout: (empty)
+exit: 0
+note: the bounded listing at the amendment base is empty: no heal-lock production commit exists yet. An empty listing means "no production commit yet", never a pass (it is expected at M7 itself, and is a Gap if still empty at M10).
+command: git log --reverse --format=%h 1e2151a38..7639c04c1 -- internal/harness/retention.go
+stdout:
+c1cc3fe67
+f52dd1b1c
+b3a469eab
+9289a92b6
+exit: 0
+note: positive control: the bounded form lists the card's four earlier production commits on a range that holds changes.
+command: git merge-base --is-ancestor 9289a92b6 ac40cf3bf
+stdout: (empty)
+exit: 1
+command: git merge-base --is-ancestor ac40cf3bf 9289a92b6
+stdout: (empty)
+exit: 0
+note: positive controls: a mis-ordered pair (the later commit first) exits 1, the correctly ordered pair exits 0.
+```
+
+Gaps recorded by the amendment ledger:
+
+- **G-9** The drafts, probes and mutant copies of E-032 to E-046 live in the session scratch directory, which is session-scoped and untracked; the overlay JSON files name it by absolute path. The leader or M7 hoists them to a tracked evidence path (as `red-now-drafts/` did for 0.3.0) and regenerates the overlay files; until then the commands run only where that directory exists.
+- **G-10** Every entry is darwin arm64, uid 501, go1.26.8 on APFS; Linux and Windows runtime are not observed (E-033 is compile-only for Linux). The kernel's release of a lock when its holder is killed is reasoned from `flock` semantics, not observed.
+- **G-11** AC-HRH-006 (b), AC-HRH-015 and AC-HRH-016 have a RED-now (E-036 to E-038) but no kill observation: the heal-lock code does not exist, so no mutant of it can be built. Their adoption proof is the mutation runs named in their cells, to be observed at M8. AC-HRH-006 (c) and (d) are green at base and vacuous there (E-039).
+- **G-12** The timing assertions (the 300 ms of AC-HRH-006 (b), the 4.5 s ceiling of AC-HRH-015, the 4.5 s cap of AC-HRH-016) were not run under machine load; background load is prohibited here. The 2 s bound is an engineering choice, not measured under load (decision-index Q9).
+- **G-13** Refused command, recorded per `verification-claim-integrity.md` §3.1: the swept-count run of the five heal-lock draft tests, first written as `go test … | grep …`, was refused by the worktree guard ("construct too complex to verify"); it was re-run with the output redirected to a scratch file and the top-level result lines read with a plain `grep` (the E-039 note records what it showed). The post-fix race probe (definition of done 10) and the mutant kills of the heal lock are expectations until M8 and M10.
+
 ## Definition of Done
 
 1. The commit that adds the new failing tests is an ancestor of every commit that touches `internal/harness/retention.go`, witnessed on the commit graph and evaluated on the card branch before it is merged into develop: `git log --diff-filter=A --format=%h -- internal/harness/retention_statepath_test.go` names the tests commit T; the commits touching production code are listed by `git log --reverse --format=%h 1e2151a38..HEAD -- internal/harness/retention.go` (bounded to the card's own range: the unbounded form lists seven commits older than the base, E-021, for which no check of T can pass), and `git merge-base --is-ancestor T <each>` exits 0 for every one. An empty listing means no production commit exists yet and is a Gap, not a pass (it is expected to be empty at M0 itself, E-022). The check can fail: `git merge-base --is-ancestor` exits 1 on a mis-ordered pair, and the bounded form lists a hash on a range that holds a change (E-024, E-023). `.moai/reports/t1432/red-baseline.md` and every other `.moai/reports/t1432/*` file are committed with `git add -f` (the path is ignored by `.gitignore:235`; `git ls-files .moai/reports/t1432` must list each) in commit T; the ignored report is evidence content, the tracked test files are the witness.
@@ -522,3 +834,12 @@ Gaps recorded by the ledger:
 6. The three mutation runs of AC-HRH-004, the three of AC-HRH-005 (a check that always answers "owned"; an owner read that follows the link; every symbolic link treated as owned), the one of AC-HRH-006 and the two of AC-HRH-003 (a heal that removes a directory; a heal that ignores the removal failure) are recorded as killed; mB, mC and mD are re-run and shown killed or failing fast.
 7. The leader has been told which `spec.md` §B options remain operator-held and unselected, and that the single allowed test-only field was spent on the owner lookup.
 8. The completion report states `Windows runtime not observed` in its Gaps section and names the intermediate red commit T by SHA in one line (`spec.md` §D).
+
+Amendment 0.4.0 items (9 to 14) [0.4.0]; items 1 to 8 are the 0.3.0 text and still hold (item 1's bounded range `1e2151a38..HEAD` now also contains the amendment's commits, all descendants of T, so it still passes):
+
+9. The amendment's ordering, witnessed on the commit graph and evaluated on the card branch before it is merged into develop: the commit T2 that adds `internal/harness/retention_heallock_test.go` (`git log --diff-filter=A --format=%h -- internal/harness/retention_heallock_test.go` names it) is an ancestor of every commit listed by `git log --reverse --format=%h 7639c04c1..HEAD -- internal/harness/retention.go internal/harness/retention_heal_unix.go internal/harness/retention_heal_windows.go`, checked with `git merge-base --is-ancestor T2 <each>`. An empty listing is a Gap, not a pass (it is empty at M7 itself, E-046). The controls are E-046: a bounded range that holds changes lists their hashes, and a mis-ordered pair exits 1. `.moai/reports/t1432/red-baseline-amend.md` and every other new `.moai/reports/t1432/*` file are committed with `git add -f` in T2 (the path is ignored by `.gitignore:235`).
+10. The post-fix race evidence is a measurement, not the expectation written here: the draft `zz_heal_race_probe_test.go` (adapted if the signature of the heal entry point changed), run against the final tree, through the production heal entry point and with a swapper that honours the lock, over at least 20000 trials with no early stop, counts 0 removals of the swapped-in file. Two controls, run in the same session against the same final tree, show that the probe can fail and that the lock is what makes it pass: the same heal probe with a swapper that does NOT take the lock still counts removals (a process that does not honour the lock defeats it), and the audit's unchanged bare-helper probe (E-034) still counts removals (the removal helper is unchanged; the lock is taken by its caller). Pre-fix reference: 5 removals in 1270 trials (E-035). The result is pasted verbatim into the verdict with its trial count; a probe that stopped early or ran fewer trials is a Gap.
+11. The repository `.gitignore` ignores the heal-lock path: `git check-ignore -v .moai/harness/usage-log.jsonl.prune-heal` exits 0 (RED-now: exit 1, E-042). The distributed template `.gitignore` is not changed (E-042: it carries no `.prune-state` entry either).
+12. AC-HRH-006 (b), (c), (d), AC-HRH-015 and AC-HRH-016 each PASS with the command and verbatim output in `verdict.md`; the mutants named in their cells are recorded killed, and the limit of AC-HRH-006 (a lock released before the removal is not killed by any deterministic test) is stated in the verdict. The optional M9 cases, AC-HRH-006 (e) and AC-HRH-008 (d), are either PASS with their kills recorded or listed as carried debt.
+13. The sync phase of the amendment hands the following to the owners named in the Status Transition Ownership Matrix, not to this SPEC's run phase: the `CHANGELOG.md` sentence that says the heal race "narrows but does not close" (manager-docs, at the amended sync), and the status of `.moai/reports/t1432/residual-risk-removal-window.md` (superseded by the amendment; the leader session decides the note).
+14. The completion report states `Windows runtime not observed` in its Gaps section, names the intermediate red commit T2 by SHA in one line, and lists every skipped test with its platform and uid.

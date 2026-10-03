@@ -2,8 +2,11 @@
 
 Derived from `spec.md` (the SSOT). Version 0.3.0, revised for plan-audit iteration 3 (the last). Milestones are ordered by decision-reversibility: the ones most likely to change come first (log-rewrite semantics, state-file path semantics), the mechanical and documentation steps last; M0 is a process step that must precede every change. Priority labels and phase ordering only; no time estimates.
 
+**Amendment 0.4.0 [0.4.0].** The spec is amended in place (`spec.md` `### Amendments`): the heal check-then-remove window is closed with a heal lock (D4.c option C, REQ-HRH-005 rewritten, REQ-HRH-016 new). This plan gains milestones M7 to M10 below M6 and the notes marked `[0.4.0]`; M0 to M6 and every unmarked line are the 0.3.0 text, kept as history. M7 is a process step like M0 (the observed RED tests in their own commit, before any implementation commit), so it precedes M8 although M8 holds the decisions most likely to change; within the amendment the order is otherwise by reversibility (M8 the heal-lock decisions, M9 test debt, M10 verification).
+
 ## §A Context
 
+- [0.4.0] Amendment base: tree `7639c04c1` on `WT-harness-retention-debt` (the card's run and sync-complete tree). Further production edits: two new build-tagged files in `internal/harness` (`retention_heal_unix.go`, `retention_heal_windows.go`) and a few lines in `retention.go` (`healStateEntry` and the constants); one new test file (`retention_heallock_test.go`) and a path guard in one existing test of this card (`retention_owner_test.go`); one `.gitignore` line. Still untouched: `internal/lockfile`, `observer.go`, the four pre-lock functions.
 - Base: develop `1e2151a38` (code-identical to the plan commit `db6d88a2a`), branch `WT-harness-retention-debt`, worktree `.moai/worktrees/t1432`.
 - Production edits: `internal/harness/retention.go`, plus two build-tagged owner-check files in the same package (a `//go:build !windows` file and a `//go:build windows` twin defining the same symbol). Test edits: `internal/harness/retention_killed_test.go` (N1) plus five new test files in the same package: `retention_statepath_test.go`, `retention_tail_test.go`, `retention_stampbytes_test.go`, `retention_stampwrite_test.go`, `retention_owner_test.go`.
 - Evidence: `.moai/reports/t1432/red-baseline.md` and `.moai/reports/t1432/verdict.md`. The path is ignored by `.gitignore:235`; this repository tracks card evidence there by force-add (`git ls-files .moai/reports/t1425` lists tracked files), so every `.moai/reports/t1432/*` file is committed with `git add -f`. The tracked test files, not the ignored report, are the ordering witness (M0).
@@ -23,6 +26,11 @@ Derived from `spec.md` (the SSOT). Version 0.3.0, revised for plan-audit iterati
 | B7 | Per-PR CI runs the `test` job on `ubuntu-latest` only (`.github/workflows/ci.yml:125`); macOS and Windows test legs run at release time (`release-pr-multi-os.yml:98`, READ). | Every probe in this plan was observed on darwin; Linux behaviour of the read-only-handle seam, the FIFO tests and the stderr capture is first exercised by CI. The local Windows vet (AC-HRH-011) is the only per-card Windows guard. |
 | B8 | Force-adding `.moai/reports/t1432/*` conflicts in spirit with the `.gitignore:235` comment ("local-only artifacts … never on the remote"). | Precedent: 1589 tracked files under `.moai/reports`, 8 of them t1425's. The leader has accepted the force-added evidence (relayed 2026-10-03) and decides whether the plan branch's evidence files are pushed. |
 | B9 | A FIFO at the state path hangs the lock-free pre-check (OBSERVED, ledger E-025); REQ-HRH-008 forbids a call added to that path. | Recorded, not repaired (`spec.md` §E, §F). If the leader wants it repaired, `spec.md` is amended first (REQ-HRH-008 and a new criterion) before M0; it is not a run-phase decision. |
+| B10 [0.4.0] | The heal-lock wait bound (2 s) and poll interval (10 ms) are engineering choices: derived from the 5 s hook timeout and the t1425 lane's 1.79 s prune, not measured under load. | Open (decision-index Q9). The run phase uses the `spec.md` §B D4.c default and records it; a different figure goes back through a spec amendment, not a run-phase edit. |
+| B11 [0.4.0] | The existing swap test `TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal` has an owner-check stand-in that renames a fresh file over whichever path it is asked about; once the heal lock asks the same owner check about the heal-lock path, the stand-in would act on that path too. | Settled in the design: M7 adds a one-line path guard (act only on the state path) to that stand-in; it should stay green at base and that is not observed until M7; it is the only edit to a test that exists at this tree. |
+| B14 [0.4.0] | The amendment edits `spec.md`, so the plan-artifact hash changes and any cached plan-auditor PASS verdict is invalid (`spec-workflow.md` § Amendment as cache-invalidating event). | One cold delta plan-audit, scoped to the amended passages, runs before M7; if it fails, the run does not start. `/moai run` Phase 1 re-executes on the changed hash. |
+| B12 [0.4.0] | The drafts, the probes and the mutant copies behind ledger E-032 to E-046 live in the session scratch directory (Gap G-9). | The leader hoists them to a tracked evidence path or M7 does, regenerating the overlay JSON files, before the scratch directory is purged. |
+| B13 [0.4.0] | The CHANGELOG sentence "narrows but does not close" and the record `residual-risk-removal-window.md` describe the 0.3.0 close. | Not this SPEC's run phase: the amended sync (manager-docs) updates the sentence and the leader decides the record's status (Definition of Done 13). |
 
 ## §C Pre-flight (run phase, before M0)
 
@@ -102,6 +110,50 @@ Comment-only edits in `retention.go`: the `PruneStaleEntries` doc comment (above
 - List every Gap: skipped tests with platform and uid, unobserved Linux and Windows behaviour, and the unmeasured heal burst. The completion report's Gaps section states `Windows runtime not observed`, and one line names the intermediate red commit T by SHA (`spec.md` §D).
 - Evaluate the M0 Exit ordering check on the card branch before the merge into develop; an empty bounded listing at this point is a Gap, not a pass.
 
+## §F.1 Amendment milestones M7 to M10 [0.4.0]
+
+Run after the delta plan-audit of the amended artifacts (B14). Same discipline as M0 to M6: one milestone per delegation, commits by explicit pathspec, tests scoped to `./internal/harness/` under the slot lease, the kanban environment scrubbed in the same invocation, every `go test -run` read after its swept count.
+
+### M7 — Observed RED baseline for the heal lock (Priority High; own commit T2; precedes every heal-lock production commit)
+
+Goal: make the amendment's ordering witnessable from the commit graph (`verification-claim-integrity.md` §2.3), as M0 did, and keep the baseline commit compilable.
+
+1. Author `internal/harness/retention_heallock_test.go` with `//go:build !windows`: the tests of AC-HRH-006 (b), (c), (d), AC-HRH-015 and AC-HRH-016, compiling against the unmodified package. They name the heal-lock file by the literal `.prune-heal`, take the lock themselves with `syscall.Flock`, and use only existing symbols and helpers (`captureStderr`, `blockedPruner`, `writeStaleLog`, `stampSuffix`); a test that names an absent symbol (`pruneHealSuffix`, a new helper) breaks the build of the whole package and turns every other RED into a build failure. The drafts behind E-036 to E-039 are the model; the AC-HRH-015 test carries a hard cap (8 s) and the AC-HRH-016 test a 4.5 s cap per case, so an unbounded wait or a hang fails the test instead of hanging the run.
+2. Add the path guard (act only on the state path) to the owner-check stand-in of `TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHeal` in `retention_owner_test.go` (B11).
+3. Confirm the package builds: `go vet ./internal/harness/` and `GOOS=windows go vet ./internal/harness/ ./internal/lockfile/` exit 0 on the commit's tree.
+4. Run each new test against the unmodified `retention.go`, without an overlay, and record per criterion the command, verbatim stdout, exit code and tree SHA in `.moai/reports/t1432/red-baseline-amend.md`. Expected: AC-HRH-006 (b), AC-HRH-015 and AC-HRH-016 fail; (c) and (d) pass at base (regression-guards; (d) vacuous there); the existing swap test and AC-HRH-006 (a) still pass. A criterion whose M7 RED differs from its ledger cell (E-036 to E-038) is a Gap.
+5. Record the baselines E-041 (the ninth sentinel) and E-042 (`.gitignore`), and hoist the drafts and the overlay-regenerated probe to a tracked evidence path (B12).
+6. Commit the test files and `red-baseline-amend.md` (`git add -f .moai/reports/t1432/red-baseline-amend.md`, tests staged by explicit pathspec) in one commit T2, e.g. `test(SPEC-HARNESS-RETENTION-HARDEN-001): observed RED baseline for the heal lock (card t1432)`.
+
+Exit (evaluated on the card branch, before the merge into develop): Definition of Done 9, with its controls (E-046). The listing is bounded to `7639c04c1..HEAD`; at M7 it is expected to be empty and is never read as a pass.
+
+### M8 — The heal lock (Priority High; REQ-HRH-005, -010, -016; AC-HRH-006 b to d, -010 ninth sentinel, -011, -015, -016)
+
+The decisions most likely to change (the wait bound, the inspection and open form of the heal-lock file, what the owner check is asked). Approach (WHAT; names are suggestions, the criteria bind behaviour):
+
+1. In `retention.go`: constants `pruneHealSuffix` (`.prune-heal`, beside `pruneStateSuffix`), `pruneHealWait` (2 s) and `pruneHealPoll` (10 ms), each with a doc comment stating the technical fact (the 5 s hook timeout, why 2 s) and no card id or design history.
+2. `retention_heal_unix.go` (`//go:build !windows`): one helper that, given the heal-lock path and the owner-check function, returns a release function or an error naming the path. It inspects the path with `os.Lstat` (at most three inspections); creates it exclusively with mode 0600 when absent (`O_CREATE|O_EXCL|O_RDWR|O_NOFOLLOW|O_NONBLOCK`, so it never follows a link and never truncates); opens an existing regular file read-write with `O_NOFOLLOW|O_NONBLOCK` and no `O_CREATE` or `O_TRUNC`; requires the opened file to be regular and `os.SameFile` with the inspection; asks the owner check about the path; then polls `syscall.Flock(LOCK_EX|LOCK_NB)` every `pruneHealPoll` until `pruneHealWait` on the real clock (`EWOULDBLOCK` and `EINTR` mean poll again, any other error means unusable). It never removes, replaces, truncates or chmods the file. A symbolic link, a directory, a FIFO or any other non-regular entry is never opened (the decisive FIFO rule, `spec.md` §B D4.c item 6).
+3. `retention_heal_windows.go` (`//go:build windows`): the same unexported symbol, returning a no-op release and no error, creating no file; its comment states that the heal lock gives no exclusion on Windows, that the window of option A remains there, and that the Windows runtime is not observed.
+4. In `healStateEntry`, after the ownership check passes: acquire the heal lock; on an error write the one warning line (`[WARN] harness/retention: …` naming the heal-lock path, the form of the state-entry warning) and return the error naming that path, so `openStateFile` returns it and the prune is skipped before any stamp is written; otherwise run `removeStateEntryIfUnchanged` while holding the lock and release the lock before returning, so it is never held when `openStateFile` creates the replacement or when `pruneExclusive` locks the state file. `openStateFile`'s absent and healthy-regular branches are not edited (AC-HRH-006 c).
+5. Disclosure comments (English, no card id, no design history): `healStateEntry` and the `@MX:REASON` of `openStateFile` say the removal runs under the heal lock; the `PruneStaleEntries` or `pruneExclusive` doc comment carries the sentence `heal lock gives no exclusion on Windows` (REQ-HRH-010; the comment goes above the function so AC-HRH-009's function-scoped check stays empty). Update the `@MX:REASON` that today states the concurrent-healer guarantee without the heal lock.
+6. `.gitignore`: add `.moai/harness/usage-log.jsonl.prune-heal` after the `.prune-state` line (`.gitignore:352`); the template `.gitignore` is not touched (E-042).
+7. Verify: M7's tests flip (AC-HRH-006 b, c, d, AC-HRH-015, AC-HRH-016 each `--- PASS`, swept count read); the full package under `-race`; `GOOS=windows go build` and `go vet` of both packages (AC-HRH-011); AC-HRH-009's two commands; the ninth sentinel of AC-HRH-010 (count at least 1).
+8. Mutation runs, recorded in `verdict.md`, each regenerated from the then-current `retention.go` (copies in the scratch directory are bound to `7639c04c1`, the N6 hazard): heal lock never taken; taken on the common path; held across the prune; open follows links; owner check skipped; hostile entry removed and recreated; unbounded wait; heal proceeding after the bound; no error or no warning. State that a lock released before the removal is not killed by a deterministic test (`acceptance.md` AC-HRH-006).
+9. The race probe of Definition of Done 10, with its controls. Do not touch `observer.go`, `internal/lockfile` or the four pre-lock functions.
+
+### M9 — Test debt N1, N4, N2 (Priority Low; optional, only if cheap; AC-HRH-006 e, AC-HRH-008 d)
+
+Land the three draft tests of E-045 (the model) in files this card created: N1 and N4 in `retention_owner_test.go`, N2 in `retention_tail_test.go`. Each is adopted by its mutant killed, the mutants regenerated from the then-current files (E-044 shows the three survive the suite today). "Cheap" means the draft's shape suffices with no new seam or field; where one is needed, stop and carry the debt to the verdict as an accepted item (`sync-audit-delta.md` D4 to D6). The test commit needs no production change and may precede or follow M8.
+
+### M10 — Verification and close-out of the amendment (Priority Medium)
+
+- `go test -race -count=1 -v ./internal/harness/`, `go vet ./internal/harness/ ./internal/lockfile/` and the quality-gate runs of `acceptance.md` exit 0; the heal-lock tests under `-race -count=5`, AC-HRH-015 once.
+- `GOOS=windows go build` and `go vet` of both packages exit 0; `git diff --quiet 7639c04c1 -- internal/lockfile internal/harness/observer.go` exit 0; the AC-HRH-009 `git log -L` form over `7639c04c1..HEAD` prints nothing.
+- The mutation outputs of M8 and M9 pasted failing into `verdict.md`; the race probe and its two controls with their trial counts (Definition of Done 10); `git check-ignore` exit 0 for the heal-lock path.
+- State the judging build for every project-tool measurement next to the tree HEAD (`verification-claim-integrity.md` §2.2); list every Gap (skipped tests with platform and uid, Linux and Windows unobserved, the unmeasured production frequency and the 2 s bound under load); `Windows runtime not observed` and the SHA of T2 in the completion report.
+- Evaluate the Definition of Done 9 ordering check on the card branch before the merge into develop; an empty bounded listing at this point is a Gap.
+- Hand off Definition of Done 13 (the CHANGELOG sentence, the status of the residual-risk record) to its owners.
+
 ## §G Anti-patterns to avoid
 
 - Fixing F5 or F6 in code without a reproduction (the leader's narrowing): the disclosure is the repair.
@@ -113,7 +165,15 @@ Comment-only edits in `retention.go`: the `PruneStaleEntries` doc comment (above
 - Reading a `go test -run` exit 0 without its swept count.
 - Claiming a Windows result from a build or vet run.
 - Repairing the FIFO hang inside the lock-free pre-check on this card: REQ-HRH-008 forbids a call added to that path, and the condition is recorded, not repaired (`spec.md` §E).
+- [0.4.0] Building the heal lock in `internal/lockfile` (REQ-HRH-012), or adding a try-lock there.
+- [0.4.0] Taking the heal lock on the common path (an absent or healthy state entry), or holding it across the prune: it covers the re-inspection and the removal only.
+- [0.4.0] Opening the heal-lock path through a link, with a blocking open, with truncation, or after skipping the owner check; removing, replacing or "healing" a damaged heal-lock entry.
+- [0.4.0] Driving the wait from the injected `nowFn` clock instead of the real clock; a wait with no bound.
+- [0.4.0] Presenting the audit's bare-helper probe as the post-fix evidence: the lock is taken by the helper's caller, so that probe still counts removals after the change by design; the evidence is the probe through the heal entry point with a lock-honouring swapper, with its two controls.
+- [0.4.0] Claiming a Windows result from a build or vet run, or claiming the Windows window is closed.
 
 ## §H Cross-references
+
+[0.4.0] `.moai/reports/t1432/sync-audit.md` (F1), `.moai/reports/t1432/sync-audit-delta.md` (D1 to D6), `.moai/reports/t1432/residual-risk-removal-window.md`; `.claude/rules/moai/development/spec-frontmatter-schema.md` (the `completed → in-progress (amendment)` transition); `.claude/rules/moai/workflow/spec-workflow.md` § Amendment as cache-invalidating event.
 
 `spec.md` §A-§F; `acceptance.md`; `decision-index.md`; `.moai/reports/t1425/sync-audit.md` §3, `.moai/reports/t1425/sync-audit-delta.md` §3 and §1 Residual-risk, `.moai/reports/t1425/decision-records.md`; `.moai/reports/t1432/plan-audit.md` (iteration 1); `.moai/reports/t1432/plan-audit-iter2.md` (iteration 2); `.moai/specs/SPEC-AGENT-TEAM-RETIRE-001/spec.md` REQ-ATR-001; `.claude/rules/moai/core/verification-claim-integrity.md` §2.2, §2.3; `.claude/rules/moai/development/verification-completeness.md` §1.1, §2, §2.1.
