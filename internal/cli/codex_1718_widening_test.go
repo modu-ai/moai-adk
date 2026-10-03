@@ -21,8 +21,11 @@ var codex1718S1Findings = []Finding{
 	{
 		Severity: "High",
 		Title:    "[docs/guide.md:28](docs/guide.md:28), [docs/intro.md:3](docs/intro.md:3) · 높음 — 판매자 유형 하나에만 권한 확인 경로를 제시해. 다른 유형의 진입 경로도 함께 안내해.",
-		File:     "docs/guide.md",
-		Line:     28,
+		// Two distinct path:line candidates (guide.md, intro.md): the anchor
+		// stays unset by design (codexFindingAnchorOf — ambiguity is not
+		// resolved by position, SPEC-CODEX-GATE-SCOPING-001 N1).
+		File: "",
+		Line: 0,
 	},
 	{
 		Severity: "Medium",
