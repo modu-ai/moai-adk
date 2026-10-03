@@ -49,6 +49,7 @@ mismatch the consumer re-executes the check.
 Verbs:
   verify record   record one executed check result under the current-tree key
   verify check    freshness query — exit 0 fresh / exit 1 stale
+  verify run      run a command, or reuse a passing result recorded for the same tree state
   verify sync-gate     run the sync-phase gate checks, record a receipt (Codex Stop chain)
   verify codex-review  run the codex review of uncommitted changes, record a receipt (Codex Stop chain)`,
 		GroupID:      "tools",
@@ -58,6 +59,9 @@ Verbs:
 
 	cmd.AddCommand(newVerifyRecordCmd(&projectRoot))
 	cmd.AddCommand(newVerifyCheckCmd(&projectRoot))
+	// Registered directly, not through verifyExtraCommands: that slice is filled
+	// by other files' init() functions, which run after this file's init().
+	cmd.AddCommand(newVerifyRunCmd(&projectRoot))
 	for _, build := range verifyExtraCommands {
 		cmd.AddCommand(build(&projectRoot))
 	}

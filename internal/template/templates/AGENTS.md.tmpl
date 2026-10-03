@@ -181,6 +181,14 @@ into the next command — each invocation is a fresh process.
 only for a genuine dependency: one command's output feeding another, writes to the same path, or
 shared-state mutation.
 
+**Run repeated verification through `moai verify run`**: it executes a command once per
+working-tree state and reuses a passing result within its TTL (default 10 minutes), so list the
+environment variables (`--env NAME,...`) and the toolchain identity (`--tool-version-cmd`) the
+result depends on — a reuse is bounded by the TTL and by what is bound. A reuse is a prior
+observation, not one made in this run: a verdict citing it names the key and `recorded_at`
+from the reuse notice and lists "output not re-observed" under Gaps — a reused result is a Gap,
+not a Claim — and a claim that needs verbatim output runs the command directly.
+
 **A CodeRabbit row in `gh pr checks` is not evidence that a review ran** — the status reads
 `success` and prints `pass` identically whether or not one did. Count the row only when BOTH hold:
 (1) `gh api "repos/$repo/commits/$head_sha/status"` reports the `CodeRabbit` context with
