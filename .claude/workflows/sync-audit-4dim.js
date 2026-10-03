@@ -88,8 +88,22 @@ const CONTEXT_SCHEMA = {
     },
     test_command: { type: 'string', description: 'the command that runs this SPEC test suite' },
     snapshot_evidence: { type: 'string', description: 'exact output of moai verify check --key-current, or an explicit unavailable/miss gap' },
+    binding_run_conditions: {
+      type: 'array',
+      description: 'one entry per item under the Binding run conditions heading of progress.md; empty when the heading is absent',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          disposed: { type: 'boolean' },
+          evidence: { type: 'string' },
+        },
+        required: ['id', 'disposed', 'evidence'],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ['spec_id', 'acceptance_criteria', 'changed_files', 'test_command', 'snapshot_evidence'],
+  required: ['spec_id', 'acceptance_criteria', 'changed_files', 'test_command', 'snapshot_evidence', 'binding_run_conditions'],
   additionalProperties: false,
 }
 
@@ -156,6 +170,7 @@ Return the audit surface as an object with EXACTLY these fields:
 - changed_files: the list of repo-relative source paths this SPEC touches (from plan.md scope + git)
 - test_command: the single command that runs this SPEC's test suite (e.g. "go test ./internal/foo/...")
 - snapshot_evidence: the exact \`moai verify check --key-current\` command and output, or an explicit gap
+- binding_run_conditions: every item under the \`Binding run conditions\` heading of the SPEC's progress.md (debts a PASS-WITH-DEBT plan verdict made binding), each with its id, whether it is disposed, and the evidence; an empty list when the heading is absent
 
 Report only what you can VERIFY from the artifacts. If a field cannot be determined, return it empty
 rather than guessing.`
@@ -215,6 +230,14 @@ const scoreOf = (j) => (j && typeof j.score === 'number' && Number.isFinite(j.sc
 const missing = DIMENSIONS.filter((dim, i) => scoreOf(judges[i]) === null)
 if (missing.length > 0) {
   return { verdict: 'INCOMPLETE', missing, tier: TIER, threshold: THRESHOLD, spec_id: SPEC_ID }
+}
+
+// Binding run conditions are a must-pass: one undisposed condition caps the verdict at FAIL.
+const undisposed = ((context && context.binding_run_conditions) || [])
+  .filter((c) => !c || c.disposed !== true)
+  .map((c) => (c && c.id) || '(unnamed)')
+if (undisposed.length > 0) {
+  return { verdict: 'FAIL', undisposed_binding_conditions: undisposed, tier: TIER, threshold: THRESHOLD, spec_id: SPEC_ID }
 }
 
 // All four judges returned a finite score. Aggregate their findings/gaps (null-filtered) for the report.

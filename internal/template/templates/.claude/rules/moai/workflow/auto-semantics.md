@@ -351,10 +351,22 @@ by relation bookkeeping.
 A wait is legitimate only as an **explicit wait** — a disk record naming:
 
 ```text
-wait record: waiting_on=<subject> reason=<why> recheck=<condition or next check point>
+wait record: id=w-<card>-<UTC> waiting_on=<subject> reason=<why> recheck=<condition or next check point>
 ```
 
-recorded on the card's evidence path or the decision board. The lane does
+recorded on the card's evidence path (the decision board is the leader's;
+a lane never writes it). A wait ends only when a board record's `resolves`
+field names its id — any other record for the same card leaves it open.
+While a wait whose `waiting_on` names the leader is open, the lane keeps a
+one-shot recheck (`CronCreate` with `recurring: false`) at
+`workflow.watchdog.wait_recheck_minutes` (default 5, never below 5) from
+now, re-armed by each fire that finds the wait still open and not re-armed
+once it resolves; the standing carrier of §5.1 stays armed. The codex runner
+has no cron tool: there the leader's board write plus the nudge is the named
+substitute. When the leader resolves a judgment a lane waits on, it records
+the ruling (`moai decision record ... --resolves <wait-id>`) before sending
+any message, sends only the record id as a nudge, and never re-sends a
+ruling a standing record governs. The lane does
 not idle-spin on a wait: it rechecks per awaken (§5), yields when the
 recheck shows no change, and never prompts the operator on its own behalf.
 Where no on-disk gate state exists (a gate mid-question), the recheck
