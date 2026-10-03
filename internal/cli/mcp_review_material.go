@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // reviewDiffMaxBytes bounds the diff carried into a backend request. A review is
@@ -85,11 +87,25 @@ func reviewDiffArgs(root, target string) ([]string, error) {
 	}
 }
 
-// resolveReviewMergeBase finds the commit this branch diverged from. It tries
-// the remote default branch first (the tree a pull request would be measured
-// against) and falls back to the local one, because a worktree cut for a card
-// may have no remote-tracking ref for its base yet.
+// resolveReviewMergeBase finds the commit this branch diverged from.
+//
+// Step 0 is the configured integration base (git_strategy.worktree_base_branch,
+// card t1426): in a git-flow repository card branches are cut from `develop`
+// while the remote default head stays `main`, and measuring a card against
+// main reviews everything develop carries that main lacks. The configured base
+// is used only when it is set AND resolves as a ref in this tree; an unset or
+// unresolvable value falls through to the pre-existing chain, so a project that
+// never configured the key behaves exactly as before.
+//
+// The chain then tries the remote default branch (the tree a pull request would
+// be measured against) and falls back to the local one, because a worktree cut
+// for a card may have no remote-tracking ref for its base yet.
 func resolveReviewMergeBase(root string) (string, error) {
+	if _, ref := reviewConfiguredBase(root); ref != "" {
+		if out, err := runReviewGit(root, "merge-base", ref, "HEAD"); err == nil && strings.TrimSpace(out) != "" {
+			return strings.TrimSpace(out), nil
+		}
+	}
 	var lastErr error
 	for _, ref := range []string{"origin/HEAD", "origin/main", "main"} {
 		out, err := runReviewGit(root, "merge-base", ref, "HEAD")
@@ -113,9 +129,10 @@ func resolveReviewMergeBase(root string) (string, error) {
 // and the asymmetry that produced this SPEC is exactly what a second chain
 // would recreate in the opposite direction.
 //
-// git_strategy.worktree_base_branch is deliberately NOT read here. If that key
-// should be the base, it should be the base for BOTH backends, which is a change
-// to resolveReviewMergeBase and a different card.
+// git_strategy.worktree_base_branch is step 0 of BOTH chains (card t1426), so
+// the codex and GLM backends still measure the same change: when the key is set
+// and resolves in this tree it is the base; otherwise the chain below applies
+// unchanged.
 //
 // resolveReviewMergeBase's chain lists origin/main and main as separate steps
 // because each names a different ref to compute a merge base FROM. At the name
@@ -129,6 +146,10 @@ func resolveReviewMergeBase(root string) (string, error) {
 // branch it cannot find, and that failure reappears as an `inconclusive` in the
 // very place this SPEC closed one.
 func resolveReviewBaseBranchName(root string) (string, error) {
+	// 0. the configured integration base, when set and resolvable
+	if name, ref := reviewConfiguredBase(root); ref != "" {
+		return name, nil
+	}
 	// 1. the remote default head
 	if out, err := runReviewGit(root, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"); err == nil {
 		name := strings.TrimPrefix(strings.TrimSpace(out), "origin/")
@@ -141,6 +162,40 @@ func resolveReviewBaseBranchName(root string) (string, error) {
 		return "main", nil
 	}
 	return "", fmt.Errorf("cannot resolve a base branch in %s", root)
+}
+
+// reviewConfiguredBase returns the configured integration base
+// (git_strategy.worktree_base_branch) of the tree at root and the full ref it
+// resolves to — the local branch first, then origin's remote-tracking ref. ref
+// is empty when the key is unset or names nothing in this tree, which callers
+// read as "no step 0".
+func reviewConfiguredBase(root string) (name, ref string) {
+	name = config.LoadWorktreeBaseBranch(root)
+	if name == "" {
+		return "", ""
+	}
+	for _, candidate := range []string{"refs/heads/" + name, "refs/remotes/origin/" + name} {
+		if _, err := runReviewGit(root, "rev-parse", "--verify", "--quiet", candidate); err == nil {
+			return name, candidate
+		}
+	}
+	return name, ""
+}
+
+// describeReviewBase names the base a baseBranch review of the tree at root is
+// measured against — branch name plus merge base — so an audit result says
+// which base it used. Empty when no base resolves (the review itself then fails
+// open on the same cause).
+func describeReviewBase(root string) string {
+	name, err := resolveReviewBaseBranchName(root)
+	if err != nil {
+		return ""
+	}
+	sha, err := resolveReviewMergeBase(root)
+	if err != nil {
+		return name
+	}
+	return name + " (merge base " + sha + ")"
 }
 
 // reviewRefResolves reports whether name resolves as a branch in the tree,

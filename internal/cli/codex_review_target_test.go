@@ -199,8 +199,8 @@ func TestCodexAudit_NativeBaseBranchCarriesBranch(t *testing.T) {
 
 // TestCodexAudit_BaseBranchResolutionChain — AC-CRT-002 / REQ-CRT-003.
 // The chain is the one resolveReviewMergeBase uses, read at the NAME layer:
-// the remote default head, then `main`. git_strategy.worktree_base_branch is
-// NOT a step (spec.md §A.7).
+// the remote default head, then `main`. Card t1426 superseded spec.md §A.7:
+// git_strategy.worktree_base_branch is now step 0 when set and resolvable.
 func TestCodexAudit_BaseBranchResolutionChain(t *testing.T) {
 	t.Run("step1_remote_default_head", func(t *testing.T) {
 		repo := newReviewTargetRepo(t)
@@ -223,11 +223,11 @@ func TestCodexAudit_BaseBranchResolutionChain(t *testing.T) {
 		}
 	})
 
-	// [HARD] the non-read clause. The fixture DIVERGES: the config key names a
-	// branch that exists (so a config-reading resolver would happily return it)
-	// while origin/HEAD points at main. Only a fixture where the two differ can
-	// tell the two designs apart.
-	t.Run("worktree_base_branch_is_not_read", func(t *testing.T) {
+	// Card t1426 reverses the spec.md §A.7 non-read clause: the configured
+	// integration base is step 0. The fixture still DIVERGES (the config key
+	// names an existing branch while origin/HEAD points at main) so only a
+	// config-reading resolver can satisfy it.
+	t.Run("worktree_base_branch_is_step_zero", func(t *testing.T) {
 		repo := newReviewTargetRepo(t)
 		seedRemoteMain(t, repo)
 		reviewTargetGit(t, repo, "branch", "divergent-base")
@@ -240,8 +240,8 @@ func TestCodexAudit_BaseBranchResolutionChain(t *testing.T) {
 		}
 
 		sess, _ := runNativeAudit(t, repo, codexTargetBaseBranch)
-		if got := sentTargetBranch(t, sess); got != "main" {
-			t.Errorf("target.branch = %q, want %q — worktree_base_branch must NOT be read on this path (spec.md §A.7)", got, "main")
+		if got := sentTargetBranch(t, sess); got != "divergent-base" {
+			t.Errorf("target.branch = %q, want %q — the configured integration base is step 0 (card t1426)", got, "divergent-base")
 		}
 	})
 

@@ -318,6 +318,12 @@ type ReviewOutput struct {
 	// (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-004). The verdict is unchanged.
 	// Additive + omitempty.
 	StateNotice string `json:"state_notice,omitempty"`
+
+	// ReviewBase names the base a baseBranch audit measured the change against
+	// — branch plus merge base — so a verdict says which diff it judged (card
+	// t1426: the configured integration base now outranks the remote default
+	// head). Set only for target baseBranch; additive + omitempty.
+	ReviewBase string `json:"review_base,omitempty"`
 }
 
 // AuditProvenance is backend-supplied evidence about how a review was made.
@@ -1955,6 +1961,9 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	if target == codexTargetBaseBranch {
+		out.ReviewBase = describeReviewBase(root)
+	}
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
 	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)

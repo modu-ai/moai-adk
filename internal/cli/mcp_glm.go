@@ -288,6 +288,9 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 
 	notifyMCPProgress(ctx, token, 0.05, "glm 감사 — z.ai 요청 준비 중...")
 	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, token)
+	if target == codexTargetBaseBranch {
+		out.ReviewBase = describeReviewBase(root)
+	}
 	return review(out), nil
 }
 
