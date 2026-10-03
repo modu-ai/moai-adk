@@ -162,4 +162,6 @@ section before relying on the prune entry's retention threshold.
 unwritten was false: the observer appended one row per spawn already at the v0.6.0 amendment
 commit (`appendAuditJSONL`), and the v0.8.0 consumption contract added `override_consumption` to
 the row. REQ-AMI-009 now requires that row. The SessionEnd age-out in `prune_logs.go` is
-therefore the live growth bound, not a dormant safety net.
+whole-file and keyed on mtime (`info.ModTime().Before(cutoff)`, :171), so it removes only an
+idle file; in a project that keeps spawning agents every append refreshes the mtime and the file
+grows without bound. That growth is an open residual risk, not closed by this amendment.
