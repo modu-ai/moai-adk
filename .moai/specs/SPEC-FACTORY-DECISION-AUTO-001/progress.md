@@ -46,7 +46,50 @@ edge is a likely textual merge conflict at integration, not a code dependency.
 | Command | Verbatim result |
 |---|---|
 | `go test -count=1 -timeout 30m ./internal/homestate/...` | `ok  	github.com/modu-ai/moai-adk/internal/homestate	95.547s` / `exit=0` |
-| `go test -count=1 -timeout 30m ./internal/contract/... ./internal/hook/... ./internal/runtime/...` | see the M1 commit's follow-up entry below |
+| `go test -count=1 -timeout 30m ./internal/contract/... ./internal/hook/... ./internal/runtime/...` | contract/runtime all `ok`; `FAIL	github.com/modu-ai/moai-adk/internal/hook	730.094s` (13 failures, lane env leaking) |
+| same `./internal/hook/` with lane env scrubbed (`unset MOAI_* CLAUDE_CODE_* && go test`) | `--- FAIL: TestStaleRunNoticeFactoryLegacyLabel (1.78s)` / `exit=1` — pre-existing at base |
+
+### Milestone commits
+
+| M | Commit | Status |
+|---|---|---|
+| M1 board + CLI | `fe9bcd7a6` | done |
+| M2 shared verdict predicate + doctrine (O9 disposed: spec-workflow hash-subject sentence, local + template) | `2bde7f65e` | done in code/rules; plan-auditor.md verdict-block fields BLOCKED (agent file, outside manager-develop scope) |
+| M7 bind cache + degraded inbox | `b387d9ff8` | done |
+| M3 audit decider | — | BLOCKED: SPEC defect D-RUN-1 below |
+| M0, M4, M5, M6, M8 | — | not started (M5 and the agent-file parts of M4/M6 are agent edits outside manager-develop scope) |
+
+### SPEC defect D-RUN-1 (stopped on)
+
+REQ-FDA-014 requires "the card carries no open blocker and no operator hold", but the factory card
+record (`internal/homestate/card_record.go` `type Card`) carries no blocker or hold field, and
+design.md §5 names no source for either. Implementing T8a without a mechanical definition would
+either refuse always or drop a keep-set check. Needs manager-spec: name the source (queue `hold`
+state / `[보류` marker, progress wait records) before M3 starts.
+
+### AC evidence (run so far)
+
+| AC | Command | Verbatim key output | Status |
+|---|---|---|---|
+| AC-FDA-001/002/003 | `go test -count=1 -race -cover ./internal/decision/...` | `ok  github.com/modu-ai/moai-adk/internal/decision 2.019s coverage: 85.6% of statements` | PASS |
+| AC-FDA-001 (CLI, lane refusal) | `go test -count=1 -run TestDecisionCmd ./internal/cli/` | `ok  github.com/modu-ai/moai-adk/internal/cli 1.603s` | PASS |
+| AC-FDA-009 | `go test -count=1 -cover ./internal/auditverdict/...` ; `go test -run TestFDA_T7 ./internal/homestate/` | `ok ... auditverdict 0.272s coverage: 100.0%` ; `ok ... homestate 3.396s` (RED before wiring: `label-only PASS at T7: err=<nil>`) | PASS (contract site applies label rule only — contract records only the label) |
+| AC-FDA-007 | `go test ./internal/template/` (batch-gate doctrine A30 re-anchored) | `ok  github.com/modu-ai/moai-adk/internal/template 215.578s` | PASS |
+| AC-FDA-006 | — | plan-auditor.md not edited | BLOCKED |
+| AC-FDA-020/021/022 | `go test -count=1 -race -run TestFDA_ ./internal/hook/` | `ok  github.com/modu-ai/moai-adk/internal/hook 16.998s` (RED: `cache hit opened the broker 1 time(s)`; `first degraded inbox claim was not surfaced: ""`) | PASS (M0(a) load measurement not run) |
+| others | — | — | not started / blocked |
+
+Lint: `golangci-lint run` (v2.1.6) on hook, auditverdict, decision, contract, homestate, runtime → `0 issues.`
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_status: partial — stopped on SPEC defect D-RUN-1
+run_commit_sha: b387d9ff8
+ac_pass_count: 8
+ac_blocked_or_open: 17
+new_warnings_or_lints_introduced: 0
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
