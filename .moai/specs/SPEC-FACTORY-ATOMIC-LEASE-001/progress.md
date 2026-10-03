@@ -457,7 +457,41 @@ open_findings_for_sync_audit: F1 to F6 of the WM6 section
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+sync_status: audit-ready
+sync_complete_at: 2026-10-04
+sync_commit_sha: pending-backfill
+status_transition: in-progress → implemented → completed, frontmatter `status` + `updated` only, riding the single sync commit (spec.md `status: completed`, `updated: 2026-10-04`; plan.md and acceptance.md carry no `status:` field, `updated:` not present there either, so neither file changed)
+sync_commits: the one sync commit (subject `docs(SPEC-FACTORY-ATOMIC-LEASE-001): sync-phase artifacts ... 3-phase close (card t1458)`); its own SHA is backfilled by a following commit per the D3 exemption
+files_changed_by_sync: `CHANGELOG.md` (one `[Unreleased]` / Fixed entry, AC-FAL-012), `.moai/specs/SPEC-FACTORY-ATOMIC-LEASE-001/spec.md` (frontmatter `status`, `updated` only), this file (§E.4 and §G)
+no_other_doc_surface_changed: README, docs-site (4 locales), `.claude/rules/**`, `internal/template/templates/**`, codemaps — none states the old residual risk or the old lease behavior; grep evidence in `.moai/reports/t1458/sync-doc-sweep.txt`
+b12_self_test: pre-emission `grep -c SPEC-FACTORY-ATOMIC-LEASE-001 CHANGELOG.md` was 0 before the entry and is 1 after; live AC count 15 (`live=15 excluded=0 ambiguous=0`, `AC_FILE=acceptance.md`, tier M; `.moai/reports/t1458/sync-b12-ac-count.txt`)
+ac_fal_012: CHANGELOG entry written; it names M1 to M5 as closed within the critical section, lists the open windows R1 to R18 by name with R6 (multi-lane stall) spelled out, and its only use of "atomic" carries "within the critical section" in the same sentence; `grep -c 'R6 — multi-lane stall' CHANGELOG.md` is 1 (the spec.md count is the criterion's mutation check, spec.md §F is untouched). The sentence-level qualifier check is a reading (doctrine-only)
+ac_fal_014: NOT MET by this commit — OPEN, release-blocking. The three Amendments records (SPEC-TODO-AUTO-PICK-001, SPEC-TODO-CLASSIFY-DISPATCH-001, SPEC-FACTORY-RECORD-001) edit the bodies of three other completed SPECs through `completed → in-progress (amendment)` and need a manager-spec re-delegation (spec.md §B.4, plan D5; the leader may veto the reopening, spec §H DL-4). manager-docs may not edit SPEC bodies and may not spawn; it is returned to the orchestrator as a blocker
+open_windows_named_in_the_changelog: R1 to R18 of spec.md §F stay open as written; M1 to M5 are the closed set
+
+### Run-phase findings F1 to F6 — candidate debt, disposition proposed (recorded, none fixed)
+
+Source: §E.2 WM6, mutation pass `wm6-mutants-summary.txt`. The sync audit weighs them; the proposals below are this phase's, not a verdict.
+
+| Id | Finding | Kind | Proposed disposition |
+|---|---|---|---|
+| F1 | MU1 (record snapshot read before `WithLock`) does not turn `TestFactoryLeaseSerialBareLanesExactlyOne` red; only the variant that also reads the queue stale (MU1q) does. The bare form's exclusivity rests on `RecordPicked`'s "no longer picked" guard as a second defence | test sensitivity (AC-FAL-001 BareLanes) | Record as debt, owned by a follow-up test card: add a bare-lane case that makes the guard defence unavailable so the test isolates the section. Accept for this close — AC-FAL-001's stated pass condition is met and MU1q is red |
+| F2 | MU2 (claim after the release, the `factoryLeaseBeforeClaim` seam left inside) leaves `TestFactoryLeaseArmCOperatorHold` green; red only when the seam moves with the claim (MU2p). The test observes the seam position, not the claim position | test sensitivity (AC-FAL-003 clause (i)) | Record as debt: the follow-up card should place the operator write at a seam that is moved by the claim itself. Accept for this close — three other tests are red under MU2 |
+| F3 | `TestFactoryLeaseSectionExcludesWorktreeStep` keeps only the last creator-stub observation, so a mutant that calls the creator both inside and outside the section is masked by the later call; a moved call (MU12p) is caught | test sensitivity (REQ-FAL-007/-008) | Record as debt: record every call's in-section flag, not the last. Accept — plan §7 words MU12 as a move, and that form is red |
+| F4 | Cross-process serial-slot test detection rate is about 32% per iteration (19 of 60) against the plan's estimated 77%; a ten-iteration run would pass a process-local-mutex implementation about 2% of the time (independence assumed). The criterion's own command failed under MU7 in both runs and the real lock passed 10 of 10 | detection power (AC-FAL-001 / MU7) | Record as debt; propose raising the AC-FAL-001 cross-process repetition count in a later amendment of acceptance.md (a manager-spec edit, not made here). Accept for this close with the number stated |
+| F5 | Two repairs narrowed `TestFactoryLeaseSectionAllowedSet`: a subprocess between lock acquisition and the pass-entry seam (MU10b) and a section that writes the allowed step-lock path (MU22, a lock-order inversion) both survive | test sensitivity (REQ-FAL-007, REQ-FAL-010 ordering) | Record as debt, highest of the six because a lock-order inversion is a real hazard: the follow-up should add a check that the step lock is never held while the queue lock is, independent of the file-set scan. Recommend the sync audit weigh this one first |
+| F6 | `internal/kanban` already imports `internal/homestate`, so MU9 fails at build with an import cycle before `TestHomestateDoesNotImportKanban` runs; the guard test's `Errorf` branch is unreachable | redundant guard (REQ-FAL-010) | Accept: the layering is enforced by the compiler; no action. Optionally note the test as a documentation guard |
+
+### Sync gate evidence (this run, tree HEAD `c278fa520` plus the uncommitted sync edits; judging build: `moai` built from this tree with `go build -o <scratch>/moai ./cmd/moai`, exit 0, so the build commit equals the tree HEAD; raw files under `.moai/reports/t1458/sync-*`, git-ignored and local to this worktree)
+
+- `moai spec lint SPEC-FACTORY-ATOMIC-LEASE-001` → exit 0, output `✓ No findings — all SPEC documents are valid`. Positive control: the same verb on a copy of spec.md with the `tags:` line removed printed `FrontmatterInvalid` (count 1) and `CoverageIncomplete` warnings, so the rule set fires.
+- `moai spec audit --json` → exit 0; the only entry naming this SPEC is `era V3R6, finding_type EraAutoDetected, severity INFO, heuristic H-4 (§E.2 + §E.4 + sync_commit_sha)`; no MUST-FIX or status-drift finding for it.
+- `moai spec drift --no-cache --json` → exit 0; this SPEC does not appear in its records (count 0), so the drift detector made no statement about it (not read as a clean result).
+- `go test -count=1 -timeout 30m ./internal/spec/...` → exit 0, `ok github.com/modu-ai/moai-adk/internal/spec 112.200s`. No `internal/cli` test was run, so no `internal-cli-suite` slot was taken.
+- No Go file, template file or `.claude`/`.moai/config` mirror is touched by the sync commit, so `gofmt`, `go vet` and `make build` have nothing to judge for it; `git status --short` before the commit lists exactly `CHANGELOG.md`, spec.md and this file.
+- acceptance.md is unchanged, so no AC baseline snapshot is owed in this commit.
+
+residual_risk: the sync phase observed only what is listed in the sync gate evidence above; the run-phase measurements (68-test baseline, repetition runs, mutants, hold time) were not re-run here. Gaps: AC-FAL-014 open; per-function coverage of the changed functions not measured in run or sync; the Windows lock beyond compile; no plan-auditor or sync-auditor reading of this card yet (the sync audit follows this commit); codemaps (`.moai/project/codemaps/*`) were not regenerated and now lag the three packages' file lists by the new files (`internal/kanban/factory_step_lock.go`, the lease test files) — codemaps refresh is a separate card with its own fold guard.
 
 ## §F Phase 4 Mode Selection
 
@@ -480,7 +514,11 @@ baseline commit, RED commit); R2 = WM2; R3 = WM3 + WM4 (they land together); R4 
 the autonomous plan->run Kickoff recorded in `.moai/reports/t1458/decision.md` (git-ignored) at HEAD b27652922, and after
 absorbing develop 2b9e4a4d0 (merge 09faf2965; the plan-artifact hashes were re-checked unchanged).
 
-## §G Resume Point (after WM6, 2026-10-04)
+## §G Resume Point (after the sync commit, 2026-10-04)
+
+- Sync landed (manager-docs): one commit carrying the CHANGELOG entry, spec.md `status: completed` + `updated: 2026-10-04`, and §E.4 (find its SHA with `git log`; `sync_commit_sha` reads `pending-backfill` until a following commit backfills it). **Open for the orchestrator:** AC-FAL-014 (release-blocking) needs a manager-spec re-delegation to write the three Amendments records (SPEC-TODO-AUTO-PICK-001, SPEC-TODO-CLASSIFY-DISPATCH-001, SPEC-FACTORY-RECORD-001; `prior_completed_sha` equal to each prior close's `sync_commit_sha`, each `status` left `completed`; the leader may veto the reopening, spec §H DL-4), then the sync audit weighs F1 to F6 (§E.4), then the leader's integration window. The WM6-era resume notes below are kept as written.
+
+### Earlier resume notes (after WM6, 2026-10-04)
 
 - WM1 landed in order: 0eb3d5b0d (seam-and-stub), 807eabe20 (AC-FAL-010 baseline, 68 PASS), 1a4ef6402 (RED). WM2 landed in order: 2997abc29 (RED tests), f8cc4b978 (primitive), then the docs commit carrying this section (find its SHA with `git log`).
 - Evidence (git-ignored, this worktree only): .moai/reports/t1458/{baseline-*.txt, red-*.txt, plan-audit*.md, decision.md, park.md}.
