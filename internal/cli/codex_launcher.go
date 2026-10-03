@@ -953,7 +953,7 @@ func enterCodexRelaunchJoin(root string, entry factoryFlagParse, timing *factory
 // doors: the managed path (SPEC-FACTORY-MANAGED-CARD-CHILD-001) owns the
 // App Server child, and the direct door starts the child with
 // codexStartAndWait whenever the card environment is present (card t1488,
-// codex_direct_posix.go) instead of replacing the process via syscall.Exec.
+// codex_direct_posix.go) instead of replacing the launcher process.
 // @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
 func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool) error {
 	// The loop drives the F1 lease machinery itself, so it inherits the
