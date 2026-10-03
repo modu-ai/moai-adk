@@ -86,3 +86,8 @@ t1453 과의 관계: REQ-GFD-004~006 은 github-flow 전환 후 카드 전달을
 - `sync-audit-delta.md`: **PASS-WITH-DEBT 90/100**, 차단 지적 없음 (감사관 claude-sonnet-5-5, audited_sha 28843a6d1868616e67605086540c012b37b10146). F0·F6 해소를 실제 바이너리(miss→reuse, exit 3 통과)·신규 테스트 3개 PASS·변이 2건 적색 입증으로 확인. 채무: F1(Ctrl-C), F7(P3: 같은 init 순서 결함이 `verify sync-gate`뿐 아니라 `codex-review`·`audit-plan` 등록에도 해당할 수 있음 — 개별 미조사), F8(P3: F6 테스트의 고정 3초 sleep).
 - 영수증: 델타 감사는 교차 모델 감사 도구를 호출하지 않았다(1차 델타 시도가 55분 무응답으로 중단돼, 재시도 지시에서 호출 금지를 명시). Stop 훅이 `AUDIT_RECEIPT_VIOLATION` 을 냈고 verdict 줄은 `receipts=none`. **우회하지 않고 리더에 보고**한다.
 - 후속 카드 문안 보강(F7): 범위 (1)에 `codex-review`·`audit-plan` 등록도 포함해 각각 빌드 바이너리로 `--help` 가 전용 도움말인지 실측한다.
+
+### 영수증 처분 (리더 결정)
+
+- 영수증 없음 — 리더 수용, 미션 계약 11c79e1a, 영수증 저장소 결함. 델타 감사 `sync-audit-delta.md` 의 직접 실측 기반 PASS-WITH-DEBT 90 을 리더 결정으로 수용한다. 이 처분은 감사관 verdict 를 바꾸지 않으며(verdict 줄은 `receipts=none` 그대로), 병합 근거는 감사관 실측 + 리더 수용이다.
+- F7 후속 카드 문안(위 "후속 카드 문안" 절에 병합해 읽을 것): `verifyExtraCommands` init 순서 결함이 `moai verify sync-gate` 뿐 아니라 `codex-review`·`audit-plan` 등록에도 해당할 수 있다(`verify_receipts.go:16`, `audit_plan_cmd.go:46`, `codex_review_receipt.go:177` 가 같은 init-append 방식). 각 verb 를 빌드한 바이너리로 `--help` 실측해 전용 도움말인지 확인하고, 순서 비의존 등록 + 루트 명령 경유 해석 가드 테스트로 고친다.
