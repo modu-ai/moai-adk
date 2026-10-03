@@ -37,10 +37,6 @@ const (
 	exitNotFound = 127
 )
 
-func init() {
-	verifyExtraCommands = append(verifyExtraCommands, newVerifyRunCmd)
-}
-
 func newVerifyRunCmd(projectRoot *string) *cobra.Command {
 	var (
 		checkID        string
@@ -266,6 +262,7 @@ func verifyRunToolIdentity(ctx context.Context, root string, argv []string, time
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.WaitDelay = verifyRunWaitDelay
+	verifyRunPrepare(cmd) // process-group kill: a timeout must not leave a grandchild running
 	err := cmd.Run()
 	if errors.Is(tctx.Err(), context.DeadlineExceeded) {
 		return "", fmt.Errorf("timed out after %s", timeout)

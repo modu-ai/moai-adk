@@ -59,6 +59,9 @@ Verbs:
 
 	cmd.AddCommand(newVerifyRecordCmd(&projectRoot))
 	cmd.AddCommand(newVerifyCheckCmd(&projectRoot))
+	// Registered directly, not through verifyExtraCommands: that slice is filled
+	// by other files' init() functions, which run after this file's init().
+	cmd.AddCommand(newVerifyRunCmd(&projectRoot))
 	for _, build := range verifyExtraCommands {
 		cmd.AddCommand(build(&projectRoot))
 	}

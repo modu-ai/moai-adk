@@ -530,3 +530,70 @@ func TestVerifyRunUsageErrors(t *testing.T) {
 		t.Errorf("command without --: err %v, want exit code 2", err)
 	}
 }
+
+// runThroughRoot runs `moai verify run <args>` through the production root
+// command tree — the path main uses — rather than newVerifyRunCmd directly.
+func runThroughRoot(t *testing.T, args ...string) (stdout string, err error) {
+	t.Helper()
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs(append([]string{"verify", "run"}, args...))
+	t.Cleanup(func() {
+		rootCmd.SetArgs(nil)
+		rootCmd.SetOut(nil)
+		rootCmd.SetErr(nil)
+	})
+	err = rootCmd.Execute()
+	return out.String(), err
+}
+
+// TestVerifyRunRegisteredOnRoot guards the init-order defect: the verb must be
+// a real subcommand of `verify` in the root tree, not only in the static help.
+func TestVerifyRunRegisteredOnRoot(t *testing.T) {
+	cmd, rest, err := rootCmd.Find([]string{"verify", "run"})
+	if err != nil || cmd == nil || cmd.Name() != "run" || len(rest) != 0 {
+		t.Fatalf("rootCmd.Find(verify run) = %v, rest %v, err %v; want the run command", cmd, rest, err)
+	}
+}
+
+// TestVerifyRunThroughRootCommand executes the verb end to end through the
+// root tree: it must run the command, reuse on the second call, and pass the
+// command's exit code through.
+func TestVerifyRunThroughRootCommand(t *testing.T) {
+	r := newHelperRepo(t)
+	args := append([]string{"--project-root", r.dir, "--"}, helperArgv("count", r.counter)...)
+	out, err := runThroughRoot(t, args...)
+	if err != nil || !strings.Contains(out, "counted") {
+		t.Fatalf("first run: err %v, output %q", err, out)
+	}
+	if _, err := runThroughRoot(t, args...); err != nil {
+		t.Fatalf("second run: %v", err)
+	}
+	r.expectCount(1, "second run through the root command reuses")
+
+	_, err = runThroughRoot(t, append([]string{"--project-root", r.dir, "--"}, helperArgv("exit", "3")...)...)
+	var ec *exitCodeError
+	if !errors.As(err, &ec) || ec.ExitCode() != 3 {
+		t.Fatalf("exit passthrough through the root command: err %v, want exit code 3", err)
+	}
+}
+
+// TestVerifyRunToolVersionGrandchildKilled: the tool-identity timeout must
+// terminate the whole process group, like the main command's timeout.
+func TestVerifyRunToolVersionGrandchildKilled(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("process-group termination is Unix only; residual risk spec §D-5")
+	}
+	r := newHelperRepo(t)
+	marker := filepath.Join(t.TempDir(), "grandchild-alive")
+	flags := append(toolVersionFlags("spawn-sleep", "30s", marker), "--tool-version-timeout", "500ms")
+	res := r.runCount(flags...)
+	if res.code != 0 || r.count() != 1 {
+		t.Fatalf("command must still run once: exit %d, executions %d (stderr %q)", res.code, r.count(), res.stderr)
+	}
+	time.Sleep(3 * time.Second)
+	if _, err := os.Stat(marker); err == nil {
+		t.Error("the tool-version grandchild survived the timeout: its marker file exists")
+	}
+}
