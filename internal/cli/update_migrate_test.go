@@ -128,9 +128,11 @@ func runUpdateCobraCmd(t *testing.T, root string, flags map[string]string) (stri
 
 // confirmedRunner fakes the world where THIS run's install demonstrated
 // success: the claude list surface reads absent pre-execution and present
-// post-execution.
+// post-execution. The Claude binary is pinned to an inert scratch file so the
+// install step does not depend on a real `claude` on PATH (absent on CI).
 func confirmedRunner(t *testing.T) {
 	t.Helper()
+	setupPluginTools(t)
 	fake := &fakePluginRunner{}
 	lists := 0
 	fake.fn = func(_ context.Context, call pluginCall, _ int) ([]byte, error) {
