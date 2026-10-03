@@ -519,6 +519,19 @@ func TestPluginInstallStep_NoRealRunnerUnderTest(t *testing.T) {
 			t.Fatalf("default runner started a process under go test: %q", got)
 		}
 	})
+	t.Run("step-silent-under-default-runner", func(t *testing.T) {
+		// Under the default runner the step prints nothing, so the many tests
+		// that call runInit see no new stderr output.
+		setupPluginTools(t)
+		withPluginRunner(t, execPluginRunner{})
+		var out bytes.Buffer
+		if err := runPluginInstallStep(&out, stepOptions(t, pluginToolClaude, pluginToolCodex)); err != nil {
+			t.Fatalf("step returned %v, want nil", err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("step printed under the default runner in a test binary:\n%s", out.String())
+		}
+	})
 	t.Run("step-is-reached-positive-control", func(t *testing.T) {
 		// The empty-record assertion below is only meaningful if runInit
 		// actually reaches the step: with an injected runner it must record.
@@ -637,6 +650,51 @@ func TestInitPluginStep_AfterDeployment(t *testing.T) {
 	if earlyCalls != 0 {
 		t.Fatalf("%d plugin call(s) ran before the deployed file set was complete", earlyCalls)
 	}
+}
+
+// TestInitPluginStep_OptOut: the opt-out reaches the step through `moai init`
+// itself, by flag and by environment (AC-015 a through the init entry point).
+func TestInitPluginStep_OptOut(t *testing.T) {
+	if initCmd.Flags().Lookup("no-plugin") == nil {
+		t.Fatal("moai init has no --no-plugin flag")
+	}
+	runWith := func(t *testing.T, env string, noPlugin bool) *fakePluginRunner {
+		t.Helper()
+		setupPluginTools(t)
+		t.Setenv(config.EnvSkipPluginInstall, env)
+		t.Setenv("HOME", t.TempDir())
+		r := &fakePluginRunner{}
+		withPluginRunner(t, r)
+		cmd := newInitTestCmd()
+		cmd.Flags().Bool("no-plugin", false, "")
+		if noPlugin {
+			if err := cmd.Flags().Set("no-plugin", "true"); err != nil {
+				t.Fatal(err)
+			}
+		}
+		var out, errBuf bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetErr(&errBuf)
+		if err := runInit(cmd, []string{filepath.Join(t.TempDir(), "optout-proj")}); err != nil {
+			t.Fatalf("runInit: %v (stderr: %s)", err, errBuf.String())
+		}
+		return r
+	}
+	t.Run("control-runs-without-optout", func(t *testing.T) {
+		if r := runWith(t, "", false); len(r.calls) == 0 {
+			t.Fatal("control: init made no plugin call, so the opt-out cases prove nothing")
+		}
+	})
+	t.Run("flag", func(t *testing.T) {
+		if r := runWith(t, "", true); len(r.calls) != 0 {
+			t.Fatalf("--no-plugin still ran commands: %q", r.vectors())
+		}
+	})
+	t.Run("env", func(t *testing.T) {
+		if r := runWith(t, "1", false); len(r.calls) != 0 {
+			t.Fatalf("%s=1 still ran commands: %q", config.EnvSkipPluginInstall, r.vectors())
+		}
+	})
 }
 
 func TestInitPluginStep_HarnessGating(t *testing.T) {

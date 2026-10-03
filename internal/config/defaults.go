@@ -178,11 +178,10 @@ const (
 	// single source of truth.
 	DefaultHookDispatcherTimeout = 30 * time.Second
 
-	// DefaultPluginInstallCommandTimeout bounds ONE `claude plugin` / `codex
-	// plugin` command started by the plugin install step (SPEC-PLUGIN-
-	// MARKETPLACE-001 REQ-013). Four commands in the worst case make RK-15's
-	// 240-second ceiling a visible number rather than a literal in a call. A
-	// chosen value, not a measured one.
+	// Per-command bound of the plugin install step: it limits ONE `claude
+	// plugin` / `codex plugin` command (SPEC-PLUGIN-MARKETPLACE-001 REQ-013).
+	// Four commands in the worst case make RK-15's 240-second ceiling a visible
+	// number rather than a literal in a call. A chosen value, not a measured one.
 	DefaultPluginInstallCommandTimeout = 60 * time.Second
 
 	// DefaultPluginCommandWaitDelay is how long a plugin command's output pipes

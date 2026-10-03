@@ -91,6 +91,14 @@ type pluginCommandRunner interface {
 }
 
 // execPluginRunner is the production runner: a real process, bounded by ctx.
+//
+// @MX:WARN: [AUTO] starts a real `claude` / `codex` that writes the invoking
+// person's profile; the refusal under a test binary below is the only thing
+// keeping `go test` off a real profile.
+// @MX:REASON: [AUTO] REQ-017: the 32 runInit and 9 initCmd.RunE test call sites
+// and the doctor registry reach this seam without an edit, so the refusal must
+// hold for every caller (a deadline from the caller's context bounds the rest).
+// @MX:SPEC: SPEC-PLUGIN-MARKETPLACE-001
 type execPluginRunner struct{}
 
 func (execPluginRunner) Run(ctx context.Context, bin string, args []string, env []string) ([]byte, error) {
@@ -186,9 +194,6 @@ func runPluginInstallStep(out io.Writer, opts pluginInstallOptions) error {
 	// silent so the many tests that call runInit see no new output.
 	if _, isDefault := pluginRunner.(execPluginRunner); isDefault && isPluginTestBinary() {
 		return nil
-	}
-	if opts.Timeout <= 0 {
-		opts.Timeout = config.DefaultPluginInstallCommandTimeout
 	}
 	for _, tool := range opts.Tools {
 		installPluginFor(out, opts, tool)
