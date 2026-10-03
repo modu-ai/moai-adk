@@ -80,6 +80,17 @@ llm:
       low: "glm-5.3-flash"    # 1M context — Haiku slot (lightweight)
       fable: "glm-5.3"        # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
 
+    # Per-tier reasoning effort (z.ai reasoning state: max | high | low).
+    # The `moai glm` launcher applies the slot serving the main session's
+    # model, overriding the session-wide effort preference; sub-agents keep
+    # the session-wide value. max is the deepest reasoning and the z.ai
+    # default; glm-5.3-flash accepts max only.
+    effort:
+      high: "max"
+      medium: "max"
+      low: "max"
+      fable: "max"
+
     # ── GLM reasoning-effort mapping (documentation-only — the Go overlay at
     #    internal/template/glm_effort_overlay.go is the runtime SSOT) ──
     #

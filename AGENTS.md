@@ -27,13 +27,22 @@ harness driving this contract lacks the capability.
 | question-channel | `AskUserQuestion` | Return a blocker report naming the missing input instead of asking in prose |
 | task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
 | design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
+| agent-spawning | `Agent(...)` sub-agents | Do the bounded work inline |
+| output-style | Claude output styles | Follow this contract directly |
+| slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
+| workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
 | worktree-entry | Claude: `moai cc -w <name>` for Claude-native trees or `moai cc -w <absolute-path>` for MoAI trees; Codex app: select Worktree; Codex CLI: `moai worktree new <name>` then `codex -C <absolute-path>` | An active Codex session uses `git -C <absolute-path>`; `moai codex -w` starts a new session in an existing tree only |
+| audit-verdict-file | The auditor agent writes its own verdict or report file | On Codex, start the read-only roles (`plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor`) through the launcher, the moai MCP tool `codex_role_audit`, and never through `spawn_agent`, which would hand them your own writing sandbox. Pass `role`, your own worktree root as `worktree_root`, the task as `task`, and the verdict or report path under `.moai/reports/` as `out`; the tool returns a job id at once, and `codex_role_audit_status` / `codex_role_audit_result` report on it. The role runs as one top-level read-only `codex exec` process, and the launcher writes the verdict or report file with exactly the returned text, unedited |
 
-**`Skill("<name>")` instructions carry no row, and are read literally.** Every harness driving
-this contract can load a skill, so it earns no row above; what is Claude-only is the per-agent
-grant, not the reach. The deploy mirrors every skill to `.agents/skills/<name>/SKILL.md` alongside
-`.claude/skills/<name>/SKILL.md`, so `Skill("moai-workflow-tdd")` names
-`.agents/skills/moai-workflow-tdd/SKILL.md` — an address, not a Claude-only instruction.
+**`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
+capability every harness driving this contract has, so it earns no row above; what is Claude-only
+is the per-agent grant, not the reach. Where a harness loads a skill by reading it rather than by
+calling a tool, the deployed skill is in `.agents/skills/<name>/SKILL.md` for Codex and
+`.claude/skills/<name>/SKILL.md` for Claude. The `both` profile installs both paths.
+`Skill("moai-workflow-tdd")` names the corresponding deployed SKILL.md. Agent bodies keep
+the tool-call wording for that reason — it is an address, not a Claude-only instruction.
+Codex-side loading is **deferred** — read the mirrored SKILL.md directly; no loader resolves
+`Skill("...")` calls.
 
 ---
 
@@ -319,7 +328,7 @@ duplicate those values inline.
 | `moai hook <event>` | Hook dispatcher entry point (drives hooks.json / settings.json) |
 | `moai doctor` | Diagnose installation and wiring health |
 | `moai worktree` | Worktree lifecycle (sync / remove / clean / recover / done / snapshot / verify / restore) |
-| `moai cc` / `moai glm` / `moai gpt` | Explicit Claude, GLM, or GPT session launchers |
+| `moai cc` / `moai glm` | Explicit Claude or GLM session launchers |
 | `moai migrate cg` | Preview legacy CG migration; role changes require explicit acceptance |
 | `moai version` | Print build version and provenance |
 | `moai codex` | Codex session launcher — `cli` launch, `status` readout, `app` web; `-w <worktree>` enters an existing tree and never creates one |

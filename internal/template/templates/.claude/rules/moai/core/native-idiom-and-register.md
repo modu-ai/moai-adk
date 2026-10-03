@@ -13,7 +13,7 @@ Two registers, not one: chat replies take the colloquial native register, artifa
 
 ## Mechanism — when to invoke humanize
 
-[ZONE:Evolvable] [HARD] Heavy non-English artifacts (multi-paragraph reports, README rewrites, docs-site pages, generated sites) MUST pass through the `moai-domain-humanize` skill as a final phase before delivery, scoped to the active locale's module (`modules/korean.md` / `japanese.md` / `chinese.md`). Single-turn chat replies apply this rule inline (no skill invocation needed) — the rule above is the inline standard.
+[ZONE:Evolvable] [HARD] Heavy non-English artifacts (multi-paragraph reports, README rewrites, docs-site pages, generated sites) MUST pass through the `moai-domain-humanize` skill as a final phase before delivery, scoped to the active locale's module (`modules/korean.md` / `japanese.md` / `chinese.md`) — where the skill is installed (optional packs carry it; the default core catalog does not). A project deployed without it applies this rule inline as the humanize pass instead. Single-turn chat replies apply this rule inline (no skill invocation needed) — the rule above is the inline standard.
 
 ## Cross-references
 
