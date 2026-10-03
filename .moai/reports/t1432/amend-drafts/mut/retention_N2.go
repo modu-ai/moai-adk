@@ -523,7 +523,8 @@ func appendLogTail(dst io.Writer, logPath string, from int64) error {
 		return err
 	}
 	if len(tail) == 0 {
-		return nil
+		_, err = dst.Write([]byte("\n"))
+		return err
 	}
 	if tail[len(tail)-1] != '\n' {
 		tail = append(tail, '\n')

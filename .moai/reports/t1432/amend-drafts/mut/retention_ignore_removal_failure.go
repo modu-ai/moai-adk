@@ -251,9 +251,8 @@ func (r *Retention) healStateEntry(statePath string, inspected os.FileInfo, kind
 		fmt.Fprintf(os.Stderr, "[WARN] harness/retention: prune state %s %s is not owned by the current user or its owner cannot be determined; leaving it untouched and skipping the prune\n", kind, statePath)
 		return fmt.Errorf("retention: prune state %s %s is not owned by the current user; prune skipped", kind, statePath)
 	}
-	if _, err := removeStateEntryIfUnchanged(statePath, inspected); err != nil {
-		return fmt.Errorf("retention: prune state %s %s cannot be replaced: %w", kind, statePath, err)
-	}
+	// MUTANT (draft instrument): the removal failure is ignored.
+	_, _ = removeStateEntryIfUnchanged(statePath, inspected)
 	return nil
 }
 

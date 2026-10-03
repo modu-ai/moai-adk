@@ -269,7 +269,7 @@ func removeStateEntryIfUnchanged(path string, inspected os.FileInfo) (bool, erro
 		}
 		return false, err
 	}
-	if !os.SameFile(inspected, cur) || inspected.Mode() != cur.Mode() || !inspected.ModTime().Equal(cur.ModTime()) {
+	if !inspected.ModTime().Equal(cur.ModTime()) {
 		return false, nil
 	}
 	if err := os.Remove(path); err != nil {

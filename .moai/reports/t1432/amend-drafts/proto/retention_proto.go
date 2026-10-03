@@ -196,6 +196,16 @@ const maxStateInspections = 3
 // @MX:REASON: [AUTO] Removal happens only for an entry the current user owns and only while it is still
 // the inspected entry (removeStateEntryIfUnchanged); a concurrent healer's fresh state file must survive.
 func (r *Retention) openStateFile(statePath string) (*os.File, error) {
+	if protoLockCommonIfExists {
+		// MUTANT hook (draft instrument): lock an already-existing heal-lock file on the common path.
+		if _, serr := os.Lstat(r.logPath + protoHealSuffix); serr == nil {
+			rel, lerr := acquireHealLockProto(r.logPath+protoHealSuffix, r.ownerCheck)
+			if lerr != nil {
+				return nil, lerr
+			}
+			defer rel()
+		}
+	}
 	for range maxStateInspections {
 		fi, err := os.Lstat(statePath)
 		switch {
@@ -251,7 +261,16 @@ func (r *Retention) healStateEntry(statePath string, inspected os.FileInfo, kind
 		fmt.Fprintf(os.Stderr, "[WARN] harness/retention: prune state %s %s is not owned by the current user or its owner cannot be determined; leaving it untouched and skipping the prune\n", kind, statePath)
 		return fmt.Errorf("retention: prune state %s %s is not owned by the current user; prune skipped", kind, statePath)
 	}
-	if _, err := removeStateEntryIfUnchanged(statePath, inspected); err != nil {
+	// PROTOTYPE (draft instrument, not the implementation): the heal lock is taken here, after the
+	// ownership check, and released before this function returns.
+	healPath := r.logPath + protoHealSuffix
+	release, lerr := acquireHealLockProto(healPath, r.ownerCheck)
+	if lerr != nil {
+		fmt.Fprintf(os.Stderr, "[WARN] harness/retention: prune heal lock %s cannot be used; leaving %s untouched and skipping the prune\n", healPath, statePath)
+		return lerr
+	}
+	defer release()
+	if _, err := removeStateEntryIfUnchanged(statePath, inspected); err != nil && !protoIgnoreRemoval {
 		return fmt.Errorf("retention: prune state %s %s cannot be replaced: %w", kind, statePath, err)
 	}
 	return nil
