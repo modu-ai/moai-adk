@@ -288,6 +288,19 @@ const (
 	// on its ordinary door.
 	EnvMoaiFactoryManaged = "MOAI_FACTORY_MANAGED"
 
+	// EnvMoaiFactoryManagedTUI is the operator opt-out of the managed Codex
+	// session's TUI attach (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-003): "0",
+	// "false" or "off" (case-insensitive, trimmed) keeps the session headless.
+	// It only turns the new behavior off inside the managed gate; it is not a
+	// second opt-in.
+	EnvMoaiFactoryManagedTUI = "MOAI_FACTORY_MANAGED_TUI"
+
+	// EnvMoaiFactoryAppServerToken names the environment variable that carries
+	// the owned Codex App Server's capability token to the operator TUI child
+	// (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-002). Only the name is ever put on a
+	// command line; the value travels in the child's environment.
+	EnvMoaiFactoryAppServerToken = "MOAI_FACTORY_APP_SERVER_TOKEN"
+
 	// EnvMoaiSessionPID carries an explicit override for the PID recorded in
 	// the multi-session coordination registry. A hook subprocess exits within
 	// milliseconds of registering, so its own PID is worthless to the liveness
