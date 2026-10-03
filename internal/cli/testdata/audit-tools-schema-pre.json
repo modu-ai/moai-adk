@@ -222,6 +222,9 @@
             "object"
           ]
         },
+        "review_base": {
+          "type": "string"
+        },
         "state_notice": {
           "type": "string"
         },
@@ -268,7 +271,7 @@
           "type": "string"
         },
         "target": {
-          "description": "What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the remote default head first and then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.",
+          "description": "What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the configured git_strategy.worktree_base_branch first (when set and resolvable), then the remote default head, then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.",
           "enum": [
             "uncommittedChanges",
             "baseBranch"
@@ -423,6 +426,9 @@
             "null",
             "object"
           ]
+        },
+        "review_base": {
+          "type": "string"
         },
         "state_notice": {
           "type": "string"
@@ -617,6 +623,9 @@
             "null",
             "object"
           ]
+        },
+        "review_base": {
+          "type": "string"
         },
         "state_notice": {
           "type": "string"

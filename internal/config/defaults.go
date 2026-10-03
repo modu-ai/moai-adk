@@ -119,6 +119,15 @@ const (
 	// never completes fails the delivery instead of holding the serial queue
 	// forever; the store's claim lease owns redelivery afterwards.
 	DefaultManagedCodexTurnTimeout = 10 * time.Minute
+	// DefaultManagedSessionMaxConsecutiveTurnFailures bounds how many turn-scoped
+	// failures in a row the managed delivery driver tolerates before it returns
+	// the last failure and ends the session; a successful turn resets the count
+	// (SPEC-FACTORY-MANAGED-HARDEN-001 REQ-MH-008). UNMEASURED: there is no
+	// failure-rate data behind 3 — it is the repo's "maximum 3 retries per
+	// operation" convention (moai-constitution Error Handling Protocol), in the
+	// same spirit as the DefaultQuotaGate* defaults. Correct it here when
+	// evidence says otherwise.
+	DefaultManagedSessionMaxConsecutiveTurnFailures = 3
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
