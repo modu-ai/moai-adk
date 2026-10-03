@@ -58,7 +58,7 @@ All 12 ACs are regression-guards pending run-phase mutation evidence (spec §C C
 
 - **AC-009**: `go test ./internal/template/ -count=1` → ok (whole package, no selector).
 - **AC-010**: `golangci-lint run ./internal/template/...` → 0 issues.
-- **AC-011**: `gofmt -l internal/template/workflow_worktree_key_honesty_test.go internal/template/testdata/worktreekeyaliasprobe/aliasprobe.go` → empty output.
+- **AC-011**: `gofmt -l internal/template/workflow_worktree_key_honesty_test.go internal/template/testdata/worktreekeyaliasprobe/aliasprobe.go internal/template/testdata/worktreekeyaliasprobe/writeonly.go internal/template/testdata/worktreekeyaliasprobe/compoundassign.go` → empty output (all four new source files).
 
 ## §D.10 AC-012 — Test-file exclusion (negative control — captured pass, not RED evidence)
 
@@ -72,7 +72,7 @@ All 12 ACs are regression-guards pending run-phase mutation evidence (spec §C C
 
 ## §D.12 Quality Gate Criteria (TRUST 5)
 
-- **Tested**: the deliverable is a test; mutation matrix AC-002..008, AC-012 provides its RED evidence; AC-001/009 the GREEN.
+- **Tested**: the deliverable is a test; mutation matrix AC-002..008 provides the RED evidence; AC-012 is a negative control (captured PASS, not RED); AC-001/009 the GREEN.
 - **Readable**: findings name key + file + reason (every AC's Then clause names files); no bare booleans in output.
 - **Unified**: gofmt clean (AC-011); lint clean (AC-010); style follows the existing guard files (package-level expectation maps, `t.Helper()` helpers).
 - **Secured**: test-only change; fixture reads no user data; no network; no env dependence beyond the Go toolchain.
