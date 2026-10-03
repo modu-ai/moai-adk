@@ -181,7 +181,7 @@ new_warnings_or_lints_introduced: 0
 ```yaml
 sync_complete_at: 2026-10-03
 first_sync_commit_sha: 4293979c7
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 8e87a671d
 sync_status: completed-with-recorded-debts (re-close after sync audit PASS-WITH-DEBT 88)
 sync_audit_chain:
   - FAIL 72 (.moai/reports/t1481/sync-audit.md) → F1-F4 repaired (1b732c265)
