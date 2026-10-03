@@ -22,19 +22,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // holdRecoveryAdvice names the verb that returns a card to queued from the
 // state it is in, so a refusal tells the operator the two-step path instead
 // of only the fact of the refusal.
-func holdRecoveryAdvice(state kanban.BacklogState) string {
+func holdRecoveryAdvice(state factory.BacklogState) string {
 	switch state {
-	case kanban.BacklogStatePicked:
+	case factory.BacklogStatePicked:
 		return "unpick it first"
-	case kanban.BacklogStateDropped:
+	case factory.BacklogStateDropped:
 		return "undrop it first"
-	case kanban.BacklogStateHold:
+	case factory.BacklogStateHold:
 		return "it is already held — unhold re-queues it"
 	default:
 		return "no recovery verb is defined for that state"
@@ -65,7 +65,7 @@ addressed card's text starts with the prefix, leaving the file untouched.`,
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
 			var held string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -77,14 +77,14 @@ addressed card's text starts with the prefix, leaving the file untouched.`,
 							id, todoTextPrefix(rec.Items[i].Text), expect)
 					}
 					switch rec.Items[i].State {
-					case kanban.BacklogStateQueued:
+					case factory.BacklogStateQueued:
 						// the only holdable state
 					default:
 						return fmt.Errorf("backlog item %s is %s, not queued — %s",
 							id, rec.Items[i].State, holdRecoveryAdvice(rec.Items[i].State))
 					}
 					held = rec.Items[i].Text
-					rec.Items[i].State = kanban.BacklogStateHold
+					rec.Items[i].State = factory.BacklogStateHold
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)
@@ -121,7 +121,7 @@ a mismatch, writing nothing.`,
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
 			var released string
-			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID != id {
 						continue
@@ -131,13 +131,13 @@ a mismatch, writing nothing.`,
 							id, todoTextPrefix(rec.Items[i].Text), expect)
 					}
 					switch rec.Items[i].State {
-					case kanban.BacklogStateHold:
+					case factory.BacklogStateHold:
 						// the only unholdable state
 					default:
 						return fmt.Errorf("backlog item %s is %s, not held", id, rec.Items[i].State)
 					}
 					released = rec.Items[i].Text
-					rec.Items[i].State = kanban.BacklogStateQueued
+					rec.Items[i].State = factory.BacklogStateQueued
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)

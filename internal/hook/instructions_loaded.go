@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -84,6 +86,24 @@ func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput
 		}
 	}
 
+	// Aggregate session-start budget (SPEC-INSTRUCTIONS-BUDGET-001,
+	// REQ-INSTRBUDGET-002). Advisory only: the message names the overshoot;
+	// the event is never blocked, the exit path stays zero, and the per-file
+	// checks above are unchanged. The set roots at the write-side project
+	// root (resolveProjectRoot), never input.CWD (t1160 precedent). An empty
+	// derivation skips the comparison entirely.
+	if root := resolveProjectRoot(input); root != "" {
+		if set := instructionFileSet(root); len(set) > 0 {
+			if agg := aggregateInstructionChars(root); agg > sessionCharBudget {
+				return &HookOutput{
+					SystemMessage: fmt.Sprintf(
+						"instruction files aggregate %d chars, over the %d-char session budget across %d files; diet the always-loaded surface (advisory, does not block)",
+						agg, sessionCharBudget, len(set)),
+				}, nil
+			}
+		}
+	}
+
 	return &HookOutput{}, nil
 }
 
@@ -107,6 +127,159 @@ func (h *instructionsLoadedHandler) checkCharacterBudget(filePath string) error 
 	}
 
 	return nil
+}
+
+// sessionCharBudget is the aggregate character budget for the session-start
+// instruction-file set (the CLAUDE.md @-import closure plus the always-loaded
+// rules under .claude/rules/moai/). It sits file-locally next to charBudget
+// per plan decision D2: this package treats its budgets as handler-local, and
+// the in-file precedent is the per-file constant itself. Changing this value
+// is an operator act, not an implementation one.
+//
+// @MX:NOTE: 210000 is the operator ruling, not a derived limit — do not tune
+// it to quiet the arrival advisory; the diet it calls for is a separate card.
+// @MX:SPEC:SPEC-INSTRUCTIONS-BUDGET-001
+const sessionCharBudget = 210000
+
+// instructionFileSet derives the instruction-file set for projectRoot
+// mechanically at metric time (SPEC-INSTRUCTIONS-BUDGET-001 §D.1 — never a
+// hand-written path list):
+//
+//  1. the CLAUDE.md anchor;
+//  2. the transitive closure of `^@` import lines in the anchor — repo-
+//     relative paths resolved under projectRoot; missing members are skipped,
+//     imports escaping projectRoot are not followed, and the traversal is
+//     cycle-safe via a visited set;
+//  3. every *.md under .claude/rules/moai/ whose frontmatter — when the file
+//     starts with a --- block — lacks a top-level `paths:` key (the
+//     always-loaded rule set).
+//
+// Returns absolute cleaned paths in sorted order, duplicates removed. A
+// hardcoded enumeration of the paths would fail the fixture-growth tests.
+func instructionFileSet(projectRoot string) []string {
+	seen := make(map[string]bool)
+	var set []string
+
+	add := func(p string) {
+		if p == "" || seen[p] {
+			return
+		}
+		seen[p] = true
+		set = append(set, p)
+	}
+
+	// Anchor + transitive @-import closure (breadth-first, cycle-safe).
+	queue := []string{filepath.Join(projectRoot, "CLAUDE.md")}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if seen[cur] {
+			continue
+		}
+		data, err := os.ReadFile(cur)
+		if err != nil {
+			continue // missing/unreadable member: skip silently-and-continue
+		}
+		add(cur)
+		for _, imp := range parseImports(string(data)) {
+			if resolved := resolveUnder(projectRoot, imp); resolved != "" && !seen[resolved] {
+				queue = append(queue, resolved)
+			}
+		}
+	}
+
+	// Always-loaded rules under .claude/rules/moai/.
+	rulesDir := filepath.Join(projectRoot, ".claude", "rules", "moai")
+	_ = filepath.WalkDir(rulesDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil // unreadable subtree member: skip
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".md") {
+			return nil
+		}
+		if ruleFileAlwaysLoaded(path) {
+			add(path)
+		}
+		return nil
+	})
+
+	sort.Strings(set)
+	return set
+}
+
+// parseImports extracts the repo-relative targets of `^@` import lines.
+// Everything from the first whitespace after the path token onward is
+// ignored; a line with nothing usable after the @ is skipped.
+func parseImports(content string) []string {
+	var imports []string
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "@") {
+			continue
+		}
+		fields := strings.Fields(trimmed[len("@"):])
+		if len(fields) == 0 {
+			continue
+		}
+		imports = append(imports, fields[0])
+	}
+	return imports
+}
+
+// resolveUnder resolves a repo-relative import path under projectRoot,
+// refusing absolute paths and any target that escapes projectRoot.
+func resolveUnder(projectRoot, rel string) string {
+	if rel == "" || filepath.IsAbs(rel) {
+		return ""
+	}
+	cleaned := filepath.Clean(filepath.Join(projectRoot, rel))
+	escaped, err := filepath.Rel(projectRoot, cleaned)
+	if err != nil || escaped == ".." || strings.HasPrefix(escaped, ".."+string(filepath.Separator)) {
+		return ""
+	}
+	return cleaned
+}
+
+// ruleFileAlwaysLoaded reports whether a rules-tree markdown file belongs to
+// the always-loaded surface: it has no frontmatter block, or its frontmatter
+// lacks a top-level `paths:` key. A file without frontmatter is
+// always-loaded; malformed frontmatter (opening --- with no closer) is also
+// always-loaded — no top-level `paths:` is observable. An unreadable file is
+// never always-loaded (skipped silently per REQ-INSTRBUDGET-003).
+func ruleFileAlwaysLoaded(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	lines := strings.Split(string(data), "\n")
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
+		return true // no frontmatter block
+	}
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "---" {
+			break // closing delimiter: frontmatter ended without paths:
+		}
+		if strings.HasPrefix(lines[i], "paths:") {
+			return false // paths:-scoped: loads on demand, not session-start
+		}
+	}
+	return true
+}
+
+// aggregateInstructionChars sums utf8.RuneCount over the derived
+// instruction-file set, skipping unreadable members (REQ-INSTRBUDGET-003).
+// Rune count matches the per-file checkCharacterBudget unit (plan decision
+// D4) so the two budgets measure the same unit.
+func aggregateInstructionChars(projectRoot string) int {
+	total := 0
+	for _, path := range instructionFileSet(projectRoot) {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		total += utf8.RuneCount(data)
+	}
+	return total
 }
 
 // ruleLoadAuditFileName is the InstructionsLoaded observation log under

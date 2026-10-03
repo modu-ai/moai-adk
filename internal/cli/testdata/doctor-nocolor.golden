@@ -45,7 +45,7 @@
 │    warn    Worktree State         .moai/state/ not found — worktree checkpoint storage unavailable                                                     │
 │    ok      Worktree Base Branch   git_strategy.worktree_base_branch unset — card worktrees follow the repository default                               │
 │    ok      Git Strategy Workflow  git_strategy workflow unreadable or no active profile — nothing to interpret                                         │
-│    info    Factory Run            no session records — no factory or kanban run declared                                                               │
+│    info    Factory Run            no session records — no factory run declared                                                                         │
 │    ok      Owner Label Drift      no legacy owner_label rows                                                                                           │
 │    warn    BODP Config            .moai/branches/ not found — BODP audit trail disabled                                                                │
 │    warn    Telemetry Config       .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                             │

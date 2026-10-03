@@ -18,8 +18,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // sdCardTree names one card's worktree and its WT- branch.
@@ -48,9 +48,9 @@ func sdGitFlowDevelop(t *testing.T, root string) {
 func sdMergeFixture(t *testing.T, withConfig, provisioned, onParent bool, n int) (string, string, []sdCardTree) {
 	t.Helper()
 	root, store := fcFixture(t)
-	states := make([]kanban.BacklogState, n)
+	states := make([]factory.BacklogState, n)
 	for i := range states {
-		states[i] = kanban.BacklogStatePicked
+		states[i] = factory.BacklogStatePicked
 	}
 	fcQueue(t, store, states...)
 	fcGit(t, root, "branch", "develop")
@@ -96,7 +96,7 @@ func sdPlaceMergeReady(t *testing.T, root, cardID, lane string, tree sdCardTree)
 // shape an owning session leaves behind).
 func sdHoldWindow(t *testing.T, root, sessionID, name, branch, source, wt, card string) {
 	t.Helper()
-	if _, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
+	if _, err := factory.AcquireIntegrationLock(root, factory.IntegrationLock{
 		SessionID: sessionID, SessionName: name, Branch: branch, BranchSource: source, Worktree: wt, Card: card,
 	}, false); err != nil {
 		t.Fatalf("hold window: %v", err)
@@ -104,9 +104,9 @@ func sdHoldWindow(t *testing.T, root, sessionID, name, branch, source, wt, card 
 }
 
 // sdWindow reads the recorded window for assertions.
-func sdWindow(t *testing.T, root string) *kanban.IntegrationLock {
+func sdWindow(t *testing.T, root string) *factory.IntegrationLock {
 	t.Helper()
-	lock, err := kanban.ReadIntegrationLock(root)
+	lock, err := factory.ReadIntegrationLock(root)
 	if err != nil {
 		t.Fatalf("read window: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	t.Run("pre-merged card reaches merged-local; the window stays held", func(t *testing.T) {
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
-		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", kanban.BranchSourceConfig, integWT, "t1")
+		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 		// The lane already merged --no-ff and wrote the re-measure record.
 		fcGit(t, integWT, "merge", "-q", "--no-ff", "-m", "M t1", cards[0].branch)
 		merge := fcGit(t, integWT, "rev-parse", "HEAD")
@@ -165,7 +165,7 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	t.Run("complete performs the merge itself and records the re-measure evidence", func(t *testing.T) {
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
-		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", kanban.BranchSourceConfig, integWT, "t1")
+		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 
 		sdLaneEnv(t, "lane-1", "")
 		t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
@@ -234,7 +234,7 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 		root, _, cards := sdMergeFixture(t, false, false, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")
-		sdHoldWindow(t, root, "sess-lane-1", "lane-1", cards[0].branch, kanban.BranchSourceCaller, cards[0].wt, "t1")
+		sdHoldWindow(t, root, "sess-lane-1", "lane-1", cards[0].branch, factory.BranchSourceCaller, cards[0].wt, "t1")
 
 		sdLaneEnv(t, "lane-1", "")
 		t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
@@ -254,7 +254,7 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 		root, _, cards := sdMergeFixture(t, true, false, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")
-		sdHoldWindow(t, root, "sess-lane-1", "lane-1", cards[0].branch, kanban.BranchSourceFlag, cards[0].wt, "t1")
+		sdHoldWindow(t, root, "sess-lane-1", "lane-1", cards[0].branch, factory.BranchSourceFlag, cards[0].wt, "t1")
 
 		sdLaneEnv(t, "lane-1", "")
 		t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
@@ -275,7 +275,7 @@ func TestSD_AC024_CodexMergeRefusedComplete(t *testing.T) {
 
 	// Marker set, so admission holds and the harness check is the only
 	// possible refusal cause.
-	sdLaneEnv(t, "lane-1", kanban.BackendGPT)
+	sdLaneEnv(t, "lane-1", factory.BackendGPT)
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 	_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
 	if err == nil || !strings.Contains(err.Error(), factoryCodexMergeSentinel) {
@@ -291,7 +291,7 @@ func TestSD_AC024_CodexMergeRefusedStage(t *testing.T) {
 	sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 	before := fcCard(t, root, "t1")
 
-	sdLaneEnv(t, "lane-1", kanban.BackendGPT)
+	sdLaneEnv(t, "lane-1", factory.BackendGPT)
 	_, _, err := runFactory(t, "stage", "t1", "merging", "--run", fcRun)
 	if err == nil || !strings.Contains(err.Error(), factoryCodexMergeSentinel) {
 		t.Fatalf("codex stage merging: err = %v, want the Codex merge-edge refusal", err)
@@ -320,7 +320,7 @@ func TestSD_AC025_IntegrationWindowSerializes(t *testing.T) {
 	before2 := fcCard(t, root, "t2")
 
 	// lane-1 holds the window; lane-2's complete is refused naming lane-1.
-	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", kanban.BranchSourceConfig, integWT, "t1")
+	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 	sdLaneEnv(t, "lane-2", "")
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-2")
 	_, _, err := runFactory(t, "complete", "t2", "--run", fcRun)
@@ -336,7 +336,7 @@ func TestSD_AC025_IntegrationWindowSerializes(t *testing.T) {
 		t.Fatalf("lane-1 complete: %v", err)
 	}
 	merge1 := fcCard(t, root, "t1").MergeSHA
-	if _, err := kanban.ReleaseIntegrationLock(root, "sess-lane-1", 0, false); err != nil {
+	if _, err := factory.ReleaseIntegrationLock(root, "sess-lane-1", 0, false); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 

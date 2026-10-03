@@ -1,0 +1,53 @@
+=== RUN   TestPruneHealSerializesOnTheHealLock
+=== PAUSE TestPruneHealSerializesOnTheHealLock
+=== RUN   TestPruneHealLockHeldPastTheBoundFailsClosed
+    zz_heallock_test.go:187: want an error naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHeldPastTheBoundFailsClosed3799586260/001/usage-log.jsonl.prune-heal, got <nil>
+    zz_heallock_test.go:190: the state-path entry was removed or replaced although the heal lock was not acquired: err=<nil>
+    zz_heallock_test.go:196: log changed
+    zz_heallock_test.go:199: archive directory exists: <nil>
+    zz_heallock_test.go:202: want exactly one warning line naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHeldPastTheBoundFailsClosed3799586260/001/usage-log.jsonl.prune-heal, got ""
+--- FAIL: TestPruneHealLockHeldPastTheBoundFailsClosed (0.01s)
+=== RUN   TestPruneHealLockHostileEntryFailsClosed
+=== RUN   TestPruneHealLockHostileEntryFailsClosed/symlink
+    zz_heallock_test.go:288: want an error naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHostileEntryFailsClosedsymlink3094133087/001/usage-log.jsonl.prune-heal, got <nil>
+    zz_heallock_test.go:291: the state-path entry was removed or replaced although the heal lock was unusable: err=<nil>
+    zz_heallock_test.go:297: log changed
+    zz_heallock_test.go:300: want exactly one warning line naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHostileEntryFailsClosedsymlink3094133087/001/usage-log.jsonl.prune-heal, got ""
+=== RUN   TestPruneHealLockHostileEntryFailsClosed/directory
+    zz_heallock_test.go:288: want an error naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHostileEntryFailsCloseddirectory2912328148/001/usage-log.jsonl.prune-heal, got <nil>
+    zz_heallock_test.go:291: the state-path entry was removed or replaced although the heal lock was unusable: err=<nil>
+    zz_heallock_test.go:297: log changed
+    zz_heallock_test.go:300: want exactly one warning line naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHostileEntryFailsCloseddirectory2912328148/001/usage-log.jsonl.prune-heal, got ""
+=== RUN   TestPruneHealLockHostileEntryFailsClosed/fifo
+    zz_heallock_test.go:288: want an error naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHostileEntryFailsClosedfifo2731490804/001/usage-log.jsonl.prune-heal, got <nil>
+    zz_heallock_test.go:291: the state-path entry was removed or replaced although the heal lock was unusable: err=<nil>
+    zz_heallock_test.go:297: log changed
+    zz_heallock_test.go:300: want exactly one warning line naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHostileEntryFailsClosedfifo2731490804/001/usage-log.jsonl.prune-heal, got ""
+=== RUN   TestPruneHealLockHostileEntryFailsClosed/not-owned
+    zz_heallock_test.go:288: want an error naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHostileEntryFailsClosednot-owned2513266760/001/usage-log.jsonl.prune-heal, got <nil>
+    zz_heallock_test.go:291: the state-path entry was removed or replaced although the heal lock was unusable: err=<nil>
+    zz_heallock_test.go:297: log changed
+    zz_heallock_test.go:300: want exactly one warning line naming /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneHealLockHostileEntryFailsClosednot-owned2513266760/001/usage-log.jsonl.prune-heal, got ""
+--- FAIL: TestPruneHealLockHostileEntryFailsClosed (0.04s)
+    --- FAIL: TestPruneHealLockHostileEntryFailsClosed/symlink (0.01s)
+    --- FAIL: TestPruneHealLockHostileEntryFailsClosed/directory (0.01s)
+    --- FAIL: TestPruneHealLockHostileEntryFailsClosed/fifo (0.01s)
+    --- FAIL: TestPruneHealLockHostileEntryFailsClosed/not-owned (0.01s)
+=== RUN   TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep
+=== PAUSE TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep
+=== RUN   TestPruneCommonPathCreatesNoHealLock
+=== RUN   TestPruneCommonPathCreatesNoHealLock/absent
+=== RUN   TestPruneCommonPathCreatesNoHealLock/healthy-expired-stamp
+--- PASS: TestPruneCommonPathCreatesNoHealLock (0.01s)
+    --- PASS: TestPruneCommonPathCreatesNoHealLock/absent (0.00s)
+    --- PASS: TestPruneCommonPathCreatesNoHealLock/healthy-expired-stamp (0.00s)
+=== CONT  TestPruneHealSerializesOnTheHealLock
+=== CONT  TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep
+=== NAME  TestPruneHealSerializesOnTheHealLock
+    zz_heallock_test.go:102: the pruner returned (<nil>) while another descriptor held the heal lock: it did not wait
+    zz_heallock_test.go:106: the state-path entry was removed or replaced while the heal lock was held by another descriptor: err=<nil>
+--- FAIL: TestPruneHealSerializesOnTheHealLock (0.00s)
+--- PASS: TestPruneHealLockIsFreeWhilePrunerIsInItsArchiveStep (0.31s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/harness	0.996s
+FAIL

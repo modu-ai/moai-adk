@@ -5,16 +5,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestBuildPrivateGTDProjectionFromStoreRevisionAndRelations(t *testing.T) {
 	ctx := context.Background()
-	store := kanban.NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
-	a, _ := kanban.CaptureGTDItem(ctx, store, kanban.CaptureInput{Content: "a", Source: "user", SourceAllowed: true, Sensitivity: kanban.SensitivityPrivate, EventID: "a"})
-	b, _ := kanban.CaptureGTDItem(ctx, store, kanban.CaptureInput{Content: "b", Source: "user", SourceAllowed: true, Sensitivity: kanban.SensitivitySecret, EventID: "b"})
-	rel := kanban.GTDRelation{SubjectID: a.ItemID, ObjectID: b.ItemID, Kind: kanban.RelationDependsOn, Source: "user", AssertionStatus: "confirmed", SourceRevision: 1, PolicyVersion: "p1"}
-	if err := kanban.PutGTDRelation(ctx, store, rel, nil, map[string]bool{a.ItemID: true, b.ItemID: true}); err != nil {
+	store := factory.NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	a, _ := factory.CaptureGTDItem(ctx, store, factory.CaptureInput{Content: "a", Source: "user", SourceAllowed: true, Sensitivity: factory.SensitivityPrivate, EventID: "a"})
+	b, _ := factory.CaptureGTDItem(ctx, store, factory.CaptureInput{Content: "b", Source: "user", SourceAllowed: true, Sensitivity: factory.SensitivitySecret, EventID: "b"})
+	rel := factory.GTDRelation{SubjectID: a.ItemID, ObjectID: b.ItemID, Kind: factory.RelationDependsOn, Source: "user", AssertionStatus: "confirmed", SourceRevision: 1, PolicyVersion: "p1"}
+	if err := factory.PutGTDRelation(ctx, store, rel, nil, map[string]bool{a.ItemID: true, b.ItemID: true}); err != nil {
 		t.Fatal(err)
 	}
 	projection, err := BuildPrivateGTDProjectionFromStore(ctx, store)
@@ -24,7 +24,7 @@ func TestBuildPrivateGTDProjectionFromStoreRevisionAndRelations(t *testing.T) {
 	if projection.SourceRevision != 3 || projection.EdgeCount != 1 || !PrivateGTDProjectionFresh(projection.MetaPath, 3) {
 		t.Fatalf("projection=%+v", projection)
 	}
-	if err := kanban.PutGTDRelation(ctx, store, kanban.GTDRelation{SubjectID: a.ItemID, ObjectID: b.ItemID, Kind: kanban.RelationRelatedTo, Source: "user", AssertionStatus: "confirmed", SourceRevision: 2, PolicyVersion: "p1"}, []kanban.GTDRelation{rel}, map[string]bool{a.ItemID: true, b.ItemID: true}); err != nil {
+	if err := factory.PutGTDRelation(ctx, store, factory.GTDRelation{SubjectID: a.ItemID, ObjectID: b.ItemID, Kind: factory.RelationRelatedTo, Source: "user", AssertionStatus: "confirmed", SourceRevision: 2, PolicyVersion: "p1"}, []factory.GTDRelation{rel}, map[string]bool{a.ItemID: true, b.ItemID: true}); err != nil {
 		t.Fatal(err)
 	}
 	if PrivateGTDProjectionFresh(projection.MetaPath, 4) {
@@ -35,7 +35,7 @@ func TestBuildPrivateGTDProjectionFromStoreRevisionAndRelations(t *testing.T) {
 func TestBuildPrivateGTDProjectionFromStoreHonorsCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	store := kanban.NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	store := factory.NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
 	if _, err := BuildPrivateGTDProjectionFromStore(ctx, store); err == nil {
 		t.Fatal("cancelled projection source accepted")
 	}

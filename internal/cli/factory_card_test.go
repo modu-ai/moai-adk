@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // The F1 factory-record CLI tests. Every test builds its own project root
@@ -28,7 +28,7 @@ const fcRun = "run-cli"
 var fcNow = time.Date(2026, 9, 26, 9, 0, 0, 0, time.UTC)
 
 // fcFixture is a project root with an isolated git config and a queue.
-func fcFixture(t *testing.T) (string, *kanban.BacklogStore) {
+func fcFixture(t *testing.T) (string, *factory.BacklogStore) {
 	t.Helper()
 	cfg := filepath.Join(t.TempDir(), "gitconfig")
 	if err := os.WriteFile(cfg, []byte("[user]\n\tname = F1 Test\n\temail = f1@example.invalid\n[init]\n\tdefaultBranch = main\n"), 0o600); err != nil {
@@ -44,14 +44,14 @@ func fcFixture(t *testing.T) (string, *kanban.BacklogStore) {
 }
 
 // fcQueue adds n queue items (t1..tn) and sets each item's state.
-func fcQueue(t *testing.T, store *kanban.BacklogStore, states ...kanban.BacklogState) {
+func fcQueue(t *testing.T, store *factory.BacklogStore, states ...factory.BacklogState) {
 	t.Helper()
 	for i := range states {
 		if _, _, err := runTodo(t, "add", fmt.Sprintf("factory card %d", i+1)); err != nil {
 			t.Fatalf("todo add: %v", err)
 		}
 	}
-	if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
 		for i := range r.Items {
 			if i < len(states) {
 				r.Items[i].State = states[i]
@@ -239,7 +239,7 @@ func fcRows(t *testing.T, root string) string {
 // `prefer` hint is stored and reported but refuses nothing.
 func TestFR_AC014_AssignHints(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	// t1 = c1 (predecessor), t2 = c2, t3 = c3.
 	if _, _, err := runFactory(t, "assign", "t2", "--after", "t1", "--run", fcRun); err != nil {
 		t.Fatalf("assign t2 --after t1: %v", err)
@@ -495,7 +495,7 @@ func TestFR_AC018_DecidePushGate(t *testing.T) {
 // queue item row.
 func TestFR_AC021_QueueSchemaUntouched(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	dbPath := filepath.Join(filepath.Dir(todoBacklogPath(root)), "backlog.db")
 	snapshot := func() (string, string) {
 		t.Helper()
@@ -559,7 +559,7 @@ func TestFR_AC021_QueueSchemaUntouched(t *testing.T) {
 func TestFR_AC022_AssignRequiresQueuePicked(t *testing.T) {
 	root, store := fcFixture(t)
 	// q1 = t1 queued, q2 = t2 dropped, q3 = t9 never issued, q4 = t3 picked.
-	fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateDropped, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateDropped, factory.BacklogStatePicked)
 	for id, want := range map[string]string{"t1": "queued", "t2": "dropped", "t9": "not in the queue"} {
 		_, _, err := runFactory(t, "assign", id, "--run", fcRun)
 		if err == nil || !strings.Contains(err.Error(), want) {
@@ -581,7 +581,7 @@ func TestFR_AC022_AssignRequiresQueuePicked(t *testing.T) {
 // contract pointer, and writes nothing.
 func TestFR_AC023_StatusIsReadOnly(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	fcPlace(t, root,
 		homestate.Card{CardID: "s-picked", State: homestate.CardPicked},
 		homestate.Card{CardID: "s-leased", State: homestate.CardLeased, OwnerLabel: "worker-1", LeaseHolder: "worker-1", LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano)},

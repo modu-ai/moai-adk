@@ -17,7 +17,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // initGitRepo turns dir into a committed git repository so queue-root
@@ -95,7 +95,7 @@ func TestResolveTodoQueueRoot_PrimaryIsItself(t *testing.T) {
 	}
 }
 
-// declareNonTemporaryQueueBase points internal/kanban's REQ-THG-009 temp-root
+// declareNonTemporaryQueueBase points internal/factory's REQ-THG-009 temp-root
 // seam at a set that contains nothing this test uses, so a t.TempDir() base
 // classifies NON-temporary and the home-fallback branch stays reachable.
 //
@@ -105,10 +105,10 @@ func TestResolveTodoQueueRoot_PrimaryIsItself(t *testing.T) {
 // exported precisely so consuming packages' tests can reach it.
 func declareNonTemporaryQueueBase(t *testing.T) {
 	t.Helper()
-	orig := kanban.TempRootsFn
+	orig := factory.TempRootsFn
 	isolated := filepath.Join(t.TempDir(), "a-root-that-contains-nothing")
-	kanban.TempRootsFn = func() []string { return []string{isolated} }
-	t.Cleanup(func() { kanban.TempRootsFn = orig })
+	factory.TempRootsFn = func() []string { return []string{isolated} }
+	t.Cleanup(func() { factory.TempRootsFn = orig })
 }
 
 // assertQueueSeamHeard asserts the discriminant's verdict on base directly:
@@ -117,7 +117,7 @@ func declareNonTemporaryQueueBase(t *testing.T) {
 // SPEC has paid for repeatedly.
 func assertQueueSeamHeard(t *testing.T, base string) {
 	t.Helper()
-	if reason, isTemp := kanban.TempOriginReason(base); isTemp {
+	if reason, isTemp := factory.TempOriginReason(base); isTemp {
 		t.Fatalf("the injected temp-root set was not read: base %q still classifies temporary (reason %q)", base, reason)
 	}
 }
@@ -173,7 +173,7 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	if got != dir {
 		t.Fatalf("fallback queue root = %q, want the launch base %q", got, dir)
 	}
-	queue := kanban.BacklogPathForRoot(got)
+	queue := factory.BacklogPathForRoot(got)
 	if !strings.HasPrefix(queue, home+string(filepath.Separator)) {
 		t.Fatalf("fallback queue = %q, want it under the home directory %q", queue, home)
 	}
@@ -182,7 +182,7 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	}
 
 	// The key is base name + 8 hex digest chars — readable and collision-safe.
-	key := kanban.TodoQueueProjectKey(dir)
+	key := factory.TodoQueueProjectKey(dir)
 	base := filepath.Base(dir)
 	if !strings.HasPrefix(key, base+"-") {
 		t.Fatalf("project key %q lacks base+%q prefix", key, base)
@@ -193,7 +193,7 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 
 	// Two distinct directories must not share a key.
 	other := t.TempDir()
-	if kanban.TodoQueueProjectKey(dir) == kanban.TodoQueueProjectKey(other) {
+	if factory.TodoQueueProjectKey(dir) == factory.TodoQueueProjectKey(other) {
 		t.Fatalf("distinct directories %q and %q share a project key", dir, other)
 	}
 }
@@ -224,7 +224,7 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	// Seed a pre-fallback local queue: 2 queued + 1 picked, ids from an
 	// earlier high-water mark — the shape a v3.1.0-era project carries.
 	spec := "SPEC-EXAMPLE-001"
-	localDir := kanban.StateDirForRoot(dir)
+	localDir := factory.StateDirForRoot(dir)
 	if err := os.MkdirAll(localDir, 0o755); err != nil {
 		t.Fatalf("mkdir local queue dir: %v", err)
 	}
@@ -247,11 +247,11 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	if root != dir {
 		t.Fatalf("fallback queue root = %q, want the launch base %q", root, dir)
 	}
-	if queue := kanban.BacklogPathForRoot(root); !strings.HasPrefix(queue, home+string(filepath.Separator)) {
+	if queue := factory.BacklogPathForRoot(root); !strings.HasPrefix(queue, home+string(filepath.Separator)) {
 		t.Fatalf("adopted queue = %q, want it under the home directory %q", queue, home)
 	}
 
-	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
+	rec, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("load adopted queue: %v", err)
 	}
@@ -275,7 +275,7 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	if again := resolveTodoQueueRoot(); again != root {
 		t.Fatalf("second fallback resolution = %q, want the first run's root %q", again, root)
 	}
-	rec2, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
+	rec2, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("reload adopted queue: %v", err)
 	}
@@ -387,7 +387,7 @@ func TestTodoQueue_WorktreeSeesPrimaryQueue(t *testing.T) {
 	initGitRepo(t, primary)
 	wt := addGitWorktree(t, primary)
 
-	primaryStore := kanban.NewBacklogStore(todoBacklogPath(primary))
+	primaryStore := factory.NewBacklogStore(todoBacklogPath(primary))
 	for _, text := range []string{"seed one", "seed two", "seed three"} {
 		if _, _, err := primaryStore.Add(text); err != nil {
 			t.Fatalf("seed add: %v", err)
@@ -458,7 +458,7 @@ func TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp(t *testing.T) {
 	// the queue the resolution leads to, which is under the stubbed home, and
 	// not by a root spelled inside it.
 	root := resolveTodoQueueRoot()
-	queue := kanban.BacklogPathForRoot(root)
+	queue := factory.BacklogPathForRoot(root)
 	if !strings.HasPrefix(queue, home+string(filepath.Separator)) {
 		t.Fatalf("queue = %q, want it under the stubbed home %q — this copy must exercise the home-fallback branch", queue, home)
 	}

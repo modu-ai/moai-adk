@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -75,7 +75,7 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 // outcome). The prompt handler hands that run to the same invocation's inbox
 // claim (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-008).
 func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode factoryPeerBindMode) (notice, reboundRun string) {
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	root := factoryHookRoot(input)
 	if runID == "" || root == "" || input.SessionID == "" {
 		return "", ""
@@ -88,17 +88,17 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 	// alone.
 	label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if label != "" {
-		if kanban.IsLegacyFactoryRoleValue(label) {
+		if factory.IsLegacyFactoryRoleValue(label) {
 			return staleRunPrescriptionGate(ctx, root, input.SessionID, label, runID, langEnglish), ""
 		}
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return "", ""
 	}
-	role, slot := kanban.RoleLeader, kanban.RoleLeader
+	role, slot := factory.RoleLeader, factory.RoleLeader
 	if label != "" {
-		role, slot = kanban.RoleLane, label
+		role, slot = factory.RoleLane, label
 	}
-	backend := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanBackend))
+	backend := strings.TrimSpace(os.Getenv(config.EnvFactoryBackend))
 	if backend == "" {
 		backend = "unknown"
 	}
@@ -129,7 +129,7 @@ func registerFactoryHookPeerRun(ctx context.Context, input *HookInput, mode fact
 		}
 		return "factory messaging degraded: " + probeErr.Error(), ""
 	case factorymsg.RunStateNotActive:
-		if role != kanban.RoleLane {
+		if role != factory.RoleLane {
 			// A leader is not a lane: its answer on a not-active run is the one
 			// it always had.
 			return "factory messaging degraded: NO_ACTIVE_FACTORY", ""
@@ -198,7 +198,7 @@ func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventTy
 	defer cancel()
 	runID := strings.TrimSpace(runOverride)
 	if runID == "" {
-		runID = strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+		runID = strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	}
 	root := factoryHookRoot(input)
 	if runID == "" || root == "" || input.SessionID == "" {

@@ -257,12 +257,28 @@ templ fieldsetAgentFM(view pageView) {
 		<p class="panel__help" data-i18n="sec.agentfm.help">
 			Per-agent model/effort overrides on top of the selected profile. An agent without an override resolves the profile cell — plain inheritance is the default — and a pin equal to the profile default is cleared on save. The per-class tier chart lives in the Workflow panel.
 		</p>
+		// Stored llm.yaml type fidelity (v0.3.0 M7, REQ-AFR-015): a non-boolean
+		// agent_overrides_consume stored in llm.yaml rejects the save; the
+		// strict checker's message renders here, next to the surface the key
+		// belongs to. The error is keyed by the yaml key, so a type mismatch in
+		// any other llm key renders under its own name when one exists.
+		@fieldErr(view.FieldErrors, "agent_overrides_consume")
+		@fieldErr(view.FieldErrors, "llm.yaml")
 		// t66 web half: under a GLM backend the model axis is session-inherited,
 		// so the effort(reasoning) map is the per-agent routing surface — state
 		// that on the sub-section, gated on the backend signal (never rendered
 		// for a Claude session, where the GLM reading is noise).
 		if agentFMIsGLMBackend(view.LLM) {
 			<p class="panel__help" data-i18n="agentfm.glmnote">Under a GLM backend every sub-agent inherits the session model (llm.glm.models), so effort is the only per-agent axis — each row shows the z.ai reasoning state its effort collapses to. The runtime delivers one session-wide reasoning value; these states record per-agent intent.</p>
+		}
+		// Contract-state chip (v0.3.0 M9, REQ-AFR-019): the overrides map is
+		// storage-only unless llm.agent_overrides_consume is on — state which
+		// one this session is in, so a stored pin is never silently read as a
+		// live one.
+		if agentFMConsumeOn(view.LLM) {
+			<p class="panel__help" data-contract-state="consume-on" data-i18n="agentfm.consume.on">Spawn consumption is ON: the orchestrator consults these overrides before each subagent spawn and passes the configured model on the Agent() call.</p>
+		} else {
+			<p class="panel__help" data-contract-state="consume-off" data-i18n="agentfm.consume.off">Stored overrides only: spawn consumption is off, so these pins stay console-stored — every subagent keeps the session model/effort it inherits.</p>
 		}
 		<div class="field">
 			<div class="field__head">

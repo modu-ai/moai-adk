@@ -1,0 +1,31 @@
+{
+  "cc": {
+    "MOAI_FACTORY_AUTO_DISPATCH": "auto",
+    "MOAI_FACTORY_CLEAR_POLICY": "",
+    "MOAI_FACTORY_ROLE": "lane",
+    "MOAI_FACTORY_WORKER": "lane-1",
+    "MOAI_FACTORY_WORKERS": "0",
+    "MOAI_KANBAN_BACKEND": "claude",
+    "MOAI_KANBAN_ID": "run-cli",
+    "MOAI_KANBAN_SETTINGS_INJECTED": "1"
+  },
+  "codex": {
+    "MOAI_FACTORY_AUTO_DISPATCH": "auto",
+    "MOAI_FACTORY_CLEAR_POLICY": "",
+    "MOAI_FACTORY_ROLE": "lane",
+    "MOAI_FACTORY_WORKER": "lane-1",
+    "MOAI_KANBAN_BACKEND": "gpt",
+    "MOAI_KANBAN_CARD": "t1",
+    "MOAI_KANBAN_LABEL": "lane-1"
+  },
+  "glm": {
+    "MOAI_FACTORY_AUTO_DISPATCH": "auto",
+    "MOAI_FACTORY_CLEAR_POLICY": "",
+    "MOAI_FACTORY_ROLE": "lane",
+    "MOAI_FACTORY_WORKER": "lane-1",
+    "MOAI_FACTORY_WORKERS": "0",
+    "MOAI_KANBAN_BACKEND": "glm",
+    "MOAI_KANBAN_ID": "run-cli",
+    "MOAI_KANBAN_SETTINGS_INJECTED": "1"
+  }
+}

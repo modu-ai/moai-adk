@@ -82,7 +82,7 @@ const (
 	GroupDocs = "docs"
 	// GroupGit covers manager-git.
 	GroupGit = "git"
-	// GroupLead covers manager-lead, the Tier L / kanban-factory coordinator.
+	// GroupLead covers manager-lead, the Tier L / factory coordinator.
 	GroupLead = "lead"
 	// GroupTodo covers manager-todo, the todo-queue management agent.
 	GroupTodo = "todo"

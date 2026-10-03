@@ -34,7 +34,7 @@ moai gtd engage <gtd-id> --approve --fresh --dependencies-ready --resources --pi
 
 ## 五个步骤
 
-GTD 是**整理并选择工作的流程**，不是开发看板的新列。
+GTD 是**整理并选择工作的流程**，不是开发流程里新增的一个阶段。
 
 | 步骤 | 判断与保存结果 |
 |---|---|
@@ -56,4 +56,4 @@ LLM 与 `manager-todo` 的只读判定子角色只生成结构化提案，不直
 
 当前实现提供负责确定性策略、恢复、调度、显式路径提交和 local develop `--no-ff` 合并的 owner adapter。提交必须持有与当前 HEAD 对应、位于仓库内且权限为 `0600` 的测试 receipt；本地合并会重新检查 manager-git 角色、`WT-*` 分支、基准 SHA 和 `.git` 下的 `0600` lease。备份、恢复与导出只有在明确 opt-in 时才包含 GTD 扩展，private projection 则从 SQLite revision 重建。在真实供应方证明启动、重连、替换、凭证和进程身份能力全部可用之前，不承诺会话结束后的持续运行，也不承诺远程 push、PR 或合并完成。
 
-相关：[`/moai goal --auto`](/zh/utility-commands/moai-goal#auto-任务模式) · [看板模式](/zh/advanced/kanban-mode)
+相关：[`/moai goal --auto`](/zh/utility-commands/moai-goal#auto-任务模式) · [工厂模式](/zh/advanced/factory-mode)

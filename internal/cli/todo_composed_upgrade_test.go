@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // f1LegacyBacklogJSON is fixture F1: the record shape a v3.1.2 binary
@@ -70,8 +70,8 @@ const f1SentinelJSON = `{"companions":["lane-1"],"sentinel":"t470"}`
 func seedLegacyV312Layout(t *testing.T, root, backlogJSON string, preCreateCurrentDir bool) (legacyDir, currentDir string) {
 	t.Helper()
 
-	legacyDir = kanban.LegacyStateDirForRoot(root)
-	currentDir = kanban.StateDirForRoot(root)
+	legacyDir = factory.LegacyStateDirForRoot(root)
+	currentDir = factory.StateDirForRoot(root)
 
 	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
 		t.Fatalf("mkdir legacy state dir: %v", err)
@@ -250,13 +250,13 @@ func TestTodoComposedUpgrade_FromLegacyV312Layout(t *testing.T) {
 	}
 
 	// AC-QUP-001a — every card, its state, and the seeded order survive.
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &rec); err != nil {
 		t.Fatalf("decode `todo list --json` output %q: %v", out, err)
 	}
 	wantIDs := []string{"t2", "t3", "t5", "t8"}
-	wantStates := []kanban.BacklogState{
-		kanban.BacklogStateQueued, kanban.BacklogStatePicked, kanban.BacklogStateDropped, kanban.BacklogStateQueued,
+	wantStates := []factory.BacklogState{
+		factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStateDropped, factory.BacklogStateQueued,
 	}
 	wantTexts := []string{"legacy queued one", "legacy picked one", "legacy dropped one", "post-upgrade card"}
 	if len(rec.Items) != len(wantIDs) {
@@ -312,7 +312,7 @@ func TestTodoComposedUpgrade_ForwardCompatibleFieldsSurvive(t *testing.T) {
 		t.Fatalf("first todo command against the legacy layout: %v\nstderr: %s", err, stderr)
 	}
 
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &rec); err != nil {
 		t.Fatalf("decode `todo list --json` output %q: %v", out, err)
 	}
@@ -320,7 +320,7 @@ func TestTodoComposedUpgrade_ForwardCompatibleFieldsSurvive(t *testing.T) {
 		t.Fatalf("findings after the composed upgrade = %d, want 1: %+v", len(rec.Findings), rec.Findings)
 	}
 	if rec.Findings[0].SubjectID != "t1" || rec.Findings[0].RelatedID != "t2" ||
-		rec.Findings[0].Relation != kanban.BacklogRelationNearDuplicate {
+		rec.Findings[0].Relation != factory.BacklogRelationNearDuplicate {
 		t.Errorf("finding did not survive intact: %+v", rec.Findings[0])
 	}
 	if len(rec.Archived) != 1 {

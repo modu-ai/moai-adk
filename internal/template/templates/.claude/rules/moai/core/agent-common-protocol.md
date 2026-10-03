@@ -24,7 +24,7 @@ Rules for subagents:
 
 Rationale: subagents run in isolated, stateless contexts — prompting there is a dead channel, and the orchestrator stays the user's single point of contact (CLAUDE.md §8).
 
-**Lane sessions are orchestrator-class, not subagent-class.** A kanban companion or factory lane holds the question channel for its own card through the factory leader, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the leader is not the lane's user. A specialist spawn's working-tree attachment is a **runtime decision** the lane neither controls nor predicts, so the lane verifies where each spawn's work landed before advancing the card stage; when it landed in an isolated agent worktree, the lane reconciles it into the lane tree by `kanban-dispatch-mechanics.md` § Reconciling an isolated specialist spawn. That reconciliation grants merge, harvest, and record authority only — never editing authority over SPEC-artifact bodies. Normative home: `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority.
+**Lane sessions are orchestrator-class, not subagent-class.** A factory lane holds the question channel for its own card through the factory leader, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the leader is not the lane's user. A specialist spawn's working-tree attachment is a **runtime decision** the lane neither controls nor predicts, so the lane verifies where each spawn's work landed before advancing the card stage; when it landed in an isolated agent worktree, the lane reconciles it into the lane tree by `factory-dispatch-mechanics.md` § Reconciling an isolated specialist spawn. That reconciliation grants merge, harvest, and record authority only — never editing authority over SPEC-artifact bodies. Normative home: `.claude/rules/moai/workflow/factory-dispatch.md` § Lane spawn authority.
 
 ### Hook Invocation Surface
 
@@ -72,7 +72,7 @@ under the User Interaction Boundary H2.
 
 Output language rules:
 - Analysis, documentation, reports: User's conversation_language
-- Cross-session messages a human observes (a kanban dispatch the operator watches): User's conversation_language; identifiers, paths, commands, and flags stay verbatim. An `Agent()` subagent prompt reaches no human and stays English
+- Cross-session messages a human observes (a factory dispatch the operator watches): User's conversation_language; identifiers, paths, commands, and flags stay verbatim. An `Agent()` subagent prompt reaches no human and stays English
 - Code examples/syntax, skill names, technical identifiers, function/variable/class names: Always English
 - Code comments: Per code_comments setting in language.yaml (default: English); commit messages: Per git_commit_messages setting
 
@@ -99,6 +99,8 @@ fetch, and image read route to the z.ai MCP tools instead of the built-ins. HARD
 ### Subagent Model and Effort
 
 Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
+
+Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort is doctrine-level only — the Agent tool carries no effort parameter. Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.
 
 ## Background Agent Execution
 

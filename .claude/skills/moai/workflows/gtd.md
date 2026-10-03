@@ -1,10 +1,10 @@
 # /moai gtd — Canonical GTD Entry Point and Backlog Queue
 
 > The canonical workflow identity for GTD task management, and the operator's
-> entry point into the kanban board. `backlog` has no owning session, so
+> entry point into the backlog queue. `backlog` has no owning session, so
 > nothing dispatches work into it — admission is always an operator act, and
 > this is the surface for it.
-> Dispatch protocol: `.claude/rules/moai/workflow/kanban-dispatch.md`.
+> Dispatch protocol: `.claude/rules/moai/workflow/factory-dispatch.md`.
 
 > Compatibility surface: `/moai todo` is the compat alias of `/moai gtd`, and
 > `moai todo` is the compat alias of `moai gtd` on the CLI. Both names dispatch
@@ -50,17 +50,18 @@ When the operator says `/moai gtd "<description>"`, run
 | `moai gtd undone <n>` | Restore an archived card to the live queue at the position it held, together with every finding that named it, and empty the archive entry. `done` + `undone` returns the queue record to the same bytes. Refused when the id has since been reissued to a different live card — the collision is named and the live card is left alone. |
 | `moai gtd next` | Print the queued items oldest-first — read-only candidates. |
 | `moai gtd next <n> [--spec <SPEC-ID>]` | Mark the addressed item `picked` (attaching `spec_id` when given) as one locked write. |
-| `moai gtd claim [--lane <label>] [--renew <id>]` | Claim the oldest **queued** card as one atomic compare-and-set under a lease: the card moves to `picked` with `picked_by`, `lease_expires_at` (now + the default lease duration), and `picked_at` stamped, and the confirmation carries the card id, its text prefix, and the expiry instant. Before selecting, every lapsed lease is returned to `queued` (expiry-first) — each return announced with its id and previous holder — and the claim then takes the oldest, which may be the card just returned; an unparseable expiry is judged expired. A card under a live lease is not a claim candidate, and no claim-family operation touches another holder's lease; the operator `unpick` stays the manual recovery. `--lane <label>` attributes the claim to an operator/lead-supplied lane label, and the flag grants nothing to a lane session — a session inside the lane boundary is refused with the existing refusal text, with or without the flag. `--renew <id>` extends the addressed card's lease instead of claiming: only the current holder's label may renew, a foreign label is refused with no change, and renewing a lapsed lease returns the card to `queued` (committed) and refuses — it never extends. No eligible card exits with status 3 and a non-error message, so a supervising launcher can tell that from failure. `list` and `history` render the lease columns on lease-holding rows; the JSON face excludes them. |
+| `moai gtd claim [--lane <label>] [--renew <id>]` | Claim the oldest **queued** card as one atomic compare-and-set under a lease: the card moves to `picked` with `picked_by`, `lease_expires_at` (now + the default lease duration), and `picked_at` stamped, and the confirmation carries the card id, its text prefix, and the expiry instant. Before selecting, every lapsed lease is returned to `queued` (expiry-first) — each return announced with its id and previous holder — and the claim then takes the oldest, which may be the card just returned; an unparseable expiry is judged expired. A card under a live lease is not a claim candidate, and no claim-family operation touches another holder's lease; the operator `unpick` stays the manual recovery. `--lane <label>` attributes the claim to an operator/leader-supplied lane label, and the flag grants nothing to a lane session — a session inside the lane boundary is refused with the existing refusal text, with or without the flag. `--renew <id>` extends the addressed card's lease instead of claiming: only the current holder's label may renew, a foreign label is refused with no change, and renewing a lapsed lease returns the card to `queued` (committed) and refuses — it never extends. No eligible card exits with status 3 and a non-error message, so a supervising launcher can tell that from failure. `list` and `history` render the lease columns on lease-holding rows; the JSON face excludes them. |
 | `moai gtd edit <n> "<text>" [--expect <prefix>]` | Rewrite the addressed card's text under the lock. `id`, `added_at`, `state`, and `spec_id` are preserved, so a correction never churns the card's identity the way `done` + re-add does. The confirmation carries the prior text as well as the new one, so a wrong edit is reversed by editing back. |
 | `moai gtd move <n> (--top\|--bottom\|--before <m>\|--after <m>)` | Reposition the card within the queue order under the lock. Exactly one destination is required. The move permutes the order and nothing else — no card is dropped, duplicated, or altered — so a wrong move is reversed by another move. |
-
 | `moai gtd drop <n> "<reason>" [--expect <prefix>]` | Move the addressed **queued** card to `dropped` under the lock, prefixing its text with `[DROPPED — <reason>] `. The card stays in the file — `done` removes a finished card, `drop` keeps a discarded one with its reason (`list --dropped` renders the discarded set; the default list hides it behind a count line) — and it is no longer a pick candidate. A picked card is unpicked first, so nothing `undrop` cannot restore is ever taken. |
 | `moai gtd undrop <n> [--expect <prefix>]` | Return the addressed dropped card to `queued`, stripping the marker. The state is the authority, so a card marked dropped by hand (no marker in its text) undrops with its text untouched. `drop` + `undrop` returns the queue file to the same bytes. |
-| `moai gtd hold <n> [--expect <prefix>]` | Park the addressed **queued** card out of the queue as one locked write. `hold` is a fourth STATE, not a marker: the text is never touched — no reason field, no timestamp, no `[HOLD]` prefix; an operator who wants a reason keeps it in the card text. Every machine selector enumerates the states it accepts positively, so a held card is invisible to `next`, the auto-done scan, and every lease path by construction — and a pick attempt on one is refused with `unhold` named as the recovery verb. Operator (or lead) only: no lane session or machine leaser can hold or unhold a card. `--expect <prefix>` matches the drop guard. |
+| `moai gtd hold <n> [--expect <prefix>]` | Park the addressed **queued** card out of the queue as one locked write. `hold` is a fourth STATE, not a marker: the text is never touched — no reason field, no timestamp, no `[HOLD]` prefix; an operator who wants a reason keeps it in the card text. Every machine selector enumerates the states it accepts positively, so a held card is invisible to `next`, the auto-done scan, and every lease path by construction — and a pick attempt on one is refused with `unhold` named as the recovery verb. Operator (or leader) only: no lane session or machine leaser can hold or unhold a card. `--expect <prefix>` matches the drop guard. |
 | `moai gtd unhold <n> [--expect <prefix>]` | Return the addressed held card to `queued`. Hold never touched the text, so unhold has nothing to strip and the pair is an exact reversal. |
 | `moai gtd add "<text>" --force` | Admit a card the analyser reads as an exact duplicate. The card is appended verbatim and the queue records that the duplicate was forced, so the collision stays visible instead of being argued about later. |
 | `moai gtd analyze` | Re-read the whole queue and record what the analyser finds. Appends, removes, reorders, and edits nothing. Re-running records nothing new — the same relation is never stacked twice. |
-| `moai gtd relate <a> <b> --relation (contains\|absorbs\|replaces\|conflicts) [--note <text>]` | Record one relation between two existing cards. The verb writes a record and touches neither card; `absorbs` does not absorb. |
+| `moai gtd relate <a> <b> --relation (contains\|absorbs\|replaces\|conflicts\|blocks\|depends) [--note <text>]` | Record one relation between two existing cards. The verb writes a record and touches neither card; `absorbs` does not absorb. |
+| `moai gtd relate <a> <b> --relation blocks` | Record that `<a>` must land before `<b>` can proceed — `<b>` waits on `<a>`. Still a record that touches neither card, but the `--auto` pickup reads it: while the finding is live, the waiting card is skipped with a labelled non-finding naming its predecessor, and the finding leaves the live record when the predecessor is closed with `done` (a dropped or held predecessor keeps it). A relation that would close a waits-on cycle through the recorded findings is refused before the write. |
+| `moai gtd relate <a> <b> --relation depends` | The inverse spelling of `blocks`: `<a>` waits on `<b>`. Both spellings normalize to the same waits-on edge, so they share the pickup skip and the cycle refusal, and recording one pair in both spellings is not a cycle. |
 | `moai gtd unrelate <index>` | Remove the addressed record. The index is the one `why` prints. No card changes. |
 | `moai gtd why <n>` | Print every record naming the card, or an explicit no-findings line. A card the queue knows nothing about says so rather than printing nothing. |
 | `moai gtd history [<id\|n>]` | Answer what became of a card — read-only, lock-free, writes nothing. One line per lookup: `live` with the card's current state (`queued`\|`picked`\|`dropped`), `archived` with the state it held when it was closed, or `absent` when the queue holds no record — an id at or below the issued-id mark qualifies its `absent` on stderr, because a card closed by a binary predating the archive leaves none. Each `live` and `archived` line carries a landing column before the card text — `landing=<delivering commit>` when the operator recorded one, `landing=ref-head` when the record holds only the observed ref position, `landing=-` when no record was made, and `landing=malformed` when a stored record fails validation. The SHA is rendered in full here, unlike the abbreviated cell `pr` renders into its aligned table, so a closed card's delivering commit is readable without a second lookup. After the landing column and before the card text, the time axis follows: `live` lines carry picked_at and dropped_at, and `archived` lines carry picked_at, dropped_at, archived_at, and the done-time verdict as `verdict=<kind>@<ref>` (`verdict=-` when the close ran without `--require-landed`, so no query answered). Every absent value renders `-`; the pre-existing fields keep their order and content, and the card text stays LAST, so a consumer reading the tail is unaffected by the added columns. A bare lookup id accepts the bare `<n>` form too. With no id, the archive lists newest-first, bounded at 20 (`--limit <n>` adjusts, `--limit 0` unbounded; a truncated listing states the withheld count on stderr). A store that cannot vouch for an archive — a database predating the archive tables, or a legacy `backlog.json` serving with no `backlog.db` — names itself on stderr and says no archive is available, rather than letting `absent` read as authoritative. |
@@ -115,7 +116,11 @@ records that it was forced.
 never drops a card, and never edits one. The four semantic relations —
 `contains`, `absorbs`, `replaces`, `conflicts` — cause nothing but a record.
 Acting on a record is the operator's act, performed through `drop`, `edit`, or
-`move`, exactly as the clause above requires.
+`move`, exactly as the clause above requires. The sequencing pair — `blocks`,
+`depends` — is a judgement the operator or a dispatching agent records through
+`relate`, never one the analyser produces; it changes no card either, and its
+only consumer is the `--auto` pickup selection, which skips a waiting card while
+the finding is live.
 
 ## GTD stages
 
@@ -300,7 +305,7 @@ the queue in order until it empties. That is still their pick, made once instead
 of one at a time, and the leader then admits those cards in the authorized order
 without asking again. It grants nothing else: no additions to the queue, no
 reordering, and no cover for a card that turns out to need a decision the
-authorization never covered. See `kanban-dispatch.md` § Entry into the board is
+authorization never covered. See `factory-dispatch.md` § Entry into the queue is
 an operator act.
 
 A workflow that ends by asking whether to start the card it just issued is the
@@ -315,7 +320,7 @@ Once picked:
 
 1. Record it with `moai gtd next <n> [--spec <SPEC-ID>]` (one locked write).
    Attach the SPEC only when one exists and its identifier is known.
-2. Follow `kanban-dispatch.md`'s card class: Class A direct close, Class B
+2. Follow `factory-dispatch.md`'s card class: Class A direct close, Class B
    run → sync without a SPEC, Class C plan → run → sync with SPEC authoring
    in plan. A pick alone neither creates a SPEC nor requires one.
 
@@ -356,7 +361,7 @@ card unpicked back to `queued` with a labelled non-finding — never silently
 done, never left picked by the cycle. The `jev:` line of the cycle stays a
 display-only signal, and Jev's ranking answer is used for the selection order
 only; it is never the basis of a queue mutation or a completion verdict. See
-`kanban-dispatch.md` § Entry into the board is an operator act (the
+`factory-dispatch.md` § Entry into the queue is an operator act (the
 reconciliation clause).
 
 Only a card whose text begins with the `[보류` marker is demoted; a hold stated
@@ -466,19 +471,19 @@ Nothing becomes a standing source by precedent. TODO comments, open issues,
 audit findings, and report milestones stay outside: they are surfaced to the
 operator, who asks for a card when they want one.
 
-## Outside Kanban Mode
+## Outside Factory Mode
 
 `moai gtd` works in an ordinary session too — it is just a queue. What it will
-not do is dispatch: with no companion sessions there is nobody to instruct, so
+not do is dispatch: with no lane sessions there is nobody to instruct, so
 the queue is read and written and the operator drives the work themselves.
 
-Say this plainly when it applies rather than implying a board exists.
+Say this plainly when it applies rather than implying a lane fleet exists.
 
 ## Boundaries
 
 - **Not a task tracker.** No priorities, no assignees, no due dates, no
   dependencies. Anything needing those belongs in an issue tracker or a SPEC.
-- **Not a board.** Column position lives with the leader and the SPEC status, not
+- **Not a board.** Card position lives with the leader and the SPEC status, not
   in this file.
 - **Not a source of truth for work in flight.** Once a card has a SPEC, the SPEC
   artifacts are authoritative; the backlog item is only a pointer to it.
@@ -489,6 +494,6 @@ Say this plainly when it applies rather than implying a board exists.
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/kanban-dispatch.md` — the dispatch cycle this feeds
+- `.claude/rules/moai/workflow/factory-dispatch.md` — the dispatch cycle this feeds
 - `.claude/rules/moai/core/askuser-protocol.md` — the channel the pick runs through
 - `.claude/agents/moai/manager-lead.md` — the coordination agent

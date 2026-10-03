@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/goal"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/mission"
 )
 
@@ -68,15 +68,15 @@ func governanceCLIArgs(t *testing.T, root, session string, action mission.Action
 func TestAutoMissionLifecycleApprovesSealsAndRunsPublishedOperation(t *testing.T) {
 	root, store := todoFixture(t)
 	ctx := context.Background()
-	item, err := kanban.CaptureGTDItem(ctx, store, kanban.CaptureInput{Content: "approved mission card", Source: "user", SourceAllowed: true, Sensitivity: kanban.SensitivityPrivate, EventID: "mission-cli"})
+	item, err := factory.CaptureGTDItem(ctx, store, factory.CaptureInput{Content: "approved mission card", Source: "user", SourceAllowed: true, Sensitivity: factory.SensitivityPrivate, EventID: "mission-cli"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = kanban.ClarifyGTDItem(ctx, store, kanban.ClarifyInput{ItemID: item.ItemID, Disposition: kanban.DispositionAction, DesiredOutcome: "landed", CompletionEvidence: "CI", Authority: "queue", SourceTrusted: true})
+	_, err = factory.ClarifyGTDItem(ctx, store, factory.ClarifyInput{ItemID: item.ItemID, Disposition: factory.DispositionAction, DesiredOutcome: "landed", CompletionEvidence: "CI", Authority: "queue", SourceTrusted: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = kanban.OrganizeGTDItem(ctx, store, kanban.OrganizeInput{ItemID: item.ItemID, Class: kanban.ClassAction})
+	_, err = factory.OrganizeGTDItem(ctx, store, factory.OrganizeInput{ItemID: item.ItemID, Class: factory.ClassAction})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestAutoMissionLifecycleApprovesSealsAndRunsPublishedOperation(t *testing.T
 	if _, err := run("resume", "--session", sessionID); err != nil {
 		t.Fatal(err)
 	}
-	current, err := kanban.LoadGTDItem(ctx, store, item.ItemID)
+	current, err := factory.LoadGTDItem(ctx, store, item.ItemID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,15 +360,15 @@ func TestAutoMissionLifecycleRefusalAndJSONBranches(t *testing.T) {
 func TestAutoMissionTamperedSealedContractBlocksBeforeQueueEffect(t *testing.T) {
 	root, store := todoFixture(t)
 	ctx := context.Background()
-	prepare := func(event, content string) kanban.GTDItem {
-		item, err := kanban.CaptureGTDItem(ctx, store, kanban.CaptureInput{Content: content, Source: "user", SourceAllowed: true, Sensitivity: kanban.SensitivityPrivate, EventID: event})
+	prepare := func(event, content string) factory.GTDItem {
+		item, err := factory.CaptureGTDItem(ctx, store, factory.CaptureInput{Content: content, Source: "user", SourceAllowed: true, Sensitivity: factory.SensitivityPrivate, EventID: event})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := kanban.ClarifyGTDItem(ctx, store, kanban.ClarifyInput{ItemID: item.ItemID, Disposition: kanban.DispositionAction, DesiredOutcome: "done", CompletionEvidence: "CI", Authority: "queue", SourceTrusted: true}); err != nil {
+		if _, err := factory.ClarifyGTDItem(ctx, store, factory.ClarifyInput{ItemID: item.ItemID, Disposition: factory.DispositionAction, DesiredOutcome: "done", CompletionEvidence: "CI", Authority: "queue", SourceTrusted: true}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := kanban.OrganizeGTDItem(ctx, store, kanban.OrganizeInput{ItemID: item.ItemID, Class: kanban.ClassAction}); err != nil {
+		if _, err := factory.OrganizeGTDItem(ctx, store, factory.OrganizeInput{ItemID: item.ItemID, Class: factory.ClassAction}); err != nil {
 			t.Fatal(err)
 		}
 		return item
@@ -419,14 +419,14 @@ func TestAutoMissionTamperedSealedContractBlocksBeforeQueueEffect(t *testing.T) 
 func TestGTDAutonomyEndToEndProductionCLIWithGovernanceReceipts(t *testing.T) {
 	root, store := todoFixture(t)
 	ctx := context.Background()
-	item, err := kanban.CaptureGTDItem(ctx, store, kanban.CaptureInput{Content: "production auto flow", Source: "user", SourceAllowed: true, Sensitivity: kanban.SensitivityPrivate, EventID: "production-auto-flow"})
+	item, err := factory.CaptureGTDItem(ctx, store, factory.CaptureInput{Content: "production auto flow", Source: "user", SourceAllowed: true, Sensitivity: factory.SensitivityPrivate, EventID: "production-auto-flow"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.ClarifyGTDItem(ctx, store, kanban.ClarifyInput{ItemID: item.ItemID, Disposition: kanban.DispositionAction, DesiredOutcome: "dispatched", CompletionEvidence: "assignment", Authority: "queue,dispatch", SourceTrusted: true}); err != nil {
+	if _, err := factory.ClarifyGTDItem(ctx, store, factory.ClarifyInput{ItemID: item.ItemID, Disposition: factory.DispositionAction, DesiredOutcome: "dispatched", CompletionEvidence: "assignment", Authority: "queue,dispatch", SourceTrusted: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.OrganizeGTDItem(ctx, store, kanban.OrganizeInput{ItemID: item.ItemID, Class: kanban.ClassAction}); err != nil {
+	if _, err := factory.OrganizeGTDItem(ctx, store, factory.OrganizeInput{ItemID: item.ItemID, Class: factory.ClassAction}); err != nil {
 		t.Fatal(err)
 	}
 	session := "018f4f4a-7b7c-7a11-8f4d-f11111111111"
@@ -444,7 +444,7 @@ func TestGTDAutonomyEndToEndProductionCLIWithGovernanceReceipts(t *testing.T) {
 	if err := run("approve", "--session", session, "--scope", target, "--action", "publish", "--action", "pick", "--action", "dispatch", "--completion-evidence", "assignment"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{Resource: "worker-10", SessionID: session, MaxDuration: time.Hour}); err != nil {
+	if _, err := factory.AcquireSlotLease(root, factory.SlotLeaseRequest{Resource: "worker-10", SessionID: session, MaxDuration: time.Hour}); err != nil {
 		t.Fatal(err)
 	}
 	head := gitFixtureCLI(t, root, "rev-parse", "HEAD")
@@ -475,7 +475,7 @@ func TestGTDAutonomyEndToEndProductionCLIWithGovernanceReceipts(t *testing.T) {
 		}
 		return decisionPath, auditPath
 	}
-	current, err := kanban.LoadGTDItem(ctx, store, item.ItemID)
+	current, err := factory.LoadGTDItem(ctx, store, item.ItemID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -509,7 +509,7 @@ func TestGTDAutonomyEndToEndProductionCLIWithGovernanceReceipts(t *testing.T) {
 		t.Fatalf("%v state=%+v", err, failed)
 	}
 	record, err := store.LoadPure()
-	if err != nil || len(record.Items) != 1 || record.Items[0].State != kanban.BacklogStatePicked || len(record.Runtime.Assignments) != 1 {
+	if err != nil || len(record.Items) != 1 || record.Items[0].State != factory.BacklogStatePicked || len(record.Runtime.Assignments) != 1 {
 		t.Fatalf("record=%+v err=%v", record, err)
 	}
 	assignment := record.Runtime.Assignments[0]
@@ -658,7 +658,7 @@ func TestAutoMissionExternalDeliveryWithoutAuthoritativeProviderIsStableBlocked(
 	if loadErr != nil || state.State != mission.StateBlocked || !strings.Contains(state.LastBlocker, "provider_unsupported") {
 		t.Fatalf("state=%+v err=%v", state, loadErr)
 	}
-	raw, exportErr := kanban.ExportGTD(context.Background(), store, true)
+	raw, exportErr := factory.ExportGTD(context.Background(), store, true)
 	if exportErr != nil {
 		t.Fatal(exportErr)
 	}
@@ -671,38 +671,38 @@ func TestAuthoritativeDispatchEvidenceRefusalMatrix(t *testing.T) {
 	root, store := todoFixture(t)
 	ctx := context.Background()
 	session := "018f4f4a-7b7c-7a11-8f4d-d44444444444"
-	item, err := kanban.CaptureGTDItem(ctx, store, kanban.CaptureInput{Content: "dispatch evidence", Source: "user", SourceAllowed: true, Sensitivity: kanban.SensitivityPrivate, EventID: "dispatch-evidence"})
+	item, err := factory.CaptureGTDItem(ctx, store, factory.CaptureInput{Content: "dispatch evidence", Source: "user", SourceAllowed: true, Sensitivity: factory.SensitivityPrivate, EventID: "dispatch-evidence"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.ClarifyGTDItem(ctx, store, kanban.ClarifyInput{ItemID: item.ItemID, Disposition: kanban.DispositionAction, DesiredOutcome: "done", CompletionEvidence: "assignment", Authority: "dispatch", SourceTrusted: true}); err != nil {
+	if _, err := factory.ClarifyGTDItem(ctx, store, factory.ClarifyInput{ItemID: item.ItemID, Disposition: factory.DispositionAction, DesiredOutcome: "done", CompletionEvidence: "assignment", Authority: "dispatch", SourceTrusted: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.OrganizeGTDItem(ctx, store, kanban.OrganizeInput{ItemID: item.ItemID, Class: kanban.ClassAction}); err != nil {
+	if _, err := factory.OrganizeGTDItem(ctx, store, factory.OrganizeInput{ItemID: item.ItemID, Class: factory.ClassAction}); err != nil {
 		t.Fatal(err)
 	}
-	engaged, err := kanban.EngageGTDItem(ctx, store, kanban.EngageInput{ItemID: item.ItemID, Authorized: true, EvidenceFresh: true, DependenciesReady: true, LaneAvailable: true, ResourcesAvailable: true})
+	engaged, err := factory.EngageGTDItem(ctx, store, factory.EngageInput{ItemID: item.ItemID, Authorized: true, EvidenceFresh: true, DependenciesReady: true, LaneAvailable: true, ResourcesAvailable: true})
 	if err != nil || engaged.CardID == "" {
 		t.Fatalf("engage=%+v err=%v", engaged, err)
 	}
-	if err := store.Mutate(func(record *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(record *factory.BacklogRecord) error {
 		for i := range record.Items {
 			if record.Items[i].ID == engaged.CardID {
-				record.Items[i].State = kanban.BacklogStatePicked
+				record.Items[i].State = factory.BacklogStatePicked
 			}
 		}
 		return nil
 	}); err != nil {
 		t.Fatal(err)
 	}
-	current, err := kanban.LoadGTDItem(ctx, store, item.ItemID)
+	current, err := factory.LoadGTDItem(ctx, store, item.ItemID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := authoritativeDispatchEvidence(ctx, store, root, session, item.ItemID, engaged.CardID, "worker-10", "run-1", current.SourceRevision); err == nil {
 		t.Fatal("missing lease accepted")
 	}
-	if _, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{Resource: "worker-10", SessionID: session, MaxDuration: time.Hour}); err != nil {
+	if _, err := factory.AcquireSlotLease(root, factory.SlotLeaseRequest{Resource: "worker-10", SessionID: session, MaxDuration: time.Hour}); err != nil {
 		t.Fatal(err)
 	}
 	if values, err := authoritativeDispatchEvidence(ctx, store, root, session, item.ItemID, engaged.CardID, "worker-10", "run-1", current.SourceRevision); err != nil || values["picked"] != "true" {
@@ -725,7 +725,7 @@ func TestAuthoritativeDispatchEvidenceRefusalMatrix(t *testing.T) {
 			}
 		})
 	}
-	if err := kanban.RecordFactoryCardAssignment(root, "foreign-run", engaged.CardID, "worker-10", ""); err != nil {
+	if err := factory.RecordFactoryCardAssignment(root, "foreign-run", engaged.CardID, "worker-10", ""); err != nil {
 		t.Fatal(err)
 	}
 	if values, err := authoritativeDispatchEvidence(ctx, store, root, session, item.ItemID, engaged.CardID, "worker-10", "run-1", current.SourceRevision); err == nil || values["lane_owner_free"] != "false" {
@@ -821,14 +821,14 @@ func TestGoalMissionOperationEarlyRefusalBranches(t *testing.T) {
 	if err := runGoalMissionOperation(cmd, missingID, false, "publish", "gtd:missing", false, missionGitRunOptions{}); err == nil {
 		t.Fatal("missing item accepted")
 	}
-	item, err := kanban.CaptureGTDItem(context.Background(), store, kanban.CaptureInput{Content: "not published", Source: "user", SourceAllowed: true, Sensitivity: kanban.SensitivityPrivate, EventID: "op-refusal"})
+	item, err := factory.CaptureGTDItem(context.Background(), store, factory.CaptureInput{Content: "not published", Source: "user", SourceAllowed: true, Sensitivity: factory.SensitivityPrivate, EventID: "op-refusal"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.ClarifyGTDItem(context.Background(), store, kanban.ClarifyInput{ItemID: item.ItemID, Disposition: kanban.DispositionAction, DesiredOutcome: "done", CompletionEvidence: "done", Authority: "queue", SourceTrusted: true}); err != nil {
+	if _, err := factory.ClarifyGTDItem(context.Background(), store, factory.ClarifyInput{ItemID: item.ItemID, Disposition: factory.DispositionAction, DesiredOutcome: "done", CompletionEvidence: "done", Authority: "queue", SourceTrusted: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.OrganizeGTDItem(context.Background(), store, kanban.OrganizeInput{ItemID: item.ItemID, Class: kanban.ClassAction}); err != nil {
+	if _, err := factory.OrganizeGTDItem(context.Background(), store, factory.OrganizeInput{ItemID: item.ItemID, Class: factory.ClassAction}); err != nil {
 		t.Fatal(err)
 	}
 	target := "gtd:" + item.ItemID
@@ -837,7 +837,7 @@ func TestGoalMissionOperationEarlyRefusalBranches(t *testing.T) {
 	if err := runGoalMissionOperation(cmd, pickID, false, "pick", target, false, missionGitRunOptions{}); err == nil || !strings.Contains(err.Error(), "published_card_missing") {
 		t.Fatalf("pick err=%v", err)
 	}
-	engaged, err := kanban.EngageGTDItem(context.Background(), store, kanban.EngageInput{ItemID: item.ItemID, Authorized: true, EvidenceFresh: true, DependenciesReady: true, LaneAvailable: true, ResourcesAvailable: true})
+	engaged, err := factory.EngageGTDItem(context.Background(), store, factory.EngageInput{ItemID: item.ItemID, Authorized: true, EvidenceFresh: true, DependenciesReady: true, LaneAvailable: true, ResourcesAvailable: true})
 	if err != nil {
 		t.Fatal(err)
 	}

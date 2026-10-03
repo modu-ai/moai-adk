@@ -1,141 +1,100 @@
 ---
 description: >
-  Factory Mode contract for the --factory / -f entry switch on the session
-  launchers. Seeds a one-session plan -> run -> verify -> sync chain that
-  extends the full-pipeline contract with a plan-phase chain head and a
-  verify exit gate at run-phase exit.
+  Factory entry reference for the session launchers. States which launcher
+  flags start a factory leader or join a lane, what each flag refuses, what
+  session record a factory session leaves, and how the Stop-hook block cap is
+  raised. The verify exit gate and the sync dedup gate are specified in their
+  own sections; no launcher flag enters or arms them.
 user-invocable: false
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   category: "workflow"
   status: "active"
-  tags: "factory, launcher, pipeline, verify-gate, chain"
+  tags: "factory, launcher, lane, session-record, verify-gate"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
   level1_tokens: 100
-  level2_tokens: 5000
+  level2_tokens: 4000
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["factory", "chain", "verify gate"]
+  keywords: ["factory", "lane", "verify gate"]
   agents: ["manager-spec", "manager-develop", "manager-docs"]
   phases: ["plan", "run", "sync"]
 ---
 
-# Factory Mode
+# Factory Entry
 
-Factory Mode is an **entry switch**, not a subcommand and not a runtime. Passing `--factory` (or `-f`) to a session launcher seeds a session whose orchestrator drives a `plan -> run -> verify -> sync` chain end to end, powered by an armed goal preset evaluated by the existing `stop-goal` Stop-hook evaluator. No new hook, no new evaluator, no new daemon, and no new subcommand is introduced.
+The factory is a multi-lane run: one **leader** session routes queue cards to **lane** sessions, and each lane carries a card through plan, run, and sync in its own session. The launcher flags below are the only entry points. They start or join sessions; they run no pipeline, arm no goal, and select no SPEC.
 
-An optional SPEC identifier may follow the switch. When it is supplied, the chain targets that SPEC; when it is absent, the chain begins at plan-phase from the operator's first prompt.
+## Entry forms
 
-## Contract
+Two entry tokens exist, and neither takes an argument.
 
-The `factory` pipeline contract **extends** the `full-pipeline` contract defined in `workflows/moai.md` § run→sync chaining policy. It inherits the run→sync auto-chain and the clause preserving the sync-internal gates verbatim, and adds exactly two deltas:
+- `-f` / `--factory` starts the factory leader. It is available on `moai cc` and `moai glm`.
+- `-l` / `--lane` joins the running factory as a lane. It is available on `moai cc`, `moai glm`, and `moai codex`.
+- `moai codex` has no leader entry: any `-f` shape on it is refused with a line naming `moai cc -f` and `moai glm -f`.
+- A launch carries at most one entry token, and no other entry token exists.
 
-1. **A plan-phase chain head** — the chain starts at plan rather than at an explicitly-invoked phase.
-2. **A verify exit gate** — a security review positioned at the exit of run-phase, specified in `workflows/run/mode-orchestration.md` § Verify Exit Gate.
+Each row below is replayed against the launcher's entry parse by the document-versus-behavior test, so a row that disagrees with the launcher fails the build. The third column names the role an accepted entry takes.
 
-There is no second chaining mechanism. Every other property of how phases chain is the inherited contract, unmodified.
-
-## The four stages
-
-| Stage | What runs | Notes |
+| Verdict | Command | Role |
 |---|---|---|
-| **plan** | SPEC authoring and the independent plan audit | the chain head; the audit gate is unchanged |
-| **run** | the configured implementation cycle to acceptance-criterion convergence | unchanged |
-| **verify** | `/moai review --security --deep --repo` | the exit gate of run-phase, not a stage of sync; outcome routing and the rung attribute are specified in `workflows/run/mode-orchestration.md` § Verify Exit Gate |
-| **sync** | documentation, changelog, and the phase close | entered via the inherited auto-chain |
+| accepted | `moai cc -f` | leader |
+| accepted | `moai glm -f` | leader |
+| accepted | `moai cc -l` | lane |
+| accepted | `moai glm -l` | lane |
+| accepted | `moai cc --lane` | lane |
+| accepted | `moai codex -l` | lane |
+| refused | `moai cc -f <spec-id>` | |
+| refused | `moai glm --factory <spec-id>` | |
+| refused | `moai cc -l lane-2` | |
+| refused | `moai glm --lane lane-2` | |
+| refused | `moai codex -l lane-2` | |
+| refused | `moai codex --factory` | |
+| retired | `moai cg` | |
+| retired | `moai gpt` | |
 
-## Human gates
+What the table fixes:
 
-Four human gates fire across a factory chain. Exactly one is added by this contract; the other three are inherited unchanged. No fifth gate exists.
+- A value after `-f` (a SPEC identifier, a number, a lane label) is refused with one line; the leader entry is bare `-f`.
+- A value after `-l` or `--lane` is refused with one line; a lane never names itself.
+- A lane joins a running factory and claims the next free lane number automatically. The operator does not choose slot numbers, and a launch with no running factory is refused.
+- `--leader <name>` selects which leader session a lane joins, and composes with `-l` or `--lane` only. It is not a short flag for any entry.
+- `moai cg` is retired and exits with its migration diagnostic; `moai migrate cg` previews an explicit role migration. `moai gpt` does not exist: GPT models run through `moai codex`.
 
-| # | Gate | Origin | Boundary |
-|---|---|---|---|
-| 1 | Implementation Kickoff Approval | inherited (plan→run) | the chain does not enter run-phase until it is cleared, and the goal preset is armed only afterwards, alongside the work it drives |
-| 2 | the verify CRITICAL/HIGH decision | **added by this contract** | an orchestrator-issued `AskUserQuestion` round at the run exit gate — the sole HUMAN GATE Factory Mode introduces |
-| 3 | `gate-sync-1` (pre-sync quality) | inherited via the extended contract | fires unchanged inside the chained sync phase |
-| 4 | `gate-sync-2` (documentation scope) | inherited via the extended contract | fires unchanged inside the chained sync phase |
+## Session record
 
-All four are orchestrator-issued question rounds, never Stop-hook blocks. That distinction matters for the block-cap note below: raising the block cap cannot skip any of them.
-
-## The `factory_chain` goal preset
-
-The chain is driven by a goal preset named `factory_chain`, evaluated at each turn-end by the existing `stop-goal` Stop-hook evaluator. The preset introduces no new runtime, no new hook, and no new evaluator — it is a condition armed against machinery that already ships.
-
-### The condition
-
-The condition is authored **entirely as model conditions**: every predicate references a line the orchestrator surfaces in the conversation, so the evaluator judges it against the transcript rather than by opening a file. Nothing here is a shell command whose exit code decides.
-
-```text
-The plan-phase artifacts for the targeted SPEC are surfaced as authored and
-the plan audit verdict is surfaced as PASS; AND every blocking acceptance
-criterion has its PASS evidence surfaced in the conversation (test output,
-build exit 0, or an explicit AC-id: PASS line); AND the verify stage is
-surfaced as having produced a readable result, with its severity case
-(S1 / S2 / S3) and its rung (PRIMARY / FALLBACK / DEGRADED, or none for S3)
-stated in the transcript; AND the sync phase is surfaced as closed, with the
-SPEC status transition recorded. All of these hold — that is the end state.
-On a surfaced S1 (a confirmed critical or high finding), the chain does not
-advance to sync; the operator decides at gate 2 above, and the goal keeps
-the chain working through the scoped re-entry.
-On a surfaced S3 (no readable result), clear this goal and escalate rather
-than continue.
-[PRECONDITION: the plan-to-run approval of gate 1 above is already obtained;
-this goal neither substitutes for it nor bypasses it, nor any of gates 2-4.]
-```
-
-Each conjunct names something the orchestrator writes into the transcript as it works — the audit verdict line, the per-criterion PASS lines, the verify result's case and rung, the close record. A predicate that named a file path the evaluator would have to open instead would not be a model condition, and would silently never converge.
-
-### Arming rules
-
-- **Arm only after the plan-to-run approval of gate 1 in § Human gates is cleared.** That gate is where every operator preference is drained; the chain has no way to ask afterwards.
-- **Arm alongside the work, never in place of it.** Arming is arm-only: it records the condition and starts nothing. A goal armed while nothing is running finds its condition unmet at every turn-end and spins idle turns until a bound fires. The orchestrator therefore arms the preset in the same turn it starts the phase the preset is driving.
-- **Bound it with the flags, never with prose.** The preset arms with `--max-turns 0 --max-duration 14400` — infinite turns, a four-hour wall clock. A prose turn clause in the condition text is not parsed and has no mechanical effect, so authoring one would leave the chain running on a bound the operator believes exists and the evaluator never reads. The flags are the only bound that binds.
-- **Accepted risk.** An unattended factory run may consume up to four hours of tokens before the wall-clock bound fires. This is a deliberate trade, taken so a chain that legitimately needs many turns is not cut off mid-phase; an operator who does not want it should not arm the preset with these bounds.
-
-### Termination
-
-The chain ends on whichever of these arrives first: the condition above holding (chain completion), the four-hour wall-clock bound, the goal engine's stagnation guard halting a no-progress loop, or a refusal at any of the four human gates in § Human gates. There is no fifth exit.
-
-### Escalation and degradation
-
-Two behaviors govern the preset and are **defined elsewhere**; they are cited here rather than restated, because a second copy is a second thing to drift.
-
-- **Semantic-failure escalation** — a data race, deadlock, panic, or test assertion failure surfaced during the loop clears the goal and escalates to the operator instead of being auto-fixed. See `workflows/run.md` § Run-phase Autonomy, autonomy invariants.
-- **Graceful degradation** — the evaluator is a Stop hook, so the preset is unavailable when hooks are disabled. The chain then degrades to the standard manual per-turn flow rather than failing. See `.claude/rules/moai/workflow/goal-directive.md`.
-
-## Backend exclusion
-
-Factory Mode is rejected on the mixed-backend launcher (`moai cg`) with the sentinel `FACTORY_MODE_UNSUPPORTED_BACKEND`, and no session is launched. That launcher runs a leader on one backend and teammates on another, which contradicts the one-session / one-backend / one-chain premise the chain rests on — the verify stage would run under an indeterminate backend. The rejection is deliberate, not a gap to be adapted around.
-
-## State record
-
-A factory session carries a session-keyed record under `.moai/state/factory/`:
+A leader or lane session leaves one JSON record at `.moai/state/todo/<session-id>.json`, resolved from the project root through the shared state directory of the todo queue (a pre-rename legacy directory is used instead only when it alone exists). The SessionStart hook writes it once at startup; a resume, clear, or compact never rewrites it, and a write failure never blocks the session.
 
 | Field | Written by | Meaning |
 |---|---|---|
-| `session_id` | launcher | the session the record belongs to |
-| `spec_id` | launcher | the targeted SPEC identifier, or empty when the chain heads at plan |
-| `backend` | launcher | which backend the session runs on |
-| `entered_at` | launcher | when Factory Mode was entered |
-| `deepscan_dir` | orchestrator | the results directory the verify stage produced |
-| `verify_rung` | orchestrator | the rigor rung of the verify result — `PRIMARY`, `FALLBACK`, or `DEGRADED` |
-| `verify_reentries` | orchestrator | how many verify re-entries the chain has consumed |
+| `session_id` | session-start hook | the session the record belongs to |
+| `spec_id` | session-start hook | always written empty; no launcher flag selects a SPEC |
+| `role` | session-start hook | `leader` or `lane`, read from the launch environment |
+| `backend` | session-start hook | the backend the session started on |
+| `entered_at` | session-start hook | when the session entered the factory run |
+| `lane` | session-start hook | the lane number, absent on a leader |
+| `card_id` | session-start hook | the card the session works, when it can be derived from the card worktree |
+| `deepscan_dir` | no code in this repository | defined in the record; the verify stage's results directory |
+| `verify_rung` | no code in this repository | defined in the record; the rigor rung of the verify result |
+| `verify_reentries` | no code in this repository | defined in the record; verify re-entries consumed |
 
-The record is written **best-effort and fail-open**: a write failure never blocks a launch. The chain then degrades to a session with no record, which is a session with an unusable dedup input — and an unusable input resolves toward running the check, which is the safe direction.
+The last three fields are defined by the record schema and written by no code in this repository. The sync dedup gate reads `verify_rung` as an allow-list: suppression requires it to be recorded and equal to `PRIMARY` or `FALLBACK`, so an unwritten field yields no suppression. A predicate whose behavior on a missing field is to suppress would be wrong by construction.
 
-The three orchestrator-written fields are filled in independently as the chain progresses, so a record carrying `deepscan_dir` but not `verify_rung` is reachable. This is why `verify_rung` is read as an **allow-list, never a deny-list**: sync-phase suppression of the security analysis requires `verify_rung` to be **recorded and equal to** `PRIMARY` or `FALLBACK`. Every other value — `DEGRADED`, an unrecognized string, an empty string, or a field never written — yields no suppression. A predicate whose behavior on a missing field is *suppress* is wrong by construction.
+## Block cap
 
-## Block-cap blast radius
+A factory session raises the consecutive Stop-hook block cap at launch. On `moai cc` and `moai glm`, the launcher's factory clause sets `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` for any session that carries the factory lane-count marker, which both the leader launch and a lane launch publish. The clause runs ahead of any goal-state read, so it does not depend on a goal being armed.
 
-Factory Mode raises the consecutive Stop-hook block cap for the session at launch, because the chain's goal is armed mid-session and the launch-time goal read cannot see it (see `.claude/rules/moai/workflow/goal-directive.md` § Raising the block cap for an infinite goal, which names both trigger conditions).
+The raise is session-wide, not scoped to one task. Declining a gate does not lower it, and a goal armed later in the same session inherits the same ceiling. This is a longer unattended leash, not a gate bypass: the human gates are orchestrator-issued question rounds rather than Stop-hook blocks, so a raised cap cannot skip any of them.
 
-The raise is **session-wide**, not scoped to the factory chain. Two consequences an operator should be able to recognize:
+## Gates that are specified elsewhere
 
-- Declining at the first gate still leaves the session carrying the raised ceiling.
-- Arming an unrelated goal later in the same session inherits that ceiling too, so an unrelated loop may run considerably longer than it would in a non-factory session.
+No launcher flag enters or arms either gate below; each is a procedure the orchestrator runs when its own section applies.
 
-This is a longer unattended leash, not a gate bypass — all four human gates above are question rounds rather than Stop-hook blocks, so a raised block cap cannot skip any of them. Scoping the cap to a single goal would require a per-goal runtime mechanism the runtime does not expose.
+- The **verify exit gate** is a security review at the exit of run-phase. Its invocation, severity partition, rung attribute, and re-entry ceiling are specified in `workflows/run/mode-orchestration.md` § Verify Exit Gate.
+- The **sync dedup gate** decides whether a recorded verify result may stand in for the sync security analysis. It applies to a sync whose run-phase recorded a verify result, defaults to running the analysis, and is specified in `workflows/sync/quality-gates-quality.md` Step 0.55.0.
+
+The gates inherited from the pipeline keep their own definitions: Implementation Kickoff Approval before run-phase, and `gate-sync-1` and `gate-sync-2` inside sync. See `workflows/moai.md` § run→sync chaining policy.

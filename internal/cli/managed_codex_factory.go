@@ -40,13 +40,15 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 var errManagedCodexNonLoopback = errors.New("managed codex app server endpoint must be a loopback IP literal (127.0.0.0/8 or ::1) over ws://")
@@ -66,6 +68,13 @@ func managedLoopbackURL(raw string) error {
 	}
 	return nil
 }
+
+// Test seams: tests force the early Start failures that a real filesystem and
+// loopback cannot produce on demand.
+var (
+	managedCodexWriteToken  = os.WriteFile
+	managedCodexAllocateURL = managedCodexAppEndpoint
+)
 
 // managedCodexAppEndpoint allocates the ephemeral loopback port the app
 // server listens on. The owner closes its probe listener before the child
@@ -101,7 +110,17 @@ func managedCodexAppReady(ctx context.Context, raw string) error {
 	if err := managedLoopbackURL(raw); err != nil {
 		return err
 	}
-	client := &http.Client{Timeout: 300 * time.Millisecond}
+	client := &http.Client{
+		Timeout: 300 * time.Millisecond,
+		// A redirect target must pass the same loopback rule as the probe
+		// target, or a loopback endpoint could steer the probe off the machine.
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("managed codex readiness probe: too many redirects")
+			}
+			return managedLoopbackURL(strings.Replace(req.URL.String(), "http", "ws", 1))
+		},
+	}
 	endpoint := strings.Replace(raw, "ws://", "http://", 1) + "/readyz"
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -111,6 +130,9 @@ func managedCodexAppReady(ctx context.Context, raw string) error {
 			return err
 		}
 		resp, err := client.Do(req)
+		if errors.Is(err, errManagedCodexNonLoopback) {
+			return err
+		}
 		if err == nil {
 			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
@@ -142,25 +164,270 @@ type managedCodexRPCError struct {
 	Message string `json:"message"`
 }
 
-// managedCodexAppReply is one frame: an RPC response (ID set), a lifecycle
-// notification (Method set, ID 0), or a response carrying an error object.
+// managedCodexAppReply is one decoded frame, classified by field presence: an
+// id and a method make a server-originated request, a method alone a
+// notification, an id alone a response. The id stays raw JSON because a server
+// request may carry an integer or a string id, and the answer must echo it
+// verbatim.
 type managedCodexAppReply struct {
-	ID     int                   `json:"id"`
+	ID     json.RawMessage       `json:"id"`
 	Method string                `json:"method"`
 	Params json.RawMessage       `json:"params"`
 	Result json.RawMessage       `json:"result"`
 	Error  *managedCodexRPCError `json:"error"`
+
+	// brokerDeclined is the read goroutine's verdict on a turn/completed event:
+	// true when a declined MoAI broker elicitation was attributed to the turn
+	// that just completed. It is never decoded from the wire.
+	brokerDeclined bool
 }
 
-// managedCodexAppClient is one App Server WS connection. DeliverTurn is the
-// only writer and the M1 driver serializes turns, so the connection needs no
-// write mutex; reads run on their own goroutine.
+// hasID reports whether the frame carries a usable id; a missing id and a
+// literal JSON null both count as no id.
+func (f managedCodexAppReply) hasID() bool {
+	return len(f.ID) > 0 && string(f.ID) != "null"
+}
+
+// idIs reports whether the frame id is the integer id of a pending client
+// call. A string id never matches, so a server request cannot be taken for a
+// response.
+func (f managedCodexAppReply) idIs(id int) bool {
+	n, err := strconv.Atoi(string(f.ID))
+	return err == nil && n == id
+}
+
+// managedLogOutput is the single destination for the owner's operator-facing
+// log lines, and the only test seam of this file: a test stores a synchronized
+// writer here, production leaves it nil and the lines go to os.Stderr (stdout
+// belongs to model output). The atomic pointer protects the pointer load only,
+// so a writer stored here must synchronize its own Write.
+var managedLogOutput atomic.Pointer[io.Writer]
+
+func managedLogf(format string, args ...any) {
+	var out io.Writer = os.Stderr
+	if w := managedLogOutput.Load(); w != nil {
+		out = *w
+	}
+	_, _ = fmt.Fprintf(out, format+"\n", args...)
+}
+
+// managedCodexAppClient is one App Server WS connection. The read goroutine
+// answers server-originated requests while DeliverTurn writes its own calls,
+// so every connection write goes through write, which holds writeMu around the
+// WriteJSON call and nothing else.
 type managedCodexAppClient struct {
 	conn      *websocket.Conn
 	events    chan managedCodexAppReply
 	done      chan struct{}
 	nextID    int
 	completed map[string]string
+	// brokerFailed holds the read goroutine's verdict per completed turn id; only
+	// the consumer (call and waitTurn) touches it, like completed.
+	brokerFailed map[string]bool
+
+	writeMu sync.Mutex
+
+	// The turn window is owned by the read goroutine's frame order: it opens
+	// in armTurn before turn/start is written and closes when that turn's
+	// turn/completed frame is read. mu guards it and is never held across a
+	// connection write.
+	mu             sync.Mutex
+	open           bool
+	turnID         string
+	prevTurnID     string
+	brokerDeclined int
+}
+
+// write sends one JSON frame; gorilla/websocket allows a single concurrent
+// writer, and the call loop and the read goroutine are two.
+//
+// @MX:ANCHOR: [AUTO] the single path for every connection write (call, the initialized notification, server-request replies) — fan_in 3
+// @MX:REASON: gorilla/websocket forbids concurrent writers, so a write that bypasses writeMu races the read goroutine's replies with the call loop
+// @MX:SPEC: SPEC-FACTORY-MANAGED-HARDEN-001
+func (c *managedCodexAppClient) write(v any) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	return c.conn.WriteJSON(v)
+}
+
+// armTurn opens a fresh turn window. It runs before turn/start is written so a
+// frame belonging to the new turn can never arrive while the window is closed.
+// prevTurnID survives on purpose: it identifies late frames of the turn that
+// just ended.
+func (c *managedCodexAppClient) armTurn() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.open = true
+	c.turnID = ""
+	c.brokerDeclined = 0
+}
+
+// managedTurnFrame decodes the turn object of a turn/started or turn/completed
+// notification.
+func managedTurnFrame(params json.RawMessage) (id, status string) {
+	var payload struct {
+		Turn struct {
+			ID     string `json:"id"`
+			Status string `json:"status"`
+		} `json:"turn"`
+	}
+	if json.Unmarshal(params, &payload) != nil {
+		return "", ""
+	}
+	return payload.Turn.ID, payload.Turn.Status
+}
+
+// noteTurnStarted records the id of the turn the open window belongs to.
+func (c *managedCodexAppClient) noteTurnStarted(params json.RawMessage) {
+	id, _ := managedTurnFrame(params)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.open && c.turnID == "" && id != "" {
+		c.turnID = id
+	}
+}
+
+// noteTurnCompleted closes the window for the completed turn and returns the
+// verdict the completion event carries. A completion of the previous turn (a
+// duplicate or late frame) and a completion of some other turn leave the window
+// alone and carry no verdict.
+func (c *managedCodexAppClient) noteTurnCompleted(params json.RawMessage) bool {
+	id, _ := managedTurnFrame(params)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if id == "" || id == c.prevTurnID || !c.open || (c.turnID != "" && c.turnID != id) {
+		return false
+	}
+	declined := c.brokerDeclined > 0
+	c.prevTurnID = id
+	c.open = false
+	return declined
+}
+
+// noteElicitation attributes one answered mcpServer/elicitation request to the
+// turn window. Only a request from the MoAI broker server that arrives while
+// the window is open counts, and only when its turnId is neither the previous
+// turn's nor a turn other than the one the window already knows. It returns
+// the attributed turn id ("none" when the request was not counted) and the
+// window's declined count after this request.
+func (c *managedCodexAppClient) noteElicitation(serverName string, requestTurn string) (turn string, declined int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	turn = "none"
+	if !c.open || serverName != moaiMCPServerKey {
+		return turn, c.brokerDeclined
+	}
+	switch {
+	case requestTurn != "" && requestTurn == c.prevTurnID:
+		// A late request of the turn that just ended.
+		return turn, c.brokerDeclined
+	case c.turnID != "" && requestTurn != "" && requestTurn != c.turnID:
+		// A request of some turn other than the one this window belongs to.
+		return turn, c.brokerDeclined
+	}
+	c.brokerDeclined++
+	switch {
+	case c.turnID != "":
+		turn = c.turnID
+	case requestTurn != "":
+		turn = requestTurn
+	}
+	return turn, c.brokerDeclined
+}
+
+// JSON-RPC error codes the owner answers server requests with.
+const (
+	managedRPCServerError    = -32000
+	managedRPCMethodNotFound = -32601
+)
+
+const managedElicitationMethod = "mcpServer/elicitation/request"
+
+// managedLegacyApprovalRejection is the refusal text of the two legacy approval
+// requests (applyPatchApproval, execCommandApproval). Codex's ReviewDecision
+// carries a denial as an object, {"denied":{"rejection":<text>}}, never as the
+// bare string "denied". The text names no id, path or secret.
+const managedLegacyApprovalRejection = "managed Factory layer is delivery-only and never grants approvals"
+
+// managedServerRequestPolicy is how the owner answers one server request kind.
+// result nil means a JSON-RPC error with errCode; outcome is the token the log
+// line carries.
+type managedServerRequestPolicy struct {
+	outcome string
+	result  any
+	errCode int
+}
+
+// managedServerRequestPolicies is the response policy (design.md D-1): decline
+// or grant nothing. No entry accepts anything and none uses cancel or abort,
+// which would interrupt the turn the model still needs to write its receipt in.
+// Values the owner cannot invent (tokens, attestations, user answers) answer
+// with an error.
+//
+// @MX:NOTE: [AUTO] the only place a server request is mapped to an answer, and the only place its log token is chosen — keep table and log in step
+var managedServerRequestPolicies = map[string]managedServerRequestPolicy{
+	"item/commandExecution/requestApproval": {outcome: "decline", result: map[string]any{"decision": "decline"}},
+	"item/fileChange/requestApproval":       {outcome: "decline", result: map[string]any{"decision": "decline"}},
+	"item/permissions/requestApproval":      {outcome: "empty", result: map[string]any{"permissions": map[string]any{}}},
+	managedElicitationMethod:                {outcome: "decline", result: map[string]any{"action": "decline"}},
+	"item/tool/requestUserInput":            {outcome: "error", errCode: managedRPCServerError},
+	"item/tool/call": {outcome: "failed", result: map[string]any{
+		"contentItems": []map[string]string{{"type": "inputText", "text": "managed Factory session registers no dynamic tools"}},
+		"success":      false,
+	}},
+	"account/chatgptAuthTokens/refresh": {outcome: "error", errCode: managedRPCServerError},
+	"attestation/generate":              {outcome: "error", errCode: managedRPCServerError},
+	"applyPatchApproval":                {outcome: "denied", result: managedLegacyDeniedResult()},
+	"execCommandApproval":               {outcome: "denied", result: managedLegacyDeniedResult()},
+}
+
+// managedLegacyDeniedResult builds the schema-valid refusal of a legacy approval
+// request: ReviewDecision's denied variant is an object with a required
+// rejection string. It declines the action and keeps the session alive, unlike
+// the bare string "abort", which would interrupt the turn.
+func managedLegacyDeniedResult() map[string]any {
+	return map[string]any{"decision": map[string]any{"denied": map[string]any{"rejection": managedLegacyApprovalRejection}}}
+}
+
+// managedUnknownRequestPolicy answers a method the table does not name: silence
+// would leave the server waiting forever.
+var managedUnknownRequestPolicy = managedServerRequestPolicy{outcome: "error", errCode: managedRPCMethodNotFound}
+
+// answerServerRequest answers one server-originated request from the read
+// goroutine. The log line is written before the reply so an operator-visible
+// trace exists by the time the server sees the answer; the reply echoes the
+// request id verbatim. The turn-window lock is released before the write.
+func (c *managedCodexAppClient) answerServerRequest(req managedCodexAppReply) error {
+	policy, ok := managedServerRequestPolicies[req.Method]
+	if !ok {
+		policy = managedUnknownRequestPolicy
+	}
+	line := fmt.Sprintf("Factory server request answered: %q -> %s", req.Method, policy.outcome)
+	if req.Method == managedElicitationMethod {
+		var params struct {
+			ServerName string  `json:"serverName"`
+			TurnID     *string `json:"turnId"`
+		}
+		_ = json.Unmarshal(req.Params, &params)
+		requestTurn := ""
+		if params.TurnID != nil {
+			requestTurn = *params.TurnID
+		}
+		turn, declined := c.noteElicitation(params.ServerName, requestTurn)
+		line += fmt.Sprintf(" serverName=%q turn=%s broker_declined=%d", params.ServerName, turn, declined)
+	}
+	managedLogf("%s", line)
+
+	reply := map[string]any{"id": req.ID}
+	if policy.result != nil {
+		reply["result"] = policy.result
+	} else {
+		reply["error"] = managedCodexRPCError{
+			Code:    policy.errCode,
+			Message: fmt.Sprintf("managed Factory session cannot answer %q: no operator is attached", req.Method),
+		}
+	}
+	return c.write(reply)
 }
 
 // @MX:WARN: [AUTO] the read goroutine outlives the calls that start it and its only stop signal is the done channel
@@ -172,12 +439,26 @@ func (c *managedCodexAppClient) read() {
 		if err := c.conn.ReadJSON(&event); err != nil {
 			return
 		}
-		// The turn loop consumes lifecycle notifications and RPC replies;
-		// streaming item deltas belong to the interactive surface, not the
-		// delivery path.
-		if event.ID == 0 && event.Method != "turn/started" && event.Method != "turn/completed" {
+		switch {
+		case event.hasID() && event.Method != "":
+			// A server-originated request never reaches the call loop: it is
+			// answered here, even between turns. A failed answer means the
+			// connection is dead.
+			if err := c.answerServerRequest(event); err != nil {
+				return
+			}
+			continue
+		case event.Method == "turn/started":
+			c.noteTurnStarted(event.Params)
+		case event.Method == "turn/completed":
+			event.brokerDeclined = c.noteTurnCompleted(event.Params)
+		case event.Method != "" || !event.hasID():
+			// Streaming item deltas and id-less frames belong to the
+			// interactive surface, not the delivery path.
 			continue
 		}
+		// What remains for the turn loop: lifecycle notifications and RPC
+		// responses.
 		select {
 		case c.events <- event:
 		case <-c.done:
@@ -203,13 +484,19 @@ func (c *managedCodexAppClient) observe(event managedCodexAppReply) {
 			c.completed = map[string]string{}
 		}
 		c.completed[payload.Turn.ID] = payload.Turn.Status
+		if event.brokerDeclined {
+			if c.brokerFailed == nil {
+				c.brokerFailed = map[string]bool{}
+			}
+			c.brokerFailed[payload.Turn.ID] = true
+		}
 	}
 }
 
 func (c *managedCodexAppClient) call(ctx context.Context, method string, params any) (json.RawMessage, error) {
 	c.nextID++
 	id := c.nextID
-	if err := c.conn.WriteJSON(map[string]any{"id": id, "method": method, "params": params}); err != nil {
+	if err := c.write(map[string]any{"id": id, "method": method, "params": params}); err != nil {
 		return nil, err
 	}
 	for {
@@ -223,7 +510,7 @@ func (c *managedCodexAppClient) call(ctx context.Context, method string, params 
 				return nil, errors.New("managed codex app server connection closed")
 			}
 			c.observe(event)
-			if event.ID != id {
+			if !event.idIs(id) {
 				continue
 			}
 			if event.Error != nil {
@@ -235,14 +522,23 @@ func (c *managedCodexAppClient) call(ctx context.Context, method string, params 
 }
 
 // waitTurn blocks until the named turn completes. A completion already
-// folded into the table resolves immediately; a turn that ended in any other
-// state fails the delivery.
+// folded into the table resolves immediately. Two outcomes are turn-scoped
+// failures (errManagedTurnFailed): a turn that ended in any state other than
+// completed, and a turn the App Server marked completed but that carries a
+// declined MoAI broker elicitation — the receipt tool may never have run. The
+// timeout and connection errors below stay unmarked, so they remain
+// session-fatal.
 func (c *managedCodexAppClient) waitTurn(ctx context.Context, turnID string) error {
 	for {
 		if status, ok := c.completed[turnID]; ok {
+			brokerFailed := c.brokerFailed[turnID]
 			delete(c.completed, turnID)
+			delete(c.brokerFailed, turnID)
 			if status != "completed" {
-				return fmt.Errorf("managed codex turn %s ended as %s", turnID, status)
+				return fmt.Errorf("%w: managed codex turn %s ended as %s", errManagedTurnFailed, turnID, status)
+			}
+			if brokerFailed {
+				return fmt.Errorf("%w: managed codex turn %s completed but a MoAI broker elicitation was declined during it", errManagedTurnFailed, turnID)
 			}
 			return nil
 		}
@@ -261,6 +557,7 @@ func (c *managedCodexAppClient) waitTurn(ctx context.Context, turnID string) err
 }
 
 func (c *managedCodexAppClient) startTurn(ctx context.Context, threadID, prompt string) error {
+	c.armTurn()
 	result, err := c.call(ctx, "turn/start", map[string]any{
 		"threadId": threadID,
 		"input":    []map[string]string{{"type": "text", "text": prompt}},
@@ -378,7 +675,7 @@ func newManagedCodexSession(bin string, args, env []string) (*managedCodexSessio
 	}
 	label := launchEnvValue(env, config.EnvMoaiFactoryWorker)
 	if label == "" {
-		label = kanban.RoleLeader
+		label = factory.RoleLeader
 	}
 	return &managedCodexSession{program: bin, appArgs: appArgs, model: model, env: env, label: label}, nil
 }
@@ -397,11 +694,19 @@ func (s *managedCodexSession) Start() error {
 		return err
 	}
 	s.tokenDir = tokenDir
+	// Until the child exists, Close is a no-op, so any failure before
+	// cmd.Start must drop the token directory here.
+	defer func() {
+		if !s.started {
+			_ = os.RemoveAll(s.tokenDir)
+			s.tokenDir = ""
+		}
+	}()
 	tokenFile := filepath.Join(tokenDir, "token")
-	if err := os.WriteFile(tokenFile, []byte(token), 0o600); err != nil {
+	if err := managedCodexWriteToken(tokenFile, []byte(token), 0o600); err != nil {
 		return err
 	}
-	url, err := managedCodexAppEndpoint()
+	url, err := managedCodexAllocateURL()
 	if err != nil {
 		return err
 	}
@@ -411,10 +716,6 @@ func (s *managedCodexSession) Start() error {
 	s.cmd.Dir = s.dir
 	s.cmd.Stderr = os.Stderr
 	if err := s.cmd.Start(); err != nil {
-		// No child exists, so the deferred Close will not run its teardown:
-		// drop the token directory here instead.
-		_ = os.RemoveAll(s.tokenDir)
-		s.tokenDir = ""
 		return fmt.Errorf("start managed Factory codex app server: %w", err)
 	}
 	s.started = true
@@ -435,7 +736,7 @@ func (s *managedCodexSession) Start() error {
 	}); err != nil {
 		return err
 	}
-	if err := conn.WriteJSON(map[string]any{"method": "initialized", "params": map[string]any{}}); err != nil {
+	if err := s.client.write(map[string]any{"method": "initialized", "params": map[string]any{}}); err != nil {
 		return err
 	}
 
@@ -509,7 +810,7 @@ func (s *managedCodexSession) Close() error {
 // without process-global mutation (the entry points pass os.Stdin).
 func runManagedFactoryCodex(bin string, args, env []string, dir string, stdin io.Reader) (err error) {
 	root := launchProjectRoot()
-	runID := launchEnvValue(env, config.EnvMoaiKanbanID)
+	runID := launchEnvValue(env, config.EnvFactoryRunID)
 	if runID == "" {
 		return errors.New("factory managed session requires a factory run id")
 	}

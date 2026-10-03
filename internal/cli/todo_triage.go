@@ -39,7 +39,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -360,7 +360,7 @@ func (e *todoTriageEngine) pathNeighborhood(sym string) todoTriageNeighborhood {
 		// of the SAME KIND, so the extension is the discriminator that removes
 		// the noise where the noise is (55 -> 19, every dropped row a
 		// .md/.json/.txt) while barely touching listings that were already
-		// clean (internal/kanban/backlog.go 32 -> 30,
+		// clean (internal/factory/backlog.go 32 -> 30,
 		// internal/glmcred/glmcred.go 1 -> 1).
 		//
 		// Path-like symbols only — the identifier prefix search is a different
@@ -520,7 +520,7 @@ func runTodoTriage(cmd *cobra.Command, ids []string, jsonOutput bool) error {
 }
 
 // observe builds one card's observation block, spending the bounded probes.
-func (e *todoTriageEngine) observe(cmd *cobra.Command, rec *kanban.BacklogRecord, id string) todoTriageCard {
+func (e *todoTriageEngine) observe(cmd *cobra.Command, rec *factory.BacklogRecord, id string) todoTriageCard {
 	card := todoTriageCard{ID: id, Ref: e.ref, Symbols: []string{}}
 	for _, it := range rec.Items {
 		if it.ID == id {

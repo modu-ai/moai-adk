@@ -113,12 +113,22 @@ const (
 	// DefaultManagedCodexReadyTimeout bounds one Codex App Server handshake —
 	// process spawn, /readyz wait, loopback WS dial, initialize, thread start
 	// (SPEC-FACTORY-MANAGED-SESSION-001 AC-MS-001). It also bounds the WS
-	// handshake itself.
-	DefaultManagedCodexReadyTimeout = 10 * time.Second
+	// handshake itself. UNMEASURED: the 30 s value is a relaxation of the
+	// former 10 s with no cold-start data behind it (card t1410, F9).
+	DefaultManagedCodexReadyTimeout = 30 * time.Second
 	// DefaultManagedCodexTurnTimeout bounds one injected turn: a turn that
 	// never completes fails the delivery instead of holding the serial queue
 	// forever; the store's claim lease owns redelivery afterwards.
 	DefaultManagedCodexTurnTimeout = 10 * time.Minute
+	// DefaultManagedSessionMaxConsecutiveTurnFailures bounds how many turn-scoped
+	// failures in a row the managed delivery driver tolerates before it returns
+	// the last failure and ends the session; a successful turn resets the count
+	// (SPEC-FACTORY-MANAGED-HARDEN-001 REQ-MH-008). UNMEASURED: there is no
+	// failure-rate data behind 3 — it is the repo's "maximum 3 retries per
+	// operation" convention (moai-constitution Error Handling Protocol), in the
+	// same spirit as the DefaultQuotaGate* defaults. Correct it here when
+	// evidence says otherwise.
+	DefaultManagedSessionMaxConsecutiveTurnFailures = 3
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
@@ -430,7 +440,7 @@ const (
 
 	// DefaultSessionRecordRetentionDays is the shipped default for the
 	// project-tier `state.session_record_retention_days` key (card t1312):
-	// the age bound past which SessionStart prunes kanban session records.
+	// the age bound past which SessionStart prunes factory session records.
 	// It mirrors DefaultHomeCleanRetentionDays — the same 30-day window the
 	// home tier already ships — because the consumers (doctor Factory Run,
 	// the web ops console, the stale-run hook) need liveness only and no
@@ -801,8 +811,8 @@ var (
 	DefaultSessionMsgMaxPending = 64
 )
 
-// DefaultFactoryLanes is the fan-out size the count-less `-k --name
-// lane-<n>` form takes when the operator supplies no count
+// DefaultFactoryLanes is the fan-out size the legacy count-less `-k` lane
+// entry takes when the operator supplies no count
 // (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 leader loop). The value 8 is
 // the operator-decided factory default for that legacy entry — large enough to
 // keep a card queue draining, small enough to sit under the session-count a
@@ -813,7 +823,7 @@ const DefaultFactoryLanes = 8
 // DefaultFactoryLeaderLanes is the leader fan-out a bare `-f` / `--factory`
 // (no count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived
 // -f entry starts the minimal factory — leader plus lane-1 — which the
-// operator then grows one lane at a time with `-f lane-<n>`, so the
+// operator then grows one lane at a time with `-l`, so the
 // count-less default is 1, not the legacy form's 8 (DefaultFactoryLanes).
 //
 // Its role is the LEADER FAN-OUT DEFAULT only (SPEC-CODEX-LANE-SLOTS-001,
@@ -833,12 +843,24 @@ const DefaultFactoryLeaderLanes = 1
 const DefaultFactorySlowLaunchThreshold = 2 * time.Second
 
 // DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
-// the launcher seeds on kanban companion and factory lane sessions (t118,
+// the launcher seeds on factory lane sessions (t118,
 // operator-confirmed architecture: each lane runs up to 10 agents in
 // parallel). It rides CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS (runtime default
 // 20) so N lanes fanning out simultaneously divide the machine's capacity by
 // construction rather than by operator restraint.
 const DefaultLaneMaxConcurrentSubagents = 10
+
+// DefaultTodoClassifyLLMTimeout is the HTTP timeout ceiling of the LLM
+// classification decider (SPEC-TCD-LLM-DECIDER-001 REQ-TLD-006). An
+// interactive add cannot wait out the audit path's 120s ceiling
+// (glmAuditHTTPTimeout): past this bound the judgment fails and the add
+// degrades to the fail-safe default with the one-line notice (REQ-TLD-003).
+const DefaultTodoClassifyLLMTimeout = 10 * time.Second
+
+// DefaultTodoClassifyLLMMaxTokens bounds a single LLM classification
+// response (SPEC-TCD-LLM-DECIDER-001): the judgment is a three-field JSON
+// object plus a one-line reason — far below the audit pass's 4096 cap.
+const DefaultTodoClassifyLLMMaxTokens = 512
 
 // DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
 // job's in-flight HTTP call to end on its own. Derived from

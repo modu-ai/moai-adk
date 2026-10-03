@@ -394,9 +394,9 @@ func generationTrail(t *testing.T, gens ...int64) {
 // one slot, forced orders (i)-(v) and 200 unforced iterations.
 func TestFactoryLaneHandoffRebindVsLaunchBindRace(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
-	t.Setenv(config.EnvMoaiKanbanID, "run-launch-race")
+	t.Setenv(config.EnvFactoryRunID, "run-launch-race")
 	t.Setenv(config.EnvMoaiFactoryWorker, launchRaceSlot)
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvFactoryBackend, "codex")
 	ownerPID, ownerStart := factoryHookOwnerIdentity(t)
 	newPID, newStart := startLiveOwner(t)
 	if newPID == ownerPID || newPID == os.Getpid() || newStart == ownerStart {
@@ -703,9 +703,9 @@ func TestFactoryUserPromptRegistrationSurfacesHandoffRefusals(t *testing.T) {
 	root := t.TempDir()
 	run := "run-prompt-refusal"
 	recordActiveFactoryRun(t, root, run)
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorker, launchRaceSlot)
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvFactoryBackend, "codex")
 	ctx := context.Background()
 	owner, start := factoryHookOwnerIdentity(t)
 	s, err := factorymsg.Open(root, run)

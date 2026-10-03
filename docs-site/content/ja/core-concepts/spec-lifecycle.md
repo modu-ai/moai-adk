@@ -110,4 +110,4 @@ sync 品質の独立審査です。**sync-auditor** が、今書かれたばか�
 - [`/moai plan`](/ja/workflow-commands/moai-plan) · [`/moai run`](/ja/workflow-commands/moai-run) · [`/moai sync`](/ja/workflow-commands/moai-sync) — 各フェーズコマンドの実行詳細
 - [開発方法論 (DDD/TDD)](/ja/core-concepts/ddd) — run フェーズが従う 2 つの方法論サイクル
 - [TRUST 5 品質フレームワーク](/ja/core-concepts/trust-5) — run の成果物が通らなければならない品質フレーム
-- [カンバンモード](/ja/advanced/kanban-mode) — このライフサイクルをマルチセッションボードの上で回す形
+- [ファクトリーモード](/ja/advanced/factory-mode) — このライフサイクルを複数のレーンセッションで回す形
