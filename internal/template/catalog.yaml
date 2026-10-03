@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: dc223b4bf92267aaa4695c7820faada04adb30067d5dbbd31a3d175e6d0ea205
+              hash: 4b0f05b1db543f9d66adb7daa60f6edf1b179d6473b6b1055eb1a8aae7b16156
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -41,7 +41,7 @@ catalog:
             - name: moai-kanban-foreman
               tier: core
               path: templates/.claude/skills/moai-kanban-foreman/
-              hash: de8216f7c41e87612320ace66e63bd530badfc4492f7145485e8947e6adf8dcc
+              hash: c3a3c32cc3719a096d572c42236c0d2dd8e9e02b201b42aeeacd2f8b9c5b2383
               version: 1.0.0
             - name: moai-lane-watchdog
               tier: core
@@ -172,7 +172,7 @@ catalog:
             - name: manager-todo
               tier: core
               path: templates/.claude/agents/moai/manager-todo.md
-              hash: 6cf817ab5aad6d01aa70c391c657586dc4f92f000e9e74562706e5d3f65d79c0
+              hash: c446ed4a2ade5d96579bca9a7dd3237a55a1d5e09f28cf5b64f617eea413ca19
               version: 1.0.0
             - name: manager-design
               tier: core
