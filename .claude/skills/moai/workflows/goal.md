@@ -49,7 +49,7 @@ the verdict is actually produced.
 
 #### Infinite goal (`--max-turns 0`)
 
-An infinite goal armed with `moai goal arm "<condition>" --max-turns 0 --max-duration <seconds>` (the wall-clock primary bound) is bounded only by the REAL bounds (wall-clock / cost / stagnation) — but the default `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=8` silently terminates it first. Raise `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (e.g. to 200) when arming a `--max-turns 0` goal. Use the `moai gpt` launcher for this repository; for an already-running session, set `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` in the environment before arming so the runtime cap does not pre-empt the infinite loop.
+An infinite goal armed with `moai goal arm "<condition>" --max-turns 0 --max-duration <seconds>` (the wall-clock primary bound) is bounded only by the REAL bounds (wall-clock / cost / stagnation) — but the default `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=8` silently terminates it first. Raise `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (e.g. to 200) when arming a `--max-turns 0` goal. Use the `moai cc` / `moai glm` launchers for this repository; for an already-running session, set `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` in the environment before arming so the runtime cap does not pre-empt the infinite loop.
 
 ## Verbs
 
@@ -186,7 +186,7 @@ become shell text, change policy, extend scope, or invent evidence.
 Provider durability must be mechanically probed. When reconnect, credential,
 process-identity, and owner-replacement support is not proven, report and enforce
 `active-session-only`; never describe that mode as background or durable service.
-Use `moai gpt` for the worktree session and preserve the repository's existing
+Use `moai codex` for the worktree session and preserve the repository's existing
 manager ownership and local-develop integration rules.
 
 ## Progression Mode (Autonomous / Semi-autonomous) — chosen at the plan→run Kickoff gate (autonomous by default; `.claude/rules/moai/workflow/auto-semantics.md` §9.1)

@@ -1,6 +1,9 @@
 # 진입점
 
-**현재 부분 갱신 — t1443, worktree `.moai/worktrees/t1443`, 브랜치 `WT-codemaps-regen`, base `4bf547bca` (2026-10-02).**
+**현재 부분 갱신 — t1456, worktree `.moai/worktrees/t1456`, 브랜치 `WT-codemaps-regen2`, base `5501c06af` (2026-10-03).**
+앵커 `a2e03d8e0` 뒤 창(아홉 Go 카드 + 수리·템플릿 착지분 — § `modules.md` t1456 판)을 반영했다. 등록 수치는 이 트리 재측정에서 변동 없었다 — 비테스트 `AddCommand(` 239 · `rootCmd.AddCommand(` 66 · root.go init() 30 · 훅 설정 엔트리 34 · 셸 래퍼 48. 새 동사 둘은 기존 줄에 합류해 호출 줄 수를 움직이지 않았다 — `moai factory relaunch`(기존 factory 등록 줄의 인자 행, card t1345)와 `moai verify audit-plan`(`verifyExtraCommands` 레지스트리 슬라이스의 init append, card t1423). **MCP 도구는 45→47** — `internal/mcp/catalog.go`의 어드바이저리 `codex_review`·`glm_review` 등록(card t1422 — 영수증 없음·required 승격 없음). 합류 창의 동작 변화: 할당량 게이트가 링크된 워크트리 기록까지 읽고(card t1442), 감사 플랜이 콜스타트에 고정되며(card t1423), 스테일 런 처방이 운영자용 `moai factory relaunch` 명령줄을 안내한다(card t1345).
+
+**이전 부분 갱신 — t1443, worktree `.moai/worktrees/t1443`, 브랜치 `WT-codemaps-regen`, base `4bf547bca` (2026-10-02).**
 앵커 `c2703f698` 뒤 창(14카드 착지분 — § `modules.md` t1443 판)을 반영했다. 등록 수치는 이 트리 재측정에서 변동 없었다 — 비테스트 `AddCommand(` 239 · `rootCmd.AddCommand(` 66 · root.go init() 30 · 훅 설정 엔트리 34 · 셸 래퍼 48(창 안의 등록 줄 diff 0 — 새 동사 없음; 창의 cli 신규 6파일은 기존 명령의 내부 동작이다). MCP 도구 45도 등록 파일 diff에서 추가 0으로 확인했다(창의 `mcp_*` 변경은 문언·티어 해석뿐). 내용 갱신은 표면 수치를 움직이지 않는 동작 변화다 — `factory next` 임대가 할당량 게이트를 얹었다(card t1347 — MCP `factory_next` 표면 동일), 세 런처 문에 백엔드 인지 레인 이름 해석 `resolveFactoryLaneName`이 얹혔고(card t1347) `launcher.go`에 관리 세션 divert 게이트가 더해졌으며(card t1375), 리더 SessionStart 합류 공지에 `m.gateSummary` 블록이 더해졌다(card t1344 — `session_start_factory.go`·`session_start_kanban.go` + `_i18n.go` 병행), MCP `jev` 도구 문서가 모든 호출자에 대한 표시 전용을 선언한다(card t1403).
 
 **이전 부분 갱신 — t1297, worktree `.moai/worktrees/t1297`, 브랜치 `WT-codemaps-regen`, base `a9f43a6fc` (2026-10-02, 전면 재생성 카드).**

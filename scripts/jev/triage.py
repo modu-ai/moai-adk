@@ -131,7 +131,7 @@ def measure(card_id, text):
 
     present = 0
     for sym in syms:
-        rc, out = run(["git", "grep", "-c", "--", sym, INTEGRATION])
+        rc, out = run(["git", "grep", "-c", "-F", "--", sym, INTEGRATION])
         if rc == 0:
             hits = len(out.splitlines())
             present += 1 if hits else 0

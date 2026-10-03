@@ -119,6 +119,15 @@ const (
 	// never completes fails the delivery instead of holding the serial queue
 	// forever; the store's claim lease owns redelivery afterwards.
 	DefaultManagedCodexTurnTimeout = 10 * time.Minute
+	// DefaultManagedSessionMaxConsecutiveTurnFailures bounds how many turn-scoped
+	// failures in a row the managed delivery driver tolerates before it returns
+	// the last failure and ends the session; a successful turn resets the count
+	// (SPEC-FACTORY-MANAGED-HARDEN-001 REQ-MH-008). UNMEASURED: there is no
+	// failure-rate data behind 3 — it is the repo's "maximum 3 retries per
+	// operation" convention (moai-constitution Error Handling Protocol), in the
+	// same spirit as the DefaultQuotaGate* defaults. Correct it here when
+	// evidence says otherwise.
+	DefaultManagedSessionMaxConsecutiveTurnFailures = 3
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
@@ -827,6 +836,18 @@ const DefaultFactorySlowLaunchThreshold = 2 * time.Second
 // 20) so N lanes fanning out simultaneously divide the machine's capacity by
 // construction rather than by operator restraint.
 const DefaultLaneMaxConcurrentSubagents = 10
+
+// DefaultTodoClassifyLLMTimeout is the HTTP timeout ceiling of the LLM
+// classification decider (SPEC-TCD-LLM-DECIDER-001 REQ-TLD-006). An
+// interactive add cannot wait out the audit path's 120s ceiling
+// (glmAuditHTTPTimeout): past this bound the judgment fails and the add
+// degrades to the fail-safe default with the one-line notice (REQ-TLD-003).
+const DefaultTodoClassifyLLMTimeout = 10 * time.Second
+
+// DefaultTodoClassifyLLMMaxTokens bounds a single LLM classification
+// response (SPEC-TCD-LLM-DECIDER-001): the judgment is a three-field JSON
+// object plus a one-line reason — far below the audit pass's 4096 cap.
+const DefaultTodoClassifyLLMMaxTokens = 512
 
 // DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
 // job's in-flight HTTP call to end on its own. Derived from

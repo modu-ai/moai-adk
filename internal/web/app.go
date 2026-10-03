@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
@@ -26,10 +27,23 @@ import (
 type app struct {
 	cfg Config
 
+	// saveMu serializes POST /save requests end to end (card t1446 N2, from
+	// the t1411 sync-audit round-2 finding N2). server.go's mutex guards only
+	// the listener field; without this lock a second save's persistence steps
+	// interleave with a first save still mid-handler, and a rolling-back
+	// request can revert another request's successful write. One app serves
+	// one project, so an app-level lock IS the per-project save lock. GET
+	// paths never take it — reads stay concurrent.
+	saveMu sync.Mutex
+
 	// hub fans SSE change-signals out to open browser connections. It carries no
 	// payload — the browser re-fetches the affected screen itself, so rendering
 	// truth stays on the server.
 	hub *Hub
+
+	// specs caches the full SPEC scan (rows + drift findings) that /, /kanban
+	// and /specs all read. It is dropped when hub publishes "spec" (card t1460).
+	specs *specCache
 
 	// bindAddr returns the real bound loopback address (127.0.0.1:<port>) for
 	// the appbar loopback indicator (REQ-WC4-005). NewServer wires it to the
@@ -125,9 +139,10 @@ type app struct {
 // The page is rendered by the compiled-in Templ root component (no runtime
 // template parse), so newApp no longer carries a template-parse step.
 func newApp(cfg Config) *app {
-	return &app{
+	a := &app{
 		cfg:              cfg,
 		hub:              NewHub(),
+		specs:            newSpecCache(loadSpecRows, specCacheMaxAge),
 		readPreferences:  profile.ReadPreferences,
 		writePreferences: profile.WritePreferences,
 		syncToProject:    profile.SyncToProjectConfig,
@@ -164,6 +179,12 @@ func newApp(cfg Config) *app {
 		renameProfile: renameProfileDir,
 		deleteProfile: profile.Delete,
 	}
+	a.hub.Subscribe(func(event string) {
+		if event == "spec" {
+			a.specs.invalidate()
+		}
+	})
+	return a
 }
 
 // routes builds the HTTP handler tree with Host-check middleware applied to the

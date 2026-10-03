@@ -345,6 +345,15 @@ const (
 	// re-inject after /clear env loss (REQ-CHAIN-013).
 	// SPEC-CHAIN-CORE-001 REQ-CHAIN-006.
 	EnvChainNodeID = "MOAI_CHAIN_NODE_ID"
+
+	// EnvTodoDecider selects the standing classification decider the todo
+	// add paths use (SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002). Accepted values:
+	// {default, llm}. Unset/empty/"default" keep the deterministic
+	// DefaultCardDecider; "llm" selects the LLM-backed decider; any other
+	// value is a usage refusal (exit 2) with nothing written — an
+	// operator-authored misconfiguration fails loud, never silently reverts
+	// to the default. --classification-file outranks it.
+	EnvTodoDecider = "MOAI_TODO_DECIDER"
 )
 
 // Factory-role marker constants (SPEC-AUTONOMY-PRECONDITION-001

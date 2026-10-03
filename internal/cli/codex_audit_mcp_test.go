@@ -243,6 +243,7 @@ func TestCodexAuditMCPTool(t *testing.T) {
 	// registered worktree and the primary checkout are accepted when presented
 	// explicitly, each launching against its own tree.
 	fake.setExec("## Verdict\n\nACCEPT PASS\n", 0)
+	var acceptJobs []string
 	for name, root := range map[string]string{
 		"sibling worktree": repo.a2,
 		"primary checkout": repo.a,
@@ -258,6 +259,26 @@ func TestCodexAuditMCPTool(t *testing.T) {
 			if id, _ := m["job_id"].(string); id == "" {
 				t.Fatalf("no job id in result: %v", m)
 			}
+			acceptJobs = append(acceptJobs, m["job_id"].(string))
 		})
+	}
+
+	// The accepted jobs run in the background (the fake codex still sleeps on
+	// the delay file from step 4) and write into the fake-codex and repository
+	// temp dirs. Wait for each to leave the running state before returning, or
+	// t.TempDir cleanup races a live writer ("directory not empty").
+	for _, id := range acceptJobs {
+		deadline := time.Now().Add(60 * time.Second)
+		var st map[string]any
+		for time.Now().Before(deadline) {
+			_, st = callRoleAuditTool(t, c, codexRoleAuditStatusToolName, map[string]any{"job_id": id})
+			if st["state"] != "running" {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		if st["state"] == "running" {
+			t.Fatalf("accepted job %s still running at test end: %v", id, st)
+		}
 	}
 }

@@ -102,7 +102,7 @@ Run a workflow to audit every API endpoint under src/routes/ for missing auth ch
 | 項目 | 説明 |
 |------|------|
 | `/deep-research <質問>` | バンドルワークフロー。複数の角度からウェブ検索をファンアウトし、出典を相互検証・投票したうえで、検証に落ちた主張を除いた引用レポートを返す。WebSearch ツールが必要 |
-| `/effort ultracode` | オンとオフを独立して切り替えるトグル。オンにしてもオフにしても推論強度（effort レベル）は変わらず、オンの間は Claude がすべての実質作業についてワークフローを計画する。オフにするには `/effort ultracode off` を使う。コマンドで切り替えた状態は現在のセッションにのみ適用され、新しいセッションでは再度オンにする必要がある。毎回のセッションをオンで始めるには設定ファイルに `"ultracode": true` を指定する（v2.1.284 以降）。なお `--effort ultracode` 起動フラグはセッションを `xhigh` で開始する |
+| `/effort ultracode` | effort レベルとは独立にオンとオフを切り替えるトグル。オンにしてもオフにしても推論強度（effort レベル）は変わらず、オンの間は Claude がすべての実質作業についてワークフローを計画する。オフにするには `/effort ultracode off` を使う。コマンドで切り替えた状態は現在のセッションにのみ適用され、新しいセッションでは再度オンにする必要がある。毎回のセッションをオンで始めるには設定ファイルに `"ultracode": true` を指定する（v2.1.284 以降、この設定は effort レベルを変えない）。なお `--effort ultracode` 起動フラグはセッションを `xhigh` で開始する |
 
 ### 無効化の方法
 

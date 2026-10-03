@@ -1,0 +1,5 @@
+=== RUN   TestZZProbeB3FifoAtStatePath
+    zz_fifo_state_test.go:29: PROBE-B3 BLOCKED: PruneStaleEntries did not return within 3s on a FIFO state path
+--- PASS: TestZZProbeB3FifoAtStatePath (3.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/harness	3.843s

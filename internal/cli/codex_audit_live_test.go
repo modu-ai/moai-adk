@@ -16,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +27,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 const (
@@ -248,8 +250,13 @@ func TestCodexAuditLaunchLiveContract(t *testing.T) {
 
 	// (a) test plan-auditor role file: the emitted file plus a nonce line.
 	nonce := "NONCE-" + factoryLiveID()
-	roleFile := filepath.Join(f.root, ".codex", "agents", "moai", "plan-auditor.toml")
-	src, err := os.ReadFile(roleFile)
+	// The launcher reads roles from the embedded templates (card t1471), so
+	// the nonce goes into the launcher's role source, not the project copy.
+	tfs, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := fs.ReadFile(tfs, codexAuditRoleDir+"/plan-auditor.toml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,9 +264,7 @@ func TestCodexAuditLaunchLiveContract(t *testing.T) {
 	if marked == string(src) {
 		t.Fatal("could not place the nonce line at the end of developer_instructions")
 	}
-	if err := os.WriteFile(roleFile, []byte(marked), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	overrideAuditRole(t, "plan-auditor", marked)
 	probeA := "audit-probe-plan-auditor.txt"
 	beforeA := f.launches()
 	a, okA := f.runDirect(t, budget, "plan-auditor", codexAuditProbeTask("plan-auditor", probeA,
