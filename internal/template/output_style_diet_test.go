@@ -21,7 +21,7 @@ import (
 // Whole-file UTF-16 budgets of the deployed output styles. A constant may only go down: it never
 // exceeds the anchor size recorded in the ledger (REQ-PFD-002).
 const (
-	dietBudgetMoai      = 62593
+	dietBudgetMoai      = 61149
 	dietBudgetMoaiEasy  = 21350
 	dietBudgetMoaiLearn = 27010
 )

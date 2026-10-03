@@ -206,6 +206,30 @@ Before min/median/max 154,999 / 154,999 / 154,999; after 154,565 x3; reduction 4
 
 **Baseline-attribution.** This run, worktree `t1450`, the before/after runs ten minutes apart on one account, same command and settings file. **Gaps.** One account window; learn's droppable total is only 5.3% of the file because the remaining units are binding or normative (Notion install guide, the localization catalogue, response templates). **Residual-risk.** The dropped teaching-philosophy and root-cause units are author-classified rationale; survivors are named per row.
 
+### M4 — `moai.md` (89 `[HARD]` lines, two frozen handoff sections)
+
+**Claim.** `moai.md` is reduced from 62,593 to 61,149 UTF-16 units (-1,444, the whole droppable total, 2.3%): the draft target of 45,000 is not reachable without rewriting binding lines (REQ-PFD-002: the target was lowered to the droppable total and is reported to the leader). All 89 `[HARD]`, 4 `MUST NOT` and 27 `MUST` tokens retained; the two frozen handoff sections (`### Session Boundary Handoff [HARD]`, `### Session Handoff [HARD]`) and all 11 localization tables are byte/cell-identical; template and local copy are identical. Under `outputStyle=MoAI` the first-turn input tokens fall by 453 (-0.27%).
+
+**RED** (budget constant lowered to 61,149 before the edit, exit 1): `output-style=moai 62593`, `output style moai.md is 62593 UTF-16 units, over its budget 61149`, `--- FAIL: TestOutputStylesCharBudget/moai`.
+
+**GREEN.** `diet_ledger.py apply moai.md` -> `apply ok moai.md utf16 62593 -> 61149`. Dropped units (`moai-NNNN`): 6-7 (Core Traits), 64-65 (the persistence provenance sentence and the auto-memory note), 246-250 (`---` + section 12 Service Philosophy). The frozen sections (units 66-69 and 216-238) lie outside every dropped range; unit 65 sits directly in front of the frozen heading and is a separate unit, so the frozen hash is unchanged (`--- PASS: TestOutputStyleHandoffUnitsFrozen`). `make build` exit 0, local mirror `cp`, `diff -rq` empty (exit 0), `go test ./internal/template/ -run '^TestOutputStyle' -count=1 -v` exit 0, guard `surface_guard.py 5d5ff1aae` exit 0 `surface-guard=PASS`.
+
+**First-turn tokens under `outputStyle=MoAI`** (settings file `{"disableAllHooks": true, "outputStyle": "MoAI"}`, a measurement input only; before = HEAD `576ba50ff`, moai.md unedited):
+
+```
+first-turn-input-tokens[M4-before#1]=168841 usage={"input_tokens":2,"cache_creation_input_tokens":52821,"cache_read_input_tokens":116018,"output_tokens":359,"output_tokens_details":{"thinking_tokens":100   ("num_turns":1)
+first-turn-input-tokens[M4-before#2]=168841 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":168839,"output_tokens":346,"output_tokens_details":{"thinking_tokens":110   ("num_turns":1)
+first-turn-input-tokens[M4-before#3]=168841 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":168839,"output_tokens":327,"output_tokens_details":{"thinking_tokens":95   ("num_turns":1)
+first-turn-input-tokens[M4#1]=168388 usage={"input_tokens":2,"cache_creation_input_tokens":155987,"cache_read_input_tokens":12399,"output_tokens":482,"output_tokens_details":{"thinking_tokens":73   ("num_turns":1)
+first-turn-input-tokens[M4#2]=168388 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":168386,"output_tokens":600,"output_tokens_details":{"thinking_tokens":154   ("num_turns":1)
+first-turn-input-tokens[M4#3]=337964 usage={"input_tokens":4,"cache_creation_input_tokens":1188,"cache_read_input_tokens":336772,"output_tokens":785,"output_tokens_details":{"thinking_tokens":161   ("num_turns":2; excluded)
+first-turn-input-tokens[M4#4]=168388 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":168386,"output_tokens":704,"output_tokens_details":{"thinking_tokens":173   ("num_turns":1)
+```
+
+Before 168,841 x3, after 168,388 x3 (single-call runs), reduction 453 tokens (-0.27%), spread 0. Style-specific: a default-style session does not load this file. The `MoAI` style is itself 14,606 tokens heavier than the default style (168,841 vs 154,235 anchor) because its file is 62,593 units; the 453-token cut is small against that and exists only because every other unit is a binding line, a normative instruction, a template, or a frozen/localization unit.
+
+**Baseline-attribution / Gaps / Residual-risk.** As M3. The dropped Core Traits / persistence note / Service Philosophy units are author-classified rationale; the note (unit 65) points at `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature, where the content already lives (named as survivor together with the retained persistence paragraph, unit 63).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
