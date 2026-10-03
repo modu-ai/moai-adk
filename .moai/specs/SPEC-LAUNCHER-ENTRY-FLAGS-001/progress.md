@@ -2254,9 +2254,74 @@ Go sources and web assets: none in `internal/web` except `internal/web/legacy_ro
 5. plan.md and design.md say the redirect handler is "in `legacy_routes.go`" and that `/kanban` is "kept as a GET redirect"; neither says the HTTP status. The program uses `301`.
 6. The M8 verification recipe (section above) names `TestNoRetiredWordIdentifiersOutsideWeb`; M9 renamed the test `TestNoRetiredWordIdentifiers`, so a command that still names the old test sweeps zero tests.
 
+### Develop absorption, residue sweep, M10, M11 (recorded by the lane orchestrator after M9)
+
+Evidence files (gitignored, local): `.moai/reports/t1399/absorb-remeasure.md` (commands and verbatim outputs for the absorption), `merge-absorb-develop.md` (the conflict-resolution worker's table; its build/test claims are superseded by the lane's re-measurement), `residue-sweep.md`, `m10-rename.md`, `m10-factory-skill.md`, `m10-always-loaded.md`, `m11-docs-site.md`, `m11-readme-instr.md`. Where this section contradicts an earlier line of this file (the M3 section says codex `--factory-run` stays refused; M2 to M9 evidence names `a6d3e6fd4` as the base), this section is the later record and the earlier lines are left as written history.
+
+#### Claim
+
+The card branch absorbed develop `1e2151a380a5dd0d76efd8f1740a21f32c682d2f` (merge `be179549a`), the three rename programs were re-run in order on the absorbed tree (second runs all zeros), the residue of the retired mode's name in non-test sources was swept, and M10 (rules, skill, catalog, constitution slots, the factory skill rewrite and its behavior test) and M11 (docs-site, READMEs, instruction files, maintainer docs) are implemented. Commits after `903fb8c92`: `be179549a` merge; `6085e3233` m7, `85ca2b253` m8, `27573396c` m9 (plus 6 hand-edited i18n lines); `d64b1f461` qualifier fixes; `52b984fc2` residue sweep and the `moai factory relaunch --lane` note; `7b3445a98` M10 commit 1 (update fixture, committed red); `859477bc7` M10 commit 2 (rename); `7a28a85b9` M10 factory skill and test; `129127ad1`, `cf4e8d6d2`, `3ade55fbb`, `b7ad5adc2`, `5bcc77857` docs-site (page units, deletions and redirects, remaining pages); `d12eb9027` READMEs; `d7158b34e` AGENTS.md and AGENTS.local.md; `cd692c429` maintainer docs; `7758c9c51` plan corrections (v0.9.0, 46 rows in spec.md section A.4). The last commit that changes Go source is `7a28a85b9`; every later commit is documentation or SPEC text.
+
+#### Evidence
+
+Every row was run by the lane in this run (the worker reports were not taken as measurements).
+
+| What | Command, tree | Observed |
+|---|---|---|
+| absorption base | `git fetch origin develop`, `git rev-list --count --left-right origin/develop...develop` | `0 0`; develop `1e2151a38`; merge-base with the card base `a6d3e6fd4f21f9c04fbcb7ca7507e87571f9b2c2`; the simulated merge reported 15 conflicted files (35 hunks), 4 modify/delete, 2 added-in-renamed-dir |
+| rename programs, second runs | m7, m8, m9 on `d64b1f461`-era tree | `identifiers renamed: 0`; `import lines: 0; qualifiers: 0`; m9 all zeros, `templ generate: exit 0`; `git status --short \| wc -l` printed `0`; `grep -rl '"github.com/modu-ai/moai-adk/internal/kanban"' internal cmd --include='*.go'` exit 1 |
+| builds | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...` | exit 0, exit 0 (after the five qualifier fixes of `d64b1f461`; before them: `undefined: kanban` at `stale_run_gate.go:236`, `codex_launcher.go:985`, `glm.go:269`) |
+| vet | `go vet ./...` (lease `t1399-run` held); windows vet of the touched packages; again after the sweep and M10 | exit 0 each, empty output |
+| factory net and guards | the 8 cli names of AC-015 (`-count=1`, env scrubbed); hook `TestFactoryNetSessionRecord`, `TestFactoryNetSessionStartNotices`, `TestPreexistingKanbanArtifactsTolerated`, `TestNoNewEnvLiteralsInDiff`; AC-016/017 over six packages; `TestRetiredWordIdentifierScanHasTeeth`, `TestNoRetiredWordIdentifiers` | 8 PASS (`ok internal/cli 64.716s`); 4 PASS with `env-literal sweep: 1812 added lines swept ... base=1e2151a380a5dd0d76efd8f1740a21f32c682d2f, distinct literals=0`; 7 PASS; 2 PASS |
+| whole suites | `go test ./internal/hook ./internal/factory ./internal/web ./internal/factorymsg ./internal/config -count=1` on `d64b1f461` | all `ok` (hook 1086.624s, factory 461.643s, web 128.234s, factorymsg 226.578s, config 19.187s) |
+| whole suites after the sweep | `go test ./internal/factory ./internal/factorymsg ./internal/statusline ./internal/homestate ./internal/spec -count=1` | factorymsg, statusline, homestate, spec `ok`; `internal/factory` FAIL on `TestForemanQueueWatch_FiresOnMutation`, `_FiresWithStaleJSONPresent`, `_SeesWALDeferredCommit` ("no change event within 16s"); the same names alone: `-run ^TestForemanQueueWatch -count=1` exit 0, 7 PASS, `ok 124.794s` — load-dependent timing tests, not cited as evidence |
+| residue sweep | AC-018 word grep (exact acceptance command) | 70 files / 134 lines before, 24 files / 29 lines at the final tree: 22 `SPEC-KANBAN-*` citation lines (ids of other SPECs; an id cannot be reworded) plus `legacy_routes.go:9`, `launcher_retired_entries.go:3,4,21,29`, `update_archive.go:70`, `state_dir.go:23`; `find internal cmd -iname '*kanban*'` empty; AC-024 grep exit 1 (empty) |
+| relaunch note | `TestFactoryRelaunchLaneIsIgnoredWithNote` | worker-observed red (`stderr carries the --lane note 0 times, want exactly once`) then green; test and code share commit `52b984fc2`, so the order is a session record, not a commit-graph fact |
+| M10 fixture | `go test ./internal/cli -run '^TestUpdateRemovesRetiredRuleFilesWithBackup$' -v -count=1` | on `7b3445a98`'s tree: unmodified and user-modified subtests FAIL ("has no copy in the pre-clean backup"), absent PASS; positive control on a scratch clone whose embedded template lacks the three paths: 4 PASS; after `859477bc7`: 4 PASS. The red commit `7b3445a98` precedes the rename commit in the commit graph |
+| M10 guards | template guard and catalog tests (8 names); `env MOAI_GR_BASE=1e2151a380a5dd0d76efd8f1740a21f32c682d2f go test ./internal/template -run '^(TestContractModeConstitutionDriftNotIncreased\|TestContractModeAlwaysLoadedBudget)$'`; `moai constitution validate` (tree-built binary) | 8 PASS; 2 PASS, 0 SKIP; `constitution validate: OK — no drift or violations detected (97 of 101 entries checked)` before the first edit, after each of the four slot edits (worker), and on the final tree (lane) |
+| M10 greps | catalog and archive counts; rule paths; zone registry | `moai-kanban-foreman` in catalog 0, `moai-factory-foreman` 2, in `update_archive.go` 1; six new rule paths present, old two absent; `git diff --quiet 1e2151a38 HEAD -- .claude/rules/moai/core/zone-registry.md` exit 0; `[HARD]` counts 38/8/8 unchanged across the three rules |
+| always-loaded surface | `m10-always-loaded.md` method | 15 files / 191433 bytes before, 15 files / 191028 bytes after (-405) |
+| AC-021 | `go test ./internal/cli -run '^TestFactorySkillAssertionsMatchBehavior$' -v -count=1` | PASS (one parent test, 16.38s); worker-observed red on the old skill text (73 lines, `m10-red.txt`), nine mutant texts each reported; greps: `factory_chain` 0 and 0, `chain head` 0 and 0, `.moai/state/factory` 0, `factory contract\|factory chain` over the dependents exit 1 |
+| M11 docs-site | Hugo build to scratch (`hugo --source docs-site --minify --gc`) | exit 0, `grep -c -e WARN -e ERROR` 0, sitemap present, pages 187/185/185/185; vercel.json: factory-mode sources 0, removed-page sources 6, destinations naming a removed page 0, JSON parses; four `origin-trail-chain` pages present, twelve removed pages absent |
+| M11 docs gates | AC-023 word grep, removed-forms grep, `find -iname '*kanban*'` outside internal/cmd | all empty at `cd692c429`; README H2 counts 12/12/12/12 |
+| AC-025 one commit per page | `git log --name-only 1e2151a38..HEAD -- <the four locale files>` per page | origin-trail-chain `129127ad1` (4 paths), factory-mode `cf4e8d6d2` (4 paths), launchers `3ade55fbb` (4 paths): one commit each |
+| SPEC lint | tree-built `moai spec lint --strict .moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001` | `No findings — all SPEC documents are valid`, exit 0 |
+
+#### Decisions taken during the absorption (read by the lane in the diff or taken from the worker's table)
+
+1. codex `-l --factory-run <id>` is ACCEPTED (develop card t1444 ②); without a lane entry it is refused as `--factory-run requires -l/--lane`; every `-f` shape stays refused. This supersedes the M3 section's statement that it stays refused (lines in the M3 findings and residual-risk).
+2. `moai factory relaunch` (develop card t1345) launches `<provider> -l [--factory-run <id>]`; a supplied `--lane` cannot reach the launcher, so the verb prints one stderr line and joins the next free lane (leader ruling, 2026-10-03).
+3. Develop's re-added free-slot lines in the leader notice were dropped (REQ-009); the `gateSummary` line (SPEC-AUTONOMY-BATCH-GATE-001) was kept.
+4. A leader-shaped operator `--name` is claimed like the default (develop card t1444 ④), ported into `appendLeaderName` of `factory_launch_helpers.go` because `kanban.go` stays deleted.
+5. Develop tests that taught removed forms were re-pinned to `-l`; two were narrowed because they exercised removed behavior (`session_start_leader_gate_notice_test.go` Kanban kinds, `codex_review_ownership_test.go` matrix rows).
+
+#### Baseline-attribution
+
+The judging build for every Go measurement is the Go toolchain run from this tree; `moai constitution validate` and `moai spec lint` used binaries built from this tree into the scratchpad (`go build -o <scratchpad>/moai-c2 ./cmd/moai` at `859477bc7`, `moai-spec2` at `cd692c429`). The env-literal guard's base moved with the absorption (`base=1e2151a380a5dd0d76efd8f1740a21f32c682d2f`). Hugo, grep, find, and the Hugo/page-count figures were taken on the working tree equal to the named commit.
+
+#### Gaps
+
+1. The whole `internal/cli` suite was never run (about 5,100 tests, does not finish in the foreground; the repository rule leaves the full-package verdict to CI). Run for cli: the factory net, the identifier guard, the relaunch selection (15 PASS), doctor goldens, the M10 and AC-021 tests, and `go vet` of the package on both OSes.
+2. `internal/factory` has no clean whole-package run after the sweep (three timing tests failed under a five-package parallel run and pass alone); the whole package passed once on `d64b1f461`.
+3. `TestStaleRunNoticeFactoryLegacyLabel` (`internal/hook`) fails 6 of 6 on a scratch clone of develop `1e2151a38` and 4 of 6 on this branch (`factory messaging degraded: context deadline exceeded`); it is not introduced here and is not cited. Listed in acceptance.md section H.
+4. `golangci-lint` was not run on the tree after the absorption; no test was run on Windows (builds and vets only); the docs were not rendered in a browser; the ko/ja/zh prose has no native-speaker review beyond the humanize pass; the English text was not humanize-passed.
+5. The deleted Kanban notice builders were the only SessionStart stale-run carrier for a non-factory session that carries only a legacy leader label; those sessions now get no notice (REQ-013 and AC-014 do not cover it). Needs an operator notice.
+6. `assets/images/moai-web-overview.png` (embedded by all four READMEs) is a stale screenshot that still shows a retired rail entry; it needs a maintainer re-capture. The README headings say v3.2 while the badge and `hugo.toml` say v3.1.3; the release sync reconciles them.
+7. Unresolved debt for an operator call (not removed, not in the plan's lists): `ReadCardStatus`, `FactoryFreeSlots`, `rejectFactoryOnCG`, `config.DefaultFactoryLanes`, the unreachable interactive Codex lane branch.
+8. Editing the plan artifacts (`7758c9c51`) changed the plan-artifact hash, so the cached plan-audit PASS (0.88 at `7e1ae0d80`) no longer matches; the narrowed AC-018 and the other re-scoped criteria are judged at sync-audit.
+
+#### Residual-risk
+
+- A late develop merge that adds a `kanban.` qualifier or an import of the old package path merges textually clean and breaks the build; the integration window must re-measure `grep -rl '"github.com/modu-ai/moai-adk/internal/kanban"' internal cmd --include='*.go'` and `go build ./...` on the merged tree (plan.md M7 coordination).
+- The `moai factory relaunch --lane` note and the codex `--factory-run` acceptance are behavior decisions taken on develop's code; a reviewer may prefer dropping `--lane` from the verb grammar (about 12 develop assertions).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-10-03
+audited_head: 7758c9c51 (Go source last changed at 7a28a85b9; later commits are documentation and SPEC text)
+milestones: M1 to M11 implemented and re-measured by the lane; M10 in three commits (fixture red, rename, factory skill), M11 in eight commits
+open items for the audit: Gaps 1 to 8 of the section above; the AC-018 and other criteria narrowed in spec.md section A.4
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
