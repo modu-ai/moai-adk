@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -489,6 +490,19 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	}
 	for k, v := range jevKeyErrs {
 		fieldErrs[k] = v
+	}
+	// SPEC-WEB-AGENTFM-RESTORE-001 v0.3.0 M7 (REQ-AFR-015): a non-boolean
+	// llm.agent_overrides_consume — or any llm.yaml type mismatch — joins the
+	// atomic-reject set. The lenient section loader silently falls back to
+	// defaults on exactly this defect class, so the write boundary re-checks
+	// the stored section strictly before anything is written.
+	if llmTypeErr := config.ValidateLLMYAMLSection(a.cfg.ProjectRoot); llmTypeErr != nil {
+		field := "llm.yaml"
+		var cte *config.ConfigTypeError
+		if errors.As(llmTypeErr, &cte) && cte.Key != "" {
+			field = cte.Key
+		}
+		fieldErrs[field] = llmTypeErr.Error()
 	}
 	if len(fieldErrs) > 0 {
 		view := a.rejectedProjectView(prefs, selected, devMode, convention, nestedForm)
