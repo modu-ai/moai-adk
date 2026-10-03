@@ -452,6 +452,12 @@ hash_stdin() {
 # never part of that pass. One stable token per tool; any install or removal
 # flips the key and forces a re-check.
 #
+# The compile environment rides the key the same way: go vet and go
+# build read GOFLAGS — build tags via -tags, module mode, ... — so an outcome
+# recorded under one GOFLAGS value is not reused after the value changes; that
+# verdict was never the verdict of this environment. The value rides verbatim,
+# so set-to-empty flips the key exactly like any other change.
+#
 # Prints empty when git cannot answer, which degrades the identifier to HEAD alone:
 # the behavior before it existed, never something looser.
 worktree_content_id() {
@@ -473,6 +479,8 @@ worktree_content_id() {
                 printf '%s=absent\n' "$gate_tool"
             fi
         done
+        # Compile-environment token — see the comment above.
+        printf 'GOFLAGS=%s\n' "${GOFLAGS-}"
     } | hash_stdin
 }
 
