@@ -1350,7 +1350,109 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Written by the sync-phase author (the manager-docs role, run as `Agent(general-purpose)` carrying that role text in the card worktree, for the same reason the run-phase workers were: a typed `manager-docs` spawn auto-isolates into its own L1 tree). Nothing in this section was measured by the run phase: every command below was run in this sync run, against this tree.
+
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-10-03T06:22:12Z
+sync_commit_sha: pending-backfill   # the single sync commit cannot cite its own hash; backfilled in a following commit (mechanical placeholder completion)
+card: t1435
+tier: L
+run_commit_range: 65c175af8..e187dae3d   # R0 65c175af8 .. M4 evidence e187dae3d; parent of the range is 45edfc6fd (the Kickoff record)
+frontmatter_status_transitions: { spec_md: "in-progress -> implemented -> completed (one sync commit)" }   # spec.md is the only SPEC artifact carrying a status field; plan, acceptance, design, research and progress carry none
+changelog_entry_position: "[Unreleased] / Added, first entry"
+b12_self_test_a: "grep -c SPEC-PLUGIN-MARKETPLACE-001 CHANGELOG.md -> 0 before the entry (no duplicate); 1 after"
+b12_self_test_b: "live AC counter on acceptance.md (tier L): live=25 excluded=0 ambiguous=0, stdout 25; the entry says 25 acceptance criteria AC-001..025"
+b12_self_test_c: "every path the entry names exists (ls exit 0, 23 paths); the implementation files it describes (plugin_install.go, plugin_install_cmd.go, doctor_plugin_version.go, pluginemit.go, init.go diff, install.sh diff, release.yml diff, Makefile diff) were Read or diffed before the entry was written"
+sync_audit: pending            # not run by this author; the orchestrator owns the sync-auditor / sync-audit-4dim step (gate-sync-1 and gate-sync-2 are the orchestrator's)
+```
+
+#### Claim
+
+1. The sync artifacts are written: one CHANGELOG `[Unreleased]` / Added entry; this section; the `status: in-progress` to `status: completed` flip in `spec.md` frontmatter (the diff of `spec.md` is that one line, no body byte); no other SPEC artifact was edited.
+2. At HEAD `e187dae3d` the shipped code builds and the card's scoped verification is green: `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go test ./internal/template/pluginemit ./internal/config` ok; `make plugin-emit-check` exit 0; 32 `internal/cli` plugin, doctor-golden and binary-lag tests PASS with 0 FAIL; the offline install-step harness prints `RESULT pass=12 fail=0` and `LEAK=0`; `scripts/check-plugin-version.sh` exits 0 on `v3.1.3` and 1 on `v9.9.9`.
+3. `moai spec lint` on the SPEC directory reports no findings. The protected real set was equal before and after this run's measurements (same hash, empty diff over 199 entries).
+4. No @MX tag change is needed for the card's new Go files; codemaps are stale at an inherited 59 files over a threshold of 40 and were not regenerated (Gaps).
+
+#### Evidence
+
+All outputs below are verbatim from this run. Scratch files are machine-local (the session scratchpad) and are not cited; the deciding lines are carried here.
+
+```
+BI-1  $ env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'
+      (empty; grep exit 1)       # printed first before every measuring batch of this run, always empty
+
+$ go build ./...                                  -> build-exit=0
+$ GOOS=windows GOARCH=amd64 go build ./...        -> winbuild-exit=0
+$ go test ./internal/template/pluginemit ./internal/config -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template/pluginemit	2.660s
+ok  	github.com/modu-ai/moai-adk/internal/config	11.408s
+$ make plugin-emit-check                          -> make-exit=0   (ok  github.com/modu-ai/moai-adk/internal/template/pluginemit	0.400s)
+
+$ moai slot acquire --resource internal-cli-suite --max-duration 20m   -> acquired (exit 0); released after the run (exit 0)
+$ go test ./internal/cli -count=1 -v -run '^(TestPluginInstallStep_.*|TestPluginInstallCmd.*|TestInitPluginStep_.*|TestPluginOptOutCallersEnumerated|TestInstallScriptsPluginStepGuarded|TestCheckPluginVersion_.*|TestVersionSync.*|TestBinaryLag_.*|TestDoctorGolden_.*|TestRunDiagnosticChecks.*)$'
+test-exit=0 ; top-level `--- PASS` lines: 32 ; `--- FAIL` lines: 0 ; last line: ok  	github.com/modu-ai/moai-adk/internal/cli	69.790s
+
+$ sh scripts/test-plugin-install-step.sh <tree-built moai>
+scrub: enumerated and unset 34 names
+PASS isolation-env-scrubbed ... PASS installer-old-binary-unknown-verb      (12 PASS lines)
+RESULT pass=12 fail=0
+LEAK=0 (real roots unchanged: PROTECTED-SET 5cde0a2de458cbc4888265203feb2fa99e3c3de90f58995ca17da8a99c4926f1 entries=199)
+
+$ sh scripts/check-plugin-version.sh v3.1.3   -> "plugin version 3.1.3 matches tag v3.1.3"  exit-match=0
+$ sh scripts/check-plugin-version.sh v9.9.9   -> "plugin version '3.1.3' (plugins/moai/.claude-plugin/plugin.json) != tag 'v9.9.9' (expected '9.9.9')"  exit-mismatch=1
+
+$ sh scripts/protected-set-hash.sh --dump <before>   -> PROTECTED-SET 5cde0a2de458cbc4888265203feb2fa99e3c3de90f58995ca17da8a99c4926f1 entries=199   (taken before the first test run)
+$ sh scripts/protected-set-hash.sh --dump <after>    -> PROTECTED-SET 5cde0a2de458cbc4888265203feb2fa99e3c3de90f58995ca17da8a99c4926f1 entries=199   (taken after the last run that could start a tool)
+$ diff <before> <after>                              -> (empty) diff-exit=0
+
+$ moai spec lint .moai/specs/SPEC-PLUGIN-MARKETPLACE-001   -> "No findings - all SPEC documents are valid"  lint-exit=0   (run twice: before and after this section was written, with the flipped frontmatter in the tree)
+$ moai spec audit --json   -> for SPEC-PLUGIN-MARKETPLACE-001 one finding only: finding_type EraAutoDetected, severity INFO, era V3R6, heuristic_matched "H-4 (§E.2 + §E.4 + sync_commit_sha)"; before this section it read "H-5 (modern phase or created date)"; no drift finding names this SPEC (audit-exit=0)
+$ moai spec drift | grep -i PLUGIN-MARKETPLACE -> no line (grep exit 0 comes from the pipeline's last stage; nothing printed)
+$ moai graph check   (tree-built binary)
+codemaps  metric=described-source-diff value=59 threshold=40 verdict=stale
+  contribution: 0 described-worthy file(s) vs first parent 4eeb265f6 (inherited - this change contributed none of it)
+mx-index  verdict=absent (untracked runtime artifact)   edges  verdict=absent (untracked derived artifact)
+citations metric=positive-cited-path-absence value=0 threshold=0 verdict=fresh
+$ moai mx scan --dry --path internal/template/pluginemit -> 2 tags (NOTE: 2)
+$ moai mx scan --dry --path internal/cli                  -> 383 tags (NOTE 242, ANCHOR 100, WARN 38, DEBT 3); "DEBT rotRisk (missing @MX:UPGRADE): 1"
+P2 grep: `grep -n 'go func\|go [a-zA-Z_.]*(\|sync\.\|chan '` over the eight new non-test Go files -> no match (exit 1)
+P1 grep: non-test callers of pluginemit.Emit/Drift/Write/DeriveMCPEntry/DefaultOptions -> none (the package is reached by its tests and by `make plugin-emit*`, which run `go test`)
+```
+
+The AC-by-AC PASS and GAP rows of the run phase are in §E.2 (the AC-025 (d) row reads `GAP (see G-M3b-1)`); this section re-ran the milestone selectors of M3a, M3b and M4, the package tests of M1 and M2, and the harness, and did not re-run the real-tool commands of AC-001 to AC-003, AC-006, AC-011 (b)/(c) and AC-021 (b) (they need a real `claude` and `codex` and a scratch home).
+
+#### Baseline-attribution
+
+Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketplace-core-plugin`, HEAD `e187dae3d` re-read before the first write (`git rev-parse --short HEAD`, `git branch --show-current`, `git status --short` empty). Judging builds (verification-claim-integrity section 2.2): the install-step harness, `moai spec lint`, `moai graph check`, `moai spec audit` and `moai mx scan` were run with `moai`, built from this tree at `e187dae3d` by `go build ./cmd/moai` and invoked by path (it reports `v3.1.3`, no commit stamp, because the Makefile ldflags were not used). The installed `moai` on PATH (`v3.2.0-rc.27`, `archive/t1401-504-g0732cc699`) is NOT an ancestor of this HEAD (`git merge-base --is-ancestor 0732cc699 HEAD` exit 1); it was used for `moai slot` only, and for a first `graph check` and `mx scan --dry` whose numbers the tree-built binary reproduced exactly. Other judging tools are installed binaries resolved through PATH: `go` (go1.26.8), `make`, `sh`, `awk`. The Go tests judge this tree's packages built by `go test`.
+
+The CHANGELOG count of 0 and the AC counter were measured before and at the time of writing the entry, on this tree.
+
+#### Gaps
+
+- G-S-1 (open run-phase item, carried): AC-025 (d), the protected-set bracket, is recorded in §E.2 as GAP for M3a, M3b and M4 because a foreign writer moved the CONTENT line of `~/.codex/config.toml` (the user's running Codex.app appends trust stanzas) and, in M4, nine `plugins/data/*-inline` directories appeared. This sync run's bracket was equal (empty diff over 199 entries); that is one observation, not a retraction of the run-phase record, and nothing in §E.2 or §E.3 was edited.
+- G-S-2 (G-M4-1, carried): the nine `plugins/data/{browser-use,moai-accountant,moai-analyst,moai-coworker,moai-lawyer,moai-media,moai-officer,moai-seller,moai-threads-poster}-inline` directories under the real `moai-adk` Claude profile are present in both of this run's dumps (`grep -c 'plugins/data/.*-inline'` printed 12 matching lines in each dump, the nine directories among them, entries=199 each), so no such entry appeared during this run; their creator stays unattributed. They were not deleted or touched.
+- G-S-3 (plan-audit debts NR-1..NR-5, status from the run-phase record, not re-measured here except where stated): NR-1 and BI-2 are implemented in R0 (decoy directories asserted before every installer run through `run_case`; flag `--negative-control-decoy-missing`; §E.2 R0 says NR-1 is closed for the harness as written, with the residual that a later installer call outside `run_case` would bypass it). BI-3 and NR-3 are implemented in M2 (`scripts/check-plugin-discoverable.sh`: pid-named planted names, recording wrapper, local-path grep, check (e) labelled static); G-M2-7 records that the `MOAI_CLAUDE_BIN` recorder poison is never reached by the script, that the shell-side names use a fixed number, and that only the cache-variable canary is a live control. NR-2 (positive control for the AC-021 (c) shims) is present inside `registry-wide-starts-nothing` per the M4 record; the audit's second clause, at least five checks swept, was not separately verified in this sync run. NR-4 (unattributed mtime of `~/.claude/settings.json`): the protected-set hash covers content, not mtime, and the mtime was not re-read here. NR-5 (inline write verbs outside every scrub, and a sentence in progress.md that calls the inline `claude` commands read-only `validate`): BI-1 is implemented in every milestone; the plan-phase sentence at progress.md section E.1 (about line 276) is manager-spec's text and was not edited by the sync author, so whether it was corrected is not established here.
+- G-S-4 (static-only and unrun surfaces, carried from M3b and M4): `install.ps1` and `install.bat` were never executed (static guard only; no Windows host; `pwsh` refused by the worktree guard); the edited `test-install.yml` (Set up Go, Build moai, harness steps) and `release.yml` check 8 were never run on a runner; Windows is unobserved for the whole card beyond the cross-build; first-line header comment of `release.yml` still says "checks 5-7".
+- G-S-5 (first-release gap): until a release PR lands the manifests on `main`, `marketplace add modu-ai/moai-adk` fails for every build that carries the install step; the step prints guidance and exits 0 (RK-9). Field effect inside Codex and the plugin's invocation names were never observed.
+- G-S-6 (generator choices): the `interface` block values, the two `category` values (`development` for Claude, `Coding` for Codex) and the owner `modu-ai` were chosen by the run phase from the cowork vocabulary and the repository URL (G-M1-5); the SPEC fixes keys and shapes, not these values; the golden pins them.
+- G-S-7 (help surface): `help.go`'s curated TUI table (`rootHelpGroups`) does not list `plugin`; the grouped help does (G-M3a-8). Not changed (out of sync scope; a Go source edit).
+- G-S-8 (land order, t1399): card t1399 renames a skill and rule files, so the lane that lands second must run `make plugin-emit` in its merge or `plugin-emit-check` turns red (RK-4). This is a recorded requirement; it has NOT been delivered to any lane by this author.
+- G-S-9 (design.md defect, not edited): design.md section 3.6 says `install.bat` ends with `exit /b 0` at line 192 on the main path, which the run phase found false (G-M3b-7). It is a SPEC body defect; manager-docs does not edit design.md, so it is reported to the orchestrator in the sync return instead.
+- G-S-10 (section E.3 still empty): `## §E.3 Run-phase Audit-Ready Signal` still reads `_<pending run-phase>_`; it is manager-develop's section, so this author did not fill it. The run evidence is in §E.2.
+- G-S-11 (codemaps, not regenerated): `moai graph check` reads codemaps `described-source-diff` 59 against a threshold of 40, verdict stale, with the card's contribution measured as 0 against its first parent `4eeb265f6`; the whole-card contribution against the base `7109e0900` was not measured (the tool lists 10 of the 59 paths, among them `internal/cli/doctor.go` and `internal/cli/claude_binary.go`, which this card edited). The two new directories (`internal/template/pluginemit`, `plugins/moai`) are not described in `.moai/project/codemaps/`. Regeneration is a multi-agent workflow that also touches files outside this card's scope and overlaps the t1443 codemaps regeneration that landed on `develop` as `4f2f323be` per the project memory (not re-read from git here), so it was left to the orchestrator.
+- G-S-12 (project docs): `.moai/project/structure.md` and `tech.md` hold no mention of the sibling emitters (`commandemit`, `agentemit`), so no `pluginemit` row was added; `product.md` was not touched.
+- G-S-13 (user-facing docs, not written): README (ko, en, ja, zh) and docs-site pages (4 locales) were not updated. The SPEC defines no documentation deliverable, the marketplace is not live until the release PR (G-S-5), so a page describing `moai plugin install` would document a path that fails today, and a partial locale set is prohibited by the repository's 4-locale rule. Candidate surfaces for the release card: README command table row `moai plugin install`, the `--no-plugin` flag and `MOAI_SKIP_PLUGIN_INSTALL` on the `moai init` section, and the doctor `Plugin Version` check.
+- G-S-14 (refusals by the worktree guard, verification-claim-integrity section 3.1): `awk -f <scratchpad file> <acceptance.md>` was refused ("runs awk with -f in a plain command ... cannot be shown not to be git"); I ran the same counter program inline as a single quoted `awk '...'` (the same program without its one-line resolution message, which only prints on the ambiguous branch) and it printed `live=25 excluded=0 ambiguous=0` and `25`. No other command was refused. Nothing was replaced by reading source.
+- G-S-15 (scope of this run's tests): only `-run` selectors of `internal/cli` plus the two whole packages `internal/template/pluginemit` and `internal/config`; no `go test ./...` (AGENTS.md section 4); no repository-wide lint (no Go file was edited by this run); the real-tool AC commands were not re-run (see Evidence).
+- G-S-16 (not run by the sync author): the sync-phase audit (sync-audit-4dim / sync-auditor), the `sync-phase-quality-gate.sh` Stop hook result, the local CI mirror (Step 3.1.5), `gate-sync-1` and `gate-sync-2`. They belong to the orchestrator; this section does not claim them.
+
+#### Residual-risk
+
+- The CHANGELOG entry restates the run-phase verdicts from §E.2 (PASS rows, one GAP row); where it says "static" or "carried" it follows the labels there. A reader who wants the per-AC commands must read §E.2, not the entry.
+- `sync_commit_sha` is a placeholder until the following backfill commit lands; between the two, `moai spec audit` reads a recognized placeholder, which is a sanctioned intermediate state.
+- The 308-file payload goes stale on the next template or version change until `make plugin-emit` is run; the read-only `plugin-emit-check` before `make build` and the golden test in `go test` are the signals, and neither runs on a pull request unless CI runs `make build` or the package tests.
+- The codemaps layer stays stale until regenerated; the graph-freshness gate measures 59 against 40.
 
 ## §F Phase 4 Mode Selection
 
