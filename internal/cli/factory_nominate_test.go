@@ -1339,7 +1339,7 @@ func TestTodoLaneAutoRefusalText(t *testing.T) {
 // predicate recorded in progress.md.
 func TestTodoNonLaneGPTSessionNotRefused(t *testing.T) {
 	nmAutoFixture(t)
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendGPT)
 	out, _, err := runTodo(t, "--auto", "--auto-wait", "1ms")
 	if err != nil {
 		t.Fatalf("a non-lane Codex-backend session was refused `moai todo --auto`: %v", err)
