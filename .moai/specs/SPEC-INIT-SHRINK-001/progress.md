@@ -18,7 +18,97 @@ repair-4: leader-ruling repair executed 2026-10-04 (mission contract 11c79e1a, m
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+manager-develop, dispatched as a general-type worker in the card worktree (branch `WT-moai-init-slim`, base HEAD `0a1e105d8`). Pre-flight measured 2026-10-04: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=2m` on internal/cli, internal/template, internal/config → `0 issues.` (the lint baseline; NEW-vs-baseline comparisons below cite it); the consumed t1435 surfaces verified by landed name — `internal/cli/plugin_install.go` present, the `--no-plugin` flag wired (`plugin_install.go:183`), `SKIP_PLUGIN` referenced from `internal/config/envkeys.go`, and the doctor's plugin-list read pattern at `internal/cli/doctor_plugin_version.go:197-237`. The anchor probes of the Evidence Ledger re-run at this tree before any test was written: every AC-named selector printed the `[no tests to run]` shape (L-01/L-03/L-07/L-10/L-11/L-14 forms), exit 0 — red by the PASS-line rule.
+
+### M1 — mode record, migration classification, resolution gate (commit `d8e4300e4`)
+
+| Claim | Evidence (command → deciding output, this run, this tree) |
+|---|---|
+| AC-009 (record + round-trip) | `go test ./internal/cli -run '^TestDeployModeRecordRoundTrip$' -count=1 -v` → `--- PASS: TestDeployModeRecordRoundTrip (0.01s)`; both closed-set values, re-init rewrite, and the update-cycle survival (Backup → `.moai/config` wipe → template redeploy → restore re-assert → re-read `plugin`) |
+| AC-010 (classification) | `go test ./internal/cli -run '^TestMigrationClassification$' -count=1 -v` → `--- PASS: TestMigrationClassification (0.00s)`; identical / modified / foreign / absent-record→modified against the real embedded render; counts 1/2/1 |
+| AC-013 (M1 half) | `go test ./internal/cli -run '^TestMigrationLeavesForeignFilesUntouched$' -count=1 -v` → `--- PASS: TestMigrationLeavesForeignFilesUntouched (0.00s)`; `moai-custom` (managed-glob hit, no render carriage) classifies foreign, bytes unchanged, symlink never classified |
+| D-15 loss path (leader condition 5a) | `TestClassifyMigrationGlobHitForeignIsNeverRemovable` (internal/cli/update) — RED at `0a1e105d8`: build failure naming `undefined: ClassifyMigration` (the machinery did not exist); GREEN at M1: glob-hit foreign names land foreign under BOTH a missing manifest and a template_managed record — never in a removal/archive class. The executor side that consumes only the classified sets is pinned by M3's `TestMigrationRemovesIdenticalDroppedComponents` |
+| AC-008 (b) harness | `go test ./internal/cli -run '^TestResolutionGateHarness$' -count=1 -v` → `--- PASS: TestResolutionGateHarness (3.96s)`; the self-test prints `RESULT pass=5 fail=0` incl. `PASS isolation-scrub-negative-control` (a planted unscrubbed variable FAILs its case — the scrub is load-bearing) |
+| AC-020 (a) M1 half | `go test ./internal/cli -run '^TestShrinkVerificationNeverReachesRealHome$' -count=1 -v` → `--- PASS`; no script assigns HOME (word-start guard; `CODEX_HOME=` scratch writes excluded), the scrub is live-enumerated over all three variable families, and the default runner refusal is shown live (silent nil under a test binary) |
+| Archive layout (M1 deliverable) | `TestMigrationArchiveLayout` — the migration tag is distinct from the legacy `v2.16`; skill-file root preserves the skill-directory layout; standalone-file variant carries the original path |
+| Unit table | `go test ./internal/cli/update -run 'TestClassify|TestMigrationRoots|TestMigrationArchiveLayout' -count=1` → ok; config reader/writer tables → ok (internal/config, internal/template) |
+
+### REQ-008 measurement — the recorded verdict (the M2-flip gate)
+
+Final recorded run (2026-10-04, quiet machine, fixture `/tmp/t1438-resolution-fixture`):
+`sh scripts/check-bare-name-resolution.sh /tmp/t1438-resolution-fixture` → `RESULT pass=5 fail=1`
+(PASS: isolation-scrub, fixture-present, claude-bare-skill, codex-naming, hermeticity-protected-set;
+FAIL: claude-command-body marker). Verdict routing:
+
+- **Q1 (bare skill name resolves): YES.** The session loaded the fixture skill from its bare name and
+  wrote the marker (`resolved`). Observed PASS in this run and in two earlier runs of the same harness.
+- **Q2 (a plugin command body's bare `Skill("moai")` resolves): YES.** The failing case's own session log
+  (`claude-command.log`) states: "The `moai` skill loaded and its instruction is to create a file at
+  `$MOAI_RESOLUTION_MARKER2`" — the bare name resolved from inside the plugin command body; only the
+  marker-write step failed because that session shape carried no file tools (the `--allowedTools` grant
+  did not apply through the SDK session shape on this machine). The resolution question the gate exists
+  to answer is affirmative; the marker mechanism is recorded as harness debt.
+- **Q3 (Codex lists plugin-borne components): YES — as namespaced entries.** The render scan lists
+  `resolution-probe:moai-resolution-probe`, `resolution-probe:moai`, and the migrated command skill
+  `resolution-probe:source-command-resolution-probe` (R03-codex confirmed at the runtime level).
+- **Hermeticity:** the before/after protected-set hash is equal (ambient subtrees pruned per the t1434
+  LEAK-FINDING's directory-entry rule); isolation cases incl. the negative control pass.
+
+OD-2 routing (settled (a) + condition): bare names RESOLVE in plugin mode — the mode-aware reference
+rewrite ships the bare names the test proves resolvable; no scaffold instruction rewrite is forced by
+resolution. OD-6 routing: Codex LISTING is render-level proof only (t1434 G-f); actual execution is not
+demonstrated by this measurement, so the no-verification fallback stands — the mirror is deployed with
+entries re-homed to real directory copies (never dangling symlinks), and plugin-mode UPDATE runs hold
+the mirror stable (MirrorPolicyNone on the update-path deployer; the re-home belongs to the fresh
+plugin deploy).
+
+Harness-debt notes (recorded, non-blocking): (i) the marker write is environment-sensitive — the
+`--allowedTools` grant does not reliably apply through gateway/SDK session shapes, so the marker can
+fail while resolution demonstrably succeeds (the session's own log is the disambiguator — the script
+keeps the log on failure for exactly this); (ii) the codex render case carries no bounded wait (the two
+claude cases are 420 s-bounded; the codex case is quick in every observed run).
+
+### M2 — the flip (thin default deploy + full local counterpart)
+
+| Claim | Evidence (command → deciding output, this run, this tree) |
+|---|---|
+| AC-001 (a) init thin set | `go test ./internal/cli -run '^TestDefaultDeploySetExcludesSkillsAndCommands$' -count=1 -v` → `--- PASS`; no `.claude/skills`/`.claude/commands` files, kept components present, record `plugin` |
+| AC-001 (b) deployer split | `go test ./internal/template -run '^TestDeployerModeSplitsFileSet$' -count=1 -v` → `--- PASS` (local deploys everything; plugin excludes the two roots from walk AND ListTemplates) |
+| AC-002 (a) sources retained | `go test ./internal/template -run '^TestEmbeddedSkillAndCommandSourcesRetained$' -count=1 -v` → `--- PASS`; 38 skill directories / 17 commands; catalog tiers 36/13/1. **Plan-pin correction (recorded):** spec P-02/L-24's "41" was measured through the session shell's `ls` alias (`ls -la`), whose output adds the total line and `.`/`..` to the 38 real directories — `/bin/ls` and `find` agree on 38. The unpolluted count is the pin. |
+| AC-002 (b) emit machinery | `make commands-emit-check agents-emit-check` → both `ok`, exit 0 |
+| AC-003 `--no-plugin` | `go test ./internal/cli -run '^TestNoPluginPathDeploysFullLocalPayload$' -count=1 -v` → `--- PASS`; full payload incl. moai entry; record `local` |
+| AC-004 guidance | `go test ./internal/cli -run '^TestShrinkInitGuidanceOnMissingPlugin$' -count=1 -v` → `--- PASS`; exactly one block naming both recourses; exit unchanged |
+| AC-005 MCP policy | `go test ./internal/cli -run '^TestDefaultPathMcpEntryPolicy$' -count=1 -v` → `--- PASS` (three arms: not-demonstrated → entry; confirmed → absent; `--no-plugin` → entry; context7+staggeredStartup preserved) |
+| AC-006 mirror | `go test ./internal/template -run '^TestCodexMirrorFollowsDeployMode$' -count=1 -v` → `--- PASS` (local as today; plugin+none → no mirror; plugin+rehome → real directory copies, never symlinks) |
+| AC-007 `--all` | `go test ./internal/cli -run '^TestAllFlagDeploysAllTiersLocally$' -count=1 -v` → `--- PASS` (full payload + every optional-pack entry + record `local`) |
+| Probe arms | `go test ./internal/cli -run 'TestProbe' -count=1 -v` → all `--- PASS` (opted-out no-probe; env opt-out ≡ flag; confirmed requires absent→present; pre-existing plugin → not-demonstrated; unreadable → not-demonstrated; codex JSON arm) |
+| M1-commit regression note | `TestProbeResurrection` (temporary probe, removed) established the AC-019 assertions must count FILES not directory shells — the classified executor removes files; empty directory shells may remain (removal unit = the classified file) |
+
+### M3 — update scope + migration execution
+
+| Claim | Evidence (command → deciding output, this run, this tree) |
+|---|---|
+| AC-015 trigger arms | `go test ./internal/cli -run '^TestUpdateMigratesLegacyProject$' -count=1 -v` → `--- PASS` (confirmed: record `plugin`, classified files removed, modified archived with the user's bytes, foreign preserved; not-demonstrated: record `local`, nothing removed/archived; opted-out: full local deploy, record `local`) |
+| AC-011 classified executor | `go test ./internal/cli -run '^TestMigrationRemovesIdenticalDroppedComponents$' -count=1 -v` → `--- PASS`; counts line printed; no identical-component archive; foreign file survives the same run |
+| AC-012 archive-before-removal | `go test ./internal/cli -run '^TestMigrationArchivesModifiedBeforeRemoval$' -count=1 -v` → `--- PASS`; negative control shows the unguarded path losing the file with no archive; per-file archive unit (no directory-level copy) |
+| AC-014 idempotence | `go test ./internal/cli -run '^TestMigrationIdempotent$' -count=1 -v` → `--- PASS` (second run `--force` past the version-skip; archive set unchanged; record unchanged) |
+| AC-016 thin redeploy | `go test ./internal/cli -run '^TestUpdatePluginModeSkipsDroppedRedeploy$' -count=1 -v` → `--- PASS`; record byte-identical |
+| AC-017 local scope | `go test ./internal/cli -run '^TestUpdateLocalModeKeepsFullScope$' -count=1 -v` → `--- PASS` |
+| AC-018 no flip | `go test ./internal/cli -run '^TestUpdateNeverFlipsModeRecord$' -count=1 -v` → `--- PASS` (± `--force`; guidance names the init re-entry) |
+| AC-019 no resurrection | `go test ./internal/cli -run '^TestUpdateForceDoesNotResurrectDropped$' -count=1 -v` → `--- PASS`; the only remaining skill file is the preserved foreign skill |
+| D-16 boundary (leader condition 5b) | `TestNotDemonstratedPreservationEndsAtNextLocalUpdate` → `--- PASS`: run 1 (not-demonstrated) preserves the foreign file; run 2 (record now `local`, full deployer + today's Clean walk) removes it WITH its pre-clean backup copy — the one-run preservation boundary is executable, with the recovery path asserted |
+| D-18 note (one-line) | acceptance.md L-13's re-observation note records the archive-unit restatement as a criterion sharpening; the classified-FILE archive unit itself is asserted here by `TestMigrationArchivesModifiedBeforeRemoval` (per-file archives, no directory-level copy) — the body-level note stands corrected by this evidence line |
+
+### M4 — docs + guarded surfaces
+
+| Claim | Evidence (command → deciding output, this run, this tree) |
+|---|---|
+| AC-021 (a) init docs guard | `go test ./internal/cli -run '^TestInitDocsDescribeThinDeploy$' -count=1 -v` → `--- PASS` (static: `--no-plugin`/`--all` help + success card name the thin deploy and both paths) |
+| AC-021 README/docs-site | README.md/README.ko.md/README.ja.md/README.zh.md gain the deploy-mode section naming `--no-plugin` and the plugin carrier; docs-site `cli-reference/init.md` ×4 locales gain the same (static text edits — verified by the M4 grep guard's tokens and reviewed in the diff) |
+| Full package suite | `unset <13 MOAI_ lane vars> && go test -timeout 40m -count=1 -skip 'TestHandleCodexReviewGate_LiveCodex' ./internal/cli/` → 4 failures, ALL dispositioned below; every flip-relevant family green |
+| Failure dispositions | (1) `TestCodex1718Fixtures_WidenedContent` — pre-existing parse-fixture failure, zero diff reach (`git diff 0a1e105d8 --stat` shows no review-gate file); (2) `TestWSR006_ReviewGateRootMatrix` — pre-existing/environmental (fails isolated at this tree; zero diff reach); (3) `TestUpdateLLMYAMLFirstDeployCalm` — flip guarded-surface, FIXED in this change set (the migration persists the record; the test now asserts template + record line); (4) `TestUpdateMirrorHeal_RestoresPathA` — flip guarded-surface, FIXED (fixture models the local-mode population; the update-path deployer holds the mirror stable via MirrorPolicyNone — re-run `--- PASS` both paths) |
+| Lane-env hazard (recorded) | The unscrubbed full-suite run showed 281 failures — every one a `moai`-exec'ing test inheriting THIS lane session's MOAI_FACTORY_*/MOAI_KANBAN_* variables and hitting the lane-boundary guards; the live-enumerated `unset` of the 13 variables turns the family green (sample re-run `--- PASS` ×3). Lane-local verification requires the env-scrubbed form (kanban-dispatch § Verification load is lane-local) |
+| pkilled-process note | Per the leader advisory, no internal/cli run in this session died by signal unexplained; the two stopped background suites were stopped deliberately (stale-tree runs superseded by fresher ones) |
 
 ## §E.3 Run-phase Audit-Ready Signal
 

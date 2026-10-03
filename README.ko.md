@@ -279,6 +279,10 @@ cd my-project
 | `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터리, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
 | `both` | `claude` 배포에 `.codex/` 연결을 더한다. `.mcp.json` 프로비저닝은 강제로 켜진다 |
 
+#### 배포 모드: 플러그인 기본과 전체 로컬 배포
+
+기본 경로(플러그인 모드)에서는 스킬과 명령를 프로젝트에 복사하지 않는다 — moai 플러그인이 운반한다. `.claude/` 표면의 나머지(에이전트, 룰, 훅 등록, 설정)는 오늘과 같이 배포된다. 스킬과 명령을 로컬 파일로 유지하려면 `--no-plugin`(전체 로컬 배포 — `.mcp.json`의 moai 항목과 Codex 미러 포함)을, 선택적 팩 카탈로그까지 모두 로컬로 깔려면 `--all`을 쓴다. 배포 모드는 `.moai/config/sections/llm.yaml`의 `deployment_mode`에 기록되고 `moai update`는 그 기록을 따라 같은 범위를 유지한다. 플러그인 설치가 확인되지 않은 프로젝트는 안전한 쪽인 `local`로 기록된다.
+
 
 > **GPT 게이트웨이 철회(2026-09-16).** 내장 번역 게이트웨이로 GPT 모델을 Claude Code에 얹던 옛 `moai gpt`
 > 런처는 제거되었습니다. GPT 모델은 이제 원래 하네스인 `moai codex`(Codex CLI)로 사용합니다. 위의
