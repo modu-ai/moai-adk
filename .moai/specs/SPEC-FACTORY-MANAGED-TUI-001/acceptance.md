@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "acceptance.md — acceptance criteria"
-version: "0.3.1"
+version: "0.3.2"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -33,7 +33,7 @@ tier: M
 | AC-MT-007 | REQ-MT-008 | Given the TUI attached, When the fake server sends each of the six turn-carrying request kinds naming (i) a launcher-started turn, (ii) an operator-started turn, (iii) no known turn id because the launcher's own `turn/start` is outstanding (REQ-MT-008's exception), Then (i) and (iii) get today's HARDEN-001 answer, (ii) gets no reply from the launcher, and no answer is ever an accept; the four kinds without `turnId` keep today's answer; and with no TUI attached (ii) is declined exactly as before | `go test -race ./internal/cli -run '^TestManagedCodexServerRequestScopingWithTUI$' -count=1 -v` → subtests `owned_turn_answered`, `operator_turn_unanswered`, `armed_window_answered`, `no_turn_id_kinds_answered`, `detached_unchanged`, `never_accepts` PASS, exit 0 |
 | AC-MT-008 | REQ-MT-010 | Given an attached fake TUI, When it exits 0, 7, or is killed by a signal, Then the driver returns nil, an error with `ExitCode()` 7, and an error with `ExitCode()` 1 respectively, the App Server child is reaped and the token directory removed in each, and when the driver had already failed, the driver's error stands. And (`blocked_turn_start_released`) Given the fake server has stopped reading and a test barrier shows the launcher's `turn/start` write has **entered `write()` and not returned**, the per-write deadline is set **longer than the 5 s watchdog** (so the deadline cannot be what releases it), and a **second sender is queued on the write lock** behind the blocked write, When the fake TUI exits with code 7 (the TUI status is recorded before the connection is closed), Then the wait goroutine closes the WebSocket connection, the blocked write and the queued sender both return within the 5 s watchdog, the driver returns the TUI's result (exit code 7), and the TUI child is reaped; and (`blocked_wait_turn_released`) the same exit code 7 for a launcher turn waiting for a completion. A release implemented only through a `select` channel leaves the write blocked and fails the first subtest | `go test -race ./internal/cli -run '^TestManagedCodexTUIExitEndsSession$' -count=1 -v` → subtests `exit_zero`, `exit_seven`, `signaled`, `session_error_wins`, `blocked_turn_start_released`, `blocked_wait_turn_released` PASS, exit 0 |
 | AC-MT-009 | REQ-MT-011 | Given an attached fake TUI that handles interrupt, and another that ignores it, When the App Server connection closes, and When the driver ends the session after the consecutive-failure ceiling, Then the interrupting TUI is interrupted and exits, the ignoring one is killed after the grace, the owner returns only after the TUI is reaped, and no TUI process remains | §1.1 AC-MT-009 block → `TestManagedCodexServerDeathStopsTUI`, `TestManagedCodexSessionEndStopsTUI` PASS, exit 0 |
-| AC-MT-010 | REQ-MT-001 (gate), REQ-MT-012 | Regression guard. Given no `MOAI_FACTORY_MANAGED`, or stamps without it, or it with no stamps, When a Codex launch runs, Then the four existing opt-in tests of the parent stay green (positive control: the same four tests exist in `managed_optin_test.go` at lines 33, 63, 110 and 190 on the base) | §1.1 AC-MT-010 block → 4 tests PASS, exit 0 |
+| AC-MT-010 | REQ-MT-001 (gate), REQ-MT-012 | Regression guard. Given no `MOAI_FACTORY_MANAGED`, or stamps without it, or it with no stamps, When a Codex launch runs, Then the four opt-in tests that exist now stay green: `TestFactoryManagedRequested`, `TestManagedLaunchRequiresOptIn`, `TestManagedCodexLaunchRequiresOptIn` (in `managed_optin_test.go` at lines 34, 64 and 111, measured on `42a952661`) and `TestManagedCardChildSwitchOffKeepsDirectDoor` (in `managed_card_child_test.go` at line 216). The original fourth name, `TestManagedSwitchDoesNotReachCodexLaneLoop`, was removed upstream by card t1440 (commit `a184aa89c`); the intent (no managed branch without the opt-in) is carried by these tests plus AC-MT-016. Falsifiable: `-list` must name exactly these 4 (count 4, not 0) | §1.1 AC-MT-010 block → 4 tests PASS, exit 0 |
 | AC-MT-011 | REQ-MT-001, REQ-MT-007, REQ-MT-010 | Loopback, no real codex. Given a temp broker with one inbox message and the fake codex shim in both roles, When the owner starts, the fake TUI attaches with the env token and its own WS connection, and the fake model acts on the injected prompt, Then metadata-only injection, body read by claim token, and receipt complete (acknowledged 1, pending 0); then the fake TUI exits 0 on a line written to the launcher's stdin pipe and the session ends nil with teardown complete | `go test -race ./internal/cli -run '^TestManagedCodexTUILoopbackRoundTrip$' -count=1 -v` → PASS, exit 0 |
 | AC-MT-012 | REQ-MT-012 | Regression guard. Given the changed tree, Then the cross build passes, `managed_*` files (tests included) hold no `syscall.`, and `store.go` and both parent SPEC directories are unchanged | `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 · `grep -rn 'syscall\.' internal/cli/managed_*.go` → no lines, exit 1 (positive control `grep -ln 'syscall\.' internal/cli/launch_exec_posix.go` → that path, exit 0) · `git diff --stat "$(git merge-base develop HEAD)"..HEAD -- internal/factorymsg/store.go .moai/specs/SPEC-FACTORY-MANAGED-SESSION-001 .moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001` → no lines (read the merge-base at evaluation, before merge; positive control the same range on `internal/cli` is non-empty) |
 | AC-MT-013 | REQ-MT-013 | Given the synced tree, Then the two sentences saying the screen shows nothing are gone from the operator document, it cites this SPEC, and every disclosure anchor of §1.3 is present | the grep list of §1.3 |
@@ -60,8 +60,8 @@ go test -race ./internal/cli -run '^(TestManagedCodexServerDeathStopsTUI|TestMan
 **AC-MT-010**
 
 ```
-go test ./internal/cli -list '^(TestFactoryManagedRequested|TestManagedLaunchRequiresOptIn|TestManagedCodexLaunchRequiresOptIn|TestManagedSwitchDoesNotReachCodexLaneLoop)$'
-go test ./internal/cli -run '^(TestFactoryManagedRequested|TestManagedLaunchRequiresOptIn|TestManagedCodexLaunchRequiresOptIn|TestManagedSwitchDoesNotReachCodexLaneLoop)$' -count=1 -v
+go test ./internal/cli -list '^(TestFactoryManagedRequested|TestManagedLaunchRequiresOptIn|TestManagedCodexLaunchRequiresOptIn|TestManagedCardChildSwitchOffKeepsDirectDoor)$'
+go test ./internal/cli -run '^(TestFactoryManagedRequested|TestManagedLaunchRequiresOptIn|TestManagedCodexLaunchRequiresOptIn|TestManagedCardChildSwitchOffKeepsDirectDoor)$' -count=1 -v
 ```
 
 **AC-MT-014 (M1 part — the delta check)**
@@ -93,12 +93,14 @@ Test-based ACs (001-009, 011, 016) are adoption-deferred (header, "Three classes
 
 ### §1.3 AC-MT-013 grep list (synced tree)
 
+Observed on the current tree (`42a952661`, 2026-10-04), same commands as the rows below: old sentence `화면에는 아무것도 나타나지 않는다` → `0`; `SPEC-FACTORY-MANAGED-TUI-001` in the operator document → `3`; anchors with same-line content: opt-out `1`, log-file `1`, quit `1`, probe `1`, signals(t1459) `1`, unobserved `3`, manual-check `1`, debt-status `1` (that line contains `addressed` once and `unverified` once, `resolved` zero times); card-child headless bullet `1`; CHANGELOG `SPEC-FACTORY-MANAGED-TUI-001` `1`, CHANGELOG `anchor:tui-` `6`. The bare reads `Codex 관리 세션은 화면에 아무것도 보여 주지 않는다` → `0` and `t1459` → `2` are recorded for AC-CC-012's benefit and are not this AC's rows.
+
 Base counts were measured on tree `2b9e4a4d0`; every row must change from its base. Disclosure lines carry a machine anchor on the same line as the required content, so a document that only lists search tokens does not satisfy a row.
 
 | Command | Base (count, exit) | Expect after sync |
 |---|---|---|
 | `grep -c '화면에는 아무것도 나타나지 않는다' .moai/docs/factory-managed-session.md` | `1`, 0 | `0`, exit 1 |
-| `grep -c 'Codex 관리 세션은 화면에 아무것도 보여 주지 않는다' .moai/docs/factory-managed-session.md` | `1`, 0 | `0`, exit 1 |
+| `grep -c -e 'moai codex -l. 의 관리 카드 자식은 TUI 를 붙이지 않고 헤드리스로 남는다' .moai/docs/factory-managed-session.md` | `0`, 1 on the pre-card-child base (not re-measurable now) | 1 or more — the headless fact lives in this card-child bullet; the old sentence `Codex 관리 세션은 화면에 아무것도 보여 주지 않는다` is deliberately **not** constrained here, because the completed SPEC-FACTORY-MANAGED-CARD-CHILD-001 AC-CC-012 owns it (it expects 1 or more) |
 | `grep -c 'SPEC-FACTORY-MANAGED-TUI-001' .moai/docs/factory-managed-session.md` | `0`, 1 | 1 or more |
 | `grep -c 'anchor:tui-opt-out.*MOAI_FACTORY_MANAGED_TUI' .moai/docs/factory-managed-session.md` | `0`, 1 | 1 or more |
 | `grep -c 'anchor:tui-log-file.*factory-managed-' .moai/docs/factory-managed-session.md` | `0`, 1 | 1 or more |
@@ -144,6 +146,7 @@ Each mutant is a one-edit change the named test must turn red; M1/M2 confirm eac
 - A claimed batch and an operator turn starting in the race window: steered into the active turn (known debt 4); the lease (2 min) bounds the batch.
 - Stdin at EOF with a terminal predicate true is not a terminal case; EOF only matters headless.
 - A path with spaces in the codex binary: the exec form takes argv, no shell.
+- An operator turn that starts and completes inside the owner's armed window is attributed to the owner (known debt 14); `TestManagedOperatorTurnInsideArmedWindowKnownDebt` pins the current behavior and is not an acceptance test of a fix.
 
 ## §4. AC-MT-015 — manual check (operator, NOT RUN IN CI)
 
@@ -162,4 +165,4 @@ Failure disposition: any failed step becomes a named known debt or a follow-up c
 
 ## §5. Quality gates and Definition of Done
 
-TRUST 5: new file coverage 85% or more by `go test -cover` on the touched tests; `gofmt -l internal/cli internal/config` empty; `go vet ./internal/cli ./internal/config`; `golangci-lint run ./internal/cli/... ./internal/config/...` at the CI version; managed top-level test count not below 79 plus the new tests. DoD: AC-MT-001..014 and 016 PASS with command and output; AC-MT-015 is operator-held and not release-blocking: the sync-phase deliverable records "operator confirmation pending, no terminal designated" and the docs say "addressed, unverified", never "resolved", until the operator runs it; cross build and grep guards cited; CHANGELOG and operator document updated; the sync audit re-reads the premise ledger.
+TRUST 5: new file coverage 85% or more by `go test -cover` on the touched tests; `gofmt -l internal/cli internal/config` empty; `go vet ./internal/cli ./internal/config`; `golangci-lint run ./internal/cli/... ./internal/config/...` at the CI version; managed top-level test count not below 79 plus the new tests (`go test ./internal/cli -list '^TestManaged'` names 85 on `42a952661`, measured). Coverage of `internal/cli/managed_codex_tui.go` after the repairs: 219/241 statements = 90.9%, as reported by the repair lane (not re-measured by the SPEC author); the earlier 208/224 figure is superseded. DoD: AC-MT-001..014 and 016 PASS with command and output; AC-MT-015 is operator-held and not release-blocking: the sync-phase deliverable records "operator confirmation pending, no terminal designated" and the docs say "addressed, unverified", never "resolved", until the operator runs it; cross build and grep guards cited; CHANGELOG and operator document updated; the sync audit re-reads the premise ledger.

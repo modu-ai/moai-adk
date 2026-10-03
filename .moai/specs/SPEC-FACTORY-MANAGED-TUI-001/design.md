@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "design.md — TUI attach design decisions"
-version: "0.3.1"
+version: "0.3.2"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -90,6 +90,8 @@ Measured behaviors that shape the preconditions (P3, tree `2b9e4a4d0`, codex-cli
 - While detached (headless, or after the TUI ended) the rule is off and HARDEN-001's behavior is exact.
 
 "A turn the owner started" is the set of turn ids returned by the owner's own `turn/start` calls plus the priming turn, kept for the session (one short string per turn). The existing HARDEN-001 attribution (`prevTurnID`, the open window) is unchanged and sits underneath.
+
+**Known gap (F4, known debt 14).** A turn the operator starts and completes inside the owner's armed window is attributed to the owner; see spec.md §H item 14.
 
 **Under either routing.** If the server sends a request only to the connection that started the turn, the launcher never sees operator-turn requests and the rule is idle. If it broadcasts, the rule is what keeps the launcher from declining the operator's approvals. If it routes requests of unknown provenance to the launcher alone, the narrow residue above answers them as before.
 
