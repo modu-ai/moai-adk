@@ -199,6 +199,42 @@ lane environment scrubbed, slot held, `-count=1 -v -timeout 30m`.
   TestRecordWriteReconcileDefaultStillWaits, TestHomestateDoesNotImportKanban.
 - Evidence (git-ignored): `.moai/reports/t1458/red-cli.txt`, `red-homestate.txt`.
 
+### WM2 — the primitive (card t1458)
+
+Commit order (the graph witnesses it): RED `2997abc29` (tests only), then GREEN `f8cc4b978` (`internal/kanban`
+`backlog_store.go`, `factory_step_lock.go`). Tool: `go` from PATH, lane environment scrubbed in each invocation.
+
+- RED at `2997abc29` (`go test ./internal/kanban -run '^(TestWithLock|TestLockedBacklog|TestLockWaitBudget)'`): exit 1,
+  8 FAIL, 0 PASS, no panic. Reasons: the WM2 sentinel error (6 tests), a panic that did not propagate out of
+  `WithLock` (`TestWithLockReleasesOnPanic`), `LockWaitBudget() = 0s`. Evidence `wm2-red-kanban.txt`.
+- GREEN at `f8cc4b978` (same selector, `-race`): exit 0, 8 PASS: TestWithLockMutationsSeeEachOther,
+  TestWithLockHoldsLockUntilFnReturns (positive control for its 300 ms window included), TestWithLockReleasesOnErrorReturn,
+  TestWithLockReleasesOnPanic, TestWithLockRefusesRelocatedQueue (acceptance edge E3), TestLockedBacklogMutateRefusalKeepsFileUnchanged,
+  TestLockedBacklogLoadIsPure (AC-FAL-011 non-adopting half), TestLockWaitBudgetIsTheQueueLockBudget. Evidence `wm2-green-kanban-race.txt`.
+- Mutant MU8 (handle read made `Load`, scratch edit restored byte-identical): `TestLockedBacklogLoadIsPure` FAIL (the adopting
+  read inside the section stalled on the section's own lock, `lock ... held`), exit 1. Evidence `wm2-mu8.txt`. Not claimed:
+  a mutant where the adopting read ran without self-contention.
+- Preservation: full `go test ./internal/kanban -count=1 -timeout 30m`: exit 0, `ok ... 233.953s` (`wm2-kanban-pkg.txt`);
+  `Mutate`'s existing tests unchanged and green. AC-FAL-010 (68-name selector, `-count=1 -v`, slot held): exit 0,
+  `ok internal/cli 225.049s`, `--- PASS` = **68**, `--- FAIL` 0, `--- SKIP` 0, `no tests to run` 0, `DATA RACE` 0; sorted passing
+  names diff against the WM1 baseline list: identical. Floor 68 met. Evidence `wm2-ac010-run.txt`.
+- `gofmt -l internal/kanban` empty; `go vet` of kanban, cli, homestate exit 0; `golangci-lint run ./internal/kanban/...`
+  (v2.1.6) exit 0, 0 issues; `GOOS=windows GOARCH=amd64 go build ./internal/kanban/... ./internal/cli/... ./internal/homestate/...`
+  exit 0 and `GOOS=windows go vet ./internal/kanban` (compiles tests) exit 0.
+- WM1 RED set re-run after WM2 (`wm2-cli.txt`, `wm2-homestate.txt`): moved RED to GREEN: `TestFactoryLeaseCapWithinBoardBudget`
+  (needs `LockWaitBudget`). Still RED, by milestone: WM3 — SectionRejectsNestedMutate, OperatorWriteWaitsForSection,
+  ArmCOperatorHold, CompensationKeepsOperatorPick, SectionRecordWritesPerArm, SerialDistinctNomineesExactlyOne,
+  SerialBareLanesExactlyOne, SerialCrossProcessExactlyOne, OwnAssignedSerialSiblingsExactlyOne, SectionAllowedSet; WM4 —
+  RecordStallBounded, MidClaimStallBounded, QueueLockStallBounded (with WM3), DriftLogStallBounded, and in
+  `internal/homestate` BoundedSkipsOnContention, BoundedRereadsUnderLock; WM5 — EnsureCardWorktreeConcurrentRealMaterializer,
+  EnsureCardWorktreeStepLockBounded. Unchanged green guards: ArmAKeepsHeldAssignedCard, SectionExcludesWorktreeStep,
+  WorktreeStepWaitDerivation, DefaultStillWaits, HomestateDoesNotImportKanban; helper test skips by design.
+- Load-sensitive guard, stated so nobody reads it as a WM2 regression: `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits`
+  passed at RED (returns 250 and 379 ms after the release, bound 500 ms) and failed once in the WM2 run (`bare`, 691.7 ms).
+  Nothing in `internal/cli` calls `WithLock` yet. A `-count=3` re-run on the same machine (`uptime` load averages 53.95 39.42
+  28.80, many concurrent `cli.test` processes from other lanes) passed 2 of 3 (the failing iteration `nominated`, 658.5 ms).
+  The 500 ms margin is the plan's labeled heuristic and is not loosened here. Evidence `wm2-cli-rerun-driftverb.txt`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
@@ -228,9 +264,10 @@ baseline commit, RED commit); R2 = WM2; R3 = WM3 + WM4 (they land together); R4 
 the autonomous plan->run Kickoff recorded in `.moai/reports/t1458/decision.md` (git-ignored) at HEAD b27652922, and after
 absorbing develop 2b9e4a4d0 (merge 09faf2965; the plan-artifact hashes were re-checked unchanged).
 
-## §G Resume Point (operator reboot, 2026-10-03)
+## §G Resume Point (after WM2, 2026-10-03)
 
-- WM1 landed in order: 0eb3d5b0d (seam-and-stub), 807eabe20 (AC-FAL-010 baseline, 68 PASS), then the RED commit (this one; find its SHA with `git log`).
-- Resume at WM2 (the lock-scope primitive), then WM3+WM4, WM5, WM6 (§F). Baseline floor for the final AC-FAL-010 run: 68.
-- Not done: any behavior change. Slot internal-cli-suite released. Nothing pushed or merged.
+- WM1 landed in order: 0eb3d5b0d (seam-and-stub), 807eabe20 (AC-FAL-010 baseline, 68 PASS), 1a4ef6402 (RED). WM2 landed in order: 2997abc29 (RED tests), f8cc4b978 (primitive), then the docs commit carrying this section (find its SHA with `git log`).
+- Resume at WM3+WM4 together (lease path inside `WithLock`, and the bounded claim; they land together, §4 plan), then WM5, WM6 (§F). Baseline floor for the final AC-FAL-010 run: 68 (re-measured after WM2: 68).
+- WM3 reminder: the section's store is `todoStoreAt(root)` constructed before `WithLock`; inside the section call only `LockedBacklog.Mutate`/`LoadPure`, never the public `Mutate` (self-contention, plan D1); the handle must not outlive `fn` (no guard exists, by design).
+- Not done: any lease-path behavior change (nothing in `internal/cli` calls `WithLock` yet). Slot internal-cli-suite released. Nothing pushed or merged.
 - Evidence (git-ignored, this worktree only): .moai/reports/t1458/{baseline-*.txt, red-*.txt, plan-audit*.md, decision.md, park.md}.
