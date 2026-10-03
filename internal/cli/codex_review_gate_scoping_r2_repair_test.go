@@ -195,3 +195,50 @@ func TestCodexReviewGateRuntimeDriftFindingAnchoredToRepoRoot(t *testing.T) {
 	}
 }
 
+// --- N4: the primary judgment compares locations, not spellings ------------
+
+// TestIsPrimaryCheckoutGitSymlinkedSubdirectory pins N4: through a symlinked
+// subdirectory of the primary checkout, git reports --git-dir as the REAL
+// absolute path while --git-common-dir comes back relative to the link, so a
+// Clean-only comparison spells two different locations for the same directory
+// and the default primary skip is missed. Both sides resolve symlinks before
+// the comparison.
+func TestIsPrimaryCheckoutGitSymlinkedSubdirectory(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	root := t.TempDir()
+	cardScopeGit(t, root, "init", "-q", "-b", "main")
+	sub := filepath.Join(root, "internal")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "internal-link")
+	if err := os.Symlink(sub, link); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	// Premise: the spelling mismatch the repair resolves — if a future git
+	// reports both answers in the same form, this premise fails loudly rather
+	// than the assertion passing vacuously.
+	gitDir := cardScopeGit(t, link, "rev-parse", "--git-dir")
+	commonDir := cardScopeGit(t, link, "rev-parse", "--git-common-dir")
+	if !filepath.IsAbs(gitDir) || filepath.IsAbs(commonDir) {
+		t.Fatalf("premise: through a symlink git must report an absolute --git-dir %q and a relative --git-common-dir %q", gitDir, commonDir)
+	}
+
+	if !isPrimaryCheckoutGit(root) {
+		t.Errorf("control: the primary checkout itself must judge primary")
+	}
+	if !isPrimaryCheckoutGit(link) {
+		t.Errorf("the same primary directory through a symlinked subdirectory must judge primary too — the comparison must resolve symlinks before comparing (N4)")
+	}
+
+	// Control: a LINKED worktree is a different tree and stays non-primary —
+	// symlink resolution must not flatten the worktree/common-dir distinction.
+	wt := t.TempDir()
+	cardScopeGit(t, root, "worktree", "add", "-q", "-b", "WT-n4-probe", wt)
+	if isPrimaryCheckoutGit(wt) {
+		t.Errorf("control: a linked worktree must stay non-primary")
+	}
+}

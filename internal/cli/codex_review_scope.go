@@ -143,14 +143,29 @@ func isPrimaryCheckoutGit(dir string) bool {
 	return reviewScopeGitPath(dir, gitDir) == reviewScopeGitPath(dir, commonDir)
 }
 
+// reviewScopeEvalPath resolves symlinks in one resolved git-path candidate,
+// returning it unchanged when the resolution fails (a missing final
+// component, a broken link) — both sides of the comparison degrade the same
+// way, so the equality stays meaningful (card-review repair round 2, N4).
+func reviewScopeEvalPath(p string) string {
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		return resolved
+	}
+	return p
+}
+
 // reviewScopeGitPath resolves one git subcommand's possibly-relative path
 // output against the tree it was produced in, so the equality check compares
-// locations rather than spellings.
+// LOCATIONS rather than spellings. The tree itself is symlink-resolved before
+// the join (card-review repair round 2, N4): through a symlinked subdirectory
+// git reports --git-dir as the REAL absolute path while --git-common-dir
+// comes back relative to the link, and joining the relative output against
+// the unresolved link spells a location that differs only by the link.
 func reviewScopeGitPath(dir, out string) string {
 	if filepath.IsAbs(out) {
-		return filepath.Clean(out)
+		return reviewScopeEvalPath(filepath.Clean(out))
 	}
-	return filepath.Clean(filepath.Join(dir, out))
+	return reviewScopeEvalPath(filepath.Clean(filepath.Join(reviewScopeEvalPath(dir), out)))
 }
 
 // cardScopeFromBranch is the pure decision core of the discriminator: a card

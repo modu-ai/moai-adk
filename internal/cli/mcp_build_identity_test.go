@@ -682,7 +682,10 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// comparison, same count — only the coordinate moved (the t948
 		// precedent below); caught by the card's owed full-package re-run, not
 		// by the repair's own diff, which starts at line 233.
-		"codex_review_scope.go:182": true,
+		// Re-measured again at the card-review round-2 repair: N4's
+		// reviewScopeEvalPath insertion above cardMergeBase moved the same
+		// single comparison from 182. Same one comparison, same count.
+		"codex_review_scope.go:197": true,
 		// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (card t1393): the session-worktree
 		// disposal landing check — arm (i) of the decided predicate asks
 		// whether the branch tip is an ancestor of refs/remotes/origin/develop
