@@ -242,7 +242,7 @@ All attributions are `(this run, this tree, HEAD 71befeeb9 plus the uncommitted 
 
 sync_status: audit-ready (NOT audit-passed: no sync audit has passed on this close yet; AC-MT-015 operator-held, NOT run)
 sync_complete_at: 2026-10-04
-sync_commit_sha: pending-backfill   # canonical placeholder: this re-close commit cannot cite its own hash; backfilled in a following progress.md-only commit
+sync_commit_sha: 985cedfb7   # backfilled in the following progress.md-only commit (a commit cannot cite its own hash)
 superseded_first_close: 40aa3aedf (the first sync commit; the independent sync audit `.moai/reports/t1408/sync-audit.md`, local-only, returned FAIL 76.2/100 against `3ca47fbe3`; its SHA is the `superseded_sync_commit_sha` line of the first section E.4 block above)
 head_at_signal: 6f6d69349 (measured tree; the re-close edits were uncommitted when measured)
 tree: .claude/worktrees/t1408
