@@ -23,13 +23,19 @@ import (
 )
 
 // previewManagedCleanup renders, for `moai update --dry-run`, the files the
-// real run's Clean Managed Paths step removes under MoAI-managed roots. It is
-// strictly read-only (InventoryManagedPaths + template listing) and prints
-// nothing when the project has no managed paths on disk.
-func previewManagedCleanup(projectRoot string, out io.Writer) error {
+// real run's Clean Managed Paths step removes under MoAI-managed roots. The
+// target list comes from computeRunCleanTargets — the run's exact
+// computation (card t1438 review finding 4), so a plugin-mode run's
+// preserved dropped roots never appear as "would delete". It is strictly
+// read-only and prints nothing when the project has no managed paths on
+// disk.
+func previewManagedCleanup(projectRoot string, deployMode template.DeployMode, out io.Writer) error {
 	th := resolveTheme()
 
-	files := deploy.InventoryManagedPaths(projectRoot)
+	// The migration's classified append is the one piece a dry run cannot
+	// reproduce (it needs the confirmed probe); it only ever ADDS removals,
+	// so the mode-scoped list is the honest preview floor.
+	files := deploy.InventoryManagedPathsWithTargets(projectRoot, computeRunCleanTargets(projectRoot, deployMode, nil))
 	configDir := filepath.Join(projectRoot, ".moai", "config")
 	_, configErr := os.Stat(configDir)
 	if len(files) == 0 && configErr != nil {

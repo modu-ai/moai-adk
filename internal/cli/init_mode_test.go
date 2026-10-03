@@ -166,6 +166,16 @@ func TestShrinkInitGuidanceOnMissingPlugin(t *testing.T) {
 	if !strings.Contains(stderr, "--no-plugin") {
 		t.Errorf("guidance does not name the --no-plugin recourse:\n%s", stderr)
 	}
+	// Card t1438 review finding 6: a plain re-run fails "project already
+	// initialized" — the guidance must name the flags that actually work
+	// (--no-plugin --force) and state what force re-initialization does with
+	// the existing .moai/.
+	if !strings.Contains(stderr, "--no-plugin --force") {
+		t.Errorf("guidance does not name the working re-entry flags (--no-plugin --force):\n%s", stderr)
+	}
+	if !strings.Contains(stderr, ".moai-backups") {
+		t.Errorf("guidance does not state the --force backup disposition of the existing .moai/:\n%s", stderr)
+	}
 	if !strings.Contains(stderr, "plugin marketplace add") {
 		t.Errorf("guidance does not name the manual install commands:\n%s", stderr)
 	}

@@ -31,8 +31,10 @@
 # every case runs under a scratch CLAUDE_CONFIG_DIR / CODEX_HOME and a
 # scratch working directory; the run is bracketed by an equal before/after
 # protected-set hash that includes directory entries (the t1434
-# LEAK-FINDING). No command in this script assigns HOME — the worktree guard
-# refuses it and moving it into a script file is not a way around it.
+# LEAK-FINDING) AND the CONTENT of every protected file (card t1438 review
+# finding 5: a name-only hash reads green through a same-name rewrite). No
+# command in this script assigns HOME — the worktree guard refuses it and
+# moving it into a script file is not a way around it.
 
 set -u
 
@@ -84,31 +86,92 @@ scrub_and_isolate() {
     return 0
 }
 
-# protected_set_hash — a hash over the sorted directory and file entries of
-# the real homes the run must not touch. Directory entries are included
-# (t1434 LEAK-FINDING: content-only manifests cannot see a created
-# directory). Read-only.
+# protected_set_hash — a hash over the protected set of the real homes the
+# run must not touch: the sorted directory and file ENTRIES plus the CONTENT
+# of every regular file. Directory entries are included (t1434 LEAK-FINDING:
+# content-only manifests cannot see a created directory); file contents are
+# hashed because a name-only hash is vacuous against a same-name rewrite
+# (card t1438 review finding 5 — the pre-fix form hashed only the pruned
+# ambient paths, an empty-input hash). Read-only.
 #
 # The AMBIENT subtrees documented by the t1434 verdict (the account-synced
 # plugins directory that changes by itself, the live-session trees a
 # concurrently running Claude session writes, and the telemetry churn) are
 # PRUNED: they are not writes this run could cause, and hashing them makes
-# the gate flake on ambient motion rather than detect a leak. The t1434 leak
-# shape (a created directory under plugins/) stays inside the hashed set.
+# the gate flake on ambient motion rather than detect a leak. Measured on
+# this class (card t1438 review finding 5 verification): the codex runtime's
+# SQLite WAL/SHM sidecars rewrite continuously (logs_2.sqlite-shm flipped
+# between two reads 4s apart), so the live sqlite stores, their -wal/-shm
+# sidecars, and the live command-history jsonl files are pruned by name —
+# a run's own leak shape (config, skills, plugin stores, a created
+# directory) stays inside the hashed set.
+#
+# protected_set_hash_at <home-root> is the parameterized form the self-check
+# negative control drives against a scratch fake home (the real home is
+# never modified); protected_set_hash reads the real HOME.
+protected_set_hash_at() {
+    _home="$1"
+    # Pass 1 — the structure: every non-pruned directory and file ENTRY.
+    _structure=$(
+        {
+            if [ -d "$_home/.claude" ]; then
+                find "$_home/.claude" -maxdepth 4 \
+                    \( -name synced -o -name projects -o -name statsig -o -name todos \
+                        -o -name shell-snapshots -o -name logs -o -name session-env \
+                        -o -name '*.sqlite' -o -name '*-wal' -o -name '*-shm' \
+                        -o -name history.jsonl -o -name timeline.jsonl \) -prune \
+                    -o -print 2>/dev/null
+            fi
+            if [ -d "$_home/.codex" ]; then
+                find "$_home/.codex" -maxdepth 4 \
+                    \( -name log -o -name sessions -o -name archived_sessions \
+                        -o -name sqlite \
+                        -o -name '*.sqlite' -o -name '*-wal' -o -name '*-shm' \
+                        -o -name history.jsonl -o -name session_index.jsonl \
+                        -o -name transcription-history.jsonl \
+                        -o -name models_cache.json \) -prune \
+                    -o -print 2>/dev/null
+            fi
+        } | LC_ALL=C sort | sha256_stream | cut -d' ' -f1
+    )
+    # Pass 2 — the contents: every non-pruned regular file, hashed by bytes
+    # (shasum/sha256sum accept the paths as operands). The /dev/null operand
+    # keeps the xargs target from reading stdin on an empty file list (GNU
+    # xargs runs its command once with no operands; the constant line is
+    # deterministic). Symlinks are type l and never hashed or followed.
+    _contents=$(
+        {
+            if [ -d "$_home/.claude" ]; then
+                find "$_home/.claude" -maxdepth 4 \
+                    \( -name synced -o -name projects -o -name statsig -o -name todos \
+                        -o -name shell-snapshots -o -name logs -o -name session-env \
+                        -o -name '*.sqlite' -o -name '*-wal' -o -name '*-shm' \
+                        -o -name history.jsonl -o -name timeline.jsonl \) -prune \
+                    -o -type f -print0 2>/dev/null
+            fi
+            if [ -d "$_home/.codex" ]; then
+                find "$_home/.codex" -maxdepth 4 \
+                    \( -name log -o -name sessions -o -name archived_sessions \
+                        -o -name sqlite \
+                        -o -name '*.sqlite' -o -name '*-wal' -o -name '*-shm' \
+                        -o -name history.jsonl -o -name session_index.jsonl \
+                        -o -name transcription-history.jsonl \
+                        -o -name models_cache.json \) -prune \
+                    -o -type f -print0 2>/dev/null
+            fi
+        } | xargs -0 sh -c '
+                if command -v shasum >/dev/null 2>&1; then
+                    shasum -a 256 /dev/null "$@"
+                else
+                    sha256sum /dev/null "$@"
+                fi
+            ' sh 2>/dev/null | LC_ALL=C sort | sha256_stream | cut -d' ' -f1
+    )
+    printf '%s\n%s\n' "$_structure" "$_contents" | sha256_stream | cut -d' ' -f1
+}
+
 protected_set_hash() {
-    {
-        if [ -d "${HOME:?}/.claude" ]; then
-            find "$HOME/.claude" -maxdepth 4 \
-                \( -name synced -o -name projects -o -name statsig -o -name todos \
-                    -o -name shell-snapshots -o -name logs -o -name session-env \) -prune \
-                -print 2>/dev/null
-        fi
-        if [ -d "${HOME:?}/.codex" ]; then
-            find "$HOME/.codex" -maxdepth 4 \
-                \( -name log -o -name sessions -o -name archived_sessions \) -prune \
-                -print 2>/dev/null
-        fi
-    } | LC_ALL=C sort | sha256_stream | cut -d' ' -f1
+    protected_set_hash_at "${HOME:?}"
 }
 
 # wait_for_file <path> <pid> <timeout-seconds> — polls until the path exists
@@ -247,15 +310,41 @@ self_check() {
     fi
     unset MOAI_RESOLUTION_GATE_PLANT_LEAK || true
 
-    # Case protected-set-hash: the hash is stable across reads when nothing
-    # under the protected set changes, and it is non-empty (a vacuous hash
-    # would make the before/after bracket meaningless).
-    before=$(protected_set_hash)
-    after=$(protected_set_hash)
-    if [ -n "$before" ] && [ "$before" = "$after" ]; then
+    # The FAKE home: the deterministic tree the hash cases drive. The real
+    # home carries ambient churn (live-session and telemetry writes) that no
+    # prune list can fully exclude, so STABILITY is asserted on the fake
+    # home; the real-home read is only asserted non-empty (the function
+    # works against the live tree).
+    fake_home="$scratch/fake-home"
+    mkdir -p "$fake_home/.claude/skills/demo" "$fake_home/.codex"
+    printf 'original bytes\n' >"$fake_home/.claude/skills/demo/SKILL.md"
+    printf '{}\n' >"$fake_home/.codex/config.toml"
+
+    # Case protected-set-hash: the hash is deterministic across back-to-back
+    # reads of the same tree, and the real-home read is non-empty (a vacuous
+    # hash would make the before/after bracket meaningless).
+    before=$(protected_set_hash_at "$fake_home")
+    after=$(protected_set_hash_at "$fake_home")
+    real_hash=$(protected_set_hash)
+    if [ -n "$before" ] && [ "$before" = "$after" ] && [ -n "$real_hash" ]; then
         pass protected-set-hash
     else
-        fail protected-set-hash "empty=$([ -z "$before" ] && echo yes || echo no) stable=$([ "$before" = "$after" ] && echo yes || echo no)"
+        fail protected-set-hash "empty=$([ -z "$before" ] && echo yes || echo no) stable=$([ "$before" = "$after" ] && echo yes || echo no) real_empty=$([ -z "$real_hash" ] && echo yes || echo no)"
+    fi
+
+    # Case protected-set-hash-negative-control: a REAL tamper on the fake
+    # home must flip the hash — the content axis makes the check
+    # non-vacuous (card t1438 review finding 5: the pre-fix form hashed only
+    # the pruned ambient paths, so a rewritten protected file read as
+    # unchanged). The real home is never touched.
+    tamper_before=$(protected_set_hash_at "$fake_home")
+    printf 'tampered bytes\n' >"$fake_home/.claude/skills/demo/SKILL.md"
+    tamper_after=$(protected_set_hash_at "$fake_home")
+    if [ -n "$tamper_before" ] && [ "$tamper_before" != "$tamper_after" ]; then
+        pass protected-set-hash-negative-control
+    else
+        fail protected-set-hash-negative-control \
+            "caught=$([ "$tamper_before" != "$tamper_after" ] && echo yes || echo no) empty=$([ -z "$tamper_before" ] && echo yes || echo no)"
     fi
 
     # Case shape-lines: the PASS/FAIL emitters produce the documented line

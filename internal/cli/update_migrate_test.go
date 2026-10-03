@@ -491,3 +491,171 @@ func TestNotDemonstratedPreservationEndsAtNextLocalUpdate(t *testing.T) {
 		t.Error("the removed foreign skill left no pre-clean backup copy")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Card t1438 card-review findings 1 and 2
+// ---------------------------------------------------------------------------
+
+// plantSymlinkedArchiveRoot replaces the migration archive root with a
+// symlink pointing at an outside directory — the planted-write shape the
+// symlink guard must refuse (finding 1). Returns the outside target.
+func plantSymlinkedArchiveRoot(t *testing.T, root string) string {
+	t.Helper()
+	archiveDir := filepath.Join(root, ".moai", "archive")
+	outside := t.TempDir()
+	if err := os.MkdirAll(filepath.Dir(archiveDir), 0o755); err != nil {
+		t.Fatalf("mkdir .moai: %v", err)
+	}
+	if err := os.Symlink(outside, archiveDir); err != nil {
+		t.Fatalf("symlink the archive root: %v", err)
+	}
+	return outside
+}
+
+// TestMigrationArchiveRefusesSymlinkedArchiveDestination is finding 1: the
+// archive write never goes THROUGH a symlink. A symlinked archive
+// destination (or parent component) aborts the archive — which aborts the
+// migration before any removal — with an error naming the symlink.
+func TestMigrationArchiveRefusesSymlinkedArchiveDestination(t *testing.T) {
+	t.Run("unit_archive_through_symlink_refused", func(t *testing.T) {
+		root := buildMigrationFixture(t)
+		outside := plantSymlinkedArchiveRoot(t, root)
+
+		err := archiveMigrationFile(root, migModifiedSkill)
+		if err == nil {
+			t.Fatal("the archive write went through a symlinked archive destination without refusal")
+		}
+		if !strings.Contains(err.Error(), "ARCHIVE_SYMLINK") {
+			t.Errorf("error does not carry the ARCHIVE_SYMLINK code: %v", err)
+		}
+		if !strings.Contains(err.Error(), ".moai/archive") {
+			t.Errorf("error does not name the symlinked path: %v", err)
+		}
+		// Nothing was written through the link.
+		if entries, _ := os.ReadDir(outside); len(entries) != 0 {
+			t.Errorf("the symlink target received archive writes: %v", entries)
+		}
+	})
+
+	t.Run("flow_aborts_before_any_removal", func(t *testing.T) {
+		root := buildMigrationFixture(t)
+		plantSymlinkedArchiveRoot(t, root)
+		confirmedRunner(t)
+
+		err := tryRunUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
+		if err == nil {
+			t.Fatal("the confirmed migration did not abort on the symlinked archive destination")
+		}
+		if !strings.Contains(err.Error(), "ARCHIVE_SYMLINK") {
+			t.Errorf("abort error does not name the symlink refusal: %v", err)
+		}
+		// The abort-before-removal contract (OD-3): nothing was removed.
+		assertFilePresent(t, root, migIdenticalSkill)
+		assertFilePresent(t, root, migModifiedSkill)
+		assertFilePresent(t, root, migForeignSkill)
+		// The record is unwritten — the next update re-triggers.
+		if got := config.ReadDeployMode(root); got != "" {
+			t.Errorf("deployment_mode = %q after an aborted migration, want empty", got)
+		}
+	})
+}
+
+// tryRunUpdateCobraCmd is runUpdateCobraCmd's error-tolerant form: the caller
+// asserts on the returned error instead of the helper failing the test.
+func tryRunUpdateCobraCmd(t *testing.T, root string, flags map[string]string) error {
+	t.Helper()
+	cmd := &cobra.Command{Use: "update"}
+	cmd.Flags().Bool("force", false, "")
+	cmd.Flags().Bool("yes", false, "")
+	cmd.Flags().Bool("no-hooks", true, "")
+	cmd.Flags().Bool("no-plugin", false, "")
+	cmd.Flags().Bool("dry-run", false, "")
+	cmd.Flags().String("check", "", "")
+	for name, val := range flags {
+		if err := cmd.Flags().Set(name, val); err != nil {
+			t.Fatalf("set --%s=%s: %v", name, val, err)
+		}
+	}
+	var out, errBuf strings.Builder
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+	cmd.SetContext(context.Background())
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	return runTemplateSyncWithReporter(cmd, nil, true)
+}
+
+// TestMigrationRehomesExistingMirrorEntries is finding 2 (design §3 mirror
+// paragraph): on a confirmed migration the KEPT mirror entries are re-homed
+// to real directory copies rendered from the embedded tree BEFORE the
+// dropped-root removal runs — a kept symlink would dangle into the removed
+// .claude/skills. The re-home converts existing entries; it never provisions
+// new ones (REQ-019), and a non-link entry is the user's and stays untouched.
+func TestMigrationRehomesExistingMirrorEntries(t *testing.T) {
+	root := buildMigrationFixture(t)
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("load embedded templates: %v", err)
+	}
+
+	// A pre-existing mirror entry in the local deploy's P-11 symlink shape.
+	mirrorEntry := filepath.Join(root, ".agents", "skills", "moai-foundation-core")
+	if err := os.MkdirAll(filepath.Dir(mirrorEntry), 0o755); err != nil {
+		t.Fatalf("mkdir mirror root: %v", err)
+	}
+	if err := os.Symlink(filepath.Join("..", "..", ".claude", "skills", "moai-foundation-core"), mirrorEntry); err != nil {
+		t.Fatalf("seed mirror symlink: %v", err)
+	}
+	// A non-link entry is the user's: untouched by the re-home.
+	userEntry := filepath.Join(root, ".agents", "skills", "moai-user-own")
+	if err := os.MkdirAll(userEntry, 0o755); err != nil {
+		t.Fatalf("mkdir user mirror entry: %v", err)
+	}
+
+	confirmedRunner(t)
+	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
+
+	// The entry is now a REAL directory (not a symlink), holding the
+	// embedded skill bytes.
+	info, err := os.Lstat(mirrorEntry)
+	if err != nil {
+		t.Fatalf("re-homed mirror entry missing: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Fatal("the mirror entry is still a symlink — it dangles once .claude/skills is removed")
+	}
+	if !info.IsDir() {
+		t.Fatalf("re-homed mirror entry is not a directory: %v", info.Mode())
+	}
+	copied, err := os.ReadFile(filepath.Join(mirrorEntry, "SKILL.md"))
+	if err != nil {
+		t.Fatalf("re-homed copy missing SKILL.md: %v", err)
+	}
+	embeddedData, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	if string(copied) != string(embeddedData) {
+		t.Error("re-homed copy does not carry the embedded skill bytes")
+	}
+
+	// The classified removal still ran (after the re-home).
+	assertFileAbsent(t, root, migIdenticalSkill)
+
+	// No provisioning: a catalog skill with no pre-existing entry gains none.
+	if _, err := os.Lstat(filepath.Join(root, ".agents", "skills", "moai-workflow-tdd")); !os.IsNotExist(err) {
+		t.Errorf("the migration provisioned a mirror entry for a skill that had none: %v", err)
+	}
+	// The user's own entry stays untouched (an empty dir is still empty).
+	if entries, _ := os.ReadDir(userEntry); len(entries) != 0 {
+		t.Errorf("the user's own mirror entry was modified: %v", entries)
+	}
+}

@@ -760,3 +760,55 @@ func TestUpdateMirrorHeal_VersionMatrix(t *testing.T) {
 		}
 	})
 }
+
+// ---------------------------------------------------------------------------
+// Card t1438 card-review finding 3
+// ---------------------------------------------------------------------------
+
+// seedHealModeFixture builds a stamped project with a canonical skill on
+// disk, no mirror, and the given deploy-mode record — the shape the heal's
+// mode gate must tell apart (finding 3, REQ-019).
+func seedHealModeFixture(t *testing.T, mode string) string {
+	t.Helper()
+	root := mirrorHealStampedProject(t, version.GetVersion())
+	writeTestFile(t, root, ".moai/config/sections/llm.yaml",
+		fmt.Sprintf("llm:\n  harness: claude\n  deployment_mode: %s\n", mode))
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("load embedded templates: %v", err)
+	}
+	data, err := fs.ReadFile(embedded, ".claude/skills/moai-foundation-core/SKILL.md")
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	writeTestFile(t, root, ".claude/skills/moai-foundation-core/SKILL.md", string(data))
+	return root
+}
+
+// TestMirrorHealRespectsDeployMode is finding 3: the post-deploy heal applies
+// the deploy mode — a plugin-mode project's thin deploy carries no mirror, so
+// the heal must not resurrect one (REQ-019); a local-mode project heals as
+// today.
+func TestMirrorHealRespectsDeployMode(t *testing.T) {
+	t.Run("plugin_mode_heals_nothing", func(t *testing.T) {
+		root := seedHealModeFixture(t, "plugin")
+		var out, errOut bytes.Buffer
+		repairSkillMirrorBestEffortAt(root, &out, &errOut)
+		if _, err := os.Lstat(filepath.Join(root, ".agents")); !os.IsNotExist(err) {
+			t.Errorf("plugin-mode heal resurrected a mirror (REQ-019): %v", err)
+		}
+	})
+
+	t.Run("local_mode_heals_as_today", func(t *testing.T) {
+		root := seedHealModeFixture(t, "local")
+		var out, errOut bytes.Buffer
+		repairSkillMirrorBestEffortAt(root, &out, &errOut)
+		info, err := os.Lstat(filepath.Join(root, ".agents", "skills", "moai-foundation-core"))
+		if err != nil {
+			t.Fatalf("local-mode heal did not restore the mirror: %v", err)
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			t.Errorf("expected the symlink mirror form, got mode %v", info.Mode())
+		}
+	})
+}

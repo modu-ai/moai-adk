@@ -61,6 +61,13 @@ func TestResolutionGateHarness(t *testing.T) {
 	if !strings.Contains(text, "PASS protected-set-hash") {
 		t.Fatalf("the protected-set hash case did not pass:\n%s", text)
 	}
+	// Card t1438 review finding 5: the hash must be non-vacuous — a REAL
+	// tamper on a scratch fake home must flip it, and the self-check records
+	// that the caught change happened. Without this control a name-only hash
+	// reads green while rewriting every protected file.
+	if !strings.Contains(text, "PASS protected-set-hash-negative-control") {
+		t.Fatalf("the protected-set hash negative control did not pass (a modified protected file did not flip the hash — the tamper check is vacuous):\n%s", text)
+	}
 }
 
 // TestShrinkVerificationNeverReachesRealHome is AC-020 (a), M1 half: the

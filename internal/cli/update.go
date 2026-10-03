@@ -330,7 +330,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 		// t40 defect 3: preview the managed-cleanup deletion list. A preview
 		// failure degrades to a warning — a dry run must not fail the command.
-		if previewErr := previewManagedCleanup(cwd, out); previewErr != nil {
+		previewMode := resolveUpdateDeployMode(cwd, getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv())
+		if previewErr := previewManagedCleanup(cwd, previewMode, out); previewErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Cleanup preview", "failed", previewErr.Error(), &th))
 		}
 		// SPEC-UPDATE-REINSTALL-LOOP-002 REQ-RIL2-024/025 (M4): the v2

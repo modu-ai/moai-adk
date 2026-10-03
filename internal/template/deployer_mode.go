@@ -225,3 +225,41 @@ func (d *deployer) rehomeOneSkill(projectRoot string, tmplCtx *TemplateContext, 
 			"the copy does not follow later updates to .claude/skills/" + skill,
 	}
 }
+
+// RehomeExistingMirrorEntries re-homes a project's EXISTING .agents/skills
+// symlink entries to real directory copies rendered from the embedded tree
+// (SPEC-INIT-SHRINK-001 design §3 mirror paragraph — the migration-path
+// re-home, card t1438 review finding 2). Only entries that currently exist
+// as symlinks are converted: a non-link entry is the user's and stays
+// untouched (rehomeOneSkill's skip rule), and a catalog skill with no entry
+// gains none — the re-home converts, it never provisions (REQ-019 holds
+// mirror addition out of update runs). Failures are per-entry
+// (MirrorModeFailed + Warning); the caller decides what the user sees.
+func RehomeExistingMirrorEntries(projectRoot string, tmplCtx *TemplateContext) []SkillMirrorEntry {
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		return []SkillMirrorEntry{{Mode: MirrorModeFailed,
+			Warning: "cannot load embedded templates: " + err.Error()}}
+	}
+	entries, err := fs.ReadDir(fsys, CanonicalSkillsRelDir)
+	if err != nil {
+		// No skill catalog in this tree (never happens for the embedded
+		// tree; a custom FS may lack it): nothing to rehome.
+		return nil
+	}
+	d := &deployer{fsys: fsys, renderer: NewRenderer(fsys)}
+	var result []SkillMirrorEntry
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		mirrorPath := filepath.Join(projectRoot, MirrorSkillsRelDir, e.Name())
+		// Convert only a KEPT LINK: an absent entry is not provisioned, a
+		// non-link entry is the user's.
+		if info, statErr := os.Lstat(mirrorPath); statErr != nil || info.Mode()&os.ModeSymlink == 0 {
+			continue
+		}
+		result = append(result, d.rehomeOneSkill(projectRoot, tmplCtx, e.Name()))
+	}
+	return result
+}

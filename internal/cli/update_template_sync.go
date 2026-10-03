@@ -478,13 +478,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				//  a local-mode run keeps today's global walk (the documented
 				//  REQ-017 boundary — preservation is one migration run, not
 				//  a byte-for-byte promise for every future update).
-				cleanTargets := deploy.ManagedCleanTargets(projectRoot)
-				if deployMode == template.DeployModePlugin {
-					cleanTargets = updateDroppedRootTargets(cleanTargets)
-				}
-				if migration != nil && migration.outcome == migrateConfirmed {
-					cleanTargets = append(cleanTargets, migration.removalTargets...)
-				}
+				// The list comes from computeRunCleanTargets — the exact
+				// computation the --dry-run preview shares (card t1438
+				// review finding 4), so the preview can never announce a
+				// removal the run does not make.
+				cleanTargets := computeRunCleanTargets(projectRoot, deployMode, migration)
 				// t40 defect 2: snapshot what exists under THIS run's target
 				// list BEFORE the removal (read-only; the accounting matches
 				// the removal scope).

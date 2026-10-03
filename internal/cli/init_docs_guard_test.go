@@ -53,6 +53,16 @@ func TestInitDocsDescribeThinDeploy(t *testing.T) {
 			t.Errorf("success card missing %q", want)
 		}
 	}
+
+	// Card t1438 review finding 6: the not-demonstrated guidance block must
+	// name the re-entry flags that actually work — a plain re-run fails
+	// "project already initialized", so --force is required alongside
+	// --no-plugin, and the block states what force re-initialization moves.
+	for _, want := range []string{"--no-plugin --force", ".moai-backups"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("init.go guidance block missing %q", want)
+		}
+	}
 }
 
 // extractFlagHelp returns the help string of one flag registration line.

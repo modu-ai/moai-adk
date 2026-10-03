@@ -436,12 +436,21 @@ func resolveInitDeployMode(cmd *cobra.Command) template.DeployMode {
 
 // emitShrinkInstallGuidance prints the one guidance block of REQ-004: the
 // post-install probe did not demonstrate this run's install, so both
-// recourses are named. Fail-open — it never changes the init result.
+// recourses are named. Recourse 1 names the flags that actually work — a
+// plain re-run fails "project already initialized", so --force is required
+// alongside --no-plugin, and the block states what force re-initialization
+// moves (card t1438 review finding 6). Fail-open — it never changes the
+// init result.
 func emitShrinkInstallGuidance(errOut io.Writer) {
 	_, _ = fmt.Fprintln(errOut, "note: the moai plugin install could not be demonstrated for this run.")
 	_, _ = fmt.Fprintln(errOut, "      Skills and commands are NOT deployed locally on the plugin path;")
 	_, _ = fmt.Fprintln(errOut, "      pick a recourse to keep them available:")
-	_, _ = fmt.Fprintln(errOut, "        1. re-run with --no-plugin for a full local deploy, or")
+	_, _ = fmt.Fprintln(errOut, "        1. re-run with --no-plugin --force for a full local deploy (a plain")
+	_, _ = fmt.Fprintln(errOut, "           re-run fails: the project already counts as initialized). --force")
+	_, _ = fmt.Fprintln(errOut, "           re-initialization moves the existing .moai/ to .moai-backups/<timestamp>/")
+	_, _ = fmt.Fprintln(errOut, "           and redeploys the MoAI-managed template files from scratch; your")
+	_, _ = fmt.Fprintln(errOut, "           manifest is carried forward, so user-modified files keep their")
+	_, _ = fmt.Fprintln(errOut, "           user_modified protection, or")
 	_, _ = fmt.Fprintln(errOut, "        2. install the plugin manually:")
 	_, _ = fmt.Fprintln(errOut, "           claude plugin marketplace add "+pluginMarketplaceSource+" ; claude plugin install "+pluginRef)
 	_, _ = fmt.Fprintln(errOut, "           codex  plugin marketplace add "+pluginMarketplaceSource+" ; codex  plugin add "+pluginRef)

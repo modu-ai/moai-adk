@@ -110,6 +110,17 @@ claude cases are 420 s-bounded; the codex case is quick in every observed run).
 | Lane-env hazard (recorded) | The unscrubbed full-suite run showed 281 failures — every one a `moai`-exec'ing test inheriting THIS lane session's MOAI_FACTORY_*/MOAI_KANBAN_* variables and hitting the lane-boundary guards; the live-enumerated `unset` of the 13 variables turns the family green (sample re-run `--- PASS` ×3). Lane-local verification requires the env-scrubbed form (kanban-dispatch § Verification load is lane-local) |
 | pkilled-process note | Per the leader advisory, no internal/cli run in this session died by signal unexplained; the two stopped background suites were stopped deliberately (stale-tree runs superseded by fresher ones) |
 
+### Card-review repairs (codex_review findings 1-6, 2026-10-04)
+
+| Claim | Evidence (command → deciding output, this run, this tree) |
+|---|---|
+| F1 symlink-guarded archive | RED: `go test ./internal/cli -run TestMigrationArchiveRefusesSymlinkedArchiveDestination -count=1` → `the archive write went through a symlinked archive destination without refusal` / `the confirmed migration did not abort on the symlinked archive destination`; GREEN: `unset <13 MOAI_ lane vars> && go test -count=1 -v -run 'TestMigrationArchiveRefusesSymlinkedArchiveDestination|...' ./internal/cli/` → `--- PASS: TestMigrationArchiveRefusesSymlinkedArchiveDestination (0.01s)` (unit refusal names `.moai/archive`; flow aborts before any removal with record unwritten) |
+| F2 migration re-home per design §3 | RED: `the mirror entry is still a symlink — it dangles once .claude/skills is removed`; GREEN: same `-v` run → `--- PASS: TestMigrationRehomesExistingMirrorEntries (0.18s)` (kept link becomes a real directory carrying the embedded bytes; no provisioning; user entry untouched; classified removal still ran) |
+| F3 heal applies deploy mode (REQ-019) | RED: `plugin-mode heal resurrected a mirror (REQ-019): <nil>`; GREEN: same `-v` run → `--- PASS: TestMirrorHealRespectsDeployMode (0.01s)` (plugin record heals nothing; local record heals as today) |
+| F4 preview shares the run's target computation | RED: `preview lists a file the plugin-mode run preserves:` (moai-custom listed under a plugin record); GREEN: same `-v` run → `--- PASS: TestPreviewManagedCleanup_ModeScoped (0.00s)` (plugin-mode preview omits the preserved file; local-mode preview still lists it); execution and preview both route through `computeRunCleanTargets` |
+| F5 non-vacuous protected-set hash | RED: `the protected-set hash negative control did not pass (a modified protected file did not flip the hash — the tamper check is vacuous)`; GREEN: same `-v` run → `--- PASS: TestResolutionGateHarness (3.61s)`; self-check direct: `sh scripts/check-bare-name-resolution.sh --self-check` ×3 → `PASS protected-set-hash` + `PASS protected-set-hash-negative-control` + `RESULT pass=6 fail=0` (contents hashed via shasum over file bytes; measured churn classes pruned: codex sqlite/-wal/-shm stores, models_cache.json, live history jsonl) |
+| F6 accurate re-entry guidance | RED: `guidance does not name the working re-entry flags (--no-plugin --force)` + static `init.go guidance block missing "--no-plugin --force"`; GREEN: same `-v` run → `--- PASS: TestShrinkInitGuidanceOnMissingPlugin (0.37s)` + `--- PASS: TestInitDocsDescribeThinDeploy (0.00s)` (guidance names `--no-plugin --force` and states the `.moai-backups/<timestamp>/` disposition + manifest carry-forward) |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

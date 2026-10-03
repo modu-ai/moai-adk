@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update"
@@ -34,6 +35,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // migrationOutcome is the trigger's decision for one update run. The zero
@@ -78,6 +80,23 @@ func updateDroppedRootTargets(targets []deploy.CleanTarget) []deploy.CleanTarget
 		kept = append(kept, t)
 	}
 	return kept
+}
+
+// computeRunCleanTargets is the run's Clean Managed Paths target list — the
+// single computation the execution and the --dry-run preview share (card
+// t1438 review finding 4): the global managed walk, minus the dropped roots
+// on a thin (plugin-mode) run, plus the confirmed migration's classified
+// removal list. A preview that computes this differently announces removals
+// the run preserves.
+func computeRunCleanTargets(projectRoot string, deployMode template.DeployMode, migration *migrationPlan) []deploy.CleanTarget {
+	cleanTargets := deploy.ManagedCleanTargets(projectRoot)
+	if deployMode == template.DeployModePlugin {
+		cleanTargets = updateDroppedRootTargets(cleanTargets)
+	}
+	if migration != nil && migration.outcome == migrateConfirmed {
+		cleanTargets = append(cleanTargets, migration.removalTargets...)
+	}
+	return cleanTargets
 }
 
 // runUpdateMigrationTrigger executes the migration trigger (design §3 step
@@ -137,6 +156,28 @@ func runUpdateMigrationTrigger(projectRoot string, noPlugin bool, run pluginComm
 			return nil, fmt.Errorf("migration archive %s: %w", f.RelPath, err)
 		}
 		plan.archivedModified++
+	}
+
+	// Design §3 mirror paragraph (card t1438 review finding 2): the KEPT
+	// mirror entries are re-homed to real directory copies rendered from the
+	// embedded tree BEFORE the dropped-root removal runs — a kept symlink
+	// would dangle into the removed .claude/skills. The re-home converts
+	// existing links only (never provisions, REQ-019) and is best-effort
+	// like every other mirror producer: a per-entry failure warns and the
+	// migration continues (rehomeOneSkill's own convention).
+	rehomedCount := 0
+	for _, e := range template.RehomeExistingMirrorEntries(projectRoot, migrationTemplateContext(projectRoot)) {
+		if e.Mode == template.MirrorModeFailed {
+			_, _ = fmt.Fprintf(errOut, "warning: migration mirror re-home: %s\n", e.Warning)
+			continue
+		}
+		if e.Mode == template.MirrorModeCopy {
+			rehomedCount++
+		}
+	}
+	if rehomedCount > 0 {
+		_, _ = fmt.Fprintf(out, "migration: re-homed %d mirror %s to real copies\n",
+			rehomedCount, pluralMirrorEntries(rehomedCount))
 	}
 
 	// The classified removal list (design §3 step 4): identical files, plus
@@ -200,6 +241,16 @@ func archiveMigrationFile(projectRoot, relSlash string) error {
 		dst = filepath.Join(projectRoot, update.ArchiveFilesRoot(), filepath.FromSlash(relSlash))
 	}
 
+	// Card t1438 review finding 1: the write below must never travel THROUGH
+	// a symlink — a planted link at any component of the archive path (the
+	// destination itself, or a parent the MkdirAll below would otherwise
+	// treat as an existing directory) would redirect the archive bytes
+	// outside the archive. Any symlink on the way aborts this archive, which
+	// aborts the whole migration before any removal (OD-3).
+	if err := rejectSymlinkedArchivePath(projectRoot, dst); err != nil {
+		return err
+	}
+
 	if existing, err := os.ReadFile(dst); err == nil {
 		if string(existing) == string(data) {
 			return nil // archive already holds the file: idempotent success
@@ -217,4 +268,60 @@ func archiveMigrationFile(projectRoot, relSlash string) error {
 		return fmt.Errorf("write archive: %w", err)
 	}
 	return nil
+}
+
+// rejectSymlinkedArchivePath refuses an archive destination whose path — the
+// destination itself, or any parent component between it and the project
+// root — is a symlink (card t1438 review finding 1; the REQ-SEC-003
+// no-dereference rule applied to the archive's write side). The error names
+// the symlinked component.
+func rejectSymlinkedArchivePath(projectRoot, dst string) error {
+	absRoot, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return fmt.Errorf("resolve project root: %w", err)
+	}
+	absDst, err := filepath.Abs(dst)
+	if err != nil {
+		return fmt.Errorf("resolve archive path: %w", err)
+	}
+	cur := absDst
+	for {
+		if info, statErr := os.Lstat(cur); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+			name := cur
+			if rel, relErr := filepath.Rel(absRoot, cur); relErr == nil && !strings.HasPrefix(rel, "..") {
+				name = filepath.ToSlash(rel)
+			}
+			return &MigrateError{
+				Code:    "ARCHIVE_SYMLINK",
+				Message: fmt.Sprintf("refusing to write through symlinked archive path %s", name),
+			}
+		}
+		if cur == absRoot {
+			return nil
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return nil // reached the filesystem root without meeting absRoot
+		}
+		cur = parent
+	}
+}
+
+// migrationTemplateContext builds the render context the migration's mirror
+// re-home writes its copies with — the same shape the update flow's deploy
+// steps construct, so a re-homed .tmpl source renders identically to a
+// deployed one.
+func migrationTemplateContext(projectRoot string) *template.TemplateContext {
+	homeDir, _ := userHomeDirFn()
+	return template.NewTemplateContext(
+		template.WithGoBinPath(detectGoBinPathForUpdate(homeDir)),
+		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
+		template.WithHomeDir(homeDir),
+		template.WithSmartPATH(template.BuildSmartPATH()),
+		template.WithPlatform(runtime.GOOS),
+		template.WithVersion(version.GetVersion()),
+		template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
+		template.WithGitMode(config.LoadGitMode(projectRoot)),
+		loadUpdateUserValues(projectRoot),
+	)
 }
