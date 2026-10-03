@@ -1,0 +1,244 @@
+import json, os, sys
+R = "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1458"
+S = "/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t1458/7d4e885f-da08-4e41-929b-fed94cc2ab02/scratchpad/mu"
+FC = "internal/cli/factory_card.go"
+BS = "internal/kanban/backlog_store.go"
+CU = "internal/homestate/card_unavailable.go"
+
+
+def read(p):
+    return open(os.path.join(R, p)).read()
+
+
+def sub(text, old, new, count=1):
+    n = text.count(old)
+    assert n == count, "expected %d occurrence(s) of %r, found %d" % (count, old[:90], n)
+    return text.replace(old, new)
+
+
+def emit(name, edits, extra=None):
+    d = os.path.join(S, name)
+    os.makedirs(d, exist_ok=True)
+    rep = {}
+    for rel, txt in edits.items():
+        out = os.path.join(d, rel.replace("/", "__"))
+        open(out, "w").write(txt)
+        rep[os.path.join(R, rel)] = out
+    for rel, txt in (extra or {}).items():
+        out = os.path.join(d, rel.replace("/", "__"))
+        open(out, "w").write(txt)
+        rep[os.path.join(R, rel)] = out
+    json.dump({"Replace": rep}, open(os.path.join(d, "overlay.json"), "w"), indent=1)
+
+
+fc = read(FC)
+bs = read(BS)
+cu = read(CU)
+
+LEASE_ONCE_SIG = "func factoryNextLeaseOnce(ctx context.Context, root, runID, lane string) (homestate.Card, bool, error) {"
+
+# ---- MU1: record snapshot (clock + cards) taken BEFORE WithLock, passed in via ctx
+t = fc
+t = sub(t, LEASE_ONCE_SIG,
+        "type mu1Key struct{}\n\ntype mu1Snap struct {\n\tnow   time.Time\n\tcards []homestate.Card\n}\n\n" + LEASE_ONCE_SIG)
+t = sub(t, "\t\t\tpassErr       error\n\t\t)\n\t\tran, lockErr := factoryLeaseSection(store, func(l *kanban.LockedBacklog) {\n\t\t\tcard, leased, raced, passErr = factoryNextSelectAndLease(ctx, l,",
+        "\t\t\tpassErr       error\n\t\t)\n\t\tpre := mu1Snap{now: factoryCardNow()}\n\t\tpre.cards, _ = db.ListCards(ctx, runID)\n\t\tctx1 := context.WithValue(ctx, mu1Key{}, pre)\n\t\tran, lockErr := factoryLeaseSection(store, func(l *kanban.LockedBacklog) {\n\t\t\tcard, leased, raced, passErr = factoryNextSelectAndLease(ctx1, l,")
+t = sub(t, "\tnow := factoryCardNow()\n\tcards, err := db.ListCards(ctx, runID)\n\tif err != nil {\n\t\treturn homestate.Card{}, false, false, err\n\t}\n\trecorded :=",
+        "\tnow := factoryCardNow()\n\tcards, err := db.ListCards(ctx, runID)\n\tif err != nil {\n\t\treturn homestate.Card{}, false, false, err\n\t}\n\tif v, ok := ctx.Value(mu1Key{}).(mu1Snap); ok {\n\t\tnow, cards = v.now, v.cards\n\t}\n\trecorded :=")
+t = sub(t, "\tran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *kanban.LockedBacklog) {\n\t\tcard, outcome = factoryNominateInSection(ctx, l,",
+        "\tpre := mu1Snap{now: factoryCardNow()}\n\tpre.cards, _ = db.ListCards(ctx, runID)\n\tctx1 := context.WithValue(ctx, mu1Key{}, pre)\n\tran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *kanban.LockedBacklog) {\n\t\tcard, outcome = factoryNominateInSection(ctx1, l,")
+t = sub(t, "\tnow := factoryCardNow()\n\tcards, err := db.ListCards(ctx, runID)\n\tif err != nil {\n\t\treturn nom, nil, err\n\t}\n",
+        "\tnow := factoryCardNow()\n\tcards, err := db.ListCards(ctx, runID)\n\tif err != nil {\n\t\treturn nom, nil, err\n\t}\n\tif v, ok := ctx.Value(mu1Key{}).(mu1Snap); ok {\n\t\tnow, cards = v.now, v.cards\n\t}\n")
+emit("MU1", {FC: t})
+
+# ---- MU2: claim after WithLock returns (lock released before the claim)
+t = fc
+t = sub(t, LEASE_ONCE_SIG,
+        "type mu2Key struct{}\n\ntype mu2NomHolder struct {\n\tclaim func(*kanban.BacklogStore) (homestate.Card, error)\n}\n\ntype mu2Holder struct {\n\tthunk func() (homestate.Card, bool, bool, error)\n}\n\nfunc mu2Defer(ctx context.Context, f func() (homestate.Card, bool, bool, error)) (homestate.Card, bool, bool, error) {\n\tif h, ok := ctx.Value(mu2Key{}).(*mu2Holder); ok {\n\t\th.thunk = f\n\t\treturn homestate.Card{}, false, false, nil\n\t}\n\treturn f()\n}\n\n" + LEASE_ONCE_SIG)
+t = sub(t, "\t\tran, lockErr := factoryLeaseSection(store, func(l *kanban.LockedBacklog) {\n\t\t\tcard, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)\n\t\t})\n",
+        "\t\th2 := &mu2Holder{}\n\t\tctx2 := context.WithValue(ctx, mu2Key{}, h2)\n\t\tran, lockErr := factoryLeaseSection(store, func(l *kanban.LockedBacklog) {\n\t\t\tcard, leased, raced, passErr = factoryNextSelectAndLease(ctx2, l, db, root, runID, lane, skip, noNewCards)\n\t\t})\n\t\tif ran && passErr == nil && h2.thunk != nil {\n\t\t\tcard, leased, raced, passErr = h2.thunk()\n\t\t}\n")
+t = sub(t, "\t\treturn factoryNextClaim(ctx, db, root, runID, c, lane)\n\t}\n\tif noNewCards {",
+        "\t\treturn mu2Defer(ctx, func() (homestate.Card, bool, bool, error) { return factoryNextClaim(ctx, db, root, runID, c, lane) })\n\t}\n\tif noNewCards {")
+t = sub(t, "\t\treturn factoryNextClaim(ctx, db, root, runID, c, lane)\n\t}\n\t// (b2)",
+        "\t\treturn mu2Defer(ctx, func() (homestate.Card, bool, bool, error) { return factoryNextClaim(ctx, db, root, runID, c, lane) })\n\t}\n\t// (b2)")
+t = sub(t, "\t\t\treturn factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane)\n",
+        "\t\t\tit := it\n\t\t\treturn mu2Defer(ctx, func() (homestate.Card, bool, bool, error) { return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane) })\n")
+t = sub(t, "\t\treturn factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane)\n",
+        "\t\treturn mu2Defer(ctx, func() (homestate.Card, bool, bool, error) { return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane) })\n")
+t = sub(t, "\tran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *kanban.LockedBacklog) {\n\t\tcard, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)\n\t})\n",
+        "\th2 := &mu2NomHolder{}\n\tctx2 := context.WithValue(ctx, mu2Key{}, h2)\n\tran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *kanban.LockedBacklog) {\n\t\tcard, outcome = factoryNominateInSection(ctx2, l, db, root, runID, lane, cardID, quotaHold)\n\t})\n\tif ran && outcome == nil && h2.claim != nil {\n\t\tcard, outcome = h2.claim(todoStoreAt(root))\n\t}\n")
+t = sub(t, "\tcard, leased, _, claimErr := factoryNextNominatedClaim(ctx, db, root, runID, lane, nom)\n\tif claimErr == nil && leased {\n\t\treturn card, nil\n\t}\n\totherHolder, cerr := factoryNominateCompensate(ctx, l, db, runID, lane, cardID, promoted)\n",
+        "\tif h2, ok := ctx.Value(mu2Key{}).(*mu2NomHolder); ok {\n\t\th2.claim = func(store *kanban.BacklogStore) (homestate.Card, error) {\n\t\t\tcard, leased, _, claimErr := factoryNextNominatedClaim(ctx, db, root, runID, lane, nom)\n\t\t\tif claimErr == nil && leased {\n\t\t\t\treturn card, nil\n\t\t\t}\n\t\t\tvar otherHolder bool\n\t\t\tvar cerr error\n\t\t\t_, _ = factoryLeaseSection(store, func(l2 *kanban.LockedBacklog) {\n\t\t\t\totherHolder, cerr = factoryNominateCompensate(ctx, l2, db, runID, lane, cardID, promoted)\n\t\t\t})\n\t\t\tswitch {\n\t\t\tcase cerr != nil:\n\t\t\t\treturn homestate.Card{}, cerr\n\t\t\tcase errors.Is(claimErr, errFactoryRecordBusy):\n\t\t\t\treturn homestate.Card{}, factoryRefusal(factoryRefuseRaced, \"busy\")\n\t\t\tcase otherHolder || claimErr == nil:\n\t\t\t\treturn homestate.Card{}, factoryRefusal(factoryRefuseRaced, \"another lane leased or claimed %s first\", cardID)\n\t\t\tdefault:\n\t\t\t\treturn homestate.Card{}, claimErr\n\t\t\t}\n\t\t}\n\t\treturn homestate.Card{}, nil\n\t}\n\tcard, leased, _, claimErr := factoryNextNominatedClaim(ctx, db, root, runID, lane, nom)\n\tif claimErr == nil && leased {\n\t\treturn card, nil\n\t}\n\totherHolder, cerr := factoryNominateCompensate(ctx, l, db, runID, lane, cardID, promoted)\n")
+emit("MU2", {FC: t})
+
+# ---- MU3: compensation as a second public Mutate after the section
+t = fc
+t = sub(t, LEASE_ONCE_SIG,
+        "type mu3Key struct{}\n\ntype mu3Holder struct {\n\tpending  bool\n\tpromoted bool\n\tclaimErr error\n}\n\nfunc mu3Compensate(ctx context.Context, store *kanban.BacklogStore, db *homestate.FactoryDB, runID, lane, cardID string, promoted bool) (bool, error) {\n\tif !promoted {\n\t\treturn false, nil\n\t}\n\totherHolder := false\n\tif err := store.Mutate(func(r *kanban.BacklogRecord) error {\n\t\tvar row *homestate.Card\n\t\tcur, err := db.LoadCard(ctx, runID, cardID)\n\t\tswitch {\n\t\tcase errors.Is(err, homestate.ErrCardNotFound):\n\t\tcase err != nil:\n\t\t\treturn fmt.Errorf(\"read the factory record: %w\", err)\n\t\tdefault:\n\t\t\trow = &cur\n\t\t}\n\t\tif row != nil && (row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != \"\") {\n\t\t\totherHolder = row.OwnerLabel != lane && row.LeaseHolder != lane\n\t\t\treturn nil\n\t\t}\n\t\tfor i := range r.Items {\n\t\t\tif r.Items[i].ID == cardID && r.Items[i].State == kanban.BacklogStatePicked {\n\t\t\t\tr.Items[i].State = kanban.BacklogStateQueued\n\t\t\t}\n\t\t}\n\t\treturn nil\n\t}); err != nil {\n\t\treturn false, fmt.Errorf(\"compensation failed: card %s stays picked and unowned: %w\", cardID, err)\n\t}\n\treturn otherHolder, nil\n}\n\n" + LEASE_ONCE_SIG)
+t = sub(t, "\tran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *kanban.LockedBacklog) {\n\t\tcard, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)\n\t})\n",
+        "\th3 := &mu3Holder{}\n\tctx3 := context.WithValue(ctx, mu3Key{}, h3)\n\tran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *kanban.LockedBacklog) {\n\t\tcard, outcome = factoryNominateInSection(ctx3, l, db, root, runID, lane, cardID, quotaHold)\n\t})\n\tif ran && h3.pending {\n\t\totherHolder, cerr := mu3Compensate(ctx, todoStoreAt(root), db, runID, lane, cardID, h3.promoted)\n\t\tclaimErr := h3.claimErr\n\t\tswitch {\n\t\tcase cerr != nil:\n\t\t\toutcome = cerr\n\t\tcase errors.Is(claimErr, errFactoryRecordBusy):\n\t\t\toutcome = factoryRefusal(factoryRefuseRaced, \"busy\")\n\t\tcase otherHolder || claimErr == nil:\n\t\t\toutcome = factoryRefusal(factoryRefuseRaced, \"another lane leased or claimed %s first\", cardID)\n\t\tdefault:\n\t\t\toutcome = claimErr\n\t\t}\n\t}\n")
+t = sub(t, "\totherHolder, cerr := factoryNominateCompensate(ctx, l, db, runID, lane, cardID, promoted)\n",
+        "\tif h3, ok := ctx.Value(mu3Key{}).(*mu3Holder); ok {\n\t\th3.pending, h3.promoted, h3.claimErr = true, promoted, claimErr\n\t\treturn homestate.Card{}, nil\n\t}\n\totherHolder, cerr := factoryNominateCompensate(ctx, l, db, runID, lane, cardID, promoted)\n")
+emit("MU3", {FC: t})
+
+# ---- MU4: no step lock around creation and rename
+t = sub(fc, "\trelease, err := kanban.AcquireFactoryStepLock(root, factoryWorktreeStepWait)\n\tif err != nil {\n\t\treturn \"\", fmt.Errorf(\"serialize the card worktree step: %w\", err)\n\t}\n\tdefer func() { _ = release() }()\n",
+        "\t_ = kanban.AcquireFactoryStepLock\n")
+emit("MU4", {FC: t})
+
+# ---- MU5: default 5000 ms busy timeout on the lease connection
+t = sub(fc, "homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)", "homestate.OpenFactoryBounded(root, 5*time.Second)", count=2)
+emit("MU5", {FC: t})
+
+# ---- MU6: drop the lock-timeout -> outcome mapping (nominated form)
+t = sub(fc, "\t\tif kanban.IsBoardLockHeld(lockErr) {\n\t\t\treturn homestate.Card{}, factoryRefusal(factoryRefuseRaced, \"the queue lock stayed held",
+        "\t\tif false {\n\t\t\treturn homestate.Card{}, factoryRefusal(factoryRefuseRaced, \"the queue lock stayed held")
+emit("MU6", {FC: t})
+
+# ---- MU7: process-local sync.Mutex, no flock
+mu7_new = '''package kanban
+
+import "sync"
+
+var mu7Mutex sync.Mutex
+
+// WithProcessMutex is the MU7 mutant: serialize with a process-local mutex and hold no flock.
+func (s *BacklogStore) WithProcessMutex(fn func(*LockedBacklog) error) error {
+	mu7Mutex.Lock()
+	defer mu7Mutex.Unlock()
+	return fn(&LockedBacklog{s: s})
+}
+'''
+t = sub(fc, "\terr = store.WithLock(func(l *kanban.LockedBacklog) error {", "\terr = store.WithProcessMutex(func(l *kanban.LockedBacklog) error {")
+emit("MU7", {FC: t}, {"internal/kanban/zz_mu7.go": mu7_new})
+
+# ---- MU8: handle read is the adopting open (lock held, so no self-contention)
+t = sub(bs, "func (l *LockedBacklog) LoadPure() (*BacklogRecord, error) {\n\treturn l.s.LoadPure()\n}",
+        "func (l *LockedBacklog) LoadPure() (*BacklogRecord, error) {\n\teng, err := l.s.openEngine(true)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\t_ = eng.close()\n\treturn l.s.LoadPure()\n}")
+emit("MU8", {BS: t})
+
+# ---- MU9: homestate non-test file imports internal/kanban
+emit("MU9", {}, {"internal/homestate/zz_mu9.go": 'package homestate\n\nimport _ "github.com/modu-ai/moai-adk/internal/kanban"\n'})
+
+# ---- MU10: one external subprocess inside the section (after the pass-entry seam)
+t = fc
+t = sub(t, "\tfactoryLeaseAtPassEntry()\n", "\tfactoryLeaseAtPassEntry()\n\t_ = exec.Command(\"git\", \"--version\").Run()\n", count=2)
+emit("MU10", {FC: t})
+
+# ---- MU10b (extra): subprocess inside the section BEFORE the pass-entry seam
+t = sub(fc, "\t\tran = true\n\t\tfn(l)\n", "\t\tran = true\n\t\t_ = exec.Command(\"git\", \"--version\").Run()\n\t\tfn(l)\n")
+emit("MU10b", {FC: t})
+
+# ---- MU11: bare-form queue-lock timeout mapped back to a re-selection
+t = sub(fc, "\t\tif !ran {\n\t\t\t// A queue lock that could not be taken ends the pass at once with an\n",
+        "\t\tif !ran && kanban.IsBoardLockHeld(lockErr) {\n\t\t\tcontinue\n\t\t}\n\t\tif !ran {\n\t\t\t// A queue lock that could not be taken ends the pass at once with an\n")
+emit("MU11", {FC: t})
+
+# ---- MU12: creator call moved inside the section (bare and nominated)
+t = fc
+t = sub(t, "\t\t\tcard, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)\n\t\t})\n",
+        "\t\t\tcard, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)\n\t\t\tif leased && passErr == nil {\n\t\t\t\t_, _ = worktree.WorktreeCreator(card.CardID, io.Discard)\n\t\t\t}\n\t\t})\n")
+t = sub(t, "\t\tcard, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)\n\t})\n",
+        "\t\tcard, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)\n\t\tif outcome == nil {\n\t\t\t_, _ = worktree.WorktreeCreator(cardID, io.Discard)\n\t\t}\n\t})\n")
+emit("MU12", {FC: t})
+
+# ---- MU13: claim deadline 1.5 s
+t = sub(fc, "factoryLeaseClaimDeadline    = 800 * time.Millisecond", "factoryLeaseClaimDeadline    = 1500 * time.Millisecond")
+emit("MU13", {FC: t})
+
+# ---- MU14: lease-only lock that is not the queue's lock
+mu14_new = '''package kanban
+
+import (
+	"fmt"
+	"time"
+)
+
+// WithLeaseOnlyLock is the MU14 mutant: a lock of its own, not the queue's.
+func (s *BacklogStore) WithLeaseOnlyLock(fn func(*LockedBacklog) error) error {
+	path := s.LockPath() + ".leaseonly"
+	var impl boardLockImpl
+	for attempt := 0; ; attempt++ {
+		i, err := acquireBoardLockImpl(path)
+		if err == nil {
+			impl = i
+			break
+		}
+		if !IsBoardLockHeld(err) || attempt > 400 {
+			return fmt.Errorf("lease-only lock: %w", err)
+		}
+		time.Sleep(boardLockRetryWait(attempt))
+	}
+	held := &BoardLock{path: path, impl: impl}
+	defer func() { _ = held.Release() }()
+	return fn(&LockedBacklog{s: s})
+}
+'''
+t = sub(fc, "\terr = store.WithLock(func(l *kanban.LockedBacklog) error {", "\terr = store.WithLeaseOnlyLock(func(l *kanban.LockedBacklog) error {")
+emit("MU14", {FC: t}, {"internal/kanban/zz_mu14.go": mu14_new})
+
+# ---- MU15: reconcile waits for the drift log's lock (bounded flow disabled == the pin)
+t = sub(cu, "\tif boundedReconcile(ctx) {\n\t\treturn f.reconcileUnavailableBounded(", "\tif false && boundedReconcile(ctx) {\n\t\treturn f.reconcileUnavailableBounded(")
+emit("MU15", {CU: t})
+
+# ---- MU16: the skip applies to every record write
+t = sub(cu, "\tv, _ := ctx.Value(boundedReconcileKey{}).(bool)\n\treturn v\n", "\t_ = ctx\n\treturn true\n")
+emit("MU16", {CU: t})
+
+# ---- MU17: skip decided after the drift events were appended (skip only the mark)
+t = cu
+old = """	unlock, held, err := tryLockRecordUnavailable(path)
+	if err != nil || held {
+		// A lock that cannot be tried never blocks the claim, and a holder
+		// leaves the entries for a later write.
+		return nil, nil
+	}
+	entries, _, err = readRecordUnavailableFile(path)
+	if err != nil || !pending(entries) {
+		unlock()
+		return nil, nil
+	}
+	ids, err := f.appendDriftEvents(ctx, tx, runID, entries, now)
+	if err != nil {
+		unlock()
+		return nil, err
+	}
+	return func(committed bool) {"""
+new = """	ids, err := f.appendDriftEvents(ctx, tx, runID, entries, now)
+	if err != nil {
+		return nil, err
+	}
+	unlock, held, err := tryLockRecordUnavailable(path)
+	if err != nil || held {
+		return nil, nil
+	}
+	return func(committed bool) {"""
+t = sub(t, old, new)
+emit("MU17", {CU: t})
+
+# ---- MU18: arm (a) refuses a card whose queue item is held
+t = sub(fc, "\t\tif skip(c) {\n\t\t\tcontinue\n\t\t}\n\t\tif classOf(c.CardID).Mode == kanban.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {",
+        "\t\tif skip(c) {\n\t\t\tcontinue\n\t\t}\n\t\tif s, ok := queueItemStateIn(queueRec, c.CardID); ok && s == kanban.BacklogStateHold {\n\t\t\tcontinue\n\t\t}\n\t\tif classOf(c.CardID).Mode == kanban.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {")
+emit("MU18", {FC: t})
+
+# ---- MU19: no re-read under the lock
+old = """	entries, _, err = readRecordUnavailableFile(path)
+	if err != nil || !pending(entries) {
+		unlock()
+		return nil, nil
+	}
+	ids, err := f.appendDriftEvents(ctx, tx, runID, entries, now)"""
+t = sub(cu, old, "	ids, err := f.appendDriftEvents(ctx, tx, runID, entries, now)")
+emit("MU19", {CU: t})
+
+# ---- MU20: the skip reaches the verb's card-worktree record write
+t = sub(fc, "db.RecordCardWorktree(ctx, runID, card.CardID, wt, lane, factoryCardNow())", "db.RecordCardWorktree(homestate.WithBoundedReconcile(ctx), runID, card.CardID, wt, lane, factoryCardNow())")
+emit("MU20", {FC: t})
+
+# ---- MU21 (extra): the section writes a path outside the allowed set
+OUT = "\t_ = os.WriteFile(filepath.Join(root, \".moai\", \"state\", \"%s\"), []byte(\"x\"), 0o600)\n"
+for name, fname in (("MU21", "zz-outside-section.txt"), ("MU22", "factory-worktree-step.lock")):
+    t = sub(fc, "\tfactoryLeaseAtPassEntry()\n\t// The clock is read BEFORE", "\tfactoryLeaseAtPassEntry()\n" + OUT % fname + "\t// The clock is read BEFORE")
+    t = sub(t, "\tfactoryLeaseAtPassEntry()\n\tnom, refusal, err :=", "\tfactoryLeaseAtPassEntry()\n" + OUT % fname + "\tnom, refusal, err :=")
+    emit(name, {FC: t})
+print("ok")

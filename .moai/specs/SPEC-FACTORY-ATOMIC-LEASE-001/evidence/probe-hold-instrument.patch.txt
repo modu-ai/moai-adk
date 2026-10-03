@@ -1,0 +1,23 @@
+--- internal/cli/factory_card.go	2026-10-04 00:12:42
++++ /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t1458/7d4e885f-da08-4e41-929b-fed94cc2ab02/scratchpad/mu/hold/factory_card.go	2026-10-04 00:22:30
+@@ -382,14 +382,20 @@
+ // @MX:REASON: inside fn the queue is read and written only through the handle (a public Mutate waits out the whole budget on the section's own descriptor), and nothing here may start a git process or create a worktree (REQ-FAL-007)
+ // @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
+ func factoryLeaseSection(store *kanban.BacklogStore, fn func(*kanban.LockedBacklog)) (ran bool, err error) {
++	t0 := time.Now()
+ 	err = store.WithLock(func(l *kanban.LockedBacklog) error {
+ 		ran = true
++		t1 := time.Now()
+ 		fn(l)
++		probeHoldRec(time.Since(t1), t1.Sub(t0))
+ 		return nil
+ 	})
+ 	return ran, err
+ }
+ 
++// probeHoldRec is the WM6 measurement hook (probe only; see evidence/probe-hold_test.go.txt).
++var probeHoldRec = func(hold, wait time.Duration) {}
++
+ // factoryQueueLockError names a queue lock the lease could not take.
+ func factoryQueueLockError(err error) error {
+ 	if kanban.IsBoardLockHeld(err) {

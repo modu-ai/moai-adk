@@ -298,9 +298,162 @@ invocation (scratchpad scripts); the `internal-cli-suite` slot held for each `in
   lock's wait of 60 s was not measured at ten lanes (spec §F R12); a timeout after a successful lease leaves the card `leased` with no recorded
   worktree (D3, spec §F R15).
 
+### WM6 — closure (card t1458, round R5)
+
+No Go source changed in WM6: the repository was never edited by a mutant. Every mutant ran through `go test -overlay` (via `GOFLAGS`, so the
+`go list` subprocess of the layering test sees it too) on a mutated copy kept in scratch, and every run was bracketed by a sha256 of the five
+tracked source files it could touch (`factory_card.go`, `backlog_store.go`, `card_unavailable.go`, `card_transition.go`, `factory.go`): all runs
+printed `source-sha256=IDENTICAL` and the tree carried no tracked change (`git status --short` listed only the new evidence files). Judging build:
+`go` from PATH (no project build is involved in a `go test` run), tree HEAD `6c374496d`. Generators and runner are in
+`evidence/wm6-mutants-gen.py.txt`, `wm6-mutants-gen2.py.txt`, `wm6-mutant-run.sh.txt`; per-run output is `.moai/reports/t1458/wm6-<MU>-<pkg>*.txt`
+(git-ignored), the one-page roll-up `wm6-mutants-summary.txt`. A control run of the same selectors on the unmutated tree is green
+(`wm6-CONTROL-*.txt`: 17 cli lease tests, kanban lock tests, four homestate tests, the nominate moved tests, cross-process x10).
+
+**Mutants (plan §7).** RED means the named top-level test printed `--- FAIL` and the package exited 1.
+
+| MU | Selector (scoped, -count=1 unless noted) | Result | Why it turned red (decisive line) |
+|---|---|---|---|
+| MU1 | AC-001 trio | RED for Distinct nominees and Own-assigned siblings; **BareLanes survived** (also 10 of 10 at -count=10) | `serial cards leased=2`; see finding F1 |
+| MU1q | same trio, queue read also taken before the lock (the pin's shape) | RED, all three | `serial exclusivity: 2 serial cards are leased` |
+| MU2 | AC-002/-003/-004/-009 selector | RED x3 (OperatorWriteWaitsForSection, CompensationKeepsOperatorPick, SectionRecordWritesPerArm); **ArmCOperatorHold survived** | see finding F2 |
+| MU2p | same, the claim-point seam moves with the claim | RED, all four | `completed at claim point = true` |
+| MU3 | `TestFactoryLeaseCompensationKeepsOperatorPick` | RED | `the operator's fresh pick was reverted by the compensation: queue=queued want picked` |
+| MU4 | `TestFactoryEnsureCardWorktreeConcurrentRealMaterializer` | RED | `overlap-iterations=12 failed-iterations=10`; git `unable to move logfile` |
+| MU5 | AC-007 trio | RED for RecordStallBounded and MidClaimStallBounded (3.05 s, limit 1.5 s); QueueLockStallBounded stays green (not its bound) | `returned after 3.049696083s with the record held, want within 1.5s` |
+| MU6 | `TestFactoryLeaseQueueLockStallBounded` | RED | `exit code = -1, want 4 for refused raced` |
+| MU7 | `TestFactoryLeaseSerialCrossProcessExactlyOne` -count=10, then -count=50 | RED: 2 of 10, then 17 of 50 iterations; goroutine-lane tests stay GREEN (as the plan predicts) | `serial exclusivity across two processes: 2 serial cards are leased`; see finding F4 |
+| MU8 | `TestLockedBacklogLoadIsPure` (kanban), the adopting read runs with the lock held, no self-contention | RED | `layout after the section = {dbExists:true jsonExists:false}; the read adopted (migrated) the queue` |
+| MU9 | `TestHomestateDoesNotImportKanban` | RED, but at build: `import cycle not allowed` | finding F6 |
+| MU10 | `TestFactoryLeaseSectionAllowedSet` | RED, both forms | `a git subprocess ran inside the section ... "git-start --version"` |
+| MU11 | `TestFactoryLeaseQueueLockStallBounded` | RED | `the bare lease returned after 5.668254041s, want within 3.8s` |
+| MU12 | `TestFactoryLeaseSectionExcludesWorktreeStep` (creator called inside AND outside) | **survived** | finding F3 |
+| MU12p | same, the creator and the card-worktree record write moved inside the section | RED | `a Mutate issued from inside the creator stub did not complete within 500ms` |
+| MU13 | `TestFactoryLeaseCapWithinBoardBudget` | RED | `3 x factoryLeaseClaimWaitCap = 5.1s > kanban.LockWaitBudget() = 3.3s` |
+| MU14 | OperatorWriteWaitsForSection, ArmCOperatorHold | RED, both | `the operator write completed inside the section` |
+| MU15 | cli `TestFactoryLeaseDriftLogStallBounded`; homestate `...BoundedSkipsOnContention` | RED, both | cli `returned after 3.504187083s ... want within 1.5s`; homestate `elapsed=1.502s ... record.drift-events=1` |
+| MU16 | homestate `TestRecordWriteReconcileDefaultStillWaits` | RED | `the ordinary write returned 1.501619125s before the lock was released` |
+| MU17 | homestate `...BoundedSkipsOnContention`; cli `TestFactoryLeaseDriftLogStallBounded` | RED, both | `left unreconciled=1 (want 1) and record.drift-events=1 (want 0)` |
+| MU18 | `TestFactoryLeaseArmAKeepsHeldAssignedCard` | RED | `arm (a) no longer leases a held card whose row is assigned to the lane` |
+| MU19 | homestate `...BoundedRereadsUnderLock` | RED | `appended 1 record.drift event(s) for an entry another writer had already marked, want 0` |
+| MU20 | `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits` | RED | `clause (vii): the verb returned before the timer released the lock` |
+| MU21 (extra) | AllowedSet; the section writes `.moai/state/zz-outside-section.txt` | RED | `files created or modified ... outside the two stores: [.moai/state/zz-outside-section.txt]` |
+| MU22 (extra) | AllowedSet; the section writes the allowed `.moai/state/factory-worktree-step.lock` | **survived** | finding F5 |
+| MU10b (extra) | AllowedSet; a subprocess between lock acquisition and the pass-entry seam | **survived** | finding F5 |
+
+Plan R-A, checked separately (`wm6-MU2-cli-nominate-moved.txt`, `wm6-MU2p-...`): of the four moved nominate tests, only
+`TestFactoryNextNominateCompensationFailure` (item-moved) turns red under MU2 and MU2p; `ConcurrentLanes`, `SameCardExactlyOne` and
+`CompensateRechecksRecord` stay green. The plan §7 does not map MU2 to them; R-A's mitigation ("MU2 must fail the moved tests") is met by that one test.
+
+**Findings, stated plainly (none was fixed; each is debt for the sync-phase audit to weigh).**
+
+- **F1 (MU1, AC-001 BareLanes).** The mutant as the plan words it (the record snapshot, hence the serial slot, computed before `WithLock`) does
+  not turn `TestFactoryLeaseSerialBareLanesExactlyOne` red. Mechanism: arm (b2) reads the fresh queue inside the section, finds the winner's
+  `picked` item, and claims it through `RecordPicked`, whose existing "row is no longer picked" guard returns a race and the attempt re-selects.
+  The test goes red only when the queue read is also stale (MU1q, the pin's shape). The AC-001 pass condition (all three green x10) is met on
+  the real tree; the criterion's coverage of the bare form rests on a defence in depth the mutant cannot isolate.
+- **F2 (MU2, AC-003 clause (i)).** With the claim moved after the release but the `factoryLeaseBeforeClaim` seam left inside the section, the
+  operator write the test starts at the seam is still blocked at that moment, so `TestFactoryLeaseArmCOperatorHold` stays green. It is red when the
+  seam moves with the claim (MU2p). The test observes the seam's position, not the claim's.
+- **F3 (MU12).** `TestFactoryLeaseSectionExcludesWorktreeStep` keeps the last creator-stub observation (`inCreator, creatorDone = op, ok` is
+  overwritten by each call), so a mutant that calls the creator inside the section and again outside is masked by the later, successful call. A
+  mutant that moves the call (MU12p) is caught, which is what the plan's wording says.
+- **F4 (MU7 detection rate).** Plan R-I estimated a per-iteration breach rate of 77% (10 of 13 at the pin) and so a survival chance of about
+  4 x 10^-7 over ten iterations. Measured under this mutant on this machine: 19 of 60 iterations failed (31.7%; 2 of 10 and 17 of 50, load average
+  about 6 to 14), which puts the chance that a ten-iteration run passes a process-local-mutex implementation at about 0.683^10 = 2% if iterations
+  are independent (assumed). The criterion's command still failed under MU7 in both runs. The unmutated cross-process test passed 10 of 10.
+- **F5 (repairs of 2016bad1a and da0c9d039 versus detection).** Both repairs narrowed `TestFactoryLeaseSectionAllowedSet` in a measured way.
+  Still caught: a section writing a path outside the allowed set (MU21, the path named) and a git subprocess after the pass-entry seam (MU10).
+  No longer caught: (a) a subprocess started between the lock's acquisition and the pass-entry seam (MU10b survives, the git scan now starts at
+  the seam) and (b) a section that writes `.moai/state/factory-worktree-step.lock`, the one path da0c9d039 allows (MU22 survives); in particular
+  the step lock taken inside the section, a lock-order inversion, leaves the same file and passes. The wall-clock repair of
+  `TestFactoryLeaseDriftLogStallBounded` did not weaken it: it still fails under MU15 (clause (i)) and MU17 (clause (ii)); MU16 and MU19 are the
+  homestate tests' mutants and pass the cli test by design.
+- **F6 (MU9).** `internal/kanban` already imports `internal/homestate`, so any import of kanban from a homestate non-test file is an import cycle:
+  the compiler refuses it before `TestHomestateDoesNotImportKanban` runs (`go test` reported `[setup failed]`). The guard test's own `Errorf`
+  branch is therefore unreachable by this mutant; the layering the test names is already enforced by the build.
+
+**AC-FAL-009 (iv) hold-time distribution** (REQ-FAL-011, spec §F R9). Probe: `evidence/probe-hold_test.go.txt` mapped into `internal/cli`
+with an instrumented copy of `factory_card.go` (`evidence/probe-hold-instrument.patch.txt`: two clock reads around the section body, nothing else
+changed). It drives the real lease function (`factoryNextLeaseOnceGated`, bare form, arm (c): record read, queue read, promotion, three record
+writes) on a real queue store and a real factory record in a temp project; the worktree creator is not part of the section. "hold" is the time
+`fn` ran with the queue lock held; "lock-wait" is the time from the call to the lock's acquisition. Command (scrubbed environment, slot held):
+`GOFLAGS=-overlay=<overlay mapping both files> PROBE_ROUNDS=<n> go test -count=1 -timeout 30m ./internal/cli -run '^TestZZProbeSectionHoldTime$' -v`.
+Machine load average before/after: 8.63 / 7.60 (1 round), 7.31 / 6.94 (20 rounds).
+
+| Configuration | n holds | hold p50 | hold p95 | hold max | lock-wait p50 | lock-wait p95 | lock-wait max |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 10 sequential leases (one lane) | 10 | 4.08 ms | 4.64 ms | 4.64 ms | 70 us | 80 us | 80 us |
+| 2 concurrent lanes (1 round) | 2 | 3.47 ms | 3.87 ms | 3.87 ms | 90 us | 12.57 ms | 12.57 ms |
+| 4 concurrent lanes (1 round) | 4 | 3.39 ms | 4.50 ms | 4.50 ms | 8.33 ms | 46.9 ms | 46.9 ms |
+| 10 concurrent lanes (1 round) | 10 | 3.62 ms | 8.98 ms | 8.98 ms | 15.09 ms | 80.43 ms | 80.43 ms |
+
+Evidence `wm6-hold-r1.txt` (the criterion's own shape, p95 equals max at these counts). A repeat with 20 fresh rounds per concurrent size
+(`wm6-hold-r20.txt`, sequential 10 again): sequential hold p50 4.2 ms, p95 13.3 ms, max 13.3 ms; 2 lanes (n=40) p50 3.87 / p95 4.36 / max 13.23 ms;
+4 lanes (n=80) p50 3.63 / p95 5.23 / max 26.03 ms; 10 lanes (n=200) p50 3.44 / p95 6.66 / max 17.5 ms; lock-wait for 10 lanes p50 23.97 / p95 83.26 /
+max 114.35 ms. Reading, within what was measured: the section holds the queue lock for single-digit milliseconds typically (largest observed 26 ms)
+on an idle drift log and a local disk; the section was not measured with a held drift-log lock or a stalled record (those bounds are
+AC-FAL-007 and AC-FAL-015's, at the claim wait cap). No wall-clock threshold is asserted.
+
+**AC-FAL-013 (diff measurement)** (`wm6-ac013.txt`, `git merge-base develop HEAD` re-derived at reading time = `2b9e4a4d067ce4277d7a3ea5df1ec16c7ab231dc`;
+HEAD `6c374496d`; local `develop` was `1da5e4fc6`, ahead of the merge-base, which stays at the absorbed tip). Allowed set (control): 43 paths, non-empty.
+Forbidden set (probe): 0 paths. Complement of the allowed set (probe): 0 paths. Pathspecs used for "their tests": kanban `backlog_*_test.go`,
+`board_lock*_test.go`; homestate `factory*_test.go`, `card_*_test.go`, `admission_lock*_test.go`. Read: the three `card_transition.go` hunks are
+at lines 300 to 319 and the hunk headers name `withCardTx` as their function; the `factory.go` hunks are the open path only
+(`OpenFactoryBounded`, `openFactoryPathBusy`), and `card_unavailable.go`'s `withCardTx`-reachable change is gated by the context marker (MU16, MU20).
+No path outside the enumerated set changed, so no explanation entry is owed. `internal/cli/factory_card_test.go` and `factory_classify_test.go`
+are in the allowed set and were not changed.
+
+**Doctrine sweep** (`wm6-doctrine-sweep.txt`): twelve patterns (the old residual risk: both lanes lease, no shared lock, two stores, serial slot snapshot,
+non-atomic claim or compensation, accepted residual, creation race) over `.claude/` and `internal/template/templates/`
+(`*.md *.tmpl *.yaml *.json *.sh`). Positive control: the pattern `both lease` finds the line in the SPEC-TODO-CLASSIFY-DISPATCH-001 amendment and in
+`CHANGELOG.md`. Hits under `.claude/` and the template tree: this card's own planning memory (`.claude/agent-memory/manager-spec/MEMORY.md`, pattern
+`atomic lease`), an unrelated accepted-residual note in `rule-authoring.md` (and its template mirror), and an unrelated `git branch -m` line in
+`manager-git.md` (and its mirror). No doctrine line states the old residual risk, so no `.claude/rules` or template path is edited (consistent with
+the empty forbidden-set probe above). A text sweep is a hypothesis; the claim is bounded to those patterns.
+
+**Final verification on the final tree** (HEAD `6c374496d`, lane environment scrubbed, slot `internal-cli-suite` held only around each `internal/cli`
+run and released after each: `moai slot status` free). Summary files `wm6-final-summary.txt`, `wm6-ac-summary.txt`.
+
+- AC-FAL-010, the 68-name selector, `-count=1 -v`: exit 0, `ok internal/cli 148.078s`, `--- PASS` **68**, FAIL 0, SKIP 0, no-tests 0, names identical
+  to the WM1 baseline (`wm6-ac010-final.txt`; `DATA RACE` 0 is vacuous there, no `-race`). Floor 68 met.
+- All factory/mcp-factory test files: exit 0, `ok internal/cli 503.705s`, PASS 259, FAIL 0, SKIP 4 (`wm6-cli-factoryfiles.txt`).
+- Lease/worktree selector `^(TestFactoryLease|TestFactoryEnsureCardWorktree|TestFactoryWorktreeStepWait|TestFactoryNextNominate)` under `-race`: exit 0,
+  `ok internal/cli 238.502s`, 36 top-level PASS, 0 FAIL, 0 DATA RACE (`wm6-cli-lease-race.txt`).
+- `internal/kanban` whole package `-race`: exit 0, `ok 270.906s`, 598 PASS, 0 FAIL, 0 DATA RACE. `internal/homestate` whole package `-race`: exit 0,
+  `ok 52.415s`, 137 PASS, 0 FAIL, 0 DATA RACE.
+- Each criterion's own command with its repetition count, judged by S4 (name printed exactly N times, no FAIL/SKIP/no-tests, no DATA RACE for `-race`):
+  AC-FAL-001 x10 -race, 002 x20, 003 x20, 004 x20, 005 x20, 009 x20 (all -race), 006 x3 -race, 007 x10 -race, 008 x1, 011 x1 (three packages),
+  015 (1) x10 -race over five names in two packages and 015 (2) x1 over six names: every one `exit=0 S4=yes FAIL=0 SKIP=0 notests=0 DATARACE=0`
+  (`wm6-ac-<id>.txt`). Slowest: AC-FAL-009, 395.141 s.
+- Static (`wm6-static-*.txt`, `wm6-gobuild*.txt`): `gofmt -l` over the changed Go files empty (rc 0); `go vet` kanban, homestate, cli rc 0;
+  `golangci-lint run` v2.1.6 over the three packages rc 0, `0 issues.`; `GOOS=windows GOARCH=amd64 go build` and `go vet` of the three packages rc 0;
+  `go build ./...` rc 0 and `GOOS=windows GOARCH=amd64 go build ./...` rc 0.
+- Not observed in WM6: per-function coverage of the changed functions (quality-gate criterion; not measured here); the Windows lock beyond compile;
+  AC-FAL-012 and -014 (sync phase); a plan-auditor or sync-auditor reading of any of this; the section's hold under a held drift-log lock beyond
+  the AC-FAL-007/-015 bounds.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+run_status: complete
+run_complete_at: 2026-10-04
+run_commit_sha: da0c9d039 (last code commit; WM6 changed no Go source — the WM6 docs commit that carries this block follows it, find it with `git log`)
+run_commits: 0eb3d5b0d (WM1 seam-and-stub) · 807eabe20 (AC-FAL-010 baseline) · 1a4ef6402 (WM1 RED) · 2997abc29 (WM2 RED) · f8cc4b978 (WM2) · fd70b9123 (WM4 homestate) · 2016bad1a (two WM1 test repairs) · daed5dd09 (WM3 + WM4 cli) · da0c9d039 (WM5)
+preservation_baseline: 68 swept (`.moai/reports/t1458/baseline-list.txt`), final 68 PASS 0 FAIL, names identical
+ac_pass_count: 13
+ac_fail_count: 0
+ac_pass_list: AC-FAL-001 to -011, -013, -015 (the S4 pass condition at each criterion's repetition count; AC-FAL-010 and -013 are regression-guards)
+ac_sync_phase_pending: AC-FAL-012 (the records state what is not closed), AC-FAL-014 (supersession recorded) — both release-blocking at the sync phase
+mutants: plan §7 MU1-MU20 executed, each turned its named test red in at least one faithful form; survivors and weaker-than-planned results F1-F6 above, two extra mutants (MU21 red, MU22 survived) and MU10b survived
+hold_time: recorded (section E.2, WM6), single-digit milliseconds typical, largest observed 26 ms
+ac_fal_013: control 43 paths, forbidden 0, complement 0
+cross_platform_build: GOOS=windows GOARCH=amd64 go build ./... rc 0; go vet of kanban, homestate, cli rc 0
+lint: golangci-lint v2.1.6 rc 0, 0 issues; gofmt empty; go vet rc 0
+new_warnings_or_lints_introduced: none observed
+l44_pre_commit_fetch: not run (nothing is pushed or merged by this card's lane; the branch absorbed develop 2b9e4a4d0 at merge 09faf2965 and stays unpushed)
+l44_post_push_fetch: not applicable (no push)
+total_run_phase_files: 19 Go files changed under internal/ (`git diff --stat 2b9e4a4d0..HEAD -- internal`: 8 sources, 11 test files)
+m1_to_mN_commit_strategy: WM1 as three commits (seam-and-stub, baseline, RED), WM2 RED then GREEN, WM3 and WM4 together with a homestate commit first, WM5 one commit, WM6 docs and evidence only; RED before GREEN is witnessed by the commit graph for WM1, WM2 and WM5's pair (WM5's kanban tests were written beside the implementation, stated in its section)
+open_findings_for_sync_audit: F1 to F6 of the WM6 section
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
@@ -327,10 +480,11 @@ baseline commit, RED commit); R2 = WM2; R3 = WM3 + WM4 (they land together); R4 
 the autonomous plan->run Kickoff recorded in `.moai/reports/t1458/decision.md` (git-ignored) at HEAD b27652922, and after
 absorbing develop 2b9e4a4d0 (merge 09faf2965; the plan-artifact hashes were re-checked unchanged).
 
-## §G Resume Point (after WM5, 2026-10-04)
+## §G Resume Point (after WM6, 2026-10-04)
 
 - WM1 landed in order: 0eb3d5b0d (seam-and-stub), 807eabe20 (AC-FAL-010 baseline, 68 PASS), 1a4ef6402 (RED). WM2 landed in order: 2997abc29 (RED tests), f8cc4b978 (primitive), then the docs commit carrying this section (find its SHA with `git log`).
 - Evidence (git-ignored, this worktree only): .moai/reports/t1458/{baseline-*.txt, red-*.txt, plan-audit*.md, decision.md, park.md}.
 - WM3+WM4 landed: fd70b9123 (homestate), 2016bad1a (two WM1 test repairs), daed5dd09 (lease section + bounded claim), then the docs commit carrying this section. Slot internal-cli-suite released. Nothing pushed or merged.
 - WM5 landed (round R4): `da0c9d039` (step lock helper, `factoryCreateAndRenameWorktree`, helper tests, the one-path allowance in `TestFactoryLeaseSectionAllowedSet`), then the docs commit carrying this section. No test is RED now: AC-FAL-006's pair is GREEN, AC-FAL-010 68 PASS, all factory test files 259 PASS / 0 FAIL. Slot internal-cli-suite released. Nothing pushed or merged.
-- Resume at WM6 (round R5, closure): (1) execute mutants MU1-MU20 of plan section 7 with `go test -overlay` on mutated copies kept in scratch (repository untouched), record the failing top-level test of each; MU4 (no step lock around creation and rename) must fail `TestFactoryEnsureCardWorktreeConcurrentRealMaterializer`; (2) the measured hold-time distribution of the section on a real lease (10 sequential and 2/4/10 concurrent lanes) into section E.2 (AC-FAL-009 iv, REQ-FAL-011); (3) AC-FAL-013 diff measurement: `git merge-base develop HEAD`, then `git diff --name-only <sha>..HEAD` for the allowed set (control non-empty), the forbidden set (probe empty) and the complement; the allowed-set list needs no new entry for WM5 (`factory_step_lock*.go` and its test are named, `factory_lease_unix_test.go` matches `factory_lease_*_test.go`); (4) layering test, doctrine sweep, AC-FAL-010 re-run (floor 68); then the run-phase audit-ready signal (section E.3). Leave AC-FAL-012 and -014 (CHANGELOG, three Amendments) to the sync phase.
+- WM6 landed (round R5, closure): no Go source changed. Mutants MU1-MU20 plus MU1q, MU2p, MU10b, MU12p, MU21, MU22 executed through `go test -overlay` with the repository untouched (sha256 identical before and after every run); hold-time distribution, AC-FAL-013, the doctrine sweep and the final verification are in section E.2 (WM6), and the run-phase signal is section E.3 (`run_status: complete`). The docs commit carrying this section is the one after `da0c9d039` (find its SHA with `git log`). Slot internal-cli-suite released (`moai slot status`: free). Nothing pushed or merged. The extra evidence files are `evidence/probe-hold_test.go.txt`, `probe-hold-instrument.patch.txt`, `wm6-*.txt`; the per-run outputs are git-ignored under `.moai/reports/t1458/wm6-*`.
+- Resume at the sync phase (manager-docs, via `/moai sync SPEC-FACTORY-ATOMIC-LEASE-001`, after the plan-to-sync audit path the card's route requires): (1) write the CHANGELOG entry (AC-FAL-012: which windows this card closed, which stay open per spec §F, R6 multi-lane stall named; `grep -c 'R6 — multi-lane stall'` and `grep -c SPEC-FACTORY-ATOMIC-LEASE-001 CHANGELOG.md`); (2) the three Amendments records through manager-spec re-delegation (AC-FAL-014: SPEC-TODO-CLASSIFY-DISPATCH-001, SPEC-TODO-AUTO-PICK-001, SPEC-FACTORY-RECORD-001, `prior_completed_sha` equal to each prior close's `sync_commit_sha`); (3) the §E.4 sync-phase signal; (4) `moai spec lint SPEC-FACTORY-ATOMIC-LEASE-001`; (5) weigh findings F1 to F6 of section E.2 (WM6) in the sync audit: F1 to F3 are test-sensitivity survivors of variant mutants (AC-FAL-001 BareLanes, AC-FAL-003 clause (i), the creator-stub last-write-wins), F4 is the measured cross-process detection rate (about 32% per iteration against the planned 77%), F5 the two AllowedSet blind spots, F6 the compile-time layering. No fix was applied; each is a debt candidate the card's owner may take in scope or defer. Then the leader's integration window (merge into local `develop` after the merge-tree re-measurement, report the merge SHA; no push by the lane).
