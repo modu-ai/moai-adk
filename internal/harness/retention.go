@@ -84,9 +84,21 @@ func NewRetention(logPath, archiveDir string, nowFn func() time.Time) *Retention
 // REQ-HL-011: Skips if within 1 hour of the last prune attempt, tracked in memory and on
 // disk (<log>.prune-state) so that every new hook process shares one interval.
 //
-// @MX:WARN: [AUTO] The pruner reads the whole log and replaces it by rename; events other hooks append in that window are lost.
+// Events appended while the prune runs are carried, not dropped: the prune classifies only the whole
+// lines of the prefix it measured when it opened the log, and just before the rename it reads once
+// whatever the log gained after that prefix and copies those bytes after the kept lines. A
+// residual window remains between that final tail reading and the rename: an event appended in
+// it, or written by a process that had already opened the old file, is lost. Appenders take no
+// lock, and none is added here.
+//
+// Windows: the lock taken on the state file is an in-process mutex, so it gives
+// no cross-process exclusion. A burst of hook processes that all find no fresh stamp may prune
+// concurrently, once per interval. F5: not reproduced, not measured.
+//
+// @MX:WARN: [AUTO] The pruner replaces the log by rename; an event appended after its final tail reading is lost.
 // @MX:REASON: [AUTO] The state-file flock admits a single pruner per interval (it was N concurrent rewriters),
-// but appenders never take that lock. The attempt stamp is written before the work, so a killed pruner is not
+// but appenders never take that lock, so the tail carry narrows the loss window to the residual window and
+// does not close it. The attempt stamp is written before the work, so a killed pruner is not
 // repeated until the interval ends. On Windows the lock is in-process only: a burst of hooks that all read
 // "no stamp" before the first stamp lands can still prune concurrently, once per interval.
 func (r *Retention) PruneStaleEntries(retentionDays int) error {
@@ -118,6 +130,11 @@ func (r *Retention) PruneStaleEntries(retentionDays int) error {
 // If the state file cannot be created, locked or stamped the prune is SKIPPED and the error
 // returned (the observer ignores it): pruning without the lock or without a recorded attempt
 // would let every hook process rewrite the log again, which is the storm this guard exists to stop.
+//
+// Waiting: lock waiters block with no timeout, and lockfile has no try-lock. The harness-observe hooks
+// run with a 5 s hook timeout and async: true, and the observer's event is appended before the wait
+// begins, so a waiter's delay holds up the hook's exit, not its event. How long a waiter actually
+// waits, and whether it is killed at the timeout, was not observed. F6: not reproduced, not measured.
 //
 // @MX:NOTE: [AUTO] Double-checked locking: the stamp is read again after the lock is won, with a fresh
 // clock reading, because the previous holder may have stamped while this process waited.
