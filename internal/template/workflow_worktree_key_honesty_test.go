@@ -19,20 +19,23 @@ package template
 // as the direct left-hand operand of a plain `=` assignment. Compound
 // assignments (op=), ++/-- operands and &x.F address-taking are reads.
 //
-// @MX:NOTE the scanner mirrors the load shape of the in-repo precedent
-// internal/config/shipped_key_reader_test.go (packages.Config without the
-// Tests flag, ./... pattern, Selections route); extraction to a shared helper
-// is deliberately deferred (plan D2) until a second consumer exists.
+// @MX:NOTE the production scan mirrors the load shape of the in-repo
+// precedent internal/config/shipped_key_reader_test.go (packages.Config
+// without the Tests flag, ./... pattern, Selections route); only the scoped
+// fixture-mode load adds NeedDeps|NeedImports so internal/config is resolvable
+// as an import. Extraction to a shared helper is deliberately deferred (plan
+// D2) until a second consumer exists.
 
 import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 
@@ -93,7 +96,7 @@ type readerIndex struct {
 	readers      map[string]map[string]bool
 	pkgsScanned  int
 	filesScanned int
-	typeErrors   []string
+	loadErrors   []string // type + parse + list errors, package and cause named
 }
 
 // TestWorkflowWorktreeKeyHonesty is the production honesty guard: the
@@ -106,10 +109,11 @@ type readerIndex struct {
 func TestWorkflowWorktreeKeyHonesty(t *testing.T) {
 	idx, fields := loadWorktreeScan(t, "./...")
 
-	// REQ-007 — a typed-but-broken tree must fail naming package and error.
-	if len(idx.typeErrors) > 0 {
-		t.Fatalf("REQ-007: type errors across scanned packages — reader index may be incomplete:\n  %s",
-			strings.Join(idx.typeErrors, "\n  "))
+	// REQ-007 — a typed-or-parsed-broken tree must fail naming package and
+	// cause, never pass on a possibly-incomplete index.
+	if len(idx.loadErrors) > 0 {
+		t.Fatalf("REQ-007: load errors (type/parse/list) across scanned packages — reader index may be incomplete:\n  %s",
+			strings.Join(idx.loadErrors, "\n  "))
 	}
 
 	// REQ-006 — table completeness against the live struct.
@@ -139,17 +143,21 @@ func TestWorkflowWorktreeKeyHonesty(t *testing.T) {
 	}
 
 	// REQ-005 — reserved-key table validity, independent of the scan.
-	for _, key := range sortedStringKeys(reservedWorktreeKeys) {
+	for _, key := range slices.Sorted(maps.Keys(reservedWorktreeKeys)) {
 		if entry, ok := expectedWorktreeReaders[key]; ok && len(entry) > 0 {
 			t.Errorf("REQ-005: reserved key %q must have an empty expectation; the table names %v", key, entry)
 		}
 	}
 
 	// REQ-003 — set equality per key, named findings in both directions.
-	for _, key := range sortedStringKeys(expectedWorktreeReaders) {
+	for _, key := range slices.Sorted(maps.Keys(expectedWorktreeReaders)) {
 		field, ok := keyToField[key]
 		if !ok {
-			continue // REQ-006 already reported the unmatched key
+			// REQ-006 (bidirectional completeness): a table key naming no
+			// live struct field is itself a defect — REQ-006's field→entry
+			// direction above cannot see it.
+			t.Errorf("REQ-006 orphan key: %q names no field of the live %s struct — remove the entry or add the field it expected", key, worktreeConfigTypeName)
+			continue
 		}
 		expSet := make(map[string]bool, len(expectedWorktreeReaders[key]))
 		for _, file := range expectedWorktreeReaders[key] {
@@ -169,20 +177,40 @@ func TestWorkflowWorktreeKeyHonesty(t *testing.T) {
 	}
 }
 
-// loadWorktreeScan loads the given patterns with the shipped-key precedent's
-// config (no Tests flag — test files are structurally absent from the index)
-// and returns the computed reader index plus the live struct fields.
+// Load modes. The production scan uses the shipped-key precedent's exact
+// mode set; the scoped fixture-mode load adds NeedDeps|NeedImports so that
+// internal/config — a dependency, not a root, under an explicit
+// single-package pattern — is reachable with populated Types through the
+// Imports graph.
+const (
+	prodScanMode    = packages.NeedName | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedFiles
+	fixtureScanMode = prodScanMode | packages.NeedDeps | packages.NeedImports
+)
+
+// loadWorktreeScan loads the given patterns with the precedent's mode set and
+// returns the computed reader index plus the live struct fields.
 func loadWorktreeScan(t *testing.T, patterns ...string) (*readerIndex, []worktreeField) {
+	t.Helper()
+	return loadWorktreeScanMode(t, prodScanMode, patterns...)
+}
+
+// loadWorktreeScanWithDeps is the fixture-mode load: same scanner, mode
+// extended with NeedDeps|NeedImports for scoped explicit patterns.
+func loadWorktreeScanWithDeps(t *testing.T, patterns ...string) (*readerIndex, []worktreeField) {
+	t.Helper()
+	return loadWorktreeScanMode(t, fixtureScanMode, patterns...)
+}
+
+// loadWorktreeScanMode runs the scan: no Tests flag (test files are
+// structurally absent from the index), root packages only in the scan loop,
+// and fail-closed error collection (type + parse + list errors, each named by
+// package and cause).
+func loadWorktreeScanMode(t *testing.T, mode packages.LoadMode, patterns ...string) (*readerIndex, []worktreeField) {
 	t.Helper()
 
 	root := findRepoRoot(t)
-	// NeedDeps + NeedImports are required for the fixture-mode scan: with a
-	// scoped explicit pattern, internal/config is a dependency, reachable
-	// only through a populated Imports map (NeedImports) carrying dep Types
-	// (NeedDeps). The scan loop itself still walks root packages only, so
-	// the production ./... scan is unchanged.
 	cfg := &packages.Config{
-		Mode: packages.NeedName | packages.NeedDeps | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedFiles,
+		Mode: mode,
 		Dir:  root,
 	}
 	pkgs, err := packages.Load(cfg, patterns...)
@@ -198,30 +226,50 @@ func loadWorktreeScan(t *testing.T, patterns ...string) (*readerIndex, []worktre
 
 	idx := &readerIndex{readers: map[string]map[string]bool{}}
 	for _, pkg := range pkgs {
-		for _, terr := range pkg.TypeErrors {
-			idx.typeErrors = append(idx.typeErrors, pkg.PkgPath+": "+terr.Error())
+		// Fail-closed error collection (REQ-007 + audit repair): pkg.Errors
+		// is the superset (list + parse + type); pkg.TypeErrors is recorded
+		// first so REQ-007's named surface leads. Deduped by text.
+		seenErr := make(map[string]bool, len(pkg.Errors)+len(pkg.TypeErrors))
+		addErr := func(msg string) {
+			if !seenErr[msg] {
+				seenErr[msg] = true
+				idx.loadErrors = append(idx.loadErrors, msg)
+			}
+		}
+		for _, e := range pkg.TypeErrors {
+			addErr(pkg.PkgPath + ": " + e.Error())
+		}
+		for _, e := range pkg.Errors {
+			addErr(pkg.PkgPath + ": " + e.Error())
 		}
 		if pkg.TypesInfo == nil {
 			continue
 		}
 		idx.pkgsScanned++
-		for i, file := range pkg.Syntax {
-			if i >= len(pkg.GoFiles) {
+		for _, file := range pkg.Syntax {
+			if file == nil || !file.Pos().IsValid() {
 				continue
 			}
+			tf := pkg.Fset.File(file.Pos())
+			if tf == nil {
+				continue
+			}
+			// Attribute by Fset, not by GoFiles index alignment — the
+			// alignment diverges under cgo-generated syntax entries.
+			abs := tf.Name()
 			// REQ-008 — belt-and-braces on top of the structural exclusion:
 			// the production load carries no test files to begin with.
-			if strings.HasSuffix(pkg.GoFiles[i], "_test.go") {
+			if strings.HasSuffix(abs, "_test.go") {
 				continue
 			}
 			idx.filesScanned++
-			scanFileForWorktreeFieldReads(file, pkg, fieldObjs, repoRel(root, pkg.GoFiles[i]), idx)
+			scanFileForWorktreeFieldReads(file, pkg, fieldObjs, repoRel(root, abs), idx)
 		}
 	}
 
 	// Non-vacuity — an empty index proves nothing (acceptance §D.11).
-	t.Logf("reader index (%v): %d packages, %d files scanned, %d type errors",
-		patterns, idx.pkgsScanned, idx.filesScanned, len(idx.typeErrors))
+	t.Logf("reader index (%v): %d packages, %d files scanned, %d load errors",
+		patterns, idx.pkgsScanned, idx.filesScanned, len(idx.loadErrors))
 	if idx.pkgsScanned == 0 || idx.filesScanned == 0 {
 		t.Fatalf("reader index is empty (%d packages, %d files scanned) — wrong Dir or pattern; refusing a vacuous pass",
 			idx.pkgsScanned, idx.filesScanned)
@@ -299,6 +347,8 @@ func liveWorktreeFields(t *testing.T, pkgs []*packages.Package) []worktreeField 
 // construction: a local copy of the struct resolves to the same field object
 // as the original accessor chain.
 func scanFileForWorktreeFieldReads(file *ast.File, pkg *packages.Package, fieldObjs map[*types.Var]string, relFile string, idx *readerIndex) {
+	// ast.Inspect parent stack: push on every visited node, pop on the
+	// trailing f(nil) that closes it — stack[len(stack)-2] is sel's parent.
 	var stack []ast.Node
 	ast.Inspect(file, func(n ast.Node) bool {
 		if n == nil {
@@ -373,16 +423,9 @@ func repoRel(root, abs string) string {
 	return filepath.ToSlash(abs)
 }
 
-// sortedStringKeys returns the map's keys in sorted order so guard findings
-// are deterministic across runs.
-func sortedStringKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
+// Guard findings iterate table keys in sorted order (slices.Sorted(maps.Keys))
+// so output is deterministic across runs — the idiom the sibling guard tests
+// use (internal/cli/huh_v1_guard_test.go).
 
 // TestWorkflowWorktreeKeyHonestyAliasFixture is the alias characterization
 // (M2): the same scan path, pointed at the testdata fixture package by
@@ -396,11 +439,11 @@ func TestWorkflowWorktreeKeyHonestyAliasFixture(t *testing.T) {
 		fixturePattern = "./internal/template/testdata/worktreekeyaliasprobe"
 		fixtureDir     = "internal/template/testdata/worktreekeyaliasprobe"
 	)
-	idx, _ := loadWorktreeScan(t, fixturePattern)
+	idx, _ := loadWorktreeScanWithDeps(t, fixturePattern)
 
-	if len(idx.typeErrors) > 0 {
-		t.Fatalf("type errors in the fixture package — fixture scan is unreliable:\n  %s",
-			strings.Join(idx.typeErrors, "\n  "))
+	if len(idx.loadErrors) > 0 {
+		t.Fatalf("load errors in the fixture package — fixture scan is unreliable:\n  %s",
+			strings.Join(idx.loadErrors, "\n  "))
 	}
 
 	// AC-005a — alias-copy read attributed.
@@ -416,13 +459,21 @@ func TestWorkflowWorktreeKeyHonestyAliasFixture(t *testing.T) {
 		t.Errorf("AC-005c: compoundassign.go consumes SessionNamePattern via += and must be classified as a reader")
 	}
 
-	// AC-005d — characterization: the legacy text accessor string has zero
-	// matches in the alias fixture source (comments included).
+	// AC-005d — the retained t682 text scan demonstrably reports NO reader
+	// here: neither legacy accessor form matches the alias fixture's source
+	// (comments included), so a text scan finds nothing — while the AST scan
+	// above attributes the read (AC-005a). The comparison is the recorded
+	// blind spot.
 	src, err := os.ReadFile(filepath.Join(findRepoRoot(t), fixtureDir, "aliasprobe.go"))
 	if err != nil {
 		t.Fatalf("read aliasprobe.go: %v", err)
 	}
-	if strings.Contains(string(src), ".Workflow.Worktree.AutoCleanup") {
-		t.Errorf("AC-005d: aliasprobe.go carries the literal accessor string — the alias-copy shape must not spell the full accessor")
+	t682TextScanDetectsReader := strings.Contains(string(src), ".Workflow.Worktree.AutoCleanup") ||
+		strings.Contains(string(src), ".Worktree.AutoCleanup")
+	if t682TextScanDetectsReader {
+		t.Errorf("AC-005d: aliasprobe.go matches a legacy accessor string — the alias-copy shape must not spell the accessor")
+	}
+	if !idx.readers["AutoCleanup"][fixtureDir+"/aliasprobe.go"] {
+		t.Errorf("AC-005d: the AST scan must attribute the alias read the t682 text scan cannot see (zero text matches above)")
 	}
 }

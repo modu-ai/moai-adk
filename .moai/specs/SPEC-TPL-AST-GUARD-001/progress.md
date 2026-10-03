@@ -47,46 +47,77 @@ gate_debt:
 
 ## §E.2 Run-phase Evidence
 
-All evidence captured this run against this tree (branch `WT-ast-template-guard`),
-HEAD M2 commit `b82f8429a` (mutations observed at M2 state; final clean re-observation
-identical). Primary evidence files: `.moai/reports/t1377/run/` (gitignored local-primary;
-hoist to the card evidence path is the lane/leader concern). GUARD shorthand = the
-anchored alternation of `TestWorkflowWorktreeKeyHonesty|TestWorkflowWorktreeKeyHonestyAliasFixture`.
+All evidence captured this run against this tree (branch `WT-ast-template-guard`).
+Two measurement passes: the original matrix at M2 HEAD `b82f8429a` (m3-*.txt) and the
+repair-pass matrix at post-repair state over base `27cf29e95` (rp-*.txt) — both
+line-for-line reproducible at their own HEAD. Primary evidence files:
+`.moai/reports/t1377/run/` (gitignored local-primary; hoist to the card evidence path is
+the lane/leader concern). GUARD shorthand = the anchored alternation of
+`TestWorkflowWorktreeKeyHonesty|TestWorkflowWorktreeKeyHonestyAliasFixture`.
 
 ```yaml
 run_evidence:
   measured_at: 2026-10-03
-  head: b82f8429a
+  head: fa107a019 + repair pass (rp-*.txt are the binding set; base tree = post-sync close)
   m1_scanner:
     file: internal/template/workflow_worktree_key_honesty_test.go
     first_run: "reader index ([./...]): 165 packages, 1423 files scanned, 0 type errors"
+    repair_pass_run: "reader index ([./...]): 165 packages, 1423 files scanned, 0 load errors (Fset attribution keeps the map identical)"
     computed_map: matches audited expectation table exactly (no reconciliation needed)
-    evidence: .moai/reports/t1377/run/m1-gate.txt
+    evidence: .moai/reports/t1377/run/m1-gate.txt, rp-clean-final.txt
+  guard_runtime_c6: >
+    production test 8.92s first run, 2.21s warm; full GUARD 10.813s — within C-6's
+    ~24s guidance (scanner precedent measured 23.997s).
   ac_matrix:
-    AC-001: PASS — both named tests execute with --- PASS (m2-guard-both-tests.txt)
-    AC-002: PASS — dropped-reader RED then clean (m3-ac002.txt)
-    AC-003: PASS — unnamed-reader RED then clean (m3-ac003.txt)
-    AC-004: PASS — three arms, each RED then clean (m3-ac004-arm1/2/3.txt; arm 3 fires REQ-004)
-    AC-005: PASS — a/b/c/d fixture characterization (m2-guard-both-tests.txt + m3-clean-final.txt)
-    AC-006: PASS — table-entry deletion RED (m3-ac006.txt)
-    AC-007a: PASS — reserved-key reader RED (m3-ac007a.txt)
-    AC-007b: PASS — table-invalid under reserved key RED (m3-ac007b.txt)
-    AC-008: PASS — type-error RED with named cause (m3-ac008.txt)
-    AC-009: PASS — package gate ok 262.586s (m4-ac009-package-gate.txt)
-    AC-010: PASS — golangci-lint 0 issues, no NEW vs baseline (m4-lint-after.txt)
-    AC-011: PASS — gofmt -l empty on all four new files
-    AC-012: PASS — negative control, captured PASS with a _test.go-only read (m3-ac012.txt)
+    AC-001: PASS — both named tests execute with --- PASS (rp-clean-final.txt)
+    AC-002: PASS — deciding line: "REQ-003 dropped reader: key \"auto_cleanup\" (field AutoCleanup) — expected reader internal/cli/session_worktree.go no longer reads the field" (rp-ac002.txt)
+    AC-003: PASS — deciding line: "REQ-003 unnamed reader: key \"auto_merge\" (field AutoMerge) — internal/cli/doctor.go reads the field but the expectation table does not name it" (rp-ac003.txt)
+    AC-004: PASS — three arms, each RED then clean (rp-ac004-arm1/2/3.txt); arm 3 deciding line: "REQ-004: auto_cleanup expectation must name mandatory reader internal/cli/session_worktree_prmerge.go (both auto-cleanup sites gate worktree removal)"
+    AC-005: PASS — a/b/c/d fixture characterization (rp-clean-final.txt + m2-guard-both-tests.txt)
+    AC-006: PASS — deciding line: "REQ-006: field TmuxPreferred (key \"tmux_preferred\") has no expectation-table entry — add one when the field lands" (rp-ac006.txt, re-captured at final HEAD)
+    AC-007a: PASS — deciding line: "REQ-003 unnamed reader: key \"tmux_preferred\" (field TmuxPreferred) — internal/cli/doctor.go reads the field but the expectation table does not name it" (rp-ac007a.txt)
+    AC-007b: PASS — deciding line: "REQ-005: reserved key \"tmux_preferred\" must have an empty expectation; the table names [internal/cli/worktree_advisory.go]" (rp-ac007b.txt)
+    AC-008: PASS — deciding line: "REQ-007: load errors (type/parse/list) across scanned packages — … internal/cli/session_worktree.go:990:22: undefined: undefinedWorktreeProbeIdentifier" (rp-ac008.txt)
+    AC-009: PASS — package gate ok (pre-repair 262.586s; post-repair 161.682s) (rp-package-gate.txt)
+    AC-010: PASS — golangci-lint run ./internal/template/... → "0 issues." (ABSOLUTE; the pre-change baseline was also 0, so no NEW issues) (rp-lint.txt)
+    AC-011: PASS — gofmt -l empty on all four new files (post-repair re-run)
+    AC-012: PASS — negative control, captured PASS (exit 0, no finding) with a _test.go-only read present (rp-ac012.txt)
   builds:
-    go_build: exit 0
-    windows_cross_build: "GOOS=windows GOARCH=amd64 go build ./... → exit 0"
+    go_build: exit 0 (post-repair re-run)
+    windows_cross_build: "GOOS=windows GOARCH=amd64 go build ./... → exit 0 (post-repair re-run)"
   coverage: "go test -cover ./internal/template/... → internal/template 84.4% (reported, not gated)"
   boundary_grep: "AskUserQuestion|mcp__askuser over the 4 new files → no matches"
   scope_proof: "git diff --name-only against card base → exactly the 4 new source paths + SPEC artifacts"
   red_record: >
-    The deliverable IS a test (C-5): RED is the mutation matrix above — 9 mutation
-    observations each carrying verbatim failing output, every mutation reverted and the
-    clean pass re-observed (m3-clean-after-arm3.txt, m3-clean-final.txt).
+    The deliverable IS a test (C-5): RED is the mutation matrix — 10 prior arms + 3 new
+    arms, each applied → GUARD → verbatim capture → revert → clean re-observe. The
+    repair-pass set (rp-*.txt) is the binding record; the original m3-*.txt set is kept
+    for its own HEAD.
 ```
+
+### §E.2.1 Post-sync audit repair record (pre-merge)
+
+Three review surfaces converged on the same defects — **claude audit_multi leg,
+codex audit_multi leg, codex card-review (scope=card)**; codex executed overlay
+reproductions for the code repairs. All applied in one repair commit:
+
+| # | Repair | Surface |
+|---|--------|---------|
+| 1 | compoundassign.go: `+=` is now the file's ONLY tracked-field access (the trailing `return w.SessionNamePattern` plain read removed — the fixture satisfies its own acceptance §D.5 only-as precondition) | P2, 3 surfaces, codex-executed |
+| 2 | REQ-007 path fails closed on pkg.Errors (parse/list) in addition to pkg.TypeErrors, deduped, package + cause named — production and fixture scans alike | P2, 3 surfaces, codex-executed |
+| 3 | Orphan table keys (a key naming no live struct field) now t.Errorf — bidirectional table↔struct completeness; the silent `continue` removed | P2, 2 surfaces + 4dim Security judge |
+| 4 | File attribution via pkg.Fset.File(file.Pos()).Name() instead of pkg.Syntax↔pkg.GoFiles index alignment (diverges under cgo); _test.go exclusion applied to the same name; reader map verified identical (165/1423) | P3 + Security judge |
+| 5 | Load-mode split: production scan restored to the precedent's exact mode set (NeedName\|NeedTypes\|NeedSyntax\|NeedTypesInfo\|NeedFiles); NeedDeps\|NeedImports restricted to the fixture-mode loader (loadWorktreeScanWithDeps); @MX:NOTE corrected; guard runtime measured against C-6 (8.92s first run / 2.21s warm, guidance ~24s) | P2 claude |
+| 6 | sortedStringKeys generic → slices.Sorted(maps.Keys(m)) — the sibling-guard idiom (internal/cli/huh_v1_guard_test.go:45) | Craft judge |
+| 7 | One-line comment on the ast.Inspect parent-stack idiom (push-on-node / pop-on-trailing-nil) | Craft judge |
+| 8 | AC-005d strengthened to a real comparison: the t682-style accessor text match is run over the fixture source and asserted to report NO reader (both legacy forms), while the AST scan is asserted to attribute the read | P3 claude |
+
+New mutation arms (repair pass):
+
+- **(a) AC-005c scanner mutation** — the read-exclusion mutated to accept ANY assignment
+  token → RED: `AC-005c: compoundassign.go consumes SessionNamePattern via += and must be classified as a reader` (rp-arm-a.txt)
+- **(b) parse-error mutation** — `@` appended to worktree_advisory.go → RED: `REQ-007: load errors (type/parse/list) across scanned packages — … worktree_advisory.go:69:1: expected declaration, found 'ILLEGAL'` (rp-arm-b.txt)
+- **(c) orphan-key mutation** — bogus table entry → RED: `REQ-006 orphan key: "bogus_reserved_key" names no field of the live WorkflowWorktreeConfig struct — remove the entry or add the field it expected` (rp-arm-c.txt)
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -96,7 +127,8 @@ run_complete_at: 2026-10-03
 run_commits:
   - 568d8907c M1 AST scanner + expectation table + production honesty test
   - b82f8429a M2 alias characterization fixture + fixture-mode test
-  - (M4 progress close commit — this commit)
+  - 27cf29e95 M4 run-phase gates green + progress evidence close
+  - (post-sync audit repair commit — repairs 1-8 + arms a-c, this commit)
 m3_note: M3 is evidence-only (mutation matrix, no tracked-file change) — no commit.
 push_state: DEFERRED (factory leader batch-pushes local develop after integration)
 slot: go-test-internal-template released after the heavy-run batch
@@ -119,8 +151,8 @@ sync_changes:
   - CHANGELOG.md: exactly one [Unreleased]/### Added entry for the AST-based
     workflow.worktree.* key-honesty guard + testdata characterization fixtures
     (duplicate-guard grep -c "SPEC-TPL-AST-GUARD-001" CHANGELOG.md = 0 before append)
-  - spec.md frontmatter: status in-progress → completed (both transitions ride
-    this single sync commit — the 3-phase close); updated already 2026-10-03,
+  - spec.md frontmatter: status in-progress → implemented → completed (single
+    sync commit — the 3-phase close); updated already 2026-10-03,
     left unchanged; NO body edits
   - progress.md: this §E.4 fill; the sync_commit_sha placeholder is backfilled
     with the real SHA in the immediately following commit (D3 backfill exemption)
