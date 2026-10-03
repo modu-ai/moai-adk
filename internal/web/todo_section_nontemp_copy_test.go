@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestTodoSectionReadsThroughToProjectLocalQueue_NonTemp — the C-row copy.
@@ -32,15 +32,15 @@ func TestTodoSectionReadsThroughToProjectLocalQueue_NonTemp(t *testing.T) {
 	home := stubTodoHome(t)
 	root := t.TempDir() // deliberately NOT a git repository
 
-	origRoots := kanban.TempRootsFn
+	origRoots := factory.TempRootsFn
 	isolated := filepath.Join(t.TempDir(), "a-root-that-contains-nothing")
-	kanban.TempRootsFn = func() []string { return []string{isolated} }
-	t.Cleanup(func() { kanban.TempRootsFn = origRoots })
+	factory.TempRootsFn = func() []string { return []string{isolated} }
+	t.Cleanup(func() { factory.TempRootsFn = origRoots })
 
 	// The positive assertion: the injected root set was actually read, so this
 	// fixture really is on the home-fallback path rather than on the guard's
 	// refusal path. Remove the stub and this line goes RED.
-	if reason, isTemp := kanban.TempOriginReason(root); isTemp {
+	if reason, isTemp := factory.TempOriginReason(root); isTemp {
 		t.Fatalf("the injected temp-root set was not read: root %q still classifies temporary (reason %q)", root, reason)
 	}
 
@@ -49,7 +49,7 @@ func TestTodoSectionReadsThroughToProjectLocalQueue_NonTemp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat local queue: %v", err)
 	}
-	fallbackRoot := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(root))
+	fallbackRoot := filepath.Join(home, ".moai", "todo", factory.TodoQueueProjectKey(root))
 	time.Sleep(10 * time.Millisecond)
 
 	body := todoBodyFor(t, root)

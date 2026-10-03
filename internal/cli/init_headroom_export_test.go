@@ -40,7 +40,7 @@ var headroomCountPaths = []string{
 	".claude/rules/moai/workflow/context-window-management.md",
 	".claude/rules/moai/workflow/cross-session-messaging.md",
 	".claude/rules/moai/workflow/goal-directive.md",
-	".claude/rules/moai/workflow/kanban-dispatch.md",
+	".claude/rules/moai/workflow/factory-dispatch.md",
 	".claude/rules/moai/workflow/main-checkout-branch-guard.md",
 	".claude/rules/moai/workflow/session-handoff.md",
 	".claude/rules/moai/workflow/skill-routing.md",

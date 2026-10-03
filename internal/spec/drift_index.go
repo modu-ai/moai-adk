@@ -379,7 +379,7 @@ var bodyDeclaredCloseDenyKeys = []string{"depends_on:", "related:", "supersedes:
 // subjects on record, all pass: `Close out 2 SPECs ...` (7beda68a5),
 // `chore(SPEC group C): Mx-phase close ...` (e979a4d13), `docs(specs): batch
 // sync-phase close ...` (2f449e189), `docs: close out 4 A-tier SPECs ...`
-// (cd21df594), `chore(spec): close KANBAN-RENAME-001 ...` (cd80f0644),
+// (cd21df594), `chore(spec): close <SPEC-ID> ...` (cd80f0644),
 // `docs(SPEC-INTERNAL-TEST-001): sync-phase artifacts + 3-phase close`, and
 // `feat(SPEC-HIERARCHICAL-TEAM-001): ... (Tier M, 3-phase close)` — satisfying
 // §5.4 condition 3.

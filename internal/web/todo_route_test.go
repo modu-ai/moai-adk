@@ -2,7 +2,7 @@ package web
 
 // todo_route_test.go — SPEC-WEB-TODO-QUEUE-001 M2: the /todo route surface.
 //
-// Resolved decision G-4 chose a top-level route over a panel on /kanban. The
+// Resolved decision G-4 chose a top-level route over a panel on /factory. The
 // route remains a first-class screen, while the primary rail is intentionally
 // limited to Overview, Todo, and Settings; the route's icon and four-locale
 // translation remain covered here.
@@ -120,13 +120,13 @@ func TestTodoNavRowIsSecondAndCurrent(t *testing.T) {
 func TestTodoNavRowNotCurrentElsewhere(t *testing.T) {
 	a := newTestApp(t)
 
-	rec := serveGet(t, a.routes(), "/kanban")
+	rec := serveGet(t, a.routes(), "/factory")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /kanban status = %d, want 200", rec.Code)
+		t.Fatalf("GET /factory status = %d, want 200", rec.Code)
 	}
 
 	if strings.Contains(rec.Body.String(), `href="/todo" aria-current="page"`) {
-		t.Errorf("the /todo row is marked current while /kanban is served")
+		t.Errorf("the /todo row is marked current while /factory is served")
 	}
 }
 

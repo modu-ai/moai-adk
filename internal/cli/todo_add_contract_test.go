@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestTodoAddReturnedIDAddressesALiveRow — GitHub #1732 (card t1313): every
@@ -49,7 +49,7 @@ func TestTodoAddReturnedIDAddressesALiveRow(t *testing.T) {
 	}
 	live := map[string]bool{}
 	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStateQueued {
+		if it.State == factory.BacklogStateQueued {
 			live[it.ID] = true
 		}
 	}

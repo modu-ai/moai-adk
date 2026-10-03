@@ -78,6 +78,7 @@ func init() {
 
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
+	updateCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin install step during a record-less project's migration and record deployment_mode: local (also MOAI_SKIP_PLUGIN_INSTALL=1; SPEC-INIT-SHRINK-001 REQ-015)")
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
 	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
 
@@ -329,7 +330,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 		// t40 defect 3: preview the managed-cleanup deletion list. A preview
 		// failure degrades to a warning — a dry run must not fail the command.
-		if previewErr := previewManagedCleanup(cwd, out); previewErr != nil {
+		previewMode := resolveUpdateDeployMode(cwd, getBoolFlag(cmd, "no-plugin") || pluginOptOutFromEnv())
+		if previewErr := previewManagedCleanup(cwd, previewMode, out); previewErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Cleanup preview", "failed", previewErr.Error(), &th))
 		}
 		// SPEC-UPDATE-REINSTALL-LOOP-002 REQ-RIL2-024/025 (M4): the v2

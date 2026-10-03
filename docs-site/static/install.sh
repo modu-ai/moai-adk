@@ -317,6 +317,22 @@ verify_installation() {
     fi
 }
 
+# Install the moai plugin into the Claude Code and Codex found on PATH.
+#
+# Called by the installed path ($TARGET_PATH): the install directory need not be
+# on PATH. The binary is already installed, so no outcome of this step may fail
+# the installer under set -e: the call sits in an `if !`, and a binary that
+# predates the verb (it exits 1 with 'Unknown command "plugin"') only warns.
+# MOAI_SKIP_PLUGIN_INSTALL=1 is inherited by the verb, which then runs nothing.
+install_plugin() {
+    print_info "Installing the moai plugin (set MOAI_SKIP_PLUGIN_INSTALL=1 to skip)..."
+    if ! "$TARGET_PATH" plugin install; then
+        print_warning "The moai plugin was not installed. Install it yourself:"
+        echo "  claude plugin marketplace add modu-ai/moai-adk"
+        echo "  claude plugin install moai@moai-adk"
+    fi
+}
+
 # Main installation flow
 main() {
     echo ""
@@ -376,6 +392,9 @@ main() {
 
     # Verify installation
     verify_installation
+
+    # Install the moai plugin (fail-open)
+    install_plugin
 
     echo ""
     print_success "Installation complete!"

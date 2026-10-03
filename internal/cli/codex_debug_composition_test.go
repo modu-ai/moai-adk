@@ -37,10 +37,11 @@ func stagedLaneEntry() factoryFlagParse {
 	return factoryFlagParse{Enabled: true, LaneRole: true}
 }
 
-// driveCodexLaneLaunch runs one codex lane launch (-f lane shape: a LaneRole
-// factory entry) through runCodexLaunch with every seam stubbed, and returns
-// the stderr the launcher wrote. The join lands on the staged leader's run
-// (the discovery fallback the shared join gate owns).
+// driveCodexLaneLaunch runs one codex lane launch through runCodexLaunch with
+// every seam stubbed, and returns the stderr the launcher wrote. The entry is a
+// LaneRole factory entry handed straight to runCodexLaunch: runCodex routes -l
+// to the relaunch loop and never reaches that branch. The join lands on the
+// staged leader's run (the discovery fallback the shared join gate owns).
 func driveCodexLaneLaunch(t *testing.T, debug bool) string {
 	t.Helper()
 	root := discoveryTestRoot(t)

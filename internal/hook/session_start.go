@@ -455,14 +455,14 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
-	// SPEC-KANBAN-RECORD-SESSION-KEY-001: write THIS session's kanban record,
+	// SPEC-KANBAN-RECORD-SESSION-KEY-001: write THIS session's factory record,
 	// keyed by the identifier its own runtime delivered. The launcher used to
 	// write it and could not key it correctly — it runs before the session it
-	// launches exists (see session_start_record.go). Non-kanban sessions get
+	// launches exists (see session_start_record.go). Non-factory sessions get
 	// no record and nothing happens here; every failure is discarded, so the
 	// call returns nothing and the session start cannot gate on it.
 	clock.lap("marshal_attribution")
-	writeKanbanSessionRecord(input)
+	writeFactorySessionRecord(input)
 	if factoryNotice := registerFactorySessionStartPeer(ctx, input); factoryNotice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{HookEventName: string(EventSessionStart)}
@@ -472,7 +472,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 		out.HookSpecificOutput.AdditionalContext += factoryNotice
 	}
-	clock.lap("kanban_record")
+	clock.lap("factory_record")
 
 	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001: GLM 가드레일 리마인더 주입.
 	// GLM 백엔드 세션(PROCESS env ANTHROPIC_BASE_URL이 z.ai 포함)일 때만 z.ai MCP
@@ -494,15 +494,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
-	// Factory Mode bootstrap announcement — the kanban announcement's sibling
-	// (SPEC-FACTORY-WORKER-FANOUT-001), emitted ahead of it so the two modes'
-	// notices can never stack. Same dual-channel shape and the same
-	// startup-only gating, for the same reasons the kanban block below
-	// records; the operator copies N lane launch lines instead of four
-	// companion lines. The notice reads the leader loop's data (backlog queue,
-	// lane registry) under the project root on the same ProjectDir-then-CWD
-	// preference chain the kanban notice uses; an empty root degrades to
-	// fail-open summary lines inside the notice rather than failing here.
+	// Factory Mode bootstrap announcement (SPEC-FACTORY-WORKER-FANOUT-001).
+	// The launcher cannot deliver it — it syscall.Exec's into claude, so its
+	// stdout is overwritten when the TUI takes the screen. The notice rides
+	// BOTH channels because it has two audiences reading different surfaces:
+	// additionalContext reaches the orchestrator, systemMessage the operator,
+	// who opens the lane terminals by hand. Each copy is rendered in its
+	// audience's language (agent_prompt_language for the agent-facing copy,
+	// conversation_language for the operator-facing one); the commands, run
+	// id, and socket path are identical in both. It is a BOOTSTRAP
+	// announcement, so it fires on a genuinely new session only — resume,
+	// clear, and compact keep the factory environment, and re-announcing
+	// would tell the operator to open terminals that are already open (see
+	// factoryBootstrapNoticeForSource). The notice reads the leader loop's data
+	// (backlog queue, lane registry) under the project root, ProjectDir first
+	// and CWD as the fallback; an empty root degrades to fail-open summary
+	// lines inside the notice rather than failing here.
 	clock.lap("glm_reminder")
 	factoryRoot := input.ProjectDir
 	if factoryRoot == "" {
@@ -552,63 +559,11 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
-	// Kanban Mode bootstrap announcement. The launcher cannot deliver this —
-	// it syscall.Exec's into claude, so its stdout is overwritten when the TUI
-	// takes the screen. Non-kanban sessions get "" and nothing is injected.
-	//
-	// The notice rides BOTH channels because it has two audiences and they read
-	// different surfaces. additionalContext reaches the orchestrator, which needs
-	// the companion labels to address them later; systemMessage reaches the
-	// operator, who must type the three launch lines by hand into new terminals.
-	// Emitting only additionalContext delivered a human-addressed instruction to
-	// the model alone, so the operator saw nothing at all.
-	//
-	// Each copy is rendered in its audience's language, the split language.yaml
-	// already draws: agent_prompt_language (English) for the agent-facing copy,
-	// conversation_language for the operator-facing one. The two copies differ
-	// only in prose — commands, run id, and socket path are identical in both.
-	//
-	// The notice is a BOOTSTRAP announcement, so it belongs to a genuinely new
-	// session and nothing else. SessionStart also fires on resume, clear, and
-	// compact, where the kanban environment is still set and the notice would
-	// therefore re-emit — telling the operator to open four terminals they
-	// already opened, for a run already under way. Those three sources are
-	// skipped; an empty source is treated as startup (see the helper).
-	// The notice reads the backlog queue under the project root so the leader's
-	// opening screen names the work the run actually moves. ProjectDir first,
-	// CWD as fallback — the same preference chainLineageBanner applies. An
-	// empty root degrades to a zero-count summary line inside the notice
-	// rather than failing here.
-	clock.lap("factory_notice")
-	kanbanRoot := input.ProjectDir
-	if kanbanRoot == "" {
-		kanbanRoot = input.CWD
-	}
-	if notice := kanbanBootstrapNoticeForSource(input.Source, kanbanRoot, input.SessionID, langEnglish); notice != "" {
-		if out.HookSpecificOutput == nil {
-			out.HookSpecificOutput = &HookSpecificOutput{
-				HookEventName: string(EventSessionStart),
-			}
-		}
-		if out.HookSpecificOutput.AdditionalContext == "" {
-			out.HookSpecificOutput.AdditionalContext = notice
-		} else {
-			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
-		}
-
-		operatorNotice := kanbanBootstrapNotice(kanbanRoot, input.SessionID, operatorLang(h.cfg))
-		if out.SystemMessage == "" {
-			out.SystemMessage = operatorNotice
-		} else {
-			out.SystemMessage += "\n\n" + operatorNotice
-		}
-	}
-
 	// SPEC-CHAIN-CORE-001 REQ-CHAIN-013: lineage banner. Resolves the current
 	// chain node (from env or ledger), backfills session_id (REQ-CHAIN-021),
 	// and emits a depth + parent-chain + resume system-reminder. Time-boxed
 	// and fail-open (empty string = no banner injected).
-	clock.lap("kanban_notice")
+	clock.lap("factory_notice")
 	if banner := chainLineageBanner(input.ProjectDir, input.CWD, input.SessionID); banner != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{

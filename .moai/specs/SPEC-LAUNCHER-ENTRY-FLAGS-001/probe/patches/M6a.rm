@@ -1,0 +1,11 @@
+internal/kanban/board_lock.go
+internal/kanban/board_lock_clear_unix.go
+internal/kanban/board_lock_clear_windows.go
+internal/kanban/board_lock_clear_windows_test.go
+internal/kanban/board_lock_cross_test.go
+internal/kanban/board_lock_errno_test.go
+internal/kanban/board_lock_join_test.go
+internal/kanban/board_lock_test.go
+internal/kanban/board_lock_unix.go
+internal/kanban/board_lock_wait_test.go
+internal/kanban/board_lock_windows.go

@@ -1,0 +1,20 @@
+<!-- expect: -->
+<!-- Non-rendered subtrees: the defs marker carries the sketch-mode arrowhead verbatim, whose endpoints are 8 apart on x = 0 and would bind the background rect left edge if admitted. Its fill="none" means the connector-fill guard does not catch it, so the non-rendered-subtree exclusion is the only guard under test. A symbol and a clipPath each carry a rect for the same reason. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="defs-marker-noise-title defs-marker-noise-desc">
+  <title id="defs-marker-noise-title">Definitions only</title>
+  <desc id="defs-marker-noise-desc">A diagram whose defs block carries geometry that is never painted.</desc>
+  <defs>
+    <marker id="defs-marker-noise-arrow" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="10" refX="12" refY="5" orient="auto">
+      <path d="M 0 1 L 12 5 L 0 9" fill="none" stroke="#6B6359" stroke-width="1"/>
+    </marker>
+    <symbol id="defs-marker-noise-badge" viewBox="0 0 20 20">
+      <rect x="0" y="0" width="20" height="20" fill="#FBE9DF"/>
+    </symbol>
+    <clipPath id="defs-marker-noise-clip">
+      <rect x="0" y="0" width="60" height="40"/>
+    </clipPath>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 60 120 H 330" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#defs-marker-noise-arrow)"/>
+</svg>

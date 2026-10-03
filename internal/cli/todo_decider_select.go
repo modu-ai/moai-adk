@@ -18,7 +18,7 @@ import (
 	"os"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoDeciderFromEnv resolves the standing decider from the
@@ -27,23 +27,23 @@ import (
 // parent SPEC's named refusal wording, and any other value with a usage
 // refusal naming the accepted set. The accepted-set spellings reuse the
 // classification constants (C3: one spelling, never re-literalized).
-func todoDeciderFromEnv() (kanban.CardDecider, error) {
+func todoDeciderFromEnv() (factory.CardDecider, error) {
 	switch v := os.Getenv(config.EnvTodoDecider); v {
-	case "", kanban.DeciderIdentityDefault:
+	case "", factory.DeciderIdentityDefault:
 		return todoCardDecider, nil
-	case kanban.DeciderIdentityLLM:
+	case factory.DeciderIdentityLLM:
 		return newLLMCardDecider(), nil
-	case kanban.DeciderIdentityJev, kanban.DeciderIdentityLLMJev:
+	case factory.DeciderIdentityJev, factory.DeciderIdentityLLMJev:
 		return nil, &exitCodeError{
 			code: 2,
 			msg: fmt.Sprintf("todo add: %s value %q refused: jev is never a product classification decider (accepted values: %s, %s; nothing written)",
-				config.EnvTodoDecider, v, kanban.DeciderIdentityDefault, kanban.DeciderIdentityLLM),
+				config.EnvTodoDecider, v, factory.DeciderIdentityDefault, factory.DeciderIdentityLLM),
 		}
 	default:
 		return nil, &exitCodeError{
 			code: 2,
 			msg: fmt.Sprintf("todo add: %s value %q refused: accepted values are %s, %s (nothing written)",
-				config.EnvTodoDecider, v, kanban.DeciderIdentityDefault, kanban.DeciderIdentityLLM),
+				config.EnvTodoDecider, v, factory.DeciderIdentityDefault, factory.DeciderIdentityLLM),
 		}
 	}
 }

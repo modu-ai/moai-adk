@@ -1,0 +1,166 @@
+package homestate
+
+// Plan-phase observation probe for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458),
+// override-round repair (plan-audit defect M1). Evidence, not source: .txt
+// suffix, mapped in for one run by overlay-homestate-reconcile.json.
+//
+// Every record write (RecordPicked, Transition, RecordCardWorktree, RenewLease)
+// goes through withCardTx, which reconciles the drift log beside factory.db: it
+// reads record-unavailable.jsonl, appends one record.drift event per
+// unreconciled entry of the run inside the write transaction, and after the
+// commit rewrites the log under an exclusive file lock taken with NO timeout
+// and NO context (admission_lock_unix.go). The lease claim is three such
+// writes, so a held log lock stalls the claim past any context deadline.
+//
+// This probe holds that lock for 3 s and runs the claim's three writes with an
+// 800 ms context deadline, the claim deadline plan D2 starts from. Predicates
+// (each is a t.Errorf):
+//
+//   - bound: the claim returns within the deadline plus a 500 ms margin;
+//   - skip:  the write made while the lock was held reconciled nothing - the
+//     entry is still unreconciled and no record.drift event was appended for it;
+//   - retry: one later uncontended write reconciles the entry exactly once (one
+//     record.drift event per entry in total, none duplicated). The retry
+//     predicate is green at the pin (the pin reconciles by waiting) and is the
+//     guard the fix must keep green.
+//
+// A positive control (no lock held, one unreconciled entry) shows the fixture
+// does trigger reconciliation. A second test measures the reconciliation work
+// itself, uncontended, for 1, 200 and 2000 unreconciled entries.
+//
+// It uses only symbols the tree has at the pin.
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
+
+func reconcileProbeEntries(t *testing.T, path, runID string, n int, prefix string) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	for i := 0; i < n; i++ {
+		line, err := json.Marshal(RecordUnavailableEntry{
+			ID: fmt.Sprintf("%s%d", prefix, i), At: "2026-10-03T00:00:00Z", RunID: runID,
+			CardID: fmt.Sprintf("lost-%s%d", prefix, i), Lane: "lane-2", Error: "probe",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.Write(append(line, '\n')); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func reconcileProbeUnreconciled(t *testing.T, path, runID string) int {
+	t.Helper()
+	entries, _, err := readRecordUnavailableFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, e := range entries {
+		if !e.Reconciled && e.RunID == runID {
+			n++
+		}
+	}
+	return n
+}
+
+// reconcileProbeClaim is the lease claim's three record writes (the sequence
+// factoryNextRecordAndClaim makes) under one context.
+func reconcileProbeClaim(db *FactoryDB, ctx context.Context, id string) (time.Duration, error) {
+	start := time.Now()
+	c, err := db.RecordPicked(ctx, "run-p", id, CardFields{}, "probe", time.Now())
+	if err != nil {
+		return time.Since(start), err
+	}
+	c, err = db.Transition(ctx, TransitionRequest{RunID: "run-p", CardID: id, To: CardAssigned, ExpectedVersion: c.Version, Actor: "probe", Owner: "lane-1", Now: time.Now()})
+	if err != nil {
+		return time.Since(start), err
+	}
+	_, err = db.Transition(ctx, TransitionRequest{RunID: "run-p", CardID: id, To: CardLeased, ExpectedVersion: c.Version, Actor: "lane-1", Now: time.Now()})
+	return time.Since(start), err
+}
+
+func TestT1458ProbeReconcileLockClaim(t *testing.T) {
+	db := openSandboxFactory(t)
+	ctx := context.Background()
+	mustRecordRun(t, db, FactoryRun{RunID: "run-p", Backend: "claude", LeadPID: 1, LeadProcessStart: "st"})
+	frRegisterWorker(t, db, "lane-1")
+	logPath := filepath.Join(filepath.Dir(db.Path), recordUnavailableFile)
+
+	// Positive control: no log lock held, one unreconciled entry.
+	reconcileProbeEntries(t, logPath, "run-p", 1, "ctl")
+	cctx, cancel := context.WithTimeout(ctx, 800*time.Millisecond)
+	d, err := reconcileProbeClaim(db, cctx, "t9701")
+	cancel()
+	t.Logf("PROBE control (no log lock held, 1 unreconciled entry): elapsed=%s err=%v unreconciled-after=%d record.drift-events=%d",
+		d, err, reconcileProbeUnreconciled(t, logPath, "run-p"), len(frEvents(t, db, "record.drift")))
+
+	// The test: a second entry, the log lock held for 3 s by another party.
+	reconcileProbeEntries(t, logPath, "run-p", 1, "held")
+	unlock, err := lockRecordUnavailable(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.AfterFunc(3*time.Second, unlock)
+	cctx, cancel = context.WithTimeout(ctx, 800*time.Millisecond)
+	start := time.Now()
+	d, err = reconcileProbeClaim(db, cctx, "t9702")
+	ctxErr := cctx.Err()
+	cancel()
+	unrec := reconcileProbeUnreconciled(t, logPath, "run-p")
+	drift := len(frEvents(t, db, "record.drift"))
+	t.Logf("PROBE claim ctx-deadline=800ms vs 3s drift-log-lock holder (1 unreconciled entry): elapsed=%s err=%v ctx=%v unreconciled-after=%d record.drift-events=%d",
+		d, err, ctxErr, unrec, drift)
+	if d > 800*time.Millisecond+500*time.Millisecond {
+		t.Errorf("bound not met: the claim returned after %s with the drift-log lock held (limit 1.3s)", d)
+	}
+	if unrec != 1 || drift != 1 {
+		t.Errorf("skip not met: the write made under the held lock left unreconciled=%d (want 1) with record.drift-events=%d (want 1, the control's)", unrec, drift)
+	}
+	// Let the holder release before the retry write (a no-op wait once it has).
+	if rest := 3200*time.Millisecond - time.Since(start); rest > 0 {
+		time.Sleep(rest)
+	}
+
+	// Retry: one later uncontended write reconciles the entry exactly once.
+	if _, err := db.RecordPicked(ctx, "run-p", "t9703", CardFields{}, "probe", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	unrec = reconcileProbeUnreconciled(t, logPath, "run-p")
+	drift = len(frEvents(t, db, "record.drift"))
+	t.Logf("PROBE after one later uncontended write: unreconciled=%d record.drift-events=%d (want 0 and 2: one event per entry, none duplicated)", unrec, drift)
+	if unrec != 0 || drift != 2 {
+		t.Errorf("retry not met: unreconciled=%d (want 0), record.drift-events=%d (want 2)", unrec, drift)
+	}
+}
+
+// The cost of the reconciliation work itself, uncontended: one RecordPicked
+// with N unreconciled entries for the run. Context for the residual that the
+// bounded form does not bound the work done once the lock is obtained.
+func TestT1458ProbeReconcileCost(t *testing.T) {
+	for _, n := range []int{1, 200, 2000} {
+		db := openSandboxFactory(t)
+		mustRecordRun(t, db, FactoryRun{RunID: "run-p", Backend: "claude", LeadPID: 1, LeadProcessStart: "st"})
+		logPath := filepath.Join(filepath.Dir(db.Path), recordUnavailableFile)
+		reconcileProbeEntries(t, logPath, "run-p", n, "c")
+		start := time.Now()
+		if _, err := db.RecordPicked(context.Background(), "run-p", "t9801", CardFields{}, "probe", time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		d := time.Since(start)
+		t.Logf("PROBE one uncontended write with %d unreconciled entries: elapsed=%s unreconciled-after=%d record.drift-events=%d",
+			n, d, reconcileProbeUnreconciled(t, logPath, "run-p"), len(frEvents(t, db, "record.drift")))
+	}
+}

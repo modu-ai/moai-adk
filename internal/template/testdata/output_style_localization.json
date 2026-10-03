@@ -100,7 +100,7 @@
    "rows": [
     "| Block | English | Korean | Japanese | Chinese |",
     "|-------|---------|--------|----------|---------|",
-    "| Banner | `Lane Board` | `레인 보드` | `レーンボード` | `泳道看板` |",
+    "| Banner | `Lane Board` | `레인 보드` | `レーンボード` | `泳道面板` |",
     "| lane column | `lane` | `레인` | `レーン` | `泳道` |",
     "| card column | `card` | `카드` | `カード` | `卡片` |",
     "| phase column | `phase` | `단계` | `フェーズ` | `阶段` |",

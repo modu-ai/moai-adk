@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // unsetTodoDeciderEnvForTest registers the env restore with t.Setenv and then actually
@@ -36,8 +36,8 @@ func TestTodoDeciderSelection_UnsetEnvKeepsDeterministicDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unset selection errored: %v", err)
 	}
-	if _, ok := dec.(kanban.DefaultCardDecider); !ok {
-		t.Errorf("unset selection returned %T, want the deterministic kanban.DefaultCardDecider", dec)
+	if _, ok := dec.(factory.DefaultCardDecider); !ok {
+		t.Errorf("unset selection returned %T, want the deterministic factory.DefaultCardDecider", dec)
 	}
 }
 
@@ -45,13 +45,13 @@ func TestTodoDeciderSelection_UnsetEnvKeepsDeterministicDefault(t *testing.T) {
 // AC-TLD-002(b): an empty value and the explicit "default" both resolve to
 // the deterministic default, never to a refusal.
 func TestTodoDeciderSelection_EmptyAndDefaultValuesKeepDefaultDecider(t *testing.T) {
-	for _, value := range []string{"", kanban.DeciderIdentityDefault} {
+	for _, value := range []string{"", factory.DeciderIdentityDefault} {
 		t.Setenv(config.EnvTodoDecider, value)
 		dec, err := todoDeciderFromEnv()
 		if err != nil {
 			t.Fatalf("selection for %q errored: %v", value, err)
 		}
-		if _, ok := dec.(kanban.DefaultCardDecider); !ok {
+		if _, ok := dec.(factory.DefaultCardDecider); !ok {
 			t.Errorf("selection for %q returned %T, want the deterministic default", value, dec)
 		}
 	}
@@ -60,7 +60,7 @@ func TestTodoDeciderSelection_EmptyAndDefaultValuesKeepDefaultDecider(t *testing
 // TestTodoDeciderSelection_LLMValueSelectsLLMDecider — AC-TLD-002(c): the
 // "llm" value selects the LLM-backed decider.
 func TestTodoDeciderSelection_LLMValueSelectsLLMDecider(t *testing.T) {
-	t.Setenv(config.EnvTodoDecider, kanban.DeciderIdentityLLM)
+	t.Setenv(config.EnvTodoDecider, factory.DeciderIdentityLLM)
 
 	dec, err := todoDeciderFromEnv()
 	if err != nil {
@@ -84,7 +84,7 @@ func TestTodoDeciderSelection_UnknownValueIsUsageRefusal(t *testing.T) {
 	if !errors.As(err, &refusal) || refusal.ExitCode() != 2 {
 		t.Fatalf("value %q produced %v, want a usage exit-2 refusal", "banana", err)
 	}
-	for _, want := range []string{"banana", kanban.DeciderIdentityDefault, kanban.DeciderIdentityLLM} {
+	for _, want := range []string{"banana", factory.DeciderIdentityDefault, factory.DeciderIdentityLLM} {
 		if !strings.Contains(refusal.Error(), want) {
 			t.Errorf("refusal message %q does not name %q", refusal.Error(), want)
 		}
@@ -95,7 +95,7 @@ func TestTodoDeciderSelection_UnknownValueIsUsageRefusal(t *testing.T) {
 // jev identities are refused with the parent SPEC's named refusal wording,
 // never accepted and never silently defaulted.
 func TestTodoDeciderSelection_JevValuesAreNamedRefusals(t *testing.T) {
-	for _, value := range []string{kanban.DeciderIdentityJev, kanban.DeciderIdentityLLMJev} {
+	for _, value := range []string{factory.DeciderIdentityJev, factory.DeciderIdentityLLMJev} {
 		t.Setenv(config.EnvTodoDecider, value)
 		_, err := todoDeciderFromEnv()
 		var refusal *exitCodeError
@@ -113,7 +113,7 @@ func TestTodoDeciderSelection_JevValuesAreNamedRefusals(t *testing.T) {
 // supplied judgment file wins and its own decider identity is recorded.
 func TestTodoAdd_SuppliedFileBeatsLLMSelection(t *testing.T) {
 	_, store := todoFixture(t)
-	t.Setenv(config.EnvTodoDecider, kanban.DeciderIdentityLLM)
+	t.Setenv(config.EnvTodoDecider, factory.DeciderIdentityLLM)
 	path := writeClassificationFile(t, `{"priority":"low","blocked":true,"mode":"parallelizable","decider":"human","reason":"operator said so"}`)
 
 	out, _, err := runTodo(t, "add", "file beats env card", "--classification-file", path)
@@ -131,7 +131,7 @@ func TestTodoAdd_SuppliedFileBeatsLLMSelection(t *testing.T) {
 			continue
 		}
 		c := it.Classification
-		if c == nil || c.Decider != kanban.DeciderIdentityHuman || c.Priority != kanban.ClassPriorityLow {
+		if c == nil || c.Decider != factory.DeciderIdentityHuman || c.Priority != factory.ClassPriorityLow {
 			t.Errorf("classification = %+v, want the SUPPLIED file judgment (the file beat the llm selection)", c)
 		}
 	}
@@ -162,7 +162,7 @@ func TestTodoAdd_UnsetEnvBehavesPreSPEC(t *testing.T) {
 			continue
 		}
 		c := it.Classification
-		if c == nil || c.Decider != kanban.DeciderIdentityDefault {
+		if c == nil || c.Decider != factory.DeciderIdentityDefault {
 			t.Errorf("unset-env classification = %+v, want the deterministic default", c)
 		}
 	}

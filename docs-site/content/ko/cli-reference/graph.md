@@ -109,6 +109,6 @@ provenance: tree=/path/to/project commit=1a2b3c4d5e6
 
 ## 관련 문서
 
-- [칸반 모드](/ko/advanced/kanban-mode) — 마일스톤-카드 교차검사가 지켜보는 카드 흐름
+- [팩토리 모드](/ko/advanced/factory-mode) — 마일스톤-카드 교차검사가 지켜보는 카드 흐름
 - [`/moai mx`](/ko/utility-commands/moai-mx) — @MX 태그와 `@MX:SPEC` 연결의 원본
 - [Navigator](/ko/core-concepts/navigator) — 설계 결정·SPEC·심볼을 묶는 또 하나의 그래프(nav-graph.json)

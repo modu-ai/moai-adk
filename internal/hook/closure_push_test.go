@@ -15,7 +15,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/contract/sign"
 	"github.com/modu-ai/moai-adk/internal/contract/sign/signtest"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // gitio helpers the fixture builders use.
@@ -79,12 +79,12 @@ func writeGitFlowConfig(t *testing.T, f *closuretest.Fixture) {
 // queueC1 installs the fixture's c1 card mapping.
 func queueC1(t *testing.T, f *closuretest.Fixture) {
 	t.Helper()
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(f.Root))
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	store := factory.NewBacklogStore(factory.BacklogPathForRoot(f.Root))
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		spec := closuretest.SpecID
-		rec.Items = append(rec.Items, kanban.BacklogItem{
+		rec.Items = append(rec.Items, factory.BacklogItem{
 			ID: closuretest.Card, Text: "fixture", AddedAt: "2026-09-27T00:00:00Z",
-			SpecID: &spec, State: kanban.BacklogStatePicked,
+			SpecID: &spec, State: factory.BacklogStatePicked,
 		})
 		return nil
 	}); err != nil {

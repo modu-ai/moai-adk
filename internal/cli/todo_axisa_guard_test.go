@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // TestTodoSweepSelectorMatchesFamily — AC-SA-010's selector-0-match guard.
@@ -198,7 +198,7 @@ func TestGuardBypassMutant_ObserveHomePollution(t *testing.T) {
 	// The precondition that makes the absence attributable: this base IS a
 	// temporary origin, so the resolver-layer guard is the thing standing
 	// between the mutant and the home root.
-	if reason, isTemp := kanban.TempOriginReason(nonGit); !isTemp {
+	if reason, isTemp := factory.TempOriginReason(nonGit); !isTemp {
 		t.Fatalf("precondition: %q must classify as a temporary origin (reason %q); "+
 			"without it, an absence of pollution says nothing about the resolver-layer guard", nonGit, reason)
 	}
@@ -228,14 +228,14 @@ func TestGuardBypassMutant_ObserveHomePollution(t *testing.T) {
 	if root != nonGit {
 		t.Fatalf("queue root = %q, want the guard's substitute root %q", root, nonGit)
 	}
-	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
+	rec, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("load the project-local queue the run continued against: %v", err)
 	}
 	if len(rec.Items) == 0 {
 		t.Fatalf("the mutant add landed nowhere: the project-local queue at %s is empty, so "+
 			"the zero-pollution observation cannot be attributed to the guard",
-			kanban.BacklogPathForRoot(root))
+			factory.BacklogPathForRoot(root))
 	}
 
 	t.Logf("REQ-SA-011 second branch: the bypass mutant produced NO pollution under %s. "+
@@ -243,5 +243,5 @@ func TestGuardBypassMutant_ObserveHomePollution(t *testing.T) {
 		"SPEC-TODO-HOME-TEMP-GUARD-001's temporary-origin refusal (resolver layer) never resolves "+
 		"to a home root for this base, so the card landed in the project-local queue at %s instead. "+
 		"Full report with the pre-guard control run: .moai/reports/t536/guard-boundary.md",
-		todoRoot, kanban.BacklogPathForRoot(root))
+		todoRoot, factory.BacklogPathForRoot(root))
 }

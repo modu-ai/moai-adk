@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // gitOutIn runs `git -C dir <args...>` and returns stdout, failing the test
@@ -74,7 +74,7 @@ func TestDoneVerdict_ReAdjudicationReDerivesSHA(t *testing.T) {
 	}
 
 	// Re-run the predicate against the RECORDED ref: the verdict reproduces.
-	q := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: v.Ref}
+	q := factory.GitLandedQuerier{Run: todoRunCommand, Ref: v.Ref}
 	answer, err := q.Landed("t1")
 	if err != nil {
 		t.Fatalf("re-adjudication query failed: %v", err)

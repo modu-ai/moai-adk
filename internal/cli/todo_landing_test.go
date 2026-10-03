@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // prRow splits one rendered `todo pr` line into its tab-separated columns.
@@ -56,11 +56,11 @@ func TestTodoPR_UnanswerableRendersUnknownNotNoLink(t *testing.T) {
 
 	unanswerable := prRow(t, stdout, ids[0])
 	answered := prRow(t, stdout, ids[1])
-	if unanswerable[1] != string(kanban.PRLinkUnknown) {
-		t.Errorf("outcome for the unanswerable card = %q, want %q", unanswerable[1], kanban.PRLinkUnknown)
+	if unanswerable[1] != string(factory.PRLinkUnknown) {
+		t.Errorf("outcome for the unanswerable card = %q, want %q", unanswerable[1], factory.PRLinkUnknown)
 	}
-	if answered[1] != string(kanban.PRLinkNoLink) {
-		t.Errorf("outcome for the answered card = %q, want %q", answered[1], kanban.PRLinkNoLink)
+	if answered[1] != string(factory.PRLinkNoLink) {
+		t.Errorf("outcome for the answered card = %q, want %q", answered[1], factory.PRLinkNoLink)
 	}
 	if unanswerable[1] == answered[1] {
 		t.Error("the two rows render the same outcome — the false negative this SPEC closes")
@@ -96,7 +96,7 @@ func TestTodoPR_UnknownReachesJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("todo pr --json: %v", err)
 	}
-	if !strings.Contains(stdout, `"outcome":"`+string(kanban.PRLinkUnknown)+`"`) {
+	if !strings.Contains(stdout, `"outcome":"`+string(factory.PRLinkUnknown)+`"`) {
 		t.Errorf("json %q does not carry the unknown outcome", stdout)
 	}
 }
@@ -111,10 +111,10 @@ func TestTodoPR_UnknownReachesJSON(t *testing.T) {
 func TestTodoPR_RowCarriesQueueState(t *testing.T) {
 	_, store := todoFixture(t)
 	ids := seedQueue(t, store, "picked but no commits", "never started")
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == ids[0] {
-				rec.Items[i].State = kanban.BacklogStatePicked
+				rec.Items[i].State = factory.BacklogStatePicked
 			}
 		}
 		return nil
@@ -142,13 +142,13 @@ func TestTodoPR_RowCarriesQueueState(t *testing.T) {
 	}
 	if picked[1] != queued[1] {
 		t.Fatalf("fixture premise broken: the two cards must share the %q outcome, got %q and %q",
-			kanban.PRLinkNoLink, picked[1], queued[1])
+			factory.PRLinkNoLink, picked[1], queued[1])
 	}
-	if picked[4] != string(kanban.BacklogStatePicked) {
-		t.Errorf("state column for the picked card = %q, want %q", picked[4], kanban.BacklogStatePicked)
+	if picked[4] != string(factory.BacklogStatePicked) {
+		t.Errorf("state column for the picked card = %q, want %q", picked[4], factory.BacklogStatePicked)
 	}
-	if queued[4] != string(kanban.BacklogStateQueued) {
-		t.Errorf("state column for the queued card = %q, want %q", queued[4], kanban.BacklogStateQueued)
+	if queued[4] != string(factory.BacklogStateQueued) {
+		t.Errorf("state column for the queued card = %q, want %q", queued[4], factory.BacklogStateQueued)
 	}
 	// The card text stays the LAST field, so a consumer reading the tail
 	// still reads the text after the column count changed.
@@ -166,11 +166,11 @@ func TestTodoDone_StdoutCarriesTheLandingVerdict(t *testing.T) {
 		args []string
 		out  string
 		err  error
-		want kanban.LandingAnswer
+		want factory.LandingAnswer
 	}{
-		{"landed", []string{"done", "t1", "--require-landed"}, "abc1234 fix: something (t1)\n", nil, kanban.LandingLanded},
-		{"unanswerable", []string{"done", "t1", "--require-landed"}, "", fmt.Errorf("fatal: bad revision"), kanban.LandingUnknown},
-		{"no query at all", []string{"done", "t1"}, "", nil, kanban.LandingUnknown},
+		{"landed", []string{"done", "t1", "--require-landed"}, "abc1234 fix: something (t1)\n", nil, factory.LandingLanded},
+		{"unanswerable", []string{"done", "t1", "--require-landed"}, "", fmt.Errorf("fatal: bad revision"), factory.LandingUnknown},
+		{"no query at all", []string{"done", "t1"}, "", nil, factory.LandingUnknown},
 	}
 	seen := map[string]string{}
 	for _, tc := range cases {
@@ -217,7 +217,7 @@ func TestTodoDone_UnknownStillProceeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an unknown landing answer must proceed, got %v (stderr %q)", err, stderr)
 	}
-	if !strings.Contains(stdout, "landing="+string(kanban.LandingUnknown)) {
+	if !strings.Contains(stdout, "landing="+string(factory.LandingUnknown)) {
 		t.Errorf("stdout = %q, want the unknown verdict named", stdout)
 	}
 	rec, err := store.Load()

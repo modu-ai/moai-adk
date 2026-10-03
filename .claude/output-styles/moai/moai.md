@@ -622,7 +622,7 @@ Rules:
 
 ### Lane Board [HARD]
 
-When the session is the **factory leader** of a multi-lane run (Kanban Mode columns, or Factory Mode lanes), render a Lane Board snapshot that shows board state and per-lane progress in one block. Distinct from the Progress Board — the Progress Board tracks the steps of ONE task in THIS session, the Lane Board tracks cards distributed across OTHER sessions the leader cannot see inside.
+When the session is the **factory leader** of a multi-lane run (Factory Mode lanes), render a Lane Board snapshot that shows queue state and per-lane progress in one block. Distinct from the Progress Board — the Progress Board tracks the steps of ONE task in THIS session, the Lane Board tracks cards distributed across OTHER sessions the leader cannot see inside.
 
 Triggers:
 - After dispatching a card to a lane
@@ -633,7 +633,7 @@ Triggers:
 Template (structural skeleton — translate the header and labels to `conversation_language`):
 ```
 🤖 MoAI ★ Lane Board ────────────────────────
-📋 backlog [N] │ plan [N] │ run [N] │ sync [N] │ done [N]
+📋 backlog [N] │ in lanes [N] │ done [N]
 🎯 [Progress header]  ▓▓▓░░░░░░░  [N]/[M] ([P]%)
 
 [lane] [card] [phase] [state] [last observed]
@@ -648,7 +648,7 @@ Header translation table:
 
 | Block | English | Korean | Japanese | Chinese |
 |-------|---------|--------|----------|---------|
-| Banner | `Lane Board` | `레인 보드` | `レーンボード` | `泳道看板` |
+| Banner | `Lane Board` | `레인 보드` | `レーンボード` | `泳道面板` |
 | lane column | `lane` | `레인` | `レーン` | `泳道` |
 | card column | `card` | `카드` | `カード` | `卡片` |
 | phase column | `phase` | `단계` | `フェーズ` | `阶段` |

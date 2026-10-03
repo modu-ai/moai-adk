@@ -11,7 +11,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/escalation"
 	"github.com/modu-ai/moai-adk/internal/escalation/escalationtest"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // sampleRecord returns an open contract-kind ownership-move record for card.
@@ -71,7 +71,7 @@ func TestRecordPathAndQueueUntouched(t *testing.T) {
 	t.Setenv(config.EnvHome, t.TempDir())
 	w := escalationtest.NewWorktree(t, "t9001")
 
-	queueDir := kanban.StateDirForRoot(w.Root)
+	queueDir := factory.StateDirForRoot(w.Root)
 	queueFile := filepath.Join(queueDir, "backlog.db")
 	if err := os.MkdirAll(queueDir, 0o755); err != nil {
 		t.Fatal(err)

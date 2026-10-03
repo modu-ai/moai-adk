@@ -89,7 +89,7 @@ $ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200
 > /moai goal "<condition>" --max-turns 0 --max-duration 14400
 ```
 
-v3.1부터 `moai goal arm --max-turns 0`으로 무장하거나 칸반 모드 진입 시 런처가 이 상한을 자동으로 200으로 주입합니다. 그래서 사용자가 직접 환경변수를 건드리지 않아도 4시간짜리 체인이 중간에 끊기지 않습니다.
+v3.1부터 `moai goal arm --max-turns 0`으로 무장하거나 팩토리 세션(`-f` 또는 `-l`) 시작 시 런처가 이 상한을 자동으로 200으로 주입합니다. 그래서 사용자가 직접 환경변수를 건드리지 않아도 4시간짜리 체인이 중간에 끊기지 않습니다.
 
 ## arm-only와 안전 경계
 
@@ -127,7 +127,7 @@ v3.1부터 `moai goal arm --max-turns 0`으로 무장하거나 칸반 모드 진
 
 - **`/moai loop`** — 진단 주도의 결정적 루프. 무엇을 고칠지 도구가 판정한다는 점이 다릅니다. [`/moai loop`](/ko/utility-commands/moai-loop)는 유틸리티 명령어 섹션에 있습니다.
 - **`/moai run`** — 일을 시작하는 명령. goal과 짝으로 씁니다. [`/moai run`](./moai-run).
-- **칸반 모드** — `/moai goal`의 무한 지속 골을 `plan → run → sync` 체인으로 묶은 진입 스위치. [칸반 모드](/ko/advanced/kanban-mode)에서 다룹니다.
+- **팩토리 모드** — 리더(`-f`)와 레인(`-l`)으로 팩토리 런을 열거나 합류하는 런처 진입. 자체적으로 목표를 걸지는 않으며, 런처가 세션의 Stop 훅 차단 상한만 올립니다. [팩토리 모드](/ko/advanced/factory-mode)에서 다룹니다.
 
 ## 이 명령이 하지 않는 것 (범위 경계)
 
@@ -139,6 +139,6 @@ v3.1부터 `moai goal arm --max-turns 0`으로 무장하거나 칸반 모드 진
 ## 관련 문서
 
 - [자율 연속 루프](/ko/advanced/autonomous-loops) — goal 엔진의 정체 가드와 상한 의미론
-- [칸반 모드](/ko/advanced/kanban-mode) — 리더 세션이 이끄는 3-단계 체인
+- [팩토리 모드](/ko/advanced/factory-mode) — 리더 세션이 카드를 레인에 배분하고, 레인이 카드 한 장을 plan·run·sync까지 맡는 구조
 - [`/moai loop`](/ko/utility-commands/moai-loop) — 진단 주도의 결정적 루프 (형제 명령)
 - [하네스 엔지니어링](/ko/core-concepts/harness-engineering) — 루프와 관찰이 하네스 학습으로 흐르는 경로
