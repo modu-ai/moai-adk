@@ -33,16 +33,19 @@ Each milestone closes with its ACs' green cells (acceptance.md §D), scoped pack
 
 | M | Priority | Scope | REQs | ACs |
 |---|---|---|---|---|
+| M0 | High | **Measurement baseline (committed before any implementation commit)**: (a) degraded-notice rate under load with the current bind path, re-measured after M7 with the bind cache (decision-index Q5); (b) cache-write cost of a 5-minute one-shot recheck vs. longer delays (Q4) — may lengthen the default, never below 5 | 020, 021 | 020, 022 |
 | M1 | High | **Board data model + CLI**: record shape, kinds, location, append/lock, `record`/`read`, lane refusal, statuses | 001-004 | 001-004 |
 | M2 | High | **Verdict admission predicate**: shared function, three call sites, auditor verdict-block fields (`blocking_findings`, `debts`, `delta_eligible`), §9.1/§9.2 doctrine edit | 008, 009, 011 | 008-010 |
-| M3 | High | **Audit kickoff decider**: `DeciderAudit`, edge kickoff→run keeping lease, hash recompute, `factory decide` lane admission | 015-017 | 014-016 |
+| M3 | High | **Audit kickoff decider**: `DeciderAudit`, edge kickoff→run keeping lease, hash recompute, `factory decide` lane admission for `<own-card> --decider audit` only, and the REQ-SD-016 narrowing recorded as an Amendments row on SPEC-FACTORY-SELF-DISPATCH-001 (Q6) | 015-017 | 014-016 |
 | M4 | High | **Ceiling policy**: config key + defaults, auditor/spec-workflow text reconciliation, lane procedure (delta round, hold + split proposal) | 012-014 | 011-013 |
-| M5 | Medium | **Authority register + FOUNDER defaults**: manager-spec contract (C1/C2), plan/spec-assembly kickoff step, pin format, Class/Default/Alternate rows, DEFAULT-APPLIED | 007, 018, 019 | 007, 017, 018 |
+| M5 | Medium | **Authority register + FOUNDER defaults**: manager-spec contract (C2 template first, then C1, `make agents-emit` for C3) including the no-recommendation clause narrowed to judgment calls (Q2), plan/spec-assembly kickoff step, pin format, Class/Default/Alternate rows, product-level definition (Q3), DEFAULT-APPLIED | 007, 018, 019 | 007, 017, 018 |
 | M6 | Medium | **Watchdog + doctrine wiring**: watchdog reads board at step ②, messages-as-nudges rule, binding run conditions copy + sync-auditor re-read, short recheck carrier, MCP intake comparison | 005, 006, 010, 020, 023 | 005, 006, 019, 022, 023 |
 | M7 | Medium | **Hook messaging hygiene**: bind cache, degraded warn log + rate-limited notice | 021, 022 | 020, 021 |
 | M8 | Low | **Mirror + regression sweep**: template mirrors, `make build`, `make agents-emit`, keep-set regression guard, codex emit check | 024, 025 | 024, 025 |
 
-Dependencies: M2 before M3 (guard uses the predicate) and before M6's sync re-read; M1 before M5
+Decisions Q1-Q7 were settled by the leader on 2026-10-03 (decision-index.md). Release target: v3.2.0.
+
+Dependencies: M0(a) baseline before M7; M0(b) before M6 fixes the default delay. M2 before M3 (guard uses the predicate) and before M6's sync re-read; M1 before M5
 (pin cites board records) and M6. M4 needs M2's verdict fields. M7 is independent.
 
 ## §G Risks
@@ -51,7 +54,7 @@ Dependencies: M2 before M3 (guard uses the predicate) and before M6's sync re-re
 |---|---|
 | A lane self-approves Kickoff on a forged verdict file | the guard recomputes the plan-artifact hash and reads the verdict file from the committed card evidence path; the sync audit re-reads the decision record |
 | Board becomes a second queue | closed kind enum; no card-creating kind; queue verbs untouched |
-| Short recheck multiplies cache writes | carrier exists only while a wait-on-leader is open; cadence configurable |
+| Short recheck multiplies cache writes | one-shot, re-armed only while the wait is open; delay configurable with a 5-minute floor; M0(b) measures the cost |
 | Bind cache serves a stale binding after run retirement | full four-field match + run-state check on miss; any bind error deletes the cache file |
 | Default marker read as a recommendation | reversibility rule stated on the row; unrankable rows carry no Default and block |
 

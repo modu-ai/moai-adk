@@ -15,6 +15,10 @@ t1479); stale lane MCP (rc.23 lacked `codex_review`); repeated
 `factory messaging degraded: context deadline exceeded`. Gap: these are leader-reported, not
 re-observed in this session.
 
+Ceiling-ruling evidence (leader-reported 2026-10-03, observed in the mission session): the leader
+applied the same "one delta round" ruling four times (t1399, t1454, t1469, t1458) and ruled "hold"
+twice (t1356, and one earlier card). REQ-FDA-013/014 codify this rule as policy.
+
 ## 2. Probe ledger
 
 | # | Command (run from the worktree root) | Observed output (verbatim, trimmed to the deciding lines) |

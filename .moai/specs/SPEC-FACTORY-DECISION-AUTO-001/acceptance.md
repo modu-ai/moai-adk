@@ -31,13 +31,13 @@ close.
 | AC-FDA-013 | Given a second ceiling hit, `delta_eligible: false`/absent, or a STOP, the procedure writes a hold wait record and a split proposal to the card evidence path and creates no card | REQ-FDA-014 | release-blocking | P10 | M4 |
 | AC-FDA-014 | Kickoff approve with decider `audit` succeeds on a passing verdict with matching hash; fails on hash mismatch; fails on a FAIL verdict; decider `foo` rejected | REQ-FDA-015 | release-blocking | P6, P7 | M3 |
 | AC-FDA-015 | After an `audit` approval the card is in the run stage with lease id and owner unchanged; a `human` approval still lands in `assigned` (T8 behavior preserved) | REQ-FDA-016 | release-blocking | P7 | M3 |
-| AC-FDA-016 | Under lane refusal, `factory decide <own-leased-card> --gate kickoff --choice approve --decider audit` succeeds; the same call for a card the lane does not lease, any `human` call, and any push/abandon/resume call are refused | REQ-FDA-017 | release-blocking | P8 | M3 |
-| AC-FDA-017 | manager-spec (C1, C2, C3) defines `Class:`, `Default:`, `Alternate:`, the reversibility rule, and "no Class → product-level" | REQ-FDA-018 | release-blocking | P12 | M5 |
-| AC-FDA-018 | The kickoff step (plan workflow, local + template) fills `DEFAULT-APPLIED <UTC> <runner+role>` on implementation-level rows with a Default and blocks on a product-level row with an empty verdict | REQ-FDA-019 | release-blocking | P13 (gate on, no default path) | M5 |
+| AC-FDA-016 | Under lane refusal, `factory decide <own-leased-card> --gate kickoff --choice approve --decider audit` succeeds; the same call for a card the lane does not lease, any `human` call, and any push/abandon/resume call are refused; SPEC-FACTORY-SELF-DISPATCH-001 carries an Amendments row naming the single exception to REQ-SD-016 | REQ-FDA-017 | release-blocking | P8 | M3 |
+| AC-FDA-017 | manager-spec (C1, C2, C3) defines `Class:`, `Default:`, `Alternate:`, the published Default rule ("preserve current behavior" first), and "no Class → product-level"; its no-recommendation clause states that it governs judgment calls only and that a rule-selected Default is a policy application; the C2 commit precedes or equals the C1 commit | REQ-FDA-018 | release-blocking | P12 | M5 |
+| AC-FDA-018 | The kickoff step (plan workflow, local + template) states the three-item product-level definition (shipped command default user-visible behavior, removal of a user-facing feature, template default), fills `DEFAULT-APPLIED <UTC> <runner+role>` on implementation-level rows with a Default, and blocks on a product-level row with an empty verdict | REQ-FDA-019 | release-blocking | P13 (gate on, no default path) | M5 |
 | AC-FDA-019 | Run entry instructions copy `debts` into progress §E.2 `### Binding run conditions`; sync-auditor (C1, C2, C3) reports each as disposed/undisposed and an undisposed one as a finding | REQ-FDA-010 | release-blocking | P5 | M6 |
-| AC-FDA-020 | Hook test: a second prompt with a matching bind cache performs zero `factorymsg.Open` calls (counted via the existing measurement seams); any field mismatch performs the full bind | REQ-FDA-021 | release-blocking | P14 | M7 |
+| AC-FDA-020 | Hook test: a second prompt with a matching bind cache performs zero `factorymsg.Open` calls (counted via the existing measurement seams) and emits no degraded notice even when the DB open would exceed its budget; any field mismatch performs the full bind; the M0(a) under-load measurement shows no degraded notice on already-bound sessions with the cache, recorded beside the no-cache baseline | REQ-FDA-021 | release-blocking | P14; M0(a) baseline | M7 |
 | AC-FDA-021 | Hook test: a degraded inbox state produces one warn log line per occurrence and at most one session notice per configured interval | REQ-FDA-022 | release-blocking | P15, P16 | M7 |
-| AC-FDA-022 | auto-semantics §5.1 and the watchdog skill (local + template) define the short recheck carrier (arm on wait-on-leader, delete on resolution, configurable cadence, codex named gap) | REQ-FDA-020 | release-blocking | P18 | M6 |
+| AC-FDA-022 | auto-semantics §5.1 and the watchdog skill (local + template) define the short recheck as a one-shot cron re-armed per open wait-on-leader (not recurring), stop re-arming on resolution, configurable delay with default 5 and a floor of 5 minutes, codex named gap; the default equals the value M0(b) recorded (≥ 5) | REQ-FDA-020 | release-blocking | P18; M0(b) | M6 |
 | AC-FDA-023 | Lane intake doctrine (kanban-dispatch, local + template) requires the MCP build vs `moai version` comparison and the `fallback=CLI` progress line | REQ-FDA-023 | release-blocking | P19 | M6 |
 | AC-FDA-024 | Keep-set guard: no new code path records or approves push, release/main integration, queue admission, contract signing, abandon of an unintegrated branch, product-level verdicts, or final PASS/FAIL; `factory decide --gate push` still requires `human` | REQ-FDA-024 | regression-guard | holds at base (P8) | preserve-through-close |
 | AC-FDA-025 | Every changed shipped file has its template mirror change (token presence in both trees); `make agents-emit-check` clean; no SPEC ID/card id/date in template diffs | REQ-FDA-025 | release-blocking | — | M8 |
@@ -79,7 +79,14 @@ close.
 - **When** the next prompt-submit hook runs
 - **Then** the open-call counter seam records zero opens for the bind
 
+### AC-FDA-020 — no degraded notice on a bound session (decision-index Q5)
+- **Given** a bound lane session with a matching bind cache, and a factory DB whose open is forced past the bind budget (test seam)
+- **When** the prompt-submit hook runs
+- **Then** the hook context carries no `factory messaging degraded` text
+
 ## Edge cases
+
+- A configured recheck delay below 5 minutes → clamped to 5 with a warning.
 
 - Board file present but every line unparseable → `board=ok unparseable=<n>` with zero records, exit 0, warn on stderr.
 - A `supersedes` reference to an unknown id → refused at record time.
@@ -96,6 +103,6 @@ close.
 
 ## Definition of Done
 
-All 24 release-blocking ACs green with verbatim evidence in progress §E.2; AC-FDA-024 re-asserted at
+The M0 baseline committed before the first implementation commit; all 24 release-blocking ACs green with verbatim evidence in progress §E.2; AC-FDA-024 re-asserted at
 close; sync-audit PASS-family; template mirrors and emitted agents committed; no keep-set behavior
 changed.

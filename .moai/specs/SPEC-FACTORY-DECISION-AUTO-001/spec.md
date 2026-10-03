@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-DECISION-AUTO-001
 title: "Factory decision automation: decision board, PASS-WITH-DEBT admission, audit-ceiling policy, audit kickoff decider, FOUNDER defaults, wake latency, messaging degradation (card t1481)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -22,6 +22,7 @@ related_specs: [SPEC-DECISION-AUTHORITY-001, SPEC-FACTORY-SELF-DISPATCH-001, SPE
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 0.1.0 | 2026-10-03 | manager-spec | Initial Tier L authoring for card t1481 (operator directive 2026-10-03: survey the factory, remove the bottlenecks that make lanes wait on the leader). Eight concerns: decision board, authority-register extension, PASS-WITH-DEBT definition and admission, audit-ceiling policy, factory `audit` kickoff decider, FOUNDER default application, short wait recheck, factory-messaging bind cache and degraded-state surfacing, MCP staleness fallback. Re-measured at `d7112d005`. |
+| 0.1.1 | 2026-10-03 | manager-spec | Leader decisions Q1-Q7 recorded (mission contract 07d28c4b; operator 2026-10-03: implement now, include in v3.2.0). Q1 board writes leader-only (REQ-FDA-003 unchanged). Q2 manager-spec no-recommendation clause narrowed to judgment calls, rule-selected Default is policy application (REQ-FDA-018 extended, template-first). Q3 product-level defined (REQ-FDA-019). Q4 short recheck = one-shot cron re-armed per wait, 5 min floor (REQ-FDA-020). Q5 bind-cache acceptance = no degraded notice on an already-bound session; run M0 measures (REQ-FDA-021). Q6 REQ-SD-016 narrowed to the single `--decider audit` own-card shape (REQ-FDA-017). Q7 hold + split only (REQ-FDA-014). Added the observed one-delta-round rulings (t1399, t1454, t1469, t1458) and holds (t1356, prior) as policy evidence. Plan gains M0 measurement milestone. |
 
 ## §A Context and Problem
 
@@ -44,6 +45,10 @@ ruling ("PASS-family + blocking 0 → autonomous Kickoff") was re-sent per card.
 | wake latency | every leader reply | factory messages arrive only at turn boundaries; an idle lane wakes on the 20-minute cron |
 | "factory messaging degraded: context deadline exceeded" | repeated | the bind pays a DB open and peer query on every prompt before the already-bound early return; degraded inbox states are discarded |
 | stale lane MCP | rc.23 lane lacked `codex_review` | intake never compares the MCP server build with the installed CLI |
+
+The ceiling rulings were one rule applied by hand: in the 2026-10-03 mission session the leader
+applied "one delta round" four times (t1399, t1454, t1469, t1458) and "hold" twice (t1356, and one
+earlier instance) — leader-reported, research.md §1. REQ-FDA-013/014 codify exactly that rule.
 
 ### A.3 The ladder step that does not exist
 
@@ -158,32 +163,40 @@ The keep-set is unchanged and stays human (§C.9).
   path shall keep its present behavior.
 - **REQ-FDA-017** (Event-driven) — When a lane session invokes the kickoff approve decision with
   decider `audit` for the card its own lease holds, `factory decide` shall admit the call; every other
-  lane invocation of `factory decide` shall remain refused.
+  lane invocation of `factory decide` shall remain refused; REQ-SD-016 of
+  SPEC-FACTORY-SELF-DISPATCH-001 shall be amended to name this single exception.
 
 ### C.6 FOUNDER defaults
 
 - **REQ-FDA-018** (Capability gate) — Where `interview.decision_gate` is `on`, a `FOUNDER` row shall
   carry a `Class:` line valued `product-level` or `implementation-level` and may carry a `Default:`
-  line and an `Alternate:` line, where the Default is selected by the stated reversibility rule rather
-  than by preference; a row without a `Class:` line shall be treated as `product-level`.
+  line and an `Alternate:` line, where the Default is selected by a fixed, published rule (first rule:
+  the option that preserves current behavior) rather than by preference; a row without a `Class:` line
+  shall be treated as `product-level`. The manager-spec decision-index clause that forbids an embedded
+  recommendation or preferred answer shall state that it governs judgment calls only and that a Default
+  selected by the published rule is a policy application, changed in the template source first.
 - **REQ-FDA-019** (Event-driven) — When the Kickoff reaches an `implementation-level` `FOUNDER` row that
   carries a `Default:` line and an empty operator verdict, the Kickoff shall fill the verdict line with
   `DEFAULT-APPLIED`, the UTC time, and the deciding runner and role, and shall not block on that row;
   an empty verdict on a `product-level` row shall block the autonomous Kickoff and route the row to the
-  operator.
+  operator. A row is `product-level` exactly when its decision changes a shipped command's default
+  user-visible behavior, removes a user-facing feature, or changes a template default; every other row
+  is `implementation-level`.
 
 ### C.7 Wait recheck
 
 - **REQ-FDA-020** (State-driven) — While the card's progress record holds a wait record whose
   `waiting_on` names the leader and no later board record for that card resolves it, the lane shall keep
-  a short recheck carrier at the configured cadence (default 5 minutes) in addition to the standing
-  20-minute carrier, and shall delete the short carrier when the wait resolves.
+  a one-shot recheck at the configured delay (default 5 minutes, never below 5) re-armed after each
+  recheck that finds the wait still open, in addition to the standing 20-minute carrier, and shall stop
+  re-arming once the wait resolves.
 
 ### C.8 Messaging and intake hygiene
 
 - **REQ-FDA-021** (Event-driven) — When a prompt-submit bind finds a cached binding whose session,
   run, owner PID, and process start all match the current invocation, the hook shall return without
-  opening the factory messaging database for the bind.
+  opening the factory messaging database for the bind, so an already-bound session never receives a
+  degraded bind notice.
 - **REQ-FDA-022** (Event-driven) — When an inbox claim returns a degraded state, the hook shall log it
   at warn level with the state string and surface a notice to the session at most once per configured
   interval per session.

@@ -115,24 +115,29 @@ Why unresolved: <...>
 Operator verdict:
 ```
 
-Reversibility rule (ordered): the option that keeps the current behavior; else the option whose
+Published Default rule (ordered): the option that preserves current behavior; else the option whose
 undo is a single revert of this SPEC's own commits; else the option with the smaller user-visible
-surface. A row the rule cannot rank carries no Default and blocks. `product-level` covers: any
-user-visible CLI/config/output change outside the SPEC's own new surface, data or state-format
-compatibility, a keep-set category, and pricing/licensing. Kickoff writes
-`Operator verdict: DEFAULT-APPLIED <UTC> <runner+role>`.
+surface. A row the rule cannot rank carries no Default and blocks. `product-level` (decision-index Q3,
+closed list): a change to a shipped command's default user-visible behavior, removal of a
+user-facing feature, or a change to a template default; everything else is implementation-level.
+Kickoff writes `Operator verdict: DEFAULT-APPLIED <UTC> <runner+role>`.
 
-The existing manager-spec rule "never carries an embedded recommendation or preferred answer" is
-amended: a Default selected by the stated rule is a declared fallback, not a recommendation; rows
-must still carry Detect → Explain → Ask text. This amendment is decision-index Q2.
+The manager-spec clause "never carries an embedded recommendation or preferred answer" is amended
+(decision-index Q2): it governs judgment calls only; a Default selected by the published rule is a
+policy application. Rows still carry Detect → Explain → Ask text. Template source
+(`internal/template/templates/.claude/agents/moai/manager-spec.md`) first, then the local copy, then
+`make agents-emit`.
 
 ## 7. Short recheck
 
-The watchdog, after writing a wait line with `waiting_on=leader`, arms a second recurring
-`CronCreate` (`*/5` offset minute) whose prompt is the canonical awaken prompt; on each pass it
-deletes the short carrier when a resolving board record exists. Codex runner: no cron; named gap,
-the leader's board write plus the nudge is the substitute. Cadence key:
-`workflow.watchdog.wait_recheck_minutes` (default 5).
+The watchdog, after writing a wait line with `waiting_on=leader`, arms a one-shot `CronCreate`
+(`recurring: false`) set to the configured delay from now, using the canonical awaken prompt. Each
+fire runs the watchdog pass; if no resolving board record exists it re-arms one more one-shot,
+otherwise it arms nothing (decision-index Q4). Codex runner: no cron; named gap, and the leader's
+board write plus the nudge is the substitute. Delay key: `workflow.watchdog.wait_recheck_minutes`
+(default 5, values below 5 clamped to 5; run M0(b) may raise the default). The one-shot absolute-time
+hazard of §5.1 (the local/UTC slip seen on t1393) is avoided by computing the fire time from the cron
+tool's own clock, which M0(b) verifies.
 
 ## 8. Messaging hygiene
 
