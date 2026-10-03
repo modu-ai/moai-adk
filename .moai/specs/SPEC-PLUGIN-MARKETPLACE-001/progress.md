@@ -831,6 +831,216 @@ Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketpla
 - The script's expectations come from `plugins/moai/skills` and the template command stems; a skill directory in the payload that the template does not carry would be expected and listed, so the script alone does not catch a stray payload skill (the drift gate does).
 - Strict validation, the inventory shape and the 41-name count are shown at claude 2.1.288 only (RK-13).
 
+### M3a (the Go half of M3: install step, runner seam, verb, opt-out, resolver variant)
+
+Run-phase worker: `Agent(general-purpose)` carrying the manager-develop role text, `cycle_type=tdd`, in the card worktree. Scope: M3a only (REQ-010 to REQ-017 and REQ-019 in Go; exit AC-010 to AC-017 and AC-019 (a), (b)). Left for M3b and M4, named here so no later reader assumes them: the install scripts and the docs-site copies, `.github/workflows/test-install.yml`, `TestInstallScriptsPluginStepGuarded` (AC-018 (c); it reads the scripts and cannot pass before they change), the remaining harness cases (`isolation-*`, `verb-*`, `init-*` under OD-14, the three flags) and so AC-018 (a), AC-019 (c) and AC-025, and all of M4 (the doctor check).
+
+#### Pre-flight (recorded before any edit, 2026-10-03)
+
+```
+$ git rev-parse --show-toplevel
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435
+$ git rev-parse --short HEAD
+ce863c085
+$ git branch --show-current
+WT-marketplace-core-plugin
+$ git status --short
+(empty)
+$ env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'
+(empty; grep exit 1)                                         # BI-1, start of the first measurement batch
+$ go build ./...                                             # exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                   # exit 0
+$ go test ./internal/cli -run '^TestBinaryLag_.*$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.965s
+$ grep -rn 'runInit(' internal/cli/*_test.go | wc -l
+      33                                                     # plan section 5: 33 lines
+$ grep -rn 'initCmd.RunE(' internal | wc -l
+       9
+$ grep -rn '"init"' internal --include='*.go' | grep -v '_test.go' | grep -v 'git' | head
+internal/cli/help_order.go:32:	"project": {"init", "status", "doctor", "update", "migrate", "pr"},
+internal/cli/doctor_agentemit_embed.go:352:	cmd := exec.Command(execPath, "init", target, "--non-interactive", "--llm", "both")
+internal/cli/init.go:449:	wtPath := enterSessionWorktree(swCfg, "init", cmd.ErrOrStderr())
+internal/cli/init.go:457:				wtPath, cerr, "init")
+internal/hook/types.go:125:	// (official trigger values: "init" | "maintenance"; carried in the shared
+                                                             # the one process-start caller is doctor_agentemit_embed.go:352 (1, as planned)
+$ grep -n "init " e2e/cli/tux3_journeys.sh        # two runs, lines 104 and 115, as planned
+$ sh scripts/protected-set-hash.sh                           # before-line
+PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190
+```
+
+No count differs from the plan. B2 cross-SPEC scan (`grep -rn "Retired\|superseded" internal/cli`): hits in `cg.go`, `glm.go`, `harness.go` and a handful of tests (retired CG routing, model-override and harness retirement); none concerns plugins, the install step or the Claude resolver, so no conflict. B3: `grep -rn 'AskUserQuestion' internal/cli/plugin_install*.go` prints nothing (grep exit 1).
+
+#### Design decisions taken in M3a (read from the SPEC text; the plan leaves the seam open)
+
+- The runner seam is an interface (`pluginCommandRunner.Run(ctx, bin, args, env) ([]byte, error)`) with one production type, `execPluginRunner`, held in the package variable `pluginRunner`. It returns the combined output so the guidance reason can carry a bounded tail and so the M4 doctor probe can read `codex plugin list --json` through the same variable. The default refuses under a test binary with `errPluginRunnerRefused`.
+- A second, silent pre-check sits in the step: when the active runner is the default type and the process is a test binary the step returns before printing anything. Without it the 33 `runInit` and 9 `initCmd.RunE` test sites would each print a config-home line and a guidance block. The runner's own refusal remains the real guard; the two are independent and each has its own test (see Mutants).
+- The test-binary detector is `testing.Testing() || isPluginTestProgram(os.Args[0])`; `isPluginTestProgram` looks at the program name only (`.test` or `.test.exe` on the part after the last `/` or `\`). `isTestEnvironment()` in `glm.go` is not reused.
+- `claude_binary.go` gains `claudeNotFoundError` (same message the launcher always printed) and `resolveClaudeBinaryAt(projectRoot)`; `resolveLaunchClaudeBinary()` is now `resolveClaudeBinaryAt` over `findProjectRoot()` and its behavior and error text are unchanged.
+- `moai init` passes the project it initialises (`opts.ProjectRoot`) so the `llm.claude_bin` pin read is that project's; `moai plugin install` passes the project the working directory sits in, as the launcher does.
+- The config-home line prints the variable's value, else the literal `~/.claude` or `~/.codex`. One success line is printed per tool; the tests count only the skip line and the guidance block.
+- `MOAI_SKIP_PLUGIN_INSTALL` opts out on `1` or `true` (case-insensitive); empty and `0` do not.
+- `--no-plugin` is registered on `initCmd` only. The mirrored `newInitTestCmd()` in the existing tests has no such flag, and `getBoolFlag` returns false for an absent flag, so no existing test needed an edit.
+
+#### Commits (tdd order: observed RED as its own commit, then GREEN, then REFACTOR)
+
+| Step | SHA | Content |
+|------|-----|---------|
+| RED | `0080bfb09` | the unit, init, verb, guard and resolver tests, with compiling stubs that perform nothing; the two config constants land here because the tests name them |
+| GREEN | `93dee3f2f` | the step, the runner seam, the verb, the `--no-plugin` flag and the init call, the resolver variant, the opt-out on the doctor re-entry and on the two e2e lines |
+| REFACTOR | `209de9f55` | a zero-timeout fallback removed (untested), `@MX:WARN` on the real runner, the timeout constant's comment reworded, two tests added that kill mutants the first GREEN left alive |
+
+The RED commit precedes the GREEN commit in the commit graph, which is the only witness of the order (verification-claim-integrity section 2.3). The commit carrying this record follows the REFACTOR commit.
+
+#### RED (observed before any GREEN code, at `0080bfb09`)
+
+Command (one invocation, 15 anchored names, BI-1 printed nothing first): `go test ./internal/cli -count=1 -v -run '^(TestPluginInstallStep_Sequence|TestPluginInstallStep_FailOpen|TestPluginInstallStep_ToolAbsent|TestPluginInstallStep_OptOut|TestPluginInstallStep_Environment|TestPluginInstallStep_NoRealRunnerUnderTest|TestPluginTestProgramDetector|TestInitPluginStep_AfterDeployment|TestInitPluginStep_HarnessGating|TestPluginInstallCmd|TestResolveClaudeBinaryAt_NotFoundIsTyped|TestResolveClaudeBinaryAt_InvalidPinIsNotTheNotFoundClass|TestResolveClaudeBinaryAt_ReadsPinFromGivenRoot|TestPluginOptOutCallersEnumerated|TestDoctorAgentEmitEmbed_SetsPluginOptOut)$'`
+
+Result: exit 1, `FAIL github.com/modu-ai/moai-adk/internal/cli 53.593s`. No panic, no `[build failed]`, no `no tests to run`; the swept set is 15 top-level tests and 41 subtests. Per-selector counts (RED, then the same names at the final HEAD):
+
+| Test | RED top | RED subtests fail/pass | Final top | Final subtests fail/pass |
+|------|---------|------------------------|-----------|--------------------------|
+| TestPluginInstallStep_Sequence | FAIL | 6 / 1 | PASS | 0 / 7 |
+| TestPluginInstallStep_Environment | FAIL | 4 / 0 | PASS | 0 / 4 |
+| TestPluginInstallStep_FailOpen | FAIL | 6 / 1 | PASS | 0 / 7 |
+| TestPluginInstallStep_ToolAbsent | FAIL | 3 / 0 | PASS | 0 / 3 |
+| TestPluginInstallStep_OptOut | FAIL | 2 / 3 | PASS | 0 / 5 |
+| TestPluginInstallStep_NoRealRunnerUnderTest | FAIL | 2 / 2 | PASS | 0 / 5 (one added in REFACTOR) |
+| TestPluginInstallCmd | FAIL | 5 / 1 | PASS | 0 / 6 |
+| TestInitPluginStep_HarnessGating | FAIL | 5 / 0 | PASS | 0 / 5 |
+| TestInitPluginStep_AfterDeployment | FAIL | none | PASS | none |
+| TestPluginTestProgramDetector | FAIL | none | PASS | none |
+| TestResolveClaudeBinaryAt_{NotFoundIsTyped, InvalidPinIsNotTheNotFoundClass, ReadsPinFromGivenRoot} | FAIL x3 | none | PASS x3 | none |
+| TestPluginOptOutCallersEnumerated | FAIL | none | PASS | none |
+| TestDoctorAgentEmitEmbed_SetsPluginOptOut | FAIL | none | PASS | none |
+
+Verbatim failing assertions (excerpt of `red1.log`, each line the test's own message):
+
+```
+claude_binary_root_test.go:22: absent claude returned <nil>, want a *claudeNotFoundError
+plugin_install_test.go:135: vectors:
+plugin_install_test.go:172: want claude add (failed) + both Codex commands = 3 calls, got []
+plugin_install_test.go:328: production wiring bound = 0s, want config.DefaultPluginInstallCommandTimeout (1m0s)
+plugin_install_test.go:405: want exactly one skip line, got 0:
+plugin_install_test.go:516: default runner returned <nil>, want errPluginRunnerRefused
+plugin_install_test.go:530: runInit never reached the plugin step with an injected runner
+plugin_install_test.go:593: isPluginTestProgram("/tmp/go-build123/b001/cli.test") = false, want true
+plugin_install_test.go:635: init made no plugin call at all
+plugin_install_test.go:679: harness map[llm:both]: claude=false codex=false, want claude=true codex=true ([])
+plugin_install_guard_test.go:135: ../../internal/cli/doctor_agentemit_embed.go starts `init` but does not reference config.EnvSkipPluginInstall
+plugin_install_guard_test.go:154: tux3_journeys.sh:104 runs `'$BIN' init` without MOAI_SKIP_PLUGIN_INSTALL: run_to j1-init 180 "$SANDBOX" "NO_COLOR=1 '$BIN' init proj-j1 --non-interactive --language go --git-mode manual"
+plugin_install_guard_test.go:186: the init child did not receive MOAI_SKIP_PLUGIN_INSTALL=1:
+```
+
+Eight subtests passed at RED (`OptOut/flag`, `env-1`, `env-true`, `Sequence/no-scope-argument`, `FailOpen/returns-nil`, `PluginInstallCmd/exit-nonzero-on-unknown-flag`, and the two inertness subtests `pin-and-path-shims-untouched`, `rune-callers-covered`): a stub that does nothing satisfies "zero calls", "no scope argument", "returns nil" and "no process started", so these cannot be red against it. The inertness test carries two controls for that: `step-is-reached-positive-control` (RED, an injected runner must record under `runInit`) and, added in REFACTOR, `step-silent-under-default-runner`; the empty-record subtests are shown able to fail by the mutants below, not by a RED.
+
+#### GREEN and the final run (HEAD `209de9f55`)
+
+The final run, same 15 names plus `TestInitPluginStep_OptOut` (added in REFACTOR), BI-1 first (printed nothing, exit 1):
+
+```
+$ go test ./internal/cli -count=1 -v -run '^(...16 names...)$'      # output kept in a scratch file
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	24.874s
+top PASS 16 FAIL 0 SKIP 0; sub PASS 45 FAIL 0 SKIP 0
+```
+
+Guards and neighbours in one run (`-run '^(TestRootCmd_.*|TestHelpGroupOrder_.*|TestHelpGolden_.*|TestNoPhantomBrain|TestHelpRegisteredCommands|TestDoctorCmd_IsSubcommandOfRoot|TestCharacterize_Help_.*|TestInventory_RegisteredOnRoot|TestMCPCmdRegisteredOnRoot|TestBinaryLag_.*|TestInitCmd_.*|TestRunInit_.*|TestResolveLaunchClaudeBinary_.*|TestValidateClaudeBinaryPin_.*)$'`):
+
+```
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	128.971s
+top PASS 97 FAIL 0 SKIP 0
+```
+
+`go test ./internal/config -count=1`: `ok  github.com/modu-ai/moai-adk/internal/config  12.007s` (measured at the REFACTOR content except for a comment-only edit of `defaults.go`; the build and lint were re-run after it). `go build ./...` exit 0 and `GOOS=windows GOARCH=amd64 go build ./...` exit 0 at `209de9f55`. `golangci-lint run --timeout=5m ./internal/config/... ./internal/cli/` at v2.1.6: `0 issues.` (the first run reported one ST1008 in a new test helper, fixed before the GREEN commit; no baseline issue existed in the two packages). `go vet ./internal/cli ./internal/config` clean. `gofmt -l` lists `internal/cli/mcp_claude.go` and `internal/config/slice.go`, neither touched by this milestone.
+
+#### AC matrix (PASS only where the AC's own command was run and the expected output observed)
+
+| AC | Result | Command | Observed |
+|----|--------|---------|----------|
+| AC-010 (a) | PASS | `go test ./internal/cli -run '^TestInitPluginStep_AfterDeployment$' -count=1 -v` | `--- PASS: TestInitPluginStep_AfterDeployment (1.43s)` |
+| AC-010 (b) | PASS | `... -run '^TestInitPluginStep_HarnessGating$' ...` | `--- PASS` with `claude-default`, `claude-explicit`, `gpt`, `both`, `unrecognized-falls-back-to-claude` |
+| AC-011 (a) | PASS | `... -run '^TestPluginInstallStep_Sequence$' ...` | `--- PASS` with `both-present`, `claude-only`, `codex-only`, `install-skipped-after-add-fails`, `already-present-is-success`, `no-scope-argument`, `pinned-binary-honored` |
+| AC-011 (b) | PASS (deviation, see G-M3a-2) | `claude plugin marketplace add <repo root> --json` twice, `claude plugin install moai@moai-adk --json` twice, scratch `CLAUDE_CONFIG_DIR` | exit 0 on all four; `Successfully added marketplace: moai-adk`; second add `already on disk`; `Successfully installed plugin: moai@moai-adk (scope: user)`; second install `is already installed (scope: user)` |
+| AC-011 (c) | PASS (same deviation) | `codex plugin marketplace add <repo root>` twice, `codex plugin add moai@moai-adk` twice, scratch `CODEX_HOME` | exit 0 on all four; `Added plugin \`moai\` from marketplace \`moai-adk\`.` printed by both `plugin add` runs |
+| AC-012 (a) | PASS | `... -run '^TestPluginInstallStep_Environment$' ...` | `--- PASS` with `env-unchanged`, `prints-config-home-claude`, `prints-config-home-codex`, `default-home-when-unset` |
+| AC-013 (a) | PASS | `... -run '^TestPluginInstallStep_FailOpen$' ...` | `--- PASS` with `exit-nonzero`, `timeout`, `bound-equals-constant`, `invalid-pin`, `add-fails-no-install`, `guidance-names-both-commands`, `returns-nil` |
+| AC-013 (b) | PASS | `grep -n DefaultPluginInstallCommandTimeout internal/config/defaults.go` | one line: `185:	DefaultPluginInstallCommandTimeout = 60 * time.Second` (static; (a) is the behavior check) |
+| AC-014 (a) | PASS | `... -run '^TestPluginInstallStep_ToolAbsent$' ...` | `--- PASS` with `claude-absent`, `codex-absent`, `both-absent` |
+| AC-015 (a) | PASS | `... -run '^TestPluginInstallStep_OptOut$' ...` | `--- PASS` with `flag`, `env-1`, `env-true`, `env-empty-is-not-optout`, `env-0-is-not-optout` |
+| AC-015 (b) | PASS | `grep -c MOAI_SKIP_PLUGIN_INSTALL internal/config/envkeys.go` | `1` (static) |
+| AC-016 (a) | PASS | `... -run '^TestDoctorAgentEmitEmbed_SetsPluginOptOut$' ...` | `--- PASS: TestDoctorAgentEmitEmbed_SetsPluginOptOut (0.25s)` |
+| AC-016 (b) | PASS | `... -run '^TestPluginOptOutCallersEnumerated$' ...` | `--- PASS: TestPluginOptOutCallersEnumerated (0.82s)`; the tool result of one earlier parallel invocation was exit 144 with no test output (a tool-side kill, not a test result); the single re-run printed the PASS line |
+| AC-016 (c) | PASS (static) | `grep -c MOAI_SKIP_PLUGIN_INSTALL e2e/cli/tux3_journeys.sh` | `2` |
+| AC-017 | PASS | `... -run '^TestPluginInstallStep_NoRealRunnerUnderTest$' ...` | `--- PASS` with `default-runner-refuses`, `step-silent-under-default-runner`, `step-is-reached-positive-control`, `pin-and-path-shims-untouched`, `rune-callers-covered` (the spec names three subtests; two controls were added) |
+| AC-019 (a) | PASS | `... -run '^TestPluginInstallCmd$' ...` | `--- PASS` with `registered-in-root-help`, `help-names-opt-out`, `exit-0-on-fail-open-outcomes`, `exit-nonzero-on-unknown-flag`, `no-harness-filter`, `project-pin-read-from-working-directory` (one subtest added) |
+| AC-019 (b) | PASS | `moai-m3a plugin install --help` (binary built from this tree with `go build -o <scratch>/moai-m3a ./cmd/moai`, invoked by path) | exit 0; a `--bogus` flag exits 1 |
+| AC-019 (c), AC-018, AC-025 | GAP | the harness cases and the scripts | not built here; M3b |
+
+Not on the matrix and shown only as extra observations: the real `moai plugin install` binary run from a scratch working directory under `env -i PATH=<shim dir>:/usr/bin:/bin CLAUDE_CONFIG_DIR=<scratch> CODEX_HOME=<scratch> MOAI_HOME=<scratch>` with recording shim `claude` and `codex` on PATH printed both config homes and both success lines, exited 0 and recorded, in order, `claude plugin marketplace add modu-ai/moai-adk`, `claude plugin install moai@moai-adk`, `codex plugin marketplace add modu-ai/moai-adk`, `codex plugin add moai@moai-adk`, each child seeing its scratch home; the same run with `MOAI_SKIP_PLUGIN_INSTALL=1` added no record. That is the real default runner on a non-test binary, against shims only.
+
+#### Mutants (verification-completeness section 2; each applied to the GREEN tree, run, then restored with `git checkout -- <file>`)
+
+Killed:
+- default runner without its refusal: `default-runner-refuses` red; the other inertness subtests stayed green because the step's pre-check shields them (two sufficient defenses defeat a single removal, which is why `step-silent-under-default-runner` was added).
+- the step's pre-check removed alone: `step-silent-under-default-runner` red.
+- both removed: `default-runner-refuses`, `step-silent-under-default-runner`, `pin-and-path-shims-untouched` (record `claude-pinned plugin marketplace add modu-ai/moai-adk ...`), `rune-callers-covered` (record `claude-pinned plugin marketplace add ...`) all red, so the empty-record assertions can fail.
+- an argument-keyed detector (any argument ending `.test`): the same four plus `TestPluginTestProgramDetector` (`isPluginTestBinary() = false inside go test`).
+- install after a failed add: `install-skipped-after-add-fails`, `exit-nonzero`, `timeout`, `add-fails-no-install`, `guidance-names-both-commands`.
+- guidance printed for an absent tool: `claude-absent`, `codex-absent`, `both-absent`.
+- an invalid pin treated as absent: `invalid-pin`.
+- a child environment with a variable added: `env-unchanged`.
+- the opt-out flag ignored: `flag`; `0` or any non-empty value counted as opt-out: `env-0-is-not-optout`.
+- no per-command deadline: the `timeout` subtest hangs and the run ends `panic: test timed out after 25s`.
+- a production bound of 30 s: `bound-equals-constant`.
+- the pin ignored for PATH: `both-present`, `claude-only`, `install-skipped-after-add-fails`, `pinned-binary-honored`.
+- a verb that acts on Claude only: `no-harness-filter`; a verb that returns an error after the step: `exit-0-on-fail-open-outcomes`, `no-harness-filter`, `project-pin-read-from-working-directory`.
+- an init wiring that ignores the harness: `claude-default`, `claude-explicit`, `gpt`, `unrecognized-falls-back-to-claude`; the call moved before deployment: `AfterDeployment` (`2 plugin call(s) ran before the deployed file set was complete`); an init wiring that never reads `--no-plugin`: `TestInitPluginStep_OptOut/flag`.
+- the doctor child without the opt-out (`=0`): `TestDoctorAgentEmitEmbed_SetsPluginOptOut` red while the static caller list stayed green; the e2e line without the variable and a new `exec.Command(bin, "init", ...)` in a non-test source: `TestPluginOptOutCallersEnumerated` red, each naming the file or line.
+
+Not killed or not attempted: none of the attempted ones survived. Not attempted: a verb that "ignores --llm" (the verb has no such flag; `no-harness-filter` asserts the flag is absent and that all four calls happen), a runner whose refusal keys on the arguments of one command rather than the process (covered in kind by the argument-keyed detector mutant, not run separately), and any Windows-specific behavior.
+
+#### Protected-set bracket and BI-1
+
+Before: `PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190` (the dispatch baseline). After my last real-tool command: `PROTECTED-SET e2f43ca5331dcbb7c23bcf84e7575e79390e35ac22376eb751fb88dc2de2f43e entries=190`. **The two lines are not equal, so the bracket does not show LEAK=0.** Attribution, from the dumps (`--dump`), not assumed: the entry listings are identical between the after-dumps taken at 11:27, 11:37 and 11:41, and the only line that moved between any two of them is `CONTENT <hash> /Users/goos/.codex/config.toml`; no path under the protected roots has a birth time later than 10:30 (the baseline was taken before 10:50); `~/.codex/config.toml` was rewritten at 11:12:40, 11:31:32 and 11:37:21 and its newest stanzas are `[projects."/private/var/folders/.../T/TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey764495410/001"]` and `TestCodexLive_ReviewStartBaseBranchIsNotRejected2038186140`, test names of other lanes; no stanza names any test, project or path of this milestone (a grep for `TestPluginInstall`, `TestInitPluginStep`, `TestResolveClaude`, `TestDoctorAgentEmitEmbed`, `TestPluginOptOut`, `plugin-proj`, `optout-proj`, `tier-proj`, `rune-proj`, `t1435` matches one stanza, a `develop` worktree scratchpad of another lane); the Codex desktop app (pid 11250, started 09:01) is live on this machine, and a `codex app-server` (pid 12007) started at 11:37:20, one second before the 11:37:21 rewrite, at a moment when none of my commands ran `codex` (my only earlier `codex` run was `codex --version`, and the AC-011 (c) commands started at 11:37:55); the `codex` commands of AC-011 (c) ran with `CODEX_HOME` pointed at a scratch directory after the 11:37:21 rewrite and the file's mtime did not move afterwards. Two hashes taken twenty seconds apart at 11:28 were equal (`77debbee...`), so the value is stable between ambient writes. What this does not establish: the entry-by-entry baseline dump was not kept (only its hash), so the difference between the baseline and the 11:27 dump cannot be shown line by line (G-M3a-1).
+
+BI-1 (`env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'`) ran at the pre-flight, before the RED run, before each later go-test measurement batch and at the end, after the last real-tool command: every run printed nothing (`bi1-exit=1`). The real-tool commands themselves ran under `env -i`, so the ambient environment did not reach them. The real tools that ran were `claude plugin marketplace add`, `claude plugin install` and `codex plugin marketplace add`, `codex plugin add`, each under its own empty scratch home with `env -i PATH=...`; `claude --version` and `codex --version` only otherwise. Nothing was aimed at a real home. The mutant runs that removed the runner's refusal could start only recording scripts and an inert pinned file (the tests pin `MOAI_CLAUDE_BIN`, put recording shims first on PATH and point the config homes at scratch directories).
+
+#### Claim
+
+M3a delivers REQ-010 to REQ-017 and REQ-019 in Go: `moai init` and `moai plugin install` run the two-command sequence per tool through an injected runner whose default refuses under a test binary, fail open, honor the opt-out by flag and environment, print the config home, and the two automated `init` callers set the opt-out. AC-010 to AC-017 and AC-019 (a) and (b) are shown by their own commands; AC-018, AC-019 (c) and AC-025 belong to M3b.
+
+#### Evidence
+
+The commands and verbatim output are in the RED, final-run, AC-matrix, mutant and bracket sections above.
+
+#### Baseline-attribution
+
+Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketplace-core-plugin`, base HEAD `ce863c085`. RED measured at `0080bfb09`; the first GREEN selector run and the mutants against the tree at `93dee3f2f` (the mutants with the one uncommitted test addition); the final selector run, the guard run, the build, the lint, the AC-matrix commands and the scratch-built `moai-m3a` at `209de9f55`; all in this run. The judging tools are installed binaries invoked through PATH, none built from this tree, so section 2.2 of verification-claim-integrity asks for no build-versus-HEAD statement for them: `go` go1.26.8, `golangci-lint` v2.1.6, `claude` 2.1.288, `codex` 0.160.0. The Go tests judge the tree's own `internal/cli` and `internal/config` packages, built by `go test` from this tree; the verb help and the shim run judged `moai-m3a`, built from this tree at `209de9f55` (its `version` carries no commit stamp because `make build`'s ldflags were not used).
+
+#### Gaps
+
+- G-M3a-1: the protected-set bracket is not equal (see the section above); the cause is attributed, not proven, and the baseline entry dump was not kept. A later protected-set check should save a dump with the before-line.
+- G-M3a-2: AC-011 (b) and (c) name `./` and `.` as the source with the repository root as the working directory; both ran with the absolute worktree path from a scratch working directory under `env -i PATH=... CLAUDE_CONFIG_DIR|CODEX_HOME=<scratch>` (the M2 precedent). `claude` read 2.1.288 and `codex` 0.160.0 here, the SPEC's observations are at 2.1.287 and 0.160.0.
+- G-M3a-3: the real binary's `init` is not driven (OD-14 default (a), SPEC G-8); init's call into the step is covered by Go tests with an injected runner and by the inertness subtests, not by a real process start. The real default runner was exercised only by the manual verb run against shims.
+- G-M3a-4: nothing here contacts the GitHub source `modu-ai/moai-adk` (SPEC G-1); the product commands were observed only through the injected runner and the shims.
+- G-M3a-5: only `internal/cli` selectors (the 16 plugin names, the guards and neighbours listed above, 97 top-level tests in the second run) and the full `internal/config` package were run (AGENTS.md section 4); the full `internal/cli` suite and other packages were not.
+- G-M3a-6: `TestInitPluginStep_AfterDeployment` judges "deployment complete" by four sentinel files (`CLAUDE.md`, `.claude/settings.json`, `.moai/config/sections/quality.yaml`, `.moai/manifest.json`), not by the whole deployed set; a step moved to a point after those four but before a later deployment write would pass it.
+- G-M3a-7: the recording-script tests (`default-runner-refuses`, the two inertness subtests, the doctor child test) skip on Windows; the Windows check is the cross-build and the detector table that includes a `.test.exe` name.
+- G-M3a-8: root `moai --help` has two renderers; the fang grouped help (the production `Execute` path) lists `plugin` in TOOLS, the curated TUI table in `help.go` (`rootHelpGroups`) does not and was not changed.
+- G-M3a-9: the verb prints one pre-existing `level=WARN msg="config sections directory not found, using defaults"` line when run outside a project; it comes from the root command's config loading and is not part of this milestone.
+- G-M3a-10: every command containing a shell variable or a python heredoc that named a git verb was refused by the worktree guard at least once; each was re-run with literal paths or the file tool. Nothing was substituted by reading the source (verification-claim-integrity section 3.1).
+- G-M3a-11: the exit codes of the `go test` and `grep` runs were read from the tool results where no echo was possible; echoes exist for `bi1-exit`, `help-exit` and the real-tool commands.
+
+#### Residual-risk
+
+- `moai init` now starts real `claude` and `codex` processes against the invoking person's real profile in production. The opt-out, the harness gate, the 60-second per-command bound and the fail-open outcomes are tested; RK-15's worst case of 240 seconds (four commands that all hang) is unchanged.
+- The guidance and skip wording is a proposal (design.md section 3.6); the tests count lines and assert the manual commands and two marker strings (`Install it yourself`, `not found on PATH`), so a reword that keeps them passes.
+- `testing` is imported by a non-test source (`testing.Testing()`); the linter accepts it and the binary-size effect was not measured.
+- The runner refusal and the step's pre-check are two sufficient defenses; each removal is caught by its own test, but a future change that touches both together relies on the inertness subtests, which were shown red only against the both-removed mutant.
+- The runner seam returns output for the M4 doctor probe, which does not exist yet; its use there is unobserved.
+- A `moai init` run by someone whose `claude` is a pinned wrapper that prompts for input would hang until the 60-second bound, then print guidance.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
