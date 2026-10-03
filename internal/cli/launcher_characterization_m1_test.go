@@ -115,6 +115,14 @@ func TestBareMoaiPrintsBannerAndHelp(t *testing.T) {
 	rootCmd.SetErr(help)
 	rootCmd.SetArgs([]string{})
 	t.Cleanup(func() { rootCmd.SetArgs(nil); rootCmd.SetOut(nil); rootCmd.SetErr(nil) })
+	// cobra keeps flag values across Execute calls on the shared rootCmd: an
+	// earlier `--help` test leaves the help flag true, and a bare run then
+	// prints help without invoking Run (no banner). Reset it so this test
+	// measures a bare invocation regardless of package test order.
+	if f := rootCmd.Flags().Lookup("help"); f != nil {
+		_ = f.Value.Set("false")
+		f.Changed = false
+	}
 
 	// The banner goes through the stdout data channel, which resolves os.Stdout
 	// at call time.
