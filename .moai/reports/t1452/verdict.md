@@ -68,3 +68,21 @@ t1453 과의 관계: REQ-GFD-004~006 은 github-flow 전환 후 카드 전달을
   - `moai spec lint spec.md` → `✓ No findings — all SPEC documents are valid`
 - 반영한 선택 2건: AC-005 서브테스트 분리(PASS 줄 4), REQ-VRR-008 "재사용 결과는 Gap, Claim 아님" 문구.
 - Gaps: go test RED-now 의 exit 코드는 `ok`/`PASS` 출력 모양으로 읽음(직접 exit 미관측), 2회차 이후 수정본은 감사관이 재독하지 않음(PASS-WITH-DEBT 의 채무).
+
+## sync-audit 경과와 후속 카드 문안 (추가)
+
+- sync-audit 1차: **FAIL 62** (`sync-audit.md`) — F0(P1) `moai verify run` 이 실제 CLI 에 미등록(verify.go `init()` 이 verify_run.go `init()` 보다 먼저 돌아 `verifyExtraCommands` 가 빈 채 순회), 테스트 16개가 루트 명령을 거치지 않아 놓침. 수리 `a05ec62de` (직접 등록 + 루트 명령 경유 테스트 3개 + F6 프로세스 그룹 kill), 증거 `28843a6d1`. 레인 직접 측정(HEAD 28843a6d1): 빌드한 바이너리 `verify run -- echo hi-t1452` 1회차 miss 후 실행 exit 0, 2회차 `reuse key=28843a6d1…:6e340b9cffb37a98` exit 0·미실행; 신규 3테스트 PASS 3줄 exit 0.
+- 리더 결정: 수리분(F0·F6)과 증거에 한해 sync-audit 델타 1회 허용(상한 연장 승인). 치명적이지 않은 지적만 남으면 PASS-WITH-DEBT 처분. 결과는 `sync-audit-delta.md`.
+- 채무: F1 — Ctrl-C 시 자식 명령이 계속 실행됨(Setpgid 로 별도 그룹, 신호 전달 없음). Windows 실행 미관측. TDD 순서는 커밋 그래프로 증명되지 않음(M1·M2 테스트와 구현 동일 커밋).
+
+### 후속 카드 문안 (리더가 큐에 올림)
+
+- **제목 후보**: `moai verify sync-gate` 미등록 선행 결함 — verify 하위 명령 등록 순서 의존 제거
+- **본문 초안**: develop 기점 `2b9e4a4d0` 에서 빌드한 바이너리의 `moai verify sync-gate --help` 가 sync-gate 도움말이 아니라 부모 `verify` 도움말을 출력한다. 원인: `internal/cli/verify.go` 의 `init()` 이 `newVerifyCmd()` 를 호출해 `verifyExtraCommands` 를 순회하는데, `verify_receipts.go`(sync-gate)·codex-review 등록용 `init()` 은 파일명 순서상 그 뒤에 실행돼 슬라이스가 빈 채로 순회된다(Go 는 같은 패키지의 `init()` 을 파일명 순으로 실행). t1452 가 같은 결함으로 `verify run` 을 직접 등록으로 고쳤다(`a05ec62de`). 범위: (1) sync-gate·codex-review 를 순서 비의존 방식으로 등록 (2) 루트 명령을 경유해 하위 명령이 해석되는지 검사하는 가드 테스트 — 모든 `verifyExtraCommands` 항목이 `rootCmd.Find` 로 해석되고 부모 자신이 아님을 단언 (3) Codex Stop 체인이 sync-gate 를 호출하는 경로가 실제로 동작하는지 실측(그동안 조용히 도움말만 받았을 가능성 — 호출부 확인). 완료 기준: 빌드한 바이너리의 `moai verify sync-gate --help` 가 sync-gate 전용 도움말, 가드 테스트 적색→초록. 근거: t1452 `.moai/reports/t1452/sync-audit.md` F0 및 progress.md §E.2. Class B(원인 확정, 수리 범위 소형).
+- 미검증: sync-gate 가 다른 경로(훅 직접 호출 등)로 이미 호출되고 있는지, 언제부터 미등록인지(이력)는 조사하지 않았다.
+
+### sync-audit 델타 결과 (추가)
+
+- `sync-audit-delta.md`: **PASS-WITH-DEBT 90/100**, 차단 지적 없음 (감사관 claude-sonnet-5-5, audited_sha 28843a6d1868616e67605086540c012b37b10146). F0·F6 해소를 실제 바이너리(miss→reuse, exit 3 통과)·신규 테스트 3개 PASS·변이 2건 적색 입증으로 확인. 채무: F1(Ctrl-C), F7(P3: 같은 init 순서 결함이 `verify sync-gate`뿐 아니라 `codex-review`·`audit-plan` 등록에도 해당할 수 있음 — 개별 미조사), F8(P3: F6 테스트의 고정 3초 sleep).
+- 영수증: 델타 감사는 교차 모델 감사 도구를 호출하지 않았다(1차 델타 시도가 55분 무응답으로 중단돼, 재시도 지시에서 호출 금지를 명시). Stop 훅이 `AUDIT_RECEIPT_VIOLATION` 을 냈고 verdict 줄은 `receipts=none`. **우회하지 않고 리더에 보고**한다.
+- 후속 카드 문안 보강(F7): 범위 (1)에 `codex-review`·`audit-plan` 등록도 포함해 각각 빌드 바이너리로 `--help` 가 전용 도움말인지 실측한다.
