@@ -44,7 +44,7 @@ DeployMode: plugin | local
   `../../.claude/skills/<name>` that would dangle once the plugin path stops deploying
   `.claude/skills/**`; §3 mirror entries); the project `.mcp.json` render carries no `moai` entry
   when the install-outcome probe reads `confirmed` (OD-1 settled (c): the entry is written as the
-  fallback carrier on `failed-or-skipped` and on `opted-out`; §2.4).
+  fallback carrier on `not-demonstrated` and on `opted-out`; §2.4).
 - `local` — the `--no-plugin` and `--all` paths: today's payload byte-for-byte (REQ-003, REQ-007).
 
 Slim-mode composition: slim/full governs which catalog entries the **local** deploy carries (core
@@ -69,15 +69,17 @@ here too, as re-homed real copies per §2.1).
 
 ### 2.3 The MCP entry
 
-`provisionMCPEntryUnlessDeclined` (P-15) keeps its signature and its decline table; on the plugin
-path the ensure-entry call for the `moai` server is skipped only when the install-outcome probe
-(§2.4) reads `confirmed` (OD-1 settled (c) — the render-time filter stands on the confirmed path);
-on `failed-or-skipped`, and on `opted-out` (the local-path semantics of REQ-003/REQ-005), the
-provision call writes the project `moai` entry as the fallback carrier, which requires the
-provision call to run after the install step and read the probe's outcome. On `local` mode
-everything is as today. The `--llm gpt`
-project-entry decline is unaffected (OD-1); the Codex `config.toml` wiring is untouched on every
-path.
+`provisionMCPEntryUnlessDeclined` (P-15) keeps its signature and its decline table. This is the
+**init surface** of the probe contract (§2.4 arm mapping): on the plugin path the ensure-entry call
+for the `moai` server is skipped only when the probe reads `confirmed` (OD-1 settled (c) — the
+render-time filter stands on the confirmed path); on `not-demonstrated` — the init surface's
+fallback arm, the pre/post diff not demonstrating this-install success — and on `opted-out` (the
+local-path semantics of REQ-003/REQ-005), the provision call writes the project `moai` entry as the
+fallback carrier, which requires the provision call to run after the install step and read the
+probe's outcome. On the init surface the deploy file set and the mode record never key on the
+probe: they follow the deploy path (REQ-001, REQ-009). On `local` mode everything is as today. The
+`--llm gpt` project-entry decline is unaffected (OD-1); the Codex `config.toml` wiring is untouched
+on every path.
 
 ### 2.4 The install-outcome signal — the post-install list-surface probe
 
@@ -90,37 +92,64 @@ signal beside the step, consumed by §2.3 (the MCP-entry policy) and §3 (the mi
 the **post-install list-surface probe**. The probe runs after the install step's process work
 ends, starts no install action, and never re-runs or repairs the step.
 
+**Probe contract — pre-execution snapshot vs post-execution diff.** Before the step's process
+work begins, the probe captures a **pre-execution snapshot** of the installed-plugin list surface
+of every tool the step will act on (`opts.Tools`, readable before the step runs): read-only list
+verbs only — `claude plugin list` for the Claude tool (a measured read-only verb: the t1434
+probe's read-only list, SPEC-PLUGIN-LOAD-SCOPE-001 REQ-004) and `codex plugin list --json` for
+the Codex tool (the t1435 REQ-021 route, whose read pattern `internal/cli/doctor_plugin_version.go`
+`probeCodexPluginVersion` already implements) — started through the same REQ-017 runner seam the
+step and the doctor probe use, bounded by the doctor probe's timeout-constant class. After the
+step ends, the probe reads the **post-execution state** of the same surfaces. The verdict is the
+diff, and only the diff:
+
 - **`opted-out`**: the t1435 opt-out is set (`--no-plugin` or `MOAI_SKIP_PLUGIN_INSTALL=1|true`,
-  t1435 OD-5). Decided before the step runs; the step is not attempted; the outcome is
-  `opted-out` without probing.
-- **`confirmed`**: the step ran, and for every tool it acted on, that tool's installed-plugin
-  list surface names `moai@moai-adk` — `claude plugin list` for the Claude tool (a measured
-  read-only verb: the t1434 probe's read-only list, SPEC-PLUGIN-LOAD-SCOPE-001 REQ-004), and
-  `codex plugin list --json` for the Codex tool (the t1435 REQ-021 route, whose read pattern
-  `internal/cli/doctor_plugin_version.go` `probeCodexPluginVersion` already implements). The
-  probe starts its list commands through the same REQ-017 runner seam the step and the doctor
-  probe use, bounded by the doctor probe's timeout-constant class. The confirmed verdict requires
-  every acted tool's surface to list the plugin.
-- **`failed-or-skipped`**: everything else — the tool was absent from PATH, a step command failed
-  or timed out, the runner refused, a list surface does not name the plugin, or the probe could
-  not read a surface. Only a listed plugin confirms; every unconfirmed outcome resolves here
-  (conservative: unconfirmed means failed).
+  t1435 OD-5). Decided before the step runs; the step is not attempted; no snapshot is taken; the
+  outcome is `opted-out` without probing.
+- **`confirmed`**: for every tool the step acted on, the plugin ref (`moai@moai-adk`) is present
+  in the post-execution surface AND absent from the pre-execution snapshot. Only this diff
+  demonstrates that THIS run's step installed the plugin; a plugin a pre-existing installation
+  already listed cannot produce it.
+- **`not-demonstrated`**: every other outcome, decided only by the observable diff — the ref
+  present in both reads (a pre-existing plugin: this run's effect is not demonstrated), absent
+  from both, a surface that could not be read or parsed, a probe read that timed out, or any
+  probe error. The arm names observable diff states only; it never claims a cause inside the
+  step (whether a step command failed is not observable to the caller — the step's contract is
+  fail-open silence). Conservative by construction: everything the diff does not confirm is
+  `not-demonstrated`.
 
-Failure modes, named: a tool list that lags the install reads unconfirmed and parks the project
-in `local` — the conservative direction OD-4's amendment wants, with the documented init re-entry
-(REQ-018) as the recourse; a list-surface format change degrades to unconfirmed (the probe
+Failure modes, named (all resolve to `not-demonstrated`): a pre-existing installation reads
+`not-demonstrated` even though the plugin is present — this run's effect is not attributable, so
+the migration must not dedupe against it; the duplicated local copies are the conservative
+residue and the documented init re-entry (REQ-018) is the recourse. A tool list that lags the
+install reads `not-demonstrated` and parks the project in `local` — the conservative direction
+OD-4's amendment wants. A list-surface format change degrades to `not-demonstrated` (the probe
 matches only the plugin ref string and the JSON entry — no coupling to the tool's internal
-install layout, the coupling t1435 REQ-021 deliberately avoids); a partial multi-tool landing
-(one surface lists, the other does not) is unconfirmed. The probe's own errors are never fatal to
-the flow — they resolve to `failed-or-skipped`.
+install layout, the coupling t1435 REQ-021 deliberately avoids). A partial multi-tool landing
+(one surface lists, the other does not, in either read) is `not-demonstrated`. The probe's own
+errors are never fatal to the flow — they resolve to `not-demonstrated`.
 
-Arm mapping: `confirmed` is the only outcome that may record `plugin` or omit the project `moai`
-entry; `failed-or-skipped` writes no plugin record anywhere, removes nothing, keeps
-`deployment_mode: local`, and writes the project `moai` entry as the fallback carrier;
-`opted-out` deploys the full local payload and writes the `moai` entry (REQ-003/REQ-005's
-local-path semantics). In verification the probe is inert by the same REQ-017 refusal — a test
-that exercises an arm injects a runner whose list output names (or omits) the plugin, or sets the
-opt-out; no test reaches a real tool.
+**Arm mapping, per surface** (the two consumers scope the arms differently; a general reading
+across both is wrong):
+
+- **The migration surface** (update on a record-less project; REQ-015 — the only surface where
+  the outcome can unlock removal): `confirmed` is the only outcome that classifies and removes
+  (REQ-011/REQ-012) and writes the mode record `plugin`; `not-demonstrated` removes nothing,
+  dedupes nothing, keeps the record `local` — no path records `plugin`; `opted-out` ends the
+  migration with the record `local`, the full local payload deploying through update's normal
+  local path (REQ-016/REQ-017), and the migration's steps 2-4 unexecuted.
+- **The init surface** (the default-path deploy; REQ-001/REQ-004/REQ-005/REQ-009 — a surface
+  that removes nothing): the deploy file set and the mode record follow the deploy path, never
+  the install outcome (REQ-001, REQ-009: `plugin` when the default deploy ran, `local` when the
+  opt-out or `--all` path ran); the probe governs only the project `moai` entry and the guidance
+  block — `confirmed` writes no project `moai` entry and no guidance; `not-demonstrated` writes
+  the project `moai` entry as the fallback carrier (REQ-005) and the one guidance block of
+  REQ-004.
+
+In verification the probe is inert by the same REQ-017 refusal — a test that exercises an arm
+injects a runner whose pre-execution and post-execution list outputs produce the diff the arm
+needs (only the post names the plugin; both do; neither does), or sets the opt-out; no test
+reaches a real tool.
 
 ## 3. Migration pipeline
 
@@ -130,16 +159,24 @@ Ordered inside the update flow's existing step table; the Clean step stays the r
    (`update_template_sync.go:180-189`) has passed (the post-shrink binary bumped the version). The
    mode record is read: present → no migration (the deployer split of §2.2 governs). Absent → the
    migration path runs: install step fail-open under the opt-out (the t1435 step, sequenced after
-   its landing), its outcome read through the post-install list-surface probe (§2.4); a
-   `failed-or-skipped` or `opted-out` probe outcome ends the migration there with the record
-   written `local` and steps 2-4 unexecuted (OD-4 settled (a, amended)) — on `opted-out` the full
-   local payload deploys as today; on probe `confirmed`, then classification.
+   its landing), its outcome read through the post-install list-surface probe (§2.4 — the
+   migration surface of the arm mapping; the probe snapshots each acted tool's list surface
+   before the step and diffs it against the post-execution state); `not-demonstrated` or
+   `opted-out` ends the migration there with the record written `local` and steps 2-4 unexecuted
+   (OD-4 settled (a, amended)) — on `opted-out` the full local payload deploys through update's
+   normal local path as today, and on `not-demonstrated` the project keeps its deployed copies
+   untouched; on probe `confirmed`, then classification.
 2. **Classification** (REQ-010): for every file under the dropped roots
-   (`.claude/skills/**`, `.claude/commands/**`, the mirror), compare the on-disk content with the
-   template **render for this project's context** — the same render the deployer would write. The
-   manifest record (P-13) is the fast path and the freshness check: managed + hash-equal to the
-   render → `identical`; managed + different, or no usable record → `modified`; not managed
-   (P-19/P-21) → `foreign`. Absent/stale records conservatively route to `modified` (RK-9).
+   (`.claude/skills/**`, `.claude/commands/**`, the mirror), the class gate is **template
+   carriage**: the template render for this project's context — the same render the deployer
+   would write — either has a source at the file's relative path or it does not. Not carried →
+   `foreign`: every user-created skill or command lands here (`moai-custom` included) whatever
+   its P-19/P-21 managed-name match or manifest state, and foreign files are never removed and
+   never archived. Carried → the manifest record (P-13) is the fast path and the freshness check
+   between the two removable classes: managed + content equal to the render → `identical`;
+   content different, or no usable record (absent/stale, conservatively — RK-9) → `modified`
+   (archive-then-remove). The P-19/P-21 rules decide ownership only among template-carried
+   files; on their own they never route a file into a removal class.
 3. **Archive** (REQ-012): `modified` items are archived first — skill directories through
    `archiveSkill` (which already refuses symlinks and aborts the run's drift contract safely), and
    standalone files (commands, mirror files) through the same layout with a file-level archive
@@ -163,12 +200,13 @@ Ordered inside the update flow's existing step table; the Clean step stays the r
    their own step-3 archive before they enter the removal list (the archive IS their backup), and
    identical items are removed without backup per OD-3 (a) — the P-08 exemption is moot by
    construction, not by FS scoping. The abort-before-removal contract is unchanged. On a
-   `local`-outcome migration run (`failed-or-skipped` / `opted-out`) nothing is removed by the
+   `local`-outcome migration run (`not-demonstrated` / `opted-out`) nothing is removed by the
    migration and the normal Clean walk runs as today — the local deploy redeploys the full
    payload.
 5. **Record write**: the migration ends by writing the mode record (`plugin` after a confirmed
    install, or `local` under the opt-out — in which case steps 2-4 are skipped entirely — or
-   `local` when the install step failed, OD-4's amended condition).
+   `local` when the probe does not demonstrate this-install success (`not-demonstrated`),
+   OD-4's amended condition read through the probe diff).
 6. **Idempotence** (REQ-014): a migrated project has a record, so step 1 short-circuits; a
    record-bearing project re-running the classifier sees an empty removed-root delta and prints
    zero counts.

@@ -17,7 +17,13 @@ each criterion here is a binary-testable Given/When/Then with the same number.
   (D-7/D-8/D-9) — changed the asserted behavior of AC-006, AC-011, AC-013, and AC-015; those four
   criteria's RED-now cells were re-observed on the repair-session tree `a1f17b038` (L-07, L-12,
   L-14, L-16 below carry the fresh command, output, exit code, and pin; L-12 and L-14 gained their
-  own selector commands in the same pass, moving off the L-01 shape).
+  own selector commands in the same pass, moving off the L-01 shape). A third same-day amendment —
+  the leader-ruling repair (D-11/D-12/D-13, 2026-10-04) — changed the asserted behavior of AC-005
+  and AC-015 (the probe's residual arm is diff-keyed and renamed `not-demonstrated`); those two
+  criteria's RED-now cells were re-observed on the repair tree `5c380a251` (L-06 and L-16 carry
+  the fresh runs). AC-010 and AC-013's fixture and rationale wording was tightened to the
+  template-carriage predicate (D-12) without changing their asserted classification behavior, so
+  their pins stand per the unchanged-assertion rule.
 - **Two cells per criterion** (`verification-completeness.md` §2): a RED-now cell — the criterion's
   own command observed red on this tree, with the reason it is red, in the Evidence Ledger — and a
   green-path cell naming the milestone that flips it and the passing output. Where the RED-now
@@ -119,14 +125,15 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 ### AC-005 — `.mcp.json` policy on the default path (REQ-005, OD-1 settled (c) 2026-10-03)
 
 - **Given** the default path, **When** init provisions the project `.mcp.json`, **Then** the file
-  carries `context7` and `staggeredStartup`; the `moai` entry is present exactly when the plugin
-  install step failed or was skipped (the conditional fallback write — a plugin-less Claude user
-  keeps the project carrier) and absent when the install is confirmed (the plugin is the sole
-  carrier); on the `--no-plugin` path it carries the `moai` entry with `command: moai,
+  carries `context7` and `staggeredStartup`; the `moai` entry is present exactly when the
+  install-outcome probe (design §2.4) does not demonstrate this-install success from its pre/post
+  diff (`not-demonstrated` — the conditional fallback write, a plugin-less Claude user keeps the
+  project carrier) and absent when the probe reads `confirmed` (the plugin is the sole carrier);
+  on the `--no-plugin` path it carries the `moai` entry with `command: moai,
   args: [mcp-server]`; an explicit `--llm gpt` run still declines the project entry.
 - **Verify:** `go test ./internal/cli -run '^TestDefaultPathMcpEntryPolicy$' -count=1 -v` —
-  expected `--- PASS:` present, exit 0. Three arms: install skip/fail → entry present; confirmed
-  install → entry absent; `--no-plugin` → entry present.
+  expected `--- PASS:` present, exit 0. Three arms: probe `not-demonstrated` → entry present;
+  probe `confirmed` → entry absent; `--no-plugin` (`opted-out`) → entry present.
 - **Alternates not taken (recorded):** (b) the default-path arm would flip to expect the `moai`
   entry present on every run; (c) was taken.
 
@@ -188,9 +195,10 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 ### AC-010 — Migration classification (REQ-010)
 
 - **Given** a fixture old-project tree (deployed skill copy identical to the template render; one
-  modified; one foreign user skill; one with an absent manifest record), **When** the classifier
-  runs, **Then** the four files classify identical / modified / foreign / modified respectively,
-  and the three printed counts match.
+  modified; one foreign user skill — `moai-custom`, a name the managed glob matches that the
+  template render does not carry; one template-carried file with an absent manifest record),
+  **When** the classifier runs, **Then** the four files classify identical / modified / foreign /
+  modified respectively, and the three printed counts match.
 - **Verify:** `go test ./internal/cli -run '^TestMigrationClassification$' -count=1 -v`.
 
 ### AC-011 — Identical removal + count (REQ-011, OD-3 settled (a) + conditions 2026-10-03)
@@ -223,13 +231,14 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 
 ### AC-013 — Foreign untouched, symlink refusal (REQ-013)
 
-- **Given** a fixture tree holding a foreign user skill at a name the managed glob matches
-  (`moai-custom` under `.claude/skills/`) and a symlinked entry, **When** the migration runs,
-  **Then** the foreign file is byte-unchanged and still present — the migration's removal list
-  never contains it, even though the Clean step's global walk (P-06/P-07) would have removed it —
-  and the symlink is neither dereferenced, archived, nor followed (mirror-entry handling is
-  REQ-006's own clause: removed as link entries or re-homed per its fallback form, never
-  dereferenced).
+- **Given** a fixture tree holding a foreign user skill at a name the managed glob matches and
+  the template render does not carry (`moai-custom` under `.claude/skills/`) and a symlinked
+  entry, **When** the migration runs, **Then** the foreign file is byte-unchanged and still
+  present — REQ-010 classifies it foreign because the template render does not carry it, so the
+  migration's removal list never contains it, even though the Clean step's global walk (P-06/P-07)
+  would have removed it — and the symlink is neither dereferenced, archived, nor followed
+  (mirror-entry handling is REQ-006's own clause: removed as link entries or re-homed per its
+  fallback form, never dereferenced).
 - **Verify:** `go test ./internal/cli -run '^TestMigrationLeavesForeignFilesUntouched$' -count=1 -v`.
 
 ### AC-014 — Idempotence (REQ-014)
@@ -242,13 +251,17 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 
 - **Given** a fixture project with no mode record, **When** update runs, **Then** the install step
   runs fail-open under the opt-out and its outcome is read through the post-install list-surface
-  probe (design §2.4): probe `confirmed` — the dedupe follows classification and the record is
-  written `plugin`; probe `failed-or-skipped` (tool absent, command failure or timeout, or the
-  plugin not listed) — nothing is deduped or removed, the record is written `local`, and no path
-  records `plugin`; probe `opted-out` — the full local payload deploys, nothing is removed, and
-  the record is written `local`.
+  probe (design §2.4 — a pre-execution snapshot of each acted tool's installed-plugin list surface
+  diffed against the post-execution state): probe `confirmed` — the plugin ref present post-run
+  AND absent from the pre-snapshot for every acted tool — the dedupe follows classification and
+  the record is written `plugin`; probe `not-demonstrated` (every other diff outcome — a
+  pre-existing plugin, the ref absent after the run, an unreadable or ambiguous surface, or a
+  probe error; arms name observable diff states only, never a cause inside the step) — nothing is
+  deduped or removed, the record is written `local`, and no path records `plugin`; probe
+  `opted-out` — the full local payload deploys, nothing is removed, and the record is written
+  `local`.
 - **Verify:** `go test ./internal/cli -run '^TestUpdateMigratesLegacyProject$' -count=1 -v`
-  (three arms mapped to the probe: `confirmed`; `failed-or-skipped`; `opted-out`).
+  (three arms mapped to the probe: `confirmed`; `not-demonstrated`; `opted-out`).
 - **Alternates not taken (recorded):** (b) guidance-plus-local-record, (c) `moai migrate`.
 
 ### AC-016 — Update mode-scoped deployer + honest accounting (REQ-016)
@@ -312,10 +325,11 @@ each criterion here is a binary-testable Given/When/Then with the same number.
 
 - **Manifest absent or stale on an old project** (RK-9): every dropped-root file under a missing
   record classifies modified — archived, never silently removed.
-- **Foreign skill whose name starts with `moai-`**: classification uses the manifest + template
-  render, not the name prefix alone — a user skill named `moai-custom` that the manifest does not
-  track and the template does not carry is foreign (P-19's rule stays the name gate for update's
-  existing protection; the migration's class gate is the render compare).
+- **Foreign skill whose name starts with `moai-`**: the migration's class gate is template
+  carriage — a user skill named `moai-custom` is foreign because the template render does not
+  carry it, regardless of manifest tracking or the P-19/P-21 managed-name match (those rules stay
+  the name gate for update's existing protection and decide only identical-vs-modified among
+  template-carried files; template absence alone is foreign, always preserved byte-for-byte).
 - **A project already migrated, then `--no-plugin` re-init**: the init re-entry redeploys the full
   local payload and flips the record to `local` — the documented switch surface (REQ-018), not a
   migration defect.
@@ -400,6 +414,10 @@ redirect-and-echo bundles).
     ```
   - Exit code: 0; red by the PASS-line rule (the criterion's named test does not exist yet).
     Flipped by M2.
+  - D-13-repair re-observation (2026-10-04, tree `5c380a251` — the probe-arm rewrite changed this
+    criterion's assertion): same command, verbatim stdout: `testing: warning: no tests to run` /
+    `PASS` / `ok  	github.com/modu-ai/moai-adk/internal/cli	0.901s [no tests to run]`, exit 0 —
+    same no-tests-to-run shape.
 - **L-07** (AC-006; re-observed 2026-10-03 twice — first for the OD-6 verification-gated arm at
   `3906f985b`, then for the cross-model repair's re-homed-fallback binding at `a1f17b038`)
   - Command: `go test ./internal/template -run '^TestCodexMirrorFollowsDeployMode$' -count=1 -v`
@@ -482,6 +500,10 @@ redirect-and-echo bundles).
     ok  	github.com/modu-ai/moai-adk/internal/cli	0.653s [no tests to run]
     ```
   - Exit code: 0; red by the PASS-line rule. Flipped by M3.
+  - D-13-repair re-observation (2026-10-04, tree `5c380a251` — the probe-arm rewrite changed this
+    criterion's assertion): same command, verbatim stdout: `testing: warning: no tests to run` /
+    `PASS` / `ok  	github.com/modu-ai/moai-adk/internal/cli	0.724s [no tests to run]`, exit 0 —
+    same no-tests-to-run shape.
 - **L-17** (AC-016; re-observed 2026-10-03 — the OD-5 survival clause extended the criterion's
   assertion, so the cell was re-measured)
   - Command: `go test ./internal/cli -run '^TestUpdatePluginModeSkipsDroppedRedeploy$' -count=1 -v`
