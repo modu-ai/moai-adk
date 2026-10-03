@@ -522,6 +522,7 @@ canary_compliance_check: 해당 없음 — 이 SPEC 은 자기 sync 가 시험�
 - **F4 [minor, 기록만]** `f4f47dc51` 은 레인 오케스트레이터가 직접 만든 주석 4줄 커밋이라 `Authored-By-Agent` 트레일러가 없다. 감사가 이미 규칙 위반이 아님을 확인했다. `@MX:ANCHOR` 가 `write()` 에 있다는 사실만 위 MX 항목에서 다시 읽어 확인했다.
 - **F5 [minor, 고치지 않음]** `gofmt -l internal/cli internal/config` 가 이 카드가 건드리지 않은 두 파일 `internal/cli/mcp_claude.go`, `internal/config/slice.go` 를 여전히 나열한다(위 증거: 기준 트리 `7109e0900` 대비 두 파일의 diff 가 비어 있음). AC-MH-013 의 "출력 0행" 문면과 이 트리의 사전 상태는 어긋난 채 남는다. 같은 명령의 출력에는 이 카드가 건드린 파일이 하나도 없다(출력은 위 두 줄뿐) — 이 재종결에서 측정한 것이다.
 - **F6 [info]** 공시된 한계는 감사가 그대로 확인했다. 이 재종결도 한계 문장을 줄이지 않았다.
+- **델타 감사 부채(`.moai/reports/t1409/sync-audit-delta.md`, PASS-WITH-DEBT 0.88, blocking 0)**: D1(알려진 부채, 문구로 공시)은 스키마 가드가 오류 프레임(오류 3종·미지 method 폴백)을 와이어 원문이 아니라 재조립한 객체로 `JSONRPCError.json` 에 대조해 필수 필드 누락을 잡지 못한다는 것이다. 운영 문서와 CHANGELOG 의 "모든 답을 검증" 문구를 결과 일곱 종으로 좁히고 한계 항목을 더했다(코드는 고치지 않았다). 그 밖에 열려 있는 선택 부채: D2(design.md 정정 단락이 정책표 가운데 있음), D3–D8(보고서가 적은 대로; 여기서 다시 쓰지 않는다).
 
 **Claim**: AC-MH-010(운영 문서와 CHANGELOG)이 레거시 승인 거부 객체 수리 뒤의 상태로 다시 충족되고, F3·F4 는 해결로, 시그널 처리 공백(F5)은 카드 t1459 를 가리키는 미해결 한계로 적혔다. 문서·CHANGELOG 의 선택 수는 79 이고 REQ 12·AC 13 의 개수는 유지된다. **Evidence**: 위 표의 명령·관측·exit. **Baseline-attribution**: `(this run, this tree, HEAD 3b12e75a1 위의 재종결 작업 트리, 커밋 전)`. 커밋 뒤 점검(`git diff --stat 3b12e75a1 HEAD`, spec.md diff, `internal` 불변, 부모 SPEC 불변, 트레일러)은 이 신호를 담은 커밋 자신에 대한 것이라 커밋 전에는 얻을 수 없으며 sync 보고서에 따로 적는다.
 

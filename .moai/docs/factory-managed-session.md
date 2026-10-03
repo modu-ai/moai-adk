@@ -41,7 +41,7 @@
 | 직렬 처리 | 연산자 입력과 브로커 수신 메시지는 한 줄짜리 턴 큐에서 도착한 순서대로(FIFO) 처리된다. 작업 중인 세션은 끼어들기를 당하지 않으며, 연산자 입력이라고 해서 앞서 가지도 않는다. 이미 claim한 inbox 묶음이 있으면 그 뒤에 도착한 연산자 입력은 묶음 다음 차례가 된다. |
 | 영수증 | 모델이 처리 뒤 `factory_msg_receipt` 로 영수증을 남기면 브로커가 "전달됨"으로 기록한다. 영수증은 **전달 증거**일 뿐 카드 완료 판정이 아니다. 판정은 수신 세션이 본문을 보고 내린다. |
 | 런치 실패 | 시작에 실패한 런치는 launch-pending 등록을 되돌려서, 영구적인 대기 행이 남지 않는다. |
-| 서버 요청 응답 (Codex) | 소유자는 App Server가 먼저 보내는 요청에 전부 답한다. 명령 실행·파일 변경 승인과 MCP elicitation 은 `decline` 으로 거부한다. 레거시 승인 두 종(`applyPatchApproval`, `execCommandApproval`)은 스키마가 정한 객체 `{"decision":{"denied":{"rejection":"<고정 영어 문구>"}}}` 로 거부한다. 문자열 `"denied"` 는 codex 0.160.0 스키마에 없는 값이라 쓰지 않고, 문자열 `abort` 는 턴을 끊으므로 쓰지 않는다. 권한 요청에는 빈 권한을, 동적 도구 호출에는 `success:false` 결과를 돌려준다. 사용자 입력·인증 토큰 갱신·attestation 요청은 JSON-RPC 오류(`-32000`)로, 표에 없는 method 는 `-32601` 오류로 답한다. 어느 답도 무언가를 허용하지 않는다. 모든 답의 모양은 vendoring 한 codex 0.160.0 응답 스키마(`internal/cli/testdata/codex-0.160.0/`)에 대해 시험으로 검증한다. 답한 요청마다 stderr 에 `Factory server request answered: …` 한 줄이 남는다. 서버 요청의 id가 대기 중인 클라이언트 id와 같거나 문자열이어도 응답으로 오인하지 않고 읽기 루프도 끊기지 않으며, 연결 쓰기는 뮤텍스 하나를 거친다. |
+| 서버 요청 응답 (Codex) | 소유자는 App Server가 먼저 보내는 요청에 전부 답한다. 명령 실행·파일 변경 승인과 MCP elicitation 은 `decline` 으로 거부한다. 레거시 승인 두 종(`applyPatchApproval`, `execCommandApproval`)은 스키마가 정한 객체 `{"decision":{"denied":{"rejection":"<고정 영어 문구>"}}}` 로 거부한다. 문자열 `"denied"` 는 codex 0.160.0 스키마에 없는 값이라 쓰지 않고, 문자열 `abort` 는 턴을 끊으므로 쓰지 않는다. 권한 요청에는 빈 권한을, 동적 도구 호출에는 `success:false` 결과를 돌려준다. 사용자 입력·인증 토큰 갱신·attestation 요청은 JSON-RPC 오류(`-32000`)로, 표에 없는 method 는 `-32601` 오류로 답한다. 어느 답도 무언가를 허용하지 않는다. 결과를 돌려주는 답 일곱 종의 결과 본문은 vendoring 한 codex 0.160.0 응답 스키마(`internal/cli/testdata/codex-0.160.0/`)에 대해 시험으로 검증한다. 오류로 답하는 세 종과 미지 method 폴백은 시험이 오류 객체를 다시 조립해 `JSONRPCError.json` 에 대조하므로, 와이어에서 필수 필드가 빠져도 이 가드는 잡지 못한다(오류 코드와 메시지는 정책 시험이 정확한 값으로 따로 단언한다). 답한 요청마다 stderr 에 `Factory server request answered: …` 한 줄이 남는다. 서버 요청의 id가 대기 중인 클라이언트 id와 같거나 문자열이어도 응답으로 오인하지 않고 읽기 루프도 끊기지 않으며, 연결 쓰기는 뮤텍스 하나를 거친다. |
 | 턴 단위 실패 격리 | 우선 턴 이후의 턴 하나가 실패해도 세션은 이어진다. 격리 대상은 세 가지다: 스트림의 `result.is_error`, `completed` 가 아닌 상태로 끝난 Codex 턴, 거부된 MoAI 브로커 elicitation 을 겪은 Codex 턴(`serverName` 이 `moai` 인 요청이 그 턴에 귀속될 때). 드라이버는 `Factory turn failed (k/N consecutive)` 를 stderr 에 남기고 다음 턴으로 간다. 연속 N(=3)번 실패하면 마지막 오류를 반환해 세션을 끝내고, 성공한 턴은 횟수를 0으로 되돌린다. claim된 메시지는 건드리지 않는다. |
 
 ## 운영자가 알아야 할 규칙
@@ -74,6 +74,7 @@
 - **연속 실패 상한 3은 관례이지 측정값이 아니다.** 실패율 자료 없이 저장소의 "재시도 최대 3회" 관례를 가져왔다(`internal/config/defaults.go` 의 `DefaultManagedSessionMaxConsecutiveTurnFailures`).
 - **쓰기 데드라인이 없다.** App Server 연결의 쓰기가 막히면 연결이 죽거나 세션이 닫힐 때까지 풀리지 않는다. 턴 타임아웃도 막힌 쓰기는 풀지 못하고, 읽기 쪽 답장 쓰기도 같은 뮤텍스에 걸려 함께 멈춘다. 소스를 읽어 확인한 내용이며 실행으로 재현하지는 않았다.
 - **`id: null` 프레임에는 답하지 않는다.** `id` 가 없거나 `null` 인 프레임은 서버 요청으로 분류되지 않는다. `method` 가 있으면 알림으로 다루는데 알림은 대부분 버려지고, `method` 가 없으면 그대로 버려진다.
+- **스키마 가드는 오류 프레임의 필수 필드 누락을 잡지 못한다.** 오류로 답하는 세 종과 미지 method 폴백은 가드가 와이어 원문이 아니라 디코딩한 구조체로 `{"id","error":{"code","message"}}` 를 다시 조립해 `JSONRPCError.json` 에 대조하므로, 와이어에서 `message` 가 빠져도 가드는 통과한다. 독립 델타 감사가 JSON 태그를 바꿔 재현했다(감사 부채 D1). 현재 프로덕션 오류 프레임은 `message` 를 항상 쓰고 오류 코드와 메시지는 정책 시험이 정확히 단언하지만, 이 방향의 미래 회귀를 가드가 지켜 주지는 않는다.
 - **서버가 보낸 `turnId` 는 로그 줄에 따옴표 없이 실린다.** elicitation 응답 로그 줄의 `turn=<id>` 는 서버가 보낸 값을 그대로 찍는다(`serverName` 과 method 는 따옴표로 감싼다). 개행이 든 `turnId` 가 로그 줄 하나를 위조할 수 있다는 소스 판독이며 실행으로 재현하지는 않았다. 서버는 토큰으로 인증된 루프백 자식이라 위험은 낮다. SPEC 이 로그 문법을 `turn=<id>` 로 고정해 두어 이 카드에서는 고치지 않았다. `Factory turn failed (…): <오류>` 줄도 오류 문구를 따옴표 없이 그대로 싣는다.
 
 서버가 먼저 보내는 요청에 대한 응답(F3)과 턴 단위 실패 격리(F4)는 `SPEC-FACTORY-MANAGED-HARDEN-001`(카드 t1409)로 해결됐다. 독립 sync 감사가 레거시 승인 응답 값이 스키마 위반이라는 점(F1)을 찾아냈고, 수리와 SPEC 개정으로 바로잡았다. 위 한계는 그 뒤에도 남는 부분이다. 그 밖에 아래 세 가지는 후속 카드 t1410 이 맡는다.
@@ -89,7 +90,7 @@
 - 실제 Codex 세션 왕복은 `MOAI_FACTORY_LIVE_ROOT` / `MOAI_FACTORY_LIVE_RUN` 을 둔 환경에서만
   `TestManagedCodexFactoryBrokerLive` 가 실행하고, 두 값이 없으면 skip 으로 통과한다.
 - 서버 요청 응답은 `go test -race ./internal/cli -run '^TestManagedCodexServerRequestPolicy$'` 로, 턴 단위 실패 격리와 연속 실패 상한은 `go test -race ./internal/cli -run '^TestManagedDriverIsolatesTurnFailure$'` 와 `go test ./internal/cli -run '^TestManagedDriverConsecutiveFailureCeiling$'` 로 가짜 서버를 상대로 검증된다. 이 시험은 실제 codex 세션을 쓰지 않는다.
-- 서버 요청에 돌려주는 답의 모양이 codex 0.160.0 스키마를 지키는지는 `go test ./internal/cli -run '^TestManagedServerRequestPolicyMatchesCodexSchema$'` 로 확인한다. `codex` 바이너리도 네트워크도 필요 없고, `internal/cli/testdata/codex-0.160.0/` 에 vendoring 한 스키마 사본을 쓴다. 최소 지원 codex 버전이 올라가면 사본을 다시 만들고(생성 명령은 그 폴더의 `README.md`) 시험을 다시 돌려야 한다. 이 시험은 모양만 보며, 스키마상 유효한 오답(`abort`, accept 계열)은 `TestManagedCodexServerRequestPolicy` 의 정확한 응답 단언이 잡는다.
+- 서버 요청에 돌려주는 결과 본문(일곱 종)의 모양이 codex 0.160.0 스키마를 지키는지는 `go test ./internal/cli -run '^TestManagedServerRequestPolicyMatchesCodexSchema$'` 로 확인한다. `codex` 바이너리도 네트워크도 필요 없고, `internal/cli/testdata/codex-0.160.0/` 에 vendoring 한 스키마 사본을 쓴다. 최소 지원 codex 버전이 올라가면 사본을 다시 만들고(생성 명령은 그 폴더의 `README.md`) 시험을 다시 돌려야 한다. 이 시험은 모양만 보며, 스키마상 유효한 오답(`abort`, accept 계열)은 `TestManagedCodexServerRequestPolicy` 의 정확한 응답 단언이 잡는다.
 - 메시지가 오지 않을 때: `factory_msg_status` 도구로 브로커 상태(대기/확인 수)를 먼저
   보고, 레인이 launch-pending 에 머물러 있는지 확인한다.
 
