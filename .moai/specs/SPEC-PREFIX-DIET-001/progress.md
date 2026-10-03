@@ -176,6 +176,36 @@ Single-call runs: min = median = max = 151,407. Anchor single-call runs: 154,235
 
 **Residual-risk.** The dropped FAQ/philosophy/quick-reference/example units are classified `rationale`/`example` by the author; the survivor named per row is where the information remains. Dropped section numbers leave gaps (`§10`, `§12`-`§15`) because renumbering would rewrite kept lines; no kept unit references a dropped section number (checked with `grep -n "§1[0-5]"`).
 
+### M3 — `moai-learn.md`
+
+**Claim.** `moai-learn.md` is reduced from 28,517 to 27,010 UTF-16 units (-1,507, the whole droppable total); all 24 `[HARD]` and 7 `MUST` tokens retained; the localization catalogue table is cell-identical; the file has no handoff section to freeze; template and local copy are identical. Under `outputStyle=MoAI-Learn` the first-turn input tokens fall by 434 (-0.28%). The default-style user is unaffected.
+
+**RED** (budget constant lowered to 27,010 before the edit, `go test ./internal/template/ -run 'TestOutputStylesCharBudget' -count=1 -v`, exit 1):
+
+```
+    output_style_diet_test.go:46: output-style=moai-learn 28517
+    output_style_diet_test.go:48: output style moai-learn.md is 28517 UTF-16 units, over its budget 27010
+    --- FAIL: TestOutputStylesCharBudget/moai-learn (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.391s
+```
+
+**GREEN.** `diet_ledger.py apply moai-learn.md` -> `apply ok moai-learn.md utf16 28517 -> 27010`. Dropped units (`moai-learn-NNNN`): 5-7, 122, 137-141. `make build` exit 0 (no tracked file other than the edited ones changed), local mirror `cp`, `diff -rq internal/template/templates/.claude/output-styles .claude/output-styles` -> no output, exit 0; `go test ./internal/template/ -run '^TestOutputStyle' -count=1 -v` exit 0 with `--- PASS` for `TestOutputStylesCharBudget` (moai-learn 27010), `TestOutputStyleBindingLedger`, `TestOutputStyleHandoffUnitsFrozen`, `TestOutputStyleLocalizationTableParity` and the five existing `TestOutputStyles*`. Guard `surface_guard.py 5d5ff1aae` exit 0, `surface-guard=PASS`.
+
+**First-turn tokens under `outputStyle=MoAI-Learn`** (settings file `{"disableAllHooks": true, "outputStyle": "MoAI-Learn"}`, a measurement input only; same command; every run below had `"num_turns":1`). Before = HEAD `c30c7132a` (learn file unedited), after = the M3 edit in the worktree:
+
+```
+first-turn-input-tokens[M3-before#1]=154999 usage={"input_tokens":2,"cache_creation_input_tokens":142598,"cache_read_input_tokens":12399,"output_tokens":472,"output_tokens_details":{"thinking_tokens":163
+first-turn-input-tokens[M3-before#2]=154999 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":154997,"output_tokens":390,"output_tokens_details":{"thinking_tokens":84
+first-turn-input-tokens[M3-before#3]=154999 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":154997,"output_tokens":510,"output_tokens_details":{"thinking_tokens":86
+first-turn-input-tokens[M3#1]=154565 usage={"input_tokens":2,"cache_creation_input_tokens":142164,"cache_read_input_tokens":12399,"output_tokens":614,"output_tokens_details":{"thinking_tokens":207
+first-turn-input-tokens[M3#2]=154565 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":154563,"output_tokens":544,"output_tokens_details":{"thinking_tokens":139
+first-turn-input-tokens[M3#3]=154565 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":154563,"output_tokens":489,"output_tokens_details":{"thinking_tokens":125
+```
+
+Before min/median/max 154,999 / 154,999 / 154,999; after 154,565 x3; reduction 434 tokens (-0.28%), spread 0 on both sides, so the effect is measurable but small (it is the smallest droppable total of the three styles). This is a style-specific measurement: a default-style session does not load this file.
+
+**Baseline-attribution.** This run, worktree `t1450`, the before/after runs ten minutes apart on one account, same command and settings file. **Gaps.** One account window; learn's droppable total is only 5.3% of the file because the remaining units are binding or normative (Notion install guide, the localization catalogue, response templates). **Residual-risk.** The dropped teaching-philosophy and root-cause units are author-classified rationale; survivors are named per row.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

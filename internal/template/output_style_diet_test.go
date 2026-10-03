@@ -23,7 +23,7 @@ import (
 const (
 	dietBudgetMoai      = 62593
 	dietBudgetMoaiEasy  = 21350
-	dietBudgetMoaiLearn = 28517
+	dietBudgetMoaiLearn = 27010
 )
 
 var dietBudgets = []struct {
