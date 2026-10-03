@@ -42,6 +42,20 @@ var reviewGateRuntimePrefixes = []string{
 	".claude/agent-memory/",
 }
 
+// reviewGateTreeConfigPrefixes are the runtime-managed CONFIGURATION surfaces
+// the TREE-scope path additionally ignores (SPEC-CODEX-GATE-SCOPING-001
+// REQ-CGSC-007): the session's local Claude settings file and the MoAI managed
+// config tree are known local state, not reviewable work — a tree session
+// whose only changes are such surfaces is allowed without invoking the
+// reviewer. Deliberately a SEPARATE list, never merged into
+// reviewGateRuntimePrefixes: the card scope's path filter shares that list, and
+// a card's own commits under .moai/config/ must keep counting as card work
+// (REQ-CGSC-005 / AC-CGSC-009).
+var reviewGateTreeConfigPrefixes = []string{
+	".claude/settings.json",
+	".moai/config/",
+}
+
 // reviewGateChangeDetector is the injectable "is there reviewable uncommitted
 // work?" seam. The production default runs `git status --porcelain` and filters
 // runtime-managed paths; tests swap it to drive the self-gate deterministically
@@ -63,7 +77,9 @@ var reviewGateChangeDetector = hasReviewableChanges
 //  4. no reviewable change IN THE SCOPE     → ALLOW (self-gate; no false block)
 //  5. codex missing                         → ALLOW (fail-open; can't trap the session)
 //  6. codex review pass / inconclusive      → ALLOW
-//  7. codex review FAIL                     → BLOCK (the gate's only block path)
+//  7. codex review FAIL, every finding on a runtime-managed config surface
+//     → ALLOW + recorded reclassification (REQ-CGSC-008); otherwise BLOCK
+//     (the gate's only block path)
 //
 // `enabled` is read by the caller (runCodexReviewGate via
 // readCodexReviewGateEnabled) and passed in; it is re-checked here as
@@ -121,6 +137,17 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 		return allow, rpcErr
 	}
 	if isBlockVerdict(out.Verdict) {
+		// (7-pre) REQ-CGSC-008: a TREE-scope review whose every finding targets
+		// only the runtime-managed configuration surfaces is known local drift
+		// (settings/config churn), not a review defect this session owns — the
+		// turn is allowed and the reclassification recorded (REQ-CGSC-011).
+		// Mixed findings keep the gate's only block path below.
+		if scope.Class == reviewScopeTree {
+			if targets, ok := runtimeConfigOnlyFindings(out.Findings); ok {
+				logRuntimeDriftReclassification(scope, targets)
+				return allow, nil
+			}
+		}
 		return &hook.HookOutput{
 			Decision: hook.DecisionBlock, // (7) the gate's only BLOCK path
 			Reason:   "codex review gate: " + out.Summary,
@@ -174,7 +201,7 @@ func reviewableFromPorcelain(porcelain string) bool {
 		if idx := strings.Index(path, " -> "); idx >= 0 {
 			path = path[:idx] // rename source for the prefix check
 		}
-		if path == "" || isRuntimeManagedPath(path) {
+		if path == "" || isRuntimeManagedPath(path) || isTreeRuntimeConfigPath(path) {
 			continue
 		}
 		return true
@@ -192,6 +219,61 @@ func isRuntimeManagedPath(path string) bool {
 		}
 	}
 	return false
+}
+
+// isTreeRuntimeConfigPath reports whether path falls under a runtime-managed
+// configuration surface the TREE path ignores (REQ-CGSC-007). The card path's
+// filter never consults this: a card commit under .moai/config/ stays card
+// work (REQ-CGSC-005).
+func isTreeRuntimeConfigPath(path string) bool {
+	for _, p := range reviewGateTreeConfigPrefixes {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// runtimeConfigOnlyFindings reports whether EVERY finding of a review targets
+// only the runtime-managed configuration surfaces, and returns the distinct
+// targets when so (REQ-CGSC-008). A review with no findings at all is NOT
+// config-only: a fail verdict behind an unparseable findings list is the
+// contradiction state, never a licence to allow. Findings without a file
+// anchor, and anchors outside the surfaces, keep the review's block.
+func runtimeConfigOnlyFindings(findings []Finding) ([]string, bool) {
+	if len(findings) == 0 {
+		return nil, false
+	}
+	var targets []string
+	seen := make(map[string]bool)
+	for _, f := range findings {
+		if f.File == "" || !isTreeRuntimeConfigPath(f.File) {
+			return nil, false
+		}
+		if !seen[f.File] {
+			seen[f.File] = true
+			targets = append(targets, f.File)
+		}
+	}
+	return targets, true
+}
+
+// logRuntimeDriftReclassification writes the reclassification row to stderr,
+// the gate's diagnostic channel (REQ-CGSC-011): the reason in the SPEC's own
+// words and the targeted paths, distinguishable from a skip row. stdout stays
+// the pure HookOutput contract.
+func logRuntimeDriftReclassification(scope reviewScope, targets []string) {
+	row := map[string]any{
+		"gate":         "codex-review-gate",
+		"scope":        scope.Class,
+		"reclassified": "runtime-managed drift",
+		"targets":      targets,
+	}
+	b, err := json.Marshal(row)
+	if err != nil {
+		return
+	}
+	fmt.Fprintln(os.Stderr, string(b))
 }
 
 // runCodexReviewGate is the cobra RunE for `moai hook codex-review-gate`
