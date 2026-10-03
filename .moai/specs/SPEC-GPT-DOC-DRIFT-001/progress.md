@@ -59,7 +59,7 @@ m1_to_mN_commit_strategy: single-commit # doc edits and the D1 token swap land t
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "c250a28b8"
 sync_phase: complete — the single sync commit carries the CHANGELOG `[Unreleased]`/`### Fixed` entry, the spec.md `in-progress → implemented → completed` terminal transition (`updated: 2026-10-03` — already current), and this §E.4 signal. A commit cannot cite its own SHA; the placeholder is backfilled with the real SHA in the sanctioned follow-up commit by the lane (spec-frontmatter-schema § SHA placeholder backfill exemption, D3).
 
 - CHANGELOG: one entry added as the first bullet under `[Unreleased]` `### Fixed` (doc-drift fix). B12 discipline run before emission: duplicate guard `grep -c 'SPEC-GPT-DOC-DRIFT-001' CHANGELOG.md` → `0`; AC count from the tier-S AC source (`spec.md` §3, per the B12 tier resolver) via the reserved-token counter → `live=8 excluded=0 ambiguous=0` (stdout `8`), and the entry cites AC 8/8; every path named in the entry verified present (`ls AGENTS.md internal/template/templates/AGENTS.md.tmpl .claude/skills/moai/workflows/goal.md internal/template/templates/.claude/skills/moai/workflows/goal.md internal/template/goal_auto_workflow_test.go internal/template/catalog.yaml` → all 6 exist).
