@@ -213,7 +213,7 @@ directory (read-only).
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_status: complete — 단일 sync 커밋으로 CHANGELOG [Unreleased] > Added 최상단 등재, spec.md frontmatter `in-progress → completed` 전환(in-progress → implemented → completed 3페이즈 클로즈 병합), 본 §E.4 기록을 함께 실어 착지. `sync_commit_sha`는 커밋이 자기 해시를 인용할 수 없으므로 `pending-backfill` 플레이스홀더로 적고 직후 커밋에서 백필한다(D3 예외, t1240·t1328·t1332 선례와 동일).
-- sync_commit_sha: "pending-backfill"
+- sync_commit_sha: "f705593121a1e18ad3b2f66e838de1dce16f5965"
 - changelog_entry_position: [Unreleased] > Added 최상단 (B12 선방출 grep `grep -c 'SPEC-TCD-LLM-DECIDER-001' CHANGELOG.md` = 0 확인 후 편입)
 - b12_self_test_a: PASS — 선방출 grep 0건, exit 1 (중복 편입 없음; tree `9d6c41aaa`)
 - b12_self_test_b: PASS — B12 카운터(AC_FILE=`.moai/specs/SPEC-TCD-LLM-DECIDER-001/acceptance.md`, tier M) stdout `7`, stderr `live=7 excluded=0 ambiguous=0`; CHANGELOG 항목 기재 수 7건(AC-TLD-001..007)과 일치
