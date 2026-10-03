@@ -242,3 +242,68 @@ func TestIsPrimaryCheckoutGitSymlinkedSubdirectory(t *testing.T) {
 		t.Errorf("control: a linked worktree must stay non-primary")
 	}
 }
+// --- N5: the config-only probe reads untracked files at file level ---------
+
+// newUntrackedSeedRepo builds a seeded repository (one committed source file)
+// so callers can layer untracked additions over a clean HEAD.
+func newUntrackedSeedRepo(t *testing.T) string {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	root := t.TempDir()
+	cardScopeGit(t, root, "init", "-q", "-b", "main")
+	writeCardFile(t, root, "main.go", "package main\n")
+	cardScopeGit(t, root, "add", "-A")
+	cardScopeGit(t, root, "commit", "-q", "-m", "seed")
+	return root
+}
+
+// TestTreeConfigOnlyChangesSeesUntrackedConfigThroughCollapsedPorcelain pins
+// N5: porcelain collapses a fully-untracked .moai/ tree to `?? .moai/`, an
+// entry the exclusion sets cannot see .moai/config/ inside, so the config-only
+// probe must collect untracked files at FILE level (--untracked-files=all) —
+// the cardChangedPaths precedent.
+func TestTreeConfigOnlyChangesSeesUntrackedConfigThroughCollapsedPorcelain(t *testing.T) {
+	// Case 1: untracked managed-config additions only — config-only.
+	root := newUntrackedSeedRepo(t)
+	writeCardFile(t, root, filepath.Join(".moai", "config", "sections", "workflow.yaml"), "workflow:\n")
+	if !treeConfigOnlyChanges(root) {
+		t.Errorf("an untracked managed-config addition must read config-only even though porcelain collapses the .moai/ tree to one entry (N5)")
+	}
+	// The composition the defect reaches: the scoped self-gate must not call
+	// this tree reviewable (real detector inside — no seam swap).
+	if reviewGateScopedChangeDetector(reviewScope{Class: reviewScopeTree, Dir: root}) {
+		t.Errorf("a config-only untracked tree must not be reviewable through the scoped self-gate (N5)")
+	}
+
+	// Case 2: control — an untracked ordinary source file keeps the tree
+	// reviewable.
+	rootSrc := newUntrackedSeedRepo(t)
+	writeCardFile(t, rootSrc, "extra.go", "package main\n")
+	if treeConfigOnlyChanges(rootSrc) {
+		t.Errorf("control: an untracked ordinary source file must keep the tree reviewable")
+	}
+
+	// Case 3: mixed config + source — the source leg keeps it reviewable.
+	rootMix := newUntrackedSeedRepo(t)
+	writeCardFile(t, rootMix, filepath.Join(".moai", "config", "sections", "workflow.yaml"), "workflow:\n")
+	writeCardFile(t, rootMix, "extra.go", "package main\n")
+	if treeConfigOnlyChanges(rootMix) {
+		t.Errorf("control: mixed config + source untracked changes must keep the tree reviewable")
+	}
+	if !reviewGateScopedChangeDetector(reviewScope{Class: reviewScopeTree, Dir: rootMix}) {
+		t.Errorf("control: the mixed tree must stay reviewable through the scoped self-gate")
+	}
+
+	// Case 4: regression pin — a TRACKED-modified config file still reads
+	// config-only (the round-1 shape, unchanged by the file-level listing).
+	rootTracked := newUntrackedSeedRepo(t)
+	writeCardFile(t, rootTracked, filepath.Join(".moai", "config", "sections", "workflow.yaml"), "workflow:\n")
+	cardScopeGit(t, rootTracked, "add", "-A")
+	cardScopeGit(t, rootTracked, "commit", "-q", "-m", "config")
+	writeCardFile(t, rootTracked, filepath.Join(".moai", "config", "sections", "workflow.yaml"), "workflow:\n  codex:\n")
+	if !treeConfigOnlyChanges(rootTracked) {
+		t.Errorf("regression: a tracked-modified config file must still read config-only")
+	}
+}

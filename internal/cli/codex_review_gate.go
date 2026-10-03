@@ -268,11 +268,18 @@ func treeConfigOnlyFromPorcelain(porcelain string) bool {
 // --porcelain`). Fail-open in the PRESERVE direction: a measurement failure
 // reads false — the exclusion never widens on an unreadable tree, so the
 // scoped self-gate keeps the shared detector's answer there.
+//
+// The untracked leg is collected at FILE level (--untracked-files=all,
+// card-review repair round 2, N5): default porcelain collapses a fully
+// untracked .moai/ tree to `?? .moai/`, an entry the exclusion sets cannot
+// see .moai/config/ inside, so a config-only untracked change counted as
+// reviewable. Individual file paths keep the probe honest — the
+// cardChangedPaths precedent.
 func treeConfigOnlyChanges(dir string) bool {
 	if dir == "" {
 		return false
 	}
-	out, err := exec.Command("git", "-C", dir, "status", "--porcelain").Output()
+	out, err := exec.Command("git", "-C", dir, "status", "--porcelain", "--untracked-files=all").Output()
 	if err != nil {
 		return false
 	}
