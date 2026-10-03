@@ -117,6 +117,22 @@ EOF
 
 add_reason() { reasons="$reasons${reasons:+; }$1"; }
 
+abort() { echo "ABORT: $1 (the installer was not run)" >&2; exit 2; }
+
+# BI-2: the decoys are what keeps a flag-less install.sh away from the real $GOBIN, $GOPATH/bin and $HOME/.local/bin, so
+# they are asserted, not assumed, immediately before every installer run: both exist, both lie under the scratch root
+# (resolved), `go` is the stub, and the stub answers `go env GOBIN` / `go env GOPATH` with exactly those directories.
+preflight_decoys() {
+    for decoy in "$HARNESS_DECOY_GOBIN" "$HARNESS_DECOY_GOPATH/bin"; do
+        [ -d "$decoy" ] || abort "decoy directory is missing: $decoy"
+        resolved=$(cd "$decoy" && pwd -P)
+        case $resolved in "$S"/*) ;; *) abort "decoy directory is outside the scratch root: $resolved" ;; esac
+    done
+    [ "$(command -v go)" = "$shim/go" ] || abort "go does not resolve to the stub: $(command -v go)"
+    [ "$(go env GOBIN)" = "$HARNESS_DECOY_GOBIN" ] || abort "the stub go does not answer GOBIN with the decoy"
+    [ "$(go env GOPATH)" = "$HARNESS_DECOY_GOPATH" ] || abort "the stub go does not answer GOPATH with the decoy"
+}
+
 # run_case <name> <archive-kind> <with|without> [VAR=value]: install with install.sh (flag with = --install-dir passed),
 # then judge the three install-directory assertions of AC-018 (a) plus the case's own. Appends a row to results.tsv.
 run_case() {
@@ -124,6 +140,7 @@ run_case() {
     inst=$S/inst-$name/bin
     mkdir -p "$S/inst-$name"
     mk_archive "$name" "$kind"
+    preflight_decoys
     echo "$name" >> "$S/installer-invocations.log" # recording wrapper: every installer execution passes this line
     rc=0
     if [ "$flag" = with ]; then
@@ -250,7 +267,8 @@ case $mode in
             out=$( (run_case installer-optout real without MOAI_SKIP_PLUGIN_INSTALL=1) 2>&1 ) || out_rc=$?
             runs=$(wc -l < "$S/installer-invocations.log" | tr -d ' ')
             case $out in *"ABORT:"*) aborted=yes ;; *) aborted=no ;; esac
-            if [ "$out_rc" -ne 0 ] && [ "$aborted" = yes ] && [ "$runs" -eq 0 ]; then
+            # status 2 is abort's own: a different failure that merely stopped the run would not prove the guard fired
+            if [ "$out_rc" -eq 2 ] && [ "$aborted" = yes ] && [ "$runs" -eq 0 ]; then
                 echo "PASS decoy-missing-aborts-before-installer (removed ${victim#$S/}: rc=$out_rc, installer runs=$runs)"
             else
                 echo "FAIL decoy-missing-aborts-before-installer (removed ${victim#$S/}: rc=$out_rc, aborted=$aborted, installer runs=$runs)"
@@ -262,7 +280,7 @@ case $mode in
             echo "RESULT negative-control-decoy-missing: the installer never ran with a decoy missing"
             finish 0
         fi
-        echo "RESULT negative-control-decoy-missing: the installer RAN with a decoy missing"
+        echo "RESULT negative-control-decoy-missing: NOT proven, a run did not abort with status 2 before the installer"
         finish 1
         ;;
 esac
