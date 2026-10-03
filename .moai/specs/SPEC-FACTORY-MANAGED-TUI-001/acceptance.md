@@ -69,7 +69,7 @@ go test ./internal/cli -run '^(TestFactoryManagedRequested|TestManagedLaunchRequ
 Run by the orchestrator, or by the lane that wrote M1, at the end of M1 and again by whoever advances the card to M2; the result line (three numbers and the ancestry exit codes) is pasted into progress.md §E.2. No new audit role is involved.
 
 ```
-grep -c '^| AC-MT-0' .moai/specs/SPEC-FACTORY-MANAGED-TUI-001/red-baseline.md
+grep -c '^| AC' .moai/specs/SPEC-FACTORY-MANAGED-TUI-001/red-baseline.md
 grep -c -E -e '--- FAIL: [A-Za-z0-9_/]+ [(]' .moai/specs/SPEC-FACTORY-MANAGED-TUI-001/red-baseline.md
 grep -c -e 'undefined:' -e 'build failed' .moai/specs/SPEC-FACTORY-MANAGED-TUI-001/red-baseline.md
 ```
