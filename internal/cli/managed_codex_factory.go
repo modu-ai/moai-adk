@@ -323,6 +323,12 @@ const (
 
 const managedElicitationMethod = "mcpServer/elicitation/request"
 
+// managedLegacyApprovalRejection is the refusal text of the two legacy approval
+// requests (applyPatchApproval, execCommandApproval). Codex's ReviewDecision
+// carries a denial as an object, {"denied":{"rejection":<text>}}, never as the
+// bare string "denied". The text names no id, path or secret.
+const managedLegacyApprovalRejection = "managed Factory layer is delivery-only and never grants approvals"
+
 // managedServerRequestPolicy is how the owner answers one server request kind.
 // result nil means a JSON-RPC error with errCode; outcome is the token the log
 // line carries.
@@ -351,8 +357,16 @@ var managedServerRequestPolicies = map[string]managedServerRequestPolicy{
 	}},
 	"account/chatgptAuthTokens/refresh": {outcome: "error", errCode: managedRPCServerError},
 	"attestation/generate":              {outcome: "error", errCode: managedRPCServerError},
-	"applyPatchApproval":                {outcome: "denied", result: map[string]any{"decision": "denied"}},
-	"execCommandApproval":               {outcome: "denied", result: map[string]any{"decision": "denied"}},
+	"applyPatchApproval":                {outcome: "denied", result: managedLegacyDeniedResult()},
+	"execCommandApproval":               {outcome: "denied", result: managedLegacyDeniedResult()},
+}
+
+// managedLegacyDeniedResult builds the schema-valid refusal of a legacy approval
+// request: ReviewDecision's denied variant is an object with a required
+// rejection string. It declines the action and keeps the session alive, unlike
+// the bare string "abort", which would interrupt the turn.
+func managedLegacyDeniedResult() map[string]any {
+	return map[string]any{"decision": map[string]any{"denied": map[string]any{"rejection": managedLegacyApprovalRejection}}}
 }
 
 // managedUnknownRequestPolicy answers a method the table does not name: silence

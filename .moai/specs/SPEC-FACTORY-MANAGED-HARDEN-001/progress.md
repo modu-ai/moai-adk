@@ -349,6 +349,36 @@ guardstate 의 한 건은 **사전 적색**이다: plan.md §C 가 기준 트리
 
 **Claim**: M4 정적·빌드·스코프·인접 패키지·커밋 그래프·경계 게이트가 HEAD `1963ec376` 에서 통과하며 실패는 사전 적색 한 건(guardstate)뿐이다. **Evidence**: 위 표의 명령·출력·exit. **Baseline-attribution**: `(this run, this tree, HEAD 1963ec376)`. **Gaps**: ① 라이브 Codex(실제 세션의 거부 응답 뒤 모델 행동, 요청 `serverName` 값 — design.md D-1 Gap) 미관측 ② 로그가 운영자 stdout 에 쓰이지 않는다는 문장은 단언 시험이 없고 소스 판독(`managedLogf` 는 `os.Stdout` 을 참조하지 않음)뿐 ③ `X == prevTurnID` 중복 완료 프레임 방어(G5)는 시험 행이 없음 ④ 쓰기 막힘 상한(공시한 한계)과 `id: null` 프레임(공시한 한계) 미해결 ⑤ 설치된 `moai` 바이너리가 이 트리보다 뒤처져 있어 `moai spec lint` 출력은 증거로 쓰지 않았다(지연 빌드의 증거일 뿐) ⑥ acceptance.md §1 의 AC 매트릭스 전체를 M4 에서 한꺼번에 다시 돌리지는 않았다 — AC-MH-001..008 의 GREEN 은 M2·M3 블록의 원문과 위 스코프 회귀(75 PASS, 0 FAIL)로 덮이며, AC-MH-010 은 sync 단계 몫이다 ⑦ `internal/template` 스위트는 AC 근거가 아닌 스모크로만 돌렸다(plan.md §F M4). **Residual-risk**: 스크래치 로그 파일(`…/scratchpad/m4_*.txt`)은 추적되지 않아 이 기록의 인용 줄만 남는다; 사전 적색은 develop 쪽에서 수리되기 전까지 인접 패키지 전체 통과 주장을 막는다; 연속 실패 상한 3 은 UNMEASURED 그대로다.
 
+### Repair R1 (sync-audit F1) — 레거시 승인 요청의 거부 응답 형태 (card t1409, manager-develop, cycle_type=tdd)
+
+**잘못된 값의 출처.** 레거시 승인 요청 두 종(`applyPatchApproval`, `execCommandApproval`)에 `{"decision":"denied"}` 를 답하게 한 값은 plan 단계 design.md D-1 응답 정책 표에서 왔다. 구현이 그 표를 그대로 옮겼고, plan 감사 3회는 enum 이름(denied)만 맞춰 보고 변형(variant)의 모양을 대조하지 않아 놓쳤다. codex 0.160.0 스키마에서 `ReviewDecision` 의 `denied` 변형은 문자열이 아니라 필수 키 `denied` 를 가진 객체이고 그 값은 필수 문자열 `rejection` 을 가진 객체다. 유효한 거부는 `{"decision":{"denied":{"rejection":"<문자열>"}}}` 이며, 에이전트가 실행하지 않되 세션은 계속 이어 가게 하는 의미라 이 SPEC 이 원하는 뜻과 같다. 문자열 변형 `abort` 는 턴을 끊으므로 쓰지 않는다. 승인 계열은 어떤 경로로도 답하지 않는다.
+
+**변경 범위.** 운영 코드 `internal/cli/managed_codex_factory.go`(상수 `managedLegacyApprovalRejection` 하나와 객체 빌더 `managedLegacyDeniedResult`, 정책 표의 두 항목, 로그 토큰 `denied` 는 그대로), 시험 `internal/cli/managed_hardening_test.go`, 스키마 사본 `internal/cli/testdata/codex-0.160.0/`. `.moai/specs/**` 의 다른 파일, CHANGELOG, 문서는 건드리지 않았다.
+
+| 항목 | 명령 | 관측 | exit |
+|---|---|---|---|
+| 1 RED (정책 시험) | `go test -race ./internal/cli -run '^TestManagedCodexServerRequestPolicy$' -count=1 -v` (환경 정리 접두 포함, 상수만 먼저 추가하고 표는 그대로 둔 트리) | `--- FAIL …/legacy_apply_patch_approval`, `--- FAIL …/legacy_exec_command_approval`, 사유 `result {"decision":"denied"} is not the {decision:{denied:{rejection}}} object`; 나머지 9개 하위 `--- PASS` | 1 |
+| 2 RED (새 스키마 가드, 수리 전) | `go test -race ./internal/cli -run '^TestManagedServerRequestPolicyMatchesCodexSchema$' -count=1 -v` | `answer {"decision":"denied"} to applyPatchApproval violates ApplyPatchApprovalResponse.json`, `… to execCommandApproval violates ExecCommandApprovalResponse.json`; 두 하위만 `--- FAIL`, 나머지 9개 종류와 `validator_catches_the_bare_denied_string` 은 `--- PASS` | 1 |
+| 3 GREEN | `go test -race ./internal/cli -run '^(TestManagedCodexServerRequestPolicy\|TestManagedServerRequestPolicyMatchesCodexSchema)$' -count=1 -v` | `--- PASS` 25, `--- FAIL` 0, `ok  github.com/modu-ai/moai-adk/internal/cli  4.271s` | 0 |
+| 4a 변이: `applyPatchApproval` 을 다시 문자열 `"denied"` 로 | 같은 명령 | 정책 시험 `…/legacy_apply_patch_approval` 과 스키마 가드 `…/legacy_apply_patch_approval` 둘 다 `--- FAIL` (다른 하위는 초록) | 1 |
+| 4b 변이: `execCommandApproval` 을 `"abort"` 로 | 같은 명령 | 정책 시험 `…/legacy_exec_command_approval` 만 `--- FAIL`. 스키마 가드는 초록이었다(`abort` 는 스키마상 유효하고 정책이 틀린 경우이므로 정확한 응답 단언이 잡는다 — 지시의 예상 "둘 다 붉음" 과 다른 관측이며, 가드가 정책 값을 대신 지키지 않는다는 이 시험의 설계 그대로다) | 1 |
+| 4c 변이: `item/commandExecution/requestApproval` 의 `decline` 을 `accept` 로 | 같은 명령 | 정책 시험 `…/command_execution_approval` 만 `--- FAIL`(mu1 의 동작 유지). 스키마 가드는 초록(`accept` 도 스키마상 유효) | 1 |
+| 변이 복원 확인 | `git diff --stat` | 변이마다 복원 직후 `managed_codex_factory.go 18 +++-`, `managed_hardening_test.go 180 +++…-`(변이 전과 동일) | — |
+| 5 정적 | `gofmt -l` 두 파일 / `go build ./...` / `go vet ./internal/cli ./internal/config` / `GOOS=windows GOARCH=amd64 go build ./...` / `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` / `golangci-lint run --allow-serial-runners ./internal/cli/...` (v2.1.6) | 출력 없음 ×5 / `0 issues.` | 모두 0 |
+| 선택 수 | `go test ./internal/cli -list '^.*(Managed\|managed).*$'` 를 `grep -c '^Test'` 로 센 값 | `79` (78 + 새 가드 1) | 0 |
+| managed 전체 | `go test ./internal/cli -run '^.*(Managed\|managed).*$' -count=1 -race -v` | `--- PASS` 218(하위 포함), `--- SKIP` 3(`TestManagedCodexFakeAppServer`, `TestManagedCodexFactoryBrokerLive`, `TestManagedLoopbackChild`), `--- FAIL` 0, `DATA RACE` 0, `ok  github.com/modu-ai/moai-adk/internal/cli  47.055s` | 0 |
+| config | `go test ./internal/config -count=1` | `ok  github.com/modu-ai/moai-adk/internal/config  11.219s` | 0 |
+| 경계 | `grep -c 'syscall\.' internal/cli/managed_*.go` / `grep -c 'AskUserQuestion' internal/cli/managed_*.go` (비시험 파일 2개) | 모두 `:0`; 양성 대조: `internal/cli/codex_direct_posix.go` 에 `syscall.` 존재, `internal/cli/mcp_server.go` 에 `AskUserQuestion` 2건 | — |
+| 스키마 사본 재생성 | `codex app-server generate-json-schema --out <트리 밖 폴더>` (codex-cli 0.160.0) 후 `cmp` | 사본 8개 모두 바이트 동일 | 0 |
+
+모든 `go test` 는 환경 정리 접두(`unset MOAI_KANBAN … MOAI_KANBAN_BACKEND && go test …`)를 붙인 단일 호출이다. 귀속은 모두 `(this run, this tree, HEAD f4f47dc51)` 이다. 이 블록과 같은 커밋에서 HEAD 가 움직이므로 위 HEAD 는 수리 직전 부모다.
+
+**검증기 경로.** `go.mod` 에 이미 직접 의존으로 있는 `github.com/santhosh-tekuri/jsonschema/v6`(운영 코드 `internal/codextools/registry.go` 도 사용)를 썼다. 새 의존도 `go.mod`/`go.sum` 변경도 없다. 사본 스키마는 draft-07 이고 내부 `#/definitions` 참조만 가져 로더가 필요 없다. 시험은 `codex` 바이너리도 네트워크도 쓰지 않는다. 사본: `ApplyPatchApprovalResponse.json`(4278 B), `ExecCommandApprovalResponse.json`(4279 B), `CommandExecutionRequestApprovalResponse.json`(3202 B), `FileChangeRequestApprovalResponse.json`(1158 B), `PermissionsRequestApprovalResponse.json`(7068 B), `McpServerElicitationRequestResponse.json`(741 B), `DynamicToolCallResponse.json`(2010 B), `JSONRPCError.json`(893 B), 그리고 생성 명령과 재생성 조건을 적은 `README.md`.
+
+**다른 정책 항목.** 새 스키마 가드에서 레거시 두 항목 외의 정책 항목은 하나도 붉지 않았다(결과 응답 6종은 각 스키마를, 오류 응답 3종과 미등록 메서드 폴백은 `JSONRPCError.json` 을 통과). 따라서 이 수리는 SPEC 정책 표의 다른 줄을 바꾸지 않는다. 가드는 표 키와 `hardenPolicyRows`·결과 스키마 사상의 일치도 단언한다(표에 종류가 늘면 매핑이 없어 붉어진다).
+
+**Gaps.** ① 라이브 Codex 에서 레거시 승인 요청에 새 거부 객체를 답했을 때의 모델 행동은 관측하지 않았다(스키마 유효성만 관측). ② 오류 프레임 검증은 와이어에서 읽은 `id`·`code`·`message` 로 프레임을 재조립해 대조한 것이다(`data` 키는 소유자가 쓰지 않는다). ③ `abort`·`accept` 처럼 스키마상 유효한 오답은 스키마 가드가 아니라 정확한 응답 단언(AC-MH-001)만 잡는다 — 4b·4c 로 관측. ④ design.md D-1 표, acceptance.md, spec.md 의 `denied` 서술은 이 위임이 고치지 않았다(후속 위임 몫). **Residual-risk**: 사본은 0.160.0 기준이라 최소 지원 codex 버전이 올라가면 재생성하지 않는 한 가드는 옛 스키마를 계속 신뢰한다(README 에 명시). 거부 문구 상수의 영어 문장은 서버가 모델에 그대로 전달할 수 있다 — 식별자·경로·비밀은 넣지 않았다. 사전 적색(guardstate)은 이 수리 범위 밖이라 재측정하지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready

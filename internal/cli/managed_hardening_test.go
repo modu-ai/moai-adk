@@ -35,6 +35,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 const (
@@ -327,6 +328,35 @@ func hardenWantResult(want string) func(*testing.T, hardenFrame) {
 	}
 }
 
+// hardenWantLegacyDenied pins the legacy approval refusal shape: codex 0.160.0
+// ReviewDecision carries a denial as {"denied":{"rejection":<string>}}, not as
+// the bare string "denied". The reply is decoded and its shape asserted, with
+// the rejection text compared to the production constant.
+func hardenWantLegacyDenied() func(*testing.T, hardenFrame) {
+	return func(t *testing.T, f hardenFrame) {
+		t.Helper()
+		if f.Error != nil {
+			t.Fatalf("answered with error %+v, want a denied decision result", *f.Error)
+		}
+		var result struct {
+			Decision struct {
+				Denied *struct {
+					Rejection *string `json:"rejection"`
+				} `json:"denied"`
+			} `json:"decision"`
+		}
+		if err := json.Unmarshal(f.Result, &result); err != nil {
+			t.Fatalf("result %s is not the {decision:{denied:{rejection}}} object: %v", f.Result, err)
+		}
+		if result.Decision.Denied == nil || result.Decision.Denied.Rejection == nil {
+			t.Fatalf("result %s, want {\"decision\":{\"denied\":{\"rejection\":<string>}}}", f.Result)
+		}
+		if got := *result.Decision.Denied.Rejection; got == "" || got != managedLegacyApprovalRejection {
+			t.Fatalf("rejection %q, want the non-empty constant %q", got, managedLegacyApprovalRejection)
+		}
+	}
+}
+
 func hardenWantError(code int) func(*testing.T, hardenFrame) {
 	return func(t *testing.T, f hardenFrame) {
 		t.Helper()
@@ -389,8 +419,8 @@ func hardenPolicyRows() []hardenPolicyRow {
 		}, "failed", ""},
 		{"chatgpt_token_refresh", "account/chatgptAuthTokens/refresh", base(nil), hardenWantError(-32000), "error", ""},
 		{"attestation_generate", "attestation/generate", base(nil), hardenWantError(-32000), "error", ""},
-		{"legacy_apply_patch_approval", "applyPatchApproval", base(nil), hardenWantResult(`{"decision":"denied"}`), "denied", ""},
-		{"legacy_exec_command_approval", "execCommandApproval", base(nil), hardenWantResult(`{"decision":"denied"}`), "denied", ""},
+		{"legacy_apply_patch_approval", "applyPatchApproval", base(nil), hardenWantLegacyDenied(), "denied", ""},
+		{"legacy_exec_command_approval", "execCommandApproval", base(nil), hardenWantLegacyDenied(), "denied", ""},
 		{"unknown_method", "item/unlisted/needsAnswer", base(nil), hardenWantError(-32601), "error", ""},
 	}
 }
@@ -451,6 +481,152 @@ func TestManagedCodexServerRequestPolicy(t *testing.T) {
 			prefix := fmt.Sprintf("Factory server request answered: %q ->", row.method)
 			if n := strings.Count(srv.log.snapshot(), prefix); n != 1 {
 				t.Fatalf("%d log lines for %s, want exactly one", n, row.method)
+			}
+		})
+	}
+}
+
+// hardenResultSchemas maps every server-request kind the owner answers with a
+// result to the vendored codex 0.160.0 response schema that result must satisfy.
+// A kind absent here is answered with a JSON-RPC error, validated against
+// JSONRPCError.json instead.
+var hardenResultSchemas = map[string]string{
+	"item/commandExecution/requestApproval": "CommandExecutionRequestApprovalResponse.json",
+	"item/fileChange/requestApproval":       "FileChangeRequestApprovalResponse.json",
+	"item/permissions/requestApproval":      "PermissionsRequestApprovalResponse.json",
+	managedElicitationMethod:                "McpServerElicitationRequestResponse.json",
+	"item/tool/call":                        "DynamicToolCallResponse.json",
+	"applyPatchApproval":                    "ApplyPatchApprovalResponse.json",
+	"execCommandApproval":                   "ExecCommandApprovalResponse.json",
+}
+
+// hardenCompileSchema compiles one vendored draft-07 schema file. The files
+// carry only internal "#/definitions" references, so no loader is needed.
+func hardenCompileSchema(t *testing.T, file string) *jsonschema.Schema {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("testdata", "codex-0.160.0", file))
+	if err != nil {
+		t.Fatalf("read vendored schema %s: %v", file, err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("parse vendored schema %s: %v", file, err)
+	}
+	compiler := jsonschema.NewCompiler()
+	compiler.DefaultDraft(jsonschema.Draft7)
+	url := "https://moai.invalid/codex-0.160.0/" + file
+	if err := compiler.AddResource(url, doc); err != nil {
+		t.Fatalf("add vendored schema %s: %v", file, err)
+	}
+	schema, err := compiler.Compile(url)
+	if err != nil {
+		t.Fatalf("compile vendored schema %s: %v", file, err)
+	}
+	return schema
+}
+
+// hardenValidate validates raw JSON against a compiled schema.
+func hardenValidate(t *testing.T, schema *jsonschema.Schema, raw []byte) error {
+	t.Helper()
+	value, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("answer %s is not JSON: %v", raw, err)
+	}
+	return schema.Validate(value)
+}
+
+// TestManagedServerRequestPolicyMatchesCodexSchema is the schema-conformance
+// guard for the D-1 response policy: the owner's real wire answer to every kind
+// of server request must validate against the codex 0.160.0 response schema for
+// that kind (or, for the error-answered kinds and the unknown-method fallback,
+// against JSONRPCError). It complements, and does not replace, the exact
+// answers pinned by TestManagedCodexServerRequestPolicy: a schema-valid answer
+// can still be the wrong policy (abort is valid and interrupts the turn), and a
+// policy-correct-by-name answer can be schema-invalid (the legacy refusal sent
+// as the bare string "denied"). It needs neither the codex binary nor a network.
+func TestManagedServerRequestPolicyMatchesCodexSchema(t *testing.T) {
+	rows := hardenPolicyRows()
+	rowMethods := map[string]bool{}
+	for _, row := range rows {
+		rowMethods[row.method] = true
+	}
+	for method, policy := range managedServerRequestPolicies {
+		if !rowMethods[method] {
+			t.Errorf("policy table kind %q has no row in hardenPolicyRows: the schema guard would skip it", method)
+		}
+		if _, hasSchema := hardenResultSchemas[method]; hasSchema != (policy.result != nil) {
+			t.Errorf("policy table kind %q: result-answered=%v but vendored result schema mapped=%v", method, policy.result != nil, hasSchema)
+		}
+	}
+	for method := range hardenResultSchemas {
+		if _, ok := managedServerRequestPolicies[method]; !ok {
+			t.Errorf("hardenResultSchemas names %q, which the policy table does not", method)
+		}
+	}
+	rpcError := hardenCompileSchema(t, "JSONRPCError.json")
+
+	t.Run("validator_catches_the_bare_denied_string", func(t *testing.T) {
+		for _, file := range []string{"ExecCommandApprovalResponse.json", "ApplyPatchApprovalResponse.json"} {
+			schema := hardenCompileSchema(t, file)
+			if hardenValidate(t, schema, []byte(`{"decision":"denied"}`)) == nil {
+				t.Errorf("%s accepts the bare string \"denied\": the guard cannot see the defect it exists for", file)
+			}
+			if err := hardenValidate(t, schema, []byte(`{"decision":{"denied":{"rejection":"x"}}}`)); err != nil {
+				t.Errorf("%s rejects the denied object: %v", file, err)
+			}
+		}
+	})
+
+	client, srv := newHardenPair(t)
+	sess := &managedCodexSession{client: client, threadID: "th-policy"}
+	done := hardenDeliver(sess, "schema turn")
+	srv.startTurn("T1")
+	srv.turnStarted("T1")
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		id := 101 + i
+		ids[i] = strconv.Itoa(id)
+		srv.request(id, row.method, row.params)
+	}
+	replies, _ := srv.collectReplies(len(rows))
+	srv.turnCompleted("T1", "completed")
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("DeliverTurn = %v, want nil", err)
+		}
+	case <-time.After(hardenWatchdog):
+		t.Fatalf("DeliverTurn did not return within %s after the turn completed", hardenWatchdog)
+	}
+
+	for i, row := range rows {
+		t.Run(row.name, func(t *testing.T) {
+			reply, ok := replies[ids[i]]
+			if !ok {
+				t.Fatalf("no answer to server request %s (%s) within %s", ids[i], row.method, hardenReplyWait)
+			}
+			file, resultKind := hardenResultSchemas[row.method]
+			if !resultKind {
+				if reply.Error == nil {
+					t.Fatalf("%s answered with result %s, want a JSON-RPC error", row.method, reply.Result)
+				}
+				frame, err := json.Marshal(map[string]any{
+					"id":    json.RawMessage(reply.ID),
+					"error": map[string]any{"code": reply.Error.Code, "message": reply.Error.Message},
+				})
+				if err != nil {
+					t.Fatalf("re-encode error frame: %v", err)
+				}
+				if err := hardenValidate(t, rpcError, frame); err != nil {
+					t.Fatalf("error frame %s violates JSONRPCError.json: %v", frame, err)
+				}
+				return
+			}
+			if reply.Error != nil {
+				t.Fatalf("%s answered with error %+v, want a result", row.method, *reply.Error)
+			}
+			if err := hardenValidate(t, hardenCompileSchema(t, file), reply.Result); err != nil {
+				t.Fatalf("answer %s to %s violates %s: %v", reply.Result, row.method, file, err)
 			}
 		})
 	}
