@@ -193,11 +193,14 @@ const factoryNextNoCardExit = 3
 // serial card is recorded until its implementation pipeline ends — every
 // state at or after merge-ready (cardStageAtOrAfterMergeReady: the card's
 // implementation is finished and what remains is the integration pipeline,
-// which the integration window serializes on its own) plus abandoned, the
-// one irreversible exit. A state added later keeps the slot held — the
+// which the integration window serializes on its own) plus failed and
+// abandoned, the terminal exits no transition ever leaves (homestate
+// IsTerminalCardState). A state added later keeps the slot held — the
 // enumeration names the RELEASING states and never the holding ones (plan
 // G2): a negative check (`state != done && ...`) would silently release the
-// slot for every state added after it was written.
+// slot for every state added after it was written. The state is not the whole
+// read: factorySerialSlotHeld also frees a lease-holding card whose lease has
+// expired.
 //
 // merge-ready and later release the slot because that is the recorded
 // behavior the absorbed self-dispatch suite pins: a Codex lane's relaunch
@@ -209,24 +212,44 @@ const factoryNextNoCardExit = 3
 func factorySerialSlotFree(state string) bool {
 	switch state {
 	case homestate.CardMergeReady, homestate.CardMerging, homestate.CardMergedLocal,
-		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone, homestate.CardAbandoned:
+		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone, homestate.CardFailed,
+		homestate.CardAbandoned:
 		return true
 	default:
 		return false
 	}
 }
 
+// factorySerialSlotHeld reports whether a recorded card holds the serial slot
+// at now: its state is not one of the releasing states, and — for a card in a
+// lease-holding state — its lease has not expired. An expired lease is only
+// collected lazily, by the next transition on that same card, so the row keeps
+// its lease-holding state after the lane that held it is gone; reading the
+// state alone would hold the slot for that lane indefinitely (card t1407).
+func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
+	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now)
+}
+
 // factorySerialInFlightExcluding reports whether a serial card OTHER than
-// cardID sits in the record in a state that still holds the serial slot. The
-// candidate's own row is excluded by identity: the exclusivity holds against
-// DISTINCT cards (REQ-TCD-008). The unnominated arms and the nominated lease
-// read the slot through this one function.
-func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) kanban.CardClassification, cardID string) bool {
+// cardID sits in the record in a state that still holds the serial slot at
+// now. The candidate's own row is excluded by identity: the exclusivity holds
+// against DISTINCT cards (REQ-TCD-008). The unnominated arms and the nominated
+// lease read the slot through this one function.
+//
+// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card t1407): a
+// lane leasing the card assigned TO ITSELF does not count sibling cards that
+// are merely `assigned`, which would otherwise wedge every leader-assigned
+// serial card against the others with nothing in flight. Every path that takes
+// a NEW card, the nominated lease included, passes false.
+func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) kanban.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
 	for _, c := range cards {
 		if c.CardID == cardID {
 			continue
 		}
-		if !factorySerialSlotFree(c.State) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
+		if ignoreAssigned && c.State == homestate.CardAssigned {
+			continue
+		}
+		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
 			return true
 		}
 	}
@@ -413,8 +436,11 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 //
 // Classification eligibility (SPEC-TODO-CLASSIFY-DISPATCH-001): one pure
 // queue read anchors every mode lookup; a serial card recorded in a
-// non-terminal state holds the serial slot, so no lane leases another serial
-// card through ANY arm — while parallelizable candidates stay leasable
+// non-terminal state holds the serial slot — unless its lease has expired
+// (factorySerialSlotHeld) — so no lane leases another serial
+// card through ANY arm, except that arm (a), a lane leasing the card assigned
+// to itself, does not count sibling cards that are merely assigned — while
+// parallelizable candidates stay leasable
 // throughout (REQ-TCD-008). The auto-promotion arm additionally never
 // selects a blocked card (REQ-TCD-007).
 //
@@ -424,6 +450,12 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 // while arms (b), (b2), and (c) — every arm that takes a NEW card — are
 // bypassed without a second predicate.
 func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool) (homestate.Card, bool, bool, error) {
+	// The clock is read BEFORE the record snapshot: a lease whose expiry the
+	// snapshot shows as already past was expired when the clock was read too,
+	// so a renewal landing after the snapshot cannot be read as an expiry. Read
+	// afterwards, a renewal slipping between the two would free the slot for a
+	// lease that is in fact live and let two serial cards run at once.
+	now := factoryCardNow()
 	cards, err := db.ListCards(ctx, runID)
 	if err != nil {
 		return homestate.Card{}, false, false, err
@@ -448,14 +480,18 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	// serial card is not a second serial card in flight — the exclusivity
 	// holds against DISTINCT cards (REQ-TCD-008), and a self-blocked
 	// candidate would wedge every lease of a legacy serial row.
-	serialInFlightExcluding := func(cardID string) bool {
-		return factorySerialInFlightExcluding(cards, classOf, cardID)
+	//
+	// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card
+	// t1407); see factorySerialInFlightExcluding. Every arm that takes a NEW
+	// card passes false.
+	serialInFlightExcluding := func(cardID string, ignoreAssigned bool) bool {
+		return factorySerialInFlightExcluding(cards, classOf, cardID, now, ignoreAssigned)
 	}
 	modeEligible := func(cardID string) bool {
 		if classOf(cardID).Mode != kanban.ClassModeSerial {
 			return true
 		}
-		return !serialInFlightExcluding(cardID)
+		return !serialInFlightExcluding(cardID, false)
 	}
 	// (a) a card assigned to this lane — the lease edge alone (T3).
 	for _, c := range cards {
@@ -465,7 +501,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if skip(c) {
 			continue
 		}
-		if !modeEligible(c.CardID) {
+		if classOf(c.CardID).Mode == kanban.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
 			continue
 		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
@@ -537,7 +573,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 				if cls.Blocked {
 					continue
 				}
-				if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID) {
+				if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
 					continue
 				}
 				it.State = kanban.BacklogStatePicked
@@ -785,6 +821,8 @@ func factoryNextValidate(ctx context.Context, db *homestate.FactoryDB, root, run
 	if !found {
 		return nom, factoryRefusal(factoryRefuseUnknownCard, "%s is in no live queue row", cardID), nil
 	}
+	// The clock is read before the record snapshot (see factoryNextSelectAndLease).
+	now := factoryCardNow()
 	cards, err := db.ListCards(ctx, runID)
 	if err != nil {
 		return nom, nil, err
@@ -797,7 +835,7 @@ func factoryNextValidate(ctx context.Context, db *homestate.FactoryDB, root, run
 		}
 	}
 	classOf := func(id string) kanban.CardClassification { return factoryQueueClassification(queueRec, id) }
-	nom.serialHeld = classOf(cardID).Mode == kanban.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID)
+	nom.serialHeld = classOf(cardID).Mode == kanban.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, false)
 	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
 		return nom, r, nil
 	}
@@ -866,16 +904,16 @@ func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHo
 				if it.ID != cardID {
 					continue
 				}
-				if it.State != kanban.BacklogStateQueued {
-					lost = factoryRefusal(factoryRefuseRaced, "another lane moved %s out of queued first", cardID)
+				if it.State == kanban.BacklogStateQueued {
+					if ref := factoryKeepSetRefusal(*it, nom.row, lane, nom.serialHeld); ref != nil {
+						lost = ref
+						return nil
+					}
+					it.State = kanban.BacklogStatePicked
+					promoted = true
 					return nil
 				}
-				if ref := factoryKeepSetRefusal(*it, nom.row, lane, nom.serialHeld); ref != nil {
-					lost = ref
-					return nil
-				}
-				it.State = kanban.BacklogStatePicked
-				promoted = true
+				lost = factoryRefusal(factoryRefuseRaced, "another lane moved %s out of queued first", cardID)
 				return nil
 			}
 			lost = factoryRefusal(factoryRefuseRaced, "%s left the queue first", cardID)
