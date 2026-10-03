@@ -233,11 +233,22 @@ func reviewRequestParams(scope reviewScope) map[string]any {
 // (REQ-CGS-006): the card class measures the card diff; every other class
 // keeps the pre-SPEC detector over the scope's tree, so the existing seam and
 // its tests are unchanged on the tree path.
+//
+// The tree class composes one more exclusion (SPEC-CODEX-GATE-SCOPING-001
+// REQ-CGSC-007, card-review repair R1): a turn whose ONLY changes are the
+// runtime-config surfaces is not reviewable. The consult lives HERE — the
+// tree-scope-only caller — never inside the shared reviewableFromPorcelain the
+// multi-review gates also consume: a card or a multi-review turn over
+// config-only changes keeps full reviewability (REQ-CGSC-005 / AC-CGSC-009).
+// The probe can only narrow the detector's answer, never widen it.
 func reviewGateScopedChangeDetector(scope reviewScope) bool {
 	if scope.Class == reviewScopeCard {
 		return hasReviewableCardChanges(scope)
 	}
-	return reviewGateChangeDetector(scope.Dir)
+	if !reviewGateChangeDetector(scope.Dir) {
+		return false
+	}
+	return !treeConfigOnlyChanges(scope.Dir)
 }
 
 // cardChangedPaths returns the changed paths of the card diff: the union

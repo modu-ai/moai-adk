@@ -124,19 +124,33 @@ func TestCodexReviewGatePrimaryPolicySharedByBothPaths(t *testing.T) {
 //
 // RED on the pre-implementation tree: the runtime prefix list carries only
 // state surfaces, so a settings/config-only change reads reviewable.
+//
+// Card-review repair R1 relocated WHERE the exclusion lives: out of the SHARED
+// reviewableFromPorcelain (whose multi-review consumers must keep the baseline
+// detector) into the tree-only config-only probe the scoped self-gate composes
+// with. This AC's observable is unchanged — the assertions below target that
+// probe — and the rename legs (repair R5) pin that only a rename on BOTH
+// config sides reads config-only, so `.claude/settings.json -> main.go` keeps
+// the self-gate firing.
 func TestReviewableFromPorcelainRuntimeConfigOnlyFalse(t *testing.T) {
 	for _, tc := range []struct{ name, path string }{
 		{"local claude settings", ".claude/settings.json"},
 		{"managed config tree", ".moai/config/sections/workflow.yaml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if reviewableFromPorcelain(" M " + tc.path + "\n") {
-				t.Errorf("runtime-managed config surface %q must not count as reviewable on the tree path", tc.path)
+			if !treeConfigOnlyFromPorcelain(" M " + tc.path + "\n") {
+				t.Errorf("runtime-managed config surface %q must read config-only, so the tree self-gate does not count it reviewable", tc.path)
 			}
 		})
 	}
-	if !reviewableFromPorcelain(" M cmd/moai/main.go\n") {
-		t.Fatalf("control failed: an ordinary source path must stay reviewable, so a false above would mean the predicate broke, not this criterion")
+	if treeConfigOnlyFromPorcelain(" M cmd/moai/main.go\n") {
+		t.Fatalf("control failed: an ordinary source path must keep the tree self-gate firing, so a true above would mean the probe broke, not this criterion")
+	}
+	if treeConfigOnlyFromPorcelain("R  .claude/settings.json -> cmd/moai/main.go\n") {
+		t.Errorf("a rename whose destination is an ordinary source must keep the tree self-gate firing (repair R5)")
+	}
+	if !treeConfigOnlyFromPorcelain("R  .moai/config/a.yaml -> .moai/config/b.yaml\n") {
+		t.Errorf("a rename on both config sides stays config-only")
 	}
 }
 
