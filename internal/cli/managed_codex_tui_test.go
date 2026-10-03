@@ -42,9 +42,9 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
