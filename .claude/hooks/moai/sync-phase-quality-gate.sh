@@ -254,6 +254,15 @@ fi
 # walks above (which itself mirrors sourceScanSkipDirs in
 # internal/hook/quality/gate.go), so every collector in this hook skips one
 # shared set of trees.
+# The parked-audit-lab exclusion: .moai/reports holds per-card audit and gate
+# evidence (often a Go module root of its own), none of it this session's
+# change scope — a fixture parked there joined the delta set and became a
+# vetted module root, so a docs-adjacent sync turn blocked on a lab no lane
+# owns. The entry joins WCI_EXCLUDES for the walk arms below, and — scoped to
+# THIS entry alone, never the full set — the two committed/tracked diff arms,
+# which would otherwise carry the committed and tracked legs of the same
+# parked tree into the delta.
+WCI_REPORTS_EXCLUDE=':(top,exclude).moai/reports'
 WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs'
     ':(top,exclude).moai/worktrees' ':(top,exclude).claude/worktrees'
     ':(glob,top,exclude)**/node_modules/**' ':(glob,top,exclude)**/vendor/**'
@@ -263,7 +272,8 @@ WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs'
     ':(glob,top,exclude)**/venv/**' ':(glob,top,exclude)**/__pycache__/**'
     ':(glob,top,exclude)**/site-packages/**' ':(glob,top,exclude)**/.tox/**'
     ':(glob,top,exclude)**/.nox/**' ':(glob,top,exclude)**/.mypy_cache/**'
-    ':(glob,top,exclude)**/.ruff_cache/**' ':(glob,top,exclude)**/.pytest_cache/**')
+    ':(glob,top,exclude)**/.ruff_cache/**' ':(glob,top,exclude)**/.pytest_cache/**'
+    "$WCI_REPORTS_EXCLUDE")
 
 # Ignored sources join the delta set AND the worktree key. The find-based
 # checkers (Ruby/PHP/C++ …) scan ignored sources, so a broken ignored file
@@ -302,10 +312,13 @@ fi
 # re-run), but the changed-language set aggregates only what is listed here,
 # so leaving ② and ③ out let a Go compile error added beside a Ruby-only
 # commit pass with zero Go checks (codex review gate reproduction —
-# `language=ruby`, no go steps, decision=allow). sort -u deduplicates the
+# `language=ruby`, no go steps, decision=allow). Arms ① and ② carry the
+# reports exclusion alone — the parked lab reaches them through its committed
+# and tracked legs too, and widening those arms to the full set is a
+# deliberate scope decision, not a default. sort -u deduplicates the
 # overlap between the four sources.
-SYNC_DELTA_FILES=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
-                     git diff HEAD --name-only 2>/dev/null || true
+SYNC_DELTA_FILES=$({ git diff --name-only "$DIFF_RANGE" -- "$WCI_REPORTS_EXCLUDE" 2>/dev/null || true
+                     git diff HEAD --name-only -- "$WCI_REPORTS_EXCLUDE" 2>/dev/null || true
                      git ls-files --others --exclude-standard -- "${WCI_EXCLUDES[@]}" 2>/dev/null || true
                      [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
                    } | sort -u)
