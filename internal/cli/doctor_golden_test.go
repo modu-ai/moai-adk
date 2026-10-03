@@ -114,6 +114,11 @@ func captureDoctorCmd(t *testing.T) (string, string) {
 	// t1250) resolves its state file under the pinned empty HOME instead of
 	// a real Claude Code profile directory.
 	t.Setenv(config.EnvClaudeConfigDir, "")
+	// Scrub CODEX_HOME for the same reason: HOME already moves the default
+	// ~/.codex, so a CODEX_HOME in the caller's environment (a Codex lane) is
+	// the one way a real Codex home could still reach the Plugin Version check
+	// (SPEC-PLUGIN-MARKETPLACE-001 AC-023 (d)).
+	t.Setenv(codexHomeEnvVar, "")
 	// Scrub the backend env so the Shared Flag Slot check (card t702) reports
 	// its first-party baseline on every machine. A development shell running
 	// under a third-party backend (moai glm injects ANTHROPIC_BASE_URL) would
@@ -444,4 +449,36 @@ func TestRunGroupedChecks_Structure(t *testing.T) {
 			t.Errorf("groups[%d].title = %q, want %q", i, g.title, names[i])
 		}
 	}
+}
+
+// TestDoctorGolden_IgnoresCallerCodexHome pins AC-023 (d): a CODEX_HOME in the
+// caller's environment that names a home with a registered moai plugin must not
+// change the golden output, so captureDoctorCmd scrubs it. It also requires the
+// "Plugin Version" row, so a check that is never registered fails here too.
+func TestDoctorGolden_IgnoresCallerCodexHome(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
+	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
+
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
+	callerHome := t.TempDir()
+	if err := os.WriteFile(filepath.Join(callerHome, "config.toml"),
+		[]byte("[plugins.\"moai@moai-adk\"]\nenabled = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(codexHomeEnvVar, callerHome)
+
+	got, _ := captureDoctorCmd(t)
+	if !strings.Contains(got, pluginVersionCheckName) {
+		t.Fatalf("doctor output has no %q row", pluginVersionCheckName)
+	}
+	checkDoctorGolden(t, "doctor-nocolor", got)
 }

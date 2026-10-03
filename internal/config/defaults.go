@@ -189,6 +189,12 @@ const (
 	// them (a grandchild holding the pipe must not outlive the bound).
 	DefaultPluginCommandWaitDelay = 2 * time.Second
 
+	// DefaultPluginVersionProbeTimeout bounds the one `codex plugin list --json`
+	// the "Plugin Version" doctor check starts (SPEC-PLUGIN-MARKETPLACE-001
+	// REQ-021). The command measured 0.02 s; the bound only stops a hang from
+	// stalling an on-demand `moai doctor`. A chosen value, not a measured one.
+	DefaultPluginVersionProbeTimeout = 3 * time.Second
+
 	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
 	// failure Stops under the Claude harness that keep the fail-closed deny;
 	// the next one is answered with no opinion (SPEC-HOOK-STOP-PARSE-CAP-001
