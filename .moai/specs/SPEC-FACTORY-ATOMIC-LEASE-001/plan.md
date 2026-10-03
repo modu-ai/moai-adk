@@ -1,14 +1,17 @@
 # SPEC-FACTORY-ATOMIC-LEASE-001 — Plan
 
 Tier M. Card t1458, plan-start HEAD `2de0a2cb613b04765a1554f86685a3b48e0be806` (branch
-`WT-atomic-lease`, worktree `.claude/worktrees/t1458`). Version 0.2.0 of the plan (iteration 2 repair
-after the independent plan-audit; the defect map is in `progress.md` §E.1). Sections and milestones are
+`WT-atomic-lease`, worktree `.claude/worktrees/t1458`). Version 0.3.0 of the plan (override-round repair
+after the independent plan-audit's iteration 2; the defect map is in `progress.md` §E.1; the audit's own
+defect ids are written `PA2-M1`… so they never collide with the card's scope items M1–M5 below). Sections
+and milestones are
 ordered by **decision reversibility** — the decisions most likely to change come first (the lock
 primitive's interface, the bounded-claim semantics a lane sees, the creator interface shared by four
 callers), mechanical edits last. No time estimates; priority labels and ordering only.
 
 **Decisions most likely to change** are D1 to D3 below: the primitive's shape, the bounded-claim
-semantics, and the worktree-step lock. D4 and D5 are structural and bookkeeping.
+semantics (now three bounded waits, D2), and the worktree-step lock. D4 and D5 are structural and
+bookkeeping; D5 is also an operator-veto decision and is listed in spec §H as DL-4.
 
 **Two id spaces, kept apart on purpose.** The card's five scope items keep their ids **M1–M5**
 (spec.md §A.1: M1 F3(a), M2 F3(c), M3 F14, M4 t1407 option B, M5 rename) and are what the
@@ -49,15 +52,25 @@ handle returned, so the section builds no second store value. The store the sect
 the bare arms that never opened it. `Mutate` itself becomes `WithLock` around one `LockedBacklog.Mutate`,
 so its behavior is byte-preserved. The lock is a non-reentrant `flock` on a separate descriptor: calling
 the *public* `Mutate` from inside the section contends with the section's own descriptor and waits out
-the budget. That is a trap, not a feature, and §5 lists the existing tests it breaks. An exported read
+the budget. That is a trap, not a feature, and §5 lists the existing tests it breaks. **The section's
+store is constructed before `WithLock` is called**, by `todoStoreAt(root)` — the adopting form arm (c)
+and the nominated promotion already used. The legacy-directory adoption is a side effect of that
+construction (`BacklogPathForRootAdopting` → `resolveStateDir(root, true)`), so it runs before any lock
+is taken and outside the section (REQ-FAL-007), and the lock cannot order it; spec §F R13 states the
+race this leaves open on the first adoption. An exported read
 accessor for the wait budget (`LockWaitBudget()`), so the claim cap is derived from the budget and never
 copied from it. A test pins the non-adopting read (`TestLockedBacklogLoadIsPure`, WM2: a queue in the
 legacy layout shows no layout change after a `WithLock` that only calls `LoadPure`; mutant MU8).
 
-**D2 — the bounded claim (WM4).** Two mechanisms, **both required**, and the reason is measured:
+**D2 — the bounded claim (WM4).** Three waits sit inside the claim: the record's SQLite write lock, which
+two mechanisms bound together (**both required**, and the reason is measured), the record's retry loop
+between the three writes (bounded by the deadline below), and the drift log's file lock that every record
+write also takes (spec §A.2 O15), which a third, different device bounds (last bullet group of this
+decision). The two mechanisms for the SQLite waits:
 
 - the **claim deadline** — a context deadline over `RecordPicked` plus the two transitions taken as
-  one claim. It is the only thing that bounds the claim as a whole, because `retryFactoryBusy`
+  one claim. It is the only thing that bounds the claim's SQLite waits as a whole (the drift log's file
+  lock is a different wait, bounded by the device further down), because `retryFactoryBusy`
   (`internal/homestate/factory.go` lines 473–486) re-enters a busy transaction up to 100 times: with a
   200 ms busy timeout in the DSN and no deadline, a claim waited out a 3 s holder whole (ledger L14:
   `3.0079325s`, no error);
@@ -94,6 +107,47 @@ re-selection, a held queue lock would have kept the verb busy for 5 × 3.3 s = 1
 of at most 50 ms (`boardLockWaitMax`). **No new refusal token** (the closed set of twelve is pinned by
 SPEC-TODO-AUTO-PICK-001). Reversible: a thirteenth token is a later, explicit amendment of that set.
 
+**The drift-log reconciliation (the third wait; REQ-FAL-014, spec §H DL-5 and DL-7).** Every `withCardTx`
+write reads `record-unavailable.jsonl` beside the record, appends one `record.drift` event per unreconciled
+entry of the run inside the write transaction, and after the commit rewrites the log under an exclusive
+file lock waited for with no bound (measured: L19). The claim's three writes opt in to a non-waiting form;
+nothing else changes:
+
+- **Opt-in per call, by a marker on the context.** The section sets a marker on the claim's context
+  (a small exported function in `internal/homestate`, e.g. `WithBoundedReconcile(ctx)`; the name is the
+  implementer's) and the three claim writes — `RecordPicked` in `factoryNextRecordAndClaim`, and the two
+  `Transition` calls in `factoryNextClaim` — receive it. `withCardTx` reads the marker where it calls the
+  reconciliation. No `FactoryDB` field, no new open variant carries it, because the lease path's own
+  `RecordCardWorktree` after the section may share the connection and must keep waiting (spec §H DL-7).
+  Callers without the marker — `factory stage` and its renewal, `complete`, `assign`, `decide`, the
+  dispatch mirror, `RecordCardWorktree` — run the existing code path unchanged.
+- **The bounded flow, in order.** (1) The existing unlocked read of the log; no unreconciled entry for the
+  run means no lock, no event and no mark (AC-FAL-015 edge E8). (2) Otherwise try the log's lock **without
+  waiting**; a holder means skip the whole reconciliation for this write — no events, no mark — and run the
+  write as if the log were empty. (3) With the lock held, **re-read the log under it** (the unlocked read
+  may be stale: another process may have reconciled in between, and a second reconcile would duplicate the
+  events), append one event per entry inside the transaction as today, and keep the lock through the
+  commit. (4) After the commit mark the entries reconciled and release the lock (the existing rewrite, run
+  while the lock is already held); on a rollback release it without marking. The decision to skip is taken
+  **before** any event is appended: skipping only the mark after events were appended would make the next
+  write append them again (mutant MU17).
+- **The primitive.** The admission-lock primitive (`admission_lock_unix.go`, `admission_lock_windows.go`)
+  gains a non-waiting form (`LOCK_EX|LOCK_NB` on Unix; `LockFileEx` with `LOCKFILE_FAIL_IMMEDIATELY` on
+  Windows, compile-verified only), and the rewrite gains a form that runs under an already-held lock; the
+  waiting forms and every existing caller of them are untouched.
+- **Lock order.** The bounded flow takes the log's lock while the record's write lock is held (the
+  transaction began before the reconciliation step). No path holds the log's lock and then waits for the
+  record: `AppendRecordUnavailable` and the rewrite touch the file only. The queue lock is above both (it
+  is held by the section throughout), so the order stays queue → record → log, with no cycle. The default
+  flow is unchanged (record lock released before the log's lock is taken).
+- **Non-blocking, not a deadline** (spec §H DL-7): a deadline would add to `factoryLeaseClaimWaitCap` and
+  force `3 × cap ≤ budget` to be re-derived; the try adds nothing. Its cost is a skip on any momentary
+  holder; the entries wait for a later write (spec §F R16).
+- **What stays unbounded:** the reconciliation's own work once the lock is obtained (a file read, N event
+  appends under the claim's context, a rewrite — measured 0.15–0.26 s at 2000 entries, L19) and the
+  lock's hold from the try to the end of the rewrite, during which another process's log append waits.
+  Both are named in spec §F R16, not closed.
+
 **D3 — the worktree-step lock (WM5).** `factoryEnsureCardWorktree` takes a dedicated cross-process lock
 around the creator call and the `git branch -m` rename together, and releases it before
 `RecordCardWorktree`. The creator interface does not change (spec §B.3: creating the branch with its
@@ -105,8 +159,12 @@ helper in `internal/kanban` that polls with the same retry policy (`boardLockRet
 too heavy for a sub-second critical section). No existing generic named lock exists to reuse
 (`internal/spec/lock.go` is scoped to a SPEC id). Wait budget, derived like the queue lock's and stated as a
 sizing heuristic and not a worst-case bound: lanes (10) × the worst observed step (2.9 s, from a busy
-machine, ledger L7) × headroom (2) ≈ 58 s, taken as 60 s (`factoryWorktreeStepWait`) — a named constant
-with a derivation test. The wait is generous on purpose: it bounds a failure, and the usual wait for the
+machine, ledger L7) × headroom (2) ≈ 58 s, taken as 60 s. **Two names, so a test can shorten the wait:**
+the constant `factoryWorktreeStepWaitDefault` (60 s; `TestFactoryWorktreeStepWaitDerivation` reads it
+against the derivation) and the package variable `factoryWorktreeStepWait`, initialised from it, which
+`factoryEnsureCardWorktree` reads and which `TestFactoryEnsureCardWorktreeStepLockBounded` sets to a short
+value and restores at cleanup (the function's signature, with four production callers, does not change; a
+constant cannot be shortened by a test). The wait is generous on purpose: it bounds a failure, and the usual wait for the
 last of N lanes is about N × the median step (0.73–1.22 s). On timeout the step fails with its existing
 error shape and creates nothing.
 
@@ -130,19 +188,21 @@ lock is the next step and needs the creator interface change this plan declines.
 
 **D4 — where the section's boundaries sit (WM3).** Inside: the pass's reads, the keep-set and slot
 decisions, `Mutate` promotion, the seams, the claim, the compensation. Outside: `OpenFactory`, the quota
-latch, `factoryEnsureCardWorktree` and everything after it (REQ-FAL-007). The only filesystem read the
-section makes outside the two stores is `factoryRefuseForeignWorktree` (a stat of the card's landing
-directory), which the claim and `factoryNextValidate` already run; REQ-FAL-007 carves it out and
-AC-FAL-009 pins the allowed set. Arm (b)'s `queueItemState` read and arm (b2)'s queue read go through the
+latch, `factoryEnsureCardWorktree` and everything after it (REQ-FAL-007). The only file I/O the
+section performs outside the two stores is `factoryRefuseForeignWorktree` (a stat of the card's landing
+directory), which the claim and `factoryNextValidate` already run, and the claim's drift-log
+reconciliation (D2); REQ-FAL-007 names both and AC-FAL-009 pins the allowed set. Arm (b)'s `queueItemState` read and arm (b2)'s queue read go through the
 locked handle's `LoadPure()`; no code inside the section calls the public `Mutate` or `Add`. A guard test
 (`TestFactoryLeaseSectionRejectsNestedMutate`) calls `Mutate` from inside a section and asserts the
 timeout error, so a future edit that does is caught (§6 R-B).
 
-**D5 — the supersession records (WM6 + sync).** The plan phase edits neither completed SPEC. At sync,
-manager-spec adds one Amendments row to each (§E of the spec). Accepting the `completed → in-progress →
-completed` round trip on both is a cost the operator may veto; the alternative (a pointer only in this
-SPEC) leaves readers of the old SPECs reading "not closed". Decision recorded here so it can be
-overruled.
+**D5 — the supersession records (WM6 + sync).** The plan phase edits none of the three completed SPECs
+(SPEC-TODO-AUTO-PICK-001, SPEC-TODO-CLASSIFY-DISPATCH-001 and, for the drift-log clause,
+SPEC-FACTORY-RECORD-001). At sync, manager-spec adds one Amendments entry to each (§E of the spec).
+Accepting the `completed → in-progress → completed` round trip on all three is a cost the operator may
+veto; the alternative (a pointer only in this SPEC) leaves readers of the old SPECs reading "not closed".
+Decision recorded here so it can be overruled; spec §H lists it as DL-4, an open decision for the leader
+that no requirement waits on.
 
 ## 3. What was observed at plan time
 
@@ -164,6 +224,9 @@ in the record rather than smoothed over:
   therefore holds lanes at the pass entry, before the snapshot;
 - (iteration 2) the busy timeout carried in the DSN lasts but bounds only the overshoot, not the claim
   (L14), which is why D2 states both mechanisms; the iteration-1 probe never measured a DSN-carried value;
+- (override round) a third unbounded wait was inside every claim write: the drift log's file lock, taken
+  with no timeout after each commit (L19: a claim ran 3.0 s against an 800 ms deadline). Neither the
+  deadline nor the DSN busy timeout reaches it; D2's third device does;
 - (iteration 2) the iteration-1 RED probes for the operator-write criteria failed on an end state the fix
   leaves reachable; clause (i) itself was observed red separately (L11) with a positive control;
 - (iteration 2) the M5 collision's per-iteration rate moved between 5% and 50% unforced, so the criterion
@@ -182,13 +245,23 @@ witnesses the order (`verification-claim-integrity.md` §2.3):
    - `internal/cli`: the package variable `factoryLeaseBeforeClaim func(arm, cardID string) error` (inert
      default) called in arms (a), (b), (b2) and (c) immediately before the claim; the pass-entry hook
      `factoryLeaseAtPassEntry func()` (inert); the constants `factoryLeaseClaimDeadline`,
-     `factoryLeaseClaimBusyTimeout`, `factoryLeaseClaimWaitCap` and `factoryWorktreeStepWait` with their
-     starting values (unused by production code at this commit).
-   - `internal/kanban`: compile-only stubs, each a signature with the body
-     `panic("not implemented: SPEC-FACTORY-ATOMIC-LEASE-001 WM2")` — `LockWaitBudget() time.Duration`,
-     `(*BacklogStore).WithLock`, the `LockedBacklog` type with `LoadPure` and `Mutate`, and the
-     step-lock helper (`AcquireFactoryStepLock(root string, wait time.Duration) (release func() error,
-     err error)`). A test that reaches one fails with the panic text, which is the stated reason.
+     `factoryLeaseClaimBusyTimeout`, `factoryLeaseClaimWaitCap` and `factoryWorktreeStepWaitDefault`, and
+     the package variable `factoryWorktreeStepWait` initialised from it (D3), with their starting values
+     (unused by production code at this commit).
+   - `internal/kanban`: compile-only stubs that **never panic** — a panic in a test function aborts the
+     whole test binary, so every test selected after it in the same invocation would never run and one
+     RED observation would hide the others' (the per-name swept count of S4 could not be taken). Each
+     stub returns a zero value or a sentinel error that the tests assert on, so a test that reaches it
+     fails alone, for the stated reason: `LockWaitBudget() time.Duration` returns `0`;
+     `(*BacklogStore).WithLock` returns an error `errors.New("not implemented: SPEC-FACTORY-ATOMIC-LEASE-001
+     WM2")` without running `fn`; the `LockedBacklog` type's `LoadPure` returns `(nil, <that error>)` and its
+     `Mutate` returns `<that error>`; the step-lock helper (`AcquireFactoryStepLock(root string, wait
+     time.Duration) (release func() error, err error)`) returns a **non-nil no-op `release`** and `<that
+     error>` (a nil `release` called by a test would be a nil-function panic).
+   - `internal/homestate`: the claim marker `WithBoundedReconcile(ctx context.Context) context.Context`
+     (D2), stubbed as the identity function — the tests of AC-FAL-015 then fail alone on the bound and
+     skip predicates, which is the stated reason (L19 shows the same predicates red on the unmodified
+     tree).
    - Not in this commit: any behavior, and any test.
 2. **The baseline commit.** On the seam-and-stub tree, take the AC-FAL-010 baseline — the family's
    `-list` dump and the `--- PASS` count of one `-v` run of it (68 names and 68 passes were measured at
@@ -244,7 +317,13 @@ witnesses the order (`verification-claim-integrity.md` §2.3):
   import guard covers **non-test files only** — `go list -deps` of the package without `-test`, whose
   kanban count is 0 today; with `-test` it is 1, through `internal/homestate/temp_parity_test.go`
   line 10, ledger L16, so a guard written the natural way would be red on arrival) and
-  `TestFactoryLeaseSectionRejectsNestedMutate`.
+  `TestFactoryLeaseSectionRejectsNestedMutate`; and, from the override round,
+  `TestFactoryLeaseArmAKeepsHeldAssignedCard` (AC-FAL-003 clause (iii), a guard that pins spec §F R17),
+  `TestFactoryLeaseDriftLogStallBounded` (`internal/cli`) and `TestRecordWriteReconcileBoundedSkipsOnContention`
+  and `TestRecordWriteReconcileDefaultStillWaits` (`internal/homestate`) for AC-FAL-015. The drift-log
+  fixtures hold the log's lock with the same primitive the log uses: in `internal/homestate` through
+  `lockRecordUnavailable`; in `internal/cli` through an `flock` on `RecordUnavailablePath(root)` plus
+  `.lock`, in a unix-tagged test helper (the Windows build compiles test files too).
 - Record the verbatim RED output of each in `progress.md` §E.2 and the **swept count** of each selector
   (every selector in `acceptance.md` sweeps 0 tests at the pin, ledger L10; the run phase records the
   count at the RED commit and again at each green).
@@ -265,12 +344,19 @@ under the lock; the compensation takes the locked handle. The snapshot-reuse pat
 carried from the pre-lock validation into the in-lock check) are deleted: the in-lock check reads the
 record itself. Flips AC-FAL-001 to -005 and AC-FAL-009. Move the existing tests §5 lists.
 
-### WM4 — the bounded claim (Priority High; lands with WM3 — WM3 alone puts an unbounded record wait
-inside the queue lock and must not be integrated without it)
+### WM4 — the bounded claim (Priority High; lands with WM3 — WM3 alone puts an unbounded record wait and
+an unbounded drift-log wait inside the queue lock and must not be integrated without it)
 
-`homestate`: the busy-timeout open variant sharing the existing DSN builder. `factory_card.go`: the cap
-constants become live, the claim deadline, the outcome mapping of D2 (nominated: `raced` with the
-busy-store detail; bare: stop at once with an error). Flips AC-FAL-007 and AC-FAL-008.
+`homestate` is changed in this milestone, and only here: (1) the busy-timeout open variant sharing the
+existing DSN builder (`factory.go`); (2) the claim-scoped non-waiting reconciliation of D2 — the marker
+function replacing the WM1 stub, the reconciliation step of `withCardTx` (`card_transition.go`), the
+reconciliation and rewrite helpers (`card_unavailable.go`), and the non-waiting form of the admission-lock
+primitive (`admission_lock_unix.go`, `admission_lock_windows.go`; `GOOS=windows GOARCH=amd64 go build
+./...` is the Windows check). Tests first: the two `internal/homestate` tests of AC-FAL-015 and the six
+existing tests of L23 stay green (the preservation half). `factory_card.go`: the cap constants become
+live, the claim deadline, the marker set on the claim's context, the outcome mapping of D2 (nominated:
+`raced` with the busy-store detail; bare: stop at once with an error). Flips AC-FAL-007, AC-FAL-008 and
+AC-FAL-015.
 
 ### WM5 — the worktree step (Priority Medium)
 
@@ -287,13 +373,14 @@ mutated copy kept in scratch (repository untouched), the failing top-level test 
 hold-time distribution of the section on a real lease (10 sequential and 2/4/10 concurrent lanes) in
 `progress.md` §E.2 (REQ-FAL-011, R9); the layering test; the doctrine sweep (`grep` of `.claude/` and
 `internal/template/templates/` for text stating the old residual risk — none was found at plan time);
-the surgical-diff measurement. Sync phase: the §E supersession rows, and this card's CHANGELOG entry
-stating which windows closed and which (spec §F) remain.
+the surgical-diff measurement. Sync phase: the §E supersession rows (three completed SPECs), and this
+card's CHANGELOG entry stating which windows closed and which (spec §F) remain.
 
 ## 5. Existing tests that must move (listed, so none is a surprise)
 
-All in `internal/cli`. The assertions each test makes are unchanged; what moves is how it reaches the
-interleaving, because the section removes interleavings the old tests built by hand.
+All in `internal/cli`. The assertions each test makes are unchanged, with the one recorded removal in the
+third row; what moves is how a test reaches the interleaving, because the section removes interleavings
+the old tests built by hand.
 
 | Test | Why it moves |
 |---|---|
@@ -325,8 +412,8 @@ interleaving, because the section removes interleavings the old tests built by h
   `-run` to the change, and scrub the lane environment in the same compound call. The AC-FAL-010 family
   run took 757.794 s at the pin (ledger L9), which is why it is a WM6 closure step and not a per-commit
   check.
-- **R-H — amendments reopen two completed SPECs** (D5); mitigated by doing it once, at sync, in
-  one manager-spec delegation.
+- **R-H — amendments reopen three completed SPECs** (D5); mitigated by doing it once, at sync, in
+  one manager-spec delegation; an operator-veto decision (spec §H DL-4).
 - **R-I — the cross-process helper is the heaviest new test** (WM1, about 5.5 s per iteration) and its
   detection power is a rate, not a certainty: the probe's two-process breach rate at the pin was 10 of 13
   (77%), so a process-local-mutex mutant (MU7) survives ten clean iterations with probability about
@@ -336,6 +423,15 @@ interleaving, because the section removes interleavings the old tests built by h
   timeout (200 ms) and AC-FAL-007's margin are chosen from the measurements in L14 and are heuristics
   inside the derivation rule `3 × cap ≤ budget`; WM4 records the observed maximum return time and may
   tighten the margin, never loosen the rule.
+- **R-K — the bounded reconciliation edits the path every record write takes.** `withCardTx` serves seven
+  non-claim callers besides the claim (spec §A.2 O15, §H DL-7); a slip that applies the skip to them would
+  change drift reconciliation for `factory stage`, `complete`, `assign`, `decide` and the dispatch mirror.
+  Mitigation: the marker is read in one place and defaults to the existing flow; the six existing tests of
+  the log (ledger L23) are the preservation selector of AC-FAL-015 (v); the ordinary-path half of
+  AC-FAL-015 (iv) and mutant MU16 pin it.
+- **R-L — the bounded flow keeps the log's lock across one write's transaction.** Another process's append
+  to the log waits for it, bounded by one write; the lock order is queue → record → log with no cycle (D2).
+  The Windows form of the non-waiting primitive is compile-verified only (spec §F R3).
 
 ## 7. Mutants the run phase executes (REQ per milestone; each must turn a named test red)
 
@@ -348,14 +444,27 @@ interleaving, because the section removes interleavings the old tests built by h
 | MU5 | open the lease record connection with the default 5000 ms busy timeout | AC-FAL-007 |
 | MU6 | remove the lock-acquire-timeout → outcome mapping (the timeout surfaces as the raw error in the nominated form) | AC-FAL-007 |
 | MU7 | serialize the section with a process-local `sync.Mutex` and hold no `flock` | AC-FAL-001 (the cross-process test; the goroutine-lane tests stay green under this mutant, which is the reason the process test exists) |
-| MU8 | make the locked handle's read the adopting `Load` | AC-FAL-010 clause (iii) (`TestLockedBacklogLoadIsPure`) |
+| MU8 | make the locked handle's read the adopting `Load` | AC-FAL-011 (`TestLockedBacklogLoadIsPure`) |
 | MU9 | add an import of `internal/kanban` to a non-test file of `internal/homestate` | AC-FAL-011 (`TestHomestateDoesNotImportKanban`) |
 | MU10 | run one `git` subprocess inside the section | AC-FAL-009 clause (iii) (`TestFactoryLeaseSectionAllowedSet`) |
 | MU11 | map a bare-form queue-lock timeout back to a re-selection | AC-FAL-007 (`TestFactoryLeaseQueueLockStallBounded`) |
+| MU12 | move the worktree creator call inside the section | AC-FAL-009 clause (i) (`TestFactoryLeaseSectionExcludesWorktreeStep`) |
+| MU13 | raise the claim deadline to 1.5 s | AC-FAL-008 (`TestFactoryLeaseCapWithinBoardBudget`) |
+| MU14 | serialize the lease with a lease-only lock that is not the queue's lock | AC-FAL-002 and -003 clause (i) (an operator write completes inside the section) |
+| MU15 | make the claim's reconciliation wait for the drift log's lock, as the pin does | AC-FAL-015 clause (i) (`TestFactoryLeaseDriftLogStallBounded`, `TestRecordWriteReconcileBoundedSkipsOnContention`) |
+| MU16 | apply the skip to every record write, not only the claim's | AC-FAL-015 clause (iv) (`TestRecordWriteReconcileDefaultStillWaits`) |
+| MU17 | decide the skip after the drift events were appended (skip only the mark) | AC-FAL-015 clauses (ii) and (iii) (`TestRecordWriteReconcileBoundedSkipsOnContention`) |
+| MU18 | make arm (a) refuse a card whose queue item is held | AC-FAL-003 clause (iii) (`TestFactoryLeaseArmAKeepsHeldAssignedCard`) — a behavior change the SPEC does not make, so this mutant must be caught as a guard |
+
+Two mutants named only inside a criterion's own cell stay there because they test a deletion rather than
+an edit: AC-FAL-012's deleted R6 paragraph and AC-FAL-014's deleted Amendments entry (both sync-phase
+readings). The mutants of §7 are the checklist WM6 executes; N14's two uncovered holes — the step lock held
+across the card-worktree record write, and the record connection opened inside the section — have no
+criterion and no mutant here and are named as not claimed.
 
 ## 8. Cross-references
 
-- spec.md §B (decisions and the hypothesis test), §E (supersession), §F (residuals), §H (open decisions).
+- spec.md §B (decisions and the hypothesis test), §E (supersession), §F (residuals), §H (decisions).
 - `acceptance.md` — criteria, evidence ledger with the RED-now cells.
 - `evidence/` — the probes and the overlays that run them.
 - `.claude/rules/moai/workflow/resource-slot-lease.md` — the heavy-run lease used in R-G.

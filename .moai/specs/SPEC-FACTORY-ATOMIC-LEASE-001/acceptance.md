@@ -10,7 +10,7 @@ verification layer's format; the requirements are GEARS in `spec.md`.
 
 Concurrency criteria run under repetition **and** `-race`, with the lane environment scrubbed in the same
 compound call (setup row S1), under a heavy-run lease (S2), and are judged by the pass condition of S4,
-not by an exit status. 14 criteria (Tier M ceiling 16), tracing all 13 requirements.
+not by an exit status. 15 criteria (Tier M ceiling 16), tracing all 14 requirements.
 
 ## Setup rows
 
@@ -28,7 +28,12 @@ not by an exit status. 14 criteria (Tier M ceiling 16), tracing all 13 requireme
   `git merge-base develop HEAD` returned the same SHA). Rows L9–L18 were observed in iteration 2 on HEAD
   `db692601307c28b6d1dd905ab1ab6f6d9bd1e974`, whose Go files equal the pin (`git diff --name-only
   2de0a2cb613b04765a1554f86685a3b48e0be806..HEAD -- internal` printed nothing, exit 0); the iteration-2
-  repair adds only files under `.moai/specs/SPEC-FACTORY-ATOMIC-LEASE-001/`.
+  repair adds only files under `.moai/specs/SPEC-FACTORY-ATOMIC-LEASE-001/`. Rows L19–L23 were observed in
+  the override round on HEAD `c8b716fed24564a685188dc94b3f446ac9fc79c8` plus the uncommitted evidence files
+  of that round under the SPEC directory (the probes and overlays are `evidence/probe-reconcile_test.go.txt`
+  with `overlay-homestate-reconcile.json`, and `evidence/probe-arma-hold_test.go.txt` with `overlay-arma.json`);
+  `git diff --name-only 2de0a2cb613b04765a1554f86685a3b48e0be806..HEAD -- internal cmd` printed nothing
+  there too, so the Go files equal the pin.
 - **S4 — the pass condition of every `go test` Command in this file.** Every Command carries `-v`, and
   its output is judged by what it printed, not by its exit status or its package line, because a selector
   that sweeps nothing prints `ok` and exits 0 (ledger L10 shows both, verbatim). A run passes only when:
@@ -43,7 +48,8 @@ not by an exit status. 14 criteria (Tier M ceiling 16), tracing all 13 requireme
 
 ## Evidence ledger (RED-now observations and context)
 
-Rows `L1`–`L8` were observed on the pin; `L9`–`L18` in iteration 2 on a tree whose Go files equal it. After
+Rows `L1`–`L8` were observed on the pin; `L9`–`L18` in iteration 2 and `L19`–`L23` in the override round,
+on trees whose Go files equal it. After
 the run they are history by design: each describes the pinned tree and prints something else on a tree
 that carries the linked milestone. Output is quoted exactly as the tool printed it; where a stream is
 abridged the row says so and says what was elided. Every command below is the exact command that
@@ -226,7 +232,9 @@ tree: 2de0a2cb613b04765a1554f86685a3b48e0be806
 The serialized step used an in-process mutex in the probe. This row is not a RED-now cell; it is the
 measurement behind the choice of fix (spec §B.3). Over four runs the serialized step failed 0 of 80
 iterations; one step took 0.42–0.69 s at best, 0.73–1.22 s at the median and 1.14–2.88 s at worst — the
-slower figures came from the later runs, made while the machine was busier.
+slower figures came from the later runs, made while the machine was busier. This row displays two of the
+four runs (40 of the 80 iterations); the other two are not in the ledger, so the 0-of-80 and the ranges
+rest on all four runs and are only partly shown here.
 
 ### L8 — RED-now for the structural and documentation criteria
 
@@ -393,8 +401,13 @@ counts iterations in which both lanes were inside the wrapper at once: **20 of 2
 of 60** — the overlap is forced by construction and does not depend on how two git processes happen to
 interleave. The collision itself is still a rate: 15, 13 and 11 of 20 here (55% to 75%), and 12, 13 and 15
 of 20 in an earlier run of the same probe made before the overlap counter was added (79 of 120 over the six
-runs). A failed step was always a rename failure (`create-step-failures=0`) and always left a refused
-directory (`stranded…` equals `failed-iterations` in every run).
+runs). In the three runs displayed here every failed step was a rename failure (`create-step-failures=0`)
+and left a refused directory (`stranded…` equals `failed-iterations`: 39 of 39). That is a count over
+these runs and not a law: an independent re-execution of this command (`-count=2`, its output not in
+this ledger) reported `failed-iterations` 12 and 15 with `rename-step-failures` 12 and 14,
+`create-step-failures` 0 and 1, and a stranded count of 12 and 14 — 26 of 27 failed steps were rename
+failures that left a refused directory, and one was a creation failure that left none, which is the
+mechanism of spec §A.2 O11. The step lock removes both kinds (it covers creation and rename together).
 
 ### L14 — the busy timeout carried in the DSN: what it bounds and what it does not
 
@@ -422,8 +435,10 @@ tree: db692601307c28b6d1dd905ab1ab6f6d9bd1e974
 The value in the DSN lasts (200 ms after the cancelled calls, where a runtime PRAGMA fell back to 5000 ms
 in L5). With no deadline the claim waited the 3 s holder out whole (`3.0079325s`, no error), because the
 retry loop re-enters: the DSN timeout alone does not bound the claim. With an 800 ms deadline it returned
-after 0.98–1.03 s, 182–227 ms past the deadline: the deadline bounds the claim and the DSN timeout bounds
-the overshoot. Both are required (plan D2).
+after 0.98–1.03 s, 182–227 ms past the deadline (the range over the three 3 s-holder runs printed here; an
+independent re-execution of this command printed 0.976–1.009 s, 176–209 ms past, against the 3 s holder
+and 0.934 s against the 7 s holder — ranges seen over the runs named, not envelopes): the deadline bounds
+the claim and the DSN timeout bounds the overshoot. Both are required (plan D2).
 
 ### L15 — M5 rename collision re-run (iteration 2)
 
@@ -512,12 +527,141 @@ other, so the build is not a strict ancestor of the tree (and it is not older in
 lag). `internal/spec` — the lint's source — is identical between them, so the installed build's lint result
 equals the tree's. The tree's own build was not made.
 
+### L19 — a held drift-log lock stalls the claim past its deadline (override round; the RED-now cell of AC-FAL-015)
+
+```
+$ go test ./internal/homestate -overlay=.moai/specs/SPEC-FACTORY-ATOMIC-LEASE-001/evidence/overlay-homestate-reconcile.json -run '^(TestT1458ProbeReconcileLockClaim|TestT1458ProbeReconcileCost)$' -count=3 -v -timeout 4m
+[abridged: run 1 in full; of runs 2 and 3 only the control, claim and cost PROBE lines are kept — their "bound not met" and "skip not met" lines (same predicates, elapsed 3.00947025s and 3.001771458s), their "after one later uncontended write" PROBE line (`unreconciled=0 record.drift-events=2` in both), the "=== RUN" lines and the "--- FAIL" / "--- PASS" lines are elided]
+=== RUN   TestT1458ProbeReconcileLockClaim
+    zz_t1458_reconcile_probe_test.go:107: PROBE control (no log lock held, 1 unreconciled entry): elapsed=4.355ms err=<nil> unreconciled-after=0 record.drift-events=1
+    zz_t1458_reconcile_probe_test.go:124: PROBE claim ctx-deadline=800ms vs 3s drift-log-lock holder (1 unreconciled entry): elapsed=3.015915583s err=context deadline exceeded ctx=context deadline exceeded unreconciled-after=0 record.drift-events=2
+    zz_t1458_reconcile_probe_test.go:127: bound not met: the claim returned after 3.015915583s with the drift-log lock held (limit 1.3s)
+    zz_t1458_reconcile_probe_test.go:130: skip not met: the write made under the held lock left unreconciled=0 (want 1) with record.drift-events=2 (want 1, the control's)
+    zz_t1458_reconcile_probe_test.go:143: PROBE after one later uncontended write: unreconciled=0 record.drift-events=2 (want 0 and 2: one event per entry, none duplicated)
+--- FAIL: TestT1458ProbeReconcileLockClaim (4.52s)
+=== RUN   TestT1458ProbeReconcileCost
+    zz_t1458_reconcile_probe_test.go:163: PROBE one uncontended write with 1 unreconciled entries: elapsed=27.529333ms unreconciled-after=0 record.drift-events=1
+    zz_t1458_reconcile_probe_test.go:163: PROBE one uncontended write with 200 unreconciled entries: elapsed=99.85675ms unreconciled-after=0 record.drift-events=200
+    zz_t1458_reconcile_probe_test.go:163: PROBE one uncontended write with 2000 unreconciled entries: elapsed=194.315666ms unreconciled-after=0 record.drift-events=2000
+--- PASS: TestT1458ProbeReconcileCost (3.26s)
+    PROBE control (no log lock held, 1 unreconciled entry): elapsed=9.840834ms err=<nil> unreconciled-after=0 record.drift-events=1
+    PROBE claim ctx-deadline=800ms vs 3s drift-log-lock holder (1 unreconciled entry): elapsed=3.00947025s err=context deadline exceeded ctx=context deadline exceeded unreconciled-after=0 record.drift-events=2
+    PROBE one uncontended write with 1 unreconciled entries: elapsed=1.921542ms unreconciled-after=0 record.drift-events=1
+    PROBE one uncontended write with 200 unreconciled entries: elapsed=18.230875ms unreconciled-after=0 record.drift-events=200
+    PROBE one uncontended write with 2000 unreconciled entries: elapsed=151.136958ms unreconciled-after=0 record.drift-events=2000
+    PROBE control (no log lock held, 1 unreconciled entry): elapsed=6.759708ms err=<nil> unreconciled-after=0 record.drift-events=1
+    PROBE claim ctx-deadline=800ms vs 3s drift-log-lock holder (1 unreconciled entry): elapsed=3.001771458s err=context deadline exceeded ctx=context deadline exceeded unreconciled-after=0 record.drift-events=2
+    PROBE one uncontended write with 1 unreconciled entries: elapsed=2.609791ms unreconciled-after=0 record.drift-events=1
+    PROBE one uncontended write with 200 unreconciled entries: elapsed=60.275917ms unreconciled-after=0 record.drift-events=200
+    PROBE one uncontended write with 2000 unreconciled entries: elapsed=259.763375ms unreconciled-after=0 record.drift-events=2000
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	21.188s
+exit 1
+tree: c8b716fed24564a685188dc94b3f446ac9fc79c8 (Go files equal the pin)
+```
+
+Reading. The probe holds the drift log's file lock (`record-unavailable.jsonl.lock`) for 3 s and runs the
+claim's three record writes — the same sequence `factoryNextRecordAndClaim` makes — under an 800 ms
+context deadline. **Bound (red at the pin):** the claim returned after 3.016 s, 3.009 s and 3.002 s over the
+three runs against a limit of 1.3 s (the deadline plus AC-FAL-007's 500 ms margin); the second write failed
+with `context deadline exceeded` because its context expired while the first write waited for the lock,
+so at the pin the stall is unbounded and the claim then fails. **Skip (red at the pin):** the write made
+under the held lock reconciled by waiting (`unreconciled-after=0`, two `record.drift` events); the fixed
+tree leaves that entry unreconciled and appends no event for it. **Retry (green at the pin, and the guard
+the fix must keep green):** one later uncontended write leaves `unreconciled=0` and exactly two events —
+one per entry, none duplicated. The control (no lock held, one unreconciled entry) returned in 4.4–9.8 ms
+and reconciled, so the fixture does trigger the reconciliation. The second test is context for spec §F R16,
+not a RED-now cell: the uncontended reconciliation work was 0.002–0.028 s for one entry, 0.018–0.100 s
+for 200 and 0.151–0.260 s for 2000 over the three runs. The lock is held in-process by a second open file
+description (`flock` conflicts across descriptions of one process, which the tree's own
+`TestFR_UnavailableLogAppendSurvivesRewrite` already relies on). The probe is at the record-write level;
+the criterion's test through the lease path is the one WM1 adds (it sweeps 0 at the pin, L21).
+
+### L20 — arm (a) leases a card whose queue item is held (override round; a regression-guard cell, green at the pin)
+
+```
+$ go test ./internal/cli -overlay=.moai/specs/SPEC-FACTORY-ATOMIC-LEASE-001/evidence/overlay-arma.json -run '^TestT1458ProbeArmAHeldCard$' -count=3 -v -timeout 12m
+[abridged to the PROBE line of each of the three runs and the package line; the WARN lines, the "=== RUN" lines and the "--- PASS" lines (4.73s, 5.06s, 2.44s) are elided]
+    zz_t1458_arma_probe_test.go:39: PROBE arm-a-hold err=<nil> queue=hold record=leased holder=lane-1 stdout="t1 stage=run worktree=003\nt1\tunknown\t\t\thold\t\tfactory card 1\n" stderr="note: open pull requests unavailable (exit status 1); link column left empty, landed check still ran\nnote: the landed check against origin/main could not answer for t1; those cards report unknown rather than no-link, because an unanswerable query is not evidence of not-landed\n"
+    zz_t1458_arma_probe_test.go:39: PROBE arm-a-hold err=<nil> queue=hold record=leased holder=lane-1 stdout="t1 stage=run worktree=003\nt1\tunknown\t\t\thold\t\tfactory card 1\n" stderr="note: open pull requests unavailable (exit status 1); link column left empty, landed check still ran\nnote: the landed check against origin/main could not answer for t1; those cards report unknown rather than no-link, because an unanswerable query is not evidence of not-landed\n"
+    zz_t1458_arma_probe_test.go:39: PROBE arm-a-hold err=<nil> queue=hold record=leased holder=lane-1 stdout="t1 stage=run worktree=003\nt1\tunknown\t\t\thold\t\tfactory card 1\n" stderr="note: open pull requests unavailable (exit status 1); link column left empty, landed check still ran\nnote: the landed check against origin/main could not answer for t1; those cards report unknown rather than no-link, because an unanswerable query is not evidence of not-landed\n"
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	14.046s
+exit 0
+tree: c8b716fed24564a685188dc94b3f446ac9fc79c8 (Go files equal the pin)
+```
+
+A card whose row is `assigned` to `lane-1` and whose queue item is `hold` is leased by bare `factory next`
+as `lane-1`: `queue=hold record=leased`, 3 of 3 runs. This is the behavior REQ-FAL-009 preserves and spec
+§F R17 names; it is the green-at-the-pin guard of AC-FAL-003 clause (iii) and never a RED-now cell.
+
+### L21 — the new test names of the override round sweep nothing at the pin
+
+```
+$ go test ./internal/homestate ./internal/cli -run '^(TestFactoryLeaseDriftLogStallBounded|TestRecordWriteReconcileBoundedSkipsOnContention|TestRecordWriteReconcileDefaultStillWaits|TestFactoryLeaseArmAKeepsHeldAssignedCard)$' -count=1 -v -timeout 25m
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/homestate	0.480s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.713s [no tests to run]
+exit 0
+tree: c8b716fed24564a685188dc94b3f446ac9fc79c8 (Go files equal the pin)
+```
+
+Exit status 0 and two `ok` lines with nothing run: the vacuous green S4 refuses. The selector is the union
+of AC-FAL-015's three names and AC-FAL-003's new clause-(iii) name; it is the swept-count RED of both
+(each criterion's own selector is a subset, so it sweeps 0 as well). Quoted verbatim; nothing elided.
+
+### L22 — which build judged the tree, override round (`verification-claim-integrity.md` §2.2)
+
+```
+$ moai version
+[the banner box above the version line is elided]
+ v3.2.0-rc.27   archive/t1401-504-g0732cc699   built 2026-10-03T03:34:50Z
+$ git merge-base --is-ancestor 0732cc699 HEAD
+exit 1
+$ git merge-base --is-ancestor HEAD 0732cc699
+exit 1
+$ git diff --name-only HEAD 0732cc699 -- internal/spec
+(no output)
+exit 0
+tree: c8b716fed24564a685188dc94b3f446ac9fc79c8
+```
+
+The installed `moai` build (`0732cc699`) is not older than the tree in the sense §2.2 treats as a lag: the
+two have diverged — neither is an ancestor of the other — so the build is not a strict ancestor of the
+tree's HEAD, and `internal/spec`, the lint's source, is identical between them. `moai spec lint` in the
+override round was judged by that build; the tree's own build was not made. Every `go test` figure in
+L19–L21 and L23 was produced by the toolchain on `PATH` (its version was not printed in this run).
+
+### L23 — the tree's own tests of the drift log's existing behavior (override round; the preservation half of AC-FAL-015, green at the pin)
+
+```
+$ go test ./internal/homestate -run '^(TestFR_RecordUnavailableLogAndReconcile|TestFR_UnavailableTornLineSkippedAndReported|TestFR_UnavailableLogAppendSurvivesRewrite|TestFR_UnavailableLogConcurrentAppendsNoLoss|TestAppendRecordUnavailableFailureModes|TestMarkRecordUnavailableReconciledFailureModes)$' -count=1 -v -timeout 25m
+[abridged to the six top-level result lines and the package line; the "=== RUN" lines and the indented subtest lines are elided]
+--- PASS: TestAppendRecordUnavailableFailureModes (1.11s)
+--- PASS: TestMarkRecordUnavailableReconciledFailureModes (0.51s)
+--- PASS: TestFR_RecordUnavailableLogAndReconcile (1.13s)
+--- PASS: TestFR_UnavailableTornLineSkippedAndReported (0.61s)
+--- PASS: TestFR_UnavailableLogAppendSurvivesRewrite (0.75s)
+--- PASS: TestFR_UnavailableLogConcurrentAppendsNoLoss (0.61s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/homestate	4.955s
+exit 0
+tree: c8b716fed24564a685188dc94b3f446ac9fc79c8 (Go files equal the pin)
+```
+
+Six names swept, six `--- PASS` at the left margin, no `--- FAIL`, no `--- SKIP` (the subtest lines are
+indented and uncounted). These are the tests that already pin how the log is appended, reconciled and
+rewritten for every record write; AC-FAL-015 holds the same six green after the change.
+
 ## Criteria
 
-Classification: AC-FAL-001 to -009 and -011 are **release-blocking** (AC-FAL-011's tests do not exist at the
-pin, so it is red until WM1 and WM2 land them — it is not a guard that is green today); AC-FAL-010 and -013
-are **regression-guards**; AC-FAL-012 and -014 are release-blocking at the sync phase (their RED-now cells
-are in L8).
+Classification: AC-FAL-001 to -009, -011 and -015 are **release-blocking** (AC-FAL-011's and AC-FAL-015's
+tests do not exist at the pin, so each is red until its milestone lands them — neither is a guard that is
+green today); AC-FAL-010 and -013 are **regression-guards**; AC-FAL-012 and -014 are release-blocking at
+the sync phase (their RED-now cells are in L8).
 
 ### AC-FAL-001 — two serial leases at once: exactly one wins (M1)
 
@@ -566,26 +710,36 @@ nothing in the queue.
   the fix leaves reachable (spec §F R10). Clause (iii) is a regression-guard (green today) and is not what
   makes the criterion red. Swept count at the pin: 0 (L10); at WM1: to be recorded at WM1.
 - **Green-path cell**: WM3. Clause (i) reads `completed inside section = false` in all 20 repetitions.
-- **Mutation**: MU2 (release the lock before the claim) turns clause (i) red.
+- **Mutation**: MU2 (release the lock before the claim) turns clause (i) red; MU14 (a lease-only lock that
+  is not the queue's lock) also turns it red, because the operator's write then completes inside the section.
 - **Not claimed**: the end state `queue=hold record=leased` is still reachable when the operator's write
   arrives mid-section (spec §F R10); the criterion tests the ordering, not the end state.
 
-### AC-FAL-003 — the same for the unnominated arm (c) (M2)
+### AC-FAL-003 — the same for the unnominated arm (c), and arm (a)'s stated exception (M2)
 
-**Covers**: AC-FAL-003 maps REQ-FAL-001, REQ-FAL-003
+**Covers**: AC-FAL-003 maps REQ-FAL-001, REQ-FAL-003, REQ-FAL-009
 
 **Given** queued parallelizable cards `t1`, `t2` and a hook that starts an operator `hold` of `t1` in a
 goroutine at arm (c)'s claim point,
 **When** a lane runs bare `factory next`,
 **Then** (i) the operator write has not completed at the claim point, and is applied after the verb
-returns; and (ii) a hold committed before the verb starts makes the bare form skip `t1` and lease `t2`.
+returns; (ii) in a separate fixture of queued cards, a hold committed before the verb starts makes arm (c)
+skip `t1` and lease `t2`; and (iii) — a regression-guard, not a requirement, pinning the narrowing of
+REQ-FAL-003's second clause — in a third fixture a card whose queue item is `hold` and whose row is
+`assigned` to the lane is **leased by arm (a)**, the end state being queue `hold`, row `leased`, exactly as
+today (spec §F R17): the assertion exists so that a later change making arm (a) read the queue item is made
+on purpose and amends the SPEC.
 
-- **Command**: `go test ./internal/cli -run '^TestFactoryLeaseArmCOperatorHold$' -count=20 -race -v -timeout 25m`. Pass condition: S4, N = 20.
+- **Command**: `go test ./internal/cli -run '^(TestFactoryLeaseArmCOperatorHold|TestFactoryLeaseArmAKeepsHeldAssignedCard)$' -count=20 -race -v -timeout 25m`. Pass condition: S4, N = 20 for each of the two names (clauses (i) and (ii) are tested by the first, clause (iii) by the second).
 - **RED-now cell**: L11, second test: `completed at claim point = true` at the pin, same control as AC-FAL-002.
-  L3's arm (c) hold probe is context only, for the reason given under L1. Swept count at the pin: 0 (L10);
-  at WM1: to be recorded at WM1.
-- **Green-path cell**: WM3; clause (i) prints `completed at claim point = false` in all 20 repetitions.
-- **Mutation**: MU2.
+  L3's arm (c) hold probe is context only, for the reason given under L1. Clause (iii) is **green at the
+  pin** (L20: `queue=hold record=leased`, 3 of 3) by design — it is a guard and is not what makes the
+  criterion red. Swept count at the pin: 0 for both names (L10 for the first, L21 for the second); at
+  WM1: to be recorded at WM1.
+- **Green-path cell**: WM3; clause (i) prints `completed at claim point = false` in all 20 repetitions and
+  clause (iii) stays `queue=hold record=leased` in all 20.
+- **Mutation**: MU2 and MU14 turn clause (i) red; MU18 (arm (a) made to refuse a card whose queue item is held)
+  turns clause (iii) red — a behavior change the narrowing deliberately does not make.
 
 ### AC-FAL-004 — the compensation keeps the operator's fresh pick (M3)
 
@@ -634,9 +788,10 @@ other lane has also entered the creator or a 1.5 s grace has passed (the forced 
 **in every iteration the event log shows no creator-enter of one lane between the other lane's
 creator-enter and the end of that lane's `git branch -m`** (the step is serialized — this is the
 deterministic criterion, and it needs no collision to happen); and, with the step lock held by the test, a
-step called with a shortened wait returns the wait error within that wait plus 500 ms, creates no directory
-and leaves the card's record row unchanged; and the wait budget constant is not smaller than lanes (10) ×
-the worst observed step (2.9 s) × headroom (2).
+step run with the package variable `factoryWorktreeStepWait` set by the test to a short value (restored at
+cleanup; its default is the constant `factoryWorktreeStepWaitDefault`, plan D3) returns the wait error
+within that wait plus 500 ms, creates no directory and leaves the card's record row unchanged; and the
+default wait constant is not smaller than lanes (10) × the worst observed step (2.9 s) × headroom (2).
 
 - **Command**: `go test ./internal/cli -run '^(TestFactoryEnsureCardWorktreeConcurrentRealMaterializer|TestFactoryEnsureCardWorktreeStepLockBounded|TestFactoryWorktreeStepWaitDerivation)$' -count=3 -race -v -timeout 25m` (36 concurrent iterations). Pass condition: S4, N = 3.
 - **RED-now cell**: L2 and L15 for the collision (unforced, 5% to 50% per run, 44 of 160 over eight runs) and
@@ -695,7 +850,10 @@ nominates the card, and a second lane runs bare `factory next`,
 - **RED-now cell**: L5 — a claim with a 500 ms deadline against a 3 s holder returned after `3.107069958s`: no
   bound exists; L14 shows the DSN timeout alone does not provide one either. The "queue writer is not
   starved" clause is green on arrival (today the claim holds no lock) and becomes the constraint on the fix;
-  it is what MU5 breaks. Swept count at the pin: 0 (L10); at WM1: to be recorded at WM1.
+  it is what MU5 breaks. These fixtures carry no drift-log entry, so they do not exercise the third wait
+  every record write has — the drift log's file lock (spec §A.2 O15); that wait is AC-FAL-015's, and a
+  mutant with an unbounded log wait survives this criterion by design. Swept count at the pin: 0 (L10); at
+  WM1: to be recorded at WM1.
 - **Green-path cell**: WM3 + WM4; each lease returns in the stated bound in all repetitions.
 - **Mutation**: MU5 (default 5000 ms busy timeout on the lease connection) turns the bound red; MU6 (drop the
   lock-timeout mapping) turns clause (c) red (a raw error in the nominated form, not exit 4); MU11 (map the
@@ -715,10 +873,10 @@ rather than a literal (the precedent is `slot_lease_cross_test.go`'s stall-relea
 - **Command**: `go test ./internal/cli -run '^TestFactoryLeaseCapWithinBoardBudget$' -count=1 -v`. Pass condition: S4, N = 1.
 - **RED-now cell**: L8 first row (`factoryLeaseClaimWaitCap` absent from the tree, exit 1); L6 gives the budget
   the guard will read, 3.3 s. Swept count at the pin: 0 (L10); at WM1: to be recorded at WM1 (at the WM1 seam
-  commit the constant exists and the accessor is a stub, so the test fails with the stub's panic — the
-  stated reason).
+  commit the constant exists and the accessor is a stub returning zero, so the test fails alone on
+  `cap × 3 > 0` — the stated reason; no stub panics, plan WM1).
 - **Green-path cell**: WM4; the test prints `--- PASS` once.
-- **Mutation**: raising the claim deadline to 1.5 s turns it red.
+- **Mutation**: MU13 (raising the claim deadline to 1.5 s) turns it red.
 
 ### AC-FAL-009 — the section contains only the two stores, its writes are bounded per path, and its hold is measured (REQ-FAL-007)
 
@@ -734,48 +892,71 @@ count and observed pending for 100 ms, the window of L11),
 (i) a `Mutate` issued from inside the creator stub completes within 500 ms (no queue lock is held during
 worktree creation) and likewise at the card-worktree record write;
 
-(ii) **per path, on a successful lease**, the section issues exactly the counts below, and **in every path**
-at most one queue promotion, at most one queue restore and at most three factory-record write transactions,
-none of them before the lock is held (the lock probe reads "pending" at every count):
+(ii) **per path** the section issues exactly the counts below, and **in every path** at most one queue
+promotion, at most one queue restore and at most three factory-record write transactions, none of them
+before the lock is held (the lock probe reads "pending" at every count). The table names the queue item's
+state and the record row's state together for every row, because the counts depend on both, and covers
+the successful leases and the failed claims; each row says which test builds its fixture. Every row was
+checked against `factoryNextClaim`, `factoryNextRecordAndClaim`, `RecordPicked`, `withCardTx` and
+`factoryNominateCompensate` at HEAD `c8b716fed` (read, not run; the fixtures do the running at WM1/WM3).
 
-| Path | queue promotions | queue restores | record write transactions |
-|---|---:|---:|---:|
-| bare arm (a) — the row is `assigned` to the lane | 0 | 0 | 1 |
-| bare arm (b) — an unowned `picked` row, queue item `picked` | 0 | 0 | 2 |
-| bare arm (b2) — a `picked` queue item with no row | 0 | 0 | 3 |
-| bare arm (c) — a `queued` item | 1 | 0 | 3 |
-| nominated — a `queued` item | 1 | 0 | 3 |
-| nominated — a `picked` item with no row, or an unowned `picked` row | 0 | 0 | 3 |
-| nominated — the row is `assigned` to the lane | 0 | 0 | 1 |
-| nominated — a claim that fails after its promotion | 1 | 1 | at most 3 |
+*Successful lease*
 
-(a record write transaction is one `RecordPicked`, assign edge or lease edge; each opens an immediate
-transaction, `RecordPicked` even when it changes no row — read, `withCardTx`, `card_transition.go` line 283.
-Promotions and restores are read from the queue item's state at the hook points and after the verb; a second
-write of an unchanged state is not observable and is not claimed);
+| Path (queue item state; record row state) | queue promotions | queue restores | record write transactions | Fixture built by |
+|---|---:|---:|---:|---|
+| bare arm (a) — row `assigned` to the lane | 0 | 0 | 1 | `TestFactoryLeaseSectionRecordWritesPerArm`, subtest `arm-a` |
+| bare arm (b) — item `picked`; unowned `picked` row | 0 | 0 | 2 | same, `arm-b` |
+| bare arm (b2) — item `picked`; no row | 0 | 0 | 3 | same, `arm-b2` |
+| bare arm (c) — item `queued`; no row | 1 | 0 | 3 | same, `arm-c` |
+| nominated — item `queued`; no row, or an unowned `picked` row | 1 | 0 | 3 | same, `nominated-queued` |
+| nominated — item `queued`; row `assigned` to the lane (reachable after an operator unpick) | 1 | 0 | 1 | same, `nominated-queued-assigned` |
+| nominated — item `picked`; no row, or an unowned `picked` row | 0 | 0 | 3 | same, `nominated-picked` |
+| nominated — item `picked`; row `assigned` to the lane | 0 | 0 | 1 | same, `nominated-picked-assigned` |
+
+*Failed claim, nominated form* (the compensation runs only for a promotion this invocation made, so a
+nominee already `picked` makes no restore on any failure; a write is counted at its attempt, at the
+`factoryCardNow` call that precedes it, whether it then commits or not)
+
+| Path (queue item state; record row state) | queue promotions | queue restores | record write transactions | Fixture built by |
+|---|---:|---:|---:|---|
+| failure before the assign edge committed — the seam errors, or the record step or the assign edge fails or stalls; item `queued`; no row or an unowned `picked` row | 1 | 1 | 0 to 2 | `TestFactoryLeaseCompensationKeepsOperatorPick` (the seam errors: 0 writes), `TestFactoryLeaseRecordStallBounded` (the first write stalls: 1 attempted write) |
+| failure after the assign edge committed — the lease edge stalls or fails; item `queued`; the row is `assigned` to the lane | 1 | 0 (the compensation reads a row that is not an unowned `picked` row and leaves the item `picked`; spec §F R4, second shape) | at most 3: 3 from no row or an unowned `picked` row (record step, assign edge, failing lease edge), 1 from a row already `assigned` | `TestFactoryLeaseMidClaimStallBounded` (3 attempted writes: no row) |
+
+The row "1 attempted write from a row already `assigned`" is read from the code and has no named fixture; a
+claim that loses a race to another holder restores or not by the compensation's own reading of the row,
+which the six-case table of `TestFactoryNextNominateCompensateRechecksRecord` already pins (kept, plan §5),
+so it is not a separate row here. A record write transaction is one `RecordPicked`, assign edge or lease
+edge; each opens an immediate transaction, `RecordPicked` even when it changes no row — read, `withCardTx`,
+`card_transition.go` line 283 — and the `record.drift` events a write reconciles are appended inside that
+same transaction (REQ-FAL-014). Promotions and restores are read from the queue item's state at the hook
+points and after the verb; a second write of an unchanged state is not observable and is not claimed;
 
 (iii) **the allowed set**: between the verb's start and the creator stub's call, the section runs no `git`
 subprocess (the shim's log holds no line before the stub's marker line) and writes no path under the project
 root other than the queue store's and the factory record's own files (the set of paths created or modified
 there, taken as a size-and-modification-time diff, is contained in the engine database, its write-ahead and
-shared-memory files and its lock file, and the record database with its write-ahead and shared-memory files);
-and the only read outside those stores is the foreign-worktree directory check
-(`factoryRefuseForeignWorktree`) — **this last half is not mechanically observable by the test, is stated as
+shared-memory files and its lock file, and the record database with its write-ahead and shared-memory files).
+These fixtures carry no drift-log entry, so the drift log, its lock file and the temporary file renamed over
+it are not touched here; AC-FAL-015 names that case. The only file or process I/O outside the two stores is
+the foreign-worktree directory check (`factoryRefuseForeignWorktree`) and, in AC-FAL-015's case, the claim's
+reconciliation of the drift log; reading the environment (`os.Getenv`) and the clock is not I/O in that
+sense (REQ-FAL-007) — **this last half is not mechanically observable by the test, is stated as
 doctrine-only, and is reviewed at WM3 by listing the call sites of `exec.Command`, `os.ReadFile`, `os.Open`,
-`os.Stat` and `os.Lstat` in `factory_card.go` against the section's functions**; and
+`os.Stat` and `os.Lstat` in `factory_card.go`, and of `os.ReadFile`, `os.OpenFile`, `os.CreateTemp` and
+`os.Rename` in `card_unavailable.go`, against the section's functions**; and
 
 (iv) the hold-time distribution of the section — 10 sequential leases, then 2, 4 and 10 concurrent lanes — is
 recorded in `progress.md` §E.2 with p50, p95, max and the command that produced it (no wall-clock threshold
 is asserted).
 
-- **Command**: `go test ./internal/cli -run '^(TestFactoryLeaseSectionExcludesWorktreeStep|TestFactoryLeaseSectionRecordWritesPerArm|TestFactoryLeaseSectionAllowedSet)$' -count=20 -race -v -timeout 25m`. Pass condition: S4, N = 20.
+- **Command**: `go test ./internal/cli -run '^(TestFactoryLeaseSectionExcludesWorktreeStep|TestFactoryLeaseSectionRecordWritesPerArm|TestFactoryLeaseSectionAllowedSet)$' -count=20 -race -v -timeout 25m`. Pass condition: S4, N = 20. The two failed-claim rows are built by the tests of AC-FAL-004 and AC-FAL-007 (named in the table) and are judged by their own commands; this command's per-arm test builds the eight success rows.
 - **RED-now cell**: L8 second row (`WithLock` absent, exit 1) — today no section exists, so the lock probe of
   clause (ii) cannot read "pending". The selector sweeps 0 tests at the pin (L10). Clause (i) alone is green
   on arrival; it is the constraint on the fix and is what the creator-inside-the-section mutant below breaks.
   Swept count at WM1: to be recorded at WM1.
 - **Green-path cell**: WM2 + WM3; the per-path counters read the table's values with `writes_before_lock=0`.
-- **Mutation**: moving the creator call inside the section turns clause (i) red; MU2 turns the lock probe of
-  clause (ii) red; MU10 (one `git` subprocess inside the section) turns clause (iii) red.
+- **Mutation**: MU12 (moving the creator call inside the section) turns clause (i) red; MU2 turns the lock
+  probe of clause (ii) red; MU10 (one `git` subprocess inside the section) turns clause (iii) red.
 
 ### AC-FAL-010 — selection behavior is unchanged where nothing interleaves (REQ-FAL-009) — regression-guard
 
@@ -787,7 +968,9 @@ family `TestFactoryNext`, `TestTodoLane`, `TestTodoNonLane`, `TestFactoryFallbac
 exactly those names printed 68 `--- PASS` and no failure,
 **When** the same anchored alternation is run after WM6,
 **Then** it prints `--- PASS` once for each of the 68 names (a swept count of 68, not less), 0 `--- FAIL` and
-0 `--- SKIP`, and the tests plan §5 moves keep every assertion line they had (checked by reading the diff);
+0 `--- SKIP`, and the tests plan §5 moves keep every assertion line they had, except the one removal plan §5
+records — the lock-wait subtest of `TestFactoryNextNominateCompensateRechecksRecord`, replaced by
+AC-FAL-004's test, and never silent (checked by reading the diff);
 and a fresh `-list` of the family, taken at WM1 on the seam-and-stub tree before the baseline is
 recorded and again at WM6, differs from L9's names only by names the WM1 baseline entry explains.
 
@@ -834,7 +1017,7 @@ ms (the margin AC-FAL-007 states; the self-contention guard of plan D4); and a q
 **Covers**: AC-FAL-012 maps REQ-FAL-011
 
 **Given** the run and sync records, **When** read at the sync phase, **Then** `spec.md` §F still lists
-R1–R15; the `progress.md` §E.4 signal and this SPEC's `CHANGELOG.md` entry each name which of M1–M5 closed
+R1–R17; the `progress.md` §E.4 signal and this SPEC's `CHANGELOG.md` entry each name which of M1–M5 closed
 and each §F window that remains open; and every use of "atomic" in that CHANGELOG entry carries
 "within the critical section" (or "across the critical section" for the section itself) in the same
 sentence.
@@ -852,35 +1035,122 @@ sentence.
 **Covers**: AC-FAL-013 maps REQ-FAL-012
 
 **Given** the card branch, **When** measured at WM6 against `git merge-base develop HEAD` re-derived at
-reading time, **Then** the changed paths are only: `internal/cli/factory_card.go` and its test files,
-`internal/kanban` lock files and their tests, `internal/homestate/factory.go` and its test files, and
-`.moai/specs/SPEC-FACTORY-ATOMIC-LEASE-001/**`; and **zero** paths under `internal/template/`,
-`.claude/rules/` (unless the doctrine sweep named a line), `internal/cli/todo.go`, `internal/cli/gtd.go`,
-`internal/homestate/card_transition.go`, `internal/cli/session_worktree.go`, `internal/cli/worktree/`,
-`internal/cli/root.go`, or any queue or factory schema file.
+reading time, **Then** the changed paths are **only** these (the enumerated allowed set):
 
-- **Command** (two plain calls — a compound shell around git is refused in a worktree session):
+- `internal/cli/factory_card.go`, and in `internal/cli` the test files `factory_card_test.go`,
+  `factory_nominate_test.go`, `factory_classify_test.go` (plan §5 moves tests in them) and new files named
+  `factory_lease_*_test.go`;
+- in `internal/kanban`: `backlog_store.go` (the queue lock's section), a new `factory_step_lock*.go` (the
+  worktree-step lock) and the files of the existing lock primitive it reuses (`board_lock*.go`), and their
+  tests;
+- in `internal/homestate`: `factory.go` (the lease-path open), `card_transition.go` (the reconciliation step
+  of `withCardTx` only), `card_unavailable.go`, `admission_lock_unix.go`, `admission_lock_windows.go`, and
+  their tests;
+- `.moai/specs/SPEC-FACTORY-ATOMIC-LEASE-001/**`;
+
+and **zero** paths under `internal/template/`, `.claude/rules/` (unless the doctrine sweep named a line),
+`internal/cli/todo.go`, `internal/cli/gtd.go`, `internal/cli/mcp_factory_card.go`,
+`internal/cli/factory_lane_relaunch.go`, `internal/cli/codex_launcher.go`, `internal/cli/session_worktree.go`,
+`internal/cli/worktree/`, `internal/cli/root.go`, or any queue or factory schema file. A path outside the
+enumerated set is a finding unless `progress.md` §E.2 records why. Two things are not measured by path and
+are read: that the diff of `card_transition.go` touches nothing outside `withCardTx` (no transition-table
+row, REQ-FAL-012), and that no changed hunk alters how a record write other than the claim's reconciles
+the drift log (REQ-FAL-014). The sync-phase paths — `CHANGELOG.md` and the three completed SPECs'
+Amendments — belong to the sync phase and are checked by AC-FAL-012 and AC-FAL-014, not here.
+
+- **Command** (plain calls — a compound shell around git is refused in a worktree session):
   `git merge-base develop HEAD`, then `git diff --name-only <that sha>..HEAD -- <pathspec>` once for the
-  allowed set (control: non-empty) and once for the forbidden set (probe: empty).
-- **Classification**: regression-guard — the forbidden-path probe is empty on arrival. It is only
-  meaningful before the card merges (after a merge the base is the tip and the range is empty); the
-  control must be non-empty or the result is "unmeasured", not "clean".
-- **Mutation**: touching `internal/cli/todo.go` makes the forbidden-set probe non-empty.
+  allowed set (control: non-empty), once for the forbidden set (probe: empty), and once for the complement
+  of the allowed set — the same range with the pathspec `.` followed by one `:(exclude)` entry per allowed
+  pathspec above (probe: empty, which is what measures "only").
+- **Classification**: regression-guard — the forbidden-path probe and the complement probe are empty on
+  arrival. It is only meaningful before the card merges (after a merge the base is the tip and the range
+  is empty); the control must be non-empty or the result is "unmeasured", not "clean".
+- **Mutation**: touching `internal/cli/todo.go` makes the forbidden-set probe non-empty; touching
+  `internal/cli/factory_mirror.go` (in neither list) makes the complement probe non-empty.
 
 ### AC-FAL-014 — supersession recorded, completed bodies untouched in the plan (REQ-FAL-013)
 
 **Covers**: AC-FAL-014 maps REQ-FAL-013
 
-**Given** spec §E, **When** the sync phase closes this SPEC, **Then** both
-`.moai/specs/SPEC-TODO-AUTO-PICK-001/spec.md` and `.moai/specs/SPEC-TODO-CLASSIFY-DISPATCH-001/spec.md`
-carry an Amendments entry that cites `SPEC-FACTORY-ATOMIC-LEASE-001`, records `prior_completed_sha`, and
-leaves their `status` at `completed`; and, at every point before that, neither body differs from the pin.
+**Given** spec §E, **When** the sync phase closes this SPEC, **Then** each of
+`.moai/specs/SPEC-TODO-AUTO-PICK-001/spec.md`, `.moai/specs/SPEC-TODO-CLASSIFY-DISPATCH-001/spec.md` and
+`.moai/specs/SPEC-FACTORY-RECORD-001/spec.md` carries an Amendments entry that cites
+`SPEC-FACTORY-ATOMIC-LEASE-001`, records `prior_completed_sha`, and leaves its `status` at `completed`;
+SPEC-TODO-AUTO-PICK-001's entry also names the §C.2 `raced` definition as amended and
+SPEC-FACTORY-RECORD-001's names REQ-FR-025's last clause as narrowed for the claim's writes (the two §E rows
+that no other clause covers); and, at every point before that, none of the three bodies differs from the pin.
 
-- **Command** (plan-phase half): `git diff --name-only 2de0a2cb613b04765a1554f86685a3b48e0be806..HEAD -- .moai/specs/SPEC-TODO-AUTO-PICK-001 .moai/specs/SPEC-TODO-CLASSIFY-DISPATCH-001`
-  prints nothing. Sync half: `grep -c SPEC-FACTORY-ATOMIC-LEASE-001` on each `spec.md` is at least 1.
-- **RED-now cell**: L8 rows 3 and 4 (`0` each) for the sync half; the plan-phase half is green by
-  construction and is the reason the sync half cannot be mistaken for a plan-time edit.
-- **Green-path cell**: sync phase, one manager-spec re-delegation (spec §B.4, plan D5).
+- **Command** (plan-phase half): `git diff --name-only 2de0a2cb613b04765a1554f86685a3b48e0be806..HEAD -- .moai/specs/SPEC-TODO-AUTO-PICK-001 .moai/specs/SPEC-TODO-CLASSIFY-DISPATCH-001 .moai/specs/SPEC-FACTORY-RECORD-001`
+  prints nothing. Sync half, per `spec.md`: `grep -c SPEC-FACTORY-ATOMIC-LEASE-001` is at least 1,
+  `grep -c prior_completed_sha` is at least 1 and `grep -m1 '^status:'` prints `status: completed`; the
+  presence of the two named rows is a reading of the Amendments entry (*doctrine-only*), because a bare
+  mention of the SPEC id in `related_specs` would satisfy the first count alone.
+- **RED-now cell**: L8 rows 3 and 4 (`0` each) for the sync half of the first two SPECs; for the third,
+  `grep -c SPEC-FACTORY-ATOMIC-LEASE-001 .moai/specs/SPEC-FACTORY-RECORD-001/spec.md` printed `0`, exit 1
+  (override round, HEAD `c8b716fed24564a685188dc94b3f446ac9fc79c8`, Go files equal the pin). The
+  plan-phase half is green by construction and is the reason the sync half cannot be mistaken for a
+  plan-time edit.
+- **Green-path cell**: sync phase, one manager-spec re-delegation (spec §B.4, plan D5; the leader may veto
+  the reopening, spec §H DL-4).
+- **Mutation**: deleting the Amendments entry from any of the three `spec.md` files makes `grep -c
+  SPEC-FACTORY-ATOMIC-LEASE-001` return 0 on that file, which the sync half reads.
+
+### AC-FAL-015 — a contended drift-log lock neither stalls the claim nor loses the reconciliation (REQ-FAL-014)
+
+**Covers**: AC-FAL-015 maps REQ-FAL-014, REQ-FAL-006, REQ-FAL-007, REQ-FAL-009
+
+Let `C` and the 500 ms margin be as in AC-FAL-007 (`C` is `factoryLeaseClaimWaitCap`, 1.0 s at the starting
+values).
+
+**Given** a drift log beside the factory record holding **one unreconciled entry for the run**, its lock
+(`record-unavailable.jsonl.lock`) held by the test, in three fixtures: (a) a queued nominee and the lock
+held for longer than three times `C`; (b) queued parallelizable cards for bare arm (c) and the same hold;
+(c) at the record-write level, the lock held for 1.5 s while two record writes are made for the run — one
+through the lease claim's opt-in (the marker the section sets on the claim's context, plan D2) and one
+through the ordinary path, as `factory assign` makes it,
+**When** (a) a lane nominates the card, (b) a lane runs bare `factory next`, (c) both writes are made
+while the lock is held,
+**Then**
+
+- (i) in (a) and (b) the lease returns within `C` + 500 ms and **succeeds** — exit 0, the card `leased`: a
+  skipped reconciliation is not a refusal and not an error, and the verb's output is unchanged — and the
+  queue's lock is acquirable immediately afterwards;
+- (ii) the entry is **still unreconciled** after the lease and **no `record.drift` event** was appended
+  for it (the skip leaves no half-done reconciliation: the events and the mark are both withheld);
+- (iii) once the lock is released, the next record write for the run — the claim's own next write or an
+  ordinary write — reconciles the entry **exactly once**: one `record.drift` event per entry in total, the
+  entry marked reconciled, and a further write appends nothing more;
+- (iv) in (c) the write made through the claim's opt-in returns within 500 ms and leaves the entry
+  unreconciled, while the write made through the ordinary path **waits** until the lock is released (it
+  returns not before the 1.5 s hold ends) and then reconciles the entry — one event, the entry marked: the
+  skip is the claim's alone (REQ-FAL-014's last sentence, spec §H DL-7); and
+- (v) the tree's six existing tests of the log's append, reconcile and rewrite behavior stay green (L23).
+
+- **Command** (two plain calls): (1) `go test ./internal/homestate ./internal/cli -run '^(TestRecordWriteReconcileBoundedSkipsOnContention|TestRecordWriteReconcileDefaultStillWaits|TestFactoryLeaseDriftLogStallBounded)$' -count=10 -race -v -timeout 25m` (S1, S2) — clauses (i) to (iv); the first two names live in `internal/homestate` (fixture (c), clauses (ii) to (iv)) and the third in `internal/cli` (fixtures (a) and (b), clauses (i) to (iii)). Pass condition: S4 with N = 10, each of the three names printing `--- PASS` ten times. (2) `go test ./internal/homestate -run '^(TestFR_RecordUnavailableLogAndReconcile|TestFR_UnavailableTornLineSkippedAndReported|TestFR_UnavailableLogAppendSurvivesRewrite|TestFR_UnavailableLogConcurrentAppendsNoLoss|TestAppendRecordUnavailableFailureModes|TestMarkRecordUnavailableReconciledFailureModes)$' -count=1 -v -timeout 25m` — clause (v); S4 with N = 1, six names (the baseline is L23).
+- **RED-now cell**: **L19.** At the pin, with one unreconciled entry and the log lock held for 3 s, the claim's
+  three writes under an 800 ms deadline returned after 3.016 s, 3.009 s and 3.002 s (limit 1.3 s) — the
+  bound clause is red; the write made under the held lock reconciled by waiting (`unreconciled-after=0`,
+  two events) — the skip clause is red; and the control (no lock held) reconciled in 4.4–9.8 ms, so the
+  fixture does trigger the reconciliation. The retry predicate is green at the pin (`unreconciled=0`,
+  two events: one per entry) and is the guard the fix must keep green. L21 shows the three new names sweep
+  0 tests at the pin, so S4(a) and S4(c) fail by construction as well. The probe is at the record-write
+  level, which is where the wait lives (every claim write is a `withCardTx`, spec §A.2 O15); the
+  criterion's lease-level tests (fixtures (a) and (b)) arrive in WM1 and are not themselves observed red.
+  Swept count at WM1: to be recorded at WM1.
+- **Green-path cell**: WM4 — the claim-scoped non-waiting reconciliation lands with the busy-timeout open
+  variant and the claim deadline, and WM3 alone must not be integrated without it (plan WM4). After it,
+  (i) returns in a few milliseconds and the three names print `--- PASS` ten times each.
+- **Mutation**: MU15 (the claim's reconciliation made to wait for the log's lock, as the pin does) turns (i)
+  red — the lease runs the holder's whole hold, at least three times `C`; MU16 (the skip applied to every
+  record write) turns the ordinary-path half of (iv) red — the ordinary write returns before the hold ends
+  and leaves the entry unreconciled; MU17 (the skip decided after the drift events were appended) turns (ii)
+  red — an event exists for the unreconciled entry — and (iii) red — the next write appends a second one.
+- **Not claimed**: a skipped reconciliation is delayed, not lost, but a lane that never writes the record
+  again leaves its entries to a later write by someone else (spec §F R16); the reconciliation's own work
+  once the lock is obtained is not bounded by the cap and grows with the log's length (measured 0.15–0.26 s
+  at 2000 entries, L19); and a drift entry for a run other than the lease's own is not touched by this
+  criterion (unchanged).
 
 ## Edge cases
 
@@ -899,12 +1169,18 @@ leaves their `status` at `completed`; and, at every point before that, neither b
 - **E6 — a lane killed inside the section.** Not tested (spec §F R1).
 - **E7 — a card leased and then failed at the worktree step.** Not tested; it stays leased without a worktree
   until its lease runs out (spec §F R15).
+- **E8 — the drift log holds no unreconciled entry for the run (the usual case).** The claim takes no log
+  lock and behaves as before: the claim's reconciliation looks at the log without the lock first and goes no
+  further when it finds nothing for the run (plan D2). AC-FAL-007 and AC-FAL-009's fixtures are this case.
+- **E9 — an arm (a) re-lease of a held card.** Leased, by design (spec §F R17); pinned by AC-FAL-003 (iii).
 
 ## Quality gate criteria
 
 - `gofmt -l` over the changed Go files is empty; `go vet ./internal/cli ./internal/kanban ./internal/homestate`
   exits 0; `golangci-lint run` at the CI version (v2.1.6) over the three packages reports 0 issues;
-  `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+  `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (the Windows build covers the
+  non-waiting form of the admission-lock primitive in `admission_lock_windows.go`, which is compile-verified
+  only, spec §F R3).
 - @MX annotations: the critical-section function and `WithLock` carry `@MX:WARN` with `@MX:REASON` (a lock
   held across I/O) and `@MX:ANCHOR` where fan-in reaches 3, per `mx-tag-protocol.md`.
 - Coverage of the changed functions is measured and reported per function (package-wide coverage is not
@@ -914,8 +1190,9 @@ leaves their `status` at `completed`; and, at every point before that, neither b
   `0732cc699` (`v3.2.0-rc.27`, built 2026-10-03T03:34:50Z), diverged from HEAD — neither an ancestor of the
   other — and `git diff --name-only HEAD 0732cc699 -- internal/spec` printed nothing (L18), so the lint
   source the installed build carries equals the tree's. (Iteration 1 used build `45600e4ee`, 187 commits
-  behind HEAD, with the same empty `internal/spec` diff.) The installed build is the judging build for
-  `moai spec lint`; the tree's own build was not made.
+  behind HEAD, with the same empty `internal/spec` diff.) In the override round the installed build was the
+  same `0732cc699` against HEAD `c8b716fed`, again diverged, again with an empty `internal/spec` diff (L22).
+  The installed build is the judging build for `moai spec lint`; the tree's own build was not made.
 
 ## Definition of Done
 
@@ -923,12 +1200,12 @@ leaves their `status` at `completed`; and, at every point before that, neither b
    the baseline commit (the AC-FAL-010 `-list` dump and pass count taken on the seam-and-stub tree,
    recorded in `progress.md` §E.2), then the RED commit. WM1 RED output recorded verbatim in `progress.md`
    §E.2 with each selector's swept count, each later RED commit before its fix commit.
-2. AC-FAL-001 to -009 and -011 green on the final tree with the repetition counts above, each judged by
-   S4's pass condition, each mutant of plan §7 executed and its failing test recorded.
+2. AC-FAL-001 to -009, -011 and -015 green on the final tree with the repetition counts above, each judged
+   by S4's pass condition, each mutant of plan §7 executed and its failing test recorded.
 3. AC-FAL-010 and -013 green; the preservation baseline and final counts both recorded (swept count at least
    68).
 4. The section's measured hold-time distribution recorded (REQ-FAL-011, spec §F R9).
 5. `spec.md` §F unchanged in substance, or amended with the reason, by manager-spec; no residual window
    claimed closed that this card did not close.
-6. Sync: the two Amendments records (AC-FAL-014) and the CHANGELOG entry (AC-FAL-012).
+6. Sync: the three Amendments records (AC-FAL-014) and the CHANGELOG entry (AC-FAL-012).
 7. `moai spec lint SPEC-FACTORY-ATOMIC-LEASE-001` reports no findings.
