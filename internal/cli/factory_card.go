@@ -904,16 +904,16 @@ func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHo
 				if it.ID != cardID {
 					continue
 				}
-				if it.State != kanban.BacklogStateQueued {
-					lost = factoryRefusal(factoryRefuseRaced, "another lane moved %s out of queued first", cardID)
+				if it.State == kanban.BacklogStateQueued {
+					if ref := factoryKeepSetRefusal(*it, nom.row, lane, nom.serialHeld); ref != nil {
+						lost = ref
+						return nil
+					}
+					it.State = kanban.BacklogStatePicked
+					promoted = true
 					return nil
 				}
-				if ref := factoryKeepSetRefusal(*it, nom.row, lane, nom.serialHeld); ref != nil {
-					lost = ref
-					return nil
-				}
-				it.State = kanban.BacklogStatePicked
-				promoted = true
+				lost = factoryRefusal(factoryRefuseRaced, "another lane moved %s out of queued first", cardID)
 				return nil
 			}
 			lost = factoryRefusal(factoryRefuseRaced, "%s left the queue first", cardID)
