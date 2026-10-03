@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-CARD-ISSUANCE-001
 title: "카드 발행 품질 — 발행 시점의 겹침·중복 제시, 카드 관계 그래프, 묶음 직렬 경로, 과분할 억제 규칙"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -22,6 +22,7 @@ related_specs: [SPEC-TODO-CLAIM-LEASE-001, SPEC-TODO-TRANSITION-STAMPS-001, SPEC
 ## HISTORY
 
 - 0.1.0 — 2026-10-03 — 카드 t1454(운영자 요청 10-02 밤, Class C, Tier L, 단일 카드 유지)의 plan 단계 산출물을 처음 작성했다. 근거는 세 개의 읽기 전용 렌즈와, 이 계획이 같은 트리 `2de0a2cb6`(전체 SHA `2de0a2cb613b04765a1554f86685a3b48e0be806`)에서 다시 잰 값이다. 카드가 인용한 측정 수치는 다른 세션의 scratchpad 에서 왔으므로, git 쪽 수치는 이 트리에서 재현했고(전부 일치) 큐 쪽 수치는 스냅숏 위에서 다시 쟀다(드리프트 기록). 카드 본문의 낡은 전제 여섯 가지는 §A.3 에서 바로잡았다. 결정 열다섯 가지는 `decision-index.md` 와 `design.md` §11 에 선택지·근거·작업 기본값으로 두었고, 이 SPEC 에는 미해결 질문 표지를 두지 않는다(카드의 리더가 감사 근거로 판정한다). 요구 24개, 수용 기준 24개(출시 차단 21, 회귀 가드 3).
+- 0.2.0 — 2026-10-03 — 이터레이션 1 독립 plan-audit(FAIL 0.72, Tier L 기준 0.85, 보고서 `.moai/reports/t1454/plan-audit-iter1.md` — 로컬 전용·미추적이라 권위 인용이 아니라 출처 포인터다)의 지적 D1~D14 에 대응했다(감사 지적 번호이며 이 SPEC 의 결정 D1~D15 와는 별개다). 블로킹 일곱 건: (D1) 기준선이 `.gitignore:235` 의 `.moai/reports/*` 에 걸려 추적될 수 없었으므로 추적되는 `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/baseline/` 으로 옮기고, 출하되는 허브 파일 목록은 M0 가 만들고 시험이 측정 명령과 대조하는 임베드 데이터 파일로 바꾸고, 완료 정의 #2 를 커밋 그래프가 증언할 수 있는 명령으로 다시 썼다. M5 초안 경로도 같은 이유로 추적 경로로 옮겼다. (D2) M5 게이트에서 `--first-parent` 를 없애 어느 부모 경로로든 닿는 술어로 바꾸고 고정 SHA 위의 두 번째 부모 양성 대조를 더했다. (D3) RED 행 L1·L23 을 감사가 만들 수 없는 추적 상태 질의로 옮겼다. (D4) 수치는 로컬 전용 규칙에만 쓰고 배포 사본은 메커니즘만 쓰는 것으로 한 가지로 정했다. (D5) REQ-TCI-013 을 실제 쓰기 동사(`relate`, `add`)가 위반할 수 있는 제약으로 좁혔다. (D6) 처분 컬럼을 finding 표 두 곳으로 넓혀 REQ-TCI-008·009 와 AC-TCI-008 에 넣었다. (D7) 출시 차단 17개 기준에 green-path 명령과 통과 시 출력의 모양을 적었다. 선택 지적: (D8) AC-TCI-021 을 조건부로 분류했다. (D9) 결정 기록 Q6 의 선호 문장을 지웠다. (D10) §A.3 에 일곱째 정정을 더했다. (D11) REQ-TCI-007·016 의 구현 세부를 설계로 옮겼다. (D12) M0 가 개수마다 측정 명령을 옆에 적는다. (D13) REQ-TCI-016 의 불변식을 (트리, 도달 가능한 이력) 위에서 서술하고 CI 와의 일치는 미검증으로 표시했다. (D14) 규칙이 발행 세션에 닿는지 보는 기준을 AC-TCI-021 에 더했다. 이 반복이 새로 찾은 것: 카드→파일 간선 층도 first-parent 만 걸으면 같은 맹점을 가지므로 REQ-TCI-016 과 AC-TCI-016 이 도달 가능한 모든 병합을 걷고 흡수 병합은 제외하도록 요구한다. 요구 24개, 수용 기준 24개(출시 차단 20, 조건부 1, 회귀 가드 3).
 
 ## Amendments
 
@@ -93,9 +94,9 @@ related_specs: [SPEC-TODO-CLAIM-LEASE-001, SPEC-TODO-TRANSITION-STAMPS-001, SPEC
 
 여섯 마일스톤을 순서대로 한다(실행 순서: M0, M1, M2, M3, M4, M6, 그다음 게이트가 열렸을 때 M5).
 
-- **M0** 카드의 기준선을 추적되는 형태로 반입하고 실행 단계에서 다시 잰다.
+- **M0** 카드의 기준선을 **추적되는** 위치(`.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/baseline/`)에 반입하고 실행 단계에서 다시 잰다. 출하되는 허브 파일 목록도 같은 커밋이 만든다.
 - **M1** `add` 가 막지 않고 알린다 — 유사 카드 상위 3개(보관·dropped 포함), 같은 구성요소의 열린 카드, 진행 중 레인과의 예상 파일 겹침, 이미 덮는 완료 SPEC. `--dry-run` 을 지원한다.
-- **M2** 카드에 발행 속성(스폰한 카드·출처·크기 추정·예상 파일·drop 사유)을 가산적으로 싣고 finding 에 처분(수용·병합·기각)을 싣는다.
+- **M2** 카드에 발행 속성(스폰한 카드·출처·크기 추정·예상 파일·drop 사유)을 가산적으로 싣고 finding 에 처분(수용·병합·기각)을 싣는다. 카드 표 두 곳과 finding 표 두 곳 모두에 같은 이주·보관·parity 규율을 적용한다.
 - **M3** 관계를 일곱 종류의 한 어휘로 묶고(종류별 순환·카디널리티 제약), 두 저장소를 해석기 하나로 읽고, 추이 질의 동사와 `moai graph` 의 card→file 간선을 만든다.
 - **M4** 묶음 직렬 경로, 운영자 호출 카드 병합 동사, 허브 파일 직렬 소유.
 - **M5**(게이트됨) 카드 크기·후속 지적·파생 깊이·동시 진행 한도·발행 체크리스트 규칙. 선행 조건은 명령으로 판정한다.
@@ -111,6 +112,8 @@ related_specs: [SPEC-TODO-CLAIM-LEASE-001, SPEC-TODO-TRANSITION-STAMPS-001, SPEC
 4. 카드는 "현 규칙은 병합 금지"라 했지만 `kanban-dispatch*.md`·`sync-auditor.md`·`manager-todo.md` 어디에도 그런 문장이 없다. 금지는 `.claude/skills/moai/workflows/gtd.md` 의 두 문장과 병합 동사가 없다는 코드 형태가 만든다(A2 참조).
 5. t1448 은 이미 이 트리에 착지했다(병합 `4315f0d0e` 는 HEAD 의 조상). t1453 은 아직 착지하지 않았다 — 게이트 명령이 0 을 읽는다(§C Module E, `acceptance.md` L21).
 6. 카드는 `moai graph` 의 "커밋된 `edges.jsonl`"을 전제했지만 `.moai/project/graph/` 는 `.gitignore:344` 로 추적 제외된 파생 산출물이다(`internal/graph/check.go` 도 "untracked derived artifact"라 적는다). 결정론 요구는 그대로이고, "비공개 큐 상태를 커밋된 산출물에 섞지 말 것"은 "`moai graph build` 의 동일 트리 동일 출력 계약을 지킬 것"으로 바뀐다(D3).
+7. 카드 본문은 발행 시점 제시가 기존 분류 경로(`ClassifyCardText`)와 기호 추출 도우미(`todoTriageSymbols`)를 **재사용**한다고 적었다. 이 SPEC 은 **둘 다 재사용하지 않는다** — 분류기는 dropped 카드를 거절 대상에서 건너뛴다는 독트린과 고정 시험을 가지므로 건드리지 않고(REQ-TCI-006), 기호 추출 도우미는 최대 4개만 내는 상한 때문에 경로 겹침 용도에 맞지 않는다(`research.md` §4). 대신 제시용 조회를 별도 읽기 전용 경로로 두고 척도(`NormalizeCardText`·`TokenSetJaccard`)만 재사용한다.
+8. 이터레이션 1 계획은 기준선과 M5 초안을 `.moai/reports/t1454/` 아래 "추적되는 형태"로 둔다고 적었지만 그 경로는 `.gitignore:235`(`.moai/reports/*`)에 걸려 추적될 수 없다(`git check-ignore -v` 가 종료 0 으로 확인). 감사 산출물 규약(`.moai/docs/audit-artifact-convention.md`)은 보고서를 트리에 강제로 넣거나 무시 규칙을 넓히는 것을 금하므로, 이 SPEC 의 기준선과 초안은 추적되는 SPEC 디렉터리 안으로 옮겼다(REQ-TCI-001, -022).
 
 ## §B 결정과 작업 기본값
 
@@ -118,13 +121,13 @@ related_specs: [SPEC-TODO-CLAIM-LEASE-001, SPEC-TODO-TRANSITION-STAMPS-001, SPEC
 
 | ID | 결정 | 계획이 진행하는 작업 기본값 |
 |---|---|---|
-| D1 | M5 의 순서와 게이트 미충족 시 인도물 | M5 는 마지막 마일스톤이고 게이트 명령이 판정한다. 미충족이면 규칙 파일은 건드리지 않고 초안과 후속 카드 문안만 낸다 |
+| D1 | M5 의 순서와 게이트 미충족 시 인도물 | M5 는 마지막 마일스톤이고 게이트 명령(어느 부모 경로로든 닿는 조상 술어)이 판정한다. 미충족이면 규칙 파일은 건드리지 않고 추적되는 초안과 후속 카드 문안만 낸다 |
 | D2 | 두 관계 저장소 통합 방식 | 저장소는 분리 유지, 읽기 해석기와 어휘 확장으로 통합 |
 | D3 | card→file 간선 운반체 | 커밋된 증거(카드 귀속 병합 커밋)에서만 `edges.jsonl` 에 간선 생성, 비공개 사이드카는 만들지 않는다 |
 | D4 | M2 스키마 형태 | nullable JSON 컬럼 하나(`issuance`), finding 은 컬럼 하나(`disposition`) |
 | D5 | MCP 알림 전달과 `gtd engage` | MCP 결과 텍스트의 id 줄 뒤에 제시를 덧붙이고, engage 는 제시만 하고 분석기는 돌리지 않는다 |
 | D6 | 병합 경로 독트린 개정 범위 | 운영자 호출 동사 하나로 한정, 분석·relate·레인은 계속 금지 |
-| D7 | 수치 임계값 | SPEC 은 값을 고정하지 않고 M0 의 기준선 기록을 가리킨다 |
+| D7 | 수치 임계값 | SPEC 은 값을 고정하지 않는다. 값은 M0 의 추적되는 기준선 기록에서 읽고, 값 자체는 로컬 전용 규칙에만 쓰며 배포 사본은 메커니즘만 쓴다 |
 | D8 | 유사도 척도와 소음 | 기존 token-set Jaccard 재사용, 표시 하한을 두고 점수와 척도를 항상 함께 표기 |
 | D9 | closed-at | 저장하지 않고 기존 두 스탬프에서 읽는 접근자 하나 |
 | D10 | 파생 부모의 단일 원천 | 카드 속성이 원천, `parent-of`/`follow-up-of` 는 읽기 투영 |
@@ -136,11 +139,11 @@ related_specs: [SPEC-TODO-CLAIM-LEASE-001, SPEC-TODO-TRANSITION-STAMPS-001, SPEC
 
 ## §C 요구사항 (GEARS)
 
-요구는 다섯 모듈이다. GEARS 표기를 쓰고 모든 `REQ-TCI-NNN` 은 `acceptance.md` 의 `AC-TCI-NNN` 하나 이상이 추적한다. 요구 문장은 리포의 한국어 SPEC 관행대로 GEARS 영어 문형으로 적고, 설명과 근거는 한국어로 적는다. 숫자 임계값은 이 문서에 쓰지 않는다 — 값은 M0 가 만드는 기준선 기록에서 읽고(REQ-TCI-001), 계획의 작업 기본값은 `plan.md` §F.11 과 `design.md` §11 에 있다.
+요구는 다섯 모듈이다. GEARS 표기를 쓰고 모든 `REQ-TCI-NNN` 은 `acceptance.md` 의 `AC-TCI-NNN` 하나 이상이 추적한다. 요구 문장은 리포의 한국어 SPEC 관행대로 GEARS 영어 문형으로 적고, 설명과 근거는 한국어로 적는다. 요구는 관측 가능한 행동만 말한다 — 저장 경로·순회 방식 같은 구현 방법은 `design.md` 가 소유한다. 숫자 임계값은 이 문서에 쓰지 않는다 — 값은 M0 가 만드는 기준선 기록에서 읽고(REQ-TCI-001), 계획의 작업 기본값은 `plan.md` §F.11 과 `design.md` §11 에 있다.
 
 ### Module A — 기준선과 발행 시점 제시 (M0, M1)
 
-- **REQ-TCI-001** (Ubiquitous): The baseline record under `.moai/reports/t1454/baseline/` shall hold, for every figure on which a threshold or rule value of this SPEC rests, the producing command, its verbatim output and the tree SHA it was measured on, and every later requirement or rule that names a threshold shall take its value from that record rather than from this document.
+- **REQ-TCI-001** (Ubiquitous): The baseline record under `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/baseline/` — a tracked path that is present in every clone and in CI — shall hold, for every figure on which a threshold or rule value of this SPEC rests, the producing command, its verbatim output and the tree SHA it was measured on, and every later requirement or rule that names a threshold shall take its value from that record rather than from this document, and the commit that adds the record shall carry nothing outside it and shall precede every commit that changes shipped behavior.
 - **REQ-TCI-002** (Event-driven): **When** a card is admitted through `moai todo add`, `moai gtd add` or the bare `moai todo <text>` fallthrough, the add path shall print on its error stream a presentation of (a) up to three cards most similar to the new text across live, dropped (reason prefix stripped) and archived cards, (b) open cards sharing a component with it, (c) in-flight lane cards whose expected files overlap its own, and (d) completed SPECs that already cover it, each item at or above its display floor and labelled with its source and measure, and its output stream shall remain exactly `<id> <position>` followed by a newline.
 - **REQ-TCI-003** (Unwanted): The presentation shall not refuse, delay beyond its time bound, reorder, edit, fold or drop any card or otherwise change the admission, so that the queue after an add is identical to the queue the same add would produce without the presentation apart from the new card's own row and the findings the analyser already records, and any probe that reads outside the queue (git, the SPEC directory) shall run outside the queue's cross-process write lock and under a time bound.
 - **REQ-TCI-004** (Capability-gate): **Where** `--dry-run` is passed to `moai todo add` or `moai gtd add`, the add path shall print the same presentation, shall write nothing (the queue file byte-identical, no id consumed, `last_seq` unchanged) and shall exit 0, and for an exact duplicate shall report that a real add would refuse instead of refusing.
@@ -149,31 +152,31 @@ related_specs: [SPEC-TODO-CLAIM-LEASE-001, SPEC-TODO-TRANSITION-STAMPS-001, SPEC
 
 ### Module B — 카드 스키마 (M2)
 
-- **REQ-TCI-007** (Ubiquitous): Every card, live or archived, shall be able to carry optional issuance attributes — the card that spawned it, its origin, a size estimate, its expected files and a drop reason — stored additively (absence is a SQL NULL and a nil value, never an empty object or string) through the engine's additive-column path rather than the table-rebuild column list, so that a card carrying none of them serializes byte-identically to before.
-- **REQ-TCI-008** (Event-driven): **When** a queue database written before this change is opened, the engine shall add the missing storage to both card-bearing tables without losing or altering any existing row, and the pure reader shall return nil attributes for a database that lacks it without running any schema change.
-- **REQ-TCI-009** (Ubiquitous): Archiving a card and restoring it shall carry its issuance attributes unchanged, and the in-memory record, the JSON rendering and the SQLite rows of one queue shall agree on them, the engine's parity assertion covering the new storage.
+- **REQ-TCI-007** (Ubiquitous): Every card, live or archived, shall be able to carry optional issuance attributes — the card that spawned it, its origin, a size estimate, its expected files and a drop reason — where absence is represented as absent rather than as an empty value, so that a card carrying none of them is stored, serialized and exported exactly as before this change.
+- **REQ-TCI-008** (Event-driven): **When** a queue database written before this change is opened, the engine shall add the missing storage for issuance attributes to both card-bearing tables and the missing storage for dispositions to both finding-bearing tables without losing or altering any existing row, and the pure reader shall return absent values for a database that lacks that storage without running any schema change.
+- **REQ-TCI-009** (Ubiquitous): Archiving a card and restoring it shall carry its issuance attributes and the dispositions of its findings unchanged, a merge of two queues shall carry them unchanged, and the in-memory record, the JSON rendering and the SQLite rows of one queue shall agree on them, the engine's parity assertion covering all the new storage.
 - **REQ-TCI-010** (Event-driven): **When** a card is dropped, `moai todo drop` shall store the reason in the drop-reason attribute while continuing to write the `[DROPPED — <reason>] ` text prefix, and the closing time of a card shall be readable through one accessor that derives it from the archive or drop stamp and answers "unknown" for a card that carries neither.
 - **REQ-TCI-011** (Ubiquitous): A finding shall be able to carry an optional disposition — accept, merge or reject — set only through an explicit operator verb, absent for every existing finding, and recording a disposition shall change no card, no finding relation and no queue order.
 
 ### Module C — 관계 모델과 그래프 (M3)
 
 - **REQ-TCI-012** (Ubiquitous): Card relations shall be expressed in one vocabulary of seven kinds — blocks, duplicates, parent-of, follow-up-of, merged-into, supersedes, relates-to — over nodes of type Card, Component, File, Commit, Spec and Finding, with every legacy finding relation mapped onto it at read time (depends and blocks to blocks, near-duplicate and duplicate-forced to duplicates, replaces to supersedes, contains, absorbs and conflicts to relates-to with the legacy name kept as a qualifier) and no stored row rewritten.
-- **REQ-TCI-013** (Event-detected): **When** a relation write would give a card a self-edge, close a cycle in a kind that forbids cycles, or exceed the cardinality of its kind (a card with a second parent, a second origin or a second merged-into target), the write verb shall refuse with a message naming the kind and the offending pair and shall leave the queue file byte-identical.
+- **REQ-TCI-013** (Event-detected): **When** `moai todo relate` is asked to record a self-edge or a cycle among `blocks` pairs (a legacy `depends` record counting as one) or among `supersedes` pairs (a legacy `replaces` record counting as one), **or when** `moai todo add` receives a second `--parent` or `--origin`, a `--parent` that names no card, or an `--origin` outside the closed set, the verb shall refuse with a message naming the kind or flag and the offending pair or value and shall leave the queue file byte-identical, a `duplicates` or `relates-to` pair recorded again in the opposite order shall create no second record, and `parent-of`, `follow-up-of` and `merged-into` shall be written by no relation verb — the first two exist only as projections of the add-time attributes and `merged-into` only through `moai todo merge`.
 - **REQ-TCI-014** (Ubiquitous): One resolver shall map a queue card id to its GTD item id and back through the engagement link, so that a single read can show a card's findings together with its `gtd_relations`; the resolver shall add no write path to `gtd_relations` and shall leave `moai gtd organize` unchanged.
 - **REQ-TCI-015** (Event-driven): **When** `moai todo trace <id> [--kind <k>] [--depth <n>]` runs, the command shall print every node reachable from the card over the named kinds up to the depth bound in a deterministic order, shall terminate on cycles that legacy data may contain, shall write nothing and shall be available to a lane session like the other read-only verbs.
-- **REQ-TCI-016** (Ubiquitous): `moai graph build` shall derive card-to-file edges only from committed evidence — card-attributed first-parent merge commits and the files they changed — so that two builds on one tree produce byte-identical output, the output contains no queue-private state (no unlanded card id, expected file or finding), and `moai graph check` shall notice a change to that evidence source.
+- **REQ-TCI-016** (Ubiquitous): `moai graph build` shall derive card-to-file edges only from committed evidence — merge commits whose subject attributes them to exactly one card and that are reachable from HEAD by any parent path, and the files each such merge brought in — so that two builds over the same tree and the same reachable commit history produce byte-identical output, the output contains no queue-private state (no unlanded card id, expected file or finding), an absorb merge contributes no edge, and `moai graph check` shall notice a change to that evidence source.
 - **REQ-TCI-017** (Ubiquitous): For every record that predates this change, `todo list`, `todo list --json`, `todo why`, `todo export`, the pickup filter and the auto-rank near-duplicate path shall behave and render exactly as before.
 
 ### Module D — 묶음과 병합 (M4)
 
 - **REQ-TCI-018** (Event-driven): **When** cards are assigned to one bundle, the factory shall lease them to the bundle's lane one at a time in bundle order, offering the next member to that lane after the previous member's local merge and withholding members from every other lane, while the fleet-wide serial slot keeps its present meaning.
-- **REQ-TCI-019** (Event-driven): **When** an operator runs `moai todo merge <into> <from>`, the command shall append the text of `<from>` to `<into>` as an explicit section, record a merged-into relation from `<from>` to `<into>`, drop `<from>` with its reason, and refuse when either card is picked, already merged, or the pair would form a cycle; and neither the analyser, `analyze`, `relate` nor any lane session shall be able to invoke it.
-- **REQ-TCI-020** (State-driven): **While** a hub file — a path the baseline record lists as touched by more cards than its hub threshold — appears in the expected files of two open cards, the factory shall order them as a bundle chain so that the second is leased only after the first has merged, and the keep-set shall continue to read no file overlap.
+- **REQ-TCI-019** (Event-driven): **When** an operator runs `moai todo merge <into> <from>`, the command shall append the text of `<from>` to `<into>` as an explicit section, record a merged-into relation from `<from>` to `<into>`, drop `<from>` with its reason, and refuse when either card is picked, `<from>` is already merged, `<into>` is closed or already merged, or the pair would form a cycle; and neither the analyser, `analyze`, `relate` nor any lane session shall be able to invoke it.
+- **REQ-TCI-020** (State-driven): **While** a hub file — a path in the hub-file list that the baseline step produced and the product ships as an embedded data file — appears in the expected files of two open cards, the factory shall order them as a bundle chain so that the second is leased only after the first has merged, the keep-set shall continue to read no file overlap, and no shipped code path shall read a SPEC directory or a reports path to obtain that list.
 
 ### Module E — 규칙과 웹 보기 (M5, M6)
 
-- **REQ-TCI-021** (Capability-gate): **Where** the M5 gate holds — the nearest card-t1453 merge is an ancestor of the working tree's HEAD, read by the gate command with its positive control — the rule files named by the card and their template copies shall state a card-size floor and ceiling, the follow-up rule (a defect a card creates is fixed inside that card before merge, a pre-existing defect is entered in the per-component debt ledger), a derivation-depth cap, a concurrent-in-flight cap and an issuance checklist, each numeric value taken from the baseline record, within the instruction budget (the always-loaded `kanban-dispatch.md` without net growth, every touched file within 40,000 characters or no larger than before) and with every mirror guard green.
-- **REQ-TCI-022** (Capability-gate): **Where** the M5 gate does not hold when M5 would start, the card shall leave the six rule files and their template copies unedited, shall deliver the rule text as a ready-to-apply draft under `.moai/reports/t1454/m5-draft/` with exact insertion anchors, and shall record in `progress.md` the gate command output and the follow-up card text the leader is to issue.
+- **REQ-TCI-021** (Capability-gate): **Where** the M5 gate holds — a commit recording the card-t1453 merge is reachable from the working tree's HEAD through any parent path, read by the gate commands together with their positive controls — the card shall add a path-scoped issuance rule that states, as mechanism only, a card-size floor and ceiling, the follow-up rule (a defect a card creates is fixed inside that card before merge, a pre-existing defect is entered in the per-component debt ledger), a derivation-depth cap, a concurrent-in-flight cap and an issuance checklist, shall write each numeric value only in a local-only rule and take it from the baseline record, shall make the rule reachable from the always-loaded dispatch rule, and shall stay within the instruction budget (the always-loaded `kanban-dispatch.md` without net growth, every touched file within 40,000 characters or no larger than before) with every mirror guard green and no card id, SPEC path, report path or measured value in any template copy.
+- **REQ-TCI-022** (Capability-gate): **Where** the M5 gate does not hold when M5 would start, the card shall leave the six rule files and their template copies unedited, shall deliver the rule text as a ready-to-apply draft under the tracked path `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/m5-draft/` with exact insertion anchors, and shall record in `progress.md` the gate command output and the follow-up card text the leader is to issue.
 - **REQ-TCI-023** (Event-driven): **When** the `/todo` page is requested with `?view=graph`, the console shall render a server-side relation graph of cards (live, dropped and archived) and their relations from the unified read seam, bounded in node count, GET-only, with no write and no lock acquisition, no network fetch, embedded assets and every new string present in all locales.
 - **REQ-TCI-024** (Ubiquitous): The existing `/todo` table, its sorts, its detail pane and its live refresh shall render and behave exactly as before for the same queue.
 
@@ -187,19 +190,19 @@ related_specs: [SPEC-TODO-CLAIM-LEASE-001, SPEC-TODO-TRANSITION-STAMPS-001, SPEC
 - [MODIFY] MCP `todo_add` 핸들러 — 버려지던 stderr 버퍼의 제시를 결과 텍스트에 덧붙인다.
 - [MODIFY] `moai gtd engage` — 제시만 출력한다(기록·거절 없음).
 - [NEW] 읽기 전용 이웃 조회(보관·dropped 포함, 접두사 제거), 같은 구성요소 조회, 완료 SPEC 조회, 진행 중 레인 겹침 입력, 제시 렌더러.
-- [NEW] 기준선 기록 `.moai/reports/t1454/baseline/` 과 그 재현 스크립트.
+- [NEW] 추적되는 기준선 기록 `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/baseline/`(기준선, 재현 스크립트, 허브 파일 목록)과 그 재현 절차.
 
 ### [DELTA] 카드 스키마 (Module B)
 
 - [EXISTING] `ensureColumn` 가산 컬럼 패턴, `backlogItemsTableColumns` 의 v1→v2 재구성 목록, `todoJSONProjection`, JSON 골든.
-- [MODIFY] `BacklogItem`·`BacklogFinding`·`BacklogArchiveEntry` 와 SQLite 읽기·쓰기·parity 경로, 동결 컬럼 튜플 테스트.
+- [MODIFY] `BacklogItem`·`BacklogFinding`·`BacklogArchivedFinding`·`BacklogArchiveEntry` 와 SQLite 읽기·쓰기·parity 경로(카드 표 둘과 finding 표 둘 모두), 동결 컬럼 튜플 테스트(finding 표 튜플 고정은 새로 더한다), 큐 병합 복사 경로.
 - [MODIFY] `moai todo drop` — 사유를 속성에도 저장한다(텍스트 접두사는 그대로).
-- [NEW] 발행 속성(스폰한 카드·출처·크기 추정·예상 파일·drop 사유), finding 처분, 닫힘 시각 접근자, `add` 의 명시 플래그.
+- [NEW] 발행 속성(스폰한 카드·출처·크기 추정·예상 파일·drop 사유), finding 처분, 닫힘 시각 접근자, `add` 의 명시 플래그와 그 검증.
 
 ### [DELTA] 관계 모델과 그래프 (Module C)
 
-- [EXISTING] 소견 어휘 여덟 종류와 `WaitsOnOf`·`FindingsBlocking`·`WaitsOnClosesCycle`, `gtd_relations` 아홉 종류와 `ValidateGTDRelation`, 비공개 `gtd-edges.jsonl` 투영.
-- [MODIFY] `todo relate` — 새 종류와 처분 동사, 종류별 제약 검사. `moai graph build`·`check` — 새 간선 층과 출처 지문.
+- [EXISTING] 소견 어휘 여덟 종류와 `WaitsOnOf`·`FindingsBlocking`·`WaitsOnClosesCycle`, `gtd_relations` 아홉 종류와 `ValidateGTDRelation`, 비공개 `gtd-edges.jsonl` 투영, 커밋 제목 귀속의 단일 지점 `subjectAttribution`.
+- [MODIFY] `todo relate` — 새 쓰기 종류(`duplicates`, `supersedes`, `relates-to`)와 처분 동사, 종류별 제약 검사. `moai graph build`·`check` — 새 간선 층과 출처 지문.
 - [NEW] 일곱 종류 어휘와 읽기 시 매핑, 카드↔GTD 해석기, `moai todo trace`, card→file 간선 층.
 - [REMOVE] 없음. 저장된 행은 하나도 다시 쓰지 않는다.
 
@@ -207,22 +210,23 @@ related_specs: [SPEC-TODO-CLAIM-LEASE-001, SPEC-TODO-TRANSITION-STAMPS-001, SPEC
 
 - [EXISTING] 직렬 슬롯, `assign --after` 의 이전 카드 병합 가드, keep-set 의 "파일 겹침을 읽지 않는다".
 - [MODIFY] 팩토리 `cards` 행(묶음 컬럼 추가)과 임대 선택 호.
-- [NEW] `moai factory bundle`(또는 동등한 적재 동사), `moai todo merge`, 허브 파일 체인 생성.
+- [NEW] `moai factory bundle`(또는 동등한 적재 동사), `moai todo merge`, 허브 파일 체인 생성, 임베드되는 허브 파일 목록 데이터 파일과 그 적재.
 
 ### [DELTA] 규칙과 웹 (Module E)
 
 - [EXISTING] 카드 등급 A/B/C 문장, Class A 크기 문구, "one card per worktree", sync-auditor 의 blocking/optional 분류와 `PASS-WITH-DEBT`, 템플릿 미러와 그 가드들.
-- [MODIFY] `gtd.md`(+미러), `kanban-dispatch.md`(+분기된 미러), `kanban-dispatch-detail.md`(+미러), `sync-auditor.md`(+분기된 미러, 생성 Codex TOML), `manager-todo.md`(+미러, 생성 Codex TOML), `catalog.yaml` 해시.
-- [NEW] `card-issuance.md`(경로 한정 규칙, +미러), 웹 관계 그래프 보기와 자산.
+- [MODIFY] `gtd.md`(+미러), `kanban-dispatch.md`(+분기된 미러), `kanban-dispatch-detail.md`(+미러), `sync-auditor.md`(+분기된 미러, 생성 Codex TOML), `manager-todo.md`(+미러, 생성 Codex TOML), `catalog.yaml` 해시, 경로 고정 시험의 목록.
+- [NEW] `card-issuance.md`(경로 한정 규칙, 메커니즘만, +미러), 수치를 싣는 로컬 전용 규칙 `.claude/rules/local/card-issuance-thresholds.md`(미러 없음), 웹 관계 그래프 보기와 자산.
 
 ## §E 수정 대상 파일
 
+M0: `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/baseline/`(신규, 이 디렉터리 밖은 건드리지 않는다).
 M1: `internal/cli/todo.go`, `internal/cli/todo_issuance.go`(신규), `internal/cli/mcp_todo.go`, `internal/cli/gtd.go`, `internal/kanban/backlog_issuance.go`(신규)와 각 `_test.go`.
-M2: `internal/kanban/backlog_store.go`, `backlog_sqlite.go`, `backlog_migrate.go`, `backlog_schema_freeze_test.go`, `internal/kanban/todo_queue_merge.go`·`todo_merge_procedure.go`(항목 복사 경로), `internal/cli/todo.go`, `todo_drop.go`, `todo_claim.go`(JSON 투영), `todo_export.go`.
+M2: `internal/kanban/backlog_store.go`, `backlog_sqlite.go`, `backlog_migrate.go`, `backlog_schema_freeze_test.go`, `internal/kanban/todo_queue_merge.go`·`todo_merge_procedure.go`(항목·소견 복사 경로), `internal/cli/todo.go`, `todo_drop.go`, `todo_claim.go`(JSON 투영), `todo_export.go`.
 M3: `internal/kanban/backlog_relation.go`(신규), `backlog_store.go`, `internal/cli/todo_relate.go`, `todo_trace.go`(신규), `internal/graph/card_file.go`(신규), `graph.go`, `meta.go`, `internal/cli/graph.go`.
-M4: `internal/homestate/factory.go`·`card_record.go`·`card_picked.go`·`card_transition.go`, `internal/cli/factory_card.go`, `internal/cli/todo_merge.go`(신규), `internal/cli/todo.go`(읽기 전용 동사 목록과 서브커맨드 등록).
+M4: `internal/homestate/factory.go`·`card_record.go`·`card_picked.go`·`card_transition.go`, `internal/homestate/hub_files.go`(신규)와 `hub_files.txt`(신규, 임베드 데이터), `internal/cli/factory_card.go`, `internal/cli/todo_merge.go`(신규), `internal/cli/todo.go`(읽기 전용 동사 목록과 서브커맨드 등록).
 M6: `internal/web/todo_queue_read.go`, `todo_view.go`, `screens.templ`(+생성물 `screens_templ.go`), `assets.go`, `assets/` 신규 자산, `assets/i18n.js`.
-M5(게이트 충족 시): `.claude/rules/moai/workflow/card-issuance.md`(신규), `gtd.md`, `kanban-dispatch.md`, `kanban-dispatch-detail.md`, `.claude/agents/moai/sync-auditor.md`, `manager-todo.md`와 각 `internal/template/templates/` 사본, `internal/template/catalog.yaml`, 생성 `.codex/agents/moai/*.toml`(저장소 루트와 템플릿 하위).
+M5(게이트 충족 시): `.claude/rules/moai/workflow/card-issuance.md`(신규), `.claude/rules/local/card-issuance-thresholds.md`(신규, 로컬 전용), `gtd.md`, `kanban-dispatch.md`, `kanban-dispatch-detail.md`, `.claude/agents/moai/sync-auditor.md`, `manager-todo.md`와 각 `internal/template/templates/` 사본, `internal/template/workflow_rule_paths_pinned_test.go`, `internal/template/catalog.yaml`, 생성 `.codex/agents/moai/*.toml`(저장소 루트와 템플릿 하위). M5(게이트 미충족 시): `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/m5-draft/`(신규, 이 디렉터리 밖은 건드리지 않는다).
 
 ## §F 범위 밖 (Exclusions)
 
@@ -250,6 +254,10 @@ M5(게이트 충족 시): `.claude/rules/moai/workflow/card-issuance.md`(신규)
 
 - 직렬 슬롯의 의미, keep-set, 임대 경로의 다른 호(arm), 쿼터 보류, 백엔드 건너뛰기는 묶음에 필요한 최소 변경(D14) 밖에서 바꾸지 않는다.
 
+### Out of Scope — 사용자 프로젝트의 허브 목록·임계값 설정
+
+- 배포되는 사용자 프로젝트가 자기 허브 파일 목록이나 카드 크기·깊이·동시 진행 수치를 설정하는 키는 만들지 않는다. 출하되는 허브 목록은 이 저장소의 측정이고 사용자 프로젝트에서는 일치하는 경로가 없어 체인이 만들어지지 않는다. 배포 규칙은 메커니즘만 싣고, 값은 각 프로젝트가 자기 측정으로 정하는 몫이다.
+
 ### Out of Scope — 배포·문서 표면
 
 - 릴리스·CI 워크플로, README 4종, docs-site 는 이 SPEC 의 범위가 아니다. 사용자 문서 정정은 sync 단계의 후속 항목이다.
@@ -261,16 +269,19 @@ M5(게이트 충족 시): `.claude/rules/moai/workflow/card-issuance.md`(신규)
 - 어휘 이웃의 **정밀도**는 측정하지 못했다. 정답 집합이 없고, 유일한 대리 지표인 기록된 관계 125쌍은 Jev·에이전트의 판정이라 재현율만 잴 수 있었다.
 - "이미 덮는 완료 SPEC" 조회는 약한 신호다. SPEC 1,029개 중 frontmatter 에 `card:` 가 있는 것은 32개뿐이고, 카드→SPEC 링크(`spec_id`)는 큐 1,174장 중 7장에만 있다. 이 항목은 `heuristic` 표지를 달고 나간다.
 - 진행 중 레인의 **예상 파일 겹침**은 오늘 입력 자체가 거의 없다. 예상 파일 필드는 어느 카드에도 없고, 열린 카드 37장 중 본문에 경로가 보이는 것은 12장(32%)이며 정확히 같은 경로를 공유하는 쌍은 0이다. 이 입력은 M2 데이터가 쌓일 때까지 대부분 `unmeasured` 로 나간다.
-- git 탐침 비용: 레인 브랜치 하나의 `git diff --name-only` 가 약 0.25초, `WT-` 브랜치 353개·워크트리 74개가 존재한다. 진행 중 레인이 16개면 직렬로 약 4초다 — 제시 경로의 시간 상한과 병렬화는 M1 이 먼저 재야 한다.
+- git 탐침 비용: 레인 브랜치 하나의 `git diff --name-only` 가 약 0.25초이고, 이 계획이 재측정한 시점(트리 `2de0a2cb6`)에 `WT-` 브랜치 353개·워크트리 74개, 이터레이션 2 가 다시 읽은 트리 `1894984c3` 에서 356개·79개다(드리프트). 진행 중 레인이 16개면 직렬로 약 4초다 — 제시 경로의 시간 상한과 병렬화는 M1 이 먼저 재야 한다. 같은 방식으로 SPEC 디렉터리 수(1,029 → 1,034)와 `card:` 를 가진 SPEC 수(32 → 33)도 움직였다. 이 값들의 측정 명령(`git branch --list 'WT-*' | wc -l`, `git worktree list | wc -l`, `ls .moai/specs | wc -l`, `git grep -l '^card:' -- '.moai/specs/*/spec.md' | wc -l`)은 M0 가 값 옆에 `command:` 줄로 기록한다.
 - 카드→파일 간선을 만드는 `moai graph build` 의 실행 시간 증가는 측정하지 못했다.
+- 카드→파일 간선의 **CI 일치는 미검증**이다. REQ-TCI-016 의 불변식은 (트리, 도달 가능한 이력) 위에서만 말한다. `graph-freshness` 의 `pull_request` 실행은 합성 병합 참조를 체크아웃하고 그 이력의 첫 부모 경로는 카드 브랜치와 다르다 — 로컬과 CI 가 같은 출력을 내는지는 측정하지 못했다(감사 D13).
 - 웹 그래프의 레이아웃·번들 크기·브라우저 렌더 증거는 측정하지 못했다.
-- t1453 이 같은 규칙 파일을 절체 시점에 고친다는 판단은 그 브랜치 끝(`2a5f9c91c`, 이동하는 ref)의 plan 문서를 읽은 것이다. 측정 시점에 여섯 규칙 파일과 `todo.go` 에 대한 차이는 비어 있었다.
+- 허브 파일 목록의 **완전성**(목록에 빠진 허브)은 시험이 다시 재지 못한다. 시험은 목록에 오른 경로가 기록된 단일 호출 측정 명령으로 기록 개수를 만족하는지(건전성)만 다시 잰다. 완전성은 M0 스크립트 실행 기록에만 기댄다.
+- M5 게이트의 고정 SHA 대조(`b05c3be90…` 위 네 행)는 미푸시 브랜치 `WT-github-flow-default` 의 객체가 있는 클론에서만 재현된다. 이식 가능한 런타임 대조는 부등식 한 쌍이다(`acceptance.md` AC-TCI-020 판독 4).
+- t1453 이 같은 규칙 파일을 절체 시점에 고친다는 판단은 그 브랜치 끝(`2a5f9c91c`, 이동하는 ref)의 plan 문서를 읽은 것이다. 측정 시점에 여섯 규칙 파일과 `todo.go` 에 대한 차이는 비어 있었다. t1453 이 `merge(t1453)` 형태의 제목으로 착지할지는 확인하지 못했다 — 다른 모양이면 게이트가 닫힌 채로 읽는다(안전한 방향).
 - 잔여 위험: M5 가 게이트에 막혀 SPEC 이 요구는 충족하되 규칙은 아직 효력이 없는 상태로 닫힐 수 있다. 그때 리더가 M5 적용 카드를 발행해야 하며, 완료 보고가 이를 명시해야 한다.
 
 ## §H 상호참조
 
 - `research.md` — 증거와 재측정 표, 스크립트, 공백 목록.
-- `design.md` — 아키텍처, 데이터 흐름, 스키마, 관계 모델, 간선 운반체, 묶음 훅, D1~D15 선택지 표.
+- `design.md` — 아키텍처, 데이터 흐름, 스키마, 관계 모델, 간선 운반체, 묶음 훅, D1~D15 선택지 표, 기준선 운반체(§12), M5 게이트 술어(§13).
 - `plan.md` — 마일스톤 분해, 게이트 명령, 위험, @MX 계획, 마일스톤별 검증 명령, 작업 기본값 요약.
 - `acceptance.md` — 수용 기준, RED-now 원장, 변이 탐침.
 - `decision-index.md` — 결정 열다섯 행.

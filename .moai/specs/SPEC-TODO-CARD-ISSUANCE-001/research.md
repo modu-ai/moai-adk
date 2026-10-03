@@ -92,7 +92,7 @@
 
 ### 3.4 재현 절차와 스크립트 해시
 
-카드의 scratchpad(`/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/061c4c0e-c21e-4332-8ccc-0d1d51432c49/scratchpad/cards/`)는 다른 세션의 세션 범위 `/tmp` 이므로 정리될 수 있다. 이 계획이 복사해 사용한 원본의 sha256 은 다음과 같다. M0 는 이 스크립트들을 `.moai/reports/t1454/baseline/` 로 복사하고, 원본이 사라졌다면 아래 §3.1~§3.3 의 방법 서술로 재구성한다.
+카드의 scratchpad(`/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/061c4c0e-c21e-4332-8ccc-0d1d51432c49/scratchpad/cards/`)는 다른 세션의 세션 범위 `/tmp` 이므로 정리될 수 있다. 이 계획이 복사해 사용한 원본의 sha256 은 다음과 같다. M0 는 이 스크립트들을 추적되는 `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/baseline/scripts/` 로 복사하고(이터레이션 1 은 `.moai/reports/t1454/baseline/` 를 적었지만 그 경로는 `.gitignore:235` 에 걸려 추적될 수 없다 — `design.md` §12), 원본이 사라졌다면 아래 §3.1~§3.3 의 방법 서술로 재구성한다.
 
 | 파일 | sha256 |
 |---|---|
@@ -189,7 +189,7 @@ SELECT 'meta.'||key, value FROM meta;
 ## 8. 같은 파일을 만지는 다른 카드
 
 - **t1448**(todo --auto 자율 선택): 이 트리에 착지(병합 `4315f0d0e`; `git merge-base --is-ancestor 4315f0d0e HEAD` exit 0). SPEC-TODO-AUTO-PICK-001 completed.
-- **t1453**(github-flow 전환): 선택(picked), 브랜치 `WT-github-flow-default`(끝 `2a5f9c91c`), SPEC-GITHUB-FLOW-DEFAULT-001 in-progress. 그 plan 의 M4 는 "t1448 착지 뒤" 절체 시점에 `kanban-dispatch*`·`main-checkout-branch-guard*`·`worktree-integration*` 등 규칙 파일을 묶음으로 고친다. 핀 `2de0a2cb6` 과 그 브랜치 사이의 `git diff --stat` 는 이 SPEC 의 규칙 여섯 파일과 `todo.go` 에 대해 비어 있었다. 병합 여부는 `moai gtd pr t1453` 가 `no-link … picked` 로 답했고 `git rev-list --first-parent --count -E -i --grep='^merge[( :]+(card )?t1453' HEAD` 는 0 이다.
+- **t1453**(github-flow 전환): 선택(picked), 브랜치 `WT-github-flow-default`(끝 `2a5f9c91c`), SPEC-GITHUB-FLOW-DEFAULT-001 in-progress. 그 plan 의 M4 는 "t1448 착지 뒤" 절체 시점에 `kanban-dispatch*`·`main-checkout-branch-guard*`·`worktree-integration*` 등 규칙 파일을 묶음으로 고친다. 핀 `2de0a2cb6` 과 그 브랜치 사이의 `git diff --stat` 는 이 SPEC 의 규칙 여섯 파일과 `todo.go` 에 대해 비어 있었다. 병합 여부는 `moai gtd pr t1453` 가 `no-link … picked` 로 답했고 `git rev-list --first-parent --count -E -i --grep='^merge[( :]+(card )?t1453' HEAD` 는 0 이다. (이터레이션 2 정정: 이 `--first-parent` 형태는 카드 브랜치가 develop 을 흡수한 뒤에는 t1453 이 착지해도 영영 0 을 읽는 눈먼 선택자다. 게이트는 어느 부모 경로로든 닿는 `git rev-list --count -E -i --grep='^merge[( :]+(card )?t1453' HEAD` 로 읽고 같은 값 0 을 낸다 — `acceptance.md` L21, `design.md` §13.)
 - **t1450**(상시 로드 규칙 다이어트): 대기. 역할 한정 규칙을 SessionStart 훅 주입으로 옮기는 안을 다룬다고 하나 이 세션은 그 카드의 본문 이상을 읽지 않았다 — 적재 범위가 바뀌면 M5 스텁 조항의 위치가 달라진다.
 - **t1452**(병합 창 대기 단축): 대기. 통합 조항(`kanban-dispatch.md` 181행의 `moai worktree sweep` 문장 부근)을 고칠 가능성이 있으나 큐 문구가 파일명을 말하지 않아 겹침은 추정이다.
 - **t1349**: 대기 상태 행이 남았지만 세 수리는 이미 착지했다(§2).
@@ -215,6 +215,9 @@ completed: SPEC-TODO-ANALYSIS-001(기계 분석·소견·비수정 독트린), S
 12. 구성요소의 정의(경로 앞 두 마디)는 작업 정의다 — 깊이 3 에서는 공유 쌍이 0이고 정답이 없다.
 13. `hold`/레인 세션에서 `add --dry-run` 이 거절되는 것(§4)은 관찰했으나 그 정책이 의도인지는 확인하지 못했다.
 14. MCP `todo_*` 핸들러 중 관계를 내는 표면, `todo export` 가 새 필드를 어떻게 다루는지, 훅·스크립트가 소견 JSON 을 읽는지는 추적하지 않았다.
+15. (이터레이션 2) 카드→파일 간선 층이 `graph-freshness` 의 `pull_request` 합성 병합 참조에서 로컬과 같은 출력을 내는지, 그리고 단일 귀속 지점 `subjectAttribution` 의 제목 형태 열거(`prlink_landed.go:188` 이후 형태 전부)가 흡수 방향 제목 `merge: absorb local develop (card tN)` 을 실제로 귀속하는지는 읽지 못했다 — M3 의 첫 RED 시험이 고정 저장소에서 관측한다.
+16. (이터레이션 2) 허브 파일 목록의 완전성(목록에서 빠진 허브)은 시험이 다시 재지 않는다 — 기록된 단일 호출 측정 명령으로 목록에 오른 경로의 개수(건전성)만 다시 잰다.
+17. (이터레이션 2) 이 셸의 `ls` 는 점 항목을 포함한 긴 목록으로 출력한다 — `ls` 행은 종료 코드로 판정하고 추적 여부는 `git ls-files --error-unmatch` 로 묻는다. 게이트의 고정 SHA 대조 네 행은 미푸시 브랜치 `WT-github-flow-default` 의 객체가 있는 클론에서만 재현된다.
 
 ## 부록 A — 이 계획의 측정 스크립트 (원문, 스냅숏 복사본 위에서 실행)
 
