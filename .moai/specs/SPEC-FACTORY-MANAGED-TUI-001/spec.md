@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "Factory managed Codex session — operator TUI attach and the headless-to-interactive transition (SPEC-FACTORY-MANAGED-SESSION-001 Known debt 1, sync audit F2)"
 version: "0.3.3"
-status: in-progress
+status: completed
 created: 2026-10-03
 updated: 2026-10-04
 author: GOOS (manager-spec)

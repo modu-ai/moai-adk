@@ -242,7 +242,7 @@ All attributions are `(this run, this tree, HEAD 71befeeb9 plus the uncommitted 
 
 sync_status: audit-ready (NOT audit-passed: no sync audit has passed on this close yet; AC-MT-015 operator-held, NOT run)
 sync_complete_at: 2026-10-04
-sync_commit_sha: 985cedfb7   # backfilled in the following progress.md-only commit (a commit cannot cite its own hash)
+superseded_sync_commit_sha: 985cedfb7   # the re-close commit after sync-audit iteration 1 (backfill commit `ce77a9f89`); superseded by the final re-close block below; key renamed so tools read the current close
 superseded_first_close: 40aa3aedf (the first sync commit; the independent sync audit `.moai/reports/t1408/sync-audit.md`, local-only, returned FAIL 76.2/100 against `3ca47fbe3`; its SHA is the `superseded_sync_commit_sha` line of the first section E.4 block above)
 head_at_signal: 6f6d69349 (measured tree; the re-close edits were uncommitted when measured)
 tree: .claude/worktrees/t1408
@@ -295,3 +295,28 @@ The delta audit (`.moai/reports/t1408/sync-audit-iter2.md`, local-only) returned
 - **Route taken for spec.md section H: NOT amended here.** Section H is SPEC body, which manager-docs may not modify (Status Transition Ownership Matrix, forbidden ownership crossings); the in-place amendment (version 0.3.3, status back to in-progress, HISTORY row, re-close chain) is manager-spec's act through orchestrator re-delegation. Until that happens spec.md debt 15 understates the limit, and the operator document and CHANGELOG carry the accurate wording and say so.
 - O-1: corrected by the appended note in section E.2 (the AC-MT-010 row).
 - O-2: spec.md frontmatter `prior_completed_record` still points at the renamed key `sync_commit_sha`; it should read `superseded_sync_commit_sha`. Left unchanged because it is frontmatter outside the manager-docs status/updated scope; it belongs in the same manager-spec amendment.
+
+## §E.4 Sync-phase Audit-Ready Signal — final re-close after amendment 0.3.3
+
+sync_status: audit-ready (NOT audit-passed: sync-audit iteration 2 still stands as FAIL 82.2/100 and no sync audit has passed on this close; AC-MT-015 operator-held, NOT run)
+sync_complete_at: 2026-10-04
+sync_commit_sha: pending-backfill   # canonical placeholder: this commit cannot cite its own hash; backfilled in a following progress.md-only commit
+superseded_first_close: 985cedfb7 (the previous re-close; its SHA is the `superseded_sync_commit_sha` line of the preceding re-close block above, and `40aa3aedf` is the earlier one in the first block)
+head_at_signal: ab6b59aac (measured tree; the re-close edits were uncommitted when measured)
+tree: .claude/worktrees/t1408
+branch: WT-managed-codex-tui-attach
+owner: manager-docs (sync-phase, final re-close)
+card_commits: as in the previous re-close block, plus delta wording correction `2cce8c659` · SPEC amendment 0.3.3 `ab6b59aac` · this re-close (the commit carrying this block) · backfill (the next commit)
+docs_changed: `CHANGELOG.md` (reference list only: `2cce8c659`, `ab6b59aac`, this re-close) · `.moai/specs/SPEC-FACTORY-MANAGED-TUI-001/spec.md` (frontmatter `status:` line only) · this block and the key rename in the preceding block
+docs_not_changed: spec.md body, plan.md, acceptance.md, design.md, the operator document (its `tui-log-race` anchor already carries the debt 15 wording that spec.md section H now states in full) · every `.go` file
+frontmatter_status_transitions: spec.md `in-progress -> implemented -> completed` merged into this re-close commit; `updated: 2026-10-04` already the amendment date
+amendment_scope: amendment 0.3.3 only corrected the debt 15 wording in section H and the `prior_completed_record` pointer; no requirement, criterion or code changed. No code has changed since the audited `42a952661` apart from documents.
+audit_status: sync-audit iteration 2 (delta) = FAIL 82.2/100 (cut 85) still stands. Remaining gate: cross-model (codex failed on the log-open aliases; the independent claude backend run was inconclusive). No sync audit has passed. F4 and the log-open aliases are accepted-debt candidates pending the leader.
+
+All attributions are `(this run, this tree, HEAD ab6b59aac plus the uncommitted re-close edits, before the re-close commit)`.
+
+### Gaps
+
+- No re-audit after the amendment; no Go test run in this pass (documents only).
+- AC-MT-015 and every real-TUI behavior: not run.
+- The installed `moai` build's commit was not compared with this tree's HEAD, so the `spec lint` reading carries no build attribution.
