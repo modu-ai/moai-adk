@@ -458,7 +458,7 @@ The last row is the sync-phase edit itself: `CHANGELOG.md` is a mandated sync de
 ## §E.4 Sync-phase Audit-Ready Signal — re-close (current; supersedes the block above)
 
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill
+sync_commit_sha: 6b2fe3a1f454
 sync_status: complete (the first sync-audit FAILED at 81.7, receipt rcpt-8cf2e184c500ae809e6bd8cd; a new sync-audit of the repaired tree and the leader's evidence read are still owed, and this record claims neither)
 b12_self_test_a: PASS — `grep -c "SPEC-PREFIX-DIET-001" CHANGELOG.md` prints `1` (counts lines): this run corrects the single existing t1450 entry in place, so 1 is the expected count and no second entry was added
 b12_self_test_b: PASS with the same named deviation as the first block — ac_source=`.moai/specs/SPEC-PREFIX-DIET-001/acceptance.md`, tier=M; the awk counter was not run (worktree guard refuses `awk -f`); `grep -o -E "AC-[A-Z0-9]+-[0-9]+[a-z]?"` printed 28 occurrences of 16 distinct ids (AC-PFD-001..016), `grep -c -F "[REF]"` and `grep -c -F "[RETIRED]"` both print `0`, so none is ambiguous; the CHANGELOG entry still states 16
