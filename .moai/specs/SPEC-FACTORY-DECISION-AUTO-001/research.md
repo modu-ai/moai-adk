@@ -1,10 +1,5 @@
 # research.md — SPEC-FACTORY-DECISION-AUTO-001
 
-All probes below were run in this plan session against tree `d7112d005` (branch
-`WT-decision-automation`, local develop tip at authoring). The leader's original investigation ran
-at `42d8474de`; every site it named was re-located here. Line numbers are locating aids at
-`d7112d005` only.
-
 ## 1. Observed waits (leader investigation, card t1481 evidence)
 
 Reported by the leader, not re-measured here (they are session observations, not tree state):
@@ -17,81 +12,251 @@ re-observed in this session.
 
 Ceiling-ruling evidence (leader-reported 2026-10-03, observed in the mission session): the leader
 applied the same "one delta round" ruling four times (t1399, t1454, t1469, t1458) and ruled "hold"
-twice (t1356, and one earlier card). REQ-FDA-013/014 codify this rule as policy.
+twice (t1356, and one earlier card). REQ-FDA-011/012 codify this rule as policy.
 
-## 2. Probe ledger
+Exception evidence (leader-reported 2026-10-03): the leader granted one exception to "final ceiling
+hit → hold" on t1458. The card is a prerequisite of an operator-mandated release scope
+(t1480 → v3.2.0). Its single remaining blocking defect was an acceptance-criterion wording defect
+that a correct implementation cannot pass (auditor-confirmed; not a design defect). The auditor
+stated that a re-read of the named hunks suffices. The exception granted a hunk-limited fix plus a
+re-read confirmation instead of a full re-audit. REQ-FDA-013 encodes it.
 
-| # | Command (run from the worktree root) | Observed output (verbatim, trimmed to the deciding lines) |
-|---|---|---|
-| P1 | `grep -rn 'Use: *"decision' internal/cli/` | no output, `exit=1` |
-| P1+ | positive control: `grep -rn 'Use: *"contract\|Use: *"decide' internal/cli/*.go` | `internal/cli/contract_decide.go:28: Use: "decide <card> ..."`, `internal/cli/contract.go:449: Use: "contract"`, `internal/cli/factory_card.go:1972: Use: "decide <card>..."` |
-| P2 | `grep -rln "decision-board\|decisionboard\|decision_board" internal/` | no output |
-| P3 | `grep -n "PASS-WITH-DEBT" internal/contract/rules.go internal/contract/kickoff/decide.go internal/homestate/card_transition.go` | `rules.go:25: passingVerdicts = []string{"PASS", "PASS-WITH-DEBT"}`; `card_transition.go:470: ... v.Verdict != "PASS" && v.Verdict != "PASS-WITH-DEBT"`; `decide.go:393: if verdict != "PASS" && verdict != "PASS-WITH-DEBT"` |
-| P4 | `grep -n "PASS-WITH-DEBT" .claude/rules/moai/workflow/auto-semantics.md` | `:244: - Blocked states are: PASS-WITH-DEBT, BYPASSED, FAIL, INCONCLUSIVE, ...` |
-| P5 | `grep -n "PASS-WITH-DEBT" .claude/agents/moai/plan-auditor.md` | `:203: verdict: <PASS\|PASS-WITH-DEBT\|FAIL>`; `:243: AUDIT-VERDICT: <PASS\|PASS-WITH-DEBT\|FAIL> ...` — no emission rule |
-| P6 | `grep -n "DeciderHuman" internal/homestate/card_record.go internal/homestate/card_transition.go` | `card_record.go:46: const DeciderHuman = "human"`; `card_transition.go:480-481: if req.Decider != DeciderHuman { ... F1 accepts only decider ...` |
-| P7 | `sed -n 100,115p internal/homestate/card_transition.go` | `{"T8", CardKickoff, CardAssigned, guardKickoffDecision},` |
-| P8 | `sed -n 1975,1990p internal/cli/factory_card.go` | `if factoryLaneRefusal() { return factoryDecideLaneRefusal() }` then `if decider != homestate.DeciderHuman { ... F1 records only ...` |
-| P9 | `grep -n "ceiling\|max_iter" .moai/config/sections/harness.yaml` | `:75: plan_audit_tier_ceilings:` `:76: S: 1` (M: 2, L: 3 follow); `:102`, `:115: max_iterations: 3` |
-| P10 | `grep -n "Max 3 iterations cap\|STOP escalation" .claude/agents/moai/plan-auditor.md` | `:693` STOP → "present the user with three options via the orchestrator's user-question channel"; `:703` "After iter3 ... escalates to the user" |
-| P11 | `sed -n 158p .claude/rules/moai/workflow/spec-workflow.md` | "Maximum 3 plan-auditor iterations per SPEC plan-phase; after iter3, escalate via PASS-with-debt OR scope-reduction OR explicit user override." |
-| P12 | `sed -n 108,116p .claude/agents/moai/manager-spec.md` | "The **authority register** is committed artifacts only: `.moai/project/product.md`, prior completed SPECs' HISTORY and `## Amendments` rows, `.moai/config/sections/*.yaml` operator settings, and the project constitution." |
-| P13 | `grep -n "decision_gate" .moai/config/sections/interview.yaml` | `6: decision_gate: on` |
-| P14 | `sed -n 145,153p internal/hook/factory_messages.go` | `:145 s, err := factorymsg.Open(root, runID)` ... `s.Peer(ctx, input.SessionID)` ... `:153 return "", ""` (already-bound early return after open + peer query) |
-| P15 | `sed -n 205,235p internal/hook/factory_messages.go` | `:210 OpenExistingWithDeadline(root, runID, factoryHookInspectionDeadline)` (200ms); comment: "Both call sites still discard the state ... nothing on this path emits one yet." |
-| P16 | `sed -n 150,170p internal/hook/user_prompt_submit.go` | bind under `factoryBindBudget` (`:62` = 2s); `:168 if factoryCtx, _, _ := factoryHookBatchForRun(...)` (state discarded) |
-| P17 | `sed -n 80,95p internal/hook/stop.go` | `factoryHookBatch(ctx, input, EventStop)` — messages claimed at turn end |
-| P18 | `grep -n "7,27,47" .claude/rules/moai/workflow/auto-semantics.md` | `:108: CronCreate with cron: "7,27,47 * * * *" (off-minute, every 20` |
-| P19 | `sed -n 198,206p .claude/rules/moai/workflow/kanban-dispatch-detail.md` | "**Fallback.** Where the running MCP server predates the tools ... the codex leg runs as `moai verify codex-review --project-root <tree>`" |
-| P20 | `sed -n 190,196p .claude/rules/moai/workflow/auto-semantics.md` | `factory decide: kickoff approve/reject \| AUTONOMOUS — the independent audit cross is the entry evidence (§9.1)` |
+## 2. RED-now probe ledger
+
+Generated by one script run (the runner script lives in the session scratchpad; each block below is
+its verbatim output: the command, stdout, and exit code). Working directory: the card tree. Tree:
+`ba2033d22abee6cf37e02fdee1241038d6cc7356` (the script's first output line). Every non-spec file
+is unchanged from `d7112d005`, where the leader's sites were first located. Line numbers are
+locating aids at this tree only.
+
+### P1
+```text
+$ grep -rn 'Use: *"decision' internal/cli/
+(no output)
+exit=1
+```
+### P1c (positive control for P1)
+```text
+$ grep -rn 'Use: *"contract"' internal/cli/
+internal/cli/contract.go:449:		Use:   "contract",
+exit=0
+```
+### P2
+```text
+$ grep -rn '"resolves"' internal/
+(no output)
+exit=1
+```
+### P3
+```text
+$ grep -rn 'board=absent' internal/
+(no output)
+exit=1
+```
+### P4
+```text
+$ grep -c 'moai decision read' .claude/skills/moai-lane-watchdog/SKILL.md internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md .claude/rules/moai/workflow/auto-semantics.md internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md
+.claude/skills/moai-lane-watchdog/SKILL.md:0
+internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md:0
+.claude/rules/moai/workflow/auto-semantics.md:0
+internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md:0
+exit=1
+```
+### P5
+```text
+$ grep -n 'mission:<' .claude/agents/moai/manager-spec.md internal/template/templates/.claude/agents/moai/manager-spec.md
+(no output)
+exit=1
+```
+### P6
+```text
+$ grep -n 'blocking_findings\|must_pass_failed' .claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/plan-auditor.md
+(no output)
+exit=1
+```
+### P7
+```text
+$ grep -n 'Blocked states are: PASS-WITH-DEBT' .claude/rules/moai/workflow/auto-semantics.md internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md
+.claude/rules/moai/workflow/auto-semantics.md:244:- Blocked states are: PASS-WITH-DEBT, BYPASSED, FAIL, INCONCLUSIVE, an absent verdict, audit-ready status not recorded, a plan-artifact hash changed since the verdict, and an open blocker.
+internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md:244:- Blocked states are: PASS-WITH-DEBT, BYPASSED, FAIL, INCONCLUSIVE, an absent verdict, audit-ready status not recorded, a plan-artifact hash changed since the verdict, and an open blocker.
+exit=0
+```
+### P8
+```text
+$ grep -n 'Binding run conditions' .claude/agents/moai/sync-auditor.md internal/template/templates/.claude/agents/moai/sync-auditor.md .claude/workflows/sync-audit-4dim.js internal/template/templates/.claude/workflows/sync-audit-4dim.js
+(no output)
+exit=1
+```
+### P9
+```text
+$ grep -n 'PASS-WITH-DEBT' internal/contract/rules.go internal/contract/kickoff/decide.go internal/homestate/card_transition.go
+internal/contract/rules.go:25:	passingVerdicts = []string{"PASS", "PASS-WITH-DEBT"}
+internal/contract/kickoff/decide.go:393:	if verdict != "PASS" && verdict != "PASS-WITH-DEBT" {
+internal/homestate/card_transition.go:470:		if edge.guard == guardVerdictPass && v.Verdict != "PASS" && v.Verdict != "PASS-WITH-DEBT" {
+exit=0
+```
+### P9b
+```text
+$ grep -n 'guardVerdictPass}' internal/homestate/card_transition.go
+108:		{"T7", CardPlanAudit, CardKickoff, guardVerdictPass},
+114:		{"T13", CardSyncAudit, CardMergeReady, guardVerdictPass},
+exit=0
+```
+### P10
+```text
+$ grep -rn 'plan_audit_ceiling_policy' .moai/config/sections/harness.yaml internal/template/templates/.moai/config/sections/harness.yaml
+(no output)
+exit=1
+```
+### P11
+```text
+$ grep -n 'fix_scope' .claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/plan-auditor.md
+(no output)
+exit=1
+```
+### P12
+```text
+$ grep -n 'Max 3 iterations cap' .claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/plan-auditor.md
+.claude/agents/moai/plan-auditor.md:703:**Max 3 iterations cap (hard limit).** The retry loop MUST NOT exceed 3 iterations per SPEC plan-phase. After iter3 (regardless of verdict), the orchestrator escalates to the user via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`) with three options:
+internal/template/templates/.claude/agents/moai/plan-auditor.md:701:**Max 3 iterations cap (hard limit).** The retry loop MUST NOT exceed 3 iterations per SPEC plan-phase. After iter3 (regardless of verdict), the orchestrator escalates to the user via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`) with three options:
+exit=0
+```
+### P13
+```text
+$ grep -n 'release_blocking\|reread_hunks' .claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/plan-auditor.md
+(no output)
+exit=1
+```
+### P14
+```text
+$ grep -rn 'DeciderAudit' internal/
+(no output)
+exit=1
+```
+### P15
+```text
+$ grep -n '"T8' internal/homestate/card_transition.go
+109:		{"T8", CardKickoff, CardAssigned, guardKickoffDecision},
+exit=0
+```
+### P16
+```text
+$ grep -n 'DeciderHuman' internal/cli/factory_card.go
+1982:			if decider != homestate.DeciderHuman {
+1983:				return fmt.Errorf("factory decide: decider %q is not accepted; F1 records only %q decisions", decider, homestate.DeciderHuman)
+2001:	cmd.Flags().StringVar(&decider, "decider", homestate.DeciderHuman, "who decided (F1 accepts only human)")
+2061:		Actor: "operator", Decider: homestate.DeciderHuman, IntegrationBranch: integration, Now: factoryCardNow(),
+exit=0
+```
+### P17
+```text
+$ grep -n 'judgment calls only\|Class: implementation-level' .claude/agents/moai/manager-spec.md internal/template/templates/.claude/agents/moai/manager-spec.md
+(no output)
+exit=1
+```
+### P18
+```text
+$ grep -rln 'DEFAULT-APPLIED' .claude/ internal/template/templates/.claude/
+(no output)
+exit=1
+```
+### P19
+```text
+$ grep -rn 'wait_recheck_minutes' .claude/ internal/template/templates/.claude/ .moai/config/ internal/template/templates/.moai/config/
+(no output)
+exit=1
+```
+### P20
+```text
+$ grep -rn 'bindCache\|bind-cache' internal/hook/
+(no output)
+exit=1
+```
+### P21
+```text
+$ grep -n 'factoryHookProbeRun(' internal/hook/factory_messages.go
+124:	runState, _, probeErr := factoryHookProbeRun(ctx, dbPath, runID)
+exit=0
+```
+### P22
+```text
+$ grep -n 'slog.Warn' internal/hook/factory_messages.go
+56:		slog.Warn("factory hook: message broker close failed", "error", err)
+exit=0
+```
+### P23
+```text
+$ grep -n 'fallback=CLI' .claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/moai/workflow/kanban-dispatch-detail.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md
+(no output)
+exit=1
+```
+### P24
+```text
+$ grep -n 'gate == "push"' internal/cli/factory_card.go
+1987:			case gate == "push" && choice == "":
+2029:	case gate == "push":
+exit=0
+```
+
+### 2.1 Locating reads (context, not RED cells)
+
+Read during authoring at `d7112d005`, re-confirmed by the iter1 auditor at `ba2033d22`:
+`internal/hook/factory_messages.go:113-157` (run-state probe at :124, then `factorymsg.Open` at :145,
+the peer query, the already-bound early return at :153); `:205-235` (`OpenExistingWithDeadline`
+with the 200ms budget; the comment says both call sites discard the state);
+`internal/hook/user_prompt_submit.go:62` (`factoryBindBudget = 2 * time.Second`) and `:168` (state
+discarded); `internal/hook/stop.go:88-89` (messages claimed at turn end);
+`.claude/rules/moai/workflow/auto-semantics.md:108` (20-minute standing cron);
+`.claude/rules/moai/workflow/kanban-dispatch-detail.md:203` (CLI fallback for codex review);
+`.claude/agents/moai/manager-spec.md:115` (committed-only authority register);
+`internal/homestate/card_evidence_readers.go:18,87-151` (`audited_sha` binding);
+`.claude/rules/moai/workflow/spec-workflow.md:158` (iter3 escalation to the user).
 
 ## 3. Findings
 
-### F1 — the board is doctrine without a carrier (P1, P2)
+### F1 — the board is doctrine without a carrier (P1-P4)
 
 Ladder step ② (§6), the §7 transition row, the §11 SSOT, and the watchdog skill's step 2 all name
 the board; nothing writes or reads it. Step ② always falls through. Rulings live in chat and are
 copied by hand.
 
-### F2 — PASS-WITH-DEBT: three code sites admit, one doctrine line blocks, the auditor never defines (P3-P5, P11)
+### F2 — PASS-WITH-DEBT: code admits on the label, doctrine blocks, the auditor never defines (P6, P7, P9, P9b)
 
-Code admits it unconditionally on the label; §9.2 lists it as blocked; §9.1 demands plain PASS;
-spec-workflow names "PASS-with-debt" as an iter3 escalation outcome; the auditor's verdict schema
-lists the token with no emission rule. Auditors therefore disagree on when to emit it, and lanes
-cannot predict whether Kickoff opens.
+Code admits it on the label alone; §9.2 lists it as blocked; §9.1 demands plain PASS; the auditor's
+verdict schema lists the token with no emission rule and no must-pass or blocking-count field. T7
+(plan) and T13 (sync) share one guard, so a predicate change must be phase-scoped.
 
-### F3 — ceiling routing contradicts the leader-decision policy (P9-P11)
+### F3 — ceiling routing contradicts the leader-decision policy (P10-P13)
 
 The auditor and spec-workflow route ceiling hits and score-regression STOPs to the user channel;
-the local kickoff-autonomy policy makes them a leader decision. Caps are stated three ways:
-`plan_audit_tier_ceilings` (S=1, M=2, L=3), the auditor's "Max 3" text, and `max_iterations: 3`.
-The leader's rulings were formulaic: one delta round when the remaining fixes were mechanical, then
-hold or split.
+the local kickoff-autonomy policy makes them a leader decision. Caps are stated three ways. The
+leader's rulings were formulaic (§1).
 
-### F4 — factory Kickoff is human-only in code, autonomous in doctrine (P6-P8, P20)
+### F4 — factory Kickoff is human-only in code, autonomous in doctrine (P14-P16)
 
 `guardKickoffDecision` and `factory decide` accept only `human`; a lane is refused outright; T8
 sends an approved card to `assigned`, forcing a re-lease of a card the lane already holds.
 
-### F5 — FOUNDER is the only reachable label for mission-session decisions (P12, P13)
+### F5 — FOUNDER is the only reachable label for mission-session decisions (P5, P17, P18)
 
 With `decision_gate: on`, rows whose authority is a mission contract or a leader ruling cannot be
 routed DECIDED/POLICY-COVERED, so every row is FOUNDER and blank verdicts block.
 
-### F6 — wake latency and messaging degradation (P14-P18)
+### F6 — wake latency and messaging degradation (P19-P22)
 
 Messages are claimed at turn boundaries only; an idle lane wakes on the 20-minute cron. The
-prompt-submit bind opens the DB and queries the peer before discovering it is already bound,
-under a 2s budget; under load (comment at `factory_messages.go:29-35`) this misses. The inbox
-claim's degraded state is discarded at both call sites.
+prompt-submit bind runs the run-state probe, then opens the DB and queries the peer before
+discovering it is already bound, under a 2s budget. The probe must stay on the path because it
+drives the stale-run rebind. The inbox claim's degraded state reaches no log.
 
-### F7 — stale MCP is detectable but not checked (P19)
+### F7 — stale MCP is detectable but not checked (P23)
 
 The CLI fallback exists; intake never decides to use it.
 
 ## 4. Gaps
 
-- The leader-reported wait instances (§1) were not re-observed.
-- Bind-miss frequency under load was not measured here; the cache's benefit is argued from code
-  order, not from a measured hit rate (EVIDENCE-NEEDED, decision-index Q5).
-- The cache cost of a 5-minute recheck relative to the prompt-cache window was not measured.
+- The leader-reported wait instances and the t1458 exception (§1) were not re-observed.
+- Bind-miss frequency under load is not measured; run M0(a) measures it.
+- The cache cost of a 5-minute recheck is not measured; run M0(b) measures it.
+- The probe runner script is session-scratch; its output is carried verbatim above, and the script
+  itself is not committed.

@@ -8,11 +8,13 @@ card: t1481
 tier: L
 branch: WT-decision-automation
 base: d7112d005
+probe_tree: ba2033d22abee6cf37e02fdee1241038d6cc7356
 artifacts: [spec.md, plan.md, acceptance.md, design.md, research.md, progress.md, decision-index.md]
+spec_version: 0.2.0
 req_count: 25
-ac_count: 25
-plan_audit: not run (orchestrator-owned)
-open_decisions: none — Q1-Q7 LEADER-DECIDED 2026-10-03 (mission contract 07d28c4b)
+ac_count: 25 (22 release-blocking, 3 RG)
+plan_audit: iter1 FAIL 0.74 (.moai/reports/t1481/plan-audit-iter1.md); revision 0.2.0 addresses D1-D13; iter2 pending (orchestrator-owned)
+open_decisions: none — Q1-Q16 LEADER-DECIDED 2026-10-03 (mission contract 07d28c4b)
 evidence_needed_in_run: M0(a) degraded-notice rate with/without bind cache (Q5); M0(b) recheck cache cost (Q4)
 release_target: v3.2.0
 ```

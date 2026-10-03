@@ -2,15 +2,18 @@
 
 ## §A Context
 
-Card t1481, Tier L. Eight capabilities that turn the leader's recurring rulings into rules or disk
-records (spec.md §B). Base tree `d7112d005`. Methodology per `quality.yaml` (TDD for new Go code;
-DDD/characterization for the three verdict sites and the hook path).
+Card t1481, Tier L, release target v3.2.0. Eight capabilities that turn the leader's recurring
+rulings into rules or disk records (spec.md §B). Probes measured at `ba2033d22`. Methodology per
+`quality.yaml`: TDD for new Go code, DDD/characterization for the three verdict sites and the hook
+path. Revision 0.2.0 answers plan-audit iter1 (`.moai/reports/t1481/plan-audit-iter1.md`).
 
 ## §B Known Issues
 
-- Doctrine and code disagree on PASS-WITH-DEBT (research F2) and on factory Kickoff (F4); either
-  side may be "right" today — this plan makes both follow one predicate.
-- The FOUNDER Default marker amends a [HARD] manager-spec clause (decision-index Q2).
+- Doctrine and code disagree on PASS-WITH-DEBT (research F2) and on factory Kickoff (F4). This plan
+  makes both follow one phase-scoped predicate.
+- T7 and T13 share `guardVerdictPass` (P9b). Plain PASS at T7 gains score, must-pass, and blocking
+  checks; existing tests may encode label-only behavior and are characterized first (M2).
+- The FOUNDER Default amends a [HARD] manager-spec clause (decision-index Q2, leader-decided).
 
 ## §C Pre-flight
 
@@ -21,7 +24,7 @@ DDD/characterization for the three verdict sites and the hook path).
 ## §D Constraints
 
 Template-first; template neutrality; keep-set untouched (REQ-FDA-024); lane refusal relaxed only
-for REQ-FDA-017; no local full-suite runs.
+for REQ-FDA-016; the run-state probe runs on every bind; no local full-suite runs.
 
 ## §E Self-Verification
 
@@ -33,38 +36,43 @@ Each milestone closes with its ACs' green cells (acceptance.md §D), scoped pack
 
 | M | Priority | Scope | REQs | ACs |
 |---|---|---|---|---|
-| M0 | High | **Measurement baseline (committed before any implementation commit)**: (a) degraded-notice rate under load with the current bind path, re-measured after M7 with the bind cache (decision-index Q5); (b) cache-write cost of a 5-minute one-shot recheck vs. longer delays (Q4) — may lengthen the default, never below 5 | 020, 021 | 020, 022 |
-| M1 | High | **Board data model + CLI**: record shape, kinds, location, append/lock, `record`/`read`, lane refusal, statuses | 001-004 | 001-004 |
-| M2 | High | **Verdict admission predicate**: shared function, three call sites, auditor verdict-block fields (`blocking_findings`, `debts`, `delta_eligible`), §9.1/§9.2 doctrine edit | 008, 009, 011 | 008-010 |
-| M3 | High | **Audit kickoff decider**: `DeciderAudit`, edge kickoff→run keeping lease, hash recompute, `factory decide` lane admission for `<own-card> --decider audit` only, and the REQ-SD-016 narrowing recorded as an Amendments row on SPEC-FACTORY-SELF-DISPATCH-001 (Q6) | 015-017 | 014-016 |
-| M4 | High | **Ceiling policy**: config key + defaults, auditor/spec-workflow text reconciliation, lane procedure (delta round, hold + split proposal) | 012-014 | 011-013 |
-| M5 | Medium | **Authority register + FOUNDER defaults**: manager-spec contract (C2 template first, then C1, `make agents-emit` for C3) including the no-recommendation clause narrowed to judgment calls (Q2), plan/spec-assembly kickoff step, pin format, Class/Default/Alternate rows, product-level definition (Q3), DEFAULT-APPLIED | 007, 018, 019 | 007, 017, 018 |
-| M6 | Medium | **Watchdog + doctrine wiring**: watchdog reads board at step ②, messages-as-nudges rule, binding run conditions copy + sync-auditor re-read, short recheck carrier, MCP intake comparison | 005, 006, 010, 020, 023 | 005, 006, 019, 022, 023 |
-| M7 | Medium | **Hook messaging hygiene**: bind cache, degraded warn log + rate-limited notice | 021, 022 | 020, 021 |
-| M8 | Low | **Mirror + regression sweep**: template mirrors, `make build`, `make agents-emit`, keep-set regression guard, codex emit check | 024, 025 | 024, 025 |
+| M0 | High | **Measurement baseline, committed before any implementation commit**: (a) degraded-notice rate under load on the current bind path, re-measured after M7 with the cache (Q5); (b) cache-write cost of a 5-minute one-shot recheck vs. longer delays (Q4), which may raise the default but never below 5. The M0 commit is the baseline of RG AC-FDA-019/020 | 019, 020 | 019, 020 |
+| M1 | High | **Board data model + CLI**: record shape incl. `resolves`, kinds, location, append/lock, `record`/`read`, lane refusal, statuses | 001-003 | 001-003 |
+| M2 | High | **Admission predicate**: characterize T7/T13 tests; shared `AdmitVerdict(phase)`; three call sites; auditor verdict-block fields (`must_pass_failed`, `blocking_findings`, `fix_scope`, `debts`, `defect_class`, `reread_hunks`); §9.1/§9.2 edit | 006, 007, 009 | 006, 007, 009 |
+| M3 | High | **Audit kickoff decider**: `DeciderAudit`; edge kickoff→run keeping lease; guard re-checks predicate, `audited_sha`, hash, audit-ready, blocker/hold, open product-level rows; `factory decide` lane admission for own card only; Amendments row on SPEC-FACTORY-SELF-DISPATCH-001 | 014-016 | 014-016 |
+| M4 | High | **Ceiling policy**: config key; auditor/spec-workflow text; procedure for every session (mechanical delta eligibility, final hit = ceiling + rounds, non-lane notice); release-blocking AC-wording exception | 010-013 | 010-013 |
+| M5 | Medium | **Authority register + FOUNDER defaults**: manager-spec (C2 first, C1, `make agents-emit` for C3) incl. the clause narrowed to judgment calls; kickoff step; pin format; Class/Default/Alternate; product-level definition; DEFAULT-APPLIED | 005, 017, 018 | 005, 017, 018 |
+| M6 | Medium | **Watchdog + doctrine wiring**: board read at step ②, record-before-message; binding run conditions copy + re-read by `sync-audit-4dim.js` and sync-auditor (undisposed = FAIL); wait ids + `resolves`; one-shot recheck; MCP intake comparison | 004, 008, 019, 023 | 004, 008, 019, 023 |
+| M7 | Medium | **Hook messaging hygiene**: bind cache behind the run-state probe, retirement invalidation, degraded warn log + rate-limited notice | 020-022 | 020-022 |
+| M8 | Low | **Mirror + regression sweep**: template mirrors, `make build`, `make agents-emit`, keep-set regression guard | 024, 025 | 024, 025 |
 
-Decisions Q1-Q7 were settled by the leader on 2026-10-03 (decision-index.md). Release target: v3.2.0.
+Decisions Q1-Q15 were settled by the leader on 2026-10-03 (decision-index.md).
 
-Dependencies: M0(a) baseline before M7; M0(b) before M6 fixes the default delay. M2 before M3 (guard uses the predicate) and before M6's sync re-read; M1 before M5
-(pin cites board records) and M6. M4 needs M2's verdict fields. M7 is independent.
+Dependencies: M0(a) before M7; M0(b) before M6 fixes the default delay. M2 before M3 (the guard uses
+the predicate), M4 (verdict fields), and M6 (sync re-read). M1 before M5 (pins cite board records) and
+M6. M7 is independent of M1-M6.
 
 ## §G Risks
 
 | Risk | Mitigation |
 |---|---|
-| A lane self-approves Kickoff on a forged verdict file | the guard recomputes the plan-artifact hash and reads the verdict file from the committed card evidence path; the sync audit re-reads the decision record |
+| A lane self-approves Kickoff on a forged verdict file | the guard binds `audited_sha` to the evidence SHA, recomputes the plan-artifact hash, and refuses on any open blocker, hold, or product-level row; the sync audit re-reads the decision record |
+| T7 behavior change breaks factory tests | characterize first (M2); the change is deliberate and named in REQ-FDA-009 |
 | Board becomes a second queue | closed kind enum; no card-creating kind; queue verbs untouched |
-| Short recheck multiplies cache writes | one-shot, re-armed only while the wait is open; delay configurable with a 5-minute floor; M0(b) measures the cost |
-| Bind cache serves a stale binding after run retirement | full four-field match + run-state check on miss; any bind error deletes the cache file |
-| Default marker read as a recommendation | reversibility rule stated on the row; unrankable rows carry no Default and block |
+| One-shot recheck multiplies cache writes | re-armed only while the wait is open; 5-minute floor; M0(b) measures the cost |
+| Bind cache serves a stale binding | the probe runs on every bind; a retired or changed run invalidates and rebinds in the same invocation |
+| Default read as a recommendation | the published rule is stated on the row; unrankable rows carry no Default and block |
+| The exception becomes a routine bypass | three mechanical conditions plus a leader board record; any missing piece keeps the hold |
 
 ## §H Anti-Patterns
 
-- Lane deciding delta eligibility itself instead of reading the auditor's field.
-- Writing a ruling only in chat (REQ-FDA-006).
+- Judging delta eligibility by reading prose instead of the `fix_scope` diff and id sets.
+- Writing a ruling only in chat (REQ-FDA-004).
 - Relaxing FAIL/INCONCLUSIVE anywhere.
+- Skipping the run-state probe on a cache hit.
 - Hand-editing `internal/template/templates/.codex/agents/moai/*.toml`.
 
 ## §I Cross-References
 
-spec.md §C, design.md §1-8, research.md probe ledger, acceptance.md §D, decision-index.md.
+spec.md §C, design.md §1-8, research.md probe ledger, acceptance.md §D, decision-index.md,
+`.moai/reports/t1481/plan-audit-iter1.md`.
