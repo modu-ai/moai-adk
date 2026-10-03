@@ -137,6 +137,13 @@ func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
 	}
 	defer func() { _ = lockfile.Unlock(sf) }()
 
+	return r.pruneLocked(sf, retentionDays)
+}
+
+// pruneLocked is the locked phase of the prune: the stamp is re-checked with a fresh clock reading,
+// the attempt stamp is written, the log is pruned and the orphan temp files are swept. The caller
+// passes the already-opened, locked state file; a stamp write that fails skips the prune.
+func (r *Retention) pruneLocked(sf *os.File, retentionDays int) error {
 	// Fresh reading: a stale pre-lock "now" would make the holder's newer stamp look like the future.
 	now := r.nowFn()
 	if stampIsFresh(readStamp(sf), now) {
@@ -151,7 +158,7 @@ func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
 		return fmt.Errorf("retention: prune state write failed: %w", err)
 	}
 
-	err = r.prune(retentionDays, now)
+	err := r.prune(retentionDays, now)
 	r.sweepOrphanTmp(now)
 	return err
 }
