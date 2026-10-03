@@ -110,6 +110,28 @@ Pre-existing, not caused here: `TestStaleRunNoticeFactoryLegacyLabel` (hook, fai
 golangci-lint v2.1.6 on auditverdict, homestate, cli: `0 issues.` This SPEC's §E.1 now carries
 `audit_ready: true`.
 
+### Sync re-audit FAIL 78 repair (`.moai/reports/t1481/sync-audit-2.md`)
+
+| Finding | Fix | RED | GREEN |
+|---|---|---|---|
+| N1 duplicated decision key last-wins | `auditverdict.Parse` records duplicates of verdict/score/must_pass_failed/blocking_count/plan_artifact_hash; `Admit` refuses any | `second must_pass_failed: admitted ()`, `second blocking_count: admitted ()`, `second score: admitted ()`, `second plan_artifact_hash: admitted ()`, `sync phase: duplicated verdict admitted` | `ok …auditverdict 1.119s` (-race) |
+| N2 queue hold read before the transition | `TransitionRequest.QueueHoldRead` is called inside the transaction right before commit; CLI passes the reader | build failed: `unknown field QueueHoldRead in struct literal of type TransitionRequest` | `ok …homestate 83.153s` (-race, full package) |
+| N3 conflicting `audit_ready` values | any non-true `audit_ready` line makes it not ready | same RED run (test compiled only after the fix) | same run |
+| stale comments | `auditReadyRecorded`, `founderRowRefusal`, CLI queue-read comment updated | — | — |
+
+CLI selectors (`TestFDA_|TestDecisionCmd|TestFR_AC015|TestSD_AC016`, -race): `ok …cli 12.983s`.
+golangci-lint v2.1.6: `0 issues.`
+
+### Recorded debts (sync re-audit)
+
+- D1: no writer emits `audit_ready: true` (0 of 40 recent SPECs; the manager-spec template does not
+  emit it), so the audit decider refuses every other SPEC (fail-closed, inert) until the plan-close
+  step writes the signal.
+- N4: board rows missing required fields still take part in `supersedes` handling and can hide a
+  standing record (`internal/decision/board.go`).
+- C2: plan artifacts were edited after the audited SHA a13b83868 (Q27, commit 818569869) while
+  §E.1 still claims `plan_artifacts_frozen_at`; needs a delta plan re-audit or a record correction.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -141,8 +163,8 @@ new_warnings_or_lints_introduced: 0
 ```yaml
 sync_complete_at: 2026-10-03
 sync_commit_sha: 4293979c7
-sync_status: completed-with-recorded-debts
-sync_audit: FAIL 72 (.moai/reports/t1481/sync-audit.md) — F1-F4 repaired after the sync commit (see §E.2 repair table); re-audit pending
+sync_status: re-close pending — spec.md reverted to in-progress until a sync audit passes
+sync_audit: FAIL 72 (.moai/reports/t1481/sync-audit.md) → F1-F4 repaired; re-audit FAIL 78 (.moai/reports/t1481/sync-audit-2.md) → N1-N3 repaired; next re-audit pending
 changelog_entry_position: "CHANGELOG.md [Unreleased] ### Added (first entry)"
 frontmatter_status_transitions:
   spec.md: in-progress -> completed (merged implemented+completed, single sync commit)

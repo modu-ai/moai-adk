@@ -35,8 +35,8 @@ func auditKickoffRefusal(cur Card, queueHold string) string {
 	return founderRowRefusal(filepath.Join(specDir, "decision-index.md"))
 }
 
-// auditReadyRecorded reports whether progress.md's §E.1 section holds
-// content other than a placeholder.
+// auditReadyRecorded reports whether progress.md's §E.1 section carries the
+// explicit `audit_ready: true` signal and no conflicting `audit_ready` value.
 func auditReadyRecorded(path string) bool {
 	raw, err := readBoundedFile(path)
 	if err != nil {
@@ -54,17 +54,25 @@ func auditReadyRecorded(path string) bool {
 		section = rest
 	}
 	// Only the explicit signal counts; a non-empty section is not readiness.
+	ready, conflicting := false, false
 	for _, line := range strings.Split(section, "\n") {
-		if strings.TrimSpace(line) == "audit_ready: true" {
-			return true
+		key, value, ok := strings.Cut(strings.TrimSpace(line), ":")
+		if !ok || strings.TrimSpace(key) != "audit_ready" {
+			continue
+		}
+		if strings.TrimSpace(value) == "true" {
+			ready = true
+		} else {
+			conflicting = true
 		}
 	}
-	return false
+	return ready && !conflicting
 }
 
 // founderRowRefusal reads decision-index.md (absent means no rows) and
-// refuses on any FOUNDER row whose verdict is empty, and on any
-// DEFAULT-APPLIED verdict outside an implementation-level row with a Default.
+// refuses on any row — whatever its label — holding DEFAULT-APPLIED outside an
+// implementation-level row with a Default, and on any FOUNDER row whose
+// verdict is empty.
 func founderRowRefusal(path string) string {
 	raw, err := os.ReadFile(path)
 	if err != nil {

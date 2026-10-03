@@ -14,7 +14,8 @@ import (
 // factoryAuditDecideCards applies a kickoff approval by the audit decider
 // (edge T8a) to each named card. In a lane session the lane may approve only
 // a card whose record owner it is. The queue item's hold state is read here,
-// at the decision point; an unreadable queue fails closed.
+// inside the transition's transaction, right before the commit; an unreadable
+// queue fails closed.
 func factoryAuditDecideCards(ctx context.Context, root string, out io.Writer, cards []string, run string) error {
 	runID, err := resolveFactoryCardRun(ctx, root, run)
 	if err != nil {
@@ -43,7 +44,8 @@ func factoryAuditDecideCards(ctx context.Context, root string, out io.Writer, ca
 		if err == nil {
 			cur, err = db.Transition(ctx, homestate.TransitionRequest{
 				RunID: runID, CardID: cardID, To: homestate.CardRun, ExpectedVersion: cur.Version,
-				Actor: actor, Decider: homestate.DeciderAudit, QueueHold: factoryQueueHold(cardID), Now: factoryCardNow(),
+				// The hold is read inside the transition, right before the commit.
+				Actor: actor, Decider: homestate.DeciderAudit, QueueHoldRead: func() string { return factoryQueueHold(cardID) }, Now: factoryCardNow(),
 			})
 		}
 		if err != nil {

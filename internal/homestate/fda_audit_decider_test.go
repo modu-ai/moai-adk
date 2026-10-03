@@ -125,6 +125,26 @@ func TestFDA_AuditDeciderClosesSyncAuditBypasses(t *testing.T) {
 	}
 }
 
+// Sync re-audit N2/N3: the queue hold is read inside the transition (a hold
+// set after an earlier read still refuses), and conflicting audit_ready
+// values are not ready.
+func TestFDA_AuditDeciderReadsHoldInsideTheTransitionAndRejectsConflictingReady(t *testing.T) {
+	f := newFDAKickoff(t, "h")
+	reads := 0
+	_, err := f.db.Transition(context.Background(), TransitionRequest{RunID: frRun, CardID: "h", To: CardRun,
+		ExpectedVersion: 1, Actor: "worker-1", Decider: DeciderAudit, QueueHold: QueueHoldClear,
+		QueueHoldRead: func() string { reads++; return QueueHoldHeld }, Now: frNow})
+	if err == nil || reads == 0 {
+		t.Fatalf("hold set after the pre-read: err=%v reads=%d, want refusal from the in-transaction read", err, reads)
+	}
+	g := newFDAKickoff(t, "c")
+	frWrite(t, filepath.Join(g.repo.Dir, ".moai", "specs", frSpecID, "progress.md"),
+		"## §E.1 Plan-phase Audit-Ready Signal\n\naudit_ready: true\naudit_ready: false\n")
+	if _, err := g.approve(DeciderAudit, QueueHoldClear); err == nil {
+		t.Fatalf("conflicting audit_ready accepted")
+	}
+}
+
 // AC-FDA-014 — FOUNDER row fixtures, each written before the audit so the hash matches.
 func TestFDA_AuditDeciderFounderRows(t *testing.T) {
 	rows := map[string]struct {

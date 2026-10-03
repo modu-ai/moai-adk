@@ -122,6 +122,26 @@ func TestAdmit_RefusesNonFiniteAndOutOfRangeScores(t *testing.T) {
 	}
 }
 
+// Sync re-audit N1: a duplicated decision key makes the file inadmissible —
+// never last-wins.
+func TestAdmit_RefusesDuplicatedDecisionKeys(t *testing.T) {
+	cases := map[string]string{
+		"verdict PASS appended after FAIL":  strings.Replace(planPass, "verdict: PASS", "verdict: FAIL", 1) + "Verdict: PASS\n",
+		"second must_pass_failed":           planPass + "must_pass_failed: 0\n",
+		"second blocking_count":             planPass + "blocking_count: 0\n",
+		"second score":                      planPass + "overall_score: 0.95\n",
+		"second plan_artifact_hash":         planPass + "plan_artifact_hash: abc123\n",
+	}
+	for name, raw := range cases {
+		if ok, reason := admitPlan(raw, true); ok {
+			t.Errorf("%s: admitted (%s)", name, reason)
+		}
+	}
+	if ok, _ := Admit(Parse([]byte("verdict: FAIL\nverdict: PASS\n")), PhaseSync, 0, false); ok {
+		t.Errorf("sync phase: duplicated verdict admitted")
+	}
+}
+
 func TestAdmitLabel(t *testing.T) {
 	for label, want := range map[string]bool{"PASS": true, "PASS-WITH-DEBT": true, "FAIL": false, "": false, "BYPASSED": false} {
 		if AdmitLabel(label) != want {

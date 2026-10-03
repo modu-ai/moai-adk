@@ -55,6 +55,10 @@ type TransitionRequest struct {
 	// QueueHold is the queue item's hold reading for an audit approval (T8a):
 	// QueueHoldClear admits; anything else refuses (fail closed).
 	QueueHold string
+	// QueueHoldRead, when set, reads the queue hold inside the transition's
+	// transaction, right before the commit; its reading replaces QueueHold
+	// so a hold set after an earlier read still refuses.
+	QueueHoldRead func() string
 	// Now is the injected clock; zero means time.Now().
 	Now time.Time
 }
@@ -487,7 +491,11 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		if req.Decider != DeciderAudit {
 			return plan, fmt.Errorf("%w: kickoff → run is the audit decider's edge, got %q (the human path is kickoff → assigned)", ErrDecider, req.Decider)
 		}
-		if reason := auditKickoffRefusal(cur, req.QueueHold); reason != "" {
+		hold := req.QueueHold
+		if req.QueueHoldRead != nil {
+			hold = req.QueueHoldRead()
+		}
+		if reason := auditKickoffRefusal(cur, hold); reason != "" {
 			return plan, fmt.Errorf("%w: audit kickoff refused: %s", ErrEvidence, reason)
 		}
 		// Lease the card to its record owner exactly as the lease path does.

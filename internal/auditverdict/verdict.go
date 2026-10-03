@@ -49,6 +49,9 @@ type Fields struct {
 	BlockingKnown    bool
 	PlanArtifactHash string
 	Debts            []Debt
+	// DuplicateKeys names decision keys that appeared more than once; any
+	// entry makes the file inadmissible.
+	DuplicateKeys []string
 	// MalformedDebts counts debt lines that did not carry an id, a valid
 	// dispose_in, and a description.
 	MalformedDebts int
@@ -65,6 +68,7 @@ var (
 // "- debt: <id> dispose_in=<run|sync> <description>".
 func Parse(raw []byte) Fields {
 	var f Fields
+	seen := map[string]bool{}
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimSpace(strings.TrimRight(line, "\r"))
 		if m := debtLine.FindStringSubmatch(line); m != nil {
@@ -81,6 +85,22 @@ func Parse(raw []byte) Fields {
 		}
 		key = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(key), " ", "_"))
 		value = strings.TrimSpace(strings.Trim(strings.TrimSpace(value), "`"))
+		// A decision key seen twice makes the file inadmissible (never
+		// last-wins): an appended line must not overturn the first.
+		canonical := key
+		switch key {
+		case "score":
+			canonical = "overall_score"
+		case "plan-artifact-hash":
+			canonical = "plan_artifact_hash"
+		}
+		switch canonical {
+		case "verdict", "overall_score", "must_pass_failed", "blocking_count", "plan_artifact_hash":
+			if seen[canonical] {
+				f.DuplicateKeys = append(f.DuplicateKeys, canonical)
+			}
+			seen[canonical] = true
+		}
 		switch key {
 		case "verdict":
 			f.Label = value
@@ -147,6 +167,9 @@ func PlanThreshold(specDir string) float64 {
 // @MX:ANCHOR: [AUTO] the single verdict admission predicate shared by contract rules, kickoff decide, and the card-transition guard
 // @MX:REASON: a second copy of this rule is exactly the drift that let PASS-WITH-DEBT pass three code sites while doctrine blocked it
 func Admit(f Fields, phase Phase, threshold float64, hashOK bool) (bool, string) {
+	if len(f.DuplicateKeys) > 0 {
+		return false, "duplicated decision key(s): " + strings.Join(f.DuplicateKeys, ", ")
+	}
 	if !AdmitLabel(f.Label) {
 		if f.Label == "" {
 			return false, "no verdict"
