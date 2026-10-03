@@ -110,7 +110,17 @@ func managedCodexAppReady(ctx context.Context, raw string) error {
 	if err := managedLoopbackURL(raw); err != nil {
 		return err
 	}
-	client := &http.Client{Timeout: 300 * time.Millisecond}
+	client := &http.Client{
+		Timeout: 300 * time.Millisecond,
+		// A redirect target must pass the same loopback rule as the probe
+		// target, or a loopback endpoint could steer the probe off the machine.
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("managed codex readiness probe: too many redirects")
+			}
+			return managedLoopbackURL(strings.Replace(req.URL.String(), "http", "ws", 1))
+		},
+	}
 	endpoint := strings.Replace(raw, "ws://", "http://", 1) + "/readyz"
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -120,6 +130,9 @@ func managedCodexAppReady(ctx context.Context, raw string) error {
 			return err
 		}
 		resp, err := client.Do(req)
+		if errors.Is(err, errManagedCodexNonLoopback) {
+			return err
+		}
 		if err == nil {
 			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
