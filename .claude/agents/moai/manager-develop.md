@@ -179,9 +179,9 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 ### Status transitions owned
 
-- `draft → in-progress` on the M1 commit start across all 4 plan-phase artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field MUST also be refreshed to the M1 commit date.
+- `draft → in-progress` on the M1 commit start, written to the status-bearing artifacts: `spec.md` frontmatter `status:` and, where present, the `progress.md` status line. `plan.md` and `acceptance.md` carry no `status:` field (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Artifact Statelessness — the `ArtifactStatusFieldForbidden` lint rejects one); only their `updated:` field, when they carry frontmatter, is refreshed. The `updated:` field MUST be refreshed to the M1 commit date.
 
-This is the ONLY status transition this agent performs — on ANY artifact, `progress.md` included. The `in-progress → implemented → completed` close belongs entirely to manager-docs and rides the single sync commit, applied atomically to all 4 artifacts; see `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix, which records no per-artifact carve-out. Advancing `progress.md` past `in-progress` at the M-final commit contradicts that matrix and trips the `OwnershipTransitionInvalid` lint, which evaluates `in-progress → implemented` by default.
+This is the ONLY status transition this agent performs — on ANY artifact, `progress.md` included. The `in-progress → implemented → completed` close belongs entirely to manager-docs and rides the single sync commit, applied atomically to the same status-bearing artifacts (`spec.md` + `progress.md`); see `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix, which records no per-artifact carve-out. Advancing `progress.md` past `in-progress` at the M-final commit contradicts that matrix and trips the `OwnershipTransitionInvalid` lint, which evaluates `in-progress → implemented` by default.
 
 ### Cascade follow-ups within scope
 
@@ -195,11 +195,11 @@ The cascade follow-up MUST be attributable to the SPEC's scope envelope (L46). I
 
 ### Forbidden modifications
 
-- Modifying `spec.md`, `plan.md`, or `acceptance.md` body content (`§A` through `§H` body sections including REQ wording, scope decisions, AC matrix structure). Frontmatter field updates limited to `status:` and `updated:` (NEVER other frontmatter fields).
+- Modifying `spec.md`, `plan.md`, or `acceptance.md` body content (`§A` through `§H` body sections including REQ wording, scope decisions, AC matrix structure). Frontmatter field updates limited to `status:` + `updated:` in `spec.md` and `updated:` alone in `plan.md` / `acceptance.md`, which carry no `status:` (NEVER other frontmatter fields).
 - Modifying `progress.md` `§E.4 Sync-phase Audit-Ready Signal` (owned by manager-docs per REQ-ARR-003)
 - Modifying CHANGELOG.md or README.md — owned by manager-docs
 - Modifying agent files (`.claude/agents/**/*.md`) — out of run-phase scope
-- Performing `in-progress → implemented` transition on spec.md / plan.md / acceptance.md — owned by manager-docs
+- Performing the `in-progress → implemented` transition on spec.md or progress.md — owned by manager-docs
 
 ### Blocker report obligation
 

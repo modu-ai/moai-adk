@@ -194,6 +194,16 @@ func applyTypedEdits(projectRoot string, fields []FieldDef, values []string) err
 				continue
 			}
 		}
+		// GitHub #1731 (card t1474): a radio whose stored value is empty
+		// renders preselected on its declared Default (radioEffectiveValue),
+		// so an untouched form submits that Default for an absent key. That
+		// submission is exactly what the page showed — not an edit — and
+		// must not materialize the key on disk.
+		if cur == "" && f.Default != "" && next == f.Default {
+			if _, ok := readSeamScalar(projectRoot, file, path); !ok {
+				continue
+			}
+		}
 		seamEdits[file] = append(seamEdits[file], yamlpatch.KeyEdit{Path: path, Value: next})
 	}
 

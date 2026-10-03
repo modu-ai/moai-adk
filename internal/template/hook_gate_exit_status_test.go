@@ -406,7 +406,7 @@ func gateEnvFixture(t *testing.T, dir string) {
 	}
 	git := func(args ...string) {
 		t.Helper()
-		cmd := exec.Command("git", append([]string{"-c", "user.email=t1413@example.invalid", "-c", "user.name=t1413"}, args...)...)
+		cmd := exec.Command("git", append([]string{"-c", "user.email=fixture@example.invalid", "-c", "user.name=fixture"}, args...)...)
 		cmd.Dir = dir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
