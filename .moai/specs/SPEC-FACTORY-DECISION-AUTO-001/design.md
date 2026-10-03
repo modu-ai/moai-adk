@@ -141,7 +141,9 @@ The auditor's "Max 3" text and spec-workflow `:158` are rewritten to cite the ti
     evidence SHA) and applies `AdmitVerdict(…, PhasePlan, tier)`;
   - recomputes the plan-artifact hash, whose inputs now include `decision-index.md`;
   - requires audit-ready status in `progress.md` §E.1;
-  - requires no open blocker and no operator hold on the card row;
+  - requires no open blocker and no operator hold: blocker = the factory card record state is
+    `blocked` or `needs-decision`; hold = the queue item (backlog.db) state is `hold`; both are
+    read at the decision point, and an unreadable source refuses (fail closed);
   - parses `decision-index.md` and refuses on any `FOUNDER` row, of either class, whose
     `Operator verdict:` is empty (decision-index Q19);
   - refuses on any row whose verdict is `DEFAULT-APPLIED` unless that row carries

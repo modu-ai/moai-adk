@@ -190,7 +190,9 @@ The keep-set is unchanged and stays human (§C.9).
   REQ-FDA-009 plan-phase predicate, its `audited_sha` equals the card's evidence SHA, its plan-artifact
   hash equals the hash computed from the current plan artifacts — whose input set shall include
   `decision-index.md`, so any change to it after the audited SHA is a mismatch — audit-ready status is
-  recorded, the card carries no open blocker and no operator hold, and the SPEC's `decision-index.md`
+  recorded, the card carries no open blocker (its factory card record state is not `blocked` or
+  `needs-decision`) and no operator hold (its queue item state is not `hold`), both read at the
+  decision point with an unreadable source refusing (fail closed), and the SPEC's `decision-index.md`
   holds no `FOUNDER` row of either class whose verdict is empty (only a recorded verdict or a
   `DEFAULT-APPLIED` verdict passes), and every row holding a `DEFAULT-APPLIED` verdict carries
   `Class: implementation-level` and a `Default:` line — a `DEFAULT-APPLIED` verdict on a

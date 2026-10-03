@@ -265,3 +265,13 @@ Why unresolved: REQ-FDA-014 (a recorded verdict passes) and REQ-FDA-018 (a recor
 only through the human path) contradicted each other.
 Operator verdict: Keep Q19. Narrow REQ-FDA-018 to "a verdict recorded after the audited SHA goes only
 through the human path". A verdict recorded before the audited SHA is covered by the hash and passes.
+
+### Q27: What are "open blocker" and "operator hold" for the audit decider? (run-phase D-RUN-1)
+
+Label: LEADER-DECIDED
+Authority anchor: mission contract 11c79e1a — leader ruling 2026-10-03 D-RUN-1
+Why unresolved: The factory card record carries neither field, and design named no source.
+Operator verdict: Open blocker = the factory card record state is `blocked` or `needs-decision`;
+operator hold = the queue item (backlog.db) state is `hold`. Both are read at the decision point; an
+unreadable source fails closed (no autonomous approval; the operator form remains). In-place
+clarification of REQ-FDA-014, design §5, and AC-FDA-014 (one fixture per arm).
