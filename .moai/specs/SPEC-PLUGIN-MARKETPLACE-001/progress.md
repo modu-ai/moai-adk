@@ -1433,6 +1433,7 @@ Measured in this run (2026-10-03), against the tree whose HEAD was `c37918133` a
 - The stub harness recorded the calls of `codex` and `claude` found by `PATH` lookup; a caller using an absolute path or the `CLAUDE_BIN` pin would not be seen by it (the child's install step resolves `codex` through `exec.LookPath` and `claude` through the pin or `LookPath`; the harness unset every `CLAUDE_*` name, so no pin was set).
 - Not re-run: the other Windows-only or CI-only paths; `TestFactoryOperationalFixtureUsesProductionInit` was run only under the stub harness, never with a real `codex` or `claude` on `PATH` (by instruction).
 - Not done, by scope: REQ-016's wording still names two callers; the amendment that makes it cover test fixtures that run the production binary is `manager-spec`'s and the leader's decision (audit F14 item (c)). F1..F13 are untouched.
+- Outside this sweep's `init` class (recheck N4): the three built-binary `doctor` tests in `internal/cli/doctor_exitcode_codex_test.go` (`runDoctorProcess`) start a real-PATH `claude --version` and a `codex plugin list --json` confined to a temporary `CODEX_HOME`; the sweep does not see them because the verb is `doctor`, and REQ-017's test-binary refusal does not apply because the child is the built binary.
 - The `go test` selector lines above were read through `tail` or from a redirected file; the first selector run after the fix was piped through `tail` (its exit code was not captured, the `PASS` and `ok` lines are the evidence), and the five-selector run was redirected to a file with exit 0.
 
 #### Residual-risk
@@ -1452,7 +1453,7 @@ Written by the sync-phase author (the manager-docs role, run as `Agent(general-p
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-10-03T06:22:12Z
-sync_commit_sha: pending-backfill   # the single sync commit cannot cite its own hash; backfilled in a following commit (mechanical placeholder completion)
+sync_commit_sha: c37918133   # the single sync commit; backfilled in the following pre-merge doc-correction commit
 card: t1435
 tier: L
 run_commit_range: 65c175af8..e187dae3d   # R0 65c175af8 .. M4 evidence e187dae3d; parent of the range is 45edfc6fd (the Kickoff record)
@@ -1550,6 +1551,19 @@ The CHANGELOG count of 0 and the AC counter were measured before and at the time
 - `sync_commit_sha` is a placeholder until the following backfill commit lands; between the two, `moai spec audit` reads a recognized placeholder, which is a sanctioned intermediate state.
 - The 308-file payload goes stale on the next template or version change until `make plugin-emit` is run; the read-only `plugin-emit-check` before `make build` and the golden test in `go test` are the signals, and neither runs on a pull request unless CI runs `make build` or the package tests.
 - The codemaps layer stays stale until regenerated; the graph-freshness gate measures 59 against 40.
+
+#### F14 repair pointer
+
+The F14 repair after this section was written is recorded in §E.2 `### F14 repair`; its re-audit is `.moai/reports/t1435/sync-audit-recheck.md` (PASS-WITH-DEBT 83, F14 closed).
+
+### Leader decisions before merge
+
+Relayed by the leader via cross-session message, 2026-10-03:
+
+- (a) REQ-016 / AC-016 wording is not amended in this card; carried as debt, with a follow-up card recommended to make it cover test fixtures that run the built binary's `init`.
+- (b) The 9 empty directories `~/.moai/claude-profiles/moai-adk/plugins/data/*-inline` under the real profile (appeared 13:31, unattributed, G-M4-1) are left in place; disposition is the operator's.
+- (c) Landing order: t1435 lands first; t1399 runs `make plugin-emit` in its later merge (the leader notifies lane-3).
+- Recommended follow-ups: kill the grandchild on the `internal/cli/plugin_install.go:108` timeout path (recheck P2); close the `BASH_ENV` scrub gap (F1).
 
 ## §F Phase 4 Mode Selection
 
