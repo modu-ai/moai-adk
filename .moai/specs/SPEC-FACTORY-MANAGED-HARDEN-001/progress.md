@@ -141,7 +141,30 @@ F8·F9·F13 모두 이 카드의 F3·F4 변경에 의존하지 않는다(줄 번
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — RED 기준선 (card t1409, manager-develop, cycle_type=tdd)
+
+원문 출력과 시험별 붉은 이유는 추적 파일 `.moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/red-baseline.md` 에 있다. 이 블록은 명령·관측·귀속만 인용한다. 귀속은 모두 `(this run, this tree, HEAD fe79bfa0e)` 이다.
+
+| 항목 | 명령 | 관측 | exit |
+|---|---|---|---|
+| 사전: 빌드 | `go build ./...` | 출력 없음 | 0 |
+| 사전: Windows 빌드 | `GOOS=windows GOARCH=amd64 go build ./...` | 출력 없음 | 0 |
+| 선택 수 (전) | `go test ./internal/cli -list '^.*(Managed\|managed).*$'` 를 `grep -c '^Test'` 로 센 값(원문 명령은 파이프 없이 acceptance.md §1.1 AC-MH-013 블록) | `66` | — |
+| 선택 수 (후) | 같은 명령 | `72` (최상위 6개 추가) | — |
+| 시험 6개 선택 확인 | `go test ./internal/cli -list '^(TestManagedCodexServerRequestPolicy\|…)$'` (acceptance.md 와 같은 6개 이름) | 이름 6줄 + `ok  github.com/modu-ai/moai-adk/internal/cli  1.238s` | 0 |
+| RED 1 | `go test -race ./internal/cli -run '^TestManagedCodexServerRequestPolicy$' -count=1 -v` | `--- FAIL: TestManagedCodexServerRequestPolicy (2.02s)`, 하위 11개 `--- FAIL`(`no answer to server request 101..111 … within 2s`) | 1 |
+| RED 2 | `go test ./internal/cli -run '^TestManagedCodexTurnSurvivesServerRequest$' -count=1 -v` | `DeliverTurn still blocked after 5s …`(during_turn), `… got no answer within 5s`(between_turns) | 1 |
+| RED 3 | `go test ./internal/cli -run '^TestManagedCodexServerRequestIDCollision$' -count=1 -v` | `call result "", want the genuine response …`, `call error = managed codex app server connection closed …` | 1 |
+| RED 4 | `go test -race ./internal/cli -run '^TestManagedCodexDeclinedBrokerElicitationFailsTurn$' -count=1 -v` | 하위 3개 `DeliverTurn = nil for a turn whose MoAI broker elicitation was declined, want a non-nil error` | 1 |
+| RED 5 | `go test -race ./internal/cli -run '^TestManagedDriverIsolatesTurnFailure$' -count=1 -v` | `driver returned managed Factory turn failed: overloaded after one failed turn …`, 전달된 턴 2개(기대 3개) | 1 |
+| RED 6 | `go test -race ./internal/cli -run '^TestManagedCodexNonCompletedTurnIsolated$' -count=1 -v` | `driver returned managed codex turn fake-turn-2 ended as failed …`, `op-interrupted`·`op-normal` 미전달 | 1 |
+| 기존 managed 시험(새 6개 제외) | `go test ./internal/cli -run '^.*(Managed\|managed).*$' -skip '^(…새 시험 6개…)$' -count=1 -v` (red-baseline.md 에 전체 원문) | `--- PASS` 63, `--- SKIP` 3, `--- FAIL` 0, `ok  github.com/modu-ai/moai-adk/internal/cli  41.464s` | 0 |
+| 정적 | `go vet ./internal/cli` / `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` / `golangci-lint run --timeout=5m ./internal/cli/...` | 출력 없음 / 출력 없음 / `0 issues.` | 0 / 0 / 0 |
+| 형식 | `gofmt -l` 을 이 카드가 건드린 두 시험 파일에 | 출력 없음 | 0 |
+
+모든 `go test` 는 환경 정리 접두(`unset MOAI_KANBAN … MOAI_KANBAN_BACKEND && go test …`)를 붙인 단일 호출이다. 붉은 이유는 모두 acceptance.md §2.1 이 정한 이유(소유자가 서버 요청에 답하지 않음, id 충돌·문자열 id, 비완료·`is_error` 턴에서 드라이버가 반환, 거부된 브로커 elicitation 턴이 nil)와 일치하고 컴파일 오류·패키지 타임아웃·하네스 실패로 붉은 것은 없다.
+
+미관측: 시험 6개의 GREEN 경로(M2·M3 몫), 로그 이음새 단언(이음새는 M2/M3 이 도입), 라이브 Codex. `gofmt -l internal/cli` 는 기준 트리의 기존 파일 `internal/cli/mcp_claude.go` 한 줄을 낸다(이 카드가 만든 것이 아니다).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
