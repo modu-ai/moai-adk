@@ -36,9 +36,13 @@ func TestZZProbeHealWindow(t *testing.T) {
 	tmpF := filepath.Join(dir, "tmpF")
 	ret := NewRetention(logPath, filepath.Join(dir, "archive"), nil)
 	rng := rand.New(rand.NewSource(1))
-	deadline := time.Now().Add(60 * time.Second)
+	// Amendment 0.4.1: the trial floor, not the clock, is the stop condition. The loop ends at the 5th
+	// violation (the pre-fix control) or at 20000 trials (the post-fix measurement of Definition of Done
+	// 10); the 240 s deadline is a safety stop only, and a run that ends on it with fewer than 20000
+	// trials is a Gap (run with -timeout 300s).
+	deadline := time.Now().Add(240 * time.Second)
 	trials, violations, helperFirst, swapFirst, healErrors := 0, 0, 0, 0, 0
-	for time.Now().Before(deadline) && violations < 5 && trials < 100000 {
+	for time.Now().Before(deadline) && violations < 5 && trials < 20000 {
 		trials++
 		_ = os.Remove(statePath)
 		_ = os.Remove(tmpF)

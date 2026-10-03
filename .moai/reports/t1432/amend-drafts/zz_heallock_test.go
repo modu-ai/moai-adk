@@ -10,6 +10,8 @@ package harness
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,11 +27,23 @@ const healSuffixDraft = ".prune-heal"
 // healer would. The returned release is idempotent and also runs at test cleanup.
 func holdHealLockDraft(t *testing.T, logPath string) (release func()) {
 	t.Helper()
+	return holdHealLockModeDraft(t, logPath, syscall.LOCK_EX)
+}
+
+// holdHealLockSharedDraft is the same with a SHARED flock (LOCK_SH): a request for an exclusive lock
+// from another descriptor conflicts with it, a request for a shared lock does not.
+func holdHealLockSharedDraft(t *testing.T, logPath string) (release func()) {
+	t.Helper()
+	return holdHealLockModeDraft(t, logPath, syscall.LOCK_SH)
+}
+
+func holdHealLockModeDraft(t *testing.T, logPath string, how int) (release func()) {
+	t.Helper()
 	f, err := os.OpenFile(logPath+healSuffixDraft, os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
 		t.Fatalf("open heal lock: %v", err)
 	}
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+	if err := syscall.Flock(int(f.Fd()), how); err != nil {
 		t.Fatalf("flock heal lock: %v", err)
 	}
 	var once sync.Once
@@ -351,5 +365,223 @@ func TestPruneCommonPathCreatesNoHealLock(t *testing.T) {
 				t.Errorf("a heal-lock entry exists after a prune that needed no heal: err=%v", err)
 			}
 		})
+	}
+}
+
+// TestPruneCommonPathIgnoresAHeldHealLock (AC-HRH-006 case c, strengthened in 0.4.1): the heal-lock file
+// already exists and another descriptor holds it exclusively, and the state path is healthy; the common
+// path must not open, create or lock the heal lock, so the prune finishes at once (a mutant that opens
+// and locks an existing heal-lock file on the common path waits for the holder and fails the bound) and
+// leaves the heal-lock entry untouched.
+func TestPruneCommonPathIgnoresAHeldHealLock(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	writeStaleLog(t, logPath, now, "stale-1")
+	if err := os.WriteFile(logPath+stampSuffix, []byte("2026-09-01T00:00:00Z"), 0o644); err != nil {
+		t.Fatalf("write state: %v", err)
+	}
+	release := holdHealLockDraft(t, logPath)
+	defer release()
+	healBefore, err := os.Lstat(logPath + healSuffixDraft)
+	if err != nil {
+		t.Fatalf("lstat heal lock: %v", err)
+	}
+	start := time.Now()
+	perr := NewRetention(logPath, filepath.Join(dir, "archive"), func() time.Time { return now }).PruneStaleEntries(30)
+	if elapsed := time.Since(start); elapsed >= time.Second {
+		t.Errorf("the common-path prune took %v while the heal lock was held: it waited for a lock it must not take", elapsed)
+	}
+	if perr != nil {
+		t.Errorf("prune returned %v, want nil", perr)
+	}
+	if logHasSubject(t, logPath, "stale-1") {
+		t.Errorf("the prune did not run (stale event still in the log)")
+	}
+	if healAfter, lerr := os.Lstat(logPath + healSuffixDraft); lerr != nil || !os.SameFile(healBefore, healAfter) || healAfter.Size() != 0 {
+		t.Errorf("the heal-lock entry was removed, replaced or truncated by a prune that needed no heal: err=%v", lerr)
+	}
+}
+
+// TestPruneHealWaitsForASharedHolder (AC-HRH-006 case b2): while another descriptor holds a SHARED
+// flock on the heal lock, a pruner that requests the exclusive lock conflicts and must wait; it neither
+// returns nor touches the faulty entry. Once the holder releases, the heal proceeds and the prune
+// completes. A heal lock requested with LOCK_SH is compatible with a shared holder, so such an
+// implementation heals at once and fails step (i). The exclusive-holder test above cannot tell the two
+// apart: both modes conflict with an exclusive holder.
+func TestPruneHealWaitsForASharedHolder(t *testing.T) {
+	t.Parallel()
+	fx := newHealFixture(t)
+	release := holdHealLockSharedDraft(t, fx.logPath)
+
+	ret := NewRetention(fx.logPath, fx.archiveDir, func() time.Time { return fx.now })
+	done := make(chan error, 1)
+	go func() { done <- ret.PruneStaleEntries(30) }()
+
+	returned := false
+	select {
+	case perr := <-done:
+		returned = true
+		t.Errorf("the pruner returned (%v) while another descriptor held a shared heal lock: it did not request an exclusive lock", perr)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if cur, lerr := os.Lstat(fx.statePath); lerr != nil || !os.SameFile(fx.inspected, cur) {
+		t.Errorf("the state-path entry was removed or replaced while a shared heal lock was held: err=%v", lerr)
+	}
+	release()
+	if returned {
+		return
+	}
+	select {
+	case perr := <-done:
+		if perr != nil {
+			t.Errorf("the pruner returned %v after the shared heal lock was released, want nil", perr)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("the pruner did not finish after the shared heal lock was released")
+	}
+	if fi, err := os.Lstat(fx.statePath); err != nil || !fi.Mode().IsRegular() {
+		t.Errorf("the faulty link was not replaced after the lock was released: err=%v", err)
+	}
+	if logHasSubject(t, fx.logPath, "stale-1") {
+		t.Errorf("the prune did not run after the lock was released (stale event still in the log)")
+	}
+}
+
+// TestPruneStateRemovalFailureInReadOnlyDirSkips (AC-HRH-003 case c): the same read-only directory as
+// TestPruneStateUnreplaceableInReadOnlyDirSkips, but with a leftover heal-lock file already present, so
+// the heal lock CAN be opened and locked and the failure arises in the removal step. The error wraps the
+// permission cause, names the state path and not the heal-lock path, the heal lock is free again
+// afterwards, and nothing else changed. A heal that ignores the removal failure ends in the "changed on
+// every inspection" error, which does not wrap the cause, and fails this test.
+func TestPruneStateRemovalFailureInReadOnlyDirSkips(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses permissions")
+	}
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	archiveDir := filepath.Join(dir, "archive")
+	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	writeStaleLog(t, logPath, now, "stale-1")
+	statePath := logPath + stampSuffix
+	healPath := logPath + healSuffixDraft
+	old := []byte("2026-09-01T00:00:00Z")
+	if err := os.WriteFile(statePath, old, 0o400); err != nil {
+		t.Fatalf("write state: %v", err)
+	}
+	if err := os.WriteFile(healPath, nil, 0o600); err != nil {
+		t.Fatalf("write heal lock: %v", err)
+	}
+	logBefore, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read log: %v", err)
+	}
+	stateBefore, err := os.Lstat(statePath)
+	if err != nil {
+		t.Fatalf("lstat state: %v", err)
+	}
+	healBefore, err := os.Lstat(healPath)
+	if err != nil {
+		t.Fatalf("lstat heal lock: %v", err)
+	}
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatalf("chmod dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	perr := NewRetention(logPath, archiveDir, func() time.Time { return now }).PruneStaleEntries(30)
+	switch {
+	case perr == nil:
+		t.Errorf("expected an error: the state file cannot be removed")
+	case !errors.Is(perr, fs.ErrPermission):
+		t.Errorf("the removal failure's cause is not wrapped (a heal that ignores the failure ends differently): %v", perr)
+	case !strings.Contains(perr.Error(), statePath):
+		t.Errorf("the error does not name the state path: %v", perr)
+	case strings.Contains(perr.Error(), healPath):
+		t.Errorf("the error names the heal-lock path although the heal lock was usable: %v", perr)
+	}
+	if logAfter, _ := os.ReadFile(logPath); !bytes.Equal(logBefore, logAfter) {
+		t.Errorf("log changed")
+	}
+	if _, err := os.Stat(archiveDir); !os.IsNotExist(err) {
+		t.Errorf("archive directory exists: %v", err)
+	}
+	if stateAfter, lerr := os.Lstat(statePath); lerr != nil || !os.SameFile(stateBefore, stateAfter) || stateAfter.Mode() != stateBefore.Mode() {
+		t.Errorf("state-path entry changed: err=%v", lerr)
+	}
+	if healAfter, lerr := os.Lstat(healPath); lerr != nil || !os.SameFile(healBefore, healAfter) || healAfter.Size() != 0 {
+		t.Errorf("the heal-lock entry was removed, replaced or truncated: err=%v", lerr)
+	}
+	hf, err := os.OpenFile(healPath, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatalf("open heal lock: %v", err)
+	}
+	defer func() { _ = hf.Close() }()
+	if err := syscall.Flock(int(hf.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		t.Errorf("the heal lock is still held after the prune returned: %v", err)
+	}
+}
+
+// TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHealGuardedDraft is the existing swap test of the
+// tree (retention_owner_test.go) with the path guard of plan.md B11: after the heal lock exists the
+// owner check is asked about the heal-lock path too, so the stand-in acts only on the state path and
+// answers "owned" for any other path without side effects. The unguarded test of the tree goes falsely
+// red once the heal lock asks the owner check about its own path (E-049).
+func TestPruneHealKeepsAFreshStateFileSwappedInDuringTheHealGuardedDraft(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "usage-log.jsonl")
+	archiveDir := filepath.Join(dir, "archive")
+	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	writeStaleLog(t, logPath, now, "stale-1")
+	logBefore, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read log: %v", err)
+	}
+	victim := filepath.Join(dir, "victim.txt")
+	if err := os.WriteFile(victim, []byte("v"), 0o644); err != nil {
+		t.Fatalf("write victim: %v", err)
+	}
+	statePath := logPath + stampSuffix
+	if err := os.Symlink(victim, statePath); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	freshBytes := []byte(now.Add(-time.Second).UTC().Format(time.RFC3339Nano))
+	var freshInfo os.FileInfo
+	ret := NewRetention(logPath, archiveDir, func() time.Time { return now })
+	ret.ownerCheck = func(path string) bool {
+		if path != statePath {
+			return true // the heal-lock path: no side effect
+		}
+		fresh := filepath.Join(dir, "fresh.tmp")
+		if err := os.WriteFile(fresh, freshBytes, 0o644); err != nil {
+			t.Errorf("write fresh: %v", err)
+			return true
+		}
+		if err := os.Rename(fresh, path); err != nil {
+			t.Errorf("rename fresh: %v", err)
+			return true
+		}
+		if freshInfo, err = os.Lstat(path); err != nil {
+			t.Errorf("lstat fresh: %v", err)
+		}
+		return true
+	}
+	if perr := ret.PruneStaleEntries(30); perr != nil {
+		t.Errorf("prune returned %v, want nil", perr)
+	}
+	if freshInfo == nil {
+		t.Fatalf("the owner check never ran on the state path: the heal was not reached")
+	}
+	after, lerr := os.Lstat(statePath)
+	if lerr != nil || !os.SameFile(freshInfo, after) {
+		t.Fatalf("the fresh state file was removed or replaced by the heal: err=%v", lerr)
+	}
+	if got, _ := os.ReadFile(statePath); !bytes.Equal(got, freshBytes) {
+		t.Errorf("fresh state file content = %q, want %q", got, freshBytes)
+	}
+	if logAfter, _ := os.ReadFile(logPath); !bytes.Equal(logBefore, logAfter) {
+		t.Errorf("the log changed although the adopted stamp was fresh")
 	}
 }

@@ -84,13 +84,6 @@ func TestPruneHealFileArmKeepsAFreshStateFileSwappedInDuringTheHeal(t *testing.T
 	var freshInfo os.FileInfo
 	ret := NewRetention(logPath, filepath.Join(dir, "archive"), func() time.Time { return now })
 	ret.ownerCheck = func(path string) bool {
-		// Path guard (amendment 0.4.1, plan.md M9 and B11): once the heal lock exists the owner check is
-		// asked about the heal-lock path too; the stand-in acts only on the state path and answers
-		// "owned" for any other path without side effects, otherwise it would swap the heal-lock path
-		// and overwrite freshInfo.
-		if path != statePath {
-			return true
-		}
 		fresh := filepath.Join(dir, "fresh.tmp")
 		if err := os.WriteFile(fresh, freshBytes, 0o644); err != nil {
 			t.Errorf("write fresh: %v", err)

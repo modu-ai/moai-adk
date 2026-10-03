@@ -30,8 +30,19 @@ prior_completed_sha: 5bb35abe8165e8d5fc5cbab6b246ac6a82646cb8   # the prior clos
 amendment_base_tree: 7639c04c1   # tree the amendment was written and measured on
 amendment_scope: spec.md D4.c (default flipped to a heal lock), REQ-HRH-005 (rewritten), REQ-HRH-010 (one clause), REQ-HRH-016 (new); acceptance.md AC-HRH-006 (rewritten), -008 (optional case d), -010 (one sentinel), -011 (one clause), -015 and -016 (new), ledger E-032 to E-046; plan.md M7 to M10; decision-index.md Q4 verdict line, relayed verdicts item 8, row Q9
 counts: {req: 16, ac: 16}   # Tier M ceilings 16 / 16, counted independently; at 0.3.0: 15 / 14
-open_for_leader_before_run: decision-index row Q9 (the 2 s wait bound, an engineering choice not measured under load); plan.md B12 (hoist the amendment's scratch drafts to a tracked evidence path); the sentence of Definition of Done 13 (CHANGELOG, residual-risk record) is owned by the amended sync
+open_for_leader_before_run: decision-index row Q9 (the 2 s wait bound, an engineering choice not measured under load); plan.md B12 (hoist the amendment's scratch drafts to a tracked evidence path; [0.4.1] done, committed at 6357a387c under .moai/reports/t1432/amend-drafts/); the sentence of Definition of Done 13 (CHANGELOG, residual-risk record) is owned by the amended sync
 plan_artifact_hash: changed   # spec.md changed, so any cached plan-audit PASS verdict is invalid; one delta plan-audit must pass before M7
+```
+
+### Amendment 0.4.1 plan-phase note [0.4.1]
+
+```yaml
+amendment_revision: "0.4.1"   # revision after the delta plan-audit FAIL 0.81 of 0.4.0 (.moai/reports/t1432/plan-audit-amend.md: D1-D11)
+amendment_revision_status: pending-delta-re-audit   # one more cold delta re-audit of the amended passages is owed; if it fails the heal path is dropped from this card (relayed by the leader session, not an operator answer)
+amendment_revision_base_head: 0206c6225   # Go sources equal 7639c04c1; drafts and ledger re-run on this HEAD
+counts: {req: 16, ac: 16}
+fixed_in_this_revision: D1 (the §A build-tag clause), D2 (the Windows consequence corrected in REQ-HRH-010, §B D4.c, §E, §F, AC-HRH-010/011, plan M8), D3 (REQ-HRH-005 "exclusively", AC-HRH-006 case b2), D4 (the stand-in path guard), D5 (REQ-HRH-016 wrap clause, AC-HRH-003 case c), D6 (ledger paths, G-9, B12, E-034 overlay, E-038 lines), D7 to D11 as cheap (coordinates, three disclosures, held variant of 006 c, option D, probe floor)
+relayed_requirement: measure once, under load, the sum of the prune duration and the heal-lock wait (plan.md M10, acceptance.md Definition of Done 15); any observation above the 5 s hook timeout goes to the leader
 ```
 
 The run and sync sections below are the prior close (0.3.0) and are left as they were; the amended run and sync phases append their own evidence when they run. The status in `spec.md` is `in-progress` for the amendment; `sync_commit_sha` below is the prior close's value and stays until the amended sync replaces it.
