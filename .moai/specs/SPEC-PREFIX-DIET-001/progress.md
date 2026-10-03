@@ -518,7 +518,7 @@ The guard's red line is the expected one: REQ-PFD-013 (0.4.0) states `CHANGELOG.
 ## §E.4 Sync-phase Audit-Ready Signal — re-close 2 (current; supersedes both blocks above)
 
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill
+sync_commit_sha: 8924acc10238
 sync_status: complete (cross-model gate NOT met, accepted by leader decision — see Gaps; a new sync-audit of the twice-repaired tree and the operator's post-hoc confirmation are still owed, and this record claims neither)
 b12_self_test_a: PASS — `grep -c "SPEC-PREFIX-DIET-001" CHANGELOG.md` prints `1` (counts lines): the single existing t1450 entry is corrected in place again, so 1 is the expected count and no second entry was added
 b12_self_test_b: PASS with the named deviation of the earlier blocks — ac_source=`.moai/specs/SPEC-PREFIX-DIET-001/acceptance.md`, tier=M; the awk counter was not run (worktree guard refuses `awk -f`); `grep -o -E "AC-[A-Z0-9]+-[0-9]+[a-z]?"` printed 28 occurrences of 16 distinct ids (AC-PFD-001..016), `grep -c -F "[REF]"` and `grep -c -F "[RETIRED]"` both print `0`, so none is ambiguous; the CHANGELOG entry still states 16
