@@ -50,17 +50,18 @@ When the operator says `/moai gtd "<description>"`, run
 | `moai gtd undone <n>` | Restore an archived card to the live queue at the position it held, together with every finding that named it, and empty the archive entry. `done` + `undone` returns the queue record to the same bytes. Refused when the id has since been reissued to a different live card — the collision is named and the live card is left alone. |
 | `moai gtd next` | Print the queued items oldest-first — read-only candidates. |
 | `moai gtd next <n> [--spec <SPEC-ID>]` | Mark the addressed item `picked` (attaching `spec_id` when given) as one locked write. |
-| `moai gtd claim [--lane <label>] [--renew <id>]` | Claim the oldest **queued** card as one atomic compare-and-set under a lease: the card moves to `picked` with `picked_by`, `lease_expires_at` (now + the default lease duration), and `picked_at` stamped, and the confirmation carries the card id, its text prefix, and the expiry instant. Before selecting, every lapsed lease is returned to `queued` (expiry-first) — each return announced with its id and previous holder — and the claim then takes the oldest, which may be the card just returned; an unparseable expiry is judged expired. A card under a live lease is not a claim candidate, and no claim-family operation touches another holder's lease; the operator `unpick` stays the manual recovery. `--lane <label>` attributes the claim to an operator/lead-supplied lane label, and the flag grants nothing to a lane session — a session inside the lane boundary is refused with the existing refusal text, with or without the flag. `--renew <id>` extends the addressed card's lease instead of claiming: only the current holder's label may renew, a foreign label is refused with no change, and renewing a lapsed lease returns the card to `queued` (committed) and refuses — it never extends. No eligible card exits with status 3 and a non-error message, so a supervising launcher can tell that from failure. `list` and `history` render the lease columns on lease-holding rows; the JSON face excludes them. |
+| `moai gtd claim [--lane <label>] [--renew <id>]` | Claim the oldest **queued** card as one atomic compare-and-set under a lease: the card moves to `picked` with `picked_by`, `lease_expires_at` (now + the default lease duration), and `picked_at` stamped, and the confirmation carries the card id, its text prefix, and the expiry instant. Before selecting, every lapsed lease is returned to `queued` (expiry-first) — each return announced with its id and previous holder — and the claim then takes the oldest, which may be the card just returned; an unparseable expiry is judged expired. A card under a live lease is not a claim candidate, and no claim-family operation touches another holder's lease; the operator `unpick` stays the manual recovery. `--lane <label>` attributes the claim to an operator/leader-supplied lane label, and the flag grants nothing to a lane session — a session inside the lane boundary is refused with the existing refusal text, with or without the flag. `--renew <id>` extends the addressed card's lease instead of claiming: only the current holder's label may renew, a foreign label is refused with no change, and renewing a lapsed lease returns the card to `queued` (committed) and refuses — it never extends. No eligible card exits with status 3 and a non-error message, so a supervising launcher can tell that from failure. `list` and `history` render the lease columns on lease-holding rows; the JSON face excludes them. |
 | `moai gtd edit <n> "<text>" [--expect <prefix>]` | Rewrite the addressed card's text under the lock. `id`, `added_at`, `state`, and `spec_id` are preserved, so a correction never churns the card's identity the way `done` + re-add does. The confirmation carries the prior text as well as the new one, so a wrong edit is reversed by editing back. |
 | `moai gtd move <n> (--top\|--bottom\|--before <m>\|--after <m>)` | Reposition the card within the queue order under the lock. Exactly one destination is required. The move permutes the order and nothing else — no card is dropped, duplicated, or altered — so a wrong move is reversed by another move. |
-
 | `moai gtd drop <n> "<reason>" [--expect <prefix>]` | Move the addressed **queued** card to `dropped` under the lock, prefixing its text with `[DROPPED — <reason>] `. The card stays in the file — `done` removes a finished card, `drop` keeps a discarded one with its reason (`list --dropped` renders the discarded set; the default list hides it behind a count line) — and it is no longer a pick candidate. A picked card is unpicked first, so nothing `undrop` cannot restore is ever taken. |
 | `moai gtd undrop <n> [--expect <prefix>]` | Return the addressed dropped card to `queued`, stripping the marker. The state is the authority, so a card marked dropped by hand (no marker in its text) undrops with its text untouched. `drop` + `undrop` returns the queue file to the same bytes. |
-| `moai gtd hold <n> [--expect <prefix>]` | Park the addressed **queued** card out of the queue as one locked write. `hold` is a fourth STATE, not a marker: the text is never touched — no reason field, no timestamp, no `[HOLD]` prefix; an operator who wants a reason keeps it in the card text. Every machine selector enumerates the states it accepts positively, so a held card is invisible to `next`, the auto-done scan, and every lease path by construction — and a pick attempt on one is refused with `unhold` named as the recovery verb. Operator (or lead) only: no lane session or machine leaser can hold or unhold a card. `--expect <prefix>` matches the drop guard. |
+| `moai gtd hold <n> [--expect <prefix>]` | Park the addressed **queued** card out of the queue as one locked write. `hold` is a fourth STATE, not a marker: the text is never touched — no reason field, no timestamp, no `[HOLD]` prefix; an operator who wants a reason keeps it in the card text. Every machine selector enumerates the states it accepts positively, so a held card is invisible to `next`, the auto-done scan, and every lease path by construction — and a pick attempt on one is refused with `unhold` named as the recovery verb. Operator (or leader) only: no lane session or machine leaser can hold or unhold a card. `--expect <prefix>` matches the drop guard. |
 | `moai gtd unhold <n> [--expect <prefix>]` | Return the addressed held card to `queued`. Hold never touched the text, so unhold has nothing to strip and the pair is an exact reversal. |
 | `moai gtd add "<text>" --force` | Admit a card the analyser reads as an exact duplicate. The card is appended verbatim and the queue records that the duplicate was forced, so the collision stays visible instead of being argued about later. |
 | `moai gtd analyze` | Re-read the whole queue and record what the analyser finds. Appends, removes, reorders, and edits nothing. Re-running records nothing new — the same relation is never stacked twice. |
-| `moai gtd relate <a> <b> --relation (contains\|absorbs\|replaces\|conflicts) [--note <text>]` | Record one relation between two existing cards. The verb writes a record and touches neither card; `absorbs` does not absorb. |
+| `moai gtd relate <a> <b> --relation (contains\|absorbs\|replaces\|conflicts\|blocks\|depends) [--note <text>]` | Record one relation between two existing cards. The verb writes a record and touches neither card; `absorbs` does not absorb. |
+| `moai gtd relate <a> <b> --relation blocks` | Record that `<a>` must land before `<b>` can proceed — `<b>` waits on `<a>`. Still a record that touches neither card, but the `--auto` pickup reads it: while the finding is live, the waiting card is skipped with a labelled non-finding naming its predecessor, and the finding leaves the live record when the predecessor is closed with `done` (a dropped or held predecessor keeps it). A relation that would close a waits-on cycle through the recorded findings is refused before the write. |
+| `moai gtd relate <a> <b> --relation depends` | The inverse spelling of `blocks`: `<a>` waits on `<b>`. Both spellings normalize to the same waits-on edge, so they share the pickup skip and the cycle refusal, and recording one pair in both spellings is not a cycle. |
 | `moai gtd unrelate <index>` | Remove the addressed record. The index is the one `why` prints. No card changes. |
 | `moai gtd why <n>` | Print every record naming the card, or an explicit no-findings line. A card the queue knows nothing about says so rather than printing nothing. |
 | `moai gtd history [<id\|n>]` | Answer what became of a card — read-only, lock-free, writes nothing. One line per lookup: `live` with the card's current state (`queued`\|`picked`\|`dropped`), `archived` with the state it held when it was closed, or `absent` when the queue holds no record — an id at or below the issued-id mark qualifies its `absent` on stderr, because a card closed by a binary predating the archive leaves none. Each `live` and `archived` line carries a landing column before the card text — `landing=<delivering commit>` when the operator recorded one, `landing=ref-head` when the record holds only the observed ref position, `landing=-` when no record was made, and `landing=malformed` when a stored record fails validation. The SHA is rendered in full here, unlike the abbreviated cell `pr` renders into its aligned table, so a closed card's delivering commit is readable without a second lookup. After the landing column and before the card text, the time axis follows: `live` lines carry picked_at and dropped_at, and `archived` lines carry picked_at, dropped_at, archived_at, and the done-time verdict as `verdict=<kind>@<ref>` (`verdict=-` when the close ran without `--require-landed`, so no query answered). Every absent value renders `-`; the pre-existing fields keep their order and content, and the card text stays LAST, so a consumer reading the tail is unaffected by the added columns. A bare lookup id accepts the bare `<n>` form too. With no id, the archive lists newest-first, bounded at 20 (`--limit <n>` adjusts, `--limit 0` unbounded; a truncated listing states the withheld count on stderr). A store that cannot vouch for an archive — a database predating the archive tables, or a legacy `backlog.json` serving with no `backlog.db` — names itself on stderr and says no archive is available, rather than letting `absent` read as authoritative. |
@@ -115,7 +116,11 @@ records that it was forced.
 never drops a card, and never edits one. The four semantic relations —
 `contains`, `absorbs`, `replaces`, `conflicts` — cause nothing but a record.
 Acting on a record is the operator's act, performed through `drop`, `edit`, or
-`move`, exactly as the clause above requires.
+`move`, exactly as the clause above requires. The sequencing pair — `blocks`,
+`depends` — is a judgement the operator or a dispatching agent records through
+`relate`, never one the analyser produces; it changes no card either, and its
+only consumer is the `--auto` pickup selection, which skips a waiting card while
+the finding is live.
 
 ## GTD stages
 
@@ -325,14 +330,17 @@ Once picked:
 the queue serially: pick one card, dispatch one isolated in-session worker
 for it, judge completion only by reading the worker's disk evidence, record
 the done transition on that evidence, emit the /clear guidance for the
-completed card, and only then accept the next. Exactly one card is in flight
-at any time; the pickup order is the dead-owner `picked` cards first, then
-the ranked queued candidates, with owner liveness judged on two channels — the
-session registry and an `lsof` working-directory probe — re-measured at every
-pickup decision, never cached.
+completed card, and only then accept the next. In the operator session's cycle
+exactly one card is in flight at any time; the pickup order is the dead-owner
+`picked` cards first, then the ranked queued candidates, with owner liveness
+judged on two channels — the session registry and an `lsof` working-directory
+probe — re-measured at every pickup decision, never cached.
 
-[HARD] `/moai:todo --auto` is the operator's batch approval: it authorizes
-serial consumption of the queue and nothing else. The cycle carries one
+[HARD] `/moai:todo --auto` is the operator's batch approval: it authorizes the
+invoked session to take cards from the queue on its own judgment, and nothing
+else. A lane session takes a card only through a lease and never one of the
+keep-set cards; the operator session's serial cycle takes cards without a lease
+and ranks a parked card last without excluding it. The cycle carries one
 auto-scoped ranking exception: once per invocation, before its first pickup,
 it may rank the queued candidates it is about to accept, and that changes the
 cycle's selection order only. The ranking source is a Jev signal when the
@@ -358,7 +366,41 @@ reconciliation clause).
 
 Only a card whose text begins with the `[보류` marker is demoted; a hold stated
 in prose without the marker is not, and the structural hold is
-`moai todo hold`, the state the pickup already excludes.
+`moai todo hold`, the state the pickup already excludes. The same marker has
+two treatments: it demotes a card in the serial cycle and excludes it on the lease path.
+
+The authorization reaches a lane through the lease, not the cycle above: a lane
+session exercises the --auto authorization through moai factory next — bare for
+the CLI's priority-order choice, or `moai factory next --card <id>` for the card
+it judged — and the serial cycle is refused to a lane session.
+
+The keep-set is what the session never takes: a card the operator holds
+(`moai gtd hold`) or marks with the [보류 marker (the lease refuses a marker
+card; the serial cycle ranks it last), a card whose classification
+is blocked, a serial card while another serial card is in flight, a card the
+factory record already owns, and a card whose text hinges on an operator
+confirmation — payments, secrets, or irreversible external-shared work. The
+lease refuses the first four; the last is the session's own judgment, and a
+card so judged, or a queued card whose pull-request or landed state it read as
+open or landed, is skipped, reported with its reason, and left unchanged in the
+queue. For a card the operator picked, that state is reported, never a reason to
+pass it over.
+
+A lane that takes a card this way writes one line in the card's progress record
+(the SPEC's progress file in a fresh top-level section, else the card's report
+directory) — evidence, not the decision board, and self-attested:
+
+```text
+decision record: decided_by=<runner+role> evidence_refs=<key=value;...> ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)
+```
+
+`evidence_refs` carries the card, its class, its relation records, its
+pull-request and landed state, its worktree presence, its file overlap with
+in-flight lanes, and each skipped candidate with its reason. An input that could
+not be read is written unmeasured — never omitted, never none. The inputs are
+an open set: a later card adds an input without amending the keep-set or the
+lease path. File overlap is one such input; its fallback, the paths changed by
+each in-flight lane's card branch, is inferred, and the record does not require it.
 
 ## Standing sources
 
