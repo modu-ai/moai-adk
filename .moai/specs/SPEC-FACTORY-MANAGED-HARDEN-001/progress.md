@@ -278,9 +278,94 @@ RED 에서 **이미 초록이었던 것(기준 드라이버가 모든 오류를 
 
 **미관측(Gaps)**: ① 운영자 stdout 에 로그가 쓰이지 않는다는 AC-MH-005 의 문장은 단언하지 않았다(`os.Stdout` 전역을 가로채지 않는다는 이 SPEC 의 규약; 로그 경로는 `managedLogf` 하나이고 `os.Stdout` 을 참조하지 않는다는 것은 소스 판독) ② 실제 codex 세션에서 거부 응답 뒤 모델 행동과 요청의 `serverName` 값(design.md D-1 Gap) ③ `X == prevTurnID` 중복 완료 프레임 방어(G5, 시험 행 없음) ④ 쓰기 막힘 상한(공시한 한계) ⑤ AC-MH-013 의 guardstate·template 인접 패키지와 AC-MH-009 의 전체 재측정은 M4 몫이라 이 마일스톤에서 돌리지 않았다 ⑥ mu1–mu5 는 M2 몫이고 이 마일스톤에서 다시 돌리지 않았다.
 
+### M4 — 게이트와 증거 (card t1409, manager-develop, cycle_type=tdd)
+
+귀속은 모두 `(this run, this tree, HEAD 1963ec376, 작업 트리 깨끗함)` 이다. 이 마일스톤은 프로덕션·시험 코드를 바꾸지 않았고 이 블록(progress.md)만 쓴다. 모든 `go test` 는 환경 정리 접두(`unset MOAI_KANBAN … MOAI_KANBAN_BACKEND && go test …`)를 붙인 단일 호출이며 출력은 파일로 돌려 읽었다(스크래치 파일은 인용 대상이 아니다 — 필요한 줄만 아래에 옮겼고 파일 자체의 소실은 Residual-risk 에 적는다). 변이 확인 mu1–mu20 과 섭동 확인 P1 은 M2·M3 블록에 원문이 있고 이 마일스톤에서 다시 하지 않았다.
+
+**항목 1 — 정적·빌드**
+
+| 명령 | 관측 | exit |
+|---|---|---|
+| `gofmt -l internal/cli/managed_codex_factory.go internal/cli/managed_factory_session.go internal/cli/managed_hardening_test.go internal/cli/managed_codex_factory_test.go internal/config/defaults.go` | 출력 없음 | 0 |
+| `go build ./...` | 출력 없음 | 0 |
+| `go vet ./internal/cli ./internal/config` | 출력 없음 | 0 |
+| `GOOS=windows GOARCH=amd64 go build ./...` | 출력 없음 | 0 |
+| `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` | 출력 없음 | 0 |
+| `golangci-lint run --allow-serial-runners --timeout=10m ./internal/cli/... ./internal/config/...` (`golangci-lint has version v2.1.6 built with go1.26.8`) | `0 issues.` | 0 |
+
+**항목 2 — 스코프 회귀 (plan.md §C C-1)**
+
+| 명령 | 관측 | exit |
+|---|---|---|
+| `go test ./internal/cli -list '^.*(Managed\|managed).*$'` 를 `grep -c '^Test'` 로 센 값(표 안 `\|` 는 원문 명령의 `|` 이다; 원문은 acceptance.md 머리말 블록) | `78`, 끝 줄 `ok  github.com/modu-ai/moai-adk/internal/cli  1.385s` (`[no tests to run]` 아님) | 0 |
+| `go test ./internal/cli -run '^.*(Managed\|managed).*$' -count=1 -race -v` 로그를 `grep -c` 로 센 값 | 최상위 `--- PASS` 75, `--- SKIP` 3, `--- FAIL` 0, `DATA RACE` 0 (75 + 3 = 78); SKIP 은 `TestManagedCodexFakeAppServer`, `TestManagedCodexFactoryBrokerLive`, `TestManagedLoopbackChild`; 끝 줄 `PASS` · `ok  github.com/modu-ai/moai-adk/internal/cli  41.231s` | 0 |
+
+**항목 3 — 인접 패키지**
+
+| 명령 | 관측 | exit |
+|---|---|---|
+| `go test ./internal/config -count=1` | `ok  github.com/modu-ai/moai-adk/internal/config  9.791s` | 0 |
+| `go test ./internal/guardstate -count=1` | 실패 시험은 정확히 하나: `--- FAIL: TestCensus_SetDifferenceEmptyBothDirections`, `census_test.go:80: disk\manifest: .github/workflows/workflow-parse-guard.yaml exists on disk with no manifest entry`, `census_test.go:89: declared 19 entries against 20 workflow files` | 1 |
+| `go test ./internal/template -count=1` (슬롯 임대 안; 임대 획득 출력 `slot internal-template-suite acquired by 050d2b26-7816-450b-b2d8-dc197ebd878e until 2026-10-03T03:01:52Z`) | `ok  github.com/modu-ai/moai-adk/internal/template  232.918s` (스모크, AC 근거 아님; 기준 트리 414.986s 와 시간이 다른 것은 머신 부하 차이이며 비교 대상이 아니다) | 0 |
+| `moai slot release --resource internal-template-suite` 후 `moai slot status --resource internal-template-suite` | `slot internal-template-suite released (was 050d2b26-7816-450b-b2d8-dc197ebd878e)` · `slot internal-template-suite: free` | 0 / 0 |
+
+guardstate 의 한 건은 **사전 적색**이다: plan.md §C 가 기준 트리(HEAD `fe79bfa0e`)에서 같은 시험명과 같은 두 메시지(`19 entries against 20 workflow files`)를 이미 측정해 두었고, 이번 실행의 메시지가 그와 글자 그대로 같다. 이 카드는 `.github/workflows/` 와 매니페스트를 건드리지 않았다(`git diff --stat fe79bfa0e HEAD` 의 파일 8개에 둘 다 없음). 다른 guardstate 시험의 실패는 출력에 없다(비상세 모드에서 실패만 인쇄됨 — 실패한 시험은 위 하나).
+
+**항목 4 — 커밋 그래프 점검 C1 (AC-MH-011)**
+
+| 명령 | 관측 | exit |
+|---|---|---|
+| `git log --reverse --format=%h:%s fe79bfa0e..HEAD` | `f042a05a0:test(SPEC-FACTORY-MANAGED-HARDEN-001): M1 RED baseline for F3 F4 (card t1409)` · `0f852b527:fix(…): M2 answer server-originated codex requests (card t1409)` · `1963ec376:fix(…): M3 isolate turn failures with a ceiling (card t1409)` | 0 |
+| `git merge-base --is-ancestor f042a05a0 0f852b527` / 역방향 | (출력 없음) / (출력 없음) | 0 / 1 |
+| `git merge-base --is-ancestor f042a05a0 1963ec376` / 역방향 | (출력 없음) / (출력 없음) | 0 / 1 |
+| `git show --stat --format=%h f042a05a0` | 5개 파일: `managed_hardening_test.go` +694(재현 시험 6개 전부 여기), `managed_codex_factory_test.go` 27행 변경, `red-baseline.md` +157, `progress.md` 25행 변경, `spec.md` 2행 변경; 프로덕션 `.go` 없음 | 0 |
+| `git ls-files .moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/red-baseline.md` | 그 경로 한 줄 | 0 |
+| `git check-ignore -v .moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/red-baseline.md` | 출력 없음 | 1 |
+| 양성 대조: `git check-ignore -v .moai/reports/t1409/red-baseline.md` | `.gitignore:235:.moai/reports/*	.moai/reports/t1409/red-baseline.md` | 0 |
+
+**항목 5 — 경계·불변 grep (acceptance.md §5, AC-MH-009·012)**
+
+| 명령 | 관측 | exit |
+|---|---|---|
+| `grep -rn 'syscall\.' internal/cli/managed_*.go` | 출력 없음 | 1 |
+| 양성 대조 `grep -n 'syscall\.' internal/cli/mcp_server.go` | `123:	signalCtx, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)` | 0 |
+| `grep -rn 'AskUserQuestion' internal/cli/managed_*.go` (acceptance.md §5 범위; 이 형태는 비테스트·테스트 파일 모두 0행) | 출력 없음 | 1 |
+| `grep -rnE 'merge-window\|Decider\|T29b\|T29c\|handover' internal/cli/managed_*.go` (원문 `\|` 는 `|`) | 출력 없음 | 1 |
+| `git diff --stat fe79bfa0e HEAD -- internal/factorymsg .moai/specs/SPEC-FACTORY-MANAGED-SESSION-001` | 출력 없음 | 0 |
+| `git diff --stat develop...HEAD -- .moai/specs/SPEC-FACTORY-MANAGED-SESSION-001 internal/factorymsg/store.go` (AC-MH-012 원문) | 출력 없음 | 0 |
+| 양성 대조 `git diff --stat fe79bfa0e HEAD -- internal/cli` | 4개 파일, `1798 insertions(+), 20 deletions(-)` | 0 |
+| `git diff -U0 fe79bfa0e HEAD -- internal/cli/managed_factory_session.go` (`managedSession` 인터페이스 `:75` 와 `driveManagedFactorySession` 시그니처 `:308` 불변) | 헝크 네 개: `errManagedTurnFailed` 선언(`:59` 뒤 추가), `pumpManagedStreamTurn` 의 `fmt.Errorf("%w: %s", …)`, 드라이버 본문 내부 `consecutiveFailures` 변수·분기·리셋 — 인터페이스 선언과 시그니처 줄은 어느 헝크에도 없다 | 0 |
+
+주의: `grep -rl 'AskUserQuestion' internal/cli --include='*.go' --exclude='*_test.go'` (패키지 전체, 비테스트)는 37개 파일을 냈다(exit 0). 이는 이 카드와 무관한 기존 문자열 참조이며 acceptance.md §5 의 범위는 `managed_*.go` 이므로 위 표의 `managed_*.go` 형태를 판정으로 인용한다(패키지 전체 0행을 주장하지 않는다).
+
+**항목 6 — M3 커밋 메시지 정정 (`--amend` 금지에 따라 이 추적 기록이 커밋 그래프의 주장을 대체한다)**
+
+`1963ec376` 의 본문은 한 문장에 부정확한 두 구절을 담았다. 원문 인용: "Each new case was observed RED before the fix, and mutants mu6-mu20 plus the ceiling perturbation P1 were applied one at a time, each going red on the named cases only."
+
+- (a) "Each new case was observed RED before the fix" 는 틀렸다. 분류 #4–#11, #15, #16, `TestManagedBrokerNameMatchesApprovalArgs`, `TestManagedFailedTurnLeavesClaimUntouched` 는 수리 전에 이미 초록이었고, 변이(채택) 또는 불변 가드(G1·G2·G3)로 채택됐다. 정확한 기록은 위 M3 블록의 "RED 에서 이미 초록이었던 것" 문단과 mu 표다.
+- (b) "each going red on the named cases only" 도 틀렸다. mu9, mu12, mu13 은 SPEC(acceptance.md §2.4)이 허용한 범위에서 지목 케이스 외의 케이스도 붉혔다(mu9 는 M2 `…CompletionEventCarriesBrokerVerdict/other_server_request` 를 더 붉혔고, mu12 는 M1 `…FailsTurn` 3개 등을, mu13 은 M1 두 시험과 `at_ceiling_returns`·`success_resets` 를 더 붉혔다). 정확한 기록은 위 M3 mu 표의 "붉은 케이스(관측)" 열이다.
+
+이 정정은 `1963ec376` 의 변이·RED 관측 사실 자체를 바꾸지 않는다. 그 문장이 담은 일반화만 위 두 갈래로 좁힌다.
+
+**Claim**: M4 정적·빌드·스코프·인접 패키지·커밋 그래프·경계 게이트가 HEAD `1963ec376` 에서 통과하며 실패는 사전 적색 한 건(guardstate)뿐이다. **Evidence**: 위 표의 명령·출력·exit. **Baseline-attribution**: `(this run, this tree, HEAD 1963ec376)`. **Gaps**: ① 라이브 Codex(실제 세션의 거부 응답 뒤 모델 행동, 요청 `serverName` 값 — design.md D-1 Gap) 미관측 ② 로그가 운영자 stdout 에 쓰이지 않는다는 문장은 단언 시험이 없고 소스 판독(`managedLogf` 는 `os.Stdout` 을 참조하지 않음)뿐 ③ `X == prevTurnID` 중복 완료 프레임 방어(G5)는 시험 행이 없음 ④ 쓰기 막힘 상한(공시한 한계)과 `id: null` 프레임(공시한 한계) 미해결 ⑤ 설치된 `moai` 바이너리가 이 트리보다 뒤처져 있어 `moai spec lint` 출력은 증거로 쓰지 않았다(지연 빌드의 증거일 뿐) ⑥ acceptance.md §1 의 AC 매트릭스 전체를 M4 에서 한꺼번에 다시 돌리지는 않았다 — AC-MH-001..008 의 GREEN 은 M2·M3 블록의 원문과 위 스코프 회귀(75 PASS, 0 FAIL)로 덮이며, AC-MH-010 은 sync 단계 몫이다 ⑦ `internal/template` 스위트는 AC 근거가 아닌 스모크로만 돌렸다(plan.md §F M4). **Residual-risk**: 스크래치 로그 파일(`…/scratchpad/m4_*.txt`)은 추적되지 않아 이 기록의 인용 줄만 남는다; 사전 적색은 develop 쪽에서 수리되기 전까지 인접 패키지 전체 통과 주장을 막는다; 연속 실패 상한 3 은 UNMEASURED 그대로다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-10-03
+tree: .moai/worktrees/t1409
+branch: WT-managed-session-hardening
+head_at_signal: 1963ec376 (측정한 트리; 이 신호를 담는 M4 증거 커밋은 자기 SHA 를 적을 수 없으므로 `git log -1` 로 읽는다)
+cycle_type: tdd
+milestones: M1 `f042a05a0` (RED 기준선) · M2 `0f852b527` (F3 서버 요청 응답) · M3 `1963ec376` (F4 턴 격리와 상한) · M4 (이 신호를 담은 증거 커밋)
+tests: managed 스코프 `-list` 78, `-race -v` 로 PASS 75 · SKIP 3 · FAIL 0 · DATA RACE 0 (SKIP 3 건은 기존: `TestManagedCodexFakeAppServer`, `TestManagedCodexFactoryBrokerLive`, `TestManagedLoopbackChild`)
+mutation: mu1–mu20 과 P1 은 M2·M3 블록에 원문(M4 에서 재실행 없음)
+gates: gofmt·build·vet·windows build/vet·golangci-lint v2.1.6 모두 exit 0 (§E.2 M4 항목 1)
+adjacent: `./internal/config` ok; `./internal/template` ok 232.918s (임대 안에서 실행·반납); `./internal/guardstate` 는 **사전 적색 1건** `TestCensus_SetDifferenceEmptyBothDirections`(`declared 19 entries against 20 workflow files`, 기준 트리 `fe79bfa0e` 에서 plan.md §C 가 먼저 측정) — 이 카드의 변경이 아니다
+commit_graph: C1 통과 — RED `f042a05a0` 는 `0f852b527`·`1963ec376` 의 조상이고 역방향은 아니다(§E.2 M4 항목 4)
+correction_note: M3 커밋 `1963ec376` 메시지의 두 구절 정정은 §E.2 M4 항목 6 이 대체한다
+open_gaps: 라이브 Codex 미관측 · F5(시그널 처리·`Start`/`Close` 수명주기)는 카드 t1459 · 문서·CHANGELOG(AC-MH-010)는 sync 단계 · 막힌 쓰기 상한과 `id: null` 프레임은 공시한 한계
+next: sync 단계(manager-docs)에서 AC-MH-010 문서·CHANGELOG 와 sync 감사
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
