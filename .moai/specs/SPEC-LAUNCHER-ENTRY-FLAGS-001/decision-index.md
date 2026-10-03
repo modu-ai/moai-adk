@@ -1,6 +1,6 @@
 # SPEC-LAUNCHER-ENTRY-FLAGS-001 — Decision Index
 
-Decisions surfaced during plan assembly. Q1–Q15, Q17, Q19, and Q23 were answered by the operator on 2026-10-02 and are recorded as decided (Q1 is superseded by Q10; Q9's count sentence is superseded by Q17); Q7 is closed as moot. Q16 was raised as a lane-orchestrator ruling on measured evidence and was then CONFIRMED by the operator ("proceed as is"). Q18 was settled in two steps: the operator first chose an option whose premise and three safeguards the update code contradicts, the facts were returned, and the operator then chose Option X. The options weighed and their measured impact stay recorded in `plan.md` §B.2. Rows Q1–Q19 and Q23 are decided; Q23 was answered by the operator after plan-audit iteration 2 (the role-declaration carrier, `internal/kanban/role.go`). Rows Q20–Q22 were raised by the plan audit (iteration 1, FAIL 0.72) as operator judgments rather than measurable facts, and Q24 by the compile proof of iteration 3's revision (a consequence of an operator verdict that the verdict did not state); they are OPEN and NON-GATING: the SPEC is written to the smallest-footprint reading of each, none gates the run phase, and their options and measured impact are in `plan.md` §B.3a. Labels use the fixed four-label vocabulary. Authority register consulted: `.moai/project/product.md`, completed SPECs' HISTORY and `## Amendments` rows, `.moai/config/sections/*.yaml` operator settings, the constitution — no committed artifact decided any row before the operator answered, so none was `DECIDED` or `POLICY-COVERED`; the operator verdicts are not yet a committed artifact and are not cited as authority. No row carries a recommendation.
+Decisions surfaced during plan assembly. Q1–Q15, Q17, Q19, and Q23 were answered by the operator on 2026-10-02 and are recorded as decided (Q1 is superseded by Q10; Q9's count sentence is superseded by Q17); Q7 is closed as moot. Q16 was raised as a lane-orchestrator ruling on measured evidence and was then CONFIRMED by the operator ("proceed as is"). Q18 was settled in two steps: the operator first chose an option whose premise and three safeguards the update code contradicts, the facts were returned, and the operator then chose Option X. The options weighed and their measured impact stay recorded in `plan.md` §B.2. Rows Q1–Q19 and Q23 are decided; Q23 was answered by the operator after plan-audit iteration 2 (the role-declaration carrier, `internal/kanban/role.go`). Rows Q20–Q22 were raised by the plan audit (iteration 1, FAIL 0.72) as operator judgments rather than measurable facts, and Q24 by the compile proof of iteration 3's revision (a consequence of an operator verdict that the verdict did not state); they were OPEN and NON-GATING until Kickoff, when the operator proceeded on the smallest-footprint reading of each (progress.md §F, Kickoff gate, answer 3; spec.md §A.1 verdict 21), which closes them; their options and measured impact stay in `plan.md` §B.3a. Labels use the fixed four-label vocabulary. Authority register consulted: `.moai/project/product.md`, completed SPECs' HISTORY and `## Amendments` rows, `.moai/config/sections/*.yaml` operator settings, the constitution — no committed artifact decided any row before the operator answered, so none was `DECIDED` or `POLICY-COVERED`; the operator verdicts are not yet a committed artifact and are not cited as authority. No row carries a recommendation.
 
 Verdict source for every decided row: operator answer via AskUserQuestion, lane-3, 2026-10-02 (Q16 additionally records its origin as a lane-orchestrator ruling on evidence).
 
@@ -27,12 +27,12 @@ Verdict source for every decided row: operator answer via AskUserQuestion, lane-
 | 15 | OD-14 | Q15 | REQ-019 | the foreman kept under factory names |
 | 16 | OD-15 | Q16 | REQ-021 | constitution-slot sentences edited directly |
 | 17 | OD-16 | Q17 | REQ-009 | the leader notice drops the lane count |
-| 18 | OD-17 | Q18 | REQ-019 | stale rule files in user projects (Option X) |
+| 18 | OD-17 | Q18 | REQ-019, REQ-025 | stale rule files in user projects (Option X; REQ-025 carries the update behavior since v0.8.0) |
 | 19 (author choices, spec.md §D) | — | Q19 | — | author readings accepted |
 | 20 | OD-18 | Q23 | REQ-011 | the role-declaration carrier of `role.go` deleted with Kanban Mode (decided after plan-audit iteration 2) |
 | — | — | Q7 | — | usage of the `-l` short — closed as moot |
-| — | — | Q20, Q21, Q22 | — | raised by the plan audit — open, non-gating |
-| — | — | Q24 | REQ-018 | the Overview screen's chain-stopped attention row leaves with the chain view model — open, non-gating |
+| — | — | Q20, Q21, Q22 | — | raised by the plan audit — closed at Kickoff on the smallest-footprint readings (spec.md §A.1 verdict 21) |
+| — | — | Q24 | REQ-018 | the Overview screen's chain-stopped attention row leaves with the chain view model — closed at Kickoff on the smallest-footprint reading (spec.md §A.1 verdict 21) |
 
 ### Q1: Does "exactly two forms" mean two new root entry tokens beside an unchanged verb surface, or the whole launcher entry surface reduced to two forms? (plan.md OD-6)
 
@@ -172,21 +172,21 @@ Operator verdict: DECIDED in two steps — every row of spec.md §D is now opera
 Label: FOUNDER
 Authority anchor: none — the sync workflow's D1 drafter writes a CHANGELOG entry (`.claude/skills/moai/workflows/sync/doc-execution.md:152`), but no committed artifact decides whether the removal of operator-visible entry forms (`-k`, `-f lane`, `-f lane-<n>`, `moai codex -f lane`, `-f <N>`, the `-l` leader short) also needs a per-version note under `.moai/release-notes/`, which holds two per-version Korean files today.
 Why unresolved: an earlier draft of this SPEC contradicted itself — spec.md §F excluded `CHANGELOG.md` and `.moai/release-notes/**` from hand edits while design.md §9 said a release note at sync lists the removals — and which announcement surface the operator wants is a scope choice the code cannot answer. The SPEC is written to option A of plan.md §B.3a (the ordinary `[Unreleased]` CHANGELOG entry, no release-note file) until the operator answers.
-Operator verdict:
+Operator verdict: DECIDED at Kickoff — proceed on the smallest-footprint reading, option A of plan.md §B.3a (the sync phase writes the ordinary `[Unreleased]` CHANGELOG entry; no release-note file). (Source: operator answer via AskUserQuestion in the lane session, 2026-10-02, recorded in progress.md §F, Kickoff gate, answer 3; written here in v0.9.0.)
 
 ### Q21: What happens to the two draft kanban SPECs — left as they are, marked superseded, or marked archived or rejected? (plan.md §B.3a)
 
 Label: FOUNDER
 Authority anchor: none — `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix names the owner of each transition (`* → superseded` manager-spec, `* → archived` manager-docs, `* → rejected` the orchestrator decision recorded by manager-docs) but does not decide whether `SPEC-KANBAN-BOOTSTRAP-001` and `SPEC-KANBAN-WORKTREE-001` (both `status: draft`, line 5 of each spec.md) transition at all.
 Why unresolved: both drafts describe the mode this SPEC removes and the SPEC's partial-supersession list (spec.md §G) did not name them; changing another SPEC's lifecycle status is an operator-owned act, and the three options differ in status value and in owner. The SPEC is written to option A (leave both as they are; spec.md §G names them) until the operator answers.
-Operator verdict:
+Operator verdict: DECIDED at Kickoff — proceed on the smallest-footprint reading, option A of plan.md §B.3a (both draft SPECs are left as they are). (Source: operator answer via AskUserQuestion in the lane session, 2026-10-02, recorded in progress.md §F, Kickoff gate, answer 3; written here in v0.9.0.)
 
 ### Q22: Does the update's "backed up N unmanaged file(s)" line need an explanation for the three old rule files? (plan.md §B.3a)
 
 Label: FOUNDER
 Authority anchor: none — OD-17 (Q18) decided the mechanism (Option X: the existing managed-root clean, no production change) and accepted the count-only line, but did not decide whether the line needs an explanation beside it.
 Why unresolved: once the template stops carrying the three old rule paths, each counts toward N even when the user never touched it (`internal/cli/update/deploy/deploy.go:381`, progress.md PV-55), so the count an upgrading user reads includes files they did not modify; explaining it in the CHANGELOG entry is a docs-only choice, while changing the message would be a production change that Option X ruled out. The SPEC is written to option A (no change) until the operator answers.
-Operator verdict:
+Operator verdict: DECIDED at Kickoff — proceed on the smallest-footprint reading, option A of plan.md §B.3a (no change to the line). (Source: operator answer via AskUserQuestion in the lane session, 2026-10-02, recorded in progress.md §F, Kickoff gate, answer 3; written here in v0.9.0.)
 
 ### Q23: Is the role-declaration carrier in `internal/kanban/role.go` deleted together with Kanban Mode? (plan.md OD-18)
 
@@ -200,4 +200,4 @@ Operator verdict: DECIDED — the role-declaration carrier is DELETED together w
 Label: FOUNDER
 Authority anchor: none — verdict 9 (Q10) removed Kanban Mode whole and Q12/design.md §4.5 remove the chain session board panel and its view model; no committed artifact says what becomes of a second consumer of that view model.
 Why unresolved: the compile proof of the M9 deletion (progress.md PV-82) found that the chain view model (`ChainVM`, `RoleVM`, `ChainRoles`, `buildChain`, `chainRoleRecords`, `chainCardID`) is read by two surfaces, not one: the panel on the factory screen, and `buildAttention` on the Overview screen, which prints an "attention" row (source `kanban`, text "<role> session not started — the chain stops here", link `/kanban`) whenever the chain's idle role is set. Deleting the view model removes that row. The verdicts name the panel, not the row. The SPEC is written to the smallest-footprint reading (the row leaves with the model it reads; `viewmodel_ops.go` loses the field and the builder), which matches Q10's "whole extent"; the alternative is a design change (an attention row for an idle factory lane, which needs a new rule the verdicts do not give).
-Operator verdict:
+Operator verdict: DECIDED at Kickoff — proceed on the smallest-footprint reading, option A of plan.md §B.3a (the row leaves with the chain view model it reads); the run did so at M9. (Source: operator answer via AskUserQuestion in the lane session, 2026-10-02, recorded in progress.md §F, Kickoff gate, answer 3; written here in v0.9.0.)

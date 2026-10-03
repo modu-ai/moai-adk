@@ -1,4 +1,4 @@
-# SPEC-LAUNCHER-ENTRY-FLAGS-001 — Research (Tier L, v0.8.0)
+# SPEC-LAUNCHER-ENTRY-FLAGS-001 — Research (Tier L, v0.9.0)
 
 Every measurement below was taken on tree `a6d3e6fd4` (branch `WT-launcher-entry-flags`). Counts from word searches are UPPER BOUNDS where noted: the word "kanban" is overloaded in this tree (the retired launch mode, the Go package that also holds the todo queue and the factory slots, a state directory, a web screen), so each count states the pattern that produced it. A claim not observed is listed in §R14 Gaps, not stated as fact.
 
@@ -63,7 +63,7 @@ Non-test string literals beginning with "kanban" outside the web assets (measure
 
 ## §R4 — The launcher: `internal/cli`
 
-`kanban.go` (36 KB; 27 function and type declarations — 25 functions and 2 types — plus 2 single constants and 3 constant blocks, measured by `grep -n '^func \|^type \|^const \|^var '`, PV-61). The first draft counted `exportKanbanLaunchFacts` as kanban-only; measuring the callers of every symbol moved it to the shared column (v0.7.0): 9 kanban-only and 18 factory-shared func/type declarations, and the 2 constants are kanban-only.
+`kanban.go` (36 KB; 27 function and type declarations — 25 functions and 2 types — plus 2 single constants and 3 constant blocks, measured by `grep -n '^func \|^type \|^const \|^var '`, PV-61). The first draft counted `exportKanbanLaunchFacts` as kanban-only; measuring the callers of every symbol moved it to the shared column (v0.7.0): 9 kanban-only and 18 factory-shared func/type declarations, and the 4 constants (`kanbanFlagLong`, `kanbanFlagShort`, `kanbanFlagUsageError`, `kanbanUnsupportedBackendSentinel`: two `-k` tokens and two message constants; plan.md M5a lists all four) are kanban-only. (The earlier text said 2; corrected in v0.9.0, debt D-A9.)
 
 | Kanban-only | Factory-shared (stay) |
 |-------------|------------------------|
@@ -143,7 +143,7 @@ Four kanban sentences: `CLAUDE.md:61`, `moai-constitution.md:11`, `agent-common-
 10. `cmd/t657-merge/main.go` and `internal/cli/ptycaptest/harness.go` were not read beyond their matches.
 11. Non-test consumers of the sentinels `KANBAN_MODE_UNSUPPORTED_BACKEND` and `FACTORY_MODE_UNSUPPORTED_BACKEND` were not searched.
 12. Whether any latency log or telemetry keys on the hook timing lap names `kanban_record` / `kanban_notice` was not searched.
-13. Whether the four files that declare a local `factory` identifier also import the package was not read.
+13. CLOSED in v0.8.0 (the text printed it as open until v0.9.0, debt D-A9): of the four files that declare a local `factory` identifier, only `internal/hook/stale_run_m1_test.go:118` also imports the package; the other three do not (progress.md PV-81).
 14. CORRECTED in v0.5.0 (the earlier text said a bounded search found no stale-rule cleanup; the search used the wrong terms and missed the managed-root clean — §R15). Still unobserved: whether every update mode reaches the managed-clean stage (a template-only or binary-only update, and the version-match early return, were not traced); what the "backed up N unmanaged file(s)" progress line names beyond the count; whether a released-hash list could be generated from tags alone.
 15. CORRECTED in v0.7.0 (the earlier text called both local instruction files gitignored): `AGENTS.local.md` is TRACKED (`git ls-files` lists it) and `CLAUDE.md` §18 imports it last; it carries the word and removed forms at line 217 (PV-64). `CLAUDE.local.md` is gitignored (`.gitignore:276`) and absent from this worktree; whether the primary checkout's copy names the word or a removed form was not measured.
 16. The content of `multi-llm/kanban-mode.md` and the `moai chain` sections of `advanced/kanban-mode.md` were not re-read in this pass; the per-page dispositions in `design.md` §5 are made on titles and the existing redirect pattern.
