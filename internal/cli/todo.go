@@ -805,6 +805,11 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 		}
 		dec = selected
 	}
+	// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-005: the LLM judgment is computed
+	// BEFORE the queue lock is acquired and attached inside the same locked
+	// write as a static carrier — only the computation moved out of the
+	// lock, never the attachment.
+	dec = todoPreClassifyLLM(dec, text, cmd.ErrOrStderr())
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
@@ -860,6 +865,10 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	if dec == nil {
 		dec = todoCardDecider
 	}
+	// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-005: the same outside-the-lock
+	// computation the append path carries — the pick's locked write is a
+	// queue lock too, and an in-lock LLM call would stall it identically.
+	dec = todoPreClassifyLLM(dec, text, cmd.ErrOrStderr())
 	// Card t1313: the same stale-store disclosure the append path carries —
 	// the issued id is a receipt for the store that answered. Scoped to the
 	// t1307 divergence line only (see the append-path comment).

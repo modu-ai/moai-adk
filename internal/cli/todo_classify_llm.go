@@ -187,3 +187,27 @@ func todoLLMClassifySystemPrompt() string {
 		"serial = must not overlap other cards. reason is one short line naming " +
 		"the driver of the judgment."
 }
+
+// todoPreClassifyLLM resolves the LLM decider's judgment BEFORE the caller's
+// locked write (REQ-TLD-005, plan OD-D): an in-lock LLM round-trip
+// serializes concurrent adds behind the queue lock for a judgment-duration
+// each and holds every locked reader behind a network stall. A non-LLM
+// decider passes through unchanged. The LLM judgment — healthy or fail-safe
+// — rides a StaticCardDecider into the lock, so todoClassifyInLock
+// re-stamps classified-at at the write and the visibility invariant
+// (REQ-TCD-001) is untouched: only the computation moved, never the
+// attachment. On judgment failure the ONE seam notice prints here and the
+// fail-safe default is carried — the fallback branch stays in the seam
+// (OD-C), never synthesized inside the decider.
+func todoPreClassifyLLM(dec kanban.CardDecider, text string, errOut io.Writer) kanban.CardDecider {
+	llm, ok := dec.(llmCardDecider)
+	if !ok {
+		return dec
+	}
+	cls, err := llm.Classify(text)
+	if err != nil {
+		_, _ = fmt.Fprintln(errOut, todoClassificationFallbackNotice)
+		cls = kanban.DefaultCardClassification()
+	}
+	return kanban.StaticCardDecider{Class: cls}
+}

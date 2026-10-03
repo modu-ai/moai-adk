@@ -51,14 +51,15 @@ type llmEndpointRecorder struct {
 }
 
 type recordedLLMRequest struct {
-	header http.Header
-	body   []byte
+	header    http.Header
+	body      []byte
+	arrivedAt time.Time
 }
 
 func (r *llmEndpointRecorder) add(h http.Header, body []byte) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.requests = append(r.requests, recordedLLMRequest{header: h, body: body})
+	r.requests = append(r.requests, recordedLLMRequest{header: h, body: body, arrivedAt: time.Now()})
 }
 
 func (r *llmEndpointRecorder) count() int {
