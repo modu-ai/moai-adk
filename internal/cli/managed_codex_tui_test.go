@@ -717,14 +717,12 @@ func tuiAwait(ch <-chan error, d time.Duration) (ok bool, err error) {
 
 // finish ends whatever the session is: the `bye` line ends an attached fake TUI
 // and is a harmless operator line for a headless session, whose `/exit` ends it.
-func (f *tuiFake) finish(ch <-chan error) (bool, error) {
+func (f *tuiFake) finish(ch <-chan error) {
 	f.t.Helper()
 	_, _ = f.stdinW.WriteString("bye\n/exit\n")
-	ok, err := tuiAwait(ch, tuiRunWait)
-	if !ok {
+	if ok, _ := tuiAwait(ch, tuiRunWait); !ok {
 		f.t.Errorf("the owner did not return within %s of the end-of-session lines", tuiRunWait)
 	}
-	return ok, err
 }
 
 // newSession plans, builds and starts one managed Codex session by hand (the

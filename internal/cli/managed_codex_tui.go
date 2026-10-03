@@ -595,7 +595,7 @@ func (c *managedCodexAppClient) leavesForOperator(req managedCodexAppReply) bool
 	turn := *params.TurnID
 	c.mu.Lock()
 	_, owned := c.owned[turn]
-	left := c.scoping && !owned && !(c.open && c.turnID == "")
+	left := c.scoping && !owned && (!c.open || c.turnID != "")
 	c.mu.Unlock()
 	if left {
 		managedLogf("Factory server request left for the operator: %q turn=%s", req.Method, turn)
