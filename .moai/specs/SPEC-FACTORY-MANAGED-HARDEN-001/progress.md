@@ -401,10 +401,10 @@ next: sync 단계(manager-docs)에서 AC-MH-010 문서·CHANGELOG 와 sync 감�
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill
+superseded_sync_commit_sha: 13eab5d4c (첫 종결의 sync 커밋. 재종결이 대체했다. 도구가 현재 종결의 `sync_commit_sha` 를 읽도록 키 이름을 `sync_commit_sha` 에서 바꿨고, 값은 이 줄을 쓸 때 `pending-backfill` 이던 것을 실제 SHA 로 채웠다)
 tree: .moai/worktrees/t1409
 branch: WT-managed-session-hardening
-head_at_signal: 3ff4392d4 (측정한 트리; 이 신호를 담는 sync 커밋은 자기 SHA 를 적을 수 없으므로 `sync_commit_sha` 는 정규 플레이스홀더 `pending-backfill` 이고 실제 SHA 는 뒤따르는 커밋에서 backfill 한다. 비워 두지 않았다)
+head_at_signal: 3ff4392d4 (측정한 트리; 이 신호를 담는 sync 커밋은 자기 SHA 를 적을 수 없으므로 `sync_commit_sha` 는 정규 플레이스홀더 `pending-backfill` 이고 실제 SHA 는 뒤따르는 커밋에서 backfill 한다. 비워 두지 않았다) (이후 backfill 됨: 위 `superseded_sync_commit_sha` 줄과 재종결 블록의 `sync_commit_sha` 줄 참조)
 owner: manager-docs (sync-phase)
 ac_source: .moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/acceptance.md (tier M, 결과 `resolved`, 비어 있지 않음)
 docs_changed: `.moai/docs/factory-managed-session.md` · `CHANGELOG.md` · `.moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/spec.md`(frontmatter `status:` 한 줄뿐) · 이 파일의 §E.4
@@ -470,7 +470,7 @@ sync_commit_sha: c9087a7ff
 superseded_first_close: 13eab5d4c (위 §E.4 블록이 신호를 담은 첫 sync 커밋이며 독립 sync 감사 `.moai/reports/t1409/sync-audit.md` 가 FAIL(F1)을 냈다. 이 재종결이 대체한다. 위 블록의 `sync_commit_sha: pending-backfill` 은 backfill 되지 않은 채 남은 첫 종결의 값이고, 현재 종결의 값은 이 블록의 위 줄이다)
 tree: .moai/worktrees/t1409
 branch: WT-managed-session-hardening
-head_at_signal: 3b12e75a1 (측정한 트리; 이 신호를 담는 재종결 커밋은 자기 SHA 를 적을 수 없으므로 `sync_commit_sha` 는 정규 플레이스홀더 `pending-backfill` 이고 실제 SHA 는 뒤따르는 progress.md 전용 커밋에서 backfill 한다. 비워 두지 않았다)
+head_at_signal: 3b12e75a1 (측정한 트리; 이 신호를 담는 재종결 커밋은 자기 SHA 를 적을 수 없으므로 `sync_commit_sha` 는 정규 플레이스홀더 `pending-backfill` 이고 실제 SHA 는 뒤따르는 progress.md 전용 커밋에서 backfill 한다. 비워 두지 않았다) (이후 backfill 됨: 위 `sync_commit_sha` 줄 참조)
 owner: manager-docs (sync-phase, 재종결)
 card_commits: M1 `f042a05a0` · M2 `0f852b527` · M3 `1963ec376` · M4 `3ff4392d4` · 첫 sync `13eab5d4c`(대체됨) · MX 주석 `f4f47dc51` · 수리 R1 `2796a98d3` · 개정 `3b12e75a1` · 재종결(이 블록을 담은 커밋) · backfill(그 다음 커밋)
 ac_source: .moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/acceptance.md (tier M, 결과 `resolved`, 비어 있지 않음)
