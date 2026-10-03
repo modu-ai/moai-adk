@@ -167,12 +167,19 @@ func parseAuditVerdict(path string, raw []byte, evidenceSHA string) (auditVerdic
 // in its worktree. A card without a valid SPEC id cannot bind the hash and
 // is refused.
 func admitCardVerdict(cur Card, path string) (bool, string) {
+	if cur.State != CardPlanAudit {
+		return admitVerdictFile(cur, path, auditverdict.PhaseSync)
+	}
+	return admitVerdictFile(cur, path, auditverdict.PhasePlan)
+}
+
+func admitVerdictFile(cur Card, path string, phase auditverdict.Phase) (bool, string) {
 	raw, err := readBoundedFile(path)
 	if err != nil {
 		return false, err.Error()
 	}
 	fields := auditverdict.Parse(raw)
-	if cur.State != CardPlanAudit {
+	if phase == auditverdict.PhaseSync {
 		return auditverdict.Admit(fields, auditverdict.PhaseSync, 0, false)
 	}
 	if !specIDPattern.MatchString(cur.SpecID) {

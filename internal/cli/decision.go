@@ -127,13 +127,13 @@ func newDecisionReadCmd() *cobra.Command {
 				return fmt.Errorf("decision read: %w", err)
 			}
 			if res.Unparseable > 0 {
-				fmt.Fprintf(os.Stderr, "decision read: warning: %d unparseable line(s) in %s\n", res.Unparseable, board)
+				_, _ = fmt.Fprintf(os.Stderr, "decision read: warning: %d unparseable line(s) in %s\n", res.Unparseable, board)
 			}
 			out := cmd.OutOrStdout()
-			fmt.Fprintln(out, res.StatusLine())
+			_, _ = fmt.Fprintln(out, res.StatusLine())
 			for _, r := range res.Records {
-				fmt.Fprintln(out, r.Line())
-				fmt.Fprintf(out, "  body: %s\n", r.Body)
+				_, _ = fmt.Fprintln(out, r.Line())
+				_, _ = fmt.Fprintf(out, "  body: %s\n", r.Body)
 			}
 			return nil
 		},

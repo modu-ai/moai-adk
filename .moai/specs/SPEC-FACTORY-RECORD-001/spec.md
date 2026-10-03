@@ -274,3 +274,9 @@ CI verdict reader) consume it.
   treating this record as an authority basis, they must first require proof of a human decision
   (for example a PreToolUse denial of `moai factory decide` from agent sessions, or an
   interactive TTY check).
+
+## Amendments
+
+| Date | Source | Amendment |
+|---|---|---|
+| 2026-10-03 | SPEC-FACTORY-DECISION-AUTO-001 (REQ-FDA-015/016) | REQ-FR-004: the transition table gains T8a (kickoff → run, decider `audit`, leasing the card to its record owner in the same transition); the AC-005 requested-pair count moves from 65 accepted / 296 refused to 66 / 295. REQ-FR-019: decider `audit` is admitted on T8a only; the `human` decider keeps T8 (kickoff → assigned). The record does not by itself prove a human decision for `audit` rows — the verdict-file evidence is the authority. |

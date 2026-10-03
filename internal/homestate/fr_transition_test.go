@@ -16,7 +16,7 @@ import (
 const frRun = "run-f1"
 
 // frExpectedEdges is design.md § Transition Table's requested-edge set with a
-// remote configured: 65 (from, to) pairs. It is written out here rather than
+// remote configured: 66 (from, to) pairs. It is written out here rather than
 // read from the production table, so the test compares two independent lists.
 func frExpectedEdges() map[[2]string]bool {
 	out := map[[2]string]bool{}
@@ -24,7 +24,7 @@ func frExpectedEdges() map[[2]string]bool {
 	for _, e := range [][2]string{
 		{CardPicked, CardAssigned}, {CardAssigned, CardLeased},
 		{CardPlan, CardPlanAudit}, {CardPlanAudit, CardPlan}, {CardPlanAudit, CardKickoff},
-		{CardKickoff, CardAssigned}, {CardKickoff, CardBlocked},
+		{CardKickoff, CardAssigned}, {CardKickoff, CardRun}, {CardKickoff, CardBlocked},
 		{CardRun, CardSync}, {CardSync, CardSyncAudit}, {CardSyncAudit, CardSync}, {CardSyncAudit, CardMergeReady},
 		{CardMergeReady, CardMerging}, {CardMerging, CardMergeReady}, {CardMerging, CardMergedLocal},
 		{CardMergedLocal, CardPushed},
@@ -83,12 +83,16 @@ func frFixtureCard(repo frRepo, cardID, from, to string) Card {
 }
 
 func frFullRequest(repo frRepo, c Card, to string) TransitionRequest {
+	decider := DeciderHuman
+	if to == CardRun {
+		decider = DeciderAudit // T8a is the audit decider's edge; other edges into run read no decider
+	}
 	return TransitionRequest{
 		RunID: c.RunID, CardID: c.CardID, To: to, ExpectedVersion: c.Version,
-		Actor: "worker-1", Decider: DeciderHuman, Owner: "worker-1",
+		Actor: "worker-1", Decider: decider, Owner: "worker-1",
 		SHA: repo.Commit, ArtifactPath: repo.Artifact,
 		MergeSHA: repo.Merge, RemeasurePath: repo.Remeasure, IntegrationBranch: repo.Integration,
-		Question: "which way?", Reason: "build broken", Now: frNow,
+		Question: "which way?", Reason: "build broken", Now: frNow, QueueHold: QueueHoldClear,
 	}
 }
 
@@ -99,10 +103,15 @@ func frWriteVerdictsFor(t *testing.T, repo frRepo, cardID, from string) {
 		frWriteVerdict(t, repo.Dir, cardID, "plan-audit.md", "PASS", repo.Commit)
 	case CardSyncAudit:
 		frWriteVerdict(t, repo.Dir, cardID, "sync-audit.md", "PASS", repo.Commit)
+	case CardKickoff:
+		// T8a (kickoff → run, audit decider) re-reads the plan verdict and
+		// the audit-ready signal.
+		frWrite(t, filepath.Join(repo.Dir, ".moai", "specs", frSpecID, "progress.md"), "## §E.1 Plan-phase Audit-Ready Signal\n\nready\n")
+		frWriteVerdict(t, repo.Dir, cardID, "plan-audit.md", "PASS", repo.Commit)
 	}
 }
 
-// AC-005 — exactly the 65 requested edges are accepted and the other 296 are
+// AC-005 — exactly the 66 requested edges are accepted and the other 295 are
 // refused; the production table has no duplicate pair; the T4 stage guard
 // refuses a mismatched resume.
 func TestFR_AC005_TransitionTableEdgeCount(t *testing.T) {
@@ -121,8 +130,8 @@ func TestFR_AC005_TransitionTableEdgeCount(t *testing.T) {
 	}
 
 	expected := frExpectedEdges()
-	if len(expected) != 65 {
-		t.Fatalf("expected-edge fixture lists %d pairs, want 65", len(expected))
+	if len(expected) != 66 {
+		t.Fatalf("expected-edge fixture lists %d pairs, want 66", len(expected))
 	}
 	accepted := map[[2]string]bool{}
 	refused := 0
@@ -144,8 +153,8 @@ func TestFR_AC005_TransitionTableEdgeCount(t *testing.T) {
 		}
 	}
 	t.Logf("requested pairs: %d accepted, %d refused, %d total; production table rows: %d", len(accepted), refused, len(accepted)+refused, len(TransitionEdges()))
-	if len(accepted) != 65 || refused != 296 {
-		t.Fatalf("accepted %d / refused %d, want 65 / 296", len(accepted), refused)
+	if len(accepted) != 66 || refused != 295 {
+		t.Fatalf("accepted %d / refused %d, want 66 / 295", len(accepted), refused)
 	}
 	for pair := range expected {
 		if !accepted[pair] {

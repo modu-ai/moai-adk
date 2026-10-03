@@ -52,6 +52,9 @@ type TransitionRequest struct {
 	IntegrationBranch string
 	// Question is required entering needs-decision; Reason entering failed.
 	Question, Reason string
+	// QueueHold is the queue item's hold reading for an audit approval (T8a):
+	// QueueHoldClear admits; anything else refuses (fail closed).
+	QueueHold string
 	// Now is the injected clock; zero means time.Now().
 	Now time.Time
 }
@@ -81,6 +84,7 @@ const (
 	guardUnblock
 	guardAbandon
 	guardFail
+	guardKickoffAudit
 )
 
 type transitionEdge struct {
@@ -90,7 +94,7 @@ type transitionEdge struct {
 }
 
 // @MX:ANCHOR: [AUTO] the F1 card transition table — the complete set of requested edges the record accepts
-// @MX:REASON: AC-005 pins its size at 65 accepted pairs; adding, dropping, or re-guarding a row changes what every factory writer may do (REQ-FR-004)
+// @MX:REASON: AC-005 pins its size at 66 accepted pairs; adding, dropping, or re-guarding a row changes what every factory writer may do (REQ-FR-004)
 var transitionTable = buildTransitionTable()
 
 func buildTransitionTable() []transitionEdge {
@@ -107,6 +111,7 @@ func buildTransitionTable() []transitionEdge {
 		{"T6", CardPlanAudit, CardPlan, guardVerdictAny},
 		{"T7", CardPlanAudit, CardKickoff, guardVerdictPass},
 		{"T8", CardKickoff, CardAssigned, guardKickoffDecision},
+		{"T8a", CardKickoff, CardRun, guardKickoffAudit},
 		{"T9", CardKickoff, CardBlocked, guardKickoffDecision},
 		{"T10", CardRun, CardSync, guardCommit},
 		{"T11", CardSync, CardSyncAudit, guardEntry},
@@ -478,6 +483,31 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			plan.next.DecisionResume = CardRun
 			plan.next.DecisionQuestion = ""
 		}
+	case guardKickoffAudit:
+		if req.Decider != DeciderAudit {
+			return plan, fmt.Errorf("%w: kickoff → run is the audit decider's edge, got %q (the human path is kickoff → assigned)", ErrDecider, req.Decider)
+		}
+		if reason := auditKickoffRefusal(cur, req.QueueHold); reason != "" {
+			return plan, fmt.Errorf("%w: audit kickoff refused: %s", ErrEvidence, reason)
+		}
+		// Lease the card to its record owner exactly as the lease path does.
+		label := cur.OwnerLabel
+		var registered int
+		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM workers WHERE label=?`, label).Scan(&registered); err != nil {
+			return plan, err
+		}
+		if label == "" || registered == 0 {
+			return plan, fmt.Errorf("%w: card %s has no registered owner to lease to (owner %q)", ErrLeaseHolder, cur.CardID, label)
+		}
+		plan.next.LeaseHolder = label
+		plan.next.HeartbeatAt = nowText
+		plan.next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
+		if _, err := tx.ExecContext(ctx, `UPDATE workers SET heartbeat_at=? WHERE label=?`, nowText, label); err != nil {
+			return plan, err
+		}
+		clearDecision(&plan.next)
+		plan.next.Stage = CardRun
+		plan.next.Decider, plan.next.DecidedAt = DeciderAudit, nowText
 	case guardKickoffDecision:
 		if req.Decider != DeciderHuman {
 			return plan, fmt.Errorf("%w: F1 accepts only decider %q, got %q", ErrDecider, DeciderHuman, req.Decider)
