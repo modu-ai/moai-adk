@@ -159,7 +159,23 @@ drift-log lock (L24 is record level); the four-hunk confirmation by a plan-audit
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase_
+### WM1 commit 2 — AC-FAL-010 preservation baseline (card t1458)
+
+Taken on the seam-and-stub tree (HEAD 883a3a205 with no test file added; Go files equal commit 0eb3d5b0d),
+lane environment scrubbed in the same invocation (S1), slot `internal-cli-suite` held (S2). Tool: `go` from
+PATH, not the project build.
+
+- `-list` of the family (`^(TestFactoryNext|TestTodoLane|TestTodoNonLane|TestFactoryFallback|TestAutoPick|TestAutoRank|TestAutoHelp)`): exit 0, 68 test names. Compared with ledger L9's 68-name alternation (the
+  AC-FAL-010 selector): identical name for name and in the same order (sorted `diff` exit 0; ordered diff
+  differs only by the trailing newline). No name is added or removed, so no explanation entry is owed.
+- `-run` of the literal 68-name alternation, `-count=1 -v -timeout 25m`: exit 0, package line
+  `ok  github.com/modu-ai/moai-adk/internal/cli  367.501s`. `grep -c '^--- PASS: '` = **68**,
+  `'^--- FAIL'` = 0, `-- '--- SKIP'` = 0, `'no tests to run'` = 0, `'DATA RACE'` = 0; the sorted passing
+  top-level names diffed against the L9 names: exit 0 (no difference).
+- **Floor for the final run: swept count 68.**
+- Evidence (git-ignored, this worktree): `.moai/reports/t1458/baseline-list.txt`, `baseline-run.txt`.
+
+_WM1 RED output: pending commit 3._
 
 ## §E.3 Run-phase Audit-Ready Signal
 
