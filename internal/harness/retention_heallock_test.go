@@ -532,3 +532,38 @@ func TestPruneStateRemovalFailureInReadOnlyDirSkips(t *testing.T) {
 		t.Errorf("the heal lock is still held after the prune returned: %v", err)
 	}
 }
+
+// TestHealLockAcquiredPastTheDeadlineIsRefused (REQ-HRH-016, delta sync-audit F6): a waiter that stalls
+// past the bound and only then wins the lock (a stopped or descheduled process) must not heal. The
+// clock jumps 3 s between the deadline computation and the first lock attempt, which succeeds at once:
+// the helper must release the lock and return the timeout error instead of a release function.
+func TestHealLockAcquiredPastTheDeadlineIsRefused(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	healPath := filepath.Join(dir, "usage-log.jsonl"+healLockSuffix)
+	start := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	calls := 0
+	clock := func() time.Time {
+		calls++
+		if calls == 1 {
+			return start
+		}
+		return start.Add(3 * time.Second)
+	}
+	release, err := acquireHealLockClock(healPath, func(string) bool { return true }, clock)
+	if err == nil {
+		release()
+		t.Fatalf("the heal lock was granted %v after its %v deadline: want the timeout error", 3*time.Second, pruneHealWait)
+	}
+	if !strings.Contains(err.Error(), healPath) || !strings.Contains(err.Error(), "was not acquired within") {
+		t.Errorf("want the timeout error naming %s, got %v", healPath, err)
+	}
+	f, oerr := os.OpenFile(healPath, os.O_RDWR, 0)
+	if oerr != nil {
+		t.Fatalf("open heal lock: %v", oerr)
+	}
+	defer func() { _ = f.Close() }()
+	if ferr := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); ferr != nil {
+		t.Errorf("the refused late acquisition left the heal lock held: %v", ferr)
+	}
+}

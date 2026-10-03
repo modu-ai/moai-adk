@@ -32,6 +32,12 @@ import (
 // @MX:REASON: [AUTO] The heal-lock path sits in a directory other processes write; O_NOFOLLOW, the
 // regular-file check and os.SameFile keep the open from reaching a planted target or blocking on a FIFO.
 func acquireHealLock(path string, ownerCheck func(string) bool) (func(), error) {
+	return acquireHealLockClock(path, ownerCheck, time.Now)
+}
+
+// acquireHealLockClock is acquireHealLock with the wait's clock passed in; production passes the real
+// clock (time.Now), and tests pass a clock that jumps past the deadline.
+func acquireHealLockClock(path string, ownerCheck func(string) bool, now func() time.Time) (func(), error) {
 	var f *os.File
 	for range maxStateInspections {
 		if f != nil {
@@ -72,7 +78,7 @@ func acquireHealLock(path string, ownerCheck func(string) bool) (func(), error) 
 		_ = f.Close()
 		return nil, healLockError(path, "is not owned by the current user", nil)
 	}
-	deadline := time.Now().Add(pruneHealWait)
+	deadline := now().Add(pruneHealWait)
 	for {
 		ferr := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 		if ferr == nil {
@@ -85,7 +91,7 @@ func acquireHealLock(path string, ownerCheck func(string) bool) (func(), error) 
 			_ = f.Close()
 			return nil, healLockError(path, "cannot be locked", ferr)
 		}
-		if time.Now().After(deadline) {
+		if now().After(deadline) {
 			_ = f.Close()
 			return nil, healLockError(path, fmt.Sprintf("was not acquired within %s", pruneHealWait), nil)
 		}
