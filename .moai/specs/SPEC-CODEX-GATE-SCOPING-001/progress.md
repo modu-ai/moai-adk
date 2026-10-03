@@ -65,6 +65,10 @@ red_tests: internal/cli/codex_review_gate_primary_scope_red_test.go(AC-001·005�
 - 수리 전 적색 원문 요지(전건 본 실행, HEAD `d4e90c588` 트리): R1 `config-only changes must not silence a stored required FAIL; got ... Decision: (빈 ALLOW)` · R2 `got verdict fail` · R3 `an absolute-path config finding must normalize into the reclassification, got ... Decision:block` · R4 `path ".claude/settings.json.template" must stay reviewable` · R5 `a rename into an ordinary source path must stay reviewable...`. 수리 후 동일 셀렉터 6테스트 전부 PASS(`ok github.com/modu-ai/moai-adk/internal/cli 5.564s`).
 - 공유 리스트 불변 재확인: `reviewGateRuntimePrefixes` 6항목 무변경(AC-CGSC-009), 카드 경로 필터·수신 바인딩 무접촉.
 
+### §E.2 추가 — card-review 수리 라운드 2 (codex 재검토 5발견, 2026-10-03)
+
+재검토(base `2de0a2cb6`)의 신규 5건(N1 P1·N2~N5 P2, 경로 해석/재분류 대상 계열) 전부 **확증·수리** — 기각 0. 각 건 재현 테스트 수리 전 적색 → 수리 후 녹색 원문 관측. 1차 수리 테스트 6건 + 계약 5 + 카드 스코프 2 `-count=1` 재실행 전부 PASS 유지. | N1 `codexFindingAnchorOf`(mcp_codex.go) — 서로 다른 경로 후보 2 이상인 발견 메시지는 앵커 미설정, REQ-CGSC-008 재분류는 엄정 처분 유지(N1 전: 첫 경로가 설정 표면이면 실제 소스 결함이 drift 재분류로 ALLOW) | N3 `reviewExclusionRoot`(codex_review_gate.go) — 배제 비교 앵커를 세션 트리가 아닌 git 저장소 루트로(`rev-parse --show-toplevel`, 실패 시 기존 앵커 폴백; REQ-CGSC-008 양팔 동일 함수) | N4 `reviewScopeEvalPath`+`reviewScopeGitPath` symlink 해석(codex_review_scope.go) — 링크 경유 서브디렉터리에서 `--git-dir` 절대/`--git-common-dir` 상대 불일치를 양변 EvalSymlinks로 해소(링크드 워크트리 non-primary 유지) | N5 `treeConfigOnlyChanges` `--untracked-files=all` — 미추적 `.moai/` 붕괴 엔트리(`?? .moai/`) 안의 `.moai/config/`를 파일 단위로 판독(cardChangedPaths 선례; 공용 검출기 무변경) | N2 스윕 팔 7건(동기화 게이트 쌍둔) — find 스캔 팔(ruby/php/java/kotlin/cpp/scala/r)에 `./.moai/reports` 프루닝, 콘텐츠 키와 동일 트리 판독(stale-fail 재생 제거; C5 범위 유지, TEMPLATE-FIRST 템플릿→make build→쌍둔 동일 커밋). 수리 커밋: `ae8c4bd46`·`59d130fad`·`c66ee64d3`·`14ff0873d`·`077da29bc`. N4 부수 재핀: binlag 스윕 좌표 `codex_review_scope.go:182 → :197`(`TestAuditLagUsesBinlagSeam` 단독 재실행 PASS). 수리 후 검증: 통합 셀렉터 `ok internal/cli 18.987s` + template `ok 27.180s` + 빌드·vet·gofmt·lint(v2.1.6) 전부 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
