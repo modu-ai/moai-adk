@@ -471,3 +471,153 @@ func TestPreToolDecisionPrecedence(t *testing.T) {
 		t.Errorf("Bash dangerous-pattern deny was displaced by the agent-model guard: %s", reasonOf(out))
 	}
 }
+
+// TestAgentModelGuardOverride covers AC-AFR-017 (REQ-AFR-018,
+// SPEC-WEB-AGENTFM-RESTORE-001 v0.3.0 M8, card t1421): with the
+// llm.agent_overrides_consume opt-in ON, the advise layer compares the
+// spawn's declared model against the agent's override expectation — the
+// template.ResolveAgentOverrideConsumption outcome — and the audit record
+// carries an override hit/miss field. Observe-never-blocks holds in every
+// case, and the comparison axis is MODEL only (the Agent tool exposes no
+// effort parameter — the file header contract).
+func TestAgentModelGuardOverride(t *testing.T) {
+	t.Parallel()
+
+	// newOverrideHandler builds the handler on a config whose llm section
+	// carries the consume switch and (when on) one manager-develop pin.
+	newOverrideHandler := func(t *testing.T, root string, on bool, pin config.ModelEffort) *preToolHandler {
+		t.Helper()
+		cfg := config.NewDefaultConfig()
+		cfg.LLM.AgentOverridesConsume = on
+		if on {
+			cfg.LLM.AgentOverrides = map[string]config.ModelEffort{
+				"manager-develop": pin,
+			}
+		}
+		return &preToolHandler{
+			cfg:        &auditConfigProvider{cfg: cfg},
+			policy:     DefaultSecurityPolicy(),
+			projectDir: root,
+		}
+	}
+
+	// lastRecord reads the newest JSONL row of the audit log.
+	lastRecord := func(t *testing.T, root string) map[string]any {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join(root, ".moai", "logs", agentModelAuditFileName))
+		if err != nil {
+			t.Fatalf("read audit log: %v", err)
+		}
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		if len(lines) == 0 {
+			t.Fatal("the audit log is empty")
+		}
+		var rec map[string]any
+		if err := json.Unmarshal([]byte(lines[len(lines)-1]), &rec); err != nil {
+			t.Fatalf("last line is not JSON: %v (%s)", err, lines[len(lines)-1])
+		}
+		return rec
+	}
+
+	t.Run("hit when the declaration matches the pinned override", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		h := newOverrideHandler(t, root, true, config.ModelEffort{Model: "opus", Effort: "xhigh"})
+
+		out, err := h.Handle(context.Background(), agentInput("manager-develop", "opus"))
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		assertNotDeny(t, out)
+		if out.SystemMessage != "" {
+			t.Errorf("a hit advises nothing, got %q", out.SystemMessage)
+		}
+		if got := lastRecord(t, root)["override_consumption"]; got != "hit" {
+			t.Errorf("override_consumption = %v, want hit", got)
+		}
+	})
+
+	t.Run("miss when the declaration differs — advisory without blocking", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		h := newOverrideHandler(t, root, true, config.ModelEffort{Model: "opus", Effort: "xhigh"})
+
+		out, err := h.Handle(context.Background(), agentInput("manager-develop", "sonnet"))
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		assertNotDeny(t, out)
+		if out.SystemMessage == "" {
+			t.Error("a miss must advise (non-blocking) that the pinned model was not applied")
+		} else {
+			for _, want := range []string{"manager-develop", "opus"} {
+				if !strings.Contains(out.SystemMessage, want) {
+					t.Errorf("the miss advisory must name the agent and the pinned model, missing %q in: %s", want, out.SystemMessage)
+				}
+			}
+		}
+		if got := lastRecord(t, root)["override_consumption"]; got != "miss" {
+			t.Errorf("override_consumption = %v, want miss", got)
+		}
+	})
+
+	t.Run("miss when the spawn declares no model", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		h := newOverrideHandler(t, root, true, config.ModelEffort{Model: "opus", Effort: "xhigh"})
+
+		out, err := h.Handle(context.Background(), agentInput("manager-develop", ""))
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		assertNotDeny(t, out)
+		if out.SystemMessage == "" {
+			t.Error("a spawn without a declaration under an active pin must still miss")
+		}
+		if got := lastRecord(t, root)["override_consumption"]; got != "miss" {
+			t.Errorf("override_consumption = %v, want miss", got)
+		}
+	})
+
+	t.Run("gate off keeps the existing record shape with the off mark", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		h := newOverrideHandler(t, root, false, config.ModelEffort{Model: "opus", Effort: "xhigh"})
+
+		out, err := h.Handle(context.Background(), agentInput("manager-develop", "sonnet"))
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		assertNotDeny(t, out)
+		if out.SystemMessage != "" {
+			t.Errorf("a closed gate advises nothing, got %q", out.SystemMessage)
+		}
+		rec := lastRecord(t, root)
+		for _, field := range []string{"timestamp", "session_id", "agent", "declared_model", "resolved_model", "verdict"} {
+			if _, ok := rec[field]; !ok {
+				t.Errorf("the existing record lost field %q: %v", field, rec)
+			}
+		}
+		if got := rec["override_consumption"]; got != "off" {
+			t.Errorf("override_consumption = %v, want the off mark", got)
+		}
+	})
+
+	t.Run("inherit pin records the no-op", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		h := newOverrideHandler(t, root, true, config.ModelEffort{Model: "inherit"})
+
+		out, err := h.Handle(context.Background(), agentInput("manager-develop", ""))
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		assertNotDeny(t, out)
+		if out.SystemMessage != "" {
+			t.Errorf("an explicit inherit pin advises nothing, got %q", out.SystemMessage)
+		}
+		if got := lastRecord(t, root)["override_consumption"]; got != "inherit" {
+			t.Errorf("override_consumption = %v, want inherit (the explicit no-op)", got)
+		}
+	})
+}

@@ -1,0 +1,6 @@
+{
+  "Replace": {
+    "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/internal/harness/retention.go": "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/.moai/reports/t1432/red-now-drafts/retention_mB.go",
+    "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/internal/harness/zz_stampbytes_test.go": "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/.moai/reports/t1432/red-now-drafts/zz_stampbytes_test.go"
+  }
+}

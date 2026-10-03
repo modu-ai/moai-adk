@@ -278,7 +278,21 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	if explicit := req.GetString("model", ""); strings.TrimSpace(explicit) != "" {
 		me.Model = strings.TrimSpace(explicit) // explicit caller model outranks the pin
 	}
-	diff, err := collectReviewDiff(root, target)
+	// A baseBranch review resolves its base ONCE, here, and the diff is measured
+	// from that exact merge base; the same value is what review_base reports, so
+	// a base ref moving while z.ai answers cannot make the two disagree (t1426).
+	var base *reviewBase
+	var diff string
+	var err error
+	if target == codexTargetBaseBranch {
+		var b reviewBase
+		if b, err = resolveReviewBase(root); err == nil {
+			base = &b
+			diff, err = collectReviewDiffAt(root, b)
+		}
+	} else {
+		diff, err = collectReviewDiff(root, target)
+	}
 	if err != nil {
 		return review(glmInconclusive("no reviewable change: " + err.Error())), nil
 	}
@@ -288,6 +302,9 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 
 	notifyMCPProgress(ctx, token, 0.05, "glm 감사 — z.ai 요청 준비 중...")
 	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, token)
+	if base != nil {
+		out.ReviewBase = base.String()
+	}
 	return review(out), nil
 }
 
