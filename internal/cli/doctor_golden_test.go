@@ -477,6 +477,11 @@ func TestDoctorGolden_IgnoresCallerCodexHome(t *testing.T) {
 	t.Setenv(codexHomeEnvVar, callerHome)
 
 	got, _ := captureDoctorCmd(t)
+	// No check renders CODEX_HOME while the harness stubs codex absent, so the
+	// output comparison alone cannot see the scrub; pin the scrub itself.
+	if v := os.Getenv(codexHomeEnvVar); v != "" {
+		t.Errorf("captureDoctorCmd left CODEX_HOME = %q, want it scrubbed", v)
+	}
 	if !strings.Contains(got, pluginVersionCheckName) {
 		t.Fatalf("doctor output has no %q row", pluginVersionCheckName)
 	}
