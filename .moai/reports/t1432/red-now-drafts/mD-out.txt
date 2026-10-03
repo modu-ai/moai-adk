@@ -1,0 +1,55 @@
+panic: test timed out after 40s
+	running tests:
+		TestPruneStamp_StampExistsBeforeTheWork (40s)
+
+goroutine 26 [running]:
+testing.(*M).startAlarm.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2802 +0x2cc
+created by time.goFunc
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/time/sleep.go:215 +0x38
+
+goroutine 1 [chan receive]:
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:1993 +0x3c8
+testing.tRunner(0x3310895fe6c8, 0x3310894cdc48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2042 +0x100
+testing.runTests({0x101731e2f, 0x1b}, {0x10174313e, 0x2c}, 0x3310893440f0, {0x1036df880, 0x10b, 0x10b}, {0x8080366249293c12?, 0x101726190?, ...})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2583 +0x3f0
+testing.(*M).Run(0x331089221180)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2443 +0x578
+main.main()
+	_testmain.go:580 +0x80
+
+goroutine 66 [syscall]:
+syscall.syscalln(0x101079f30, {0x331088ff9bb0, 0x3, 0x3})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/runtime/sys_darwin.go:38 +0x20
+syscall.syscall(0x331088fec280?, 0x7f?, 0x90?, 0x33108912a3f0?)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/syscall/syscall_darwin.go:384 +0x24
+syscall.Open({0x331088fec280?, 0x100fdf7c0?}, 0x1000000, 0x0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/syscall/zsyscall_darwin_arm64.go:1162 +0x70
+os.open(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/file_open_unix.go:15
+os.openFileNolog.func1(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/file_unix.go:261
+os.ignoringEINTR(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/file_posix.go:263
+os.openFileNolog({0x331088fec280, 0x7f}, 0x0, 0x0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/file_unix.go:260 +0xd4
+os.OpenFile({0x331088fec280, 0x7f}, 0x0, 0x0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/os/file.go:412 +0x40
+github.com/modu-ai/moai-adk/internal/harness.TestPruneStamp_StampExistsBeforeTheWork.TestPruneStamp_StampExistsBeforeTheWork.func1.func7()
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/internal/harness/retention_killed_test.go:43 +0x28
+sync.(*Once).doSlow(0x3310895fe908?, 0x331089516e80?)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/sync/once.go:78 +0xdc
+sync.(*Once).Do(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/sync/once.go:69
+github.com/modu-ai/moai-adk/internal/harness.TestPruneStamp_StampExistsBeforeTheWork.func1(...)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/internal/harness/retention_killed_test.go:42
+github.com/modu-ai/moai-adk/internal/harness.TestPruneStamp_StampExistsBeforeTheWork(0x3310895fe908)
+	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1432/internal/harness/retention_killed_test.go:85 +0x62c
+testing.tRunner(0x3310895fe908, 0x10361edf8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/harness	40.791s
+FAIL

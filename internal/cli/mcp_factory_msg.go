@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"log/slog"
@@ -59,7 +60,12 @@ func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_send", e), nil
 	}
-	env, e := s.Send(ctx, factorymsg.SendRequest{From: from, To: to, Kind: req.GetString("kind", ""), IdempotencyKey: req.GetString("idempotency_key", ""), TaskRef: req.GetString("task_ref", ""), CorrelationID: req.GetString("correlation_id", ""), ExpectedTaskRevision: int64(req.GetInt("expected_task_revision", 0)), CurrentTaskRevision: int64(req.GetInt("current_task_revision", 0)), TTL: time.Duration(req.GetInt("ttl_seconds", 3600)) * time.Second, Payload: []byte(req.GetString("body", ""))})
+	// task_ref and correlation_id are optional in the tool schema while the
+	// store requires both on every message: an omitted or empty value defaults
+	// to the idempotency key (GitHub #1737), so a same-key retry carries the
+	// same identifiers and the store's collision check still holds.
+	idem := req.GetString("idempotency_key", "")
+	env, e := s.Send(ctx, factorymsg.SendRequest{From: from, To: to, Kind: req.GetString("kind", ""), IdempotencyKey: idem, TaskRef: cmp.Or(req.GetString("task_ref", ""), idem), CorrelationID: cmp.Or(req.GetString("correlation_id", ""), idem), ExpectedTaskRevision: int64(req.GetInt("expected_task_revision", 0)), CurrentTaskRevision: int64(req.GetInt("current_task_revision", 0)), TTL: time.Duration(req.GetInt("ttl_seconds", 3600)) * time.Second, Payload: []byte(req.GetString("body", ""))})
 	if e != nil {
 		return toolErr("factory_msg_send", e), nil
 	}

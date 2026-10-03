@@ -41,6 +41,10 @@ type app struct {
 	// truth stays on the server.
 	hub *Hub
 
+	// specs caches the full SPEC scan (rows + drift findings) that /, /kanban
+	// and /specs all read. It is dropped when hub publishes "spec" (card t1460).
+	specs *specCache
+
 	// bindAddr returns the real bound loopback address (127.0.0.1:<port>) for
 	// the appbar loopback indicator (REQ-WC4-005). NewServer wires it to the
 	// server's listener accessor; when nil (bare app in a unit test) the view
@@ -135,9 +139,10 @@ type app struct {
 // The page is rendered by the compiled-in Templ root component (no runtime
 // template parse), so newApp no longer carries a template-parse step.
 func newApp(cfg Config) *app {
-	return &app{
+	a := &app{
 		cfg:              cfg,
 		hub:              NewHub(),
+		specs:            newSpecCache(loadSpecRows, specCacheMaxAge),
 		readPreferences:  profile.ReadPreferences,
 		writePreferences: profile.WritePreferences,
 		syncToProject:    profile.SyncToProjectConfig,
@@ -174,6 +179,12 @@ func newApp(cfg Config) *app {
 		renameProfile: renameProfileDir,
 		deleteProfile: profile.Delete,
 	}
+	a.hub.Subscribe(func(event string) {
+		if event == "spec" {
+			a.specs.invalidate()
+		}
+	})
+	return a
 }
 
 // routes builds the HTTP handler tree with Host-check middleware applied to the

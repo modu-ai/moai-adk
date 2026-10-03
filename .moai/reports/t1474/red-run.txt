@@ -1,0 +1,37 @@
+=== RUN   TestFullFormNoEditSaveIsByteIdentical
+    save_lossless_test.go:333: llm.yaml changed by a no-edit save (GitHub #1731)
+        --- before ---
+        # llm settings (user-maintained)
+        llm:
+          mode: "" # empty = claude
+          # tier map the user keeps by hand
+          claude_models:
+            high: claude-opus-5-5 # pinned
+            medium: claude-sonnet-5-5
+            low: claude-haiku-4-5
+          glm:
+            models:
+              high: glm-5.3 # inline note
+        
+        --- after ---
+        # llm settings (user-maintained)
+        llm:
+          mode: "" # empty = claude
+          # tier map the user keeps by hand
+          claude_models:
+            high: claude-opus-5-5 # pinned
+            medium: claude-sonnet-5-5
+            low: claude-haiku-4-5
+          glm:
+            models:
+              high: glm-5.3 # inline note
+            effort:
+              fable: max
+              high: max
+              low: max
+              medium: max
+          profile: medium
+--- FAIL: TestFullFormNoEditSaveIsByteIdentical (0.13s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.999s
+FAIL

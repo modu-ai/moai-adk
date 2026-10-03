@@ -523,7 +523,7 @@ func shortID(id string) string {
 
 func (a *app) buildOverview(now time.Time) (OverviewVM, error) {
 	root := a.cfg.ProjectRoot
-	rows, findings, err := loadSpecRows(root)
+	rows, findings, err := a.specs.get(root)
 	if err != nil {
 		return OverviewVM{}, err
 	}
@@ -603,7 +603,7 @@ func buildAttention(rows []SpecRowVM, findings map[string][]FindingVM) []Attenti
 
 func (a *app) buildFactory(now time.Time) (FactoryVM, error) {
 	root := a.cfg.ProjectRoot
-	rows, _, err := loadSpecRows(root)
+	rows, _, err := a.specs.get(root)
 	if err != nil {
 		return FactoryVM{}, err
 	}
@@ -632,7 +632,7 @@ func (a *app) buildMonitor(now time.Time) (MonitorVM, error) {
 
 // buildSpecList 는 검색어·상태 필터·선택 항목을 반영한 SPEC 목록을 만든다.
 func (a *app) buildSpecList(query, status, selected string) (SpecListVM, error) {
-	rows, findings, err := loadSpecRows(a.cfg.ProjectRoot)
+	rows, findings, err := a.specs.get(a.cfg.ProjectRoot)
 	if err != nil {
 		return SpecListVM{}, err
 	}

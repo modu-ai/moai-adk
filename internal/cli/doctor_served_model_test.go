@@ -165,3 +165,57 @@ func TestServedModelCheck_DefaultRunShowsHintOnly(t *testing.T) {
 		t.Fatalf("--check %q must run the sweep, got %+v", servedModelCheckName, swept)
 	}
 }
+
+// TestDoctorServedModelConsumeState covers AC-AFR-018 (REQ-AFR-019,
+// SPEC-WEB-AGENTFM-RESTORE-001 v0.3.0 M9, card t1421): the served-model
+// doctor surface reports the llm.agent_overrides_consume switch state BY
+// NAME, on every path of the sweep — a stored override must never be
+// silently readable as a live pin from the doctor output.
+func TestDoctorServedModelConsumeState(t *testing.T) {
+	t.Parallel()
+
+	t.Run("on names the switch", func(t *testing.T) {
+		t.Parallel()
+		cfg := &config.Config{}
+		cfg.LLM.AgentOverridesConsume = true
+
+		got := runServedModelScan(servedScanInputs{
+			bases:   []string{t.TempDir()},
+			primary: "x-proj",
+			cfg:     cfg,
+		}, false)
+		text := got.Message + "\n" + got.Detail
+		if !strings.Contains(text, "agent_overrides_consume: on") {
+			t.Errorf("the doctor row must report the switch state by name (on):\n%s", text)
+		}
+	})
+
+	t.Run("off names the switch and the storage-only state", func(t *testing.T) {
+		t.Parallel()
+		got := runServedModelScan(servedScanInputs{
+			bases:   []string{t.TempDir()},
+			primary: "x-proj",
+			cfg:     &config.Config{},
+		}, false)
+		text := got.Message + "\n" + got.Detail
+		if !strings.Contains(text, "agent_overrides_consume: off") {
+			t.Errorf("the doctor row must report the switch state by name (off):\n%s", text)
+		}
+		if !strings.Contains(text, "console-stored only") {
+			t.Errorf("the off state must say the overrides stay console-stored only:\n%s", text)
+		}
+	})
+
+	t.Run("unreadable config degrades to off", func(t *testing.T) {
+		t.Parallel()
+		got := runServedModelScan(servedScanInputs{
+			bases:   []string{t.TempDir()},
+			primary: "x-proj",
+			cfg:     nil,
+		}, false)
+		text := got.Message + "\n" + got.Detail
+		if !strings.Contains(text, "agent_overrides_consume: off") {
+			t.Errorf("a nil config must read as the closed gate (fail-open):\n%s", text)
+		}
+	})
+}

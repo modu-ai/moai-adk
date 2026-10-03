@@ -267,6 +267,8 @@ The hazard is invisible after the fact. A clause requiring the leader to read an
 
 **The tooling is a convenience, not the obligation.** `moai gtd pr <id>` answers both halves in one read, but the clause is satisfiable by hand (`gh pr list`, then `git log` against the integration branch) and was written to be: the doctrine landed before the tooling, and the interval between them is a real operating condition rather than a paper one.
 
+**Why the read can be a skip input for one card and report-only for another.** Put plainly, a pull request or landed state is a skip input for a queued candidate the session chose and is report-only for an operator-picked card: the operator already chose the second, and passing it over would override that act; the session chose the first itself, so skipping it overrides nobody. The two clauses govern different cards, so "reports, never vetoes" is untouched.
+
 ## The PR-title carrier
 
 **Why the id leaves the branch name and lands on the PR title.** Neither name can serve both readers. The branch name is read by a human scanning `git branch` or a pull-request list, who learns nothing from an opaque card id and everything from a descriptive slug. The PR title is read by a resolver mapping pull requests back to cards, which needs a token it can match exactly. The branch-name rule and the title rule therefore assign different jobs to different names, and a reader meeting both [HARD] clauses cold will suspect a contradiction where there is none — which is why the stub states the non-contradiction outright instead of leaving it to be inferred.

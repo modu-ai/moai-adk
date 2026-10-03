@@ -385,6 +385,16 @@ func todoTreeRoot(run *cobra.Command) *cobra.Command {
 // governance remains t1338's decision; this guard is where that decision
 // would land if it ever widens the allowlist.
 func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
+	// SPEC-TODO-AUTO-PICK-001 REQ-TAU-008: a LANE session — role marker `lane`,
+	// or a non-empty lane label; the Codex backend marker alone does not make a
+	// session a lane here, a Codex-backend leader keeps its batch approval — is
+	// refused the serial cycle: the lease (`moai factory next [--card <id>]`)
+	// is its only pick path. The guard sits ahead of the bare-parent allowance
+	// below, which would otherwise let `--auto` through, and ahead of the cycle,
+	// so the queue file stays byte-identical.
+	if run == root && todoAutoFlag && todoLaneSession() {
+		return fmt.Errorf("%s", todoLaneAutoRefusalText())
+	}
 	if !factoryLaneRefusal() {
 		return nil
 	}
@@ -396,6 +406,25 @@ func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
 		return nil
 	}
 	return fmt.Errorf("%s", todoLaneMutationRefusalText(todoSurfaceName(run)))
+}
+
+// todoLaneSession reports whether this process is a lane session for the
+// `--auto` refusal: the lane role marker equals the role value, or the lane
+// label variable is non-empty. It is deliberately narrower than
+// factoryLaneRefusal, whose Codex-backend clause would also refuse a non-lane
+// Codex-backend session — one with no lease alternative (`moai factory next`
+// refuses outside a lane) and whose batch approval must stay usable.
+func todoLaneSession() bool {
+	return factoryLaneAdmission() || os.Getenv(config.EnvMoaiFactoryWorker) != ""
+}
+
+// todoLaneAutoRefusalText is the dedicated wording of the lane `--auto`
+// refusal. It is not the queue-mutation text: it tells the lane what to do —
+// the `--auto` authorization is exercised through the lease, so a lane that
+// reads it proceeds instead of stopping to ask.
+func todoLaneAutoRefusalText() string {
+	return fmt.Sprintf("moai todo --auto: refused — %s: a lane session does not run the serial cycle; the --auto authorization is exercised through moai factory next --card <id> (bare moai factory next takes the priority-order card): read the queue with moai todo list, why, pr and show, nominate the card you judged, and re-select on a refusal",
+		factoryLaneBoundarySentinel)
 }
 
 // todoLaneMutationRefusalText is the one wording source for the REQ-SD-015

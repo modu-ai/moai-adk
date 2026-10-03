@@ -196,7 +196,7 @@ carries its justification right here, in this inventory.
 | plan→run Kickoff | AUTONOMOUS (§9.1); the operator question channel survives for keep-set cases and operator dialogue |
 | contract signing (`workflow.autonomy.mode: contract`, human signature) | PRESERVED EQUIVALENT FORM — the voluntary human-signature path stays available and unchanged; justification for preserving outside the three keep categories: the path imposes nothing on anyone (voluntary), so the minimization principle does not require removing it |
 | sync blocking approval | AUTONOMOUS — the sync-auditor verdict + evidence thresholds adjudicate; external-shared operations inside sync (release push/merge) KEEP (keep-set category 3) |
-| card pick | AUTONOMOUS inside a batch authorization (the `--auto` invocation IS the approval); queue ADMISSION (production) stays the operator's — not a gate on work |
+| card pick | AUTONOMOUS inside a batch authorization (the `--auto` invocation IS the approval; §9.3); queue ADMISSION (production) stays the operator's — not a gate on work |
 | plan-audit bypass flags | RETIRED into the default path — the audit cross IS the entry evidence (§9.1) |
 | Jev capability gate (`workflow.jev.enabled`, default false) | capability switch, not a work gate — listed for completeness; enabling is the operator's |
 
@@ -213,7 +213,7 @@ together are presented through §9.2.
 
 ### 9.2 The batch gate summary
 
-The batch gate summary is a presentation form for operator-form decisions, not an approval method: it lowers no evidence standard of §9.1. It is distinct from the `--auto` batch authorization of the card pick row, which authorizes serial queue consumption and nothing else.
+The batch gate summary is a presentation form for operator-form decisions, not an approval method: it lowers no evidence standard of §9.1. It is distinct from the `--auto` batch authorization of the card pick row, which authorizes the invoked session to take cards on its own judgment, a lane session only through a lease (§9.3).
 
 **Membership**
 
@@ -249,6 +249,43 @@ The batch gate summary is a presentation form for operator-form decisions, not a
 - When the answer arrives and before each approved row is recorded, the session re-reads all four conditions of approvability and the row's reserved classification, an operator hold included. A row that no longer qualifies is refused, not recorded as approved, and the operator is told.
 - Each approved row gets its own decision record in the §10 form, as one line carrying the three fields in order, followed by `counter_refs=`. Its `ladder_path` holds the gate row slug followed by `;batch=<id>`, where `<id>` is the UTC time of the decision question as `YYYYMMDDTHHMMSSZ`, identical on every record of one summary and advanced to the next free second when another decision record on the board already carries that value. A row without its own record is not approved.
 - The single approval weakens no other Kickoff condition: for each approved card the tier, the mode preference, the PR strategy, and the chain scope are on disk, from the card or SPEC contract or from an operator dialogue held for that card, before run entry.
+
+### 9.3 The card-pick authorization
+
+The card pick row's `--auto` invocation authorizes the invoked session to take
+cards from the queue on its own judgment, and nothing else. A lane session takes
+a card only through a lease (`moai factory next`, or `moai factory next --card
+<id>` for a judged pick; the lease is a lane's only pick path) and never one of
+the keep-set cards; the operator session's serial cycle takes cards without a
+lease and ranks a parked card last without excluding it. Queue ADMISSION stays
+the operator's, and Jev stays display-only.
+
+The keep-set of a pick: a card in the `hold` state or whose text begins with
+the `[보류` marker (the lease refuses a marker card; the serial cycle ranks it
+last), a card classified blocked, a card the factory record already
+owns, a serial card while another serial card is in flight, and a card whose
+text hinges on an operator confirmation — payments, secrets, or irreversible
+external-shared work. The lease refuses the first four mechanically; the last
+is the session's judgment, recorded.
+
+The inputs of the judgment: the card's class, its relation records, its
+pull-request and landed state, its worktree presence, its file overlap with
+in-flight lanes, and the candidates it skipped. The set is open: a later card
+adds an input without amending the keep-set or the lease path. File overlap is a
+pluggable input whose fallback — the paths changed by each in-flight lane's
+card branch — is inferred; the record does not require it.
+
+A lane that takes a card by lease under this authorization writes one §10 line
+in the card's progress record, as evidence, not the decision board (§11):
+
+```text
+decision record: decided_by=<runner+role> evidence_refs=card=<id>;class=<class>;relate=<ids>;pr=<state>;wt=<path>;overlap=<paths>;skipped=<id:reason,...> ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)
+```
+
+An input that could not be read is written `unmeasured`, never omitted and
+never `none`. The line is self-attested, and no party re-reads the card-pick
+record: the §9.1 and §10 sentences that name the sync audit's re-read as the
+compensating control do not hold for it. That is a residual risk, not a control.
 
 ## 10. Decision records
 

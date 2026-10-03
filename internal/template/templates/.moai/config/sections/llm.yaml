@@ -41,6 +41,19 @@ llm:
   # disabled in the console and backfilled with the resolved value).
   profile: ""
   agent_overrides: {}
+
+  # agent_overrides_consume: opt-in spawn consumption (default false). Keep
+  # it false and the map above stays storage-only — every subagent keeps the
+  # session model/effort it inherits, the documented default. Set it true and
+  # the orchestrator consults the overrides before each spawn and passes the
+  # configured model on the Agent() call; an override whose model is
+  # `inherit` stays an explicit inheritance no-op. Spawn payloads carry model
+  # only (the Agent tool exposes no effort parameter), so a pinned effort is
+  # delivered by convention, not by the payload. Note that a spawn pinned to
+  # a concrete model does not inherit the parent session's [1m] context
+  # entitlement — the closed alias set on the overrides is what keeps pins
+  # spawnable.
+  agent_overrides_consume: false
   # Main-session reasoning effort comes from the preference profile
   # (`moai profile setup`), never from this file.
   #
@@ -66,6 +79,17 @@ llm:
       medium: "glm-5.3-flash" # 1M context — Sonnet slot (balanced)
       low: "glm-5.3-flash"    # 1M context — Haiku slot (lightweight)
       fable: "glm-5.3"        # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
+
+    # Per-tier reasoning effort (z.ai reasoning state: max | high | low).
+    # The `moai glm` launcher applies the slot serving the main session's
+    # model, overriding the session-wide effort preference; sub-agents keep
+    # the session-wide value. max is the deepest reasoning and the z.ai
+    # default; glm-5.3-flash accepts max only.
+    effort:
+      high: "max"
+      medium: "max"
+      low: "max"
+      fable: "max"
 
     # ── GLM reasoning-effort mapping (documentation-only — the Go overlay at
     #    internal/template/glm_effort_overlay.go is the runtime SSOT) ──

@@ -35,7 +35,7 @@ Cross-references:
 - `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (this section is the canonical agent namespace SSOT)
 - `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (skill counterpart)
 - `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (canonical generator contract)
-- `.moai/docs/dev-only-commands-isolation.md` § 검증 체크리스트 (maintainer-local verification — `.claude/agents/local/` 누출 negative test)
+- `.moai/docs/dev-only-commands-isolation.md` § 검증 체크리스트 (maintainer-local verification — `.claude/agents/local/` 누출 negative test; dev repositories only — not shipped)
 
 Platform Support: Windows ARM64 (`win32-arm64`) is natively supported. No WSL required for ARM-based Windows devices.
 
@@ -260,7 +260,7 @@ Invoke agents via Agent tool:
 For team mode invocation:
 - Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
 - Team cleanup is automatic on session exit; no explicit teardown call is needed
-- See team-plan.md and team-run.md for complete workflow examples
+- Workflow examples: `orchestration-mode-selection.md` §C (the former team-plan.md / team-run.md examples retired with the static team layer)
 
 ## Plugin Agent Limitations
 

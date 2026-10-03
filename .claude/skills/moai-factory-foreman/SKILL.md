@@ -66,8 +66,10 @@ not something this loop can do for itself.
    idle. A batch authorization (`/moai:todo --auto` — the operator's typed
    invocation-as-approval) is the card-pick gate's autonomous form
    (`.claude/rules/moai/workflow/auto-semantics.md` §9): within it, serial
-   consumption in queue order is authorized; queue ADMISSION stays the
-   operator's.
+   consumption on its own judgment, outside the keep-set (bar a `[보류` card,
+   which is ranked last, not excluded), is authorized; queue
+   ADMISSION stays the operator's. A lane takes its card through
+   `moai factory next --card <id>`, never through this loop.
 2. **No approval gate is answered on the operator's behalf.** When a card's
    next step needs a human decision that is not already recorded as made
    (plan-to-run kickoff approval, a review severity call, a scope choice),
@@ -165,7 +167,8 @@ not something this loop can do for itself.
    worker is still running, end the iteration with a one-line status.
 
 4. **Choose the dispatchable card.** The oldest `picked` item with no live
-   worker and no recorded blocker. `queued` items are not yours to pick.
+   worker and no recorded blocker. `queued` items are not yours to pick outside
+   a batch authorization.
 
 5. **Dispatch one worker** with the Agent tool, `isolation: "worktree"`. The
    dispatch is a fixed-field address block — a pointer, not a copy, ten

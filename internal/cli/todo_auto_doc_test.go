@@ -112,14 +112,14 @@ func TestAutoRankDoctrineAmendment(t *testing.T) {
 	// mutant that deletes the prohibition while keeping the exception fails.
 	prohibitions := map[string][]string{
 		filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch.md"): {
-			"The leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item.",
+			"Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item.",
 			"An empty queue is a state to report, not a prompt to invent work.",
 			"never from queue emptiness, card readiness, or a peer's request",
 			"queue ADMISSION (production) stays the operator's.",
 			"the leader never folds the related card away, never reorders the queue around it, and never drops or edits it.",
 		},
 		filepath.Join("internal", "template", "templates", ".claude", "rules", "moai", "workflow", "factory-dispatch.md"): {
-			"The leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item.",
+			"Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item.",
 			"An empty queue is a state to report, not a prompt to invent work.",
 			"never from queue emptiness, card readiness, or a peer's request",
 			"queue ADMISSION (production) stays the operator's.",
@@ -185,7 +185,7 @@ func TestAutoRankMirrorParity(t *testing.T) {
 			name:   "factory-dispatch.md promotion and --auto reconciliation clauses",
 			live:   filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
 			mirror: filepath.Join("internal", "template", "templates", ".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
-			start:  "[HARD] **Promotion is the operator's act, always.**",
+			start:  "[HARD] **Promotion is the operator's act, in person or in advance.**",
 			end:    "[HARD] **The self-dispatch lane exception.**",
 		},
 		{

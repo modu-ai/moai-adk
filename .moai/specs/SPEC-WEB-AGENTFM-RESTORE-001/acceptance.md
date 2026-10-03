@@ -6,19 +6,25 @@ Tier M 인수 계층. 각 AC는 Given-When-Then으로 기술되고 검증 명령
 
 | AC | 요구 | 제목 | 검증 |
 |---|---|---|---|
-| AC-AFR-001 | REQ-AFR-001 | 서브섹션 렌더 (12행·마커) | `go test ./internal/web/ -run 'TestAgentOverridesSubsection'` |
-| AC-AFR-002 | REQ-AFR-003 | tier 선택 → llm.profile 저장 | `go test ./internal/web/ -run 'TestPerfTierSave'` |
-| AC-AFR-003 | REQ-AFR-004/002 | override pin/clear + 상속 기본 | `go test ./internal/web/ -run 'TestAgentOverridesSave'` |
-| AC-AFR-004 | REQ-AFR-006/007 | 집합 외 값 원자 거절 | `go test ./internal/web/ -run 'TestAgentOverridesSave'` (거절 케이스) |
-| AC-AFR-005 | REQ-AFR-005 | 프론트매터 무접촉 | `go test ./internal/web/ -run 'TestAgentFrontmatterUntouched'` |
+| AC-AFR-001 | REQ-AFR-001 | 서브섹션 렌더 (12행·마커) | EV-AFR-001 레저 (1커맨드) |
+| AC-AFR-002 | REQ-AFR-003 | tier 선택 → llm.profile 저장 | `go test ./internal/web/ -run '^TestPerfTierSave$'` |
+| AC-AFR-003 | REQ-AFR-004/002 | override pin/clear + 상속 기본 | `go test ./internal/web/ -run '^TestAgentOverridesSave$'` |
+| AC-AFR-004 | REQ-AFR-006/007 | 집합 외 값 원자 거절 | `go test ./internal/web/ -run '^TestAgentOverridesSave$'` (거절 케이스) |
+| AC-AFR-005 | REQ-AFR-005 | 프론트매터 무접촉 | `go test ./internal/web/ -run '^TestAgentFrontmatterUntouched$'` |
 | AC-AFR-006 | REQ-AFR-008 | update strip 정합 | EV-AFR-006 레저 (4커맨드) |
-| AC-AFR-007 | REQ-AFR-011 | i18n 4-locale + agentdesc 면제 | `go test ./internal/web/ -run 'TestI18n'` |
+| AC-AFR-007 | REQ-AFR-011 | i18n 4-locale + agentdesc 면제 | EV-AFR-007 레저 (1커맨드) |
 | AC-AFR-008 | REQ-AFR-013 | 13탭 계약 무변경 | EV-AFR-008 레저 (1커맨드) |
-| AC-AFR-009 | REQ-AFR-009 | haiku effort 잠금 | `go test ./internal/web/ -run 'TestHaikuEffortLock'` |
-| AC-AFR-010 | REQ-AFR-010 | GLM reasoning 표시 | `go test ./internal/web/ -run 'TestGLMReasoningColumn'` |
-| AC-AFR-011 | REQ-AFR-012 | 저장 seam 주입 가능 | `go test ./internal/web/ -run 'TestAgentOverridesSeams'` |
+| AC-AFR-009 | REQ-AFR-009 | haiku effort 잠금 | `go test ./internal/web/ -run '^TestHaikuEffortLock$'` |
+| AC-AFR-010 | REQ-AFR-010 | GLM reasoning 표시 | `go test ./internal/web/ -run '^TestGLMReasoningColumn$'` |
+| AC-AFR-011 | REQ-AFR-012 | 저장 seam 주입 가능 | `go test ./internal/web/ -run '^TestAgentOverridesSeams$'` |
 | AC-AFR-012 | REQ-AFR-001/013 | 락 반전 완결 | grep 증거: 구 absent 어설션 0히트 + 신규 존재 어설션 목록 (§D.12) |
 | AC-AFR-013 | REQ-AFR-014 | 수정안 링크 | grep 증거: AMI-001 HISTORY 행 + 본문 예외 문단 (§D.13 — 소유 마일스톤 M5b) |
+| AC-AFR-014 | REQ-AFR-015 | 옵트인 키 (기본 off·거절 합류·템플릿 수재) | EV-AFR-014 레저 (3커맨드) |
+| AC-AFR-015 | REQ-AFR-016 | 소비 리졸버 (override 승리·inherit no-op) | `go test ./internal/template/ -run '^TestAgentOverridesConsumption$'` |
+| AC-AFR-016 | REQ-AFR-017 | 교리 수비 소비 의미론 | grep 증거 (§D.16 — sync 소유) |
+| AC-AFR-017 | REQ-AFR-018 | 훅 advise/audit 확장 | `go test ./internal/hook/ -run '^TestAgentModelGuardOverride$'` |
+| AC-AFR-018 | REQ-AFR-019 | 계약 상태 가시성 (console+doctor) | EV-AFR-018 레저 (2커맨드) |
+| AC-AFR-019 | REQ-AFR-020 | AMI-001 소비 계약 링크 | grep 증거 (§D.19 — 소유 마일스톤 M10) |
 
 ## 검증 커맨드 레저 (evidence ledger)
 
@@ -27,14 +33,20 @@ Tier M 인수 계층. 각 AC는 Given-When-Then으로 기술되고 검증 명령
 빈 스윕 금지 (verification-completeness §1.1): 각 실행의 증거 출력에서 `[no tests to run]`이 관측되면 **실패**로 판정한다. 실행 테스트 수 하한 — EV-AFR-006 ≥ 4 (행당 1건 이상), EV-AFR-008 ≥ 3 (선택자 3명 일치), EV-AFR-012는 0히트 기대(grep exit 1이 정상 패스, exit 2는 오류). `ok`와 함께 0이 아닌 테스트 카운트가 보여야 PASS로 읽는다.
 
 ```
+EV-AFR-001 (AC-AFR-001 — REQ-AFR-001, 실행 테스트 ≥ 2):
+go test ./internal/web/ -run '^TestAgentOverridesSubsection$|^TestAgentOverridesSubsectionStates$'
+
 EV-AFR-006 (AC-AFR-006 — REQ-AFR-008, 실행 테스트 ≥ 4):
-go test ./internal/template/ -run 'RetiredModelKeys'
-go test ./internal/config/  -run 'TestShippedConfigKeysHaveReaders'
-go test ./internal/cli/     -run 'TestUpdateLLMYAML'
-go test ./internal/cli/     -run 'TestStripRetiredModel'
+go test ./internal/template/ -run '^TestShippedRetiredModelKeys_IncludesReshippedConsoleKeys$|^TestStripRetiredModelKeys_RemovesEveryKeyAndItsCommentBlock$|^TestStripRetiredModelKeys_FlagsUserEditedOverrides$|^TestStripRetiredModelKeys_MultiLineFlowMapping$|^TestStripRetiredModelKeys_AbsentKeysAndFilesAreNoOps$|^TestStripRetiredModelKeys_KeepsCRLFLineEndings$|^TestStripRetiredModelKeys_LeavesShippedKeys$|^TestShippedRetiredModelKeys_ReadsTheEmbeddedTemplate$'
+go test ./internal/config/  -run '^TestShippedConfigKeysHaveReaders$'
+go test ./internal/cli/     -run '^TestUpdateLLMYAMLPreserveTemplateSync$|^TestUpdateLLMYAMLNewKeyDelivery$|^TestUpdateLLMYAMLFirstDeployCalm$|^TestUpdateLLMYAMLCommentsSurvive$'
+go test ./internal/cli/     -run '^TestStripRetiredModelConfig_ReportsEachKeyOnceAsRemoved$|^TestStripRetiredModelConfigOnVersionMatch_BacksUpThenStrips$|^TestStripRetiredModelConfigOnVersionMatch_NoOpWithoutMatchOrKeys$|^TestStripRetiredModelConfig_ReshippedConsoleKeysSurvive$|^TestStripRetiredModelConfig_LeavesKeysTheTemplateStillShips$'
+
+EV-AFR-007 (AC-AFR-007 — REQ-AFR-011, 실행 테스트 ≥ 15):
+go test ./internal/web/ -run '^TestI18nUntranslatedValues$|^TestI18nUntranslatedDetectorNegativeControl$|^TestI18nAllowlistNoOrphans$|^TestI18nAllowlistShape$|^TestI18nEndonymInvariants$|^TestI18nKeyCoverageForward$|^TestI18nKeyCoverageReverse$|^TestI18nParserSpecialKeys$|^TestI18nGovernanceContractPresent$|^TestI18nDictionaryEmbedded$|^TestI18nGoEmbedEnumeratesDictionary$|^TestI18nLoadDefault$|^TestI18nKeySetParity$|^TestI18nSegmentKeysRemovedFromWebDictionary$|^TestI18nSlug$'
 
 EV-AFR-008 (AC-AFR-008 — REQ-AFR-013, 실행 테스트 ≥ 3):
-go test ./internal/web/ -run 'TestConsoleTabsOrder|TestTabPanelRenderOrderMatchesTabs|TestSettingsPageHeaderKeepsAllThirteenTabs'
+go test ./internal/web/ -run '^TestConsoleTabsOrder$|^TestTabPanelRenderOrderMatchesTabs$|^TestSettingsPageHeaderKeepsAllThirteenTabs$'
 
 EV-AFR-012 (AC-AFR-012 — §D.12 반전-후 상태 핀; sync-audit F5 재기술 — 리터럴 0히트 기기는 기준선에서도 성립 불가):
 grep -rn 'TestAgentSettingsTab_IsNotRendered\|TestAgentSettingsFields_ArePostedWithoutEffect' internal/web/
@@ -44,6 +56,15 @@ grep -rn 'still renders' internal/web/*_test.go
 # 행 2-3: 0히트 기기가 아니다 — 'still renders'는 기준선 a48216da1에서도 11히트. 전수 판독 기기:
 # 모든 히트가 긍정(존재) 단언 문맥이어야 하고 부재-단정(lacks/gone) 문맥은 0이어야 한다.
 # agentfm 결합 허용 히트: fieldsets_states_test.go:368 (긍정 존재 단언).
+
+EV-AFR-014 (AC-AFR-014 — REQ-AFR-015, 실행 테스트 ≥ 3):
+go test ./internal/config/ -run '^TestAgentOverridesConsumeKey$'
+go test ./internal/config/ -run '^TestShippedConfigKeysHaveReaders$'
+go test ./internal/web/     -run '^TestAgentOverridesSave$'
+
+EV-AFR-018 (AC-AFR-018 — REQ-AFR-019, 실행 테스트 ≥ 2):
+go test ./internal/web/ -run '^TestAgentOverridesContractState$'
+go test ./internal/cli/ -run '^TestDoctorServedModelConsumeState$'
 ```
 
 선택자 근거 (plan-audit D4/D13): `TestShippedConfigKeysHaveReaders` = `internal/config/shipped_key_reader_test.go:74` — 1차 초안의 `TestShippedKeyReader`는 존재하지 않는 이름이었고 패키지도 틀렸다(internal/cli → internal/config). `TestUpdateLLMYAML*` = `internal/cli/update_llm_preserve_test.go:229+` — 1차 초안의 `TestUpdateLlmPreserve`는 대소문자 불일치로 0매치. 템플릿 strip = `TestStripRetiredModelKeys_*`(internal/template), CLI strip = `TestStripRetiredModelConfig_*`(internal/cli). 1차 초안 커맨드의 중복 `./internal/template/` 패키지 인자는 제거되었다.
@@ -65,8 +86,8 @@ grep -rn 'still renders' internal/web/*_test.go
 - **Given** 동일 에이전트에 override가 있는 상태 **When** 프로필 기본값과 동일한 쌍을 제출 **Then** 해당 override가 제거되고 다른 에이전트의 override는 보존된다.
 - **Given** 제출에 변화가 없는 상태 **When** 저장 **Then** llm.yaml은 byte-identical이다 (no-op 스킵).
 - **Given** 매트릭스 비멤버 이름 제출 **When** 저장 **Then** override가 생기지 않는다.
-- **Given** `llm.agent_overrides`에 항목이 없는 에이전트 **When** 행 해상 **Then** 렌더는 프로필-매트릭스 셀 값으로 해상한다(REQ-AFR-001) — pin/clear 대비 기준도 동일한 프로필-매트릭스 해상이다(REQ-AFR-004, no-op byte-identical 보존). REQ-AFR-002의 세션 model/effort 해상은 스폰 경로 한정이며(런타임 소비는 Out of Scope — decision-index Q2, 후속 카드 t1421) 콘솔 표시와 혼동하지 않는다.
-- **Given** 복원된 저장 경로 **When** `go test ./internal/cli/ -run 'TestCodexResolution_IgnoresPerAgentLLMCells'` (`internal/cli/model_backend_default_test.go:28`) **Then** 스폰-경로 무시 계약이 green으로 유지된다 — 본 SPEC이 스폰 경로를 바꾸지 않음을 관측 (REQ-AFR-002, regression-guard; `[no tests to run]`은 실패).
+- **Given** `llm.agent_overrides`에 항목이 없는 에이전트 **When** 행 해상 **Then** 렌더는 프로필-매트릭스 셀 값으로 해상한다(REQ-AFR-001) — pin/clear 대비 기준도 동일한 프로필-매트릭스 해상이다(REQ-AFR-004, no-op byte-identical 보존). REQ-AFR-002의 세션 model/effort 해상은 키 없는 세션의 기본이며(스폰-경로 소비는 v0.3.0 옵트인 계약 REQ-AFR-015..020 — decision-index Q4) 콘솔 표시와 혼동하지 않는다.
+- **Given** 복원된 저장 경로 **When** `go test ./internal/cli/ -run '^TestCodexResolution_IgnoresPerAgentLLMCells$'` (`internal/cli/model_backend_default_test.go:28`) **Then** 스폰-경로 무시 계약이 green으로 유지된다 — 소비는 오케스트레이터가 Agent() 호출에 전달하는 파라미터라 CLI 해상 기계와 무관함(OOS(a)/C9)을 관측 (REQ-AFR-002 키-없는-세션 절, regression-guard; `[no tests to run]`은 실패. plan-audit iter1 D2).
 
 ## §D.4 AC-AFR-004 — 원자 거절
 
@@ -127,11 +148,54 @@ M2의 반전은 파일명 재사용 또는 신규 파일 둘 다 허용되므로
 - 불변 확인: 동 SPEC `progress.md` §E.4의 `sync_commit_sha` 미수정 (`git diff`에 progress.md 미등장). 상태 축은 SSOT 수정 전이를 따른다 — `status: completed → in-progress` + `amendment_of` + `## Amendments`(prior_completed_sha = 기존 close의 sync_commit_sha): spec-frontmatter-schema.md § completed → in-progress (amendment)의 문서화된 표류-면제 형식 (M5b 실측 착지형 — 원래 "status 미수정" 문구는 SSOT 전이와 상충하여 재기술됨).
 - `TestJevAmendmentLinkage` 스타일 정합: 본문·HISTORY·인용 3자 분열 없음.
 
+## §D.14 AC-AFR-014 — 옵트인 키 (v0.3.0)
+
+검증 커맨드: EV-AFR-014 레저 (3커맨드, 빈 스윕 금지 — 실행 테스트 ≥ 3).
+
+- **Given** `llm.agent_overrides_consume` 없는 llm.yaml **When** 로드 **Then** 소비는 off로 해상된다 (기본 false — 저장 전용 동작 불변, REQ-AFR-002 승계).
+- **Given** `agent_overrides_consume: true` **When** 로드 **Then** 소비 on. **Given** 비-불리언 값(`agent_overrides_consume: "yes"`) **When** 콘솔 저장 경로가 이를 검증 **Then** 집합 외 값과 동일한 원자 거절 (REQ-AFR-006/007 합류 — llm.yaml·frontmatter·섹션 파일 byte-identical, `TestAgentOverridesSave` 거절 케이스 확장).
+- **Given** 배포 템플릿 llm.yaml이 신규 키를 수재 **When** `TestShippedConfigKeysHaveReaders` **Then** `internal/config/testdata/shipped_key_inventory.yaml`의 R 등록으로 GREEN이고, strip 단계는 신규 키를 건드리지 않는다 (은퇴 집합 밖 — 음측 회귀는 기존 `TestStripRetiredModel*` 유지로 관측).
+
+## §D.15 AC-AFR-015 — 소비 리졸버
+
+- **Given** consume on + `manager-develop`에 `{model: opus, effort: xhigh}` 핀 **When** 해상 **Then** (opus, xhigh) 반환 — override 승리.
+- **Given** consume on + 핀 없는 에이전트 **When** 해상 **Then** 상속 (세션 model/effort) — 부재가 기본이다.
+- **Given** consume on + `{model: inherit}` 핀 **When** 해상 **Then** 상속 no-op (명시적 상속).
+- **Given** consume off **When** 해상 **Then** 저장 전용 — 소비 해상은 수행되지 않는다 (콘솔 비교용 기존 해상만).
+
+## §D.16 AC-AFR-016 — 교리 수비 소비 의미론 (증거 형태 — sync 소유)
+
+- 본 카드 run-phase 착지 후, sync-phase가 `.claude/rules/moai/core/agent-common-protocol.md` § Subagent Model and Effort에 소비 조항을 추가한다 — 옵트인 on 세션은 스폰 전 override를 조회해 Agent() 호출에 model/effort를 전달하며, off 세션의 상속 기본 문장은 유지된다 (REQ-AMD-001 계열 — 룰 문서 개정은 run 코드 확정 후 sync 정산, v0.1.0 sync 선례).
+- 증거: sync 커밋에서 `grep -n "agent_overrides" .claude/rules/moai/core/agent-common-protocol.md` 1히트 이상 + 옵트인 off 기본 문장 생존. 템플릿 미러(`internal/template/templates/.claude/rules/`) 동기화 동반 — 한쪽 미러만의 0은 반대편을 확립하지 않는다.
+- 소유: sync-phase — 0.2.0 + 0.3.0 joint close 커밋 (카드 t1446 동행).
+
+## §D.17 AC-AFR-017 — 훅 advise/audit 확장
+
+- **Given** consume on + override 기대 (opus) **When** 스폰이 `model: sonnet`을 선언 **Then** advise가 미적중(miss) 조언을 내고 JSONL 레코드는 override 필드에 miss를 실는다 — 차단 없음 (non-blocking advisory, exit 정상).
+- **Given** consume on + override 기대 (opus) **When** 스폰이 `model: opus`를 선언 **Then** 적중(hit) 기록.
+- **Given** consume off **When** 스폰 **Then** 레코드는 기존 형태 (override 필드는 off 마크 또는 부재)이고 기존 observe/advise 테스트 전량 GREEN — 확장이 기존 필드를 훼손하지 않음.
+
+## §D.18 AC-AFR-018 — 계약 상태 가시성
+
+검증 커맨드: EV-AFR-018 레저 (2커맨드, 빈 스윕 금지 — 실행 테스트 ≥ 2).
+
+- **Given** consume off + 저장된 override 존재 **When** agentfm 서브섹션 렌더 **Then** 계약 상태가 "저장 전용"으로 표시된다 — 저장 항목이 live로 침묵-독해되는 것 금지 (REQ-AFR-019).
+- **Given** consume on **When** agentfm 렌더 + `moai doctor` served-model 표면 **Then** 각 면이 소비 상태를 표시하고 doctor 행은 스위치 상태를 이름으로 보고한다.
+
+## §D.19 AC-AFR-019 — AMI-001 소비 계약 링크 (증거 형태)
+
+소유 마일스톤: **M10** (plan.md §I.5 — M5b 선례의 manager-spec 재위임 단계; 직렬 순서 M9 → M10 → M11).
+
+- `.moai/specs/SPEC-AGENT-MODEL-INHERIT-001/spec.md` REQ-AMI-011 예외 문단에 소비 계약 확장 문구 존재 (v0.1.0의 AC-AFR-013 선례 — M10 착지 형태 확정 후 구체 grep과 §E.2 전사).
+- 불변 확인: 동 SPEC `progress.md` §E.4 `sync_commit_sha` 미수정, 요구사항 삭제·재번호 없음.
+- `TestJevAmendmentLinkage` 스타일 정합 — 본문·HISTORY·인용 3자 분열 없음.
+
 ## 간접 검증 (indirect)
 
 - `go test ./internal/web/ ./internal/settings/... ./internal/template/ ./internal/config/` 전량 GREEN — 특히 `settings/schema_sections_test.go` removed-key 계약(§B-6)과 `crosssession_test.go` 무변경 통과.
 - `golangci-lint run internal/web/... internal/settings/agentfm/...` + `gofmt` (Unified).
 - 커버리지: `go test -cover ./internal/settings/agentfm/ ./internal/template/` ≥ 85%.
+- (v0.3.0) `go test ./internal/hook/ -run '^(TestAgentModelObserveNeverBlocks|TestAgentModelAdvisoryDoesNotBlock)$'` GREEN — 훅 확장이 기존 observe/advise 계약을 훼손하지 않음 (테스트명 실측: `go test ./internal/hook -list 'AgentModel'`).
 
 ## 에지 케이스
 
@@ -154,3 +218,4 @@ M2의 반전은 파일명 재사용 또는 신규 파일 둘 다 허용되므로
 2. decision-index Q1-Q3 운영자 확인 **완료** (2026-10-02, decision-index Operator verdict 기록 — Q1 승인 · Q2 후속 카드 발행 · Q3 llm 패널 확정; 전부 §C 기본 처분과 일치).
 3. Out of Scope 3개 항목 미침수 — `git diff --stat` 이 스코프 파일만.
 4. LSP 게이트 run 기준(오류 0) 통과.
+5. (v0.3.0, card t1421) AC 매트릭스 19/19 PASS — 기존 13 (항목 1의 13/13은 v0.1.0/v0.2.0 AC 집합에 대해 계속 유효) + 신설 6 (AC-AFR-014..019). 재close는 0.2.0 + 0.3.0 joint close 커밋 (카드 t1446 동행); AC-AFR-016·AC-AFR-019의 grep 증거는 각 소유 단계(sync·M10) 착지 후 progress.md §E에 전사한다.

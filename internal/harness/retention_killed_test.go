@@ -36,17 +36,46 @@ func TestPruneStamp_StampExistsBeforeTheWork(t *testing.T) {
 		t.Skipf("mkfifo unavailable: %v", err)
 	}
 
-	// drain unblocks the pruner: opening the FIFO for reading rendezvouses with its blocked open.
+	// drain unblocks the pruner: opening the FIFO for reading rendezvouses with its blocked open. It
+	// never blocks on a pruner that did not reach its archive step: the blocking read open runs in a
+	// goroutine, and once archiveStepWait has passed the goroutine is released by opening the write
+	// side without blocking (that open succeeds only while a reader is blocked in its open). drain
+	// reports whether a pruner opened the FIFO for writing, that is, reached its archive step.
+	const archiveStepWait = 10 * time.Second
 	var drainOnce sync.Once
-	drain := func() {
+	archiveReached := false
+	drain := func() bool {
 		drainOnce.Do(func() {
-			f, err := os.OpenFile(fifo, os.O_RDONLY, 0)
-			if err != nil {
+			opened := make(chan struct{})
+			go func() {
+				defer close(opened)
+				f, err := os.OpenFile(fifo, os.O_RDONLY, 0)
+				if err != nil {
+					return
+				}
+				_, _ = io.Copy(io.Discard, f)
+				_ = f.Close()
+			}()
+			select {
+			case <-opened:
+				archiveReached = true
 				return
+			case <-time.After(archiveStepWait):
 			}
-			_, _ = io.Copy(io.Discard, f)
-			_ = f.Close()
+			release := time.NewTicker(10 * time.Millisecond)
+			defer release.Stop()
+			for {
+				if w, err := os.OpenFile(fifo, os.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
+					_ = w.Close()
+				}
+				select {
+				case <-opened:
+					return
+				case <-release.C:
+				}
+			}
 		})
+		return archiveReached
 	}
 	defer drain()
 
@@ -66,7 +95,10 @@ func TestPruneStamp_StampExistsBeforeTheWork(t *testing.T) {
 	}
 	if !stamped {
 		drain()
-		<-done
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+		}
 		t.Fatalf("no stamp on disk while the pruner was still working: a killed pruner would be repeated")
 	}
 
@@ -81,8 +113,11 @@ func TestPruneStamp_StampExistsBeforeTheWork(t *testing.T) {
 		t.Fatalf("the log changed before the pruner finished its archive step")
 	}
 
-	// Let the pruner finish and confirm it completes normally.
-	drain()
+	// Let the pruner finish and confirm it completes normally. A pruner that never reached its
+	// archive step fails here, within archiveStepWait, instead of waiting for the go test timeout.
+	if !drain() {
+		t.Fatalf("the pruner never reached its archive step: nothing opened the archive FIFO %s for writing within %s", fifo, archiveStepWait)
+	}
 	select {
 	case err := <-done:
 		if err != nil {
