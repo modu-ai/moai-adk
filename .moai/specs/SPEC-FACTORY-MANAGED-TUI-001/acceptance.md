@@ -93,14 +93,14 @@ Test-based ACs (001-009, 011, 016) are adoption-deferred (header, "Three classes
 
 ### §1.3 AC-MT-013 grep list (synced tree)
 
-Observed on the current tree (`42a952661`, 2026-10-04), same commands as the rows below: old sentence `화면에는 아무것도 나타나지 않는다` → `0`; `SPEC-FACTORY-MANAGED-TUI-001` in the operator document → `3`; anchors with same-line content: opt-out `1`, log-file `1`, quit `1`, probe `1`, signals(t1459) `1`, unobserved `3`, manual-check `1`, debt-status `1` (that line contains `addressed` once and `unverified` once, `resolved` zero times); card-child headless bullet `1`; CHANGELOG `SPEC-FACTORY-MANAGED-TUI-001` `1`, CHANGELOG `anchor:tui-` `6`. The bare reads `Codex 관리 세션은 화면에 아무것도 보여 주지 않는다` → `0` and `t1459` → `2` are recorded for AC-CC-012's benefit and are not this AC's rows.
+Observed on the current tree (`42a952661`, 2026-10-04), same commands as the rows below: old sentence `화면에는 아무것도 나타나지 않는다` → `0`; `SPEC-FACTORY-MANAGED-TUI-001` in the operator document → `3`; anchors with same-line content: opt-out `1`, log-file `1`, quit `1`, probe `1`, signals(t1459) `1`, unobserved `3`, manual-check `1`, debt-status `1` (that line contains `addressed` once and `unverified` once, `resolved` zero times); card-child headless bullet `1`; CHANGELOG `SPEC-FACTORY-MANAGED-TUI-001` `1`, CHANGELOG `anchor:tui-` `6`. The bare reads `Codex 관리 세션은 화면에 아무것도 보여 주지 않는다` → `0` and `t1459` → `2` are recorded for the CARD-CHILD-001 operator-document criterion (twelfth)'s benefit and are not this AC's rows.
 
 Base counts were measured on tree `2b9e4a4d0`; every row must change from its base. Disclosure lines carry a machine anchor on the same line as the required content, so a document that only lists search tokens does not satisfy a row.
 
 | Command | Base (count, exit) | Expect after sync |
 |---|---|---|
 | `grep -c '화면에는 아무것도 나타나지 않는다' .moai/docs/factory-managed-session.md` | `1`, 0 | `0`, exit 1 |
-| `grep -c -e 'moai codex -l. 의 관리 카드 자식은 TUI 를 붙이지 않고 헤드리스로 남는다' .moai/docs/factory-managed-session.md` | `0`, 1 on the pre-card-child base (not re-measurable now) | 1 or more — the headless fact lives in this card-child bullet; the old sentence `Codex 관리 세션은 화면에 아무것도 보여 주지 않는다` is deliberately **not** constrained here, because the completed SPEC-FACTORY-MANAGED-CARD-CHILD-001 AC-CC-012 owns it (it expects 1 or more) |
+| `grep -c -e 'moai codex -l. 의 관리 카드 자식은 TUI 를 붙이지 않고 헤드리스로 남는다' .moai/docs/factory-managed-session.md` | `0`, 1 on the pre-card-child base (not re-measurable now) | 1 or more — the headless fact lives in this card-child bullet; the old sentence `Codex 관리 세션은 화면에 아무것도 보여 주지 않는다` is deliberately **not** constrained here, because the completed SPEC-FACTORY-MANAGED-CARD-CHILD-001 the CARD-CHILD-001 operator-document criterion (twelfth) owns it (it expects 1 or more) |
 | `grep -c 'SPEC-FACTORY-MANAGED-TUI-001' .moai/docs/factory-managed-session.md` | `0`, 1 | 1 or more |
 | `grep -c 'anchor:tui-opt-out.*MOAI_FACTORY_MANAGED_TUI' .moai/docs/factory-managed-session.md` | `0`, 1 | 1 or more |
 | `grep -c 'anchor:tui-log-file.*factory-managed-' .moai/docs/factory-managed-session.md` | `0`, 1 | 1 or more |
