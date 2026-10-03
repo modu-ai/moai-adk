@@ -9,10 +9,15 @@
 // fallback (REQ-TCD-003; the serial default is the fail-safe direction, a
 // wrongly-parallel default could run true-serial cards concurrently).
 //
-// The ONLY injection seam is --classification-file (plan D.3): the product
-// computes no LLM call and knows no external tooling. An operator (or a local
-// tool the operator runs) supplies a validated judgement file; the product
-// records a decider-attributed judgment it did not compute.
+// The ONLY operator-supplied injection seam is --classification-file (plan
+// D.3): an operator (or a local tool the operator runs) supplies a validated
+// judgement file, and the product records a decider-attributed judgment it
+// did not compute. The product's sole sanctioned LLM computation is the
+// gated decider of SPEC-TCD-LLM-DECIDER-001 (todo_classify_llm.go): selected
+// only by the MOAI_TODO_DECIDER operator switch, default-off, failing safe
+// to the defaults through THIS file's fallback branch, and never routed
+// through local-only tooling. Comment-only amendment (constraint C2 of that
+// SPEC) — behavior unchanged.
 package cli
 
 import (

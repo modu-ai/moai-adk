@@ -103,7 +103,7 @@ func collectReviewDiffAt(root string, base reviewBase) (string, error) {
 }
 
 // reviewBase is ONE resolution of the base a baseBranch review is measured
-// against: the ref that was actually selected and the merge-base COMMIT both
+// against: the ref that was actually selected and the merge base COMMIT both
 // backends compare from — GLM measures its diff from it, codex is sent it as the
 // baseBranch target. Resolved together so the backends can never land on
 // different steps of the chain (card t1426).
