@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "acceptance.md — acceptance criteria"
-version: "0.3.2"
+version: "0.3.3"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)

@@ -1,8 +1,8 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "Factory managed Codex session — operator TUI attach and the headless-to-interactive transition (SPEC-FACTORY-MANAGED-SESSION-001 Known debt 1, sync audit F2)"
-version: "0.3.2"
-status: completed
+version: "0.3.3"
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-04
 author: GOOS (manager-spec)
@@ -23,13 +23,25 @@ amendment_of: SPEC-FACTORY-MANAGED-TUI-001
 
 ### Amendments
 
+Amendment 2 (version 0.3.3):
+
+| Field | Value |
+|---|---|
+| prior_completed_version | 0.3.2 |
+| prior_completed_sha | 985cedfb788dad89bbffb5e010e79e96ae95f960 (the re-close sync commit; progress.md §E.4 `sync_commit_sha` carries its short form) |
+| prior_completed_record | progress.md §E.4 sync_commit_sha |
+| rationale | The delta sync audit (`.moai/reports/t1408/sync-audit-iter2.md`, local-only) reproduced two bypasses of the safe session-log open that known debt 15 did not name, so it understated the limit; the operator document (`tui-log-race`) and the CHANGELOG already carry the fuller wording. The frontmatter record pointer of Amendment 1 also named the renamed key `sync_commit_sha`. |
+| scope | spec.md (§H item 15, the Amendment 1 `prior_completed_record` cell, frontmatter, this HISTORY) + acceptance.md/design.md version lines only. REQ count stays 14; AC count stays 16; no requirement or criterion text changes. progress.md, CHANGELOG and the operator document are the sync owner's and are not touched. |
+| weakening note | None: the limit is stated more broadly, not less. |
+| re_close_path | SPEC returns to `completed` on a later sync commit owned by manager-docs. This amendment does not set `completed`. |
+
 Amendment 1 (version 0.3.2):
 
 | Field | Value |
 |---|---|
 | prior_completed_version | 0.3.1 |
 | prior_completed_sha | 40aa3aedf390a28beac616d53c247d63e66703c2 (the sync commit; progress.md §E.4 `sync_commit_sha` carries its short form, backfilled by `3ca47fbe3`) |
-| prior_completed_record | progress.md §E.4 sync_commit_sha |
+| prior_completed_record | progress.md §E.4 superseded_sync_commit_sha (the key that now holds the first close; the field was renamed when the SPEC was re-closed) |
 | rationale | The independent sync audit (`.moai/reports/t1408/sync-audit.md`, FAIL 76.2) found two SPEC-text defects and two code defects. F1: AC-MT-010 names `TestManagedSwitchDoesNotReachCodexLaneLoop`, which card t1440 removed upstream (commit `a184aa89c`); the name is gone from `internal/cli` (measured: the grep finds nothing). F7: AC-MT-013 demanded that the old "Codex 관리 세션은 화면에 아무것도 보여 주지 않는다" sentence be absent, while the completed SPEC-FACTORY-MANAGED-CARD-CHILD-001 AC-CC-012 demands that same sentence be present. The code repairs F5 (connection lost before attach) and F6 (safe session-log open) landed in `42a952661` with tests `TestManagedCodexConnectionLostBeforeAttachStopsTUI` and `TestManagedTUILogFileIsSafe`; F4 was deliberately not fixed and is recorded as known debt 14. |
 | scope | acceptance.md (AC-MT-010 test names and positive-control line numbers, its §1.1 block, AC-MT-013 grep rows and a record of observed counts, the coverage statement, an edge case for F4) + spec.md (frontmatter, this HISTORY, §H debts 14 and 15) + design.md (version, one D-5 note). REQ count stays 14; AC count stays 16; no requirement text changes. progress.md, CHANGELOG and the operator document are the sync owner's and are not touched. |
 | weakening note | AC-MT-010 loses one named test (the lane-loop one, removed upstream by t1440) and gains `TestManagedCardChildSwitchOffKeepsDirectDoor`. The intent (no managed branch without the opt-in) is carried by the three surviving opt-in tests, that replacement, and AC-MT-016. AC-MT-013 no longer constrains the count of the old "does not show anything" sentence on the Codex-session line: that sentence is AC-CC-012's, not this SPEC's, and the headless fact it carried is now a card-child bullet this AC checks directly. |
@@ -37,6 +49,7 @@ Amendment 1 (version 0.3.2):
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.3.3 | 2026-10-04 | manager-spec | Completed-SPEC amendment (card t1408) — known debt 15 restated to the full limit (hard link, symlinked parent directory, final-check race); Amendment 1 record pointer corrected. See Amendments. |
 | 0.3.2 | 2026-10-04 | manager-spec | Completed-SPEC amendment (card t1408) — sync audit F1, F7; known debts 14, 15 (F4 and the log-open race). See Amendments. |
 | 0.3.1 | 2026-10-03 | manager-spec | Final delta-audit wording fixes B1, B2, O1, O2, O8 (no new audit; PASS-WITH-DEBT convergence). |
 | 0.3.0 | 2026-10-03 | manager-spec | Plan-audit iteration 2 delta revision (FAIL 0.86; scoped to D1-D5 and D7). Blocked-call release redesigned (WebSocket close, write deadline); AC-MT-015 made operator-held; t1408-before-t1459 decided; AC-MT-014 split and made checkable. See progress.md §E.1. |
@@ -192,4 +205,4 @@ These are stated at plan time and are not closed by it. REQ-MT-013 requires the 
 12. **Windows runtime and the codex binary version matrix are not certified**; the probe is feature detection, not a version list.
 13. **A lost `turn/completed` frame starves delivery.** Busy never clears by time (REQ-MT-007), so the broker batch stays unclaimed and the only signal is a repeated line in the session log file, which is off-screen. Releasing after the ceiling would steer broker prompts into a legitimate long operator turn; this SPEC picks visible starvation over silent steering.
 14. **An operator turn that starts and completes inside the owner's armed window (before the owner's `turn/start` response) is attributed to the owner; the owner's own lifecycle frames are then filtered and the owner waits for its turn until the turn timeout.** The fix needs response-id attribution with frame holding and would touch the REQ-MT-008 exception. Reproduced at method level by `TestManagedOperatorTurnInsideArmedWindowKnownDebt`, which pins the current behavior. Not fixed (sync audit F4).
-15. **A narrow race remains in `openManagedTUILog` between the final path check and the later use of the log file**; exploiting it needs write access to the log directory by the same user. The checks added for F6 (`TestManagedTUILogFileIsSafe`) close the rest.
+15. **The session-log open is only partly hardened.** Replacing the log path's leaf with a symlink and an over-open file mode are closed by `TestManagedTUILogFileIsSafe`. A **hard link** at the log path (the same-file check passes; appends and the mode tightening hit the original file) and a **symlinked parent directory** (`.moai/logs` pointing outside the project) remain open known limits, and the race between the final check and the use of the file also remains. All of them need the same user's write access to the log location. Reproduced by the delta sync auditor (`.moai/reports/t1408/sync-audit-iter2.md`, local-only). The operator document anchor `tui-log-race` and the CHANGELOG carry the same wording.
