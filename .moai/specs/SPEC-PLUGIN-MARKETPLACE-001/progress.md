@@ -459,6 +459,147 @@ PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa e
 
 B2 cross-SPEC scan (`grep -rn -i 'plugin' internal/template/*.go | grep -i 'retir\|supersed'`): no match. The wider `grep -r "Retired\|superseded" internal/template` matches ten unrelated files (model-policy, tool catalog, retired wrappers and similar); none concerns a plugin or marketplace emitter, so no conflict with a new `internal/template/pluginemit` package.
 
+#### Commits (tdd order: observed RED, GREEN)
+
+| Step | SHA | Content |
+|------|-----|---------|
+| RED | `7b863c2e5` | `internal/template/pluginemit` as a compiling stub (empty publication, zero MCP entry), the five test functions, hand-authored golden shape pins under `testdata/golden/`, and the pre-flight above |
+| GREEN | `6298aa9fe` | `pluginemit.go`, `manifest.go`, `mcp.go`, `Makefile` (`plugin-emit`, `plugin-emit-check`, `.PHONY`), and the four manifests produced by `make plugin-emit` |
+| REFACTOR | none | nothing to simplify: the goldens authored before GREEN matched the first emission byte for byte, and the three generator files total about 300 lines against a minimum of about 150 (under the 3x trigger) |
+
+The RED commit precedes the GREEN commit in the commit graph, so the order is witnessed by git and not only asserted here (verification-claim-integrity section 2.3).
+
+#### Claim
+
+1. The generator emits the four manifests (REQ-001, REQ-002, REQ-003): marketplace `moai-adk`, one entry `moai` with `source` `./plugins/moai` (OD-4 default), all four version-carrying fields equal to `pkg/version.Version` minus its leading `v`, the Codex marketplace with no `version` key at either level, the Codex plugin manifest with `skills` and the `moai` MCP entry.
+2. The MCP entry is derived from the template `.mcp.json`, not retyped (derivation unit of REQ-007, AC-007 (c)); a missing or malformed source is refused.
+3. AC-001, AC-002 and AC-003 pass by their own commands (matrix below). `make plugin-emit-check` is green on the generated tree and red on a hand edit and on absent files, and never writes.
+4. No scope beyond M1 was started: no payload (skills, commands, `.mcp.json`), no drift gate beyond bytes, no install step, no doctor check; `plugin-emit-check` is not yet a prerequisite of `build` (M2, plan section 3).
+
+#### Evidence (verbatim, this run, this tree)
+
+RED, observed at assertions (`7b863c2e5` content, run before the commit; none failed at compile or discovery):
+
+```
+$ go test ./internal/template/pluginemit/... -count=1 -v
+=== RUN   TestManifestsGolden
+    golden_test.go:58: .agents/plugins/marketplace.json: not emitted
+    golden_test.go:58: .claude-plugin/marketplace.json: not emitted
+    golden_test.go:58: plugins/moai/.claude-plugin/plugin.json: not emitted
+    golden_test.go:58: plugins/moai/.codex-plugin/plugin.json: not emitted
+    golden_test.go:76: emitted 0 files, want exactly the 4 manifests
+--- FAIL: TestManifestsGolden (0.00s)
+=== RUN   TestGoldenCommittedArtifactsMatchEmission
+    golden_test.go:89: emitted set is empty — nothing was compared
+--- FAIL: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+=== RUN   TestVersionStampedFromSSOT
+    manifest_test.go:93: emitted set lacks .claude-plugin/marketplace.json (have 0 files)
+--- FAIL: TestVersionStampedFromSSOT (0.00s)
+=== RUN   TestCommittedVersionMatchesSSOT
+    manifest_test.go:123: committed manifest missing: open ../../../.claude-plugin/marketplace.json: no such file or directory
+--- FAIL: TestCommittedVersionMatchesSSOT (0.00s)
+=== RUN   TestMCPEntryDerivedFromTemplate
+=== RUN   TestMCPEntryDerivedFromTemplate/default_entry
+    mcp_test.go:38: emitted set lacks plugins/moai/.codex-plugin/plugin.json (have 0 files)
+=== RUN   TestMCPEntryDerivedFromTemplate/changed_command_and_args
+    mcp_test.go:38: emitted set lacks plugins/moai/.codex-plugin/plugin.json (have 0 files)
+=== RUN   TestMCPEntryDerivedFromTemplate/missing_moai_entry_is_refused
+    mcp_test.go:63: Emit succeeded without a moai entry in the template .mcp.json
+=== RUN   TestMCPEntryDerivedFromTemplate/malformed_template_is_refused
+    mcp_test.go:69: Emit succeeded over a malformed template .mcp.json
+--- FAIL: TestMCPEntryDerivedFromTemplate (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/template/pluginemit	0.243s
+```
+
+GREEN, tree HEAD `6298aa9fe`:
+
+```
+$ go test ./internal/template/pluginemit/... -count=1 -v
+--- PASS: TestManifestsGolden (0.00s)
+--- PASS: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+--- PASS: TestVersionStampedFromSSOT (0.00s)
+--- PASS: TestCommittedVersionMatchesSSOT (0.00s)
+--- PASS: TestMCPEntryDerivedFromTemplate (0.00s)    (four subtests PASS)
+ok  	github.com/modu-ai/moai-adk/internal/template/pluginemit	0.089s
+```
+
+Acceptance matrix (every command run at HEAD `6298aa9fe`; scratch homes `<scratchpad>/m1/{claude,codex}-AC-00n`, six directories shown empty by `ls -A` first, one pair per criterion):
+
+| AC | Result | Command | Verbatim output |
+|----|--------|---------|-----------------|
+| AC-001 (a) | PASS | `CLAUDE_CONFIG_DIR=<claude-home:AC-001> claude plugin validate .claude-plugin/marketplace.json --strict` | `Validating marketplace manifest: …/.claude-plugin/marketplace.json` / `✔ Validation passed` (tool result not flagged as an error; exit code not echoed) |
+| AC-001 (b) | PASS | `jq -c '[.name,[.plugins[].name],.plugins[0].source]' .claude-plugin/marketplace.json` | `["moai-adk",["moai"],"./plugins/moai"]` |
+| AC-001 (c) | PASS | `jq -e '.metadata.version == .plugins[0].version' .claude-plugin/marketplace.json` | `true` |
+| AC-002 (a) | PASS | `CODEX_HOME=<codex-home:AC-002> codex plugin marketplace add .` | ``Added marketplace `moai-adk` from /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435.`` / `Installed marketplace root: …/t1435` |
+| AC-002 (b) | PASS | `jq -c '[.name,[.plugins[].name],.plugins[0].source,.plugins[0].policy]' .agents/plugins/marketplace.json` | `["moai-adk",["moai"],{"source":"local","path":"./plugins/moai"},{"installation":"AVAILABLE","authentication":"ON_INSTALL"}]` |
+| AC-002 (c) | PASS | `jq -e '[has("version"), (.plugins[0] \| has("version"))] == [false, false]' .agents/plugins/marketplace.json` | `true` |
+| AC-003 (a) | PASS | `CLAUDE_CONFIG_DIR=<claude-home:AC-003> claude plugin validate plugins/moai --strict` | `Validating plugin manifest: …/plugins/moai/.claude-plugin/plugin.json` / `✔ Validation passed` |
+| AC-003 (b) | PASS | `jq -c '[.name,.version]' plugins/moai/.claude-plugin/plugin.json plugins/moai/.codex-plugin/plugin.json` | `["moai","3.1.3"]` and `["moai","3.1.3"]` |
+| AC-003 (c) | PASS | `jq -c '[.skills,.mcpServers.moai]' plugins/moai/.codex-plugin/plugin.json`; `jq -c .mcpServers.moai plugins/moai/.codex-plugin/plugin.json internal/template/templates/.mcp.json` | `["./skills/",{"command":"moai","args":["mcp-server"]}]`; then two identical lines `{"command":"moai","args":["mcp-server"]}` |
+| AC-003 (d) | PASS | `go test ./internal/template/pluginemit -run '^TestVersionStampedFromSSOT$' -count=1 -v` | `--- PASS: TestVersionStampedFromSSOT (0.00s)` |
+| AC-003 (e) | PASS | `go test ./internal/template/pluginemit -run '^TestCommittedVersionMatchesSSOT$' -count=1 -v` | `--- PASS: TestCommittedVersionMatchesSSOT (0.00s)` |
+| AC-007 (c), derivation unit only | PASS | `go test ./internal/template/pluginemit -run '^TestMCPEntryDerivedFromTemplate$' -count=1 -v` | `--- PASS: TestMCPEntryDerivedFromTemplate (0.00s)` and four subtests PASS (AC-007 (a) and (b) are M2) |
+
+Build and lint (this tree, `6298aa9fe`): `go build ./...` completed with no output (exit 0, per the tool result); `GOOS=windows GOARCH=amd64 go build ./...` completed with no output (exit 0); `golangci-lint run --timeout=2m ./internal/template/pluginemit/...` printed `0 issues.` with `golangci-lint has version v2.1.6` (the CI version, `.github/workflows/ci.yml:464`); `go vet ./internal/template/pluginemit/...` no output.
+
+Mutants (each run, then restored; `git status --short` printed nothing afterwards):
+
+```
+hand edit: plugins/moai/.claude-plugin/plugin.json license "Apache-2.0" -> "MIT"
+$ make plugin-emit-check
+--- FAIL: TestGoldenCommittedArtifactsMatchEmission (0.01s)
+    golden_test.go:116: plugins/moai/.claude-plugin/plugin.json: committed artifact differs from emission — run `make plugin-emit` or stop hand-editing
+plugin-emit drift: committed marketplace and plugin manifests differ from the generator — run `make plugin-emit`
+make: *** [plugin-emit-check] Error 1
+$ grep -n license plugins/moai/.claude-plugin/plugin.json      # the check wrote nothing
+10:  "license": "MIT"
+$ make plugin-emit                                              # explicit verb restored the file; the tree was clean again
+
+absent files (before the first make plugin-emit): make plugin-emit-check printed four "committed artifact missing" lines and exited 1 (Error 1).
+
+generator mutant: version hard-coded as "v3.1.3" in Emit
+  TestCommittedVersionMatchesSSOT  PASS   (the AC-003 (e) blind spot)
+  TestVersionStampedFromSSOT       FAIL   "claude plugin version = 3.1.3, want "9.8.7-rc.1" (SSOT minus the leading v)" (four fields)
+  TestManifestsGolden              FAIL   (version 3.1.3 against the pinned 1.2.3)
+
+generator mutant: MCP entry retyped as a literal after DeriveMCPEntry
+  TestMCPEntryDerivedFromTemplate/changed_command_and_args FAIL "command = moai, want "alt-launcher" (copied from the template)"
+```
+
+Protected-set bracket (AC-025 (d)), real roots, the caller's own environment:
+
+```
+$ sh scripts/protected-set-hash.sh        # before, first claude/codex-touching command
+PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190
+$ sh scripts/protected-set-hash.sh        # after the last claude/codex command, tree HEAD 6298aa9fe
+PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190
+```
+
+The two lines are equal and equal the baseline named in the dispatch: LEAK=0. BI-1 (`env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'`) was run at the pre-flight, immediately before the `claude`/`codex` batch, and at the end of the run: each printed nothing, grep exit 1. The only `claude` and `codex` commands run were `claude plugin validate` (twice) and `codex plugin marketplace add .`, each under its own empty scratch home; no install, uninstall or registry-writing command ran against a real home.
+
+#### Baseline-attribution
+
+Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketplace-core-plugin`, base HEAD `f22021fa3`; RED measured on the `7b863c2e5` content, every GREEN and acceptance measurement at HEAD `6298aa9fe`, all in this run. The judging tools: `go` (go1.26.8), `golangci-lint` v2.1.6, `claude` 2.1.288, `codex-cli` 0.160.0 and `jq`, all installed binaries invoked through PATH; none of them is built from this tree and none is the project's own tooling, so section 2.2 of verification-claim-integrity does not ask for a build-versus-HEAD statement for them. The Go tests judge the tree's own `pluginemit` package, built by `go test` from this tree.
+
+#### Gaps
+
+- G-M1-1: `claude` read 2.1.288 in this run, the t1434 and plan observations are at 2.1.287 (P-01). The strict-validate and `plugin details` behaviours the SPEC cites were not re-measured at 2.1.288 beyond the three validate and add commands above; no difference was observed in those.
+- G-M1-2: AC-001 and AC-003 name tool-killed mutants (a deleted `metadata.description` turning (a) red, an entry version differing from `plugin.json`, P-02 and P-03). They were not re-run here; the mutants run in this section are the generator and hand-edit mutants only. The RED-now cells L-01 to L-04 were not re-executed either: the RED evidence above is the Go-test RED of the stub.
+- G-M1-3: the exit codes of the three `claude`/`codex` commands and of the `jq -e` forms were read from the tool result (an error result carries the exit code, a clean result carries none), not echoed with `; echo $?`, which the worktree guard refuses (P-25).
+- G-M1-4: field effect in Codex stays UNOBSERVED (SPEC G-4, R14-codex): `codex plugin marketplace add .` shows the root is recognized, not which manifest fields Codex reads. The Codex manifest names `skills: "./skills/"`, a directory that does not exist until M2; AC-002 (a) and AC-003 (a) pass without it.
+- G-M1-5: the `interface` block values and the two `category` values (`development` for Claude, `Coding` for Codex), the owner `modu-ai`, the display names and the `websiteURL` are generator constants this run chose, from the cowork vocabulary and the repository URL; the SPEC fixes the keys and the shapes, not these values. They are pinned by the golden, so a different choice is a one-line change plus `make plugin-emit`.
+- G-M1-6: `plugin-emit-check` is not yet a prerequisite of `build:` (M2, plan section 3), so `make build` does not run it today. Drift detection covers bytes only; mode, missing-file and extra-file differences are M2 (`drift.go`).
+- G-M1-7: only `./internal/template/pluginemit/...` was tested and linted (AGENTS.md section 4, plan section 4). The full `go test ./...`, repository-wide lint, the template-neutrality guard, the codemaps drift check and any other test that walks the repository root for new top-level directories (`plugins/`, `.claude-plugin/`) were not run, so an interaction with one of them is unobserved.
+- G-M1-8: refusal (verification-claim-integrity section 3.1): one compound command that created the golden directory and wrote four files through shell heredocs was refused by the worktree guard ("too complex to verify"); the four files were written with the file tool instead. Nothing was substituted by reading.
+- G-M1-9: the version written to the manifests is the fallback `v3.1.3` minus its `v`, while the installed binary reports `v3.2.0-rc.*` (P-22); a doctor mismatch there is OD-7 and M4, not M1.
+
+#### Residual-risk
+
+- `TestCommittedVersionMatchesSSOT` and the drift guard read `pkg/version.Version`, which equals the fallback only when no `-ldflags -X …Version=` is applied to the test binary; the Makefile applies LDFLAGS to `go build` only, so `make plugin-emit-check` is unaffected, but a future `go test -ldflags` would read the injected value and go red.
+- The golden pins and the generator are updated by the same switch (`PLUGIN_EMIT_UPDATE=1`); a careless regeneration refreshes the shape pins together with the output. The hand-authored goldens were committed in RED, before any generator code, so their first form was an independent expectation, but later edits are reviewed only by the diff.
+- Strict validation and Codex acceptance are shown at claude 2.1.288 and codex 0.160.0 only (RK-13).
+- The payload (skills, commands, `.mcp.json`) does not exist yet, so the manifest descriptions describe components M2 adds; until M2 lands an install of this tree carries a plugin with no components.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
