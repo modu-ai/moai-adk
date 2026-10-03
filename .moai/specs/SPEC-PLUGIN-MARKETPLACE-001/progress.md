@@ -634,7 +634,202 @@ B2 cross-SPEC scan (`grep -rn "Retired\|superseded" internal/template --include=
 - `Emit` now takes the **raw embed layout** (`catalog.yaml` beside `templates/`), loads the catalog with `template.LoadCatalog` and applies the very tier view `moai init` uses, `template.SlimFS`, so the generator holds the filter as data and a tier-blind generator is red on the synthetic non-core entry (AC-004 (a)). The M1 test helpers (`syntheticTemplate`, the golden test's source directory) were adapted to that layout; no M1 assertion changed.
 - `Publication` gains `Modes` (path to mode, the deployer rule `.sh` 0755 otherwise 0644); `drift.go` holds `Drift` (read-only: bytes, mode, missing, extra) and `Write` (the one regeneration path: writes, repairs modes with `Chmod`, removes extras inside the three generated roots). The mode comparison is skipped on Windows (no execute bit; `deployer.go` likewise just passes a perm and Windows ignores the bit).
 
-_(Commits, claim, evidence, baseline attribution, gaps and residual risk follow in this subsection as the milestone completes.)_
+#### Commits (tdd order: observed RED as its own commits, GREEN, REFACTOR)
+
+| Step | SHA | Content |
+|------|-----|---------|
+| RED 1 | `1139af414` | the M2 tests (`payload_test.go`, `names_test.go`, `drift_test.go`, `script_test.go`), the M1 test helpers adapted to the raw embed layout, and minimal compiling stubs: `Emit` reads the layout and applies the init tier view but emits no payload, `Drift` and `Write` are empty, `scripts/check-plugin-discoverable.sh` is a placeholder that exits 1; plus the pre-flight above |
+| RED 2 | `779d9b581` | the shape pin `testdata/golden/payload-mcp.json` and its entry in `goldenFiles` (the manifest golden test asserted exactly four files; the payload makes it five) |
+| GREEN | `815f04c83` | `payload.go`, `drift.go` (`Drift`, `Write`), `pluginemit.go` (payload merged into `Emit`, `Modes`), `Makefile` (`plugin-emit-check` before `build`), `scripts/check-plugin-discoverable.sh`, and the 308 files under `plugins/moai/` produced by `make plugin-emit` |
+| REFACTOR | `d4a3b1ad5` | the skills walk handles a missing source directory itself (one `WalkDir`, no separate `Stat`); an `@MX:ANCHOR` whose fan_in claim was not true became an `@MX:NOTE`; behavior unchanged |
+
+Both RED commits precede GREEN in the commit graph, so the order is witnessed by git (verification-claim-integrity section 2.3). The RED step is the observed failing output below, captured at `779d9b581` before any GREEN code existed.
+
+#### Claim
+
+1. REQ-004: the payload is derived from the template tree through `template.LoadCatalog` plus `template.SlimFS` (the view `moai init` deploys), and the generator holds no component name; `TestEmitDerivesFromTree` emits exactly the synthetic core set for two disjoint name sets, `TestGeneratorHoldsNoComponentNames` finds no name literal in its non-test sources and fails on a hard-coded one.
+2. REQ-005 and REQ-009 modes: skills are copied byte for byte (the brace-bearing files included), `.tmpl` commands are rendered with the English default context, every file is written at the deployer's mode (`.sh` 0755, otherwise 0644); the three `navigator-*.sh` files are 100755 in git although one source is 100644.
+3. REQ-006 and REQ-008: commands are flat `plugins/moai/commands/<stem>.md` (17 of them, no subdirectory), the plugin root holds exactly the five allowed entries, the payload `.mcp.json` declares only `moai` with the template command and args.
+4. REQ-009: `make plugin-emit-check` is a prerequisite of `build:` and reports byte, mode, missing and extra differences on the committed tree, never writing; `make plugin-emit` is the only regeneration path and also removes extra files and repairs modes.
+5. AC-006 (b) to (e): `scripts/check-plugin-discoverable.sh` ran the real Claude CLI under empty scratch homes and printed `ok: 41 names listed, 0 missing` (24 skills and 17 commands); its contract is held by `TestCheckPluginDiscoverable` against a recording stand-in (BI-3).
+
+#### Evidence (verbatim, this run, this tree)
+
+RED, observed at assertions (`779d9b581`; `go test ./internal/template/pluginemit/... -count=1 -v`, selected lines; the full output was kept outside the repository):
+
+```
+--- FAIL: TestWriteMaterialisesTree (0.01s)
+    drift_test.go:100: a stale file inside the generated root survived a regeneration
+--- FAIL: TestDriftDetectsMutatedArtifact (0.10s)
+    drift_test.go:168: Drift = [], want exactly {bytes plugins/moai/skills/s/SKILL.md}
+    drift_test.go:180: Drift = [], want exactly {mode plugins/moai/skills/s/scripts/t.sh}
+    drift_test.go:186: Drift = [], want exactly {mode plugins/moai/.claude-plugin/plugin.json}
+    drift_test.go:195: Drift = [], want exactly {missing plugins/moai/commands/c.md}
+    drift_test.go:209: Drift = [], want exactly {extra plugins/moai/commands/nested/extra.md}
+--- FAIL: TestManifestsGolden (0.01s)
+    golden_test.go:62: plugins/moai/.mcp.json: not emitted
+--- FAIL: TestEmitDerivesFromTree (0.00s)    (first-names and second-names)
+    payload_test.go:107: emitted set differs from the synthetic core set
+    payload_test.go:113: rendered command = "", want the English default render
+    payload_test.go:117: brace-bearing skill file = "", want it copied unchanged
+--- FAIL: TestEmitFidelity (0.01s)
+    payload_test.go:170: plugins/moai/commands/mx.md: not emitted (source .claude/commands/moai/mx.md.tmpl)    (one line per payload file)
+--- FAIL: TestPayloadCommandsFlat, TestPayloadAllowList, TestPayloadMCPFile     (committed payload absent)
+--- FAIL: TestCheckPluginDiscoverable (six subtests)
+    script_test.go:193: exit=1 out="check-plugin-discoverable: not implemented\n", want exit 2 and a refused: line
+    script_test.go:278: exit=1 out="check-plugin-discoverable: not implemented\n" verbs=0, want exit 1 naming the MCP servers line after all three verbs ran
+FAIL	github.com/modu-ai/moai-adk/internal/template/pluginemit
+```
+
+`TestGeneratorHoldsNoComponentNames` PASSED at RED and could not be red there: the stub generator holds no name. Its ability to fail is shown by its in-test positive control and by the hard-coded mutant below (G-M2-5).
+
+GREEN (HEAD `d4a3b1ad5` after REFACTOR; `go test ./internal/template/pluginemit/... -count=1 -v`):
+
+```
+--- PASS: TestWriteMaterialisesTree (0.01s)
+--- PASS: TestDriftDetectsMutatedArtifact (0.04s)    (six subtests PASS)
+--- PASS: TestManifestsGolden (0.00s)
+--- PASS: TestGoldenCommittedArtifactsMatchEmission (0.24s)
+--- PASS: TestVersionStampedFromSSOT (0.00s)
+--- PASS: TestCommittedVersionMatchesSSOT (0.00s)
+--- PASS: TestMCPEntryDerivedFromTemplate (0.00s)    (four subtests PASS)
+--- PASS: TestGeneratorHoldsNoComponentNames (0.00s)
+--- PASS: TestEmitDerivesFromTree (0.00s)            (first-names, second-names)
+--- PASS: TestEmitFidelity (0.06s)
+--- PASS: TestPayloadCommandsFlat (0.05s)
+--- PASS: TestPayloadAllowList (0.00s)
+--- PASS: TestPayloadMCPFile (0.00s)
+--- PASS: TestCheckPluginDiscoverable (1.31s)        (six subtests PASS)
+ok  	github.com/modu-ai/moai-adk/internal/template/pluginemit	2.039s
+```
+
+Generated payload: `find plugins/moai -type f | wc -l` printed `308` (2 plugin manifests, 1 `.mcp.json`, 17 commands, 288 skill files); `git ls-files plugins | wc -l` printed `308`; 24 skill directories; the generated files were produced by `make plugin-emit`, whose run left the four manifests and the hand-authored shape pins under `testdata/golden/` byte-unchanged (`git status` listed only the new payload).
+
+Acceptance matrix (every command run at HEAD `d4a3b1ad5`; scratch homes `<scratchpad>/m2/{f-b,f-d}` shown empty by `find <home> -mindepth 1 | wc -l` printing `0` first, one per criterion; the exit status of a clean tool result is not echoed, an error result carries it):
+
+| AC | Result | Command | Verbatim output |
+|----|--------|---------|-----------------|
+| AC-004 (a) | PASS | `go test ./internal/template/pluginemit -run '^TestEmitDerivesFromTree$' -count=1 -v` | `--- PASS: TestEmitDerivesFromTree (0.00s)`, subtests `first-names`, `second-names` PASS, `ok  	github.com/modu-ai/moai-adk/internal/template/pluginemit	0.174s` |
+| AC-004 (b) | PASS | `go test ./internal/template/pluginemit -run '^TestGeneratorHoldsNoComponentNames$' -count=1 -v` | `--- PASS: TestGeneratorHoldsNoComponentNames (0.00s)` and `ok` (mutants below) |
+| AC-005 (a) | PASS | `go test ./internal/template/pluginemit -run '^TestEmitFidelity$' -count=1 -v` | `--- PASS: TestEmitFidelity (0.06s)` and `ok` |
+| AC-005 (b) | PASS | `diff -r internal/template/templates/.claude/skills/moai plugins/moai/skills/moai` | no output; `diff-exit=0` |
+| AC-005 (c) | PASS | `grep -rlE '\{\{' plugins/moai/commands` | no output, `grep-exit=1`; control `grep -rlE '\{\{' internal/template/templates/.claude/commands/moai \| wc -l` printed `15` |
+| AC-005 (d) | PASS | `find plugins/moai -name '*.sh' ! -perm 755 -print` | no output; control `find plugins/moai -name '*.sh' -print` printed the three `moai-workflow-project/scripts/navigator-{audit,enrich,regen}.sh` paths |
+| AC-006 (a) | PASS | `go test ./internal/template/pluginemit -run '^TestPayloadCommandsFlat$' -count=1 -v` | `--- PASS: TestPayloadCommandsFlat (0.04s)` and `ok` |
+| AC-006 (b) | PASS | `sh scripts/check-plugin-discoverable.sh <scratchpad>/m2/f-b` (real Claude CLI, claude 2.1.288) | `scrub: enumerated and unset 29 names` / `ok: 41 names listed, 0 missing` |
+| AC-006 (c) | PASS | `sh scripts/check-plugin-discoverable.sh internal` | `refused: internal is not an existing empty directory`, `Exit code 2` |
+| AC-006 (d) | PASS | `MOAI_CLAUDE_BIN=<recorder> CLAUDE_CODE_PLUGIN_CACHE_DIR=<canary> MOAI_PLANTED_424242=1 CLAUDE_PLANTED_424242=1 CODEX_PLANTED_424242=1 sh scripts/check-plugin-discoverable.sh <scratchpad>/m2/f-d` | `scrub: enumerated and unset 34 names` (29 of the caller plus the 5 planted, so the count exceeds the planted count) / `ok: 41 names listed, 0 missing`; then `find <canary> -mindepth 1 -print \| wc -l` printed `0`, `recorder.log` absent (`find ... -name recorder.log \| wc -l` printed `0`), `<home>/plugins/installed_plugins.json` present |
+| AC-006 (e) static | PASS (static) | `grep -nE 'claude +[a-z]' scripts/check-plugin-discoverable.sh`; `grep -c codex scripts/check-plugin-discoverable.sh` | three lines (`89`, `91`, `93`: `plugin marketplace add`, `plugin install`, `plugin details`); `0` |
+| AC-007 (a) | PASS | `jq -c .mcpServers.moai plugins/moai/.mcp.json internal/template/templates/.mcp.json` | `{"command":"moai","args":["mcp-server"]}` twice |
+| AC-007 (b) | PASS | `jq -c '.mcpServers\|keys' plugins/moai/.mcp.json` | `["moai"]` |
+| AC-007 (c) | PASS | `go test ./internal/template/pluginemit -run '^TestMCPEntryDerivedFromTemplate$' -count=1 -v` | `--- PASS: TestMCPEntryDerivedFromTemplate (0.00s)`, four subtests PASS; the payload file is also covered by `TestPayloadMCPFile` PASS |
+| AC-008 (a) | PASS | `find plugins/moai -maxdepth 1 -mindepth 1 -print` | `plugins/moai/.mcp.json`, `.claude-plugin`, `commands`, `skills`, `.codex-plugin` (five lines) |
+| AC-008 (b) | PASS | `go test ./internal/template/pluginemit -run '^TestPayloadAllowList$' -count=1 -v` | `--- PASS: TestPayloadAllowList (0.00s)` and `ok` |
+| AC-009 (a) | PASS | `make plugin-emit-check` | `ok  	github.com/modu-ai/moai-adk/internal/template/pluginemit	0.298s` |
+| AC-009 (b) | PASS | `go test ./internal/template/pluginemit -run '^TestDriftDetectsMutatedArtifact$' -count=1 -v` | `--- PASS: TestDriftDetectsMutatedArtifact (0.04s)` with PASS subtests `clean-tree-has-no-drift`, `flipped-byte`, `mode-flipped`, `deleted-file`, `extra-file`, `committed-set-unchanged` |
+| AC-009 (c) | PASS (static) | `grep -n ^build: Makefile` | `34:build: agents-emit-check commands-emit-check plugin-emit-check tool-policy-drift-check templ-generate ## Build the binary`; `make -n build` lists the `PLUGIN_EMIT_UPDATE= go test ... plugin-emit drift` recipe as the third prerequisite |
+
+Regression checks of M1 criteria with the payload present (fresh scratch homes): `claude plugin validate plugins/moai --strict` printed `Validating plugin manifest: …/plugins/moai/.claude-plugin/plugin.json` / `✔ Validation passed`; `claude plugin validate .claude-plugin/marketplace.json --strict` printed `✔ Validation passed`.
+
+Build, lint and selectors (HEAD `d4a3b1ad5`): `go build ./...` printed `BUILD-OK` (exit 0); `GOOS=windows GOARCH=amd64 go build ./...` printed `WINBUILD-OK`; `GOOS=windows GOARCH=amd64 go vet ./internal/template/pluginemit/` (at GREEN) printed `WINVET-OK`, so the tests compile for Windows; `golangci-lint run --timeout=2m ./internal/template/pluginemit/...` printed `0 issues.` with `golangci-lint has version v2.1.6` (the CI version); `go vet ./internal/template/pluginemit/` printed `VET-OK`; `go test ./internal/template -run '^(TestTemplateNeutralityAudit|TestTemplateNeutralityAuditC8Preserve|TestLanguageNeutrality|TestMCPNeutralityTemplateShape|TestGTDCanonicalSurfaceGolden)$' -count=1` printed `ok  	github.com/modu-ai/moai-adk/internal/template	4.036s`.
+
+Drift-gate mutants on the committed tree (E6; each run with `make plugin-emit-check`, then restored with the explicit `make plugin-emit`, `git status --short | wc -l` printed `0` after every restore):
+
+```
+hand edit   (echo x >> plugins/moai/commands/gtd.md)
+  golden_test.go:110: plugins/moai/commands/gtd.md: bytes — run `make plugin-emit` or stop hand-editing
+  plugin-emit drift: committed marketplace, plugin manifests or plugin payload differ from the generator — run `make plugin-emit`
+  make: *** [plugin-emit-check] Error 1            (git status then listed only " M plugins/moai/commands/gtd.md": the check wrote nothing)
+missing file (rm plugins/moai/commands/todo.md)
+  golden_test.go:110: plugins/moai/commands/todo.md: missing — run `make plugin-emit` or stop hand-editing        (Error 1)
+extra file  (new plugins/moai/skills/moai/extra-file.md)
+  golden_test.go:110: plugins/moai/skills/moai/extra-file.md: extra — run `make plugin-emit` or stop hand-editing  (Error 1)
+  restore: make plugin-emit removed the extra file (find plugins/moai -name extra-file.md | wc -l printed 0)
+wrong mode  (chmod 644 …/navigator-audit.sh)
+  golden_test.go:110: plugins/moai/skills/moai-workflow-project/scripts/navigator-audit.sh: mode — run `make plugin-emit` or stop hand-editing   (Error 1)
+  restore: make plugin-emit repaired the bit (find plugins/moai -name navigator-audit.sh ! -perm 755 -print | wc -l printed 0)
+wrong mode  (chmod 755 plugins/moai/.mcp.json)
+  golden_test.go:110: plugins/moai/.mcp.json: mode — run `make plugin-emit` or stop hand-editing                  (Error 1)
+```
+
+Generator, drift and script mutants (each applied to a copy-backed source, the named tests run, then restored with `cmp` against the backup, `RESTORED`):
+
+```
+generator, hard-coded name (var handCopied = map[string]bool{"moai-foundation-core": true})
+  names_test.go:141: the generator holds 1 component-name literal(s):  payload.go: "moai-foundation-core"
+  --- FAIL: TestGeneratorHoldsNoComponentNames
+generator, tier-blind (view = fs.Sub(raw, "templates") instead of the init tier view)
+  --- FAIL: TestEmitDerivesFromTree (both name sets), TestEmitFidelity, TestGoldenCommittedArtifactsMatchEmission
+generator, every file 0644
+  golden_test.go:110: …/navigator-audit.sh: mode (three scripts); payload_test.go:205: …/navigator-regen.sh: mode -rw-r--r--, want -rwxr-xr-x
+  --- FAIL: TestGoldenCommittedArtifactsMatchEmission, TestEmitFidelity
+generator, commands nested (commands/mirror/<name>.md)
+  --- FAIL: TestEmitDerivesFromTree, TestEmitFidelity, TestPayloadCommandsFlat
+generator, .tmpl copied unrendered
+  payload_test.go:113: rendered command = "---\ndescription: {{if eq .ConversationLanguage \"ko\"}}korean{{else}}english{{end}}…", want the English default render
+  payload_test.go:189: plugins/moai/commands/harness.md: a rendered command carries a template action
+generator, scaffold-only rules leak (plugins/moai/rules/…)
+  payload_test.go:294: emitted top-level entries = [.claude-plugin .codex-plugin .mcp.json commands rules skills], want exactly [.claude-plugin .codex-plugin .mcp.json commands skills]
+  --- FAIL: TestPayloadAllowList, TestEmitDerivesFromTree, TestEmitFidelity
+drift, regenerates before comparing (Drift calls Write first)
+  clean-tree-has-no-drift PASS; flipped-byte, mode-flipped, deleted-file, extra-file, committed-set-unchanged FAIL
+drift, bytes only (mode comparison skipped)
+  flipped-byte, deleted-file, extra-file, committed-set-unchanged PASS; mode-flipped FAIL
+script, typed-list scrub (unset of two names, count 2)
+  script_test.go:244: scrub count = 2, want at least the 5 planted names
+  script_test.go:255: a call saw "CODEX_PLANTED_80268=1", want only CLAUDE_CONFIG_DIR=…   (pid-named names survive a typed list)
+script, fourth verb through a variable (tool=claude; "$tool" plugin disable …)
+  static (e) grep still counts 3 lines (the BI-3 limit of a static check)
+  script_test.go:219: the script started 4 tool commands, want exactly 3: [plugin marketplace add … plugin install … plugin disable …]
+script, remote marketplace source (modu-ai/moai-adk)
+  script_test.go:229: marketplace source "modu-ai/moai-adk" is not an existing local directory
+script, scrub removed
+  script_test.go:241: no scrub count line in "ok: 41 names listed, 0 missing\n"
+```
+
+Real-tool scrub mutant (L-43 repeated on the real script): a copy of the script with the lines between the two markers deleted, run in a symlinked tree with `MOAI_CLAUDE_BIN=<recorder>` and `CLAUDE_CODE_PLUGIN_CACHE_DIR=<empty canary>`:
+
+```
+ok: 41 names listed, 0 missing                      # (b)-style output is unchanged
+canary entries after: 389 (find <canary> -mindepth 1 | wc -l); the scratch home held settings.json, .claude.json and backups only, no plugins/
+```
+
+so the inventory line cannot see the missing scrub and only the canary of (d) does, as the SPEC says.
+
+Protected-set bracket (AC-025 (d)), real roots, the caller's own environment:
+
+```
+$ sh scripts/protected-set-hash.sh        # before, before the first claude command (pre-flight)
+PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190
+$ sh scripts/protected-set-hash.sh        # after the last claude command, tree HEAD d4a3b1ad5
+PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190
+```
+
+The two lines are equal and equal the baseline named in the dispatch: LEAK=0. BI-1 (`env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'`) ran at the pre-flight, before the first fixture observation, before the acceptance real-tool batch, before the final real-tool batch and at the end: every run printed nothing (`bi1-grep-exit=1`). The real `claude` verbs that ran were `plugin marketplace add <local path>`, `plugin install moai@moai-adk`, `plugin details moai@moai-adk` and `plugin validate`, each under its own empty scratch `CLAUDE_CONFIG_DIR`; no `codex` command ran in M2; nothing was aimed at a real home.
+
+#### Baseline-attribution
+
+Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketplace-core-plugin`, base HEAD `b49894ef3`. The RED lines are measured at `779d9b581`; the GREEN test list, the acceptance matrix, the build, lint and selector results, the final protected-set line and the final real-tool runs at HEAD `d4a3b1ad5`; the mutants against the GREEN tree (`815f04c83` content) before the REFACTOR commit; all in this run. The judging tools are installed binaries invoked through PATH: `go` (go1.26.8), `golangci-lint` v2.1.6, `claude` 2.1.288, `jq`, plus the shell scripts of this tree invoked by path; none is built from this tree, so section 2.2 of verification-claim-integrity asks for no build-versus-HEAD statement for them. The Go tests judge the tree's own `pluginemit` package, built by `go test` from this tree. `scripts/check-plugin-discoverable.sh` judged this tree's committed payload and the template tree it names.
+
+#### Gaps
+
+- G-M2-1: `claude` read 2.1.288 here, the SPEC's observations (P-30, P-49) are at 2.1.287. The `plugin details` text shape the script parses was observed at 2.1.288 only; the script fails on a shape it cannot parse (exit 1, `cannot parse the inventory`) rather than passing.
+- G-M2-2: the exit codes of the clean real-tool commands and of `diff`/`find` were read from the tool result, not echoed; where an echo was possible (`diff-exit=0`, `grep-exit=1`, `bi1-grep-exit=1`) it is shown. The worktree guard refused every command that contained a shell variable (the scratch path held in `$SP`, a first mutant script written with a heredoc into python over a variable path); each was re-run with literal absolute paths or the file tool. Nothing was substituted by reading the source (verification-claim-integrity section 3.1).
+- G-M2-3: REQ-009 says the build fails when the template tree changes without regeneration. The derivation tests change a synthetic tree and the drift mutants change the committed tree; no real template file was edited to watch `plugin-emit-check` turn red (the dispatch limits M2 to reading the template tree). `make build` itself was not run, only `make -n build` (the prerequisite order), because its later steps (`templ-generate`, `gen-catalog-hashes --all`) write files outside M2.
+- G-M2-4: the drift mode comparison is "executable or not" (git records only 0644 and 0755, and a checkout applies the user's umask to the rest) and is skipped on Windows; a mode change that keeps the execute bit unchanged (0644 to 0600) is not reported. `TestEmitFidelity` and `TestWriteMaterialisesTree` compare exact modes, but only on emission and on a fresh write.
+- G-M2-5: `TestGeneratorHoldsNoComponentNames` was green at RED (the stub holds no name), so it has no RED of its own; its failure is shown by the in-test positive control (path-segment form, lone literal, and a sentence that must not hit) and by the hard-coded mutant above. It scans string literals only, so a name built from pieces at run time (a concatenation) would pass it.
+- G-M2-6: `scripts/check-plugin-discoverable.sh` runs on demand and needs a Claude CLI (SPEC G-7). `TestCheckPluginDiscoverable` runs it in every `go test` of the package against a recording stand-in and therefore keeps firing, but only the stand-in's version of the three verbs and of the inventory text; the real-tool behaviour was observed in the runs above, not in the test. The test is skipped on Windows and where `sh` is absent.
+- G-M2-7: the AC-006 (d) poison is a `MOAI_CLAUDE_BIN` recorder that the script never reaches (it calls `claude` from PATH, BI-3 iii); only the cache-variable canary is a live control, as the SPEC states. The pid-named names of (d) were planted as `MOAI_PLANTED_424242` and the like, a fixed number and not the shell's own process id, which a typed list also could not contain; the Go test plants names with the test binary's real pid.
+- G-M2-8: nothing outside `./internal/template/pluginemit/...`, the five named `internal/template` selectors and `go build ./...` was tested (AGENTS.md section 4). The full suite, other tests that walk the repository root and might see the new top-level `plugins/` directory or its 308 files, repository-wide lint and markdown or i18n checks over `plugins/**` were not run; a grep of `.github/workflows`, `scripts` and the Makefile for `**/*.md` style globs found none.
+- G-M2-9: field effect in Codex (SPEC G-4) is unchanged and untested here: no `codex` command ran in M2, and the Codex manifest still names `skills: "./skills/"`, which now exists, but nothing read it. The two-copy behaviour of the plugin and the scaffold (SPEC G-2) and the invocation names `moai:<name>` stay unobserved.
+- G-M2-10: the payload carries three `.gitkeep` files that mirror template files (for example `plugins/moai/skills/moai/workflows/plan/.gitkeep`); they are what `moai init` would deploy and are harmless, but they are listed in the plugin's files.
+
+#### Residual-risk
+
+- The committed payload is 308 generated files; a later template edit that skips `make plugin-emit` turns `plugin-emit-check` and the golden test red, which is the intended signal. The card that lands second after t1399 owns that red (plan section 5); the generator needs no edit for the rename because it holds no names.
+- `Emit` now takes the raw embed layout and the golden test reads it from disk (`internal/template/`), not from the embedded copy in a built binary; the two are equal only after `make build`. A caller that wants the payload from a binary needs an exported raw layout, which `embed_catalog.go` deliberately withholds.
+- The script's expectations come from `plugins/moai/skills` and the template command stems; a skill directory in the payload that the template does not carry would be expected and listed, so the script alone does not catch a stray payload skill (the drift gate does).
+- Strict validation, the inventory shape and the 41-name count are shown at claude 2.1.288 only (RK-13).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
