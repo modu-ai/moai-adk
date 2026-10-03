@@ -363,7 +363,7 @@ SYNC-PHASE RE-CLOSE (joint v0.7.0 + v0.8.0 적층 수정안 — 2026-10-03, card
 
 ```yaml
 sync_complete_at: 2026-10-03
-sync_commit_sha: pending-backfill  # D3 placeholder — 커밋은 자기 SHA를 인용할 수 없다; 후속 chore(SPEC-AGENT-MODEL-INHERIT-001) 커밋에서 실제 close 커밋 SHA로 백필 (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_commit_sha: ad0454dec  # D3 backfill: the pending-backfill placeholder written in the joint re-close commit replaced with the real close-commit SHA by the phase-owning agent (spec-frontmatter-schema § SHA placeholder backfill exemption)
 sync_status: complete
 close_scope: v0.7.0 (REQ-AMI-011 console-surface exception sub-bullet, card t1411) + v0.8.0 (REQ-AMI-011 consumption-contract exception sub-bullet, card t1421 run-phase M10) — 25 REQ / 25 AC 무변경, 동 SPEC 본문 편집은 M10 커밋 637574ed3 (단일 파일; progress.md 미등장·sync_commit_sha 불변은 카드 소관 SPEC의 §E.2 전사 실측)
 frontmatter_status_transitions:
