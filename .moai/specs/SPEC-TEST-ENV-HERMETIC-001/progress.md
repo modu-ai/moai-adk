@@ -2,7 +2,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_status: audit-ready (iteration 3 revision; the final permitted re-audit pending)
+- plan_status: audit-ready (v0.4.0 delta revision for the leader-approved fourth plan-audit; a FAIL there defers the card)
 - plan_complete_at: 2026-10-03
 - tier: M
 - artifacts: spec.md, plan.md, acceptance.md (Tier M 3) + decision-index.md (decision gate on) + progress.md
@@ -10,7 +10,7 @@
 - evidence: acceptance.md §D.0 ledger E-1..E-8 (commands, verbatim outputs, exit codes, tree SHAs). `.moai/reports/t1356/baseline.md`, `.moai/reports/t1356/plan-audit.md` and `.moai/reports/t1356/plan-audit-iter2.md` are local-only (gitignored by operator directive 2026-09-14) and are cited by path, never committed.
 - plan-phase measurement notes: the hook one-axis arms (E-3) isolate the `MOAI_KANBAN_ID` ∧ `MOAI_FACTORY_WORKERS` conjunction; the cli red is attributed to `MOAI_FACTORY_ROLE` by the explicit single-axis env of E-1 and the scrubbed arm E-1b. Whole-package test runs were NOT performed at plan time (card constraint; minute-scale suites; machine load average above 50): the whole-package pairs are the M1 c1 obligation; the `go test -list` counts were taken at iteration 3 (E-8: cli 4884, hook 1322) and are re-recorded at c1.
 - gaps: (1) the ~357 nominated functions are unmeasured; (2) the effect of `MOAI_FACTORY_MANAGED`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_AUTONOMY_TIER`, `MOAI_FACTORY_SLOW_LAUNCH_MS` on any test is unmeasured (static read only); (3) `internal/cli/ptycaptest` unmeasured (own drift guard); (4) E-6 refusals and the discarded partial arms; (5) T == L on the whole cli and hook packages is unobserved (whole-package runs are the c1 obligation); (6) the hook eight referenced axes outside the ID ∧ WORKERS conjunction are not isolated by one-axis arms; (7) the guard pair, the applied-behaviour probe and the c1, c2 and c2r commits do not exist yet — their behaviour is specified, not observed.
-- audit-ready: pending plan-audit iteration 3 (the final permitted iteration, Retry Loop Contract maximum 3).
+- audit-ready: pending the delta-scoped fourth plan-audit (extension of the Retry Loop Contract maximum 3 by the leader decision recorded in `.moai/reports/t1356/wait-record.md`; `.moai/reports/t1356/plan-audit-iter3.md` is the iteration-3 report, local and gitignored, cited by path only).
 
 ### Iteration 2 revision (plan-audit iteration 1: FAIL, 0.79 vs Tier M 0.80)
 
@@ -51,6 +51,24 @@ The report is `.moai/reports/t1356/plan-audit-iter2.md` (local, gitignored, cite
 | D11 vocabulary for a cell completed by a later record | fixed | One phrase, "cell completed by the c1 record" / "by the c2r record", in the matrix preface, the AC-THE-003, 004 and 008 RED-now cells, §D.2 and the DoD. AC-THE-003 keeps the plain class (its witness-by-existence cell is re-executable now). |
 
 Unobserved at this iteration (Gaps): the guard pair, the applied probe, and the c1/c2/c2r commits do not exist (specification only); no whole-package `go test` was run (instruction; machine load above 50), so T == L on the whole cli and hook packages and the absence of any test that sets a newly scrubbed axis before `clearFactoryTestEnv(t)` remain unobserved (the `comm -13` form was exercised on narrow arms only); the canonical CN-4 awk verb was refused by the worktree guard and replaced by a port.
+
+### Iteration 4 revision (plan-audit iteration 3: FAIL, 0.87 vs Tier M 0.80, two must-fix holes in AC-THE-003)
+
+Delta-scoped; REQ count stays 9 and AC count 8 (ceiling 16 each). Every cited form was re-run in this session (acceptance.md ledger E-9); no Go file touched, no whole-package `go test` run.
+
+| Finding | Disposition | What changed |
+|---------|-------------|--------------|
+| MF-1 lane arm has no positive control | fixed | Clause (f) in AC-THE-003 and §D.3: the lane-arm env (set with values, unset) is recorded per arm and the four lines (c1 and final, cli and hook) are identical; the arm must carry every modelled axis (the pre-flight family read, minimum ROLE=lane plus non-empty WORKER, WORKERS, KANBAN_ID); the c1 lane names file holds the five reds (command 10: 3 cli / 2 hook) and the c1 scrubbed names file none; a session without lane axes makes the arm INVALID and the AC failed, with a blocker report. DoD §E.2 list gains the env lines and command 10 outputs; the §D.1 "echoed" sentence is reworded to cite clause (f). Pre-flight read made an explicit step with its command (plan §C step 2, M1 c1, M4 step 1), R8, REQ-THE-003, AP-13. |
+| MF-2 clause (e) compares top-level names only | fixed | §D.3 commands 6-8 now match `"Test":"[^"]+"` (subtests included); commands 1-3 and L stay top-level where they must match `go test -list`; command 2/3 also subtest-inclusive; new command 9 (`comm -3`, clause (b) by full path). REQ-THE-003 and REQ-THE-007 state the unit is the Go test row, subtests included. Controls E-9: arms A/B/C, a subtest case (the new form prints `TestParent/sb`, the old form nothing), build and `TestMain` failures with no test-level row (invalid by commands 4 and 5). |
+| SF-1 exemption row vs equality | fixed (smaller change) | A test red in the all-unset scrubbed arm is fixed by an arm-independent pin; a true exemption axis is left at its lane value in the re-run scrubbed arm, so it is identical-valued in both arms and (b) holds. Stated alike in acceptance.md (AC-THE-003(b), §D.3, DoD), plan.md M4 step 2 and the spec's exemption text is unchanged. |
+| SF-2 c2r witness proves strings, not runs | fixed | The c2r cell carries the exact command, the exit code as its own field, the c2 SHA and the pre-run `git rev-parse --short HEAD` read; the sync auditor re-executes one cell from a `git archive` extraction of c2 (no worktree) and records its own stdout and exit code; acceptance.md §D.8 step 7 says plainly that string presence is not execution evidence and the re-execution closes it. |
+| SF-3 no repeat rule | fixed | One repeat of the affected whole-package arm for a name printed by command 8 or 9; only a name failing in both runs counts; comparison stays by full path (acceptance.md §D.3, spec.md R7). Does not reopen MF-2 (a repeat is a whole-package arm, never an isolated re-run). |
+| SF-4 bare `return` hollowing | partly fixed, residual stated | AC-THE-006 gains two greps on the saved modified-file diff (removed assertion lines; added bare `return` / `testing.Short()` guards), controls 45 / 5 and an empty card-range diff (E-9). Not closed mechanically: a hollowing built from added lines alone (a swallowing `defer`, panic and recover) is invisible to a line grep and is left to review (acceptance.md §D.1). The `--- PASS` line of each previously red test in the final tree is already required by AC-THE-001/002. |
+| N1 wording slip (spec §F) | fixed | "every commit other than c2 that touches `internal/`". |
+| N2 `LC_ALL=C` | fixed | On `sort -o` and `comm` (verified: both forms still behave, exit `0`). |
+| N3 Bash 600 s ceiling vs lease cap | fixed | Stated once in spec §G, plan §C step 5 and acceptance.md header: the cap minus 2m is at least 18m, a foreground call ends at 600 s, so each whole-package arm is a background Bash call. |
+
+Unobserved at this iteration (Gaps): no whole-package run; the c1 lane arms and the five reds in them are specified, not observed (the narrow-selector compound lane form was measured, E-9); a session without lane axes was not observed; the guard pair and the c1/c2/c2r commits do not exist.
 
 ## §E.2 Run-phase Evidence
 

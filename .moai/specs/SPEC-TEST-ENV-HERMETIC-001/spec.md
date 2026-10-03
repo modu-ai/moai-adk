@@ -1,7 +1,7 @@
 ---
 id: SPEC-TEST-ENV-HERMETIC-001
 title: "Test env hermeticity sweep — tests that read the factory/kanban lane gate axes must not change verdict with the ambient env of the session that runs them"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -186,7 +186,11 @@ carries the requirement layer only.
   env-unrelated only when it is identical in both arms **and** present in the c1 (pre-guard tree)
   failing set of the same arm type, and shall record the difference `final − c1` of each final-tree
   arm's failing names against that c1 set and require it empty — a name absent from c1 is a
-  regression caused by the change, not an env-unrelated failure.
+  regression caused by the change, not an env-unrelated failure. The unit of every failing-set
+  comparison is the Go test row, a subtest included and named by its full path, and the run shall
+  record the lane arm's env (names set with values, names unset) and treat a lane arm that lacks a
+  modelled lane axis, or whose c1 failing set lacks the five observed reds, as no measurement and
+  the criterion as failed.
 - **REQ-THE-004** — **When** the measurement of REQ-THE-003 shows a test that flips between the
   two arms and is not one of the five observed reds, the run shall fix that test only with its
   own RED/GREEN pair, and shall not skip, delete, or list any test as a substitute for a fix.
@@ -199,7 +203,8 @@ carries the requirement layer only.
   ancestor of that guard commit, so that the guards are red on the tree that precedes the fix.
 - **REQ-THE-007** — **Where** a test composes lane env deliberately (through its own helper, or
   through a re-executed child whose parent composed the env as payload), the hermeticity change
-  shall leave that test's verdict unchanged.
+  shall leave that test's verdict unchanged — the test being the Go test row, so a subtest's
+  verdict counts apart from its parent's.
 - **REQ-THE-008** — The change shall touch `*_test.go` files and this SPEC's artifacts only and
   shall introduce no new production env axis.
 - **REQ-THE-009** — **When** the guarded package's applied-behaviour test starts the package
@@ -334,7 +339,7 @@ witness measure-before-change from a report commit (`verification-claim-integrit
 ordering clause is therefore rewritten into what git can witness: three commits fixed in shape
 and order — the **baseline record commit** (progress.md only), the **guard commit** (the guard
 files only), and the **guard-red record commit** (progress.md only) — and the guard-red record
-commit is a strict ancestor of every other commit that touches `internal/`. The whole-package
+commit is a strict ancestor of every commit other than c2 that touches `internal/`. The whole-package
 baseline pairs are recorded in this SPEC's committed `progress.md` §E.2 (a committed carrier,
 unlike `.moai/reports/`) in the baseline record commit; the guard's red on its own tree is
 recorded in the guard-red record commit. Nothing commits the gitignored baseline: no
@@ -353,7 +358,8 @@ in one place, AC-THE-005.
   holder's own declared bound: `max(20m, 1.5 x the longest whole-package runtime recorded so far
   in progress.md §E.2)` (20m before any runtime exists — the first c1 arm — and recomputed for
   each later lease), and `go test -timeout` is set strictly below it (the cap minus 2m), so the
-  lease cannot lapse at the instant the test timeout fires.
+  lease cannot lapse at the instant the test timeout fires. The cap minus 2m is at least 18m while
+  a foreground Bash call ends at 600 s, so each whole-package arm runs as a background Bash call.
 - **Local verification is scoped to the change.** Only the two packages, the narrow selectors of
   `acceptance.md`, and the compile checks named in plan.md; full-suite judgment is CI on
   `origin/develop`.
@@ -392,12 +398,16 @@ in one place, AC-THE-005.
   (REQ-THE-003); it is neither fixed nor hidden here. A failure identical in both final arms but
   absent from c1 is a change-induced regression, never env-unrelated (AC-THE-003 clause (e)).
 - **R7 — machine load flips verdicts.** The lease serializes heavy runs; a verdict that changes
-  between a repeated identical arm is reported as load noise, not attributed to env.
+  between a repeated identical arm is reported as load noise, not attributed to env. A name that
+  appears in a final arm and not in c1 is repeated once as a whole-package arm (acceptance.md §D.3),
+  and only a name failing in both runs counts; the comparison stays by full test path.
 - **R8 — the lane arm models the measuring session, not every possible lane.** The lane arm sets
   the nine family axes the measuring session exported and unsets the other eight; a real lane with
   a different subset is not reproduced by it. The coverage test, the applied-behaviour test, and
   the scrubbed arm bound that gap: every referenced axis is declared stripped, shown stripped, and
-  no test goes red when stripped.
+  no test goes red when stripped. The arm is a lane only when its recorded env carries the modelled
+  axes and the c1 lane arm reproduces the five reds (AC-THE-003 clause (f)); a session without lane
+  axes yields an invalid arm and a failed criterion, never a vacuous pass.
 - **R9 — in-process production stamping.** `enterFactoryLaneMode` (`internal/cli/factory.go:797-801`)
   sets the lane worker, role, lane-count, clear-policy and dispatch markers in the process that
   calls it and returns a restore function (the role stamp site is pinned by source in
@@ -450,7 +460,8 @@ in one place, AC-THE-005.
   `.claude/rules/local/gitflow-lane-protocol.md` §8.
 - `.moai/reports/t1356/baseline.md` — local-only on-disk measurement (gitignored; not committed);
   `.moai/reports/t1356/plan-audit.md` and `.moai/reports/t1356/plan-audit-iter2.md` — the
-  iteration-1 and iteration-2 plan-audit reports (local, gitignored, cited by path only).
+  iteration-1 and iteration-2 plan-audit reports, and `.moai/reports/t1356/plan-audit-iter3.md`
+  (iteration 3) (local, gitignored, cited by path only).
 
 ## §J HISTORY
 
@@ -459,3 +470,4 @@ in one place, AC-THE-005.
 | 2026-10-03 | manager-spec | v0.1.0 plan-phase authoring (card t1356, Tier M, Class C). Evidence re-measured on tree `2de0a2cb6`: cli RED under `MOAI_FACTORY_ROLE=lane` (3 tests), hook RED under the lane env (2 tests), hook one-axis arms isolating the `MOAI_KANBAN_ID` ∧ `MOAI_FACTORY_WORKERS` conjunction, positive controls. Design Options A/B/C compared; recommendation stated with its precondition. Recurrence guard and ordering clause specified. |
 | 2026-10-03 | manager-spec | v0.2.0 plan-audit iteration 1 revision (FAIL 0.79 vs 0.80; findings F1-F13). Guard spec gains an applied-behaviour test and a tightened exemption rule (REQ-THE-005 reworded, REQ-THE-009 added, AC-THE-004 and AC-THE-008 added as guard criteria whose cell is completed at the c2r record); ordering check rewritten to enumerate every `internal/` commit with prescribed c1/c2/c2r shapes (REQ-THE-006 widened to match); the 17-axis family and per-package referenced/covered/undecided sets re-measured, the sixth cli axis `MOAI_FACTORY_SLOW_LAUNCH_MS` carried through §A, §H O2, decision-index Q4 and plan M2; reach figures replaced by a reproducible command; AC-THE-003 gains an independent swept-count floor; evidence ledger re-recorded with `-v` and full stdout (E-1, E-2), cli scrubbed arm added (E-1b), discovery narrow pair added (E-7); stale-guard signal, REQ-THE-008 judging point, and minor count corrections. |
 | 2026-10-03 | manager-spec | v0.3.0 plan-audit iteration 2 revision (FAIL 0.86 vs 0.80, driven by one must-fix mutant hole; findings D1-D11; this feeds the final permitted audit). REQ-THE-003 and AC-THE-003 gain the c1-containment clause (e): a failure is env-unrelated only when identical in both arms and present in the c1 failing set of the same arm type, with the `final − c1` difference recorded and required empty (R6 reworded to match); AC-THE-004's mutant-probe text no longer overstates closure (the unscrubbed-axis-plus-padded-citation variant is named and left to review, with a closure DoD item listing the final exemption tables and each surviving row's red test); the hook coverage test's c2 red carries both the empty-scrub-set liveness message and the thirteen axis names (liveness uses `t.Errorf`); the class label of AC-THE-004 and AC-THE-008 is relabelled (the v0.2.0 \"on adoption\" label is retired) and one phrase is used across AC-THE-003, 004 and 008 for a cell completed by a later record; an AC-THE-005 step 7 content witness on the c2r commit; AC-THE-004 and AC-THE-008 bound to the M4 exit; lease cap and `-timeout` relation stated; the guard's reference rule pinned (identifier or quoted literal) with a family-size liveness floor of 17; REQ-THE-009's trigger reworded; the E-5 control gets an explicit upper bound and plan-time `go test -list` counts are recorded (E-8). |
+| 2026-10-03 | manager-spec | v0.4.0 delta revision for the leader-approved fourth plan-audit (iteration 3: FAIL 0.87, two must-fix holes in AC-THE-003; findings MF-1, MF-2, SF-1..SF-4). AC-THE-003 gains clause (f), a lane-arm positive control (env recorded and identical at c1 and final, every modelled axis present, five reds in the c1 lane arm, otherwise INVALID and failed) and a pre-flight env-read step; the failing-name comparison is by full test path, subtests included (REQ-THE-003 and REQ-THE-007 state the unit); exemption axes are left at their lane value in the scrubbed arm; the c2r cell carries exact command, exit code field and the c2 SHA with the pre-run HEAD read, and the sync re-execution records its own stdout; a one-repeat rule for a name absent from c1; AC-THE-006 gains assertion-removal and bare-return greps; `LC_ALL=C` on `sort` and `comm`; the §F wording slip is fixed. No REQ or AC added. |
