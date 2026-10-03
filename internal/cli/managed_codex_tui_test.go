@@ -62,6 +62,10 @@ const (
 	tuiFakeTUIModeEnv    = "T1408_FAKE_CODEX_TUI_MODE"
 	tuiFakeRootEnv       = "T1408_FAKE_CODEX_ROOT"
 	tuiFakeRunEnv        = "T1408_FAKE_CODEX_RUN"
+	// tuiFakeTurnDelayEnv delays every launcher turn/completed by that many ms,
+	// so a TUI started early is seen to start before the priming turn completes
+	// (process start-up alone is faster than an instant fake turn).
+	tuiFakeTurnDelayEnv = "T1408_FAKE_CODEX_TURN_DELAY_MS"
 )
 
 const (
@@ -234,6 +238,9 @@ func (s *tuiFakeServer) launcherTurn(c *tuiFakeConn, id json.RawMessage, params 
 	if s.holdFrom > 0 && n >= s.holdFrom {
 		s.log("turn-held " + turnID)
 		return
+	}
+	if ms, _ := strconv.Atoi(os.Getenv(tuiFakeTurnDelayEnv)); ms > 0 {
+		time.Sleep(time.Duration(ms) * time.Millisecond)
 	}
 	status := "completed"
 	if n <= len(s.statuses) && s.statuses[n-1] != "" {
@@ -984,7 +991,7 @@ func TestManagedCodexTUIAttachCommand(t *testing.T) {
 
 func TestManagedCodexTUIStartsAfterPrimingAndBind(t *testing.T) {
 	t.Run("order", func(t *testing.T) {
-		f := newTUIFake(t, "tui-order")
+		f := newTUIFake(t, "tui-order", tuiFakeTurnDelayEnv+"=1500")
 		f.env = append(f.env, tuiFakeRootEnv+"="+f.root, tuiFakeRunEnv+"="+f.run)
 		done := f.runOwner()
 		if !f.waitLog("tui-start", tuiAttachWait) {
