@@ -27,17 +27,20 @@ import (
 // relative to this package's dir.
 const rawTemplateDir = ".."
 
-// goldenFiles maps each emitted path to its shape-pin file under testdata.
+// goldenFiles maps each emitted path to its shape-pin file under testdata: the
+// four manifests and the payload .mcp.json (the one payload file a tree with no
+// skills or commands still emits).
 var goldenFiles = map[string]string{
-	claudeMarketplacePath: "claude-marketplace.json",
-	codexMarketplacePath:  "codex-marketplace.json",
-	claudePluginPath:      "claude-plugin.json",
-	codexPluginPath:       "codex-plugin.json",
+	claudeMarketplacePath:    "claude-marketplace.json",
+	codexMarketplacePath:     "codex-marketplace.json",
+	claudePluginPath:         "claude-plugin.json",
+	codexPluginPath:          "codex-plugin.json",
+	"plugins/moai/.mcp.json": "payload-mcp.json",
 }
 
 func updateMode() bool { return os.Getenv(pluginemit.EnvUpdate) == "1" }
 
-// TestManifestsGolden compares the four manifests, emitted at version
+// TestManifestsGolden compares the four manifests and the payload .mcp.json, emitted at version
 // v1.2.3 over a synthetic tree, with the hand-reviewed shape pins.
 func TestManifestsGolden(t *testing.T) {
 	orig := version.Version
@@ -74,7 +77,7 @@ func TestManifestsGolden(t *testing.T) {
 		}
 	}
 	if len(pub.Files) != len(goldenFiles) {
-		t.Errorf("emitted %d files, want exactly the %d manifests", len(pub.Files), len(goldenFiles))
+		t.Errorf("emitted %d files, want exactly the %d pinned files", len(pub.Files), len(goldenFiles))
 	}
 }
 
