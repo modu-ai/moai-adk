@@ -1,5 +1,5 @@
 // factory_m5_test.go — SPEC-FACTORY-SELF-DISPATCH-001 M5 AC tests (card
-// t1240): the Codex per-card relaunch (`moai codex -f lane`, REQ-SD-003 /
+// t1240): the Codex per-card relaunch (`moai codex -l`, REQ-SD-003 /
 // AC-SD-003) and the refusal of every other Codex factory entry shape
 // (REQ-SD-004 / AC-SD-004). The AC-SD-007 enumeration extension lives with
 // the walk it extends (factory_m4_test.go).
@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // sdCardLaunchCapture is one substituted Codex child: the argv the launcher
@@ -79,7 +79,7 @@ func sdCodexSessionWork(t *testing.T, root, cardID string) {
 	}
 }
 
-// AC-SD-003 — `moai codex -f lane` is a supervising loop: two operator-picked
+// AC-SD-003 — `moai codex -l` is a supervising loop: two operator-picked
 // cards, a substituted Codex session that exits 0 after moving its card to
 // merge-ready, then one more invocation per card with that card's worktree as
 // the child's working directory and the marker, the lane label, the Codex
@@ -87,8 +87,8 @@ func sdCodexSessionWork(t *testing.T, root, cardID string) {
 // launcher exits 0 once `next` reports no card.
 func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	wantLabel := sdNextFreeLaneLabel(t, root)
 	t.Chdir(root)
 	sdScrubLauncherEnv(t)
@@ -106,12 +106,12 @@ func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 		got = append(got, cap)
 		// The substituted session moves ITS OWN card (the id the launcher
 		// handed it) to merge-ready, then exits 0.
-		sdCodexSessionWork(t, root, cap.env[config.EnvMoaiKanbanCard])
+		sdCodexSessionWork(t, root, cap.env[config.EnvFactoryCard])
 		return nil
 	}
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
 
-	if _, _, err := runCodexCmd(t, "-f", "lane"); err != nil {
+	if _, _, err := runCodexCmd(t, "-l"); err != nil {
 		t.Fatalf("codex lane: %v", err)
 	}
 
@@ -140,19 +140,19 @@ func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 			t.Errorf("invocation %d: child env %s = %q, want the lane label %q", i, config.EnvMoaiFactoryWorker, rec.env[config.EnvMoaiFactoryWorker], wantLabel)
 		}
 		// The factory card verbs the owned-card session runs read the lane
-		// label from MOAI_KANBAN_LABEL; a child without it could not stage
-		// its own card.
-		if rec.env[config.EnvMoaiKanbanLabel] != wantLabel {
-			t.Errorf("invocation %d: child env %s = %q, want the lane label %q (the carrier the factory card verbs read)", i, config.EnvMoaiKanbanLabel, rec.env[config.EnvMoaiKanbanLabel], wantLabel)
+		// label from MOAI_FACTORY_WORKER alone; the retired MOAI_KANBAN_LABEL
+		// carrier is no longer stamped (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-012).
+		if v := rec.env[retiredLaneLabelMarker]; v != "" {
+			t.Errorf("invocation %d: child env carries the retired %s=%q", i, retiredLaneLabelMarker, v)
 		}
-		if rec.env[config.EnvMoaiKanbanBackend] != kanban.BackendGPT {
-			t.Errorf("invocation %d: child env %s = %q, want the Codex harness value %q", i, config.EnvMoaiKanbanBackend, rec.env[config.EnvMoaiKanbanBackend], kanban.BackendGPT)
+		if rec.env[config.EnvFactoryBackend] != factory.BackendGPT {
+			t.Errorf("invocation %d: child env %s = %q, want the Codex harness value %q", i, config.EnvFactoryBackend, rec.env[config.EnvFactoryBackend], factory.BackendGPT)
 		}
-		if rec.env[config.EnvMoaiKanbanCard] != cardID {
-			t.Errorf("invocation %d: child env %s = %q, want card %s's id", i, config.EnvMoaiKanbanCard, rec.env[config.EnvMoaiKanbanCard], cardID)
+		if rec.env[config.EnvFactoryCard] != cardID {
+			t.Errorf("invocation %d: child env %s = %q, want card %s's id", i, config.EnvFactoryCard, rec.env[config.EnvFactoryCard], cardID)
 		}
-		if rec.env[config.EnvMoaiKanbanID] != "" {
-			t.Errorf("invocation %d: child env carries the run id %s=%q; the eleven-key scrub holds on the lane path too", i, config.EnvMoaiKanbanID, rec.env[config.EnvMoaiKanbanID])
+		if rec.env[config.EnvFactoryRunID] != "" {
+			t.Errorf("invocation %d: child env carries the run id %s=%q; the eleven-key scrub holds on the lane path too", i, config.EnvFactoryRunID, rec.env[config.EnvFactoryRunID])
 		}
 	}
 }
@@ -169,17 +169,23 @@ func containsPair(argv []string, flag, value string) bool {
 
 // AC-SD-004 — every other Codex factory entry shape is refused with ONE line,
 // defined once: it carries FACTORY_MODE_UNSUPPORTED_BACKEND, names
-// `moai codex -f lane` as the only Codex factory entry and `moai cc -f` /
-// `moai glm -f` for the leader, exits 1, and starts no child.
+// `moai codex -l` as the Codex lane entry and `moai cc -f` / `moai glm -f` for
+// the leader, exits 1, and starts no child. M3 (SPEC-LAUNCHER-ENTRY-FLAGS-001)
+// re-pinned the line: `-f` is no Codex entry in any shape, `-f lane` included.
 func TestSD_AC004_CodexOtherFactoryShapesRefused(t *testing.T) {
 	for _, shape := range [][]string{
 		{"-f"},
 		{"--factory"},
 		// {"--factory-run", "x"} left this table (card t1444 ②): the token is
 		// no longer classified as an other-factory shape — it travels to
-		// parseCodexFactoryEntry, whose "--factory-run requires -f/--factory"
+		// parseCodexFactoryEntry, whose "--factory-run requires -l/--lane"
 		// refusal TestCodexFactoryRunWithoutLaneStillRefused pins.
+		{"-f", "lane"},
 		{"-f", "lane-2"},
+		{"-f", "3"},
+		{"--factory", "lane"},
+		{"-f="},
+		{"--factory="},
 	} {
 		prevDirect, prevSpawn := codexDirectLaunchFn, codexSpawnLaunchFn
 		codexDirectLaunchFn = func(*exec.Cmd) error {
@@ -199,13 +205,16 @@ func TestSD_AC004_CodexOtherFactoryShapesRefused(t *testing.T) {
 		}
 		for _, want := range []string{
 			factoryUnsupportedBackendSentinel,
-			"moai codex -f lane",
+			"moai codex -l",
 			"moai cc -f",
 			"moai glm -f",
 		} {
 			if !strings.Contains(codexFactoryRefusalDiag, want) {
 				t.Errorf("the refusal line does not name %q: %q", want, codexFactoryRefusalDiag)
 			}
+		}
+		if loc := removedFormPattern.FindString(codexFactoryRefusalDiag); loc != "" {
+			t.Errorf("the refusal line names the removed form %q: %q", loc, codexFactoryRefusalDiag)
 		}
 		code, ok := ResolveExitCode(err)
 		if !ok || code != 1 {

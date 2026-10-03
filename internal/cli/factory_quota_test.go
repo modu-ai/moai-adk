@@ -31,8 +31,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 )
 
@@ -137,13 +137,13 @@ type qasFixtureOpts struct {
 // with a record row and no owner (t2), a picked card with no record row (t3),
 // and a Claude lane, with the gate enabled and a fresh record. Every card is
 // parallelizable so the serial slot never interferes with arm ordering.
-func qasFixture(t *testing.T, o qasFixtureOpts) (string, *kanban.BacklogStore) {
+func qasFixture(t *testing.T, o qasFixtureOpts) (string, *factory.BacklogStore) {
 	t.Helper()
 	sdClearLaneEnv(t)
 	root, store := sdMoaiFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStatePicked, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	for _, id := range []string{"t1", "t2", "t3", "t4"} {
-		fcClassify(t, store, id, kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	}
 	sdRegisterLane(t, root, "lane-1")
 	rows := []homestate.Card{{CardID: "t2", State: homestate.CardPicked}}
@@ -157,7 +157,7 @@ func qasFixture(t *testing.T, o qasFixtureOpts) (string, *kanban.BacklogStore) {
 	if !o.noRecord {
 		qasWriteRecord(t, root, "sess-live", fcNow, o.five, o.seven)
 	}
-	qasLaneEnv(t, "lane-1", kanban.BackendClaude)
+	qasLaneEnv(t, "lane-1", factory.BackendClaude)
 	t.Chdir(root)
 	return root, store
 }
@@ -309,10 +309,10 @@ func TestQAS_AC006b_NextLeasesWhenQuotaDataAbsent(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			sdClearLaneEnv(t)
 			root, store := sdMoaiFixture(t)
-			fcQueue(t, store, kanban.BacklogStateQueued)
+			fcQueue(t, store, factory.BacklogStateQueued)
 			sdRegisterLane(t, root, "lane-1")
 			c.setup(t, root)
-			qasLaneEnv(t, "lane-1", kanban.BackendClaude)
+			qasLaneEnv(t, "lane-1", factory.BackendClaude)
 			t.Chdir(root)
 			out, stderr, err := qasRunNext(t, "--run", fcRun)
 			if err != nil {
@@ -451,7 +451,7 @@ func TestQAS_AC009_HoldLineCarriesResetTime(t *testing.T) {
 		root, _ := sdMoaiFixture(t)
 		sdRegisterLane(t, root, "lane-1")
 		qasEnableGate(t, root)
-		qasLaneEnv(t, "lane-1", kanban.BackendClaude)
+		qasLaneEnv(t, "lane-1", factory.BackendClaude)
 		t.Chdir(root)
 		out, stderr, err := qasRunNext(t, "--run", fcRun)
 		sdExit3(t, "empty queue", err)
@@ -467,14 +467,14 @@ func TestQAS_AC009_HoldLineCarriesResetTime(t *testing.T) {
 func TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrResetOrUnknown(t *testing.T) {
 	// onlyQueued builds a Claude lane with the gate enabled and exactly one
 	// queued card (t1), so a release leases it.
-	onlyQueued := func(t *testing.T) (string, *kanban.BacklogStore) {
+	onlyQueued := func(t *testing.T) (string, *factory.BacklogStore) {
 		t.Helper()
 		sdClearLaneEnv(t)
 		root, store := sdMoaiFixture(t)
-		fcQueue(t, store, kanban.BacklogStateQueued)
+		fcQueue(t, store, factory.BacklogStateQueued)
 		sdRegisterLane(t, root, "lane-1")
 		qasEnableGate(t, root)
-		qasLaneEnv(t, "lane-1", kanban.BackendClaude)
+		qasLaneEnv(t, "lane-1", factory.BackendClaude)
 		t.Chdir(root)
 		return root, store
 	}
@@ -605,7 +605,7 @@ func TestQAS_AC011_NonClaudeBackendsNeverHeld(t *testing.T) {
 		t.Helper()
 		sdClearLaneEnv(t)
 		root, store := sdMoaiFixture(t)
-		fcQueue(t, store, kanban.BacklogStateQueued)
+		fcQueue(t, store, factory.BacklogStateQueued)
 		sdRegisterLane(t, root, "lane-1")
 		qasEnableGate(t, root)
 		qasWriteRecord(t, root, "sess-live", fcNow, qasWin(99, qasReset5), nil)
@@ -621,20 +621,20 @@ func TestQAS_AC011_NonClaudeBackendsNeverHeld(t *testing.T) {
 			t.Fatalf("t1 = %s, want leased", cd.State)
 		}
 	}
-	for _, token := range []string{kanban.BackendGPT, kanban.BackendGLM, "", "no-such-backend"} {
+	for _, token := range []string{factory.BackendGPT, factory.BackendGLM, "", "no-such-backend"} {
 		t.Run("backend_"+strconv.Quote(token), func(t *testing.T) { leaseUnderPressure(t, token, token) })
 	}
 	t.Run("launch_provider_overrides_the_backend_variable", func(t *testing.T) {
-		leaseUnderPressure(t, kanban.BackendGLM, kanban.BackendClaude)
+		leaseUnderPressure(t, factory.BackendGLM, factory.BackendClaude)
 	})
 	t.Run("backend_variable_is_the_fallback_when_no_launch_provider", func(t *testing.T) {
 		sdClearLaneEnv(t)
 		root, store := sdMoaiFixture(t)
-		fcQueue(t, store, kanban.BacklogStateQueued)
+		fcQueue(t, store, factory.BacklogStateQueued)
 		sdRegisterLane(t, root, "lane-1")
 		qasEnableGate(t, root)
 		qasWriteRecord(t, root, "sess-live", fcNow, qasWin(99, qasReset5), nil)
-		sdLaneEnv(t, "lane-1", kanban.BackendClaude)
+		sdLaneEnv(t, "lane-1", factory.BackendClaude)
 		t.Setenv(config.EnvMoaiLaunchProvider, "")
 		t.Chdir(root)
 		out, stderr, err := qasRunNext(t, "--run", fcRun)
@@ -666,7 +666,7 @@ func TestQAS_AC011b_StageAndCompleteIgnoreQuotaHold(t *testing.T) {
 			qasEnableGate(t, root)
 			qasWriteRecord(t, root, "sess-live", fcNow, qasWin(99, qasReset5), qasWin(99, qasReset7))
 		}
-		qasLaneEnv(t, "lane-1", kanban.BackendClaude)
+		qasLaneEnv(t, "lane-1", factory.BackendClaude)
 		t.Chdir(root)
 		if _, _, err := runFactory(t, "stage", "t1", "plan-audit", sha+":plan.md", "--run", fcRun); err != nil {
 			t.Fatalf("stage (held=%v): %v", held, err)
@@ -800,7 +800,7 @@ func qasAcquire(t *testing.T, root string, extra ...string) qasAcquireOutcome {
 	t.Helper()
 	args := append([]string{"acquire", "--session", "sess-qas", "--name", "lane-1", "--branch", "release/v9.9.9"}, extra...)
 	stdout, stderr, err := runIntegrationStreams(t, root, args...)
-	rec, readErr := kanban.ReadIntegrationLock(root)
+	rec, readErr := factory.ReadIntegrationLock(root)
 	if readErr != nil {
 		t.Fatalf("read lock record: %v", readErr)
 	}
@@ -839,7 +839,7 @@ func TestQAS_AC013_AcquireWarnsNeverRefuses(t *testing.T) {
 	// pressure case is compared to.
 	control := func(t *testing.T, extra ...string) qasAcquireOutcome {
 		t.Helper()
-		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{gateOff: true})
+		root := qasAcquireRoot(t, factory.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{gateOff: true})
 		return qasAcquire(t, root, extra...)
 	}
 	// quotaLines counts the stderr lines that mention quota.
@@ -879,7 +879,7 @@ func TestQAS_AC013_AcquireWarnsNeverRefuses(t *testing.T) {
 	}
 
 	t.Run("warning_line_names_window_and_reset", func(t *testing.T) {
-		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{})
+		root := qasAcquireRoot(t, factory.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{})
 		got := integrationQuotaWarning(root)
 		if !qasAcquireWarningRE.MatchString(got) {
 			t.Fatalf("warning = %q, want a line matching %s", got, qasAcquireWarningRE)
@@ -891,7 +891,7 @@ func TestQAS_AC013_AcquireWarnsNeverRefuses(t *testing.T) {
 	})
 	t.Run("warns_text_and_never_blocks", func(t *testing.T) {
 		want := control(t)
-		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{})
+		root := qasAcquireRoot(t, factory.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{})
 		got := qasAcquire(t, root)
 		lines := quotaLines(got.stderr)
 		if len(lines) != 1 || !qasAcquireWarningRE.MatchString(lines[0]) {
@@ -904,7 +904,7 @@ func TestQAS_AC013_AcquireWarnsNeverRefuses(t *testing.T) {
 	})
 	t.Run("warns_json_and_never_blocks", func(t *testing.T) {
 		want := control(t, "--json")
-		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{})
+		root := qasAcquireRoot(t, factory.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{})
 		got := qasAcquire(t, root, "--json")
 		lines := quotaLines(got.stderr)
 		if len(lines) != 1 || !qasAcquireWarningRE.MatchString(lines[0]) {
@@ -917,7 +917,7 @@ func TestQAS_AC013_AcquireWarnsNeverRefuses(t *testing.T) {
 		assertUnchanged(t, got, want)
 	})
 	t.Run("both_windows_one_line", func(t *testing.T) {
-		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), qasWin(96, qasReset7), qasFixtureOpts{})
+		root := qasAcquireRoot(t, factory.BackendClaude, qasWin(92, qasReset5), qasWin(96, qasReset7), qasFixtureOpts{})
 		got := qasAcquire(t, root)
 		lines := quotaLines(got.stderr)
 		if len(lines) != 1 || !qasAcquireWarningRE.MatchString(lines[0]) {
@@ -934,12 +934,12 @@ func TestQAS_AC013_AcquireWarnsNeverRefuses(t *testing.T) {
 			five    *statusline.QuotaWindowRecord
 			gateOff bool
 		}{
-			{"below_threshold", kanban.BackendClaude, qasWin(89.9, qasReset5), false},
-			{"reset", kanban.BackendClaude, qasWin(92, fcNow.Add(-time.Second).Unix()), false},
-			{"unknown_no_record", kanban.BackendClaude, nil, false},
-			{"gate_disabled", kanban.BackendClaude, qasWin(99, qasReset5), true},
-			{"non_claude_glm", kanban.BackendGLM, qasWin(92, qasReset5), false},
-			{"non_claude_gpt", kanban.BackendGPT, qasWin(92, qasReset5), false},
+			{"below_threshold", factory.BackendClaude, qasWin(89.9, qasReset5), false},
+			{"reset", factory.BackendClaude, qasWin(92, fcNow.Add(-time.Second).Unix()), false},
+			{"unknown_no_record", factory.BackendClaude, nil, false},
+			{"gate_disabled", factory.BackendClaude, qasWin(99, qasReset5), true},
+			{"non_claude_glm", factory.BackendGLM, qasWin(92, qasReset5), false},
+			{"non_claude_gpt", factory.BackendGPT, qasWin(92, qasReset5), false},
 			{"no_backend", "", qasWin(92, qasReset5), false},
 		}
 		for _, c := range cases {
@@ -959,7 +959,7 @@ func TestQAS_AC013_AcquireWarnsNeverRefuses(t *testing.T) {
 	})
 	t.Run("unreadable_quota_state_falls_through_silently", func(t *testing.T) {
 		want := control(t)
-		root := qasAcquireRoot(t, kanban.BackendClaude, nil, nil, qasFixtureOpts{})
+		root := qasAcquireRoot(t, factory.BackendClaude, nil, nil, qasFixtureOpts{})
 		dir := filepath.Join(root, ".moai", "state", "context-usage")
 		if err := os.MkdirAll(dir, 0o750); err != nil {
 			t.Fatal(err)
@@ -1031,7 +1031,7 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 				t.Fatalf("acquire failed: %v", out.err)
 			}
 			warned := strings.Contains(out.stderr, "quota")
-			if want := wantPressure && acquireBackend == kanban.BackendClaude; warned != want {
+			if want := wantPressure && acquireBackend == factory.BackendClaude; warned != want {
 				t.Errorf("acquire warning printed = %v, want %v (pressure %v, caller %q); stderr: %q", warned, want, wantPressure, acquireBackend, out.stderr)
 			}
 			if strings.Contains(out.stdout, "quota") {
@@ -1043,7 +1043,7 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 	t.Run("shared_function_ignores_caller", func(t *testing.T) {
 		root := setup(t, qasWin(92, qasReset5), qasFixtureOpts{})
 		var first factoryQuotaEvaluation
-		for i, backend := range []string{kanban.BackendClaude, kanban.BackendGLM, kanban.BackendGPT, ""} {
+		for i, backend := range []string{factory.BackendClaude, factory.BackendGLM, factory.BackendGPT, ""} {
 			qasLaneEnv(t, "lane-1", backend)
 			ev := factoryQuotaEvaluate(root)
 			if !ev.Pressure() {
@@ -1062,47 +1062,47 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 	})
 	t.Run("at_92", func(t *testing.T) {
 		root := setup(t, qasWin(92, qasReset5), qasFixtureOpts{})
-		if !laneHolds(t, root, kanban.BackendClaude) {
+		if !laneHolds(t, root, factory.BackendClaude) {
 			t.Errorf("the lane gate does not hold a Claude lane at 92%%")
 		}
-		surfaces(t, root, true, kanban.BackendClaude)
+		surfaces(t, root, true, factory.BackendClaude)
 	})
 	t.Run("acquire_requires_claude_caller", func(t *testing.T) {
 		root := setup(t, qasWin(92, qasReset5), qasFixtureOpts{})
-		if laneHolds(t, root, kanban.BackendGLM) {
+		if laneHolds(t, root, factory.BackendGLM) {
 			t.Errorf("the lane gate holds a non-Claude lane")
 		}
 		if !factoryQuotaEvaluate(root).Pressure() {
 			t.Errorf("the shared function stopped reporting pressure for a non-Claude caller")
 		}
-		surfaces(t, root, true, kanban.BackendGLM)
+		surfaces(t, root, true, factory.BackendGLM)
 	})
 	t.Run("at_89_9", func(t *testing.T) {
 		root := setup(t, qasWin(89.9, qasReset5), qasFixtureOpts{})
-		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
+		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, factory.BackendClaude) {
 			t.Errorf("pressure or a hold at 89.9%%")
 		}
-		surfaces(t, root, false, kanban.BackendClaude)
+		surfaces(t, root, false, factory.BackendClaude)
 	})
 	t.Run("reset", func(t *testing.T) {
 		root := setup(t, qasWin(92, fcNow.Add(-time.Second).Unix()), qasFixtureOpts{})
-		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
+		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, factory.BackendClaude) {
 			t.Errorf("pressure or a hold on a window whose reset time has passed")
 		}
-		surfaces(t, root, false, kanban.BackendClaude)
+		surfaces(t, root, false, factory.BackendClaude)
 	})
 	t.Run("unknown", func(t *testing.T) {
 		root := setup(t, nil, qasFixtureOpts{})
-		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
+		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, factory.BackendClaude) {
 			t.Errorf("pressure or a hold with no reading at all")
 		}
-		surfaces(t, root, false, kanban.BackendClaude)
+		surfaces(t, root, false, factory.BackendClaude)
 	})
 	t.Run("gate_disabled", func(t *testing.T) {
 		root := setup(t, qasWin(99, qasReset5), qasFixtureOpts{gateOff: true})
-		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
+		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, factory.BackendClaude) {
 			t.Errorf("pressure or a hold with the gate disabled")
 		}
-		surfaces(t, root, false, kanban.BackendClaude)
+		surfaces(t, root, false, factory.BackendClaude)
 	})
 }

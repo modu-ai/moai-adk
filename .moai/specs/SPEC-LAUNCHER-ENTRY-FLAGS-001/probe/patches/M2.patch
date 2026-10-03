@@ -1,0 +1,35 @@
+diff --git a/internal/cli/factory.go b/internal/cli/factory.go
+--- a/internal/cli/factory.go
++++ b/internal/cli/factory.go
+@@ -57,7 +57,9 @@
+ 	factoryFlagLong  = "--factory"
+ 	factoryFlagShort = "-f"
+ 	leadFlagLong     = "--leader"
+-	leadFlagShort    = "-l"
++	leadFlagShort    = "-l" // M2 leaves the constant: codex_factory.go still reads it until M3
++	laneFlagShort    = "-l"
++	laneFlagLong     = "--lane"
+ 
+ 	// factoryLaneRoleToken is the canonical `-f lane` role value
+ 	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002): join the running factory as
+@@ -159,13 +161,16 @@
+ 		// with the same canonical-form shape refuseLegacyEntryNames applies
+ 		// to --name (AC-010): nothing parsed further, nothing launched,
+ 		// nothing written.
+-		if arg == leadFlagLong || arg == leadFlagShort ||
+-			strings.HasPrefix(arg, leadFlagLong+"=") || strings.HasPrefix(arg, leadFlagShort+"=") {
++		if arg == laneFlagShort || arg == laneFlagLong {
++			// M2 compile-probe model: -l/--lane selects the lane role; the shared desugar follows.
++			p.LaneRole = true
++			continue
++		}
++		if arg == leadFlagLong ||
++			strings.HasPrefix(arg, leadFlagLong+"=") {
+ 			switch {
+ 			case strings.HasPrefix(arg, leadFlagLong+"="):
+ 				p.Lead = strings.TrimPrefix(arg, leadFlagLong+"=")
+-			case strings.HasPrefix(arg, leadFlagShort+"="):
+-				p.Lead = strings.TrimPrefix(arg, leadFlagShort+"=")
+ 			case i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-"):
+ 				i++
+ 				p.Lead = args[i]

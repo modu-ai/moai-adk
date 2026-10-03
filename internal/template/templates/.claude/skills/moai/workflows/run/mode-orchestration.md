@@ -78,9 +78,9 @@ All of the following must be verified:
 
 ---
 
-## Verify Exit Gate (factory contract)
+## Verify Exit Gate
 
-The `factory` pipeline contract (`workflows/moai.md` § run→sync chaining policy) adds exactly one stage to run-phase: a security verify stage that is the **exit gate of run-phase**. It is not a sync-phase stage and it is not a new subcommand. Ordering: the gate fires after acceptance-criterion convergence and BEFORE the inherited run→sync auto-chain, and the whole of run-phase — this gate included — is downstream of Implementation Kickoff Approval.
+The verify exit gate adds exactly one stage to run-phase: a security verify stage that is the **exit gate of run-phase**. No launcher flag enters or arms it; the orchestrator runs it when this section applies. It is not a sync-phase stage and it is not a new subcommand. Ordering: the gate fires after acceptance-criterion convergence and BEFORE the inherited run→sync auto-chain, and the whole of run-phase — this gate included — is downstream of Implementation Kickoff Approval.
 
 Invocation, verbatim:
 

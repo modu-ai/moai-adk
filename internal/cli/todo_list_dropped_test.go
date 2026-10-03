@@ -21,13 +21,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // assertFixtureStates reads the seeded queue back through its own store and
 // verifies the exact state mix before any render assertion runs — the
 // render tests below are only meaningful when the fixture is what they say.
-func assertFixtureStates(t *testing.T, store *kanban.BacklogStore, want map[string]kanban.BacklogState) {
+func assertFixtureStates(t *testing.T, store *factory.BacklogStore, want map[string]factory.BacklogState) {
 	t.Helper()
 	rec, err := store.Load()
 	if err != nil {
@@ -46,7 +46,7 @@ func assertFixtureStates(t *testing.T, store *kanban.BacklogStore, want map[stri
 // seedDroppedFixture builds a queue with one picked, one queued, and one
 // dropped card — the smallest mix that discriminates the three render
 // behaviors under test.
-func seedDroppedFixture(t *testing.T) *kanban.BacklogStore {
+func seedDroppedFixture(t *testing.T) *factory.BacklogStore {
 	t.Helper()
 	_, store := todoFixture(t)
 	if _, _, err := runTodo(t, "add", "alpha live work"); err != nil {
@@ -64,10 +64,10 @@ func seedDroppedFixture(t *testing.T) *kanban.BacklogStore {
 	if _, _, err := runTodo(t, "drop", "t3", "superseded by another card"); err != nil {
 		t.Fatalf("seed drop t3: %v", err)
 	}
-	assertFixtureStates(t, store, map[string]kanban.BacklogState{
-		"t1": kanban.BacklogStatePicked,
-		"t2": kanban.BacklogStateQueued,
-		"t3": kanban.BacklogStateDropped,
+	assertFixtureStates(t, store, map[string]factory.BacklogState{
+		"t1": factory.BacklogStatePicked,
+		"t2": factory.BacklogStateQueued,
+		"t3": factory.BacklogStateDropped,
 	})
 	return store
 }
@@ -126,8 +126,8 @@ func TestTodoList_DroppedFlagEmptySaysSo(t *testing.T) {
 	if _, _, err := runTodo(t, "add", "only card"); err != nil {
 		t.Fatalf("seed add: %v", err)
 	}
-	assertFixtureStates(t, store, map[string]kanban.BacklogState{
-		"t1": kanban.BacklogStateQueued,
+	assertFixtureStates(t, store, map[string]factory.BacklogState{
+		"t1": factory.BacklogStateQueued,
 	})
 
 	out, _, err := runTodo(t, "list", "--dropped")
@@ -149,8 +149,8 @@ func TestTodoList_AllDroppedDefaultView(t *testing.T) {
 	if _, _, err := runTodo(t, "drop", "t1", "no longer wanted"); err != nil {
 		t.Fatalf("seed drop: %v", err)
 	}
-	assertFixtureStates(t, store, map[string]kanban.BacklogState{
-		"t1": kanban.BacklogStateDropped,
+	assertFixtureStates(t, store, map[string]factory.BacklogState{
+		"t1": factory.BacklogStateDropped,
 	})
 
 	out, _, err := runTodo(t)
@@ -174,7 +174,7 @@ func TestTodoList_JSONKeepsDroppedCards(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list --json: %v", err)
 	}
-	var rec kanban.BacklogRecord
+	var rec factory.BacklogRecord
 	if err := json.Unmarshal([]byte(out), &rec); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -183,7 +183,7 @@ func TestTodoList_JSONKeepsDroppedCards(t *testing.T) {
 	}
 	var dropped int
 	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStateDropped {
+		if it.State == factory.BacklogStateDropped {
 			dropped++
 		}
 	}

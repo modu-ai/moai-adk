@@ -52,9 +52,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/jev"
 	"github.com/modu-ai/moai-adk/internal/jevcred"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // jevAdmissionTimeout bounds the admission-path call. The probe runs inside
@@ -107,7 +107,7 @@ var jevNearDuplicateProbe = liveJevNearDuplicateProbe
 // It is called from the admission path and nowhere else (REQ-JEVN-001). The
 // return value exists for tests and for a future caller that wants to report
 // what happened; no caller acts on it, and none may.
-func appendJevNearDuplicateFinding(rec *kanban.BacklogRecord, item kanban.BacklogItem) bool {
+func appendJevNearDuplicateFinding(rec *factory.BacklogRecord, item factory.BacklogItem) bool {
 	judgment, ok := jevNearDuplicateProbe(rec, item)
 	if !ok {
 		return false
@@ -115,12 +115,12 @@ func appendJevNearDuplicateFinding(rec *kanban.BacklogRecord, item kanban.Backlo
 	if judgment.RelatedID == "" || judgment.RelatedID == item.ID {
 		return false
 	}
-	f := kanban.BacklogFinding{
+	f := factory.BacklogFinding{
 		SubjectID: item.ID,
 		RelatedID: judgment.RelatedID,
-		Relation:  kanban.BacklogRelationNearDuplicate,
+		Relation:  factory.BacklogRelationNearDuplicate,
 		// REQ-JEVN-002 / REQ-JEVN-003: the third constant, never `agent`.
-		Source: kanban.BacklogSourceJev,
+		Source: factory.BacklogSourceJev,
 		Score:  judgment.Probability,
 		At:     item.AddedAt,
 	}
@@ -142,7 +142,7 @@ func appendJevNearDuplicateFinding(rec *kanban.BacklogRecord, item kanban.Backlo
 // here would propagate into the admission's own error return and turn a
 // missing model answer into a refused card — the display-becomes-verdict
 // failure in its most direct form.
-func liveJevNearDuplicateProbe(rec *kanban.BacklogRecord, item kanban.BacklogItem) (jevNearDuplicateJudgment, bool) {
+func liveJevNearDuplicateProbe(rec *factory.BacklogRecord, item factory.BacklogItem) (jevNearDuplicateJudgment, bool) {
 	enabled, err := jevEnabled(resolveProjectDir())
 	if err != nil || !enabled {
 		// A config that cannot be read is treated exactly as a disabled
@@ -192,11 +192,11 @@ func liveJevNearDuplicateProbe(rec *kanban.BacklogRecord, item kanban.BacklogIte
 // jevNearDuplicateCandidates returns the cards the question is asked about:
 // every non-dropped card other than the newly admitted one, most recent first,
 // bounded.
-func jevNearDuplicateCandidates(rec *kanban.BacklogRecord, item kanban.BacklogItem) []kanban.BacklogItem {
-	out := make([]kanban.BacklogItem, 0, len(rec.Items))
+func jevNearDuplicateCandidates(rec *factory.BacklogRecord, item factory.BacklogItem) []factory.BacklogItem {
+	out := make([]factory.BacklogItem, 0, len(rec.Items))
 	for i := len(rec.Items) - 1; i >= 0; i-- {
 		c := rec.Items[i]
-		if c.ID == item.ID || c.State == kanban.BacklogStateDropped {
+		if c.ID == item.ID || c.State == factory.BacklogStateDropped {
 			continue
 		}
 		out = append(out, c)
@@ -209,7 +209,7 @@ func jevNearDuplicateCandidates(rec *kanban.BacklogRecord, item kanban.BacklogIt
 }
 
 // jevNearDuplicateState renders the one state the question is asked over.
-func jevNearDuplicateState(item kanban.BacklogItem, candidates []kanban.BacklogItem) string {
+func jevNearDuplicateState(item factory.BacklogItem, candidates []factory.BacklogItem) string {
 	var b strings.Builder
 	b.WriteString("A new backlog card has just been admitted to a work queue.\n\n")
 	b.WriteString("NEW CARD\n")
@@ -223,7 +223,7 @@ func jevNearDuplicateState(item kanban.BacklogItem, candidates []kanban.BacklogI
 
 // jevNearDuplicateQuestion builds the single Choice, with the no-match option
 // appended last.
-func jevNearDuplicateQuestion(candidates []kanban.BacklogItem) jev.Question {
+func jevNearDuplicateQuestion(candidates []factory.BacklogItem) jev.Question {
 	choices := make([]string, 0, len(candidates)+1)
 	for _, c := range candidates {
 		choices = append(choices, c.ID)
@@ -249,7 +249,7 @@ func jevNearDuplicateQuestion(candidates []kanban.BacklogItem) jev.Question {
 // from what internal/jev emits elsewhere, and the word "score" is deliberately
 // absent: a calibrated model confidence must not read as a measured
 // similarity.
-func jevFindingSignalFragment(f kanban.BacklogFinding) string {
+func jevFindingSignalFragment(f factory.BacklogFinding) string {
 	return fmt.Sprintf(", %s p=%.2f", jev.SignalLabel, f.Score)
 }
 

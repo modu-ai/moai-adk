@@ -1,28 +1,26 @@
 // session_start_factory.go emits the Factory Mode bootstrap announcement into
-// the session — the factory sibling of session_start_kanban.go
-// (SPEC-FACTORY-WORKER-FANOUT-001).
+// the session (SPEC-FACTORY-WORKER-FANOUT-001).
 //
-// The announcement is emitted HERE rather than by the launcher for the same
-// reason as the kanban notice: the launcher syscall.Exec's into claude
-// (internal/cli/launch_exec_posix.go), so anything it writes to stdout is
-// overwritten the moment the TUI takes the screen.
+// The announcement is emitted HERE rather than by the launcher because the
+// launcher syscall.Exec's into claude (internal/cli/launch_exec_posix.go), so
+// anything it writes to stdout is overwritten the moment the TUI takes the
+// screen.
 //
 // The t85 leader loop is also injected here for the same reason: the launcher
 // cannot run a loop (it exec's in place and is gone), so the loop is a
 // SESSION-side behavior codified into the leader notice — the discipline text
-// (queue polling, free-slot pick, staggered activation, no model override)
-// plus the live data (queued count, free slots) the leader session executes
+// (whole-card routing, staggered activation) the leader session executes
 // against.
 //
 // The same two-audience split applies. The orchestrator reads
-// hookSpecificOutput.additionalContext and needs the lane labels, because
-// it is what will address the lanes when dispatching cards. The operator
-// reads systemMessage and needs the launch lines, because a session cannot
-// launch another session — those terminals are opened by hand. Each copy is
-// rendered in its own language (agent-facing English, operator-facing
-// conversation_language); the commands, run id, socket path, and lane
-// labels are protocol tokens and are emitted verbatim in every locale so the
-// operator's paste keeps working.
+// hookSpecificOutput.additionalContext, the operator reads systemMessage, and
+// the operator needs the lane-start sentence because a session cannot launch
+// another session — those terminals are opened by hand. Each copy is rendered
+// in its own language (agent-facing English, operator-facing
+// conversation_language); the commands, run id, and socket path are protocol
+// tokens and are emitted verbatim in every locale so the operator's paste
+// keeps working. The notice states no lane count, no per-lane line, and no
+// free-slot list (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009).
 package hook
 
 import (
@@ -33,28 +31,27 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // factoryBootstrapNotice returns the factory announcement for this session in
 // lang, or "" when the session is not part of a factory run. root is the
-// project root the leader's loop data (queue count, free slots) is read under;
-// an empty root degrades to zero-count/all-free summaries inside the notice.
+// project root the stale-run check reads run state under.
 // sessionID keys the stale-run check: a session whose launch label or record
 // carries a legacy role value gets the stale-run notice instead of a leader
 // or lane notice (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-022, REQ-RNC-025).
 //
-// Fail-open throughout, matching kanbanBootstrapNotice: an unparseable lane
-// count degrades to omitting the count-dependent copy rather than failing the
-// session start, and an unknown lang degrades to English, never to an empty
-// notice.
+// Fail-open throughout, matching the surrounding hook code: an unparseable
+// lane count degrades to omitting the count-dependent copy rather than failing
+// the session start, and an unknown lang degrades to English, never to an
+// empty notice.
 func factoryBootstrapNotice(root, sessionID, lang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
-		if kanban.IsLegacyFactoryRoleValue(label) {
+		if factory.IsLegacyFactoryRoleValue(label) {
 			// Run-state gated: an active run prescribes once, a dead run
 			// unbinds once, an unmeasurable one degrades — never an
 			// unconditional prescription (SPEC-STALE-RUN-LABEL-001).
-			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvMoaiKanbanID), lang)
+			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvFactoryRunID), lang)
 		}
 		return factoryLaneNotice(label, factoryLanesEnv(), lang)
 	}
@@ -64,14 +61,16 @@ func factoryBootstrapNotice(root, sessionID, lang string) string {
 	if notice := staleRunNoticeFor(root, sessionID, lang); notice != "" {
 		return notice
 	}
-	return factoryLeaderNotice(os.Getenv(config.EnvMoaiKanbanID), factoryLanesEnv(), root, lang)
+	return factoryLeaderNotice(os.Getenv(config.EnvFactoryRunID), factoryLanesEnv(), lang)
 }
 
 // factoryBootstrapNoticeForSource returns the announcement only for a
-// genuinely new session, on the same startup-only allowlist and for the same
-// reason as kanbanBootstrapNoticeForSource: the factory environment survives
-// resume / clear / compact / fork, and re-announcing the bootstrap would tell
-// the operator to open lane terminals that are already open. The stale-run
+// genuinely new session, on a startup-only allowlist: the factory environment
+// survives resume / clear / compact / fork, and re-announcing the bootstrap
+// would tell the operator to open lane terminals that are already open. The
+// allowlist rather than a denylist of the re-entry sources keeps a newly added
+// source silent by default. An empty source is treated as startup (a caller
+// that predates the field, or a test building the input by hand). The stale-run
 // notice shares the same gate — a relaunch reminder repeated on every re-entry
 // is the same noise problem in reverse.
 func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) string {
@@ -98,14 +97,14 @@ func factoryLaneRuleForSource(source, lang string) string {
 		return ""
 	}
 	label := os.Getenv(config.EnvMoaiFactoryWorker)
-	if label == "" || kanban.IsLegacyFactoryRoleValue(label) {
+	if label == "" || factory.IsLegacyFactoryRoleValue(label) {
 		return ""
 	}
-	if _, ok := kanban.SplitFactoryLaneLabel(label); !ok {
+	if _, ok := factory.SplitFactoryLaneLabel(label); !ok {
 		return ""
 	}
-	switch os.Getenv(config.EnvMoaiKanbanBackend) {
-	case kanban.BackendClaude, kanban.BackendGLM:
+	switch os.Getenv(config.EnvFactoryBackend) {
+	case factory.BackendClaude, factory.BackendGLM:
 		// REQ-TCD-011 (SPEC-TODO-CLASSIFY-DISPATCH-001): the launcher's
 		// stamped dispatch selection picks the rule — manual mode receives a
 		// manual-mode rule, never the self-dispatch instruction. Any other
@@ -122,8 +121,8 @@ func factoryLaneRuleForSource(source, lang string) string {
 			return m.laneManualDispatchRule + "\n\n" + m.laneRecheckRule
 		}
 		return m.laneNextCardRule + "\n\n" + m.laneRecheckRule
-	case kanban.BackendGPT:
-		cardID := os.Getenv(config.EnvMoaiKanbanCard)
+	case factory.BackendGPT:
+		cardID := os.Getenv(config.EnvFactoryCard)
 		if cardID == "" {
 			// An owned-card rule without a card id names nothing the lane
 			// could carry; the M5 launcher always stamps the id, so this is
@@ -147,49 +146,27 @@ func factoryLanesEnv() int {
 	return n
 }
 
-// factoryLaunchEntry maps launcher provenance to fixed CLI tokens. Unknown
-// values never enter the copyable shell command.
-func factoryLaunchEntry() string {
-	provider := os.Getenv(config.EnvMoaiLaunchProvider)
-	if provider == "" {
-		provider = os.Getenv(config.EnvMoaiKanbanBackend)
-	}
-	switch provider {
-	case "glm":
-		return "glm"
-	default:
-		return "cc"
-	}
-}
-
 // factoryLeaderNotice is the factory leader branch. It carries, in order:
-// (a) the run id and the session name that must accompany it; (b) why
-// bootstrap is manual and how lane names are assigned; (c) the N lane
-// launch lines; (d) the entry-point guide — cc/glm/gpt backend choice, the
-// -f lane join, the incremental -f lane-<n> form, the per-lane fan-out — plus
-// the leader socket path; (e) the dispatch discipline — whole-card routing
-// (each card to ONE lane, which runs the serial plan -> run -> sync path
-// in-session), the fan-out-only stagger rule, and the
-// no-model-override rule; (f) the free-slot line plus the inbound-automation
-// notice. There is no SPEC line — the factory entry carries a lane count,
-// not a SPEC identifier.
-//
-// The lane launch lines each carry the t118 `-f lane-<i>` form — one
-// flag token that both selects the factory and names the lane, and that a
-// leader can also paste ONE line from to add a single lane later — with the
-// lane-<i> name the leader's addressing vocabulary uses, so the operator's
-// paste and the leader's dispatch target are the same string by construction.
+// (a) the run id and the session name that must accompany it; (b) the one
+// lane-start sentence — to start a lane, enter `moai cc -l` (or `moai glm -l`,
+// `moai codex -l`) in a new terminal; (c) the entry-point guide — the -f
+// leader entries — the per-lane fan-out line, and the leader socket path;
+// (d) the dispatch discipline — whole-card routing (each card to ONE lane,
+// which runs the serial plan -> run -> sync path in-session) and the
+// fan-out-only stagger rule; (e) the operational-status query plus the
+// inbound-automation notice. There is no SPEC line, and — by
+// SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009 — no lane count, no per-lane launch
+// line, and no free-slot list: the lane guidance is the same bytes whatever
+// the run's declared lane count. lanes only gates the notice (a leader whose
+// count cannot be read emits nothing, as before).
 //
 // QUEUE POLLING IS DELIBERATELY NOT TAUGHT HERE. The watch-dispatch-collect
-// loop over the backlog queue is the kanban foreman's (the bare /loop driver
-// + moai-kanban-foreman skill, t96): re-teaching it here would hand the
-// factory leader a second, conflicting polling protocol. This notice carries
-// only what is factory-specific — how a PICKED card is routed to lanes, how
-// lanes are activated, and what a dispatch must never carry. The free-slot
-// line stays because the stagger rule names free-slot lanes; the
-// queued-count line went with the polling instruction (the foreman reads the
-// queue itself).
-func factoryLeaderNotice(runID string, lanes int, root, lang string) string {
+// loop over the backlog queue is the foreman's (the bare /loop driver, t96):
+// re-teaching it here would hand the factory leader a second, conflicting
+// polling protocol. This notice carries only what is factory-specific — how a
+// PICKED card is routed to lanes, how lanes are activated, and what a dispatch
+// must never carry.
+func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	if runID == "" || lanes < 1 {
 		return ""
 	}
@@ -200,52 +177,32 @@ func factoryLeaderNotice(runID string, lanes int, root, lang string) string {
 	// emitted, not later when a dispatched card reaches the wrong run.
 	identity := []string{
 		fmt.Sprintf(m.leaderHeader, runID),
-		fmt.Sprintf(m.leaderIdentity, kanban.LeaderLabel()),
+		fmt.Sprintf(m.leaderIdentity, factory.LeaderLabel()),
 	}
+	// (b) the lane-start sentence rides in the same block as the dispatch
+	// statement above it.
 	blocks := []string{
 		strings.Join(identity, "\n"),
-		fmt.Sprintf(m.leaderManual, lanes, lanes),
+		m.leaderManual,
 	}
 
-	// (c) the lane launch lines, one per lane.
-	entry := factoryLaunchEntry()
-	launch := make([]string, 0, lanes)
-	for i := 1; i <= lanes; i++ {
-		launch = append(launch, "moai "+entry+" -f "+kanban.FactoryLaneLabel(i))
-	}
-	blocks = append(blocks, strings.Join(launch, "\n"))
-
-	// (d) the entry-point guide — the cc/glm/gpt backend choice, the -f forms,
-	// and the per-lane fan-out — plus the leader socket path when the
-	// launcher captured one.
-	backend := []string{fmt.Sprintf(m.entryGuide, lanes, entry), m.agentFanout}
-	if addr := os.Getenv(config.EnvMoaiKanbanLeadAddr); addr != "" {
+	// (c) the entry-point guide and the per-lane fan-out, plus the leader
+	// socket path when the launcher captured one.
+	backend := []string{m.entryGuide, m.agentFanout}
+	if addr := os.Getenv(config.EnvFactoryLeadAddr); addr != "" {
 		backend = append(backend, fmt.Sprintf(m.leaderSocket, addr))
 	}
 	blocks = append(blocks, strings.Join(backend, "\n"))
 
-	// (e) the dispatch discipline — localized prose with verbatim protocol
+	// (d) the dispatch discipline — localized prose with verbatim protocol
 	// tokens; see factoryMessages for why the tokens are not translated.
 	blocks = append(blocks, strings.Join([]string{m.leaderClasses, m.leaderStagger, m.gateSummary}, "\n"))
 
-	// (f) the free-slot line and the inbound-automation notice, on the same
-	// injected-settings discriminator as the kanban leader. The slot list is
-	// computed HERE from root (fail-open to all-free on any error) because
-	// the stagger rule above names free-slot lanes — the operator's
-	// opening screen names the capacity the run actually has.
-	slots := kanban.FactoryFreeSlots(root, lanes, kanban.FactoryProcessAlive)
-	slotLine := m.leaderSlotsNone
-	if len(slots) > 0 {
-		labels := make([]string, 0, len(slots))
-		for _, n := range slots {
-			labels = append(labels, kanban.FactoryLaneLabel(n))
-		}
-		slotLine = strings.Join(labels, ", ")
-	}
+	// (e) the operational-status query and the inbound-automation notice, on
+	// the injected-settings discriminator the launcher publishes.
 	var context []string
 	context = append(context, fmt.Sprintf(m.operationalStatus, runID))
-	context = append(context, fmt.Sprintf(m.leaderFreeSlots, slotLine))
-	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
+	if os.Getenv(config.EnvFactorySettingsInjected) == "1" {
 		context = append(context, m.settingsAuto)
 	} else {
 		context = append(context, m.settingsVerify)
@@ -259,17 +216,17 @@ func factoryLeaderNotice(runID string, lanes int, root, lang string) string {
 // acknowledging the join, naming the label this session launched under (which
 // may be a bumped number — the registry note on stderr is gone by the time
 // the TUI takes the screen, so this line is where the operator reads the
-// final name). It does NOT print the launch block, for the same reason as
-// kanbanCompanionNotice.
+// final name). It does NOT print a launch block: a lane is already running,
+// and the operator has nothing left to paste.
 //
-// The incremental `-f lane-<n>` entry carries no run count (the launcher
+// The incremental `-l` lane entry carries no run count (the launcher
 // publishes 0), and the count-less sentence names the label alone rather
 // than fabricating a fan-out size. Both sentences take (label, lanes);
 // the per-locale word order differs (en/ja/ko say the count first, zh the
 // label first), so the formats pin the argument order with explicit %[n]
 // indices rather than positional verbs.
 func factoryLaneNotice(label string, lanes int, lang string) string {
-	if _, ok := kanban.SplitFactoryLaneLabel(label); !ok {
+	if _, ok := factory.SplitFactoryLaneLabel(label); !ok {
 		return ""
 	}
 	m := factoryMessagesFor(lang)

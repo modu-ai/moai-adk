@@ -15,7 +15,7 @@ description: "여러 SPEC 으로 나뉜 에픽의 마일스톤 진행률을 디�
 moai epic status <prefix> [OPTIONS]
 ```
 
-`<prefix>` 는 필수 인자로, 에픽을 식별하는 SPEC-ID 접두사입니다. 예를 들어 `KANBAN` 을 주면 `.moai/specs/SPEC-KANBAN-*/spec.md` 를 대상으로 삼습니다.
+`<prefix>` 는 필수 인자로, 에픽을 식별하는 SPEC-ID 접두사입니다. 예를 들어 `FACTORY` 을 주면 `.moai/specs/SPEC-FACTORY-*/spec.md` 를 대상으로 삼습니다.
 
 ## 무엇을 읽는가
 
@@ -41,13 +41,13 @@ moai epic status <prefix> [OPTIONS]
 기본 출력은 사람이 읽는 진행 보드입니다.
 
 ```bash
-$ moai epic status KANBAN
-🎯 KANBAN ▓▓▓▓▓░░░░░ 2/4 (50%)
-Epic progress:   KANBAN
-  🟢 M0 M0                            SPEC-KANBAN-RENAME-001 (completed)
-  ⬜ M1 M1                             SPEC-KANBAN-BOOTSTRAP-001 (draft)
-  ⬜ M2 M2                             SPEC-KANBAN-WORKTREE-001 (draft)
-  🟢 M3 M3                            SPEC-KANBAN-BOARD-001 (completed)
+$ moai epic status FACTORY
+🎯 FACTORY ▓▓▓▓▓░░░░░ 2/4 (50%)
+Epic progress:   FACTORY
+  🟢 M0 M0                            SPEC-FACTORY-RENAME-001 (completed)
+  ⬜ M1 M1                             SPEC-FACTORY-BOOTSTRAP-001 (draft)
+  ⬜ M2 M2                             SPEC-FACTORY-WORKTREE-001 (draft)
+  🟢 M3 M3                            SPEC-FACTORY-LANES-001 (completed)
 ```
 
 표식이 하나도 없으면 그 사실을 그대로 적고, 대신 걸린 SPEC 을 나열합니다.
@@ -62,17 +62,17 @@ untracked_specs: SPEC-DESIGN-DOCS-001, SPEC-DESIGN-DOCS-V31-001
 `--json` 은 스크립트에서 쓰기 좋은 고정 형태를 냅니다.
 
 ```bash
-$ moai epic status KANBAN --json
+$ moai epic status FACTORY --json
 {
-  "epic": "KANBAN",
-  "epic_token": "KANBAN",
+  "epic": "FACTORY",
+  "epic_token": "FACTORY",
   "milestones": [
     {
       "id": "M0",
       "label": "M0",
       "status": "done",
       "covered": true,
-      "spec_id": "SPEC-KANBAN-RENAME-001",
+      "spec_id": "SPEC-FACTORY-RENAME-001",
       "spec_status": "completed",
       "sync_commit_sha": "144573336d07da19f4b8a50aa26c38db2704afb5"
     }
@@ -81,7 +81,7 @@ $ moai epic status KANBAN --json
   "total": 4,
   "pct": 50,
   "extra_mx": [],
-  "untracked_specs": ["SPEC-KANBAN-TODO-CLI-001"],
+  "untracked_specs": ["SPEC-FACTORY-TODO-CLI-001"],
   "baseline_attribution": "3b9b3bf9959669c4bfc43da313e25bca61f910a2"
 }
 ```

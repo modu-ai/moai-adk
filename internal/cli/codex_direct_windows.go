@@ -25,14 +25,14 @@ func codexDirectAnchorPID() int { return os.Getpid() }
 func defaultCodexDirectLaunch(cmd *exec.Cmd) error {
 	if err := cmd.Start(); err != nil {
 		if codexExplicitFactoryEnv(cmd.Env) && launchEnvValue(cmd.Env, config.EnvMoaiFactoryWorker) == "" {
-			return errors.Join(err, clearFactoryRunOwner(cmd.Dir, launchEnvValue(cmd.Env, config.EnvMoaiKanbanID)))
+			return errors.Join(err, clearFactoryRunOwner(cmd.Dir, launchEnvValue(cmd.Env, config.EnvFactoryRunID)))
 		}
 		return err
 	}
 	if codexExplicitFactoryEnv(cmd.Env) {
 		runID := ""
 		if launchEnvValue(cmd.Env, config.EnvMoaiFactoryWorker) == "" {
-			runID = launchEnvValue(cmd.Env, config.EnvMoaiKanbanID)
+			runID = launchEnvValue(cmd.Env, config.EnvFactoryRunID)
 		}
 		clearOwner := func() error {
 			if runID == "" {

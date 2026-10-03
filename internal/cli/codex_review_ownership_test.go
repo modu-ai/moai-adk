@@ -442,8 +442,8 @@ func setOwnershipEnv(t *testing.T, all []string, row map[string]string) {
 // decision is identical across every launcher env shape. T1 (a develop tree with
 // foreign work) must skip and T2 (a WT- card tree) must review on BOTH paths,
 // whatever the environment — including the value shapes the launchers really
-// set (a kanban leader carries no label, a companion carries its role label, a
-// factory lane carries MOAI_FACTORY_WORKER) and set-but-empty. A decision read
+// set (a leader carries no label, a factory lane carries the lane-label marker)
+// and set-but-empty. A decision read
 // from a label or worker value, or from a helper that reads one outside the
 // policy file (which the static guard below cannot see), flips a row.
 func TestTreeScopePolicy_EnvMatrix(t *testing.T) {
@@ -452,16 +452,14 @@ func TestTreeScopePolicy_EnvMatrix(t *testing.T) {
 		name string
 		env  map[string]string
 	}{
-		{"kanban leader (no label)", map[string]string{
-			config.EnvMoaiKanban: "1", config.EnvMoaiKanbanID: "kb-1",
-			config.EnvMoaiKanbanLeadAddr: "/tmp/lead.sock", config.EnvMoaiKanbanSettingsInjected: "1"}},
-		{"label leader", map[string]string{
-			config.EnvMoaiKanban: "1", config.EnvMoaiKanbanLabel: "leader", config.EnvMoaiKanbanID: "kb-1",
-			config.EnvMoaiKanbanLeadAddr: "/tmp/lead.sock", config.EnvMoaiKanbanSettingsInjected: "1",
+		{"marked leader (no label)", map[string]string{
+			config.EnvFactoryRunID:    "kb-1",
+			config.EnvFactoryLeadAddr: "/tmp/lead.sock", config.EnvFactorySettingsInjected: "1"}},
+		{"marked factory leader", map[string]string{
+			config.EnvFactoryRunID:    "kb-1",
+			config.EnvFactoryLeadAddr: "/tmp/lead.sock", config.EnvFactorySettingsInjected: "1",
 			config.EnvMoaiFactoryWorkers: "8"}},
 		{"factory leader", map[string]string{config.EnvMoaiFactoryWorkers: "8"}},
-		{"kanban companion", map[string]string{
-			config.EnvMoaiKanbanLabel: "run", config.EnvMoaiKanbanID: "kb-1", config.EnvMoaiKanbanLeadAddr: "/tmp/lead.sock"}},
 		{"factory worker", map[string]string{config.EnvMoaiFactoryWorker: "worker-1", config.EnvMoaiFactoryWorkers: "8"}},
 		{"factory lane", map[string]string{config.EnvMoaiFactoryWorker: "lane-1", config.EnvMoaiFactoryWorkers: "8"}},
 		{"set but empty", func() map[string]string {

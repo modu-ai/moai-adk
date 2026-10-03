@@ -71,10 +71,10 @@ func newInteractiveHandoffFixture(t *testing.T, switchPending bool) *interactive
 	handoffTestGit(t, f.primary, "worktree", "add", "-q", "-b", "WT-lane-handoff", f.target, "develop")
 
 	recordActiveFactoryRun(t, f.primary, f.run)
-	t.Setenv(config.EnvMoaiKanbanID, f.run)
+	t.Setenv(config.EnvFactoryRunID, f.run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvFactoryBackend, "codex")
 	owner, start := factoryHookOwnerIdentity(t)
 
 	var err error

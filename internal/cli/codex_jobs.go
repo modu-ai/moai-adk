@@ -345,7 +345,7 @@ func (r *codexJobRegistry) turnIDRecorder(jobID string) func(string) {
 // ─── resume selection (SPEC-CODEX-RESUME-SCOPE-001) ───
 //
 // resume_last used to resume the newest thread in the WHOLE project registry.
-// Parallel work items (kanban cards in separate worktrees) share that one
+// Parallel work items (factory cards in separate worktrees) share that one
 // registry, so a call continuing card A resumed card B's thread and reported
 // nothing. The functions below replace that single recency pick with three
 // scoped questions — is this thread recorded here, which thread does this

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 const fcUnavailableTag = "FACTORY_RECORD_UNAVAILABLE"
@@ -23,7 +23,7 @@ var errFcInjected = errors.New("injected factory write error")
 func fcFailWritesFor(t *testing.T, cards ...string) func() {
 	t.Helper()
 	prev := factoryAssignmentWriter
-	factoryAssignmentWriter = func(ctx context.Context, root string, store *kanban.BacklogStore, runID, cardID, lane string) error {
+	factoryAssignmentWriter = func(ctx context.Context, root string, store *factory.BacklogStore, runID, cardID, lane string) error {
 		if len(cards) == 0 {
 			return errFcInjected
 		}
@@ -244,9 +244,9 @@ func TestFR_AC025_GoalDispatchMirrorsFactoryRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	var next string
-	if err := storeB.Mutate(func(r *kanban.BacklogRecord) error {
+	if err := storeB.Mutate(func(r *factory.BacklogRecord) error {
 		last := &r.Items[len(r.Items)-1]
-		last.State = kanban.BacklogStatePicked
+		last.State = factory.BacklogStatePicked
 		next = last.ID
 		return nil
 	}); err != nil {

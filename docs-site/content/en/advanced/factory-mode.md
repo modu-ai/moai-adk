@@ -1,6 +1,6 @@
 ---
 title: Factory Mode
-weight: 6
+weight: 5
 draft: false
 new: true
 added_in: "v3.2"
@@ -11,108 +11,132 @@ added_in: "v3.2"
 # Factory Mode
 
 {{< callout type="info" >}}
-{{< icon flash primary >}} <strong>Value affiliation</strong>: multi-session orchestration · tokenomics
+{{< icon flash primary >}} <strong>Value area</strong>: multi-session orchestration · tokenomics
 {{< /callout >}}
 
-Factory Mode is the second form of Kanban Mode. Where kanban is a board on which three role companions carry one card between columns, the factory is an assembly line on which **N numbered lanes** carry several cards at once. A card does not hop between columns — it goes **whole** into one free lane, and that lane owns it end to end through `plan → run → sync`, in order, in-session.
+Factory Mode is an assembly line that carries several cards at once with one **leader** session and several numbered **lane** sessions. A card does not hop between columns. It goes **whole** into one free lane, and that lane is responsible for it through `plan → run → sync`, in order, inside its own session.
 
-The entry is the dedicated token `-f`: as the kanban chain uses `-k`, the factory uses `-f`. The queue, evidence reading, integration, and disposal rules are identical to kanban — the only thing that changes is the shape of how cards flow across the board.
+There are only two entry tokens, and neither takes an argument. `-f` opens the leader and `-l` joins as a lane. These tokens only start or join sessions. They run no pipeline, arm no goal, and select no SPEC.
 
-## Where factory diverges from kanban
+## Entry forms
 
-| | Kanban Mode (`-k`) | Factory Mode (`-f`) |
-|---|---|---|
-| Session makeup | 1 leader + 3 role companions (`plan` · `run` · `sync`) | 1 **factory leader** + lanes `lane-1` … `lane-N` |
-| Card movement | column to column, session to session | whole into one lane, phases in order inside the lane |
-| Phase execution | each column's companion session owns it | the lane spawns each phase as an `Agent()` sub-agent and runs it |
-| Card classes | A/B/C define which **columns** the card **passes through** | A/B/C name only the **ceremonies** the card skips — no card ever changes sessions |
-| `/clear` boundary | between phases | between cards |
+| What you want | Command | Role |
+|---------------|---------|------|
+| Open the factory leader | `moai cc -f` · `moai glm -f` (long form `--factory`) | Leader |
+| Join the running factory as a lane | `moai cc -l` · `moai glm -l` · `moai codex -l` (long form `--lane`) | Lane |
 
-In kanban, the card class defined the shape of the shortcut — Class A skipped the `plan` column, and so did Class B. The factory has no session seated per column, so this distinction dissolves. The class still names the ceremonies the card skips (Class B proceeds without `plan`, so no SPEC exists; Class A goes straight to closing), but it no longer changes which session works the card. Every lane performs whatever phases remain for its card, serially.
-
-## Entry — opening the leader and the lanes
+- `-l` joins the running factory and takes the **next lane number automatically**. You do not pick the number; it is one past the highest live lane. If no factory is running, the join is refused.
+- `moai codex` has no leader entry. It can only join as a lane; open the leader with `moai cc -f` or `moai glm -f`.
+- A launch carries at most one entry token. `-f` together with `-l` is an error.
 
 ```bash
-# Leader — opens the factory leader (one lane, lane-1)
+# Leader: open the factory leader
 $ moai cc -f
 
-# Lanes — each in its own terminal; the role token joins the next free number
-$ moai cc -f lane
-$ moai cc -f lane
-$ moai cc -f lane
-
-# You can also pick a number directly and join exactly that lane
-$ moai cc -f lane-3
-
-# GLM-backend lanes take the same form
-$ moai glm -f lane
+# Lanes: each in its own terminal, joining the next number (lane-1, lane-2, ...)
+$ moai cc -l
+$ moai cc -l
+$ moai glm -l      # a lane on the GLM backend, same form
+$ moai codex -l    # a Codex lane
 ```
 
-Attach no value to `-f` and the factory leader opens. To join as a lane, use `-f lane` (auto-join the next free number) or `-f lane-<n>` (exactly that number) — like kanban's companions, lanes are launched **by hand, each in its own terminal**. There is no path by which a session launches another session.
+You start lanes **by hand, one per terminal**. There is no path for a session to start another session on your behalf.
 
-**When a number collides with a live lane.** When `-f lane-<n>` names a number a live session already holds, the join is refused. Auto-assigning the next free number with `-f lane` is never refused; it reports which held numbers it skipped — e.g. `factory: lane-2 is held by a live session; launching as lane-3`.
+### Refused forms
 
-**The former spellings no longer parse.** Joining with a former spelling errors, naming the canonical form — join with `-f lane`, or pick an exact number with `-f lane-<n>`. A live run record left by a pre-rename binary also refuses the join and says so.
+An entry carrying a value is refused with a one-line error. The message names the correct form.
 
-**When the run's record is missing but the leader is alive.** A lane join reads the run records first. If zero active records exist — a run retired automatically, or a leader that never recorded one — the join does not stop at the refusal: it verifies the live leader session for this project (pid plus process-start fingerprint), restores the leader's run record with the leader's own identity as the owner stamp, and joins through the ordinary gate. `-l, --lead <name>` names which leader session that verification targets (default `leader`; the former spelling `lead` is refused). Two or more verified leaders fail closed naming each candidate; none, and the refusal stands.
+| Refused form | Why |
+|--------------|-----|
+| `moai cc -f <value>` (a SPEC ID, a number, a lane label) | `-f` takes no argument. Open the leader with `-f` alone and join lanes with `-l` |
+| `moai cc -l <value>` (a name such as `lane-2`) | A lane does not name itself. The number is assigned automatically |
+| `-f` on `moai codex` | Codex has no leader entry (use `moai cc -f` or `moai glm -f`) |
+| `-f` and `-l` in one launch | Only one entry token is allowed |
+| The retired `-k` entry | The old multi-session board mode was removed. The error message points to `-f` and `-l` |
+| `moai cg`, `moai gpt` | `moai cg` is retired and exits with a migration notice (preview with `moai migrate cg`). `moai gpt` does not exist; GPT models run through `moai codex` |
 
-One launch takes one entry token — passing `-k` and `-f` together is an error. The v1.2.0 unified entry forms — `-k <N>` (leader) and `-k <N> --name lane-<i>` (lane) — remain valid (a bare `-k --name lane-<i>` with no N defaults to 8 lanes). As the kanban leader's socket opens at `/tmp/moai-socket-kanban/<run-id>`, the factory leader's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice carries the actual path. CG is retired; use `moai migrate cg` to preview explicit migration choices.
+## When several runs are alive
 
-## The leader's routing — whole cards to free lanes
+A lane join reads the run record first. Two selectors can accompany `-l`.
 
-What the factory leader does differs from a kanban leader. Where a kanban leader coordinates the phases of one card, the factory leader **routes already-picked cards to free lanes**. A "free lane" here means the previous card has reached `done` and the leader has read its evidence — a lane holding a card is not called, and when every lane is busy, the card is not routed and waits in the queue.
+| Selector | Role |
+|----------|------|
+| `--leader <name>` | Picks which leader session to join (default `leader`). It composes with `-l` or `--lane` only, and is not a short form of any entry token |
+| `--factory-run <run-id>` | Picks the run to join by its id |
 
-The actor that picks a card is the operator. Picking in person is `moai todo next <n>`; picking in advance is invoking `/moai:todo --auto`. That invocation is the approval: the invoked session takes cards on its own judgment. A lane session takes them only through the factory lease (`moai factory next --card <id>`) and never a card the operator has held or parked, while the operator session's serial cycle does not exclude a parked card but ranks it last. Admitting a card to the queue stays the operator's in both cases. The factory leader does not scan the queue and line cards up. The kanban foreman loop (a bare `/loop`) is no exception — it dispatches the next card already marked `picked` and never picks one itself. The dispatch block takes the same form as kanban, with the `cmd` field pointing at the entry phase the class dictates — `/moai plan` for Class C, `/moai run` for Class B, direct close for Class A. The lane proceeds through the remaining phases on its own, with no further dispatches.
+`--leader` and `--factory-run` are different selectors and cannot be combined. If more than one run is alive and the join cannot decide where to go, it is refused, and the error tells you to choose either `--factory-run <run-id>` or `--leader <leader-name>` together with `-l`. A run whose owner is dead can be retired with `moai factory runs --retire <run-id>`.
 
-## The 3 stages inside a lane — serial
+**A join still works when the run record is missing but the leader is alive.** When there is no active record at all (the record retired itself, or the leader never wrote one), the join is not refused outright. It verifies the live leader session of this project by pid and process-start fingerprint, restores the run record under that leader's identity, and then joins through the ordinary gate. If more than one leader is verified, it names every candidate and fails closed; if none is, the refusal stands.
 
-How one lane passes one card fits in three sentences. **Run does not start until plan finishes, and sync does not start until run finishes** — a lane never runs two phases of the same card at once. Each phase's execution is spawned by the lane as an `Agent()` sub-agent; the lane itself only orchestrates. Sub-agent output stays in that session's window, and the lane reads the evidence they leave to assemble the result.
+## Lane options
+
+These options attach to a lane on `moai cc -l` and `moai glm -l`. Codex lanes take no policy.
+
+| Option | Effect |
+|--------|--------|
+| `--clear-policy <value>` | Decides how the lane clears its context after finishing a card. `clear-each` (the default, asks for `/clear` after every card), `clear-when-full` (asks only when context usage reaches the model-specific handoff threshold), `relaunch` (asks you to end the session, and the supervising launcher starts a fresh session for the next card) |
+| `--no-auto-dispatch` | Starts the lane in manual mode. The default is a **self-dispatch** lane, which does not wait for the leader and leases the next queued card itself with `moai factory next`. With this option the lane takes only the cards the leader sends |
+
+## How a card flows
+
+What the leader does is **hand a card that has already been picked to a free lane**. A free lane is one whose previous card reached `done` and whose evidence the leader has read. If every lane is busy, the card is not handed out and waits in the queue.
+
+The actor that picks a card is the operator. Picking in person is `moai todo next <n>`; picking in advance is invoking `/moai:todo --auto`, and that invocation is the approval: the invoked session takes cards on its own judgment. A lane session takes them only through the factory lease (`moai factory next --card <id>`) and never a card the operator has held or parked, while the operator session's serial cycle does not exclude a parked card but ranks it last. Admitting a card to the queue stays the operator's in both cases. The leader does not scan the queue and rank cards on its own. A self-dispatch lane changes nothing about that rule: all the lane does with the queue is lease the next card that is already on it with `moai factory next`, and queue changes that create, remove, or edit cards are forbidden to a lane.
+
+A dispatch block has fixed fields (`card`, `cmd`, `wt`, `evidence`) and never exceeds 10 lines. `cmd` points at the entry stage the card class prescribes: `/moai plan` for a design change (Class C), `/moai run` for a defect of unknown cause (Class B), and a direct close for a one-line chore (Class A). The lane carries the remaining stages itself, with no further dispatch.
+
+## How three stages run inside a lane
+
+How a lane carries one card comes down to three sentences. **Run starts only after plan has finished, and sync starts only after run has finished.** A lane never runs two stages of the same card at once. The lane spawns each stage's execution as `Agent()` sub-agents and only orchestrates; a sub-agent's output stays in that agent's window, and the lane reads the evidence it leaves behind and merges the result.
 
 ```mermaid
 flowchart TD
-    Queue["Backlog queue<br/>(the operator picks the card)"] --> Lead["Factory leader<br/>(routes to a free lane)"]
+    Queue["Backlog queue<br/>(the operator picks a card)"] --> Lead["Factory leader<br/>(hands it to a free lane)"]
     Lead -->|"one whole card"| Lane["Lane lane-N<br/>(session orchestration)"]
-    Lane -->|"Agent() spawn"| Plan["plan<br/>SPEC authoring"]
-    Plan -->|"starts only after it ends"| Run["run<br/>implementation"]
-    Run -->|"starts only after it ends"| Sync["sync<br/>review lenses + docs · closure"]
-    Sync -->|"the leader reads the evidence"| Done["done"]
+    Lane -->|"spawns Agent()"| Plan["plan<br/>SPEC authoring"]
+    Plan -->|"starts after it ends"| Run["run<br/>implementation"]
+    Run -->|"starts after it ends"| Sync["sync<br/>review lenses + docs and closing"]
+    Sync -->|"leader reads the evidence"| Done["done"]
     Done -->|"/clear, then the next card"| Lead
 ```
 
-Human gates still fire while the phases proceed. Human approval points such as Implementation Kickoff Approval are never passed automatically inside a lane.
+A card class names only the ceremonies a lane skips. Class B runs without `plan`, so it has no SPEC, and Class A goes straight to a direct close. No card changes sessions, and every lane runs whatever stages remain for its card in series. Human gates such as the implementation kickoff approval still fire while the stages run.
 
-## Parallelism caps and isolation
+After `run` and before integration, a lane passes one more stage, `card-review`. It is a card-scope self-review whose result is written to `.moai/reports/<card-id>/card-review.md`. It is an advisory signal and replaces neither the leader's evidence read nor an independent audit.
 
-Each lane can run **up to 10 agents concurrently** — the launcher injects a `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` cap into each lane session, so N lanes fanning out simultaneously divide the machine's capacity by construction rather than by operator restraint.
+## Parallelism limits and isolation
 
-Parallelism has two axes, and they do not mix:
+Each lane can run **up to 10 agents at once**. The launcher plants `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=10` in the lane session (leaving an existing value alone), so N lanes fanning out together split the machine's capacity by configuration rather than by operator restraint.
 
-- **Between cards (fan-out)** — you can attach a lane per card and push several at once. Each lane writes only inside its own card directory (`.moai/specs/<SPEC-ID>/`), so parallel writes do not collide.
-- **Within a card (stages)** — the phases of one card are serial. Two write agents are never attached to the same card in parallel — one card, one writer at a time.
+There are two axes of parallelism, and they are not mixed.
 
-When spawning write-capable sub-agents in parallel, always attach worktree isolation (`isolation: "worktree"`) — each write agent works in its own worktree copy, so file writes do not collide even outside the card directory, and the lane integrates through evidence and merges. Read-only investigation and audit fan-outs are not isolated — a place where the worktree setup cost buys nothing.
+- **Across cards (fan-out)**: give each card its own lane and several move at once. Each lane writes only to its own card directory (`.moai/specs/<SPEC-ID>/`), so parallel writes do not collide.
+- **Within a card (stages)**: the stages of one card run in series. Two write-capable agents are never attached to the same card. One card, one writer at a time.
 
-### Staggered activation and no model override
+When write-capable sub-agents are spawned in parallel, they must carry worktree isolation (`isolation: "worktree"`). Each write agent then works in its own worktree copy, so file writes do not collide even outside the card directory, and the lane integrates through evidence and a merge. Read-only investigation and audit fan-out is not isolated, because creating a worktree buys nothing there.
 
-Never activate every lane at once. Activate the first lane, wait for evidence that it has started producing output (first job or visible progress), then activate the remaining lanes — concurrent requests cannot read a cache entry still being written, so simultaneous activation breaks cache efficiency. For the same reason, do not put a model override on dispatch messages — the GLM tier mapping rides the `ANTHROPIC_DEFAULT_*_MODEL` slot environment variables, and a per-spawn override splits the caches and can bypass the slot→GLM mapping.
+Do not switch on all lanes at once. Bring up the first lane, wait until it actually starts producing output, and then start the rest. Concurrent requests cannot read a cache entry that is still being written, so a simultaneous start breaks cache efficiency.
 
-## Lane-number ownership — factory.db
+## Lane numbers and the run record
 
-Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A project whose launch directory is a temporary one (no absolute `MOAI_HOME` override) keeps this database project-local at `<base>/.moai/db/<project-key>/factory/factory.db`, the same exception the backlog queue follows. When a new lane opens, its number skips **only those held by live sessions** and attaches to the next free number — a dead lane's claim no longer blocks its number (leftover claims are cleared from the database too) — an explicitly-picked `-f lane-<n>` can reuse that number right away, but `-f lane` auto-assignment always takes one past the highest live number and never backfills a gap. A legacy `.moai/state/factory/workers.json` is imported once and retained as rollback evidence. The `-f lane-<n>` form already names the lane, so passing `--name`/`-n` alongside it is an error.
+Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A new lane takes **one past the highest live lane** and does not fill a gap: with live lane-1 and lane-3, the new lane is lane-4. A dead lane's claim no longer blocks a number. Because lane numbers are assigned automatically, combining `--name`/`-n` with `-l` is an error.
+
+The leader's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice tells you the actual path. When a leader or lane session starts, it writes one session record to `.moai/state/todo/<session-id>.json` holding its role, backend, and entry time.
+
+A factory session raises the consecutive Stop-hook block cap to `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` at launch. This allows longer unattended runs and is not a way around any gate: the human approval gates are questions the orchestrator asks, not Stop-hook blocks.
 
 ## What does not change
 
-The factory changes only the shape of how cards flow. The remaining rules stand word for word as in kanban:
+- **The delegation channel is the queue on disk.** A dispatch is a pointer, not a copy, and a message is only a nudge, never the delegation itself.
+- **Completion is judged only on evidence that was read.** A card moves on because the progress record was read, not because a lane replied. The final PASS/FAIL verdict is always the leader's, and a lane judging its own output is not allowed.
+- **The `/clear` boundary falls between cards.** Once a card reaches `done`, the lane is cleared before it takes the next one (changeable with `--clear-policy`).
+- **A card's worktree is not discarded until the remote merge is done.** If the branch is not yet merged, the worktree is the only copy of the work.
+- **One card, one worktree.** A new card starts in a new worktree, and a lane session starts inside its card's worktree and stays there.
 
-- **The delegation channel is the queue on disk.** A dispatch is a pointer, not a copy; a message is a nudge, never the delegation itself.
-- **Completion is judged only on evidence read.** A card advances on whether the progress record was read, not on whether the lane replied. The final PASS/FAIL verdict is always the leader's — the lane that produced the work judging its own output is not an allowed shape.
-- **The `/clear` boundary sits between cards.** Losing the between-phase handoffs is the point of this mode, but the between-card handoff does not go away — when a card reaches `done`, the lane is `/clear`-ed before taking the next one.
-- **A card worktree is not disposed of until the remote merge lands.** If the branch is not yet merged, the worktree is the only copy of that work.
+## Related documents
 
-## Related docs
-
-- [Kanban Mode](/en/advanced/kanban-mode) — the first form, three roles carrying one card between columns. Card classes and the board·queue rules shared with the factory
-- [`/moai todo`](/en/utility-commands/moai-todo) — the backlog queue that admits cards onto the board. The operator is the one who picks
-- [manager-lead Leader Coordinator](/en/advanced/manager-lead) — the coordination agent that drives dispatch inside a kanban or factory leader session
-- [`/moai loop`](/en/utility-commands/moai-loop) — the unattended foreman driven by a bare `/loop`. The same "never picks, only routes" boundary as the factory leader
-- [Kanban Board Terms](/en/core-concepts/kanban-board-terms) — the formal glossary with definitions and examples of card, column, lane, and leader
+- [Origin-Trail Chain](/en/advanced/origin-trail-chain) — how worktree session lineage is recorded and queried with `moai chain`
+- [`/moai todo`](/en/utility-commands/moai-todo) — the backlog queue that holds cards. The operator picks the card
+- [manager-lead Leader Coordinator](/en/advanced/manager-lead) — the coordination agent that dispatches for the factory leader session
+- [`/moai loop`](/en/utility-commands/moai-loop) — the unattended foreman driven by a bare `/loop`, with the same "carry, never pick" boundary as the factory leader
+- [moai cc / glm Launchers](/en/cli-reference/launchers) — every launcher flag, `-f` and `-l` included

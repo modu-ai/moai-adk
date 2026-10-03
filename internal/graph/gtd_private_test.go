@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/worktree"
@@ -260,10 +260,10 @@ func TestPrivateGTDProjectionAccountAndCanonicalCollectorIsolation(t *testing.T)
 		t.Fatal(err)
 	}
 
-	store := kanban.NewBacklogStore(filepath.Join(dir, "backlog.json"))
-	if _, err := kanban.CaptureGTDItem(context.Background(), store, kanban.CaptureInput{
+	store := factory.NewBacklogStore(filepath.Join(dir, "backlog.json"))
+	if _, err := factory.CaptureGTDItem(context.Background(), store, factory.CaptureInput{
 		Content: "ordinary export item", Source: "test", SourceAllowed: true,
-		Sensitivity: kanban.SensitivityPublic, EventID: "collector-export",
+		Sensitivity: factory.SensitivityPublic, EventID: "collector-export",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -316,10 +316,10 @@ func TestPrivateGTDProjectionAccountAndCanonicalCollectorIsolation(t *testing.T)
 	}
 	outputs["git-index-manifest"] = gitOutput
 
-	if err := kanban.AppendSlotLeaseAudit(repo, kanban.SlotLeaseAuditEntry{Event: "refuse", Reason: "ordinary", Resource: "lane-10", SessionID: "collector-log"}); err != nil {
+	if err := factory.AppendSlotLeaseAudit(repo, factory.SlotLeaseAuditEntry{Event: "refuse", Reason: "ordinary", Resource: "lane-10", SessionID: "collector-log"}); err != nil {
 		t.Fatal(err)
 	}
-	outputs["application-log"] = mustRead(t, filepath.Join(repo, ".moai", "logs", kanban.SlotLeaseAuditFileName))
+	outputs["application-log"] = mustRead(t, filepath.Join(repo, ".moai", "logs", factory.SlotLeaseAuditFileName))
 
 	now := time.Now().UTC()
 	if err := telemetry.RecordSkillUsage(repo, telemetry.UsageRecord{Timestamp: now, SessionID: "collector-telemetry", SkillID: "moai-gtd", Trigger: telemetry.TriggerAuto, ContextHash: telemetry.HashContext("ordinary"), AgentType: "manager-todo", Phase: "run", Outcome: telemetry.OutcomeSuccess}); err != nil {
@@ -332,14 +332,14 @@ func TestPrivateGTDProjectionAccountAndCanonicalCollectorIsolation(t *testing.T)
 	telemetryPath := filepath.Join(repo, ".moai", "evolution", "telemetry", "usage-"+now.Format("2006-01-02")+".jsonl")
 	outputs["telemetry-report"] = append(mustRead(t, telemetryPath), []byte(report.String())...)
 
-	exported, err := kanban.ExportGTD(context.Background(), store, true)
+	exported, err := factory.ExportGTD(context.Background(), store, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	outputs["gtd-export"] = exported
 
 	backupPath := filepath.Join(root, "backup", "backlog.db")
-	backupErr := kanban.BackupGTDStore(context.Background(), store, backupPath, false)
+	backupErr := factory.BackupGTDStore(context.Background(), store, backupPath, false)
 	if backupErr == nil {
 		t.Fatal("default backup unexpectedly succeeded")
 	}

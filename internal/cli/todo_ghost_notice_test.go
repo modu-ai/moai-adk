@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestGhostNoticeOnce(t *testing.T) {
@@ -73,7 +73,7 @@ func TestGhostNoticeOnce(t *testing.T) {
 	}
 
 	// The marker lives in the alive state directory and records the class.
-	marker := filepath.Join(kanban.RuntimeStateDirForRoot(root), "ghost-notices.json")
+	marker := filepath.Join(factory.RuntimeStateDirForRoot(root), "ghost-notices.json")
 	raw, err := os.ReadFile(marker)
 	if err != nil {
 		t.Fatalf("read notice marker %s: %v", marker, err)

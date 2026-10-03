@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // seedLegacyPeerRun creates a project root with an active factory run R whose
@@ -102,7 +102,7 @@ func TestResolveLeadNameNoticesLegacyLeadEntry(t *testing.T) {
 	}
 
 	var notes bytes.Buffer
-	got := resolveLeaderName(root, kanban.LeaderLabel(), &notes)
+	got := resolveLeaderName(root, factory.LeaderLabel(), &notes)
 	if got != "leader" {
 		t.Fatalf("resolveLeaderName = %q, want leader (legacy entry never blocks)", got)
 	}
@@ -128,7 +128,7 @@ func TestResolveLeadNameNoticesLegacyLeadEntry(t *testing.T) {
 func TestFactoryCardOwnerWriterUsesLeaderConstant(t *testing.T) {
 	// recordFactoryCardState falls back to the leader role constant when the
 	// session carries no lane label (REQ-RNC-010: factory card owner).
-	if kanban.RoleLeader != "leader" {
-		t.Fatalf("kanban.RoleLeader = %q, want leader", kanban.RoleLeader)
+	if factory.RoleLeader != "leader" {
+		t.Fatalf("factory.RoleLeader = %q, want leader", factory.RoleLeader)
 	}
 }

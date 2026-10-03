@@ -34,8 +34,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/graph"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // codemapsDebtCardPrefix marks the card as machine-issued, so a reader
@@ -136,15 +136,15 @@ func issueCodemapsDebtCard(stdout, stderr io.Writer, projectRoot string) {
 		return
 	}
 
-	var issued kanban.BacklogItem
+	var issued factory.BacklogItem
 	var existingID string
-	mutErr := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
-		if match := kanban.ClassifyCardText(text, rec.Items); match.Kind == kanban.BacklogMatchExact {
+	mutErr := newTodoStore().Mutate(func(rec *factory.BacklogRecord) error {
+		if match := factory.ClassifyCardText(text, rec.Items); match.Kind == factory.BacklogMatchExact {
 			existingID = match.ID
 			return errCodemapsCardAlreadyQueued
 		}
 		var appendErr error
-		issued, _, appendErr = appendAnalyzedCard(rec, text, kanban.BacklogStateQueued, false)
+		issued, _, appendErr = appendAnalyzedCard(rec, text, factory.BacklogStateQueued, false)
 		return appendErr
 	})
 	switch {

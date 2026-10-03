@@ -72,7 +72,7 @@ type jaeMarker struct{ path, token string }
 // presence-only: they predate the amendment, so they are kept out of the
 // first-commit comparison.
 var jaeAnchors = []string{
-	".claude/rules/moai/workflow/kanban-dispatch.md",
+	".claude/rules/moai/workflow/factory-dispatch.md",
 	".claude/skills/moai/workflows/gtd.md",
 	".claude/agents/moai/manager-todo.md",
 }

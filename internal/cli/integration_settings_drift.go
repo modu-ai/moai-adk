@@ -38,7 +38,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -57,12 +57,12 @@ import (
 var (
 	// errSettingsDriftRefused is returned by `acquire` when the refusal layer
 	// is on and it declines to record the window.
-	errSettingsDriftRefused = errors.New("release-integration window refused: the caller's tree has a modified tracked " + kanban.SettingsDriftWatchedPath)
+	errSettingsDriftRefused = errors.New("release-integration window refused: the caller's tree has a modified tracked " + factory.SettingsDriftWatchedPath)
 
 	// errSettingsDriftDetected is returned by `preflight`, which reports a
 	// verdict and takes nothing. It is the non-zero exit a script keys on —
 	// a convenience signal, never the verdict, which is the status field.
-	errSettingsDriftDetected = errors.New("settings drift detected: a modified tracked " + kanban.SettingsDriftWatchedPath + " (no integration window was taken; see the report above)")
+	errSettingsDriftDetected = errors.New("settings drift detected: a modified tracked " + factory.SettingsDriftWatchedPath + " (no integration window was taken; see the report above)")
 )
 
 // settingsDriftGateEnabled reports whether the REFUSAL layer is on for the
@@ -82,14 +82,14 @@ func settingsDriftGateEnabled(root string) bool {
 }
 
 // assessSettingsDriftForDir runs the gate against dir, preserving into root.
-func assessSettingsDriftForDir(dir, root, card, branch string, bypassed bool) kanban.SettingsDriftResult {
-	return kanban.AssessSettingsDrift(kanban.SettingsDriftParams{
+func assessSettingsDriftForDir(dir, root, card, branch string, bypassed bool) factory.SettingsDriftResult {
+	return factory.AssessSettingsDrift(factory.SettingsDriftParams{
 		Dir:      dir,
 		Root:     root,
 		Card:     card,
 		Branch:   branch,
 		Bypassed: bypassed,
-		Runner:   kanban.NewExecRunner(),
+		Runner:   factory.NewExecRunner(),
 	})
 }
 
@@ -104,17 +104,17 @@ func assessSettingsDriftForDir(dir, root, card, branch string, bypassed bool) ka
 // The drifted file's CONTENT never appears here — only its path, hash and
 // size. That file can hold tokens and machine-specific paths, which is the
 // same reason the preserved copy stays untracked in a gitignored directory.
-func settingsDriftReportText(r kanban.SettingsDriftResult) string {
+func settingsDriftReportText(r factory.SettingsDriftResult) string {
 	var b strings.Builder
 	switch r.Status {
-	case kanban.SettingsDriftClean:
+	case factory.SettingsDriftClean:
 		fmt.Fprintf(&b, "settings drift: clean (%s, 0 matches)\n", r.Worktree)
-	case kanban.SettingsDriftUndetermined:
+	case factory.SettingsDriftUndetermined:
 		// Not a pass, and said in those words: the absence of a signal is not
 		// evidence of cleanliness, and a reader who skims must not be able to
 		// take this line for one.
 		fmt.Fprintf(&b, "settings drift: UNDETERMINED (%s) — not measured, which is not a pass\n  reason: %v\n", r.Worktree, r.Err)
-	case kanban.SettingsDriftDetected:
+	case factory.SettingsDriftDetected:
 		fmt.Fprintf(&b, "settings drift: DRIFT (%s, %d match)\n  file:      %s\n  sha256:    %s\n  size:      %d bytes\n",
 			r.Worktree, r.MatchCount, r.Path, r.SHA256, r.SizeBytes)
 		if r.PreservedPath != "" {
@@ -138,13 +138,13 @@ func settingsDriftReportText(r kanban.SettingsDriftResult) string {
 // state would collapse into false, or into an omitted field a consumer's
 // default reads as a pass. `match_count` is omitted under `undetermined` for
 // the same reason — a 0 there is itself a pass signal.
-func settingsDriftJSON(r kanban.SettingsDriftResult) map[string]any {
+func settingsDriftJSON(r factory.SettingsDriftResult) map[string]any {
 	out := map[string]any{
 		"status":   string(r.Status),
 		"worktree": r.Worktree,
 		"path":     r.Path,
 	}
-	if r.Status != kanban.SettingsDriftUndetermined {
+	if r.Status != factory.SettingsDriftUndetermined {
 		out["match_count"] = r.MatchCount
 	}
 	if r.SHA256 != "" {
@@ -183,8 +183,8 @@ func newIntegrationPreflightCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "preflight [path]",
 		Args:  cobra.MaximumNArgs(1),
-		Short: "Assert that a worktree has no modified tracked " + kanban.SettingsDriftWatchedPath,
-		Long: `Assert that a worktree has no modified tracked ` + kanban.SettingsDriftWatchedPath + `.
+		Short: "Assert that a worktree has no modified tracked " + factory.SettingsDriftWatchedPath,
+		Long: `Assert that a worktree has no modified tracked ` + factory.SettingsDriftWatchedPath + `.
 
 This is the same check ` + "`moai integration acquire`" + ` runs before it records a
 window, available on its own so a human can ask outside a window. With no
@@ -225,7 +225,7 @@ signal, not the verdict — read the status field.`,
 			} else if err := writeSettingsDriftReport(cmd.OutOrStdout(), result); err != nil {
 				return err
 			}
-			if result.Status == kanban.SettingsDriftDetected {
+			if result.Status == factory.SettingsDriftDetected {
 				return errSettingsDriftDetected
 			}
 			return nil
@@ -238,7 +238,7 @@ signal, not the verdict — read the status field.`,
 
 // writeSettingsDriftReport writes the report in one call so its error is
 // handled rather than dropped at a dozen call sites.
-func writeSettingsDriftReport(w io.Writer, r kanban.SettingsDriftResult) error {
+func writeSettingsDriftReport(w io.Writer, r factory.SettingsDriftResult) error {
 	text := settingsDriftReportText(r)
 	if text == "" {
 		return nil
@@ -261,12 +261,12 @@ func writeSettingsDriftReport(w io.Writer, r kanban.SettingsDriftResult) error {
 // window is recorded: the four sibling guards in this repository all fail open
 // on uncertainty, and a lane blocked from integrating because git could not be
 // run is a worse failure than an unmeasured tree that says so in its output.
-func acquireSettingsDriftPrecondition(cmd *cobra.Command, root, card string, allowDrift bool) (kanban.SettingsDriftResult, error) {
+func acquireSettingsDriftPrecondition(cmd *cobra.Command, root, card string, allowDrift bool) (factory.SettingsDriftResult, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return kanban.SettingsDriftResult{
-			Status:     kanban.SettingsDriftUndetermined,
-			MatchCount: kanban.SettingsDriftMatchCountUnmeasured,
+		return factory.SettingsDriftResult{
+			Status:     factory.SettingsDriftUndetermined,
+			MatchCount: factory.SettingsDriftMatchCountUnmeasured,
 			Err:        err,
 		}, nil
 	}
@@ -277,12 +277,12 @@ func acquireSettingsDriftPrecondition(cmd *cobra.Command, root, card string, all
 	bypassed := gateEnabled && allowDrift
 
 	result := assessSettingsDriftForDir(cwd, root, card, currentBranch(), bypassed)
-	if result.Status != kanban.SettingsDriftClean {
+	if result.Status != factory.SettingsDriftClean {
 		if writeErr := writeSettingsDriftReport(cmd.OutOrStdout(), result); writeErr != nil {
 			return result, writeErr
 		}
 	}
-	if result.Status == kanban.SettingsDriftDetected && gateEnabled && !allowDrift {
+	if result.Status == factory.SettingsDriftDetected && gateEnabled && !allowDrift {
 		return result, errSettingsDriftRefused
 	}
 	return result, nil

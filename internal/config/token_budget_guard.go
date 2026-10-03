@@ -27,7 +27,7 @@ import (
 // 상향 근거(2026-08-17): release/v3.1.1 통합 레인에서 t72 등 선행 머지 카드의 룰 문서
 // 추가로 측정 표면이 75,282 토큰에 도달, 예산을 282 초과. release 브랜치 push는 CI
 // 트리거(main 전용) 밖이라 개별 카드 단계에서 미검출된 선결 결함이다. 근본 해결
-// (kanban-dispatch 등 대형 always-loaded 룰의 스텁+지연 로딩 다이어트)은 별도 카드로
+// (Factory Dispatch Protocol 등 대형 always-loaded 룰의 스텁+지연 로딩 다이어트)은 별도 카드로
 // 진행하며, 그 착지 전까지의 임시 상향으로 75,000 → 76,000으로 올린다.
 //
 // 상향 근거(2026-08-31, SPEC-MEMORY-STORE-RECONCILE-001): 이 SPEC은 세션이 인덱스가 길다는
@@ -58,7 +58,7 @@ import (
 // 400f37eb9 실측 76,939(예산 76,400 초과 539). 보정 커밋 b9efb3626(t421) 이후 표면
 // 성장 +810 토큰은 전부 착지 카드의 교리 조항이며 전수 귀속됐다: t196 AGENTS.md
 // 역량 결속표 +136(직전 상향이 예상했던 바로 그것), t224 레인 spawn 권한 5표면 착지
-// +554(kanban-dispatch +267 / agent-common-protocol +192 / moai-constitution +95),
+// +554(Factory Dispatch Protocol +267 / agent-common-protocol +192 / moai-constitution +95),
 // t386 감사 산출물 컨벤션 +100, t236 graph_shortest_path 카탈로그 갱신 +20.
 // 세 갈래 대안을 모두 측정으로 기각했다: ① 측정 대상 변경 — 17개 열거 항목이 배포
 // 표면(룰 트리+3슬롯)과 일치하며 t368 로고 건 같은 주입되지 않는 외래물 계수가
@@ -81,7 +81,7 @@ import (
 //
 // @MX:DEBT: [AUTO] temporary budget raise chain (76,000 -> 76,210 -> 76,400 -> 77,200 -> 77,600) standing in for the always-loaded rule diet
 // @MX:CEILING: 0.22% headroom — 168 tokens of 77,600; one small always-loaded clause consumes it
-// @MX:UPGRADE: drop this raise chain when the large always-loaded rule diet (stub + lazy loading) lands — measured targets: output-style moai.md 16.5K tok, kanban-dispatch.md 8.6K, agent-common-protocol.md 6.7K, verification-claim-integrity.md 6.3K (t453 measurement)
+// @MX:UPGRADE: drop this raise chain when the large always-loaded rule diet (stub + lazy loading) lands — measured targets: output-style moai.md 16.5K tok, the Factory Dispatch Protocol rule 8.6K, agent-common-protocol.md 6.7K, verification-claim-integrity.md 6.3K (t453 measurement)
 // @MX:SPEC: SPEC-MEMORY-STORE-RECONCILE-001
 const AlwaysLoadedTokenBudget = 77600
 

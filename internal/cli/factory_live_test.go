@@ -206,9 +206,9 @@ func (f *factoryLiveFixture) modelCommand(ctx context.Context, p factorymsg.Peer
 func (f *factoryLiveFixture) writePeerMCPConfig(p factorymsg.Peer) error {
 	roleEnv := map[string]string{
 		config.EnvHome:                os.Getenv(config.EnvHome),
-		config.EnvMoaiKanbanID:        f.runID,
+		config.EnvFactoryRunID:        f.runID,
 		config.EnvMoaiSessionPID:      fmt.Sprint(p.PID),
-		config.EnvMoaiKanbanBackend:   p.Backend,
+		config.EnvFactoryBackend:      p.Backend,
 		config.EnvClaudeProjectDir:    f.root,
 		config.EnvClaudeCodeSessionID: p.SessionUUID,
 		config.EnvMoaiFactoryWorker:   "",
@@ -232,8 +232,8 @@ func (f *factoryLiveFixture) writePeerMCPConfig(p factorymsg.Peer) error {
 
 func factoryLiveWithoutAttribution(env []string) []string {
 	drop := map[string]bool{
-		config.EnvMoaiKanbanID: true, config.EnvMoaiSessionPID: true,
-		config.EnvMoaiKanbanBackend: true, config.EnvMoaiFactoryWorker: true,
+		config.EnvFactoryRunID: true, config.EnvMoaiSessionPID: true,
+		config.EnvFactoryBackend: true, config.EnvMoaiFactoryWorker: true,
 		config.EnvMoaiFactoryWorkers: true, config.EnvClaudeCodeSessionID: true,
 	}
 	out := make([]string, 0, len(env))
@@ -316,9 +316,9 @@ func (f *factoryLiveFixture) modelEnv(p factorymsg.Peer) ([]string, error) {
 		env = replaceEnvValue(env, config.EnvTestGLMKey, key)
 		env = replaceEnvValue(env, config.EnvClaudeProjectDir, f.root)
 	} else {
-		env = replaceEnvValue(env, config.EnvMoaiKanbanID, f.runID)
+		env = replaceEnvValue(env, config.EnvFactoryRunID, f.runID)
 		env = replaceEnvValue(env, config.EnvMoaiSessionPID, fmt.Sprint(p.PID))
-		env = replaceEnvValue(env, config.EnvMoaiKanbanBackend, p.Backend)
+		env = replaceEnvValue(env, config.EnvFactoryBackend, p.Backend)
 		env = replaceEnvValue(env, config.EnvClaudeProjectDir, f.root)
 		env = replaceEnvValue(env, config.EnvClaudeCodeSessionID, "")
 		if p.Role == "worker" {

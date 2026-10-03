@@ -70,8 +70,10 @@ func TestLoadCatalog(t *testing.T) {
 	// SPEC-NAVIGATOR-SYNC + SPEC-AUDIT-MULTI-MODEL (2026-08): manager-kanban agent
 	// (core.agents, hierarchical-team coordinator) + moai-ref-cross-model-audit
 	// skill (optional-pack:devops), net +2 = 43.
-	// moai-kanban-foreman added (kanban foreman loop-iteration skill driving the
+	// moai-factory-foreman added (factory foreman loop-iteration skill driving the
 	// bare /loop backlog dispatch cycle, core.skills), net +1 = 44.
+	// The skill was named moai-kanban-foreman until SPEC-LAUNCHER-ENTRY-FLAGS-001 renamed
+	// it in place: the entry count is unchanged by the rename.
 	// moai-domain-design-dna added (reference-design deconstruction + generation
 	// domain skill, core.skills, and manager-todo), net +2 = 46.
 	// moai-ref-jev-question-design added (question-design rules reference for

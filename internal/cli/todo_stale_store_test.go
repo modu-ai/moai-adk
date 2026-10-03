@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // staleStoreFixture builds a project whose home database (MOAI_HOME
@@ -57,11 +57,11 @@ func staleStoreFixture(t *testing.T) (root, homeDB, legacyDB string) {
 // stamps meta.last_seq to seq through the store's own mutation path.
 func seedTodoStoreAt(t *testing.T, dbPath string, seq int) {
 	t.Helper()
-	store := kanban.NewBacklogStore(strings.TrimSuffix(dbPath, ".db") + ".json")
+	store := factory.NewBacklogStore(strings.TrimSuffix(dbPath, ".db") + ".json")
 	if _, _, err := store.Add("seed card"); err != nil {
 		t.Fatalf("seed store %s: %v", dbPath, err)
 	}
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		rec.LastSeq = seq
 		return nil
 	}); err != nil {
@@ -267,11 +267,11 @@ var errBudgetFailWriterFull = errors.New("writer full")
 // end-to-end verb runs cannot reach: an unreadable store is skipped, a
 // same-seq store is skipped, and a writer error propagates.
 func TestDiscloseStaleLocalStores_Unit(t *testing.T) {
-	fact := kanban.StaleStoreFact{
+	fact := factory.StaleStoreFact{
 		HomePresent:  true,
 		HomeReadable: true,
 		HomeLastSeq:  1305,
-		Stores: []kanban.StaleLocalStore{
+		Stores: []factory.StaleLocalStore{
 			{Path: "/tmp/unreadable.db", LastSeq: 0, Readable: false},
 			{Path: "/tmp/same.db", LastSeq: 1305, Readable: true},
 			{Path: "/tmp/divergent.db", LastSeq: 661, Readable: true},
@@ -296,7 +296,7 @@ func TestDiscloseStaleLocalStores_Unit(t *testing.T) {
 
 	// Non-divergent facts write nothing at all (REQ-TSS-005).
 	var empty bytes.Buffer
-	if err := discloseStaleLocalStores(&empty, "todo", kanban.StaleStoreFact{}); err != nil {
+	if err := discloseStaleLocalStores(&empty, "todo", factory.StaleStoreFact{}); err != nil {
 		t.Fatalf("disclose empty fact: %v", err)
 	}
 	if empty.Len() != 0 {
