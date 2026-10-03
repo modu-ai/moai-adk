@@ -216,6 +216,17 @@ type managedCodexAppClient struct {
 	turnID         string
 	prevTurnID     string
 	brokerDeclined int
+
+	// Operator-attach state (SPEC-FACTORY-MANAGED-TUI-001), guarded by mu: the
+	// turns the thread has running whichever client started them (busy), the
+	// turns the owner started (owned), and whether an operator TUI is attached
+	// (scoping).
+	scoping   bool
+	active    map[string]struct{}
+	owned     map[string]struct{}
+	busySince time.Time
+	lastWarn  time.Time
+	busyWarn  time.Duration
 }
 
 // write sends one JSON frame; gorilla/websocket allows a single concurrent
@@ -257,14 +268,19 @@ func managedTurnFrame(params json.RawMessage) (id, status string) {
 	return payload.Turn.ID, payload.Turn.Status
 }
 
-// noteTurnStarted records the id of the turn the open window belongs to.
-func (c *managedCodexAppClient) noteTurnStarted(params json.RawMessage) {
+// noteTurnStarted records the id of the turn the open window belongs to and
+// reports whether the frame belongs on the event channel: while an operator TUI
+// is attached, a turn the owner did not start is not the owner's to wait on.
+func (c *managedCodexAppClient) noteTurnStarted(params json.RawMessage) (forward bool) {
 	id, _ := managedTurnFrame(params)
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.trackStartedLocked(id)
 	if c.open && c.turnID == "" && id != "" {
 		c.turnID = id
+		c.markOwnedLocked(id)
 	}
+	return c.forwardsLocked(id)
 }
 
 // noteTurnCompleted closes the window for the completed turn and returns the
@@ -378,6 +394,9 @@ var managedUnknownRequestPolicy = managedServerRequestPolicy{outcome: "error", e
 // trace exists by the time the server sees the answer; the reply echoes the
 // request id verbatim. The turn-window lock is released before the write.
 func (c *managedCodexAppClient) answerServerRequest(req managedCodexAppReply) error {
+	if c.leavesForOperator(req) {
+		return nil
+	}
 	policy, ok := managedServerRequestPolicies[req.Method]
 	if !ok {
 		policy = managedUnknownRequestPolicy
@@ -419,6 +438,9 @@ func (c *managedCodexAppClient) read() {
 		if err := c.conn.ReadJSON(&event); err != nil {
 			return
 		}
+		if event.Method == "" && event.hasID() {
+			c.noteTurnStartResponse(event.Result)
+		}
 		switch {
 		case event.hasID() && event.Method != "":
 			// A server-originated request never reaches the call loop: it is
@@ -429,9 +451,15 @@ func (c *managedCodexAppClient) read() {
 			}
 			continue
 		case event.Method == "turn/started":
-			c.noteTurnStarted(event.Params)
+			if !c.noteTurnStarted(event.Params) {
+				continue
+			}
 		case event.Method == "turn/completed":
+			forward := c.trackTurnCompleted(event.Params)
 			event.brokerDeclined = c.noteTurnCompleted(event.Params)
+			if !forward {
+				continue
+			}
 		case event.Method != "" || !event.hasID():
 			// Streaming item deltas and id-less frames belong to the
 			// interactive surface, not the delivery path.

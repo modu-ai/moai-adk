@@ -17,6 +17,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -278,7 +279,9 @@ func (t *managedCodexTUI) attach(s *managedCodexSession) (<-chan error, bool) {
 	var sink io.Writer = t.logFile
 	t.sinkPtr = &sink
 	t.prevLog = managedLogOutput.Swap(t.sinkPtr)
+	s.client.enableOperatorScoping(managedBusyWarnInterval)
 	if err := cmd.Start(); err != nil {
+		s.client.disableOperatorScoping()
 		t.giveUp("TUI could not start: " + err.Error())
 		return nil, false
 	}
@@ -375,9 +378,158 @@ func (s *managedCodexSession) stopTUI() {
 	}
 }
 
-// Busy is the M2 placeholder: busy tracking lands with the shared-thread
-// milestone.
-func (s *managedCodexSession) Busy() bool { return false }
+// Busy reports whether the thread has an active turn, whichever client started
+// it. The driver claims broker messages only while it is false.
+func (s *managedCodexSession) Busy() bool {
+	if t := s.tui; t == nil || !t.attached.Load() || s.client == nil {
+		return false
+	}
+	return s.client.busy(time.Now())
+}
+
+// ---- shared-thread bookkeeping of the App Server client (REQ-MT-007, REQ-MT-008)
+
+// enableOperatorScoping turns on the rules that only hold while a human is at
+// the terminal: foreign lifecycle frames stay off the owner's event channel and
+// requests of turns the owner did not start are left to the operator.
+func (c *managedCodexAppClient) enableOperatorScoping(busyWarn time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.scoping, c.busyWarn = true, busyWarn
+}
+
+func (c *managedCodexAppClient) disableOperatorScoping() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.scoping = false
+}
+
+// trackStartedLocked records a started turn of any client.
+func (c *managedCodexAppClient) trackStartedLocked(id string) {
+	if id == "" {
+		return
+	}
+	if c.active == nil {
+		c.active = map[string]struct{}{}
+	}
+	if len(c.active) == 0 {
+		c.busySince = time.Now()
+		c.lastWarn = c.busySince
+	}
+	c.active[id] = struct{}{}
+}
+
+func (c *managedCodexAppClient) markOwnedLocked(id string) {
+	if id == "" {
+		return
+	}
+	if c.owned == nil {
+		c.owned = map[string]struct{}{}
+	}
+	c.owned[id] = struct{}{}
+}
+
+// forwardsLocked reports whether a lifecycle frame of turn id belongs on the
+// owner's event channel.
+func (c *managedCodexAppClient) forwardsLocked(id string) bool {
+	if !c.scoping {
+		return true
+	}
+	_, owned := c.owned[id]
+	return owned
+}
+
+// trackTurnCompleted drops a completed turn from the active set and reports
+// whether its completion frame belongs on the event channel.
+func (c *managedCodexAppClient) trackTurnCompleted(params json.RawMessage) (forward bool) {
+	id, _ := managedTurnFrame(params)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.active, id)
+	return c.forwardsLocked(id)
+}
+
+// noteTurnStartResponse claims the turn id a turn/start response carries for
+// the owner while its window is open: the response is the one place a turn id
+// is attributed to the owner's own call.
+func (c *managedCodexAppClient) noteTurnStartResponse(result json.RawMessage) {
+	var reply struct {
+		Turn struct {
+			ID string `json:"id"`
+		} `json:"turn"`
+	}
+	if json.Unmarshal(result, &reply) != nil || reply.Turn.ID == "" {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.open {
+		return
+	}
+	c.markOwnedLocked(reply.Turn.ID)
+	if c.scoping && c.turnID == "" {
+		c.turnID = reply.Turn.ID
+	}
+}
+
+// busy reports whether any turn is active. It never clears by time: a turn that
+// stays active longer than the warn interval only produces one log line per
+// elapsed interval, because releasing a stale flag would steer a broker prompt
+// into a legitimate long operator turn (known debt 13).
+func (c *managedCodexAppClient) busy(now time.Time) bool {
+	c.mu.Lock()
+	if len(c.active) == 0 {
+		c.mu.Unlock()
+		return false
+	}
+	var line string
+	if c.busyWarn > 0 && now.Sub(c.lastWarn) >= c.busyWarn {
+		c.lastWarn = now
+		line = fmt.Sprintf("Factory thread has had an active turn for %s; broker delivery stays deferred until it completes", now.Sub(c.busySince).Round(time.Millisecond))
+	}
+	c.mu.Unlock()
+	if line != "" {
+		managedLogf("%s", line)
+	}
+	return true
+}
+
+// managedTurnScopedRequests are the server request kinds whose params carry a
+// turnId (schema-measured on codex-cli 0.160.0).
+var managedTurnScopedRequests = map[string]struct{}{
+	"item/commandExecution/requestApproval": {},
+	"item/fileChange/requestApproval":       {},
+	"item/tool/requestUserInput":            {},
+	managedElicitationMethod:                {},
+	"item/permissions/requestApproval":      {},
+	"item/tool/call":                        {},
+}
+
+// leavesForOperator reports whether a server request is left unanswered so the
+// operator answers it in the TUI: it names a turn the owner did not start. A
+// request without a turn id keeps its fixed answer, and so does one that
+// arrives while the owner's own turn/start is outstanding and its turn id is
+// not yet known (benefit of the doubt goes to the owner's turn).
+func (c *managedCodexAppClient) leavesForOperator(req managedCodexAppReply) bool {
+	if _, scoped := managedTurnScopedRequests[req.Method]; !scoped {
+		return false
+	}
+	var params struct {
+		TurnID *string `json:"turnId"`
+	}
+	if json.Unmarshal(req.Params, &params) != nil || params.TurnID == nil || *params.TurnID == "" {
+		return false
+	}
+	turn := *params.TurnID
+	c.mu.Lock()
+	_, owned := c.owned[turn]
+	left := c.scoping && !owned && !(c.open && c.turnID == "")
+	c.mu.Unlock()
+	if left {
+		managedLogf("Factory server request left for the operator: %q turn=%s", req.Method, turn)
+	}
+	return left
+}
 
 // managedTUIExitError is the M2 placeholder: the exit-status mapping lands with
 // the lifecycle milestone.

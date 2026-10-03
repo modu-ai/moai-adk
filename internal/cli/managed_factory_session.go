@@ -313,10 +313,13 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 	// While an operator TUI is attached it owns the terminal: the driver reads
 	// no stdin and interprets no /exit or /quit (SPEC-FACTORY-MANAGED-TUI-001
 	// REQ-MT-005). A nil inputs channel never becomes ready in the selects below.
-	var tuiDone <-chan error
+	var (
+		surface managedOperatorSurface
+		tuiDone <-chan error
+	)
 	if op, ok := s.(managedOperatorSurface); ok {
 		if done, attached := op.AttachOperator(); attached {
-			tuiDone = done
+			surface, tuiDone = op, done
 		}
 	}
 	var inputs chan string
@@ -384,6 +387,12 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				continue
 			}
 			consecutiveFailures = 0
+		}
+		// With an operator TUI attached, a batch is claimed only while no turn is
+		// active, so it is deferred (not dropped) behind an operator turn and the
+		// claim lease cannot expire while it waits (REQ-MT-007).
+		if surface != nil && surface.Busy() {
+			continue
 		}
 		claims, err := claim()
 		if err != nil {
