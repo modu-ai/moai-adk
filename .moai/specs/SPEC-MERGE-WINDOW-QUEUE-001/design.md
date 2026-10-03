@@ -9,13 +9,18 @@ fields; absent fields read as today:
 
 | Field | Meaning |
 |---|---|
-| `queue[]` | FIFO tickets: `session_id`, `session_name`, `card`, `enqueued_at`, `pid` + `pid_source: session-owner` (the owning session, resolved as `acquire` resolves it today), `waiter_pid`, `waiter_start` (process start time), `heartbeat_at` |
+| `queue[]` | FIFO tickets: `session_id`, `session_name`, `card`, `enqueued_at`, `pid` + `pid_source: session-owner` (the owning session, resolved as `acquire` resolves it today), `branch` + `branch_source` + `worktree` (the integration target, resolved at enqueue as `acquire` resolves it today), `waiter_pid`, `waiter_start` (process start time), `heartbeat_at` |
 | `lease_expires_at` | holder lease expiry (on by default, 30 min; zero disables) |
 
-Promotion copies the ticket's `session_id`, `session_name`, `card`, `pid`, and `pid_source` into the
-holder fields. The holder therefore keeps the exact semantics `Stale()` and `releasableBy` rely on
-(`internal/kanban/integration_lock.go:172-180`, `322-329`): liveness and self-release follow the
-owning session, never the waiter process, which exits as soon as `acquire --wait` returns.
+Promotion copies the ticket's `session_id`, `session_name`, `card`, `pid`, `pid_source`, `branch`,
+`branch_source`, and `worktree` into the holder fields. The holder therefore keeps the exact
+semantics `Stale()` and `releasableBy` rely on (`internal/kanban/integration_lock.go:172-180`,
+`322-329`) — liveness and self-release follow the owning session, never the waiter process, which
+exits as soon as `acquire --wait` returns — and the target `factory complete` reads
+(`lock.Branch != ""` at `factory_card.go:1335`, `BranchSource` at `:1351`).
+
+Every window verb is a queue mutation: `acquire`, `release`, `status`, `policy`, and `merge` apply
+the drop rules and promotion before doing their own work.
 
 The policy (`open` | `hold` + reason + setter + instant) is a sibling record beside the window
 record, so the guard's read of the window record is untouched (REQ-MWQ-023).
@@ -45,22 +50,35 @@ lane worktree:   git merge develop (local), commit
                  moai integration remeasure -- <cmd>   (clean tree before+after, HEAD unchanged;
                  record keyed by HEAD^{tree}, base = absorbed develop SHA)
                  moai integration acquire --wait --card <id>   (run in the background)
-when holder:     moai integration merge --card <id>
+when holder:     moai integration merge --card <id>      (non-holder → refuse, lock untouched)
                  ├─ resolve WT- branch (SPEC-CANDIDATE-CI-001 REQ-CCI-004 contract)
-                 ├─ record.base == develop tip AND branch tip tree == record.tree ?
-                 │   ├─ yes ─► landing check (REQ-CCI-011; no-op when candidate_ci off)
-                 │   │         ─► git merge --no-ff ─► merge^{tree} == record.tree ─► release, exit 0
-                 │   └─ base moved ─► release (next live ticket promoted)
-                 │                    ─► exit re-measure-and-re-acquire code (names both SHAs)
-                 │                    ─► lane re-absorbs, re-measures, acquire --wait at the tail
+                 ├─ pin SHA = branch tip (read once)
+                 ├─ base moved?          ─► release ─► exit RE-MEASURE (names both SHAs) ─► lane re-measures, tail
+                 ├─ SHA^{tree} ≠ record? ─► release ─► exit TREE-MISMATCH
+                 ├─ landing check(SHA)   ─► refused ─► release ─► exit LANDING-REFUSED
+                 ├─ git merge --no-ff SHA ─► fails ─► git merge --abort
+                 │                                    ├─ worktree clean ─► release ─► exit MERGE-FAILED
+                 │                                    └─ still dirty    ─► policy hold(reason) ─► release ─► exit MERGE-DIRTY
+                 ├─ merge^{tree} == record.tree ─► release, exit 0
+                 └─ any other error ─► release ─► exit OTHER
 ```
 
-The stale candidate is rebuilt only after this exit, never eagerly at queue entry
-(SPEC-CANDIDATE-CI-001's assignment to this SPEC).
+Exit-code names are placeholders; the run phase assigns distinct values. The stale candidate is
+rebuilt only after the RE-MEASURE exit, never eagerly at queue entry (SPEC-CANDIDATE-CI-001's
+assignment to this SPEC).
 
-`moai factory complete` refuses up front without a valid record (REQ-MWQ-019) and performs the same
-in-window steps. `merge-record.txt` stays as a merge-identity file and never counts as the
-re-measure (REQ-MWQ-020).
+`moai factory complete` has no merge of its own any more:
+
+```
+factory complete <card>
+  ├─ merge commit of this card's branch already reachable from develop?  (lane used `integration merge`)
+  │     └─ yes ─► record merged-local from that commit; no merge step, no fresh re-measure
+  ├─ no valid re-measure record ─► refuse (card state and develop unchanged)
+  └─ call the merge step above ─► success ─► merging → merged-local transitions
+                                └─ any failure ─► card state unchanged, exit with the step's code
+```
+
+`merge-record.txt` stays as a merge-identity file and never counts as the re-measure (REQ-MWQ-020).
 
 ## D4 Re-measure record
 

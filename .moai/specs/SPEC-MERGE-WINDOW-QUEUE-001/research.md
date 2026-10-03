@@ -98,6 +98,18 @@ This SPEC therefore (v0.5.0 numbering):
   (REQ-MWQ-018);
 - carries no push requirement (§E).
 
+Two coordination notes from plan-audit iteration 3 (O3, O4), recorded rather than fixed here:
+
+- **O3 — shared doctrine wording.** SPEC-CANDIDATE-CI-001 REQ-CCI-024 also writes a "lanes merge into
+  develop only through the integration verbs" clause into the same two local files. AC-MWQ-013
+  expects exactly one occurrence of this SPEC's sentence, so whichever card lands second reconciles
+  the wording into one sentence rather than adding a second.
+- **O4 — branch resolution reach.** Following REQ-CCI-004, the merge verb resolves a card's branch
+  from `.claude/worktrees/<card>` or `.moai/worktrees/<card>` only. It has no `--branch` fallback
+  (t1478's candidate verb has one) and does not read the factory record's `WorktreePath`, so a card
+  tree with an agent-generated name (this card's own `agent-a1d44…`) does not resolve. Extending
+  the resolver belongs to the REQ-CCI-004 contract owner, so both verbs keep one rule.
+
 Whichever card lands second re-reads the other's committed key path and landing-check contract
 and adapts its own text; the draft read above is a moving source, not a citation of record.
 

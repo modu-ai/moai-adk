@@ -1,7 +1,7 @@
 ---
 id: SPEC-MERGE-WINDOW-QUEUE-001
 title: "Merge-window automation — FIFO acquire queue, leader nomination abolished, re-measure outside the window, lane merge verb, substantive complete gate"
-version: "0.5.0"
+version: "0.6.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -27,6 +27,7 @@ related_specs: [SPEC-CANDIDATE-CI-001, SPEC-INTEGRATION-LOCK-ATOMIC-001, SPEC-IN
 | 0.3.0 | 2026-10-03 | manager-spec | Plan-audit iteration 1 (FAIL 0.75, `.moai/reports/t1479/plan-audit-iter1.md`) closed with leader decisions Q8-Q13: push verb moved to SPEC-CANDIDATE-CI-001; contiguous renumbering 25/25; hold suspends promotion; reserved tickets; waiter liveness + slices; empty-sweep refusal; clean tree; committed no-`--wait` baseline (`3bc274dac`). |
 | 0.4.0 | 2026-10-03 | manager-spec | Leader decisions Q14-Q16: heartbeat 15 s / window 60 s / re-entry grace 120 s; requeue counting and three-requeue bound; non-test-command residual risk. |
 | 0.5.0 | 2026-10-03 | manager-spec | Plan-audit iteration 2 (FAIL 0.69, regressed — STOP; `.moai/reports/t1479/plan-audit-iter2.md`, N1-N5 blocking). Leader decision Q17 (mission contract 07d28c4b): SCOPE REDUCTION. The window is now held for seconds (identity check + `--no-ff` merge), so fairness machinery buys nothing: reserved tickets, `--slice` / between-slices, front-once, the requeue counter and the three-requeue rule are removed (N2/N3/N4 dissolve with them). The queue is a plain FIFO; the ticket carries the owning-session pid that promotion stamps on the holder, restoring the `Stale` / `releasableBy` semantics (N1). A moved develop makes the merge verb release and exit with a re-measure-and-re-acquire code; the lane re-enters at the back. Leader decision Q18 folded in: the lane merge verb `moai integration merge --card <id>` with SPEC-CANDIDATE-CI-001's shared landing check (REQ-MWQ-017); the doctrine forbids manual lane `git merge` into develop. N5 hand-off item (e) added to research §R6; N6 acknowledged (REQ-MWQ-018, §R5); N7 fixture README reference fixed; N8 AC-013 checks both files per clause. Counts 23 REQ / 23 AC. |
+| 0.6.0 | 2026-10-03 | manager-spec | Plan-audit iteration 3 (FAIL 0.75, `.moai/reports/t1479/plan-audit-iter3.md`, B1-B3 blocking). Leader decision Q19 (mission contract 07d28c4b; one delta round inside the auditor's fix_scope, no scope change). B1: one merge path — `moai factory complete` merges only by calling the REQ-MWQ-017 step (its own merge at `factory_card.go:1409` replaced, gates before develop moves) and adopts a landing already made by `integration merge` without re-measuring (REQ-MWQ-019); doctrine sentence covers both verbs and the self-dispatch clauses are aligned (REQ-MWQ-013). B2: SHA pinned across check, landing check and `git merge --no-ff <sha>`; every in-window failure releases with a distinct exit code; merge failure aborts and verifies a clean worktree, else sets `hold`; non-holder calls refused without touching the lock (REQ-MWQ-017/018). B3: tickets record `branch`/`branch_source`/`worktree` at enqueue and promotion copies them (REQ-MWQ-001/006). O1: `status` named a mutation (REQ-MWQ-009). O2: a waiter whose ticket was dropped exits non-zero (REQ-MWQ-003). O3/O4: research §R5 notes. Counts unchanged 23/23. |
 
 ## §A Background
 
@@ -71,9 +72,10 @@ to that tree.
 - **REQ-MWQ-001** (Ubiquitous) — The integration window record shall carry a first-in-first-out
   queue of tickets, each naming the waiting session, its lane name, its card, its enqueue instant,
   the owning-session process id resolved the same way `acquire` resolves it today together with
-  the `session-owner` pid source, the waiter process's id and start time, and its last heartbeat
-  instant; a record written before the queue existed shall read as a record with an empty queue and
-  an unchanged holder.
+  the `session-owner` pid source, the integration target (`branch`, `branch_source`, `worktree`)
+  resolved at enqueue exactly as `acquire` resolves it today, the waiter process's id and start
+  time, and its last heartbeat instant; a record written before the queue existed shall read as a
+  record with an empty queue and an unchanged holder.
 - **REQ-MWQ-002** (Event-driven) — **When** `moai integration acquire --wait[=<bound>]` is invoked
   while the window is held by a live session other than the caller or while the window policy is
   `hold`, the acquire verb shall append one ticket for the caller at the tail of the queue, with
@@ -83,8 +85,9 @@ to that tree.
 - **REQ-MWQ-003** (Event-driven) — **When** any queue mutation runs, the window record shall drop
   every ticket whose owning session is gone, whose waiter process (matched on id AND start time) is
   gone, or whose heartbeat is older than 60 seconds, and the mutating command shall name each
-  dropped ticket and the reason in its output; run milestone M0 may only tighten the 15-second and
-  60-second values.
+  dropped ticket and the reason in its output, and a still-running waiter that finds its own ticket
+  dropped shall exit non-zero naming that reason without re-enqueueing itself; run milestone M0 may
+  only tighten the 15-second and 60-second values.
 - **REQ-MWQ-004** (Event-driven) — **When** a ticket's bound elapses before it is promoted, the
   acquire verb shall withdraw the ticket and exit non-zero, naming the holder, the ticket's last
   queue position, and the bound.
@@ -95,10 +98,11 @@ to that tree.
   it released.
 - **REQ-MWQ-006** (Event-driven) — **When** the policy is `open` and the holder releases the window,
   or the holder is stale because its owning-session process is gone or its lease has expired, the
-  window record shall, in the same serialized mutation, promote the first live ticket, stamping the
-  ticket's owning-session process id and its `session-owner` pid source onto the holder record so
-  that the promoted holder's liveness and self-release follow its owning session exactly as a
-  directly acquired holder's do, and shall record any displaced holder as today's stale takeover
+  window record shall, in the same serialized mutation, promote the first live ticket, copying the
+  ticket's session id, lane name, card, owning-session process id with its `session-owner` pid
+  source, and integration target (`branch`, `branch_source`, `worktree`) onto the holder record so
+  that the promoted holder's liveness, self-release, and target-ownership checks behave exactly as
+  a directly acquired holder's do, and shall record any displaced holder as today's stale takeover
   does.
 - **REQ-MWQ-007** (State-driven) — **While** the policy is `hold`, the window record shall perform
   no promotion of any kind: a release shall leave the window without a holder and the queue intact,
@@ -111,7 +115,8 @@ to that tree.
   on the in-window duration measured in run milestone M0.
 - **REQ-MWQ-009** (Ubiquitous) — `moai integration status` shall show the holder, the holder's lease
   expiry, the window policy, and every queued ticket in order with its position and liveness, in
-  both the human form and the `--json` form.
+  both the human form and the `--json` form; like `acquire`, `release`, `policy`, and `merge`, it is
+  a queue mutation that applies REQ-MWQ-003 drops and REQ-MWQ-006 promotion before it prints.
 - **REQ-MWQ-010** (Capability gate) — **Where** `--wait` is absent, `moai integration acquire` shall
   keep its current refusal behavior and output byte-for-byte against the committed fixture
   `.moai/reports/t1479/baseline-acquire-nowait/` (after its two stated normalizations), and shall
@@ -131,9 +136,11 @@ to that tree.
 - **REQ-MWQ-013** (Ubiquitous) — The local doctrine (`AGENTS.local.md` §4.1 and
   `.claude/rules/local/gitflow-lane-protocol.md`) shall each carry the sentence
   `open 정책에서 대기열 맨 앞으로 승격되어 창을 쥔 레인은 리더 지명 없이 병합한다` and the sentence
-  `레인은 develop에 손으로 git merge 하지 않고 moai integration merge --card 로만 병합한다`, and
-  neither file shall carry the nomination clause (`지명만이 근거`) or the announcement-as-first-layer
-  clause (`리더 공지가 여전히 첫 번째 층`).
+  `레인은 develop에 손으로 git merge 하지 않고 moai integration merge --card 또는 그것을 부르는 moai factory complete 로만 병합한다`,
+  the self-dispatch merge clause of each file (today `AGENTS.local.md:219`,
+  `gitflow-lane-protocol.md:99`) shall say that `moai factory complete` merges through
+  `moai integration merge`, and neither file shall carry the nomination clause (`지명만이 근거`) or
+  the announcement-as-first-layer clause (`리더 공지가 여전히 첫 번째 층`).
 
 ### C.3 Re-measure outside the window, merge verb inside it
 
@@ -155,25 +162,36 @@ to that tree.
   that `git status --porcelain` is empty (tracked and untracked) and that `HEAD` is unchanged
   across the run, and shall refuse to write a record otherwise.
 - **REQ-MWQ-017** (State-driven) — **While** the caller holds the window,
-  `moai integration merge --card <id>` shall resolve the card's `WT-` branch the same way
-  SPEC-CANDIDATE-CI-001 REQ-CCI-004 resolves it, check the branch tip's tree against the card's
+  `moai integration merge --card <id>` — the one in-window merge step, which `moai factory complete`
+  also calls — shall resolve the card's `WT-` branch the same way SPEC-CANDIDATE-CI-001 REQ-CCI-004
+  resolves it, pin the branch tip to one commit SHA, check that SHA's tree against the card's
   re-measure record and the record's absorbed commit against the integration branch tip, call
   SPEC-CANDIDATE-CI-001's shared landing check (REQ-CCI-011; a no-op while
-  `workflow.candidate_ci.enabled` is false), perform the `--no-ff` merge into the integration
-  branch, verify the merge commit's tree equals the record's tree, and release the window; it shall
-  run no test suite.
-- **REQ-MWQ-018** (Event-driven) — **When** the integration branch tip has moved since the record's
-  absorbed commit, `moai integration merge` shall not merge; it shall release the window (promoting
-  the next live ticket) and exit with a dedicated re-measure-and-re-acquire exit code naming the
-  recorded and the current SHAs, after which the lane re-absorbs, re-measures, and re-acquires at
-  the tail; this is the only point at which a stale candidate is rebuilt — never eagerly at queue
-  entry (the obligation SPEC-CANDIDATE-CI-001 assigns to this SPEC).
+  `workflow.candidate_ci.enabled` is false) for that SHA, run `git merge --no-ff <pinned SHA>` into
+  the integration branch (never the branch name), verify the merge commit's tree equals the
+  record's tree, and release the window; it shall run no test suite; **When** the caller does not
+  hold the window, it shall refuse without reading or writing the window record's holder or queue.
+- **REQ-MWQ-018** (Event-driven) — **When** any in-window step fails, the merge step shall release
+  the window (promoting the next live ticket) and exit with a code distinct per cause — integration
+  tip moved since the record's absorbed commit (the re-measure-and-re-acquire code, naming both
+  SHAs; the lane then re-absorbs, re-measures, and re-acquires at the tail, the only point at which
+  a stale candidate is rebuilt — never eagerly at queue entry, as SPEC-CANDIDATE-CI-001 assigns to
+  this SPEC), pinned tree differing from the record's tree, landing-check refusal, merge failure,
+  and any other error; on a merge failure it shall run `git merge --abort` and verify the
+  integration worktree is clean before releasing, and **When** the worktree is still not clean, it
+  shall set the window policy to `hold` with a reason naming the dirty worktree before releasing,
+  so no later holder is promoted onto it.
 
 ### C.4 Substantive completion gate
 
-- **REQ-MWQ-019** (Event-driven) — **When** `moai factory complete` runs and no valid re-measure
-  record keyed by the card branch's candidate tree exists, the command shall refuse before any card
-  state transition and before any merge.
+- **REQ-MWQ-019** (Event-driven) — **When** `moai factory complete` runs, it shall perform its merge
+  only by calling the REQ-MWQ-017 merge step (replacing its own merge, so every gate runs before
+  develop moves) and shall then record the card as merged-local; **When** no valid re-measure record
+  keyed by the card branch's candidate tree exists, it shall refuse before any card state transition
+  and before any merge; **When** the step fails, the card state shall not change; and **When** a
+  merge commit of that card's branch is already reachable from the integration branch (the lane
+  merged through `moai integration merge` first), it shall record merged-local from that commit
+  without calling the merge step and without requiring a fresh re-measure.
 - **REQ-MWQ-020** (Unwanted) — `moai factory complete` shall not write a record that stands in for
   the re-measure; the merge identity it records shall be stored separately from, and shall never
   satisfy, the re-measure requirement.

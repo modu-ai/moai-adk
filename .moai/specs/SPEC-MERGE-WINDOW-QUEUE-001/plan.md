@@ -83,13 +83,17 @@ progress.md §E.2.
 - ACs: AC-MWQ-007, -012, -013.
 
 ### M5 — Lane merge verb (Priority High)
-- `moai integration merge --card <id>`: branch resolution, identity check, landing-check call,
-  `--no-ff` merge, merge-tree verification, release; base moved → release + re-measure-and-re-acquire
-  exit code. `moai factory complete` reuses the same in-window step.
+- `moai integration merge --card <id>`: non-holder refusal without touching the lock, branch
+  resolution, SHA pinned once, base / tree / landing checks on that SHA, `git merge --no-ff <sha>`,
+  merge-tree verification, release; every failure releases with a distinct exit code; merge failure
+  → `git merge --abort` + clean-worktree check, else policy `hold` before release.
 - ACs: AC-MWQ-017, -018.
 
-### M6 — Substantive completion gate (Priority High)
-- `factory complete` refuses without a keyed record; the stand-in never satisfies the gate;
+### M6 — Substantive completion gate on the one merge path (Priority High)
+- `factory complete`: its own merge (`factory_card.go:1409`) replaced by a call to the M5 step, card
+  transitions only after the step succeeds; adoption of a landing already made by
+  `integration merge` (merge commit of the card branch reachable from develop) without a merge or a
+  fresh re-measure; refusal without a keyed record; the stand-in never satisfies the gate;
   `verifyMerge` structural check; merge-readiness fourth condition with the command printed.
 - ACs: AC-MWQ-019, -020, -021.
 
@@ -117,6 +121,9 @@ progress.md §E.2.
 | Release during hold empties the window | intended: queue intact, promotion resumes on `open` (REQ-MWQ-007) |
 | Empty or unstructured test runs pass the gate | refused by REQ-MWQ-015 |
 | Dirty tree measured under HEAD's key | refused by REQ-MWQ-016 |
+| A failed in-window step wedges the window or leaves a half-merge | every failure releases with a distinct code; abort + clean check, else `hold` (REQ-MWQ-018) |
+| Complete and the merge verb diverge into two merge paths | complete calls the verb's step and adopts a prior landing (REQ-MWQ-019) |
+| Promoted holder without an integration target | ticket carries `branch` / `branch_source` / `worktree`, copied on promotion (REQ-MWQ-001/006) |
 | t1478 not landed when M5 runs | resolver behind the same contract, landing check absent no-op; reconciled by the second card |
 | Hook guard semantics drift | REQ-MWQ-023 regression on holder-only records |
 

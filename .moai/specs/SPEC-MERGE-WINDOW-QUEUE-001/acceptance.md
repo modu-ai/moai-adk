@@ -12,8 +12,9 @@
   is read and then acquired/released by the new code, Then it reads as an empty queue, the holder
   fields round-trip unchanged, and no queue key is written unless a ticket exists; and Given a
   ticket written by the new code, Then it carries session, name, card, enqueue instant,
-  owning-session pid with `pid_source: session-owner`, waiter pid, waiter start time, and heartbeat
-  instant.
+  owning-session pid with `pid_source: session-owner`, `branch`, `branch_source`, `worktree` (equal
+  to what a direct `acquire` with the same arguments would record), waiter pid, waiter start time,
+  and heartbeat instant.
 - **AC-MWQ-002** (maps REQ-MWQ-002) — Scenario 1: Given A holds, When B then C run
   `acquire --wait` (B strictly first), Then status lists B at 1 and C at 2 and both block. Scenario
   2: Given N concurrent `acquire --wait` callers released by a barrier (cross-process, repeated with
@@ -25,7 +26,9 @@
   reason "waiter gone". Scenario 2: Given a live process with B's waiter pid but a different start
   time, Then B is dropped. Scenario 3: Given B's last heartbeat at −59 s, Then B stays; at −61 s,
   Then B is dropped. Scenario 4: Given B's owning session is gone while its waiter is alive, Then B
-  is dropped with reason "owner gone".
+  is dropped with reason "owner gone". Scenario 5: Given B's ticket was dropped for a stale
+  heartbeat while B's waiter still runs, When B's waiter next polls, Then it exits non-zero naming
+  that reason and the queue holds no new ticket for B.
 - **AC-MWQ-004** (maps REQ-MWQ-004) — Given A holds indefinitely, When B runs `acquire --wait=2m`
   (injected clock), Then at 1m59s B still waits and at 2m B exits non-zero naming A, its last
   position, and the bound, and B's ticket is gone.
@@ -40,7 +43,12 @@
   heartbeat) does not displace B, and B's own `release` succeeds. Scenario 3: Given A's owning
   process is gone and B queued, When C runs `status`, Then B is promoted and A is recorded as
   displaced. Scenario 4: Given A's lease expired with a live owner and B queued, When B's waiter
-  polls, Then B is promoted and A is recorded as displaced.
+  polls, Then B is promoted and A is recorded as displaced. Scenario 5 (target copy — fixture): Given
+  B enqueued with `--card t0002` while the configured git-flow develop branch is `develop`, When B is
+  promoted inside A's `release`, Then the holder record's `branch` is `develop`, `branch_source` is
+  `config`, and `worktree` equals the ticket's; and the factory-complete window phase run as B
+  treats the window as its own (the `lock.Branch != ""` held-by-us path) rather than resolving a new
+  branch.
 - **AC-MWQ-007** (maps REQ-MWQ-007) — Given policy `hold`, A holding and B queued, When A releases,
   Then the window has no holder and the queue is [B]; Given a stale holder under hold, When any
   mutation runs, Then the holder is cleared with no successor; When the leader runs `policy open`,
@@ -52,7 +60,8 @@
   its command, N, median, and maximum (shorten-only rule checked against it).
 - **AC-MWQ-009** (maps REQ-MWQ-009) — Given a holder with lease, policy `hold:release-cut`, and two
   tickets, When `status` and `status --json` run, Then both show holder, lease expiry, policy and
-  reason, and both tickets with position and liveness.
+  reason, and both tickets with position and liveness; and Given a ticket whose waiter is gone,
+  When `status` runs, Then its output names the dropped ticket and the printed queue omits it.
 - **AC-MWQ-010** (maps REQ-MWQ-010) — Given the fixture record
   `.moai/reports/t1479/baseline-acquire-nowait/record.json` (live holder pid 1), When `acquire`
   runs without `--wait` in both human and `--json` forms, Then each exits 1 with empty stdout, the
@@ -74,7 +83,9 @@
 - **AC-MWQ-013** (maps REQ-MWQ-013) — For F in `AGENTS.local.md` and
   `.claude/rules/local/gitflow-lane-protocol.md`, each command prints the stated count:
   `grep -c "대기열 맨 앞으로 승격되어 창을 쥔 레인은 리더 지명 없이 병합한다" F` → `1`;
-  `grep -c "moai integration merge --card 로만 병합한다" F` → `1`;
+  `grep -c "moai integration merge --card 또는 그것을 부르는 moai factory complete 로만 병합한다" F` → `1`;
+  `grep -c "self-dispatch lane 예외 — 병합 창.*moai integration merge" F` → `1` (the self-dispatch
+  clause names the verb complete calls; RED on the plan tree: `0` in both files);
   `grep -c "지명만이 근거" F` → `0`;
   `grep -c "리더 공지가 여전히 첫 번째 층" F` → `0`.
   (RED on the plan tree: `지명만이 근거` → `1` in AGENTS.local.md, `리더 공지가 여전히 첫 번째 층` → `1`
@@ -102,24 +113,43 @@
   starts, Then it refuses and writes no record; Given a command that modifies a tracked file, When
   the run ends, Then no record is written; Given a command that commits, Then no record is written
   (HEAD changed).
-- **AC-MWQ-017** (maps REQ-MWQ-017) — Given lane B holds the window, a valid record for card t0002
-  and an unmoved base, When `moai integration merge --card t0002` runs, Then it resolves the card's
-  `WT-` branch, creates one `--no-ff` merge commit on the integration branch whose tree equals the
-  record's tree, releases the window, and the instrumented runner records zero test invocations;
-  Given `workflow.candidate_ci.enabled` false, Then the injected landing-check seam records zero
-  calls; Given it true, Then the seam records exactly one call before the integration branch ref
-  moves, and a refusing landing check leaves the integration tip unchanged.
-- **AC-MWQ-018** (maps REQ-MWQ-018) — Given a record with base X and develop advanced to Y, When
-  `moai integration merge --card <id>` runs, Then no merge commit is created, the window is released
-  and the next live ticket promoted, the exit code is the re-measure-and-re-acquire code, and the
-  message names X and Y; and Given the lane then re-measures and runs `acquire --wait`, Then its
-  ticket is at the tail.
+- **AC-MWQ-017** (maps REQ-MWQ-017) — Scenario 1: Given lane B holds the window, a valid record for
+  card t0002 and an unmoved base, When `moai integration merge --card t0002` runs, Then it resolves
+  the card's `WT-` branch, creates one `--no-ff` merge commit on the integration branch whose second
+  parent is the pinned SHA and whose tree equals the record's tree, releases the window, and the
+  instrumented runner records zero test invocations. Scenario 2 (pinning): Given the test hook
+  advances the `WT-` branch by one commit after the identity check, Then the merge commit's second
+  parent is still the pinned SHA and the recorded git invocation is `merge --no-ff <sha>`, never the
+  branch name. Scenario 3: Given `workflow.candidate_ci.enabled` false, Then the injected
+  landing-check seam records zero calls; Given it true, Then it records exactly one call, for the
+  pinned SHA, before the integration branch ref moves. Scenario 4 (non-holder): Given C does not hold
+  the window, When C runs the verb, Then it refuses and the window record's bytes are unchanged.
+- **AC-MWQ-018** (maps REQ-MWQ-018) — Each row is a scenario run as holder B with C queued; in every
+  row no merge commit remains on the integration branch, the window is released, C is promoted (or,
+  in the last row, the policy is `hold`), and the exit code is distinct from every other row's:
+
+  | Cause | Setup | Extra expectation |
+  |---|---|---|
+  | base moved | develop advanced X → Y after the record | message names X and Y; B re-acquiring after re-measure is at the tail |
+  | tree mismatch | pinned tree ≠ record tree | — |
+  | landing refusal | landing-check seam refuses (key true) | integration tip unchanged |
+  | merge failure | conflicting change on develop and a matching record | `git merge --abort` ran; `git status --porcelain` in the integration worktree is empty; no `MERGE_HEAD` |
+  | other error | merge-step runner returns an unexpected error | — |
+  | abort leaves dirt | abort seam leaves an untracked file | policy is `hold` with a reason naming the worktree; C is not promoted |
 
 ### Completion gate
 
-- **AC-MWQ-019** (maps REQ-MWQ-019) — Given a card with no record, When `moai factory complete
-  <card>` runs, Then it refuses, the card state version is unchanged, and the integration tip is
-  unchanged.
+- **AC-MWQ-019** (maps REQ-MWQ-019) — Scenario 1: Given a card with no record, When `moai factory
+  complete <card>` runs, Then it refuses, the card state version is unchanged, and the integration
+  tip is unchanged. Scenario 2 (one merge path): Given a valid record and an unmoved base, When
+  complete runs, Then the instrumented merge-step seam records exactly one call, no other merge
+  invocation occurs, and the card is merged-local. Scenario 3 (moved base): Given develop advanced
+  past the record's base, When complete runs, Then no merge commit is created, the card state
+  version is unchanged, and the exit code is the re-measure-and-re-acquire code. Scenario 4 (verb
+  then complete): Given the lane merged card t0002 through `moai integration merge` and develop then
+  advanced further, When complete runs, Then the merge-step seam records zero calls, no re-measure
+  is required, and the card is merged-local with the existing merge commit's SHA.
+
 - **AC-MWQ-020** (maps REQ-MWQ-020) — Given complete wrote `merge-record.txt`, When that file is
   offered as the re-measure, Then the gate rejects it.
 - **AC-MWQ-021** (maps REQ-MWQ-021) — Given a merge whose tree equals a valid record's tree, Then

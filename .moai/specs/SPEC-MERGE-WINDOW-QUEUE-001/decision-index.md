@@ -201,3 +201,15 @@ Authority anchor: —
 Why unresolved: 해당 없음 — 리더가 결정했다. 지금은 레인이 통합 워크트리에서 손으로 `git merge --no-ff`를 친다. 그래서 t1478의 공용 landing check(REQ-CCI-011)를 거치게 할 수도, 독트린이 손 병합을 금지할 수도 없다.
 
 Operator verdict: 리더 결정(LEADER-DECIDED, 2026-10-03, 미션 계약 07d28c4b). 이 SPEC이 레인 병합 동사를 소유한다. 창 안 단계(트리 항등 확인 + develop으로 `--no-ff` 병합 + release)를 `moai integration merge --card <id>`로 노출한다. 카드의 WT 브랜치는 SPEC-CANDIDATE-CI-001 REQ-CCI-004와 같은 방식으로 찾고, SPEC-CANDIDATE-CI-001의 공용 landing check(REQ-CCI-011)를 부른다(`workflow.candidate_ci.enabled`가 false면 아무 일도 하지 않음). 이 동사가 착지하면 독트린이 레인의 손 `git merge`를 금지할 수 있다. 25/25 안에서 기존 창 안 REQ에 접는다. 반영: REQ-MWQ-017(옛 018에 접음), REQ-MWQ-013(손 병합 금지 문장), AC-MWQ-013, -017, plan M5.
+
+### Q19: `factory complete`와 병합 동사는 병합 경로를 하나로 쓰는가, 창 안 실패는 어떻게 끝나는가, 승격된 보유자는 통합 대상을 어디서 얻는가? (감사 B1–B3)
+
+Label: FOUNDER
+
+Authority anchor: —
+
+Why unresolved: 해당 없음 — 리더가 결정했다. plan-audit 3차(0.75, 첫 상한 도달)가 막힘 세 건을 찾았다. 하나는 complete와 병합 동사가 서로 다른 병합 경로를 가진 문제다. 동사로 병합한 카드는 merged-local에 닿지 못하고, 그 뒤 complete를 부르면 재측정 루프에 빠지며, complete는 병합한 뒤에야 게이트를 돌린다(B1). 또 창 안 실패의 결말이 정해지지 않았고 SHA가 고정되지 않았다(B2). 마지막으로 승격 때 통합 대상(`branch`·`branch_source`·`worktree`)이 사라진다(B3).
+
+Operator verdict: 리더 결정(LEADER-DECIDED, 2026-10-03, 미션 계약 07d28c4b — 감사자의 fix_scope 안에서 한 번의 델타 라운드, 범위 변경 없음). B1: 병합 경로는 하나다. `moai factory complete`는 `moai integration merge --card <id>`와 같은 창 안 단계(base 확인·트리 항등·landing check·고정 SHA 병합·release)를 불러 병합하고, 그 뒤 카드를 merged-local로 기록한다. `factory_card.go:1409`의 자체 병합은 그 호출로 바뀌어 게이트가 언제나 병합보다 먼저 돈다. 같은 카드를 `integration merge`로 이미 병합한 뒤의 complete는 그 카드 브랜치의 병합 커밋이 develop에서 닿는지 확인하고 상태만 기록한다(재측정 루프 없음). 독트린(REQ-013): 레인은 `integration merge` 또는 그것을 부르는 `factory complete`로만 병합하며, AGENTS.local.md:219와 gitflow-lane-protocol.md:99를 같은 뜻으로 고친다. B2: 창 안 실패는 모두 창을 놓고 원인마다 다른 코드로 끝난다(트리 불일치, landing check 거부, 병합 충돌 — `git merge --abort` 후 통합 트리가 깨끗한지 확인하고 놓는다 — 그 밖의 오류). 보유자가 아닌 호출은 잠금을 건드리지 않고 거부한다. 병합은 항등 확인 때 고정한 SHA로 한다(`git merge --no-ff <sha>`, 브랜치 이름은 쓰지 않는다). B3: 티켓은 acquire 때 branch·branch_source·worktree를 기록하고, 승격이 그것을 보유자 기록에 복사한다. 그래서 승격된 보유자에게도 factory complete의 `lock.Branch` 소유 확인이 성립한다(AC 픽스처 추가). O1–O4는 한 줄로 끝나는 곳만 고친다. 반영: REQ-MWQ-001, -003, -006, -009, -013, -017, -018, -019, AC-MWQ-001, -003, -006, -009, -013, -017, -018, -019, design.md D1·D3, plan.md M5·M6, research.md §R5(O3·O4).
+
+작성자 메모(manager-spec): 리더 지시는 「abort 후 깨끗한지 확인하고 놓는다」까지였고, 확인이 실패하는 경우는 정하지 않았다. 감사자 B2가 「더러운 트리 위로 조용히 승격하지 않는다」는 선택지로 `hold`를 제시했고, REQ-MWQ-018은 그 경우 정책을 `hold`로 두고 놓는다고 적었다. 리더가 다른 결말을 원하면 이 한 절만 바꾸면 된다.

@@ -26,6 +26,11 @@
   owner pid on tickets stamped onto the holder at promotion (N1). Q18 lane merge verb
   `moai integration merge --card <id>` folded into REQ-MWQ-017. N5 hand-off item (e) in research
   §R6 (for the leader to forward to t1478). 23 REQ / 23 AC. No open decision blocks run entry.
+- Plan audit iteration 3: FAIL 0.75 (`.moai/reports/t1479/plan-audit-iter3.md`, verbatim copy;
+  first ceiling hit). v0.6.0 delta per leader decision Q19 inside the auditor's fix_scope: one merge
+  path (complete calls the merge step, adopts a prior landing), SHA pinning and per-cause failure
+  exits with abort + clean check (else `hold`), integration target on tickets and copied at
+  promotion; O1/O2 one-liners, O3/O4 noted in research §R5. 23 REQ / 23 AC.
 
 ## §E.2 Run-phase Evidence
 
