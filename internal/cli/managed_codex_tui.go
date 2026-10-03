@@ -203,42 +203,76 @@ func (s *managedCodexSession) operatorTUIPreconditions(stdin io.Reader) (*os.Fil
 	return in, ""
 }
 
-// openManagedTUILog opens the session log file under the project's
+// openManagedTUILog creates the session log file under the project's
 // .moai/logs/ directory (gitignored), mode 0600, append.
+//
+// A cloned repository can track a symlink for .moai or .moai/logs, and a hard
+// link can be planted at the log name, so the open never writes through an
+// existing directory entry: each component below the project root is checked
+// with Lstat (a symlink or non-directory is refused), the file is created NEW
+// under a unique temporary name (O_EXCL) and renamed over the final name.
+// Rename replaces the directory entry and never touches what the old entry
+// pointed at. On Windows os.Rename replaces an existing file (MoveFileEx with
+// REPLACE_EXISTING), so no platform-specific code is needed. A regular file
+// already at the name is copied into the new one, so a relaunch of the same run
+// and label still appends to the earlier content.
 func openManagedTUILog(root, runID, label string) (*os.File, string, error) {
-	dir := filepath.Join(root, ".moai", "logs")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, "", err
-	}
-	path := filepath.Join(dir, "factory-managed-"+managedLogNamePart(runID)+"-"+managedLogNamePart(label)+".log")
-	// A planted symlink is replaced, never followed; any other non-regular file
-	// is refused.
-	if info, err := os.Lstat(path); err == nil {
-		switch {
-		case info.Mode()&os.ModeSymlink != 0:
-			if err := os.Remove(path); err != nil {
-				return nil, "", err
-			}
-		case !info.Mode().IsRegular():
-			return nil, "", fmt.Errorf("session log %s is not a regular file", path)
+	dir := root
+	for _, part := range []string{".moai", "logs"} {
+		dir = filepath.Join(dir, part)
+		if err := ensureLogDir(dir); err != nil {
+			return nil, "", err
 		}
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	path := filepath.Join(dir, "factory-managed-"+managedLogNamePart(runID)+"-"+managedLogNamePart(label)+".log")
+	var (
+		f   *os.File
+		tmp string
+		err error
+	)
+	for i := 0; i < 8; i++ {
+		tmp = filepath.Join(dir, fmt.Sprintf(".factory-managed-%d-%d.tmp", os.Getpid(), time.Now().UnixNano()+int64(i)))
+		f, err = os.OpenFile(tmp, os.O_APPEND|os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil || !errors.Is(err, os.ErrExist) {
+			break
+		}
+	}
 	if err != nil {
 		return nil, "", err
 	}
-	// Close the Lstat/open gap: the opened file must be the one at the path.
-	opened, err1 := f.Stat()
-	atPath, err2 := os.Lstat(path)
-	if err1 != nil || err2 != nil || !os.SameFile(opened, atPath) || !atPath.Mode().IsRegular() {
-		_ = f.Close()
-		return nil, "", fmt.Errorf("session log %s changed while it was opened", path)
+	// A regular file already at the name (an earlier session of the same run and
+	// label) keeps its content: it is read, never written, and copied in.
+	if info, lerr := os.Lstat(path); lerr == nil && info.Mode().IsRegular() {
+		if old, oerr := os.Open(path); oerr == nil {
+			_, _ = io.Copy(f, old)
+			_ = old.Close()
+		}
 	}
-	if err := f.Chmod(0o600); err != nil {
+	if err := os.Rename(tmp, path); err != nil {
 		_ = f.Close()
+		_ = os.Remove(tmp)
 		return nil, "", err
 	}
 	return f, path, nil
+}
+
+// ensureLogDir makes dir exist as a real directory: a symlink or any other
+// non-directory entry is refused, a missing one is created and re-checked.
+func ensureLogDir(dir string) error {
+	info, err := os.Lstat(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.Mkdir(dir, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
+			return err
+		}
+		info, err = os.Lstat(dir)
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return fmt.Errorf("%s is not a plain directory (symlinks are refused)", dir)
+	}
+	return nil
 }
 
 // managedLogNamePart keeps a run id or lane label usable as a file name part.
