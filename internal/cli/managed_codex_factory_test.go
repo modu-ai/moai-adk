@@ -49,6 +49,12 @@ const (
 	fakeAppServerTurnStatusEnv   = "T1375_FAKE_APP_SERVER_TURN_STATUS"
 	fakeAppServerNoTurnIDEnv     = "T1375_FAKE_APP_SERVER_NO_TURN_ID"
 	fakeAppServerNoCompletionEnv = "T1375_FAKE_APP_SERVER_NO_COMPLETION"
+	// fakeAppServerTurnStatusesEnv (SPEC-FACTORY-MANAGED-HARDEN-001 M1) is a
+	// comma-separated per-turn status sequence: turn N completes under the Nth
+	// entry (turns past the list use the single-status mode above). Every
+	// turn/start also logs the prompt text as "turn-prompt <text>" so a test can
+	// tell which turns were delivered.
+	fakeAppServerTurnStatusesEnv = "T1409_FAKE_APP_SERVER_TURN_STATUSES"
 	// fakeAppServerThreadID is the fixed thread id the fake issues, so the
 	// bind test can assert the broker endpoint carries the thread id as its
 	// session UUID.
@@ -74,6 +80,10 @@ func serveFakeRPC(conn *websocket.Conn, logPath string) {
 	turnStatus := os.Getenv(fakeAppServerTurnStatusEnv)
 	if turnStatus == "" {
 		turnStatus = "completed"
+	}
+	var turnStatuses []string
+	if raw := os.Getenv(fakeAppServerTurnStatusesEnv); raw != "" {
+		turnStatuses = strings.Split(raw, ",")
 	}
 	for {
 		var req struct {
@@ -112,13 +122,26 @@ func serveFakeRPC(conn *websocket.Conn, logPath string) {
 				_ = conn.WriteJSON(map[string]any{"id": req.ID, "result": map[string]any{"turn": map[string]string{}}})
 				continue
 			}
-			turnID := "fake-turn-" + strconv.FormatInt(turns.Add(1), 10)
+			var turnParams struct {
+				Input []struct {
+					Text string `json:"text"`
+				} `json:"input"`
+			}
+			if json.Unmarshal(req.Params, &turnParams) == nil && len(turnParams.Input) > 0 {
+				fakeAppendLog(logPath, "turn-prompt "+turnParams.Input[0].Text)
+			}
+			turnNumber := turns.Add(1)
+			turnID := "fake-turn-" + strconv.FormatInt(turnNumber, 10)
+			status := turnStatus
+			if int(turnNumber) <= len(turnStatuses) {
+				status = turnStatuses[turnNumber-1]
+			}
 			_ = conn.WriteJSON(map[string]any{"id": req.ID, "result": map[string]any{"turn": map[string]string{"id": turnID}}})
 			_ = conn.WriteJSON(map[string]any{"method": "turn/started", "params": map[string]any{"turn": map[string]string{"id": turnID}}})
 			if os.Getenv(fakeAppServerNoCompletionEnv) != "" {
 				continue
 			}
-			_ = conn.WriteJSON(map[string]any{"method": "turn/completed", "params": map[string]any{"turn": map[string]string{"id": turnID, "status": turnStatus}}})
+			_ = conn.WriteJSON(map[string]any{"method": "turn/completed", "params": map[string]any{"turn": map[string]string{"id": turnID, "status": status}}})
 		default:
 			_ = conn.WriteJSON(map[string]any{"id": req.ID, "error": map[string]any{"code": -32601, "message": "fake app server: unknown method"}})
 		}
