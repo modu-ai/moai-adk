@@ -28,6 +28,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -175,8 +176,13 @@ func loadWorktreeScan(t *testing.T, patterns ...string) (*readerIndex, []worktre
 	t.Helper()
 
 	root := findRepoRoot(t)
+	// NeedDeps + NeedImports are required for the fixture-mode scan: with a
+	// scoped explicit pattern, internal/config is a dependency, reachable
+	// only through a populated Imports map (NeedImports) carrying dep Types
+	// (NeedDeps). The scan loop itself still walks root packages only, so
+	// the production ./... scan is unchanged.
 	cfg := &packages.Config{
-		Mode: packages.NeedName | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedFiles,
+		Mode: packages.NeedName | packages.NeedDeps | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedFiles,
 		Dir:  root,
 	}
 	pkgs, err := packages.Load(cfg, patterns...)
@@ -226,43 +232,65 @@ func loadWorktreeScan(t *testing.T, patterns ...string) (*readerIndex, []worktre
 // liveWorktreeFields resolves WorkflowWorktreeConfig's live fields — Go name,
 // yaml key and *types.Var identity — from the loaded config package, so that
 // REQ-006 completeness and the scan both run against the real struct rather
-// than a hardcoded field list.
+// than a hardcoded field list. The config package is looked up across the
+// loaded package graph (roots and their transitive imports): a scoped scan
+// such as the fixture characterization loads the fixture package as the only
+// root, with internal/config reachable as an import.
 func liveWorktreeFields(t *testing.T, pkgs []*packages.Package) []worktreeField {
 	t.Helper()
-	for _, pkg := range pkgs {
-		if pkg.PkgPath != worktreeConfigPkgPath || pkg.Types == nil {
-			continue
+	var configPkg *packages.Package
+	seen := map[*packages.Package]bool{}
+	var walk func(*packages.Package)
+	walk = func(p *packages.Package) {
+		if p == nil || seen[p] {
+			return
 		}
-		obj := pkg.Types.Scope().Lookup(worktreeConfigTypeName)
-		if obj == nil {
-			continue
+		seen[p] = true
+		if p.PkgPath == worktreeConfigPkgPath && p.Types != nil && configPkg == nil {
+			configPkg = p
 		}
-		named, ok := obj.Type().(*types.Named)
-		if !ok {
-			continue
+		for _, imp := range p.Imports {
+			walk(imp)
 		}
-		st, ok := named.Underlying().(*types.Struct)
-		if !ok {
-			continue
-		}
-		out := make([]worktreeField, 0, st.NumFields())
-		for i := 0; i < st.NumFields(); i++ {
-			f := st.Field(i)
-			if !f.Exported() {
-				continue
-			}
-			tag := reflect.StructTag(st.Tag(i)).Get("yaml")
-			out = append(out, worktreeField{
-				name:    f.Name(),
-				yamlKey: strings.SplitN(tag, ",", 2)[0],
-				obj:     f,
-			})
-		}
-		return out
 	}
-	t.Fatalf("%s.%s not found among loaded packages — cannot resolve field objects",
-		worktreeConfigPkgPath, worktreeConfigTypeName)
-	return nil
+	for _, pkg := range pkgs {
+		walk(pkg)
+	}
+	if configPkg == nil {
+		t.Fatalf("%s.%s not found among loaded packages — cannot resolve field objects",
+			worktreeConfigPkgPath, worktreeConfigTypeName)
+		return nil
+	}
+	obj := configPkg.Types.Scope().Lookup(worktreeConfigTypeName)
+	if obj == nil {
+		t.Fatalf("%s not declared in %s — cannot resolve field objects",
+			worktreeConfigTypeName, worktreeConfigPkgPath)
+		return nil
+	}
+	named, ok := obj.Type().(*types.Named)
+	if !ok {
+		t.Fatalf("%s in %s is not a named type", worktreeConfigTypeName, worktreeConfigPkgPath)
+		return nil
+	}
+	st, ok := named.Underlying().(*types.Struct)
+	if !ok {
+		t.Fatalf("%s in %s does not have a struct underlying type", worktreeConfigTypeName, worktreeConfigPkgPath)
+		return nil
+	}
+	out := make([]worktreeField, 0, st.NumFields())
+	for i := 0; i < st.NumFields(); i++ {
+		f := st.Field(i)
+		if !f.Exported() {
+			continue
+		}
+		tag := reflect.StructTag(st.Tag(i)).Get("yaml")
+		out = append(out, worktreeField{
+			name:    f.Name(),
+			yamlKey: strings.SplitN(tag, ",", 2)[0],
+			obj:     f,
+		})
+	}
+	return out
 }
 
 // scanFileForWorktreeFieldReads walks one file and records every
@@ -356,5 +384,45 @@ func sortedStringKeys[V any](m map[string]V) []string {
 	return keys
 }
 
-// The fixture-mode characterization (TestWorkflowWorktreeKeyHonestyAliasFixture)
-// lands with the testdata fixture package (M2 of plan.md §F).
+// TestWorkflowWorktreeKeyHonestyAliasFixture is the alias characterization
+// (M2): the same scan path, pointed at the testdata fixture package by
+// explicit pattern, proves alias-copy reads are attributed (AC-005a), plain
+// `=` writes are excluded (AC-005b), compound assignments are reads
+// (AC-005c) and the legacy text accessor string is absent from the alias
+// fixture source (AC-005d — the t682 text scan's blind spot, recorded as
+// evidence).
+func TestWorkflowWorktreeKeyHonestyAliasFixture(t *testing.T) {
+	const (
+		fixturePattern = "./internal/template/testdata/worktreekeyaliasprobe"
+		fixtureDir     = "internal/template/testdata/worktreekeyaliasprobe"
+	)
+	idx, _ := loadWorktreeScan(t, fixturePattern)
+
+	if len(idx.typeErrors) > 0 {
+		t.Fatalf("type errors in the fixture package — fixture scan is unreliable:\n  %s",
+			strings.Join(idx.typeErrors, "\n  "))
+	}
+
+	// AC-005a — alias-copy read attributed.
+	if !idx.readers["AutoCleanup"][fixtureDir+"/aliasprobe.go"] {
+		t.Errorf("AC-005a: aliasprobe.go reads AutoCleanup through a local alias copy but was not attributed as a reader")
+	}
+	// AC-005b — plain-`=` write excluded (REQ-002).
+	if idx.readers["AutoCleanup"][fixtureDir+"/writeonly.go"] {
+		t.Errorf("AC-005b: writeonly.go touches AutoCleanup only as a plain `=` write — it must not be classified as a reader")
+	}
+	// AC-005c — compound assignment is a read (REQ-002).
+	if !idx.readers["SessionNamePattern"][fixtureDir+"/compoundassign.go"] {
+		t.Errorf("AC-005c: compoundassign.go consumes SessionNamePattern via += and must be classified as a reader")
+	}
+
+	// AC-005d — characterization: the legacy text accessor string has zero
+	// matches in the alias fixture source (comments included).
+	src, err := os.ReadFile(filepath.Join(findRepoRoot(t), fixtureDir, "aliasprobe.go"))
+	if err != nil {
+		t.Fatalf("read aliasprobe.go: %v", err)
+	}
+	if strings.Contains(string(src), ".Workflow.Worktree.AutoCleanup") {
+		t.Errorf("AC-005d: aliasprobe.go carries the literal accessor string — the alias-copy shape must not spell the full accessor")
+	}
+}
