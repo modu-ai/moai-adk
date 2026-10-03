@@ -10,13 +10,17 @@
 | E1 | `grep -c '"wait"' internal/cli/integration.go` | `0` | acquire has no `--wait` flag |
 | E2 | `grep -n -i "queue\|ticket\|waiter" internal/kanban/integration_lock.go internal/kanban/integration_lock_mutation.go \| wc -l` | `0` | the record carries no queue |
 | E3 | `grep -n 'Use:   "' internal/cli/integration.go` | `integration [command]`, `status`, `acquire`, `release` (lines 254/274/329/457) | no `push`, no policy verb |
-| E4 | `grep -rn "LeadPushThreshold" internal \| grep -v _test.go \| grep -v internal/config/ \| wc -l` | `0` | threshold has no consumer |
+| E4 | `grep -rn "LeadPushThreshold" internal \| grep -v _test.go \| grep -v internal/config/ \| wc -l` | `0` | threshold has no consumer — since v0.3.0 this cell belongs to SPEC-CANDIDATE-CI-001 (push verb moved), kept here as history |
 | E5 | `grep -n 'strings.Contains(strings.ToLower(string(raw)), full\[:12\])' internal/homestate/card_evidence_readers.go` | line `255` | gate = SHA substring |
 | E6 | `grep -n 'factoryWriteMergeRecord(root' internal/cli/factory_card.go` | line `1418` (def. `1616`) | complete writes its own stand-in |
 | E7 | `grep -n "nominat\|지명" AGENTS.local.md` | line `221`: "리더의 창 지명만이 근거다." | nomination doctrine live |
 | E8 | `grep -n "announcement to the lead" …/kanban-dispatch-mechanics.md` (template + local) | line `120` in both | distributed text keeps announcement layer |
 | E9 | `grep -n -i -w "lease\|expires\|expiry" internal/kanban/integration_lock*.go \| wc -l` | `0` | no window lease today (a bare `lease` grep returns 29 — all inside "release"; word-bounded is the valid probe) |
 | E10 | `grep -n "exec.Command\|\"test\"" internal/factorylane/merge.go` | only `86: exec.Command("git", args...)` | pre-merge triple runs no tests |
+| E11 | no-`--wait` acquire against a live foreign holder (fixture) on a binary built from this branch (Go code = merge base `d7112d005`) | exit `1`, empty stdout, refusal on stderr, record unchanged — both human and `--json` | the baseline AC-MWQ-011 compares against; committed in `3bc274dac`, `.moai/reports/t1479/baseline-acquire-nowait/` |
+
+The plan audit re-ran E1, E3, E5-E8, E10 on `1e1d0cc84` and reproduced them; it did not run the
+piped cells E2, E4, E9 (single-invocation form) — they rest on this plan run's measurement only.
 
 ## §R2 Code map
 
@@ -31,23 +35,21 @@
   `internal/cli/factory_card.go` (complete: window phase 1325-1350, own acquire ~1380, merge
   1408-1425, stand-in record 1612-1628), `internal/cli/session_worktree_automerge.go:93-100`
   (session-end automerge; calls acquire with force=false — must stay unchanged),
-  `internal/hook/integration_lock_guard.go:84` (PreToolUse guard; REQ-MWQ-051).
+  `internal/hook/integration_lock_guard.go:84` (PreToolUse guard; REQ-MWQ-025).
 - `internal/homestate/card_evidence_readers.go:205-258` — `verifyMerge`: two-parent check, merge
   tree == second-parent tree, reachability from the integration branch, then the substring gate.
   The tree-identity property means the candidate tree is exactly the card branch tip tree after
-  absorbing the integration tip — the key REQ-MWQ-021 uses.
+  absorbing the integration tip — the key REQ-MWQ-015 uses.
 - `internal/factorylane/merge.go` — merge triple (sync-audit, conflict-free via
   `git merge-tree --write-tree`, tree identity), `VerifyRunBeforeAcquire`, `WindowCoversMerge`,
-  merge-check store. REQ-MWQ-033 adds a fourth named condition here.
-- `internal/cli/ci_verdict.go` — existing `gh run list --commit <head> --limit 1 --json
-  conclusion,databaseId` producer with an injectable `ghRunner` and `mapGHConclusion`; the push
-  verb's CI read (REQ-MWQ-041/042) reuses this rather than adding a second gh path.
-- `internal/config/types.go:133-140`, `defaults.go:1050` — `LeadPushThreshold` (manual mode; 0 =
-  disabled). This repository's value is `20` (`.moai/config/sections/git-strategy.yaml:26`); the
-  template ships `0`.
+  merge-check store. REQ-MWQ-023 adds a fourth named condition here.
+- `internal/cli/ci_verdict.go` and `internal/config/types.go:133-140` (`LeadPushThreshold`) — push
+  inputs; since v0.3.0 they belong to SPEC-CANDIDATE-CI-001 (see §R6 for the `--limit 1` finding).
 - `internal/config/envkeys.go:361` — `EnvFactoryRole` (`MOAI_FACTORY_ROLE`); lane value is the
-  role claim the policy and push verbs refuse (REQ-MWQ-012/043). A session with no value makes no
-  claim.
+  role claim the policy verb refuses (REQ-MWQ-013). A session with no value makes no claim.
+- Process start time for ticket liveness (REQ-MWQ-004): `homestate.CurrentProcessFingerprint()`
+  already pairs a pid with its start (used by the factory peer registry); reuse is the run phase's
+  choice.
 
 ## §R3 Doctrine surfaces
 
@@ -67,19 +69,58 @@
 
 - SPEC-INTEGRATION-LOCK-ATOMIC-001 (completed) — the mutation section; queue mutations ride it.
 - SPEC-INTEGRATION-LOCK-LIVENESS-001 (completed) — owner-pid anchor and the live-when-unknown
-  asymmetry REQ-MWQ-004 preserves.
+  asymmetry REQ-MWQ-007 preserves for holders (tickets use the waiter process instead, REQ-MWQ-004).
 - SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001 (completed) — additive-optional field precedent.
 - SPEC-FACTORY-LANE-AUTONOMY-001 (completed) — merge triple and WAITING verdict.
 - SPEC-FACTORY-SELF-DISPATCH-001 (completed) — REQ-SD-023 window phase in complete; REQ-SD-025
   Codex stop (out of scope here).
-- SPEC-LEAD-AUTOPUSH-001 (completed) — chose a docs-only surface for the threshold; this SPEC
-  supplies the mechanism that SPEC deferred.
-- SPEC-CI-VERDICT-PRODUCER-001 — the gh conclusion mapping reused by the push verb.
+- SPEC-LEAD-AUTOPUSH-001 (completed) — chose a docs-only surface for the threshold; the mechanism
+  it deferred is now SPEC-CANDIDATE-CI-001 REQ-CCI-012/013 (not this SPEC, since v0.3.0).
 
 ## §R5 Card t1478 coupling
 
-t1478 (`moai integration candidate`, `ci/<card>` branches) is queued and not landed
-(`git log --oneline develop | grep -i t1478` → no output on this tree). The SPEC therefore defines
-the candidate tree independently (absorbed card-branch tip) and admits a t1478 candidate CI run id
-as an alternative evidence form (REQ-MWQ-020/021). Whichever card lands second adapts to the other;
-see decision-index.md Q5.
+t1478 (SPEC-CANDIDATE-CI-001, `moai integration candidate`, `ci/<card>` branches) is not landed
+(`git log --oneline develop | grep -i t1478` → no output on this tree). Its draft (v0.4.0, read from
+its card worktree `agent-a18f82893f35ed6c4`, uncommitted to develop) names the key
+`workflow.candidate_ci.enabled` (REQ-CCI-023, template default false), a shared landing check
+called by every develop-merging path (REQ-CCI-011), and the push verb (REQ-CCI-012/013).
+
+This SPEC therefore:
+
+- selects the record form by `workflow.candidate_ci.enabled`, absent = false (REQ-MWQ-015);
+- uses REQ-CCI-011 as the in-window identity check when the key is true (REQ-MWQ-018);
+- carries no push requirement (§E).
+
+Whichever card lands second re-reads the other's committed key path and landing-check contract
+and adapts its own text; the draft read above is a moving source, not a citation of record.
+
+## §R6 Hand-off to SPEC-CANDIDATE-CI-001 (card t1478) — push-verb findings
+
+The push verb left this SPEC in v0.3.0 (leader decision Q8). The plan audit of this SPEC
+(`.moai/reports/t1479/plan-audit-iter1.md` D8) found three blocking defects in the push design
+as it stood here. They are handed off, not dropped; t1478's v0.4.0 text already addresses (c) and
+partly (a)/(b) — its owner confirms each:
+
+- **(a) Repair push on a red remote tip.** A rule that refuses every push while the remote tip is
+  red also refuses the push that would repair it. A repair path is needed — t1478 REQ-CCI-013 has a
+  repair-card exception; confirm it is recorded and never force.
+- **(b) Wrong CI run read.** `gh run list --commit <head> --limit 1` returns the newest run, which
+  may be in progress while an earlier completed run on the same tip failed — read as "no completed
+  run", the hold is bypassed. Read the most recent COMPLETED run (or all runs) for the tip SHA, and
+  treat the mapped failure class (failure, timed_out, startup_failure — `mapGHConclusion`,
+  `internal/cli/ci_verdict.go:167`) as red.
+- **(c) Push the verified SHA, not the branch name.** Checking the window and then pushing the
+  moving name `develop` lets a lane merge in between; push `<sha>:refs/heads/develop` for the pinned
+  SHA that was verified (t1478 REQ-CCI-012 does this).
+- Optional (d): "leader-only" was enforced only as "not lane role" (`MOAI_FACTORY_ROLE`); either
+  narrow the wording or define a leader marker.
+
+## §R7 Residual risk — starvation under the front-once rule
+
+REQ-MWQ-020 guarantees that a reserved ticket neither blocks the queue nor waits behind later
+arrivals once it is ready. It does not guarantee a merge: if the reserved owner becomes ready while
+another lane holds the window, that holder's own merge moves the integration tip, the reserved
+ticket's record goes stale, and the next base move sends it to the tail under the leader's Q4/Q11
+rule. Under sustained arrivals a lane can still be requeued repeatedly. The run phase measures the
+requeue count per merge with a rule-model test (plan-audit operational note) and reports it; a
+change to the rule is a leader decision, not a run-phase fix.

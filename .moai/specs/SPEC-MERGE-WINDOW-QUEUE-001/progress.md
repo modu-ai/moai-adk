@@ -10,13 +10,14 @@
   date" at `d7112d005` (tree `632f65b47aa5`).
 - SPEC id regex check (Bash) → `PASS`; uniqueness: no `MERGE-WINDOW` entry in this tree's or the
   develop worktree's `.moai/specs/`.
-- RED-now baseline cells E1-E10 measured on that tree (research.md §R1).
-- Decisions: Q1 = recorded operator approval; Q2-Q6 = leader decisions (mission contract
-  07d28c4b) recorded in the verdict lines and folded into spec.md v0.2.0 (REQ-MWQ-005, -009,
-  -009a, -021, -021a, -021b, -024, -032), acceptance.md (AC-MWQ-005a, -009, -009a, -021, -021a,
-  -021b, -024, -032), plan.md (new M0 lease-baseline milestone; M1/M2/M3/M6). Target v3.2.0.
-  No open decision blocks run entry.
-- Plan audit not run (card instruction).
+- RED-now baseline cells E1-E10 measured on that tree (research.md §R1); E11 (no-`--wait`
+  acquire fixture) captured on a build of this branch (Go code = `d7112d005`) and committed ahead
+  of any code in `3bc274dac` (`.moai/reports/t1479/baseline-acquire-nowait/`).
+- Decisions: Q1 = recorded operator approval; Q2-Q6 (v0.2.0) and Q8-Q13 (v0.3.0, plan-audit
+  iteration 1) = leader decisions (mission contract 07d28c4b) in the verdict lines. Target v3.2.0.
+- Open: decision-index Q14 (heartbeat interval/window, slice re-entry grace) — blocks M1.
+- Plan audit iteration 1: FAIL 0.75 (`.moai/reports/t1479/plan-audit-iter1.md`, verbatim copy).
+  v0.3.0 revision: 25 REQ / 25 AC, contiguous 001-025; push verb moved to SPEC-CANDIDATE-CI-001.
 
 ## §E.2 Run-phase Evidence
 
