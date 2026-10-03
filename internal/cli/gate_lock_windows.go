@@ -3,7 +3,7 @@
 package cli
 
 // gate_lock_windows.go — Windows substrate of the gate-run lock:
-// atomic-create (O_CREATE|O_EXCL), mirroring internal/kanban
+// atomic-create (O_CREATE|O_EXCL), mirroring internal/factory
 // board_lock_windows.go / board_lock_clear_windows.go. Windows lacks
 // fcntl-style advisory flock, so the artifact IS the lock: a holder killed
 // mid-run leaves an artifact that blocks every subsequent gate run until it
@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 const (
@@ -35,7 +35,7 @@ const (
 // package-level indirection so the release-and-reacquire interleaving can be
 // constructed in tests AT THE PROBE — the step the clear runs immediately
 // before its pre-removal re-read.
-var gateLockProcessAlive = kanban.FactoryProcessAlive
+var gateLockProcessAlive = factory.FactoryProcessAlive
 
 // interruptedAcquisitionGrace is how long the clear waits, when it finds an
 // EMPTY lock artifact, before the pre-removal re-read — long enough to cover

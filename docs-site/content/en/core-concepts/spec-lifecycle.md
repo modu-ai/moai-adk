@@ -110,4 +110,4 @@ Even when the session is cut, the SPEC stays in its files — that is the starti
 - [`/moai plan`](/en/workflow-commands/moai-plan) · [`/moai run`](/en/workflow-commands/moai-run) · [`/moai sync`](/en/workflow-commands/moai-sync) — execution detail of each phase command
 - [Development Methodology (DDD/TDD)](/en/core-concepts/ddd) — the two methodology cycles the run phase follows
 - [TRUST 5 Quality Framework](/en/core-concepts/trust-5) — the quality frame run artifacts must pass
-- [Kanban Mode](/en/advanced/kanban-mode) — the shape that runs this lifecycle on a multi-session board
+- [Factory Mode](/en/advanced/factory-mode) — the shape that runs this lifecycle across several lane sessions

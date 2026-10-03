@@ -81,8 +81,8 @@ func TestAmbiguousLeaderJoinSelectsNamedLeaderRun(t *testing.T) {
 	if len(*asked) != 1 || (*asked)[0] != "leader" {
 		t.Errorf("discovery asked = %v, want exactly [leader]", *asked)
 	}
-	if runID := os.Getenv(config.EnvMoaiKanbanID); runID != "ambigruna" {
-		t.Errorf("%s = %q, want the named leader's run ambigruna", config.EnvMoaiKanbanID, runID)
+	if runID := os.Getenv(config.EnvFactoryRunID); runID != "ambigruna" {
+		t.Errorf("%s = %q, want the named leader's run ambigruna", config.EnvFactoryRunID, runID)
 	}
 }
 
@@ -148,7 +148,7 @@ func TestAmbiguousRefusalCarriesResolutionGuidance(t *testing.T) {
 // ② the codex head classifier stops refusing --factory-run on the lane
 // entry: the token travels to the parser, which owns its validation.
 func TestCodexClassifyAllowsFactoryRunOnLaneEntry(t *testing.T) {
-	entry, diag := codexFactoryEntryClassify([]string{"-f", "lane", "--factory-run", "ambigruna"})
+	entry, diag := codexFactoryEntryClassify([]string{"-l", "--factory-run", "ambigruna"})
 	if diag != "" {
 		t.Fatalf("classify diag = %q, want empty (parser owns --factory-run)", diag)
 	}
@@ -166,8 +166,8 @@ func TestCodexFactoryRunWithoutLaneStillRefused(t *testing.T) {
 	}
 	_ = entry
 	_, _, err := parseCodexFactoryEntry([]string{"--factory-run", "ambigruna"})
-	if err == nil || !strings.Contains(err.Error(), "--factory-run requires -f/--factory") {
-		t.Fatalf("parse err = %v, want the requires--f refusal", err)
+	if err == nil || !strings.Contains(err.Error(), "--factory-run requires -l/--lane") {
+		t.Fatalf("parse err = %v, want the requires--l refusal", err)
 	}
 }
 
@@ -185,8 +185,8 @@ func TestExplicitFactoryRunJoinsNamedRunAmongTwoLive(t *testing.T) {
 		t.Fatalf("explicit join among two live runs = %v, want ambigrunb", err)
 	}
 	defer restore()
-	if runID := os.Getenv(config.EnvMoaiKanbanID); runID != "ambigrunb" {
-		t.Errorf("%s = %q, want the explicitly named ambigrunb", config.EnvMoaiKanbanID, runID)
+	if runID := os.Getenv(config.EnvFactoryRunID); runID != "ambigrunb" {
+		t.Errorf("%s = %q, want the explicitly named ambigrunb", config.EnvFactoryRunID, runID)
 	}
 }
 
@@ -200,17 +200,17 @@ func TestCodexRelaunchJoinCarriesFactoryRunID(t *testing.T) {
 	seedLiveRun(t, root, "ambigruna")
 	seedLiveRun(t, root, "ambigrunb")
 
-	_, entry, perr := parseCodexFactoryEntry([]string{"-f", "lane", "--factory-run", "ambigruna"})
+	_, entry, perr := parseCodexFactoryEntry([]string{"-l", "--factory-run", "ambigruna"})
 	if perr != nil {
-		t.Fatalf("parse -f lane --factory-run: %v", perr)
+		t.Fatalf("parse -l --factory-run: %v", perr)
 	}
 	restore, err := enterCodexRelaunchJoin(root, entry, nil)
 	if err != nil {
 		t.Fatalf("codex relaunch join with --factory-run among two live runs = %v, want ambigruna", err)
 	}
 	defer restore()
-	if runID := os.Getenv(config.EnvMoaiKanbanID); runID != "ambigruna" {
-		t.Errorf("%s = %q, want the explicitly named ambigruna", config.EnvMoaiKanbanID, runID)
+	if runID := os.Getenv(config.EnvFactoryRunID); runID != "ambigruna" {
+		t.Errorf("%s = %q, want the explicitly named ambigruna", config.EnvFactoryRunID, runID)
 	}
 }
 

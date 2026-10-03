@@ -202,7 +202,7 @@ MoAI-ADK 템플릿은 **34개 스킬**을 제공합니다. 요청을 알맞은 �
 | ---- | ------ |
 | `moai-meta-harness` | **DEPRECATED** — 레거시 7-Phase 메타 하네스. v4 Builder(`/moai:harness <자연어 요청>`)로 리다이렉트 |
 | `moai-harness-learner` | 하네스 학습 서브시스템, 자동 업데이트 제안 |
-| `moai-kanban-foreman` | 무인 칸반 포어맨 1회차 — 백로그 감시, 선택된 카드를 격리 워커로 배분, 증거 수집 |
+| `moai-factory-foreman` | 무인 팩토리 포어맨 1회차 — 백로그 감시, 선택된 카드를 격리 워커로 배분, 증거 수집 |
 
 ## 스킬 네임스페이스와 소유권
 

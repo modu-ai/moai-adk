@@ -1,0 +1,76 @@
+package cli
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"testing"
+
+	"github.com/spf13/cobra"
+)
+
+func TestZZT1399EntryProbe(t *testing.T) {
+	ccCases := [][]string{
+		{"-f", "--name", "lane-2"},
+		{"-f", "-n", "lane-2"},
+		{"--factory", "--name=lane-2"},
+		{"-f", "--name", "leader-r7"},
+		{"--lane"},
+		{"--lane", "lane-2"},
+		{"--lane=lane-2"},
+		{"--lane", "3"},
+		{"--lane", "leader-2"},
+		{"--lane", "-f"},
+		{"-l"},
+		{"-l", "lane-2"},
+		{"-l", "3"},
+		{"-l=lane-2"},
+		{"-l", "leader-2"},
+		{"-l", "-f"},
+		{"-l", "-k"},
+		{"-l", "--name", "lane-2"},
+		{"-f", "-l"},
+		{"--lane", "-k"},
+		{"--lane", "--name", "lane-2"},
+		{"--leader", "leader-2"},
+		{"--leader=leader-2"},
+		{"-f", "--leader", "leader-2"},
+		{"-f", "--leader=leader-2"},
+	}
+	for _, args := range ccCases {
+		entry, err := parseLauncherEntry(args)
+		if err != nil {
+			fmt.Printf("CCPARSE args=%q parseErr=%q\n", args, err.Error())
+			continue
+		}
+		label, isLane := parseFactoryLaneLabel(entry.Rest)
+		b := resolveFactoryBranch(entry.FactoryEnabled, isLane)
+		fmt.Printf("CCPARSE args=%q factoryEnabled=%v rest=%q laneLabel=%q isLane=%v branch=%d\n", args, entry.FactoryEnabled, entry.Rest, label, isLane, int(b))
+	}
+	codexCases := [][]string{
+		{"--lane"},
+		{"--lane", "lane-2"},
+		{"--lane=lane-2"},
+		{"--lane", "3"},
+		{"--lane", "leader-2"},
+		{"--lane", "-f"},
+		{"--lane", "-k"},
+		{"--lane", "--name", "lane-2"},
+		{"-f", "-l"},
+		{"--leader", "leader-2"},
+		{"-f", "--leader", "leader-2"},
+	}
+	for _, args := range codexCases {
+		cmd := &cobra.Command{Use: "codex"}
+		var out, errb bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetErr(&errb)
+		err := runCodex(cmd, args)
+		code := -1
+		var ec *exitCodeError
+		if errors.As(err, &ec) {
+			code = ec.code
+		}
+		fmt.Printf("CODEX args=%q err=%v exitCode=%d stderr=%q stdoutLen=%d\n", args, err, code, errb.String(), out.Len())
+	}
+}

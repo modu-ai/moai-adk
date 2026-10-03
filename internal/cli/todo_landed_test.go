@@ -29,14 +29,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // landedFixture is a project root whose git history is PINNED for the
 // attribution criteria, plus the SHAs those criteria name.
 type landedFixture struct {
 	root  string
-	store *kanban.BacklogStore
+	store *factory.BacklogStore
 	// mentioning are the three commits whose messages name card t1. They sit
 	// BELOW the head, so none of them is the ref position — which is what
 	// lets AC-TLE-012 assert a containment set that excludes ref_head by
@@ -93,7 +93,7 @@ func gitOut(t *testing.T, dir string, args ...string) string {
 }
 
 // landingOf returns the decoded record for id, and whether one is present.
-func landingOf(t *testing.T, store *kanban.BacklogStore, id string) (kanban.LandingEvidence, bool) {
+func landingOf(t *testing.T, store *factory.BacklogStore, id string) (factory.LandingEvidence, bool) {
 	t.Helper()
 	rec, err := store.Load()
 	if err != nil {
@@ -102,13 +102,13 @@ func landingOf(t *testing.T, store *kanban.BacklogStore, id string) (kanban.Land
 	for _, it := range rec.Items {
 		if it.ID == id {
 			if it.Landing == nil {
-				return kanban.LandingEvidence{}, false
+				return factory.LandingEvidence{}, false
 			}
 			return *it.Landing, true
 		}
 	}
 	t.Fatalf("no card %s in the queue", id)
-	return kanban.LandingEvidence{}, false
+	return factory.LandingEvidence{}, false
 }
 
 // openQueueDB opens the engine database read-only for the SQL-level
@@ -116,7 +116,7 @@ func landingOf(t *testing.T, store *kanban.BacklogStore, id string) (kanban.Land
 // Asking Go's decoded view would answer a different question: the criteria
 // are about what is IN THE COLUMN, and a nil pointer can be produced by a
 // read path that never looked.
-func openQueueDB(t *testing.T, store *kanban.BacklogStore) *sql.DB {
+func openQueueDB(t *testing.T, store *factory.BacklogStore) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("sqlite", store.EnginePath())
 	if err != nil {
@@ -127,7 +127,7 @@ func openQueueDB(t *testing.T, store *kanban.BacklogStore) *sql.DB {
 }
 
 // landingIsNULL answers the criteria's own predicate.
-func landingIsNULL(t *testing.T, store *kanban.BacklogStore, id string) int {
+func landingIsNULL(t *testing.T, store *factory.BacklogStore, id string) int {
 	t.Helper()
 	var n int
 	if err := openQueueDB(t, store).QueryRow(
@@ -138,7 +138,7 @@ func landingIsNULL(t *testing.T, store *kanban.BacklogStore, id string) int {
 }
 
 // storedLanding returns the raw column text, and whether it is non-NULL.
-func storedLanding(t *testing.T, store *kanban.BacklogStore, id string) (string, bool) {
+func storedLanding(t *testing.T, store *factory.BacklogStore, id string) (string, bool) {
 	t.Helper()
 	var v sql.NullString
 	if err := openQueueDB(t, store).QueryRow(
@@ -150,7 +150,7 @@ func storedLanding(t *testing.T, store *kanban.BacklogStore, id string) (string,
 
 // queueTuples renders the ordered (id, state, position, text, spec_id) tuple
 // list AC-TLE-008 compares. Position is the 1-based render order.
-func queueTuples(t *testing.T, store *kanban.BacklogStore) []string {
+func queueTuples(t *testing.T, store *factory.BacklogStore) []string {
 	t.Helper()
 	rec, err := store.Load()
 	if err != nil {
@@ -169,9 +169,9 @@ func queueTuples(t *testing.T, store *kanban.BacklogStore) []string {
 
 // setState marks a card without going through a verb, so a criterion about
 // what the LANDED verb does is not entangled with what `next` does.
-func setState(t *testing.T, store *kanban.BacklogStore, id string, state kanban.BacklogState) {
+func setState(t *testing.T, store *factory.BacklogStore, id string, state factory.BacklogState) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == id {
 				rec.Items[i].State = state
@@ -185,9 +185,9 @@ func setState(t *testing.T, store *kanban.BacklogStore, id string, state kanban.
 }
 
 // attachSpec attaches a spec id to a card the same way.
-func attachSpec(t *testing.T, store *kanban.BacklogStore, id, specID string) {
+func attachSpec(t *testing.T, store *factory.BacklogStore, id, specID string) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == id {
 				v := specID
@@ -285,9 +285,9 @@ func runTodoConcurrent(args ...string) error {
 func TestTodoLanded_StateCheckAndStatesUntouched(t *testing.T) {
 	f := newLandedFixture(t)
 	seedQueue(t, f.store, "queued card", "picked card")
-	setState(t, f.store, "t2", kanban.BacklogStatePicked)
+	setState(t, f.store, "t2", factory.BacklogStatePicked)
 
-	before := map[string]kanban.BacklogState{}
+	before := map[string]factory.BacklogState{}
 	rec, err := f.store.Load()
 	if err != nil {
 		t.Fatalf("load: %v", err)
@@ -331,8 +331,8 @@ func TestTodoLanded_StateCheckAndStatesUntouched(t *testing.T) {
 func TestTodoLanded_WholeQueueUnmoved(t *testing.T) {
 	f := newLandedFixture(t)
 	seedQueue(t, f.store, "alpha", "bravo", "charlie", "delta", "echo")
-	setState(t, f.store, "t2", kanban.BacklogStatePicked)
-	setState(t, f.store, "t4", kanban.BacklogStateDropped)
+	setState(t, f.store, "t2", factory.BacklogStatePicked)
+	setState(t, f.store, "t4", factory.BacklogStateDropped)
 	attachSpec(t, f.store, "t3", "SPEC-FIXTURE-LANDED-001")
 	writeSpecStatus(t, f.root, "SPEC-FIXTURE-LANDED-001", "implemented")
 
@@ -433,9 +433,9 @@ func TestTodoLanded_SpecStatusReadNeverInvented(t *testing.T) {
 		t.Errorf("t1 spec_status = %q, want %q", ev1.SpecStatus, "implemented")
 	}
 	ev2, _ := landingOf(t, f.store, "t2")
-	if ev2.SpecStatus != kanban.LandingSpecStatusUnknown {
+	if ev2.SpecStatus != factory.LandingSpecStatusUnknown {
 		t.Errorf("t2 spec_status = %q, want the explicit unknown marker %q — an unreadable status is never defaulted",
-			ev2.SpecStatus, kanban.LandingSpecStatusUnknown)
+			ev2.SpecStatus, factory.LandingSpecStatusUnknown)
 	}
 
 	// Second phase: the fixture's frontmatter changes, and the read must
@@ -470,7 +470,7 @@ func TestTodoLanded_NoSHADerivedFromTheGrep(t *testing.T) {
 	if strings.TrimSpace(ev.SHA) != "" {
 		t.Errorf("stored delivering SHA = %q, want empty: no --sha was supplied and the machine has no lawful source", ev.SHA)
 	}
-	if ev.SHASource == kanban.LandingSHASourceOperator {
+	if ev.SHASource == factory.LandingSHASourceOperator {
 		t.Errorf("stored provenance = %q with no operator assertion", ev.SHASource)
 	}
 	raw, _ := storedLanding(t, f.store, "t1")
@@ -516,8 +516,8 @@ func TestTodoLanded_SHAValidation(t *testing.T) {
 			t.Errorf("stored SHA = %q, want the resolved full SHA %q (never the abbreviated input %q)",
 				ev.SHA, f.mentioning[1], abbrev)
 		}
-		if ev.SHASource != kanban.LandingSHASourceOperator {
-			t.Errorf("stored provenance = %q, want %q", ev.SHASource, kanban.LandingSHASourceOperator)
+		if ev.SHASource != factory.LandingSHASourceOperator {
+			t.Errorf("stored provenance = %q, want %q", ev.SHASource, factory.LandingSHASourceOperator)
 		}
 	})
 

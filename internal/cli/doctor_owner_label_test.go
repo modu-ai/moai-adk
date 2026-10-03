@@ -9,7 +9,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 
 	_ "modernc.org/sqlite"
 )
@@ -34,11 +34,11 @@ func TestDoctorOwnerLabelDrift(t *testing.T) {
 		// The runtime tables come into being through the store's own write
 		// path (whose normalization is why the legacy rows below are then
 		// hand-written raw: after REQ-TSP-052 no code path writes them).
-		store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+		store := factory.NewBacklogStore(factory.BacklogPathForRoot(root))
 		if _, _, err := store.Add("drift fixture card"); err != nil {
 			t.Fatalf("seed card: %v", err)
 		}
-		if err := kanban.RecordFactoryCardState(root, "run-canonical", "t1", "lane-1", "", "assigned", "card.assigned"); err != nil {
+		if err := factory.RecordFactoryCardState(root, "run-canonical", "t1", "lane-1", "", "assigned", "card.assigned"); err != nil {
 			t.Fatalf("seed canonical assignment: %v", err)
 		}
 		db, err := sql.Open("sqlite", store.EnginePath())

@@ -8,22 +8,22 @@ package statusline
 import (
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestBacklogCountsForRootExcludesHeldCards(t *testing.T) {
 	root := t.TempDir()
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRootAdopting(root))
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		states := []kanban.BacklogState{
-			kanban.BacklogStatePicked,
-			kanban.BacklogStateQueued,
-			kanban.BacklogStateQueued,
-			kanban.BacklogStateHold,
+	store := factory.NewBacklogStore(factory.BacklogPathForRootAdopting(root))
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		states := []factory.BacklogState{
+			factory.BacklogStatePicked,
+			factory.BacklogStateQueued,
+			factory.BacklogStateQueued,
+			factory.BacklogStateHold,
 		}
 		for _, state := range states {
 			rec.LastSeq++
-			rec.Items = append(rec.Items, kanban.BacklogItem{
+			rec.Items = append(rec.Items, factory.BacklogItem{
 				ID:      "t" + itoa(rec.LastSeq),
 				Text:    "hold-count fixture card",
 				AddedAt: "2026-09-29T00:00:00Z",
@@ -35,7 +35,7 @@ func TestBacklogCountsForRootExcludesHeldCards(t *testing.T) {
 		t.Fatalf("seed queue: %v", err)
 	}
 
-	counts := kanban.BacklogCountsForRoot(root)
+	counts := factory.BacklogCountsForRoot(root)
 	if !counts.Available {
 		t.Fatal("queue unreadable — the fixture is broken, not the contract")
 	}
@@ -47,17 +47,17 @@ func TestBacklogCountsForRootExcludesHeldCards(t *testing.T) {
 	// Positive control (mutation): the same card in queued state moves the
 	// queued count to 3 — the aggregate sees a held row, it does not ignore
 	// the queue.
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
-			if rec.Items[i].State == kanban.BacklogStateHold {
-				rec.Items[i].State = kanban.BacklogStateQueued
+			if rec.Items[i].State == factory.BacklogStateHold {
+				rec.Items[i].State = factory.BacklogStateQueued
 			}
 		}
 		return nil
 	}); err != nil {
 		t.Fatalf("flip hold to queued: %v", err)
 	}
-	counts = kanban.BacklogCountsForRoot(root)
+	counts = factory.BacklogCountsForRoot(root)
 	if counts.Queued != 3 {
 		t.Errorf("positive control: queued = %d, want 3 once the held card is queued", counts.Queued)
 	}

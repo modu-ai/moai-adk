@@ -21,7 +21,7 @@
 //     guard that blocked on uncertainty would wedge the batch it protects.
 //
 // One asymmetry with the branch guard is deliberate: an UNREADABLE record
-// allows here, while `kanban.ReadIntegrationLock` treats the same record as a
+// allows here, while `factory.ReadIntegrationLock` treats the same record as a
 // hard error for its CLI callers. The CLI is a lane asking "may I enter?",
 // where refusing to answer is the safe reply; the guard is on a hot tool path,
 // where the same refusal would deny every git merge in the repository until
@@ -35,7 +35,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // integrationLockViolationPrefix is the deny sentinel. The orchestrator
@@ -81,7 +81,7 @@ func checkIntegrationLock(input *HookInput, projectRoot string) (decision string
 		}
 	}
 
-	lock, err := kanban.ReadIntegrationLock(projectRoot)
+	lock, err := factory.ReadIntegrationLock(projectRoot)
 	if err != nil {
 		// Fail open, loudly. See the package comment: refusing every merge in
 		// the repository because one JSON file is malformed is a worse
@@ -118,7 +118,7 @@ func checkIntegrationLock(input *HookInput, projectRoot string) (decision string
 
 // holderLabelOf prefers the human-facing session name over the id, so a deny
 // names the lane an operator would address in a dispatch.
-func holderLabelOf(lock *kanban.IntegrationLock) string {
+func holderLabelOf(lock *factory.IntegrationLock) string {
 	if lock == nil {
 		return "unknown"
 	}

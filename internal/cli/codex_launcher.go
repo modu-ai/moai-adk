@@ -23,12 +23,13 @@ package cli
 // the shared probe, so no second classification path forks here (REQ-CL-007).
 // The status readout never writes; -w requires an existing worktree. POSIX direct
 // launch replaces moai with Codex (the -w lock names that one pid); Windows
-// retains the child Start/wait path. The kanban entry (-k) stays refused
+// retains the child Start/wait path. The retired chain-session entry (-k) stays refused
 // (SPEC-CODEX-FACTORY-RETIRE-001). The factory surface narrowed to exactly
-// `-f lane` (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003): a supervising loop
-// that leases each card on the parent checkout and starts one interactive
-// Codex session in the card's own worktree; every other factory shape keeps
-// its refusal (REQ-SD-004).
+// the lane entry `-l` / `--lane` (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003,
+// whose trigger SPEC-LAUNCHER-ENTRY-FLAGS-001 moved to the `-l` flag): a
+// supervising loop that leases each card on the parent checkout and starts one
+// interactive Codex session in the card's own worktree; `-f` in every shape
+// keeps its refusal (REQ-SD-004).
 
 import (
 	"context"
@@ -44,9 +45,9 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -57,7 +58,7 @@ const (
 	// codexUsageDiag is the one-line usage diagnostic every unknown token
 	// receives (AC-CL-002). Byte-identical for all six probe tokens so the
 	// rejection cannot leak which token was seen.
-	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app"
+	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w <worktree>] [-l] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app"
 
 	// Codex only enters an already-created worktree; -w needs its name or path.
 	codexWorktreeValueDiag = "-w requires an existing worktree name or path"
@@ -286,13 +287,13 @@ func defaultCodexSpawnLaunch(dir, program string, args, factoryEnv []string) err
 			identityErr = stampCodexLaneClaim(dir, factoryEnv, pid)
 		}
 		if identityErr == nil && launchEnvValue(factoryEnv, config.EnvMoaiFactoryWorker) == "" && codexExplicitFactoryEnv(factoryEnv) {
-			identityErr = stampFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvMoaiKanbanID), pid, start)
+			identityErr = stampFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvFactoryRunID), pid, start)
 		}
 		if identityErr != nil {
 			cleanupErr := codexSpawnCleanupPaneFn(paneID)
 			cleanupErr = errors.Join(cleanupErr, rollbackFactoryLaunchPending(context.Background(), dir, pending))
 			if codexExplicitFactoryEnv(factoryEnv) && launchEnvValue(factoryEnv, config.EnvMoaiFactoryWorker) == "" {
-				cleanupErr = errors.Join(cleanupErr, clearFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvMoaiKanbanID)))
+				cleanupErr = errors.Join(cleanupErr, clearFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvFactoryRunID)))
 			}
 			return fmt.Errorf("prepare spawned Codex: %w", errors.Join(identityErr, cleanupErr))
 		}
@@ -323,15 +324,12 @@ func defaultCodexSpawnPaneIdentity(paneID string) (int, string, error) {
 // export. A plain Codex launch scrubs them. An explicit -f launch supplies a
 // freshly selected factory identity after the scrub.
 var codexLaneLaunchEnvKeys = []string{
-	config.EnvMoaiKanban,
-	config.EnvMoaiKanbanID,
-	config.EnvMoaiKanbanSpec,
-	config.EnvMoaiKanbanLabel,
-	config.EnvMoaiKanbanLeadAddr,
-	config.EnvMoaiKanbanLeadName,
-	config.EnvMoaiKanbanBackend,
-	config.EnvMoaiKanbanCard,
-	config.EnvMoaiKanbanSettingsInjected,
+	config.EnvFactoryRunID,
+	config.EnvFactoryLeadAddr,
+	config.EnvFactoryLeadName,
+	config.EnvFactoryBackend,
+	config.EnvFactoryCard,
+	config.EnvFactorySettingsInjected,
 	config.EnvMoaiFactoryWorker,
 	config.EnvMoaiFactoryWorkers,
 	config.EnvFactoryRole,
@@ -371,7 +369,7 @@ func buildCodexSpawnCommandWithEnv(program string, args, factoryEnv []string) st
 	// Codex must bind through its own process identity, never a foreign Claude
 	// UUID or an outer launcher's PID.
 	parts = append(parts, config.EnvClaudeCodeSessionID+"=", config.EnvMoaiSessionPID+"=")
-	// The same holds for a Claude lane's kanban/factory identity: the pane
+	// The same holds for a Claude lane's factory identity: the pane
 	// would otherwise inherit it from this process or the tmux server and
 	// present itself as a peer of the lane's run.
 	for _, key := range codexLaneLaunchEnvKeys {
@@ -642,9 +640,7 @@ var codexCmd = &cobra.Command{
 		"  moai codex status     print the readiness readout (starts nothing)\n" +
 		"  moai codex app        launch the Codex desktop app (codex app)\n" +
 		"  -w <worktree>         launch in an existing worktree (never creates one)\n" +
-		"  -f                   start a factory run as leader (CLI only)\n" +
-		"  -f lane              join the active factory as the next lane (CLI only)\n" +
-		"  -f lane-<n>          join as a numbered lane (CLI only)\n" +
+		"  -l, --lane            join the active factory as the next lane (CLI only)\n" +
 		"  Factory sessions show launch_pending until their first prompt binds a session UUID.\n" +
 		"  --spawn               open the launch in a new tmux window\n" +
 		"  -d, --debug           launcher debug: trace the pre-exec path to stderr\n" +
@@ -706,9 +702,9 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	head, debugRequested := stripCodexDebugFlag(head)
 	// The factory entries classify before anything else is read or written
 	// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003/-004, narrowing
-	// REQ-CFR-001..005): `-f lane` routes to the per-card relaunch, every
-	// other factory shape prints its one refusal line. Tokens after -- are
-	// codex's own.
+	// REQ-CFR-001..005, SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-001/002/006): `-l` /
+	// `--lane` routes to the per-card relaunch, every other factory shape
+	// prints its one refusal line. Tokens after -- are codex's own.
 	entry, diag := codexFactoryEntryClassify(head)
 	if diag != "" {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), diag)
@@ -772,38 +768,37 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	return runCodexReadout(cmd)
 }
 
-// The refusal lines. They carry the same sentinels as the `moai cg` refusals
-// (D2), so one grep finds both. The factory line is the ONE wording source
-// REQ-SD-004 names: every Codex factory shape except `-f lane` prints it
-// byte-identically (AC-SD-004 compares stderr against this constant).
-const (
-	codexKanbanRefusalDiag = kanbanUnsupportedBackendSentinel +
-		": moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead"
-	codexFactoryRefusalDiag = factoryUnsupportedBackendSentinel +
-		": moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader"
-)
+// The factory refusal line. It carries the same sentinel as the `moai cg`
+// refusal (D2), so one grep finds both. It is the ONE wording source REQ-SD-004
+// names: every `-f` shape prints it byte-identically
+// (AC-SD-004 compares stderr against this constant). Since
+// SPEC-LAUNCHER-ENTRY-FLAGS-001 the lane entry is `-l`, so no `-f` shape is an
+// entry on moai codex, whatever its value. The retired `-k` entry prints
+// retiredEntryRefusal instead (launcher_retired_entries.go).
+const codexFactoryRefusalDiag = factoryUnsupportedBackendSentinel +
+	": moai codex has no -f entry; the lane entry is 'moai codex -l'; use 'moai cc -f' or 'moai glm -f' for the factory leader"
 
 // codexFactoryLegacyEntryCanonical is the canonical-form clause shared by the
 // lane-shape legacy refusals: on moai codex the only factory entry is the
-// `-f lane` relaunch.
-const codexFactoryLegacyEntryCanonical = "'moai codex -f lane' is the only Codex factory entry"
+// `-l` relaunch.
+const codexFactoryLegacyEntryCanonical = "'moai codex -l' is the only Codex factory entry"
 
 // codexFactoryLegacyRefusalDiag builds the REQ-RNC-003/-005/-007 refusal for
 // a legacy role spelling at the codex -f value position (AC-SD-021). The
 // message mirrors the REQ-RNC producer shapes (%q is the legacy …; <the
 // canonical form>) and names the canonical form for this surface: `moai
-// codex -f lane` for the lane shapes, `moai cc -f` / `moai glm -f` for the
+// codex -l` for the lane shapes, `moai cc -f` / `moai glm -f` for the
 // leader (codex launches no leader). ok is false for any non-legacy value —
 // the caller falls through to the REQ-SD-004 line.
 func codexFactoryLegacyRefusalDiag(value string) (diag string, ok bool) {
 	lowered := strings.ToLower(value)
-	if n, isLabel := kanban.SplitFactoryLegacyLabel(lowered); isLabel {
-		return fmt.Sprintf("%q is the legacy lane label; use %q — %s", value, kanban.FactoryLaneLabel(n), codexFactoryLegacyEntryCanonical), true
+	if n, isLabel := factory.SplitFactoryLegacyLabel(lowered); isLabel {
+		return fmt.Sprintf("%q is the legacy lane label; use %q — %s", value, factory.FactoryLaneLabel(n), codexFactoryLegacyEntryCanonical), true
 	}
-	if kanban.IsLegacyFactoryRoleValue(lowered) {
+	if factory.IsLegacyFactoryRoleValue(lowered) {
 		return fmt.Sprintf("%q is the legacy role token; %s", value, codexFactoryLegacyEntryCanonical), true
 	}
-	if kanban.IsLegacyLeaderSpelling(lowered) {
+	if factory.IsLegacyLeaderSpelling(lowered) {
 		return fmt.Sprintf("%q is the legacy leader spelling; the factory leader launches with 'moai cc -f' or 'moai glm -f'", value), true
 	}
 	return "", false
@@ -815,7 +810,7 @@ type codexFactoryEntry int
 
 const (
 	codexFactoryEntryAbsent codexFactoryEntry = iota // no factory token in the head
-	codexFactoryEntryLane                            // -f lane / --factory lane: the per-card relaunch
+	codexFactoryEntryLane                            // -l / --lane: the per-card relaunch
 	codexFactoryEntryOther                           // every other factory shape: refused
 )
 
@@ -825,24 +820,48 @@ const (
 // scan, not a parser: the value tokens it consumes mirror parseFactoryFlag's
 // spellings — a following token that looks like a flag is never a value, and
 // the `=` forms are read in place. A refused shape fires before anything else
-// is read or written (REQ-SD-004). Legacy role tokens (`worker` / `agent`,
-// their numbered labels, and `lead`) refuse with the REQ-RNC-003/-005/-007
-// message naming the canonical form (AC-SD-021) — the REQ-SD-004 line is
-// reserved for non-legacy shapes.
+// is read or written (REQ-SD-004).
+//
+// The retired `-k` spelling is refused first, in any position and beside any
+// other token, with retiredEntryRefusal (SPEC-LAUNCHER-ENTRY-FLAGS-001
+// REQ-010) — the same priority the cc and glm entry parse gives it.
+//
+// The lane entry is `-l` / `--lane` (SPEC-LAUNCHER-ENTRY-FLAGS-001): it takes
+// no argument, composes with no other entry token (`-f`) and no operator
+// --name, and the leader selector composes with it only. `-f` is no Codex
+// entry in any shape, whatever its value. Legacy role tokens (`worker` /
+// `agent`, their numbered labels, and `lead`) refuse with the
+// REQ-RNC-003/-005/-007 message naming the canonical form (AC-SD-021) — the
+// REQ-SD-004 line is reserved for non-legacy shapes.
 func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
-	entry := codexFactoryEntryAbsent
+	if refuseRetiredEntry(head) != nil {
+		return codexFactoryEntryOther, retiredEntryRefusal
+	}
+	var (
+		lane, leadSeen bool
+		other          string // the first non-lane entry token, which a lane token collides with
+		refusal        string // the first refusal line a factory token earns, in token order
+	)
 	for i := 0; i < len(head); i++ {
 		token := head[i]
 		var value string
 		hasValue := false
 		switch {
-		case token == kanbanFlagShort || token == kanbanFlagLong ||
-			strings.HasPrefix(token, kanbanFlagShort+"=") || strings.HasPrefix(token, kanbanFlagLong+"="):
-			return codexFactoryEntryOther, codexKanbanRefusalDiag
+		case token == laneFlagShort || token == laneFlagLong:
+			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
+				return codexFactoryEntryOther, laneFlagArgumentError
+			}
+			lane = true
+			continue
+		case strings.HasPrefix(token, laneFlagShort+"="), strings.HasPrefix(token, laneFlagLong+"="):
+			return codexFactoryEntryOther, laneFlagArgumentError
+		case token == leadFlagLong || strings.HasPrefix(token, leadFlagLong+"="):
+			leadSeen = true
+			continue
 		// --factory-run is NOT classified here (card t1444 ②): the token
 		// travels to parseCodexFactoryEntry, which owns its validation and
-		// its precise refusals (requires -f, lane-only, selector conflict).
-		// The usage line has always advertised the flag; the classifier was
+		// its precise refusals (requires -l/--lane, selector conflict). The
+		// usage line has always advertised the flag; the classifier was
 		// refusing what the help promised.
 		case token == factoryFlagLong || token == factoryFlagShort:
 			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
@@ -855,22 +874,36 @@ func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
 		default:
 			continue
 		}
+		if other == "" {
+			other = "-f/--factory"
+		}
+		if refusal != "" {
+			continue
+		}
+		refusal = codexFactoryRefusalDiag
 		if hasValue {
-			if value == factoryLaneRoleToken {
-				entry = codexFactoryEntryLane
-				continue
-			}
 			// AC-SD-021: legacy role spellings refuse with the
 			// REQ-RNC-003/-005/-007 message naming the canonical form — on
 			// moai codex too, not the REQ-SD-004 line. This is the check the
 			// M5 classification left one branch away.
 			if diag, isLegacy := codexFactoryLegacyRefusalDiag(value); isLegacy {
-				return codexFactoryEntryOther, diag
+				refusal = diag
 			}
 		}
-		return codexFactoryEntryOther, codexFactoryRefusalDiag
 	}
-	return entry, ""
+	switch {
+	case lane && other != "":
+		return codexFactoryEntryOther, fmt.Sprintf(entryTokenConflict, other, "-l/--lane")
+	case leadSeen && !lane:
+		return codexFactoryEntryOther, leaderNeedsLaneEntry
+	case refusal != "":
+		return codexFactoryEntryOther, refusal
+	case lane && operatorSuppliedName(head):
+		return codexFactoryEntryOther, laneFlagNameError
+	case lane:
+		return codexFactoryEntryLane, ""
+	}
+	return codexFactoryEntryAbsent, ""
 }
 
 // stripCodexFactoryTokens removes the `-f`/`--factory` token and its lane
@@ -945,11 +978,11 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		return err
 	}
 	defer restoreRun()
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	// The label is claimed atomically — the next free lane-<n>, bumped past a
 	// live hold — so two codex lanes cannot start under one label.
 	endClaim := launchTiming.beginDebug(factoryStepLaneClaim, "")
-	label, err := resolveFactoryLaneName(root, "", kanban.BackendGPT, true, cmd.ErrOrStderr())
+	label, err := resolveFactoryLaneName(root, "", factory.BackendGPT, true, cmd.ErrOrStderr())
 	endClaim()
 	if launchTiming != nil && err == nil {
 		// REQ-005/§D.1 edge: the lane-claim step carries the claimed label
@@ -965,20 +998,14 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 	}
 	// The stamps arm the loop's own next calls (lane admission, the
 	// merge-ready skip) and identify the lane; the backend value rides the
-	// same export the cc/glm launches use (REQ-SD-002's stamp set, gpt).
+	// same export the cc/glm launches use (REQ-SD-002's stamp set, gpt). The
+	// factory card verbs (next/stage/complete) and the factory notices read the
+	// lane label from the lane-worker marker alone (REQ-RNC-011's kept name), and
+	// the child environment carries the same marker.
 	restoreLane := enterFactoryLaneMode(label, 0, "", config.FactoryDispatchAuto)
 	defer restoreLane()
-	restoreBackend := exportFactoryLaunchFacts("", kanban.BackendGPT)
+	restoreBackend := exportFactoryLaunchFacts("", factory.BackendGPT)
 	defer restoreBackend()
-	// The factory card verbs (next/stage/complete) read the lane label from
-	// MOAI_KANBAN_LABEL — the carrier their refusal predicates and the
-	// widened role guard read — while the launcher stamp and the factory
-	// notices read MOAI_FACTORY_WORKER (REQ-RNC-011's kept name). One label,
-	// both carriers, stamped together so no reader of either sees an empty
-	// one; the child environment carries the same pair.
-	restoreKanbanLabel := captureEnvState(config.EnvMoaiKanbanLabel)
-	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
-	defer restoreKanbanLabel()
 
 	ctx := cmd.Context()
 	if ctx == nil {
@@ -1040,10 +1067,10 @@ func launchCodexCardSession(binaryPath, wt, label, cardID string, debug bool) er
 
 // codexCardLaunchEnv is the per-card child environment (design.md §4): the
 // eleven-key scrub of codexChildEnv, then the entries the owned-card session
-// reads — the role marker, the lane label (both carriers: the factory card
-// verbs read MOAI_KANBAN_LABEL, the factory notices read
-// MOAI_FACTORY_WORKER), the Codex backend value, and the leased card's id in
-// the card-identifier variable (REQ-SD-003, -019). Appending after the scrub
+// reads — the role marker, the lane label (the lane-worker marker, the one carrier
+// the factory card verbs and the factory notices read), the Codex backend
+// value, and the leased card's id in the card-identifier variable
+// (REQ-SD-003, -019). Appending after the scrub
 // is what keeps them authoritative: the inherited environment lost every
 // lane key before the lane values land. The factory fan-out signal
 // (MOAI_FACTORY_WORKERS) is deliberately not carried — it feeds the Stop-hook
@@ -1054,9 +1081,8 @@ func codexCardLaunchEnv(label, cardID string) []string {
 	return append(env,
 		config.EnvFactoryRole+"="+config.FactoryRoleLane,
 		config.EnvMoaiFactoryWorker+"="+label,
-		config.EnvMoaiKanbanLabel+"="+label,
-		config.EnvMoaiKanbanBackend+"="+kanban.BackendGPT,
-		config.EnvMoaiKanbanCard+"="+cardID,
+		config.EnvFactoryBackend+"="+factory.BackendGPT,
+		config.EnvFactoryCard+"="+cardID,
 	)
 }
 
@@ -1177,7 +1203,7 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	// managed Codex owner — the launcher keeps its PID and owns the App Server
 	// child (REQ-MS-012) — instead of the doors below. Stamps alone or the
 	// switch alone stay on the ordinary doors, and the tmux --spawn door never
-	// diverts. `moai codex -f lane` card children never reach this code:
+	// diverts. `moai codex -l` card children never reach this code:
 	// runCodexFactoryLane launches them through the direct door.
 	if !spawn && factoryManagedRequested(os.Environ()) && factoryLaunchEnabled(os.Environ()) {
 		if worktree.present {

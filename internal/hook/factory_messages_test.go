@@ -24,9 +24,9 @@ func factoryHookFixture(t *testing.T) (string, *factorymsg.Store, factorymsg.Pee
 	root := t.TempDir()
 	run := "run-hook"
 	recordActiveFactoryRun(t, root, run)
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorker, "agent-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryBackend, "claude")
 	s, e := factorymsg.Open(root, run)
 	if e != nil {
 		t.Fatal(e)
@@ -70,7 +70,7 @@ func TestFactoryHookBenchmarkBudget(t *testing.T) {
 			root := repoRoot
 			run := fmt.Sprintf("bench-%d-%d", sessions, queued)
 			recordActiveFactoryRun(t, root, run)
-			t.Setenv(config.EnvMoaiKanbanID, run)
+			t.Setenv(config.EnvFactoryRunID, run)
 			s, err := factorymsg.Open(root, run)
 			if err != nil {
 				t.Fatal(err)
@@ -169,7 +169,7 @@ func TestFactoryHookBenchmarkBudget(t *testing.T) {
 	root := repoRoot
 	run := "bench-contention"
 	recordActiveFactoryRun(t, root, run)
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	s, err := factorymsg.Open(root, run)
 	if err != nil {
 		t.Fatal(err)
@@ -234,10 +234,10 @@ func TestFactorySessionStartRebindsLaunchPendingPeer(t *testing.T) {
 	root := t.TempDir()
 	run := "run-session-start-rebind"
 	recordActiveFactoryRun(t, root, run)
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvFactoryBackend, "codex")
 	owner, start := factoryHookOwnerIdentity(t)
 	s, err := factorymsg.Open(root, run)
 	if err != nil {
@@ -320,10 +320,10 @@ func factoryPromptPendingFixture(t *testing.T) (string, string, *factorymsg.Stor
 	root := t.TempDir()
 	run := "run-user-prompt-rebind"
 	recordActiveFactoryRun(t, root, run)
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvFactoryBackend, "codex")
 	owner, start := factoryHookOwnerIdentity(t)
 	s, err := factorymsg.Open(root, run)
 	if err != nil {
@@ -582,7 +582,7 @@ func TestFactoryUserPromptSubmitRebindsLaunchPendingPeer(t *testing.T) {
 	// Test-only anticipated envelope: its recipient tuple is the endpoint that
 	// the first non-empty prompt must bind. If batch runs before bind, current
 	// peer lookup is unbound and this ID cannot reach AdditionalContext.
-	path, err := factorymsg.BrokerPath(input.ProjectDir, os.Getenv(config.EnvMoaiKanbanID))
+	path, err := factorymsg.BrokerPath(input.ProjectDir, os.Getenv(config.EnvFactoryRunID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -753,7 +753,7 @@ func TestFactoryHookZeroTurnAndCapabilityTruth(t *testing.T) {
 	if _, cont, state := factoryHookBatch(context.Background(), &untrusted, EventStop); cont || state != "unbound-session" {
 		t.Fatalf("untrusted=%v %s", cont, state)
 	}
-	path, err := factorymsg.BrokerPath(in.ProjectDir, os.Getenv(config.EnvMoaiKanbanID))
+	path, err := factorymsg.BrokerPath(in.ProjectDir, os.Getenv(config.EnvFactoryRunID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -776,7 +776,7 @@ func TestFactoryHookZeroTurnAndCapabilityTruth(t *testing.T) {
 		t.Fatalf("hook lock deadline exceeded: %s", elapsed)
 	}
 	_, _ = locker.Exec(`ROLLBACK`)
-	t.Setenv(config.EnvMoaiKanbanID, "")
+	t.Setenv(config.EnvFactoryRunID, "")
 	if _, cont, state := factoryHookBatch(context.Background(), in, EventStop); cont || state != "disabled" {
 		t.Fatalf("disabled=%v %s", cont, state)
 	}

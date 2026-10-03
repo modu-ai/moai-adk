@@ -64,6 +64,10 @@ var legacySkillIDs = []string{
 	// directory tag stays "v2.16" — the tag is a label on a preservation
 	// location, not a claim about when a given skill was retired.
 	"moai-workflow-ci-loop",
+	// The former id of the factory foreman skill (renamed in place to
+	// moai-factory-foreman): a project that received the old directory keeps
+	// its copy through the archive path instead of losing it on the next update.
+	"moai-kanban-foreman",
 }
 
 // archiveSkill copies projectRoot/.claude/skills/<skillID>/

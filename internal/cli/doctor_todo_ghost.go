@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoGhostInventoryCheckName is the doctor check identifier (also the
@@ -24,7 +24,7 @@ const todoGhostInventoryCheckName = "Todo Ghost Inventory"
 
 // checkTodoGhostInventory inventories the ghost artifacts under projectRoot.
 func checkTodoGhostInventory(projectRoot string, verbose bool) DiagnosticCheck {
-	fact := kanban.InspectStaleLocalStores(projectRoot)
+	fact := factory.InspectStaleLocalStores(projectRoot)
 	if len(fact.Ghosts) == 0 {
 		return DiagnosticCheck{
 			Name:    todoGhostInventoryCheckName,

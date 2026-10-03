@@ -262,10 +262,10 @@ func TestHomeWatch_PositiveControl(t *testing.T) {
 // Child environment scrub list (acceptance.md §B P4)
 // ---------------------------------------------------------------------------
 
-// TestPtycapScrubList_KanbanVarsMatchEnvKeys keeps the scrub list in step with
+// TestPtycapScrubList_FactoryVarsMatchEnvKeys keeps the scrub list in step with
 // internal/config/envkeys.go: a new MOAI_KANBAN* constant there must be added
 // to the list, or a lane identity could leak into the child.
-func TestPtycapScrubList_KanbanVarsMatchEnvKeys(t *testing.T) {
+func TestPtycapScrubList_FactoryVarsMatchEnvKeys(t *testing.T) {
 	src, err := os.ReadFile(filepath.Join("..", "..", "config", "envkeys.go"))
 	if err != nil {
 		t.Fatal(err)
@@ -275,7 +275,7 @@ func TestPtycapScrubList_KanbanVarsMatchEnvKeys(t *testing.T) {
 		t.Fatal("no MOAI_KANBAN constant found in envkeys.go (positive existence first)")
 	}
 	inList := map[string]bool{}
-	for _, name := range kanbanVars {
+	for _, name := range factoryVars {
 		inList[name] = true
 	}
 	for _, m := range declared {
@@ -283,8 +283,8 @@ func TestPtycapScrubList_KanbanVarsMatchEnvKeys(t *testing.T) {
 			t.Errorf("envkeys.go declares %s but the child scrub list does not carry it", m[1])
 		}
 	}
-	if len(kanbanVars) != len(declared) {
-		t.Errorf("scrub list carries %d MOAI_KANBAN vars, envkeys.go declares %d", len(kanbanVars), len(declared))
+	if len(factoryVars) != len(declared) {
+		t.Errorf("scrub list carries %d MOAI_KANBAN vars, envkeys.go declares %d", len(factoryVars), len(declared))
 	}
 }
 
@@ -326,7 +326,7 @@ func TestPtycapChildEnv_Values(t *testing.T) {
 	if env[CanaryEnv] == "" || env[CanaryEnv] != c.Canary {
 		t.Errorf("canary %q does not match the case canary %q", env[CanaryEnv], c.Canary)
 	}
-	for _, k := range kanbanVars {
+	for _, k := range factoryVars {
 		v, ok := env[k]
 		if !ok {
 			t.Errorf("child env does not carry %s", k)
@@ -350,7 +350,7 @@ func TestPtycapCheckChildEnvRecord(t *testing.T) {
 			"TERM":                    "xterm-256color",
 			CanaryEnv:                 c.Canary,
 		}
-		for _, k := range kanbanVars {
+		for _, k := range factoryVars {
 			m[k] = ""
 		}
 		return m
@@ -372,7 +372,7 @@ func TestPtycapCheckChildEnvRecord(t *testing.T) {
 		"wrong canary":         func(m map[string]string) { m[CanaryEnv] = "not-the-canary" },
 		"real HOME leaked":     func(m map[string]string) { m["HOME"] = realHome },
 		"real MOAI_HOME":       func(m map[string]string) { m[config.EnvHome] = realMoai },
-		"kanban identity":      func(m map[string]string) { m[config.EnvMoaiKanbanID] = "t999" },
+		"kanban identity":      func(m map[string]string) { m[config.EnvFactoryRunID] = "t999" },
 		"claude config dir":    func(m map[string]string) { m[config.EnvClaudeConfigDir] = "/x" },
 		"line missing":         func(m map[string]string) { delete(m, "TERM") },
 		"home not case-scoped": func(m map[string]string) { m["HOME"] = "/tmp/elsewhere" },

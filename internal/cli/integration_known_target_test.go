@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // The defect cell: the config names a target, the fallback recorded the
@@ -48,9 +48,9 @@ func TestIntegrationAcquire_KnownTargetCallerFallbackWarns(t *testing.T) {
 	}
 	// Warn-only: the record is exactly the pre-change record.
 	lock := readLock(t, repo)
-	if lock.BranchSource != kanban.BranchSourceCaller || lock.Branch != "WT-some-card" {
+	if lock.BranchSource != factory.BranchSourceCaller || lock.Branch != "WT-some-card" {
 		t.Errorf("record = (%q, source %q), want (WT-some-card, source %q) — the warning must not move the record",
-			lock.Branch, lock.BranchSource, kanban.BranchSourceCaller)
+			lock.Branch, lock.BranchSource, factory.BranchSourceCaller)
 	}
 }
 
