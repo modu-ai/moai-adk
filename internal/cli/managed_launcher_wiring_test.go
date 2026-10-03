@@ -75,14 +75,14 @@ func (c *managedLaunchCapture) envValue(key string) string {
 // factoryLeaderEnv stamps the leader shape of a factory session.
 func factoryLeaderEnv(t *testing.T) {
 	t.Helper()
-	t.Setenv(config.EnvMoaiKanbanID, "run-wire0001")
+	t.Setenv(config.EnvFactoryRunID, "run-wire0001")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 }
 
 // factoryLaneEnv stamps the lane shape of a factory session.
 func factoryLaneEnv(t *testing.T) {
 	t.Helper()
-	t.Setenv(config.EnvMoaiKanbanID, "run-wire0001")
+	t.Setenv(config.EnvFactoryRunID, "run-wire0001")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "8")
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
 }
@@ -109,7 +109,7 @@ func TestManagedLaunchDivertsFactoryLeaderLaunch(t *testing.T) {
 	if managed.bin != bin {
 		t.Errorf("bin = %q, want %q", managed.bin, bin)
 	}
-	if managed.envValue(config.EnvMoaiKanbanID) != "run-wire0001" {
+	if managed.envValue(config.EnvFactoryRunID) != "run-wire0001" {
 		t.Errorf("run id missing from the managed env: %v", managed.env)
 	}
 	// The `--` tail is claude's own: the marker is consumed by the MoAI parse
@@ -189,7 +189,7 @@ func TestLaunchWithoutFactoryEnvReachesExecDoor(t *testing.T) {
 	if containsToken(execArgs, "--") || !containsToken(execArgs, "--progress") {
 		t.Errorf("general-path tail discipline broken: args = %v", execArgs)
 	}
-	if launchEnvValue(execEnv, config.EnvMoaiKanbanID) != "" {
+	if launchEnvValue(execEnv, config.EnvFactoryRunID) != "" {
 		t.Errorf("general launch carried a factory run id: %v", execEnv)
 	}
 }
@@ -295,7 +295,7 @@ func TestManagedCodexLaunchDivertsFactorySession(t *testing.T) {
 	if managed.calls != 1 {
 		t.Fatalf("managed codex owner calls = %d, want 1", managed.calls)
 	}
-	if managed.envValue(config.EnvMoaiKanbanID) != "run-wire0001" {
+	if managed.envValue(config.EnvFactoryRunID) != "run-wire0001" {
 		t.Errorf("run id missing from the managed env: %v", managed.env)
 	}
 	if !containsToken(managed.args, "--model") {

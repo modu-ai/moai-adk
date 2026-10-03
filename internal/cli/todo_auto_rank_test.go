@@ -20,17 +20,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/jev"
 	"github.com/modu-ai/moai-adk/internal/jevcred"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // rankTestItem builds one queued card. An empty priority leaves the
 // classification absent, which the effective read derives as the default.
-func rankTestItem(id, text, priority string, blocked bool) kanban.BacklogItem {
-	it := kanban.BacklogItem{ID: id, Text: text, State: kanban.BacklogStateQueued}
+func rankTestItem(id, text, priority string, blocked bool) factory.BacklogItem {
+	it := factory.BacklogItem{ID: id, Text: text, State: factory.BacklogStateQueued}
 	if priority != "" || blocked {
-		c := kanban.DefaultCardClassification()
+		c := factory.DefaultCardClassification()
 		if priority != "" {
 			c.Priority = priority
 		}
@@ -41,12 +41,12 @@ func rankTestItem(id, text, priority string, blocked bool) kanban.BacklogItem {
 }
 
 // rankTestRecord wraps items and findings in an in-memory record.
-func rankTestRecord(items []kanban.BacklogItem, findings ...kanban.BacklogFinding) *kanban.BacklogRecord {
-	return &kanban.BacklogRecord{Items: items, Findings: findings}
+func rankTestRecord(items []factory.BacklogItem, findings ...factory.BacklogFinding) *factory.BacklogRecord {
+	return &factory.BacklogRecord{Items: items, Findings: findings}
 }
 
 // rankIDs renders ranked cards as one space-separated id list.
-func rankIDs(items []kanban.BacklogItem) string {
+func rankIDs(items []factory.BacklogItem) string {
 	ids := make([]string, 0, len(items))
 	for _, it := range items {
 		ids = append(ids, it.ID)
@@ -56,14 +56,14 @@ func rankIDs(items []kanban.BacklogItem) string {
 
 // rankLanded builds a landed-lookup seam answering `kinds` for the named cards
 // and "no-link" (measured, not landed) for every other card in the record.
-func rankLanded(kinds map[string]kanban.PRLinkKind) autoLandedLookup {
-	return func(rec *kanban.BacklogRecord) (map[string]kanban.PRLinkKind, error) {
-		out := make(map[string]kanban.PRLinkKind, len(rec.Items))
+func rankLanded(kinds map[string]factory.PRLinkKind) autoLandedLookup {
+	return func(rec *factory.BacklogRecord) (map[string]factory.PRLinkKind, error) {
+		out := make(map[string]factory.PRLinkKind, len(rec.Items))
 		for _, it := range rec.Items {
 			if kind, ok := kinds[it.ID]; ok {
 				out[it.ID] = kind
 			} else {
-				out[it.ID] = kanban.PRLinkNoLink
+				out[it.ID] = factory.PRLinkNoLink
 			}
 		}
 		return out, nil
@@ -86,12 +86,12 @@ func rankFlagLine(lines []string, id string) string {
 // one priority; an absent classification reads as the default priority.
 func TestAutoRankFallbackOrder(t *testing.T) {
 	t.Run("priority then queue order", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("A", "card a", kanban.ClassPriorityNormal, false),
-			rankTestItem("B", "card b", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", "card c", kanban.ClassPriorityLow, false),
-			rankTestItem("D", "card d", kanban.ClassPriorityNormal, false),
-			rankTestItem("E", "card e", kanban.ClassPriorityHigh, false),
+		items := []factory.BacklogItem{
+			rankTestItem("A", "card a", factory.ClassPriorityNormal, false),
+			rankTestItem("B", "card b", factory.ClassPriorityHigh, false),
+			rankTestItem("C", "card c", factory.ClassPriorityLow, false),
+			rankTestItem("D", "card d", factory.ClassPriorityNormal, false),
+			rankTestItem("E", "card e", factory.ClassPriorityHigh, false),
 		}
 		rec := rankTestRecord(items)
 		res := autoRankFallback(rec, items, rankLanded(nil))
@@ -107,11 +107,11 @@ func TestAutoRankFallbackOrder(t *testing.T) {
 	})
 
 	t.Run("absent classification reads as the default priority", func(t *testing.T) {
-		items := []kanban.BacklogItem{
+		items := []factory.BacklogItem{
 			rankTestItem("X", "no classification", "", false),
-			rankTestItem("Y", "high card", kanban.ClassPriorityHigh, false),
-			rankTestItem("Z", "default card", kanban.ClassPriorityNormal, false),
-			rankTestItem("W", "low card", kanban.ClassPriorityLow, false),
+			rankTestItem("Y", "high card", factory.ClassPriorityHigh, false),
+			rankTestItem("Z", "default card", factory.ClassPriorityNormal, false),
+			rankTestItem("W", "low card", factory.ClassPriorityLow, false),
 		}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "Y X Z W"; got != want {
@@ -120,9 +120,9 @@ func TestAutoRankFallbackOrder(t *testing.T) {
 	})
 
 	t.Run("record renders source then ranked in processing order", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("A", "card a", kanban.ClassPriorityLow, false),
-			rankTestItem("B", "card b", kanban.ClassPriorityHigh, false),
+		items := []factory.BacklogItem{
+			rankTestItem("A", "card a", factory.ClassPriorityLow, false),
+			rankTestItem("B", "card b", factory.ClassPriorityHigh, false),
 		}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		res.Reason = "jev-disabled"
@@ -139,7 +139,7 @@ func TestAutoRankFallbackOrder(t *testing.T) {
 	})
 
 	t.Run("jev source line carries no reason", func(t *testing.T) {
-		items := []kanban.BacklogItem{rankTestItem("A", "card a", "", false)}
+		items := []factory.BacklogItem{rankTestItem("A", "card a", "", false)}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		res.Source = autoRankSourceJev
 		res.Reason = ""
@@ -157,9 +157,9 @@ func TestAutoRankDemotion(t *testing.T) {
 	const cleanLow = "clean low card"
 
 	t.Run("hold marker", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("H", "[보류] waiting on the vendor", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", cleanLow, kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("H", "[보류] waiting on the vendor", factory.ClassPriorityHigh, false),
+			rankTestItem("C", cleanLow, factory.ClassPriorityLow, false),
 		}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "C H"; got != want {
@@ -171,9 +171,9 @@ func TestAutoRankDemotion(t *testing.T) {
 	})
 
 	t.Run("hold marker after leading whitespace", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("H", "  \t[보류 later", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", cleanLow, kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("H", "  \t[보류 later", factory.ClassPriorityHigh, false),
+			rankTestItem("C", cleanLow, factory.ClassPriorityLow, false),
 		}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "C H"; got != want {
@@ -182,11 +182,11 @@ func TestAutoRankDemotion(t *testing.T) {
 	})
 
 	t.Run("landed", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("L", "already delivered card", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", cleanLow, kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("L", "already delivered card", factory.ClassPriorityHigh, false),
+			rankTestItem("C", cleanLow, factory.ClassPriorityLow, false),
 		}
-		landed := rankLanded(map[string]kanban.PRLinkKind{"L": kanban.PRLinkLanded})
+		landed := rankLanded(map[string]factory.PRLinkKind{"L": factory.PRLinkLanded})
 		res := autoRankFallback(rankTestRecord(items), items, landed)
 		if got, want := rankIDs(res.Ranked), "C L"; got != want {
 			t.Fatalf("ranked = [%s], want [%s]", got, want)
@@ -197,14 +197,14 @@ func TestAutoRankDemotion(t *testing.T) {
 	})
 
 	t.Run("near-duplicate finding flags both sides and keeps their relative order", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("N1", "first of the pair", kanban.ClassPriorityHigh, false),
-			rankTestItem("N2", "second of the pair", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", cleanLow, kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("N1", "first of the pair", factory.ClassPriorityHigh, false),
+			rankTestItem("N2", "second of the pair", factory.ClassPriorityHigh, false),
+			rankTestItem("C", cleanLow, factory.ClassPriorityLow, false),
 		}
-		finding := kanban.BacklogFinding{
+		finding := factory.BacklogFinding{
 			SubjectID: "N2", RelatedID: "N1",
-			Relation: kanban.BacklogRelationNearDuplicate, Source: kanban.BacklogSourceMechanical,
+			Relation: factory.BacklogRelationNearDuplicate, Source: factory.BacklogSourceMechanical,
 		}
 		res := autoRankFallback(rankTestRecord(items, finding), items, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "C N1 N2"; got != want {
@@ -219,13 +219,13 @@ func TestAutoRankDemotion(t *testing.T) {
 	})
 
 	t.Run("a non-duplicate relation does not demote", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("P", "related but not a duplicate", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", cleanLow, kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("P", "related but not a duplicate", factory.ClassPriorityHigh, false),
+			rankTestItem("C", cleanLow, factory.ClassPriorityLow, false),
 		}
-		finding := kanban.BacklogFinding{
+		finding := factory.BacklogFinding{
 			SubjectID: "P", RelatedID: "C",
-			Relation: kanban.BacklogRelationContains, Source: kanban.BacklogSourceAgent,
+			Relation: factory.BacklogRelationContains, Source: factory.BacklogSourceAgent,
 		}
 		res := autoRankFallback(rankTestRecord(items, finding), items, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "P C"; got != want {
@@ -234,11 +234,11 @@ func TestAutoRankDemotion(t *testing.T) {
 	})
 
 	t.Run("two signals share one flagged line", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("M", "[보류 and already landed", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", cleanLow, kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("M", "[보류 and already landed", factory.ClassPriorityHigh, false),
+			rankTestItem("C", cleanLow, factory.ClassPriorityLow, false),
 		}
-		landed := rankLanded(map[string]kanban.PRLinkKind{"M": kanban.PRLinkLanded})
+		landed := rankLanded(map[string]factory.PRLinkKind{"M": factory.PRLinkLanded})
 		res := autoRankFallback(rankTestRecord(items), items, landed)
 		if got, want := rankIDs(res.Ranked), "C M"; got != want {
 			t.Fatalf("ranked = [%s], want [%s]", got, want)
@@ -260,11 +260,11 @@ func TestAutoRankDemotion(t *testing.T) {
 	})
 
 	t.Run("poor cards keep priority then queue order among themselves", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("P1", "[보류 normal one", kanban.ClassPriorityNormal, false),
-			rankTestItem("P2", "[보류 high one", kanban.ClassPriorityHigh, false),
-			rankTestItem("P3", "[보류 normal two", kanban.ClassPriorityNormal, false),
-			rankTestItem("C", cleanLow, kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("P1", "[보류 normal one", factory.ClassPriorityNormal, false),
+			rankTestItem("P2", "[보류 high one", factory.ClassPriorityHigh, false),
+			rankTestItem("P3", "[보류 normal two", factory.ClassPriorityNormal, false),
+			rankTestItem("C", cleanLow, factory.ClassPriorityLow, false),
 		}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "C P2 P1 P3"; got != want {
@@ -273,12 +273,12 @@ func TestAutoRankDemotion(t *testing.T) {
 	})
 
 	t.Run("demotion keeps every card in the target list", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("H", "[보류 held", kanban.ClassPriorityHigh, false),
-			rankTestItem("L", "landed card", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", cleanLow, kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("H", "[보류 held", factory.ClassPriorityHigh, false),
+			rankTestItem("L", "landed card", factory.ClassPriorityHigh, false),
+			rankTestItem("C", cleanLow, factory.ClassPriorityLow, false),
 		}
-		landed := rankLanded(map[string]kanban.PRLinkKind{"L": kanban.PRLinkLanded})
+		landed := rankLanded(map[string]factory.PRLinkKind{"L": factory.PRLinkLanded})
 		res := autoRankFallback(rankTestRecord(items), items, landed)
 		if len(res.Ranked) != len(items) {
 			t.Fatalf("ranked %d cards, want all %d — demotion must never drop a card", len(res.Ranked), len(items))
@@ -297,23 +297,23 @@ func TestAutoRankDemotion(t *testing.T) {
 // a mechanical filter, and the REQ-JEVC-011 carve-out would lapse. Every
 // subtest builds the same three cards; only the finding's source differs.
 func TestAutoRankJevFindingIsNotASignal(t *testing.T) {
-	items := func() []kanban.BacklogItem {
-		return []kanban.BacklogItem{
-			rankTestItem("N1", "first of the pair", kanban.ClassPriorityHigh, false),
-			rankTestItem("N2", "second of the pair", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", "clean low card", kanban.ClassPriorityLow, false),
+	items := func() []factory.BacklogItem {
+		return []factory.BacklogItem{
+			rankTestItem("N1", "first of the pair", factory.ClassPriorityHigh, false),
+			rankTestItem("N2", "second of the pair", factory.ClassPriorityHigh, false),
+			rankTestItem("C", "clean low card", factory.ClassPriorityLow, false),
 		}
 	}
-	finding := func(source string) kanban.BacklogFinding {
-		return kanban.BacklogFinding{
+	finding := func(source string) factory.BacklogFinding {
+		return factory.BacklogFinding{
 			SubjectID: "N2", RelatedID: "N1",
-			Relation: kanban.BacklogRelationNearDuplicate, Source: source,
+			Relation: factory.BacklogRelationNearDuplicate, Source: source,
 		}
 	}
 
 	t.Run("fallback: a jev-sourced finding demotes nothing", func(t *testing.T) {
 		cards := items()
-		res := autoRankFallback(rankTestRecord(cards, finding(kanban.BacklogSourceJev)), cards, rankLanded(nil))
+		res := autoRankFallback(rankTestRecord(cards, finding(factory.BacklogSourceJev)), cards, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "N1 N2 C"; got != want {
 			t.Fatalf("ranked = [%s], want [%s] — a Jev finding must not move the order", got, want)
 		}
@@ -324,7 +324,7 @@ func TestAutoRankJevFindingIsNotASignal(t *testing.T) {
 
 	t.Run("control: the same finding from the mechanical source demotes", func(t *testing.T) {
 		cards := items()
-		res := autoRankFallback(rankTestRecord(cards, finding(kanban.BacklogSourceMechanical)), cards, rankLanded(nil))
+		res := autoRankFallback(rankTestRecord(cards, finding(factory.BacklogSourceMechanical)), cards, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "C N1 N2"; got != want {
 			t.Fatalf("ranked = [%s], want [%s] — the measured near-duplicate signal must still demote", got, want)
 		}
@@ -332,7 +332,7 @@ func TestAutoRankJevFindingIsNotASignal(t *testing.T) {
 
 	t.Run("a mechanical finding beside a jev one on the same pair still demotes", func(t *testing.T) {
 		cards := items()
-		rec := rankTestRecord(cards, finding(kanban.BacklogSourceJev), finding(kanban.BacklogSourceMechanical))
+		rec := rankTestRecord(cards, finding(factory.BacklogSourceJev), finding(factory.BacklogSourceMechanical))
 		res := autoRankFallback(rec, cards, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "C N1 N2"; got != want {
 			t.Fatalf("ranked = [%s], want [%s] — only the Jev-sourced finding is ignored, never the pair", got, want)
@@ -342,7 +342,7 @@ func TestAutoRankJevFindingIsNotASignal(t *testing.T) {
 	t.Run("jev source: the request carries no flag from a jev finding and ties fall to priority order", func(t *testing.T) {
 		cards := items()
 		stub := &rankJevStub{reply: rankReplyScores(nil, nil)} // every card ties
-		res := autoRank(rankTestRecord(cards, finding(kanban.BacklogSourceJev)), cards, rankLanded(nil), stub.ask)
+		res := autoRank(rankTestRecord(cards, finding(factory.BacklogSourceJev)), cards, rankLanded(nil), stub.ask)
 		if res.Source != autoRankSourceJev {
 			t.Fatalf("source = %q, want %q", res.Source, autoRankSourceJev)
 		}
@@ -363,10 +363,10 @@ func TestAutoRankJevFindingIsNotASignal(t *testing.T) {
 // signal that cannot be measured is never read as poor, and the record names
 // it in a note.
 func TestAutoRankUnmeasuredSignal(t *testing.T) {
-	cards := func() []kanban.BacklogItem {
-		return []kanban.BacklogItem{
-			rankTestItem("U", "card whose landed state is unknown", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", "clean low card", kanban.ClassPriorityLow, false),
+	cards := func() []factory.BacklogItem {
+		return []factory.BacklogItem{
+			rankTestItem("U", "card whose landed state is unknown", factory.ClassPriorityHigh, false),
+			rankTestItem("C", "clean low card", factory.ClassPriorityLow, false),
 		}
 	}
 	noteNamesLanded := func(t *testing.T, res autoRankResult) {
@@ -382,7 +382,7 @@ func TestAutoRankUnmeasuredSignal(t *testing.T) {
 
 	t.Run("unknown answer", func(t *testing.T) {
 		items := cards()
-		landed := rankLanded(map[string]kanban.PRLinkKind{"U": kanban.PRLinkUnknown})
+		landed := rankLanded(map[string]factory.PRLinkKind{"U": factory.PRLinkUnknown})
 		res := autoRankFallback(rankTestRecord(items), items, landed)
 		if got, want := rankIDs(res.Ranked), "U C"; got != want {
 			t.Fatalf("ranked = [%s], want [%s] — unknown is not landed", got, want)
@@ -395,7 +395,7 @@ func TestAutoRankUnmeasuredSignal(t *testing.T) {
 
 	t.Run("lookup failure", func(t *testing.T) {
 		items := cards()
-		failing := autoLandedLookup(func(*kanban.BacklogRecord) (map[string]kanban.PRLinkKind, error) {
+		failing := autoLandedLookup(func(*factory.BacklogRecord) (map[string]factory.PRLinkKind, error) {
 			return nil, errors.New("gh unavailable")
 		})
 		res := autoRankFallback(rankTestRecord(items), items, failing)
@@ -410,7 +410,7 @@ func TestAutoRankUnmeasuredSignal(t *testing.T) {
 
 	t.Run("lookup answered nothing", func(t *testing.T) {
 		items := cards()
-		empty := autoLandedLookup(func(*kanban.BacklogRecord) (map[string]kanban.PRLinkKind, error) {
+		empty := autoLandedLookup(func(*factory.BacklogRecord) (map[string]factory.PRLinkKind, error) {
 			return nil, nil
 		})
 		res := autoRankFallback(rankTestRecord(items), items, empty)
@@ -446,9 +446,9 @@ func TestAutoRankUnmeasuredSignal(t *testing.T) {
 	})
 
 	t.Run("marker in the middle of the text does not demote", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("M", "write the doc [보류 is mentioned mid-text", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", "clean low card", kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("M", "write the doc [보류 is mentioned mid-text", factory.ClassPriorityHigh, false),
+			rankTestItem("C", "clean low card", factory.ClassPriorityLow, false),
 		}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "M C"; got != want {
@@ -460,9 +460,9 @@ func TestAutoRankUnmeasuredSignal(t *testing.T) {
 	})
 
 	t.Run("a character before the marker does not demote", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("M", "- [보류 a list-style prefix", kanban.ClassPriorityHigh, false),
-			rankTestItem("C", "clean low card", kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("M", "- [보류 a list-style prefix", factory.ClassPriorityHigh, false),
+			rankTestItem("C", "clean low card", factory.ClassPriorityLow, false),
 		}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "M C"; got != want {
@@ -477,9 +477,9 @@ func TestAutoRankUnmeasuredSignal(t *testing.T) {
 // once and its stored state stays queued.
 func TestAutoRankBlockedExcluded(t *testing.T) {
 	t.Run("fallback source excludes the blocked card and leaves its state", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("B", "blocked high card", kanban.ClassPriorityHigh, true),
-			rankTestItem("A", "plain card", kanban.ClassPriorityNormal, false),
+		items := []factory.BacklogItem{
+			rankTestItem("B", "blocked high card", factory.ClassPriorityHigh, true),
+			rankTestItem("A", "plain card", factory.ClassPriorityNormal, false),
 		}
 		rec := rankTestRecord(items)
 		res := autoRankFallback(rec, items, rankLanded(nil))
@@ -500,16 +500,16 @@ func TestAutoRankBlockedExcluded(t *testing.T) {
 			t.Errorf("`selection: excluded B (blocked)` printed %d times in %q, want exactly once", n, lines)
 		}
 		for _, it := range rec.Items {
-			if it.State != kanban.BacklogStateQueued {
-				t.Errorf("card %s state = %q, want %q — exclusion must not change state", it.ID, it.State, kanban.BacklogStateQueued)
+			if it.State != factory.BacklogStateQueued {
+				t.Errorf("card %s state = %q, want %q — exclusion must not change state", it.ID, it.State, factory.BacklogStateQueued)
 			}
 		}
 	})
 
 	t.Run("a blocked card is excluded even when it carries a readiness signal", func(t *testing.T) {
-		items := []kanban.BacklogItem{
-			rankTestItem("B", "[보류 blocked and held", kanban.ClassPriorityHigh, true),
-			rankTestItem("A", "plain card", kanban.ClassPriorityLow, false),
+		items := []factory.BacklogItem{
+			rankTestItem("B", "[보류 blocked and held", factory.ClassPriorityHigh, true),
+			rankTestItem("A", "plain card", factory.ClassPriorityLow, false),
 		}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		if got, want := rankIDs(res.Ranked), "A"; got != want {
@@ -521,9 +521,9 @@ func TestAutoRankBlockedExcluded(t *testing.T) {
 	})
 
 	t.Run("every candidate blocked leaves no ranked line", func(t *testing.T) {
-		items := []kanban.BacklogItem{
+		items := []factory.BacklogItem{
 			rankTestItem("B1", "blocked one", "", true),
-			rankTestItem("B2", "blocked two", kanban.ClassPriorityHigh, true),
+			rankTestItem("B2", "blocked two", factory.ClassPriorityHigh, true),
 		}
 		res := autoRankFallback(rankTestRecord(items), items, rankLanded(nil))
 		if len(res.Ranked) != 0 {
@@ -547,11 +547,11 @@ func TestAutoRankBlockedExcluded(t *testing.T) {
 			t.Errorf("`selection: excluded t1 (blocked)` printed %d times, want exactly once\n%s", n, strings.Join(lines, "\n"))
 		}
 	}
-	blockedQueue := func(t *testing.T) (string, *kanban.BacklogStore) {
+	blockedQueue := func(t *testing.T) (string, *factory.BacklogStore) {
 		t.Helper()
 		root, store := todoFixture(t)
 		seedItems(t, store, "blocked high card", "plain card") // t1 t2
-		rankClassify(t, store, "t1", kanban.ClassPriorityHigh, true)
+		rankClassify(t, store, "t1", factory.ClassPriorityHigh, true)
 		return root, store
 	}
 
@@ -591,7 +591,7 @@ func TestAutoRankBlockedExcluded(t *testing.T) {
 		root, store := todoFixture(t)
 		seedItems(t, store, "blocked one", "blocked two") // t1 t2
 		rankClassify(t, store, "t1", "", true)
-		rankClassify(t, store, "t2", kanban.ClassPriorityHigh, true)
+		rankClassify(t, store, "t2", factory.ClassPriorityHigh, true)
 		stub := &rankJevStub{reply: rankReplyScores(nil, nil)}
 		opts := rankCycleOpts(root)
 		opts.jevRank = stub.ask
@@ -686,7 +686,7 @@ func rankCycleOpts(root string) autoOptions {
 }
 
 // rankRunCycle runs the cycle and returns its output split into lines.
-func rankRunCycle(t *testing.T, root string, store *kanban.BacklogStore, opts autoOptions) []string {
+func rankRunCycle(t *testing.T, root string, store *factory.BacklogStore, opts autoOptions) []string {
 	t.Helper()
 	var out bytes.Buffer
 	if err := runAutoCycle(&out, store, root, opts); err != nil {
@@ -697,12 +697,12 @@ func rankRunCycle(t *testing.T, root string, store *kanban.BacklogStore, opts au
 
 // rankClassify records a priority and blocked flag on a stored card. An empty
 // priority keeps the default.
-func rankClassify(t *testing.T, store *kanban.BacklogStore, id, priority string, blocked bool) {
+func rankClassify(t *testing.T, store *factory.BacklogStore, id, priority string, blocked bool) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID == id {
-				c := kanban.DefaultCardClassification()
+				c := factory.DefaultCardClassification()
 				if priority != "" {
 					c.Priority = priority
 				}
@@ -772,7 +772,7 @@ func rankRankedIDs(lines []string) string {
 
 // rankSnapshot projects the queue to the fields the ranking stage must never
 // change: card order, text and recorded classification.
-func rankSnapshot(t *testing.T, store *kanban.BacklogStore) string {
+func rankSnapshot(t *testing.T, store *factory.BacklogStore) string {
 	t.Helper()
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -781,7 +781,7 @@ func rankSnapshot(t *testing.T, store *kanban.BacklogStore) string {
 	type view struct {
 		ID    string
 		Text  string
-		Class *kanban.CardClassification
+		Class *factory.CardClassification
 	}
 	views := make([]view, 0, len(rec.Items))
 	for _, it := range rec.Items {
@@ -795,15 +795,15 @@ func rankSnapshot(t *testing.T, store *kanban.BacklogStore) string {
 }
 
 // rankAllQueued fails when any stored card is not queued.
-func rankAllQueued(t *testing.T, store *kanban.BacklogStore) {
+func rankAllQueued(t *testing.T, store *factory.BacklogStore) {
 	t.Helper()
 	rec, err := store.LoadPure()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, it := range rec.Items {
-		if it.State != kanban.BacklogStateQueued {
-			t.Errorf("card %s state = %q, want %q", it.ID, it.State, kanban.BacklogStateQueued)
+		if it.State != factory.BacklogStateQueued {
+			t.Errorf("card %s state = %q, want %q", it.ID, it.State, factory.BacklogStateQueued)
 		}
 	}
 }
@@ -864,7 +864,7 @@ func TestAutoRankSelectionRecord(t *testing.T) {
 	t.Run("record precedes the first accept and ranked is the accept order", func(t *testing.T) {
 		root, store := todoFixture(t)
 		seedItems(t, store, "card one", "card two", "card three") // t1 t2 t3
-		rankClassify(t, store, "t2", kanban.ClassPriorityHigh, false)
+		rankClassify(t, store, "t2", factory.ClassPriorityHigh, false)
 
 		lines := rankRunCycle(t, root, store, rankCycleOpts(root))
 
@@ -886,9 +886,9 @@ func TestAutoRankSelectionRecord(t *testing.T) {
 	t.Run("output order is jev line, existing notes, record, accept loop", func(t *testing.T) {
 		root, store := todoFixture(t)
 		seedItems(t, store, "predecessor card", "waiting card") // t1 t2
-		seedFindings(t, store, kanban.BacklogFinding{
+		seedFindings(t, store, factory.BacklogFinding{
 			SubjectID: "t1", RelatedID: "t2",
-			Relation: kanban.BacklogRelationBlocks, Source: kanban.BacklogSourceAgent,
+			Relation: factory.BacklogRelationBlocks, Source: factory.BacklogSourceAgent,
 		})
 
 		lines := rankRunCycle(t, root, store, rankCycleOpts(root))
@@ -919,7 +919,7 @@ func TestAutoRankSelectionRecord(t *testing.T) {
 
 		root2, store2 := todoFixture(t) // only a dead-owner rescue target
 		seedItems(t, store2, "rescue only")
-		autoSetState(t, store2, "t1", kanban.BacklogStatePicked)
+		autoSetState(t, store2, "t1", factory.BacklogStatePicked)
 		opts2 := rankCycleOpts(root2)
 		opts2.jevRank = stub.ask
 		lines2 := rankRunCycle(t, root2, store2, opts2)
@@ -939,7 +939,7 @@ func TestAutoRankSelectionRecord(t *testing.T) {
 // signal decides the order, highest score first, then confidence, then
 // fallback order; one request carries one score question per candidate.
 func TestAutoRankJevOrdering(t *testing.T) {
-	cycle := func(t *testing.T, texts []string, prepare func(*testing.T, *kanban.BacklogStore), reply func(jev.Request) jev.Result) ([]string, *rankJevStub) {
+	cycle := func(t *testing.T, texts []string, prepare func(*testing.T, *factory.BacklogStore), reply func(jev.Request) jev.Result) ([]string, *rankJevStub) {
 		t.Helper()
 		root, store := todoFixture(t)
 		seedItems(t, store, texts...)
@@ -981,8 +981,8 @@ func TestAutoRankJevOrdering(t *testing.T) {
 	})
 
 	t.Run("equal score and confidence fall back to the fallback order", func(t *testing.T) {
-		prepare := func(t *testing.T, store *kanban.BacklogStore) {
-			rankClassify(t, store, "t3", kanban.ClassPriorityHigh, false)
+		prepare := func(t *testing.T, store *factory.BacklogStore) {
+			rankClassify(t, store, "t3", factory.ClassPriorityHigh, false)
 		}
 		reply := rankReplyScores(
 			map[string]float64{"t1": 1, "t2": 1, "t3": 1, "t4": 1},
@@ -1006,8 +1006,8 @@ func TestAutoRankJevOrdering(t *testing.T) {
 	})
 
 	t.Run("one request, one score question per candidate, blocked cards left out", func(t *testing.T) {
-		prepare := func(t *testing.T, store *kanban.BacklogStore) {
-			rankClassify(t, store, "t2", kanban.ClassPriorityNormal, true)
+		prepare := func(t *testing.T, store *factory.BacklogStore) {
+			rankClassify(t, store, "t2", factory.ClassPriorityNormal, true)
 		}
 		_, stub := cycle(t, four, prepare, rankReplyScores(nil, nil))
 		if stub.calls != 1 {
@@ -1040,7 +1040,7 @@ func TestAutoRankJevOrdering(t *testing.T) {
 
 	t.Run("candidates beyond the request bound follow in fallback order and a note says so", func(t *testing.T) {
 		total := autoRankJevCandidateLimit + 2
-		items := make([]kanban.BacklogItem, 0, total)
+		items := make([]factory.BacklogItem, 0, total)
 		confidence := map[string]float64{}
 		for i := 1; i <= total; i++ {
 			id := fmt.Sprintf("c%03d", i)
@@ -1151,7 +1151,7 @@ func TestAutoRankJevMalformedAnswer(t *testing.T) {
 		t.Helper()
 		root, store := todoFixture(t)
 		seedItems(t, store, "card one", "card two") // t1 t2
-		rankClassify(t, store, "t2", kanban.ClassPriorityHigh, false)
+		rankClassify(t, store, "t2", factory.ClassPriorityHigh, false)
 		before = rankSnapshot(t, store)
 		opts := rankCycleOpts(root)
 		opts.jevRank = (&rankJevStub{reply: rankReplyResult(jev.Result{Availability: jev.Available, Answers: answers})}).ask
@@ -1213,15 +1213,15 @@ func TestAutoRankJevMalformedAnswer(t *testing.T) {
 // targets stay at the head on every ranking source, and the ranking neither
 // reorders them nor sends them to Jev.
 func TestAutoRankRescueFirst(t *testing.T) {
-	setup := func(t *testing.T) (string, *kanban.BacklogStore) {
+	setup := func(t *testing.T) (string, *factory.BacklogStore) {
 		t.Helper()
 		root, store := todoFixture(t)
 		seedItems(t, store, "rescue one", "rescue two", "queued a", "queued b", "queued c") // t1..t5
-		autoSetState(t, store, "t1", kanban.BacklogStatePicked)
-		autoSetState(t, store, "t2", kanban.BacklogStatePicked)
-		rankClassify(t, store, "t1", kanban.ClassPriorityLow, false)
-		rankClassify(t, store, "t2", kanban.ClassPriorityLow, false)
-		rankClassify(t, store, "t4", kanban.ClassPriorityHigh, false)
+		autoSetState(t, store, "t1", factory.BacklogStatePicked)
+		autoSetState(t, store, "t2", factory.BacklogStatePicked)
+		rankClassify(t, store, "t1", factory.ClassPriorityLow, false)
+		rankClassify(t, store, "t2", factory.ClassPriorityLow, false)
+		rankClassify(t, store, "t4", factory.ClassPriorityHigh, false)
 		return root, store
 	}
 
@@ -1261,13 +1261,13 @@ func TestAutoRankRescueFirst(t *testing.T) {
 // TestAutoRankQueueUnchanged — AC-TAP-009 (REQ-TAP-010, M2): the ranking
 // changes the order the cycle chooses in, never the stored queue.
 func TestAutoRankQueueUnchanged(t *testing.T) {
-	prepare := func(t *testing.T) (string, *kanban.BacklogStore) {
+	prepare := func(t *testing.T) (string, *factory.BacklogStore) {
 		t.Helper()
 		root, store := todoFixture(t)
 		seedItems(t, store, "low card", "high card", "normal card", "[보류 parked card") // t1..t4
-		rankClassify(t, store, "t1", kanban.ClassPriorityLow, false)
-		rankClassify(t, store, "t2", kanban.ClassPriorityHigh, false)
-		rankClassify(t, store, "t3", kanban.ClassPriorityNormal, false)
+		rankClassify(t, store, "t1", factory.ClassPriorityLow, false)
+		rankClassify(t, store, "t2", factory.ClassPriorityHigh, false)
+		rankClassify(t, store, "t3", factory.ClassPriorityNormal, false)
 		return root, store
 	}
 
@@ -1324,7 +1324,7 @@ func autoRankSourceViolations(src string) []string {
 func TestAutoRankNoQueueWriteGuard(t *testing.T) {
 	// Positive control: the scanner fires on a poisoned fixture, so its silence
 	// on the real file asserts something.
-	poisoned := `func bad(store *kanban.BacklogStore) { store.Mutate(nil); r.ArchiveCard("t1"); p := "high" }`
+	poisoned := `func bad(store *factory.BacklogStore) { store.Mutate(nil); r.ArchiveCard("t1"); p := "high" }`
 	if got := autoRankSourceViolations(poisoned); len(got) < 3 {
 		t.Fatalf("scanner found %v in the poisoned fixture, want at least Mutate, ArchiveCard and a priority literal", got)
 	}
@@ -1448,7 +1448,7 @@ func TestAutoLiveLandedLookup(t *testing.T) {
 			return prev(name, args...)
 		}
 	}
-	items := []kanban.BacklogItem{
+	items := []factory.BacklogItem{
 		rankTestItem("t1", "delivered card", "", false),
 		rankTestItem("t2", "open card", "", false),
 	}
@@ -1461,7 +1461,7 @@ func TestAutoLiveLandedLookup(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if kinds["t1"] != kanban.PRLinkLanded || kinds["t2"] != kanban.PRLinkNoLink {
+		if kinds["t1"] != factory.PRLinkLanded || kinds["t2"] != factory.PRLinkNoLink {
 			t.Errorf("kinds = %v, want t1 landed and t2 no-link", kinds)
 		}
 	})
@@ -1473,7 +1473,7 @@ func TestAutoLiveLandedLookup(t *testing.T) {
 		if err != nil {
 			t.Fatalf("fail-open lookup returned an error: %v", err)
 		}
-		if kinds["t1"] != kanban.PRLinkUnknown || kinds["t2"] != kanban.PRLinkUnknown {
+		if kinds["t1"] != factory.PRLinkUnknown || kinds["t2"] != factory.PRLinkUnknown {
 			t.Errorf("kinds = %v, want both unknown", kinds)
 		}
 	})

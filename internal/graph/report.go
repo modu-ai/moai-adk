@@ -13,7 +13,7 @@
 // Node shapes: the report node is the repo-relative .moai/reports path;
 // the milestone node is "<report-stem>#<milestone-id>" (stem-qualified so
 // two reports declaring S0 never collide); the card node is the bare
-// queue id (tNN — one queue per repository, see internal/kanban).
+// queue id (tNN — one queue per repository, see internal/factory).
 package graph
 
 import (

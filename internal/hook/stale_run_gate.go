@@ -22,7 +22,7 @@ package hook
 // keyed by session identity, shared across ALL prescription surfaces
 // (SessionStart bootstrap + peer registration, UserPromptSubmit peer path) so
 // startup and the first prompt cannot both emit (plan M1.2). It is
-// deliberately NOT the kanban session record — a legacy-label session must
+// deliberately NOT the factory session record — a legacy-label session must
 // never grow one (SPEC-ROLE-NAMING-CODE-001) — and deliberately NOT the
 // run's broker DB, which is the dead run's own store, absent exactly when
 // the unbind path needs the carrier most. Marker failures fail open to
@@ -43,9 +43,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // factoryGateBudget bounds the gate's own measurement. It wraps the caller's
@@ -224,7 +224,7 @@ func staleRunPrescriptionGate(ctx context.Context, root, sessionID, label, runID
 // line(s) of rows R7-R9 of the notice-line table (spec.md §D.7). A failed
 // listing omits the lines (fail-open).
 func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, lang string) string {
-	if !kanban.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
+	if !factory.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
 		return ""
 	}
 	m := staleRunMessagesFor(lang)
@@ -233,8 +233,8 @@ func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, 
 	if err != nil || len(active) == 0 {
 		return notice
 	}
-	lines := kanban.RelaunchNoticeFor(kanban.RelaunchNoticeState{
-		Provider:   kanban.RelaunchProviderForBackend(os.Getenv(config.EnvMoaiKanbanBackend)),
+	lines := factory.RelaunchNoticeFor(factory.RelaunchNoticeState{
+		Provider:   factory.RelaunchProviderForBackend(os.Getenv(config.EnvFactoryBackend)),
 		Legacy:     true,
 		Run:        runID,
 		ActiveRuns: active,
@@ -253,10 +253,10 @@ func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, 
 // gatedStaleRunAnswer applies the run-state gate exactly where the answer
 // would carry the factory retire step — runID set and the factory fan-out
 // env stamped (config.EnvMoaiFactoryWorkers), the same discriminator
-// staleRunNotice uses for its factory branch. The kanban relaunch prose
+// staleRunNotice uses for its factory branch. The retired-mode relaunch prose
 // names no factory run and stays ungated.
 func gatedStaleRunAnswer(root, sessionID, label, lang string) string {
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	if runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		return staleRunPrescriptionGate(context.Background(), root, sessionID, label, runID, lang)
 	}

@@ -306,16 +306,18 @@ func (f *FactoryDB) withCardTx(ctx context.Context, runID string, fn func(tx *sq
 	if err != nil {
 		return err
 	}
-	after, err := fn(tx)
-	if reconciled != nil {
-		inner := after
-		after = func() {
-			reconciled()
-			if inner != nil {
-				inner()
-			}
+	// settle runs the reconciliation's own step exactly once: marked after the
+	// commit, released without marking on every other way out (the claim's
+	// bounded flow holds the drift log's lock until then).
+	settled := false
+	settle := func(committed bool) {
+		if reconciled != nil && !settled {
+			settled = true
+			reconciled(committed)
 		}
 	}
+	defer settle(false)
+	after, err := fn(tx)
 	var keep *committedRefusal
 	if err != nil && !errors.As(err, &keep) {
 		return err
@@ -323,6 +325,7 @@ func (f *FactoryDB) withCardTx(ctx context.Context, runID string, fn func(tx *sq
 	if cerr := tx.Commit(); cerr != nil {
 		return cerr
 	}
+	settle(true)
 	if after != nil {
 		after()
 	}

@@ -5,8 +5,8 @@
 // spellings; the migration (REQ-TSP-050) relabels them, and this check is
 // the reproducible verdict that it happened: it counts the rows still
 // carrying a legacy spelling, using the SAME detectors the refusal and
-// stale-record paths use (kanban.IsLegacyLeaderSpelling /
-// kanban.IsLegacyFactoryRoleValue — no second detector), and reports zero
+// stale-record paths use (factory.IsLegacyLeaderSpelling /
+// factory.IsLegacyFactoryRoleValue — no second detector), and reports zero
 // rows as OK. Read-only: it judges, it never repairs.
 package cli
 
@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // ownerLabelDriftCheckName is the doctor check identifier (also the value
@@ -28,7 +28,7 @@ const ownerLabelDriftCheckName = "Owner Label Drift"
 func checkOwnerLabelDrift(projectRoot string, verbose bool) DiagnosticCheck {
 	// The PURE path: the doctor judges the queue it would read, it never
 	// adopts or relocates one.
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(projectRoot))
+	store := factory.NewBacklogStore(factory.BacklogPathForRoot(projectRoot))
 	rec, err := store.LoadPure()
 	if err != nil {
 		return DiagnosticCheck{
@@ -42,7 +42,7 @@ func checkOwnerLabelDrift(projectRoot string, verbose bool) DiagnosticCheck {
 	counts := map[string]int{}
 	for i := range rec.Runtime.Assignments {
 		label := rec.Runtime.Assignments[i].OwnerLabel
-		if kanban.IsLegacyLeaderSpelling(label) || kanban.IsLegacyFactoryRoleValue(label) {
+		if factory.IsLegacyLeaderSpelling(label) || factory.IsLegacyFactoryRoleValue(label) {
 			counts[label]++
 		}
 	}

@@ -73,7 +73,7 @@ func TestStaleNoticeCarriesExecutableRelaunch(t *testing.T) { // AC-SRH-005 (R6-
 				root := t.TempDir()
 				row.seed(t, root)
 				srlGateEnv(t, "runX", "worker-69")
-				t.Setenv(config.EnvMoaiKanbanBackend, b.backend)
+				t.Setenv(config.EnvFactoryBackend, b.backend)
 				want := row.want(b.provider)
 
 				// Every surface and locale of the notice: the agent-facing peer

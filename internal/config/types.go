@@ -969,6 +969,18 @@ type CodexReviewGateConfig struct {
 	// NormalizeCodexReviewGateTreeScope — any other value means review. The
 	// template ships this key only as a commented example.
 	TreeScope string `yaml:"tree_scope"`
+
+	// PrimaryScope decides what the gate does for a tree-scope session whose
+	// tree IS the repository's primary working tree
+	// (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-002): "skip" — the distributed
+	// default, since a primary checkout's non-card changes have no card to
+	// attribute them to — or "review", the explicit restore of the pre-SPEC
+	// whole-tree review (REQ-CGSC-004). Read through
+	// NormalizeCodexReviewGatePrimaryScope: the fail direction is REVERSED
+	// from TreeScope — only an explicit review wins; a missing key, an
+	// unknown value, an unreadable file or a YAML error all leave the default
+	// skip in force.
+	PrimaryScope string `yaml:"primary_scope"`
 }
 
 // MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate
@@ -1045,7 +1057,7 @@ type SecuritySandbox struct {
 type StateConfig struct {
 	RetentionDays int `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
 
-	// SessionRecordRetentionDays bounds the age of kanban session records
+	// SessionRecordRetentionDays bounds the age of factory session records
 	// (<state-dir>/<session>.json), pruned at SessionStart (card t1312). It
 	// is a pointer so an explicit 0 ("disable retention") stays
 	// distinguishable from a key the user omitted, which retains the

@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 
 	"path/filepath"
 
@@ -462,6 +463,13 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	var llmCfg config.LLMConfig
 	if loaded, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot); err == nil {
 		llmCfg = loaded.LLM
+	}
+	// GitHub #1731 (card t1474): an empty stored profile renders the selector
+	// preselected on agentFMPerfTierDefault, so an untouched form submits that
+	// column. It is what the page showed, not an edit — preserve the empty
+	// profile instead of materializing llm.profile on disk.
+	if strings.TrimSpace(llmCfg.Profile) == "" && perfTier == agentFMPerfTierDefault {
+		perfTier = ""
 	}
 	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot, llmCfg)
 	agentPins, agentSubmitted, agentErrs := parseAgentFMForm(r, agents, llmCfg, perfTier)

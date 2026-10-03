@@ -16,8 +16,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // AC-SD-021 — every legacy role spelling is refused where a lane label, role
@@ -34,9 +34,9 @@ func TestSD_AC021_LegacySpellingsRefused(t *testing.T) {
 			wantMsg  []string // substrings the RNC message must carry
 			anyError bool     // refused, message shape unchecked (position expects no such label)
 		}{
-			{args: []string{"-f", "worker"}, wantMsg: []string{"legacy role token", "-f lane"}},
-			{args: []string{"-f", "agent"}, wantMsg: []string{"legacy role token", "-f lane"}},
-			{args: []string{"-f", "Worker"}, wantMsg: []string{"legacy role token", "-f lane"}},
+			{args: []string{"-f", "worker"}, wantMsg: []string{"legacy role token", "-l"}},
+			{args: []string{"-f", "agent"}, wantMsg: []string{"legacy role token", "-l"}},
+			{args: []string{"-f", "Worker"}, wantMsg: []string{"legacy role token", "-l"}},
 			{args: []string{"-f", "worker-1"}, wantMsg: []string{"legacy lane label", "lane-1"}},
 			{args: []string{"-f", "agent-2"}, wantMsg: []string{"legacy lane label", "lane-2"}},
 			{args: []string{"-f", "Worker-1"}, wantMsg: []string{"legacy lane label", "lane-1"}},
@@ -81,11 +81,11 @@ func TestSD_AC021_LegacySpellingsRefused(t *testing.T) {
 			value   string
 			wantMsg []string
 		}{
-			{value: "worker", wantMsg: []string{"legacy role token", "moai codex -f lane"}},
-			{value: "agent", wantMsg: []string{"legacy role token", "moai codex -f lane"}},
-			{value: "WORKER", wantMsg: []string{"legacy role token", "moai codex -f lane"}},
-			{value: "worker-1", wantMsg: []string{"legacy lane label", "moai codex -f lane"}},
-			{value: "agent-1", wantMsg: []string{"legacy lane label", "moai codex -f lane"}},
+			{value: "worker", wantMsg: []string{"legacy role token", "moai codex -l"}},
+			{value: "agent", wantMsg: []string{"legacy role token", "moai codex -l"}},
+			{value: "WORKER", wantMsg: []string{"legacy role token", "moai codex -l"}},
+			{value: "worker-1", wantMsg: []string{"legacy lane label", "moai codex -l"}},
+			{value: "agent-1", wantMsg: []string{"legacy lane label", "moai codex -l"}},
 			{value: "lead", wantMsg: []string{"legacy leader spelling", "moai cc -f"}},
 			{value: "lead-1", wantMsg: []string{"legacy leader spelling", "moai cc -f"}},
 		}
@@ -264,7 +264,7 @@ func sdExtractSchemaStatements(t *testing.T, fset *token.FileSet, file string, s
 
 // sdSnapshotSchemaStatements is the schema-statement set pinned from the
 // absorption baseline, byte-identical to the production string literals of
-// internal/homestate, internal/factorymsg, and internal/kanban on the
+// internal/homestate, internal/factorymsg, and internal/factory on the
 // t1240 absorption tree (develop 145c3d98c absorbed; the a7190891d run-start
 // pin moved here because the absorbed hold-state and transition-stamp cards
 // legitimately evolved the items/archived schema and added the items_new
@@ -307,12 +307,12 @@ var sdSnapshotSchemaStatements = []string{
 
 // AC-SD-022 — every schema statement (CREATE TABLE, ALTER TABLE, index) in
 // the production files of internal/homestate, internal/factorymsg, and
-// internal/kanban is byte-identical to the absorption baseline pinned above
+// internal/factory is byte-identical to the absorption baseline pinned above
 // (REQ-SD-022). The statement set is pinned with its provenance; the current
 // tree is extracted with the same walker and compared as a sorted multiset,
 // so an added, modified, or removed statement all fail.
 func TestSD_AC022_SchemaStatementsFrozen(t *testing.T) {
-	dirs := []string{"../homestate", "../factorymsg", "../kanban"}
+	dirs := []string{"../homestate", "../factorymsg", "../factory"}
 	var got []string
 	for _, dir := range dirs {
 		matches, err := filepath.Glob(filepath.Join(dir, "*.go"))
@@ -370,7 +370,7 @@ func TestSD_AC018_ParentCheckoutUntouched(t *testing.T) {
 		t.Skip("the §B fixture family is POSIX-verified (the TestSD_AC006 sibling)")
 	}
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued)
+	fcQueue(t, store, factory.BacklogStateQueued)
 	sdRegisterLane(t, root, "lane-1")
 	fcGit(t, root, "branch", "develop")
 	integWT := filepath.Join(root, sessionWorktreeSubdir, "develop")
@@ -438,7 +438,7 @@ func TestSD_AC018_ParentCheckoutUntouched(t *testing.T) {
 		t.Fatalf("stage merge-ready: %v", err)
 	}
 
-	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", kanban.BranchSourceConfig, integWT, "t1")
+	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 	if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {
 		t.Fatalf("complete: %v", err)

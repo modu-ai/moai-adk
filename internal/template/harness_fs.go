@@ -399,13 +399,16 @@ func (i namedFileInfo) Name() string { return i.name }
 // differs only inside .claude/** which harnessFS hides — so one constructor
 // serves every codex-only run, flag or no flag.
 //
+// The variadic opts (SPEC-INIT-SHRINK-001) ride through to the deployer —
+// the deploy-mode split is an option, not a constructor axis.
+//
 // Encapsulation note (embed_catalog.go DEFECT-5): the raw embed never
 // escapes — SlimFS is applied internally and only the deployer is returned.
 //
 // @MX:ANCHOR: [AUTO] sole external entry point for codex-only deployment
 // @MX:REASON: [AUTO] REQ-IH-005/006 enforcement point — both init (M2) and update re-deploy (M4) construct their deployer here
-func NewCodexOnlyDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
-	return newCodexOnlyDeployer(cat, renderer, false)
+func NewCodexOnlyDeployerWithRenderer(cat *Catalog, renderer Renderer, opts ...DeployerOption) (Deployer, error) {
+	return newCodexOnlyDeployer(cat, renderer, false, opts...)
 }
 
 // NewCodexOnlyDeployerWithRendererAndForceUpdate is the update-path twin of
@@ -413,11 +416,11 @@ func NewCodexOnlyDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer
 // files are refreshed even when present) over the same codex-only file set.
 // The published-skill provenance check survives forceUpdate exactly as in the
 // claude deployer (deployer.go protectedScope), so R-011 holds here too.
-func NewCodexOnlyDeployerWithRendererAndForceUpdate(cat *Catalog, renderer Renderer) (Deployer, error) {
-	return newCodexOnlyDeployer(cat, renderer, true)
+func NewCodexOnlyDeployerWithRendererAndForceUpdate(cat *Catalog, renderer Renderer, opts ...DeployerOption) (Deployer, error) {
+	return newCodexOnlyDeployer(cat, renderer, true, opts...)
 }
 
-func newCodexOnlyDeployer(cat *Catalog, renderer Renderer, forceUpdate bool) (Deployer, error) {
+func newCodexOnlyDeployer(cat *Catalog, renderer Renderer, forceUpdate bool, opts ...DeployerOption) (Deployer, error) {
 	if cat == nil {
 		return nil, errors.New("codex-only deployer: nil catalog")
 	}
@@ -435,38 +438,39 @@ func newCodexOnlyDeployer(cat *Catalog, renderer Renderer, forceUpdate bool) (De
 	if err != nil {
 		return nil, fmt.Errorf("codex-only deployer: %w", err)
 	}
-	return NewDeployerWithRendererAndForceUpdate(h, renderer, forceUpdate, WithSkillMirror(false)), nil
+	all := append([]DeployerOption{WithSkillMirror(false)}, opts...)
+	return NewDeployerWithRendererAndForceUpdate(h, renderer, forceUpdate, all...), nil
 }
 
 // NewClaudeHarnessDeployerWithRenderer keeps Claude surfaces and shared MoAI
 // resources while excluding Codex-specific project files.
-func NewClaudeHarnessDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
-	return newProfileDeployer(cat, renderer, false, false, true, false)
+func NewClaudeHarnessDeployerWithRenderer(cat *Catalog, renderer Renderer, opts ...DeployerOption) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, false, false, true, false, opts...)
 }
 
-func NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat *Catalog, renderer Renderer) (Deployer, error) {
-	return newProfileDeployer(cat, renderer, false, false, true, true)
+func NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat *Catalog, renderer Renderer, opts ...DeployerOption) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, false, false, true, true, opts...)
 }
 
-func NewClaudeHarnessSlimDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
-	return newProfileDeployer(cat, renderer, true, false, true, false)
+func NewClaudeHarnessSlimDeployerWithRenderer(cat *Catalog, renderer Renderer, opts ...DeployerOption) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, true, false, true, false, opts...)
 }
 
 // NewDualHarnessDeployerWithRenderer materializes both host surfaces and the
 // same shared policy/workflow resources.
-func NewDualHarnessDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
-	return newProfileDeployer(cat, renderer, false, false, false, false)
+func NewDualHarnessDeployerWithRenderer(cat *Catalog, renderer Renderer, opts ...DeployerOption) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, false, false, false, false, opts...)
 }
 
-func NewDualHarnessDeployerWithRendererAndForceUpdate(cat *Catalog, renderer Renderer) (Deployer, error) {
-	return newProfileDeployer(cat, renderer, false, false, false, true)
+func NewDualHarnessDeployerWithRendererAndForceUpdate(cat *Catalog, renderer Renderer, opts ...DeployerOption) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, false, false, false, true, opts...)
 }
 
-func NewDualHarnessSlimDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
-	return newProfileDeployer(cat, renderer, true, false, false, false)
+func NewDualHarnessSlimDeployerWithRenderer(cat *Catalog, renderer Renderer, opts ...DeployerOption) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, true, false, false, false, opts...)
 }
 
-func newProfileDeployer(cat *Catalog, renderer Renderer, slim, hideClaude, hideCodex, forceUpdate bool) (Deployer, error) {
+func newProfileDeployer(cat *Catalog, renderer Renderer, slim, hideClaude, hideCodex, forceUpdate bool, opts ...DeployerOption) (Deployer, error) {
 	if cat == nil {
 		return nil, errors.New("harness deployer: nil catalog")
 	}
@@ -488,5 +492,6 @@ func newProfileDeployer(cat *Catalog, renderer Renderer, slim, hideClaude, hideC
 	if err != nil {
 		return nil, err
 	}
-	return NewDeployerWithRendererAndForceUpdate(h, renderer, forceUpdate, WithSkillMirror(hideCodex)), nil
+	all := append([]DeployerOption{WithSkillMirror(hideCodex)}, opts...)
+	return NewDeployerWithRendererAndForceUpdate(h, renderer, forceUpdate, all...), nil
 }

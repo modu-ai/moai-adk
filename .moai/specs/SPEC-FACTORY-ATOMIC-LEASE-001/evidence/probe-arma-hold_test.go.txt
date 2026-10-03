@@ -1,0 +1,43 @@
+package cli
+
+// Plan-phase observation probe for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458),
+// override-round repair (plan-audit defect M3). Evidence, not source: .txt
+// suffix, mapped in for one run by overlay-arma.json.
+//
+// Arm (a) of `moai factory next` - a lane re-leasing the card its record row
+// assigns to it - never reads the card's queue state (factory_card.go, the
+// loop over `cards` before the `noNewCards` check): it leases any row `assigned`
+// to the lane that the backend skip and the serial check do not exclude. This
+// probe places a card whose queue item is `hold` and whose row is `assigned` to
+// lane-1, runs bare `factory next` as lane-1, and records what arm (a) did.
+//
+// The predicate asserts the PRESERVED behavior (REQ-FAL-009): arm (a) leases the
+// card, the end state is queue=hold record=leased. It is green at the pin and is
+// the guard that a future change which makes arm (a) read the queue item must
+// amend on purpose (spec section F R17).
+
+import (
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
+)
+
+func TestT1458ProbeArmAHeldCard(t *testing.T) {
+	root, store := nmBase(t, kanban.BacklogStatePicked)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	nmSetState(t, store, "t1", kanban.BacklogStateHold)
+	nmLaneEnv(t, "lane-1", "")
+	nmIsolatedWorktrees(t, "t1")
+	out, stderr, err := qasRunNext(t, "--run", fcRun)
+	q := nmQueueState(t, store, "t1")
+	state, holder := "", ""
+	if fcHasCard(t, root, "t1") {
+		c := fcCard(t, root, "t1")
+		state, holder = c.State, c.LeaseHolder
+	}
+	t.Logf("PROBE arm-a-hold err=%v queue=%s record=%s holder=%s stdout=%q stderr=%q", err, q, state, holder, out, stderr)
+	if !(q == kanban.BacklogStateHold && state == homestate.CardLeased) {
+		t.Errorf("arm (a) no longer leases a held card whose row is assigned to the lane: queue=%s record=%s", q, state)
+	}
+}

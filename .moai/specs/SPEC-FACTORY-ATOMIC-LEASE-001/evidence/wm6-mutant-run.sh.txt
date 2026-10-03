@@ -1,0 +1,28 @@
+#!/bin/sh
+# usage: mu.sh <MU|CONTROL> <cli|kanban|homestate> <run-pattern> [count] [tag]
+# Runs one scoped test selector against an overlay mutant (or the unmutated tree for CONTROL),
+# scrubbed env, output to .moai/reports/t1458/wm6-<MU>-<pkg><tag>.txt. Proves the source tree is
+# byte-identical to HEAD before and after (sha256 of the tracked source files + git status).
+S=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t1458/7d4e885f-da08-4e41-929b-fed94cc2ab02/scratchpad/mu
+R=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1458
+mu="$1"; pkg="$2"; pat="$3"; cnt="${4:-1}"; tag="${5:-}"
+cd $R || exit 99
+out=".moai/reports/t1458/wm6-$mu-$pkg$tag.txt"
+srcs="internal/cli/factory_card.go internal/kanban/backlog_store.go internal/homestate/card_unavailable.go internal/homestate/card_transition.go internal/homestate/factory.go"
+shasum -a 256 $srcs > $S/$mu-$pkg$tag.sha.before
+if [ "$mu" = "CONTROL" ]; then ov=""; else ov="-overlay=$S/$mu/overlay.json"; fi
+unset CLAUDE_PROJECT_DIR MOAI_HOME MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_WORKER MOAI_FACTORY_ROLE MOAI_KANBAN_BACKEND
+if [ "$pkg" = "cli" ]; then
+  until moai slot acquire --resource internal-cli-suite --max-duration 40m --name wm6-t1458 --command "go test internal/cli WM6 $mu" >/dev/null 2>&1; do sleep 15; done
+fi
+if [ -n "$ov" ]; then export GOFLAGS="$ov"; fi
+go test -count="$cnt" -timeout 30m ./internal/$pkg -run "$pat" -v > "$out" 2>&1
+rc=$?
+unset GOFLAGS
+if [ "$pkg" = "cli" ]; then moai slot release --resource internal-cli-suite >/dev/null 2>&1; fi
+shasum -a 256 $srcs > $S/$mu-$pkg$tag.sha.after
+if cmp -s $S/$mu-$pkg$tag.sha.before $S/$mu-$pkg$tag.sha.after; then same=IDENTICAL; else same=DIFFERENT; fi
+st=$(git status --short | wc -l | tr -d ' ')
+echo "== $mu $pkg$tag pattern=$pat count=$cnt exit=$rc source-sha256=$same status-lines=$st"
+grep -E '^(--- (PASS|FAIL)|FAIL|ok|panic)' "$out" | sort | uniq -c | head -12
+exit $rc

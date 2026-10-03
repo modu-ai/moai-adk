@@ -192,7 +192,7 @@ Three enforcement layers, none of which depends on a person remembering:
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/kanban-dispatch.md` § Completion is read,
+- `.claude/rules/moai/workflow/factory-dispatch.md` § Completion is read,
   never trusted — the lead-side reading obligation
 - `.claude/rules/moai/core/verification-claim-integrity.md` — the
   unattributed-claim invariant this convention operationalizes

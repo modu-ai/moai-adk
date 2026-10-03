@@ -28,10 +28,13 @@ moai init [project-name]
 
 | 플래그 | 설명 |
 |--------|------|
-| `--all` | 카탈로그 전체 배치 (core + 선택 팩 + 하네스 생성물). 기본값은 core-only slim 모드 |
+| `--all` | 전체 로컬 배포: 카탈로그 모든 등급을 로컬에 배치 (`--no-plugin` 페이로드 + 선택 팩). 플래그 없이는 core-only slim 모드가 기본값 |
+| `--no-plugin` | moai 플러그인을 건너뛰고 전체 로컬 페이로드를 배치 (스킬, 명령, `.mcp.json` 의 moai 항목, Codex 미러). `MOAI_SKIP_PLUGIN_INSTALL=1` 도 같은 효과. 기본 경로(플러그인 모드)에서는 로컬 스킬·명령을 배치하지 않는다 — moai 플러그인이 운반한다 |
 | `--force` | 기존 프로젝트 재초기화 (현재 `.moai/` 를 백업) |
 | `--no-hooks` | git 훅 설치 생략 |
 | `--llm <claude\|codex\|both>` | 연결할 LLM 하네스 선택 (기본값: `claude`) |
+
+확정된 배포 모드는 `.moai/config/sections/llm.yaml` 의 `deployment_mode` (`plugin` 또는 `local`) 에 기록되고, `moai update` 는 그 기록을 따라 같은 범위를 유지한다. 플러그인 설치가 확인되지 않은 프로젝트는 안전한 쪽인 `local` 로 기록된다.
 
 ### 프로젝트 기본값
 

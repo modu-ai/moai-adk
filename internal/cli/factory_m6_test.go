@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 )
 
@@ -165,16 +165,16 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 
 	t.Run("relaunch supervising loop starts one session per card", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 		// SPEC-TODO-CLASSIFY-DISPATCH-001: this scenario pins the LOOP's
 		// continuation mechanics, and its stub children exit WITHOUT working
 		// their card (the crashed-lane shape, whose recovery is lease
 		// expiry). Unclassified cards read serial by default, so the
 		// serial-vs-serial gate would stop the loop after one card — the
 		// mode-neutral intent of this scenario maps to parallelizable.
-		fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
-		fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
-		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 		wantLabel := sdNextFreeLaneLabel(t, root)
 		t.Chdir(root)
 		t.Setenv(config.EnvClaudeProjectDir, root)
@@ -206,7 +206,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			findProjectRootFn, deps = prevRoot, prevDeps
 		})
 
-		if err := sdCCEntry([]string{"-f", "lane", "--clear-policy", "relaunch"}); err != nil {
+		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err != nil {
 			t.Fatalf("cc lane relaunch: %v", err)
 		}
 
@@ -222,8 +222,8 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			if rec.dir != card.WorktreePath {
 				t.Errorf("session %d: child working directory = %q, want card %s's worktree %q", i, rec.dir, cardID, card.WorktreePath)
 			}
-			if rec.env[config.EnvMoaiKanbanCard] != cardID {
-				t.Errorf("session %d: child env %s = %q, want card %s's id", i, config.EnvMoaiKanbanCard, rec.env[config.EnvMoaiKanbanCard], cardID)
+			if rec.env[config.EnvFactoryCard] != cardID {
+				t.Errorf("session %d: child env %s = %q, want card %s's id", i, config.EnvFactoryCard, rec.env[config.EnvFactoryCard], cardID)
 			}
 			if rec.env[config.EnvFactoryClearPolicy] != config.FactoryClearPolicyRelaunch {
 				t.Errorf("session %d: child env %s = %q, want %q", i, config.EnvFactoryClearPolicy, rec.env[config.EnvFactoryClearPolicy], config.FactoryClearPolicyRelaunch)
@@ -244,7 +244,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		sdClearLaneEnv(t)
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
-		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", kanban.BranchSourceConfig, integWT, "t1")
+		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 		sdLaneEnv(t, "lane-1", "")
 		t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 		t.Setenv(config.EnvFactoryClearPolicy, config.FactoryClearPolicyEach)
@@ -263,8 +263,8 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 
 	t.Run("relaunch without the claude binary is refused", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked)
-		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 		t.Chdir(root)
 		t.Setenv(config.EnvClaudeProjectDir, root)
 		sdScrubLauncherEnv(t)
@@ -283,21 +283,21 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			claudeLookPath, factoryLaneCardLaunchFn = prevLook, prevLaunch
 			findProjectRootFn, deps = prevRoot, prevDeps
 		})
-		if err := sdCCEntry([]string{"-f", "lane", "--clear-policy", "relaunch"}); err == nil {
+		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err == nil {
 			t.Fatal("relaunch without the claude binary succeeded, want a refusal")
 		}
 	})
 
 	t.Run("relaunch continues after a failed child session", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 		// SPEC-TODO-CLASSIFY-DISPATCH-001: same mode-neutral mapping as the
 		// per-card subtest above — the subject is the loop's continuation
 		// after a failed child, not exclusivity; the failed card stays leased
 		// until expiry either way.
-		fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
-		fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
-		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 		t.Chdir(root)
 		t.Setenv(config.EnvClaudeProjectDir, root)
 		sdScrubLauncherEnv(t)
@@ -320,7 +320,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			claudeLookPath, factoryLaneCardLaunchFn = prevLook, prevLaunch
 			findProjectRootFn, deps = prevRoot, prevDeps
 		})
-		if err := sdCCEntry([]string{"-f", "lane", "--clear-policy", "relaunch"}); err != nil {
+		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err != nil {
 			t.Fatalf("relaunch loop: %v", err)
 		}
 		if started != 2 {
@@ -362,7 +362,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		prevDeps := deps
 		deps = nil
 		t.Cleanup(func() { findProjectRootFn, deps = prevRoot, prevDeps })
-		err := sdCCEntry([]string{"-f", "lane", "--clear-policy", "never"})
+		err := sdCCEntry([]string{"-l", "--clear-policy", "never"})
 		if err == nil {
 			t.Fatal("invalid clear-policy value succeeded, want a refusal")
 		}

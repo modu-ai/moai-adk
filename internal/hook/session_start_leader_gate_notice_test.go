@@ -3,6 +3,7 @@ package hook
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -10,10 +11,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// The two leader notices (Kanban and Factory) carry one sentence that names the
-// batch gate summary and points at its canonical home. This file pins that
-// sentence: its two address tokens, what it must not contain, where it must not
-// appear, and that the product sources stay free of the question-tool token.
+// The factory leader notice carries one sentence that names the batch gate
+// summary and points at its canonical home. This file pins that sentence: its
+// two address tokens, what it must not contain, where it must not appear, and
+// that the product sources stay free of the question-tool token. The Kanban
+// leader notice this pin once covered left with Kanban Mode
+// (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-013); the factory leader is the one leader.
 
 const (
 	// leaderGatePointer is the address of the canonical section. The path and the
@@ -27,7 +30,7 @@ const (
 
 var (
 	leaderGateLocales = []string{"en", "ko", "ja", "zh"}
-	leaderGateKinds   = []string{"kanban", "factory"}
+	leaderGateKinds   = []string{"factory"}
 
 	leaderGateCardIDRe = regexp.MustCompile(`\bt\d{3,5}\b`)
 	leaderGateDateRe   = regexp.MustCompile(`\d{4}-\d{2}-\d{2}`)
@@ -38,18 +41,16 @@ var (
 // leaderGateGrid maps a leader kind to a locale to the rendered notice.
 type leaderGateGrid map[string]map[string]string
 
-// renderLeaderGateGrid renders both leader notices in every locale. The kanban
-// leader notice takes its run id from the argument and the factory leader notice
-// from the same; an empty root degrades the queue and slot summaries inside the
-// notices rather than failing.
+// renderLeaderGateGrid renders the factory leader notice in every locale. The
+// builder takes no project root since the lane-start sentence replaced the
+// per-lane lines (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009).
 func renderLeaderGateGrid(t *testing.T) leaderGateGrid {
 	t.Helper()
 	t.Setenv(config.EnvMoaiLaunchProvider, "")
-	clearKanbanEnv(t)
-	grid := leaderGateGrid{"kanban": {}, "factory": {}}
+	clearFactoryEnv(t)
+	grid := leaderGateGrid{"factory": {}}
 	for _, lang := range leaderGateLocales {
-		grid["kanban"][lang] = kanbanLeaderNotice("tjgate", "", lang)
-		grid["factory"][lang] = factoryLeaderNotice("tjgate", 2, "", lang)
+		grid["factory"][lang] = factoryLeaderNotice("tjgate", 2, lang)
 	}
 	return grid
 }
@@ -120,9 +121,8 @@ func leaderNoticeViolations(n string) []string {
 
 // leaderGateViolations checks a grid and returns the violation codes of the
 // first stage that finds any, so each mutant reports exactly its own code. The
-// stages run in a fixed order: a locale missing from the grid, then a leader
-// whose notice carries the sentence in no locale while the other leader does,
-// then the per-notice checks.
+// stages run in a fixed order: a locale missing from the grid, then the
+// per-notice checks.
 func leaderGateViolations(g leaderGateGrid) []string {
 	var codes []string
 	add := func(code string) {
@@ -145,19 +145,6 @@ func leaderGateViolations(g leaderGateGrid) []string {
 		return codes
 	}
 
-	has := map[string]bool{}
-	for _, kind := range leaderGateKinds {
-		for _, lang := range leaderGateLocales {
-			n := g[kind][lang]
-			if strings.Contains(n, leaderGatePointer) || strings.Contains(n, leaderGateName) {
-				has[kind] = true
-			}
-		}
-	}
-	if has["kanban"] != has["factory"] {
-		return []string{"one-sided-leader"}
-	}
-
 	for _, kind := range leaderGateKinds {
 		for _, lang := range leaderGateLocales {
 			for _, code := range leaderNoticeViolations(g[kind][lang]) {
@@ -169,7 +156,7 @@ func leaderGateViolations(g leaderGateGrid) []string {
 }
 
 // TestLeaderNoticeBatchGatePointer pins the batch gate summary sentence of the
-// two leader notices.
+// factory leader notice.
 func TestLeaderNoticeBatchGatePointer(t *testing.T) {
 	grid := renderLeaderGateGrid(t)
 
@@ -180,8 +167,8 @@ func TestLeaderNoticeBatchGatePointer(t *testing.T) {
 		t.Logf("real_grid violations=0")
 	})
 
-	// Each of the eight leader x locale combinations must carry the sentence on
-	// its own, so a table edit that drops one locale names the combination.
+	// Each of the four locales must carry the sentence on its own, so a table
+	// edit that drops one locale names the combination.
 	for _, kind := range leaderGateKinds {
 		for _, lang := range leaderGateLocales {
 			t.Run(kind+"/"+lang, func(t *testing.T) {
@@ -200,24 +187,16 @@ func TestLeaderNoticeBatchGatePointer(t *testing.T) {
 	}{
 		{"omit-locale", func(g leaderGateGrid) { delete(g["factory"], "ja") }},
 		{"question-tool-name", func(g leaderGateGrid) {
-			g["kanban"]["en"] = strings.Replace(g["kanban"]["en"], leaderGateName, leaderGateName+" (AskUserQuestion)", 1)
+			g["factory"]["en"] = strings.Replace(g["factory"]["en"], leaderGateName, leaderGateName+" (AskUserQuestion)", 1)
 		}},
 		{"omit-pointer", func(g leaderGateGrid) {
-			g["kanban"]["ko"] = strings.Replace(g["kanban"]["ko"], leaderGatePointer, "", 1)
+			g["factory"]["ko"] = strings.Replace(g["factory"]["ko"], leaderGatePointer, "", 1)
 		}},
 		{"omit-name-token", func(g leaderGateGrid) {
 			g["factory"]["zh"] = strings.Replace(g["factory"]["zh"], leaderGateName, "", 1)
 		}},
 		{"card-id", func(g leaderGateGrid) {
 			g["factory"]["en"] = strings.Replace(g["factory"]["en"], leaderGateName, leaderGateName+" t1344", 1)
-		}},
-		{"one-sided-leader", func(g leaderGateGrid) {
-			for _, lang := range leaderGateLocales {
-				n := g["kanban"][lang]
-				n = strings.ReplaceAll(n, leaderGatePointer, "")
-				n = strings.ReplaceAll(n, leaderGateName, "")
-				g["kanban"][lang] = n
-			}
 		}},
 	}
 	for _, m := range mutants {
@@ -232,19 +211,17 @@ func TestLeaderNoticeBatchGatePointer(t *testing.T) {
 		})
 	}
 
-	// Lane, companion and stale-run style notices never carry the pointer: a lane
-	// holds one card and so forms no cross-card batch.
-	t.Run("lane_and_companion_lack_pointer", func(t *testing.T) {
+	// Lane and stale-run style notices never carry the pointer: a lane holds one
+	// card and so forms no cross-card batch.
+	t.Run("lane_lacks_pointer", func(t *testing.T) {
 		checked := 0
 		for _, lang := range leaderGateLocales {
 			for name, n := range map[string]string{
-				"kanban companion":      kanbanCompanionNotice("plan", lang),
-				"factory lane":          factoryLaneNotice("lane-1", 2, lang),
-				"factory lane no cnt":   factoryLaneNotice("lane-1", 0, lang),
-				"factory lane rule":     factoryMessagesFor(lang).laneNextCardRule,
-				"factory owned rule":    factoryMessagesFor(lang).laneOwnedCardRule,
-				"factory manual rule":   factoryMessagesFor(lang).laneManualDispatchRule,
-				"kanban companion join": kanbanMessagesFor(lang).companionJoin,
+				"factory lane":        factoryLaneNotice("lane-1", 2, lang),
+				"factory lane no cnt": factoryLaneNotice("lane-1", 0, lang),
+				"factory lane rule":   factoryMessagesFor(lang).laneNextCardRule,
+				"factory owned rule":  factoryMessagesFor(lang).laneOwnedCardRule,
+				"factory manual rule": factoryMessagesFor(lang).laneManualDispatchRule,
 			} {
 				checked++
 				if strings.Contains(n, leaderGatePointer) || strings.Contains(n, leaderGateName) {
@@ -253,16 +230,14 @@ func TestLeaderNoticeBatchGatePointer(t *testing.T) {
 			}
 		}
 		if checked == 0 {
-			t.Fatal("no lane or companion notice was checked")
+			t.Fatal("no lane notice was checked")
 		}
 	})
 
-	// The four product sources stay free of the question-tool token outside
+	// The two product sources stay free of the question-tool token outside
 	// comments, the same scope and exclusion form as TestNoUserInteraction.
 	t.Run("source_scan", func(t *testing.T) {
 		files := []string{
-			"session_start_kanban.go",
-			"session_start_kanban_i18n.go",
 			"session_start_factory.go",
 			"session_start_factory_i18n.go",
 		}
@@ -282,39 +257,33 @@ func TestLeaderNoticeBatchGatePointer(t *testing.T) {
 		}
 	})
 
-	// Handler level: both leaders, the English agent copy (additionalContext) and
-	// the operator copy in a non-English locale (systemMessage) carry the
-	// sentence.
+	// Handler level: the English agent copy (additionalContext) and the operator
+	// copy in a non-English locale (systemMessage) carry the sentence.
 	t.Run("handler_level", func(t *testing.T) {
-		for _, kind := range leaderGateKinds {
-			t.Run(kind, func(t *testing.T) {
-				t.Setenv(config.EnvMoaiLaunchProvider, "")
-				clearKanbanEnv(t)
-				t.Setenv(config.EnvMoaiKanbanID, "tjgate")
-				if kind == "kanban" {
-					t.Setenv(config.EnvMoaiKanban, "1")
-				} else {
-					t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-				}
-				projectDir := newKanbanProjectDir(t)
-				out, err := NewSessionStartHandler(configWithLang("ko")).Handle(context.Background(), &HookInput{
-					SessionID:  "uuid-leader-gate-" + kind,
-					CWD:        projectDir,
-					ProjectDir: projectDir,
-				})
-				if err != nil {
-					t.Fatalf("Handle: %v", err)
-				}
-				ac := out.HookSpecificOutput.AdditionalContext
-				for channel, text := range map[string]string{"additionalContext": ac, "systemMessage": out.SystemMessage} {
-					if !strings.Contains(text, leaderGatePointer) || !strings.Contains(text, leaderGateName) {
-						t.Errorf("%s leader %s lacks the sentence:\n%s", kind, channel, text)
-					}
-				}
-				if strings.Contains(ac, "운영자") {
-					t.Errorf("%s leader additionalContext leaked the operator locale", kind)
-				}
-			})
+		t.Setenv(config.EnvMoaiLaunchProvider, "")
+		clearFactoryEnv(t)
+		t.Setenv(config.EnvFactoryRunID, "tjgate")
+		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
+		projectDir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(projectDir, ".moai", "state"), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		out, err := NewSessionStartHandler(configWithLang("ko")).Handle(context.Background(), &HookInput{
+			SessionID:  "uuid-leader-gate-factory",
+			CWD:        projectDir,
+			ProjectDir: projectDir,
+		})
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		ac := out.HookSpecificOutput.AdditionalContext
+		for channel, text := range map[string]string{"additionalContext": ac, "systemMessage": out.SystemMessage} {
+			if !strings.Contains(text, leaderGatePointer) || !strings.Contains(text, leaderGateName) {
+				t.Errorf("factory leader %s lacks the sentence:\n%s", channel, text)
+			}
+		}
+		if strings.Contains(ac, "운영자") {
+			t.Errorf("factory leader additionalContext leaked the operator locale")
 		}
 	})
 }

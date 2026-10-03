@@ -1,0 +1,16 @@
+<!-- expect: SVG073 -->
+<!-- The bounded residual of the 16-unit window: a non-label rect + text pair 13 units from a connector associates to it and warns. Accepted, not a defect. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="chip-in-window-title chip-in-window-desc">
+  <title id="chip-in-window-title">Pipeline legend</title>
+  <desc id="chip-in-window-desc">A connector runs below a legend chip that is not its label.</desc>
+  <defs>
+    <marker id="chip-in-window-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 60 120 H 340" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#chip-in-window-arrow)"/>
+  <rect x="150" y="87" width="90" height="20" fill="#FFFFFF"/>
+  <text x="195" y="101" font-size="11" text-anchor="middle" fill="#141413">legend</text>
+</svg>

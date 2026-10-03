@@ -1,10 +1,10 @@
 # /moai gtd — Canonical GTD Entry Point and Backlog Queue
 
 > The canonical workflow identity for GTD task management, and the operator's
-> entry point into the kanban board. `backlog` has no owning session, so
+> entry point into the backlog queue. `backlog` has no owning session, so
 > nothing dispatches work into it — admission is always an operator act, and
 > this is the surface for it.
-> Dispatch protocol: `.claude/rules/moai/workflow/kanban-dispatch.md`.
+> Dispatch protocol: `.claude/rules/moai/workflow/factory-dispatch.md`.
 
 > Compatibility surface: `/moai todo` is the compat alias of `/moai gtd`, and
 > `moai todo` is the compat alias of `moai gtd` on the CLI. Both names dispatch
@@ -305,7 +305,7 @@ the queue in order until it empties. That is still their pick, made once instead
 of one at a time, and the leader then admits those cards in the authorized order
 without asking again. It grants nothing else: no additions to the queue, no
 reordering, and no cover for a card that turns out to need a decision the
-authorization never covered. See `kanban-dispatch.md` § Entry into the board is
+authorization never covered. See `factory-dispatch.md` § Entry into the queue is
 an operator act.
 
 A workflow that ends by asking whether to start the card it just issued is the
@@ -320,7 +320,7 @@ Once picked:
 
 1. Record it with `moai gtd next <n> [--spec <SPEC-ID>]` (one locked write).
    Attach the SPEC only when one exists and its identifier is known.
-2. Follow `kanban-dispatch.md`'s card class: Class A direct close, Class B
+2. Follow `factory-dispatch.md`'s card class: Class A direct close, Class B
    run → sync without a SPEC, Class C plan → run → sync with SPEC authoring
    in plan. A pick alone neither creates a SPEC nor requires one.
 
@@ -361,7 +361,7 @@ card unpicked back to `queued` with a labelled non-finding — never silently
 done, never left picked by the cycle. The `jev:` line of the cycle stays a
 display-only signal, and Jev's ranking answer is used for the selection order
 only; it is never the basis of a queue mutation or a completion verdict. See
-`kanban-dispatch.md` § Entry into the board is an operator act (the
+`factory-dispatch.md` § Entry into the queue is an operator act (the
 reconciliation clause).
 
 Only a card whose text begins with the `[보류` marker is demoted; a hold stated
@@ -471,19 +471,19 @@ Nothing becomes a standing source by precedent. TODO comments, open issues,
 audit findings, and report milestones stay outside: they are surfaced to the
 operator, who asks for a card when they want one.
 
-## Outside Kanban Mode
+## Outside Factory Mode
 
 `moai gtd` works in an ordinary session too — it is just a queue. What it will
-not do is dispatch: with no companion sessions there is nobody to instruct, so
+not do is dispatch: with no lane sessions there is nobody to instruct, so
 the queue is read and written and the operator drives the work themselves.
 
-Say this plainly when it applies rather than implying a board exists.
+Say this plainly when it applies rather than implying a lane fleet exists.
 
 ## Boundaries
 
 - **Not a task tracker.** No priorities, no assignees, no due dates, no
   dependencies. Anything needing those belongs in an issue tracker or a SPEC.
-- **Not a board.** Column position lives with the leader and the SPEC status, not
+- **Not a board.** Card position lives with the leader and the SPEC status, not
   in this file.
 - **Not a source of truth for work in flight.** Once a card has a SPEC, the SPEC
   artifacts are authoritative; the backlog item is only a pointer to it.
@@ -494,6 +494,6 @@ Say this plainly when it applies rather than implying a board exists.
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/kanban-dispatch.md` — the dispatch cycle this feeds
+- `.claude/rules/moai/workflow/factory-dispatch.md` — the dispatch cycle this feeds
 - `.claude/rules/moai/core/askuser-protocol.md` — the channel the pick runs through
 - `.claude/agents/moai/manager-lead.md` — the coordination agent

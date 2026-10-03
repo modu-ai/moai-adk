@@ -1,10 +1,10 @@
 ---
 id: SPEC-TODO-AUTO-PICK-001
 title: "Autonomous card selection under --auto — the invoked session judges, the lease is the only pick path, the keep-set is skipped and reported"
-version: "0.4.1"
+version: "0.5.0"
 status: completed
 created: 2026-10-02
-updated: 2026-10-03
+updated: 2026-10-04
 author: manager-spec (card t1448)
 priority: P1
 phase: "v3.2.0 target"
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "todo-auto, factory-next, card-selection, keep-set, lease, decision-record, doctrine-amendment, card-t1448"
 tier: M
 card: t1448
+amendment_of: SPEC-TODO-AUTO-PICK-001
 depends_on: [SPEC-FACTORY-SELF-DISPATCH-001, SPEC-TODO-CLASSIFY-DISPATCH-001, SPEC-TODO-HOLD-STATE-001, SPEC-TODO-AUTO-PRIORITY-001]
 related_specs: [SPEC-AUTONOMY-BATCH-GATE-001, SPEC-JEV-AUTO-EXCEPTION-001, SPEC-FACTORY-LANE-AUTONOMY-001, SPEC-RELATION-PICKUP-FILTER-001, SPEC-MANAGER-TODO-001, SPEC-AUTONOMY-GATE-REWIRE-001]
 ---
@@ -21,6 +22,14 @@ related_specs: [SPEC-AUTONOMY-BATCH-GATE-001, SPEC-JEV-AUTO-EXCEPTION-001, SPEC-
 
 ## HISTORY
 
+- 0.5.0 — 2026-10-04 — in-place amendment of the `completed` SPEC to record a supersession (card
+  t1458; decision DL-4 of SPEC-FACTORY-ATOMIC-LEASE-001 §H, default "record it"; manager-spec
+  re-delegation per D-NEW-1). SPEC-FACTORY-ATOMIC-LEASE-001 (0.3.1, `completed`) lists in its §E which
+  clauses of this SPEC it supersedes, strengthens or amends; the new `## Amendments` section carries
+  one entry that records them, including the amended §C.2 definition of the `raced` token. No
+  requirement text, criterion text or id is changed; requirement count 16, criterion count 14.
+  Status moves `completed → in-progress` per the SSOT amendment transition and returns to `completed`
+  in the re-close commit.
 - 0.4.1 — 2026-10-03 — post-audit mechanical re-pin of measurement baselines after develop `7109e0900`
   was absorbed (merge `095ac6c3e`) **following** the iteration-4 delta plan-audit PASS (audited hash
   `724841520`, base `4bf547bca`). REQ-TAU-016 and AC-TAU-011 now measure the always-loaded
@@ -75,6 +84,23 @@ related_specs: [SPEC-AUTONOMY-BATCH-GATE-001, SPEC-JEV-AUTO-EXCEPTION-001, SPEC-
   Tier M: `spec.md` + `plan.md` + `acceptance.md`, plus `research.md` and `spec-compact.md`.
   Operator inputs: the card text (items 1-6) and the leader's constraint that the selection
   inputs are an open extension point for card t1454 (§B.7).
+
+## Amendments
+
+**2026-10-04 — v0.5.0 — supersession record for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458).**
+
+- Transition: `completed → in-progress` per the SSOT amendment contract (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Enum, `completed → in-progress (amendment)`); `amendment_of: SPEC-TODO-AUTO-PICK-001` (self-referential). This SPEC had no `## Amendments` section before; this entry creates it. The SPEC returns to `completed` in the re-close commit of the same delegation.
+- Prior completed version: **0.4.1** — closed 2026-10-03 (card t1448 sync lane; first close `8de769d81`, re-close commits `01ccc8b33` and `4293b2d73`).
+- `prior_completed_sha: 4293b2d73` — the `sync_commit_sha` this SPEC's progress.md §E.4 carries (the disposition commit that records the §E.4 block). The commit was confirmed present with `git cat-file -e`.
+- Reason: SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458, 0.3.1) states in its §E which clauses of this SPEC it supersedes, strengthens or amends, and records each through the Amendments mechanism so that a reader of this SPEC does not read them as open (its §H DL-4: default "record it", the operator may veto). This entry records the supersession as that SPEC states it; it does not re-measure it.
+- Scope — five rows of that §E table concern this SPEC:
+  1. **§C.2 definition of the `raced` token — amended.** The original definition reads: "the nominee was promoted or claimed by another lane first, or the version-checked edge reported a stale version". As amended, the token also covers a bounded wait on a busy store — the record's write lock past the lease-claim wait cap, or the queue lock past its wait budget; the detail line distinguishes the two and in that case never says that another lane took the card (REQ-FAL-006 of SPEC-FACTORY-ATOMIC-LEASE-001). The closed set of twelve tokens is unchanged.
+  2. **§B.8 "Non-atomicity" — superseded** (REQ-FAL-001, REQ-FAL-004): the statement that the record read and the queue write of the compensation are two stores with no shared lock, accepted and stated, no longer holds; the compensation runs inside the promotion's critical section.
+  3. **§G bullet "the record read and the queue write of the compensation are two stores without a shared lock" — superseded**, same reason. The post-`RecordPicked` residue half of that bullet stays (§F R4 of SPEC-FACTORY-ATOMIC-LEASE-001).
+  4. **REQ-TAU-005, the compensation clause ("one queue write that acts only if the item is still `picked`") — strengthened, not contradicted.** The guard stays, and the write now cannot interleave. The window in which the guard cannot tell its own promotion from an operator's re-pick is closed (REQ-FAL-004).
+  5. **REQ-TAU-006 (single ownership under concurrency) — unchanged**, and now also true for the serial slot (REQ-FAL-002).
+- Original text: every requirement, criterion and decision of this SPEC is byte-unchanged by this amendment, including the §C.2 table row, §B.8 and §G; this entry supersedes or amends them where they conflict, and the superseded statements stay in place as the record of what was accepted on 2026-10-03. No requirement deleted, no id renumbered, no AC mapping changed. Requirement and AC counts unchanged: 16 / 14.
+- Evidence: SPEC-FACTORY-ATOMIC-LEASE-001 `spec.md` §E (the supersession table) and REQ-FAL-001, -002, -004 and -006; its AC-FAL-014 is the criterion this entry satisfies for this SPEC.
 
 ## §A Context
 

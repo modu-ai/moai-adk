@@ -29,7 +29,7 @@ progressive_disclosure:
 
 # Lane Stall Watchdog — One Iteration
 
-One watchdog pass for a lane session (a factory or kanban worker running
+One watchdog pass for a lane session (a factory lane running
 under `moai cc` / `moai glm` / `moai codex`). The law — the ladder, the
 outcome transitions, the gate inventory, the view–SSOT rule, the record
 formats — lives in `.claude/rules/moai/workflow/auto-semantics.md`. Read

@@ -1,8 +1,8 @@
 ---
 name: manager-spec
 description: |
-  SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Absorbs the planning role per the Anthropic catalog consolidation (which reduced 17 agents to the then-8-agent catalog, since grown to 11; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
+  SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft in spec.md; the other artifacts are stateless). See §SPEC Artifact Ownership for artifact-level boundaries.
+  Absorbs the planning role (the prior owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1): design.md and research.md authoring (system design, architecture decisions, codebase research) are performed by this agent during Tier L SPEC plan-phase.
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
@@ -200,7 +200,7 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 ### Status transitions owned
 
-- `(none) → draft` emitted on plan-phase artifact creation across all 4 plan-phase files (spec.md + plan.md + acceptance.md + progress.md). Initial `status: draft` is set by this agent at SPEC creation time. This is the ONLY transition this agent performs — `draft → in-progress` is owned by manager-develop, and `in-progress → implemented → completed` by manager-docs.
+- `(none) → draft` emitted on plan-phase artifact creation. Initial `status: draft` is set by this agent at SPEC creation time in `spec.md` frontmatter (and, where present, the `progress.md` status line); `plan.md`, `acceptance.md`, `design.md`, and `research.md` are stateless and carry no `status:` field (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Artifact Statelessness). This is the ONLY transition this agent performs — `draft → in-progress` is owned by manager-develop, and `in-progress → implemented → completed` by manager-docs.
 
 Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 

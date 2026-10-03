@@ -16,7 +16,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/closure"
 	"github.com/modu-ai/moai-adk/internal/closure/closuretest"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // ─── seams ───
@@ -39,12 +39,12 @@ func fixtureSeams(t *testing.T, f *closuretest.Fixture) {
 // queueWithCards installs queue items card→specID ("": no SPEC).
 func queueWithCards(t *testing.T, f *closuretest.Fixture, cards map[string]string) {
 	t.Helper()
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(f.Root))
-	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	store := factory.NewBacklogStore(factory.BacklogPathForRoot(f.Root))
+	err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for card, spec := range cards {
-			item := kanban.BacklogItem{
+			item := factory.BacklogItem{
 				ID: card, Text: "fixture card " + card,
-				AddedAt: "2026-09-27T00:00:00Z", State: kanban.BacklogStatePicked,
+				AddedAt: "2026-09-27T00:00:00Z", State: factory.BacklogStatePicked,
 			}
 			if spec != "" {
 				s := spec

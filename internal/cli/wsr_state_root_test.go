@@ -310,7 +310,11 @@ func TestWSR002_ConvergenceStoreIdentityAndCoexistence(t *testing.T) {
 // agree read exactly as before; the divergent rows now require the split.
 func TestWSR006_ReviewGateRootMatrix(t *testing.T) {
 	const sid = "S"
-	fx := newWSRFixture(t, wsrWorkflowF)
+	// This matrix measures root RESOLUTION, so it opts the primary checkout
+	// back into review (primary_scope: review, REQ-CGSC-004). Under the
+	// default primary_scope (skip, REQ-CGSC-002) every P-session row would
+	// measure the primary-checkout skip instead of the resolved root.
+	fx := newWSRFixture(t, wsrWorkflowF+"      primary_scope: review\n")
 	failRec := `{"per_backend_verdicts":[],"overall_verdict":"fail","disagreement_flag":null,"participant_count":0,"residual_risk_note":"P fail record","fail_open_backends":[]}`
 	decoy := `{"per_backend_verdicts":[],"overall_verdict":"pass","disagreement_flag":null,"participant_count":0,"residual_risk_note":"W decoy","fail_open_backends":[]}`
 	wtWriteFile(t, filepath.Join(fx.P, ".moai", "state", "audit-multi", sid+".json"), failRec)
