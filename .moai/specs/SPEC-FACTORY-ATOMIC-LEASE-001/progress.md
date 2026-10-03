@@ -432,6 +432,46 @@ run and released after each: `moai slot status` free). Summary files `wm6-final-
   AC-FAL-012 and -014 (sync phase); a plan-auditor or sync-auditor reading of any of this; the section's hold under a held drift-log lock beyond
   the AC-FAL-007/-015 bounds.
 
+### P1 repair after leader codex_audit (card t1458, tree 3b7dfb232 + this repair)
+
+- **Reproduction.** The leader's adversarial `codex_audit` at `3b7dfb232` reproduced (fixture `TestReviewFactoryStepSymlink`) that
+  `acquireBoardLockImpl` in `internal/kanban/board_lock_unix.go` followed a symlinked lock path (`O_CREAT|O_RDWR`, then flock, then
+  `Ftruncate` and the owner-record write) and so replaced a file outside the project. The shared opener serves `board.lock` and the new
+  worktree-step lock alike. RED commit `38ebfcb36` (`board_lock_symlink_test.go`, 22 sub-tests over both entry points): at that tree
+  the outside file's bytes were replaced by the owner record (`outside file ... was modified: got "{\n  \"pid\": ...`) for the symlinked
+  lock file, the symlinked parent directory, the symlinked `.moai`, and the hardlinked lock file; FIFO and directory cases failed on the
+  missing `ErrBoardLockUnsafePath` wrap. Raw output: `.moai/reports/t1458/p1-red.txt`.
+- **Fix (shared opener).** `board_lock.go` gains `ErrBoardLockUnsafePath` (a refusal, never contention), `checkBoardLockAncestors` and
+  `checkBoardLockArtifact`. `acquireBoardLockImpl` (unix) now: Lstat-checks the ancestors, Lstat-checks the artifact (symlink or
+  non-regular refused), opens with `O_NOFOLLOW|O_NONBLOCK` added (ELOOP/EISDIR mapped to the refusal), `Fstat`s the descriptor and requires
+  a regular file with `Nlink == 1`, and only then flocks, truncates and writes the owner record. The Windows opener runs the same two
+  Lstat checks before its atomic create; a pre-existing regular file is still contention (`ErrBoardLockHeld`).
+- **Ancestor depth.** Checked: the lock's immediate parent directory and, when the lock path lies beneath a `.moai` directory, every
+  directory from the parent up to and including `.moai`. Not checked: anything above `.moai` (the opener receives only `lockPath`; the
+  project root and the OS temp root may legitimately sit behind a symlink, e.g. macOS `/var` to `/private/var`, positive control
+  `TestBoardLockSymlinkedProjectRootAllowed`). With no `.moai` ancestor only the immediate parent is checked. **Residual:** a symlink
+  above `.moai`, and a parent-directory swap between the Lstat and the open (only the final path component is covered by `O_NOFOLLOW`),
+  are not closed.
+- **Verification (this tree, plain runs; raw files `.moai/reports/t1458/p1-*.txt`).** New tests 22 PASS, 0 FAIL, 0 SKIP.
+  `go test -race -count=3 -timeout 30m ./internal/kanban/...` exit 0 (`ok ... 812.335s`). `internal/cli` step-lock and lease selectors
+  under `-race` exit 0 (`ok ... 90.732s`, `moai slot` resource `internal-cli-suite` held and released). AC-FAL-010: fresh `-list` equals
+  `baseline-list.txt` name for name (68 = 68), 68 PASS, 0 FAIL, 0 SKIP under the env scrub (`MOAI_KANBAN*`, `MOAI_FACTORY_*`,
+  `MOAI_AUTONOMY_TIER` unset in one invocation); an earlier unscrubbed run failed 17 names on `lane boundary` refusals caused by the
+  lane session's own environment (kept as `p1-ac010-run-unscrubbed-17fail.txt`). gofmt empty, `go vet` exit 0, golangci-lint v2.1.6
+  0 issues. `GOOS=windows` build and vet of `internal/kanban`, `internal/cli`, `internal/homestate` exit 0 (compile-verified only, no
+  Windows behavior verified).
+- **Mutation pass (go -overlay scratch copies; tree files byte-identical before and after, sha256 and `git status` equal).** Drop
+  `O_NOFOLLOW` alone: survives (Lstat pre-check is redundant, the window is a race the tests cannot construct deterministically). Drop
+  `O_NOFOLLOW` plus the Lstat artifact check: 2 RED. Drop the nlink check: 2 RED. Drop the regular-file fstat check alone: survives
+  (Lstat pre-check covers FIFO and directory). Drop both fstat checks plus the Lstat artifact check: 4 RED. Drop the ancestor check: 4 RED.
+  Restrict the ancestor check to the immediate parent: 2 RED (the `.moai` case).
+- **Allowed-file-set deviation.** This repair touches `internal/kanban/board_lock.go`, `board_lock_unix.go` and `board_lock_windows.go`,
+  which are OUTSIDE the plan's AC-FAL-013 allowed file set. It is a leader-ordered deviation, recorded here for a manager-spec amendment.
+- **CHANGELOG.** The `[Unreleased]` entry for this SPEC describes the worktree-step lock only as a cross-process lock and makes no claim
+  about lock-path safety, so it is left untouched.
+- **Gaps.** No `codex_review` scope=card pass was possible from this role. `board_lock_clear_windows.go` still reads the artifact with
+  `os.ReadFile` (a symlinked artifact is read, not written, and `os.Remove` removes the link itself); not changed.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: complete

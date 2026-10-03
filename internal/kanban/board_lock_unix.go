@@ -62,10 +62,48 @@ func (f *flockBoardLock) release() error {
 // artifact (REQ-KB-023). Only the lock holder writes, so the recorded
 // identity always names the current owner; a contender that fails the flock
 // writes nothing and the previous owner's record stands.
+//
+// The owner-record write truncates and rewrites the artifact, so the opener
+// first proves the artifact is the project's own file: no symlinked parent
+// directory (checkBoardLockAncestors), no symlinked lock file (Lstat, then
+// O_NOFOLLOW to close the check-to-open window on the final component), and,
+// on the opened descriptor and BEFORE the flock-then-truncate/write, a regular
+// file with a single link. A refusal wraps ErrBoardLockUnsafePath.
+//
+// @MX:ANCHOR: [AUTO] Shared opener for board.lock and the factory worktree-step lock; the owner-record write follows the safety checks.
+// @MX:REASON: the truncate+write must never run on a descriptor not proven a single-link regular file inside the project; moving the fstat check after the write reintroduces the outside-file overwrite (card t1458 P1).
+// @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
 func acquireBoardLockImpl(lockPath string) (boardLockImpl, error) {
-	fd, err := unix.Open(lockPath, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC, 0o644)
+	if err := checkBoardLockAncestors(lockPath); err != nil {
+		return nil, err
+	}
+	if err := checkBoardLockArtifact(lockPath); err != nil {
+		return nil, err
+	}
+	// O_NONBLOCK keeps a FIFO planted at the path from blocking the open; it
+	// has no effect on a regular file.
+	fd, err := unix.Open(lockPath, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0o644)
 	if err != nil {
+		if errors.Is(err, unix.ELOOP) {
+			return nil, unsafeBoardLockPath(lockPath, "lock file is a symlink")
+		}
+		if errors.Is(err, unix.EISDIR) {
+			return nil, unsafeBoardLockPath(lockPath, "lock file is not a regular file")
+		}
 		return nil, fmt.Errorf("open board lock %s: %w", lockPath, err)
+	}
+	var st unix.Stat_t
+	if err := unix.Fstat(fd, &st); err != nil {
+		_ = unix.Close(fd)
+		return nil, fmt.Errorf("inspect board lock %s: %w", lockPath, err)
+	}
+	if st.Mode&unix.S_IFMT != unix.S_IFREG {
+		_ = unix.Close(fd)
+		return nil, unsafeBoardLockPath(lockPath, "lock file is not a regular file")
+	}
+	if uint64(st.Nlink) != 1 {
+		_ = unix.Close(fd)
+		return nil, unsafeBoardLockPath(lockPath, "lock file has more than one hard link")
 	}
 	if err := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); err != nil {
 		_ = unix.Close(fd)

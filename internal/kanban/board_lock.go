@@ -30,6 +30,85 @@ var ErrBoardLockHeld = errors.New("kanban board lock held")
 // file. It is a refusal, never contention.
 var ErrBoardLockUnsafePath = errors.New("kanban board lock path is unsafe")
 
+// boardLockProjectDirName is the project-state directory that bounds the
+// ancestor check: a lock path beneath a `.moai` directory is validated from its
+// immediate parent up to and including that `.moai`, and never above it (the OS
+// temp root or the project root may legitimately sit behind a symlink, e.g.
+// macOS /var -> /private/var).
+const boardLockProjectDirName = ".moai"
+
+// unsafeBoardLockPath builds the refusal error for lockPath.
+func unsafeBoardLockPath(lockPath, reason string) error {
+	return fmt.Errorf("%w: %s: %s", ErrBoardLockUnsafePath, lockPath, reason)
+}
+
+// isLinkMode reports whether mode names a symlink or a Windows reparse-point
+// style irregular entry.
+func isLinkMode(mode os.FileMode) bool {
+	return mode&(os.ModeSymlink|os.ModeIrregular) != 0
+}
+
+// checkBoardLockAncestors refuses a lock whose parent directory (or, when the
+// path lies beneath a `.moai` directory, any directory from the parent up to
+// and including `.moai`) is a symlink: such a link would redirect the lock
+// artifact — and its owner-record write — outside the project.
+//
+// Depth: when no `.moai` ancestor exists only the immediate parent is checked.
+// Ancestors above `.moai` are deliberately NOT checked (see
+// boardLockProjectDirName); a symlink there is a residual this opener cannot
+// distinguish from a legitimate one given only lockPath.
+//
+// A missing directory is not refused here; the subsequent open reports it.
+func checkBoardLockAncestors(lockPath string) error {
+	parent := filepath.Dir(lockPath)
+	dirs := []string{parent}
+	for dir := parent; ; {
+		next := filepath.Dir(dir)
+		if next == dir {
+			// No `.moai` ancestor: immediate parent only.
+			dirs = dirs[:1]
+			break
+		}
+		if filepath.Base(dir) == boardLockProjectDirName {
+			break
+		}
+		dirs = append(dirs, next)
+		dir = next
+	}
+	for _, dir := range dirs {
+		info, err := os.Lstat(dir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return fmt.Errorf("inspect board lock directory %s: %w", dir, err)
+		}
+		if isLinkMode(info.Mode()) {
+			return unsafeBoardLockPath(lockPath, "directory "+dir+" is a symlink")
+		}
+	}
+	return nil
+}
+
+// checkBoardLockArtifact refuses a pre-existing lock artifact that is a
+// symlink or any other non-regular file. An absent artifact is fine.
+func checkBoardLockArtifact(lockPath string) error {
+	info, err := os.Lstat(lockPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("inspect board lock %s: %w", lockPath, err)
+	}
+	if isLinkMode(info.Mode()) {
+		return unsafeBoardLockPath(lockPath, "lock file is a symlink")
+	}
+	if !info.Mode().IsRegular() {
+		return unsafeBoardLockPath(lockPath, "lock file is not a regular file")
+	}
+	return nil
+}
+
 // IsBoardLockHeld reports whether err is the contention sentinel.
 func IsBoardLockHeld(err error) bool {
 	return errors.Is(err, ErrBoardLockHeld)

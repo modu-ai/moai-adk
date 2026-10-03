@@ -52,7 +52,17 @@ func (f *atomicFileBoardLock) release() error {
 
 // acquireBoardLockImpl creates lockPath with O_CREATE|O_EXCL — atomic on
 // NTFS — and records this process's identity IN the artifact (REQ-KB-023).
+//
+// Before the atomic create it refuses a symlinked ancestor (up to `.moai`) and a
+// pre-existing symlink or non-regular artifact, wrapping ErrBoardLockUnsafePath.
+// A pre-existing regular file is contention and still reports ErrBoardLockHeld.
 func acquireBoardLockImpl(lockPath string) (boardLockImpl, error) {
+	if err := checkBoardLockAncestors(lockPath); err != nil {
+		return nil, err
+	}
+	if err := checkBoardLockArtifact(lockPath); err != nil {
+		return nil, err
+	}
 	transientLeft := boardLockTransientRetries
 	for {
 		file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o644)
