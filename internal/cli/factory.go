@@ -416,9 +416,11 @@ func parseLauncherEntry(args []string) (launcherEntryParse, error) {
 // REQ-002 and REQ-010: a refused entry launches nothing). The cc and glm spawn
 // branch re-issues the command in a new tmux window, so an entry the launcher
 // refuses is refused here, where the operator reads it, instead of inside a
-// window that closes with it. The check only parses: the registry it reads for
-// the next lane number is read-only, and nothing is written or launched. A
-// profile-flag error is returned too: without --spawn the launcher reports it
+// window that closes with it. The check claims no lane and launches nothing,
+// but it is not side-effect free: an accepted -l resolves the next lane number
+// through loadFactoryRegistry, which opens the lane registry (creating
+// factory.db when it is absent) and imports the legacy workers.json into it.
+// A profile-flag error is returned too: without --spawn the launcher reports it
 // before the entry parse, and the spawned window would swallow it.
 func refuseBadEntryBeforeSpawn(spawnArgs []string) error {
 	_, rest, err := parseProfileFlag(spawnArgs)
