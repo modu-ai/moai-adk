@@ -1,10 +1,10 @@
 ---
 id: SPEC-FACTORY-RECORD-001
 title: "Harness-neutral factory F1 — card record layer and version-checked card state machine"
-version: "0.2.1"
-status: completed
+version: "0.3.0"
+status: in-progress
 created: 2026-09-26
-updated: 2026-09-27
+updated: 2026-10-04
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "factory, record-layer, state-machine, lease, heartbeat, evidence-gate, optimistic-concurrency, migration, factory-f1, card-t1239"
 tier: L
 card: t1239
+amendment_of: SPEC-FACTORY-RECORD-001
 related_specs: [SPEC-FACTORY-RUN-RETIRE-001, SPEC-FACTORY-MODE-001, SPEC-FACTORY-WORKER-NAMING-001, SPEC-AUTONOMY-CONTRACT-001, SPEC-GTD-AUTONOMY-001]
 ---
 
@@ -25,6 +26,19 @@ related_specs: [SPEC-FACTORY-RUN-RETIRE-001, SPEC-FACTORY-MODE-001, SPEC-FACTORY
 | 0.1.0 | 2026-09-26 | manager-spec | Initial plan-phase draft (card t1239, FACTORY-F1). Baseline: worktree `.claude/worktrees/t1239`, branch `WT-factory-record-state`, base develop `553e224f3`. Operator decisions of 2026-09-26 recorded in §C. |
 | 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iteration 1 (FAIL 0.71, `.moai/reports/t1239/plan-audit.md`) revision. D1: `kickoff` is a lease-released decision-pending state, approval returns the card to `assigned` with stage `run` (REQ-FR-018/019). D2: the resume edge is split into six concrete stage-guarded edges; AC-005 carries a fixed edge count (65). D3: `pushed → ci-green` and `ci-green → done` are reserved and refused in F1 (REQ-FR-006). D4: `unblock` (REQ-FR-020) and `failed` (REQ-FR-015) get their own requirements and AC-017. D5: AC-024 / AC-025 cover both dispatch paths. D6: the auditor verdict-line producer is a requirement of this SPEC (REQ-FR-011, AC-020, milestone M3b). D7: some compound requirements merged or split within the 25 ceiling. D8/D9: abandon of a plain card and an AC-002 mutation line added. Lead updates: A1 re-read at `de8aee456` (v0.5.1); contract pointer extended with a store-event locator into `$MOAI_HOME/db/<project-key>/contract/` (lead decision R10). REQ and AC renumbered; 25 REQ, 25 AC. |
 | 0.2.1 | 2026-09-26 | manager-spec | Plan-audit iteration 2 (PASS-WITH-DEBT 0.94, `.moai/reports/t1239/plan-audit-iter2.md`) debt notes, no REQ or AC count change: research.md R16 records the existing `AUDIT-VERDICT:` chat-message line (`internal/auditreceipt`, SPEC-CODEX-AUDIT-GATE-AXES-001) and corrects R13; verdict-file-only guardrail added to design.md, plan.md M3b, and AC-020 (D10); rationale for excluding `blocked` from T21 (D11); forward note that computing `contract_event` belongs to A3/F3 (D12). Lead decisions of the same day recorded: all ten plan.md §C defaults adopted; decision 5 strengthened in REQ-FR-025 (readable unavailable-record log, reported by `status`, and a `record.drift` event on the next successful write; AC-024 / AC-025); decision 10 cites A3 at `710530d67`; A1 re-pinned to `8a7cb0e22` (v0.5.2, F1 shape unchanged). |
+| 0.3.0 | 2026-10-04 | manager-spec | **In-place amendment of the `completed` SPEC to record a narrowing (card t1458; decision DL-4 of SPEC-FACTORY-ATOMIC-LEASE-001 §H, default "record it"; manager-spec re-delegation per D-NEW-1).** SPEC-FACTORY-ATOMIC-LEASE-001 (0.3.1, `completed`) narrows the last clause of REQ-FR-025 for the three record writes of the lease claim; the new `## Amendments` section carries one entry that records it. No requirement text, criterion text or id is changed; counts stay 25 / 25. Status moves `completed → in-progress` per the SSOT amendment transition and returns to `completed` in the re-close commit. |
+
+## Amendments
+
+**2026-10-04 — v0.3.0 — narrowing record for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458).**
+
+- Transition: `completed → in-progress` per the SSOT amendment contract (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Enum, `completed → in-progress (amendment)`); `amendment_of: SPEC-FACTORY-RECORD-001` (self-referential). This SPEC had no `## Amendments` section before; this entry creates it. The SPEC returns to `completed` in the re-close commit of the same delegation.
+- Prior completed version: **0.2.1** — closed 2026-09-26 (card t1239 sync lane).
+- `prior_completed_sha: bf1f680b34f4e00e5528714ced90759fc1e5a38c` — the `sync_commit_sha` this SPEC's progress.md §E.4 carries. The commit was confirmed present with `git cat-file -e`.
+- Reason: the drift-log change of SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458, 0.3.1) narrows REQ-FR-025, and that SPEC states the narrowing in its §E and records it through the Amendments mechanism so that a reader of this SPEC does not read the clause as applying unconditionally (its §H DL-4: default "record it", the operator may veto). This entry records the narrowing as that SPEC states it; it does not re-measure it.
+- Scope — one clause, REQ-FR-025, last clause: "the next successful factory-record write for that run shall append one `record.drift` event per unreconciled entry … and then mark the entry reconciled". **Narrowed for the lease claim's three record writes** (REQ-FAL-014 of SPEC-FACTORY-ATOMIC-LEASE-001): such a write reconciles only when the drift log's lock is free, skips the reconciliation on contention, and a later write reconciles. Every other record write keeps the clause as written. The earlier parts of REQ-FR-025 (the dispatch-path record, the non-failing dispatch, the `FACTORY_RECORD_UNAVAILABLE` line and the readable log) are not touched.
+- Original text: REQ-FR-025 in §B and AC-024 / AC-025 are unchanged; this entry narrows the last clause where they conflict, for the three lease-claim writes only. No requirement deleted, no id renumbered, no AC mapping changed. Requirement and AC counts unchanged: 25 / 25.
+- Evidence: SPEC-FACTORY-ATOMIC-LEASE-001 `spec.md` §E (the supersession table) and REQ-FAL-014; its AC-FAL-014 is the criterion this entry satisfies for this SPEC.
 
 ## §A. Background and Motivation
 
