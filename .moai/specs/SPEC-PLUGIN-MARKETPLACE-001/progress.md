@@ -277,6 +277,16 @@ and `<n4>` is `<s>/n4`.
   inline, and which `CODEX_*` variables move Codex's writes was not measured). This session did not carry the variable. It is the class
   of ND-9 (i), the protected roots following the caller's environment; the discoverable script's scrub closes it for that script only.
 
+### Plan-audit delta (iteration 4, one-time leader extension) and Kickoff wait (recorded by the lane, not the author)
+
+- Delta audit (audited_sha 58ee0bdb2, plan-artifact hash 9052d51b01fc9b409adf25c720bc897f81254cf1b7dab30e676e7e754ac5e20b): PASS-WITH-DEBT, score 0.87, `.moai/reports/t1435/plan-audit-iter4-delta.md`. ND-1, ND-2, ND-3 FIXED; new blocking-class or regression defects: none; counts 25 REQ / 25 AC / 14 OD; lint clean. Scores 0.72 → 0.84 → 0.86 → 0.87.
+- Residuals NR-1..NR-5 are run-phase debt, carried as binding run instructions BI-1..BI-3 from the verdict file (they live in the verdict, not in the SPEC, so the plan-artifact hash stays 9052d51b…): BI-1 run-start env pre-flight before the first write, re-measured at dispatch and not carried from the audit; BI-2 the omit-flag negative control (AC-025 (f)) and AC-018 (a) assertion (3) implement NR-1's preconditions, i.e. the decoy directories are asserted to exist BEFORE the control runs and the control aborts without running the installer if one is missing; BI-3 the discoverable script implements NR-3's pid-named poison, recording wrapper and local-path grep, with (e) labelled static.
+- The auditor states that if the leader's safety order is read as covering any control whose safety rests on an unasserted precondition, NR-1 is the one clause that would turn the verdict into FAIL; it is a single-clause fix inside AC-025 (f) and AC-018 (a), and BI-2 is the run-phase form of that fix.
+- Heading repair found by the lane after the delta audit: the `## §E.2 Run-phase Evidence` heading was missing from `58ee0bdb2` (present at `cc46749d9`, `a0c8ad7cb` and `3766cef05`), leaving its `_<pending run-phase>_` body orphaned under the previous section. The `§E.2` heading is parser-load-bearing (`internal/spec/era.go`, spec-frontmatter-schema § progress.md Section Map), so it is restored in the commit that carries this note. progress.md is not in the plan-artifact hash subject set, so the audited hash is unchanged; the delta audit's Gaps did not name it.
+- Kickoff status: NOT entered. auto-semantics §9.1 names verdict PASS as the autonomous entry condition; this verdict is PASS-WITH-DEBT. WAIT: reason = whether PASS-WITH-DEBT with BI-1..BI-3 carried satisfies the autonomous Kickoff predicate; whom = leader; recheck = leader reply or a re-read of this section. Operator batch acceptance of OD-1..OD-14 is recorded above (via leader relay).
+
+## §E.2 Run-phase Evidence
+
 _<pending run-phase>_
 
 ## §E.3 Run-phase Audit-Ready Signal
