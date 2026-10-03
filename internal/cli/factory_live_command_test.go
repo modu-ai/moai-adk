@@ -65,10 +65,10 @@ func TestFactoryLiveGLMLauncherEnvDefersAttributionToMCPConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	launcherEnv := factoryLiveWithoutAttribution([]string{
-		"PATH=/bin", config.EnvMoaiKanbanID + "=stale", config.EnvMoaiSessionPID + "=999",
+		"PATH=/bin", config.EnvFactoryRunID + "=stale", config.EnvMoaiSessionPID + "=999",
 		config.EnvMoaiFactoryWorker + "=stale-lane", config.EnvClaudeCodeSessionID + "=stale-session",
 	})
-	for _, key := range []string{config.EnvMoaiKanbanID, config.EnvMoaiSessionPID, config.EnvMoaiFactoryWorker, config.EnvClaudeCodeSessionID} {
+	for _, key := range []string{config.EnvFactoryRunID, config.EnvMoaiSessionPID, config.EnvMoaiFactoryWorker, config.EnvClaudeCodeSessionID} {
 		if got := launchEnvValue(launcherEnv, key); got != "" {
 			t.Fatalf("launcher env retained %s=%q", key, got)
 		}
@@ -86,7 +86,7 @@ func TestFactoryLiveGLMLauncherEnvDefersAttributionToMCPConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	env := doc.MCPServers["moai"].Env
-	if env[config.EnvMoaiKanbanID] != f.runID || env[config.EnvMoaiSessionPID] != "4242" || env[config.EnvMoaiFactoryWorker] != "lane-1" || env[config.EnvClaudeCodeSessionID] != p.SessionUUID {
+	if env[config.EnvFactoryRunID] != f.runID || env[config.EnvMoaiSessionPID] != "4242" || env[config.EnvMoaiFactoryWorker] != "lane-1" || env[config.EnvClaudeCodeSessionID] != p.SessionUUID {
 		t.Fatalf("MCP attribution env=%v", env)
 	}
 	if _, leaked := env[config.EnvTestGLMKey]; leaked {

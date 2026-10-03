@@ -23,7 +23,7 @@ import (
 var backlogJSONDisclosureMirroredFiles = []string{
 	".claude/skills/moai/SKILL.md",
 	".claude/skills/moai/workflows/gtd.md",
-	".claude/skills/moai-kanban-foreman/SKILL.md",
+	".claude/skills/moai-factory-foreman/SKILL.md",
 }
 
 // TestBacklogJSONDisclosure_EmbeddedTemplatesMatchSource — AC-BJD-016. The

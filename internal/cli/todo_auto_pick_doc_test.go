@@ -4,7 +4,7 @@
 // card; every surface that stated the old serial-only authority carries the
 // new sentences and none keeps the old ones; and the live copies agree with
 // their template mirrors byte for byte, except the one pre-existing
-// live-only sentence of kanban-dispatch.md, which is preserved, not absorbed.
+// live-only sentence of factory-dispatch.md, which is preserved, not absorbed.
 //
 // Literals are matched after the shared normalization of the sibling doc
 // tests (backticks dropped, whitespace collapsed) so a reflow cannot fake a
@@ -40,8 +40,8 @@ func autoPickMirrorPath(live string) string {
 func autoPickSurfaces() []autoPickSurface {
 	return []autoPickSurface{
 		{
-			name: "kanban-dispatch.md",
-			live: filepath.Join(".claude", "rules", "moai", "workflow", "kanban-dispatch.md"),
+			name: "factory-dispatch.md",
+			live: filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
 			contain: []string{
 				"Outside an --auto authorization the leader never picks for the operator",
 				"authorizes the invoked session to take cards from the queue on its own judgment",
@@ -115,8 +115,8 @@ func autoPickSurfaces() []autoPickSurface {
 			},
 		},
 		{
-			name: "moai-kanban-foreman/SKILL.md",
-			live: filepath.Join(".claude", "skills", "moai-kanban-foreman", "SKILL.md"),
+			name: "moai-factory-foreman/SKILL.md",
+			live: filepath.Join(".claude", "skills", "moai-factory-foreman", "SKILL.md"),
 			contain: []string{
 				"on its own judgment",
 				"outside a batch authorization",
@@ -130,8 +130,8 @@ func autoPickSurfaces() []autoPickSurface {
 			},
 		},
 		{
-			name: "kanban-dispatch-detail.md",
-			live: filepath.Join(".claude", "rules", "moai", "workflow", "kanban-dispatch-detail.md"),
+			name: "factory-dispatch-detail.md",
+			live: filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch-detail.md"),
 			contain: []string{
 				"a pull request or landed state is a skip input for a queued candidate the session chose and is report-only for an operator-picked card",
 			},
@@ -256,27 +256,27 @@ func TestAutoPickDocDoctrine(t *testing.T) {
 // card-pick amendment edits.
 func autoPickMirrorPairs() []string {
 	return []string{
-		filepath.Join(".claude", "rules", "moai", "workflow", "kanban-dispatch.md"),
-		filepath.Join(".claude", "rules", "moai", "workflow", "kanban-dispatch-detail.md"),
+		filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
+		filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch-detail.md"),
 		filepath.Join(".claude", "rules", "moai", "workflow", "auto-semantics.md"),
 		filepath.Join(".claude", "skills", "moai", "workflows", "gtd.md"),
 		filepath.Join(".claude", "agents", "moai", "manager-todo.md"),
-		filepath.Join(".claude", "skills", "moai-kanban-foreman", "SKILL.md"),
+		filepath.Join(".claude", "skills", "moai-factory-foreman", "SKILL.md"),
 		filepath.Join(".claude", "rules", "moai", "core", "moai-mcp-tools-catalogue.md"),
 	}
 }
 
 // autoPickLiveOnlyMarker identifies the one pre-existing live-only sentence of
-// kanban-dispatch.md; the copies differ by exactly the line that carries it.
+// factory-dispatch.md; the copies differ by exactly the line that carries it.
 const autoPickLiveOnlyMarker = "moai worktree sweep"
 
 // TestAutoPickMirrorParity (AC-TAU-010): every edited live file is
-// byte-identical to its template mirror, except kanban-dispatch.md, which
+// byte-identical to its template mirror, except factory-dispatch.md, which
 // differs by exactly the one live-only line it differed by before and by
 // nothing else. The drift is preserved, not absorbed in either direction.
 func TestAutoPickMirrorParity(t *testing.T) {
 	root := autoDocRepoRoot(t)
-	driftFile := filepath.Join(".claude", "rules", "moai", "workflow", "kanban-dispatch.md")
+	driftFile := filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch.md")
 
 	for _, live := range autoPickMirrorPairs() {
 		liveDoc := autoDocRead(t, root, live)
@@ -294,11 +294,11 @@ func TestAutoPickMirrorParity(t *testing.T) {
 		})
 	}
 
-	t.Run("kanban-dispatch.md differs by exactly the live-only sentence", func(t *testing.T) {
+	t.Run("factory-dispatch.md differs by exactly the live-only sentence", func(t *testing.T) {
 		liveLines := strings.Split(autoDocRead(t, root, driftFile), "\n")
 		mirrorLines := strings.Split(autoDocRead(t, root, autoPickMirrorPath(driftFile)), "\n")
 		if len(liveLines) != len(mirrorLines) {
-			t.Fatalf("kanban-dispatch.md live has %d lines, the mirror %d: the copies differ by more than one line", len(liveLines), len(mirrorLines))
+			t.Fatalf("factory-dispatch.md live has %d lines, the mirror %d: the copies differ by more than one line", len(liveLines), len(mirrorLines))
 		}
 
 		// The live-only sentence is the tail of one paragraph line: the mirror
@@ -320,7 +320,7 @@ func TestAutoPickMirrorParity(t *testing.T) {
 			}
 		}
 		if differing != 1 {
-			t.Errorf("kanban-dispatch.md live and mirror differ on %d lines, want exactly 1", differing)
+			t.Errorf("factory-dispatch.md live and mirror differ on %d lines, want exactly 1", differing)
 		}
 	})
 }

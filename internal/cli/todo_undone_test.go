@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // stubLandingQuery pins the landing query's answer for the duration of a test.
@@ -197,7 +197,7 @@ func TestTodoUndone_SurvivesMigrationFromLegacyJSON(t *testing.T) {
 		t.Fatalf("undone: %v", err)
 	}
 	after := readBacklogBytes(t, root)
-	var beforeRecord, afterRecord kanban.BacklogRecord
+	var beforeRecord, afterRecord factory.BacklogRecord
 	if err := json.Unmarshal(before, &beforeRecord); err != nil {
 		t.Fatalf("decode legacy projection: %v", err)
 	}
@@ -416,7 +416,7 @@ func TestTodoDoneUndone_NeverPrompt(t *testing.T) {
 
 // AC-TDG-013 — the persistent identity invariant refuses a reissued id before
 // restore can overwrite either lifetime. RestoreCard's in-memory collision
-// guard remains covered in internal/kanban/backlog_archive_test.go.
+// guard remains covered in internal/factory/backlog_archive_test.go.
 func TestTodoUndone_ReissuedIDRefuses(t *testing.T) {
 	root, store := todoFixture(t)
 	seedTodo(t, "alpha work")
@@ -424,14 +424,14 @@ func TestTodoUndone_ReissuedIDRefuses(t *testing.T) {
 		t.Fatalf("done: %v", err)
 	}
 	before := readBacklogBytes(t, root)
-	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items = append(rec.Items, kanban.BacklogItem{
+	err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items = append(rec.Items, factory.BacklogItem{
 			ID: "t1", Text: "a different card", AddedAt: "2026-01-01T00:00:00Z",
-			State: kanban.BacklogStateQueued,
+			State: factory.BacklogStateQueued,
 		})
 		return nil
 	})
-	if !kanban.IsBacklogIDConflict(err) {
+	if !factory.IsBacklogIDConflict(err) {
 		t.Fatalf("reissuing archived t1 must fail with an identity conflict, got %v", err)
 	}
 	if got := readBacklogBytes(t, root); string(got) != string(before) {

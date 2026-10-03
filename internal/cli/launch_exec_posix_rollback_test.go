@@ -21,8 +21,8 @@ func TestClaudePOSIXExecFailureRollsBackPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	env := append(os.Environ(),
-		config.EnvMoaiKanbanID+"="+run,
-		config.EnvMoaiKanbanBackend+"=claude",
+		config.EnvFactoryRunID+"="+run,
+		config.EnvFactoryBackend+"=claude",
 		config.EnvMoaiFactoryWorkers+"=1",
 		config.EnvMoaiFactoryWorker+"=",
 		config.EnvClaudeProjectDir+"="+root,

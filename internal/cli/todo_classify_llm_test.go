@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoLLMFakeKey is the credential every seam-swapped test flows. The secret
@@ -109,12 +109,12 @@ func llmJudgment(priority, mode string, blocked bool, decider, reason string) st
 
 // wantHappyJudgment is the closed-set judgment the happy-path fixtures
 // return.
-func wantHappyJudgment() kanban.CardClassification {
-	return kanban.CardClassification{
-		Priority: kanban.ClassPriorityHigh,
+func wantHappyJudgment() factory.CardClassification {
+	return factory.CardClassification{
+		Priority: factory.ClassPriorityHigh,
 		Blocked:  false,
-		Mode:     kanban.ClassModeParallelizable,
-		Decider:  kanban.DeciderIdentityLLM,
+		Mode:     factory.ClassModeParallelizable,
+		Decider:  factory.DeciderIdentityLLM,
 		Reason:   "spans several systems",
 	}
 }
@@ -136,7 +136,7 @@ func TestLLMDeciderClassify_HappyPathRecordsForcedLLMIdentity(t *testing.T) {
 	}
 	want := wantHappyJudgment()
 	if cls.Priority != want.Priority || cls.Blocked != want.Blocked || cls.Mode != want.Mode ||
-		cls.Decider != kanban.DeciderIdentityLLM || cls.Reason != want.Reason {
+		cls.Decider != factory.DeciderIdentityLLM || cls.Reason != want.Reason {
 		t.Errorf("classification = %+v, want the model's judgment with identity forced to llm", cls)
 	}
 	if cls.ClassifiedAt != "" {
@@ -156,8 +156,8 @@ func TestLLMDeciderClassify_ClaimedJevIdentityIsAcceptedNotFailed(t *testing.T) 
 	if err != nil {
 		t.Fatalf("classify errored on a claimed identity, want acceptance with overwrite: %v", err)
 	}
-	if cls.Decider != kanban.DeciderIdentityLLM {
-		t.Errorf("recorded decider = %q, want the forced %q", cls.Decider, kanban.DeciderIdentityLLM)
+	if cls.Decider != factory.DeciderIdentityLLM {
+		t.Errorf("recorded decider = %q, want the forced %q", cls.Decider, factory.DeciderIdentityLLM)
 	}
 }
 
@@ -292,11 +292,13 @@ func TestLLMDeciderClassify_RequestCarriesTaskSlotTransport(t *testing.T) {
 		t.Errorf("credential header carried %q, want the flowed key (positive control: the endpoint DID receive the credential)", got)
 	}
 	var body struct {
-		Model           string         `json:"model"`
-		ReasoningEffort string         `json:"reasoning_effort"`
-		MaxTokens       int            `json:"max_tokens"`
-		System          string         `json:"system"`
-		Messages        []struct{ Text string `json:"content"` } `json:"messages"`
+		Model           string `json:"model"`
+		ReasoningEffort string `json:"reasoning_effort"`
+		MaxTokens       int    `json:"max_tokens"`
+		System          string `json:"system"`
+		Messages        []struct {
+			Text string `json:"content"`
+		} `json:"messages"`
 	}
 	if err := json.Unmarshal(req.body, &body); err != nil {
 		t.Fatalf("request body %s: %v", req.body, err)
@@ -334,7 +336,7 @@ func TestLLMDeciderHTTPClientCarriesConfiguredTimeout(t *testing.T) {
 // judgment with decider llm, a classified_at stamp, and the reason.
 func TestTodoAdd_LLMSelectionRecordsModelJudgment(t *testing.T) {
 	_, store := todoFixture(t)
-	t.Setenv(config.EnvTodoDecider, kanban.DeciderIdentityLLM)
+	t.Setenv(config.EnvTodoDecider, factory.DeciderIdentityLLM)
 	server, rec := llmServer(t, http.StatusOK, llmEnvelope(llmJudgment("high", "parallelizable", false, "human", "spans several systems")))
 	withTodoLLMSeams(t, server.URL+glmMessagesPath, todoLLMHTTPClient, fakeKeyLoader())
 
@@ -360,7 +362,7 @@ func TestTodoAdd_LLMSelectionRecordsModelJudgment(t *testing.T) {
 		c := it.Classification
 		want := wantHappyJudgment()
 		if c == nil || c.Priority != want.Priority || c.Blocked != want.Blocked || c.Mode != want.Mode ||
-			c.Decider != kanban.DeciderIdentityLLM {
+			c.Decider != factory.DeciderIdentityLLM {
 			t.Errorf("card %s classification = %+v, want the model judgment with decider llm", id, c)
 		}
 		if c != nil && c.ClassifiedAt == "" {
@@ -377,7 +379,7 @@ func TestTodoAdd_LLMSelectionRecordsModelJudgment(t *testing.T) {
 func TestTodoAdd_LLMSecretNeverPrinted(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		_, _ = todoFixture(t)
-		t.Setenv(config.EnvTodoDecider, kanban.DeciderIdentityLLM)
+		t.Setenv(config.EnvTodoDecider, factory.DeciderIdentityLLM)
 		server, rec := llmServer(t, http.StatusOK, llmEnvelope(llmJudgment("high", "serial", false, "llm", "unused")))
 		withTodoLLMSeams(t, server.URL+glmMessagesPath, todoLLMHTTPClient, fakeKeyLoader())
 
@@ -394,7 +396,7 @@ func TestTodoAdd_LLMSecretNeverPrinted(t *testing.T) {
 	})
 	t.Run("failure path", func(t *testing.T) {
 		_, _ = todoFixture(t)
-		t.Setenv(config.EnvTodoDecider, kanban.DeciderIdentityLLM)
+		t.Setenv(config.EnvTodoDecider, factory.DeciderIdentityLLM)
 		server, rec := llmServer(t, http.StatusInternalServerError, "boom")
 		withTodoLLMSeams(t, server.URL+glmMessagesPath, todoLLMHTTPClient, fakeKeyLoader())
 

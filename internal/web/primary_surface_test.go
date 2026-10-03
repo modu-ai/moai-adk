@@ -8,7 +8,7 @@ import (
 )
 
 // TestPrimaryRailKeepsThreeSurfaceIA pins the agreed first-level information
-// architecture. Kanban, Specs, and Monitor remain route-compatible screens;
+// architecture. Factory, Specs, and Monitor remain route-compatible screens;
 // they are not shown as primary navigation or Overview destinations.
 func TestPrimaryRailKeepsThreeSurfaceIA(t *testing.T) {
 	body := renderConsolePage(t)
@@ -23,7 +23,7 @@ func TestPrimaryRailKeepsThreeSurfaceIA(t *testing.T) {
 		}
 	}
 	for _, retired := range []string{
-		`class="nav__row" href="/kanban"`,
+		`class="nav__row" href="/factory"`,
 		`class="nav__row" href="/specs"`,
 		`class="nav__row" href="/monitor"`,
 	} {
@@ -31,7 +31,7 @@ func TestPrimaryRailKeepsThreeSurfaceIA(t *testing.T) {
 			t.Errorf("retired operational surface remains in primary rail: %s", retired)
 		}
 	}
-	for _, retired := range []string{`href="/kanban"`, `href="/specs"`, `href="/monitor"`} {
+	for _, retired := range []string{`href="/factory"`, `href="/specs"`, `href="/monitor"`} {
 		if strings.Contains(body, retired) {
 			t.Errorf("settings page exposes an unrequested Overview destination: %s", retired)
 		}

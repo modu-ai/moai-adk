@@ -621,3 +621,44 @@ func TestAgentModelGuardOverride(t *testing.T) {
 		}
 	})
 }
+
+// TestAgentModelAuditRowPerSpawn pins AC-AMI-009 as amended in
+// SPEC-AGENT-MODEL-INHERIT-001 v0.9.0: the declaration-only observer appends
+// exactly one audit row per Agent spawn — declared and inherit alike — carrying
+// the override_consumption field, and never denies. It keeps the requirement
+// text and the shipped writer from drifting apart again.
+func TestAgentModelAuditRowPerSpawn(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	h := newAgentModelTestHandler(t, root)
+
+	for _, model := range []string{"haiku", ""} {
+		out, err := h.Handle(context.Background(), agentInput("Explore", model))
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		assertNotDeny(t, out)
+	}
+
+	data, err := os.ReadFile(filepath.Join(root, ".moai", "logs", agentModelAuditFileName))
+	if err != nil {
+		t.Fatalf("audit log must exist after two spawns: %v", err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("audit rows: got %d, want 2 (one per spawn)", len(lines))
+	}
+	want := []string{string(verdictAgentModelDeclared), string(verdictAgentModelInherit)}
+	for i, ln := range lines {
+		var rec map[string]any
+		if err := json.Unmarshal([]byte(ln), &rec); err != nil {
+			t.Fatalf("row %d is not JSON: %v", i, err)
+		}
+		if rec["verdict"] != want[i] {
+			t.Errorf("row %d verdict: got %v, want %s", i, rec["verdict"], want[i])
+		}
+		if rec["override_consumption"] != overrideConsumptionOff {
+			t.Errorf("row %d override_consumption: got %v, want %s (default gate closed)", i, rec["override_consumption"], overrideConsumptionOff)
+		}
+	}
+}

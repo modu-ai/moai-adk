@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/spf13/cobra"
 )
 
@@ -88,7 +88,7 @@ func mergeReadyFixture(t *testing.T, syncStatus string, lane, sessionID string) 
 // package's own acquire API — the forged-ledger path, never a real merge.
 func holdWindowFor(t *testing.T, lockRoot, sessionID, laneName string) {
 	t.Helper()
-	_, err := kanban.AcquireIntegrationLock(lockRoot, kanban.IntegrationLock{
+	_, err := factory.AcquireIntegrationLock(lockRoot, factory.IntegrationLock{
 		SessionID:   sessionID,
 		SessionName: laneName,
 		PID:         os.Getpid(), // this test process: a live holder
@@ -115,9 +115,9 @@ func runFactoryMerge(t *testing.T, args ...string) (string, error) {
 }
 
 // readLockRoot reads the lock record from the fixture's lock root.
-func readLockRoot(t *testing.T, lockRoot string) kanban.IntegrationLock {
+func readLockRoot(t *testing.T, lockRoot string) factory.IntegrationLock {
 	t.Helper()
-	lock, err := kanban.ReadIntegrationLock(lockRoot)
+	lock, err := factory.ReadIntegrationLock(lockRoot)
 	if err != nil {
 		t.Fatalf("read lock: %v", err)
 	}

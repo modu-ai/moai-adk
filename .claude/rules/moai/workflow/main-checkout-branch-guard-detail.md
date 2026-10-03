@@ -116,7 +116,7 @@ flows. The hook applies the doctrine conditionally.
   axis reaches a spawned agent and simply did not match the name it was given.
 
   The deny reason's remediation text must not suggest delegating to a
-  `manager-git` agent (kanban card t43). The ORIGINAL reason for that wording —
+  `manager-git` agent (card t43). The ORIGINAL reason for that wording —
   "such a delegation reproduces the same deny" — is false as measured, so the
   wording now stands on a different and stronger footing: the delegation would
   actually SUCCEED, and succeeding is precisely the outcome the guard exists to

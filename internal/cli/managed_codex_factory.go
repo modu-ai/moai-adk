@@ -46,9 +46,9 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 var errManagedCodexNonLoopback = errors.New("managed codex app server endpoint must be a loopback IP literal (127.0.0.0/8 or ::1) over ws://")
@@ -68,6 +68,13 @@ func managedLoopbackURL(raw string) error {
 	}
 	return nil
 }
+
+// Test seams: tests force the early Start failures that a real filesystem and
+// loopback cannot produce on demand.
+var (
+	managedCodexWriteToken  = os.WriteFile
+	managedCodexAllocateURL = managedCodexAppEndpoint
+)
 
 // managedCodexAppEndpoint allocates the ephemeral loopback port the app
 // server listens on. The owner closes its probe listener before the child
@@ -103,7 +110,17 @@ func managedCodexAppReady(ctx context.Context, raw string) error {
 	if err := managedLoopbackURL(raw); err != nil {
 		return err
 	}
-	client := &http.Client{Timeout: 300 * time.Millisecond}
+	client := &http.Client{
+		Timeout: 300 * time.Millisecond,
+		// A redirect target must pass the same loopback rule as the probe
+		// target, or a loopback endpoint could steer the probe off the machine.
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("managed codex readiness probe: too many redirects")
+			}
+			return managedLoopbackURL(strings.Replace(req.URL.String(), "http", "ws", 1))
+		},
+	}
 	endpoint := strings.Replace(raw, "ws://", "http://", 1) + "/readyz"
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -113,6 +130,9 @@ func managedCodexAppReady(ctx context.Context, raw string) error {
 			return err
 		}
 		resp, err := client.Do(req)
+		if errors.Is(err, errManagedCodexNonLoopback) {
+			return err
+		}
 		if err == nil {
 			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
@@ -655,7 +675,7 @@ func newManagedCodexSession(bin string, args, env []string) (*managedCodexSessio
 	}
 	label := launchEnvValue(env, config.EnvMoaiFactoryWorker)
 	if label == "" {
-		label = kanban.RoleLeader
+		label = factory.RoleLeader
 	}
 	return &managedCodexSession{program: bin, appArgs: appArgs, model: model, env: env, label: label}, nil
 }
@@ -674,11 +694,19 @@ func (s *managedCodexSession) Start() error {
 		return err
 	}
 	s.tokenDir = tokenDir
+	// Until the child exists, Close is a no-op, so any failure before
+	// cmd.Start must drop the token directory here.
+	defer func() {
+		if !s.started {
+			_ = os.RemoveAll(s.tokenDir)
+			s.tokenDir = ""
+		}
+	}()
 	tokenFile := filepath.Join(tokenDir, "token")
-	if err := os.WriteFile(tokenFile, []byte(token), 0o600); err != nil {
+	if err := managedCodexWriteToken(tokenFile, []byte(token), 0o600); err != nil {
 		return err
 	}
-	url, err := managedCodexAppEndpoint()
+	url, err := managedCodexAllocateURL()
 	if err != nil {
 		return err
 	}
@@ -688,10 +716,6 @@ func (s *managedCodexSession) Start() error {
 	s.cmd.Dir = s.dir
 	s.cmd.Stderr = os.Stderr
 	if err := s.cmd.Start(); err != nil {
-		// No child exists, so the deferred Close will not run its teardown:
-		// drop the token directory here instead.
-		_ = os.RemoveAll(s.tokenDir)
-		s.tokenDir = ""
 		return fmt.Errorf("start managed Factory codex app server: %w", err)
 	}
 	s.started = true
@@ -786,7 +810,7 @@ func (s *managedCodexSession) Close() error {
 // without process-global mutation (the entry points pass os.Stdin).
 func runManagedFactoryCodex(bin string, args, env []string, dir string, stdin io.Reader) (err error) {
 	root := launchProjectRoot()
-	runID := launchEnvValue(env, config.EnvMoaiKanbanID)
+	runID := launchEnvValue(env, config.EnvFactoryRunID)
 	if runID == "" {
 		return errors.New("factory managed session requires a factory run id")
 	}

@@ -1,0 +1,1033 @@
+diff --git a/internal/cli/cc_test.go b/internal/cli/cc_test.go
+--- a/internal/cli/cc_test.go
++++ b/internal/cli/cc_test.go
+@@ -319,8 +319,8 @@
+ 	var kanbanAtLaunch, specAtLaunch string
+ 	unifiedLaunchFunc = func(_ string, _ string, args []string) error {
+ 		capturedArgs = args
+-		kanbanAtLaunch = os.Getenv(config.EnvMoaiKanban)
+-		specAtLaunch = os.Getenv(config.EnvMoaiKanbanSpec)
++		kanbanAtLaunch = os.Getenv(config.EnvMoaiFactoryWorkers)
++		specAtLaunch = os.Getenv(config.EnvMoaiKanbanBackend)
+ 		return nil
+ 	}
+ 
+@@ -345,10 +345,10 @@
+ 		}
+ 	}
+ 	if kanbanAtLaunch != "1" {
+-		t.Errorf("AC-FM-001: %s must be set at launch, got %q", config.EnvMoaiKanban, kanbanAtLaunch)
++		t.Errorf("AC-FM-001: %s must be set at launch, got %q", config.EnvMoaiFactoryWorkers, kanbanAtLaunch)
+ 	}
+ 	if specAtLaunch != "SPEC-PLACEHOLDER" {
+-		t.Errorf("AC-FM-001: %s must carry the identifier at launch, got %q", config.EnvMoaiKanbanSpec, specAtLaunch)
++		t.Errorf("AC-FM-001: %s must carry the identifier at launch, got %q", config.EnvMoaiKanbanBackend, specAtLaunch)
+ 	}
+ }
+ 
+@@ -479,8 +479,8 @@
+ 	ccCmd.SetErr(buf)
+ 
+ 	// Baseline: neither variable is set in this process.
+-	_ = os.Unsetenv(config.EnvMoaiKanban)
+-	_ = os.Unsetenv(config.EnvMoaiKanbanSpec)
++	_ = os.Unsetenv(config.EnvMoaiFactoryWorkers)
++	_ = os.Unsetenv(config.EnvMoaiKanbanBackend)
+ 
+ 	cases := []struct {
+ 		name    string
+@@ -492,8 +492,8 @@
+ 	}
+ 	for _, tc := range cases {
+ 		t.Run(tc.name, func(t *testing.T) {
+-			beforeKanban, beforeKanbanSet := os.LookupEnv(config.EnvMoaiKanban)
+-			beforeSpec, beforeSpecSet := os.LookupEnv(config.EnvMoaiKanbanSpec)
++			beforeKanban, beforeKanbanSet := os.LookupEnv(config.EnvMoaiFactoryWorkers)
++			beforeSpec, beforeSpecSet := os.LookupEnv(config.EnvMoaiKanbanBackend)
+ 
+ 			unifiedLaunchFunc = tc.launch
+ 			err := runCC(ccCmd, []string{"--kanban", "SPEC-PLACEHOLDER"})
+@@ -506,8 +506,8 @@
+ 				val    string
+ 				wasSet bool
+ 			}{
+-				{config.EnvMoaiKanban, beforeKanban, beforeKanbanSet},
+-				{config.EnvMoaiKanbanSpec, beforeSpec, beforeSpecSet},
++				{config.EnvMoaiFactoryWorkers, beforeKanban, beforeKanbanSet},
++				{config.EnvMoaiKanbanBackend, beforeSpec, beforeSpecSet},
+ 			} {
+ 				got, gotSet := os.LookupEnv(pair.key)
+ 				if gotSet != pair.wasSet {
+diff --git a/internal/cli/codex_debug_trace_test.go b/internal/cli/codex_debug_trace_test.go
+--- a/internal/cli/codex_debug_trace_test.go
++++ b/internal/cli/codex_debug_trace_test.go
+@@ -114,10 +114,7 @@
+ // strings must appear nowhere in the captured stderr.
+ func TestCodexDebugTraceEnvKeysOnly(t *testing.T) {
+ 	sentinels := map[string]string{
+-		config.EnvMoaiKanban:                 "kanban-sentinel",
+ 		config.EnvMoaiKanbanID:               "run-sentinel",
+-		config.EnvMoaiKanbanSpec:             "spec-sentinel",
+-		config.EnvMoaiKanbanLabel:            "label-sentinel",
+ 		config.EnvMoaiKanbanLeadAddr:         "leader-secret-sentinel",
+ 		config.EnvMoaiKanbanLeadName:         "leadname-sentinel",
+ 		config.EnvMoaiKanbanBackend:          "backend-sentinel",
+diff --git a/internal/cli/codex_factory_retire_test.go b/internal/cli/codex_factory_retire_test.go
+--- a/internal/cli/codex_factory_retire_test.go
++++ b/internal/cli/codex_factory_retire_test.go
+@@ -46,10 +46,10 @@
+ // and not only in the per-key assertions below.
+ func TestCodexLaneLaunchEnvKeys(t *testing.T) {
+ 	want := []string{
+-		config.EnvMoaiKanban,
++		config.EnvMoaiFactoryWorkers,
+ 		config.EnvMoaiKanbanID,
+-		config.EnvMoaiKanbanSpec,
+-		config.EnvMoaiKanbanLabel,
++		config.EnvMoaiKanbanBackend,
++		config.EnvMoaiFactoryWorker,
+ 		config.EnvMoaiKanbanLeadAddr,
+ 		config.EnvMoaiKanbanLeadName,
+ 		config.EnvMoaiKanbanBackend,
+diff --git a/internal/cli/factory_m4_test.go b/internal/cli/factory_m4_test.go
+--- a/internal/cli/factory_m4_test.go
++++ b/internal/cli/factory_m4_test.go
+@@ -33,7 +33,7 @@
+ func sdScrubLauncherEnv(t *testing.T) {
+ 	t.Helper()
+ 	for _, k := range []string{
+-		config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel,
++		config.EnvMoaiFactoryWorkers, config.EnvMoaiKanbanID, config.EnvMoaiFactoryWorker,
+ 		config.EnvMoaiKanbanLeadAddr, config.EnvMoaiKanbanSettingsInjected,
+ 		config.EnvFactoryRole, config.EnvMoaiFactoryWorker, config.EnvMoaiFactoryWorkers,
+ 		config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanCard,
+diff --git a/internal/cli/factory_m5_test.go b/internal/cli/factory_m5_test.go
+--- a/internal/cli/factory_m5_test.go
++++ b/internal/cli/factory_m5_test.go
+@@ -142,8 +142,8 @@
+ 		// The factory card verbs the owned-card session runs read the lane
+ 		// label from MOAI_KANBAN_LABEL; a child without it could not stage
+ 		// its own card.
+-		if rec.env[config.EnvMoaiKanbanLabel] != wantLabel {
+-			t.Errorf("invocation %d: child env %s = %q, want the lane label %q (the carrier the factory card verbs read)", i, config.EnvMoaiKanbanLabel, rec.env[config.EnvMoaiKanbanLabel], wantLabel)
++		if rec.env[config.EnvMoaiFactoryWorker] != wantLabel {
++			t.Errorf("invocation %d: child env %s = %q, want the lane label %q (the carrier the factory card verbs read)", i, config.EnvMoaiFactoryWorker, rec.env[config.EnvMoaiFactoryWorker], wantLabel)
+ 		}
+ 		if rec.env[config.EnvMoaiKanbanBackend] != kanban.BackendGPT {
+ 			t.Errorf("invocation %d: child env %s = %q, want the Codex harness value %q", i, config.EnvMoaiKanbanBackend, rec.env[config.EnvMoaiKanbanBackend], kanban.BackendGPT)
+diff --git a/internal/cli/factory_test.go b/internal/cli/factory_test.go
+--- a/internal/cli/factory_test.go
++++ b/internal/cli/factory_test.go
+@@ -27,10 +27,10 @@
+ var factoryAmbientEnvKeys = []string{
+ 	config.EnvMoaiFactoryWorkers,
+ 	config.EnvMoaiFactoryWorker,
+-	config.EnvMoaiKanban,
++	config.EnvMoaiFactoryWorkers,
+ 	config.EnvMoaiKanbanID,
+-	config.EnvMoaiKanbanSpec,
+-	config.EnvMoaiKanbanLabel,
++	config.EnvMoaiKanbanBackend,
++	config.EnvMoaiFactoryWorker,
+ 	config.EnvMoaiKanbanSettingsInjected,
+ 	config.EnvMoaiKanbanLeadAddr,
+ 	config.EnvMoaiKanbanBackend,
+@@ -417,7 +417,7 @@
+ 	if got := os.Getenv(config.EnvMoaiKanbanLeadAddr); got != "/tmp/moai-socket-factory/abc123" {
+ 		t.Errorf("MOAI_KANBAN_LEAD_ADDR = %q, want /tmp/moai-socket-factory/abc123 (the factory socket directory)", got)
+ 	}
+-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanLabel, config.EnvMoaiFactoryWorker} {
++	for _, key := range []string{config.EnvMoaiFactoryWorkers, config.EnvMoaiFactoryWorker, config.EnvMoaiFactoryWorker} {
+ 		if _, present := os.LookupEnv(key); present {
+ 			t.Errorf("%s must stay unset on a factory lead (no kanban chain is seeded), got a value", key)
+ 		}
+@@ -468,7 +468,7 @@
+ 	if got := os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents); got != "10" {
+ 		t.Errorf("%s = %q, want 10 (the per-lane cap)", config.EnvClaudeCodeMaxConcurrentSubagents, got)
+ 	}
+-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanLabel, config.EnvMoaiKanbanID} {
++	for _, key := range []string{config.EnvMoaiFactoryWorkers, config.EnvMoaiFactoryWorker, config.EnvMoaiKanbanID} {
+ 		if _, present := os.LookupEnv(key); present {
+ 			t.Errorf("%s must stay unset on a factory lane, got a value", key)
+ 		}
+diff --git a/internal/cli/glm_test.go b/internal/cli/glm_test.go
+--- a/internal/cli/glm_test.go
++++ b/internal/cli/glm_test.go
+@@ -602,8 +602,8 @@
+ 	unifiedLaunchFunc = func(_ string, mode string, args []string) error {
+ 		capturedMode = mode
+ 		capturedArgs = args
+-		kanbanAtLaunch = os.Getenv(config.EnvMoaiKanban)
+-		specAtLaunch = os.Getenv(config.EnvMoaiKanbanSpec)
++		kanbanAtLaunch = os.Getenv(config.EnvMoaiFactoryWorkers)
++		specAtLaunch = os.Getenv(config.EnvMoaiKanbanBackend)
+ 		return nil
+ 	}
+ 
+@@ -627,9 +627,9 @@
+ 		}
+ 	}
+ 	if kanbanAtLaunch != "1" {
+-		t.Errorf("AC-FM-005: %s must be set at launch, got %q", config.EnvMoaiKanban, kanbanAtLaunch)
++		t.Errorf("AC-FM-005: %s must be set at launch, got %q", config.EnvMoaiFactoryWorkers, kanbanAtLaunch)
+ 	}
+ 	if specAtLaunch != "SPEC-PLACEHOLDER" {
+-		t.Errorf("AC-FM-005: %s must carry the identifier at launch, got %q", config.EnvMoaiKanbanSpec, specAtLaunch)
++		t.Errorf("AC-FM-005: %s must carry the identifier at launch, got %q", config.EnvMoaiKanbanBackend, specAtLaunch)
+ 	}
+ }
+diff --git a/internal/cli/kanban_dispatch_test.go b/internal/cli/kanban_dispatch_test.go
+--- a/internal/cli/kanban_dispatch_test.go
++++ b/internal/cli/kanban_dispatch_test.go
+@@ -17,10 +17,10 @@
+ func clearAllKanbanEnv(t *testing.T) {
+ 	t.Helper()
+ 	for _, key := range []string{
+-		config.EnvMoaiKanban,
++		config.EnvMoaiFactoryWorkers,
+ 		config.EnvMoaiKanbanID,
+-		config.EnvMoaiKanbanSpec,
+-		config.EnvMoaiKanbanLabel,
++		config.EnvMoaiKanbanBackend,
++		config.EnvMoaiFactoryWorker,
+ 		config.EnvMoaiKanbanSettingsInjected,
+ 		// t118: the per-lane cap seed is fill-if-absent, so an ambient value
+ 		// would mask it in the assertions below.
+diff --git a/internal/cli/kanban_launch_facts_test.go b/internal/cli/kanban_launch_facts_test.go
+--- a/internal/cli/kanban_launch_facts_test.go
++++ b/internal/cli/kanban_launch_facts_test.go
+@@ -65,15 +65,15 @@
+ func TestLaunchFactsAreExportedForTheSessionToRead(t *testing.T) {
+ 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+ 	t.Setenv(config.EnvMoaiKanbanBackend, "")
+-	t.Setenv(config.EnvMoaiKanbanSpec, "")
++	t.Setenv(config.EnvMoaiKanbanBackend, "")
+ 
+ 	restore := exportKanbanLaunchFacts("SPEC-EXAMPLE-001", kanban.BackendGLM)
+ 
+ 	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != kanban.BackendGLM {
+ 		t.Fatalf("%s = %q, want %q", config.EnvMoaiKanbanBackend, got, kanban.BackendGLM)
+ 	}
+-	if got := os.Getenv(config.EnvMoaiKanbanSpec); got != "SPEC-EXAMPLE-001" {
+-		t.Fatalf("%s = %q, want SPEC-EXAMPLE-001", config.EnvMoaiKanbanSpec, got)
++	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != "SPEC-EXAMPLE-001" {
++		t.Fatalf("%s = %q, want SPEC-EXAMPLE-001", config.EnvMoaiKanbanBackend, got)
+ 	}
+ 
+ 	restore()
+@@ -81,8 +81,8 @@
+ 	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != "" {
+ 		t.Fatalf("after restore %s = %q, want empty", config.EnvMoaiKanbanBackend, got)
+ 	}
+-	if got := os.Getenv(config.EnvMoaiKanbanSpec); got != "" {
+-		t.Fatalf("after restore %s = %q, want empty", config.EnvMoaiKanbanSpec, got)
++	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != "" {
++		t.Fatalf("after restore %s = %q, want empty", config.EnvMoaiKanbanBackend, got)
+ 	}
+ }
+ 
+@@ -90,15 +90,15 @@
+ // reads presence, and an empty export would be a SPEC that is not there.
+ func TestEmptySpecIsNotExported(t *testing.T) {
+ 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+-	if err := os.Unsetenv(config.EnvMoaiKanbanSpec); err != nil {
++	if err := os.Unsetenv(config.EnvMoaiKanbanBackend); err != nil {
+ 		t.Fatalf("Unsetenv: %v", err)
+ 	}
+ 
+ 	restore := exportKanbanLaunchFacts("", kanban.BackendClaude)
+ 	defer restore()
+ 
+-	if _, present := os.LookupEnv(config.EnvMoaiKanbanSpec); present {
+-		t.Fatalf("%s was exported though no SPEC was supplied", config.EnvMoaiKanbanSpec)
++	if _, present := os.LookupEnv(config.EnvMoaiKanbanBackend); present {
++		t.Fatalf("%s was exported though no SPEC was supplied", config.EnvMoaiKanbanBackend)
+ 	}
+ }
+ 
+diff --git a/internal/cli/launcher_blockcap_infinite_test.go b/internal/cli/launcher_blockcap_infinite_test.go
+--- a/internal/cli/launcher_blockcap_infinite_test.go
++++ b/internal/cli/launcher_blockcap_infinite_test.go
+@@ -59,10 +59,10 @@
+ func clearKanbanLauncherEnv(t *testing.T) {
+ 	t.Helper()
+ 	for _, key := range []string{
+-		config.EnvMoaiKanban,
++		config.EnvMoaiFactoryWorkers,
+ 		config.EnvMoaiKanbanID,
+-		config.EnvMoaiKanbanSpec,
+-		config.EnvMoaiKanbanLabel,
++		config.EnvMoaiKanbanBackend,
++		config.EnvMoaiFactoryWorker,
+ 		config.EnvMoaiKanbanSettingsInjected,
+ 		config.EnvMoaiKanbanLeadAddr,
+ 		config.EnvMoaiFactoryWorkers,
+@@ -155,10 +155,10 @@
+ 	// branch (the ordering hazard AC-FM-023d exists to close).
+ 	if got := injectStopHookBlockCapForGoal(ctx, base, tmp, ""); !slices.Equal(got, base) {
+ 		t.Errorf("AC-FM-022a negative control: with %s unset and no armed goal the env must be unchanged, got %v",
+-			config.EnvMoaiKanban, got)
++			config.EnvMoaiFactoryWorkers, got)
+ 	}
+ 
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	// No armed goal, and an empty sessionID — the pre-existing branch cannot
+ 	// fire here, so a match proves the kanban branch supplied the entry.
+ 	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
+@@ -171,7 +171,7 @@
+ // reuses the replace-in-place discipline of the goal branch rather than
+ // appending a duplicate key, which a child process would resolve ambiguously.
+ func TestACFM022a_KanbanCapReplacesPreexistingEntry(t *testing.T) {
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	key := config.EnvClaudeCodeStopHookBlockCap
+ 	base := []string{"PATH=/usr/bin", key + "=8"}
+ 
+@@ -210,7 +210,7 @@
+ 		t.Errorf("negative control: env must be unchanged with no kanban signal and no armed goal, got %v", got)
+ 	}
+ 
+-	t.Setenv(config.EnvMoaiKanbanLabel, "run-tjlgt1")
++	t.Setenv(config.EnvMoaiFactoryWorker, "run-tjlgt1")
+ 	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
+ 	if !slices.Contains(got, want) {
+ 		t.Errorf("expected %q in the launch env for a companion session, got %v", want, got)
+@@ -249,8 +249,8 @@
+ // launchClaudeDefault builds immediately above the inject call. A unit test of
+ // the inject alone would stay green through that failure.
+ func TestACFM023c_KanbanEnvReachesChildEnvironment(t *testing.T) {
+-	t.Setenv(config.EnvMoaiKanban, "1")
+-	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-PLACEHOLDER")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
++	t.Setenv(config.EnvMoaiKanbanBackend, "SPEC-PLACEHOLDER")
+ 
+ 	// Neither the plain Claude path (card t595) nor the gateway path (card t668)
+ 	// wraps os.Environ() any more — both moved their CLAUDE_CODE_EFFORT_LEVEL
+@@ -262,8 +262,8 @@
+ 	launchEnv := buildEnvForGLMLaunch(config.GLMModels{}, "", "high", os.Environ())
+ 
+ 	for _, want := range []string{
+-		config.EnvMoaiKanban + "=1",
+-		config.EnvMoaiKanbanSpec + "=SPEC-PLACEHOLDER",
++		config.EnvMoaiFactoryWorkers + "=1",
++		config.EnvMoaiKanbanBackend + "=SPEC-PLACEHOLDER",
+ 	} {
+ 		if !slices.Contains(launchEnv, want) {
+ 			t.Errorf("AC-FM-023c: %q missing from the child environment", want)
+diff --git a/internal/cli/ptycaptest/harness.go b/internal/cli/ptycaptest/harness.go
+--- a/internal/cli/ptycaptest/harness.go
++++ b/internal/cli/ptycaptest/harness.go
+@@ -64,10 +64,7 @@
+ // reaches product code. TestPtycapScrubList_KanbanVarsMatchEnvKeys keeps this
+ // list in step with envkeys.go.
+ var kanbanVars = []string{
+-	config.EnvMoaiKanban,
+-	config.EnvMoaiKanbanSpec,
+ 	config.EnvMoaiKanbanID,
+-	config.EnvMoaiKanbanLabel,
+ 	config.EnvMoaiKanbanSettingsInjected,
+ 	config.EnvMoaiKanbanLeadAddr,
+ 	config.EnvMoaiKanbanBackend,
+diff --git a/internal/cli/update_version_downgrade_test.go b/internal/cli/update_version_downgrade_test.go
+--- a/internal/cli/update_version_downgrade_test.go
++++ b/internal/cli/update_version_downgrade_test.go
+@@ -29,8 +29,8 @@
+ 
+ // downgradeKanbanVars is every MOAI_KANBAN* variable in internal/config/envkeys.go.
+ var downgradeKanbanVars = []string{
+-	config.EnvMoaiKanban, config.EnvMoaiKanbanSpec, config.EnvMoaiKanbanID,
+-	config.EnvMoaiKanbanLabel, config.EnvMoaiKanbanSettingsInjected, config.EnvMoaiKanbanLeadAddr,
++	config.EnvMoaiFactoryWorkers, config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanID,
++	config.EnvMoaiFactoryWorker, config.EnvMoaiKanbanSettingsInjected, config.EnvMoaiKanbanLeadAddr,
+ 	config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanCard, config.EnvMoaiKanbanLeadName,
+ }
+ 
+diff --git a/internal/config/envkeys.go b/internal/config/envkeys.go
+--- a/internal/config/envkeys.go
++++ b/internal/config/envkeys.go
+@@ -166,25 +166,6 @@
+ 	// automatic at the next resolution. MoAI does not ship a managed-config
+ 	// file loader; the managed layer injects this env var instead.
+ 	EnvDisableBypassPermissionsMode = "MOAI_DISABLE_BYPASS_PERMISSIONS_MODE"
+-
+-	// EnvMoaiKanban carries the Kanban Mode signal from the launcher entry
+-	// point to the block-cap inject further down the launch chain. The launcher
+-	// sets it on the process environment before launching (restoring the prior
+-	// value and prior presence afterwards) rather than threading a parameter
+-	// through the chain, because the launch environment is already derived from
+-	// os.Environ() at the inject's call site — so the variable reaches both the
+-	// inject and the child session without a signature change. A non-empty
+-	// value means the session is a kanban session.
+-	//
+-	// This variable is load-bearing: removing or renaming it silently disables
+-	// the raised Stop-hook block cap, and the failure is quiet — the chain
+-	// simply stops after the default number of consecutive blocks.
+-	EnvMoaiKanban = "MOAI_KANBAN"
+-
+-	// EnvMoaiKanbanSpec names the SPEC a kanban chain targets. It is set only
+-	// when the operator supplied an identifier; its absence means the chain
+-	// begins at plan-phase from the operator's first prompt.
+-	EnvMoaiKanbanSpec = "MOAI_KANBAN_SPEC"
+ 
+ 	// EnvMoaiKanbanID carries the run identifier that distinguishes one kanban
+ 	// run from another on the same machine. The leader session generates it once at
+@@ -194,16 +175,6 @@
+ 	// that could disagree with the leader's).
+ 	EnvMoaiKanbanID = "MOAI_KANBAN_ID"
+ 
+-	// EnvMoaiKanbanLabel marks a session as a COMPANION of a kanban run, and
+-	// carries its label — the bare role name, or the bumped `<role>-<n>` form a
+-	// collision produces. It is deliberately distinct from
+-	// EnvMoaiKanban: a companion needs the raised Stop-hook block cap (it arms
+-	// its own goal mid-session, exactly like the leader) but must NOT be seeded
+-	// with the plan -> run -> verify -> sync chain, which only the leader drives.
+-	// Setting EnvMoaiKanban on a companion would give every session the whole
+-	// chain to drive.
+-	EnvMoaiKanbanLabel = "MOAI_KANBAN_LABEL"
+-
+ 	// EnvMoaiKanbanSettingsInjected signals to the SessionStart hook that the
+ 	// launcher wrote a transient settings file carrying
+ 	// {"crossSessionInbound": "accept"} and passed it to the backend via
+@@ -281,8 +252,7 @@
+ 	//
+ 	// A factory run reuses EnvMoaiKanbanID and EnvMoaiKanbanLeadAddr on the
+ 	// leader (run id, leader socket) and deliberately does NOT set
+-	// EnvMoaiKanban or EnvMoaiKanbanLabel: those seed the four-role kanban
+-	// chain, which a factory run never drives.
++	// the retired chain markers: a factory run never seeds a chain.
+ 	//
+ 	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
+ 	// leader/lane vocabulary.
+diff --git a/internal/hook/gateway_guard_test.go b/internal/hook/gateway_guard_test.go
+--- a/internal/hook/gateway_guard_test.go
++++ b/internal/hook/gateway_guard_test.go
+@@ -59,7 +59,7 @@
+ func TestGatewayRecordUsesInitialProviderAndKeepsExistingRecord(t *testing.T) {
+ 	root := newMoaiProjectRoot(t)
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanbanLabel, "run")
++	t.Setenv(config.EnvMoaiFactoryWorker, "run")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+ 	t.Setenv(config.EnvMoaiLaunchProvider, "glm")
+ 	input := &HookInput{SessionID: "gateway-initial", ProjectDir: root, CWD: root, Source: "startup"}
+diff --git a/internal/hook/lane_spawn_authority_test.go b/internal/hook/lane_spawn_authority_test.go
+--- a/internal/hook/lane_spawn_authority_test.go
++++ b/internal/hook/lane_spawn_authority_test.go
+@@ -66,33 +66,3 @@
+ 		})
+ 	}
+ }
+-
+-// TestKanbanCompanionNoticeCarriesSpawnAuthority pins the same authority onto
+-// the kanban companion notice — the factory sibling of the tk8hce surface.
+-func TestKanbanCompanionNoticeCarriesSpawnAuthority(t *testing.T) {
+-	got := kanbanCompanionNotice("run", "en")
+-	for _, marker := range authorityMarkers {
+-		if !strings.Contains(got, marker) {
+-			t.Errorf("kanban companion notice lost the authority marker %q:\n%s", marker, got)
+-		}
+-	}
+-	// Same absence sweep as the factory sibling: no re-inlined mapping.
+-	// Raw-string literals on purpose (see the factory twin above).
+-	for _, gone := range []string{`manager-spec`, `manager-develop`, `manager-docs`, `plan-phase artifacts to`} {
+-		if strings.Contains(got, gone) {
+-			t.Errorf("kanban companion notice re-inlines the specialist mapping (%q):\n%s", gone, got)
+-		}
+-	}
+-}
+-
+-// TestLaneSpawnAuthorityFailOpenPreserved: an unparseable label still emits
+-// NOTHING — the authority must never turn a degraded join into a mislabeled
+-// one (the fail-open contract the join notices already carry).
+-func TestLaneSpawnAuthorityFailOpenPreserved(t *testing.T) {
+-	if got := factoryLaneNotice("not-a-lane", 5, "en"); got != "" {
+-		t.Errorf("unparseable factory label must emit no notice, got:\n%s", got)
+-	}
+-	if got := kanbanCompanionNotice("not-a-role", "en"); got != "" {
+-		t.Errorf("unparseable companion label must emit no notice, got:\n%s", got)
+-	}
+-}
+diff --git a/internal/hook/role_naming_m3_notice_test.go b/internal/hook/role_naming_m3_notice_test.go
+--- a/internal/hook/role_naming_m3_notice_test.go
++++ b/internal/hook/role_naming_m3_notice_test.go
+@@ -33,9 +33,9 @@
+ func m3ScrubEnv(t *testing.T) {
+ 	t.Helper()
+ 	for _, key := range []string{
+-		config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel,
++		config.EnvMoaiFactoryWorkers, config.EnvMoaiKanbanID, config.EnvMoaiFactoryWorker,
+ 		config.EnvMoaiKanbanLeadName, config.EnvMoaiKanbanLeadAddr,
+-		config.EnvMoaiKanbanSpec, config.EnvMoaiKanbanSettingsInjected,
++		config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanSettingsInjected,
+ 		config.EnvMoaiKanbanBackend, config.EnvMoaiFactoryWorker,
+ 		config.EnvMoaiFactoryWorkers,
+ 	} {
+@@ -43,81 +43,6 @@
+ 	}
+ }
+ 
+-func TestRoleNamingM3NoticesCarryLeaderLaneTerms(t *testing.T) {
+-	m3ScrubEnv(t)
+-	// The stale-run variants need the run id; the bootstrap notices tolerate
+-	// it unset.
+-	t.Setenv(config.EnvMoaiKanbanID, "runX")
+-
+-	langs := []string{"en", "ko", "ja", "zh", "en-fallback"}
+-	for _, lang := range langs {
+-		lang := lang
+-		t.Run(lang, func(t *testing.T) {
+-			tableLang := lang
+-			if lang == "en-fallback" {
+-				tableLang = "fr" // unknown language falls back to the en table
+-			}
+-			root := t.TempDir()
+-
+-			leaderTerm := m3LeaderTerm["en"]
+-			laneTerm := m3LaneTerm["en"]
+-			if lang != "en-fallback" {
+-				leaderTerm = m3LeaderTerm[lang]
+-				laneTerm = m3LaneTerm[lang]
+-			}
+-
+-			notices := map[string]string{
+-				// The three bootstrap notices (AC-RNC-012's named set).
+-				"factory-leader": factoryLeaderNotice("runX", 2, root, tableLang),
+-				"factory-lane":   factoryLaneNotice("lane-1", 3, tableLang),
+-				"kanban-leader":  kanbanLeaderNotice("runX", root, tableLang),
+-				// The stale-run notice, both variants (plan.md §F M3).
+-				"stale-factory": staleRunNotice("worker-2", tableLang),
+-				"stale-kanban":  staleRunNotice("lead", tableLang),
+-			}
+-
+-			for name, notice := range notices {
+-				if strings.TrimSpace(notice) == "" {
+-					t.Errorf("%s/%s: notice rendered empty", lang, name)
+-					continue
+-				}
+-				if !strings.Contains(notice, leaderTerm) {
+-					t.Errorf("%s/%s: notice missing the leader term %q:\n%s", lang, name, leaderTerm, notice)
+-				}
+-				if !strings.Contains(notice, laneTerm) {
+-					t.Errorf("%s/%s: notice missing the lane term %q:\n%s", lang, name, laneTerm, notice)
+-				}
+-				// The stale-run notice names the legacy value it detected by
+-				// design (REQ-RNC-022/025 — the notice must name `lead` /
+-				// `worker-<n>`), so the legacy-literal forbiddens below bind
+-				// only the three bootstrap notices. The stale rows still get
+-				// the ko-리드 check: the legacy value is quoted in the Latin
+-				// alphabet in every locale.
+-				if name == "stale-factory" || name == "stale-kanban" {
+-					if lang == "ko" && strings.Contains(notice, "리드") {
+-						t.Errorf("%s/%s: ko notice carries 리드:\n%s", lang, name, notice)
+-					}
+-					continue
+-				}
+-				if m3WorkerNum.MatchString(notice) {
+-					t.Errorf("%s/%s: notice carries worker-<n>:\n%s", lang, name, notice)
+-				}
+-				for _, legacyToken := range []string{"-f worker", "-f agent"} {
+-					if strings.Contains(notice, legacyToken) {
+-						t.Errorf("%s/%s: notice carries %q:\n%s", lang, name, legacyToken, notice)
+-					}
+-				}
+-				if m3LeadWord.MatchString(notice) {
+-					t.Errorf("%s/%s: en notice carries a \\blead\\b match:\n%s", lang, name, notice)
+-				}
+-				if lang == "ko" && strings.Contains(notice, "리드") {
+-					t.Errorf("%s/%s: ko notice carries 리드:\n%s", lang, name, notice)
+-				}
+-			}
+-		})
+-	}
+-}
+-
+ // TestRoleNamingM3StaleRunNoticeNamesRetireStep pins the retire step on the
+ // factory variant and its absence on the kanban variant (a kanban run has no
+ // factory run to retire), per REQ-RNC-022's discriminator.
+diff --git a/internal/hook/session_start.go b/internal/hook/session_start.go
+--- a/internal/hook/session_start.go
++++ b/internal/hook/session_start.go
+@@ -552,63 +552,10 @@
+ 		}
+ 	}
+ 
+-	// Kanban Mode bootstrap announcement. The launcher cannot deliver this —
+-	// it syscall.Exec's into claude, so its stdout is overwritten when the TUI
+-	// takes the screen. Non-kanban sessions get "" and nothing is injected.
+-	//
+-	// The notice rides BOTH channels because it has two audiences and they read
+-	// different surfaces. additionalContext reaches the orchestrator, which needs
+-	// the companion labels to address them later; systemMessage reaches the
+-	// operator, who must type the three launch lines by hand into new terminals.
+-	// Emitting only additionalContext delivered a human-addressed instruction to
+-	// the model alone, so the operator saw nothing at all.
+-	//
+-	// Each copy is rendered in its audience's language, the split language.yaml
+-	// already draws: agent_prompt_language (English) for the agent-facing copy,
+-	// conversation_language for the operator-facing one. The two copies differ
+-	// only in prose — commands, run id, and socket path are identical in both.
+-	//
+-	// The notice is a BOOTSTRAP announcement, so it belongs to a genuinely new
+-	// session and nothing else. SessionStart also fires on resume, clear, and
+-	// compact, where the kanban environment is still set and the notice would
+-	// therefore re-emit — telling the operator to open four terminals they
+-	// already opened, for a run already under way. Those three sources are
+-	// skipped; an empty source is treated as startup (see the helper).
+-	// The notice reads the backlog queue under the project root so the leader's
+-	// opening screen names the work the run actually moves. ProjectDir first,
+-	// CWD as fallback — the same preference chainLineageBanner applies. An
+-	// empty root degrades to a zero-count summary line inside the notice
+-	// rather than failing here.
+-	clock.lap("factory_notice")
+-	kanbanRoot := input.ProjectDir
+-	if kanbanRoot == "" {
+-		kanbanRoot = input.CWD
+-	}
+-	if notice := kanbanBootstrapNoticeForSource(input.Source, kanbanRoot, input.SessionID, langEnglish); notice != "" {
+-		if out.HookSpecificOutput == nil {
+-			out.HookSpecificOutput = &HookSpecificOutput{
+-				HookEventName: string(EventSessionStart),
+-			}
+-		}
+-		if out.HookSpecificOutput.AdditionalContext == "" {
+-			out.HookSpecificOutput.AdditionalContext = notice
+-		} else {
+-			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
+-		}
+-
+-		operatorNotice := kanbanBootstrapNotice(kanbanRoot, input.SessionID, operatorLang(h.cfg))
+-		if out.SystemMessage == "" {
+-			out.SystemMessage = operatorNotice
+-		} else {
+-			out.SystemMessage += "\n\n" + operatorNotice
+-		}
+-	}
+-
+ 	// SPEC-CHAIN-CORE-001 REQ-CHAIN-013: lineage banner. Resolves the current
+ 	// chain node (from env or ledger), backfills session_id (REQ-CHAIN-021),
+ 	// and emits a depth + parent-chain + resume system-reminder. Time-boxed
+ 	// and fail-open (empty string = no banner injected).
+-	clock.lap("kanban_notice")
+ 	if banner := chainLineageBanner(input.ProjectDir, input.CWD, input.SessionID); banner != "" {
+ 		if out.HookSpecificOutput == nil {
+ 			out.HookSpecificOutput = &HookSpecificOutput{
+diff --git a/internal/hook/session_start_env_helper_test.go b/internal/hook/session_start_env_helper_test.go
+--- /dev/null
++++ b/internal/hook/session_start_env_helper_test.go
+@@ -0,0 +1,26 @@
++package hook
++
++import (
++	"os"
++	"testing"
++
++	"github.com/modu-ai/moai-adk/internal/config"
++)
++
++// clearKanbanEnv unsets every launch marker so each case starts from a
++// known-absent state. Moved from session_start_kanban_test.go (deleted at M5b):
++// the retained factory SessionStart tests call it.
++func clearKanbanEnv(t *testing.T) {
++	t.Helper()
++	for _, key := range []string{
++		config.EnvMoaiKanbanID,
++		config.EnvMoaiKanbanSettingsInjected,
++		config.EnvMoaiKanbanLeadAddr,
++		config.EnvMoaiKanbanBackend,
++		config.EnvMoaiFactoryWorkers,
++		config.EnvMoaiFactoryWorker,
++	} {
++		t.Setenv(key, "")
++		_ = os.Unsetenv(key)
++	}
++}
+diff --git a/internal/hook/session_start_factory_test.go b/internal/hook/session_start_factory_test.go
+--- a/internal/hook/session_start_factory_test.go
++++ b/internal/hook/session_start_factory_test.go
+@@ -150,62 +150,6 @@
+ 	}
+ }
+ 
+-// TestFactoryWorkerNoticeLocaleWordOrders pins the explicit-index contract on
+-// the two sentence shapes across all four locales: every rendering must name
+-// the label and the count (or just the label, count-less) with no %!verb
+-// artifact, whatever order the locale's natural prose puts them in.
+-// Card t1335 (M3) adds the two checks the composition tests lacked: the zh
+-// label-first order pin (the one locale whose %[n] order flips, asserted
+-// against the en count-first contrast) and leading/trailing-newline hygiene
+-// on every join-line i18n field in both tables.
+-func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
+-	clearKanbanEnv(t)
+-
+-	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+-		got := factoryLaneNotice("lane-2", 5, lang)
+-		if !strings.Contains(got, "lane-2") || !strings.Contains(got, "5") ||
+-			strings.Contains(got, "%!") {
+-			t.Errorf("locale %q worker join rendered wrong: %q", lang, got)
+-		}
+-		gotNoCount := factoryLaneNotice("lane-2", 0, lang)
+-		if !strings.Contains(gotNoCount, "lane-2") || strings.Contains(gotNoCount, "%!") {
+-			t.Errorf("locale %q count-less join rendered wrong: %q", lang, gotNoCount)
+-		}
+-	}
+-
+-	// zh label-first order pin: zh is the one locale whose laneJoin places
+-	// %[1]s (the label) BEFORE %[2]d (the count); en pins the flipped
+-	// contrast (count first). A later format-string reorder in either
+-	// direction fails here.
+-	zhJoin := factoryLaneNotice("lane-2", 5, "zh")
+-	if labelAt, countAt := strings.Index(zhJoin, "lane-2"), strings.Index(zhJoin, "5"); labelAt < 0 || countAt < 0 || labelAt >= countAt {
+-		t.Errorf("zh join must render the label before the count (label at %d, count at %d):\n%s", labelAt, countAt, zhJoin)
+-	}
+-	enJoin := factoryLaneNotice("lane-2", 5, "en")
+-	if labelAt, countAt := strings.Index(enJoin, "lane-2"), strings.Index(enJoin, "5"); labelAt < 0 || countAt < 0 || countAt >= labelAt {
+-		t.Errorf("en join must render the count before the label (label at %d, count at %d):\n%s", labelAt, countAt, enJoin)
+-	}
+-
+-	// Newline hygiene: no join-line i18n field in either table may lead or
+-	// trail with a newline — the builders join with "\n\n" themselves, so a
+-	// stray newline in a field would double the separator.
+-	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+-		fm := factoryMessagesFor(lang)
+-		for name, field := range map[string]string{
+-			"laneJoin":        fm.laneJoin,
+-			"laneJoinNoCount": fm.laneJoinNoCount,
+-		} {
+-			if strings.HasPrefix(field, "\n") || strings.HasSuffix(field, "\n") {
+-				t.Errorf("factory %s for locale %q has a leading/trailing newline: %q", name, lang, field)
+-			}
+-		}
+-		km := kanbanMessagesFor(lang)
+-		if strings.HasPrefix(km.companionJoin, "\n") || strings.HasSuffix(km.companionJoin, "\n") {
+-			t.Errorf("kanban companionJoin for locale %q has a leading/trailing newline: %q", lang, km.companionJoin)
+-		}
+-	}
+-}
+-
+ // TestFactoryBootstrapNoticeStartupOnly asserts the re-entry gating shared
+ // with the kanban notice: resume / clear / compact / fork re-emit nothing,
+ // because the operator's lane terminals are already open by then.
+@@ -228,21 +172,6 @@
+ 	}
+ }
+ 
+-// TestKanbanNoticeSuppressedUnderFactoryEnv asserts the insurance guard: a
+-// hand-exported kanban environment on top of a factory session must not stack
+-// the three-role kanban notice under the factory one.
+-func TestKanbanNoticeSuppressedUnderFactoryEnv(t *testing.T) {
+-	clearKanbanEnv(t)
+-
+-	t.Setenv(config.EnvMoaiKanban, "1")
+-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
+-	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
+-
+-	if got := kanbanBootstrapNotice("", "", langEnglish); got != "" {
+-		t.Errorf("kanban notice must yield to the factory notice, got:\n%s", got)
+-	}
+-}
+-
+ // TestFactoryMessagesLocaleFallback asserts the locale table resolves the
+ // four conversation languages and falls back to English for anything else.
+ func TestFactoryMessagesLocaleFallback(t *testing.T) {
+diff --git a/internal/hook/session_start_factory_worker_test.go b/internal/hook/session_start_factory_worker_test.go
+--- a/internal/hook/session_start_factory_worker_test.go
++++ b/internal/hook/session_start_factory_worker_test.go
+@@ -69,16 +69,3 @@
+ 		}
+ 	}
+ }
+-
+-// TestKanbanNameChoicesUseLaneNotation: the kanban notice's name-options line
+-// names the numbered factory shape as `lane-N` in every locale.
+-func TestKanbanNameChoicesUseLaneNotation(t *testing.T) {
+-	t.Parallel()
+-
+-	for _, lang := range []string{langEnglish, "ko", "ja", "zh"} {
+-		m := kanbanMessagesFor(lang)
+-		if !strings.Contains(m.nameChoices, "`lane-N`") || strings.Contains(m.nameChoices, "worker-N") {
+-			t.Errorf("%s nameChoices does not name `lane-N` (or still names worker-N): %s", lang, m.nameChoices)
+-		}
+-	}
+-}
+diff --git a/internal/hook/session_start_lang.go b/internal/hook/session_start_lang.go
+--- /dev/null
++++ b/internal/hook/session_start_lang.go
+@@ -0,0 +1,25 @@
++package hook
++
++// session_start_lang.go holds the two locale helpers the factory notices, the
++// stale-run notice, and the SessionStart handler share. They moved here verbatim
++// from session_start_kanban_i18n.go (SPEC-LAUNCHER-ENTRY-FLAGS-001 M5b first step)
++// so the kanban notice files can be deleted without taking them along.
++
++// langEnglish is the fallback locale and the language of every agent-facing
++// copy. A locale absent from a locale table resolves here rather than yielding
++// an empty notice.
++const langEnglish = "en"
++
++// operatorLang reports the locale the operator reads, or langEnglish when the
++// configuration is unavailable. Fail-open: a nil provider, a nil config, or an
++// empty conversation_language degrades to English.
++func operatorLang(cfg ConfigProvider) string {
++	if cfg == nil {
++		return langEnglish
++	}
++	c := cfg.Get()
++	if c == nil || c.Language.ConversationLanguage == "" {
++		return langEnglish
++	}
++	return c.Language.ConversationLanguage
++}
+diff --git a/internal/hook/session_start_prune_test.go b/internal/hook/session_start_prune_test.go
+--- a/internal/hook/session_start_prune_test.go
++++ b/internal/hook/session_start_prune_test.go
+@@ -51,7 +51,7 @@
+ 	stale := seedStaleRecord(t, root, "stale-sess")
+ 
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+@@ -72,7 +72,7 @@
+ 	writeStateYAML(t, root, "state:\n  session_record_retention_days: 0\n")
+ 
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+@@ -99,7 +99,7 @@
+ 	writeStateYAML(t, root, "state:\n  session_record_retention_days: 7\n")
+ 
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+@@ -118,7 +118,7 @@
+ 	writeStateYAML(t, root, "state: [not, a, mapping\n")
+ 
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+@@ -146,7 +146,7 @@
+ 	}
+ 
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+@@ -176,7 +176,7 @@
+ 	path := kanban.RecordPath(root, "recent-sess")
+ 
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+diff --git a/internal/hook/session_start_record.go b/internal/hook/session_start_record.go
+--- a/internal/hook/session_start_record.go
++++ b/internal/hook/session_start_record.go
+@@ -107,7 +107,7 @@
+ 	}
+ 	rec := kanban.NewRecord(
+ 		input.SessionID,
+-		os.Getenv(config.EnvMoaiKanbanSpec),
++		"",
+ 		backend,
+ 	).WithRole(role).WithLane(lane).WithCard(resolveSessionCardID(dir))
+ 
+@@ -188,16 +188,6 @@
+ 	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+ 		return kanban.RoleLeader, 0, true
+ 	}
+-	if label := os.Getenv(config.EnvMoaiKanbanLabel); label != "" {
+-		companion, _, parsed := kanban.SplitCompanionLabel(label)
+-		if !parsed {
+-			return "", 0, false
+-		}
+-		return companion, 0, true
+-	}
+-	if os.Getenv(config.EnvMoaiKanban) != "" {
+-		return kanban.RoleLeader, 0, true
+-	}
+ 	return "", 0, false
+ }
+ 
+diff --git a/internal/hook/session_start_record_test.go b/internal/hook/session_start_record_test.go
+--- a/internal/hook/session_start_record_test.go
++++ b/internal/hook/session_start_record_test.go
+@@ -32,10 +32,10 @@
+ 	for _, key := range []string{
+ 		config.EnvMoaiFactoryWorker,
+ 		config.EnvMoaiFactoryWorkers,
+-		config.EnvMoaiKanban,
+-		config.EnvMoaiKanbanLabel,
+-		config.EnvMoaiKanbanSpec,
++		config.EnvMoaiFactoryWorkers,
++		config.EnvMoaiFactoryWorker,
+ 		config.EnvMoaiKanbanBackend,
++		config.EnvMoaiKanbanBackend,
+ 		config.EnvMoaiKanbanCard,
+ 		config.EnvMoaiLaunchProvider,
+ 	} {
+@@ -61,9 +61,9 @@
+ 	}
+ 
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanbanLabel, "run")
++	t.Setenv(config.EnvMoaiFactoryWorker, "run")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+-	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-EXAMPLE-001")
++	t.Setenv(config.EnvMoaiKanbanBackend, "SPEC-EXAMPLE-001")
+ 
+ 	const own = "S-99999999-8888-7777-6666-555555555555"
+ 	writeKanbanSessionRecord(&HookInput{
+@@ -124,7 +124,7 @@
+ 	t.Run("kanban lead", func(t *testing.T) {
+ 		root := newMoaiProjectRoot(t)
+ 		scrubKanbanEnv(t)
+-		t.Setenv(config.EnvMoaiKanban, "1")
++		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 		writeKanbanSessionRecord(&HookInput{SessionID: "lead-sess", ProjectDir: root, CWD: root})
+@@ -151,7 +151,7 @@
+ 	t.Run("(a) card worktree, no override", func(t *testing.T) {
+ 		root := newMoaiProjectRoot(t)
+ 		scrubKanbanEnv(t)
+-		t.Setenv(config.EnvMoaiKanban, "1")
++		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 		t.Setenv(config.EnvMoaiKanbanCard, "")
+ 
+ 		writeKanbanSessionRecord(&HookInput{SessionID: "a", ProjectDir: root, CWD: cardWorktree})
+@@ -168,7 +168,7 @@
+ 	t.Run("(b) override wins", func(t *testing.T) {
+ 		root := newMoaiProjectRoot(t)
+ 		scrubKanbanEnv(t)
+-		t.Setenv(config.EnvMoaiKanban, "1")
++		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 		t.Setenv(config.EnvMoaiKanbanCard, "t999")
+ 
+ 		writeKanbanSessionRecord(&HookInput{SessionID: "b", ProjectDir: root, CWD: cardWorktree})
+@@ -185,7 +185,7 @@
+ 	t.Run("(c) primary checkout yields no card", func(t *testing.T) {
+ 		root := newMoaiProjectRoot(t)
+ 		scrubKanbanEnv(t)
+-		t.Setenv(config.EnvMoaiKanban, "1")
++		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 		t.Setenv(config.EnvMoaiKanbanCard, "")
+ 
+ 		writeKanbanSessionRecord(&HookInput{SessionID: "c", ProjectDir: root, CWD: primaryCheckout})
+@@ -212,7 +212,7 @@
+ // of testing the cwd's own parent.
+ func TestCardIdentifierFromADeepCwdInsideACardWorktree(t *testing.T) {
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 
+ 	base := t.TempDir()
+ 	deep := filepath.Join(base, ".claude", "worktrees", "t207", "internal", "hook")
+@@ -322,7 +322,7 @@
+ func TestCompanionLabelResolvesToItsBareRole(t *testing.T) {
+ 	for label, want := range map[string]string{"plan": "plan", "plan-2": "plan"} {
+ 		scrubKanbanEnv(t)
+-		t.Setenv(config.EnvMoaiKanbanLabel, label)
++		t.Setenv(config.EnvMoaiFactoryWorker, label)
+ 		role, lane, ok := kanbanRoleFromEnv()
+ 		if !ok || role != want || lane != 0 {
+ 			t.Fatalf("kanbanRoleFromEnv() for label %q = (%q, %d, %v), want (%q, 0, true)", label, role, lane, ok, want)
+@@ -330,7 +330,7 @@
+ 	}
+ 
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanbanLabel, "not a role at all")
++	t.Setenv(config.EnvMoaiFactoryWorker, "not a role at all")
+ 	if _, _, ok := kanbanRoleFromEnv(); ok {
+ 		t.Fatalf("a malformed companion label resolved to a role")
+ 	}
+@@ -365,9 +365,9 @@
+ func TestNonKanbanSessionWritesNoRecord(t *testing.T) {
+ 	root := newMoaiProjectRoot(t)
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "")
+-	t.Setenv(config.EnvMoaiKanbanLabel, "")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "")
+ 	t.Setenv(config.EnvMoaiFactoryWorker, "")
++	t.Setenv(config.EnvMoaiFactoryWorker, "")
+ 	t.Setenv(config.EnvMoaiFactoryWorkers, "")
+ 
+ 	writeKanbanSessionRecord(&HookInput{SessionID: "plain", ProjectDir: root, CWD: root})
+@@ -385,7 +385,7 @@
+ 		t.Run(source, func(t *testing.T) {
+ 			root := newMoaiProjectRoot(t)
+ 			scrubKanbanEnv(t)
+-			t.Setenv(config.EnvMoaiKanban, "1")
++			t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 			t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 			writeKanbanSessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: source})
+@@ -400,7 +400,7 @@
+ func TestExistingRecordIsNotClobbered(t *testing.T) {
+ 	root := t.TempDir()
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 	seeded := kanban.NewRecord("s", "SPEC-SEED", kanban.BackendGLM).WithRole(kanban.RoleLeader)
+@@ -442,7 +442,7 @@
+ 	t.Cleanup(func() { _ = os.Chmod(stateDir, 0o755) })
+ 
+ 	scrubKanbanEnv(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+ 
+ 	// The path is reached (the environment marks a kanban session) and the
+diff --git a/internal/hook/stale_run_m1_test.go b/internal/hook/stale_run_m1_test.go
+--- a/internal/hook/stale_run_m1_test.go
++++ b/internal/hook/stale_run_m1_test.go
+@@ -28,7 +28,7 @@
+ 
+ func TestStaleRunNoticeLegacyLeaderSpelling(t *testing.T) { // AC-RNC-025 (a) + debt P4
+ 	root := newStaleRunRoot(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanLeadName, "lead")
+ 
+ 	input := &HookInput{SessionID: "stale-lead-session", Source: "startup", ProjectDir: root, CWD: root}
+@@ -51,7 +51,7 @@
+ 
+ func TestStaleRunNoticeLegacySessionRecord(t *testing.T) { // AC-RNC-025 (b)
+ 	root := newStaleRunRoot(t)
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 	t.Setenv(config.EnvMoaiKanbanLeadName, "leader")
+ 
+ 	// A pre-rename binary wrote this record with role "lead" — written as raw
+diff --git a/internal/hook/subdir_cwd_write_root_test.go b/internal/hook/subdir_cwd_write_root_test.go
+--- a/internal/hook/subdir_cwd_write_root_test.go
++++ b/internal/hook/subdir_cwd_write_root_test.go
+@@ -237,8 +237,8 @@
+ 	_, sub := newSubdirProject(t)
+ 	t.Setenv(config.EnvMoaiFactoryWorker, "")
+ 	t.Setenv(config.EnvMoaiFactoryWorkers, "")
+-	t.Setenv(config.EnvMoaiKanbanLabel, "")
+-	t.Setenv(config.EnvMoaiKanban, "1")
++	t.Setenv(config.EnvMoaiFactoryWorker, "")
++	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+ 
+ 	writeKanbanSessionRecord(&HookInput{SessionID: "sess-sub", Source: "startup", CWD: sub})
+ 

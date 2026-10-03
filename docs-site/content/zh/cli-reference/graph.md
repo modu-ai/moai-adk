@@ -109,6 +109,6 @@ provenance: tree=/path/to/project commit=1a2b3c4d5e6
 
 ## 相关文档
 
-- [看板模式](/zh/advanced/kanban-mode) — 里程碑-卡片交叉核对所守护的卡片流
+- [工厂模式](/zh/advanced/factory-mode) — 里程碑-卡片交叉核对所守护的卡片流
 - [`/moai mx`](/zh/utility-commands/moai-mx) — @MX 标签与 `@MX:SPEC` 连接的源头
 - [Navigator](/zh/core-concepts/navigator) — 把设计决策、SPEC、符号绑成一张图的另一处图 (nav-graph.json)

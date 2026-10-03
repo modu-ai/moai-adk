@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
-func clsFor(prio string) *kanban.CardClassification {
-	return &kanban.CardClassification{Priority: prio, Blocked: false, Mode: kanban.ClassModeSerial, Decider: kanban.DeciderIdentityLLM}
+func clsFor(prio string) *factory.CardClassification {
+	return &factory.CardClassification{Priority: prio, Blocked: false, Mode: factory.ClassModeSerial, Decider: factory.DeciderIdentityLLM}
 }
 
 // TestAutoCycleInheritsSortedQueueOrder — the lead-side cycle picks targets
@@ -28,9 +28,9 @@ func TestAutoCycleInheritsSortedQueueOrder(t *testing.T) {
 	if _, _, err := store.Add("high second"); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items[0].Classification = clsFor(kanban.ClassPriorityLow)
-		rec.Items[1].Classification = clsFor(kanban.ClassPriorityHigh)
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items[0].Classification = clsFor(factory.ClassPriorityLow)
+		rec.Items[1].Classification = clsFor(factory.ClassPriorityHigh)
 		rec.SortByClassification() // the add path's write shape
 		return nil
 	}); err != nil {
@@ -63,10 +63,10 @@ func TestHoldCardInvisibleToSelectors(t *testing.T) {
 	if _, _, err := store.Add("held card"); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items[0].Classification = clsFor(kanban.ClassPriorityLow)
-		rec.Items[1].Classification = clsFor(kanban.ClassPriorityHigh)
-		rec.Items[1].State = kanban.BacklogStateHold
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items[0].Classification = clsFor(factory.ClassPriorityLow)
+		rec.Items[1].Classification = clsFor(factory.ClassPriorityHigh)
+		rec.Items[1].State = factory.BacklogStateHold
 		rec.SortByClassification()
 		return nil
 	}); err != nil {

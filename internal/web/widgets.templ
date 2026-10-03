@@ -136,8 +136,8 @@ templ missing() {
 templ laneUnresolved(reason string) {
 	<span class="warn lane-unresolved" data-lane-unresolved={ reason }>
 		@iconAt("alert", 13)
-		<span data-i18n="kanban.laneUnresolved">Unresolved — no record can be attributed to this lane</span>
-		<span class="panel__meta" data-i18n={ "kanban.laneUnresolved." + reason }>{ reason }</span>
+		<span data-i18n="factory.laneUnresolved">Unresolved — no record can be attributed to this lane</span>
+		<span class="panel__meta" data-i18n={ "factory.laneUnresolved." + reason }>{ reason }</span>
 	</span>
 }
 

@@ -148,7 +148,7 @@ func TestResolveContractByCardField(t *testing.T) {
 		}
 		for _, imp := range af.Imports {
 			path, _ := strconv.Unquote(imp.Path.Value)
-			if strings.HasSuffix(path, "/internal/kanban") {
+			if strings.HasSuffix(path, "/internal/factory") {
 				t.Errorf("%s imports the queue store %s", f, path)
 			}
 		}

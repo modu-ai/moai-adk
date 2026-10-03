@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // --- substrate ---------------------------------------------------------------
@@ -269,7 +269,7 @@ func deadProcessPID(t *testing.T) int {
 	if err := cmd.Wait(); err != nil {
 		t.Fatalf("wait for the short-lived holder process: %v", err)
 	}
-	if kanban.FactoryProcessAlive(pid) {
+	if factory.FactoryProcessAlive(pid) {
 		t.Fatalf("pid %d still reads live after exiting; the dead-holder fixture is not a dead holder", pid)
 	}
 	return pid

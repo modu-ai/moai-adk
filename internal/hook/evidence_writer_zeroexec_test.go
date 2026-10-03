@@ -26,7 +26,7 @@ import (
 // The zero-execution samples are read from the production corpus rather than
 // copied here, so a corpus edit cannot leave these tests asserting the old set.
 var (
-	// go, `go test ./internal/kanban -run TestT341NoSuchTestXYZ -count=1`, shell rc 0.
+	// go, `go test ./internal/factory -run TestT341NoSuchTestXYZ -count=1`, shell rc 0.
 	sampleGoNoTestsToRun = zeroExecutionSamples["go test"][0]
 	// go, `go test ./cmd/...` over a package carrying no _test.go file.
 	sampleGoNoTestFiles = zeroExecutionSamples["go test"][1]

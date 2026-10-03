@@ -37,51 +37,43 @@
 
 ---
 
-## v3.1 新功能 —— 看板模式
-
-> v3.1 在 8 月 15 日（韩国光复节）发布。意图是让工作从“单个会话被上下文上限捆住”的旧形态中解放出来。上限本身并不会消失 —— 真正改变的点都如实写在下面。
+## v3.2 新功能 —— 工厂模式
 
 一个会话占用一个上下文窗口。长 SPEC 会填满这个窗口，后面的工作背着前面的一切前进：已经结束的计划在评审时仍留在窗口里，评审在写文档时又还留着。常见的逃生口 `/clear` 会把来龙去脉连同负担一起扔掉。
 
-看板模式把一项工作**从一个终端拆到四个终端**。工厂主导会话（leader）驾驶整条链，三个伴随会话各认领 `plan`、`run`、`sync` 中的一列，**只背自己那一列的上下文**。评审不是单独的列，而是由 sync 门禁吸收 —— sync 阶段亲自运行评审视角得出结论。这不是解除上限 —— 每个会话的限额原样存在。改变的是：任何会话都不再背着三个阶段的历史，于是同样的预算能走得更远，结束的阶段可以清空而不丢失卡片。
-
-<p align="center">
-  <img src="./assets/images/kanban-five-sessions.png" alt="看板模式的一次运行 —— 五列看板与主导、三个伴随会话各自在自己的终端里，用各自的模型与推理强度运行" width="100%">
-</p>
-
-每一列都可以用不同的后端和推理强度。上面的画面把 Plan 跑在 Opus 5 high、Run 跑在 GLM 5.2 xhigh、Sync 跑在 GLM 5.2 上 —— 因为每一列需要的推理深度并不相同。
+工厂模式把一项工作拆给**一个主导会话和若干带编号的泳道会话**。主导守着队列，把卡片交给空闲的泳道。卡片不会每过一个阶段就换一次会话，而是**整张进一条泳道**，由那条泳道在自己的会话里依次走完 `plan → run → sync`。每个阶段都以 `Agent()` 子智能体的形式启动，泳道自己只负责编排。这不是解除上限 —— 每个会话的限额原样存在。改变的是：一张卡片的历史只堆在负责它的泳道里。同样的预算因此能走得更远，泳道每做完一张卡片就清空上下文，再接下一张。
 
 ### 开始使用
 
 ```bash
-moai cc -k                    # 主导 —— 告知 run-id 并铺设链条
-moai cc -k --name plan        # 伴随会话，各自在单独的终端里
-moai cc -k --name run
-moai cc -k --name sync
+moai cc -f                    # 主导 —— 打开工厂
+moai cc -l                    # 泳道，各自在单独的终端里 —— 按下一个空号加入
+moai cc -l                    # 按 lane-1、lane-2 …… 的顺序依次编号
+moai glm -l                   # GLM 后端的泳道
+moai codex -l                 # Codex 泳道
 ```
 
-伴随会话**要由人手在新的终端里逐个启动**。名字只用角色名 —— run-id 是主导会话的标识符，伴随会话不携带它；同一个角色名已被占用的会话占着时，下一个会话顺次拿编号。会话不能替别的会话启动。任何一列把 `moai cc` 换成 `moai glm`，就只有那一列跑在 GLM 后端上。
+`-f`（长形式 `--factory`）打开主导，`-l`（长形式 `--lane`）以泳道身份加入正在运行的工厂。两者都不带参数。泳道编号不由操作者挑选，而是自动分配。泳道**要由人手在新的终端里逐个启动**，会话不能替别的会话启动。`moai codex` 没有主导入口，只能以泳道身份加入。
+
+一次启动只能带一个进入令牌，所以 `-f` 与 `-l` 同时给出会报错。带了值的形式（`moai cc -f <值>`、`moai cc -l lane-2`）会被一行错误拒绝，错误信息会指出正确的形式。早先那种多会话分列运行的模式所用的 `-k` 已被移除；`moai cg` 会显示迁移提示后退出（可先用 `moai migrate cg` 预览）。`moai gpt` 不存在，GPT 模型通过 `moai codex` 运行。
 
 ### 后端怎么搭配
 
-打开看板时，引导信息会一并给出默认推荐 —— 若优先考虑 token 可用性：主导用 `moai glm -k`，plan 用 `moai cc -k --name plan`，run 用 `moai glm -k --name run`，sync 用 `moai cc -k --name sync`。这样安排的理由是每条泳道需要的推理种类不同：plan 和 sync 是做判断和评审的列，交给 Claude；run 以实现为主，用 GLM 压低成本。主导不是下判定的位置，而是守着队列搬卡片的位置，适合常驻等待成本不高的 GLM。GLM 主导之下需要 Claude 判定时，会经名为 `judge` 的会话绕出去 —— 这是 GLM 主导使用 Claude 的唯一途径。一个账号开始被 429 限流时，把各条泳道分散到不同账号来安排是行之有效的做法。这个组合终究只是默认推荐 —— 换别的组合、或把全部会话统一到单一后端都没问题。
+后端按泳道分别选择：`moai cc -l` 是 Claude 泳道，`moai glm -l` 是 GLM 泳道，`moai codex -l` 是 Codex 泳道。主导不是下判定的位置，而是守着队列搬卡片的位置，适合常驻等待成本不高的 GLM（`moai glm -f`）。一个账号开始被 429 限流时，把各条泳道分散到不同账号是行之有效的做法。这只是一种搭配，把全部会话统一到单一后端也没问题。
 
-### 工厂模式 —— N 条泳道同时搬运多张卡片
+### N 条泳道同时搬运多张卡片
 
-`-f` 打开工厂主导，这是看板的第二种形态。看板里的卡片在各列之间跳，而工厂里的卡片**整张进一条泳道**，由那条泳道在会话内串行走完 `plan → run → sync`，每个阶段都以 `Agent()` 子智能体的形式启动。泳道名为 `lane-1` … `lane-N`。
+想加泳道，再执行一次 `-l` 即可。编号自动分配，所以同时给 `--name`/`-n` 会报错。只有被存活会话占用的编号才会被跳过。泳道死了，它的占用不再挡住那个编号，但自动分配总是取存活最高编号 +1，不会回填中间的空号。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中。启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖），则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外。旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。
 
-```bash
-moai cc -f                    # 只打开主导（一条泳道，lane-1）
-moai cc -f lane              # 一条泳道，自动加入下一个空号
-moai cc -f lane-3            # 一条泳道，直接指定编号
-moai glm -f lane             # ……GLM 后端上的一条泳道
-```
+一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。不要一次把所有泳道全开：先起第一条，确认它真的开始产出，再启动其余。卡片绝不会被拆到多条泳道上。
 
-用 `moai cc -f lane`（自动加入下一个空号）或 `moai cc -f lane-<n>`（精确那个编号）一条一条地加泳道。两种写法都已经指定了泳道名，再给 `--name`/`-n` 会报错。直接指定的编号若与存活的泳道相撞，会顺延到下一个空号。除此之外，只有活着的会话占用的编号才会被跳过 —— 泳道死了，占用不再挡住那个编号（直接指定的编号可以立刻重用），但 `-f lane` 的自动分配总是取存活最高编号 +1，不会回填中间的空号。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中 —— 启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖）则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。 工厂 run 现在会记录持有它的会话的进程标识，因此主导已经死掉的 run 会在下一条泳道加入时自动退役，那次加入不再卡在 `AMBIGUOUS_FACTORY` 上。反方向同样有闸门：泳道加入时若运行记录缺失或已退役而领导者会话还活着，加入会验证该领导者（pid 加进程启动指纹，目标用 `-l/--lead` 指定，默认 `leader`），恢复其运行记录后照常加入 —— 验证通过的领导者有两个或更多时，逐一点名候选并失败关闭。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run，属主没有真正死掉就会被拒绝。run 死掉或被替换之后，泳道会话仍然指向环境里固定下来的旧 run；这条泳道用 `moai factory relaunch` 重新接回存活的 run。该命令原样重新执行各提供方自己的泳道加入行（`moai cc -f lane-<n>`、`moai glm -f lane-<n>`，Codex 只有 `moai codex -f lane`），选项为 `--provider`、`--lane`、`--run`、`--from-run <run-id>`、`--dry-run`。`--from-run` 只在该 run 仍为活动且属主已死时才先将其退役，`--dry-run` 只打印启动行，不改动任何东西。它是一次性命令，有别于在同一个 run 里逐张处理卡片的 `--clear-policy relaunch` 循环。stale-run 提示现在也不再是一段文字，而是直接打印填好参数的这条命令。当前词汇的泳道（`lane-<n>`）在 run 结束后，会在下一次提示时就地重新登记到唯一的活动 run 中；旧的 `worker-N` 标签不会被重新绑定，只会得到这条命令的指引。
+工厂 run 会记录持有它的会话的进程标识，因此主导已经死掉的 run，会在下一条泳道加入时自动退役，那次加入不会卡在 `AMBIGUOUS_FACTORY` 上。反方向同样有闸门：泳道加入时若运行记录缺失或已退役，而主导会话还活着，加入会先验证该主导（pid 加进程启动指纹，目标用长形式 `--leader <名称>` 指定，默认 `leader`），恢复其运行记录后照常加入。验证通过的主导有两个或更多时，逐一点名候选并失败关闭。`--leader` 是只能与 `-l`/`--lane` 搭配的选择器，不是任何进入令牌的短形式。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run，属主没有真正死掉就会被拒绝。
 
-> 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
+run 死掉或被替换之后，泳道会话仍然指向环境里固定下来的旧 run。这条泳道用 `moai factory relaunch` 重新接回存活的 run。该命令原样重新执行各提供方自己的泳道加入行（`moai cc -l`、`moai glm -l`，Codex 只有 `moai codex -l`），选项为 `--provider`、`--lane`、`--run`、`--from-run <run-id>`、`--dry-run`。`-l` 不带参数，所以给了 `--lane` 也不会带到加入行上：命令会在 stderr 里说明，泳道按下一个空号加入。`--from-run` 只在该 run 仍为活动且属主已死时才先将其退役，`--dry-run` 只打印启动行，不改动任何东西。它是一次性命令，有别于在同一个 run 里逐张处理卡片的 `--clear-policy relaunch` 循环。stale-run 提示也不再是一段文字，而是直接打印填好参数的这条命令。
 
-看板是 `backlog → plan → run → sync → done` 五列。`backlog` 刻意不设归属会话 —— 工作只有人放进去，才会进入看板。
+> 详见：[工厂模式](https://adk.mo.ai.kr/zh/advanced/factory-mode)
+
+卡片从队列出发。`backlog` 刻意不设归属会话 —— 工作只有人放进去，才会进入队列。
 
 ```text
 /moai gtd "rename 提示过时了"   # 追加卡片
@@ -90,59 +82,45 @@ moai glm -f lane             # ……GLM 后端上的一条泳道
 
 `/moai gtd` 是正式的任务管理入口。`/moai todo` 作为兼容名称继续保留，两者共用同一 SQLite 队列、卡片 ID、顺序以及归档和恢复行为。`moai gtd capture|clarify|organize|reflect|engage` 会把 Capture → Clarify → Organize → Reflect → Engage 保存为连续的 SQLite 状态，再让获准工作进入原有 `backlog → plan → run → sync → done` 开发流程。操作 receipt 与权威状态回读会防止中断恢复后重复发布、选择或调度。
 
-有两条规则让看板保持诚实。主导**只凭自己从卡片 `progress.md` 里读到的证据**推进卡片 —— 不凭伴随会话的回复，因为回复是主张而不是观测，而且跨会话投递并不保证送达。另外，一个阶段结束后，主导会请你手动 `/clear` 对应会话 —— `/clear` 是用户亲手敲的命令，无法当作指令发送。
+有两条规则让工厂保持诚实。主导**只凭自己从卡片 `progress.md` 里读到的证据**推进卡片 —— 不凭泳道的回复，因为回复是主张而不是观测，而且跨会话投递并不保证送达。另外，一张卡片做完后，泳道会请你 `/clear`。`/clear` 是用户亲手敲的命令，无法当作指令发送（可用 `--clear-policy` 改变这一行为）。
 
-### 四个会话共用的词汇
+### 工厂里的常用词
 
-把看板文档里反复出现的词汇收进一张图。**列** (column) 是看板的阶段；**泳道** (lane) 是把一张卡片一路送到终点的“会话 + 工作树”组合 —— 区别就像站点和线路。
+把工厂文档里反复出现的词汇收在一处。**主导** (leader) 是守着队列搬卡片的会话；**泳道** (lane) 是把一张卡片一路送到终点的“会话 + 工作树”组合。
 
-```text
-操作者 ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
-                          (主导只凭读到的证据把卡片送入下一列)
-
-泳道 —— 卡片 t0:  run 会话 + 工作树 t0      ┐ 两条流共用同一块看板，
-泳道 —— 卡片 t1:  run 会话 + 工作树 t1      ┘ 并排流动、互不混杂
-```
-
-| 词汇 | 一句话定义 |
+| 词 | 一句话定义 |
 |---|---|
-| 卡片 (card) | 一个工作单元。经 `/moai todo` 进入，以短 ID 相称 |
-| 列 (column) | 看板的一个阶段 —— 五列顺序固定 |
+| 卡片 (card) | 一个工作单元。经 `/moai gtd` 进入，以短 ID 相称 |
 | 积压区 (backlog) | 入口等待队列。没有归属会话，只有人能投放 |
-| 泳道 (lane) | 把一张卡片送到终点的“会话+工作树”组合。一条并行工作流 |
-| 主导 (leader) | 协调者会话。只凭读到的证据推进卡片，自己不写代码 |
-| 伴随会话 (companion) | 坐镇某一列干活的会话。由人手逐终端启动 |
-| 运行 ID (run-id) | 主导启动时告知的短标识符。它是主导会话的名字，伴随会话不携带它 |
-| 工作树 (worktree) | 卡片专用的隔离检出。目录名承载卡片 ID，分支名写清做了什么（`WT-<slug>`）。从 run 到 sync 一棵贯通 |
-| 派单 (dispatch) | 主导发给伴随会话的指令 —— 是工作的指针，不是副本 |
+| 主导 (leader) | 负责协调的会话。只凭读到的证据推进卡片，自己不写代码 |
+| 泳道 (lane) | 把一张卡片送到终点的“会话+工作树”组合。一条并行工作流，编号 `lane-1`、`lane-2` …… 自动分配 |
+| 运行 ID (run-id) | 指向某一次工厂运行的短标识。同时有多个运行存活时，用 `--factory-run <run-id>` 选择加入哪一个 |
+| 工作树 (worktree) | 卡片专属的隔离检出。目录名是卡片 ID，分支是记录所做之事的 `WT-<slug>` |
+| 派单 (dispatch) | 主导发给泳道的指令 —— 指向工作的指针，不是工作的副本 |
 
-带定义和示例的正式术语表：[看板术语](https://adk.mo.ai.kr/zh/core-concepts/kanban-board-terms)
-
-卡片也会因形状不同而走不同的列。主导在卡片离开 `backlog` 时将其归入三个类别之一，并在派单文里写明。
+卡片的形状不同，泳道经过的阶段也不同。主导在卡片离开队列时把它归为三类之一，并在派单里写明。
 
 | 类别 | 形状 | 捷径 |
 |---|---|---|
-| A —— 立即关闭 | 一个文件·一行，无设计判断，回归由 CI 捕捉 | 一个会话包办到 PR（跳过 `plan`） |
-| B —— 原因未查明的缺陷 | 明显坏了，但原因还没确立 | `run → sync`（不经 `plan`，没有 SPEC） |
-| C —— 设计变更 | 含有决策，或横跨多个子系统 | 三个列全走 |
+| A —— 直接关闭 | 一个文件、一行，没有设计判断，回归由 CI 兜底 | 一条泳道一路做到 PR（跳过 `plan`） |
+| B —— 原因未明的缺陷 | 明显出了问题，但原因尚未查清 | `run → sync`（没有 `plan`，没有 SPEC） |
+| C —— 设计变更 | 含有一项决定，或横跨多个子系统 | 三个阶段全走 |
 
-类别 A 只凭查证过的证据认定，不接受主张 —— 引用不出以单文件测得的 diff 和将在合并的 HEAD 上跑绿的 CI，就不是类别 A。类别 B 只跳过 `plan`，sync 门禁的评审照常运转，并把原因确立的证据（复现命令与输出）留在卡片的进度记录里。
+A 类只凭经确认的证据认定，不凭一句主张：拿不出实测为单文件的 diff 和即将合并的 HEAD 上的绿色 CI，就不是 A 类。B 类只跳过 `plan`，sync 门禁的评审照常运行，确立原因的证据（复现命令及其输出）要留在卡片的进展记录里。
 
-详见：[看板模式 —— 卡片类别](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
+### 用眼睛看工厂
 
-### 用眼睛看板
-
-`moai web` 会启动一个本地控制台。看板画面把看板链条和 SPEC 流水线放在一起，还附带 Overview、Specs、Monitor、Settings、Todo 画面。
+`moai web` 会启动一个本地控制台。Factory 画面把工厂泳道和 SPEC 流水线放在一起看，还附带 Overview、Specs、Monitor、Settings、Todo 画面。
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web 控制台 Overview 画面 —— SPEC 汇总、进行中的 SPEC 列表、会话注册表" width="90%">
 </p>
 
-详细指引：[看板模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode) · [manager-lead 主导协调者](https://adk.mo.ai.kr/zh/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/zh/utility-commands/moai-todo)
+详细指引：[工厂模式](https://adk.mo.ai.kr/zh/advanced/factory-mode) · [manager-lead 主导协调者](https://adk.mo.ai.kr/zh/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/zh/utility-commands/moai-todo)
 
 ### v3.1.1 新增的部分
 
-除了看板模式，v3.1.1 还带来了下面这些。每一项都在后面对应的章节里细讲。
+此前的 v3.1.1 带来了下面这些。每一项都在后面对应的章节里细讲。
 
 **主目录清理。** 用得越久，`~/.moai` 里堆的历史运行产物就越多。`moai clean --home` 只在允许清单的范围内清理它们 —— 默认是 dry-run，先把要删的东西摆出来给你看，真删要加 `--force`。从几天前的东西开始清由 `state.home_retention_days` 决定（默认 30 天，填 `0` 就关掉）。眼下膨胀到多大，`moai doctor` 的 Home Disk Usage 项会告诉你。主目录本身可以用 `MOAI_HOME` 环境变量挪走 —— 只接受绝对路径。不过读这个变量的只有 Go 进程，路径挪了，状态栏和 shell 钩子照旧看 `$HOME/.moai`。`.env.glm` 这类 shell 侧的凭据和状态栏数据就留在原地，状态悄悄裂成两处。
 
@@ -158,7 +136,7 @@ moai glm -f lane             # ……GLM 后端上的一条泳道
 
 **状态栏支持 GitLab。** 用 `statusline.forge` 选择在 GitHub 还是 GitLab 上统计打开中的工作。留空就按 origin 远端的主机判断。
 
-**裸 `/loop` 变成看板工头。** 不带参数只敲 `/loop`，转起来的是这样一个循环：盯着积压队列，把操作者已经标成 `picked` 的下一张卡片派给隔离的工人，完成与否不看主张、只看读到的证据，然后汇报。这是没人盯着的位置，所以往队列里放卡片和挑卡片都是操作者的事，工头不挑，只负责搬运。
+**裸 `/loop` 变成工厂工头。** 不带参数只敲 `/loop`，转起来的是这样一个循环：盯着积压队列，把操作者已经标成 `picked` 的下一张卡片派给隔离的工人，完成与否不看主张、只看读到的证据，然后汇报。这是没人盯着的位置，所以往队列里放卡片和挑卡片都是操作者的事，工头不挑，只负责搬运。
 
 ---
 
@@ -378,9 +356,11 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 每个 SPEC 独占一棵工作树。用 `moai cc -w <名称>` 进入；加 `--spawn` 则在保留当前会话的同时开新窗口。分支状态守卫拦住主检出里误切的分支。
 
-### 看板模式
+### 工厂模式
 
-`--kanban`（短写 `-k`）是会话启动器开关，在主导会话的指挥下把单个 SPEC 沿 `plan → run → sync` 推进，并用多会话看板协调。看板的骨架是 **Origin-Trail Chain** —— 一棵 append-only 的 JSONL 谱系树，追踪 worktree 祖先、解决深度遗忘（`/clear` 之后从根到叶恢复链条）、并通过心跳陈旧度检出死掉的主导会话。
+`-f`（`--factory`）打开工厂主导，`-l`（`--lane`）打开泳道。两者都不带参数。一个主导把队列里的卡片交给带编号的泳道，泳道则把一张卡片从 `plan → run → sync` 一路做完。启动顺序见上文“v3.2 新功能 —— 工厂模式”一节。
+
+会话的谱系由 **Origin-Trail Chain** 另行负责。它与工厂模式相互独立，不需要主导，也不需要泳道，凡是像 `moai cc -w <名称>` 这样指定了 worktree 的会话，都会记入链条。它用一棵 append-only 的 JSONL 谱系树追踪 worktree 祖先、解决深度遗忘（`/clear` 之后从根到叶恢复链条），并把心跳停了的会话标为 `stale`。
 
 | 概念 | 作用 |
 |------|--------|
@@ -389,9 +369,9 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 | CWD 冲突消解 | 用 `(worktree_path, session_id)` 对区分复用路径 |
 | 深度上限 | 限制嵌套复杂度 |
 
-> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主导，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`，两个以上的词直接当作追加卡片）运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
+> **现在就能用**：`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`，两个以上的词直接当作追加卡片）运营 `backlog` 队列。
 
-> 详见：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
+> 详见：[工厂模式](https://adk.mo.ai.kr/zh/advanced/factory-mode) · [会话谱系链](https://adk.mo.ai.kr/zh/advanced/origin-trail-chain)
 
 ### CG 停用与配置迁移
 
@@ -444,7 +424,7 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
   <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和设置标签页" width="90%">
 </p>
 
-`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成以下标签页：Identity、Language、Claude settings、GLM Settings、Codex settings、Workflow、Git & Worktree、Audit、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
+`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Factory、Specs、Monitor、Settings、Todo；设置画面分成以下标签页：Identity、Language、Claude settings、GLM Settings、Codex settings、Workflow、Git & Worktree、Audit、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
 
 ### ref / domain 技能
 
@@ -506,7 +486,7 @@ flowchart TD
 | | manager-docs | sync 阶段文档 |
 | | manager-git | PR 创建与路由 |
 | | manager-design | 设计阶段协作（Claude Design） |
-| | manager-lead | 层级团队 Tier L 协调 + 看板·工厂主导会话派工（唯一的 Agent 携带者，深度 2 封印） |
+| | manager-lead | 层级团队 Tier L 协调 + 工厂主导会话派工（唯一的 Agent 携带者，深度 2 封印） |
 | **评审者** | plan-auditor | 独立 plan 审计（防偏） |
 | | sync-auditor | 4 维质量评分（功能性 40 · 安全 25 · 做工 20 · 一致性 15） |
 | **构建者** | builder-harness | 项目专用智能体、技能、命令、钩子的脚手架 |
@@ -764,7 +744,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai memory <doctor\|archive>` | 智能体记忆体检与旧条目归档 |
 | `moai tokens record` | 按池记录 token 使用台账 |
 | `moai clean [--home] [--codex-skills] [--reports-archive]` | 清理旧的运行产物。加上 `--home` 就在允许清单范围内清理 `~/.moai`；加上 `--codex-skills` 则从 `~/.codex/config.toml` 删除那些声明路径已被证明不存在的 `[[skills.config]]` 注册。加上 `--reports-archive` 则把 `.moai/reports/` 里过期的证据目录移入 `archive/<YYYY-MM>/` — 只移动、不删除(默认保留 90 天，`--reports-archive-days`)。一次只能选一个范围。默认是 dry-run，要加 `--force` 才真正删除 |
-| `moai web` | 网页控制台 —— 6 个画面（Overview · Kanban · Specs · Monitor · Settings · Todo）、设置标签页 |
+| `moai web` | 网页控制台 —— 6 个画面（Overview · Factory · Specs · Monitor · Settings · Todo）、设置标签页 |
 
 > 全部 49 个命令：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)
 

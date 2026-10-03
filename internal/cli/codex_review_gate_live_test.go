@@ -68,6 +68,16 @@ func TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey(t *testing.T) {
 		t.Fatalf("write vuln: %v", err)
 	}
 	git("add", "vuln.go")
+	// The live review path this test proves now requires the explicit
+	// primary_scope restore: the distributed default skips a primary-checkout
+	// tree session (REQ-CGSC-002 / REQ-CGSC-004).
+	liveCfg := filepath.Join(repo, ".moai", "config", "sections", "workflow.yaml")
+	if err := os.MkdirAll(filepath.Dir(liveCfg), 0o755); err != nil {
+		t.Fatalf("mkdir live config: %v", err)
+	}
+	if err := os.WriteFile(liveCfg, []byte("workflow:\n  codex:\n    review_gate:\n      primary_scope: review\n"), 0o644); err != nil {
+		t.Fatalf("write live config: %v", err)
+	}
 
 	// Point the gate's seams at the REAL codex + the fixture repo, gate enabled,
 	// detector forced true (the fixture is staged so the porcelain detector would

@@ -251,7 +251,7 @@ Refusal is not guaranteed. Card t741 measured that a **path-less** command — n
 
 - **t1337** (2026-09-29, worker-69): immediately after the parent session's `EnterWorktree` move (card t1315's tree), a subagent's writes were refused wholesale. The refusals persisted **without any subagent restart**. Earlier paraphrases saying the refusals persisted "across subagent restart" contradict the first-hand record — do not propagate that wording; the correct statement is *no restart was involved*.
 - **t1339** (2026-09-29, worker-66, during card t1314's run): the Bash worktree session anchor misresolved to **another lane's tree** (`.claude/worktrees/develop`) for several minutes, then returned after wholesale Bash refusals. **Zero wrong-tree writes landed** — the guards held on every write — but the store structure the misresolution flowed through (a shared, last-writer-wins anchor state with no audit) is the defect class this section and SPEC-SESSION-ANCHOR-ATTR-001's instruments address.
-- **Severity note**: both observed events were denial-only, but the class is not denial noise — the silent variant above is measured, a misdirected registry `cwd` feeds the disposal guard (`LiveAnchoredSessions`), and the reproduction condition is standard lane-parallel operation (factory/kanban), not an edge case.
+- **Severity note**: both observed events were denial-only, but the class is not denial noise — the silent variant above is measured, a misdirected registry `cwd` feeds the disposal guard (`LiveAnchoredSessions`), and the reproduction condition is standard lane-parallel operation (factory), not an edge case.
 
 ### Measuring the next occurrence
 

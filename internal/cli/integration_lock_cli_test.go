@@ -2,7 +2,7 @@ package cli
 
 // integration_test.go — the `moai integration` verbs (card t194).
 //
-// The command layer is thin over internal/kanban, so these tests cover the
+// The command layer is thin over internal/factory, so these tests cover the
 // parts that live only here: the flag plumbing, the refusal to invent a holder
 // identity, and the round trip a lane actually performs.
 
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -96,8 +96,8 @@ func TestIntegration_AcquireStatusRelease(t *testing.T) {
 		t.Fatalf("status: %v", err)
 	}
 	var status struct {
-		Held bool                   `json:"held"`
-		Lock kanban.IntegrationLock `json:"lock"`
+		Held bool                    `json:"held"`
+		Lock factory.IntegrationLock `json:"lock"`
 	}
 	if err := json.Unmarshal([]byte(out), &status); err != nil {
 		t.Fatalf("status --json is not valid JSON (%v): %s", err, out)
@@ -176,7 +176,7 @@ func TestIntegrationRelease_EmptyIsReported(t *testing.T) {
 	if err == nil {
 		t.Fatal("releasing an unheld window succeeded")
 	}
-	if !kanban.IsIntegrationLockNotHeld(err) {
+	if !factory.IsIntegrationLockNotHeld(err) {
 		t.Errorf("error is not the not-held sentinel: %v", err)
 	}
 }
@@ -187,7 +187,7 @@ func TestIntegrationRelease_EmptyIsReported(t *testing.T) {
 // WHICH card is being integrated without asking for JSON.
 func TestIntegrationStatus_ShowsCardLine(t *testing.T) {
 	root := t.TempDir()
-	if _, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
+	if _, err := factory.AcquireIntegrationLock(root, factory.IntegrationLock{
 		SessionID: "sess-abc123",
 		Branch:    "fixture-integration",
 		Worktree:  "/tmp/integration-tree",
@@ -208,7 +208,7 @@ func TestIntegrationStatus_ShowsCardLine(t *testing.T) {
 // A card-less record keeps today's text shape: no empty `card:` line.
 func TestIntegrationStatus_NoCardPrintsNoCardLine(t *testing.T) {
 	root := t.TempDir()
-	if _, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
+	if _, err := factory.AcquireIntegrationLock(root, factory.IntegrationLock{
 		SessionID: "sess-abc123",
 		Branch:    "fixture-integration",
 		Worktree:  "/tmp/integration-tree",
@@ -230,7 +230,7 @@ func TestIntegrationStatus_NoCardPrintsNoCardLine(t *testing.T) {
 // synthetic key, and reading it does not rewrite it.
 func TestIntegrationStatus_OldRecordKeepsTodaysBranchLine(t *testing.T) {
 	root := t.TempDir()
-	lockFile := filepath.Join(root, ".moai", "state", kanban.IntegrationLockFileName)
+	lockFile := filepath.Join(root, ".moai", "state", factory.IntegrationLockFileName)
 	if err := os.MkdirAll(filepath.Dir(lockFile), 0o755); err != nil {
 		t.Fatal(err)
 	}

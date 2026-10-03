@@ -6,7 +6,7 @@ package cli
 // the launch on its ordinary door.
 //
 // Routing facts the Codex tests rest on (measured on this tree):
-//   - `moai codex -f lane` routes to runCodexFactoryLane and returns before
+//   - `moai codex -l` routes to runCodexFactoryLane and returns before
 //     runCodexLaunch; its per-card children launch through
 //     launchCodexCardSession → codexDirectLaunchFn, never the divert.
 //   - every other `-f` form is refused before any launch, so runCodexLaunch
@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -184,17 +184,17 @@ func TestManagedCodexLaunchSkipsLaterDebugSteps(t *testing.T) {
 	})
 }
 
-// `moai codex -f lane` is a supervising loop: even with the switch and the
+// `moai codex -l` is a supervising loop: even with the switch and the
 // stamps set, each card child launches through the direct-door seam and the
 // managed owner is never consulted (the loop bypasses runCodexLaunch).
 func TestManagedSwitchDoesNotReachCodexLaneLoop(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	t.Chdir(root)
 	sdScrubLauncherEnv(t)
 	managedOptIn(t)
-	t.Setenv(config.EnvMoaiKanbanID, fcRun)
+	t.Setenv(config.EnvFactoryRunID, fcRun)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 
 	managedCalls, directCalls := 0, 0
@@ -203,7 +203,7 @@ func TestManagedSwitchDoesNotReachCodexLaneLoop(t *testing.T) {
 	codexDirectLaunchFn = func(c *exec.Cmd) error {
 		directCalls++
 		env := sdEnvOf(t, c.Env)
-		sdCodexSessionWork(t, root, env[config.EnvMoaiKanbanCard])
+		sdCodexSessionWork(t, root, env[config.EnvFactoryCard])
 		return nil
 	}
 	managedFactoryCodexLaunchFunc = func(string, []string, []string, string) error { managedCalls++; return nil }
@@ -211,7 +211,7 @@ func TestManagedSwitchDoesNotReachCodexLaneLoop(t *testing.T) {
 		codexLookPath, codexDirectLaunchFn, managedFactoryCodexLaunchFunc = prevLook, prevDirect, prevManaged
 	})
 
-	if _, _, err := runCodexCmd(t, "-f", "lane"); err != nil {
+	if _, _, err := runCodexCmd(t, "-l"); err != nil {
 		t.Fatalf("codex lane: %v", err)
 	}
 	if managedCalls != 0 {

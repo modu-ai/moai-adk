@@ -210,7 +210,7 @@ func sandboxProfileBaseDir() func() {
 // os.UserHomeDir(), which ignores HOME on Windows and would misjudge a
 // HOME-overridden test as the real home there.
 //
-// glmcred.HomeDirFn (glm.go init) and kanban.HomeDirFn (todo.go init) are
+// glmcred.HomeDirFn (glm.go init) and factory.HomeDirFn (todo.go init) are
 // closures that call userHomeDirFn at call time, so they are covered too.
 // Production sites that call paths.Home() or os.UserHomeDir() directly are
 // NOT covered by this net.

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -146,7 +146,7 @@ func adoptCardSpecID(root, cardID string) (string, error) {
 	return "", nil
 }
 
-func adoptDerefSpecID(item kanban.BacklogItem) string {
+func adoptDerefSpecID(item factory.BacklogItem) string {
 	if item.SpecID == nil {
 		return ""
 	}
