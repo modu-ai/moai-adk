@@ -4,7 +4,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: revised-for-delta-audit (0.3.0; iteration 3, the leader-granted final delta audit scoped to D1-D5 and D7)
+plan_status: PASS-WITH-DEBT by the leader's convergence rule (0.3.1; final delta audit FAIL 0.875 on two wording blockers, fixed without a new audit)
 plan_complete_at: 2026-10-03
 artifacts: spec.md (REQ 14) · plan.md · acceptance.md (AC 16) · design.md (D-1..D-10) · progress.md
 tier: M (see plan.md §A; LOC total at the ceiling, tier-up path stated)
@@ -55,6 +55,10 @@ Local report `.moai/reports/t1408/plan-audit-iter2.md` (not committed). Leader d
 | D5 E1/E4 flips | Fixed: E1 gets `--exclude='*_test.go'`; E4 is noted to flip at S. |
 | D7 plan.md §F | Fixed: "AC-MT-001..014 and 016 (015 operator-held)". |
 | D6 and other optional | Not touched (D6 residual stays a Gap: the sync audit reads the anchored lines). |
+
+### Final delta audit (FAIL 0.875) and 0.3.1
+
+Local report `.moai/reports/t1408/plan-audit-iter3-delta.md` (not committed). Fixed in 0.3.1: B1 (`blocked_turn_start_released` now has an entered-and-not-returned barrier, a write deadline longer than the watchdog, a queued second sender, and mutant mu19 for a select-only release); B2 (the M1 delta check counts 11 distinct AC ids and 15 distinct named failing tests, excludes `panic:` and `test timed out`, and states that only re-running one cited RED command at the M2 advance stops a fabricated cell); O1 (plan.md Exit lines split AC-MT-014 into M1 and M5 parts); O2 (TUI status recorded before the connection closes; blocked subtests use exit code 7); O8 (spec.md §E range). Left as debt: the other optional findings of that report, and D6 (AC-MT-013 stays satisfiable by anchored search tokens; the sync audit reads the anchored lines).
 
 ## §E.2 Run-phase Evidence
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "Factory managed Codex session — operator TUI attach and the headless-to-interactive transition (SPEC-FACTORY-MANAGED-SESSION-001 Known debt 1, sync audit F2)"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -22,6 +22,7 @@ tags: "factory, managed-session, codex, tui, app-server, terminal-ownership, hea
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.3.1 | 2026-10-03 | manager-spec | Final delta-audit wording fixes B1, B2, O1, O2, O8 (no new audit; PASS-WITH-DEBT convergence). |
 | 0.3.0 | 2026-10-03 | manager-spec | Plan-audit iteration 2 delta revision (FAIL 0.86; scoped to D1-D5 and D7). Blocked-call release redesigned (WebSocket close, write deadline); AC-MT-015 made operator-held; t1408-before-t1459 decided; AC-MT-014 split and made checkable. See progress.md §E.1. |
 | 0.2.0 | 2026-10-03 | manager-spec | Plan-audit iteration 1 revision (FAIL 0.63, defects D1-D19; local report `.moai/reports/t1408/plan-audit-iter1.md`). Changed: REQ-MT-004/006/007/008/013/014 wording; AC-MT-016 added (AC 16); the stale-busy rule (deferral never self-clears); log-sink lifetime; D-9 merge-order text corrected against the held t1459 draft; M1 compile-stub RED strategy; milestone exits re-gated; EXCL-syscall clauses. Disposition table in progress.md §E.1. |
 | 0.1.0 | 2026-10-03 | manager-spec | Initial SPEC (card t1408). Pays Known debt 1 of the completed SPEC-FACTORY-MANAGED-SESSION-001 (independent sync audit `.moai/reports/t1375/sync-audit.md`, finding F2; operator decision 2026-10-02). The parent SPEC directories are not modified (design.md D-1). Hard-dependent on the landed SPEC-FACTORY-MANAGED-HARDEN-001 (server-request answering, per-turn failure isolation). |
@@ -103,7 +104,7 @@ EXCL-syscall: this SPEC introduces no `syscall` reference anywhere; the Windows 
 
 ## §E. Success criteria summary
 
-All of AC-MT-001..016 in `acceptance.md`. In particular: (1) the reproduction tests are RED on the card base and GREEN after the fix, with the RED baseline in a tracked file in an earlier commit; (2) a loopback test with a fake codex shim (App Server role and TUI role in one re-exec helper) runs the whole attach → inbox delivery → receipt → TUI exit path with no real codex; (3) the parent suites for the managed layer and the four opt-in tests stay green; (4) the cross build and the zero-`syscall` grep pass; (5) one explicit manual check, AC-MT-015, is labeled as not run in CI and is the only observation of a real interactive TUI. EXCL-syscall: the zero-`syscall` property is proved by AC-MT-012's grep and cross build.
+All of AC-MT-001..014 and 016 in `acceptance.md` (AC-MT-015 is operator-held and not release-blocking). In particular: (1) the reproduction tests are RED on the card base and GREEN after the fix, with the RED baseline in a tracked file in an earlier commit; (2) a loopback test with a fake codex shim (App Server role and TUI role in one re-exec helper) runs the whole attach → inbox delivery → receipt → TUI exit path with no real codex; (3) the parent suites for the managed layer and the four opt-in tests stay green; (4) the cross build and the zero-`syscall` grep pass; (5) one explicit manual check, AC-MT-015, is labeled as not run in CI and is the only observation of a real interactive TUI. EXCL-syscall: the zero-`syscall` property is proved by AC-MT-012's grep and cross build.
 
 ## §F. Exclusions
 

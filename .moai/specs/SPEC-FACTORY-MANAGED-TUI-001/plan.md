@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-TUI-001
 title: "plan.md — implementation plan"
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -40,7 +40,7 @@ The tests reference symbols that do not exist on the base, so without stubs the 
 2. **RED commit R.** The fake codex helper and every test of AC-MT-001..009, 011 and 016 plus `red-baseline.md`. Each test must fail on a **named assertion** (a failing-subtest line, for example `--- FAIL: TestManagedCodexTUIAttachCommand/argv_exact ` with the trailing space), not on a build error: with S in place, "attach never happens" fails AC-MT-001's `argv_exact`, and so on. `red-baseline.md` records, per AC, the command, the observed stdout, the exit code and the tree SHA (the RED-now cell of verification-completeness §2.1).
 
 **M1 exit gate.** The orchestrator, or the lane that wrote M1, runs the three-line delta-check command of acceptance.md §1.1 (AC-MT-014 M1 part) on `red-baseline.md` and pastes the result line into progress.md §E.2; M2 starts only when it reads 11 / 11-or-more / 0 and the stub-before-RED ancestry holds. No new audit role. The M1 Exit below is evaluable at the end of M1 from that command; the closing ancestry part of AC-MT-014 is re-run at M5. The mutants of acceptance.md §2 are confirmed per test here.
-Exit: AC-MT-014
+Exit: AC-MT-014 (M1 part: stub-before-RED, tracked red-baseline.md, the delta-check numbers)
 
 ### M2 — Interaction semantics and the minimal reaping path (highest change likelihood)
 
@@ -60,7 +60,7 @@ Exit: AC-MT-008, AC-MT-009
 ### M5 — Integration and regression
 
 The loopback round trip, the managed regression set, the `GOOS=windows` cross build, the zero-`syscall` grep, `gofmt`/`vet`/lint.
-Exit: AC-MT-010, AC-MT-011, AC-MT-012
+Exit: AC-MT-010, AC-MT-011, AC-MT-012, AC-MT-014 (closing part: R is an ancestor of every fix commit)
 
 ### M6 — Disclosure and hand-off
 
