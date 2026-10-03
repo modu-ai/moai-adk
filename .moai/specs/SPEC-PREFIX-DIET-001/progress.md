@@ -384,6 +384,24 @@ first-turn-input-tokens[repair#3]=151673 head=e5be9868f usage={"input_tokens":2,
 
 **Residual-risk (updated).** A pointer proves the anchor exists in the named file, not that it carries the dropped instruction; the 52 remaining rows rest on that reviewer judgement. The moai.md note (row 65) points at a rule file, not a style unit.
 
+### Repair 2 (sync-audit iter2 F-D3, F-D4, F-D5; leader-ordered conservative restore)
+
+Started from HEAD `c7ba13ab4` (verified). **Restored verbatim** in moai-easy.md (template first, `make build` exit 0, local mirror copied, `diff -rq` empty): `moai-easy-0073` (`If you ever go "wait, what does X mean?" — I'll stop right there…`, the pause-until-comfortable reassurance; its heading unit 0072 stays dropped), `moai-easy-0163` (`**Q: Can I change my mind mid-task?**`), `moai-easy-0181` (`Switch any time via /config → Output style → choose…`, the explicit `/output-style MoAI-Learn` route). **F-D5:** the free-text `survivor` field of the remaining 49 dropped rows is cleared; the ledger test's `DROPPED_SURVIVOR` check now keys off the `survivor_file` + `survivor_anchor` pointer (its mutation subtest clears the pointer) and `SURVIVOR_UNRESOLVED` is unchanged, so the rule is not weakened.
+
+Whole-file UTF-16: moai.md 61,362 (unchanged); moai-easy.md 23,036 -> 23,586 (+550); moai-learn.md 28,517 (unchanged); budget constant for moai-easy set to 23,586. Dropped rows 52 -> 49, total 6,888 UTF-16 units (was 7,438).
+
+Verification exit codes: `go test ./internal/template/ -run '^TestOutputStyle' -count=1 -v` 0 (all nine tests PASS); `go test ./internal/template/ -run 'TestAgentDescriptionBudget' -count=1` 0; `make agents-emit-check` 0; `make build` 0; `golangci-lint run ./internal/template/` 0.
+
+First-turn tokens, clean tree, HEAD `76e480974`, default style, every run `"num_turns":1`:
+
+```
+first-turn-input-tokens[repair2#1]=151873 head=76e480974 usage={"input_tokens":2,"cache_creation_input_tokens":139472,"cache_read_input_tokens":12399,"output_tokens":361,"output_tokens_details":{"thinking_tokens":109
+first-turn-input-tokens[repair2#2]=151873 head=76e480974 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":151871,"output_tokens":319,"output_tokens_details":{"thinking_tokens":88
+first-turn-input-tokens[repair2#3]=151873 head=76e480974 usage={"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":151871,"output_tokens":302,"output_tokens_details":{"thinking_tokens":59
+```
+
+151,873 x3 vs anchor 154,235: -2,362 (-1.53%); the previous repair measured -2,562. The restored text costs 200 tokens.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
