@@ -114,6 +114,8 @@ type hardenFrame struct {
 		Code    int    `json:"code"`
 		Message string `json:"message"`
 	} `json:"error"`
+	// Raw is the frame exactly as it crossed the wire.
+	Raw json.RawMessage `json:"-"`
 }
 
 // isReply reports a client answer to a server request: an id and no method.
@@ -184,12 +186,26 @@ func newHardenPair(t *testing.T) (*managedCodexAppClient, *hardenServer) {
 func (s *hardenServer) readFrames() {
 	defer close(s.frames)
 	for {
-		var frame hardenFrame
-		if err := s.conn.ReadJSON(&frame); err != nil {
+		_, raw, err := s.conn.ReadMessage()
+		if err != nil {
+			return
+		}
+		frame, err := hardenParseFrame(raw)
+		if err != nil {
 			return
 		}
 		s.frames <- frame
 	}
+}
+
+// hardenParseFrame decodes one wire frame, keeping the wire bytes in Raw.
+func hardenParseFrame(raw []byte) (hardenFrame, error) {
+	var frame hardenFrame
+	if err := json.Unmarshal(raw, &frame); err != nil {
+		return hardenFrame{}, err
+	}
+	frame.Raw = append([]byte(nil), raw...)
+	return frame, nil
 }
 
 func (s *hardenServer) send(msg map[string]any) {
@@ -535,6 +551,50 @@ func hardenValidate(t *testing.T, schema *jsonschema.Schema, raw []byte) error {
 	return schema.Validate(value)
 }
 
+// hardenErrorFrameBytes returns the bytes the schema guard validates for an
+// error-answered server request: the frame exactly as it crossed the wire.
+// Re-assembling it from the decoded struct would supply a missing field (an
+// absent "message" decodes to "" and re-encodes as present), hiding the very
+// defect the guard exists for.
+func hardenErrorFrameBytes(t *testing.T, reply hardenFrame) []byte {
+	t.Helper()
+	if len(reply.Raw) == 0 {
+		t.Fatalf("reply %s carries no wire bytes", reply.ID)
+	}
+	return reply.Raw
+}
+
+// TestManagedSchemaGuardSeesMessagelessErrorFrame pins that the schema guard
+// validates the error frame as it crossed the wire: a frame whose error object
+// carries no "message" must be rejected by JSONRPCError.json, not repaired by
+// re-assembly into one that has an empty message.
+func TestManagedSchemaGuardSeesMessagelessErrorFrame(t *testing.T) {
+	rpcError := hardenCompileSchema(t, "JSONRPCError.json")
+	for _, wire := range []string{
+		`{"id":7,"error":{"code":-32601}}`,
+		`{"id":"7","jsonrpc":"2.0","error":{"code":-32601}}`,
+	} {
+		frame, err := hardenParseFrame([]byte(wire))
+		if err != nil {
+			t.Fatalf("parse %s: %v", wire, err)
+		}
+		if !frame.isReply() || frame.Error == nil {
+			t.Fatalf("%s did not parse as an error reply", wire)
+		}
+		if hardenValidate(t, rpcError, hardenErrorFrameBytes(t, frame)) == nil {
+			t.Errorf("wire frame %s lacks error.message yet the guard accepts it", wire)
+		}
+	}
+	// Positive control: a well-formed wire frame still passes.
+	ok, err := hardenParseFrame([]byte(`{"id":7,"error":{"code":-32601,"message":"m"}}`))
+	if err != nil {
+		t.Fatalf("parse control: %v", err)
+	}
+	if err := hardenValidate(t, rpcError, hardenErrorFrameBytes(t, ok)); err != nil {
+		t.Errorf("well-formed error frame rejected: %v", err)
+	}
+}
+
 // TestManagedServerRequestPolicyMatchesCodexSchema is the schema-conformance
 // guard for the D-1 response policy: the owner's real wire answer to every kind
 // of server request must validate against the codex 0.160.0 response schema for
@@ -610,13 +670,7 @@ func TestManagedServerRequestPolicyMatchesCodexSchema(t *testing.T) {
 				if reply.Error == nil {
 					t.Fatalf("%s answered with result %s, want a JSON-RPC error", row.method, reply.Result)
 				}
-				frame, err := json.Marshal(map[string]any{
-					"id":    json.RawMessage(reply.ID),
-					"error": map[string]any{"code": reply.Error.Code, "message": reply.Error.Message},
-				})
-				if err != nil {
-					t.Fatalf("re-encode error frame: %v", err)
-				}
+				frame := hardenErrorFrameBytes(t, reply)
 				if err := hardenValidate(t, rpcError, frame); err != nil {
 					t.Fatalf("error frame %s violates JSONRPCError.json: %v", frame, err)
 				}

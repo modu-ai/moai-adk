@@ -4,7 +4,7 @@ package cli
 // SPEC-FACTORY-LANE-AUTONOMY-001 fragment 3 (design.md D3): the check
 // sequence a lane executes before entering the integration window, and the
 // window gate the merge act itself sits behind. It consumes the EXISTING
-// `moai integration` window (kanban.AcquireIntegrationLock and the recorded
+// `moai integration` window (factory.AcquireIntegrationLock and the recorded
 // hold) — no new serialization mechanism (REQ-FLA-010/011) and no F3
 // controller machinery (spec.md §F exclusion): no write-ahead start events,
 // no trial merges, no tick loop. This file never performs a merge.
@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -144,23 +144,23 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			// not the one it wrote — the acquired record is read back from
 			// the store, which is also what carries the acquire stamp the
 			// pre-check proof below is verified against.
-			if _, err := kanban.AcquireIntegrationLock(lockRoot, kanban.IntegrationLock{
+			if _, err := factory.AcquireIntegrationLock(lockRoot, factory.IntegrationLock{
 				SessionID:    sessionID,
 				SessionName:  lane,
 				PID:          ownerPID,
-				PIDSource:    kanban.PIDSourceSessionOwner,
+				PIDSource:    factory.PIDSourceSessionOwner,
 				Branch:       developRef,
-				BranchSource: kanban.BranchSourceConfig,
+				BranchSource: factory.BranchSourceConfig,
 				Worktree:     worktreeForBranch(developRef),
 				Card:         card,
 			}, false); err != nil {
-				if !kanban.IsIntegrationLockHeld(err) {
+				if !factory.IsIntegrationLockHeld(err) {
 					return err
 				}
 				// AC-FLA-010: refused/waiting WITH THE HOLDER NAMED — the
 				// existing acquire behavior consumed, surfaced in this path's
 				// output. The window stays with its holder.
-				current, readErr := kanban.ReadIntegrationLock(lockRoot)
+				current, readErr := factory.ReadIntegrationLock(lockRoot)
 				if readErr != nil {
 					return readErr
 				}
@@ -180,7 +180,7 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			// exists BEFORE the integration acquire timestamp. The window is
 			// already ours here, so a failed proof is released again — a
 			// cleared verdict never rides an unproven record.
-			acquired, err := kanban.ReadIntegrationLock(lockRoot)
+			acquired, err := factory.ReadIntegrationLock(lockRoot)
 			if err != nil {
 				return err
 			}
@@ -194,7 +194,7 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			proofOK, proofWhy := factorylane.VerifyRunBeforeAcquire(&recorded, acquireAt)
 			// One case the strict record-only verifier cannot see: the
 			// window's acquire stamp carries RFC3339 SECOND precision (the
-			// kanban record format) while the check record carries
+			// factory record format) while the check record carries
 			// nanoseconds, so a record written within the acquire's own
 			// second is unorderable from the records alone. sameSecondProof
 			// admits exactly that: a passing record falling at or before the
@@ -204,7 +204,7 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			// window is released again.
 			sameSecondProof := recorded.AllPassed && recorded.CheckedAt.Before(acquireAt.Add(time.Second))
 			if !proofOK && !sameSecondProof {
-				if _, releaseErr := kanban.ReleaseIntegrationLock(lockRoot, sessionID, ownerPID, false); releaseErr != nil {
+				if _, releaseErr := factory.ReleaseIntegrationLock(lockRoot, sessionID, ownerPID, false); releaseErr != nil {
 					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "factory merge ready: the pre-acquire proof failed (%s) and the window release also failed: %v\n", proofWhy, releaseErr)
 				}
 				_, _ = fmt.Fprintf(human, "merge-readiness: REFUSED — %s\nthe window was released again; no cleared verdict rides an unproven record\n", proofWhy)
@@ -250,7 +250,7 @@ func newFactoryMergeGateCommand() *cobra.Command {
 					return err
 				}
 			}
-			lock, err := kanban.ReadIntegrationLock(integrationLockRoot())
+			lock, err := factory.ReadIntegrationLock(integrationLockRoot())
 			if err != nil {
 				return err
 			}

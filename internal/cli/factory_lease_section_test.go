@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // flProbeWindow is AC-FAL-009's lock-probe window (100 ms, the window of L11).
@@ -27,7 +27,7 @@ const flProbeWindow = 100 * time.Millisecond
 func TestFactoryLeaseSectionExcludesWorktreeStep(t *testing.T) {
 	for _, form := range []string{"nominated", "bare"} {
 		t.Run(form, func(t *testing.T) {
-			_, store := nmBase(t, kanban.BacklogStateQueued)
+			_, store := nmBase(t, factory.BacklogStateQueued)
 			nmLaneEnv(t, "lane-1", "")
 			dir := t.TempDir()
 			initGitRepo(t, dir)
@@ -90,7 +90,7 @@ func TestFactoryLeaseSectionExcludesWorktreeStep(t *testing.T) {
 // flArmCase is one success row of AC-FAL-009's table.
 type flArmCase struct {
 	name                       string
-	itemState                  kanban.BacklogState
+	itemState                  factory.BacklogState
 	row                        *homestate.Card
 	nominated                  bool
 	promotions, restores, wrts int
@@ -102,14 +102,14 @@ func flArmCases() []flArmCase {
 	}
 	picked := func() *homestate.Card { return &homestate.Card{CardID: "t1", State: homestate.CardPicked} }
 	return []flArmCase{
-		{name: "arm-a", itemState: kanban.BacklogStatePicked, row: assigned(), wrts: 1},
-		{name: "arm-b", itemState: kanban.BacklogStatePicked, row: picked(), wrts: 2},
-		{name: "arm-b2", itemState: kanban.BacklogStatePicked, wrts: 3},
-		{name: "arm-c", itemState: kanban.BacklogStateQueued, promotions: 1, wrts: 3},
-		{name: "nominated-queued", itemState: kanban.BacklogStateQueued, nominated: true, promotions: 1, wrts: 3},
-		{name: "nominated-queued-assigned", itemState: kanban.BacklogStateQueued, row: assigned(), nominated: true, promotions: 1, wrts: 1},
-		{name: "nominated-picked", itemState: kanban.BacklogStatePicked, nominated: true, wrts: 3},
-		{name: "nominated-picked-assigned", itemState: kanban.BacklogStatePicked, row: assigned(), nominated: true, wrts: 1},
+		{name: "arm-a", itemState: factory.BacklogStatePicked, row: assigned(), wrts: 1},
+		{name: "arm-b", itemState: factory.BacklogStatePicked, row: picked(), wrts: 2},
+		{name: "arm-b2", itemState: factory.BacklogStatePicked, wrts: 3},
+		{name: "arm-c", itemState: factory.BacklogStateQueued, promotions: 1, wrts: 3},
+		{name: "nominated-queued", itemState: factory.BacklogStateQueued, nominated: true, promotions: 1, wrts: 3},
+		{name: "nominated-queued-assigned", itemState: factory.BacklogStateQueued, row: assigned(), nominated: true, promotions: 1, wrts: 1},
+		{name: "nominated-picked", itemState: factory.BacklogStatePicked, nominated: true, wrts: 3},
+		{name: "nominated-picked-assigned", itemState: factory.BacklogStatePicked, row: assigned(), nominated: true, wrts: 1},
 	}
 }
 
@@ -130,7 +130,7 @@ func TestFactoryLeaseSectionRecordWritesPerArm(t *testing.T) {
 
 			var mu sync.Mutex
 			writes, beforeLock := 0, 0
-			var stateAtFirstWrite kanban.BacklogState
+			var stateAtFirstWrite factory.BacklogState
 			var probes []*flOp
 			prevNow := factoryCardNow
 			factoryCardNow = func() time.Time {
@@ -174,10 +174,10 @@ func TestFactoryLeaseSectionRecordWritesPerArm(t *testing.T) {
 			nmAssertLeased(t, root, "t1", "lane-1")
 			final := nmQueueState(t, store, "t1")
 			promotions, restores := 0, 0
-			if c.itemState == kanban.BacklogStateQueued && (first == kanban.BacklogStatePicked || final == kanban.BacklogStatePicked) {
+			if c.itemState == factory.BacklogStateQueued && (first == factory.BacklogStatePicked || final == factory.BacklogStatePicked) {
 				promotions = 1
 			}
-			if promotions == 1 && final == kanban.BacklogStateQueued {
+			if promotions == 1 && final == factory.BacklogStateQueued {
 				restores = 1
 			}
 			t.Logf("%s: promotions=%d restores=%d record_writes=%d writes_before_lock=%d", c.name, promotions, restores, gotWrites, gotBefore)

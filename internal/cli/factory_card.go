@@ -17,9 +17,9 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 )
@@ -52,7 +52,7 @@ var factoryLeaseAtPassEntry = func() {}
 // (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3). The claim wait cap is the sum of
 // the claim's context deadline and the busy timeout its record connection
 // carries; it must stay within one third of the queue lock's wait budget
-// (kanban.LockWaitBudget). The worktree step takes its lock for at most
+// (factory.LockWaitBudget). The worktree step takes its lock for at most
 // factoryWorktreeStepWait (factoryCreateAndRenameWorktree).
 const (
 	factoryLeaseClaimDeadline    = 800 * time.Millisecond
@@ -100,7 +100,7 @@ func factoryLaneAdmission() bool {
 func factoryLaneRefusal() bool {
 	return factoryLaneAdmission() ||
 		os.Getenv(config.EnvMoaiFactoryWorker) != "" ||
-		os.Getenv(config.EnvMoaiKanbanBackend) == kanban.BackendGPT
+		os.Getenv(config.EnvFactoryBackend) == factory.BackendGPT
 }
 
 // The refusal sentinels. One wording source per refusal kind, so the queue
@@ -131,13 +131,13 @@ func factoryLaneLabelFromEnv(verb string) (string, error) {
 		return "", fmt.Errorf("factory %s: %s is empty — a lane session carries its lane label there", verb, config.EnvMoaiFactoryWorker)
 	}
 	lowered := strings.ToLower(lane)
-	if n, ok := kanban.SplitFactoryLegacyLabel(lowered); ok {
-		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -f lane)", verb, lane, kanban.FactoryLaneLabel(n))
+	if n, ok := factory.SplitFactoryLegacyLabel(lowered); ok {
+		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -l)", verb, lane, factory.FactoryLaneLabel(n))
 	}
-	if kanban.IsLegacyFactoryRoleValue(lowered) {
-		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -f lane)", verb, lane)
+	if factory.IsLegacyFactoryRoleValue(lowered) {
+		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -l)", verb, lane)
 	}
-	if kanban.IsLegacyLeaderSpelling(lowered) {
+	if factory.IsLegacyLeaderSpelling(lowered) {
 		return "", fmt.Errorf("factory %s: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", verb, lane)
 	}
 	return lane, nil
@@ -155,7 +155,7 @@ const factoryCodexMergeSentinel = "the Codex harness cannot take the merge-ready
 // verbs call it before touching any record; the MCP factory tools (M3) call
 // the same function.
 func factoryRefuseCodexMergeEdge(verb string) error {
-	if os.Getenv(config.EnvMoaiKanbanBackend) != kanban.BackendGPT {
+	if os.Getenv(config.EnvFactoryBackend) != factory.BackendGPT {
 		return nil
 	}
 	return fmt.Errorf("factory %s: refused — %s: a Codex lane stops at merge-ready; integration is the Claude lane's or the leader's (F3)",
@@ -274,7 +274,7 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // are merely `assigned`, which would otherwise wedge every leader-assigned
 // serial card against the others with nothing in flight. Every path that takes
 // a NEW card, the nominated lease included, passes false.
-func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) kanban.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
+func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
 	for _, c := range cards {
 		if c.CardID == cardID {
 			continue
@@ -282,7 +282,7 @@ func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string)
 		if ignoreAssigned && c.State == homestate.CardAssigned {
 			continue
 		}
-		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
+		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == factory.ClassModeSerial {
 			return true
 		}
 	}
@@ -292,21 +292,21 @@ func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string)
 // factoryQueueClassification reads one card's classification from a queue
 // record snapshot. A card absent from the queue reads as the absent-field
 // default derivation (REQ-TCD-014): serial, normal, non-blocked.
-func factoryQueueClassification(rec *kanban.BacklogRecord, cardID string) kanban.CardClassification {
+func factoryQueueClassification(rec *factory.BacklogRecord, cardID string) factory.CardClassification {
 	if rec == nil {
-		return kanban.DefaultCardClassification()
+		return factory.DefaultCardClassification()
 	}
 	for _, it := range rec.Items {
 		if it.ID == cardID {
-			return kanban.EffectiveCardClassification(it)
+			return factory.EffectiveCardClassification(it)
 		}
 	}
 	for _, entry := range rec.Archived {
 		if entry.Item.ID == cardID {
-			return kanban.EffectiveCardClassification(entry.Item)
+			return factory.EffectiveCardClassification(entry.Item)
 		}
 	}
-	return kanban.DefaultCardClassification()
+	return factory.DefaultCardClassification()
 }
 
 // factoryNextLeaseOnce selects and leases one card for lane through the F1
@@ -343,7 +343,7 @@ func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, no
 			leased, raced bool
 			passErr       error
 		)
-		ran, lockErr := factoryLeaseSection(store, func(l *kanban.LockedBacklog) {
+		ran, lockErr := factoryLeaseSection(store, func(l *factory.LockedBacklog) {
 			card, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)
 		})
 		if !ran {
@@ -381,8 +381,8 @@ func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, no
 // @MX:WARN: [AUTO] the lease section holds the queue lock across a factory-record write, so its worst hold is the claim wait cap plus one promotion and one restore
 // @MX:REASON: inside fn the queue is read and written only through the handle (a public Mutate waits out the whole budget on the section's own descriptor), and nothing here may start a git process or create a worktree (REQ-FAL-007)
 // @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
-func factoryLeaseSection(store *kanban.BacklogStore, fn func(*kanban.LockedBacklog)) (ran bool, err error) {
-	err = store.WithLock(func(l *kanban.LockedBacklog) error {
+func factoryLeaseSection(store *factory.BacklogStore, fn func(*factory.LockedBacklog)) (ran bool, err error) {
+	err = store.WithLock(func(l *factory.LockedBacklog) error {
 		ran = true
 		fn(l)
 		return nil
@@ -392,8 +392,8 @@ func factoryLeaseSection(store *kanban.BacklogStore, fn func(*kanban.LockedBackl
 
 // factoryQueueLockError names a queue lock the lease could not take.
 func factoryQueueLockError(err error) error {
-	if kanban.IsBoardLockHeld(err) {
-		return fmt.Errorf("factory next: the queue lock stayed held for the whole %s wait budget, so nothing was leased: %w", kanban.LockWaitBudget(), err)
+	if factory.IsStateLockHeld(err) {
+		return fmt.Errorf("factory next: the queue lock stayed held for the whole %s wait budget, so nothing was leased: %w", factory.LockWaitBudget(), err)
 	}
 	return fmt.Errorf("factory next: take the queue lock: %w", err)
 }
@@ -439,7 +439,7 @@ func factoryRefuseForeignWorktree(root, cardID string) error {
 }
 
 // factoryWorktreeSlug derives the card worktree's WT- branch slug from the
-// card's queue title (the kanban-dispatch branch-naming rule): lowercase
+// card's queue title (the Factory Dispatch Protocol branch-naming rule): lowercase
 // [a-z0-9-], at most three tokens, at most 24 characters, and never
 // containing the card id — a token carrying the id is dropped. A title with
 // no usable token falls back to "card".
@@ -545,7 +545,7 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 // @MX:NOTE: [AUTO] The lock covers the creator and `git branch -m` only; the record write stays outside it (D3, lock order).
 // @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
 func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (string, error) {
-	release, err := kanban.AcquireFactoryStepLock(root, factoryWorktreeStepWait)
+	release, err := factory.AcquireFactoryStepLock(root, factoryWorktreeStepWait)
 	if err != nil {
 		return "", fmt.Errorf("serialize the card worktree step: %w", err)
 	}
@@ -583,7 +583,7 @@ func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (s
 // The pass runs inside the lease section (factoryLeaseSection): l is the handle
 // of the queue lock the caller holds, every queue read and write goes through
 // it, and the claim is made before the section ends.
-func factoryNextSelectAndLease(ctx context.Context, l *kanban.LockedBacklog, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool) (homestate.Card, bool, bool, error) {
+func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool) (homestate.Card, bool, bool, error) {
 	factoryLeaseAtPassEntry()
 	// The clock is read BEFORE the record snapshot: a lease whose expiry the
 	// snapshot shows as already past was expired when the clock was read too,
@@ -606,7 +606,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *kanban.LockedBacklog, db 
 	if err != nil {
 		return homestate.Card{}, false, false, fmt.Errorf("read the queue for classification: %w", err)
 	}
-	classOf := func(cardID string) kanban.CardClassification {
+	classOf := func(cardID string) factory.CardClassification {
 		return factoryQueueClassification(queueRec, cardID)
 	}
 	// serialInFlightExcluding reports whether a serial card OTHER than
@@ -623,7 +623,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *kanban.LockedBacklog, db 
 		return factorySerialInFlightExcluding(cards, classOf, cardID, now, ignoreAssigned)
 	}
 	modeEligible := func(cardID string) bool {
-		if classOf(cardID).Mode != kanban.ClassModeSerial {
+		if classOf(cardID).Mode != factory.ClassModeSerial {
 			return true
 		}
 		return !serialInFlightExcluding(cardID, false)
@@ -636,7 +636,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *kanban.LockedBacklog, db 
 		if skip(c) {
 			continue
 		}
-		if classOf(c.CardID).Mode == kanban.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
+		if classOf(c.CardID).Mode == factory.ClassModeSerial && serialInFlightExcluding(c.CardID, true) {
 			continue
 		}
 		if err := factoryLeaseBeforeClaim("a", c.CardID); err != nil {
@@ -661,7 +661,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *kanban.LockedBacklog, db 
 			continue
 		}
 		state, inQueue := queueItemStateIn(queueRec, c.CardID)
-		if !inQueue || state != kanban.BacklogStatePicked {
+		if !inQueue || state != factory.BacklogStatePicked {
 			continue
 		}
 		if err := factoryLeaseBeforeClaim("b", c.CardID); err != nil {
@@ -675,7 +675,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *kanban.LockedBacklog, db 
 	for _, it := range queueRec.Items {
 		// Positive enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-012): the
 		// state this arm claims is named; every other state falls through.
-		if it.State == kanban.BacklogStatePicked && !recorded[it.ID] {
+		if it.State == factory.BacklogStatePicked && !recorded[it.ID] {
 			if !modeEligible(it.ID) {
 				continue
 			}
@@ -693,13 +693,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *kanban.LockedBacklog, db 
 	// serial card is skipped while another serial card is in flight.
 	var promoted string
 	sawQueued := 0
-	if err := l.Mutate(func(r *kanban.BacklogRecord) error {
+	if err := l.Mutate(func(r *factory.BacklogRecord) error {
 		for i := range r.Items {
 			it := &r.Items[i]
 			// Positive enumeration (REQ-THS-012): the state this arm promotes
 			// is named; every other state — a state added later included —
 			// falls through.
-			if it.State == kanban.BacklogStateQueued {
+			if it.State == factory.BacklogStateQueued {
 				sawQueued++
 				// The hold marker keeps a card out of the lease path, and the
 				// skipped card still counts as seen, so a queue of marker cards
@@ -708,14 +708,14 @@ func factoryNextSelectAndLease(ctx context.Context, l *kanban.LockedBacklog, db 
 				if factoryQueuedHoldMarked(*it) {
 					continue
 				}
-				cls := kanban.EffectiveCardClassification(*it)
+				cls := factory.EffectiveCardClassification(*it)
 				if cls.Blocked {
 					continue
 				}
-				if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
+				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
 					continue
 				}
-				it.State = kanban.BacklogStatePicked
+				it.State = factory.BacklogStatePicked
 				promoted = it.ID
 				return nil
 			}
@@ -864,8 +864,8 @@ func factoryRefusal(token, format string, args ...any) *factoryNominateRefusal {
 // unnominated promotion arm share (the serial cycle demotes the same cards
 // through autoRankHoldMarked). A card in any other queue state is not a
 // marker card: the marker parks a card the lease would otherwise promote.
-func factoryQueuedHoldMarked(it kanban.BacklogItem) bool {
-	return it.State == kanban.BacklogStateQueued && autoRankHoldMarked(it.Text)
+func factoryQueuedHoldMarked(it factory.BacklogItem) bool {
+	return it.State == factory.BacklogStateQueued && autoRankHoldMarked(it.Text)
 }
 
 // factoryRecordRefusal maps a factory-record row to the refusal it earns for
@@ -914,12 +914,12 @@ func factoryRowHolder(row homestate.Card) string {
 //
 // @MX:NOTE: [AUTO] The shared keep-set predicate of the nominated lease; positive enumeration of the leasable queue states, so a state added later is refused, never leased. Fan-in 2 (validation and the in-lock re-validation) — a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-TODO-AUTO-PICK-001
-func factoryKeepSetRefusal(it kanban.BacklogItem, row *homestate.Card, lane string, serialHeld bool) *factoryNominateRefusal {
+func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane string, serialHeld bool) *factoryNominateRefusal {
 	switch it.State {
-	case kanban.BacklogStateQueued, kanban.BacklogStatePicked:
-	case kanban.BacklogStateDropped:
+	case factory.BacklogStateQueued, factory.BacklogStatePicked:
+	case factory.BacklogStateDropped:
 		return factoryRefusal(factoryRefuseDropped, "the card was dropped from the queue")
-	case kanban.BacklogStateHold:
+	case factory.BacklogStateHold:
 		return factoryRefusal(factoryRefuseHeld, "the card is held (moai gtd hold); only the operator releases it")
 	default:
 		return factoryRefusal(factoryRefuseHeld, "the card's queue state is %s, which no lease path takes", it.State)
@@ -932,7 +932,7 @@ func factoryKeepSetRefusal(it kanban.BacklogItem, row *homestate.Card, lane stri
 	if factoryQueuedHoldMarked(it) {
 		return factoryRefusal(factoryRefuseHoldMarker, "the card's text opens with the hold marker %s; the operator parked it", autoRankHoldMarker)
 	}
-	if kanban.EffectiveCardClassification(it).Blocked {
+	if factory.EffectiveCardClassification(it).Blocked {
 		return factoryRefusal(factoryRefuseBlocked, "the card's classification is blocked; the nominated lease refuses it, the operator decides it")
 	}
 	if serialHeld {
@@ -943,7 +943,7 @@ func factoryKeepSetRefusal(it kanban.BacklogItem, row *homestate.Card, lane stri
 
 // factoryNominee is what the read-only validation read about the nominee.
 type factoryNominee struct {
-	item       kanban.BacklogItem
+	item       factory.BacklogItem
 	row        *homestate.Card // nil when the factory record has no row for the card
 	serialHeld bool
 }
@@ -952,7 +952,7 @@ type factoryNominee struct {
 // through the section's locked handle, one factory-record read, and the
 // read-only foreign-worktree precheck decide every § C.2 token that can be
 // decided before a write. It writes nothing.
-func factoryNextValidate(ctx context.Context, l *kanban.LockedBacklog, db *homestate.FactoryDB, root, runID, lane, cardID, quotaHold string) (factoryNominee, *factoryNominateRefusal, error) {
+func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, root, runID, lane, cardID, quotaHold string) (factoryNominee, *factoryNominateRefusal, error) {
 	var nom factoryNominee
 	queueRec, err := l.LoadPure()
 	if err != nil {
@@ -981,8 +981,8 @@ func factoryNextValidate(ctx context.Context, l *kanban.LockedBacklog, db *homes
 			break
 		}
 	}
-	classOf := func(id string) kanban.CardClassification { return factoryQueueClassification(queueRec, id) }
-	nom.serialHeld = classOf(cardID).Mode == kanban.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, false)
+	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(queueRec, id) }
+	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, false)
 	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
 		return nom, r, nil
 	}
@@ -1040,13 +1040,13 @@ func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHo
 		card    homestate.Card
 		outcome error
 	)
-	ran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *kanban.LockedBacklog) {
+	ran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *factory.LockedBacklog) {
 		card, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)
 	})
 	switch {
 	case !ran:
-		if kanban.IsBoardLockHeld(lockErr) {
-			return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "the queue lock stayed held for the whole %s wait budget, so %s was not leased; retry", kanban.LockWaitBudget(), cardID)
+		if factory.IsStateLockHeld(lockErr) {
+			return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "the queue lock stayed held for the whole %s wait budget, so %s was not leased; retry", factory.LockWaitBudget(), cardID)
 		}
 		return homestate.Card{}, fmt.Errorf("take the queue lock: %w", lockErr)
 	case outcome != nil:
@@ -1061,7 +1061,7 @@ func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHo
 // factoryNominateInSection runs steps 1 to 4 of the nominated lease inside the
 // lease section: validation reads the queue and the record under the lock, so
 // the decision and the claim see one queue state with no writer between them.
-func factoryNominateInSection(ctx context.Context, l *kanban.LockedBacklog, db *homestate.FactoryDB, root, runID, lane, cardID, quotaHold string) (homestate.Card, error) {
+func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, root, runID, lane, cardID, quotaHold string) (homestate.Card, error) {
 	factoryLeaseAtPassEntry()
 	nom, refusal, err := factoryNextValidate(ctx, l, db, root, runID, lane, cardID, quotaHold)
 	if err != nil {
@@ -1072,16 +1072,16 @@ func factoryNominateInSection(ctx context.Context, l *kanban.LockedBacklog, db *
 	}
 
 	promoted := false
-	if nom.item.State == kanban.BacklogStateQueued {
+	if nom.item.State == factory.BacklogStateQueued {
 		var lost *factoryNominateRefusal
-		if err := l.Mutate(func(r *kanban.BacklogRecord) error {
+		if err := l.Mutate(func(r *factory.BacklogRecord) error {
 			for i := range r.Items {
 				it := &r.Items[i]
 				if it.ID != cardID {
 					continue
 				}
-				if it.State == kanban.BacklogStateQueued {
-					it.State = kanban.BacklogStatePicked
+				if it.State == factory.BacklogStateQueued {
+					it.State = factory.BacklogStatePicked
 					promoted = true
 					return nil
 				}
@@ -1143,12 +1143,12 @@ func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, roo
 // the two-store window the spec accepts. A failure of the restoring write — or
 // of the record read — is returned as a non-token error naming the card; the
 // card then stays `picked` and unowned.
-func factoryNominateCompensate(ctx context.Context, l *kanban.LockedBacklog, db *homestate.FactoryDB, runID, lane, cardID string, promoted bool) (bool, error) {
+func factoryNominateCompensate(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, runID, lane, cardID string, promoted bool) (bool, error) {
 	if !promoted {
 		return false, nil
 	}
 	otherHolder := false
-	if err := l.Mutate(func(r *kanban.BacklogRecord) error {
+	if err := l.Mutate(func(r *factory.BacklogRecord) error {
 		var row *homestate.Card
 		cur, err := db.LoadCard(ctx, runID, cardID)
 		switch {
@@ -1165,8 +1165,8 @@ func factoryNominateCompensate(ctx context.Context, l *kanban.LockedBacklog, db 
 			return nil
 		}
 		for i := range r.Items {
-			if r.Items[i].ID == cardID && r.Items[i].State == kanban.BacklogStatePicked {
-				r.Items[i].State = kanban.BacklogStateQueued
+			if r.Items[i].ID == cardID && r.Items[i].State == factory.BacklogStatePicked {
+				r.Items[i].State = factory.BacklogStateQueued
 			}
 		}
 		return nil
@@ -1181,7 +1181,7 @@ func factoryNominateCompensate(ctx context.Context, l *kanban.LockedBacklog, db 
 // `merge-ready` or later, including a card returned to `assigned` by lease
 // expiry with its stage kept. Every other backend selects freely.
 func factoryNextSkipForBackend() func(homestate.Card) bool {
-	if os.Getenv(config.EnvMoaiKanbanBackend) != kanban.BackendGPT {
+	if os.Getenv(config.EnvFactoryBackend) != factory.BackendGPT {
 		return func(homestate.Card) bool { return false }
 	}
 	return func(c homestate.Card) bool {
@@ -1502,7 +1502,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// re-resolved underneath its own choice. A window held by another live
 	// session refuses naming the holder; a free or stale window is resolved
 	// exactly as acquire resolves it and taken over.
-	lock, err := kanban.ReadIntegrationLock(lockRoot)
+	lock, err := factory.ReadIntegrationLock(lockRoot)
 	if err != nil {
 		return fmt.Errorf("factory complete: %w", err)
 	}
@@ -1522,8 +1522,8 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// (1) The caller-source window: acquire fell back to the caller's own
 	// tree, which for a lane is its card worktree — never an integration
 	// branch. The remedy is acquire's --branch.
-	if source == kanban.BranchSourceCaller {
-		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); re-acquire with --branch <integration-target> (a card's own tree is not its integration branch)", branch, kanban.BranchSourceCaller)
+	if source == factory.BranchSourceCaller {
+		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); re-acquire with --branch <integration-target> (a card's own tree is not its integration branch)", branch, factory.BranchSourceCaller)
 	}
 	// (2) A card's own branch never serves as its integration branch.
 	cardBranch := factoryBranchOfWorktree(card.WorktreePath)
@@ -1551,11 +1551,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// ours is not re-written — the recorded branch choice stands.
 	if !heldByUs {
 		ownerPID, _ := session.ResolveOwnerPID()
-		replaced, err := kanban.AcquireIntegrationLock(lockRoot, kanban.IntegrationLock{
+		replaced, err := factory.AcquireIntegrationLock(lockRoot, factory.IntegrationLock{
 			SessionID:    sessionID,
 			SessionName:  lane,
 			PID:          ownerPID,
-			PIDSource:    kanban.PIDSourceSessionOwner,
+			PIDSource:    factory.PIDSourceSessionOwner,
 			Branch:       branch,
 			BranchSource: source,
 			Worktree:     integTree,
@@ -1676,9 +1676,9 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 // from the card worktree, the lane's own tree, never from the process cwd.
 func factoryResolveIntegrationBranch(root string, card homestate.Card) (string, string) {
 	if branch := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).DevelopBranch); branch != "" {
-		return branch, kanban.BranchSourceConfig
+		return branch, factory.BranchSourceConfig
 	}
-	return factoryBranchOfWorktree(card.WorktreePath), kanban.BranchSourceCaller
+	return factoryBranchOfWorktree(card.WorktreePath), factory.BranchSourceCaller
 }
 
 // factoryRepoDir names the repository directory the worktree lookup runs
@@ -1744,9 +1744,9 @@ func factorySameTree(a, b string) bool {
 	return filepath.Clean(a) == filepath.Clean(b)
 }
 
-// factoryHolderLabel mirrors kanban's holder label: the human-facing name a
-// lane recognizes its queue position by, else the session id.
-func factoryHolderLabel(lock *kanban.IntegrationLock) string {
+// factoryHolderLabel renders an integration-lock holder: the human-facing
+// name a lane recognizes its queue position by, else the session id.
+func factoryHolderLabel(lock *factory.IntegrationLock) string {
 	if lock == nil {
 		return "unknown"
 	}
@@ -1817,7 +1817,7 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 // queueItemState reads the queue state of cardID, anchored at root; ok is
 // false when the id is not in the queue at all. The factory record never
 // writes the queue.
-func queueItemState(root, cardID string) (kanban.BacklogState, bool, error) {
+func queueItemState(root, cardID string) (factory.BacklogState, bool, error) {
 	record, err := todoReadStoreAt(root).LoadPure()
 	if err != nil {
 		return "", false, err
@@ -1829,7 +1829,7 @@ func queueItemState(root, cardID string) (kanban.BacklogState, bool, error) {
 // queueItemStateIn is queueItemState's search over a record already in hand —
 // the live items, then the archive. The lease section reads the queue once
 // through its locked handle and searches that record.
-func queueItemStateIn(record *kanban.BacklogRecord, cardID string) (kanban.BacklogState, bool) {
+func queueItemStateIn(record *factory.BacklogRecord, cardID string) (factory.BacklogState, bool) {
 	for _, item := range record.Items {
 		if item.ID == cardID {
 			return item.State, true
@@ -1856,7 +1856,7 @@ func requireQueuePicked(root, cardID string) error {
 		return fmt.Errorf("queue item %s is not in the queue", cardID)
 	}
 	switch state {
-	case kanban.BacklogStatePicked:
+	case factory.BacklogStatePicked:
 		// the only admissible state for the factory record
 	default:
 		return fmt.Errorf("queue item %s is %s, not picked", cardID, state)
@@ -1986,7 +1986,7 @@ type factoryStatusReport struct {
 	Quota *factoryQuotaBlock `json:"quota,omitempty"`
 }
 
-func factoryCardViewOf(c homestate.Card, now time.Time, cls kanban.CardClassification) factoryCardView {
+func factoryCardViewOf(c homestate.Card, now time.Time, cls factory.CardClassification) factoryCardView {
 	v := factoryCardView{
 		RunID: c.RunID, CardID: c.CardID, State: c.State, Legacy: c.Legacy(), Stage: c.Stage, Version: c.Version,
 		Owner: c.OwnerLabel, LeaseHolder: c.LeaseHolder, LeaseExpiresAt: c.LeaseExpiresAt, LeaseExpired: c.LeaseExpired(now),
@@ -2043,7 +2043,7 @@ func newFactoryStatusCommand() *cobra.Command {
 				}
 				now := factoryCardNow()
 				for _, c := range cards {
-					cls := kanban.DefaultCardClassification()
+					cls := factory.DefaultCardClassification()
 					if queueErr == nil {
 						cls = factoryQueueClassification(queueRec, c.CardID)
 					}

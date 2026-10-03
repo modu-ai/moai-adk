@@ -1,0 +1,38 @@
+diff --git a/internal/cli/codex_factory.go b/internal/cli/codex_factory.go
+--- a/internal/cli/codex_factory.go
++++ b/internal/cli/codex_factory.go
+@@ -39,16 +39,19 @@
+ 		// Same surface as the cc/glm parse (REQ-008, mirror parity): the
+ 		// legacy leader spelling refuses with the canonical form, and the
+ 		// post-loop gates keep --leader a lane-join-only, single-selector flag.
+-		if token == leadFlagLong || token == leadFlagShort ||
+-			strings.HasPrefix(token, leadFlagLong+"=") || strings.HasPrefix(token, leadFlagShort+"=") {
++		if token == laneFlagShort || token == laneFlagLong {
++			// M3 compile-probe model: -l/--lane is the codex relaunch-lane trigger.
++			entry.LaneRole = true
++			continue
++		}
++		if token == leadFlagLong ||
++			strings.HasPrefix(token, leadFlagLong+"=") {
+ 			if entry.Lead != "" {
+ 				return nil, entry, fmt.Errorf("%s may appear only once", leadFlagLong)
+ 			}
+ 			switch {
+ 			case strings.HasPrefix(token, leadFlagLong+"="):
+ 				entry.Lead = strings.TrimPrefix(token, leadFlagLong+"=")
+-			case strings.HasPrefix(token, leadFlagShort+"="):
+-				entry.Lead = strings.TrimPrefix(token, leadFlagShort+"=")
+ 			case i+1 < len(head) && !strings.HasPrefix(head[i+1], "-"):
+ 				i++
+ 				entry.Lead = head[i]
+diff --git a/internal/cli/factory.go b/internal/cli/factory.go
+--- a/internal/cli/factory.go
++++ b/internal/cli/factory.go
+@@ -57,7 +57,6 @@
+ 	factoryFlagLong  = "--factory"
+ 	factoryFlagShort = "-f"
+ 	leadFlagLong     = "--leader"
+-	leadFlagShort    = "-l" // M2 leaves the constant: codex_factory.go still reads it until M3
+ 	laneFlagShort    = "-l"
+ 	laneFlagLong     = "--lane"
+ 

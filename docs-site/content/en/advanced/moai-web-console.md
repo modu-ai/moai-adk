@@ -2,11 +2,11 @@
 title: MoAI Web Console
 weight: 85
 draft: false
-description: "The local operations console — six areas (Overview, Kanban, Specs, Monitor, Settings, Todo), live updates, read-only observation, settings editing."
+description: "The local operations console — six areas (Overview, Factory, Specs, Monitor, Settings, Todo), live updates, read-only observation, settings editing."
 ---
 # MoAI Web Console
 
-**MoAI Web Console** is the local operations screen you open with `moai web`. It shows the project's SPEC catalog, the Kanban chain, sessions and goals, and verification history in one place, and lets you edit settings from the same screen. The browser connects to `127.0.0.1` only, and there is no database and no login.
+**MoAI Web Console** is the local operations screen you open with `moai web`. It shows the project's SPEC catalog, the factory lanes, sessions and goals, and verification history in one place, and lets you edit settings from the same screen. The browser connects to `127.0.0.1` only, and there is no database and no login.
 
 {{< callout type="info" >}}
 **In one line:** the console is an operations shell that groups five observation areas and one settings area behind a left rail. The observation areas only read; the settings area uses the same validation and persistence layer as the terminal wizard.
@@ -18,8 +18,8 @@ The screen has three parts. The **rail** on the left stacks the six areas vertic
 
 | Area | Route | What it does |
 |------|-------|--------------|
-| Overview | `/` | Whole-project summary — stat tiles, Kanban chain, in-progress SPECs, attention list, sessions |
-| Kanban | `/kanban` | Chain session board plus the four-column SPEC pipeline |
+| Overview | `/` | Whole-project summary — stat tiles, in-progress SPECs, attention list, sessions |
+| Factory | `/factory` | Factory lane list plus the four-column SPEC pipeline |
 | Specs | `/specs` | SPEC catalog search, filters and detail, close debt and MUST-FIX drift |
 | Monitor | `/monitor` | Sessions, goals, verification and epics in four panels |
 | Settings | `/settings` | Profile preferences and project sections |
@@ -31,10 +31,10 @@ The foot of the rail gathers the profile button, the project name, the interface
 
 ```mermaid
 flowchart TD
-    Rail["Left rail<br/>Overview · Kanban · Specs · Monitor · Settings · Todo"]
+    Rail["Left rail<br/>Overview · Factory · Specs · Monitor · Settings · Todo"]
     Top["Appbar<br/>title · live indicator / save cluster"]
     Body["Body<br/>per-area screen"]
-    Read["Read-only areas<br/>Overview · Kanban · Specs · Monitor · Todo"]
+    Read["Read-only areas<br/>Overview · Factory · Specs · Monitor · Todo"]
     Write["Settings area<br/>through the validation · persistence layer"]
     Files["Project files<br/>state and settings under .moai/"]
 
@@ -53,17 +53,15 @@ flowchart TD
 
 Overview opens with four stat tiles: **SPEC** (total count and how many are in progress), **drift** (MUST-FIX count), **session** (PID-confirmed count / registry count), and **verify** (the last verification result and the number of keys).
 
-Below them, the **Kanban chain bar** shows in one line how far the current card has travelled through the four roles `leader → plan → run → sync`. If a role has no session, that point is marked as where the chain stops. Then come the **in-progress SPECs** list, the **Needs attention** panel (which collects only MUST-FIX drift, failed verification, stalled goals and idle roles), and the **Sessions** panel on the right.
+Below them come the **in-progress SPECs** list, the **Needs attention** panel (which collects only MUST-FIX drift, failed verification and stalled goals), and the **Sessions** panel on the right.
 
-## Kanban — two boards
+## Factory — lanes and pipeline
 
-The Kanban area stacks two boards of different character.
+The Factory area stacks two lists of different character.
 
-The **chain session board** lays the five roles out as cards and records each one's session id, backend, model, effort level, context usage and last heartbeat. The stage state is **estimated** from the heartbeat, so it carries an estimation mark; model, effort and context come from that session's own telemetry record, and a cell left blank means the session has no record carrying that value yet — not filling it in is the discipline.
+The **factory lanes** list gives one row per registered lane, with its session, card, SPEC and backend. The stage state is **estimated** from the heartbeat, so it carries an estimation mark; model, effort and context come from that session's own telemetry record, and a cell left blank means the session has no record carrying that value yet — not filling it in is the discipline. A lane whose process id resolves to no session — or to more than one, on either registry — is marked **unresolved** and carries no values at all: a lookup that completes on the wrong session renders another lane's record as if it were this one's, which is worse than an empty row. When no lane is registered, the list says so.
 
-Beside the chain board, the **factory lanes** list gives one row per registered lane, with its session, card, SPEC and backend. A lane whose process id resolves to no session — or to more than one, on either registry — is marked **unresolved** and carries no values at all: a lookup that completes on the wrong session renders another lane's record as if it were this one's, which is worse than an empty row. When no lane is registered, the list says so.
-
-The **SPEC pipeline** lays SPECs out in four columns by status (`draft` · `in-progress` · `implemented` · `completed`). `superseded`, `archived` and `rejected` never reach this board; you see them through the filter in the Specs area.
+The **SPEC pipeline** lays SPECs out in four columns by status (`draft` · `in-progress` · `implemented` · `completed`). `superseded`, `archived` and `rejected` never reach this list; you see them through the filter in the Specs area.
 
 ## Specs — the catalog and two warning panels
 
@@ -105,7 +103,7 @@ The key property is that **the event carries no data**. The server sends only th
 | `session` | `.moai/state` |
 | `goal` | `.moai/state/goal` |
 | `verify` | `.moai/state/verify` |
-| `kanban` | `.moai/state/todo`, the resolved home Todo directory (`~/.moai/db/<project-key>/todo`), and the resolved Factory directory |
+| `factory` | `.moai/state/todo`, the resolved home Todo directory (`~/.moai/db/<project-key>/todo`), and the resolved Factory directory |
 | `config` | `.moai/config/sections` |
 
 Only the `config` event is handled differently. If the screen changed underneath you while you were editing settings, the values you were typing would disappear — so instead of refreshing, it raises a banner saying the config files changed.
@@ -202,6 +200,6 @@ To stop it, press `Ctrl+C` in the terminal or use the shutdown button at the foo
 ## Related documents
 
 - [CLI reference — moai web](/en/cli-reference/web/) — flags and route detail
-- [Kanban Mode](/en/advanced/kanban-mode/) — the source contract for the chain the console draws
+- [Factory Mode](/en/advanced/factory-mode/) — the source contract for the chain the console draws
 - [Configuration sections reference](/en/advanced/config-sections/) — the keys the settings area handles
 - [moai epic status](/en/cli-reference/epic/) — the producer behind Monitor's epic panel

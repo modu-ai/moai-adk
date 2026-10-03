@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // flGrace is the tolerant gate's grace window (plan WM1): a heuristic, not a
@@ -28,18 +28,18 @@ const flMargin = 500 * time.Millisecond
 
 // flBoardBudgetSizing is the queue lock's wait budget as the tree derived it at
 // plan time (ledger L6: 3.3 s). It is a fallback used only while
-// kanban.LockWaitBudget is the WM1 stub returning 0, so a bound test still
+// factory.LockWaitBudget is the WM1 stub returning 0, so a bound test still
 // measures the behavior; the stub value itself is reported as a failure.
 const flBoardBudgetSizing = 3300 * time.Millisecond
 
-// flBudget returns kanban.LockWaitBudget(), failing the test (not stopping it)
+// flBudget returns factory.LockWaitBudget(), failing the test (not stopping it)
 // when the accessor is the WM1 stub's zero, and then falling back to the plan
 // sizing figure so the behavioral half of the test still runs.
 func flBudget(t *testing.T) time.Duration {
 	t.Helper()
-	b := kanban.LockWaitBudget()
+	b := factory.LockWaitBudget()
 	if b <= 0 {
-		t.Errorf("kanban.LockWaitBudget() = %s; the bound cannot be derived from the accessor (WM1 stub, WM2 replaces it); using the plan sizing figure %s for the behavioral half", b, flBoardBudgetSizing)
+		t.Errorf("factory.LockWaitBudget() = %s; the bound cannot be derived from the accessor (WM1 stub, WM2 replaces it); using the plan sizing figure %s for the behavioral half", b, flBoardBudgetSizing)
 		return flBoardBudgetSizing
 	}
 	return b
@@ -214,15 +214,15 @@ type flOp struct {
 }
 
 // flStartWrite starts mutate under the public Mutate of store in a goroutine.
-func flStartWrite(store *kanban.BacklogStore, mutate func(*kanban.BacklogRecord) error) *flOp {
+func flStartWrite(store *factory.BacklogStore, mutate func(*factory.BacklogRecord) error) *flOp {
 	op := &flOp{ch: make(chan error, 1)}
 	go func() { op.ch <- store.Mutate(mutate) }()
 	return op
 }
 
 // flStartState starts an operator write that sets cardID's queue state.
-func flStartState(store *kanban.BacklogStore, cardID string, states ...kanban.BacklogState) *flOp {
-	return flStartWrite(store, func(r *kanban.BacklogRecord) error {
+func flStartState(store *factory.BacklogStore, cardID string, states ...factory.BacklogState) *flOp {
+	return flStartWrite(store, func(r *factory.BacklogRecord) error {
 		for i := range r.Items {
 			if r.Items[i].ID == cardID {
 				r.Items[i].State = states[len(states)-1]
@@ -234,8 +234,8 @@ func flStartState(store *kanban.BacklogStore, cardID string, states ...kanban.Ba
 }
 
 // flStartNoop starts an operator write that changes nothing (a lock probe).
-func flStartNoop(store *kanban.BacklogStore) *flOp {
-	return flStartWrite(store, func(*kanban.BacklogRecord) error { return nil })
+func flStartNoop(store *factory.BacklogStore) *flOp {
+	return flStartWrite(store, func(*factory.BacklogRecord) error { return nil })
 }
 
 // within reports whether the write has completed, waiting at most d for it.

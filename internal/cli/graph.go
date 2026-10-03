@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/graph"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
@@ -62,13 +62,13 @@ var todoQueueRootFn = resolveTodoQueueRoot
 // the queue file was unreadable, so the caller reports the card-vs-queue
 // comparison as skipped instead of silently passing every claim.
 func liveQueueCards() (live map[string]bool, ok bool) {
-	rec, err := kanban.NewBacklogStore(todoBacklogPath(todoQueueRootFn())).Load()
+	rec, err := factory.NewBacklogStore(todoBacklogPath(todoQueueRootFn())).Load()
 	if err != nil {
 		return nil, false
 	}
 	live = map[string]bool{}
 	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStateQueued || it.State == kanban.BacklogStatePicked {
+		if it.State == factory.BacklogStateQueued || it.State == factory.BacklogStatePicked {
 			live[it.ID] = true
 		}
 	}

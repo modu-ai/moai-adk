@@ -1,0 +1,1059 @@
+diff --git a/internal/kanban/backlog_store_test.go b/internal/kanban/backlog_store_test.go
+--- a/internal/kanban/backlog_store_test.go
++++ b/internal/kanban/backlog_store_test.go
+@@ -519,27 +519,7 @@
+ 		if !texts[fmt.Sprintf("card %d", i)] {
+ 			t.Fatalf("text %q lost across concurrent adds", fmt.Sprintf("card %d", i))
+ 		}
+-	}
+-}
+-
+-// TestBacklogStore_NoLeadRoleGuard — REQ-TODO-011: the backlog applies no
+-// requireLeaderRole-equivalent gate. This test process declares no role and
+-// holds no kanban identity at all; the write must succeed anyway (explicit
+-// contrast with the board's sole-writer guard — board files untouched).
+-func TestBacklogStore_NoLeadRoleGuard(t *testing.T) {
+-	t.Parallel()
+-	store := newTestBacklogStore(t)
+-
+-	item, _, err := store.Add("anonymous writer")
+-	if err != nil {
+-		t.Fatalf("Add without any role declaration: %v — the backlog is the operator's queue, any session may write", err)
+ 	}
+-	if item.ID != "t1" {
+-		t.Fatalf("issued id = %q, want t1", item.ID)
+-	}
+-	if IsNotSoleWriter(err) {
+-		t.Fatal("backlog write hit the board's sole-writer refusal")
+-	}
+ }
+ 
+ // TestNewBacklogStore_SweepsLegacyLockArtifact (t106): constructing a store
+diff --git a/internal/kanban/bootstrap.go b/internal/kanban/bootstrap.go
+--- a/internal/kanban/bootstrap.go
++++ b/internal/kanban/bootstrap.go
+@@ -33,52 +33,6 @@
+ 	"time"
+ )
+ 
+-// CompanionRoles are the three companion roles of a kanban run, in the order
+-// the leader announces them: plan / run / sync — the bare phase names (operator
+-// final design 2026-08-18; full chain leader > plan > run > sync). D1 (card
+-// t97) retired the review role: the chain is the three phases
+-// plan -> run -> sync, and reviewing gates integration from the hub instead
+-// of occupying a companion session.
+-//
+-// COMPATIBILITY (naming break, deliberate): an intermediate t118 working-tree
+-// state renamed these to planner / runner / syncer, but that value set was
+-// NEVER committed, tagged, or released (`git log --all -S` finds it in no
+-// commit) — and plan / run / sync are the very values v3.1.0 shipped, so
+-// this final naming RESTORES released-session compatibility rather than
+-// breaking it. No alias table maps the transient names: the shape check below
+-// is the single discriminator, and carrying permanent normalization for a
+-// name set no binary ever launched would complicate it for nothing.
+-//
+-// The leader is deliberately absent from this list. It is the only session that
+-// carries the kanban token, because that token seeds a session whose
+-// orchestrator drives the whole plan -> run -> sync chain; giving it
+-// to a companion would produce three sessions each driving the whole chain.
+-var CompanionRoles = []string{"plan", "run", "sync"}
+-
+-// companionLaunchers maps each companion role to the launcher verb the
+-// bootstrap notice prints for it: "cc" runs the Claude backend, "glm" the GLM
+-// backend. The mapping IS the recommended default — judgment and review work
+-// (plan, sync) on Claude, implementation (run) on GLM, the always-on
+-// leader on GLM — so the notice's copyable launch lines and its per-locale
+-// recommendation table render one recommendation, not two that can drift.
+-var companionLaunchers = map[string]string{
+-	"plan": "cc",
+-	"run":  "glm",
+-	"sync": "cc",
+-}
+-
+-// CompanionLauncher returns the entry-point verb the bootstrap notice prints
+-// for a companion role — "cc" or "glm". An unknown role falls back to "cc",
+-// the pre-t118 shape of the launch lines (every companion on Claude), so a
+-// display path degrades to the conservative default rather than printing a
+-// malformed command.
+-func CompanionLauncher(role string) string {
+-	if verb, ok := companionLaunchers[role]; ok {
+-		return verb
+-	}
+-	return "cc"
+-}
+-
+ // base36Digits is the alphabet of NewRunID.
+ const base36Digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+ 
+@@ -111,22 +65,6 @@
+ 		n /= 36
+ 	}
+ 	return string(b)
+-}
+-
+-// CompanionLabel returns the label a companion session is launched under: the
+-// bare role name. This is the form the leader announces and the form an
+-// unobstructed launch keeps; a collision with a live claim appends a number
+-// (CompanionNumberLabel), which the launcher — not this composer — resolves.
+-func CompanionLabel(role string) string {
+-	return role
+-}
+-
+-// CompanionNumberLabel joins a role and a collision number into the bumped
+-// label a companion launches under when its bare name is held by a live
+-// session (`plan-1`, `plan-2`, ...). It is the companion sibling of
+-// FactoryLaneLabel's shape.
+-func CompanionNumberLabel(role string, n int) string {
+-	return role + "-" + strconv.Itoa(n)
+ }
+ 
+ // LeaderLabel returns the label a leader session is launched under: the bare role
+@@ -157,37 +95,6 @@
+ // CompanionNumberLabel and shares its shape.
+ func LeaderNumberLabel(n int) string {
+ 	return RoleLeader + "-" + strconv.Itoa(n)
+-}
+-
+-// SplitCompanionLabel splits a companion label into its role and optional
+-// suffix and reports whether the value has the companion shape at all.
+-//
+-// The shape IS the discriminator for companion recognition, so this check is
+-// load-bearing rather than cosmetic: matching every named session instead would
+-// silently change launch behavior for unrelated work.
+-//
+-// Two forms parse:
+-//
+-//   - the bare role (`plan`) — the form the leader announces and the common
+-//     case under the one-machine-one-run policy;
+-//   - `<role>-<suffix>` — the suffix is a collision number the launcher
+-//     appended (`plan-1`), or any run-id-shaped value in that position.
+-//
+-// The suffixed form is MIGRATED, not rejected: a rejected suffix would fail
+-// the shape check, and `-k --name plan-abc123` then reroutes down the
+-// LEADER branch of the launcher's truth table (a `-k` launch whose name is not
+-// companion-shaped seeds a whole second chain) — a silent misroute far worse
+-// than joining under a stale suffix. A role name carries no hyphen, so the
+-// first hyphen is the boundary and a second hyphen never parses.
+-func SplitCompanionLabel(label string) (role, suffix string, ok bool) {
+-	if isCompanionRole(label) {
+-		return label, "", true
+-	}
+-	role, suffix, found := strings.Cut(label, "-")
+-	if !found || !isCompanionRole(role) || !isRunIDShape(suffix) {
+-		return "", "", false
+-	}
+-	return role, suffix, true
+ }
+ 
+ // SplitLeaderLabel splits a leader label into its optional suffix and reports
+@@ -219,15 +126,6 @@
+ 	return suffix, true
+ }
+ 
+-func isCompanionRole(role string) bool {
+-	for _, r := range CompanionRoles {
+-		if r == role {
+-			return true
+-		}
+-	}
+-	return false
+-}
+-
+ // factoryLaneRole is the label prefix of a factory run's numbered lanes
+ // (`lane-<n>`, SPEC-ROLE-NAMING-CODE-001 REQ-RNC-004/-010). It is deliberately
+ // absent from CompanionRoles: a factory lane is not a kanban companion, so the
+@@ -398,27 +296,15 @@
+ 	return true
+ }
+ 
+-// The leader-socket roots (t118 socket scheme, v3.1.1). The two modes keep
+-// separate directories — `/tmp/moai-socket-kanban/<run-id>` and
+-// `/tmp/moai-socket-factory/<run-id>` — replacing the pre-t118 flat
+-// single-directory shape, which named one mode and left the other squatting
+-// in it. The value is a conventional address line the SessionStart notice
++// The factory leader-socket root (t118 socket scheme, v3.1.1:
++// `/tmp/moai-socket-factory/<run-id>`). The value is a conventional address line the SessionStart notice
+ // prints (EnvMoaiKanbanLeadAddr), not a filesystem contract the messaging
+ // substrate is bound to — the actual transport is runtime-owned — which is
+ // why the /tmp literal is acceptable here rather than os.TempDir().
+ const (
+-	kanbanSocketDir  = "/tmp/moai-socket-kanban"
+ 	factorySocketDir = "/tmp/moai-socket-factory"
+ )
+ 
+-// LeaderSocketPath returns the conventional leader-socket address a KANBAN
+-// leader publishes for runID: <kanbanSocketDir>/<run-id>. The launcher sets it
+-// into EnvMoaiKanbanLeadAddr and the SessionStart notice prints it verbatim;
+-// the factory leader uses FactoryLeaderSocketPath, its factory sibling.
+-func LeaderSocketPath(runID string) string {
+-	return kanbanSocketDir + "/" + runID
+-}
+-
+ // FactoryLeaderSocketPath returns the conventional leader-socket address a
+ // FACTORY leader publishes for runID: <factorySocketDir>/<run-id>. Same carrier
+ // and same print surface as LeaderSocketPath; a separate directory so a kanban
+diff --git a/internal/kanban/bootstrap_test.go b/internal/kanban/bootstrap_test.go
+--- a/internal/kanban/bootstrap_test.go
++++ b/internal/kanban/bootstrap_test.go
+@@ -1,7 +1,6 @@
+ package kanban
+ 
+ import (
+-	"strconv"
+ 	"strings"
+ 	"testing"
+ 	"time"
+@@ -74,159 +73,6 @@
+ 	}
+ }
+ 
+-func TestCompanionRolesAreTheThreePhases(t *testing.T) {
+-	t.Parallel()
+-
+-	want := []string{"plan", "run", "sync"}
+-	if len(CompanionRoles) != len(want) {
+-		t.Fatalf("CompanionRoles = %v, want %v", CompanionRoles, want)
+-	}
+-	for i := range want {
+-		if CompanionRoles[i] != want[i] {
+-			t.Errorf("CompanionRoles[%d] = %q, want %q", i, CompanionRoles[i], want[i])
+-		}
+-	}
+-	// The lead is not a companion: it is the only session carrying the kanban
+-	// token, and listing it here would invite a second chain driver.
+-	if isCompanionRole(RoleLeader) {
+-		t.Error(RoleLeader + " must not be a companion role")
+-	}
+-	// The review role is retired (D1): a label carrying it no longer parses
+-	// as companion-shaped, in the bare form, the bump form, or the legacy
+-	// run-id form.
+-	for _, label := range []string{"review", "review-1", "review-tjlgt1"} {
+-		if isCompanionRole(label) {
+-			t.Errorf("review must not be a companion role: %q", label)
+-		}
+-	}
+-}
+-
+-func TestSplitCompanionLabel(t *testing.T) {
+-	t.Parallel()
+-
+-	cases := []struct {
+-		label     string
+-		wantRole  string
+-		wantRunID string
+-		wantOK    bool
+-	}{
+-		{"plan-tjlgt1", "plan", "tjlgt1", true},
+-		{"run-tjlgt1", "run", "tjlgt1", true},
+-		{"sync-tjlgt1", "sync", "tjlgt1", true},
+-		{"sync-0", "sync", "0", true},
+-
+-		// The bare role is the launch form the lead announces (one machine,
+-		// one run — the run id no longer travels in companion names).
+-		{"plan", "plan", "", true},
+-		{"run", "run", "", true},
+-		{"sync", "sync", "", true},
+-
+-		// A collision bump number parses back with the role intact.
+-		{"plan-1", "plan", "1", true},
+-		{"sync-12", "sync", "12", true},
+-
+-		// Not companion-shaped: an unrelated named session must never be
+-		// mistaken for one, or its Stop-hook block cap changes silently.
+-		{"", "", "", false},
+-		{"plan-", "", "", false},
+-		{"-tjlgt1", "", "", false},
+-		{"leader-tjlgt1", "", "", false},
+-		{"planning-tjlgt1", "", "", false},
+-		{"oauth-migration", "", "", false},
+-		{"plan-TJLGT1", "", "", false},
+-		{"plan-tj_gt1", "", "", false},
+-		{"plan-tj gt1", "", "", false},
+-
+-		// The transient t118 personified names (planner / runner / syncer,
+-		// 2026-08-18) are NOT aliases — no binary ever shipped them, and the
+-		// final design restores the phase names v3.1.0 carried.
+-		{"planner", "", "", false},
+-		{"planner-1", "", "", false},
+-		{"runner-tjlgt1", "", "", false},
+-		{"syncer", "", "", false},
+-
+-		// The retired review role (D1) is no longer companion-shaped in any
+-		// of its three historical forms — bare, bump, or legacy run id.
+-		{"review", "", "", false},
+-		{"review-1", "", "", false},
+-		{"review-tjlgt1", "", "", false},
+-	}
+-	for _, c := range cases {
+-		role, runID, ok := SplitCompanionLabel(c.label)
+-		if ok != c.wantOK || role != c.wantRole || runID != c.wantRunID {
+-			t.Errorf("SplitCompanionLabel(%q) = (%q, %q, %v), want (%q, %q, %v)",
+-				c.label, role, runID, ok, c.wantRole, c.wantRunID, c.wantOK)
+-		}
+-	}
+-}
+-
+-// TestCompanionLabelRoundTrips asserts the two halves of the label vocabulary
+-// agree — every label the lead announces must parse back on the companion side.
+-// The announced form is the bare role; the suffixed forms below cover the
+-// collision bump (a number the launcher produces) and the legacy run-id shape
+-// (still parsed rather than rejected, so a stale muscle-memory launch joins as
+-// the right worker instead of being silently rerouted to the lead branch).
+-func TestCompanionLabelRoundTrips(t *testing.T) {
+-	t.Parallel()
+-
+-	for _, want := range CompanionRoles {
+-		label := CompanionLabel(want)
+-		role, suffix, ok := SplitCompanionLabel(label)
+-		if !ok || role != want || suffix != "" {
+-			t.Errorf("bare round trip failed for %q: (%q, %q, %v)", label, role, suffix, ok)
+-		}
+-	}
+-}
+-
+-// TestCompanionNumberLabelRoundTrips: the launcher's collision bump composes
+-// `<role>-<n>`, and every such label must parse back with its role intact —
+-// the bumped name is the address the lead dispatches to.
+-func TestCompanionNumberLabelRoundTrips(t *testing.T) {
+-	t.Parallel()
+-
+-	for _, want := range CompanionRoles {
+-		for n := 1; n <= 3; n++ {
+-			label := CompanionNumberLabel(want, n)
+-			role, suffix, ok := SplitCompanionLabel(label)
+-			wantSuffix := strconv.Itoa(n)
+-			if !ok || role != want || suffix != wantSuffix {
+-				t.Errorf("bump round trip failed for %q: (%q, %q, %v), want (%q, %q, true)",
+-					label, role, suffix, ok, want, wantSuffix)
+-			}
+-		}
+-	}
+-}
+-
+-// TestLeadLabelIsBareRole pins the t133 naming change: the lead label carries
+-// no run id, and it is never recognized as a companion because RoleLeader is
+-// absent from CompanionRoles.
+-func TestLeadLabelIsBareRole(t *testing.T) {
+-	t.Parallel()
+-
+-	label := LeaderLabel()
+-	if label != RoleLeader {
+-		t.Errorf("LeaderLabel() = %q, want %q", label, RoleLeader)
+-	}
+-	if _, _, ok := SplitCompanionLabel(label); ok {
+-		t.Errorf("LeaderLabel() = %q reads as a companion label", label)
+-	}
+-}
+-
+-// TestLeadNumberLabelIsNotACompanion pins the same property for the bumped
+-// form, which is hyphen-suffixed exactly like a bumped companion label and
+-// must still never be read as one.
+-func TestLeadNumberLabelIsNotACompanion(t *testing.T) {
+-	t.Parallel()
+-
+-	label := LeaderNumberLabel(2)
+-	if want := RoleLeader + "-2"; label != want {
+-		t.Errorf("LeaderNumberLabel(2) = %q, want %q", label, want)
+-	}
+-	if _, _, ok := SplitCompanionLabel(label); ok {
+-		t.Errorf("LeaderNumberLabel(2) = %q reads as a companion label", label)
+-	}
+-}
+-
+ // TestSplitLeadLabelRoundTrip pins the migration property the launcher relies
+ // on: BOTH the bare form LeaderLabel now writes AND the legacy `lead-<run-id>`
+ // form an operator may still be pasting read back through SplitLeaderLabel.
+@@ -298,22 +144,3 @@
+ 		}
+ 	}
+ }
+-
+-// TestSplitLeadLabelAndCompanionAreDisjoint is the branch-safety property: no
+-// label can satisfy both discriminators, so recognizing a lead name can never
+-// reroute a lead session down the companion branch.
+-func TestSplitLeadLabelAndCompanionAreDisjoint(t *testing.T) {
+-	t.Parallel()
+-
+-	labels := []string{LeaderLabel(), LeaderNumberLabel(1)}
+-	for _, role := range CompanionRoles {
+-		labels = append(labels, CompanionLabel(role), CompanionNumberLabel(role, 1))
+-	}
+-	for _, label := range labels {
+-		_, isLead := SplitLeaderLabel(label)
+-		_, _, isCompanion := SplitCompanionLabel(label)
+-		if isLead && isCompanion {
+-			t.Errorf("label %q satisfies both discriminators", label)
+-		}
+-	}
+-}
+diff --git a/internal/kanban/factory_label_test.go b/internal/kanban/factory_label_test.go
+--- a/internal/kanban/factory_label_test.go
++++ b/internal/kanban/factory_label_test.go
+@@ -35,30 +35,6 @@
+ 	}
+ }
+ 
+-// TestFactoryLaneLabelNeverKanbanShape is the no-cross-talk property: a
+-// factory lane label satisfies neither kanban discriminator, and no kanban
+-// label satisfies the lane one — the three branch selectors can never both
+-// match the same name.
+-func TestFactoryLaneLabelNeverKanbanShape(t *testing.T) {
+-	t.Parallel()
+-
+-	if _, _, ok := SplitCompanionLabel(FactoryLaneLabel(3)); ok {
+-		t.Error("a lane label must not satisfy the companion shape")
+-	}
+-	if _, ok := SplitLeaderLabel(FactoryLaneLabel(3)); ok {
+-		t.Error("a lane label must not satisfy the lead shape")
+-	}
+-	if _, ok := SplitFactoryLaneLabel(CompanionLabel("run")); ok {
+-		t.Error("a companion label must not satisfy the lane shape")
+-	}
+-	if _, ok := SplitFactoryLaneLabel(CompanionNumberLabel("run", 1)); ok {
+-		t.Error("a bumped companion label must not satisfy the lane shape")
+-	}
+-	if _, ok := SplitFactoryLaneLabel(LeaderLabel()); ok {
+-		t.Error("a lead label must not satisfy the lane shape")
+-	}
+-}
+-
+ // TestWithRoleAdmitsLane asserts the record role set admits the factory
+ // lane role while still discarding arbitrary strings.
+ func TestWithRoleAdmitsLane(t *testing.T) {
+diff --git a/internal/kanban/kanban_helper_test.go b/internal/kanban/kanban_helper_test.go
+--- a/internal/kanban/kanban_helper_test.go
++++ b/internal/kanban/kanban_helper_test.go
+@@ -9,10 +9,6 @@
+ package kanban
+ 
+ import (
+-	"fmt"
+-	"os"
+-	"strconv"
+-	"testing"
+ 	"time"
+ )
+ 
+@@ -21,160 +17,3 @@
+ // spinning. It is a backstop BEHIND the parent's exec.CommandContext deadline
+ // and its t.Cleanup-registered kill, never a substitute for either.
+ const integrationHelperStallCeiling = 30 * time.Second
+-
+-// TestKanbanHelperProcess is not a real test: when MOAI_KANBAN_HELPER is unset
+-// it returns immediately so the normal `go test` run skips over it. When set,
+-// the child performs the named operation against the HELPER_* environment and
+-// exits — its stdout/stderr/exit code ARE the observation.
+-func TestKanbanHelperProcess(t *testing.T) {
+-	switch os.Getenv("MOAI_KANBAN_HELPER") {
+-	case "":
+-		return
+-	case "resolve-role":
+-		role, err := ResolveDeclaredRole(os.Getenv("HELPER_ROOT"), os.Getenv("HELPER_SESSION"))
+-		if err != nil {
+-			fmt.Fprintf(os.Stderr, "resolve-role: %v\n", err)
+-			os.Exit(2)
+-		}
+-		_, _ = fmt.Fprintln(os.Stdout, role)
+-		os.Exit(0)
+-	case "lock-hold":
+-		root := os.Getenv("HELPER_ROOT")
+-		release := os.Getenv("HELPER_RELEASE_FILE")
+-		lock, err := AcquireBoardLock(root)
+-		if err != nil {
+-			_, _ = fmt.Fprintln(os.Stdout, "HELD")
+-			fmt.Fprintf(os.Stderr, "lock-hold: %v\n", err)
+-			os.Exit(3)
+-		}
+-		_, _ = fmt.Fprintln(os.Stdout, "ACQUIRED")
+-		// Wait for the parent's release flag (bounded).
+-		deadline := time.Now().Add(60 * time.Second)
+-		for {
+-			if _, statErr := os.Stat(release); statErr == nil {
+-				break
+-			}
+-			if time.Now().After(deadline) {
+-				fmt.Fprintln(os.Stderr, "lock-hold: release flag never appeared")
+-				_ = lock.Release()
+-				os.Exit(5)
+-			}
+-			time.Sleep(10 * time.Millisecond)
+-		}
+-		if relErr := lock.Release(); relErr != nil {
+-			fmt.Fprintf(os.Stderr, "lock-hold: release: %v\n", relErr)
+-			os.Exit(6)
+-		}
+-		os.Exit(0)
+-	case "reacquire-lock":
+-		// Takes the lock and records ITS identity in the artifact, then
+-		// exits: on Unix flock releases on exit while the RECORDED identity
+-		// stays — exactly the changed-hands artifact the clear's re-read
+-		// must observe.
+-		lock, err := AcquireBoardLock(os.Getenv("HELPER_ROOT"))
+-		if err != nil {
+-			fmt.Fprintf(os.Stderr, "reacquire-lock: %v\n", err)
+-			os.Exit(4)
+-		}
+-		_ = lock.Release()
+-		os.Exit(0)
+-	case "reader-loop":
+-		// A separate-process board reader (AC-KB-018's §A.4 form): read the
+-		// board repeatedly for HELPER_DURATION seconds; every read must be a
+-		// whole board. Prints "READS=<n> FAILURES=<m>" and exits 8 on any
+-		// torn observation.
+-		duration, _ := time.ParseDuration(os.Getenv("HELPER_DURATION") + "s")
+-		root := os.Getenv("HELPER_ROOT")
+-		reads, failures := 0, 0
+-		deadline := time.Now().Add(duration)
+-		for time.Now().Before(deadline) {
+-			_, err := LoadBoard(root)
+-			reads++
+-			if err != nil {
+-				failures++
+-				fmt.Fprintf(os.Stderr, "reader-loop: torn read: %v\n", err)
+-			}
+-		}
+-		_, _ = fmt.Fprintf(os.Stdout, "READS=%d FAILURES=%d\n", reads, failures)
+-		if failures > 0 {
+-			os.Exit(8)
+-		}
+-		os.Exit(0)
+-	case "transition-run":
+-		// TransitionIntoRun as the declared lead; exit 3 on the WIP refusal
+-		// so the parent can distinguish outcomes.
+-		err := TransitionIntoRun(os.Getenv("HELPER_ROOT"), os.Getenv("HELPER_SESSION"), os.Getenv("HELPER_SPEC"))
+-		if err == nil {
+-			_, _ = fmt.Fprintln(os.Stdout, "OK")
+-			os.Exit(0)
+-		}
+-		if IsWipLimitExceeded(err) {
+-			_, _ = fmt.Fprintln(os.Stdout, "WIP")
+-			os.Exit(3)
+-		}
+-		fmt.Fprintf(os.Stderr, "transition-run: %v\n", err)
+-		os.Exit(7)
+-	case "integration-acquire":
+-		// AcquireIntegrationLock as one lane's session. The recorded PID is the
+-		// PARENT test process's, passed in HELPER_OWNER_PID, mirroring the
+-		// production verb (internal/cli/integration.go records
+-		// session.ResolveOwnerPID(), never its own pid). Recording os.Getpid()
+-		// here would be a defect, not a shortcut: this child exits the instant
+-		// it writes, its record then reads STALE, and the second child takes it
+-		// over LEGITIMATELY — producing successes=2 even under a correct
+-		// mutation lock, which is a stale reclaim wearing the race's clothes.
+-		root := os.Getenv("HELPER_ROOT")
+-		session := os.Getenv("HELPER_SESSION")
+-		ownerPID, pidErr := strconv.Atoi(os.Getenv("HELPER_OWNER_PID"))
+-		if pidErr != nil {
+-			fmt.Fprintf(os.Stderr, "integration-acquire: HELPER_OWNER_PID %q: %v\n", os.Getenv("HELPER_OWNER_PID"), pidErr)
+-			os.Exit(10)
+-		}
+-		if marker := os.Getenv("HELPER_STALL_MARKER"); marker != "" {
+-			proceed := os.Getenv("HELPER_PROCEED_FLAG")
+-			integrationLockMutationTestHook = func() {
+-				if werr := os.WriteFile(marker, []byte("STALLED\n"), 0o644); werr != nil {
+-					fmt.Fprintf(os.Stderr, "integration-acquire: stall marker: %v\n", werr)
+-					return
+-				}
+-				deadline := time.Now().Add(integrationHelperStallCeiling)
+-				for {
+-					if _, statErr := os.Stat(proceed); statErr == nil {
+-						return
+-					}
+-					if time.Now().After(deadline) {
+-						fmt.Fprintln(os.Stderr, "integration-acquire: proceed flag never appeared within the child ceiling")
+-						return
+-					}
+-					time.Sleep(5 * time.Millisecond)
+-				}
+-			}
+-		}
+-		replaced, acqErr := AcquireIntegrationLock(root, IntegrationLock{
+-			SessionID: session,
+-			PID:       ownerPID,
+-			PIDSource: PIDSourceSessionOwner,
+-			Branch:    "release/helper",
+-			Worktree:  root,
+-		}, false)
+-		result := integrationAcquireOutcome(acqErr)
+-		replacedField := "none"
+-		if replaced != nil && replaced.SessionID != "" {
+-			replacedField = replaced.SessionID
+-		}
+-		// SESSION is the second discriminator: the parent ASSERTS the two
+-		// children's ids differ rather than assuming its own setup passed two.
+-		// The same-session path is a LEGAL re-acquire, so an undetected id
+-		// collision would yield successes=2 with REPLACED=none on both and a
+-		// live winner — every other check satisfied, the race never exercised.
+-		_, _ = fmt.Fprintf(os.Stdout, "RESULT=%s REPLACED=%s SESSION=%s\n", result, replacedField, session)
+-		if result == "error" {
+-			fmt.Fprintf(os.Stderr, "integration-acquire: %v\n", acqErr)
+-			os.Exit(9)
+-		}
+-		os.Exit(0)
+-	default:
+-		fmt.Fprintf(os.Stderr, "unknown helper op %q\n", os.Getenv("MOAI_KANBAN_HELPER"))
+-		os.Exit(64)
+-	}
+-}
+diff --git a/internal/kanban/record.go b/internal/kanban/record.go
+--- a/internal/kanban/record.go
++++ b/internal/kanban/record.go
+@@ -148,7 +148,7 @@
+ 		return nil
+ 	}
+ 	role = strings.ToLower(strings.TrimSpace(role))
+-	if role == RoleLeader || role == RoleLane || isCompanionRole(role) {
++	if role == RoleLeader || role == RoleLane {
+ 		r.Role = role
+ 	}
+ 	return r
+diff --git a/internal/kanban/role.go b/internal/kanban/role.go
+--- a/internal/kanban/role.go
++++ b/internal/kanban/role.go
+@@ -18,12 +18,7 @@
+ package kanban
+ 
+ import (
+-	"encoding/json"
+-	"fmt"
+-	"os"
+-	"path/filepath"
+ 	"strings"
+-	"time"
+ )
+ 
+ // RoleLeader names the one role the board's write guard admits (REQ-KB-017).
+@@ -63,93 +58,3 @@
+ // over cross-session messages and never occupy the three-role kanban chain, so
+ // the companion shape discriminators must not admit their labels.
+ const RoleLane = "lane"
+-
+-// RoleDeclaration is the persisted declaration artifact: the role a session
+-// occupies, recorded by that session at launch.
+-//
+-// Label is the launch label recorded ALONGSIDE the role as a separate datum
+-// — a role does not determine a label and a label does not determine a role
+-// (one role corresponds to two-or-more possible labels chosen by the operator
+-// at launch). No code path computes Role from Label or the reverse; the field
+-// exists so the two data stay observably distinct in the artifact.
+-type RoleDeclaration struct {
+-	SessionID  string `json:"session_id"`
+-	Role       string `json:"role"`
+-	Label      string `json:"label,omitempty"`
+-	DeclaredAt string `json:"declared_at"`
+-}
+-
+-// roleDeclarationDir is the carrier's home beneath the board directory. It is
+-// a sibling of the state file, not part of it, so the board's bounded
+-// recovery (which modifies the state file alone) never touches declarations.
+-func roleDeclarationDir(root string) string {
+-	return filepath.Join(BoardDir(root), "roles")
+-}
+-
+-// DeclareRole records that sessionID occupies role, launched under label.
+-//
+-// The declaration is written by the declaring session itself and read by
+-// every other session through the shared origin — both cross-session
+-// directions (a lane resolving the leader, the leader resolving a lane) are
+-// the same read against the same path. Re-declaring overwrites, which is how
+-// a relaunched session refreshes its declaration.
+-func DeclareRole(root, sessionID, role, label string) error {
+-	if err := validateSessionID(sessionID); err != nil {
+-		return fmt.Errorf("declare role: %w", err)
+-	}
+-	if role == "" {
+-		return fmt.Errorf("declare role: role is empty")
+-	}
+-
+-	dir := roleDeclarationDir(root)
+-	if err := os.MkdirAll(dir, 0o755); err != nil {
+-		return fmt.Errorf("declare role: creating declaration dir: %w", err)
+-	}
+-
+-	rec := RoleDeclaration{
+-		SessionID:  sessionID,
+-		Role:       role,
+-		Label:      label,
+-		DeclaredAt: time.Now().UTC().Format(time.RFC3339),
+-	}
+-	encoded, err := json.MarshalIndent(rec, "", "  ")
+-	if err != nil {
+-		return fmt.Errorf("declare role: encoding: %w", err)
+-	}
+-	path := filepath.Join(dir, sessionID+".json")
+-	if err := os.WriteFile(path, append(encoded, '\n'), 0o600); err != nil {
+-		return fmt.Errorf("declare role: %w", err)
+-	}
+-	return nil
+-}
+-
+-// @MX:ANCHOR: [AUTO] ResolveDeclaredRole — the single-origin role-declaration read (REQ-KB-025 carrier)
+-// @MX:REASON: expected fan_in >= 3 (requireLeaderRole for board writes and recovery, cross-session consumers in the worktree sibling's gates, bootstrap's dispatch/quorum key); a parallel declaration datum is the fork AP-31 names
+-//
+-// ResolveDeclaredRole returns the role sessionID declared. It is callable by
+-// any session — the leader resolving a lane's declaration (the dispatch and
+-// quorum key) and a lane resolving the leader's (the sibling's gates) are the
+-// same operation against the same single-origin artifact.
+-//
+-// An absent or unreadable declaration is an error, never a default role: the
+-// board's write guard treats an unreadable role as a refusal, because a
+-// refusal with nothing to read does not refuse — it admits every write.
+-func ResolveDeclaredRole(root, sessionID string) (string, error) {
+-	if err := validateSessionID(sessionID); err != nil {
+-		return "", fmt.Errorf("resolve declared role: %w", err)
+-	}
+-
+-	raw, err := os.ReadFile(filepath.Join(roleDeclarationDir(root), sessionID+".json"))
+-	if err != nil {
+-		return "", fmt.Errorf("resolve declared role: %w", err)
+-	}
+-
+-	var rec RoleDeclaration
+-	if err := json.Unmarshal(raw, &rec); err != nil {
+-		return "", fmt.Errorf("resolve declared role: decoding: %w", err)
+-	}
+-	if rec.Role == "" {
+-		return "", fmt.Errorf("resolve declared role: declaration for %q carries no role", sessionID)
+-	}
+-	return rec.Role, nil
+-}
+diff --git a/internal/kanban/role_naming_m1_test.go b/internal/kanban/role_naming_m1_test.go
+--- a/internal/kanban/role_naming_m1_test.go
++++ b/internal/kanban/role_naming_m1_test.go
+@@ -8,7 +8,6 @@
+ import (
+ 	"errors"
+ 	"os"
+-	"path/filepath"
+ 	"strings"
+ 	"testing"
+ 
+@@ -156,44 +155,6 @@
+ 	}
+ }
+ 
+-// REQ-RNC-025 board clause: a board role declaration `lead` loses board write
+-// access; `leader` is admitted. DeclareRole has no production caller — this is
+-// exercised from tests only.
+-func TestBoardGuardRefusesLegacyLeadDeclaration(t *testing.T) {
+-	root := t.TempDir()
+-	if err := DeclareRole(root, "legacy-session", "lead", "lead"); err != nil {
+-		t.Fatalf("DeclareRole: %v", err)
+-	}
+-	before, err := os.ReadFile(filepath.Join(BoardDir(root), "roles", "legacy-session.json"))
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	err = requireLeaderRole(root, "legacy-session")
+-	if !errors.Is(err, ErrNotSoleWriter) {
+-		t.Fatalf("requireLeaderRole(lead declaration) err = %v, want ErrNotSoleWriter", err)
+-	}
+-	if !strings.Contains(err.Error(), "lead") {
+-		t.Errorf("refusal %q does not name the legacy role lead", err.Error())
+-	}
+-	after, err := os.ReadFile(filepath.Join(BoardDir(root), "roles", "legacy-session.json"))
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	if string(before) != string(after) {
+-		t.Errorf("declaration file changed on refusal")
+-	}
+-}
+-
+-func TestBoardGuardAdmitsLeaderDeclaration(t *testing.T) {
+-	root := t.TempDir()
+-	if err := DeclareRole(root, "leader-session", RoleLeader, LeaderLabel()); err != nil {
+-		t.Fatalf("DeclareRole: %v", err)
+-	}
+-	if err := requireLeaderRole(root, "leader-session"); err != nil {
+-		t.Fatalf("requireLeaderRole(leader declaration) = %v, want nil", err)
+-	}
+-}
+-
+ // seedWorkerRow inserts a registry claim whose run_id is run7 — the shape a
+ // pre-change binary of a run with an id would have written (the factory DB
+ // claim INSERT records run_id since the run boundary landed).
+diff --git a/internal/kanban/state_lock.go b/internal/kanban/state_lock.go
+--- a/internal/kanban/state_lock.go
++++ b/internal/kanban/state_lock.go
+@@ -16,7 +16,6 @@
+ 	"errors"
+ 	"fmt"
+ 	"os"
+-	"path/filepath"
+ 	"time"
+ )
+ 
+@@ -40,9 +39,6 @@
+ 	return errors.Is(err, ErrStateLockChangedHands)
+ }
+ 
+-// boardLockFileName names the lock artifact inside the board directory.
+-const boardLockFileName = "board.lock"
+-
+ // StateLockOwner is the creating process's identity recorded IN the lock
+ // artifact (REQ-KB-023). The identity is what makes a stale artifact
+ // distinguishable from a live holder's: without it, "the holder is gone" is a
+@@ -65,26 +61,6 @@
+ 	release() error
+ }
+ 
+-// AcquireBoardLock acquires the board-wide lock at
+-// <root>/.moai/state/kanban-board/board.lock, creating the board directory if
+-// absent. Returns ErrStateLockHeld on contention; the caller retries or
+-// reports, never blocks.
+-//
+-// The acquiring process records its identity in the artifact as part of the
+-// acquisition, so an artifact always names its current owner.
+-func AcquireBoardLock(root string) (*StateLock, error) {
+-	dir := BoardDir(root)
+-	if err := os.MkdirAll(dir, 0o755); err != nil {
+-		return nil, fmt.Errorf("acquire board lock: creating board dir: %w", err)
+-	}
+-	path := boardLockPath(root)
+-	impl, err := acquireStateLockImpl(path)
+-	if err != nil {
+-		return nil, err
+-	}
+-	return &StateLock{path: path, impl: impl}, nil
+-}
+-
+ // Release releases the board-wide lock. Safe to call multiple times.
+ func (l *StateLock) Release() error {
+ 	if l == nil || l.impl == nil {
+@@ -103,11 +79,6 @@
+ 	return l.path
+ }
+ 
+-// boardLockPath returns the lock artifact's path beneath root.
+-func boardLockPath(root string) string {
+-	return filepath.Join(BoardDir(root), boardLockFileName)
+-}
+-
+ // ClearStaleReport is what a clear operation observed and did — the operation
+ // is explicit and operator-visible, so it REPORTS rather than acting silently
+ // (REQ-KB-023).
+diff --git a/internal/kanban/state_lock_clear_unix.go b/internal/kanban/state_lock_clear_unix.go
+--- a/internal/kanban/state_lock_clear_unix.go
++++ b/internal/kanban/state_lock_clear_unix.go
+@@ -15,14 +15,3 @@
+ // touches the documented AP-29 residual not at all (it is a Windows-substrate
+ // residual and the Windows clear keeps its re-read mitigation).
+ package kanban
+-
+-// ClearStaleBoardLock on Unix is a no-op reporting the platform gate: the
+-// stale-clear window does not arise here. The lock artifact is inert and a
+-// subsequent AcquireBoardLock succeeds by taking a fresh flock on the same
+-// path.
+-func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
+-	return &ClearStaleReport{
+-		Removed: false,
+-		Reason:  "stale-lock clear is gated to windows; the unix substrate releases flock on process exit and an orphaned artifact blocks nothing here",
+-	}, nil
+-}
+diff --git a/internal/kanban/state_lock_clear_windows.go b/internal/kanban/state_lock_clear_windows.go
+--- a/internal/kanban/state_lock_clear_windows.go
++++ b/internal/kanban/state_lock_clear_windows.go
+@@ -51,31 +51,6 @@
+ 	return &owner, nil
+ }
+ 
+-// ClearStaleBoardLock removes a stale board-wide lock artifact — an explicit,
+-// operator-visible, bounded act; never a step the acquire path takes on its
+-// own, and never conditioned on the artifact's age.
+-//
+-// The removal happens ONLY when the recorded process is positively observed
+-// absent, and a RE-READ of the recorded identity runs immediately before the
+-// unlink, aborting on any mismatch: between the inspection and the removal
+-// the lock can be legitimately released by its owner and re-acquired by a
+-// live process, and unlinking then would admit two writers to the critical
+-// section — the clearing operation causing precisely the concurrency the lock
+-// exists to prevent.
+-//
+-// TOCTOU RESIDUAL, stated rather than engineered away (AP-29): the re-read
+-// NARROWS the inspection-to-removal window, it does not close it. The removal
+-// primitive takes a PATH, resolves it at call time, and no portable
+-// handle-based unlink exists at this layer — a lock re-acquired in the
+-// residual interval between the re-read and the unlink can still be removed.
+-// The window is entered only by a clear already running against an artifact
+-// whose recorded owner was observed dead, and the operation is explicit and
+-// reports what it removed, so a rare bad outcome is attributable rather than
+-// silent.
+-func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
+-	return clearStaleLockAtPath(boardLockPath(root), "board lock")
+-}
+-
+ // clearStaleLockAtPath is the path-keyed core of the clear above, extracted so
+ // a SECOND short-lived lock over the same atomic-create substrate — the
+ // integration-window mutation lock (integration_lock_mutation.go) — reuses this
+diff --git a/internal/kanban/status_read_test.go b/internal/kanban/status_read_test.go
+--- a/internal/kanban/status_read_test.go
++++ b/internal/kanban/status_read_test.go
+@@ -304,68 +304,7 @@
+ 		t.Fatalf("source %q suggests a branch search", got.Source)
+ 	}
+ }
+-
+-// TestUnresolvedCard_OutcomeDistinctAndByteUnchanged — AC-KB-025's
+-// board-level assertions over the detached fixture: the reconciled view is
+-// UNRESOLVED (not inconsistent — both outcomes refuse dispatch, so the test
+-// observes WHICH outcome was reported), the card keeps its recorded column,
+-// no enum member is substituted, and both the board state file and the
+-// card's spec.md are byte-unchanged by the reconciliation.
+-func TestUnresolvedCard_OutcomeDistinctAndByteUnchanged(t *testing.T) {
+-	if runtimeIsWindows() {
+-		t.Skip("fixture uses posix git plumbing; windows covered by GOOS=windows build")
+-	}
+-	root := specFixtureRepo(t)
+-	bases := fixtureBases(t)
+-	seedLead(t, root, "lead-sess")
+-
+-	// Board record holding the card in run; the card's primary-side spec.md
+-	// exists (completed on main).
+-	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{
+-		{SpecID: "SPEC-NAV-DET2", Column: ColumnRun, Holder: "s1", LastMovedAt: "t0"},
+-	}})
+-	beforeBoard := readBoardBytes(t, root)
+-	specPath := filepath.Join(root, ".moai", "specs", "SPEC-NAV-DET2", "spec.md")
+-	writeSpecMD(t, root, "SPEC-NAV-DET2", StatusInProgress)
+-	beforeSpec := readFileBytes(t, specPath)
+ 
+-	// The card's worktree exists but reports no branch.
+-	wt := filepath.Join(bases.Claude, "SPEC-NAV-DET2")
+-	mustGit(t, root, "worktree", "add", "--detach", wt, "main")
+-	t.Cleanup(func() { mustGit(t, root, "worktree", "remove", "--force", wt) })
+-
+-	cs, err := ReadCardStatus(root, "SPEC-NAV-DET2", bases)
+-	if err != nil {
+-		t.Fatalf("ReadCardStatus: %v", err)
+-	}
+-	card := Card{SpecID: "SPEC-NAV-DET2", Column: ColumnRun, Holder: "s1", LastMovedAt: "t0"}
+-	view := ReconcileCard(card, cs)
+-
+-	if !view.Unresolved {
+-		t.Fatalf("view.Unresolved = false — the detached-worktree card must report unresolved")
+-	}
+-	if view.Inconsistent {
+-		t.Fatalf("view.Inconsistent = true — unresolved is NOT the illegal-pairing outcome; the test observes which outcome was reported")
+-	}
+-	if view.Dispatchable {
+-		t.Fatal("unresolved card dispatchable")
+-	}
+-	if view.Card.Column != ColumnRun {
+-		t.Fatalf("card column = %q, want the recorded run — the recorded column stands", view.Card.Column)
+-	}
+-	if IsCanonicalStatus(view.Status) || view.Status == StatusDraft {
+-		t.Fatalf("status = %q — an enum member was substituted for the absence (draft would pair legally and dispatch)", view.Status)
+-	}
+-
+-	// Nothing was written by the read or the reconciliation.
+-	if string(beforeBoard) != string(readBoardBytes(t, root)) {
+-		t.Fatal("board state file changed")
+-	}
+-	if string(beforeSpec) != string(readFileBytes(t, specPath)) {
+-		t.Fatal("spec.md changed")
+-	}
+-}
+-
+ // TestReadPrimarySpecStatus_RefusesTraversingSpecID — the spec identifier
+ // reaches a filesystem join here exactly as it does in ReadCardStatus, and
+ // `moai todo next --spec` records the operator's value verbatim by design, so
+diff --git a/internal/kanban/test_helpers_test.go b/internal/kanban/test_helpers_test.go
+--- /dev/null
++++ b/internal/kanban/test_helpers_test.go
+@@ -0,0 +1,56 @@
++package kanban
++
++import (
++	"os"
++	"os/exec"
++	"runtime"
++	"testing"
++)
++
++// Test helpers moved verbatim out of the board test files deleted at M6
++// (SPEC-LAUNCHER-ENTRY-FLAGS-001): retained tests (status reader, integration lock,
++// slot lease, windows lock suites) still call them.
++
++// runtimeIsWindows reports the test's runtime OS.
++func runtimeIsWindows() bool {
++	return runtime.GOOS == "windows"
++}
++
++// runGitAt runs git in dir, failing the test on error.
++func runGitAt(t *testing.T, dir string, args ...string) {
++	t.Helper()
++	cmd := exec.Command("git", args...)
++	cmd.Dir = dir
++	out, err := cmd.CombinedOutput()
++	if err != nil {
++		t.Fatalf("git %v in %s: %s: %v", args, dir, string(out), err)
++	}
++}
++
++// deadPID returns the PID of a process that has positively terminated, by
++// spawning and reaping a child.
++func deadPID(t *testing.T) int {
++	t.Helper()
++	if runtimeIsWindows() {
++		t.Skip("posix dead-PID probe")
++	}
++	cmd := exec.Command("true")
++	if err := cmd.Start(); err != nil {
++		t.Fatalf("spawn sacrificial process: %v", err)
++	}
++	pid := cmd.Process.Pid
++	if err := cmd.Wait(); err != nil {
++		t.Fatalf("wait sacrificial process: %v", err)
++	}
++	return pid
++}
++
++// readFileBytes reads a file for byte-equality checks.
++func readFileBytes(t *testing.T, path string) []byte {
++	t.Helper()
++	raw, err := os.ReadFile(path)
++	if err != nil {
++		t.Fatalf("read %s: %v", path, err)
++	}
++	return raw
++}
+diff --git a/internal/kanban/test_helpers_windows_test.go b/internal/kanban/test_helpers_windows_test.go
+--- /dev/null
++++ b/internal/kanban/test_helpers_windows_test.go
+@@ -0,0 +1,35 @@
++//go:build windows
++
++package kanban
++
++import (
++	"os/exec"
++	"testing"
++)
++
++// deadPIDWin moved verbatim from board_lock_clear_windows_test.go (deleted at M6);
++// integration_lock_mutation_windows_test.go still calls it.
++//
++// deadPIDWin returns the PID of a process that has positively terminated, by
++// spawning and reaping a Windows child (cmd.exe exits immediately). This
++// file compiles only under GOOS=windows, so the helper is a Windows
++// implementation, not a skip: the clear suite is exercised on a Windows
++// runner, and GOOS=windows go vet verifies it compiles here.
++func deadPIDWin(t *testing.T) int {
++	t.Helper()
++	cmd := exec.Command("cmd", "/c", "exit 0")
++	if err := cmd.Start(); err != nil {
++		t.Fatalf("spawn sacrificial process: %v", err)
++	}
++	pid := cmd.Process.Pid
++	if err := cmd.Wait(); err != nil {
++		t.Fatalf("wait sacrificial process: %v", err)
++	}
++	if !defaultProcessAlive(-1) {
++		_ = pid // sanity shape only; the real probe check follows
++	}
++	if processAlive(pid) {
++		t.Fatalf("sacrificial pid %d still observed live; cannot construct a dead owner", pid)
++	}
++	return pid
++}

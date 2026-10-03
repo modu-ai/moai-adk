@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // flHoldRecord starts a write transaction on a second connection to the
@@ -56,7 +56,7 @@ func flHoldQueue(t *testing.T, root string) func() {
 	release := make(chan struct{})
 	finished := make(chan error, 1)
 	go func() {
-		finished <- todoStoreAt(root).Mutate(func(*kanban.BacklogRecord) error {
+		finished <- todoStoreAt(root).Mutate(func(*factory.BacklogRecord) error {
 			close(held)
 			<-release
 			return nil
@@ -82,7 +82,7 @@ func flHoldQueue(t *testing.T, root string) func() {
 
 // flQueueFreeWithin reports whether a no-op public Mutate completes within d
 // (the queue's lock is acquirable).
-func flQueueFreeWithin(store *kanban.BacklogStore, d time.Duration) (bool, error) {
+func flQueueFreeWithin(store *factory.BacklogStore, d time.Duration) (bool, error) {
 	op := flStartNoop(store)
 	ok := op.within(d)
 	return ok, op.err
@@ -118,7 +118,7 @@ func TestFactoryLeaseRecordStallBounded(t *testing.T) {
 		if !strings.Contains(stderr, "busy") || strings.Contains(stderr, "another lane") {
 			t.Errorf("refusal detail = %q, want it to say the record or the queue lock was busy, and not \"another lane\"", stderr)
 		}
-		if q != kanban.BacklogStateQueued {
+		if q != factory.BacklogStateQueued {
 			t.Errorf("queue state after the refused lease = %s, want queued (the compensation restores it)", q)
 		}
 		if !writerDone || writer.err != nil {
@@ -129,7 +129,7 @@ func TestFactoryLeaseRecordStallBounded(t *testing.T) {
 		}
 	})
 	t.Run("bare arm (c)", func(t *testing.T) {
-		root, store := nmBase(t, kanban.BacklogStateQueued)
+		root, store := nmBase(t, factory.BacklogStateQueued)
 		nmLaneEnv(t, "lane-1", "")
 		nmIsolatedWorktrees(t, "t1")
 		end := flHoldRecord(t, root)
@@ -146,7 +146,7 @@ func TestFactoryLeaseRecordStallBounded(t *testing.T) {
 		if code := nmExit(err); code != 1 && code != -1 {
 			t.Errorf("the bare lease exited %d (%v), want an error (exit 1)", code, err)
 		}
-		if q != kanban.BacklogStatePicked {
+		if q != factory.BacklogStatePicked {
 			t.Errorf("queue state after the bare stall = %s, want picked (spec §F R4, third shape)", q)
 		}
 	})
@@ -207,7 +207,7 @@ func TestFactoryLeaseMidClaimStallBounded(t *testing.T) {
 	if c := fcCard(t, root, "t1"); c.State != homestate.CardAssigned || c.OwnerLabel != "lane-1" {
 		t.Errorf("t1 = %s owner=%q, want assigned to lane-1 (spec §F R4, second shape)", c.State, c.OwnerLabel)
 	}
-	if q != kanban.BacklogStatePicked {
+	if q != factory.BacklogStatePicked {
 		t.Errorf("queue state = %s, want picked", q)
 	}
 	if _, stderr2, err2 := qasRunNext(t, "--run", fcRun, "--card", "t1"); err2 != nil {
@@ -248,7 +248,7 @@ func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 	})
 	t.Run("bare", func(t *testing.T) {
 		budget := flBudget(t)
-		root, _ := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 		nmLaneEnv(t, "lane-1", "")
 		nmIsolatedWorktrees(t, "t1", "t2")
 		end := flHoldQueue(t, root)
@@ -280,15 +280,15 @@ func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 
 // TestFactoryLeaseCapWithinBoardBudget — AC-FAL-008: three times the claim's
 // wait cap is not greater than the queue lock's wait budget as
-// kanban.LockWaitBudget() returns it; the guard reads the accessor, never a
+// factory.LockWaitBudget() returns it; the guard reads the accessor, never a
 // literal.
 func TestFactoryLeaseCapWithinBoardBudget(t *testing.T) {
-	budget := kanban.LockWaitBudget()
+	budget := factory.LockWaitBudget()
 	if factoryLeaseClaimWaitCap != factoryLeaseClaimDeadline+factoryLeaseClaimBusyTimeout {
 		t.Errorf("factoryLeaseClaimWaitCap = %s, want the deadline (%s) plus the busy timeout (%s)", factoryLeaseClaimWaitCap, factoryLeaseClaimDeadline, factoryLeaseClaimBusyTimeout)
 	}
 	if 3*factoryLeaseClaimWaitCap > budget {
-		t.Errorf("3 x factoryLeaseClaimWaitCap = %s > kanban.LockWaitBudget() = %s; the claim cap must stay within one third of the queue lock's wait budget", 3*factoryLeaseClaimWaitCap, budget)
+		t.Errorf("3 x factoryLeaseClaimWaitCap = %s > factory.LockWaitBudget() = %s; the claim cap must stay within one third of the queue lock's wait budget", 3*factoryLeaseClaimWaitCap, budget)
 	}
 }
 
@@ -307,7 +307,7 @@ func TestFactoryLeaseSectionRejectsNestedMutate(t *testing.T) {
 	nmSetSeam(t, func(string) error {
 		reached = true
 		start := time.Now()
-		nestedErr = store.Mutate(func(*kanban.BacklogRecord) error { return nil })
+		nestedErr = store.Mutate(func(*factory.BacklogRecord) error { return nil })
 		nestedElapsed = time.Since(start)
 		return nil
 	})
@@ -316,7 +316,7 @@ func TestFactoryLeaseSectionRejectsNestedMutate(t *testing.T) {
 		t.Fatalf("the nomination seam was never reached (verb err %v)", verbErr)
 	}
 	t.Logf("in-section Mutate: elapsed=%s err=%v", nestedElapsed, nestedErr)
-	if nestedErr == nil || !kanban.IsBoardLockHeld(nestedErr) {
+	if nestedErr == nil || !factory.IsStateLockHeld(nestedErr) {
 		t.Errorf("a public Mutate inside the lease section returned %v, want the lock-held timeout error (the section must hold the queue lock)", nestedErr)
 	}
 	if limit := budget + flMargin; nestedElapsed > limit {

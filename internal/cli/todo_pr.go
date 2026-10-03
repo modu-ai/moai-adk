@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/spf13/cobra"
 )
 
@@ -55,7 +55,7 @@ const todoPRLandingAbbrev = 7
 // todoPRLandingMarkerMalformed labels a record that is PRESENT but does not
 // read as a record. It is the third member of a set that must stay mutually
 // distinguishable by a machine reading only the marker — the other two are
-// kanban.LandingSHASourceOperator and kanban.LandingMarkerRefHead.
+// factory.LandingSHASourceOperator and factory.LandingMarkerRefHead.
 //
 // The distinction it carries is one absence cannot: an empty cell means no
 // record was ever made, which AC-TLE-006 asserts as a meaningful state.
@@ -78,7 +78,7 @@ const todoPRLandingMarkerMalformed = "malformed"
 // command surface — a second, unrouted exec call is precisely the regression
 // the census is there to catch, and it would be invisible to a seam only the
 // routed path knows about.
-var todoRunCommand kanban.CommandRunner = func(name string, args ...string) (string, error) {
+var todoRunCommand factory.CommandRunner = func(name string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), todoPRSubprocessTimeout)
 	defer cancel()
 	child := exec.CommandContext(ctx, name, args...)
@@ -211,7 +211,7 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 // `moai todo pr` and `moai factory next` — the PR/landed line `next` prints
 // must equal what `todo pr` reports for the same card (REQ-SD-008, plan B9),
 // which one shared computation guarantees by construction.
-func computeTodoPRRows(errW io.Writer, rec *kanban.BacklogRecord, only string) []todoPRRow {
+func computeTodoPRRows(errW io.Writer, rec *factory.BacklogRecord, only string) []todoPRRow {
 	prs, saturated, ghErr := fetchOpenPRs()
 	lookup := ""
 	if saturated {
@@ -234,14 +234,14 @@ func computeTodoPRRows(errW io.Writer, rec *kanban.BacklogRecord, only string) [
 	}
 
 	landedRef := todoLandedRef()
-	landed := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: landedRef}
+	landed := factory.GitLandedQuerier{Run: todoRunCommand, Ref: landedRef}
 	rows := make([]todoPRRow, 0, len(rec.Items))
 	var degraded []string
 	for _, it := range rec.Items {
 		if only != "" && it.ID != only {
 			continue
 		}
-		out, err := kanban.ResolveCardPRLink(it.ID, prs, landed)
+		out, err := factory.ResolveCardPRLink(it.ID, prs, landed)
 		if err != nil {
 			degraded = append(degraded, it.ID)
 		}
@@ -265,9 +265,9 @@ func computeTodoPRRows(errW io.Writer, rec *kanban.BacklogRecord, only string) [
 
 // writeTodoPRRows renders the link rows, one per line. Shared by `moai todo
 // pr` and `moai factory next` so the two surfaces print the same bytes.
-func writeTodoPRRows(w io.Writer, rec *kanban.BacklogRecord, rows []todoPRRow) {
+func writeTodoPRRows(w io.Writer, rec *factory.BacklogRecord, rows []todoPRRow) {
 	text := map[string]string{}
-	state := map[string]kanban.BacklogState{}
+	state := map[string]factory.BacklogState{}
 	for _, it := range rec.Items {
 		text[it.ID] = it.Text
 		state[it.ID] = it.State
@@ -304,7 +304,7 @@ func writeTodoPRRows(w io.Writer, rec *kanban.BacklogRecord, rows []todoPRRow) {
 // todoPRRow is the RENDER-TIME shape: the resolver's outcome plus the stored
 // evidence, joined only for output.
 //
-// The evidence rides here rather than on kanban.PRLinkOutcome deliberately.
+// The evidence rides here rather than on factory.PRLinkOutcome deliberately.
 // PRLinkOutcome is the RESOLVER's own output type, and REQ-1.10 rules that the
 // resolver names no delivering commit — a `sha` field inside it would put an
 // operator's delivery claim in the same struct as a grep verdict, which is the
@@ -312,11 +312,11 @@ func writeTodoPRRows(w io.Writer, rec *kanban.BacklogRecord, rows []todoPRRow) {
 // fields in JSON, so the pre-change object shape is unchanged and `landing` is
 // purely additive.
 type todoPRRow struct {
-	kanban.PRLinkOutcome
+	factory.PRLinkOutcome
 	// Landing is the operator-recorded evidence, absent when none was made.
 	// omitempty is load-bearing: a card with no record carries no key, which
 	// is how a consumer tells "never recorded" from "recorded and empty".
-	Landing *kanban.LandingEvidence `json:"landing,omitempty"`
+	Landing *factory.LandingEvidence `json:"landing,omitempty"`
 	// Omitted for a complete lookup, preserving existing healthy JSON rows.
 	PRLookup string `json:"pr_lookup,omitempty"`
 }
@@ -330,7 +330,7 @@ type todoPRRow struct {
 // delivering commit happens to be where the ref stood — at which point every
 // character of SHA text in the two cells is identical and only a marker
 // carried independently of the value still separates them (AC-TLE-016).
-func formatLandingEvidence(e *kanban.LandingEvidence) string {
+func formatLandingEvidence(e *factory.LandingEvidence) string {
 	if e == nil {
 		return ""
 	}
@@ -382,7 +382,7 @@ func formatPRLinks(prs []int) string {
 // to the requested ceiling, so there may be open pull requests the resolver
 // never saw. It is reported rather than paged around, because a second page
 // means a second `gh` process.
-func fetchOpenPRs() (prs []kanban.PRRecord, saturated bool, err error) {
+func fetchOpenPRs() (prs []factory.PRRecord, saturated bool, err error) {
 	out, err := todoRunCommand("gh", "pr", "list",
 		"--state", "open",
 		"--limit", strconv.Itoa(todoPROpenPRLimit),

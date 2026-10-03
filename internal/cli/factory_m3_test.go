@@ -32,14 +32,14 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // sdMoaiFixture is a factory fixture whose root is a MoAI project root (the
 // .moai directory exists), so a caller-supplied project_root argument
 // resolves through the same validation the existing project_root tools use.
-func sdMoaiFixture(t *testing.T) (string, *kanban.BacklogStore) {
+func sdMoaiFixture(t *testing.T) (string, *factory.BacklogStore) {
 	t.Helper()
 	root, store := fcFixture(t)
 	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
@@ -95,7 +95,7 @@ func sdBranchOf(t *testing.T, dir string) string {
 func TestSD_AC011_CardWorktreeCreateReuseRefuse(t *testing.T) {
 	t.Run("leased card with no recorded worktree gains one through the materializer", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked)
+		fcQueue(t, store, factory.BacklogStatePicked)
 		sdRegisterLane(t, root, "lane-1")
 		sdLaneEnv(t, "lane-1", "")
 		t.Chdir(root)
@@ -126,7 +126,7 @@ func TestSD_AC011_CardWorktreeCreateReuseRefuse(t *testing.T) {
 
 	t.Run("recorded worktree is reused without creating another", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked)
+		fcQueue(t, store, factory.BacklogStatePicked)
 		sdRegisterLane(t, root, "lane-1")
 		own := filepath.Join(root, "own-wt")
 		fcGit(t, root, "worktree", "add", "-q", own, "-b", "WT-own-tree")
@@ -147,7 +147,7 @@ func TestSD_AC011_CardWorktreeCreateReuseRefuse(t *testing.T) {
 
 	t.Run("existing directory no card record names it: refuse, row unchanged", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked)
+		fcQueue(t, store, factory.BacklogStatePicked)
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
 		foreign := filepath.Join(sdWorktreesDir(root), "t1")
@@ -253,7 +253,7 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		if got := strings.TrimSpace(mcpOut); got != strings.TrimSpace(cliOut) {
 			t.Errorf("mcp todo_add output = %q, cli = %q", got, strings.TrimSpace(cliOut))
 		}
-		readItem := func(store *kanban.BacklogStore) kanban.BacklogItem {
+		readItem := func(store *factory.BacklogStore) factory.BacklogItem {
 			t.Helper()
 			rec, err := store.LoadPure()
 			if err != nil {
@@ -282,7 +282,7 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 
 	t.Run("todo_list renders identically; an unusable root is refused identically", func(t *testing.T) {
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStateQueued)
+		fcQueue(t, store, factory.BacklogStateQueued)
 		sdClearLaneEnv(t)
 		cliOut, _, err := runTodo(t, "list")
 		if err != nil {
@@ -309,7 +309,7 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			// still set; the fixture's own `todo add` needs a clean env.
 			sdClearLaneEnv(t)
 			root, store := sdMoaiFixture(t)
-			fcQueue(t, store, kanban.BacklogStatePicked)
+			fcQueue(t, store, factory.BacklogStatePicked)
 			sdRegisterLane(t, root, "lane-1")
 			sdLaneEnv(t, "lane-1", "")
 			t.Chdir(root)
@@ -407,7 +407,7 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			sdClearLaneEnv(t)
 			root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 			sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
-			sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", kanban.BranchSourceConfig, integWT, "t1")
+			sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 			sdLaneEnv(t, "lane-1", "")
 			t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 			t.Chdir(root)
@@ -421,7 +421,7 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			sdClearLaneEnv(t)
 			root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 			sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
-			sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", kanban.BranchSourceConfig, integWT, "t1")
+			sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 			sdLaneEnv(t, "lane-1", "")
 			t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 			t.Chdir(root)
@@ -484,7 +484,7 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			t.Helper()
 			sdClearLaneEnv(t)
 			root, store := sdMoaiFixture(t)
-			fcQueue(t, store, kanban.BacklogStatePicked)
+			fcQueue(t, store, factory.BacklogStatePicked)
 			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardKickoff, DecisionGate: homestate.DecisionGateKickoff})
 			return root
 		}
@@ -570,7 +570,7 @@ func TestSD_AC014_ProjectRootRequired(t *testing.T) {
 // process's own working directory is the linked worktree.
 func TestSD_AC010_MCPNextParentCheck(t *testing.T) {
 	root, store := sdMoaiFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	sdRegisterLane(t, root, "lane-1")
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
 	sdLaneEnv(t, "lane-1", "")
@@ -611,7 +611,7 @@ func TestSD_AC010_MCPNextParentCheck(t *testing.T) {
 // Codex MCP environment also refuses factory_next as not a lane.
 func TestSD_AC015_MCPTodoAddRefused(t *testing.T) {
 	root, store := sdMoaiFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued)
+	fcQueue(t, store, factory.BacklogStateQueued)
 	sdRegisterLane(t, root, "lane-1")
 
 	sdLaneEnv(t, "lane-1", "")
@@ -626,7 +626,7 @@ func TestSD_AC015_MCPTodoAddRefused(t *testing.T) {
 	// Codex MCP environment: lane label + backend gpt, no role marker.
 	sdClearLaneEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
+	t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
 	before = sdQueueBytes(t, store)
 	if _, err := sdCallTool(t, handleTodoAdd, map[string]any{"text": "codex card", "project_root": root}); err == nil || !strings.Contains(err.Error(), "lane boundary") {
 		t.Fatalf("codex-mcp todo_add: err = %v, want the lane-boundary refusal", err)
@@ -644,7 +644,7 @@ func TestSD_AC015_MCPTodoAddRefused(t *testing.T) {
 // the three lane variables succeeds.
 func TestSD_AC016_MCPDecideRefused(t *testing.T) {
 	root, store := sdMoaiFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked)
+	fcQueue(t, store, factory.BacklogStatePicked)
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardKickoff, DecisionGate: homestate.DecisionGateKickoff})
 	before := fcCard(t, root, "t1")
 	args := map[string]any{"card": "t1", "gate": "kickoff", "choice": "approve", "run": fcRun, "project_root": root}
@@ -659,7 +659,7 @@ func TestSD_AC016_MCPDecideRefused(t *testing.T) {
 
 	sdClearLaneEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
+	t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
 	if _, err := sdCallTool(t, handleFactoryDecide, args); err == nil || !strings.Contains(err.Error(), "refused") {
 		t.Fatalf("codex-mcp factory_decide: err = %v, want a refusal", err)
 	}
@@ -682,7 +682,7 @@ func TestSD_AC024_CodexMergeRefusedMCP(t *testing.T) {
 	sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 	before := fcCard(t, root, "t1")
 
-	sdLaneEnv(t, "lane-1", kanban.BackendGPT)
+	sdLaneEnv(t, "lane-1", factory.BackendGPT)
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 	t.Chdir(root)
 	_, err := sdCallTool(t, handleFactoryStage, map[string]any{"card": "t1", "state": homestate.CardMerging, "run": fcRun, "project_root": root})

@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // flWindow is the operator-write window of ledger L11.
@@ -36,7 +36,7 @@ func TestFactoryLeaseOperatorWriteWaitsForSection(t *testing.T) {
 		var op *flOp
 		inside := false
 		nmSetSeam(t, func(cardID string) error {
-			op = flStartState(store, cardID, kanban.BacklogStateHold)
+			op = flStartState(store, cardID, factory.BacklogStateHold)
 			inside = op.within(flWindow)
 			return nil
 		})
@@ -54,13 +54,13 @@ func TestFactoryLeaseOperatorWriteWaitsForSection(t *testing.T) {
 		if op.err != nil {
 			t.Errorf("the operator write failed: %v", op.err)
 		}
-		if q != kanban.BacklogStateHold {
+		if q != factory.BacklogStateHold {
 			t.Errorf("clause (ii) not met: queue state after the verb = %s, want hold (the operator's write was lost)", q)
 		}
 	})
 	t.Run("hold before the verb is refused held", func(t *testing.T) {
 		root, store := nmQueuedNominee(t)
-		nmSetState(t, store, "t1", kanban.BacklogStateHold)
+		nmSetState(t, store, "t1", factory.BacklogStateHold)
 		before := nmSnapshot(t, root, store)
 		out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
 		nmAssertRefused(t, out, stderr, err, "held")
@@ -80,7 +80,7 @@ func TestFactoryLeaseOperatorWriteWaitsForSection(t *testing.T) {
 // makes arm (c) skip that card and lease the next one.
 func TestFactoryLeaseArmCOperatorHold(t *testing.T) {
 	t.Run("hold at the claim point waits and is applied", func(t *testing.T) {
-		root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 		nmLaneEnv(t, "lane-1", "")
 		nmIsolatedWorktrees(t, "t1", "t2")
 		var mu sync.Mutex
@@ -91,7 +91,7 @@ func TestFactoryLeaseArmCOperatorHold(t *testing.T) {
 			mu.Lock()
 			defer mu.Unlock()
 			if arm == "c" && op == nil {
-				op = flStartState(store, cardID, kanban.BacklogStateHold)
+				op = flStartState(store, cardID, factory.BacklogStateHold)
 				inside = op.within(flWindow)
 			}
 			return nil
@@ -111,13 +111,13 @@ func TestFactoryLeaseArmCOperatorHold(t *testing.T) {
 		if inside {
 			t.Errorf("clause (i) not met: the operator write completed at the claim point (arm (c) held no queue lock there)")
 		}
-		if q != kanban.BacklogStateHold {
+		if q != factory.BacklogStateHold {
 			t.Errorf("clause (i) not met: queue state after the verb = %s, want hold (applied after the verb)", q)
 		}
 	})
 	t.Run("hold before the verb makes arm (c) lease the next card", func(t *testing.T) {
-		root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-		nmSetState(t, store, "t1", kanban.BacklogStateHold)
+		root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
+		nmSetState(t, store, "t1", factory.BacklogStateHold)
 		nmLaneEnv(t, "lane-1", "")
 		nmIsolatedWorktrees(t, "t1", "t2")
 		out, stderr, err := qasRunNext(t, "--run", fcRun)
@@ -131,7 +131,7 @@ func TestFactoryLeaseArmCOperatorHold(t *testing.T) {
 		if fcHasCard(t, root, "t1") {
 			t.Errorf("the held card t1 gained a record row")
 		}
-		if q := nmQueueState(t, store, "t1"); q != kanban.BacklogStateHold {
+		if q := nmQueueState(t, store, "t1"); q != factory.BacklogStateHold {
 			t.Errorf("t1 queue state = %s, want still hold", q)
 		}
 	})
@@ -142,16 +142,16 @@ func TestFactoryLeaseArmCOperatorHold(t *testing.T) {
 // whose queue item is `hold` and whose row is `assigned` to the lane is leased
 // by arm (a), exactly as today; the end state is queue `hold`, row `leased`.
 func TestFactoryLeaseArmAKeepsHeldAssignedCard(t *testing.T) {
-	root, store := nmBase(t, kanban.BacklogStatePicked)
+	root, store := nmBase(t, factory.BacklogStatePicked)
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
-	nmSetState(t, store, "t1", kanban.BacklogStateHold)
+	nmSetState(t, store, "t1", factory.BacklogStateHold)
 	nmLaneEnv(t, "lane-1", "")
 	nmIsolatedWorktrees(t, "t1")
 	out, stderr, err := qasRunNext(t, "--run", fcRun)
 	q := nmQueueState(t, store, "t1")
 	state, holder := flRow(t, root, "t1")
 	t.Logf("arm-a-hold err=%v queue=%s record=%s holder=%s stdout=%q stderr=%q", err, q, state, holder, out, stderr)
-	if q != kanban.BacklogStateHold || state != homestate.CardLeased || holder != "lane-1" {
+	if q != factory.BacklogStateHold || state != homestate.CardLeased || holder != "lane-1" {
 		t.Errorf("arm (a) no longer leases a held card whose row is assigned to the lane: queue=%s record=%s holder=%s (a deliberate change must amend the SPEC, spec §F R17)", q, state, holder)
 	}
 }
@@ -171,10 +171,10 @@ func TestFactoryLeaseCompensationKeepsOperatorPick(t *testing.T) {
 	nmSetSeam(t, func(cardID string) error {
 		op = &flOp{ch: make(chan error, 1)}
 		go func() {
-			if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+			if err := store.Mutate(func(r *factory.BacklogRecord) error {
 				for i := range r.Items {
 					if r.Items[i].ID == cardID {
-						r.Items[i].State = kanban.BacklogStateQueued
+						r.Items[i].State = factory.BacklogStateQueued
 					}
 				}
 				return nil
@@ -183,10 +183,10 @@ func TestFactoryLeaseCompensationKeepsOperatorPick(t *testing.T) {
 				return
 			}
 			stamp := "2026-10-03T00:00:00Z"
-			op.ch <- store.Mutate(func(r *kanban.BacklogRecord) error {
+			op.ch <- store.Mutate(func(r *factory.BacklogRecord) error {
 				for i := range r.Items {
 					if r.Items[i].ID == cardID {
-						r.Items[i].State = kanban.BacklogStatePicked
+						r.Items[i].State = factory.BacklogStatePicked
 						r.Items[i].PickedAt = &stamp
 					}
 				}
@@ -213,7 +213,7 @@ func TestFactoryLeaseCompensationKeepsOperatorPick(t *testing.T) {
 	if inside {
 		t.Errorf("the operator's writes completed inside the section (the seam returned only after they finished)")
 	}
-	if q != kanban.BacklogStatePicked {
+	if q != factory.BacklogStatePicked {
 		t.Errorf("the operator's fresh pick was reverted by the compensation: queue=%s want picked", q)
 	}
 	if state == homestate.CardLeased {

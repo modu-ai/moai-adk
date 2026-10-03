@@ -143,7 +143,7 @@ Coordinate the SPEC plan/design/run/sync/audit lifecycle:
 - super-advisor: On-demand high-reasoning consultation (non-binding prescriptions, E1-E4 escalation entry)
 - builder-harness: Dynamic project-specific harness specialist generation (new agents, skills, plugins, commands, hooks, MCP/LSP servers)
 - e2e-tester: E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management)
-- manager-lead: Tier L coordination + the -k kanban / -f factory lead role (the sole Agent-carrier, depth-2 sealed)
+- manager-lead: Tier L coordination + the -f factory lead role (the sole Agent-carrier, depth-2 sealed)
 - manager-todo: todo-queue management agent — owns queue lifecycle, the `/moai:todo --auto` serial cycle, and dispatch guidance; consults Jev as a display-only signal (the `--auto` cycle's own ranking is the one auto-scoped ranking exception — selection order only); carries the read-only sealed-snapshot judgment (one bounded structured decision, never applies it) as a sub-role dispatched by the GTD auto-mission flow
 
 ### Anthropic Built-in (1)

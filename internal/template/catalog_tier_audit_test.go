@@ -172,8 +172,10 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// SPEC-AUDIT-MULTI-MODEL (2026-08): moai-ref-cross-model-audit added
 	// (cross-model audit reference for the multi-auditor convergence surface);
 	// net +1 = 32.
-	// moai-kanban-foreman added (kanban foreman loop-iteration skill driving
+	// moai-factory-foreman added (factory foreman loop-iteration skill driving
 	// the bare /loop backlog dispatch cycle, core.skills), net +1 = 33.
+	// The skill was named moai-kanban-foreman until SPEC-LAUNCHER-ENTRY-FLAGS-001 renamed
+	// it in place: the entry count is unchanged by the rename.
 	// moai-domain-design-dna added (reference-design deconstruction +
 	// generation domain skill, core.skills), net +1 = 34.
 	// moai-ref-jev-question-design added (question-design rules reference for

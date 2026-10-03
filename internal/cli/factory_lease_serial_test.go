@@ -19,16 +19,16 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // flSerialPair builds the two-queued-serial-card queue of AC-FAL-001.
-func flSerialPair(t *testing.T) (string, *kanban.BacklogStore) {
+func flSerialPair(t *testing.T) (string, *factory.BacklogStore) {
 	t.Helper()
-	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
-	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 	return root, store
 }
 
@@ -248,9 +248,9 @@ func TestFactoryLeaseSerialCrossProcessExactlyOne(t *testing.T) {
 // gate. Exactly one card is leased; the other lane exits 3 and its card stays
 // `assigned` with owner and version unchanged.
 func TestFactoryLeaseOwnAssignedSerialSiblingsExactlyOne(t *testing.T) {
-	root, store := nmBase(t, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
-	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
-	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+	root, store := nmBase(t, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 	fcPlace(t, root,
 		homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
 		homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2", Stage: homestate.CardRun})

@@ -87,7 +87,7 @@ $ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200
 > /moai goal "<condition>" --max-turns 0 --max-duration 14400
 ```
 
-v3.1からは`moai goal arm --max-turns 0`で武装するかカンバンモード進入時に、ランチャーがこの上限を自動的に200へ注入します。だからユーザーが直接環境変数を触さなくても、4時間のチェーンが途中で切れません。
+v3.1からは`moai goal arm --max-turns 0`で武装するかファクトリーセッション(`-f` または `-l`)の開始時に、ランチャーがこの上限を自動的に200へ注入します。だからユーザーが直接環境変数を触さなくても、4時間のチェーンが途中で切れません。
 
 ## arm-only と安全の境界
 
@@ -125,7 +125,7 @@ v3.1からは`moai goal arm --max-turns 0`で武装するかカンバンモー�
 
 - **`/moai loop`** — 診断主導の決定的ループ。何を直すかをツールが判定する点が異なります。[`/moai loop`](/ja/utility-commands/moai-loop)はユーティリティコマンドセクションにあります。
 - **`/moai run`** — 作業を始めるコマンド。goalと対で使います。[`/moai run`](./moai-run).
-- **カンバンモード** — `/moai goal`の無限持続ゴールを`plan → run → sync`チェーンにまとめた進入スイッチ。[カンバンモード](/ja/advanced/kanban-mode)で扱います。
+- **ファクトリーモード** — リーダー(`-f`)とレーン(`-l`)でファクトリーのランを開く、または合流するランチャーの進入。独自にゴールを設定することはなく、ランチャーがセッションの Stop フックのブロック上限を上げるだけです。[ファクトリーモード](/ja/advanced/factory-mode)で扱います。
 
 ## このコマンドがしないこと (範囲の境界)
 
@@ -137,6 +137,6 @@ v3.1からは`moai goal arm --max-turns 0`で武装するかカンバンモー�
 ## 関連文書
 
 - [自律連続ループ](/ja/advanced/autonomous-loops) — ゴールエンジンの停滞ガードと上限の意味論
-- [カンバンモード](/ja/advanced/kanban-mode) — リーダーセッションが率いる3段階チェーン
+- [ファクトリーモード](/ja/advanced/factory-mode) — リーダーセッションがカードをレーンに割り当て、レーンがカード1枚を plan・run・sync まで受け持つ構造
 - [`/moai loop`](/ja/utility-commands/moai-loop) — 診断主導の決定的ループ (兄弟コマンド)
 - [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) — ループと観察がハーネス学習へと流れる経路

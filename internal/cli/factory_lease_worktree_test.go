@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // TestFactoryEnsureCardWorktreeStepLockBounded — with the worktree-step lock
@@ -21,13 +21,13 @@ import (
 // test returns the wait error within that wait plus 500 ms, creates no
 // directory and leaves the card's record row unchanged.
 func TestFactoryEnsureCardWorktreeStepLockBounded(t *testing.T) {
-	root, store := nmBase(t, kanban.BacklogStateQueued)
+	root, store := nmBase(t, factory.BacklogStateQueued)
 	nmSetText(t, store, "t1", "alpha step lock probe")
 	far := "2099-01-01T00:00:00Z"
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: far, Stage: homestate.CardRun})
 	before := fcCard(t, root, "t1")
 
-	release, err := kanban.AcquireFactoryStepLock(root, time.Second)
+	release, err := factory.AcquireFactoryStepLock(root, time.Second)
 	if err != nil {
 		t.Fatalf("the test could not take the worktree-step lock: %v", err)
 	}

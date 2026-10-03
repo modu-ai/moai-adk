@@ -141,6 +141,14 @@ The two groups below are different kinds of work. A bump commit **rewrites** eve
 - CHANGELOG.md (New version entry — **English-only**; Korean lives in `.moai/release-notes/vX.Y.Z.ko.md`, NOT in CHANGELOG.md)
 - .moai/release-notes/vX.Y.Z.ko.md (Korean release notes — consumed by the GitHub release body and the docs-site `ko` changelog page; `vX.Y.Z` is a placeholder, not a path on disk)
 
+**Generated version carriers:**
+
+The `moai` plugin files under `plugins/moai/` and the four marketplace and plugin manifests are generated, not hand-edited, and each carries the version without a leading `v`. They are not Version Stamps: a bump does not rewrite them by hand, it regenerates them.
+
+- Every bump, after the Version Stamps: run `make plugin-emit`. Skipping it turns `plugin-emit-check` red at `make build` and the golden test red in `go test`.
+- Before tagging: run `sh scripts/check-plugin-discoverable.sh <empty-home>` (needs a Claude CLI, so it cannot run in CI; the plan-auditor re-runs it at each release PR).
+- At the tag: the release workflow's `verify-provenance` job runs `scripts/check-plugin-version.sh <tag>` (check 8), which fails when the committed plugin manifest's version is not the tag without its leading `v`.
+
 A guard test reads the Version Stamps list and fails when it names a path that is not in the working tree: `internal/cli/version_sync_list_test.go`, run by the existing `go test ./...` in CI.
 
 The registry check added by card t392 sweeps every tracked file for the authoritative version token and excludes six groups, each for its own reason. The counts below are observations pinned to tree `051f209b0`, not constants — the check holds none of them. When a group's measured count stops matching its reason, re-derive the enumeration and rewrite this table; the clause to watch is the changelog-pages one, which hides nothing today.

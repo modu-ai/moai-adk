@@ -22,7 +22,7 @@ directory is for.
 | `backlog.db-shm` | SQLite's shared-memory index for the WAL. Rebuilt automatically. | Only when nothing is using the queue. |
 | `backlog.lock` | The advisory lock every writer takes. Lets several sessions share one queue without losing updates. | Yes when nothing is running; it is recreated on demand. |
 | `backlog.json` | With a `backlog.db` beside it: a **ghost** — a leftover of the storage swaps, NOT the queue (see the ghost table below). Without one: the queue has not been moved onto the database yet, and this file is still that project's live store. | **Not automatically.** A ghost json is a rollback snapshot whose contents can be arbitrarily stale; no command deletes or rewrites it — disposal is an operator decision after checking the home database is healthy. |
-| legacy project-local queue | The former `.moai/state/todo/` or `.moai/state/kanban/` source. It remains untouched after a verified import. | **No** until the home database has been backed up and verified in normal use. |
+| legacy project-local queue | The former project-local `.moai/state/todo/` source, or the older chain-session state directory under `.moai/state/`. It remains untouched after a verified import. | **No** until the home database has been backed up and verified in normal use. |
 
 ## Ghost artifacts
 
@@ -35,7 +35,7 @@ these is the queue — every read is answered by `backlog.db`.
 
 | Ghost | Where it appears | What it is |
 |---|---|---|
-| `backlog.json` | The home queue directory (when `backlog.db` sits beside it), and project-local `.moai/state/todo/` or `.moai/state/kanban/` | A pre-SQLite queue document, or an `export-json` copy. Its contents can be arbitrarily stale; a reader that cats it gets a confident wrong answer. |
+| `backlog.json` | The home queue directory (when `backlog.db` sits beside it), and the project-local `.moai/state/todo/` or the older chain-session state directory under `.moai/state/` | A pre-SQLite queue document, or an `export-json` copy. Its contents can be arbitrarily stale; a reader that cats it gets a confident wrong answer. |
 | `backlog.json.migrated` | Anywhere a queue document was quarantined during the JSON → SQLite move | The original JSON, renamed aside after a verified import. Pure history. |
 | `<session-uuid>.json` | A todo state directory | Session-registry entries from before the factory database. Old runs accumulate them; the current registries still share the directory, so only the doctor check's per-file inventory distinguishes them. |
 

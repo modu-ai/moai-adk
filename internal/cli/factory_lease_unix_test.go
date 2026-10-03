@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // flEventLog is one append-only event file shared by the creator wrapper (Go)
@@ -147,7 +147,7 @@ func TestFactoryEnsureCardWorktreeConcurrentRealMaterializer(t *testing.T) {
 
 	overlaps, failures, firstFailure := 0, 0, ""
 	for i := 0; i < iters; i++ {
-		root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 		nmSetText(t, store, "t1", "alpha rename probe")
 		nmSetText(t, store, "t2", "beta rename probe")
 		far := "2099-01-01T00:00:00Z"
@@ -270,7 +270,7 @@ func flSnapshotTree(t *testing.T, root string) map[string]flFileStat {
 func TestFactoryLeaseSectionAllowedSet(t *testing.T) {
 	for _, form := range []string{"nominated", "bare"} {
 		t.Run(form, func(t *testing.T) {
-			root, store := nmBase(t, kanban.BacklogStateQueued)
+			root, store := nmBase(t, factory.BacklogStateQueued)
 			nmLaneEnv(t, "lane-1", "")
 			dir := t.TempDir()
 			initGitRepo(t, dir)
@@ -440,7 +440,7 @@ func flUnreconciled(t *testing.T, root string) int {
 func TestFactoryLeaseDriftLogStallBounded(t *testing.T) {
 	for _, form := range []string{"nominated", "bare"} {
 		t.Run(form, func(t *testing.T) {
-			root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+			root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 			nmLaneEnv(t, "lane-1", "")
 			flSeedDriftEntry(t, root)
 			release := flHoldDriftLogLock(t, root)
@@ -504,7 +504,7 @@ func TestFactoryLeaseDriftLogStallBounded(t *testing.T) {
 func TestFactoryLeaseDriftLogVerbWorktreeWriteWaits(t *testing.T) {
 	for _, form := range []string{"nominated", "bare"} {
 		t.Run(form, func(t *testing.T) {
-			root, _ := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+			root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 			nmLaneEnv(t, "lane-1", "")
 			nmIsolatedWorktrees(t, "t1", "t2")
 			flSeedDriftEntry(t, root)

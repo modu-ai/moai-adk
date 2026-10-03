@@ -32,7 +32,7 @@ func TestDiscoverLeaderVerifiesLiveProcessWithPlatformReaders(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.run=TestHelperLeaderChild$", "-test.v=true", "helper", "--name", "leader")
 	cmd.Env = append(os.Environ(),
 		"T1330_HELPER_LEADER=1",
-		config.EnvMoaiKanbanID+"=runlive01",
+		config.EnvFactoryRunID+"=runlive01",
 	)
 	cmd.Dir = dir
 	if err := cmd.Start(); err != nil {

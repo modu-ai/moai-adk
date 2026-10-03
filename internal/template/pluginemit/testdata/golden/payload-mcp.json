@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "moai": {
+      "command": "moai",
+      "args": [
+        "mcp-server"
+      ]
+    }
+  }
+}

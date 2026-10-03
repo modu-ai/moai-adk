@@ -36,9 +36,9 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // runtimeSocketDir is the Claude Code runtime's per-pid socket directory. Its
@@ -164,7 +164,7 @@ func verifyCandidate(ctx context.Context, pid int, canonicalRoot, targetLabel st
 	if name != targetLabel {
 		return VerifiedLeader{}, false
 	}
-	if _, leaderShaped := kanban.SplitLeaderLabel(name); !leaderShaped {
+	if _, leaderShaped := factory.SplitLeaderLabel(name); !leaderShaped {
 		return VerifiedLeader{}, false
 	}
 
@@ -175,7 +175,7 @@ func verifyCandidate(ctx context.Context, pid int, canonicalRoot, targetLabel st
 	if !ok {
 		return VerifiedLeader{}, false
 	}
-	runID := strings.TrimSpace(env[config.EnvMoaiKanbanID])
+	runID := strings.TrimSpace(env[config.EnvFactoryRunID])
 	if runID == "" || !runIDPattern.MatchString(runID) {
 		return VerifiedLeader{}, false
 	}

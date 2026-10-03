@@ -25,7 +25,7 @@ func tg4ShellVM(area string) ShellVM {
 // exactly three nav rows (overview / todo / settings), and for each of those
 // areas exactly one row carries aria-current — zero means the reader loses
 // their place, two means a doubled marking. The read-only screen areas
-// (kanban / specs / monitor) own no rail row today, so the contract for them is
+// (factory / specs / monitor) own no rail row today, so the contract for them is
 // zero: if a row is ever added for one of those areas, this half of the pin is
 // the one to update, together with the row itself.
 func TestShellMarksExactlyOneActiveTab(t *testing.T) {
@@ -35,7 +35,7 @@ func TestShellMarksExactlyOneActiveTab(t *testing.T) {
 			t.Errorf("area %q: %d nav rows marked active, want exactly 1:\n%s", area, n, html)
 		}
 	}
-	for _, area := range []string{"kanban", "specs", "monitor"} {
+	for _, area := range []string{"factory", "specs", "monitor"} {
 		html := renderTempl(t, Shell(tg4ShellVM(area)))
 		if n := strings.Count(html, `aria-current="page"`); n != 0 {
 			t.Errorf("area %q: %d nav rows marked active, want 0 (no rail row owns this area):\n%s", area, n, html)
@@ -51,7 +51,7 @@ func TestNavRowCurrentAndEcho(t *testing.T) {
 	if !strings.Contains(active, `data-i18n="nav.todo"`) {
 		t.Errorf("the active row lost its i18n key:\n%s", active)
 	}
-	idle := renderTempl(t, navRow(tg4ShellVM("todo"), "kanban", "Kanban", "/kanban"))
+	idle := renderTempl(t, navRow(tg4ShellVM("todo"), "factory", "Factory", "/factory"))
 	if strings.Contains(idle, `aria-current="page"`) {
 		t.Errorf("an inactive row carried the current marker:\n%s", idle)
 	}
@@ -309,7 +309,7 @@ func TestBadgeKindsAndMissing(t *testing.T) {
 // hides whether the lane has no session or no attributable record.
 func TestLaneUnresolvedRendersReason(t *testing.T) {
 	html := renderTempl(t, laneUnresolved("no-session"))
-	for _, want := range []string{`data-lane-unresolved="no-session"`, `kanban.laneUnresolved.no-session`} {
+	for _, want := range []string{`data-lane-unresolved="no-session"`, `factory.laneUnresolved.no-session`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("unresolved lane missing %q:\n%s", want, html)
 		}

@@ -120,14 +120,14 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	for _, item := range env {
 		key, _, _ := strings.Cut(item, "=")
 		switch key {
-		case config.EnvMoaiKanbanID, config.EnvMoaiKanbanBackend, config.EnvMoaiFactoryWorker, config.EnvMoaiFactoryWorkers, config.EnvMoaiSessionPID, config.EnvClaudeProjectDir:
+		case config.EnvFactoryRunID, config.EnvFactoryBackend, config.EnvMoaiFactoryWorker, config.EnvMoaiFactoryWorkers, config.EnvMoaiSessionPID, config.EnvClaudeProjectDir:
 			continue
 		}
 		hookEnv = append(hookEnv, item)
 	}
 	hookEnv = append(hookEnv,
-		config.EnvMoaiKanbanID+"="+run,
-		config.EnvMoaiKanbanBackend+"=claude",
+		config.EnvFactoryRunID+"="+run,
+		config.EnvFactoryBackend+"=claude",
 		config.EnvMoaiFactoryWorker+"=",
 		config.EnvMoaiFactoryWorkers+"=1",
 		config.EnvMoaiSessionPID+"="+fmt.Sprint(os.Getpid()),

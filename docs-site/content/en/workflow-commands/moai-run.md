@@ -533,16 +533,19 @@ The quality issues are reported to the user, and you are asked whether to retry 
 
 `/moai run` performs **implementation only, based on an already-created SPEC**. `/moai` automatically runs the **entire workflow** from SPEC creation through implementation to documentation.
 
-## Kanban Mode — run a SPEC all the way through (v3.1)
+## Factory Mode — carry a card all the way through (v3.2)
 
-`/moai run` drives a single phase. The sync step after it requires the user to issue another command. **Kanban Mode** is the entry switch that automates this "chaining". Start the session launcher with `--kanban`, and the three phases — `plan → run → sync` — are chained automatically under the leader session's coordination.
+`/moai run` drives a single phase. In **Factory Mode**, a lane session carries a whole card through `plan → run → sync` inside its own session, so the round-trip between phases needs no further command from you. Open the leader with `moai cc -f`, join lanes with `moai cc -l`, and the leader hands the cards the operator picked to free lanes.
 
 ```bash
-# Enter one SPEC in Kanban Mode — all the way through to completion
-$ claude --kanban SPEC-AUTH-001
+# Leader: open the factory run
+$ moai cc -f
+
+# Lane, in its own terminal: join as the next free lane
+$ moai cc -l
 ```
 
-The four human gates (implementation kickoff approval, the verify CRITICAL/HIGH decision, and two sync gates) still fire as-is. Kanban Mode does not "skip human gates"; it automates the "round-trip between phases". It runs within a four-hour wall-clock ceiling. The detailed contract and the four-phase flow are covered in [Kanban Mode](/en/advanced/kanban-mode).
+The human gates (implementation kickoff approval, the verify CRITICAL/HIGH decision, and two sync gates) still fire as-is. Factory Mode does not "skip human gates"; it removes the "round-trip between phases". The detailed contract is covered in [Factory Mode](/en/advanced/factory-mode).
 
 ## Related Documents
 
@@ -551,4 +554,4 @@ The four human gates (implementation kickoff approval, the verify CRITICAL/HIGH 
 - [/moai plan](./moai-plan) - Previous step: SPEC document creation
 - [/moai sync](./moai-sync) - Next step: doc synchronization and PR
 - [/moai goal](./moai-goal) - the `ac_converge` goal for run-phase autonomy (v3.1)
-- [Kanban Mode](/en/advanced/kanban-mode) - the entry switch that chains run→verify→sync automatically (v3.1)
+- [Factory Mode](/en/advanced/factory-mode) - leader and lanes that carry a card through plan, run, and sync in one session (v3.2)

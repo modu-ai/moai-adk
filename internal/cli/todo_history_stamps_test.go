@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // historyFields splits one tab-separated history line.
@@ -22,7 +22,7 @@ func historyFields(line string) []string {
 
 // seedStampedArchive builds a queue with one archived card that carries the
 // full time axis (picked → done) and one archived with none (add → done).
-func seedStampedArchive(t *testing.T) (*kanban.BacklogStore, string) {
+func seedStampedArchive(t *testing.T) (*factory.BacklogStore, string) {
 	t.Helper()
 	_, store := todoFixture(t)
 	if _, _, err := runTodo(t, "add", "--pick", "stamped closed card"); err != nil {
@@ -154,7 +154,7 @@ func TestHistoryLiveRowExposesPickedAt(t *testing.T) {
 	if len(fields) < 6 {
 		t.Fatalf("live line carries %d fields, want the extended shape:\n%s", len(fields), out)
 	}
-	if fields[1] != "live" || fields[2] != string(kanban.BacklogStatePicked) {
+	if fields[1] != "live" || fields[2] != string(factory.BacklogStatePicked) {
 		t.Errorf("pre-existing live fields drifted: %v", fields[:3])
 	}
 	if fields[4] != stampOf(rec.Items[0].PickedAt) || fields[4] == "" {

@@ -5,7 +5,7 @@ package homestate
 // through the lease claim's opt-in (WithBoundedReconcile) and one through the
 // ordinary path — and fixture (e), the re-read under the lock. Plus the
 // layering guard of AC-FAL-011: internal/homestate's non-test files have no
-// dependency path to internal/kanban.
+// dependency path to internal/factory.
 
 import (
 	"context"
@@ -173,7 +173,7 @@ func TestRecordWriteReconcileBoundedRereadsUnderLock(t *testing.T) {
 // does not turn it red (ledger L16).
 func TestHomestateDoesNotImportKanban(t *testing.T) {
 	const pkg = "github.com/modu-ai/moai-adk/internal/homestate"
-	const kanbanPkg = "github.com/modu-ai/moai-adk/internal/kanban"
+	const kanbanPkg = "github.com/modu-ai/moai-adk/internal/factory"
 	goBin, err := exec.LookPath("go")
 	if err != nil {
 		t.Fatalf("the go tool is not on PATH: %v", err)
