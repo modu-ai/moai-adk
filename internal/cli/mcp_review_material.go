@@ -75,11 +75,11 @@ func collectReviewDiff(root, target string) (string, error) {
 func reviewDiffArgs(root, target string) ([]string, error) {
 	switch target {
 	case codexTargetBaseBranch:
-		base, err := resolveReviewMergeBase(root)
+		base, err := resolveReviewBase(root)
 		if err != nil {
 			return nil, err
 		}
-		return []string{"diff", base + "...HEAD"}, nil
+		return []string{"diff", base.MergeBase + "...HEAD"}, nil
 	case codexTargetUncommitted, "":
 		return []string{"diff", "HEAD"}, nil
 	default:
@@ -87,128 +87,103 @@ func reviewDiffArgs(root, target string) ([]string, error) {
 	}
 }
 
-// resolveReviewMergeBase finds the commit this branch diverged from.
-//
-// Step 0 is the configured integration base (git_strategy.worktree_base_branch,
-// card t1426): in a git-flow repository card branches are cut from `develop`
-// while the remote default head stays `main`, and measuring a card against
-// main reviews everything develop carries that main lacks. The configured base
-// is used only when it is set AND resolves as a ref in this tree; an unset or
-// unresolvable value falls through to the pre-existing chain, so a project that
-// never configured the key behaves exactly as before.
-//
-// The chain then tries the remote default branch (the tree a pull request would
-// be measured against) and falls back to the local one, because a worktree cut
-// for a card may have no remote-tracking ref for its base yet.
-func resolveReviewMergeBase(root string) (string, error) {
-	if _, ref := reviewConfiguredBase(root); ref != "" {
-		if out, err := runReviewGit(root, "merge-base", ref, "HEAD"); err == nil && strings.TrimSpace(out) != "" {
-			return strings.TrimSpace(out), nil
-		}
+// collectReviewDiffAt is collectReviewDiff for a baseBranch review whose base
+// the caller has ALREADY resolved: the diff is measured from exactly that merge
+// base, so the base a result reports and the material the backend saw cannot
+// drift apart (card t1426 — a base ref may move while the model is thinking).
+func collectReviewDiffAt(root string, base reviewBase) (string, error) {
+	if strings.TrimSpace(root) == "" {
+		return "", fmt.Errorf("no project root to read the change from")
 	}
-	var lastErr error
-	for _, ref := range []string{"origin/HEAD", "origin/main", "main"} {
-		out, err := runReviewGit(root, "merge-base", ref, "HEAD")
-		if err == nil && strings.TrimSpace(out) != "" {
-			return strings.TrimSpace(out), nil
-		}
-		lastErr = err
+	out, err := runReviewGit(root, "diff", base.MergeBase+"...HEAD")
+	if err != nil {
+		return "", fmt.Errorf("cannot read the change from %s: %w", root, err)
 	}
-	return "", fmt.Errorf("cannot resolve the base commit in %s: %w", root, lastErr)
+	return truncateDiff(out), nil
 }
 
-// resolveReviewBaseBranchName returns the base branch NAME for the tree at root.
+// reviewBase is ONE resolution of the base a baseBranch review is measured
+// against: the branch NAME codex is sent and the merge-base COMMIT the GLM diff
+// is measured from. They are resolved together so the two backends can never
+// land on different steps of the chain (card t1426 review finding 1).
+type reviewBase struct {
+	Name      string
+	MergeBase string
+}
+
+// String renders the base for a result's review_base field.
+func (b reviewBase) String() string {
+	return b.Name + " (merge base " + b.MergeBase + ")"
+}
+
+// resolveReviewBase walks the base chain once and returns the first step whose
+// branch resolves as a ref in this tree AND shares a merge base with HEAD. A
+// step that names an existing branch with no common history falls through —
+// for both backends at once, because both read this one result.
 //
-// It is the name-layer sibling of resolveReviewMergeBase, and reads the SAME
-// fallback chain in the same order (SPEC-CODEX-REVIEW-TARGET-001 §A.7): the
-// remote default head first, then `main`. The two functions exist separately
-// because they answer different questions — a merge base is a commit, and
-// codex's baseBranch review target is a branch name — not because the backends
-// disagree about which base to use. They must not diverge: a codex review and a
-// GLM review asked for the same target have to be looking at the same change,
-// and the asymmetry that produced this SPEC is exactly what a second chain
-// would recreate in the opposite direction.
+//  0. git_strategy.worktree_base_branch (card t1426), when set: in a git-flow
+//     repository card branches are cut from `develop` while the remote default
+//     head stays `main`, and measuring a card against main reviews everything
+//     develop carries that main lacks. Local branch first, then origin's.
+//  1. the remote default head (the tree a pull request would be measured
+//     against), named by stripping `origin/` off refs/remotes/origin/HEAD.
+//  2. main — origin's remote-tracking ref first, then the local branch, because
+//     a worktree cut for a card may have no remote-tracking ref for its base yet.
 //
-// git_strategy.worktree_base_branch is step 0 of BOTH chains (card t1426), so
-// the codex and GLM backends still measure the same change: when the key is set
-// and resolves in this tree it is the base; otherwise the chain below applies
-// unchanged.
-//
-// resolveReviewMergeBase's chain lists origin/main and main as separate steps
-// because each names a different ref to compute a merge base FROM. At the name
-// layer both produce the same string, and two steps that no observation can tell
-// apart are one step, so they are merged here.
+// A project that never configured step 0 resolves as before.
 //
 // [HARD] A name is returned only after it is confirmed to resolve as a ref in
-// this tree. Stripping the `origin/` prefix off a symbolic-ref yields a string,
-// not a guarantee: the remote-tracking ref can exist while nothing by that name
-// does. Returning an unconfirmed name would send codex to review against a
-// branch it cannot find, and that failure reappears as an `inconclusive` in the
-// very place this SPEC closed one.
-func resolveReviewBaseBranchName(root string) (string, error) {
-	// 0. the configured integration base, when set and resolvable
-	if name, ref := reviewConfiguredBase(root); ref != "" {
-		return name, nil
+// this tree (SPEC-CODEX-REVIEW-TARGET-001). Stripping the `origin/` prefix off a
+// symbolic-ref yields a string, not a guarantee: the remote-tracking ref can
+// exist while nothing by that name does, and codex sent a name it cannot find
+// reports `inconclusive`.
+func resolveReviewBase(root string) (reviewBase, error) {
+	type step struct {
+		name string
+		refs []string
 	}
-	// 1. the remote default head
+	var steps []step
+	if name := config.LoadWorktreeBaseBranch(root); name != "" {
+		steps = append(steps, step{name, []string{"refs/heads/" + name, "refs/remotes/origin/" + name}})
+	}
 	if out, err := runReviewGit(root, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"); err == nil {
-		name := strings.TrimPrefix(strings.TrimSpace(out), "origin/")
-		if name != "" && reviewRefResolves(root, name) {
-			return name, nil
+		if name := strings.TrimPrefix(strings.TrimSpace(out), "origin/"); name != "" {
+			steps = append(steps, step{name, []string{"refs/remotes/origin/" + name, "refs/heads/" + name}})
 		}
 	}
-	// 2. main — as a remote-tracking ref or as a local branch
-	if reviewRefResolves(root, "main") {
-		return "main", nil
-	}
-	return "", fmt.Errorf("cannot resolve a base branch in %s", root)
-}
+	steps = append(steps, step{"main", []string{"refs/remotes/origin/main", "refs/heads/main"}})
 
-// reviewConfiguredBase returns the configured integration base
-// (git_strategy.worktree_base_branch) of the tree at root and the full ref it
-// resolves to — the local branch first, then origin's remote-tracking ref. ref
-// is empty when the key is unset or names nothing in this tree, which callers
-// read as "no step 0".
-func reviewConfiguredBase(root string) (name, ref string) {
-	name = config.LoadWorktreeBaseBranch(root)
-	if name == "" {
-		return "", ""
-	}
-	for _, candidate := range []string{"refs/heads/" + name, "refs/remotes/origin/" + name} {
-		if _, err := runReviewGit(root, "rev-parse", "--verify", "--quiet", candidate); err == nil {
-			return name, candidate
+	var lastErr error
+	for _, s := range steps {
+		for _, ref := range s.refs {
+			if _, err := runReviewGit(root, "rev-parse", "--verify", "--quiet", ref); err != nil {
+				continue // the name does not resolve through this ref
+			}
+			out, err := runReviewGit(root, "merge-base", ref, "HEAD")
+			if err == nil && strings.TrimSpace(out) != "" {
+				return reviewBase{Name: s.name, MergeBase: strings.TrimSpace(out)}, nil
+			}
+			lastErr = err
 		}
 	}
-	return name, ""
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no base branch resolves")
+	}
+	return reviewBase{}, fmt.Errorf("cannot resolve the base commit in %s: %w", root, lastErr)
 }
 
-// describeReviewBase names the base a baseBranch review of the tree at root is
-// measured against — branch name plus merge base — so an audit result says
-// which base it used. Empty when no base resolves (the review itself then fails
-// open on the same cause).
-func describeReviewBase(root string) string {
-	name, err := resolveReviewBaseBranchName(root)
-	if err != nil {
-		return ""
-	}
-	sha, err := resolveReviewMergeBase(root)
-	if err != nil {
-		return name
-	}
-	return name + " (merge base " + sha + ")"
+// resolveReviewMergeBase is the commit half of resolveReviewBase.
+func resolveReviewMergeBase(root string) (string, error) {
+	b, err := resolveReviewBase(root)
+	return b.MergeBase, err
 }
 
-// reviewRefResolves reports whether name resolves as a branch in the tree,
-// looking at local heads and origin's remote-tracking refs. The refs are named
-// in full rather than handed to git as a bare revision so a file or directory
-// sharing the name cannot be mistaken for a branch.
-func reviewRefResolves(root, name string) bool {
-	for _, ref := range []string{"refs/heads/" + name, "refs/remotes/origin/" + name} {
-		if _, err := runReviewGit(root, "rev-parse", "--verify", "--quiet", ref); err == nil {
-			return true
-		}
-	}
-	return false
+// resolveReviewBaseBranchName is the name half of resolveReviewBase. It exists
+// because codex's baseBranch review target is a branch name; it reads the SAME
+// single resolution as the merge base, so the backends cannot diverge.
+func resolveReviewBaseBranchName(root string) (string, error) {
+	b, err := resolveReviewBase(root)
+	return b.Name, err
 }
 
 // runReviewGit runs one git command in the named tree and returns its stdout. It

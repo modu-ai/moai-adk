@@ -1951,6 +1951,18 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		"model":  model,
 		"cwd":    root,
 	}
+	// A baseBranch review resolves its base ONCE, before the call: the branch
+	// codex is sent and the base review_base reports are the same resolution,
+	// so a base ref moving while codex works cannot make them disagree (t1426).
+	// An unresolvable base leaves the bare target in place; coercion then
+	// fails the request open exactly as before.
+	var base *reviewBase
+	if target == codexTargetBaseBranch {
+		if b, err := resolveReviewBase(root); err == nil {
+			base = &b
+			params["target"] = map[string]any{"type": codexTargetBaseBranch, "branch": b.Name}
+		}
+	}
 	if mode == codexModeAdversarial {
 		method = codexMethodTurnStart
 		params["prompt"] = codexAdversarialReviewPrompt(focus)
@@ -1961,8 +1973,8 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
-	if target == codexTargetBaseBranch {
-		out.ReviewBase = describeReviewBase(root)
+	if base != nil {
+		out.ReviewBase = base.String()
 	}
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
