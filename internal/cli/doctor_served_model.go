@@ -174,6 +174,10 @@ func runServedModelScan(in servedScanInputs, verbose bool) DiagnosticCheck {
 		searchedLine = fmt.Sprintf("bases searched: %s; slugs looked for: %s, %s%s*, and %d listed worktree slug(s) — none present",
 			strings.Join(bases, ", "), primarySlug, primarySlug, worktreeSlugInfix, len(listed))
 	}
+	// Contract-state line (v0.3.0 M9, REQ-AFR-019): every path of the check
+	// names the llm.agent_overrides_consume switch, so a stored override is
+	// never silently readable as a live pin from the doctor output.
+	searchedLine += "\n  " + consumeStateLine(in.cfg)
 
 	if swept == 0 {
 		check.Status = uikit.CheckInfo
@@ -198,6 +202,16 @@ func runServedModelScan(in servedScanInputs, verbose bool) DiagnosticCheck {
 		check.Status = uikit.CheckWarn
 	}
 	return check
+}
+
+// consumeStateLine renders the llm.agent_overrides_consume switch state by
+// name (REQ-AFR-019). A nil or unreadable config reads as the closed gate —
+// the read path fails open to storage-only, exactly like the lenient loader.
+func consumeStateLine(cfg *config.Config) string {
+	if cfg != nil && cfg.LLM.AgentOverridesConsume {
+		return "agent_overrides_consume: on (spawn consumption active)"
+	}
+	return "agent_overrides_consume: off (overrides stay console-stored only)"
 }
 
 // servedSweepWorkers bounds the concurrent transcript reads of one sweep.

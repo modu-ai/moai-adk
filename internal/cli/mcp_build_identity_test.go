@@ -668,7 +668,10 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// coordinates moved.
 		"home_state_coverage.go:264": true,
 		"home_state_coverage.go:272": true,
-		"mcp_review_material.go:95":  true,
+		// Re-measured at card t1468: card t1426 added the base-selection
+		// ladder above this comparison, moving it from :95. Same single
+		// review-diff base measurement, same count — only the coordinate moved.
+		"mcp_review_material.go:175": true,
 		"todo_landed.go:231":         true,
 		"todo_autodone.go:349":       true,
 		// SPEC-CODEX-GATE-SCOPE-001 (card t1383): the card-diff BASE
