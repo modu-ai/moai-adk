@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "Factory 관리 세션 소유자 강건화 — 서버 요청 응답과 턴 단위 실패 격리 (F3·F4, SPEC-FACTORY-MANAGED-SESSION-001 후속)"
 version: "0.5.1"
-status: in-progress
+status: completed
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)

@@ -369,4 +369,65 @@ next: sync 단계(manager-docs)에서 AC-MH-010 문서·CHANGELOG 와 sync 감�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-10-03
+sync_commit_sha: pending-backfill
+tree: .moai/worktrees/t1409
+branch: WT-managed-session-hardening
+head_at_signal: 3ff4392d4 (측정한 트리; 이 신호를 담는 sync 커밋은 자기 SHA 를 적을 수 없으므로 `sync_commit_sha` 는 정규 플레이스홀더 `pending-backfill` 이고 실제 SHA 는 뒤따르는 커밋에서 backfill 한다. 비워 두지 않았다)
+owner: manager-docs (sync-phase)
+ac_source: .moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/acceptance.md (tier M, 결과 `resolved`, 비어 있지 않음)
+docs_changed: `.moai/docs/factory-managed-session.md` · `CHANGELOG.md` · `.moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/spec.md`(frontmatter `status:` 한 줄뿐) · 이 파일의 §E.4
+docs_not_changed: 템플릿 미러 없음(`internal/template/templates/.moai/docs/factory-managed-session.md` 부재 확인), plan.md · acceptance.md · design.md · red-baseline.md · 부모 SPEC 디렉터리 · `.go` 파일 전부
+changelog_entry_position: `[Unreleased]` → `### Added` 의 첫 항목 하나(SPEC-AUDIT-MODEL-CONVERGE-001 엔트리 바로 위). 부모 SPEC-FACTORY-MANAGED-SESSION-001 엔트리의 "위 (3)의 세 항목은 …" 문장 하나를 정정(전체 SPEC id 를 쓰지 않고 `FACTORY-MANAGED-HARDEN-001` 로 가리켜 이 SPEC id 의 줄 수를 1 로 유지)
+frontmatter_status_transitions: spec.md `in-progress → implemented → completed` 를 이 단일 sync 커밋에 병합(frontmatter 에는 `status: completed` 로 기록), `updated: 2026-10-03` 은 이미 같은 날짜라 값 변경 없음. 스키마(§Artifact Statelessness)상 plan.md · acceptance.md · design.md · progress.md 는 `status:` 필드를 갖지 않으므로 바꿀 것이 없다(측정: acceptance.md frontmatter 에 `status:` 없음, progress.md 는 frontmatter 없음)
+b12_self_test_a: 사전 `grep -c 'SPEC-FACTORY-MANAGED-HARDEN-001' CHANGELOG.md` → `0`(기준 트리 `git grep -c … fe79bfa0e` 도 출력 없음·exit 1); 사후 → `1`
+b12_self_test_b: B12 카운터(acceptance.md, tier M) → stdout `13`, stderr `live=13 excluded=0 ambiguous=0`, exit 0; REQ `grep -oE '^- \*\*REQ-MH-[0-9]{3}\*\*' spec.md` 고유 12개(001..012); CHANGELOG 엔트리는 12 / 13 으로 적었다
+b12_self_test_c: CHANGELOG 가 인용한 경로 전부 `ls` 로 존재 확인(`internal/cli/managed_codex_factory.go`, `managed_factory_session.go`, `managed_hardening_test.go`, `managed_codex_factory_test.go`, `internal/config/defaults.go`, `.moai/docs/factory-managed-session.md`, `progress.md`, `red-baseline.md`; 템플릿 미러만 `No such file or directory` — 기대대로)
+canary_compliance_check: 해당 없음 — 이 SPEC 은 자기 sync 가 시험해야 하는 전방 정책을 정의하지 않는다
+
+귀속은 모두 `(this run, this tree, HEAD 3ff4392d4 위의 sync 작업 트리, 커밋 전)` 이다. 이 sync 는 프로덕션·시험 코드를 바꾸지 않았고 `go test` 는 선택 수 확인(`-list`) 한 번만 돌렸다. 스크래치 파일은 인용 대상이 아니며 필요한 줄만 아래에 옮겼다.
+
+### 증거
+
+| 항목 | 명령 | 관측 | exit |
+|---|---|---|---|
+| 사전 상태 | `git rev-parse --show-toplevel` / `git branch --show-current` / `git rev-parse --short HEAD` / `git status --short` | `…/.moai/worktrees/t1409` / `WT-managed-session-hardening` / `3ff4392d4` / 출력 없음 | 0 |
+| 선택 수 | `unset MOAI_KANBAN … MOAI_KANBAN_BACKEND && go test ./internal/cli -list '^.*(Managed\|managed).*$'` 를 파일로 돌려 `grep -c '^Test'` (원문 명령은 acceptance.md §1.1 AC-MH-013 블록; 표 안의 `\|` 는 원문의 `|` 이다) | `78`, 끝 줄 `ok  github.com/modu-ai/moai-adk/internal/cli  1.412s`, `no tests to run` 0건 | 0 |
+| 커밋 전 변경 목록 | `git status --short` | ` M .moai/docs/factory-managed-session.md` · ` M .moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/spec.md` · ` M CHANGELOG.md` (§E.4 편집 뒤 `progress.md` 가 더해져 네 경로) | 0 |
+| AC-MH-010 문서 앵커(부재) | `grep -c "턴 하나가 실패하면 세션 전체가 끝난다"` / `"서버가 먼저 보내는 승인·질문 요청에는 답하지 않는다"` / `"후속 카드 t1409 대상"` 를 `.moai/docs/factory-managed-session.md` 에 | `0` / `0` / `0`, 세 개 모두 exit 1 | 1 |
+| 부재 앵커의 양성 대조 | `git grep -c <같은 세 문구> fe79bfa0e -- .moai/docs/factory-managed-session.md` | 각 `fe79bfa0e:.moai/docs/factory-managed-session.md:1` (기준 트리에서 세 문구가 실제로 줄을 냈다) | 0 |
+| AC-MH-010 문서 앵커(존재) | 같은 파일에 `grep -c` | `런처는 시그널을 처리하지 않는다` 1 · `t1459` 1 · ``관리 계층은 .syscall. 을 쓰지 않는다`` 1 · `TTL까지 재배달` 1 · `턴 타임아웃은 세션을 끝낸다` 1 · `거부된 elicitation` 1 · `쓰기 데드라인` 1 · `실제 codex 세션에서는 관측하지 않았다` 1 | 0 |
+| AC-MH-010 CHANGELOG | `grep -c` 를 `CHANGELOG.md` 에 | `SPEC-FACTORY-MANAGED-HARDEN-001` → `1` · `t1459` → `2`(새 엔트리와 부모 정정 문장, 줄 수) · `후속 카드 t1409 대상` → `0`(exit 1) | 0 / 0 / 1 |
+| CHANGELOG 부재의 양성 대조 | `git grep -c "후속 카드 t1409 대상" fe79bfa0e -- .moai/docs/factory-managed-session.md CHANGELOG.md` / `git grep -c "SPEC-FACTORY-MANAGED-HARDEN-001" fe79bfa0e -- CHANGELOG.md` | `fe79bfa0e:.moai/docs/factory-managed-session.md:1` · `fe79bfa0e:CHANGELOG.md:1` / 출력 없음(0) | 0 / 1 |
+| 부모·브로커·`internal` 불변 | `git diff --stat fe79bfa0e -- internal/factorymsg .moai/specs/SPEC-FACTORY-MANAGED-SESSION-001` / `git diff --stat 3ff4392d4 -- internal` | 출력 없음 / 출력 없음 | 0 / 0 |
+| 설치된 `moai` 의 지연 | `moai version` / `git merge-base --is-ancestor 45600e4ee 3ff4392d4` | `v3.2.0-rc.26   archive/t1401-293-g45600e4ee   built 2026-10-02T14:42:32Z` / 출력 없음 | 0 / 0 |
+| `moai spec lint SPEC-FACTORY-MANAGED-HARDEN-001` | (위 지연 빌드로 실행) | `✓ No findings — all SPEC documents are valid` | 0 |
+
+`moai spec lint` 의 통과는 **지연 빌드의 증거**일 뿐이다: 설치된 빌드의 커밋 `45600e4ee` 가 이 트리 HEAD 의 엄격한 조상이라(`is-ancestor` exit 0) 이 트리가 담은 점검을 다 갖췄다고 할 수 없다. 이 트리 빌드의 판정이 아니다.
+
+### MX 태그 검증 (sync 하위 단계; sync 에서는 `.go` 를 고칠 수 없어 태그를 더하거나 바꾸지 않고 소견만 적는다)
+
+`.moai/config/sections/mx.yaml` 의 `fan_in_anchor` 는 3, `anchor_per_file` 3, `warn_per_file` 5, `note_per_file` 10 이다. 대상은 `internal/cli/managed_codex_factory.go` 와 `internal/cli/managed_factory_session.go` 이다.
+
+| 파일 | 현재 태그(읽기 확인) | 소견 |
+|---|---|---|
+| `managed_codex_factory.go` | `@MX:NOTE`(응답 정책표, 이 카드가 더함) · `@MX:WARN`+`@MX:REASON`(`read()`, 기존) | **`managedCodexAppClient.write` 는 `@MX:ANCHOR` 후보다.** 비테스트 호출 지점이 3곳이라 fan_in 3 에 닿는다(`answerServerRequest` 의 `c.write`, `call` 의 `c.write`, `Start` 의 `s.client.write`; grep 확인). 모든 연결 쓰기가 이 한 길을 지난다는 것(gorilla/websocket 은 동시 쓰기를 허용하지 않고 읽기 고루틴과 호출 루프가 둘이라는 점)이 계약이다. 태그 없음. 태그를 달면 파일당 ANCHOR 한도 3 안이다 |
+| `managed_codex_factory.go` | — | `answerServerRequest`(호출 1곳), `armTurn`(1곳), `noteTurnStarted`·`noteTurnCompleted`·`noteElicitation`(각 1곳)은 fan_in 1 이라 ANCHOR 대상이 아니다. `noteElicitation` 의 귀속 규칙(직전 턴 id 와 불일치 id 는 세지 않음)은 시험으로만 고정된 비자명한 규칙이라 `@MX:NOTE` 후보다(선택). 새 `go` 문(고루틴)은 이 카드가 더하지 않았다 — `go s.client.read()`(기존)는 이미 `@MX:WARN` 아래에 있다 |
+| `managed_factory_session.go` | `@MX:NOTE`·`@MX:SPEC`(기존, 이 카드와 무관) | **`errManagedTurnFailed` 는 `@MX:NOTE` 후보다** — 이 오류를 세 곳에서만 감싸고 드라이버는 `errors.Is` 로만 격리한다는 계약이 변수 주석에 있으나 태그가 없다. 호출이 아니라 변수라 fan_in 규칙의 대상은 아니다(참조 4곳). `managedLogf`(비테스트 호출 2곳)는 fan_in 3 미만 |
+
+판정: 새 코드에서 **ANCHOR 한 건(`write`)** 과 NOTE 두세 건이 프로토콜에 비추어 권고된다. 이 sync 는 `.go` 편집이 금지돼 있어 적용하지 않았고, 리더가 후속 커밋이나 `/moai mx` 에서 결정한다. 이 소견은 `grep` 으로 센 호출 지점 수와 `mx.yaml` 임계값을 읽은 것이며 `moai mx` 스캐너를 돌려 얻은 것이 아니다.
+
+### SPEC 과 코드의 불일치(보고만 하고 고치지 않음)
+
+1. **응답 정책표의 종류 수.** 지시문은 "정책표에 11종"이라 했으나 코드의 `managedServerRequestPolicies` 맵은 이름 붙은 **10종**이고 표에 없는 method 를 `managedUnknownRequestPolicy`(`-32601`)가 따로 받는다. 시험 하위 케이스가 11개인 것은 10종 + 미지 method 1종이다(acceptance.md AC-MH-001 도 "10종 + 미지 method 하나"). 문서와 CHANGELOG 는 코드대로 적었다.
+2. **#8 마감 시간.** design.md 는 50ms 마감 컨텍스트라 했으나 구현 시험은 150ms 를 썼다(§E.2 M3 발견 4 에 이미 기록).
+3. **상태 전이 대상 산출물 수.** 에이전트 본문은 `spec.md`·`plan.md`·`acceptance.md`·`progress.md` 네 곳에 상태를 적는다고 하나, `spec-frontmatter-schema.md` § Artifact Statelessness 는 `plan.md`·`acceptance.md`·`design.md`·`research.md` 에 `status:` 를 두지 말라고 한다. 이 SPEC 에서는 `status:` 를 가진 산출물이 `spec.md` 하나뿐이라 그것만 바꿨다.
+
+### Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim**: AC-MH-010(운영 문서와 CHANGELOG)이 충족되고, F3·F4 는 해결로, 시그널 처리 공백(F5)은 카드 t1459 를 가리키는 미해결 한계로 적혔으며, 남은 한계가 고정 앵커 문자열과 함께 문서에 있다. REQ 12·AC 13 의 개수가 CHANGELOG 와 일치한다. **Evidence**: 위 표의 명령·관측·exit. **Baseline-attribution**: `(this run, this tree, HEAD 3ff4392d4 위의 sync 작업 트리, 커밋 전)`. 커밋 뒤 점검(`git diff --stat 3ff4392d4 HEAD`, spec.md 의 diff, 부모 SPEC 불변, 커밋 본문 트레일러)은 이 신호를 담은 커밋 자신에 대한 것이라 커밋 전에는 얻을 수 없으며 sync 보고서에 따로 적는다.
+
+**Gaps**: ① 라이브 Codex 미관측 — 거부 응답 뒤 모델 행동, elicitation 요청의 `serverName` 값, 그리고 문서·CHANGELOG 가 한계로 적은 "거부된 elicitation 이 영수증을 막는" 시나리오가 실제로 일어나는지 ② `X == prevTurnID` 중복 완료 프레임 방어(G5)는 시험 행이 없음 ③ 막힌 쓰기 상한과 `id: null` 프레임은 공시한 한계로 남음(소스 판독) ④ 로그가 운영자 stdout 에 쓰이지 않는다는 문장은 단언 시험이 없음(§E.2 M3 Gaps ①) ⑤ 이 sync 는 `go test` 를 선택 수 확인 외에 돌리지 않았다 — 75 PASS·3 SKIP·0 FAIL 은 §E.2 M4 항목 2 의 manager-develop 기록을 인용한 것이지 이 sync 의 재측정이 아니다 ⑥ `moai spec lint` 는 지연 빌드라 이 트리의 판정이 아니다 ⑦ MX 소견은 스캐너 실행이 아니라 호출 지점 grep 과 임계값 판독이다 ⑧ 커밋 뒤 점검 결과는 이 파일에 담기지 않는다(위 귀속 문단) ⑨ 문서의 서술(예: "연속 N번 실패하면 마지막 오류를 반환해 세션을 끝낸다", 한계 문장들)은 `internal/cli/managed_codex_factory.go`·`managed_factory_session.go`·`defaults.go` 를 이 sync 가 읽은 것에 근거하고 라이브 세션으로 확인한 것이 아니다.
+
+**Residual-risk**: ① 계획 감사 부채 N3–N12 는 optional 로 열린 채 닫히지 않았다(plan-audit-iter6.md: PASS-WITH-DEBT 0.81, Tier M 기준 0.80) ② `internal/guardstate` 의 사전 적색 `TestCensus_SetDifferenceEmptyBothDirections`(`declared 19 entries against 20 workflow files`)는 기준 트리 `fe79bfa0e` 에서 이미 있었고 이 카드와 무관하지만 develop 쪽 수리 전에는 인접 패키지 전체 통과 주장을 막는다 ③ 연속 실패 상한 3 은 UNMEASURED 관례 값이다 ④ 실제 codex 관측이 없어 elicitation 귀속 규칙(`serverName` 이 `moai` 가 아니면 세지 않음)이 실제 값과 어긋나면 격리 판정이 의도와 달라질 수 있다 ⑤ 독 메시지와 거부된 elicitation 의 TTL 까지 재배달은 이 SPEC 이 닫지 않았다 ⑥ M3 커밋 `1963ec376` 본문의 두 구절은 `--amend` 금지로 그대로 남고 §E.2 M4 항목 6 이 정정한다 ⑦ 스크래치 증거 파일은 추적되지 않아 이 신호의 인용 줄만 남는다 ⑧ t1408(TUI 부착)·t1410(F8·F9·F13)·t1459(F5)는 후속 카드로 남아 있다.
