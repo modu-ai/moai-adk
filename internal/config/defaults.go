@@ -128,6 +128,18 @@ const (
 	// same spirit as the DefaultQuotaGate* defaults. Correct it here when
 	// evidence says otherwise.
 	DefaultManagedSessionMaxConsecutiveTurnFailures = 3
+	// DefaultManagedCodexProbeTimeout bounds the `codex resume --help` capability
+	// probe that decides whether the operator TUI can attach
+	// (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-003). UNMEASURED: one run of the probe
+	// took 0.040 s on codex-cli 0.160.0; the bound is set orders of magnitude
+	// above that and is not derived from a latency distribution.
+	DefaultManagedCodexProbeTimeout = 5 * time.Second
+	// DefaultManagedCodexTUIStopGrace is how long the owner waits for an
+	// interrupted operator TUI to exit before it kills the child
+	// (SPEC-FACTORY-MANAGED-TUI-001 REQ-MT-011). UNMEASURED: no TUI shutdown
+	// timing was observed; the value only has to be long enough for a TUI that
+	// handles the interrupt to restore the terminal.
+	DefaultManagedCodexTUIStopGrace = 5 * time.Second
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
