@@ -4,7 +4,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: revised-after-reduced-scope-audit-iter1 (0.5.0, 재감사 대기 — Tier M 상한 2회 중 마지막 개정, 추가 개정은 허용되지 않는다)
+plan_status: revised-after-reduced-scope-audit-iter2 (0.5.1, 재감사 대기 — 운영자가 한 번 더 연 상한 안의 개정, 범위 N1·N2 한정)
 plan_complete_at: 2026-10-03
 artifacts: spec.md (REQ 12) · plan.md · acceptance.md (AC 13) · design.md (D-1, D-2) · progress.md
 tier: M (축소 범위 재평가 결과 유지; 방법은 plan.md §A — 측정 `wc -l` + 가정 기반 줄 수 추정)
@@ -81,7 +81,7 @@ REQ 16→12, AC 16→13, 번호는 연속(MP-1).
 |---|---|---|---|---|
 | 축소 1 | FAIL | 0.75 | `bca1e0629` | 차단 D1–D7(전부 검증층: 채택 경로, 변이 지목, 오라클 순서, 시간 상한, 로그 sink 경합), 선택 D8–D13. 개정 0.5.0(이 커밋) |
 
-판정서 로컬 사본: `.moai/reports/t1409/plan-audit-iter4.md`(gitignore 대상). 위 "3차 결함" 표의 m14·m17 문구는 분할 시점의 기록이며 이 절 이후의 변이 번호(mu1–mu18)가 현행이다.
+판정서 로컬 사본: `.moai/reports/t1409/plan-audit-iter4.md`(gitignore 대상). 위 "3차 결함" 표의 m14·m17 문구는 분할 시점의 기록이고 현행 변이 범위는 mu1–mu20 이다(아래 "축소 범위 감사 2차" 절).
 
 ### 이 개정(0.5.0)이 한 일 — 축소 범위 1차 결함 D1–D13 처분
 
@@ -103,9 +103,33 @@ REQ 16→12, AC 16→13, 번호는 연속(MP-1).
 | D12 템플릿 스위트 임대 | **fixed** | 템플릿 스위트를 AC 근거에서 빼고 plan M4 의 슬롯 임대(`moai slot acquire --resource internal-template-suite --max-duration 15m`) 안 스모크로만 둠. 영향 범위 근거 유지 |
 | D13 사소한 문면 | **fixed** | (a) AC-MH-001 Then 에 `item/tool/call` 의 `success:false` 응답 형태, (b) 로그·오류의 method 를 `%q` 인용, (c) `id: null` 은 분류되지 않고 버려진다고 한 줄 |
 
-**최종 변이 표:** mu1–mu18(acceptance §2.4). **불변 가드 G1–G8:** acceptance §2.5. 변이가 아닌 점검 둘: C1(RED·수리 커밋 분리, `merge-base --is-ancestor` 쌍)과 P1(상수를 일시적으로 2 로 바꿔도 AC-MH-007 시험 PASS). DoD 3 = mu1–mu18 전부와 P1·C1.
+**0.5.0 시점의 변이 표:** mu1–mu18(0.5.1 에서 mu19·mu20 이 더해져 현행은 mu1–mu20, acceptance §2.4). **불변 가드 G1–G8:** acceptance §2.5. 변이가 아닌 점검 둘: C1(RED·수리 커밋 분리, `merge-base --is-ancestor` 쌍)과 P1(상수를 일시적으로 2 로 바꿔도 AC-MH-007 시험 PASS). DoD 3 은 0.5.1 에서 mu1–mu20 전부와 P1·C1 로 갱신됐다.
 
 **개정 시점에 이 개정이 실제로 재측정한 것:** `go test ./internal/cli -list '^.*(Managed|managed).*$'` 선택 수 66, `TestDispatchResultExactlyOnce` 7개 PASS(`ok … 2.167s`), 기준 `CHANGELOG.md` 의 `후속 카드 t1409 대상` 1건, `mcp_server.go:57`·`managed_factory_session.go:300-304` 줄 확인.
+
+### 축소 범위 감사 2차와 상한 재개방
+
+| 회차 | 판정 | 점수 | audited_sha | 결과 |
+|---|---|---|---|---|
+| 축소 2 | FAIL | 0.78 | `d43a52dac` | 차단 N1(mu18 이 `below_ceiling_continues` 를 못 붉힘, 시나리오 부재)·N2(#11 미채택, 채택 회계 문장 모순), 선택 N3–N9(이 개정에서 건드리지 않음). MP-1..MP-9 전부 통과, D1–D13 해소. 개정 0.5.1(이 커밋) |
+
+- **상한 재개방**: Tier M 의 plan-auditor 상한(2회)에 닿았으나 운영자가 **정확히 한 번 더** 열었다. 출처: 리더 중계(2026-10-03). 범위는 N1·N2 로 한정, REQ·design·plan 구조는 건드리지 않는다. 판정서 로컬 사본: `.moai/reports/t1409/plan-audit-iter5.md`(gitignore 대상).
+- **현행 변이 범위는 mu1–mu20**(acceptance §2.4). 위 0.5.0 절의 "mu1–mu18" 서술은 그 시점의 기록이다.
+
+### 이 개정(0.5.1)이 한 일 — N1·N2 처분
+
+| 결함 | 처분 | 근거 |
+|---|---|---|
+| N1(a) mu18 지목 과장 | **fixed** | mu18 은 `at_ceiling_returns` 하나만 지목. 연속 실패 k 에서 `k >= N` 와 `k > N` 은 `k == N` 에서만 갈린다 |
+| N1(b) `below_ceiling_continues` 시나리오 부재 | **fixed** | AC-MH-007 Given-When-Then 에 세 하위 케이스를 모두 정의(N−1번 실패 뒤 반환하지 않고 다음 성공 턴 전달 후 `/exit` 로 nil; `success_resets` 순서: N−1 실패, 성공, 실패 1) |
+| N1(c) 붉히는 변이 지정 | **fixed(싼 길)** | mu13 의 붉어지는 목록에 `below_ceiling_continues` 추가. mu13 의 편집 결과가 기준 코드 `managed_factory_session.go:345-347` 의 첫 오류 반환과 같으므로 그 줄을 따라 걸었다: N−1번 표식 실패 시나리오의 첫 실패에서 `DeliverTurn` 오류가 그대로 반환돼 드라이버가 `/exit` 에 닿지 못한다 → 반환값이 nil 이 아니고 받은 턴이 모자라 붉다. `success_resets` 는 mu17(성공이 횟수를 되돌리지 않으면 N−1 뒤 성공 뒤 실패가 N 번째가 되어 반환)이 죽이고 mu18 은 죽이지 못함을 확인해 귀속 유지 |
+| N2(i) 면제 (2) 오기와 #11–#17 컴파일 | **fixed** | 면제 (2) 를 17행 전수 채택표로 재작성: 이 시험은 M3 에서 쓰며 새 심볼(`armTurn()`, 표식 오류, 로그 sink)을 불러 기준 트리에서 컴파일되지 않음. #17 은 mu12 소속(가드 아님), 가드는 #4(G2) 하나 |
+| N2(ii) #11 채택 | **fixed** | 새 변이 mu19(`turn/completed` 가 창을 닫지 않음: 후행 요청이 열린 창에서 규칙 (3)으로 T1 에 귀속돼 `turn=T1`, #11 의 `turn=none` 대기가 5초 상한에서 붉음; `waitTurn` nil 단언은 판정이 이미 완료 이벤트에 실려 초록). design D-1 결정 3 의 완료 처리와 귀속 규칙 (3)을 따라 걸어 한 줄 편집임을 확인 |
+| N2(iii) `broker_declined=0` 변이 | **fixed(변이 채택)** | #11 에 `broker_declined=0` 단언을 더하고, 그 값 단언만이 잡는 변이를 mu20(닫힌 창 분기도 거부 수를 올림, 줄은 `turn=none … broker_declined=1`)으로 채택. 단언만 두고 변이를 안 두면 그 단언의 붉음이 관측되지 않아 미채택이므로 가드로 두지 않고 변이로 올렸다 |
+| N2(iv) G7 전제 오류 | **fixed** | G7 은 소비자 쪽 계수기 설계 교체에만 남기고, #11 의 채택이 한 단계 변이 mu19·mu20 이 운반한다고 고침 |
+| N2(v) §2.5 머리말 | **fixed** | "이 목록 밖은 mu1–mu18 이 덮는다" 를 실제 채택 경로(M1 RED / §2.4 변이 / §2.2 구조 확인 / C1)별 서술로 바꿈. AC-MH-002·003 은 M1 RED 로만, AC-MH-010 은 grep 으로만 채택되므로 변이 문장은 거짓이었다 |
+
+DoD 3 = mu1–mu20 전부와 P1·C1. 가드 목록 G1–G8 은 항목 수 변화 없음(G7 문구만 정정). 변이 적용은 run 단계 몫이고 이 개정의 모든 "붉어진다" 지목은 기준 코드와 design.md 를 따라 걸은 문서 대조이며 실행이 아니다.
 
 ### t1410 의존 정리 (plan §B, spec §F 와 동일 내용)
 

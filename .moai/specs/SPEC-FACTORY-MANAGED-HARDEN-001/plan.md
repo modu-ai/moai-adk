@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "plan.md — 구현 계획 (F3·F4)"
-version: "0.5.0"
+version: "0.5.1"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -112,7 +112,7 @@ grep -rn 'syscall\.' internal/cli/managed_*.go
 - Windows: `GOOS=windows GOARCH=amd64 go build ./...`, `GOOS=windows GOARCH=amd64 go vet ./internal/cli/`
 - 정적: `gofmt -l internal/cli internal/config`, `go vet ./internal/cli ./internal/config`, `golangci-lint run ./internal/cli/... ./internal/config/...`
 - 경계 grep: acceptance.md §5.
-- 변이 확인(acceptance.md §2.4 의 mu1–mu18)과 섭동 확인 P1(acceptance.md §6 DoD 3·4): 변이를 **하나씩** 임시 적용해 지목한 케이스가 붉어지는지 보이고, 각각 되돌린 뒤 `git diff --stat` 빈 출력을 확인하고 원문을 progress.md §E.2 에 인용한다.
+- 변이 확인(acceptance.md §2.4 의 mu1–mu20)과 섭동 확인 P1(acceptance.md §6 DoD 3·4): 변이를 **하나씩** 임시 적용해 지목한 케이스가 붉어지는지 보이고, 각각 되돌린 뒤 `git diff --stat` 빈 출력을 확인하고 원문을 progress.md §E.2 에 인용한다.
 
 ## §F. Milestones (실행 순서)
 
@@ -133,12 +133,12 @@ grep -rn 'syscall\.' internal/cli/managed_*.go
 ### M3 — F4 턴 단위 실패 격리와 elicitation 판정 연결
 
 - 턴 단위 표식(`errors.Is` 판별)을 스트림 `result.is_error`, Codex `completed` 아닌 종료, 거부된 `moai` broker elicitation이 귀속된 턴(완료 이벤트가 실어 온 판정), 이 세 곳에서만 붙인다. 드라이버: 표식 있으면 로그+계속, 연속 횟수 상한, 성공 시 0으로, 우선 턴은 세지 않음. `defaults.go` 에 `DefaultManagedSessionMaxConsecutiveTurnFailures = 3`(`DefaultManagedCodexTurnTimeout` 뒤, UNMEASURED 표기, 근거 주석).
-- GREEN: AC-MH-005, 006(하위 17개 + 서버 이름 고정 시험), 007, 008. M1의 F4 재현 시험 둘(`TestManagedDriverIsolatesTurnFailure`, `TestManagedCodexNonCompletedTurnIsolated`)과 `TestManagedCodexDeclinedBrokerElicitationFailsTurn` 이 뒤집힌다. 변이 확인 mu6–mu18(acceptance.md §2.4).
+- GREEN: AC-MH-005, 006(하위 17개 + 서버 이름 고정 시험), 007, 008. M1의 F4 재현 시험 둘(`TestManagedDriverIsolatesTurnFailure`, `TestManagedCodexNonCompletedTurnIsolated`)과 `TestManagedCodexDeclinedBrokerElicitationFailsTurn` 이 뒤집힌다. 변이 확인 mu6–mu20(acceptance.md §2.4).
 - 커밋: `fix(SPEC-FACTORY-MANAGED-HARDEN-001): M3 isolate turn failures with a ceiling (card t1409)`.
 
 ### M4 — 게이트와 증거 (기계적)
 
-- §E 의 정적·스코프·Windows·인접 패키지 명령을 돌리고 progress.md §E.2/§E.3 에 인용. 변이 확인 전부(mu1–mu18)와 섭동 확인 P1, 커밋 구성 점검 C1. 경계 grep. `./internal/template` 스위트는 슬롯 임대(`moai slot acquire --resource internal-template-suite --max-duration 15m`) 안에서 한 번 돌리는 스모크로만 둔다(AC 근거 아님). 변이 미채택 불변 가드 G1–G8 은 acceptance.md §2.5 가 정본이다.
+- §E 의 정적·스코프·Windows·인접 패키지 명령을 돌리고 progress.md §E.2/§E.3 에 인용. 변이 확인 전부(mu1–mu20)와 섭동 확인 P1, 커밋 구성 점검 C1. 경계 grep. `./internal/template` 스위트는 슬롯 임대(`moai slot acquire --resource internal-template-suite --max-duration 15m`) 안에서 한 번 돌리는 스모크로만 둔다(AC 근거 아님). 변이 미채택 불변 가드 G1–G8 은 acceptance.md §2.5 가 정본이다.
 - 문서·CHANGELOG(AC-MH-010)는 **sync 단계**(manager-docs)의 몫이다: `.moai/docs/factory-managed-session.md` 의 "알려진 한계"에서 F3·F4 문장을 고치거나 지우고(acceptance.md §1.2 의 고정 앵커대로) 남은 한계를 적으며, **F5 "시그널 처리 공백" 줄은 해결 주장이 아니라 카드 t1459 를 가리키는 정확한 안내로 남기고** "후속 카드 t1409 대상" 단락을 고친다. 이 SPEC의 CHANGELOG 엔트리를 쓰고 부모 엔트리의 "후속 카드 t1409 대상" 문구를 정정한다. 부모 SPEC 파일은 건드리지 않는다.
 
 ## §G. Anti-Patterns

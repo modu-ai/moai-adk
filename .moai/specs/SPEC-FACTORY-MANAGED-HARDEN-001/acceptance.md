@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "acceptance.md — 인수 기준"
-version: "0.5.0"
+version: "0.5.1"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -34,7 +34,7 @@ tier: M
 | AC-MH-004 | REQ-MH-005 | Given 읽기 고루틴이 서버 요청에 답장을 쓰는 동안 다른 고루틴이 `call()` 로 쓰는 상황을 200회 반복(반복마다 서버 요청 5건을 묶음으로 보내며 클라이언트 `call()` 1건) When 경합 검출기로 돌리면 Then 데이터 경합 보고가 0건이고 gorilla 의 동시 쓰기 패닉이 없으며 모든 답장과 응답이 도달한다. 반복 수 근거: 경합은 스케줄 의존이라 단일 실행으로는 놓칠 수 있어 반복으로 확률을 올린다(변이 mu5 를 적용해 붉어지는지 run 이 확인; 5회 재시도해도 초록이면 반복 수를 올린다). 모든 `call()`·답장 대기는 헤더의 블로킹 호출 규약(5초 watchdog)을 따른다 | `go test -race ./internal/cli -run '^TestManagedCodexConcurrentWrites$' -count=1 -v` → 선행 `-list` 로 **정확히 1개** 최상위 `Test` 이름(`TestManagedCodexConcurrentWrites`) 확인 뒤 PASS, `WARNING: DATA RACE` 0건, `[no tests to run]` 없음, exit 0 (`-race` 는 cgo 필요: 측정 `CGO_ENABLED=1`) |
 | AC-MH-005 | REQ-MH-006 | Given 우선 턴 성공 뒤 두 번째 턴이 에러 결과를 내고 세 번째 턴이 성공하는 스크립트 세션 When 드라이버가 돌면 Then 드라이버는 두 번째 턴 뒤에 반환하지 않고 세 번째 턴을 전달하며, 주입한 로그 대상에 `Factory turn failed (1/` 로 시작하는 한 줄이 남고 stdout에는 쓰이지 않는다 | `go test -race ./internal/cli -run '^TestManagedDriverIsolatesTurnFailure$' -count=1 -v` → PASS, 시험이 세션이 받은 턴 3건과 로그 한 줄(상한 있는 폴링)을 단언하고 `/exit` 로 드라이버를 끝낸다 |
 | AC-MH-006 | REQ-MH-006, REQ-MH-007 | Given §1.3 의 하위 케이스 17개(실패 원인별 10행과 elicitation 귀속 7행)와, 소유 App Server 승인 인수의 서버 이름 접두가 브로커 서버 이름 상수와 같다는 고정 시험 When 소유자와 드라이버를 통과시키면 Then §1.3 표의 각 기대가 성립한다 | §1.1 의 AC-MH-006 블록 — 선행 `-list` 가 **정확히 2개** 최상위 `Test` 이름을 내야 하고, 이어지는 `-run` 이 최상위 2개와 `TestManagedTurnFailureClassification` 의 하위 17개 PASS(명령에 `-race` 포함), exit 0 |
-| AC-MH-007 | REQ-MH-008 | Given 연속 턴 단위 실패 횟수가 `config.DefaultManagedSessionMaxConsecutiveTurnFailures` 와 같을 때 When 드라이버가 그 횟수째 실패를 받으면 Then 마지막 오류를 횟수와 함께 반환한다. 상한−1번 실패 뒤 성공 턴이 오면 횟수가 0으로 돌아가 다음 실패가 1번째로 센다. 시험은 상수 자체를 읽어 횟수를 정한다 | `go test ./internal/cli -run '^TestManagedDriverConsecutiveFailureCeiling$' -count=1 -v` → 하위 3개(`at_ceiling_returns`, `success_resets`, `below_ceiling_continues`) PASS · `grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/config/defaults.go` → 정의 1행, exit 0 · `grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/cli/managed_factory_session.go` → 드라이버가 상수를 참조하는 줄 1행 이상, exit 0 |
+| AC-MH-007 | REQ-MH-008 | Given 우선 턴 성공 뒤 표식이 붙은 턴 단위 실패를 차례로 돌려주는 스크립트 세션(`fakeManagedSession`; stdin 은 턴마다 운영자 줄 하나와 끝의 `/exit`; 시험은 헤더의 5초 watchdog)과 상한 N = `config.DefaultManagedSessionMaxConsecutiveTurnFailures` When 드라이버가 돌면 Then 세 하위 케이스가 성립한다. `at_ceiling_returns`: 연속 N번 실패하면 N번째 실패 뒤 드라이버가 **그 마지막 오류를 횟수 N 과 함께 반환**하고 이후 턴(`/exit` 포함)을 처리하지 않는다. `below_ceiling_continues`: 연속 N−1번 실패 뒤 드라이버가 **반환하지 않고** 다음(성공) 턴을 전달한 다음 `/exit` 로 nil 을 반환한다(세션이 받은 턴 = 우선 턴 1 + 실패 N−1 + 성공 1). `success_resets`: N−1번 실패, 성공 1번, 실패 1번 순서에서 성공이 횟수를 0으로 되돌려 마지막 실패가 `1/N` 번째로 세어지고 드라이버가 반환하지 않는다(`/exit` 의 nil). 시험은 상수 자체를 읽어 N 을 정한다 | `go test ./internal/cli -run '^TestManagedDriverConsecutiveFailureCeiling$' -count=1 -v` → 하위 3개(`at_ceiling_returns`, `success_resets`, `below_ceiling_continues`) PASS · `grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/config/defaults.go` → 정의 1행, exit 0 · `grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/cli/managed_factory_session.go` → 드라이버가 상수를 참조하는 줄 1행 이상, exit 0 |
 | AC-MH-008 | REQ-MH-009 | Given 브로커에 메시지 1건이 claim되고 그 메시지를 실은 턴이 실패할 When 드라이버가 세션을 이어 가면 Then 관리 계층은 그 행을 `claimed` 로 두고(`acknowledged` 0, claim token 불변) 해제·재주소를 하지 않는다. 재배달은 lease 만료 뒤 브로커의 `Claim` 이 새 token으로 한다. **이 AC 는 불변 가드이고 변이를 채택하지 않았다**(§2.5 G1: 드라이버에 store 핸들이 없어 한 단계 변이로 붉게 만들 수 없고 기준 트리에서도 초록이다). 재배달 증거는 기존 브로커 시험이 운반한다 | `go test ./internal/cli -run '^TestManagedFailedTurnLeavesClaimUntouched$' -count=1 -v` → PASS · `go test ./internal/factorymsg -run '^TestDispatchResultExactlyOnce$' -count=1 -v` → 하위 `lost_receipt_redelivery` 포함 7개 PASS (**이 plan 실행에서 다시 돌렸다**: 기준 트리에서 7개 PASS, `ok  …/internal/factorymsg  2.167s`) |
 | AC-MH-009 | REQ-MH-012 | Given 변경이 반영된 트리 When Windows 대상으로 빌드·vet하고 `syscall.` 참조를 훑으면 Then 빌드와 vet가 통과하고 `managed_*.go` 의 `syscall.` 참조는 0행이다 | `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 · `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` → exit 0 · `grep -rn 'syscall\.' internal/cli/managed_*.go` → 0행, exit 1 (양성 대조: `grep -n 'syscall\.' internal/cli/mcp_server.go` 는 1행 이상, exit 0 — 같은 형태가 실제로 줄을 낸다) |
 | AC-MH-010 | REQ-MH-010 | Given sync 단계가 끝난 트리 When 운영 문서와 CHANGELOG를 훑으면 Then 해결된 F3·F4 한계 문장과 "후속 카드 t1409 대상" 단락이 문서에서 사라지고, 시그널 처리 공백은 해결이 아니라 **카드 t1459 를 가리키는 안내**로 남으며, 남은 한계가 고정 앵커 문자열로 문서에 있고, CHANGELOG에 이 SPEC 엔트리가 F3·F4 해결과 남은 한계와 t1459 포인터를 함께 적는다 | 아래 §1.2 의 grep 목록(각 줄이 기대하는 개수·exit 코드 포함) |
@@ -94,7 +94,7 @@ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KA
 | 8 | `codex_timeout` | `startTurn` 에 50ms 마감 컨텍스트를 주고 `turn/completed` 를 보내지 않음(이음새 없음, design.md D-2; **드라이버를 거치지 않는** `startTurn` 수준 행) | `context.DeadlineExceeded` 가 표식 오류가 **아님**(`errors.Is` 거짓). 채택: mu16 |
 | 9 | `unclassified_error` | 표식 없는 일반 오류 | 세션 치명(드라이버 통과 행) |
 | 10 | `other_server_elicitation` | 턴 중 `serverName` 이 브로커가 아닌 elicitation, 이어서 `completed` | 실패로 세지 않음: `waitTurn` nil, 로그 줄 `broker_declined=0` |
-| 11 | `between_turns_reader_ahead` (a) | `armTurn()` 뒤 서버가 **한 묶음**으로 `turn/started(T1)`, `turn/completed(T1)`, `moai` elicitation(`turnId` null)을 씀. 시험은 로그 대상에 `turn=none` 줄이 보일 때까지(상한 5초) `waitTurn` 을 호출하지 않음 | 그 뒤 `waitTurn(ctx, "T1")` 이 **nil**(완료 프레임 뒤의 요청은 어느 턴도 실패시키지 않음). 소비자 쪽 계수기 설계로 되돌리면 여기서 오류를 낸다(설계 대체 탐침 G7 — DoD 에 넣지 않음) |
+| 11 | `between_turns_reader_ahead` (a) | `armTurn()` 뒤 서버가 **한 묶음**으로 `turn/started(T1)`, `turn/completed(T1)`, `moai` elicitation(`turnId` null)을 씀. 시험은 로그 대상에 `turn=none` 줄이 보일 때까지(상한 5초) `waitTurn` 을 호출하지 않음 | 그 `turn=none` 줄이 `broker_declined=0` 을 담고(후행 요청은 어느 턴의 거부 수에도 들지 않음), 그 뒤 `waitTurn(ctx, "T1")` 이 **nil**(완료 프레임 뒤의 요청은 어느 턴도 실패시키지 않음). 채택: 줄이 `turn=none` 이 아니면(mu19: 창이 열린 채라 후행 요청이 T1 에 귀속돼 `turn=T1`) 5초 폴링이 붉고, 줄이 `turn=none` 이어도 `broker_declined` 가 0 이 아니면(mu20) 값 단언이 붉다 — 두 변이 모두에서 `waitTurn` 의 nil 단언은 **초록**이다(판정이 후행 요청보다 먼저 완료 이벤트에 실렸다). 소비자 쪽 계수기 설계로 되돌리면 nil 단언이 붉어진다(G7, DoD 아님) |
 | 12 | `normal_turn_after_declined_turn` (b) | `moai` elicitation 으로 실패한 턴 T1 다음에 `armTurn()` 하고 정상 턴 T2 | T2 가 nil(초기화는 `armTurn`) |
 | 13 | `elicitation_after_turn_start_response` (c) | `armTurn()` 뒤 `turn/started` 이전에 `turnId` null 인 `moai` elicitation, 이어서 `turn/started(T2)`·`completed` | T2 를 실패시킴(턴 단위) |
 | 14 | `two_requests_in_one_turn` (d) | 한 턴 안에 `moai` elicitation 2건 | **정확히 한 번**의 턴 단위 실패(`waitTurn` 오류 1개). 둘째 요청의 로그 줄이 `broker_declined=2` 를 보임(관측 가능한 값으로 판정이 불리언 `> 0` 인지 `== 1` 인지 가른다: mu8) |
@@ -129,7 +129,7 @@ AC-MH-001, 002, 003, 004, 005, 006(및 그 하위 케이스 전부)은 시험이
 | `TestManagedDriverIsolatesTurnFailure` (실제 `pumpManagedStreamTurn` 을 쓰는 스크립트 세션) | AC-MH-005 | 두 번째 턴의 에러 결과로 드라이버가 반환해 세 번째 턴이 전달되지 않음 | M3 |
 | `TestManagedCodexNonCompletedTurnIsolated` (기존 가짜 App Server 에 **상태 순서**(예: `failed,interrupted,completed`)를 주는 환경 변수 모드를 더해 실제 Codex 소유자를 `driveManagedFactorySession` 으로 돌림: 우선 턴 뒤 `failed` 턴, `interrupted` 턴, 정상 턴; 단언은 정상 턴이 **전달됐는지**뿐 — 표식 심볼 없이) | AC-MH-006 #2 | 기준 트리의 드라이버가 첫 비완료 턴(`failed`)에서 반환해 이후 턴이 전달되지 않음 | M3 |
 
-**RED-first 면제(이유 명시)**: (1) AC-MH-004 의 `TestManagedCodexConcurrentWrites` 는 기준 트리의 읽기 고루틴이 쓰지 않아 쓰기 경합이 존재하지 않는다(경합 검출기가 구조상 초록) — 변이 mu5 로 채택한다. (2) AC-MH-006 의 §1.3 #5–#7, #9–#12, #15–#17 은 "과잉 계수하지 않는다·세션 치명 유지"라는 부정·불변 요구라 기준 트리(계수 자체가 없고 모든 오류가 이미 세션 치명)에서 초록이다 — 변이(§2.4)로 채택하되 #4·#17 은 변이를 채택하지 못해 §2.5 가드로 둔다. #1 은 M1 의 `TestManagedDriverIsolatesTurnFailure`, #2 는 M1 의 `…NonCompletedTurnIsolated`, #3·#13·#14 는 M1 의 `…FailsTurn` 이 RED를 구성한다. (3) AC-MH-007 의 시험은 새 상수가 필요해 기준 트리에서 컴파일되지 않는다 — §2.2 의 구조 확인(상수 부재 exit 1)과 §6 의 섭동 확인으로 채택한다. (4) AC-MH-008 은 불변 가드다(§2.5 G1).
+**RED-first 면제(이유 명시)**: (1) AC-MH-004 의 `TestManagedCodexConcurrentWrites` 는 기준 트리의 읽기 고루틴이 쓰지 않아 쓰기 경합이 존재하지 않는다(경합 검출기가 구조상 초록) — 변이 mu5 로 채택한다. (2) AC-MH-006 의 하위 17개는 한 최상위 시험 `TestManagedTurnFailureClassification` 안에 있고 이 시험은 **M3 에서 쓴다** — 새 심볼을 부르므로(#11–#17 은 `armTurn()`, #8 은 표식 오류 심볼, #5–#7·#9·#10 은 로그 sink; 설계 기준 판독) 기준 트리에서는 컴파일되지 않아 어느 행도 기준 트리 초록으로는 채택되지 않는다. 17행의 채택 경로 전수: M1 재현 시험이 RED 를 구성하는 행은 #1(`TestManagedDriverIsolatesTurnFailure`), #2(`…NonCompletedTurnIsolated`), #3·#13·#14(`…DeclinedBrokerElicitationFailsTurn`)이고, 변이(§2.4)로 채택되는 행은 #1 mu13 · #2 mu15 · #3 mu12 · #5–#7·#9 mu14 · #8 mu16 · #10 mu9 · #11 mu19·mu20 · #12 mu6 · #13 mu7·mu12 · #14 mu8·mu12 · #15 mu10 · #16 mu11 · #17 mu12 다. 변이도 RED 도 없는 가드는 #4(§2.5 G2) 하나뿐이다. (3) AC-MH-007 의 시험은 새 상수가 필요해 기준 트리에서 컴파일되지 않는다 — §2.2 의 구조 확인(상수 부재 exit 1)과 §6 의 섭동 확인으로 채택한다. (4) AC-MH-008 은 불변 가드다(§2.5 G1).
 
 **보조 실측(기준 트리, 임시 시험은 삭제되어 재실행 불가 — RED-now 셀이 아님)**: 서버 요청 id=7을 보낸 뒤 1초간 클라이언트 프레임 없음(`no client frame within 1s: … i/o timeout`) · id 충돌: `call result="" err=<nil>`(진짜 응답 `{"genuine":true}` 소실) · 문자열 id: `err=managed codex app server connection closed`.
 
@@ -147,7 +147,7 @@ AC-MH-009(Windows 빌드: 기준 트리 `GOOS=windows GOARCH=amd64 go build ./..
 
 ### §2.4 변이 탐침 — 한 단계 편집으로 적용 가능하고 실제로 붉어지는 것만
 
-변이는 지정한 마일스톤의 GREEN 직후에 **하나씩 임시로 적용**해 지목한 케이스가 붉어지는지 보이고(원문을 progress.md §E.2 에 인용) 되돌린 뒤 `git diff --stat` 빈 출력을 확인한다. 아래 mu1–mu18 은 전부 실제 코드의 **한 곳을 고치는** 편집이고, "붉어지는 케이스" 는 그 편집을 기준 코드(및 design.md 의 설계)에 걸어 따라가 본 것에 한정했다(plan 단계의 문서 대조이며 실행이 아니다 — 실제로 붉어지는지는 run 이 보인다). 한 단계 편집으로 적용되지 않거나 지목한 케이스가 실제로 붉어지지 않는 항목은 표에 없고 §2.5 에 있다.
+변이는 지정한 마일스톤의 GREEN 직후에 **하나씩 임시로 적용**해 지목한 케이스가 붉어지는지 보이고(원문을 progress.md §E.2 에 인용) 되돌린 뒤 `git diff --stat` 빈 출력을 확인한다. 아래 mu1–mu20 은 전부 실제 코드의 **한 곳을 고치는** 편집이고, "붉어지는 케이스" 는 그 편집을 기준 코드(및 design.md 의 설계)에 걸어 따라가 본 것에 한정했다(plan 단계의 문서 대조이며 실행이 아니다 — 실제로 붉어지는지는 run 이 보인다). 한 단계 편집으로 적용되지 않거나 지목한 케이스가 실제로 붉어지지 않는 항목은 표에 없고 §2.5 에 있다.
 
 | 변이 | 편집 | 마일스톤 | 반드시 붉어지는 케이스 |
 |---|---|---|---|
@@ -162,17 +162,19 @@ AC-MH-009(Windows 빌드: 기준 트리 `GOOS=windows GOARCH=amd64 go build ./..
 | mu9 | `serverName` 비교를 빼 모든 서버의 거부를 셈 | M3 | AC-MH-006 #10 |
 | mu10 | `prevTurnID` 비교 제거 | M3 | AC-MH-006 #15 |
 | mu11 | `turnID` 확정 뒤 id 불일치 검사 제거 | M3 | AC-MH-006 #16 |
-| mu12 | `waitTurn` 이 완료 이벤트가 실어 온 판정을 무시 | M3 | AC-MH-006 #3, #13, #14, #17 (#11 은 nil 이 기대라 초록) |
-| mu13 | 우선 턴 이후의 `is_error` 도 세션 치명으로 둠(드라이버가 표식을 무시) | M3 | AC-MH-005, AC-MH-006 #1 |
+| mu12 | `waitTurn` 이 완료 이벤트가 실어 온 판정을 무시 | M3 | AC-MH-006 #3, #13, #14, #17 (#11·#12·#15·#16 은 nil 이 기대라 초록 — #11 의 채택은 mu19·mu20) |
+| mu13 | 우선 턴 이후의 `is_error` 도 세션 치명으로 둠(드라이버가 표식을 무시하고 첫 오류에서 반환 — 편집 결과는 기준 코드 `managed_factory_session.go:345-347` 의 `if err := s.DeliverTurn(turn.prompt); err != nil { return err }` 와 같다) | M3 | AC-MH-005, AC-MH-006 #1, AC-MH-007 `below_ceiling_continues`(N−1번 실패 시나리오의 **첫** 실패에서 반환해 `/exit` 의 nil 대신 그 오류가 나오고 세션이 받은 턴이 모자란다). `at_ceiling_returns`·`success_resets` 도 같은 이유로 붉을 수 있으나 그 지목은 mu18·mu17 의 몫이라 여기서는 요구하지 않는다 |
 | mu14 | 드라이버가 표식 없는 오류도 로그 후 계속함 | M3 | AC-MH-006 #5, #6, #7, #9 (드라이버 통과 행: `/exit` 로 nil 이 반환돼 "기대한 오류가 아님"으로 붉어짐) |
 | mu15 | `waitTurn` 이 비완료 종료 오류에 표식을 붙이지 않음 | M3 | M1 `TestManagedCodexNonCompletedTurnIsolated`(`failed`·`interrupted` 각각), AC-MH-006 #2 |
 | mu16 | `waitTurn` 의 `ctx.Done()` 분기가 표식 오류를 반환 | M3 | AC-MH-006 #8 (`errors.Is` 가 거짓이어야 함) |
 | mu17 | 성공 턴이 연속 횟수를 0으로 되돌리지 않음 | M3 | AC-MH-007 `success_resets` |
-| mu18 | 상한 비교를 `>=` 에서 `>` 로(off-by-one) | M3 | AC-MH-007 `at_ceiling_returns`, `below_ceiling_continues` |
+| mu18 | 상한 비교를 `>=` 에서 `>` 로(off-by-one) | M3 | AC-MH-007 `at_ceiling_returns` **하나**: 연속 실패가 정확히 상한과 같을 때만 `>=` 와 `>` 가 갈려 N번째 실패 뒤 드라이버가 계속하고 `/exit` 의 nil 이 마지막 오류 반환 대신 나온다. N−1 이하에서는 두 비교가 모두 거짓이라 `below_ceiling_continues`(mu13 지목)와 `success_resets`(mu17 지목)는 mu18 에서 초록이다 |
+| mu19 | `turn/completed` 처리가 턴 창을 닫지 않음(design.md D-1 결정 3 의 완료 처리에서 창을 닫는 한 줄만 뺌; 판정 싣기와 `prevTurnID` 기록은 그대로) | M3 | AC-MH-006 #11: 완료 뒤 후행 `moai` elicitation(`turnId` null)이 열린 창에서 규칙 (3)으로 T1 에 귀속돼 줄이 `turn=T1` 로 나가고 시험의 `turn=none` 줄 대기가 5초 상한에서 붉어진다(시험 자신의 상한이라 옳은 이유의 RED). 이 변이에서 `waitTurn` 의 nil 단언은 초록이다 — 판정이 후행 요청보다 먼저 완료 이벤트에 실렸다 |
+| mu20 | 닫힌 창 분기(design.md D-1 결정 3 귀속 규칙 (1))도 거부 수를 올리고 줄에 그 값을 씀(귀속 턴은 여전히 `none`) | M3 | AC-MH-006 #11 의 `broker_declined=0` 단언: 줄이 `turn=none … broker_declined=1` 로 나간다. mu19 와 달리 `turn=none` 대기는 통과하므로 이 변이를 잡는 것은 값 단언뿐이다 |
 
 **편집이 아닌 점검 둘(DoD 3·4 의 일부, 변이 번호를 주지 않음)**: C1 — RED와 수리를 한 커밋에 합치지 않았는지 `merge-base --is-ancestor` 쌍으로 확인(AC-MH-011; M4 점검). P1 — 섭동 확인: `defaults.go` 의 연속 실패 상한을 일시적으로 2 로 바꿔 AC-MH-007 시험이 **여전히 PASS** 하는지(드라이버가 숫자 3 을 박았다면 붉어짐)와 AC-MH-007 의 `grep` 참조 확인.
 
-### §2.5 불변 가드 — 변이 미채택 (이유와 함께, 이 목록 밖의 항목은 mu1–mu18 이 덮는다)
+### §2.5 불변 가드 — 변이 미채택 (이유와 함께). 이 목록 밖의 항목은 AC-MH-001..006 의 시험 기반 AC(M1 RED 또는 §2.4 의 mu1–mu20; AC-MH-006 17행의 전수는 §2.1 면제 (2)), AC-MH-007(§2.2 의 상수 구조 확인과 mu13·mu17·mu18·P1), AC-MH-010(§2.2·§1.2 의 grep), AC-MH-011(C1)로 채택되고, 이 절은 변이도 RED 도 없는 항목만 적는다
 
 - **G1 — AC-MH-008 `TestManagedFailedTurnLeavesClaimUntouched`**: 기준 트리에서도 초록이고(관리 계층이 아무것도 하지 않는 부정 요구), 드라이버에는 store 핸들이 없으며(`driveManagedFactorySession` 시그니처 `managed_factory_session.go:300` — claim·prompt 클로저뿐) claim 경로(`claimManagedFactoryInbox`)는 턴 실패를 알지 못한다. 한 단계 편집으로 붉게 만들 변이가 없다. 재배달 증거는 기존 `TestDispatchResultExactlyOnce/lost_receipt_redelivery` 가 운반한다(이 plan 실행에서 다시 돌려 7개 PASS 확인, `ok …/internal/factorymsg 2.167s`).
 - **G2 — AC-MH-006 #4 `priming_is_error`**: 우선 턴은 루프 앞에서 표식과 무관하게 무조건 반환한다(`managed_factory_session.go:302-304`). 드라이버 분류를 바꾸는 변이(mu14)가 닿지 못한다. 기존 시험 `TestManagedDriverFailureBranches` 의 "a priming turn that fails ends the session before any poll" 가 이미 이 동작을 고정한다.
@@ -180,7 +182,7 @@ AC-MH-009(Windows 빌드: 기준 트리 `GOOS=windows GOARCH=amd64 go build ./..
 - **G4 — AC-MH-009, AC-MH-012, AC-MH-013**: 회귀·불변 가드(기준 트리에서도 초록이 정상).
 - **G5 — 직전 턴의 중복·지연 `turn/completed`(`X == prevTurnID`) 방어(design.md D-1)**: codex 가 한 턴에 완료 프레임을 한 번만 보내는지 관측하지 못했다 — 방어만 두고 시험 행도 변이도 두지 않는다.
 - **G6 — 동치 변이 "요청마다 실패로 세기"**: 한 턴이 `DeliverTurn` 오류 하나만 내므로 관측 가능한 차이가 없다. 가를 수 있는 형태로 mu8 을 택했다(둘째 요청 로그의 `broker_declined=2` 와 실패 1회가 그 관측).
-- **G7 — 설계 대체 탐침(소비자 쪽 계수기)**: design.md D-1 의 기각한 대안 (e)로 되돌리는 것은 한 단계 편집이 아니라 설계 교체다. §1.3 #11 은 그 설계에서 붉어지도록 짰지만 DoD 가 그것을 적용하라고 요구하지 않는다. 굳이 적용한다면 가장 작은 형태: 읽기 고루틴이 거부된 브로커 elicitation 마다 원자 계수기를 올리고, `startTurn` 이 0 으로 되돌리고, `waitTurn` 이 완료 이벤트 소비 시점에 계수기를 읽도록 바꾼다(판정 이벤트 필드는 무시).
+- **G7 — 설계 대체 탐침(소비자 쪽 계수기)**: design.md D-1 의 기각한 대안 (e)로 되돌리는 것은 한 단계 편집이 아니라 설계 교체다. §1.3 #11 의 `waitTurn` nil 단언은 그 설계에서 붉어지도록 짰지만(후행 요청이 소비자 읽기보다 먼저 계수기에 닿는다) DoD 가 그것을 적용하라고 요구하지 않는다 — #11 자신의 채택은 한 단계 변이 mu19·mu20 이 운반한다(위 §2.4). 굳이 설계 교체를 적용한다면 가장 작은 형태: 읽기 고루틴이 거부된 브로커 elicitation 마다 원자 계수기를 올리고, `startTurn` 이 0 으로 되돌리고, `waitTurn` 이 완료 이벤트 소비 시점에 계수기를 읽도록 바꾼다(판정 이벤트 필드는 무시).
 - **G8 — "구현에 상수 값 `3` 을 박기"**: 한 단계 변이로는 시험이 상수를 읽어 3 이 되므로 동치다. 섭동 확인 P1 과 `grep` 참조 확인으로 방어한다.
 
 ## §3. 기준선과 알려진 사전 적색 (측정)
@@ -225,7 +227,7 @@ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KA
 
 1. AC-MH-001..013 전부 PASS — 명령과 원문 출력을 progress.md §E.2 에 인용(AC-MH-010 은 sync 후 §E.4).
 2. 재현 시험 6개의 RED 원문이 **추적되는** `.moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/red-baseline.md` 에 있고 RED 커밋이 수리 커밋의 조상이다(AC-MH-011; 점검 C1).
-3. §2.4 의 변이 **mu1–mu18**(적용 가능하고 지목 케이스가 실제로 붉어지는 것만 남긴 18개)을 **하나씩** 적용해 지목한 케이스가 붉어지는 것을 보인 원문이 증거로 있다. §2.5 의 가드 G1–G8 은 이 범위에 없다.
+3. §2.4 의 변이 **mu1–mu20**(적용 가능하고 지목 케이스가 실제로 붉어지는 것만 남긴 20개)을 **하나씩** 적용해 지목한 케이스가 붉어지는 것을 보인 원문이 증거로 있다. §2.5 의 가드 G1–G8 은 이 범위에 없다.
 4. **섭동 확인 P1**: `defaults.go` 의 연속 실패 상한을 일시적으로 2 로 바꿔 AC-MH-007 시험이 여전히 PASS 하는 것(드라이버가 숫자를 박았다면 붉어짐)을 인용하고 되돌린 뒤 `git diff --stat` 빈 출력을 확인한다.
 5. Windows 크로스 빌드·vet가 exit 0이고 `managed_*.go` 의 `syscall.` 참조가 0행이다(AC-MH-009).
 6. 부모 SPEC 디렉터리와 `store.go` 의 diff가 비어 있다(AC-MH-012).
