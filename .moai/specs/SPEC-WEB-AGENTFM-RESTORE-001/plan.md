@@ -108,7 +108,7 @@
 | `internal/cli/update_user_keys_survey_test.go` | **keep** | :81 — seam-adaptive: 수재 키는 strip 제외되므로 스킵 경로가 자동 적응. plan-audit D6 |
 | `internal/cli/update_clean_install_config_preserve_test.go` | **keep** | :106/:231 — 클린 설치 보존 경로; 재수재 키는 strip 대상이 아니므로 계약 불변. plan-audit D6 |
 | `internal/cli/update/backup/merge_useradd_test.go` | **keep** | :9-30 — 합성 픽스처 기반 백업 병합 단위 테스트, 표면 토큰과 무관. plan-audit D6 |
-| `internal/cli/model_backend_default_test.go` | **keep** | :13-51 — 스폰-경로 무시 계약(`TestCodexResolution_IgnoresPerAgentLLMCells` :28). 런타임 소비가 Out of Scope인 한 계약 생존 — Q2 후속 카드가 소비를 도입하면 그 SPEC이 재판정. plan-audit D6 |
+| `internal/cli/model_backend_default_test.go` | **keep** | :13-51 — 스폰-경로 무시 계약(`TestCodexResolution_IgnoresPerAgentLLMCells` :28). 런타임 소비가 Out of Scope인 한 계약 생존 — Q2 후속 카드가 소비를 도입하면 그 SPEC이 재판정. **v0.3.0 처분 (plan-audit iter1 D3):** 후속 카드가 곧 본 SPEC 수정안이며 소비는 오케스트레이터가 Agent() 호출에 전달하는 파라미터라 CLI 해상 기계와 무관(OOS(a)/C9) — 계약 생존 확정, 재확인은 M11 스코프 스윕. plan-audit D6 |
 | `internal/cli/profile_setup_schema_options_test.go` | **keep** + :119 고아 주석 갱신 | 매트릭스 재포트(M1) 후 주석 서술을 사실 관계로 갱신 — §B-7. plan-audit D6 |
 | `partial_apply_repro_test.go` | **amend/extend** — saveStep 상수·`injectableSteps`·`recordingSeams`·양성 대조 `want`(:130-132)에 제거된 7/8 단계(`patchAgentFM`·`applyPerfTierEdits`) 재등록 | M3가 seam 호출을 재도입하면 `TestPartialApplyOrderPositiveControl`이 기계적으로 깨짐 — 레저 diff :6807-6876 제거분의 역방향. 현재 범위 `:59-67`, 종단 `stepJevcredSave` 실측. plan-audit iter2 D15 |
 | `save_observability_test.go` | **amend/extend** — `seamTable`·seam 목록을 같은 확장에 동행 | :28 스스로 종속 형제를 자칭 — 모든 저장 seam을 `recordingSeams`로 구동. plan-audit iter2 D15 |
@@ -116,7 +116,7 @@
 ## §E Self-Verification
 
 - [ ] 모든 AC가 §acceptance.md 매트릭스에서 검증 명령 또는 증거 형태를 이름으로 지시한다.
-- [ ] REQ 14 ≤ 16, AC 13 ≤ 16 (Tier M 상한).
+- [ ] REQ 20 / AC 19 — Tier M 상한(16/16) 초과, 처분 기록: plan.md §I.3 + spec.md `## Amendments` v0.3.0 블록 9행; 초과분은 plan-audit iter1 adjudication-1에서 기록 부채로 판정 (판정 파일 `.moai/reports/t1421/plan-audit.md` — PASS-WITH-DEBT 0.89).
 - [x] decision-index FOUNDER 행 3건(Q1·Q2·Q3) 운영자 판정 기록 완료 (2026-10-02) — plan.md의 미해결-질문 마커 3건은 해소·제거됨 (plan-audit D2).
 - [ ] 블루프린트 인용은 전부 실측 커밋 해시·경로로 검증됨 (`384eb3460`, `3fa8bd2ab`, `238219302`).
 

@@ -94,7 +94,7 @@ amendment_of: SPEC-WEB-AGENTFM-RESTORE-001
 
 ### B.3 설정 스키마
 
-- **REQ-AFR-002** (Ubiquitous): Sub-agent model/effort inheritance shall remain the default behavior — an agent without an `llm.agent_overrides` entry resolves to the session model/effort — and this SPEC shall change no spawn-path behavior.
+- **REQ-AFR-002** (Ubiquitous): Sub-agent model/effort inheritance shall remain the default behavior — an agent without an `llm.agent_overrides` entry resolves to the session model/effort — and this SPEC shall change no spawn-path behavior for sessions without the v0.3.0 opt-in key (REQ-AFR-015); the opt-in consumption contract itself is REQ-AFR-015..017. (v0.3.0 in-place qualification — REQ-AFR-007의 v0.2.0 축소 선례 형식; id 불변·재번호 없음. plan-audit iter1 D1)
 - **REQ-AFR-008** (Ubiquitous): The shipped template `llm.yaml` shall carry the `llm.profile` and `llm.agent_overrides` keys again with an updated comment block, and `moai update` shall not strip a retired key while the embedded template still ships it (`template.ShippedRetiredModelKeys` seam), so `llm.performance_tier`, `llm.harness_agents`, and the `workflow.yaml` retired keys remain retired-and-stripped.
 
 ### B.4 상위 SPEC 수정 관계

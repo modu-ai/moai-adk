@@ -6,6 +6,14 @@
 - plan_status: audit-ready (감사 계보: iter1 FAIL 0.69 D1-D13 → 수리 → iter2 FAIL 0.875 D14-D17 → 수리 → iter3 FAIL 0.90 D18 잔여 → 리드 승인 ② 1절 수리+델타 확인 → **PASS-delta GO**. 판정 파일: plan-audit.md·plan-audit-iter2.md·plan-audit-iter3.md·plan-audit-iter3-delta.md — 전부 .moai/reports/t1411/. 최종 아티팩트 기준 HEAD ccac1f555)
 - pre-flight baseline: 미측정 (§C Pre-flight 체크리스트 — run-phase 착수 시 최우선 기록)
 
+### v0.3.0 amendment plan-phase signal (card t1421)
+
+- plan_complete_at: 2026-10-03 — plan-audit iter1 **PASS-WITH-DEBT 0.89** (Tier M 기준 0.80 상회). 판정 파일: `.moai/reports/t1421/plan-audit.md` (iteration 1, v0.3.0 수정안 대상).
+- plan_status: audit-ready — D1-D3 수리 본 커밋 동반; lane이 iteration-2 델타 재확인(감사기 재개 — D1-D3 스코프)을 kickoff 게이트 전 수행.
+- adjudication-1: 예산 초과(REQ 20 / AC 19 > Tier M 상한 16/16)는 **기록 부채로 판정** — 분할·티어 상향 기각 근거는 plan.md §I.3 + spec.md `## Amendments` v0.3.0 블록 9행.
+- D1-D3 수리 (본 커밋): D1 — REQ-AFR-002 blanket 절을 옵트인 조건으로 제자리 한정(id 불변·재번호 없음, v0.2.0 REQ-AFR-007 축소 선례 형식). D2 — acceptance.md §D.3 소비-경계 2행을 v0.3.0 옵트인 경계 서술로 재기술(검증 커맨드 본문 불변). D3 — plan.md §D.5 model_backend_default 행에 v0.3.0 처분 병기 + §E 예산 행을 20/19 처분 기록으로 갱신.
+- D4-D9: **optional/deferred 기록 부채** — D4(decision-index Q2 흡수 주석)·D5(M11 wording에 "AC-AFR-016 sync-유예" 병기 권고)·D6(GEARS cosmetic — 다음 자연 본문 편집 시 정돈)·D7(AC-AFR-019 구체 grep은 M10 착지 시 핀 — 기준 자체 지시)·D8(progress.md §E.3 중복 헤딩 placeholder는 joint close에서 정리)·D9(권고 경고 — 복합 매핑 수동 검증 완료).
+
 ## §E.2 Run-phase Evidence
 
 ### Pre-flight (2026-10-02, HEAD a48216da1)
