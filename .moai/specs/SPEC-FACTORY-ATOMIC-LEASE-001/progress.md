@@ -175,7 +175,29 @@ PATH, not the project build.
 - **Floor for the final run: swept count 68.**
 - Evidence (git-ignored, this worktree): `.moai/reports/t1458/baseline-list.txt`, `baseline-run.txt`.
 
-_WM1 RED output: pending commit 3._
+### WM1 commit 3 — RED (card t1458)
+
+Tests restored from the previous worker's draft and reviewed against plan WM1; they compile (`go vet` of
+`internal/cli` and `internal/homestate` exit 0). Run on the seam-and-stub tree plus the new test files only,
+lane environment scrubbed, slot held, `-count=1 -v -timeout 30m`.
+
+- `internal/cli` `-run '^(TestFactoryLease|TestFactoryEnsureCardWorktree|TestFactoryWorktreeStepWaitDerivation)'`:
+  exit 1, `FAIL internal/cli 102.300s`, no panic. 17 FAIL, 4 PASS, 1 SKIP (the cross-process helper, by design).
+  FAIL: TestFactoryLeaseRecordStallBounded (3.45 s against a 1.5 s limit), TestFactoryLeaseMidClaimStallBounded,
+  TestFactoryLeaseQueueLockStallBounded, TestFactoryLeaseCapWithinBoardBudget (LockWaitBudget stub is 0),
+  TestFactoryLeaseSectionRejectsNestedMutate (in-section Mutate returned nil),
+  TestFactoryLeaseOperatorWriteWaitsForSection, TestFactoryLeaseArmCOperatorHold,
+  TestFactoryLeaseCompensationKeepsOperatorPick, TestFactoryLeaseSectionRecordWritesPerArm (writes_before_lock>0
+  in every arm), TestFactoryLeaseSerialDistinctNomineesExactlyOne, TestFactoryLeaseSerialBareLanesExactlyOne,
+  TestFactoryLeaseSerialCrossProcessExactlyOne (2 serial cards leased), TestFactoryLeaseOwnAssignedSerialSiblingsExactlyOne,
+  TestFactoryEnsureCardWorktreeConcurrentRealMaterializer, TestFactoryLeaseSectionAllowedSet,
+  TestFactoryLeaseDriftLogStallBounded, TestFactoryEnsureCardWorktreeStepLockBounded.
+  PASS on the unfixed tree: TestFactoryLeaseArmAKeepsHeldAssignedCard, TestFactoryLeaseSectionExcludesWorktreeStep,
+  TestFactoryLeaseDriftLogVerbWorktreeWriteWaits, TestFactoryWorktreeStepWaitDerivation.
+- `internal/homestate` four tests: exit 1. FAIL: TestRecordWriteReconcileBoundedSkipsOnContention (1.503 s, want
+  within 500 ms), TestRecordWriteReconcileBoundedRereadsUnderLock (seam never called; 1 duplicate event). PASS:
+  TestRecordWriteReconcileDefaultStillWaits, TestHomestateDoesNotImportKanban.
+- Evidence (git-ignored): `.moai/reports/t1458/red-cli.txt`, `red-homestate.txt`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -208,7 +230,7 @@ absorbing develop 2b9e4a4d0 (merge 09faf2965; the plan-artifact hashes were re-c
 
 ## §G Resume Point (operator reboot, 2026-10-03)
 
-- HEAD before this record: 0eb3d5b0d (WM1 commit 1 of 3, seam-and-stub; verified by the orchestrator: build, windows build, vet x2, gofmt all exit 0).
-- Resume at WM1 commit 2 (AC-FAL-010 baseline on this tree), then WM1 commit 3 (RED). Then WM2, WM3+WM4, WM5, WM6 (§F).
-- Not landed: baseline and RED commits; no test files written. Slot go-test-cli-t1458 free. Nothing pushed or merged.
-- Evidence (git-ignored, this worktree only): .moai/reports/t1458/{plan-audit*.md, decision.md, wait.md, park.md}.
+- WM1 landed in order: 0eb3d5b0d (seam-and-stub), 807eabe20 (AC-FAL-010 baseline, 68 PASS), then the RED commit (this one; find its SHA with `git log`).
+- Resume at WM2 (the lock-scope primitive), then WM3+WM4, WM5, WM6 (§F). Baseline floor for the final AC-FAL-010 run: 68.
+- Not done: any behavior change. Slot internal-cli-suite released. Nothing pushed or merged.
+- Evidence (git-ignored, this worktree only): .moai/reports/t1458/{baseline-*.txt, red-*.txt, plan-audit*.md, decision.md, park.md}.
