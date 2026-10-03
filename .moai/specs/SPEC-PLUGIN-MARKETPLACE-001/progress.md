@@ -308,6 +308,130 @@ $ grep -c moai-factory-foreman internal/template/catalog.yaml
 0                                                            # base does not contain t1399
 ```
 
+#### Commits (tdd order: tooling, observed RED, GREEN)
+
+| Step | SHA | Content |
+|------|-----|---------|
+| infrastructure | `65c175af8dfbd8c598911a34184de16c08e912d7` | `scripts/protected-set-hash.sh` (AC-025 (d) bracket); spec.md `status: draft` to `in-progress` (first run-phase commit; `updated:` already read 2026-10-03, so unchanged); this section's pre-flight |
+| RED | `cdd2e5ac30a13854fda5e287a10d015f2f647380` | `scripts/test-plugin-install-step.sh` without the decoy precondition |
+| GREEN | `81916fb751cb2f89dc0d8b94c99187595b314a36` | the precondition (`preflight_decoys`, `abort`) and the status-2 demand of the decoy-missing control |
+| REFACTOR | none | no separate REFACTOR step was run; the GREEN commit already folds in the one tightening (status-2 demand) found by the mutants |
+
+#### Claim
+
+1. BI-2 is implemented in the harness: before every installer run the harness asserts that both decoy install roots exist (`$S/decoy-gobin` and `$S/decoy-gopath/bin`, the directory `install.sh:254-257` really installs into, per NR-1's note on assertion (3)), lie under the resolved scratch root, that `go` resolves to the stub and that the stub answers `go env GOBIN` / `go env GOPATH` with exactly those directories; otherwise it aborts with status 2 and the installer is not run.
+2. The four `installer-*` cases pass `--install-dir <scratch>/inst-<case>/bin` and assert (1) `go` is the stub, (2) the resolved installed path lies under the case's own directory, (3) neither decoy holds a `moai`; the omit-flag control turns all four red by the decoy assertion with the stub `go` shown consulted; normal mode: three PASS and one PENDING, `LEAK=0`.
+3. The decoy-missing control proves non-execution by a recording wrapper (`installer-invocations.log`) and by abort's own exit status, and went red against two guard mutants.
+4. `scripts/protected-set-hash.sh` sees empty-directory, new-file and content changes in a canary home.
+
+#### Evidence (verbatim, this run, this tree)
+
+Protected-set bracket (AC-025 (d)), real roots, the caller's own `CLAUDE_CONFIG_DIR`/`CODEX_HOME`/`HOME`:
+
+```
+$ sh scripts/protected-set-hash.sh        # before, after commit 65c175af8, before the first harness run
+PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190
+$ sh scripts/protected-set-hash.sh        # after the last harness run, tree HEAD 81916fb75
+PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190
+$ diff real-before.txt real-after.txt     # the two --dump entry lists
+(empty; exit 0)                                              # LEAK=0
+```
+
+BI-1 (`env | cut -d= -f1 | grep -E '^(CLAUDE_CODE_PLUGIN_|BASH_ENV$|ENV$|BASH_FUNC_|GOBIN$|GOPATH$|GOFLAGS$|GOENV$|CODEX_SQLITE_HOME$|XDG_)'`) was run at the start of every measurement batch (hash self-test, before-line, the first harness run, the GREEN runs, the final runs): each printed nothing, grep exit 1.
+
+Hash script self-test on a canary home (`CLAUDE_CONFIG_DIR` and `CODEX_HOME` under the scratchpad, both shown empty by `ls -A` first):
+
+```
+empty homes                                   PROTECTED-SET 978abca5584009c769332f27cb1dda3c398f889b1c934888d6a2ed30998d2508 entries=35
++ plugins/data/x (empty directories only)     PROTECTED-SET b8da8d8c76d3fcc7e8736500dc4d1f668edae4be42954bc6ccaab640f700b4de entries=37
+  control: find <claude home> -type f         (no output)    # a files-only listing sees nothing
++ settings.json {"a": 1}                      PROTECTED-SET c36a2ee008c7664d9199087a8972125ba984ea1932c191b031fafcc1330ce28e entries=37
+  settings.json content {"a": 2}              PROTECTED-SET a42722ccd3ef4468011b27eff76bddde2f4662815a07667c89ed73713327e32b entries=37
+--roots-file on the saved roots, no env       PROTECTED-SET b8da8d8c... entries=37   # equals the live reading of the same state
+```
+
+RED, observed at an assertion (`cdd2e5ac3`, harness without the precondition), run before the commit:
+
+```
+$ sh scripts/test-plugin-install-step.sh --negative-control-decoy-missing bin/moai
+scrub: enumerated and unset 34 names
+FAIL decoy-missing-aborts-before-installer (removed decoy-gobin: rc=0, aborted=no, installer runs=1)
+FAIL decoy-missing-aborts-before-installer (removed decoy-gopath/bin: rc=0, aborted=no, installer runs=1)
+RESULT negative-control-decoy-missing: the installer RAN with a decoy missing
+LEAK=0 (real roots unchanged: PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190)
+exit=1
+```
+
+The RED run was safe: one decoy removed per iteration leaves the other as `install.sh`'s root (`install.sh:254-261`), so `$HOME/.local/bin` is reached only when both are absent, which no run arranged. Normal mode and the omit-flag control passed at that commit (their output equals the GREEN output below); only the new control was red.
+
+GREEN (`81916fb75`), final runs at the same tree:
+
+```
+$ sh scripts/test-plugin-install-step.sh --negative-control-decoy-missing bin/moai          # exit 0
+scrub: enumerated and unset 34 names
+PASS decoy-missing-aborts-before-installer (removed decoy-gobin: rc=2, installer runs=0)
+PASS decoy-missing-aborts-before-installer (removed decoy-gopath/bin: rc=2, installer runs=0)
+RESULT negative-control-decoy-missing: the installer never ran with a decoy missing
+LEAK=0 (real roots unchanged: PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190)
+
+$ sh scripts/test-plugin-install-step.sh bin/moai                                            # normal, exit 0
+scrub: enumerated and unset 34 names
+PENDING installer-calls-verb-by-installed-path: install-directory assertions pass; the verb-call assertion lands with install.sh in M3
+PASS installer-optout
+PASS installer-set-e-guard
+PASS installer-old-binary-unknown-verb
+RESULT pass=3 fail=0 pending=1
+LEAK=0 (real roots unchanged: PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190)
+
+$ sh scripts/test-plugin-install-step.sh --negative-control-install-dir bin/moai              # omit-flag, exit 0
+scrub: enumerated and unset 34 names
+RED installer-calls-verb-by-installed-path: installed-path-not-under-case-dir(no moai at <scratch>/inst-installer-calls-verb-by-installed-path/bin); decoy-holds-moai(<scratch>/decoy-gobin/moai)
+RED installer-optout: installed-path-not-under-case-dir(no moai at <scratch>/inst-installer-optout/bin); decoy-holds-moai(<scratch>/decoy-gobin/moai)
+RED installer-set-e-guard: installed-path-not-under-case-dir(no moai at <scratch>/inst-installer-set-e-guard/bin); decoy-holds-moai(<scratch>/decoy-gobin/moai)
+RED installer-old-binary-unknown-verb: installed-path-not-under-case-dir(no moai at <scratch>/inst-installer-old-binary-unknown-verb/bin); decoy-holds-moai(<scratch>/decoy-gobin/moai)
+RESULT negative-control-install-dir: red set and green set are exactly the expected ones
+LEAK=0 (real roots unchanged: PROTECTED-SET 753334575dbf1fe141254a71de36ff7eda25227130c6454bd24e333b3491f2aa entries=190)
+```
+
+(`<scratch>` abbreviates the `mktemp -d` path, `/private/var/folders/.../T/tmp.XXXXXXXXXX`; the full path is in the raw output of the run.)
+
+Guard mutants (copies of the harness under the scratchpad, each with its own copy of `install.sh` and the hash script; the decoy-missing control run against each):
+
+```
+mutant 1: preflight loop checks only the GOBIN decoy
+PASS decoy-missing-aborts-before-installer (removed decoy-gobin: rc=2, installer runs=0)
+FAIL decoy-missing-aborts-before-installer (removed decoy-gopath/bin: rc=0, aborted=no, installer runs=1)   exit 1
+mutant 2: abort() prints but does not exit (every "exit 2; }" replaced by "true; }")
+FAIL decoy-missing-aborts-before-installer (removed decoy-gobin: rc=1, aborted=yes, installer runs=0)
+FAIL decoy-missing-aborts-before-installer (removed decoy-gopath/bin: rc=1, aborted=yes, installer runs=0)   exit 1
+```
+
+Mutant 2 first survived (rc=1 from a `set -e` accident, installer runs=0), which is why the control was tightened to demand abort's own status 2 before GREEN was committed; the table above is the run after that change.
+
+Static (AC-025 (e), the two scripts that exist): `grep -nE '(^|[^A-Za-z_])HOME=|(^|[^A-Za-z_])export HOME' scripts/test-plugin-install-step.sh scripts/protected-set-hash.sh` printed nothing, exit 1; control `grep -c 'CODEX_HOME' scripts/test-plugin-install-step.sh` printed `2`. `sh -n` passed on both scripts and `bash -n install.sh` passed.
+
+#### Baseline-attribution
+
+Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1435`, branch `WT-marketplace-core-plugin`, base HEAD `45edfc6fd`, measured at HEAD `65c175af8` (hash self-test, before-line), `cdd2e5ac3` (RED run), `81916fb75` (GREEN and final runs, after-line), all in this run. The judging tools are the shell scripts of this tree, invoked by path (`sh scripts/...`); no installed build of anything judged them. `bin/moai` (gitignored) was built by `go build -o bin/moai ./cmd/moai` from this tree at HEAD `65c175af8`, exit 0, and is only the archive payload of the `real` kind: no case executes it (it is not on the harness PATH and `install.sh` does not call the verb yet). The installer under test is this tree's unchanged `install.sh`.
+
+#### Gaps
+
+- G-R0-1 (deviation from the dispatch's "all four GREEN"): the normal run is three `PASS` and one `PENDING`. `installer-calls-verb-by-installed-path` asserts that `install.sh` calls the verb by its installed path, and `install.sh` carries no such call until M3 (out of R0 by instruction). Its install-directory assertions run and pass; its verb assertion is not written, and the line says `PENDING` rather than `PASS` so that nothing reads as a verb check that did not happen. `installer-optout` (zero recorded `plugin` calls) and `installer-set-e-guard` / `installer-old-binary-unknown-verb` (installer exits 0 and prints `Installation complete!`) pass today for the reason that `install.sh` makes no plugin call; they cannot go red on a wrong call until M3 adds one, so their mutant probes (AC-018) are unobserved.
+- G-R0-2: the isolation-* and verb-* cases, `--negative-control`, `--negative-control-cwd` and `--typed-list-mutant` do not exist yet (M3 by instruction). The environment scrub is implemented and prints its count, and a post-scrub abort check exists, but `isolation-env-scrubbed` and the typed-list negative control are the verdict of AC-025 and are unobserved.
+- G-R0-3: the omit-flag control's `green` side is vacuous in R0: the five isolation cases it expects to stay green do not exist, so only the red set (all four installer cases, each by the decoy assertion with the stub `go` shown consulted) is judged.
+- G-R0-4: `scripts/protected-set-hash.sh` was written before its first harness consumer ran and was not itself driven RED-first; its observed failures are the canary self-test above (changes move the hash, a files-only listing is blind to the directory change). The infrastructure commit therefore precedes the observed RED commit by design, not by a RED of its own.
+- G-R0-5: refusal (verification-claim-integrity section 3.1): a command of the form `sh scripts/test-plugin-install-step.sh --negative-control-install-dir bin/moai | cut -c1-120; echo "exit=${PIPESTATUS:-n/a}"` was refused by the worktree guard ("construct too complex to verify"); it was re-run as the plain single command and its output is the one quoted above. Nothing was substituted by reading.
+- G-R0-6: `$HOME/.local/bin`, `$GOBIN` and `$GOPATH/bin` are not in the protected set by design (`design.md` section 6); that no install reached them rests on the per-case assertions and on the prevention above, and on the real-root hash being equal, not on a hash of those directories. The failing path itself (both decoys absent, `install.sh` writing `$HOME/.local/bin`) was not run, because running it would write a real directory and `HOME` may not be assigned.
+- G-R0-7: the real roots were hashed to depth 1 under `~/.moai` and depth 3 under the plugin roots; ambient churn deeper than that, `~/.claude.json`, and `tmp/arg0` under the Codex home are blind spots stated by the SPEC (G-9). `~/.claude/settings.json` was named in the roots but its mtime was not recorded (NR-4 asked for the mtime change to be named if it recurs: its content hash is part of the compared set and was equal).
+- Not run, by instruction: `go test` of any package, `install.ps1`, `install.bat`.
+
+#### Residual-risk
+
+- NR-1 is closed for the harness as written; what remains is that the decoy assertions guard only the harness's own runs. A later edit that adds an installer call outside `run_case` (the one function that carries `preflight_decoys` and the recording wrapper) would bypass both; M3 must add cases through `run_case`.
+- The decoy precondition proves the decoys exist when the installer starts; a decoy removed by something else during the run is not observed (the post-run decoy-holds-moai assertion still sees a landing in whichever decoy remains).
+- `~/.moai` depth-1 entries can change on a live machine (NR-4): a non-zero `LEAK` will need its differing entries attributed (`diff` of the two dumps is printed) rather than assumed.
+- The `PENDING` line in normal mode is a standing reminder, not a gate: nothing fails if M3 forgets to replace it; the AC-018 (a) expectation that the line reads `PASS installer-calls-verb-by-installed-path` is what holds M3 to it.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
