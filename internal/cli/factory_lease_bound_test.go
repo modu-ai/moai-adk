@@ -8,6 +8,7 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -88,16 +89,46 @@ func flQueueFreeWithin(store *factory.BacklogStore, d time.Duration) (bool, erro
 	return ok, op.err
 }
 
+// flOverheadCeil is the stated ceiling on harness overhead — fixture setup, the
+// in-process CLI exec, and teardown — that these record-stall arms may add above
+// the product's own claim cap C (= factoryLeaseClaimWaitCap, 1 s). Measured
+// (t1506): elapsed − C ranged 0.15–0.65 s across the 20 arms of the reproduction
+// run (.moai/reports/t1506/repro-run2.log, -race -count=10, nominated max
+// 0.652 s, bare max 0.275 s) and hit 0.657 s on CI run 37188480785. 700 ms is
+// that observed maximum rounded up to a stated figure; the hang guard below
+// spends four of them, so a runner needs overheads nearly 4x the worst
+// measurement before the bound trips. The fix's own verification pass (a loaded
+// machine, -race -count=10) later saw overhead up to 1.14 s — 1.6x this ceiling
+// and still 2.5x inside the guard's allowance, which is the margin the multiple
+// exists to provide; under the old C + 500 ms bound that pass would have failed
+// 17 of its 20 arms.
+const flOverheadCeil = 700 * time.Millisecond
+
 // TestFactoryLeaseRecordStallBounded — AC-FAL-007 (a) and its bare-form arm (c)
 // clause: a record write transaction held by a second connection for three
-// times the cap C. The nominated lease returns within C + 500 ms with exit 4 and
-// a `raced` refusal whose detail says the record or the queue lock was busy (not
+// times the cap C. The nominated lease gives up at C with exit 4 and a `raced`
+// refusal whose detail says the record or the queue lock was busy (not
 // "another lane"), the queue item is `queued` again, a queue writer started at
 // the same instant completes without a lock-held error, and the queue's lock is
-// acquirable right afterwards. The bare form returns within C + 500 ms with exit
-// 1 and leaves the promoted item `picked`.
+// acquirable right afterwards. The bare form gives up at C with exit 1 and
+// leaves the promoted item `picked`.
+//
+// The wall-clock assertions here are hang guards, not the AC bound. The precise
+// deadline is the product's own and lives in the code: the claim runs under
+// context.WithTimeout(factoryLeaseClaimDeadline) (factoryClaimContext,
+// factory_card.go) on a record connection whose busy timeout is
+// factoryLeaseClaimBusyTimeout, and a busy refusal is marked only once that
+// deadline has passed (factoryClaimFailure) — so the give-up is bounded by C and
+// cannot happen before the deadline. Everything above C in a wall-clock reading
+// is harness overhead, measured at 0.15–0.65 s (repro log) and 0.657 s (CI).
+// AC-FAL-007's C + 500 ms margin budgets product-side delay only — one lock
+// retry (50 ms), one queue mutation (33 ms), the claim's overshoot (~30 ms) and
+// scheduler delay — not test-harness time, which is why it does not serve as the
+// process wall-clock bound here. (Divergence from the AC's literal `C + 500 ms`
+// wording noted for card t1506; the AC's semantic invariant is asserted
+// unchanged below.)
 func TestFactoryLeaseRecordStallBounded(t *testing.T) {
-	limit := factoryLeaseClaimWaitCap + flMargin
+	limit := factoryLeaseClaimWaitCap + 4*flOverheadCeil
 	t.Run("nominated", func(t *testing.T) {
 		root, store := nmQueuedNominee(t)
 		nmIsolatedWorktrees(t, "t1")
@@ -111,8 +142,11 @@ func TestFactoryLeaseRecordStallBounded(t *testing.T) {
 		end()
 		q := nmQueueState(t, store, "t1")
 		t.Logf("nominated under a record stall: elapsed=%s exit=%d stderr=%q queue=%s", elapsed, nmExit(err), stderr, q)
+		if elapsed < factoryLeaseClaimDeadline {
+			t.Errorf("the nominated lease returned after %s, below the claim's own %s deadline — with the record held the whole time the claim cannot have given up before waiting it out", elapsed, factoryLeaseClaimDeadline)
+		}
 		if elapsed > limit {
-			t.Errorf("the nominated lease returned after %s with the record held, want within %s (C + 500 ms)", elapsed, limit)
+			t.Errorf("the nominated lease returned after %s with the record held, want within %s (C + 4x the measured overhead ceiling, hang guard)", elapsed, limit)
 		}
 		nmAssertRefused(t, out, stderr, err, "raced")
 		if !strings.Contains(stderr, "busy") || strings.Contains(stderr, "another lane") {
@@ -140,8 +174,11 @@ func TestFactoryLeaseRecordStallBounded(t *testing.T) {
 		end()
 		q := nmQueueState(t, store, "t1")
 		t.Logf("bare under a record stall: elapsed=%s exit=%d stdout=%q stderr=%q queue=%s", elapsed, nmExit(err), out, stderr, q)
+		if elapsed < factoryLeaseClaimDeadline {
+			t.Errorf("the bare lease returned after %s, below the claim's own %s deadline — with the record held the whole time the claim cannot have given up before waiting it out", elapsed, factoryLeaseClaimDeadline)
+		}
 		if elapsed > limit {
-			t.Errorf("the bare lease returned after %s with the record held, want within %s (C + 500 ms)", elapsed, limit)
+			t.Errorf("the bare lease returned after %s with the record held, want within %s (C + 4x the measured overhead ceiling, hang guard)", elapsed, limit)
 		}
 		if code := nmExit(err); code != 1 && code != -1 {
 			t.Errorf("the bare lease exited %d (%v), want an error (exit 1)", code, err)
@@ -150,6 +187,64 @@ func TestFactoryLeaseRecordStallBounded(t *testing.T) {
 			t.Errorf("queue state after the bare stall = %s, want picked (spec §F R4, third shape)", q)
 		}
 	})
+}
+
+// flClaimSegmentMargin is the margin above the wait cap C allowed to the claim
+// segment TestFactoryLeaseClaimRespectsWaitCap measures. The segment is nearly
+// pure product code — the record is opened before the clock starts and the
+// measured call is the claim itself — so the time above the deadline it waits
+// out is only the cancellation propagating through one blocked write:
+// measured (t1506) at 0.896–0.930 s across twenty -race runs on a loaded
+// machine (two ten-run passes), i.e. 0.10–0.13 s above the 800 ms deadline and
+// 0.07–0.10 s inside the cap. 250 ms is ~2x that worst observed overshoot,
+// keeps the bound at over 1.3x the worst observed segment, and is a quarter of
+// C, so the review's overlay mutation (the deadline alone moved to 2 s,
+// segment ~2.1 s) fails the bound by ~0.85 s — a detector margin, not a
+// measured ceiling.
+const flClaimSegmentMargin = 250 * time.Millisecond
+
+// TestFactoryLeaseClaimRespectsWaitCap — the mutation-detector for the claim
+// cap itself (card-review round 1 P2, card t1506; AC-FAL-007's give-up bound).
+// The end-to-end arms in TestFactoryLeaseRecordStallBounded are hang guards on
+// the whole process wall-clock: a claim deadline loosened by overlay (the
+// review's mutation moved only factoryClaimContext's limit, 800 ms → 2 s)
+// gives up at ~2.4 s, inside the 3.8 s guard and above the 800 ms lower bound,
+// so nothing failed. This test measures the claim segment directly and
+// narrowly: it invokes factoryNextRecordAndClaim in-process, exactly as the
+// nominated lease does (homestate.OpenFactoryBounded with the claim's busy
+// timeout, factory_card.go factoryNextNominate), against a record write
+// transaction held by a second connection (flHoldRecord), reading the clock
+// immediately around the call — no CLI startup or teardown inside the measured
+// segment. It then asserts AC-FAL-007's semantic invariant on that segment:
+// the claim under a permanently held record returns no earlier than its own
+// deadline (it waited the record out) and no later than the wait cap
+// C = factoryLeaseClaimWaitCap plus the segment margin above — so a give-up
+// past the declared cap fails here even while every wall-clock guard passes.
+func TestFactoryLeaseClaimRespectsWaitCap(t *testing.T) {
+	root, _ := nmQueuedNominee(t)
+	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
+	if err != nil {
+		t.Fatalf("open the factory record with the claim's busy timeout: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	end := flHoldRecord(t, root)
+	start := time.Now()
+	_, leased, retry, claimErr := factoryNextRecordAndClaim(context.Background(), db, root, fcRun, "t1", "lane-1")
+	segment := time.Since(start)
+	end()
+	t.Logf("claim segment under a held record: %s busy=%v leased=%v retry=%v", segment, errors.Is(claimErr, errFactoryRecordBusy), leased, retry)
+	if !errors.Is(claimErr, errFactoryRecordBusy) {
+		t.Fatalf("the claim under a held record returned %v (leased=%v retry=%v), want the busy refusal errFactoryRecordBusy — without it the segment did not measure the give-up at the cap", claimErr, leased, retry)
+	}
+	if leased || retry {
+		t.Errorf("the claim under a held record reported leased=%v retry=%v, want both false (the give-up is a hard busy refusal, not a race to retry)", leased, retry)
+	}
+	if segment < factoryLeaseClaimDeadline {
+		t.Errorf("the claim segment returned after %s, below the claim's own %s deadline — with the record held the whole time the claim cannot have given up before waiting it out", segment, factoryLeaseClaimDeadline)
+	}
+	if segment > factoryLeaseClaimWaitCap+flClaimSegmentMargin {
+		t.Errorf("the claim segment returned after %s, want within %s (the wait cap %s + %s segment margin) — the claim gave up past its declared cap", segment, factoryLeaseClaimWaitCap+flClaimSegmentMargin, factoryLeaseClaimWaitCap, flClaimSegmentMargin)
+	}
 }
 
 // TestFactoryLeaseMidClaimStallBounded — AC-FAL-007 (b): the same stall started
