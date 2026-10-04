@@ -43,9 +43,15 @@ func postToolTargetOutsideProject(input *HookInput) bool {
 		return false
 	}
 
+	// A relative file_path is relative to the session cwd; the project root is
+	// only the base when the payload carries no cwd.
 	target := ti.FilePath
 	if !filepath.IsAbs(target) {
-		target = filepath.Join(roots[0], target)
+		base := input.CWD
+		if base == "" {
+			base = roots[0]
+		}
+		target = filepath.Join(base, target)
 	}
 	realTarget := evalSymlinksExistingPrefix(target)
 	for _, r := range roots {
@@ -58,9 +64,14 @@ func postToolTargetOutsideProject(input *HookInput) bool {
 
 // evalSymlinksExistingPrefix resolves symlinks in path. A path that does not
 // exist yet (a file being created) is resolved through its deepest existing
-// ancestor, with the missing tail appended unchanged.
+// ancestor, with the missing tail appended.
+//
+// The spelling is deliberately NOT cleaned first: a ".." that follows a symlink
+// component climbs from the link's real target, which EvalSymlinks handles but
+// a lexical Clean would get wrong. Ancestors are therefore peeled off by string
+// slicing (filepath.Dir would Clean) and the tail is joined only afterwards.
 func evalSymlinksExistingPrefix(path string) string {
-	path = filepath.Clean(path)
+	sep := string(filepath.Separator)
 	var tail []string
 	for p := path; ; {
 		if real, err := filepath.EvalSymlinks(p); err == nil {
@@ -69,12 +80,16 @@ func evalSymlinksExistingPrefix(path string) string {
 			}
 			return real
 		}
-		parent := filepath.Dir(p)
-		if parent == p {
-			return path
+		trimmed := strings.TrimRight(p, sep)
+		idx := strings.LastIndex(trimmed, sep)
+		if idx < 0 || trimmed == "" {
+			return filepath.Clean(path)
 		}
-		tail = append(tail, filepath.Base(p))
-		p = parent
+		tail = append(tail, trimmed[idx+1:])
+		p = trimmed[:idx]
+		if p == "" {
+			p = sep
+		}
 	}
 }
 

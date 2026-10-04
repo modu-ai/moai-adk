@@ -198,3 +198,48 @@ func TestPostToolSecurityGuardianScopedToProject(t *testing.T) {
 		})
 	}
 }
+
+// A `..` that follows a symlink component walks up from the link's real
+// target, not from the link's parent: outside/alias/../x.go with alias pointing
+// at project/sub is project/x.go. Cleaning the spelling before resolving links
+// would judge it outside.
+func TestPostToolTargetOutsideProject_DotDotAfterSymlink(t *testing.T) {
+	f := newScopeFixture(t)
+	sub := filepath.Join(f.project, "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(f.outside, "alias")
+	if err := os.Symlink(sub, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	for name, rel := range map[string]string{
+		"existing file": "x.go",
+		"new file":      "brand-new.go",
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := alias + string(filepath.Separator) + ".." + string(filepath.Separator) + rel
+			if postToolTargetOutsideProject(writeInput("", path, "x")) {
+				t.Errorf("%s resolves to %s and is inside the project, judged outside", path, filepath.Join(f.project, rel))
+			}
+		})
+	}
+}
+
+// A relative file_path is relative to the hook input's cwd, not to the project
+// root: with cwd=project/sub, "../x.go" is project/x.go.
+func TestPostToolTargetOutsideProject_RelativePathUsesInputCwd(t *testing.T) {
+	f := newScopeFixture(t)
+	sub := filepath.Join(f.project, "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if postToolTargetOutsideProject(writeInput(sub, "../x.go", "x")) {
+		t.Error("../x.go with cwd=project/sub is project/x.go, judged outside")
+	}
+	// A relative path that climbs out of the project is still outside.
+	if !postToolTargetOutsideProject(writeInput(sub, "../../outside/x.go", "x")) {
+		t.Error("../../outside/x.go with cwd=project/sub is outside/x.go, judged inside")
+	}
+}

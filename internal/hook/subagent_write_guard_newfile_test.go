@@ -11,6 +11,7 @@ package hook
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -73,6 +74,11 @@ func TestSubagentWriteGuardNewRelativeFileIsAllow(t *testing.T) {
 // Any stat error other than "does not exist" stays fail-open, and its reason
 // says the stat failed rather than claiming the file is missing.
 func TestSubagentWriteGuardStatErrorOtherThanMissingStaysFailOpen(t *testing.T) {
+	// chmod 0o000 on a directory does not block access on Windows, and
+	// Geteuid() is -1 there, so the root check below cannot catch it.
+	if runtime.GOOS == "windows" {
+		t.Skip("directory permission bits do not deny stat on Windows")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("root bypasses directory permissions")
 	}
