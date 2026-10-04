@@ -349,7 +349,7 @@ func readStamp(rd io.Reader) []byte {
 
 // readStampFile reads the state file without locking; a missing or unreadable file is "no stamp".
 func readStampFile(path string) []byte {
-	f, err := os.Open(path)
+	f, err := openStampReadOnly(path)
 	if err != nil {
 		return nil
 	}
