@@ -27,8 +27,7 @@ func saveCCVersionSeams(t *testing.T) {
 // …/claude/versions/2.1.281 resolves to running version 2.1.281. The fixture
 // is lsof-shaped on purpose: `-d txt` also lists mapped frameworks and dyld,
 // so the parse must anchor on the line naming the claude binary itself — a
-// version-shaped segment on a library mapping (macOS framework bundles carry
-// Versions/<n>/ directories) must not satisfy the read.
+// version-shaped segment on a library mapping must not satisfy the read.
 func TestRunningVersionFromInjectedMapping(t *testing.T) {
 	saveCCVersionSeams(t)
 	pidIsAlive = func(int) bool { return true }
@@ -36,10 +35,16 @@ func TestRunningVersionFromInjectedMapping(t *testing.T) {
 		if pid != 4242 {
 			return "", false
 		}
+		// The satisfying line is the NATIVE INSTALLER'S real shape, measured
+		// live (plan §F.4): the shipped binary file is named by its version,
+		// so the mapping line's path ends at …/claude/versions/2.1.281 with no
+		// trailing "/claude". The library lines around it are the anchor
+		// hazard: CoreFoundation's Versions/9 segment is version-shaped (its
+		// capital V is what a case-sensitive match refuses).
 		mapping := strings.Join([]string{
-			"claude  4242 dev  txt  REG  1,4  123  456 /System/Library/Frameworks/CoreFoundation.framework/Versions/9/CoreFoundation",
-			"claude  4242 dev  txt  REG  1,4  234  567 /Users/dev/.local/share/claude/versions/2.1.281/claude",
-			"claude  4242 dev  txt  REG  1,4  345  678 /usr/lib/dyld",
+			"2.1.281  4242 dev  txt  REG  1,4  123  456 /System/Library/Frameworks/CoreFoundation.framework/Versions/9/CoreFoundation",
+			"2.1.281  4242 dev  txt  REG  1,4  234  567 /Users/dev/.local/share/claude/versions/2.1.281",
+			"2.1.281  4242 dev  txt  REG  1,4  345  678 /usr/lib/dyld",
 		}, "\n")
 		return mapping, true
 	}
@@ -48,6 +53,23 @@ func TestRunningVersionFromInjectedMapping(t *testing.T) {
 	if view.Running != "2.1.281" {
 		t.Fatalf("ResolveCCVersions(4242).Running = %q, want 2.1.281 (a library mapping's version shape must not satisfy the read)", view.Running)
 	}
+
+	t.Run("binary-named-file shape also satisfies", func(t *testing.T) {
+		readProcessMapping = func(int) (string, bool) {
+			return "claude  4242 dev  txt  REG  1,4  234  567 /opt/installs/claude/versions/2.0.9/bin/claude", true
+		}
+		if got := (ResolveCCVersions(4242)).Running; got != "2.0.9" {
+			t.Fatalf("…/versions/2.0.9/bin/claude resolved %q, want 2.0.9", got)
+		}
+	})
+	t.Run("npm layout satisfies", func(t *testing.T) {
+		readProcessMapping = func(int) (string, bool) {
+			return "node  4242 dev  txt  REG  1,4  234  567 /opt/node/lib/node_modules/@anthropic-ai/claude-code/2.1.284/cli", true
+		}
+		if got := (ResolveCCVersions(4242)).Running; got != "2.1.284" {
+			t.Fatalf("…/claude-code/2.1.284/cli resolved %q, want 2.1.284", got)
+		}
+	})
 }
 
 // TestInstalledVersionFromResolvedPath (AC-SCV-002, REQ-SCV-002) — a fixture
@@ -77,10 +99,11 @@ func TestInstalledVersionFromResolvedPath(t *testing.T) {
 	// depends on (an unversioned path renders no segment; a prefix that merely
 	// contains the word "versions" must not match).
 	direct := map[string]string{
-		"/Users/dev/.local/share/claude/versions/2.1.281/claude": "2.1.281",
+		"/Users/dev/.local/share/claude/versions/2.1.281":                  "2.1.281",
+		"/Users/dev/.local/share/claude/versions/2.1.281/claude":           "2.1.281",
 		"/opt/node/lib/node_modules/@anthropic-ai/claude-code/2.1.284/cli": "2.1.284",
-		"/usr/local/bin/claude":                    "",
-		"/opt/homebrew/Caskroom/conversions/2.1/x": "",
+		"/usr/local/bin/claude":                                            "",
+		"/opt/homebrew/Caskroom/conversions/2.1/x":                         "",
 	}
 	for path, want := range direct {
 		if got := versionSegmentFromPath(path); got != want {

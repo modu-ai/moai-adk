@@ -133,11 +133,23 @@ func runningCCVersionFromMapping(mapping string) string {
 }
 
 // mappingPathNamesClaudeBinary anchors the parse on the mapping line naming
-// the claude binary itself: its path is exactly the binary name or ends in
-// "/claude". dyld, framework, and dylib mapping lines end in other names and
-// cannot satisfy the read.
+// the claude binary itself. Three real-world shapes name it:
+//
+//   - the native installer's product-directory layout …/claude/versions/<X.Y.Z>
+//     (the shipped binary file is named by its version — measured live:
+//     /Users/<u>/.local/share/claude/versions/2.1.287);
+//   - the npm-style …/claude-code/<X.Y.Z> layout;
+//   - a path ending in the binary name itself (…/<ver>/claude).
+//
+// dyld, framework, and dylib mapping lines satisfy none of the three: macOS
+// framework bundles capitalize Versions/ (the match is case-sensitive), and
+// no system library lives under a claude product directory — so a
+// version-shaped segment on a library mapping cannot satisfy the read.
 func mappingPathNamesClaudeBinary(path string) bool {
-	return path == claudeBinaryName || strings.HasSuffix(path, "/"+claudeBinaryName)
+	return strings.Contains(path, "/claude/versions/") ||
+		strings.Contains(path, "/claude-code/") ||
+		path == claudeBinaryName ||
+		strings.HasSuffix(path, "/"+claudeBinaryName)
 }
 
 // versionSegmentRe matches the two house install-path shapes:
