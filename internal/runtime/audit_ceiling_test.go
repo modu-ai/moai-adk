@@ -220,6 +220,37 @@ func TestResolvePlanAuditCeilingInvalid(t *testing.T) {
 	}
 }
 
+// TestEvidenceRelativeAndAbsoluteSpellingsDeduplicate — CR-P2-2 (card-review
+// r1): the same directory listed as a relative path and as its absolute form
+// contributes exactly once. Pre-fix the two spellings dodged the dedupe, the
+// count doubled, and SelectLatestVerdict misread the same directory as a
+// cross-directory tie.
+func TestEvidenceRelativeAndAbsoluteSpellingsDeduplicate(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "evidence")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeRoundFile(t, dir, "plan-audit-iter1.md")
+	t.Chdir(base) // the relative spelling resolves against the process cwd
+
+	count, err := CountPlanAuditRounds(dir, []string{"evidence"})
+	if err != nil {
+		t.Fatalf("CountPlanAuditRounds: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("count = %d, want 1 (relative + absolute spellings of one directory)", count)
+	}
+
+	latest, err := SelectLatestVerdict(dir, []string{"evidence"})
+	if err != nil {
+		t.Fatalf("one directory in two spellings must not read as a tie: %v", err)
+	}
+	if !strings.HasSuffix(latest, "plan-audit-iter1.md") {
+		t.Fatalf("latest = %q, want the directory's plan-audit-iter1.md", latest)
+	}
+}
+
 // Verdict bodies the ceiling fixtures record into their latest iteration file.
 const (
 	ceilingPassBody = "verdict: PASS\noverall_score: 0.90\nmust_pass_failed: 0\nblocking_count: 0\nplan_artifact_hash: abc123\n"
@@ -260,7 +291,6 @@ func ceilingInput(specID, evidenceDir, onFinalHit string) CeilingInput {
 // count/ceiling/label/evidence fields.
 func TestRecordCeilingOutcome(t *testing.T) {
 	project := t.TempDir()
-	t.Chdir(project)
 
 	outcome, hit, err := EvaluatePlanAuditCeiling(ceilingInput("SPEC-CEIL-004", ceilingFixture(t, ceilingFailBody), "hold-and-split"))
 	if err != nil {
@@ -282,10 +312,10 @@ func TestRecordCeilingOutcome(t *testing.T) {
 		t.Error("record carries no evidence paths")
 	}
 
-	if err := RecordCeilingOutcome("SPEC-CEIL-004", outcome); err != nil {
+	if err := RecordCeilingOutcome(project, "SPEC-CEIL-004", outcome); err != nil {
 		t.Fatalf("RecordCeilingOutcome: %v", err)
 	}
-	raw, err := os.ReadFile(filepath.Join(".moai", "state", "audit-ceiling", "SPEC-CEIL-004.json"))
+	raw, err := os.ReadFile(filepath.Join(project, ".moai", "state", "audit-ceiling", "SPEC-CEIL-004.json"))
 	if err != nil {
 		t.Fatalf("read record: %v", err)
 	}
@@ -299,10 +329,10 @@ func TestRecordCeilingOutcome(t *testing.T) {
 
 	// Recording again overwrites the same path — one record per SPEC, not an
 	// append log.
-	if err := RecordCeilingOutcome("SPEC-CEIL-004", outcome); err != nil {
+	if err := RecordCeilingOutcome(project, "SPEC-CEIL-004", outcome); err != nil {
 		t.Fatalf("re-record: %v", err)
 	}
-	entries, err := os.ReadDir(filepath.Join(".moai", "state", "audit-ceiling"))
+	entries, err := os.ReadDir(filepath.Join(project, ".moai", "state", "audit-ceiling"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +416,6 @@ func TestRecordCeilingOutcomeSplitValue(t *testing.T) {
 func TestEvaluatePlanAuditCeiling(t *testing.T) {
 	t.Run("clean admitted PASS at the ceiling writes no record", func(t *testing.T) {
 		project := t.TempDir()
-		t.Chdir(project)
 
 		outcome, hit, err := EvaluatePlanAuditCeiling(ceilingInput("SPEC-CEIL-005", ceilingFixture(t, ceilingPassBody), "hold-and-split"))
 		if err != nil {
@@ -397,18 +426,17 @@ func TestEvaluatePlanAuditCeiling(t *testing.T) {
 		}
 		// The composition the CLI verb runs: record only on hit.
 		if hit {
-			if err := RecordCeilingOutcome("SPEC-CEIL-005", outcome); err != nil {
+			if err := RecordCeilingOutcome(project, "SPEC-CEIL-005", outcome); err != nil {
 				t.Fatal(err)
 			}
 		}
-		if _, err := os.Stat(filepath.Join(".moai", "state", "audit-ceiling", "SPEC-CEIL-005.json")); !os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(project, ".moai", "state", "audit-ceiling", "SPEC-CEIL-005.json")); !os.IsNotExist(err) {
 			t.Errorf("record exists for a clean PASS at the ceiling (stat err = %v)", err)
 		}
 	})
 
 	t.Run("invalid resolved ceiling propagates the error with no record", func(t *testing.T) {
 		project := t.TempDir()
-		t.Chdir(project)
 
 		in := ceilingInput("SPEC-CEIL-005B", ceilingFixture(t, ceilingFailBody), "hold-and-split")
 		in.Tier = "M"
@@ -420,7 +448,7 @@ func TestEvaluatePlanAuditCeiling(t *testing.T) {
 		if hit {
 			t.Error("no ceiling outcome applies when the ceiling never resolved")
 		}
-		if _, statErr := os.Stat(filepath.Join(".moai", "state", "audit-ceiling", "SPEC-CEIL-005B.json")); !os.IsNotExist(statErr) {
+		if _, statErr := os.Stat(filepath.Join(project, ".moai", "state", "audit-ceiling", "SPEC-CEIL-005B.json")); !os.IsNotExist(statErr) {
 			t.Errorf("record written despite the configuration error (stat err = %v)", statErr)
 		}
 	})

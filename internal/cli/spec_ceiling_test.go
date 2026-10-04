@@ -111,6 +111,34 @@ func TestSpecCeilingRecordWritesJSON(t *testing.T) {
 	}
 }
 
+// TestSpecCeilingRecordLandsUnderProjectNotCwd — CR-P2-1 (card-review r1):
+// --record writes the outcome record under the JUDGED project root, never the
+// calling cwd, when the two differ (CLAUDE_PROJECT_DIR ≠ cwd).
+func TestSpecCeilingRecordLandsUnderProjectNotCwd(t *testing.T) {
+	project := ceilingVerbProject(t)
+	cwd := t.TempDir() // the calling directory — deliberately NOT the project
+	t.Setenv("CLAUDE_PROJECT_DIR", project)
+	t.Chdir(cwd)
+
+	cmd := newSpecCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"ceiling", "SPEC-CEILFIX-001", "--record"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("spec ceiling --record (cwd ≠ project): %v\noutput: %s", err, out.String())
+	}
+
+	projectRecord := filepath.Join(project, ".moai", "state", "audit-ceiling", "SPEC-CEILFIX-001.json")
+	if _, err := os.Stat(projectRecord); err != nil {
+		t.Fatalf("record missing under the judged project %s: %v\noutput: %s", project, err, out.String())
+	}
+	cwdRecord := filepath.Join(cwd, ".moai", "state", "audit-ceiling", "SPEC-CEILFIX-001.json")
+	if _, err := os.Stat(cwdRecord); !os.IsNotExist(err) {
+		t.Errorf("record leaked into the calling cwd %s (stat err = %v)", cwd, err)
+	}
+}
+
 // TestSpecCeilingBelowCeilingNoRecord — the read path's below-ceiling arm: no
 // ceiling outcome applies, and --record writes nothing.
 func TestSpecCeilingBelowCeilingNoRecord(t *testing.T) {

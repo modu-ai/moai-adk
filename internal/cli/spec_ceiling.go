@@ -108,10 +108,10 @@ func runSpecCeiling(cmd *cobra.Command, specID string, listedDirs []string, reco
 		_, _ = fmt.Fprintln(out, "read-only evaluation (pass --record to write the outcome record)")
 		return nil
 	}
-	if err := runtime.RecordCeilingOutcome(specID, outcome); err != nil {
+	if err := runtime.RecordCeilingOutcome(root, specID, outcome); err != nil {
 		return fmt.Errorf("spec ceiling: %w", err)
 	}
-	_, _ = fmt.Fprintf(out, "recorded: %s\n", filepath.Join(runtime.AuditCeilingStateDir, specID+".json"))
+	_, _ = fmt.Fprintf(out, "recorded: %s\n", filepath.Join(root, runtime.AuditCeilingStateDir, specID+".json"))
 	return nil
 }
 

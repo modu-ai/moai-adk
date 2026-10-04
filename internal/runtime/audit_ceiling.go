@@ -46,9 +46,33 @@ type evidenceDirInput struct {
 	listed bool
 }
 
-// evidenceDirInputs builds the deduplicated directory inputs: listed
-// directories register first so their error-on-absent class wins a dedupe
-// collision against the SPEC-scoped class (fail-closed direction).
+// canonicalEvidenceDir resolves one evidence-directory spelling to the
+// absolute, symlink-resolved form the dedupe keys on (card-review r1
+// CR-P2-2): identical directories compare equal regardless of spelling, so a
+// relative `.moai/reports/<SPEC-ID>` listing and the auto-included absolute
+// form are one directory, never two. A path that is already absolute passes
+// through Abs untouched (Abs never joins the cwd onto an absolute path);
+// EvalSymlinks resolves macOS /var-style links; a non-existent path keeps its
+// Abs form (the absent-listed error still fires on the read, naming the
+// resolved path).
+func canonicalEvidenceDir(p string) string {
+	if p == "" {
+		return ""
+	}
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return filepath.Clean(p)
+	}
+	if resolved, linkErr := filepath.EvalSymlinks(abs); linkErr == nil {
+		return resolved
+	}
+	return abs
+}
+
+// evidenceDirInputs builds the deduplicated directory inputs over canonical
+// spellings: listed directories register first so their error-on-absent class
+// wins a dedupe collision against the SPEC-scoped class (fail-closed
+// direction).
 func evidenceDirInputs(specDir string, listedDirs []string) []evidenceDirInput {
 	var inputs []evidenceDirInput
 	seen := map[string]bool{}
@@ -56,7 +80,7 @@ func evidenceDirInputs(specDir string, listedDirs []string) []evidenceDirInput {
 		if d == "" {
 			continue
 		}
-		clean := filepath.Clean(d)
+		clean := canonicalEvidenceDir(d)
 		if seen[clean] {
 			continue
 		}
@@ -64,7 +88,7 @@ func evidenceDirInputs(specDir string, listedDirs []string) []evidenceDirInput {
 		inputs = append(inputs, evidenceDirInput{path: clean, listed: true})
 	}
 	if specDir != "" {
-		clean := filepath.Clean(specDir)
+		clean := canonicalEvidenceDir(specDir)
 		if !seen[clean] {
 			seen[clean] = true
 			inputs = append(inputs, evidenceDirInput{path: clean, listed: false})
@@ -321,20 +345,24 @@ func splitProposalReference(specID string) string {
 }
 
 // RecordCeilingOutcome writes the outcome record to
-// .moai/state/audit-ceiling/<SPEC-ID>.json (machine-local state). It is the
+// <projectRoot>/.moai/state/audit-ceiling/<SPEC-ID>.json (machine-local
+// state). The record lands under the project whose ceiling was judged — the
+// caller passes its root, so a CLI run from a different cwd records where the
+// SPEC lives, not where the command ran (card-review r1 CR-P2-1). It is the
 // ONE recording path: no other code writes a ceiling outcome record.
 //
 // @MX:ANCHOR: [AUTO] the ONE ceiling-outcome recording path — every recorded plan-audit ceiling outcome is written by this function, never elsewhere
 // @MX:REASON: a second writer would fork the record format and let two audit-ceiling truth sources drift silently
 // @MX:SPEC: SPEC-AUDIT-CEILING-002
-func RecordCeilingOutcome(specID string, outcome CeilingOutcome) error {
+func RecordCeilingOutcome(projectRoot, specID string, outcome CeilingOutcome) error {
 	if specID == "" || specID == "." || specID == ".." || strings.ContainsAny(specID, `/\`) {
 		return fmt.Errorf("RecordCeilingOutcome: invalid SPEC id %q", specID)
 	}
-	if err := os.MkdirAll(AuditCeilingStateDir, 0o755); err != nil {
-		return fmt.Errorf("RecordCeilingOutcome: create %s: %w", AuditCeilingStateDir, err)
+	dir := filepath.Join(projectRoot, AuditCeilingStateDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("RecordCeilingOutcome: create %s: %w", dir, err)
 	}
-	path := filepath.Join(AuditCeilingStateDir, specID+".json")
+	path := filepath.Join(dir, specID+".json")
 	data, err := json.MarshalIndent(outcome, "", "  ")
 	if err != nil {
 		return fmt.Errorf("RecordCeilingOutcome: marshal: %w", err)
