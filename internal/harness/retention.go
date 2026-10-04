@@ -250,6 +250,9 @@ func (r *Retention) openStateFile(statePath string) (*os.File, error) {
 			if err := r.healStateEntry(statePath, fi, "file"); err != nil {
 				return nil, err
 			}
+		case fi.Mode()&(os.ModeNamedPipe|os.ModeSocket|os.ModeDevice|os.ModeCharDevice) != 0:
+			// A FIFO opened read-write does not block on Linux, and the locked stamp read would then wait forever.
+			return nil, fmt.Errorf("retention: prune state entry %s is not a regular file; prune skipped", statePath)
 		default:
 			f, oerr := os.OpenFile(statePath, os.O_RDWR|os.O_CREATE, 0o644)
 			if oerr != nil {
@@ -349,7 +352,7 @@ func readStamp(rd io.Reader) []byte {
 
 // readStampFile reads the state file without locking; a missing or unreadable file is "no stamp".
 func readStampFile(path string) []byte {
-	f, err := os.Open(path)
+	f, err := openStampReadOnly(path)
 	if err != nil {
 		return nil
 	}
