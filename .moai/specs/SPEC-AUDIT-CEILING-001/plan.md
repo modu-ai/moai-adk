@@ -35,9 +35,10 @@ guarding come last. No wall-clock estimates — priority labels only.
   baselines measured in §C to separate NEW defects from pre-existing.
 - **B8 working-tree hygiene**: stage by explicit pathspec; no `.moai/state/`
   or `.moai/harness/` writes.
-- **Pre-existing mirror drift**: `harness.yaml` and `phase-execution.md`
-  mirrors already differ from deployed copies (research.md §3). Do not encode
-  the drift as expected state; do not repair unrelated drift.
+- **Pre-existing mirror drift**: `harness.yaml`, `phase-execution.md`, and
+  `plan-auditor.md` mirrors already differ from deployed copies (research.md
+  §3). Do not encode the drift as expected state; do not repair unrelated
+  drift.
 
 ## §C Pre-flight (all measured on `2f492df19`, 2026-10-04)
 
@@ -57,7 +58,7 @@ RED-now baselines (verbatim commands, this run, this tree, exit codes recorded):
 | acknowledgement option present | `grep -c "Proceed with acknowledgement" .claude/skills/moai/workflows/run/phase-execution.md` | 1 (exit 0) |
 | no counter | `grep -rn "audit.round\|AuditRound\|iteration.count" internal/runtime/*.go` | 0 hits (exit 1) |
 | no receipt parsing | `grep -c "convergence\|receipt" internal/auditverdict/verdict.go` | 0 (exit 1) |
-| §9 rows | sed -n '190,201p' auto-semantics.md, count `\|^| ` lines | 11 lines = header + separator + 10 disposition rows |
+| §9 rows | sed -n '190,201p' auto-semantics.md, count `\|^| ` lines | 11 `\|^| ` lines = header + 10 disposition rows (the separator row does not match the pattern) |
 | §9 named rows absent | the 11-row named grep of acceptance.md AC-ACE-014 | 0 (exit 1) |
 | retired row present | `grep -c "plan-audit bypass flags" .claude/rules/moai/workflow/auto-semantics.md` | 1 (exit 0) |
 | config orphan note | `grep -c "no Go reader" internal/config/loader.go` | 2 (exit 0) |
@@ -93,8 +94,9 @@ Per-milestone, reported in the 5-section evidence-bearing format:
   measured baseline.
 - E6 RED evidence per TDD AC (verbatim pre-GREEN failure output) — required
   for every RB criterion whose RED is a new test (AC-ACE-001/003/004/006/
-  007/009/010/015/017/018/019/020/021/022), and grep-class RED cells with
-  recorded exit codes for AC-ACE-002/013/014 (baselines in §C).
+  007/008/009/010/011/015/017/018/019/020/021/022), and grep-class RED cells
+  with recorded exit codes for AC-ACE-002/013/014 plus AC-ACE-008's
+  export-path grep (baselines in §C).
 
 ## §F Milestones
 
@@ -106,6 +108,19 @@ Data-model first: the receipt schema is the least reversible decision.
   line format (design.md §3): `convergence_overall: <pass|fail>` and a
   repeatable `required_backend: <backend> <pass|fail|inconclusive>` line,
   one per required backend.
+- Receipt producer (D19): the plan-auditor agent body is the writer — its
+  export step (`.claude/agents/moai/plan-auditor.md` § Output Format)
+  appends the receipt lines from the `audit_multi` convergence result it
+  already receives (`ConvergenceResult.OverallVerdict` + `PerBackendVerdicts`,
+  design.md §3) to the exported verdict file per the convention § What; the
+  step lands in the deployed agent body AND its template mirror in the same
+  change (research.md §3 edit target; the pre-existing whole-file drift keeps
+  it on AC-ACE-015's known-FAIL carve-out list for the untouched regions).
+- Config-error disposition (D21): the M1 call sites resolve the gate set
+  with the opposite of today's `resolveAuditGates` fail-open path — the
+  resolution result distinguishes an error from a genuinely-empty
+  configuration, and an unreadable/unparseable audit section refuses
+  (REQ-ACE-010's third trigger arm; design.md §4).
 - Extend `internal/auditverdict`: `Parse` reads the receipt keys;
   `Admit` (PhasePlan) gains the tree's required-backend set as input and
   refuses on (a) any required backend fail or inconclusive regardless of
@@ -147,7 +162,8 @@ Data-model first: the receipt schema is the least reversible decision.
   outcome (exit nonzero / refusal record); `GateConfig.Invoke` gains the same
   Step-0 call as the library-level consumer for when a caller exists. An
   integration test proves a ceiling-hit round refuses at a production entry
-  point (AC-ACE-022).
+  point at BOTH seams — AC-ACE-022 carries one arm per LIVE seam, the card
+  transition and the kickoff evaluator (D23).
 - Refusal output: structured (JSON or parseable lines) carrying outcome,
   reasons, evidence paths; persist to `progress.md`; audit-trail log append
   (REQ-ACE-007, REQ-ACE-012). Design the AuditResult extension per
@@ -164,8 +180,9 @@ Data-model first: the receipt schema is the least reversible decision.
 ### M4 (Priority Medium) — doc reconciliation
 
 - `phase-execution.md` Step 4c/4d: rewrite to the fail-closed path — the
-  ceiling-policy outcome is the only non-block exit; no AskUserQuestion
-  branch, no override-and-proceed, no BYPASSED recording (REQ-ACE-013).
+  ceiling-policy outcome is the only non-block exit the question branches
+  offer; no AskUserQuestion branch, no override-and-proceed, no BYPASSED
+  recording (REQ-ACE-013).
 - `auto-semantics.md` §9: add the 11 rows of spec.md §D.2 with dispositions
   from the existing vocabulary, each citing file + section (REQ-ACE-014).
   Row 2 REPLACES the `plan-audit bypass flags` row: 10 existing rows − 1 + 11
@@ -199,7 +216,7 @@ Data-model first: the receipt schema is the least reversible decision.
 ## §H Cross-References
 
 - spec.md §B (REQ-ACE-001..016), §C constraints, §D.2 row list
-- acceptance.md §D (AC-ACE-001..016), §C edge cases
+- acceptance.md §D (AC-ACE-001..022), §C edge cases
 - design.md §1-§10 (counter model, receipt schema, enforcement, open points)
 - research.md §1-§5 (source verification, Go surfaces, mirrors, gaps)
 - decision-index.md Q1-Q6 (unresolved operator decisions)

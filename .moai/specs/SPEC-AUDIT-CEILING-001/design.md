@@ -22,7 +22,22 @@ are identical (the repeated-audit-on-unchanged-artifacts case is exactly what
 the ceiling exists to cap — a label+score+hash identity would collapse it to
 one count and the ceiling would never fire). A file missing its iteration
 number still counts (fail-counted: an unidentifiable iteration is evidence of
-an iteration, not of its absence). SPEC attribution: a convention-family file
+an iteration, not of its absence).
+
+Cross-card rule (D22): the identity's second component resolves within one
+audited state. Two convention-family files at the same (SPEC, N) under
+different card directories are one round only when they record the same
+audited-SHA field (one iteration exported twice); different audited states
+at the same (SPEC, N) are distinct rounds — the count can never be stalled
+by a new card renumbering its audits from iter1, so the ceiling is not
+dodgeable by opening a new card, and the count saturates at the number of
+distinct audits, not at max-N-per-card. A file whose audited state is
+unreadable is never collapsed into another file (fail-counted, mirroring the
+missing-iteration rule). The legacy↔convention same-round reading is
+therefore evidence-based on the audited-SHA field, not an assumption that
+`-review-<N>` and `iter<N>` numberings denote the same round.
+
+SPEC attribution: a convention-family file
 belongs to the SPEC named in its report header; the counter resolves a
 SPEC's evidence from `.moai/reports/<SPEC-ID>/` plus every
 `.moai/reports/<card-id>/` directory whose plan-audit iteration files name
@@ -60,17 +75,29 @@ the refusal of REQ-ACE-003:
 
 1. `debt-admit` — the verdict fails admission on the LABEL ALONE: score at
    or above the tier threshold, `must_pass_failed == 0`, `blocking_count ==
-   0`, plan-artifact hash binding, no duplicate keys, and at least one
-   finding to enumerate. The CLI writes the outcome record carrying
-   PASS-WITH-DEBT and the verdict's findings as debts (`dispose_in` each);
-   the consuming seam admits. The auditor's verdict file is never rewritten
-   (that would duplicate decision keys). A hash-binding failure or a
-   no-findings verdict is NEVER debt-admitted — it holds (D2: `Admit`
-   refuses score and hash failures before any PASS-WITH-DEBT branch,
-   verdict.go:208-233, so a rung admitted through them is unreachable; the
-   label-only failure is the one shape the existing predicate genuinely
-   refuses that the policy may convert, and downstream label-only consumers
-   read `PASS-WITH-DEBT`, a passing label per `AdmitLabel`).
+   0`, plan-artifact hash binding, no duplicate keys, no REQ-ACE-009/010
+   receipt refusal, and at least one finding to enumerate. The CLI writes
+   the outcome record carrying PASS-WITH-DEBT and the verdict's findings as
+   debts (`dispose_in` each); the consuming seam admits. The auditor's
+   verdict file is never rewritten (that would duplicate decision keys). A
+   hash-binding failure or a no-findings verdict is NEVER debt-admitted — it
+   holds (D2: `Admit` refuses score and hash failures before any
+   PASS-WITH-DEBT branch, verdict.go:208-233, so a rung admitted through them
+   is unreachable; the label-only failure is the one shape the existing
+   predicate genuinely refuses that the policy may convert, and downstream
+   label-only consumers read `PASS-WITH-DEBT`, a passing label per
+   `AdmitLabel`).
+
+Consuming-seam admission semantics (D20): the seam re-runs the full `Admit`
+— the §4 receipt checks included — with exactly one conversion: a debt-admit
+outcome substitutes the outcome's PASS-WITH-DEBT for the raw verdict label
+in the label check alone. Every other check (score, must-pass, blocking,
+hash, duplicate keys, and the §4 receipt checks) evaluates the raw verdict
+and keeps its refusing force. A verdict carrying a receipt refusal is
+excluded from debt-admit eligibility (REQ-ACE-004), so work item 1 cannot
+admit what work item 2 refuses: the combination (ceiling hit + label-only
+failure + required-backend fail) holds (AC-ACE-004's negative arm,
+`TestCeilingPolicyReceiptHold`).
 2. `split` — blocking findings exist and every one carries a scoped fix
    anchor: hold record + split proposal naming the anchor scope; blocked.
 3. `hold` — otherwise (hash mismatch, no findings, unanchored blocking
@@ -84,8 +111,12 @@ homestate card transition (`internal/homestate/card_evidence_readers.go`
 `admitVerdictFile`) — before `Admit`; `GateConfig.Invoke` gains the same
 Step 0 as the library-level consumer for when a production caller exists. An
 integration test proves a ceiling-hit round refuses at a production entry
-point (AC-ACE-022), so the seam cannot silently go dead the way `Invoke` did
-(verification-completeness §1.3 liveness).
+point at both seams (AC-ACE-022, one arm per LIVE seam), so neither can
+silently go dead the way `Invoke` did (verification-completeness §1.3
+liveness). REQ-ACE-003's trigger is accordingly the admission-seam event —
+the moment a produced verdict is presented for admission — not the
+auditor's private spawn decision: the prose plan-audit loop self-governs
+below the ceiling, and this engine adjudicates the machine seam (D23).
 
 ## §3 Verdict receipt schema (REQ-ACE-008)
 
@@ -137,6 +168,16 @@ the existing checks:
 3. Malformed or duplicate receipt keys → refuse (extends the existing
    duplicate-key rule to the new keys; design.md §3 states the per-key
    repeat rule).
+
+Config-error disposition (D21): `resolveAuditGates` today returns an empty
+gate set when `ResolveAuditPlan` errors (mcp_worktree_root.go:127-130) —
+fail-open against §7's posture. The M1 call sites resolve with the opposite
+disposition: the resolution result distinguishes an error from a
+genuinely-empty configuration, and an audit section that exists but cannot
+be read or parsed refuses (REQ-ACE-010's third trigger arm). Config absent →
+C4 admission without a receipt; config error → refuse. The two paths are
+distinct values end to end — the error is never folded into the empty set on
+an admission path.
 
 Override (REQ-ACE-011) is NOT an `Admit` input — admission stays pure. The
 override lives at the CLI seam: an explicit flag/env carrying
@@ -220,13 +261,17 @@ Empty note → refuse the override (edge case §C.8). Every acceptance appends
 the trail line and the ack text lands in progress.md §G Override and Refusal
 Record + the REQ-ACE-012 trail (D10 — never `decision-index.md`).
 No equivalent for the ceiling refusal: the ceiling has no override — its
-outcomes ARE the decisions (the card's 질문 없음 requirement).
+outcomes ARE the decisions (the card's 질문 없음 requirement). A hold is
+never terminal-silent: the hold record names its release path (REQ-ACE-006)
+— the split/new-SPEC route of REQ-ACE-005, or an operator decision recorded
+in progress.md §G (D30).
 
 ## §9 Doc changes (REQ-ACE-013, REQ-ACE-014)
 
 - phase-execution.md Step 4c: FAIL after grace → the gate blocks; the text
-  names the ceiling-policy path as the only non-block exit and the
-  fail-closed rule of auto-semantics §7 as the owner. Step 4d: INCONCLUSIVE
+  names the ceiling-policy path as the only non-block exit the question
+  branches offer, and the fail-closed rule of auto-semantics §7 as the
+  owner. Step 4d: INCONCLUSIVE
   → fail-closed, record + escalate per §7's ladder; "max 3 retries total"
   (a second prose ceiling) is replaced by the machine counter reference.
 - auto-semantics.md §9: the 11 rows of spec.md §D.2, each

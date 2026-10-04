@@ -42,7 +42,7 @@ Operator verdict:
 
 Label: FOUNDER
 Authority anchor: (none — the card names the outcome ("부채 기록 후 진행") without fixing the eligibility predicate, and no committed authority defines it)
-Why unresolved: The SPEC maps debt-admission to `must_pass_failed == 0 && blocking_count == 0` (design.md §2) — i.e., only a score-threshold or hash-binding shortfall converts to recorded debt. A looser reading (any non-must-pass failure) or a stricter one (score within a band of the threshold) are both defensible; the choice changes how often a ceiling hit ends a card versus parks it.
+Why unresolved: The SPEC maps debt-admission to the label-only predicate (spec.md REQ-ACE-004, design.md §2): `overall_score` at or above the tier threshold, `must_pass_failed` = 0, `blocking_count` = 0, a `plan_artifact_hash` that binds the current plan artifacts, no duplicate keys, no REQ-ACE-009/010 receipt refusal, and at least one finding to enumerate — score-threshold and hash-binding shortfalls hold, and receipt refusals never convert. A looser reading (any non-must-pass failure) or a stricter one (score within a band of the threshold) are both defensible; the choice changes how often a ceiling hit ends a card versus parks it.
 Operator verdict:
 
 ### Q6: Which missing gates join the auto-semantics §9 inventory in this SPEC?

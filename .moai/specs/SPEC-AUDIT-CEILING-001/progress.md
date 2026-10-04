@@ -18,7 +18,7 @@ plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md
 | 3 | No receipt parsing | `grep -c "convergence\|receipt" internal/auditverdict/verdict.go` | 0 |
 | 4 | §9 inventory size | pipe-line count over auto-semantics.md :190-201 | 10 disposition rows |
 | 5 | Config keys are orphans | internal/config/loader.go:345-346 | "no Go reader" on both ceiling keys |
-| 6 | Pre-existing mirror drift | `diff -q` deployed vs template | harness.yaml DIFF, phase-execution.md DIFF; auto-semantics.md SAME, convention doc SAME |
+| 6 | Pre-existing mirror drift | `diff -q` deployed vs template | harness.yaml DIFF, phase-execution.md DIFF, plan-auditor.md DIFF (added in the iter1 correction — research.md §3); auto-semantics.md SAME, convention doc SAME |
 | 7 | Tier ceilings verified | harness.yaml :75-78 | S:1 M:2 L:3; policy :82-84 auto_delta_rounds=1, on_final_hit=hold-and-split |
 
 ### Plan-phase decisions recorded
@@ -34,8 +34,11 @@ plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md
    decision-index Q4 for operator confirmation.
 5. decision-index.md authored (6 rows: 1 POLICY-COVERED, 5 FOUNDER) per
    `interview.decision_gate: on`.
-6. The card's own plan audit obeys the ceiling: authored once, corrections
-   limited to lint-mechanical fixes; no repair loop beyond that.
+6. The card's own plan audit follows the ceiling policy this SPEC encodes:
+   authored once, then repair rounds per the policy (the iter1 and iter2
+   repairs recorded below, inside the card's own 3+1 iteration ceiling) —
+   the prose policy the CLI will enforce has governed this card's own audit
+   loop.
 
 ### Interlock notes for later phases
 
@@ -78,6 +81,60 @@ plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md
   spec lint --strict 0.
 - No REQ id changed (16 REQs); the AC set extended 16 → 22 (Tier L ceiling
   25).
+
+### Plan-audit iter2 repair (2026-10-04, this change)
+
+- iter2 verdict: FAIL 0.83 (Tier L threshold 0.85; iter1 0.69 → 0.83, no
+  regression) — `.moai/reports/t1500/plan-audit-iter2.md`; all 18 iter1
+  findings verified RESOLVED; new blocking set D19-D24 + optional D25-D30.
+  This change closes the full delta (all 6 blocking + all 6 optional); the
+  lane runs iter3 (the last numbered round under the card's own 3+1
+  ceiling).
+- spec.md version → 0.3.0; §H Amendments carries the per-defect record.
+- Blocking closures: D19 (receipt producer assigned — plan.md M1 names the
+  plan-auditor agent body's export step as the writer, sourced from the
+  `audit_multi` convergence result, mirror included; export-path RED-now
+  grep + green arm added to AC-ACE-008, reclassified RB), D20 (REQ-ACE-004's
+  never-debt-admit list extended with the REQ-ACE-009/010 receipt refusals;
+  consuming-seam admission semantics stated — the seam re-runs the full
+  predicate with one label conversion, design.md §2; AC-ACE-004 negative arm
+  + `TestCeilingPolicyReceiptHold`), D21 (config-error disposition named
+  fail-closed — REQ-ACE-010 third trigger arm, design.md §4 resolution
+  contract, AC-ACE-010 invalid-config arm + `TestAdmitConfigErrorRefused`),
+  D22 (dedupe identity resolved within one audited state — REQ-ACE-001,
+  design.md §1 cross-card rule; cross-card renumbering cannot stall the
+  count; AC-ACE-001 cross-card arm + §C edge 9), D23 (REQ-ACE-003 trigger
+  reworded to the admission-seam event the design delivers; AC-ACE-003 Then
+  reworded; AC-ACE-022 extended to one arm per LIVE seam including the
+  kickoff evaluator + `TestKickoffEvaluatorCeilingRefusal`), D24
+  (decision-index Q5 rewritten to the label-only predicate).
+- Optionals folded (none deferred): D25 (AC-ACE-013 per-member vocabulary
+  greps LEDGER-ACE-013-A; AC-ACE-014 whole-file total count LEDGER-ACE-014-B
+  33 → 43 — plain single-command form), D26 (EnvSkipAudit disposition
+  pointer → spec.md §D.2 row 2; M4 + design §9 restatements scoped to "the
+  question branches"), D27 (five stale cross-references: plan §H AC range,
+  plan §B/progress baseline mirror-drift lists, progress decision 6,
+  acceptance header 1:1 claim, plan §C `^| ` decomposition label), D28
+  (package-wide `go test -list` corroboration on AC-ACE-002; §A exception
+  note), D29 (AC-ACE-008/011 reclassified RB with E8 declarations;
+  AC-ACE-005/012 RG rationale stated in §A), D30 (hold-release path in
+  REQ-ACE-006 + design §8; C5 wording; REQ-ACE-007 extended to
+  required-backend refusals; REQ-ACE-012 "durable" corrected to the §G
+  durable carrier).
+- New RED-now claims re-executed in this tree before commit: plan-auditor.md
+  `convergence_overall` grep = 0 exit 1 (AC-ACE-008 export arm) and
+  `go test -list '^TestStructYAMLSymmetry$' ./internal/config` lists no test
+  (AC-ACE-002 D28 corroboration) — both at a991e9bbb, recorded in the
+  criteria.
+- Design decisions taken (recorded per the verdict's Residual-risk note):
+  D23 resolved by rewording to admission semantics, not pre-spawn wiring —
+  the prose loop self-governs below the ceiling and the machine seam is
+  where the CLI can refuse (consistent with iter2's rejection of codex
+  P2-7); D20 resolved by seam-reruns-full-Admit with one label conversion.
+- Held coherence passes: the Ceiling-field design (§7), receipt projection
+  from real `ConvergenceResult` fields, the §9 vocabulary match, 16 REQ, and
+  the 22-AC count (extensions, not additions — Tier L ceiling 25 not
+  approached).
 
 ## §E.2 Run-phase Evidence
 
