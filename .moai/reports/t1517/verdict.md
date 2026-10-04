@@ -34,3 +34,7 @@ Low. Dictionary strings only. `i18n_governance_test.go` / `i18n_untranslated_all
 ## Status
 
 merge-ready pending the leader's codex card review. Not pushed; not merged into `develop`.
+
+## Card review
+
+`card-review.md` now records the leader-run codex review: PASS, 0 findings (base `6643c7bba`). This closes the "absent by recorded reason" gap above; the lane did not observe the codex run itself (leader relay, no receipt id).
