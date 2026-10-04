@@ -53,7 +53,9 @@ refusal text is a user-facing contract.
 In `internal/session`, following the `proc_info_*` build-tag pattern:
 
 - `ccversion_darwin.go` — running version from the pid's text mapping (`lsof -a -d txt -p`,
-  bounded, parse `(versions/|claude-code/)[0-9.]+`).
+  bounded); the parse considers only the mapping line naming the claude binary itself —
+  `-d txt` also lists frameworks/dylibs, and a version-shaped path on a library mapping must
+  not satisfy the read — then parses `(versions/|claude-code/)[0-9.]+` on the anchored line.
 - `ccversion_linux.go` — running version from `os.Readlink("/proc/<pid>/exe")` over the same
   path shapes.
 - `ccversion_other.go` (`!linux && !darwin`) — unsupported → `unknown`.
@@ -91,11 +93,16 @@ Ships alone: the leader-facing summary surface.
   — returns the child argv carrying name, settings, and the pass-through tokens (REQ-SCV-008).
   The one-shot lane-join path routes through it; behavior on that path is unchanged by
   construction (the pass-through already works — §A.3.1).
-- Validation beside it: `--resume` without a value refuses before any launch (REQ-SCV-009).
-- The guard in `factory_lane_relaunch.go`: on entry, when `claudeArgs` carries `--resume`
-  under policy `relaunch`, return the refusal naming the one-shot form
-  (`moai cc -l --name lane-<n> -- --resume <session-id>`) before the loop's first iteration —
-  zero card sessions started, token neither propagated nor stripped (REQ-SCV-010).
+- Validation beside it: `--resume` without a value refuses before any launch (REQ-SCV-009) —
+  recognized in both spellings (`--resume <value>` and `--resume=<value>`), and the same dual
+  recognition applies to the guard's token detection so the equals form cannot evade
+  REQ-SCV-010.
+- The guard in `factory_lane_relaunch.go`: on entry, when `claudeArgs` carries a `--resume`
+  token under policy `relaunch`, return the refusal naming the one-shot form
+  (`moai cc -l -- --resume <session-id>` — the launcher desugars the lane name itself; an
+  operator `--name` beside `-l` is refused at the entry parse, `laneFlagNameError`,
+  `factory.go:391-394`) before the loop's first iteration — zero card sessions started, token
+  neither propagated nor stripped (REQ-SCV-010).
 
 Ships alone: the emergency form becomes explicit, validated, and impossible to misuse through
 the relaunch loop.
@@ -121,9 +128,9 @@ Per the 5-section evidence-bearing format, each item names command + verbatim ou
 
 ## §F Open run-phase verifications (measure, do not assume)
 
-1. **The one-shot emergency form, end to end.** `moai cc -l --name <lane> -- --resume <real-session-id>` observed reaching a child argv — via the launcher's debug dump (`debugTiming.debugDump`, `cc.go:292-297`, printed pre-exec) so no interactive session is needed. Expected: name, settings, and `--resume` all present.
+1. **The one-shot emergency form, end to end.** `moai cc -l -- --resume <real-session-id>` observed reaching a child argv — via the launcher's debug dump (`debugTiming.debugDump`, `cc.go:292-297`, printed pre-exec) so no interactive session is needed. Expected: the desugared `--name lane-<n>` (the launcher injects it; an operator `--name` beside `-l` is refused at the entry parse), the injected settings, and `--resume` all present.
 2. **The refused spelling, observed.** `moai cc -f lane-3 -- --resume <id>` → `factoryFlagUsageError` text observed verbatim (documents that the t1348 §"제안 절차" spelling is not the emergency form).
-3. **The relaunch guard, observed.** `moai cc -l --name <lane> --clear-policy relaunch -- --resume <id>` → the new refusal text, exit non-zero, zero card sessions started.
+3. **The relaunch guard, observed.** `moai cc -l --clear-policy relaunch -- --resume <id>` → the new refusal text, exit non-zero, zero card sessions started. The spelling matters: an operator `--name` beside `-l` is refused at the entry parse (`laneFlagNameError`) before the new guard is ever reached, so the observation is only obtainable through the bare `-l` form.
 4. **A live lsof positive control.** `lsof -a -d txt -p <a live claude pid>` on this machine parses to the version that process runs (the platform reader's real-world positive control; the Linux reader stays fixture-tested — a Linux live probe is likely infeasible on this machine and is recorded as a gap if so).
 
 ## §G Constraints (DO NOT VIOLATE)

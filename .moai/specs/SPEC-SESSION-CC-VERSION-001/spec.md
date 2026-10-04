@@ -1,7 +1,7 @@
 ---
 id: SPEC-SESSION-CC-VERSION-001
 title: "Running-binary staleness visibility and the launcher-mediated --resume emergency path"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-04
 updated: 2026-10-04
@@ -23,6 +23,7 @@ related_specs: [SPEC-FACTORY-SELF-DISPATCH-001, SPEC-V3R6-MULTI-SESSION-COORD-00
 | Version | Date | Change |
 |---|---|---|
 | 0.1.0 | 2026-10-04 | Initial draft. Split from the t1348 investigation verdict (`.moai/reports/t1348/verdict.md` § "MoAI가 자동화할 수 있는 것"), items ② and ④ only; items ① and ③ are absorbed by card t1482 and are excluded here. |
+| 0.1.1 | 2026-10-04 | Plan-audit iter1 repairs (D1-D6): the emergency spelling corrected to the bare `-l` lane join — the `-l` + operator-`--name` form is itself refused (`laneFlagNameError`), re-observed by running this tree's build; lsof baselines restated on re-measured greps; the exit-0 assertion placed where AC-SCV-003 delegates it; AC-SCV-004's selector widened with a swept-count requirement; both `--resume` spellings pinned in REQ-SCV-009/010; the lsof txt parse anchored to the claude-binary line. |
 
 ## §A Background
 
@@ -45,14 +46,17 @@ MoAI's surfaces that could carry that report carry none of it:
 | Claim | Evidence (this tree) |
 |---|---|
 | The session registry record carries no version | `internal/session/registry.go:120-129` — `Entry` marshals exactly `session_id`, `spec_id`, `phase`, `started_at`, `last_heartbeat`, `pid`, `host`, `cwd`; `moai session list --json` marshals these entries directly (`internal/cli/session.go:148`) |
-| No process-version reader exists anywhere | `grep -rn "lsof" internal/session/ --include="*.go"` → 0 hits; the repo's only lsof uses are cwd discovery (`internal/discovery/leader_readers_darwin.go:72`) and port lookup (`internal/cli/web_port.go:69`) |
+| No process-version reader exists anywhere | `grep -rn "lsof" internal/session/ --include="*.go"` → exactly 2 hits, both cwd-canonicalization comments (`cwd_canonical.go:14`, `cwd_case_test.go:16`); the repo's four lsof exec sites (`internal/discovery/leader_readers_darwin.go:72`, `internal/cli/web_port_posix.go:32`, `internal/cli/worktree/sweep_cwd_posix.go:29`, `internal/cli/update_worktree_processes.go:14`) are all cwd/port reads — none reads a binary version |
 | `moai doctor` reports only the installed version, one row per host | `internal/cli/doctor.go:449` `checkClaudeCode` reads `CLAUDE_CODE_VERSION` or execs `claude --version` — no per-session running version |
 
 ### A.2 The reads are cheap, and this machine already proved the shape works
 
 t1348 §2.2 measured the probe shape live: `lsof -a -d txt -p <pid>` output carries the running
-binary's path, and `grep -oE '(versions/|claude-code/)[0-9.]+'` over it recovers the version.
-The Linux twin reads `os.Readlink("/proc/<pid>/exe")` over the same path shapes. The installed
+binary's path, and `grep -oE '(versions/|claude-code/)[0-9.]+'` over it recovers the version —
+with one anchoring duty that shape carries: `-d txt` also lists mapped frameworks and dylibs,
+so the parse must consider only the mapping line naming the claude binary itself, and a
+version-shaped path on a library mapping must not satisfy the read. The Linux twin reads
+`os.Readlink("/proc/<pid>/exe")` over the same path shapes. The installed
 side needs no process at all: the `claude` binary found on PATH (typically the
 `~/.local/bin/claude` symlink) resolves to a path whose version segment **is** the installed
 version. Each read degrades independently — a dead pid, an unreadable mapping, an npm-style
@@ -78,10 +82,19 @@ worktree, and starts one interactive session **in that card worktree** with the 
    starts. A `--resume <id>` token would resume the interrupted conversation inside a foreign
    card worktree — on every subsequent card, for as long as the lane runs.
    `grep -n "resume" internal/cli/factory_lane_relaunch.go` → 0 hits: no guard exists.
-3. The exact spelling the t1348 proposal suggested, `moai cc -f lane-<n>`, is refused today
-   before any launch: `-f/--factory takes no argument (bare -f starts the factory leader); a
-   lane joins with -l or --lane` (`internal/cli/factory.go:92`, `factoryFlagUsageError`). The
-   emergency form is the lane join: `moai cc -l --name lane-<n> -- --resume <session-id>`.
+3. Two spellings are refused at the entry parse before any launch. The t1348 proposal's
+   `moai cc -f lane-<n>` dies on `-f/--factory takes no argument (bare -f starts the factory
+   leader); a lane joins with -l or --lane` (`internal/cli/factory.go:92`,
+   `factoryFlagUsageError`), and the seemingly natural `moai cc -l --name lane-<n>` dies on
+   `-l/--lane already names the role; drop the --name/-n flag` (`internal/cli/factory.go:99`,
+   `laneFlagNameError`, fired at `:391-394` whenever `operatorSuppliedName`
+   (`factory_launch_helpers.go:390-404`) sees an operator `--name` before the `--` marker).
+   The launcher desugars the lane name itself — `-l` alone claims the next free `lane-<n>`
+   (`factory.go:397-402`), which is what the child argv actually receives. Observed on this
+   tree's build (parse-time refusal, zero side effects, run from /tmp with
+   `CLAUDE_PROJECT_DIR` and the factory stamps scrubbed): `cc -l --name lane-99 -- --resume
+   probe-t1465` → `ERROR: -L/--Lane already names the role; drop the --name/-n flag.`, exit 1.
+   The emergency form is therefore the bare lane join: `moai cc -l -- --resume <session-id>`.
 
 So item ④ is not "add a resume flag" — the token already reaches the child on the one-shot
 path. It is: make the emergency form explicit and validated as a named, testable assembly, and
@@ -130,13 +143,14 @@ close the one path where the token leaks across cards (the relaunch loop).
   environment side effects, and the assembled argv shall carry all three: the injected session
   name, the injected settings, and the pass-through tokens (a `--resume <session-id>`
   included).
-- **REQ-SCV-009** — **When** a `--resume` token is present without a following value, the
-  launcher shall refuse before any launch, with an error naming the required
-  `--resume <session-id>` form.
+- **REQ-SCV-009** — **When** a `--resume` token is present without a following value — in
+  either its `--resume <value>` or `--resume=<value>` spelling — the launcher shall refuse
+  before any launch, with an error naming the required `--resume <session-id>` form.
 - **REQ-SCV-010** — **When** the clear policy is `relaunch` and the child arguments carry a
-  `--resume` token, the supervising loop shall refuse to start, and its error shall name the
-  safe one-shot lane-join form; the loop shall neither carry the token into a second card
-  session nor silently strip it.
+  `--resume` token in either its `--resume <value>` or `--resume=<value>` spelling, the
+  supervising loop shall refuse to start, and its error shall name the safe one-shot
+  lane-join form; the loop shall neither carry the token into a second card session nor
+  silently strip it.
 
 ## §C Constraints
 

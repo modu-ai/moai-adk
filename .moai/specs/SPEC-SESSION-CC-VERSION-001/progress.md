@@ -17,7 +17,28 @@
   valid`, exit 0 (after two fix rounds: AC→REQ mappings restated in the `maps REQ-…` house
   form, and `-run` selectors anchored `'^Test…$'`; the first measurement's 20 warnings
   included 2 hidden by a `tail`-truncated read — full output captured on re-run).
-- Status: `draft`. Awaiting plan-audit.
+- **Plan-audit iter1: FAIL 0.81** (Tier M threshold 0.80 met numerically; FAIL carried by
+  blocking defects D1-D4; report `.moai/reports/t1465/plan-audit-iter1.md`). All six deltas
+  repaired in place (no requirement rewrites):
+  - **D1 (critical)** — the documented emergency form `moai cc -l --name lane-<n>` is itself
+    refused (`laneFlagNameError`, `factory.go:391-394`; `operatorSuppliedName`,
+    `factory_launch_helpers.go:390-404`). Corrected to the bare lane join
+    `moai cc -l -- --resume <session-id>` in spec §A.3, plan M4 + §F.1 + §F.3, AC-SCV-010;
+    the refusal re-observed by running this tree's build from /tmp with the env stamps
+    scrubbed → `ERROR: -L/--Lane already names the role; drop the --name/-n flag.`, exit 1.
+  - **D2 (major)** — the iter-0 lsof baseline did not reproduce (real: 2 comment hits under
+    `internal/session/`; 4 exec sites repo-wide, all cwd/port). Restated in spec §A.1 and
+    AC-SCV-001 from re-measured greps.
+  - **D3 (minor)** — the exit-0 assertion added to AC-SCV-005, where AC-SCV-003 delegates it.
+  - **D4 (major)** — AC-SCV-004's selector widened to the three real test names as an anchored
+    alternation, with a swept-count-3 + no-`[no tests to run]` requirement.
+  - **D5 (adopted)** — both `--resume` spellings (`--resume <v>`, `--resume=<v>`) pinned in
+    REQ-SCV-009/010, AC-SCV-009/010, plan M4.
+  - **D6 (adopted)** — the lsof txt parse anchored to the claude-binary line in spec §A.2 and
+    plan M1.
+- Version 0.1.0 → **0.1.1** (HISTORY row added). The REQ layer survives intact per the
+  auditor; `updated:` fields refreshed (same-day).
+- Status: `draft`. Plan-audit iter1 repaired; **iter2 pending**.
 
 ### Card stage plan (lane-23, card t1465)
 

@@ -13,9 +13,11 @@ and is never the load-bearing half.
 **AC-SCV-001** (maps REQ-SCV-001) — Given a fixture pid→mapping table in which pid 4242 maps
 to a text mapping carrying `…/claude/versions/2.1.281`, When the session view resolves the
 entry, Then it reports `2.1.281`. Command: `go test ./internal/session/ -run '^TestRunningVersionFromInjectedMapping$' -v`
-→ `--- PASS`. Baseline (RED-now): `grep -rn "lsof" internal/session/ --include="*.go"` → 0
-hits and `internal/session/registry.go:120-129` declares no version field, so no such reader
-exists to pass this before M1.
+→ `--- PASS`. Baseline (RED-now): `grep -rn "lsof" internal/session/ --include="*.go"` →
+exactly 2 hits, both cwd-canonicalization comments (`cwd_canonical.go:14`,
+`cwd_case_test.go:16`) present at the pinned SHA — no lsof-executing code lives under
+`internal/session/` — and `internal/session/registry.go:120-129` declares no version field,
+so no such reader exists to pass this before M1.
 
 **AC-SCV-002** (maps REQ-SCV-002) — Given a fixture PATH directory whose `claude` entry is a
 symlink resolving to `…/versions/2.1.288`, When the installed-version read runs, Then it
@@ -36,10 +38,12 @@ run the command end to end with degrading fixtures and assert exit 0).
 **AC-SCV-004** (maps REQ-SCV-004) — Given the merged tree, When the tests of AC-SCV-001..003
 run, Then every one of them supplies its pid→path mappings and PATH resolution through the
 package seam, and no test file under `internal/session` shells out. Command:
-`go test ./internal/session/ -run '^TestRunningVersion$' -count=1 -v` → `--- PASS`; and
-`grep -n "exec.Command" internal/session/ccversion*_test.go` → 0 hits. The seam is a package
-var substituted per test, in the `procInfoFunc` pattern (`session_pid.go:50-57`); the fixture
-lives in the test, never the process table.
+`go test ./internal/session/ -run '^(TestRunningVersionFromInjectedMapping|TestInstalledVersionFromResolvedPath|TestVersionDegradationRendersUnknown)$' -count=1 -v`
+→ all three `--- PASS`, an exact swept count of **3**, and no `[no tests to run]` token in
+the output — a selector matching zero tests exits 0 printing `ok`, so the swept count is what
+makes this green non-vacuous; and `grep -n "exec.Command" internal/session/ccversion*_test.go`
+→ 0 hits. The seam is a package var substituted per test, in the `procInfoFunc` pattern
+(`session_pid.go:50-57`); the fixture lives in the test, never the process table.
 
 ## §B The surfaces
 
@@ -48,7 +52,9 @@ reads (running `2.1.281`, installed `2.1.288`), When `moai session list --cc-ver
 runs, Then that entry's JSON carries both new fields with those values; and When the same
 fixture runs without `--json`, Then the human output names both versions for the entry.
 Command: `go test ./internal/cli/ -run '^TestSessionListCCVersion$' -v` → `--- PASS`. A
-degrading fixture (dead pid) renders `unknown` in both outputs and the entry is still listed.
+degrading fixture (dead pid) renders `unknown` in both outputs, the entry is still listed,
+and the command exits 0 — the exit-0 half of REQ-SCV-003's degradation contract is asserted
+here, where AC-SCV-003 delegates it.
 
 **AC-SCV-006** (maps REQ-SCV-006) — Given the same fixture and a probe-counting seam, When
 `moai session list --json` runs **without** `--cc-version`, Then the probe count is 0, the
@@ -79,20 +85,25 @@ it takes no environment, filesystem, or process parameters and returns `[]string
 works mechanically today (§A.3.1 of `spec.md`) but exists as no named, tested assembly.
 
 **AC-SCV-009** (maps REQ-SCV-009) — Given args carrying `--resume` with no following value,
-When the launcher-side validation runs, Then it refuses with an error naming
-`--resume <session-id>`, and the launch seam is never called (asserted via the stubbed launch
-function's call count of 0). Command: `go test ./internal/cli/ -run '^TestResumeRequiresValue$' -v`
-→ `--- PASS`.
+in both spellings — the space form (`--resume` at argv end) and the equals form
+(`--resume=` with an empty value) — When the launcher-side validation runs, Then it refuses
+with an error naming `--resume <session-id>` for each spelling, and the launch seam is never
+called (asserted via the stubbed launch function's call count of 0). Command:
+`go test ./internal/cli/ -run '^TestResumeRequiresValue$' -v` → `--- PASS`, one subtest per
+spelling.
 
 **AC-SCV-010** (maps REQ-SCV-010) — Given the clear policy `relaunch` and child arguments
-carrying `--resume <session-id>`, When the supervising loop is started (lease and launch
-seams stubbed), Then it returns the refusal error, the error text names the one-shot
-lane-join form (`moai cc -l --name lane-<n> -- --resume <session-id>`), and the launch seam
-call count is 0 — no card session is started, and the token is neither propagated nor
-stripped. Command: `go test ./internal/cli/ -run '^TestRelaunchRefusesResumeToken$' -v` →
-`--- PASS`. Baseline (RED-now): `grep -n "resume" internal/cli/factory_lane_relaunch.go` →
-0 hits, and the loop hands `claudeArgs` to every iteration's session
-(`factory_lane_relaunch.go:115`) — today the token leaks to every card.
+carrying a `--resume` token in either spelling (`--resume <session-id>` or
+`--resume=<session-id>`), When the supervising loop is started (lease and launch seams
+stubbed), Then it returns the refusal error, the error text names the one-shot lane-join form
+(`moai cc -l -- --resume <session-id>` — the launcher desugars the lane name itself; an
+operator `--name` beside `-l` is refused at the entry parse, `laneFlagNameError`), and the
+launch seam call count is 0 — no card session is started, and the token is neither propagated
+nor stripped. Command: `go test ./internal/cli/ -run '^TestRelaunchRefusesResumeToken$' -v` →
+`--- PASS`, one subtest per spelling. Baseline (RED-now):
+`grep -n "resume" internal/cli/factory_lane_relaunch.go` → 0 hits, and the loop hands
+`claudeArgs` to every iteration's session (`factory_lane_relaunch.go:115`) — today the token
+leaks to every card.
 
 ## §D Quality gates and Definition of Done
 
