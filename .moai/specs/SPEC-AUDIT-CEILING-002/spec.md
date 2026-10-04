@@ -2,9 +2,9 @@
 id: SPEC-AUDIT-CEILING-002
 title: "CLI-counted plan-audit iteration ceiling with recorded policy outcomes and required-backend run-entry refusal"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-10-04
-updated: 2026-10-04
+updated: 2026-10-05
 author: "manager-spec"
 priority: P1
 phase: "v3.2.0 target"

@@ -236,3 +236,92 @@ func TestLoadHarnessConfigExtended_ValidatesLevelEnum(t *testing.T) {
 		t.Errorf("expected ErrUnknownLevel, got: %v", err)
 	}
 }
+
+// TestHarnessConfigPlanAuditCeilings — SPEC-AUDIT-CEILING-002 REQ-ACR-002:
+// the two ceiling keys bind the shipped yaml values through the typed
+// HarnessConfig fields, and the shipped defaults apply when a harness.yaml
+// omits them. The harness section is a dedicated loader entry point outside
+// Loader.Load(), so this test surface is where field coverage lands.
+func TestHarnessConfigPlanAuditCeilings(t *testing.T) {
+	t.Parallel()
+
+	// The template mirror is the shipped harness.yaml source: binding its
+	// values here pins the Go fields to what every project actually ships.
+	shippedPath := filepath.Join("..", "template", "templates", ".moai", "config", "sections", "harness.yaml")
+
+	t.Run("shipped yaml values bind through the typed fields", func(t *testing.T) {
+		cfg, err := LoadHarnessConfig(shippedPath)
+		if err != nil {
+			t.Fatalf("LoadHarnessConfig(shipped harness.yaml): %v", err)
+		}
+		want := map[string]int{"S": 1, "M": 2, "L": 3}
+		for tier, wantN := range want {
+			if got := cfg.PlanAuditTierCeilings[tier]; got != wantN {
+				t.Errorf("PlanAuditTierCeilings[%s] = %d, want %d", tier, got, wantN)
+			}
+		}
+		if cfg.PlanAuditCeilingPolicy.AutoDeltaRounds != 1 {
+			t.Errorf("PlanAuditCeilingPolicy.AutoDeltaRounds = %d, want 1", cfg.PlanAuditCeilingPolicy.AutoDeltaRounds)
+		}
+		if cfg.PlanAuditCeilingPolicy.OnFinalHit != "hold-and-split" {
+			t.Errorf("PlanAuditCeilingPolicy.OnFinalHit = %q, want hold-and-split", cfg.PlanAuditCeilingPolicy.OnFinalHit)
+		}
+	})
+
+	t.Run("defaults apply when the keys are absent", func(t *testing.T) {
+		dir := t.TempDir()
+		minimalYAML := `harness:
+    evaluator:
+        memory_scope: per_iteration
+`
+		path := filepath.Join(dir, "harness.yaml")
+		if err := os.WriteFile(path, []byte(minimalYAML), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := LoadHarnessConfig(path)
+		if err != nil {
+			t.Fatalf("LoadHarnessConfig(minimal fixture): %v", err)
+		}
+		want := DefaultPlanAuditTierCeilings()
+		if len(cfg.PlanAuditTierCeilings) != len(want) {
+			t.Fatalf("defaults map size = %d, want %d (%v)", len(cfg.PlanAuditTierCeilings), len(want), cfg.PlanAuditTierCeilings)
+		}
+		for tier, wantN := range want {
+			if got := cfg.PlanAuditTierCeilings[tier]; got != wantN {
+				t.Errorf("default PlanAuditTierCeilings[%s] = %d, want %d", tier, got, wantN)
+			}
+		}
+		if cfg.PlanAuditCeilingPolicy != DefaultPlanAuditCeilingPolicy() {
+			t.Errorf("default policy = %+v, want %+v", cfg.PlanAuditCeilingPolicy, DefaultPlanAuditCeilingPolicy())
+		}
+	})
+
+	t.Run("fixture values override the defaults", func(t *testing.T) {
+		dir := t.TempDir()
+		overrideYAML := `harness:
+    evaluator:
+        memory_scope: per_iteration
+    plan_audit_tier_ceilings:
+        S: 1
+        M: 4
+        L: 9
+    plan_audit_ceiling_policy:
+        auto_delta_rounds: 2
+        on_final_hit: hold-and-split
+`
+		path := filepath.Join(dir, "harness.yaml")
+		if err := os.WriteFile(path, []byte(overrideYAML), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := LoadHarnessConfig(path)
+		if err != nil {
+			t.Fatalf("LoadHarnessConfig(override fixture): %v", err)
+		}
+		if cfg.PlanAuditTierCeilings["M"] != 4 || cfg.PlanAuditTierCeilings["L"] != 9 {
+			t.Errorf("override ceilings = %v, want M:4 L:9", cfg.PlanAuditTierCeilings)
+		}
+		if cfg.PlanAuditCeilingPolicy.AutoDeltaRounds != 2 {
+			t.Errorf("override AutoDeltaRounds = %d, want 2", cfg.PlanAuditCeilingPolicy.AutoDeltaRounds)
+		}
+	})
+}
