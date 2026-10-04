@@ -23,6 +23,9 @@ import (
 // already archived.
 func TestPruneFailedRenamePreservesPreviousArchive(t *testing.T) {
 	t.Parallel()
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses permissions")
+	}
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "usage-log.jsonl")
 	archiveDir := filepath.Join(dir, "archive")
