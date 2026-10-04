@@ -64,6 +64,25 @@ author: manager-spec
 - REQ/AC: 24 / 25 (ceilings 25/25 respected).
 - RED-now baseline: all 22 release-blocking ACs carry executed RED cells
   (acceptance.md §D.2b, tree b965a3912c0e97ef81aeeea773019e633591e1cd).
+- Plan-audit trajectory (card t1509): iter1 FAIL 0.64
+  (`.moai/reports/t1509/plan-audit-iter1.md`, 13 findings) → repair
+  cfb90335 (v0.2.0) → iter2 FAIL 0.75 (`plan-audit-iter2.md`, 12/13
+  RESOLVED verified; D12-residue + D14-D23) → repair 082b7daa5 (v0.3.0) →
+  iter3 **FAIL 0.79 with CEILING HIT** (`plan-audit-iter3.md`, receipt
+  rcpt-da1471a704401a2a2e1ed9cf) — iter2's ten findings all RESOLVED at
+  their fix-route demands (D14's AC-020 fold judged real coverage); new
+  blocking D24-D29 (upgrade-gate machine states, manifest-stale-at-removal
+  cross-artifact conflict, TOCTOU posture claim false, foreign-schema
+  preserve unreachable, conflicting bundle-removal criteria, command-wrapper
+  disposition) + optional D31-D34 — per the auditor, all six are
+  wording+arm fixes inside the existing ceilings. Per the leader's
+  dispatch discipline ("plan 감사 상한에 닿으면 보고"), the lane STOPS at
+  3/3 numbered rounds and REPORTS: escalation options per the verdict §
+  Recommendation are PASS-with-debt (debt inventory in the verdict) /
+  scope-reduction / one authorized delta round (iter4 fix surface named in
+  the verdict). Cross-model: claude FAIL (11) + codex FAIL (4), glm
+  inconclusive; two claude claims rejected with evidence. Run-phase entry
+  AWAITS the leader's disposition.
 
 ## §E.2 Run-phase Evidence
 
