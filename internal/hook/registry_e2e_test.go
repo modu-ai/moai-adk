@@ -70,8 +70,12 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 			handler: NewUserPromptSubmitHandler(&mockConfigProvider{cfg: newTestConfig()}),
 			event:   EventUserPromptSubmit,
 			input: &HookInput{
-				SessionID:     "sess-e2e-4",
-				CWD:           "/tmp",
+				SessionID: "sess-e2e-4",
+				// A fresh dir, not the shared /tmp: the workflow-context line is
+				// injected once per session (card t1499), and its marker must
+				// not outlive this run or collide with the sibling test that
+				// reuses this session id.
+				CWD:           t.TempDir(),
 				HookEventName: "UserPromptSubmit",
 				Prompt:        "Help me run this task",
 			},
@@ -530,8 +534,12 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 			handler: NewUserPromptSubmitHandler(&mockConfigProvider{cfg: newTestConfig()}),
 			event:   EventUserPromptSubmit,
 			input: &HookInput{
-				SessionID:     "sess-e2e-4",
-				CWD:           "/tmp",
+				SessionID: "sess-e2e-4",
+				// A fresh dir, not the shared /tmp: the workflow-context line is
+				// injected once per session (card t1499), and its marker must
+				// not outlive this run or collide with the sibling test that
+				// reuses this session id.
+				CWD:           t.TempDir(),
 				HookEventName: "UserPromptSubmit",
 				Prompt:        "Help me run this task",
 			},
