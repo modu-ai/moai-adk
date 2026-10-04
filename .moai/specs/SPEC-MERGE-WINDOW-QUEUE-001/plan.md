@@ -88,7 +88,7 @@ progress.md §E.2.
   gate (merge-ready, own unexpired card lease, version as read; requested card equals the window
   card); clean integration-worktree check; branch resolution, SHA pinned once; pre-merge checks in
   order — record validity, base equals tip, nothing to merge (pinned SHA differs from base), SHA
-  descends from base, tree identity, landing check, added-path collision check (an added path, its
+  descends from base, tree identity, landing check, added-path collision check (an added path read as a leaf entry — a directory-to-file change counts —, its
   ancestors, or paths beneath it already present as ignored/untracked bytes) — then
   `git merge --no-ff <sha>`, merge-tree and clean-worktree verification, release; thirteen causes
   with distinct exit codes; merge failure → `git merge --abort` +

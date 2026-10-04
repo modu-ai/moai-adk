@@ -40,7 +40,7 @@
 
 - Final re-read (`.moai/reports/t1479/plan-audit-final.md`, verbatim copy): one critical (data loss
   on an added path colliding with an ignored/untracked file) fixed as REQ-MWQ-018 cause 13
-  (thirteen codes, AC-MWQ-018 rows 13a-13c as of v0.8.0). Per the Q22 convergence rule the remaining non-critical
+  (thirteen codes, AC-MWQ-018 rows 13a-13d as of v0.9.0). Per the Q22 convergence rule the remaining non-critical
   findings are run-phase obligations:
   - **O1** — separate the adoption path's failure handling from the merge step's: a
     post-adoption transition failure must not release or alter a window held by another session
@@ -61,14 +61,25 @@
   13a-13c; row 13b is the auditor's reproduction and the RED fixture the run phase writes first);
   D2 — plan.md M5 corrected to thirteen causes and the REQ-MWQ-017 pre-merge order. 23 REQ / 23 AC,
   cause count thirteen. Remaining findings are run-phase obligations:
-  - **O2 (extended, D3)** — the untracked (non-ignored) half of cause 13 is shadowed by cause 12 unless
-    `status.showUntrackedFiles=no`; cover it with an AC-MWQ-018 row/regression run under
-    `status.showUntrackedFiles=no` together with the O2 clean-check regression.
+  - **O2 (extended, D3/D6)** — by the REQ-MWQ-017 order the clean-worktree check (cause 12, run with
+    `--untracked-files=all` per base O2) precedes the collision check, so a non-ignored untracked
+    collision is refused as cause 12 by design and is shadowed there under every
+    `status.showUntrackedFiles` setting. The regression expects cause 12 for that case. Cause 13's
+    untracked branch is exercised at check level (a unit test or a seam that presents the untracked
+    state after the cause-12 pre-check has passed, as in O3), together with the O2 clean-check
+    regression run under `status.showUntrackedFiles=no`.
   - **O5 (D4)** — symlink collisions and case-insensitive filesystems (macOS default) are unspecified
     for cause 13's existence test; the run phase decides the handling (for example an `lstat` or
     `git ls-files`-based test rather than case-sensitive path equality), records the decision and its
     evidence in §E.2, and tests the check against a varied collision fixture set rather than only
-    rows 13a-13c. Not a plan blocker; no REQ is created for it.
+    rows 13a-13d. Not a plan blocker; no REQ is created for it.
+
+- Delta re-read of `9d9d5fffa` (`.moai/reports/t1479/plan-audit-delta-9d9d5fffa.md`, FAIL 0.88, D5
+  major + D6/D7 optional). v0.9.0, operator-decided final repair round (decision-index Q25), no new
+  REQ: D5 — REQ-MWQ-017 reads "path" as a leaf entry and counts a directory-to-leaf change as an
+  added path; AC-MWQ-018 row 13d added (second RED fixture beside 13b). D6 — O2 extension reworded
+  above to the REQ-MWQ-017 order. D7 — row 13b's RED-now cell carries a re-executable command
+  sequence. 23 REQ / 23 AC, cause count thirteen.
 
 ## §E.2 Run-phase Evidence
 

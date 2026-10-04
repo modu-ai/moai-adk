@@ -286,3 +286,18 @@ Operator verdict: 리더 결정(LEADER-DECIDED, 카드 t1479). **이번이 리�
 - D3은 run 의무 O2에 합치고(`status.showUntrackedFiles=no` 회귀), D4(심볼릭 링크·대소문자 비구분 파일시스템)는 run 의무 O5로 기록한다. 둘 다 새 REQ를 만들지 않는다.
 
 반영: REQ-MWQ-017, REQ-MWQ-018(원인 13), AC-MWQ-018 행 13a–13c와 RED 픽스처 문단, design.md D3, plan.md M5, progress.md §E.1(O2 확장·O5). REQ·AC 개수는 23/23, 원인 수는 열셋 그대로다.
+
+### Q25: 델타 재독(`.moai/reports/t1479/plan-audit-delta-9d9d5fffa.md`, FAIL 0.88)에서 나온 D5(주요)·D6·D7(선택)은 어떻게 닫는가?
+
+Label: FOUNDER
+
+Authority anchor: — (운영자 결정, 카드 t1479. Q22 수렴 규칙과 Q23·Q24의 연장이며 커밋된 근거가 없어 이 행이 첫 커밋 기록이다.)
+
+Why unresolved: 해당 없음 — 운영자가 결정했다. 원인 13의 「경로」가 디렉터리 항목을 세는지 정하지 않아, 추적되던 디렉터리 `runtime.local/`을 파일 `runtime.local`로 바꾸는 후보가 통합 워크트리의 무시된 파일 `runtime.local/secret`이 있는 채로 검사를 통과했다(감사자 재현: 병합 exit 0, 파일 소실, codex도 동의).
+
+Operator verdict: 운영자 결정(OPERATOR-DECIDED, 카드 t1479). **이번이 카드 t1479의 마지막 수리 라운드다.** 범위는 D5와 D6·D7뿐이고, 새 REQ도 다른 REQ·AC의 변경도 없다.
+- D5: REQ-MWQ-017은 「경로」를 잎 항목(파일·심볼릭 링크·서브모듈 항목, `git ls-tree -r`이 나열하는 것, 트리 항목 아님)으로 정의하고, 디렉터리가 잎으로 바뀌는 변경도 추가된 경로로 센다. 원인 13은 같은 정의를 쓰며 원인 수는 열셋, 종료 코드는 원인 13과 같다. AC-MWQ-018 행 13d를 13b 옆의 둘째 RED 픽스처로 더한다.
+- D6: progress.md §E.1의 O2 확장을 REQ-MWQ-017의 순서(깨끗한 트리 확인인 원인 12가 충돌 검사보다 앞)에 맞춰 다시 쓴다. 추적되지 않은 충돌은 설계상 원인 12가 먼저 막는다.
+- D7: 행 13b의 RED-now 칸을 다시 실행할 수 있는 명령 순서와 실측 출력으로 바꾼다.
+
+반영: REQ-MWQ-017, REQ-MWQ-018(원인 13), AC-MWQ-018 행 13d와 RED 픽스처 문단, design.md D3, plan.md M5, progress.md §E.1(O2 확장). REQ·AC 개수는 23/23, 원인 수는 열셋 그대로다.

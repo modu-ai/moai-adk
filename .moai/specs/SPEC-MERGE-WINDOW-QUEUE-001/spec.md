@@ -1,7 +1,7 @@
 ---
 id: SPEC-MERGE-WINDOW-QUEUE-001
 title: "Merge-window automation — FIFO acquire queue, leader nomination abolished, re-measure outside the window, lane merge verb, substantive complete gate"
-version: "0.8.0"
+version: "0.9.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-04
@@ -30,6 +30,7 @@ related_specs: [SPEC-CANDIDATE-CI-001, SPEC-INTEGRATION-LOCK-ATOMIC-001, SPEC-IN
 | 0.6.0 | 2026-10-03 | manager-spec | Plan-audit iteration 3 (FAIL 0.75, `.moai/reports/t1479/plan-audit-iter3.md`, B1-B3 blocking). Leader decision Q19 (mission contract 07d28c4b; one delta round inside the auditor's fix_scope, no scope change). B1: one merge path — `moai factory complete` merges only by calling the REQ-MWQ-017 step (its own merge at `factory_card.go:1409` replaced, gates before develop moves) and adopts a landing already made by `integration merge` without re-measuring (REQ-MWQ-019); doctrine sentence covers both verbs and the self-dispatch clauses are aligned (REQ-MWQ-013). B2: SHA pinned across check, landing check and `git merge --no-ff <sha>`; every in-window failure releases with a distinct exit code; merge failure aborts and verifies a clean worktree, else sets `hold`; non-holder calls refused without touching the lock (REQ-MWQ-017/018). B3: tickets record `branch`/`branch_source`/`worktree` at enqueue and promotion copies them (REQ-MWQ-001/006). O1: `status` named a mutation (REQ-MWQ-009). O2: a waiter whose ticket was dropped exits non-zero (REQ-MWQ-003). O3/O4: research §R5 notes. Counts unchanged 23/23. |
 | 0.7.0 | 2026-10-03 | manager-spec | Plan-audit iteration 4 (FAIL 0.75, claude + codex agree; `.moai/reports/t1479/plan-audit-iter4.md`, C1-C4 blocking). Operator decision Q20 (AskUserQuestion 2026-10-03): one more narrow delta round, no new REQ. C1: complete's card gates (merge-ready state, own unexpired card lease, version — today's T14 preconditions) run before the integration branch moves (REQ-MWQ-019 step 1). C2: adoption requires a merge commit whose second parent is the card branch's current tip and whose tree matches a valid record; the clause order (card gates → adoption → record → merge step) moved into REQ-MWQ-019; the merge step itself requires record validity first (REQ-MWQ-017). C3: ancestry precondition (pinned SHA descends from the record's base) makes a post-merge tree mismatch unreachable, and any failure after the merge commit exists leaves the commit in place, sets `hold` naming the SHA, releases, and exits with its own code (REQ-MWQ-018 cause 8). C4: holder check reads the record first and refuses a non-holder or an expired-lease holder before any queue mutation; drops apply only after it passes (REQ-MWQ-009/017). Optional: the merge step's `hold` is a system write outside REQ-MWQ-012's lane refusal; REQ-MWQ-018 names nine causes, matching AC-MWQ-018; the merge-failure rows inject at the merge seam. Counts unchanged 23/23. Leader follow-up (same round, before the audit): the gate-to-transition race is closed — a post-merge transition conflict leaves the commit, holds with cause `post-merge-transition-conflict` + merge SHA, releases after the hold, own exit code; the merge step's release is deferred until complete's transitions finish (REQ-MWQ-019, AC-MWQ-019 scenario 8, design D3). |
 | 0.8.0 | 2026-10-04 | manager-spec | Plan-audit delta re-read of `d468ff19c` (FAIL 0.80, `.moai/reports/t1479/plan-audit-delta-d468ff19c.md`, D1 critical + D2 major blocking). Leader decision Q24 (card t1479): this is the leader's last repair round; no new REQ, no scope growth. D1: REQ-MWQ-017's collision pre-check and REQ-MWQ-018 cause 13 widen from the added path itself to any added path, any ancestor path of an added path, and any path beneath an added path — a candidate adding `runtime.local/payload` over an ignored file `runtime.local` is refused before `git merge`, bytes untouched (AC-MWQ-018 rows 13a/13b; the auditor's scratch reproduction is the RED fixture the run phase writes first). The cause count stays thirteen. D2: plan.md M5 corrected to thirteen causes and the REQ-MWQ-017/018 pre-merge order. D3 folded into run-phase obligation O2 and D4 recorded as O5 (progress.md §E.1). Counts unchanged 23/23. |
+| 0.9.0 | 2026-10-04 | manager-spec | Plan-audit delta re-read of `9d9d5fffa` (FAIL 0.88, `.moai/reports/t1479/plan-audit-delta-9d9d5fffa.md`, D5 major blocking, D6/D7 optional). Operator-decided final repair round for card t1479 (decision-index Q25); scope is D5 plus D6/D7, no new REQ. D5: REQ-MWQ-017 defines "path" as a leaf entry (`git ls-tree -r`, never a tree entry) and states that a directory-to-leaf change counts as an added path, so a file replacing a tracked directory over an ignored file inside it is refused as cause 13 (AC-MWQ-018 row 13d, a second RED fixture beside 13b). Cause count stays thirteen. D6: progress.md O2 extension reworded to match the pre-merge order. D7: row 13b's RED-now cell carries a re-executable command sequence. Counts unchanged 23/23. |
 
 ## §A Background
 
@@ -180,11 +181,15 @@ to that tree.
   have that absorbed commit as an ancestor, require the pinned
   SHA's tree to equal the record's tree, call SPEC-CANDIDATE-CI-001's shared landing check
   (REQ-CCI-011; a no-op while `workflow.candidate_ci.enabled` is false) for that SHA, require that
-  no collision exists — a collision being any path the pinned SHA's tree newly adds relative to the
-  integration branch tip's tree (a path present in the former and absent from the latter), any
-  ancestor path of such a path, or any path beneath such a path, that already exists in the
-  integration worktree as an ignored or untracked file or directory — refusing before any `git
-  merge` call and leaving every such byte untouched, run
+  no collision exists — a collision being any added path, any ancestor of an added path (a proper
+  prefix of its name), or any path beneath an added path, that already exists in the integration
+  worktree as an ignored or untracked file or directory. Here a **path** is a leaf entry — a file,
+  symlink or submodule entry as `git ls-tree -r` lists it, never a tree (directory) entry — and an
+  **added path** is a leaf entry present in the pinned SHA's leaf set and absent from the
+  integration branch tip's leaf set; a directory-to-leaf change therefore counts as an added path
+  (a tracked directory `runtime.local/` replaced by a file `runtime.local` adds the leaf
+  `runtime.local`, although that name existed as a directory at the tip). The check refuses before any `git
+  merge` call and leaves every such byte untouched. Then run
   `git merge --no-ff <pinned SHA>` into the integration branch (never the branch name), verify the
   merge commit's tree equals the record's tree and the integration worktree is clean again, and
   release the window; it shall run no test suite.
@@ -204,8 +209,10 @@ to that tree.
   window card), with the card and the integration branch untouched; (12) integration worktree not
   clean before the merge; (13) a collision as REQ-MWQ-017 defines it — an added path, an ancestor
   path of an added path (an added `runtime.local/payload` over an ignored file `runtime.local`), or
-  a path beneath an added path (an added file `runtime.local` over an ignored directory) already
-  exists in the integration worktree as an ignored or untracked file or directory — refused before
+  a path beneath an added path (an added file `runtime.local` over an ignored directory, including
+  a leaf that replaces a tracked directory over an ignored file inside it) already
+  exists in the integration worktree as an ignored or untracked file or directory, "path" and
+  "added path" being leaf entries as REQ-MWQ-017 defines them — refused before
   `git merge` with every colliding byte untouched. Causes 1-6 and 9-13 occur before
   the integration branch moves and promote the next live ticket on release; in causes 7 and 8 the
   merge step shall, before releasing, set the window policy to `hold` with a reason naming the cause
