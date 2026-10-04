@@ -315,3 +315,7 @@ lint 는 모든 편집을 마친 뒤 돌렸다. 종료 코드는 `0 error(s)` �
 - **변이 탐침**: 새로 이름 붙인 변이 MU-123 하나(기준이 잡는다). 바뀐 기준(AC-001·019·020·021·022)의 변이는 스크래치 저장소와 이 카드의 실제 이력 위 클론에서 실행했다 — 후보 증인 형태 셋(`--full-history` 단독, `--no-merges`, 채택형)의 비교는 `acceptance.md` 의 이터레이션 5 탐침 표. 개수: 변이 123(기준이 잡는 113 + 이유와 함께 수용 10).
 - **개수 점검**: 요구 24, 수용 기준 24 = 출시 차단 20 + 조건부 1 + 회귀 가드 3; spec·acceptance·spec-compact 에서 요구 24 개 모두 같은 값, 수용 기준은 acceptance·spec-compact 24/24; 변이 123 은 acceptance 에만 전수 있고 plan·design·spec 은 일부만 인용한다. `status:` 줄은 `spec.md` 외에 없고(`decision-index.md` 포함), 미해결 질문 표지 0, 템플릿 경로에 새 카드 id 를 더하는 항목 없음, `spec.md` 는 `version: "0.5.0"`·`status: draft`.
 - **미검증(공백)**: M0~M5 어느 것도 실행하지 않았다(범위 밖). 큐 쪽 수치와 `research.md` §3 의 figure 35개는 이터레이션 5 에서 다시 재지 않았다(M0 가 실행 시점에 잰다). t1453 착지 제목 형태, 되돌려진 착지 사례, `sync-auditor.md` 쌍의 분기 가드 부재(`git grep` 으로만 확인)는 기존 한계를 유지한다.
+
+- plan_complete_at: 2026-10-04T00:00:00+09:00
+- plan_status: audit-ready
+- plan_audit: PASS 0.89 at iteration 5 (896900f2383af84855eb18cf48a6cffdced021e6), report .moai/reports/t1454/plan-audit-iter5.md; optional D39-D42 carried as debt, plan artifacts unchanged since that verdict
