@@ -1,6 +1,6 @@
 # SPEC-TODO-CARD-ISSUANCE-001 — compact (run-phase load)
 
-카드 발행 품질 — 발행 시점의 겹침·중복 제시, 카드 관계 그래프, 묶음 직렬 경로, 과분할 억제 규칙. Tier L, 카드 t1454, 계획 시작 HEAD `2de0a2cb6`, 문서 수준 핀 `68a4d8137`(develop 흡수 뒤), version 0.5.0. 전체 문서: `spec.md`; 근거: `research.md`; 구조: `design.md`; 계획: `plan.md`; 기준과 RED-now 원장: `acceptance.md`; 결정: `decision-index.md`. 실행 순서는 M0 → M1 → M2 → M3 → M4 → M6 → (게이트가 열리면) M5.
+카드 발행 품질 — 발행 시점의 겹침·중복 제시, 카드 관계 그래프, 묶음 직렬 경로, 과분할 억제 규칙. Tier L, 카드 t1454, 계획 시작 HEAD `2de0a2cb6`, 문서 수준 핀 `68a4d8137`(develop 흡수 뒤), version 0.5.1. 전체 문서: `spec.md`; 근거: `research.md`; 구조: `design.md`; 계획: `plan.md`; 기준과 RED-now 원장: `acceptance.md`; 결정: `decision-index.md`. 실행 순서는 M0 → M1 → M2 → M3 → M4 → M6 → (게이트가 열리면) M5.
 
 ## 요구 (GEARS) — 24
 
@@ -61,7 +61,7 @@
 - AC-TCI-017 (REQ-018) **Given** 묶음과 레인 둘 **When** `factory next` 반복 **Then** 한 레인이 순서대로 직렬 임대, 다른 레인은 못 받고, 비묶음 동작 동일.
 - AC-TCI-018 (REQ-019) **Given** queued·picked 카드 **When** `merge` **Then** 본문 절·drop·`merged-into` 기록, picked·이미 병합·닫힌 대상·순환 거절, 레인·분석 경로에서 호출 불가.
 - AC-TCI-019 (REQ-020) **Given** `files` 속성에 허브 경로를 명시한 열린 카드 둘과 임베드 허브 목록 **When** 레코드 생성·선택·목록 시험 **Then** `after` 체인, keep-set 은 겹침을 읽지 않는다, 적재가 SPEC·reports 경로를 읽지 않고(정적 + 작업 디렉터리 동작 검사), 임베드 목록이 기준선 사본·측정 명령과 일치하며 CI 에서 SHA 없음은 실패이고, 측정 시험 래퍼는 보고 이음매를 거친다(소스 읽기).
-- AC-TCI-020 (REQ-021, -022) **Given** 게이트 다섯 판독(어느 부모 경로 술어에서 병합 제목 줄에 `absorb` 가 든 흡수 방향 병합을 뺀 착지 후보 — 본문에만 든 낱말은 빼지 않고 `T ≥ 1` 인데 `T − A = 0` 이면 목록을 읽되 레인은 열지 않고 SHA 를 보고하며 리더 판정이 대신한다, SHA 고정과 같은 줄 흡수 점검, 본문 `absorb` 착지(t1439)를 포함한 양성 대조, 두 번째 부모 부등식 대조, 형태 점검) **When** M5 종료 **Then** 게이트가 가리킨 모드 하나만 성립한다(Mode A 규칙 두 파일, Mode B 추적되는 초안과 무편집).
+- AC-TCI-020 (REQ-021, -022) **Given** 게이트 다섯 판독(어느 부모 경로 술어에서 `--merges` 로 병합만 세어 병합 제목 줄에 `absorb` 가 든 흡수 방향 병합을 뺀 착지 후보 — 병합이 아닌 커밋의 본문 줄·제목 위조는 세지 않고, 병합 본문 줄이 인용한 줄은 목록의 제목 확인이 거르며, 본문에만 든 낱말은 빼지 않고 `T ≥ 1` 인데 `T − A = 0` 이면 목록을 읽되 레인은 열지 않고 SHA 를 보고하며 리더 판정이 대신한다, SHA 고정과 같은 줄 흡수 점검, 본문 `absorb` 착지(t1439)를 포함한 양성 대조, 두 번째 부모 부등식 대조, 형태 점검) **When** M5 종료 **Then** 게이트가 가리킨 모드 하나만 성립한다(Mode A 규칙 두 파일, Mode B 추적되는 초안과 무편집).
 - AC-TCI-021 (REQ-021, 조건부 Mode A) **Given** Mode A 커밋 **When** 크기·가드·도달성 **Then** `gtd.md` ≤ 40000자, 상시 로드 무증가, 미러·생성물·카탈로그 정합, 스텁 문장과 경로 고정 시험 등록.
 - AC-TCI-022 (REQ-023) **Given** 각 상태·종류의 고정 큐 **When** `GET`/`POST /todo?view=graph` **Then** 200 과 노드·간선, POST 405·큐 파일 바이트 불변, 락을 쥔 채 요청해도 2초 안에 200(`TestTodoGraphViewDoesNotWaitOnQueueLock`; 락 파일 바이트·mtime 은 락 획득의 증거가 아니다)과 웹 비시험 소스에 락 토큰 없음, 상한 문구, 외부 참조(`http:`·`https:`·`//`, `url(`·`@import`·`srcset`)·새 JS 자산·로케일 누락 없음.
 - AC-TCI-023 (REQ-024, 회귀 가드) **Given** `view` 없는 `GET /todo` **When** M6 이후 **Then** 응답이 M6 시작 기준과 바이트 동일.

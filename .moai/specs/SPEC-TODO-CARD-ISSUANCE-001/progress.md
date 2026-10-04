@@ -306,7 +306,7 @@ lint 는 모든 편집을 마친 뒤 돌렸다. 종료 코드는 `0 error(s)` �
 - **D34 — 고침(리더의 문자 그대로의 수정은 기각하고 더 좁은 형태 채택).** 증인 5 에 `--full-history` 만 붙이면 이 카드의 실제 이력에서 정당한 M0 가 실패한다(C42 = `1`: 카드 id 를 담은 흡수 병합 `68a4d8137` 하나). 채택형은 `--full-history --simplify-merges`(C43 = `0`; 기본형 C44 = `0`). `--no-merges` 는 기각 — 병합 커밋에 제품 변경을 실어 나르는 변이(EVIL)를 놓친다. 스크래치 저장소 탐침(AUD1~AUD3: B 앞의 곁가지에서 제품 커밋을 넣었다 되돌려 병합): 옛 형태 PASS(0) → 채택형 FAIL, 건강한 선형·정당한 곁가지·B 뒤 흡수·MU-110 잔여는 결과 그대로. 표와 변이 MU-123 은 `acceptance.md` AC-TCI-001.
 - **D35 — 고침(핵심).** 순서 증인 1~5 의 읽는 시점은 **병합 전 한 번**이다 — 마지막 마일스톤이 끝난 뒤, 카드 브랜치가 통합 브랜치에 병합되기 전(sync-audit 이 증거를 읽는 시점). M0 종료에서는 읽지 않는다: M0 종료에는 제품 커밋이 하나도 없어 증인 3 의 두 목록이 비기 때문이다. M0 종료 증거는 AC-TCI-001 (a)~(e)(기준선 파일과 그 안의 줄만 읽는다). spec §A·§D 문단, plan §D·§F.2·§F.12, design §12.4, acceptance AC-TCI-001 Given/When/Then 과 완료 정의 #2, spec-compact AC-001 이 같은 문장으로 적는다. 개수 24/24 유지.
 - **D36 — 고침.** REQ-TCI-021 의 착륙 정의는 실제로 쓰는 **어휘 규칙**(제목 줄에 카드 id 가 있고 `absorb` 가 없는 병합, 또는 리더가 읽은 판정이 대신함)으로 다시 썼다. 거짓 열림/거짓 닫힘 비율은 SHA 로 고정한 통합 팁에서 다시 쟀다: 핀 `68a4d8137` 에서 흡수 방향 74개 중 2개, 착지 260개 중 7개(이터레이션 4 핀 `ad02a5677`: 68개 중 2개, 217개 중 6개). 감사가 움직이는 ref 로 읽은 "75개 가운데 2개"는 SHA 로 재현되지 않는다. `T ≥ 1`·`T − A = 0` 의 대비책은 판독 2 의 목록을 읽되 레인은 게이트를 열지 않고 SHA 를 보고하며 리더 판정이 대신한다(AC-TCI-020, spec §G).
-- **D37 — 고침.** 측정 시험 래퍼가 측정 함수를 부르게 하는 소스 읽기(`go/parser`)를 AC-TCI-019 (f) 에 더하고 변이 MU-106 문구를 맞췄다 — 래퍼가 건너뛰고 끝나는 변이는 이제 그 읽기가 잡는다. 수용 잔여는 만들지 않았다.
+- **D37 — 고침.** 측정 시험 래퍼가 측정 함수를 부르게 하는 소스 읽기(`go/parser`)를 AC-TCI-019 (f) 에 더하고 변이 MU-106 문구를 맞췄다 — 래퍼가 건너뛰고 끝나는 변이는 이제 그 읽기가 잡는다. 수용 잔여는 AC-TCI-019 (f) 에 적은 `skip := t.Skip` 별칭 한계 하나였다(이터레이션 5 감사 D42 가 보고 이음매 어댑터를 읽지 않는다는 둘째 한계를 더했고 이터레이션 6 이 같은 문단에 수용 한계로 적었다 — 앞 문장 "만들지 않았다"는 (f) 와 어긋나 이렇게 고쳤다).
 - **D38 — 고침.** spec-compact 의 진행 중 레인 카드 수를 acceptance 와 같은 셋으로 맞췄고(AC-003), 고아가 된 design 표 행은 제자리로 옮겼다.
 - **흡수가 바꾼 것**(상세 `spec.md` §A.4, `research.md` §0): 개명(t1399 — `internal/kanban` → `internal/factory`, `kanban-dispatch*` → `factory-dispatch*`), 크기(`gtd.md` 41,160자 = 1,160자 초과, `factory-dispatch-detail.md` 40,659자, `factory-dispatch.md` 27,744자), M5 미러 표면 하나 증가(`plugins/moai/skills/moai/workflows/gtd.md` — `make plugin-emit` 생성물), 가드 추가(`TestAutoPickMirrorParity`, `todo_auto_doc_test.go`), SPEC-TODO-AUTO-PICK-001 0.5.0, SPEC-FACTORY-ATOMIC-LEASE-001 임계 구역(M4 가 따를 조건), 쓰기 전 LLM 분류 단계(`todoPreClassifyLLM`). 죽은 전제는 없다 — 범위는 바꾸지 않았다. t1480(picked)과의 겹침은 `plan.md` §D 의존 메모에만 적었고 t1481 은 이미 흡수에 들어 있다.
 - **처음부터 틀렸던 읽기를 바로잡음**: 저장소 루트 `.codex/` 는 추적되지 않는다(템플릿 아래 TOML 만); 갈라진 쌍 `factory-dispatch.md` 는 `TestAutoPickMirrorParity` 가 고정한다(가드 없는 분기는 `sync-auditor.md` 쪽); `factory-dispatch.md` 181행의 `moai worktree sweep` 문장은 로컬 사본에만 있다; `ALTER TABLE` 목록 줄 번호는 다른 표의 것이었다.
@@ -319,3 +319,85 @@ lint 는 모든 편집을 마친 뒤 돌렸다. 종료 코드는 `0 error(s)` �
 - plan_complete_at: 2026-10-04T00:00:00+09:00
 - plan_status: audit-ready
 - plan_audit: PASS 0.89 at iteration 5 (896900f2383af84855eb18cf48a6cffdced021e6), report .moai/reports/t1454/plan-audit-iter5.md; optional D39-D42 carried as debt, plan artifacts unchanged since that verdict
+
+### 이터레이션 6 기록 (이터레이션 5 PASS 0.89 뒤 리더의 표적 수리 — D40 하나, 이 에이전트가 한 일만)
+
+위의 감사 준비 완료 줄(`plan_complete_at`·`plan_status`·`plan_audit`)은 이터레이션 5 의 사실이고 이 기록은 그 줄을 건드리지 않는다. 다만 아래 편집으로 계획 산출물 해시가 이터레이션 5 감사 시점과 달라졌으므로 그 줄의 "plan artifacts unchanged since that verdict" 는 더 이상 참이 아니다 — 델타 감사 뒤 리더가 다시 적는다.
+
+- **핀과 트리**: 작업 시작 시 `git rev-parse --short HEAD` 는 `c459477b5`(전체 SHA `c459477b5fd19c53525e82ef090ea2e2c0be5559`), 브랜치 `WT-card-issuance-overlap-graph`. 모든 편집 뒤에도 같다(커밋하지 않았다 — 변경은 SPEC 디렉터리의 워킹트리에만 있다). 문서 수준 핀 `68a4d8137` 은 그대로이고 새 행 C46·C47 만 `c459477b5` 에 핀했다.
+- **판단 도구의 출처**: 이 트리에서 `go build -o /tmp/moai-t1454 ./cmd/moai`(종료 0)를 만들어 경로로 호출했다(트리 HEAD `c459477b5`, SPEC 디렉터리 외 변경 없음 — 바이너리는 `moai version` 이 `v3.1.3 none` 을 내는 ldflags 없는 빌드라 빌드 커밋 문자열은 없다). 설치 바이너리는 쓰지 않았다.
+- **D40 — 고침(표적).** 감사의 실행 `T=1 A=0` 을 먼저 이 에이전트가 스크래치에서 다시 만들어 재현했다(F1: 비-병합, 본문 줄 `merge(t1453): forged body line` → 옛 형태 1). `--merges` 를 모든 `T`·`A`·목록·판독 4 선택자에 더했다(`acceptance.md` L21·C8·C9·C19~C22·C28~C34·G23 과 AC-TCI-020 판독 1·2·4, `plan.md` §F.8, `design.md` §13.3·13.4, `spec.md` §G, `spec-compact.md` AC-TCI-020, `decision-index.md` Q1, `research.md` 한 줄). **순수 git 한 번으로 제목만 맞추는 형태는 없다**: `--grep` 은 메시지를 줄 단위로 훑고 줄마다 따로 맞춘다. 같은 스크래치 저장소에서 `-P` 의 `\A`·뒤돌아보기도 시도했고 둘 다 `--merges` 만 쓴 값(2)과 같았다. `git log --merges --format=%s ... | grep -c` 는 제목만 세지만 `verification-completeness.md` §2.1 의 단일 호출 형태(파이프 금지)와 AC-TCI-020 의 "파이프 없음"을 깬다 — 쓰지 않았다. 채택: (i) `--merges` 가 비-병합 위조를 기계가 센다, (ii) 병합 본문 줄 인용은 판독 2 의 목록(`%s`)에서 제목 위치를 읽어 거른다(읽는 단계, 수용 잔여 MU-125).
+- **관측(스크래치, 같은 스크립트가 같은 SHA 를 냄 — 아래 펜스)**: F1 `9d34c363d`(비-병합, 본문 줄 위조) 옛 `T`=1 → 새 `T`=0; F2 `45a99837a`(비-병합, 제목 `merge(t1453): x`) 1 → 0; M1 `f0aa47134`(두 부모 병합, 제목 `merge(t1453): …`) 1 → 1; M2 `f47bd6ff2`(두 부모 병합, 제목 `merge(t1999): other`, 본문이 그 줄 인용) 1 → 1(한계). 저장소 전체 `HEAD`: 옛 `T`=4, 새 `T`=2, 새 `A`=0. 새 형태 목록: `f47bd6f merge(t1999): other` / `f0aa471 merge(t1453): WT-x into develop - real landing`. 스크립트 종료 0.
+- **기존 대조군을 새 형태로 다시 걸어 관측한 값(전부 종료 0, 실제 이력)**: 핀 `68a4d8137` — t1453 `T`=0(L21), t1448 `T`=1(C8), t1344 `T`=1(C9), t1448 `A`=0(C30), t1439 `T`=1·`A`=0(C33·C34), 카드 id 병합 제목 전체 `382`·`--first-parent` `214`(C21·C22); 핀 `b05c3be90`(미푸시 브랜치 `WT-github-flow-default`, 존재 확인 `git cat-file -t` → `commit`) — t1453 `T`=5·`A`=5(C28·C29), t1407 `--first-parent` 0·전체 1(C19·C20), `--no-walk` t1453 `A`=1(C31), 목록 다섯 줄(G23, 문서와 같음); 병합 `4315f0d0e`(t1448 착지) `--no-walk` `T`=1(C45)·`A`=0(C32); 병합 `d53e6ca59`(t1439) `--no-walk` `T`=1·`A`=0; `c459477b5` t1453 `T`=0(C46)·`A`=0(C47); `--merges` 없는 옛 형태 382(C48). 핀 SHA 존재: `d53e6ca59`·`4315f0d0e`·`b05c3be90…`·`68a4d8137…` 모두 `git cat-file -t` → `commit`.
+- **실제 이력 본문 줄 전수(`python3` 스크래치, 원장 행 아님)**: 핀 `68a4d8137` 12,998개 커밋 — 제목이 `merge…t<id>` 인 커밋 382(전부 병합), 본문 줄만 맞는 커밋 0(병합·비병합); 핀 `b05c3be90` 12,490개 — 333·0·0. 이터레이션 4 핀의 12,444개 값은 이번에 다시 재지 않았다(문서에서 뺐다).
+- **D39 — 고침.** 인용한 줄을 직접 다시 읽었다: `cardChangedPaths` 는 `2de0a2cb6` 에서 `:201`, `68a4d8137`·HEAD 에서 `:277`; `gtd.md` 는 `2de0a2cb6` 에서 `absorbs` 행 `:63`·"Analysis never folds one card into another" `:114`·"Derived, never invented" `:423`, 현재 `:62`·`:115`·`:428`. `research.md` 의 세 곳(L54, L167, L209)과 §0 표(행 둘 추가)를 고쳤다. `acceptance.md` G33·`plan.md` 의 `:115` 는 이미 맞았다.
+- **D41 — 고침(두 구성 모두 재현).** 스크래치에서 AUD1 을 두 번 만들었다: main 이 제품 경로 파일(`internal/other.go`)로 갈라지면 `--full-history`·`--full-history --simplify-merges` 모두 `3`, 제품 경로 밖 파일(`other.txt`, 감사의 모양)로 갈라지면 둘 다 `2`, 기본형은 둘 다 `0`. 그래서 "3 을 2 로 바꾼다"가 아니라 AUD1 행에 구성을 적고 AUD1b 행(`2`)을 더했다. 방향은 같다.
+- **D42 — 고침(수용 잔여로 이름 붙임).** 보고 이음매 어댑터를 읽지 않는 한계를 AC-TCI-019 (f) 의 수용 한계 문단에 적었다(닫는 길 = 어댑터가 `t` 로 전달함을 단언하는 한 줄, 그러나 정책 시험의 읽기 범위를 넓히는 설계 변경이라 **보류**). 위 D37 행의 "수용 잔여는 만들지 않았다" 문장을 (f) 와 맞게 고쳤다. 새 MU 번호는 만들지 않았다.
+- **원장 재실행**: `python3 <scratchpad>/d40/ledger6.py` — 표·펜스 원장에서 명령을 뽑아 `shlex` 로 나누어 실행하고 문서의 stdout·종료 코드와 대조: 142건 중 일치 120, 건너뜀 17(`go test`·`unset`·파이프 펜스 G21·G22·G24·G25·G31·G32·G36, 변경 행 표의 비-원장 셀), 사람이 읽어 확인 4(G12 셸 의존 — 이번 셸은 여섯 이름, 종료 0; G23 다섯 줄 문서와 같음; 변경 표의 G1·G9 옛 행), 불일치 1(변경 표의 L23 옛 행 — 비-원장 셀). 바뀐·추가한 행(L21, C8, C9, C19~C22, C28~C36, C45~C48, G23)과 M5 선택자를 인용하는 모든 행은 전부 문서의 값과 일치했다(C35·C36 은 옛 형태 대조군 그대로 `1`·`1`). 재현되지 않아 회귀 가드로 내린 행: 없다.
+- **무작위 15행(시드 1454, 건드리지 않은 행)**: L43 `(empty)` 종료 1, C42 `1` 종료 0, G17 `(empty)` 1, C41 `1894984c3…` 0, G14 `.gitignore:235:.moai/reports/*` 줄 0, G8 `(empty)` 0, L25 `(empty)` 1, L5 `(empty)` 1, L6 `(empty)` 1, G15 `(empty)` 1, C3 `internal/cli/todo.go:2` 0, C1 `internal/cli/todo_analysis_add_test.go:2` 0, C12 `…/factory-dispatch-detail.md` 0, L10 `(empty)` 1, L34 `(empty)` 1 — 15행 모두 문서의 stdout·종료 코드와 같다(후보 85행 중).
+- **판정 도구**: `/tmp/moai-t1454 spec lint .moai/specs/SPEC-TODO-CARD-ISSUANCE-001` 종료 0(`0 error(s), 0 warning(s)`, INFO `OwnershipTransitionUnmeasured` 하나), `--strict` 종료 0(같은 출력).
+- **교차 일관**(`python3` `xcheck6.py`): 게이트 선택자 명령의 모양이 spec·plan·design·acceptance·decision-index·spec-compact 에서 같다 — `--merges` 가 없는 선택자 명령은 의도한 넷뿐이다(C35 이터레이션 3 의 `A` 형태, C48 옛 형태 대조, 스크래치 설명 안의 옛 형태, `research.md` 의 이터레이션 1 `--first-parent` 눈먼 선택자 서술). 요구 24(`spec.md`)·24(`spec-compact.md`), 수용 기준 24·24, 변이 125(기준이 잡는 114 + 이유와 함께 수용 11: MU-74~77, MU-110~113, MU-121·122·125) — `acceptance.md` 개수 줄과 표의 명명 수 125 가 같다. 미해결 질문 표지 0(여덟 파일), `status:` 줄은 `spec.md` 에만 1(`decision-index.md` 포함 나머지 0). 이 반복은 `plan.md` 의 파일 목록에 경로를 더하지 않았으므로 템플릿 경로에 `t####` 를 더한 것이 없다.
+- **변이 탐침**: 새로 이름 붙인 변이 둘 — MU-124(`--merges` 없는 선택자, 기준이 잡음, **스크래치에서 실행**: F1·F2 옛 1 새 0), MU-125(병합 본문 줄 인용, 수용, **스크래치에서 실행**: M2 새 1 이지만 목록 제목이 달라 `S` 가 되지 못함). 읽기로만 판정한 것: 없음.
+- **미검증(공백)**: (1) 판독 2 의 제목 위치 확인은 기계가 세지 않는 읽는 단계다 — 이 SPEC 의 어떤 시험도 그 읽기를 강제하지 않는다(MU-125). (2) 스크래치 값은 이 머신의 `git` 2.54.0 동작이다. (3) 파이프를 쓰는 정확한 형태(`git log --merges --format=%s | grep -c`)는 SPEC 에 채택하지 않았고 이 이력에서 값을 재지 않았다(M2 의 제목 걸러짐은 목록으로 관측). (4) G2·G3·G21·G22·G24·G25·G31·G32·G36(`go test`·`unset`·파이프 펜스)은 이번에 다시 돌리지 않았다 — 이터레이션 5 의 값 그대로다. (5) 큐 쪽 수치·`research.md` §3 의 figure 35개는 다시 재지 않았다(M0 의 몫). (6) 이터레이션 5 감사의 codex 영수증(`rcpt-ace7273e270f1818909b6b46`)과 이번 변경의 교차 모델 판정은 아직 없다 — 리더가 델타 감사와 새 영수증을 요청한다.
+- **잔여 위험**: 병합 본문 줄 인용이 개수로 거르지 못한다는 점(MU-125), 그리고 이터레이션 5 의 감사 준비 완료 줄이 해시상 낡은 점.
+
+스크래치 구성 스크립트(`python3`, 워크트리 밖; 같은 환경에서 같은 SHA 를 낸다):
+
+```
+import subprocess, os, shutil, sys
+
+R = "/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e45eb4da-ebe2-4e77-9359-5646d0ac07d3/scratchpad/d40/repo2"
+if os.path.exists(R):
+    shutil.rmtree(R)
+os.makedirs(R)
+env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+env.update(GIT_AUTHOR_NAME="a", GIT_AUTHOR_EMAIL="a@a", GIT_COMMITTER_NAME="a", GIT_COMMITTER_EMAIL="a@a",
+           GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_SYSTEM="/dev/null",
+           GIT_AUTHOR_DATE="2026-10-04T00:00:00+0000", GIT_COMMITTER_DATE="2026-10-04T00:00:00+0000")
+
+def g(*a):
+    r = subprocess.run(["git", "-C", R] + list(a), env=env, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("ERR", a, r.stdout, r.stderr)
+        sys.exit(1)
+    return r.stdout.strip()
+
+def wf(name, text):
+    with open(os.path.join(R, name), "w") as f:
+        f.write(text)
+
+g("init", "-q", "-b", "main")
+wf("f.txt", "0\n"); g("add", "f.txt"); g("commit", "-q", "-m", "root")
+root = g("rev-parse", "HEAD")
+wf("f.txt", "1\n"); g("commit", "-q", "-a", "-m", "fix: unrelated\n\nmerge(t1453): forged body line")
+F1 = g("rev-parse", "HEAD")
+wf("f.txt", "2\n"); g("commit", "-q", "-a", "-m", "merge(t1453): x")
+F2 = g("rev-parse", "HEAD")
+g("checkout", "-q", "-b", "side1", root)
+wf("s1.txt", "s\n"); g("add", "s1.txt"); g("commit", "-q", "-m", "side work")
+g("checkout", "-q", "main")
+g("merge", "-q", "--no-ff", "-m", "merge(t1453): WT-x into develop - real landing", "side1")
+M1 = g("rev-parse", "HEAD")
+g("checkout", "-q", "-b", "side2", F1)
+wf("s2.txt", "s\n"); g("add", "s2.txt"); g("commit", "-q", "-m", "side2 work")
+g("checkout", "-q", "main")
+g("merge", "-q", "--no-ff", "-m", "merge(t1999): other\n\nmerge(t1453): quoted body line in a real merge", "side2")
+M2 = g("rev-parse", "HEAD")
+
+RX_T = "^merge[( :]+(card )?t1453[^0-9]"
+RX_A = RX_T + ".*absorb"
+def cnt(extra, rx, ref):
+    return g("rev-list", *extra, "--count", "-E", "-i", "--grep=" + rx, ref)
+
+names = [("F1 non-merge, body-line forgery", F1), ("F2 non-merge, subject forgery", F2),
+         ("M1 real two-parent merge, subject merge(t1453)", M1), ("M2 real merge, subject t1999, body quotes the line", M2)]
+print("parents:", {n[:2]: len(g("rev-list", "--parents", "-n1", s).split()) - 1 for n, s in names})
+print("%-58s %-12s %-12s" % ("commit (--no-walk)", "old T", "new T(--merges)"))
+for n, s in names:
+    print("%-58s %-12s %-12s" % (n, cnt(["--no-walk"], RX_T, s), cnt(["--no-walk", "--merges"], RX_T, s)))
+print("whole history HEAD: old T =", cnt([], RX_T, "HEAD"), " new T =", cnt(["--merges"], RX_T, "HEAD"),
+      " new A =", cnt(["--merges"], RX_A, "HEAD"))
+print("list under the new selector (subject-position check):")
+print(g("log", "--merges", "--format=%h %s", "-E", "-i", "--grep=" + RX_T, "HEAD"))
+print("SHAs: F1", F1[:9], "F2", F2[:9], "M1", M1[:9], "M2", M2[:9])
+```
