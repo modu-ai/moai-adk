@@ -9,7 +9,6 @@ package harness
 // so the pruner blocks inside its archive step until the test reads from it.
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -36,42 +35,31 @@ func TestPruneStamp_StampExistsBeforeTheWork(t *testing.T) {
 		t.Skipf("mkfifo unavailable: %v", err)
 	}
 
-	// drain unblocks the pruner: opening the FIFO for reading rendezvouses with its blocked open. It
-	// never blocks on a pruner that did not reach its archive step: the blocking read open runs in a
-	// goroutine, and once archiveStepWait has passed the goroutine is released by opening the write
-	// side without blocking (that open succeeds only while a reader is blocked in its open). drain
-	// reports whether a pruner opened the FIFO for writing, that is, reached its archive step.
+	// drain both observes and releases the pruner. Since card t1467 the archive step writes a
+	// temp copy and renames it, so the pruner blocks in a READ-open of the archive — it copies
+	// the existing bytes before appending its stream. A non-blocking write open is the single
+	// probe: it succeeds exactly while the pruner is blocked in that read-open, which is the
+	// proof it reached its archive step, and the success is also the release (the pruner then
+	// reads EOF, copies nothing, and finishes). archiveStepWait bounds the wait; a pruner that
+	// finishes without needing the release is caught by the done-channel wait below.
 	const archiveStepWait = 10 * time.Second
 	var drainOnce sync.Once
 	archiveReached := false
 	drain := func() bool {
 		drainOnce.Do(func() {
-			opened := make(chan struct{})
-			go func() {
-				defer close(opened)
-				f, err := os.OpenFile(fifo, os.O_RDONLY, 0)
-				if err != nil {
-					return
-				}
-				_, _ = io.Copy(io.Discard, f)
-				_ = f.Close()
-			}()
-			select {
-			case <-opened:
-				archiveReached = true
-				return
-			case <-time.After(archiveStepWait):
-			}
-			release := time.NewTicker(10 * time.Millisecond)
-			defer release.Stop()
+			deadline := time.After(archiveStepWait)
+			tick := time.NewTicker(10 * time.Millisecond)
+			defer tick.Stop()
 			for {
 				if w, err := os.OpenFile(fifo, os.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
 					_ = w.Close()
+					archiveReached = true
+					return
 				}
 				select {
-				case <-opened:
+				case <-deadline:
 					return
-				case <-release.C:
+				case <-tick.C:
 				}
 			}
 		})
