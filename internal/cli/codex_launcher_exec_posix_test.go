@@ -63,7 +63,7 @@ func TestCodexDirectPOSIXExecRegistersNoFactoryPeer(t *testing.T) {
 		if at < 0 || !reflect.DeepEqual(os.Args[at+1:], []string{"arg-one", "two words"}) {
 			t.Fatalf("argv=%q", os.Args)
 		}
-		run := os.Getenv(config.EnvMoaiKanbanID)
+		run := os.Getenv(config.EnvFactoryRunID)
 		s, err := factorymsg.Open(cwd, run)
 		if err != nil {
 			t.Fatal(err)
@@ -107,8 +107,8 @@ func TestCodexDirectPOSIXExecRegistersNoFactoryPeer(t *testing.T) {
 	}
 	env = append(env,
 		"MOAI_HOME="+home,
-		config.EnvMoaiKanbanID+"="+run,
-		config.EnvMoaiKanbanBackend+"=claude",
+		config.EnvFactoryRunID+"="+run,
+		config.EnvFactoryBackend+"=claude",
 		config.EnvMoaiFactoryWorker+"=lane-1",
 		config.EnvClaudeProjectDir+"="+root,
 		"T1074_CODEX_EXEC_ROOT="+root,

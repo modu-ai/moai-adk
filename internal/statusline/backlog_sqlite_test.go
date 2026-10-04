@@ -17,34 +17,34 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // seedQueue writes n cards through the store, cycling the three states, and
 // returns the expected picked/queued counts.
 func seedQueue(t *testing.T, root string, n int) (picked, queued int) {
 	t.Helper()
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRootAdopting(root))
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	store := factory.NewBacklogStore(factory.BacklogPathForRootAdopting(root))
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := 0; i < n; i++ {
 			rec.LastSeq++
-			state := kanban.BacklogStateQueued
+			state := factory.BacklogStateQueued
 			switch i % 3 {
 			case 1:
-				state = kanban.BacklogStatePicked
+				state = factory.BacklogStatePicked
 			case 2:
-				state = kanban.BacklogStateDropped
+				state = factory.BacklogStateDropped
 			}
-			rec.Items = append(rec.Items, kanban.BacklogItem{
+			rec.Items = append(rec.Items, factory.BacklogItem{
 				ID:      "t" + itoa(rec.LastSeq),
 				Text:    "synthesized card",
 				AddedAt: "2026-01-02T03:04:05Z",
 				State:   state,
 			})
 			switch state {
-			case kanban.BacklogStatePicked:
+			case factory.BacklogStatePicked:
 				picked++
-			case kanban.BacklogStateQueued:
+			case factory.BacklogStateQueued:
 				queued++
 			}
 		}
@@ -75,7 +75,7 @@ func TestResolveBacklogCounts_DatabaseLayoutIsReadPurely(t *testing.T) {
 	root := t.TempDir()
 	wantPicked, wantQueued := seedQueue(t, root, 12)
 
-	stateDir := kanban.StateDirForRoot(root)
+	stateDir := factory.StateDirForRoot(root)
 	before := dirNames(t, stateDir)
 
 	got := resolveBacklogCounts(root)
@@ -98,7 +98,7 @@ func TestResolveBacklogCounts_DatabaseLayoutIsReadPurely(t *testing.T) {
 func TestResolveBacklogCounts_LegacyLayoutIsReadWithoutRelocating(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	legacy := kanban.LegacyStateDirForRoot(root)
+	legacy := factory.LegacyStateDirForRoot(root)
 	if err := os.MkdirAll(legacy, 0o755); err != nil {
 		t.Fatalf("seed legacy dir: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestResolveBacklogCounts_LegacyLayoutIsReadWithoutRelocating(t *testing.T) 
 	if !got.Available || got.Picked != 1 || got.Queued != 1 {
 		t.Fatalf("counts = %+v, want picked 1 / queued 1 / available", got)
 	}
-	if _, err := os.Stat(kanban.StateDirForRoot(root)); err == nil {
+	if _, err := os.Stat(factory.StateDirForRoot(root)); err == nil {
 		t.Error("the render relocated the state directory")
 	}
 	if _, err := os.Stat(filepath.Join(legacy, "backlog.db")); err == nil {
@@ -138,7 +138,7 @@ func TestResolveBacklogCounts_UnreadableIsUnavailableNotZero(t *testing.T) {
 	t.Run("corrupt database", func(t *testing.T) {
 		root := t.TempDir()
 		seedQueue(t, root, 2)
-		db := filepath.Join(kanban.StateDirForRoot(root), "backlog.db")
+		db := filepath.Join(factory.StateDirForRoot(root), "backlog.db")
 		if err := os.WriteFile(db, []byte("not a database"), 0o600); err != nil {
 			t.Fatalf("corrupt the database: %v", err)
 		}
@@ -197,11 +197,11 @@ func TestResolveBacklogCounts_LatencyBudget(t *testing.T) {
 	// baseline C-2 names. Built by exporting arm A's content, so the two arms
 	// hold identical cards rather than merely similar ones.
 	jsonRoot := t.TempDir()
-	legacyDir := kanban.LegacyStateDirForRoot(jsonRoot)
+	legacyDir := factory.LegacyStateDirForRoot(jsonRoot)
 	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
 		t.Fatalf("seed legacy dir: %v", err)
 	}
-	src, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(dbRoot)).LoadPure()
+	src, err := factory.NewBacklogStore(factory.BacklogPathForRoot(dbRoot)).LoadPure()
 	if err != nil {
 		t.Fatalf("read arm A for the baseline fixture: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestResolveBacklogCounts_LatencyBudget(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(legacyDir, "backlog.json"), encoded, 0o644); err != nil {
 		t.Fatalf("write baseline fixture: %v", err)
 	}
-	if base := kanban.BacklogCountsForRoot(jsonRoot); !base.Available {
+	if base := factory.BacklogCountsForRoot(jsonRoot); !base.Available {
 		t.Fatal("the JSON baseline fixture is unreadable; the comparison would be meaningless")
 	}
 

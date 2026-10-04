@@ -18,9 +18,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -28,9 +28,9 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/jev"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // ---------------------------------------------------------------------------
@@ -46,13 +46,13 @@ const (
 // parallelizable and normal priority, with lanes lane-1 and lane-2 registered
 // in the factory roster. The lane environment is scrubbed before the queue is
 // seeded and left scrubbed; callers stamp a lane with nmLaneEnv.
-func nmBase(t *testing.T, states ...kanban.BacklogState) (string, *kanban.BacklogStore) {
+func nmBase(t *testing.T, states ...factory.BacklogState) (string, *factory.BacklogStore) {
 	t.Helper()
 	root, store := sdMoaiFixture(t)
 	sdClearLaneEnv(t)
 	fcQueue(t, store, states...)
 	for i := range states {
-		fcClassify(t, store, fmt.Sprintf("t%d", i+1), kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+		fcClassify(t, store, fmt.Sprintf("t%d", i+1), factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	}
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
@@ -67,9 +67,9 @@ func nmLaneEnv(t *testing.T, label, backend string) {
 }
 
 // nmSetText replaces one queue card's text.
-func nmSetText(t *testing.T, store *kanban.BacklogStore, cardID, text string) {
+func nmSetText(t *testing.T, store *factory.BacklogStore, cardID, text string) {
 	t.Helper()
-	if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
 		for i := range r.Items {
 			if r.Items[i].ID == cardID {
 				r.Items[i].Text = text
@@ -83,9 +83,9 @@ func nmSetText(t *testing.T, store *kanban.BacklogStore, cardID, text string) {
 }
 
 // nmSetState moves one queue card to the named queue state.
-func nmSetState(t *testing.T, store *kanban.BacklogStore, cardID string, state kanban.BacklogState) {
+func nmSetState(t *testing.T, store *factory.BacklogStore, cardID string, state factory.BacklogState) {
 	t.Helper()
-	if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
 		for i := range r.Items {
 			if r.Items[i].ID == cardID {
 				r.Items[i].State = state
@@ -99,7 +99,7 @@ func nmSetState(t *testing.T, store *kanban.BacklogStore, cardID string, state k
 }
 
 // nmQueueState reads one queue card's state.
-func nmQueueState(t *testing.T, store *kanban.BacklogStore, cardID string) kanban.BacklogState {
+func nmQueueState(t *testing.T, store *factory.BacklogStore, cardID string) factory.BacklogState {
 	t.Helper()
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -116,7 +116,7 @@ func nmQueueState(t *testing.T, store *kanban.BacklogStore, cardID string) kanba
 
 // nmSnapshot is what "the queue and the factory record are unchanged" compares:
 // the queue file bytes plus every card row and the event count.
-func nmSnapshot(t *testing.T, root string, store *kanban.BacklogStore) string {
+func nmSnapshot(t *testing.T, root string, store *factory.BacklogStore) string {
 	t.Helper()
 	return sdQueueBytes(t, store) + "\n--- record ---\n" + qasRecordDump(t, root)
 }
@@ -210,16 +210,16 @@ func nmAssertLeased(t *testing.T, root, cardID, lane string) {
 type nmCase struct {
 	name    string
 	token   string
-	prepare func(t *testing.T) (root string, store *kanban.BacklogStore, nominee string)
+	prepare func(t *testing.T) (root string, store *factory.BacklogStore, nominee string)
 }
 
 // nmCases returns the scenarios keyed by name. Each decided-before-write
 // refusal of the spec's token set appears once; marker-mid-text is the
 // leasable control of the marker predicate.
 func nmCases() []nmCase {
-	single := func(state kanban.BacklogState, mut func(t *testing.T, root string, store *kanban.BacklogStore)) func(t *testing.T) (string, *kanban.BacklogStore, string) {
-		return func(t *testing.T) (string, *kanban.BacklogStore, string) {
-			root, store := nmBase(t, state, kanban.BacklogStateQueued)
+	single := func(state factory.BacklogState, mut func(t *testing.T, root string, store *factory.BacklogStore)) func(t *testing.T) (string, *factory.BacklogStore, string) {
+		return func(t *testing.T) (string, *factory.BacklogStore, string) {
+			root, store := nmBase(t, state, factory.BacklogStateQueued)
 			if mut != nil {
 				mut(t, root, store)
 			}
@@ -228,68 +228,68 @@ func nmCases() []nmCase {
 		}
 	}
 	return []nmCase{
-		{"unknown-card", "unknown-card", func(t *testing.T) (string, *kanban.BacklogStore, string) {
-			root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		{"unknown-card", "unknown-card", func(t *testing.T) (string, *factory.BacklogStore, string) {
+			root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 			nmLaneEnv(t, "lane-1", "")
 			return root, store, "t9"
 		}},
-		{"dropped", "dropped", single(kanban.BacklogStateDropped, nil)},
-		{"held", "held", single(kanban.BacklogStateHold, nil)},
-		{"hold-marker", "hold-marker", single(kanban.BacklogStateQueued, func(t *testing.T, _ string, store *kanban.BacklogStore) {
+		{"dropped", "dropped", single(factory.BacklogStateDropped, nil)},
+		{"held", "held", single(factory.BacklogStateHold, nil)},
+		{"hold-marker", "hold-marker", single(factory.BacklogStateQueued, func(t *testing.T, _ string, store *factory.BacklogStore) {
 			nmSetText(t, store, "t1", nmHoldMarker+" waiting for the operator's decision")
 		})},
-		{"marker-leading-space", "hold-marker", single(kanban.BacklogStateQueued, func(t *testing.T, _ string, store *kanban.BacklogStore) {
+		{"marker-leading-space", "hold-marker", single(factory.BacklogStateQueued, func(t *testing.T, _ string, store *factory.BacklogStore) {
 			nmSetText(t, store, "t1", "   "+nmHoldMarker+" waiting for the operator's decision")
 		})},
-		{"marker-mid-text", "", single(kanban.BacklogStateQueued, func(t *testing.T, _ string, store *kanban.BacklogStore) {
+		{"marker-mid-text", "", single(factory.BacklogStateQueued, func(t *testing.T, _ string, store *factory.BacklogStore) {
 			nmSetText(t, store, "t1", "notes that mention "+nmHoldMarker+" only in the middle")
 		})},
-		{"blocked", "blocked", single(kanban.BacklogStateQueued, func(t *testing.T, _ string, store *kanban.BacklogStore) {
-			fcClassify(t, store, "t1", kanban.ClassPriorityNormal, true, kanban.ClassModeParallelizable)
+		{"blocked", "blocked", single(factory.BacklogStateQueued, func(t *testing.T, _ string, store *factory.BacklogStore) {
+			fcClassify(t, store, "t1", factory.ClassPriorityNormal, true, factory.ClassModeParallelizable)
 		})},
 		// Run-phase deviation (a): `blocked` applies in any queue state, an
 		// operator-picked nominee included.
-		{"blocked-picked", "blocked", single(kanban.BacklogStatePicked, func(t *testing.T, _ string, store *kanban.BacklogStore) {
-			fcClassify(t, store, "t1", kanban.ClassPriorityNormal, true, kanban.ClassModeParallelizable)
+		{"blocked-picked", "blocked", single(factory.BacklogStatePicked, func(t *testing.T, _ string, store *factory.BacklogStore) {
+			fcClassify(t, store, "t1", factory.ClassPriorityNormal, true, factory.ClassModeParallelizable)
 		})},
-		{"serial-slot", "serial-slot", func(t *testing.T) (string, *kanban.BacklogStore, string) {
+		{"serial-slot", "serial-slot", func(t *testing.T) (string, *factory.BacklogStore, string) {
 			// tS1 (t1) is a serial card in flight under lane-2; tS2 (t2) is the
 			// serial card nominated while it holds the slot.
-			root, store := nmBase(t, kanban.BacklogStatePicked, kanban.BacklogStateQueued)
-			fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
-			fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
+			root, store := nmBase(t, factory.BacklogStatePicked, factory.BacklogStateQueued)
+			fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+			fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", Stage: homestate.CardRun})
 			nmLaneEnv(t, "lane-1", "")
 			return root, store, "t2"
 		}},
-		{"owned", "owned", func(t *testing.T) (string, *kanban.BacklogStore, string) {
-			root, store := nmBase(t, kanban.BacklogStatePicked, kanban.BacklogStateQueued)
+		{"owned", "owned", func(t *testing.T) (string, *factory.BacklogStore, string) {
+			root, store := nmBase(t, factory.BacklogStatePicked, factory.BacklogStateQueued)
 			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", Stage: homestate.CardRun})
 			nmLaneEnv(t, "lane-1", "")
 			return root, store, "t1"
 		}},
-		{"recorded", "recorded", func(t *testing.T) (string, *kanban.BacklogStore, string) {
-			root, store := nmBase(t, kanban.BacklogStatePicked, kanban.BacklogStateQueued)
+		{"recorded", "recorded", func(t *testing.T) (string, *factory.BacklogStore, string) {
+			root, store := nmBase(t, factory.BacklogStatePicked, factory.BacklogStateQueued)
 			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardDone, OwnerLabel: "lane-2"})
 			nmLaneEnv(t, "lane-1", "")
 			return root, store, "t1"
 		}},
-		{"foreign-worktree", "foreign-worktree", func(t *testing.T) (string, *kanban.BacklogStore, string) {
-			root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		{"foreign-worktree", "foreign-worktree", func(t *testing.T) (string, *factory.BacklogStore, string) {
+			root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 			if err := os.MkdirAll(filepath.Join(root, sessionWorktreeSubdir, "t1"), 0o755); err != nil {
 				t.Fatal(err)
 			}
 			nmLaneEnv(t, "lane-1", "")
 			return root, store, "t1"
 		}},
-		{"quota-hold", "quota-hold", func(t *testing.T) (string, *kanban.BacklogStore, string) {
+		{"quota-hold", "quota-hold", func(t *testing.T) (string, *factory.BacklogStore, string) {
 			root, store := qasFixture(t, qasFixtureOpts{five: qasWin(92, qasReset5)})
 			return root, store, "t1"
 		}},
-		{"backend-skip", "backend-skip", func(t *testing.T) (string, *kanban.BacklogStore, string) {
-			root, store := nmBase(t, kanban.BacklogStatePicked, kanban.BacklogStateQueued)
+		{"backend-skip", "backend-skip", func(t *testing.T) (string, *factory.BacklogStore, string) {
+			root, store := nmBase(t, factory.BacklogStatePicked, factory.BacklogStateQueued)
 			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardMergeReady})
-			nmLaneEnv(t, "lane-1", kanban.BackendGPT)
+			nmLaneEnv(t, "lane-1", factory.BackendGPT)
 			return root, store, "t1"
 		}},
 	}
@@ -343,7 +343,7 @@ func nmRunCase(t *testing.T, c nmCase) {
 // TestFactoryNextNominateLeasesNominee — a lane takes the card it nominates,
 // not the first by priority order, and nothing else moves.
 func TestFactoryNextNominateLeasesNominee(t *testing.T) {
-	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStateQueued)
 	nmLaneEnv(t, "lane-1", "")
 
 	out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t2")
@@ -352,11 +352,11 @@ func TestFactoryNextNominateLeasesNominee(t *testing.T) {
 	}
 	nmAssertLeased(t, root, "t2", "lane-1")
 	sdAssertLeasedOutput(t, out, "t2", "-", "t2")
-	if got := nmQueueState(t, store, "t2"); got != kanban.BacklogStatePicked {
+	if got := nmQueueState(t, store, "t2"); got != factory.BacklogStatePicked {
 		t.Errorf("t2 queue state = %s, want picked", got)
 	}
 	for _, id := range []string{"t1", "t3"} {
-		if got := nmQueueState(t, store, id); got != kanban.BacklogStateQueued {
+		if got := nmQueueState(t, store, id); got != factory.BacklogStateQueued {
 			t.Errorf("%s queue state = %s, want still queued", id, got)
 		}
 		if fcHasCard(t, root, id) {
@@ -368,7 +368,7 @@ func TestFactoryNextNominateLeasesNominee(t *testing.T) {
 // TestFactoryNextNominateUnknownCard — an id in no queue is refused with the
 // unknown-card token and the stores are byte-identical.
 func TestFactoryNextNominateUnknownCard(t *testing.T) {
-	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStateQueued)
 	nmLaneEnv(t, "lane-1", "")
 	before := nmSnapshot(t, root, store)
 
@@ -437,7 +437,7 @@ func TestFactoryNextNominateMCPParity(t *testing.T) {
 		}
 	})
 	t.Run("leases the nominee and refuses an unknown card", func(t *testing.T) {
-		root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStateQueued)
 		nmLaneEnv(t, "lane-1", "")
 		text, err := sdCallTool(t, handleFactoryNext, map[string]any{"project_root": root, "run": fcRun, "card": "t2"})
 		if err != nil {
@@ -494,64 +494,29 @@ type nmLaneResult struct {
 	err         error
 }
 
-// nmRaceAtSeam runs each lane's `factory next --card <card>` concurrently and
-// holds every invocation at the nomination seam — after any promotion, before
-// the first record write — until all of them have arrived, so the claims
-// contend for real. A lane label is read once at the start of an invocation,
-// so the label is switched between launches, after the previous invocation
-// has reached the seam. An invocation that ends before reaching the seam
-// (today: the flag does not exist) fails the test with its error.
-func nmRaceAtSeam(t *testing.T, lanes []nmLaneRun) []nmLaneResult {
+// nmRaceAtSeamTolerant runs each lane's `factory next --card <card>`
+// concurrently and holds every invocation at the nomination seam — after any
+// promotion, before the first record write — until all of them have arrived or
+// the tolerant gate's grace window has passed (SPEC-FACTORY-ATOMIC-LEASE-001
+// plan §5). The seam sits inside the lease section, where only one lane can be:
+// the strict form of this helper (release only when every lane has arrived)
+// would wait forever on the second lane, so the gate lets the first lane go
+// after the grace window and the second proceeds in order once the lock is free.
+// A lane label is read once at the start of an invocation, so the label is
+// switched between launches (flRaceLanes).
+func nmRaceAtSeamTolerant(t *testing.T, lanes []nmLaneRun) []nmLaneResult {
 	t.Helper()
-	arrived := make(chan struct{}, len(lanes))
-	release := make(chan struct{})
+	g := newFLGate(len(lanes))
 	prev := factoryNominateBeforeRecord
 	factoryNominateBeforeRecord = func(string) error {
-		arrived <- struct{}{}
-		<-release
+		g.hold(strconv.Itoa(flGoroutineID()))
 		return nil
 	}
 	t.Cleanup(func() { factoryNominateBeforeRecord = prev })
-
-	done := make(chan nmLaneResult, len(lanes))
-	started := 0
-	drain := func() {
-		close(release)
-		for ; started > 0; started-- {
-			select {
-			case <-done:
-			case <-time.After(30 * time.Second):
-				return
-			}
-		}
-	}
-	for _, l := range lanes {
-		nmLaneEnv(t, l.label, "")
-		started++
-		go func(l nmLaneRun) {
-			out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", l.card)
-			done <- nmLaneResult{lane: l.label, card: l.card, out: out, stderr: stderr, err: err}
-		}(l)
-		select {
-		case <-arrived:
-		case r := <-done:
-			started--
-			drain()
-			t.Fatalf("lane %s's nomination of %s ended before reaching the seam: err=%v stderr=%q", r.lane, r.card, r.err, r.stderr)
-		case <-time.After(30 * time.Second):
-			drain()
-			t.Fatalf("lane %s's nomination of %s never reached the seam", l.label, l.card)
-		}
-	}
-	close(release)
-	var results []nmLaneResult
-	for range lanes {
-		select {
-		case r := <-done:
-			results = append(results, r)
-		case <-time.After(60 * time.Second):
-			t.Fatal("a raced nomination never finished")
-		}
+	raced := flRaceLanes(t, g, lanes)
+	results := make([]nmLaneResult, 0, len(raced))
+	for _, r := range raced {
+		results = append(results, nmLaneResult(r))
 	}
 	return results
 }
@@ -587,9 +552,9 @@ func nmIsolatedWorktrees(t *testing.T, cards ...string) {
 // TestFactoryNextNominateConcurrentLanes — two lanes nominating different
 // cards at the same moment each hold their own card.
 func TestFactoryNextNominateConcurrentLanes(t *testing.T) {
-	root, _ := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 	nmIsolatedWorktrees(t, "t1", "t2")
-	results := nmRaceAtSeam(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t2"}})
+	results := nmRaceAtSeamTolerant(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t2"}})
 	for _, r := range results {
 		if r.err != nil {
 			t.Errorf("lane %s nominating %s errored: %v (stderr %q)", r.lane, r.card, r.err, r.stderr)
@@ -603,8 +568,8 @@ func TestFactoryNextNominateConcurrentLanes(t *testing.T) {
 // card end with exactly one holder and one refusal; the loser re-nominates a
 // different candidate and succeeds.
 func TestFactoryNextNominateSameCardExactlyOne(t *testing.T) {
-	root, _ := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-	results := nmRaceAtSeam(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t1"}})
+	root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
+	results := nmRaceAtSeamTolerant(t, []nmLaneRun{{"lane-1", "t1"}, {"lane-2", "t1"}})
 
 	var winners, losers []nmLaneResult
 	for _, r := range results {
@@ -649,7 +614,7 @@ func TestFactoryNextNominateRefusesKeepSet(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) { nmRunCase(t, c) })
 	}
 	t.Run("ordinary card leases", func(t *testing.T) {
-		root, _ := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 		nmLaneEnv(t, "lane-1", "")
 		if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t2"); err != nil {
 			t.Fatalf("next --card t2: %v (stderr %q)", err, stderr)
@@ -662,7 +627,7 @@ func TestFactoryNextNominateRefusesKeepSet(t *testing.T) {
 // whose trimmed text opens with the marker (with or without leading space) and
 // leases the card that only mentions it mid-text.
 func TestFactoryNextArmCSkipsHoldMarker(t *testing.T) {
-	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStateQueued)
 	nmSetText(t, store, "t1", nmHoldMarker+" parked card")
 	nmSetText(t, store, "t2", "   "+nmHoldMarker+" parked card with leading space")
 	nmSetText(t, store, "t3", "ordinary notes that mention "+nmHoldMarker+" mid-text")
@@ -683,7 +648,7 @@ func TestFactoryNextArmCSkipsHoldMarker(t *testing.T) {
 		t.Errorf("stdout = %q, want a no-card line", out)
 	}
 	for _, id := range []string{"t1", "t2"} {
-		if got := nmQueueState(t, store, id); got != kanban.BacklogStateQueued {
+		if got := nmQueueState(t, store, id); got != factory.BacklogStateQueued {
 			t.Errorf("%s queue state = %s, want still queued", id, got)
 		}
 		if fcHasCard(t, root, id) {
@@ -721,7 +686,7 @@ func TestFactoryNextNominateQuotaHold(t *testing.T) {
 		}
 	})
 	t.Run("--wait does not wait on a permanent refusal", func(t *testing.T) {
-		nmBase(t, kanban.BacklogStateQueued)
+		nmBase(t, factory.BacklogStateQueued)
 		nmLaneEnv(t, "lane-1", "")
 		sleeps := qasFakeClock(t, nil, nil)
 		out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t9", "--wait", "--wait-bound", "10s")
@@ -740,18 +705,18 @@ func TestFactoryNextNominateBackendSkip(t *testing.T) {
 		nmRunCase(t, nmCaseByName(t, "backend-skip")[0])
 	})
 	t.Run("claude lane leases the same card", func(t *testing.T) {
-		root, _ := nmBase(t, kanban.BacklogStatePicked)
+		root, _ := nmBase(t, factory.BacklogStatePicked)
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardMergeReady})
-		nmLaneEnv(t, "lane-1", kanban.BackendClaude)
+		nmLaneEnv(t, "lane-1", factory.BackendClaude)
 		if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1"); err != nil {
 			t.Fatalf("claude lane next --card t1: %v (stderr %q)", err, stderr)
 		}
 		nmAssertLeased(t, root, "t1", "lane-1")
 	})
 	t.Run("codex lane leases an earlier-stage card", func(t *testing.T) {
-		root, _ := nmBase(t, kanban.BacklogStatePicked)
+		root, _ := nmBase(t, factory.BacklogStatePicked)
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
-		nmLaneEnv(t, "lane-1", kanban.BackendGPT)
+		nmLaneEnv(t, "lane-1", factory.BackendGPT)
 		if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1"); err != nil {
 			t.Fatalf("codex lane next --card t1: %v (stderr %q)", err, stderr)
 		}
@@ -766,15 +731,15 @@ func TestFactoryNextNominateBackendSkip(t *testing.T) {
 // shapes (no row, a picked row with no owner, a row assigned to this lane)
 // lease.
 func TestFactoryNextNominateRecordStateTokens(t *testing.T) {
-	place := func(t *testing.T, row homestate.Card) (string, *kanban.BacklogStore) {
+	place := func(t *testing.T, row homestate.Card) (string, *factory.BacklogStore) {
 		t.Helper()
-		root, store := nmBase(t, kanban.BacklogStatePicked)
+		root, store := nmBase(t, factory.BacklogStatePicked)
 		row.CardID = "t1"
 		fcPlace(t, root, row)
 		nmLaneEnv(t, "lane-1", "")
 		return root, store
 	}
-	refuse := func(t *testing.T, root string, store *kanban.BacklogStore, token string) {
+	refuse := func(t *testing.T, root string, store *factory.BacklogStore, token string) {
 		t.Helper()
 		before := nmSnapshot(t, root, store)
 		out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
@@ -826,12 +791,12 @@ func TestFactoryNextNominateRecordStateTokens(t *testing.T) {
 	}
 	t.Run("foreign-worktree", func(t *testing.T) { nmRunCase(t, nmCaseByName(t, "foreign-worktree")[0]) })
 	t.Run("leasable/no-row", func(t *testing.T) {
-		root, _ := nmBase(t, kanban.BacklogStatePicked)
+		root, _ := nmBase(t, factory.BacklogStatePicked)
 		nmLaneEnv(t, "lane-1", "")
 		lease(t, root)
 	})
 	t.Run("leasable/queued-no-row", func(t *testing.T) {
-		root, _ := nmBase(t, kanban.BacklogStateQueued)
+		root, _ := nmBase(t, factory.BacklogStateQueued)
 		nmLaneEnv(t, "lane-1", "")
 		lease(t, root)
 	})
@@ -859,9 +824,9 @@ func TestFactoryNextNominateRefusalLeavesStateUnchanged(t *testing.T) {
 
 // nmQueuedNominee builds the two-card queue the seam tests use (t1 is the
 // queued nominee) and stamps lane-1.
-func nmQueuedNominee(t *testing.T) (string, *kanban.BacklogStore) {
+func nmQueuedNominee(t *testing.T) (string, *factory.BacklogStore) {
 	t.Helper()
-	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 	nmLaneEnv(t, "lane-1", "")
 	return root, store
 }
@@ -899,13 +864,13 @@ func TestFactoryNextNominatePromoteThenLose(t *testing.T) {
 	out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
 	nmAssertRefused(t, out, stderr, err, "raced")
 	nmAssertLeased(t, root, "t1", "lane-2")
-	if got := nmQueueState(t, store, "t1"); got != kanban.BacklogStatePicked {
+	if got := nmQueueState(t, store, "t1"); got != factory.BacklogStatePicked {
 		t.Errorf("t1 queue state = %s, want picked (the competitor's state is left alone)", got)
 	}
 	if n := nmRowCount(t, root, "t1"); n != 1 {
 		t.Errorf("t1 has %d record rows, want exactly 1", n)
 	}
-	if got := nmQueueState(t, store, "t2"); got != kanban.BacklogStateQueued {
+	if got := nmQueueState(t, store, "t2"); got != factory.BacklogStateQueued {
 		t.Errorf("t2 queue state = %s, want untouched", got)
 	}
 }
@@ -928,7 +893,7 @@ func TestFactoryNextNominateClaimRefusedRollsBack(t *testing.T) {
 	if !strings.Contains(err.Error(), nmInjected) {
 		t.Errorf("the error = %v, want the injected failure reported", err)
 	}
-	if got := nmQueueState(t, store, "t1"); got != kanban.BacklogStateQueued {
+	if got := nmQueueState(t, store, "t1"); got != factory.BacklogStateQueued {
 		t.Errorf("t1 queue state = %s, want restored to queued", got)
 	}
 	if fcHasCard(t, root, "t1") {
@@ -944,16 +909,29 @@ func TestFactoryNextNominateClaimRefusedRollsBack(t *testing.T) {
 func TestFactoryNextNominateCompensationFailure(t *testing.T) {
 	t.Run("item-moved", func(t *testing.T) {
 		root, store := nmQueuedNominee(t)
+		var op *flOp
+		inside := false
 		nmSetSeam(t, func(cardID string) error {
-			// An operator drop between the promotion and the compensation.
-			nmSetState(t, store, cardID, kanban.BacklogStateDropped)
+			// An operator drop between the promotion and the compensation. The
+			// write is started from a goroutine (the section holds the queue lock
+			// here, so a synchronous write would wait out the whole budget): it
+			// applies after the verb, and the compensation must not overwrite it.
+			op = flStartState(store, cardID, factory.BacklogStateDropped)
+			inside = op.within(flWindow)
 			return errors.New(nmInjected)
 		})
 		_, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
+		if op == nil {
+			t.Fatal("the nomination seam was never reached")
+		}
+		flJoin(t, []*flOp{op})
 		if err == nil || !strings.Contains(err.Error(), nmInjected) {
 			t.Fatalf("the original failure was not reported: err=%v stderr=%q", err, stderr)
 		}
-		if got := nmQueueState(t, store, "t1"); got != kanban.BacklogStateDropped {
+		if inside {
+			t.Errorf("the operator's drop completed inside the section (the seam returned only after the write finished)")
+		}
+		if got := nmQueueState(t, store, "t1"); got != factory.BacklogStateDropped {
 			t.Errorf("t1 queue state = %s, want dropped (the compensation must not overwrite the operator's change)", got)
 		}
 		if fcHasCard(t, root, "t1") {
@@ -963,37 +941,48 @@ func TestFactoryNextNominateCompensationFailure(t *testing.T) {
 }
 
 // TestFactoryNextNominateCompensateRechecksRecord — the compensation reads the
-// factory-record row INSIDE the queue lock, so a lease that lands while the
-// compensation waits for that lock is seen: the queue item is not restored to
-// `queued` under a card the factory holds (a restored `queued` item could be
-// claimed a second time). The table calls the compensation directly with the
-// state pre-arranged; the last test holds the queue lock from the test and lets
-// the lease land during the wait.
+// factory-record row under the queue lock and acts on it: the queue item is not
+// restored to `queued` under a card the factory holds (a restored `queued` item
+// could be claimed a second time). The table calls the compensation directly,
+// inside a lease section opened by the test, with the state pre-arranged.
+//
+// SPEC-FACTORY-ATOMIC-LEASE-001 plan §5 removed this test's lock-wait subtest:
+// it modeled a lease landing while the compensation waits for the queue lock, a
+// window the section removes (the compensation no longer takes the lock; it
+// runs inside the hold that made the promotion). The operator-write analogue is
+// TestFactoryLeaseCompensationKeepsOperatorPick.
 func TestFactoryNextNominateCompensateRechecksRecord(t *testing.T) {
 	cases := []struct {
 		name         string
 		row          *homestate.Card
 		promoted     bool
 		wantOther    bool
-		wantQueueEnd kanban.BacklogState
+		wantQueueEnd factory.BacklogState
 	}{
-		{"no row restores", nil, true, false, kanban.BacklogStateQueued},
-		{"unowned picked row restores", &homestate.Card{State: homestate.CardPicked}, true, false, kanban.BacklogStateQueued},
-		{"another lane's lease is left alone", &homestate.Card{State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", Stage: homestate.CardRun}, true, true, kanban.BacklogStatePicked},
-		{"another lane's assignment is left alone", &homestate.Card{State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true, true, kanban.BacklogStatePicked},
-		{"this lane's own lease is left alone and is not another holder", &homestate.Card{State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", Stage: homestate.CardRun}, true, false, kanban.BacklogStatePicked},
-		{"a promotion this invocation did not make is never undone", nil, false, false, kanban.BacklogStatePicked},
+		{"no row restores", nil, true, false, factory.BacklogStateQueued},
+		{"unowned picked row restores", &homestate.Card{State: homestate.CardPicked}, true, false, factory.BacklogStateQueued},
+		{"another lane's lease is left alone", &homestate.Card{State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", Stage: homestate.CardRun}, true, true, factory.BacklogStatePicked},
+		{"another lane's assignment is left alone", &homestate.Card{State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true, true, factory.BacklogStatePicked},
+		{"this lane's own lease is left alone and is not another holder", &homestate.Card{State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", Stage: homestate.CardRun}, true, false, factory.BacklogStatePicked},
+		{"a promotion this invocation did not make is never undone", nil, false, false, factory.BacklogStatePicked},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			root, store := nmBase(t, kanban.BacklogStatePicked)
+			root, store := nmBase(t, factory.BacklogStatePicked)
 			if c.row != nil {
 				row := *c.row
 				row.CardID = "t1"
 				fcPlace(t, root, row)
 			}
 			db := fcOpen(t, root)
-			other, err := factoryNominateCompensate(context.Background(), db, root, fcRun, "lane-1", "t1", c.promoted)
+			var other bool
+			var err error
+			if lockErr := todoStoreAt(root).WithLock(func(l *factory.LockedBacklog) error {
+				other, err = factoryNominateCompensate(context.Background(), l, db, fcRun, "lane-1", "t1", c.promoted)
+				return nil
+			}); lockErr != nil {
+				t.Fatalf("the lease section: %v", lockErr)
+			}
 			if err != nil {
 				t.Fatalf("compensation: %v", err)
 			}
@@ -1005,65 +994,13 @@ func TestFactoryNextNominateCompensateRechecksRecord(t *testing.T) {
 			}
 		})
 	}
-
-	t.Run("a lease landing while the compensation waits for the queue lock", func(t *testing.T) {
-		root, store := nmBase(t, kanban.BacklogStatePicked)
-		db := fcOpen(t, root)
-
-		// The test holds the queue lock.
-		locked, unlock := make(chan struct{}), make(chan struct{})
-		held := make(chan error, 1)
-		go func() {
-			held <- todoStoreAt(root).Mutate(func(*kanban.BacklogRecord) error {
-				close(locked)
-				<-unlock
-				return nil
-			})
-		}()
-		<-locked
-
-		type outcome struct {
-			other bool
-			err   error
-		}
-		done := make(chan outcome, 1)
-		go func() {
-			other, err := factoryNominateCompensate(context.Background(), db, root, fcRun, "lane-1", "t1", true)
-			done <- outcome{other, err}
-		}()
-		// Give the compensation time to reach the queue lock (a read of the
-		// record made before the wait would see no row), then let another lane
-		// lease the card and release the lock. The in-lock re-read makes the
-		// outcome independent of how long the wait took.
-		time.Sleep(400 * time.Millisecond)
-		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", Stage: homestate.CardRun})
-		close(unlock)
-		if err := <-held; err != nil {
-			t.Fatalf("the lock holder: %v", err)
-		}
-		select {
-		case r := <-done:
-			if r.err != nil {
-				t.Fatalf("compensation: %v", r.err)
-			}
-			if !r.other {
-				t.Errorf("another holder = false, want true (lane-2 leased the card during the wait)")
-			}
-		case <-time.After(30 * time.Second):
-			t.Fatal("the compensation never finished")
-		}
-		if got := nmQueueState(t, store, "t1"); got != kanban.BacklogStatePicked {
-			t.Errorf("t1 queue state = %s, want picked: restoring queued under lane-2's lease lets a second actor claim the item", got)
-		}
-		nmAssertLeased(t, root, "t1", "lane-2")
-	})
 }
 
 // TestFactoryNextNominateBlankCardIsAnError — a blank `--card` (CLI) or a blank
 // `card` (MCP) is an error that names the missing id; it never falls back to
 // the bare priority-order lease the session did not choose.
 func TestFactoryNextNominateBlankCardIsAnError(t *testing.T) {
-	assertNothingLeased := func(t *testing.T, root string, store *kanban.BacklogStore, before string) {
+	assertNothingLeased := func(t *testing.T, root string, store *factory.BacklogStore, before string) {
 		t.Helper()
 		if after := nmSnapshot(t, root, store); after != before {
 			t.Errorf("a blank card changed the queue or the record:\nbefore:\n%s\nafter:\n%s", before, after)
@@ -1074,7 +1011,7 @@ func TestFactoryNextNominateBlankCardIsAnError(t *testing.T) {
 	}
 	for _, blank := range []string{"", "   "} {
 		t.Run(fmt.Sprintf("cli %q", blank), func(t *testing.T) {
-			root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+			root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 			nmLaneEnv(t, "lane-1", "")
 			before := nmSnapshot(t, root, store)
 			out, stderr, err := qasRunNext(t, "--run", fcRun, "--card="+blank)
@@ -1087,7 +1024,7 @@ func TestFactoryNextNominateBlankCardIsAnError(t *testing.T) {
 			assertNothingLeased(t, root, store, before)
 		})
 		t.Run(fmt.Sprintf("mcp %q", blank), func(t *testing.T) {
-			root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+			root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 			nmLaneEnv(t, "lane-1", "")
 			before := nmSnapshot(t, root, store)
 			_, err := sdCallTool(t, handleFactoryNext, map[string]any{"project_root": root, "run": fcRun, "card": blank})
@@ -1106,7 +1043,7 @@ func TestFactoryNextNominateBlankCardIsAnError(t *testing.T) {
 // TestFactoryNextAllMarkerQueueExitsNoCard — a queue whose only queued cards
 // open with the marker ends on the no-card exit, not on a retry or a lease.
 func TestFactoryNextAllMarkerQueueExitsNoCard(t *testing.T) {
-	root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
 	nmSetText(t, store, "t1", nmHoldMarker+" first parked card")
 	nmSetText(t, store, "t2", "  "+nmHoldMarker+" second parked card")
 	nmLaneEnv(t, "lane-1", "")
@@ -1184,7 +1121,7 @@ func TestFactoryNextBareUnchanged(t *testing.T) {
 		// Queue order is deliberately NOT arm order: two queued cards first,
 		// then a queue-picked card with no row (b2), an operator-picked card with
 		// a row (b), and a card assigned to this lane (a).
-		root, _ := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStatePicked, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+		root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
 		fcPlace(t, root,
 			homestate.Card{CardID: "t4", State: homestate.CardPicked},
 			homestate.Card{CardID: "t5", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
@@ -1214,12 +1151,12 @@ func TestFactoryNextBareUnchanged(t *testing.T) {
 		nmCompareGolden(t, "quota-hold", steps)
 	})
 	t.Run("codex-skip", func(t *testing.T) {
-		root, _ := nmBase(t, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+		root, _ := nmBase(t, factory.BacklogStatePicked, factory.BacklogStatePicked)
 		fcPlace(t, root,
 			homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardMergeReady},
 			homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
 		)
-		nmLaneEnv(t, "lane-1", kanban.BackendGPT)
+		nmLaneEnv(t, "lane-1", factory.BackendGPT)
 		var steps []string
 		for i := 1; i <= 2; i++ {
 			out, stderr, err := qasRunNext(t, "--run", fcRun)
@@ -1228,10 +1165,10 @@ func TestFactoryNextBareUnchanged(t *testing.T) {
 		nmCompareGolden(t, "codex-skip", steps)
 	})
 	t.Run("serial-slot", func(t *testing.T) {
-		_, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
-		fcClassify(t, store, "t1", kanban.ClassPriorityHigh, false, kanban.ClassModeSerial)
-		fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeSerial)
-		fcClassify(t, store, "t3", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+		_, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStateQueued)
+		fcClassify(t, store, "t1", factory.ClassPriorityHigh, false, factory.ClassModeSerial)
+		fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+		fcClassify(t, store, "t3", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 		nmLaneEnv(t, "lane-1", "")
 		var steps []string
 		for i := 1; i <= 3; i++ {
@@ -1248,7 +1185,7 @@ func TestFactoryNextBareUnchanged(t *testing.T) {
 
 // nmAutoFixture seeds a two-card queue (lane environment scrubbed first) and
 // installs hermetic ranking seams: the live landed seam runs `gh`.
-func nmAutoFixture(t *testing.T) *kanban.BacklogStore {
+func nmAutoFixture(t *testing.T) *factory.BacklogStore {
 	t.Helper()
 	_, store := todoFixture(t)
 	sdClearLaneEnv(t)
@@ -1259,7 +1196,7 @@ func nmAutoFixture(t *testing.T) *kanban.BacklogStore {
 	}
 	origLanded, origJev := todoAutoLandedLookup, todoAutoJevRanker
 	t.Cleanup(func() { todoAutoLandedLookup, todoAutoJevRanker = origLanded, origJev })
-	todoAutoLandedLookup = func(*kanban.BacklogRecord) (map[string]kanban.PRLinkKind, error) { return nil, nil }
+	todoAutoLandedLookup = func(*factory.BacklogRecord) (map[string]factory.PRLinkKind, error) { return nil, nil }
 	todoAutoJevRanker = func(jev.Request) jev.Result { return jev.Result{Availability: jev.Disabled} }
 	return store
 }
@@ -1339,7 +1276,7 @@ func TestTodoLaneAutoRefusalText(t *testing.T) {
 // predicate recorded in progress.md.
 func TestTodoNonLaneGPTSessionNotRefused(t *testing.T) {
 	nmAutoFixture(t)
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
+	t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
 	out, _, err := runTodo(t, "--auto", "--auto-wait", "1ms")
 	if err != nil {
 		t.Fatalf("a non-lane Codex-backend session was refused `moai todo --auto`: %v", err)

@@ -36,9 +36,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 const (
@@ -55,6 +55,14 @@ const (
 const managedPrimingPrompt = "MoAI Factory 세션 준비 완료라고 한 줄로 답해. 아직 작업은 시작하지 마."
 
 var errManagedStreamClosed = errors.New("managed session output closed")
+
+// errManagedTurnFailed marks an error as scoped to one turn: the session is
+// alive and the next turn can be tried. The owner wraps it in exactly three
+// places (a stream result with is_error, a Codex turn that ended in a state
+// other than completed, a Codex turn that carries a declined MoAI broker
+// elicitation) and the driver isolates only errors that satisfy errors.Is
+// against it. Every unmarked error stays session-fatal.
+var errManagedTurnFailed = errors.New("managed Factory turn failed")
 
 // managedSession is the delivery-only managed-session core interface
 // (SPEC-FACTORY-MANAGED-SESSION-001 M1). An owner implements it over one
@@ -265,7 +273,7 @@ func pumpManagedStreamTurn(out io.Reader, stdout, in io.Writer, prompt string) e
 			}
 		case "result":
 			if line.IsError {
-				return fmt.Errorf("managed Factory turn failed: %s", line.Result)
+				return fmt.Errorf("%w: %s", errManagedTurnFailed, line.Result)
 			}
 			return nil
 		}
@@ -302,8 +310,23 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 	if err := s.DeliverTurn(managedPrimingPrompt); err != nil {
 		return err
 	}
-	inputs := make(chan string, managedOperatorInputBuffer)
-	go readManagedOperatorInput(in, inputs)
+	// While an operator TUI is attached it owns the terminal: the driver reads
+	// no stdin and interprets no /exit or /quit (SPEC-FACTORY-MANAGED-TUI-001
+	// REQ-MT-005). A nil inputs channel never becomes ready in the selects below.
+	var (
+		surface managedOperatorSurface
+		tuiDone <-chan error
+	)
+	if op, ok := s.(managedOperatorSurface); ok {
+		if done, attached := op.AttachOperator(); attached {
+			surface, tuiDone = op, done
+		}
+	}
+	var inputs chan string
+	if tuiDone == nil {
+		inputs = make(chan string, managedOperatorInputBuffer)
+		go readManagedOperatorInput(in, inputs)
+	}
 	absorb := func(line string, ok bool) bool {
 		if !ok {
 			inputs = nil
@@ -316,6 +339,10 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 		return false
 	}
 	var lastInboxErr string
+	// consecutiveFailures counts turn-scoped failures in a row after the priming
+	// turn; a successful turn resets it. The claimed message of a failed turn is
+	// left alone: redelivery is the broker's lease policy, not this loop's.
+	consecutiveFailures := 0
 	for {
 		if q.Len() == 0 {
 			// Idle: wait for the next operator line or poll tick.
@@ -324,6 +351,8 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				if absorb(line, ok) {
 					return nil
 				}
+			case res := <-tuiDone:
+				return res
 			case <-idle:
 			}
 		} else {
@@ -334,6 +363,8 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				if absorb(line, ok) {
 					return nil
 				}
+			case res := <-tuiDone:
+				return res
 			default:
 			}
 		}
@@ -343,13 +374,38 @@ func driveManagedFactorySession(s managedSession, in io.Reader, idle <-chan time
 				break
 			}
 			if err := s.DeliverTurn(turn.prompt); err != nil {
-				return err
+				// Only an error the owner marked turn-scoped is isolated; every
+				// other error is session-fatal, as before.
+				if !errors.Is(err, errManagedTurnFailed) {
+					// A TUI that ended on its own released this call by closing
+					// the connection; its recorded status, not the connection
+					// error, is the session's result (REQ-MT-010).
+					select {
+					case res := <-tuiDone:
+						return res
+					default:
+					}
+					return err
+				}
+				consecutiveFailures++
+				managedLogf("Factory turn failed (%d/%d consecutive): %v", consecutiveFailures, config.DefaultManagedSessionMaxConsecutiveTurnFailures, err)
+				if consecutiveFailures >= config.DefaultManagedSessionMaxConsecutiveTurnFailures {
+					return fmt.Errorf("%d consecutive managed Factory turn failures, last: %w", consecutiveFailures, err)
+				}
+				continue
 			}
+			consecutiveFailures = 0
+		}
+		// With an operator TUI attached, a batch is claimed only while no turn is
+		// active, so it is deferred (not dropped) behind an operator turn and the
+		// claim lease cannot expire while it waits (REQ-MT-007).
+		if surface != nil && surface.Busy() {
+			continue
 		}
 		claims, err := claim()
 		if err != nil {
 			if err.Error() != lastInboxErr {
-				fmt.Fprintln(os.Stderr, "Factory inbox:", err)
+				managedLogf("Factory inbox: %v", err)
 				lastInboxErr = err.Error()
 			}
 			continue
@@ -419,7 +475,7 @@ func runManagedFactoryClaude(bin string, args, env []string) error {
 // Claude stream-json surface and differs only in its launch environment, so
 // the owner is the same driver under the GLM backend label.
 func runManagedFactoryGlm(bin string, args, env []string) error {
-	return runManagedFactoryStreamSession(kanban.BackendGLM, bin, args, env, os.Stdin)
+	return runManagedFactoryStreamSession(factory.BackendGLM, bin, args, env, os.Stdin)
 }
 
 // runManagedFactoryStreamSession is the shared Claude/GLM owner entry; stdin
@@ -455,7 +511,7 @@ func runManagedFactoryStreamSession(backend, bin string, args, env []string, std
 	}
 	started = true
 
-	runID := launchEnvValue(env, config.EnvMoaiKanbanID)
+	runID := launchEnvValue(env, config.EnvFactoryRunID)
 	if runID == "" {
 		return errors.New("factory managed session requires a factory run id")
 	}

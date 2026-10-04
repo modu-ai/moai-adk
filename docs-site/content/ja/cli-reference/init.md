@@ -26,10 +26,13 @@ moai init [project-name]
 
 | フラグ | 説明 |
 |--------|------|
-| `--all` | カタログ全体を配置 (core + 選択パック + ハーネス生成物)。デフォルトは core-only slim モード |
+| `--all` | フルローカルデプロイ: カタログの全ティアをローカルに配置 (`--no-plugin` ペイロード + 選択パック)。フラグなしでは core-only slim モードが既定 |
+| `--no-plugin` | moai プラグインを省き、フルローカルペイロードを配置 (スキル、コマンド、`.mcp.json` の moai エントリ、Codex ミラー)。`MOAI_SKIP_PLUGIN_INSTALL=1` も同じ。既定の経路（プラグインモード）ではローカルのスキル・コマンドを配置しません — moai プラグインが運びます |
 | `--force` | 既存プロジェクトの再初期化 (現在の `.moai/` をバックアップ) |
 | `--no-hooks` | git フックのインストールを省略 |
 | `--llm <claude\|codex\|both>` | 接続する LLM ハーネスを選択 (デフォルト: `claude`) |
+
+確定したデプロイモードは `.moai/config/sections/llm.yaml` の `deployment_mode` (`plugin` または `local`) に記録され、`moai update` はその記録に従って同じ範囲を保ちます。プラグインのインストールが確認できなかったプロジェクトは、安全側の `local` として記録されます。
 
 ### プロジェクトデフォルト
 

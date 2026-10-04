@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // gitRun runs one git command inside dir, with a fixed commit identity, and
@@ -193,7 +193,7 @@ func TestIntegrationAcquire_RecordsTheIntegrationWorktreeNotTheCaller(t *testing
 	if _, err := runIntegration(t, repo, "acquire", "--session", "sess-lane12", "--name", "lane-12"); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
-	lock, err := kanban.ReadIntegrationLock(repo)
+	lock, err := factory.ReadIntegrationLock(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +214,7 @@ func TestIntegrationAcquire_ExplicitBranchResolvesItsWorktree(t *testing.T) {
 	if _, err := runIntegration(t, repo, "acquire", "--session", "sess-lane12", "--branch", "fixture-integration"); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
-	lock, err := kanban.ReadIntegrationLock(repo)
+	lock, err := factory.ReadIntegrationLock(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,7 @@ func TestIntegrationAcquire_NoMatchingWorktreeRecordsEmptyWorktree(t *testing.T)
 	if _, err := runIntegration(t, repo, "acquire", "--session", "sess-lane12"); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
-	lock, err := kanban.ReadIntegrationLock(repo)
+	lock, err := factory.ReadIntegrationLock(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree(t *testing.T) {
 	if _, err := runIntegration(t, repo, "acquire", "--session", "sess-lane12"); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
-	lock, err := kanban.ReadIntegrationLock(repo)
+	lock, err := factory.ReadIntegrationLock(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree(t *testing.T) {
 
 func TestIntegrationStatus_ShowsHolderNameAlongsideID(t *testing.T) {
 	root := t.TempDir()
-	if _, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
+	if _, err := factory.AcquireIntegrationLock(root, factory.IntegrationLock{
 		SessionID:   "sess-abc123",
 		SessionName: "lane-12",
 		Branch:      "fixture-integration",
@@ -293,7 +293,7 @@ func TestIntegrationStatus_ShowsHolderNameAlongsideID(t *testing.T) {
 
 func TestIntegrationStatus_NoNameKeepsTodaysShape(t *testing.T) {
 	root := t.TempDir()
-	if _, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
+	if _, err := factory.AcquireIntegrationLock(root, factory.IntegrationLock{
 		SessionID: "sess-abc123",
 		Branch:    "fixture-integration",
 		Worktree:  "/tmp/integration-tree",
@@ -343,9 +343,9 @@ func writeGitStrategyBody(t *testing.T, projectRoot, body string) {
 }
 
 // readLock reads the record a scenario wrote, failing the test on error.
-func readLock(t *testing.T, root string) *kanban.IntegrationLock {
+func readLock(t *testing.T, root string) *factory.IntegrationLock {
 	t.Helper()
-	lock, err := kanban.ReadIntegrationLock(root)
+	lock, err := factory.ReadIntegrationLock(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,8 +368,8 @@ func TestIntegrationAcquire_RecordsBranchSource(t *testing.T) {
 			t.Fatalf("acquire: %v", err)
 		}
 		lock := readLock(t, repo)
-		if lock.BranchSource != kanban.BranchSourceFlag {
-			t.Errorf("branch_source = %q, want %q", lock.BranchSource, kanban.BranchSourceFlag)
+		if lock.BranchSource != factory.BranchSourceFlag {
+			t.Errorf("branch_source = %q, want %q", lock.BranchSource, factory.BranchSourceFlag)
 		}
 		if lock.Branch != "fixture-integration" {
 			t.Errorf("branch = %q, want the flag value", lock.Branch)
@@ -388,8 +388,8 @@ func TestIntegrationAcquire_RecordsBranchSource(t *testing.T) {
 			t.Fatalf("acquire: %v", err)
 		}
 		lock := readLock(t, repo)
-		if lock.BranchSource != kanban.BranchSourceConfig {
-			t.Errorf("branch_source = %q, want %q — a blank --branch decided nothing, so it must never be recorded as the source", lock.BranchSource, kanban.BranchSourceConfig)
+		if lock.BranchSource != factory.BranchSourceConfig {
+			t.Errorf("branch_source = %q, want %q — a blank --branch decided nothing, so it must never be recorded as the source", lock.BranchSource, factory.BranchSourceConfig)
 		}
 		if lock.Branch != "fixture-integration" {
 			t.Errorf("branch = %q, want the configured develop branch", lock.Branch)
@@ -406,8 +406,8 @@ func TestIntegrationAcquire_RecordsBranchSource(t *testing.T) {
 			t.Fatalf("acquire: %v", err)
 		}
 		lock := readLock(t, repo)
-		if lock.BranchSource != kanban.BranchSourceConfig {
-			t.Errorf("branch_source = %q, want %q", lock.BranchSource, kanban.BranchSourceConfig)
+		if lock.BranchSource != factory.BranchSourceConfig {
+			t.Errorf("branch_source = %q, want %q", lock.BranchSource, factory.BranchSourceConfig)
 		}
 		if lock.Branch != "fixture-integration" {
 			t.Errorf("branch = %q, want fixture-integration", lock.Branch)
@@ -440,8 +440,8 @@ func TestIntegrationAcquire_RecordsBranchSource(t *testing.T) {
 			t.Fatalf("acquire: %v", err)
 		}
 		lock := readLock(t, repo)
-		if lock.BranchSource != kanban.BranchSourceCaller {
-			t.Errorf("branch_source = %q, want %q", lock.BranchSource, kanban.BranchSourceCaller)
+		if lock.BranchSource != factory.BranchSourceCaller {
+			t.Errorf("branch_source = %q, want %q", lock.BranchSource, factory.BranchSourceCaller)
 		}
 	})
 }
@@ -469,8 +469,8 @@ func TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback(t *testing.
 		}
 	}
 	lock := readLock(t, repo)
-	if lock.BranchSource != kanban.BranchSourceCaller {
-		t.Errorf("branch_source = %q, want %q", lock.BranchSource, kanban.BranchSourceCaller)
+	if lock.BranchSource != factory.BranchSourceCaller {
+		t.Errorf("branch_source = %q, want %q", lock.BranchSource, factory.BranchSourceCaller)
 	}
 	if lock.Branch != "main" {
 		t.Errorf("branch = %q, want the caller's branch main (resolution unchanged)", lock.Branch)
@@ -519,8 +519,8 @@ func TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn(t *testing.T) {
 		t.Errorf("a github-flow caller fallback warned: %q", got)
 	}
 	lock := readLock(t, repo)
-	if lock.BranchSource != kanban.BranchSourceCaller || lock.Branch != "main" {
-		t.Errorf("record = (%q, source %q), want (main, source %q)", lock.Branch, lock.BranchSource, kanban.BranchSourceCaller)
+	if lock.BranchSource != factory.BranchSourceCaller || lock.Branch != "main" {
+		t.Errorf("record = (%q, source %q), want (main, source %q)", lock.Branch, lock.BranchSource, factory.BranchSourceCaller)
 	}
 }
 
@@ -540,8 +540,8 @@ func TestIntegrationAcquire_NonManualModeGitFlowDoesNotWarn(t *testing.T) {
 		t.Errorf("a personal-mode git-flow caller fallback warned: %q", got)
 	}
 	lock := readLock(t, repo)
-	if lock.BranchSource != kanban.BranchSourceCaller || lock.Branch != "main" {
-		t.Errorf("record = (%q, source %q), want (main, source %q)", lock.Branch, lock.BranchSource, kanban.BranchSourceCaller)
+	if lock.BranchSource != factory.BranchSourceCaller || lock.Branch != "main" {
+		t.Errorf("record = (%q, source %q), want (main, source %q)", lock.Branch, lock.BranchSource, factory.BranchSourceCaller)
 	}
 }
 
@@ -559,8 +559,8 @@ func TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn(t *testing.T) {
 		t.Errorf("a caller fallback with no git strategy file warned: %q", got)
 	}
 	lock := readLock(t, repo)
-	if lock.BranchSource != kanban.BranchSourceCaller || lock.Branch != "main" {
-		t.Errorf("record = (%q, source %q), want (main, source %q)", lock.Branch, lock.BranchSource, kanban.BranchSourceCaller)
+	if lock.BranchSource != factory.BranchSourceCaller || lock.Branch != "main" {
+		t.Errorf("record = (%q, source %q), want (main, source %q)", lock.Branch, lock.BranchSource, factory.BranchSourceCaller)
 	}
 }
 
@@ -624,7 +624,7 @@ func TestIntegrationAcquire_RefusedAcquireDoesNotWarn(t *testing.T) {
 
 	// Held by another LIVE session: this test process's own pid is alive for
 	// the whole test, so the record cannot read as reclaimable.
-	if _, err := kanban.AcquireIntegrationLock(repo, kanban.IntegrationLock{
+	if _, err := factory.AcquireIntegrationLock(repo, factory.IntegrationLock{
 		SessionID:   "sess-holder",
 		SessionName: "lane-holder",
 		PID:         os.Getpid(),
@@ -634,7 +634,7 @@ func TestIntegrationAcquire_RefusedAcquireDoesNotWarn(t *testing.T) {
 	}
 
 	_, stderr, err := runIntegrationStreams(t, repo, "acquire", "--session", "sess-lane12")
-	if !kanban.IsIntegrationLockHeld(err) {
+	if !factory.IsIntegrationLockHeld(err) {
 		t.Fatalf("acquire over a live holder returned %v, want the held error", err)
 	}
 	if got := warningLines(stderr); len(got) != 0 {
@@ -677,8 +677,8 @@ func TestIntegrationAcquire_InvalidWorkflowValueWarnsButRecordsIdentically(t *te
 
 	// The record is the ordinary caller-fallback record, unchanged.
 	lock := readLock(t, repo)
-	if lock.BranchSource != kanban.BranchSourceCaller {
-		t.Errorf("branch_source = %q, want %q (fallback identical to the non-git-flow path)", lock.BranchSource, kanban.BranchSourceCaller)
+	if lock.BranchSource != factory.BranchSourceCaller {
+		t.Errorf("branch_source = %q, want %q (fallback identical to the non-git-flow path)", lock.BranchSource, factory.BranchSourceCaller)
 	}
 
 	// Control: the github-flow path stays silent (a deliberate choice is
@@ -695,7 +695,7 @@ func TestIntegrationAcquire_InvalidWorkflowValueWarnsButRecordsIdentically(t *te
 		t.Errorf("a valid non-git-flow value warned: %q", got)
 	}
 	controlLock := readLock(t, controlRepo)
-	if controlLock.BranchSource != kanban.BranchSourceCaller || controlLock.Branch != lock.Branch {
+	if controlLock.BranchSource != factory.BranchSourceCaller || controlLock.Branch != lock.Branch {
 		t.Errorf("control record (%q, %v) differs from the invalid-value record (%q, %v)",
 			controlLock.Branch, controlLock.BranchSource, lock.Branch, lock.BranchSource)
 	}

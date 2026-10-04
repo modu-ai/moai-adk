@@ -318,6 +318,12 @@ type ReviewOutput struct {
 	// (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-004). The verdict is unchanged.
 	// Additive + omitempty.
 	StateNotice string `json:"state_notice,omitempty"`
+
+	// ReviewBase names the base a baseBranch audit measured the change against
+	// — branch plus merge base — so a verdict says which diff it judged (card
+	// t1426: the configured integration base now outranks the remote default
+	// head). Set only for target baseBranch; additive + omitempty.
+	ReviewBase string `json:"review_base,omitempty"`
 }
 
 // AuditProvenance is backend-supplied evidence about how a review was made.
@@ -1228,11 +1234,13 @@ func coerceCodexReviewTarget(v any, root string) (map[string]any, error) {
 	case codexTargetUncommitted:
 		return map[string]any{"type": codexTargetUncommitted}, nil
 	case codexTargetBaseBranch:
-		branch, err := resolveReviewBaseBranchName(root)
+		// The resolved merge base SHA, not a branch name: codex compares from
+		// exactly the commit the GLM backend measures from (card t1426).
+		base, err := resolveReviewBase(root)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"type": codexTargetBaseBranch, "branch": branch}, nil
+		return map[string]any{"type": codexTargetBaseBranch, "branch": base.MergeBase}, nil
 	default:
 		return nil, fmt.Errorf("review target %q needs fields this server cannot supply", s)
 	}
@@ -1743,14 +1751,51 @@ func codexFindingLineOf(ln string) (indent, sev, msg string, continues, ok bool)
 	return "", "", "", false, false
 }
 
+// codexFindingAnchorOf picks the file:line anchor a finding's COMPLETE body
+// can defend (card-review repair round 2, N1; round 3, M1). A body carrying
+// EXACTLY ONE distinct path:line candidate anchors to it — first occurrence's
+// line when the same path repeats. A body carrying SEVERAL distinct
+// candidates — a headline naming one file while the actual location is
+// another, in the headline OR the joined continuations — has no defensible
+// single location, so the anchor stays unset: a reference inside a title is
+// not the target, and ambiguity is not resolved by position. Consumers that
+// require an unambiguous target (REQ-CGSC-008's runtime-drift
+// reclassification) read an unset anchor as "keep the strict disposition".
+// URL-shaped matches are excluded as before.
+func codexFindingAnchorOf(msg string) (string, int, bool) {
+	var anchor string
+	var line int
+	for _, m := range codexPathLineRef.FindAllStringSubmatch(msg, -1) {
+		if strings.Contains(m[1], "://") {
+			continue
+		}
+		if anchor != "" && anchor != m[1] {
+			return "", 0, false // several distinct candidates — no defensible anchor
+		}
+		if anchor == "" {
+			anchor = m[1]
+			if n, err := strconv.Atoi(m[2]); err == nil {
+				line = n
+			}
+		}
+	}
+	if anchor == "" {
+		return "", 0, false
+	}
+	return anchor, line, true
+}
+
 // codexFindingsOf parses codex's review prose into structured findings
 // (#1632 axis 1). Each severity-tagged bullet becomes one Finding carrying the
-// verbatim severity, the message as title/body, and the first path:line anchor
-// found in the message as File/Line. Indented continuation lines following a
-// bullet are joined into that finding's body — codex commonly continues a
-// finding across the next lines, and truncating it to the headline would lose
-// the substance a reviewer needs. A body with no bullets returns an empty,
-// non-nil slice: the parser invents no structure from prose.
+// verbatim severity and the message as title/body, with the anchor decided in
+// a SECOND pass after the continuations join (card-review repair round 3,
+// M1): codexFindingAnchorOf reads the COMPLETE body — a headline naming the
+// config surface while the body's continuation names the actual source
+// location is still two distinct candidates. Indented continuation lines
+// following a bullet are joined into that finding's body — codex commonly
+// continues a finding across the next lines, and truncating it to the
+// headline would lose the substance a reviewer needs. A body with no bullets
+// returns an empty, non-nil slice: the parser invents no structure from prose.
 func codexFindingsOf(reviewText string) []Finding {
 	findings := []Finding{}
 	var cur *Finding
@@ -1763,18 +1808,17 @@ func codexFindingsOf(reviewText string) []Finding {
 			}
 			continue
 		}
-		f := Finding{Severity: sev, Title: msg, Body: msg}
-		if pm := codexPathLineRef.FindStringSubmatch(msg); pm != nil && !strings.Contains(pm[1], "://") {
-			f.File = pm[1]
-			if line, err := strconv.Atoi(pm[2]); err == nil {
-				f.Line = line
-			}
-		}
-		findings = append(findings, f)
+		findings = append(findings, Finding{Severity: sev, Title: msg, Body: msg})
 		cur, curIndent = nil, ""
 		if continues {
 			cur = &findings[len(findings)-1]
 			curIndent = indent
+		}
+	}
+	for i := range findings {
+		if file, line, ok := codexFindingAnchorOf(findings[i].Body); ok {
+			findings[i].File = file
+			findings[i].Line = line
 		}
 	}
 	return findings
@@ -1945,6 +1989,21 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		"model":  model,
 		"cwd":    root,
 	}
+	// A native baseBranch review resolves its base ONCE, before the call, and
+	// codex is sent the captured merge base SHA rather than a branch name it
+	// would re-resolve later — so review_base names exactly the commit codex
+	// compared against, even if the base ref moves meanwhile (t1426). This is
+	// the shape the review gate's card scope already sends (reviewRequestParams).
+	// An unresolvable base leaves the bare target in place; coercion then fails
+	// the request open exactly as before. Adversarial mode (turn/start) carries
+	// no target and names no base, so it records no review_base.
+	var base *reviewBase
+	if target == codexTargetBaseBranch && mode != codexModeAdversarial {
+		if b, err := resolveReviewBase(root); err == nil {
+			base = &b
+			params["target"] = map[string]any{"type": codexTargetBaseBranch, "branch": b.MergeBase}
+		}
+	}
 	if mode == codexModeAdversarial {
 		method = codexMethodTurnStart
 		params["prompt"] = codexAdversarialReviewPrompt(focus)
@@ -1955,6 +2014,9 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	if base != nil {
+		out.ReviewBase = base.String()
+	}
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
 	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)

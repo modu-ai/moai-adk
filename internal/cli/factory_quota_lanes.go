@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // SPEC-QUOTA-AWARE-SCHEDULING-001 M5 (REQ-QAS-018..021): the steering lane
@@ -92,9 +92,9 @@ func factoryQuotaReadLanes(root string) factoryQuotaInventory {
 			continue
 		}
 		switch backend {
-		case kanban.BackendGLM, kanban.BackendGPT:
+		case factory.BackendGLM, factory.BackendGPT:
 			inv.Candidates = append(inv.Candidates, factoryQuotaLane{Label: label, Backend: backend})
-		case kanban.BackendClaude:
+		case factory.BackendClaude:
 			// A Claude lane is exactly what the steering steers away from.
 		default:
 			inv.Unknown++

@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 const (
@@ -77,7 +77,7 @@ func pushLeasePath(root string) string {
 // pushLeaseHeldBy reads the record and reports its holder ("" when unheld).
 func pushLeaseHeldBy(t *testing.T, root string) string {
 	t.Helper()
-	lease, err := kanban.ReadSlotLease(root, "push-develop")
+	lease, err := factory.ReadSlotLease(root, "push-develop")
 	if err != nil {
 		t.Fatalf("read push-develop lease: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestPushLeaseReclaimAndFailOpen(t *testing.T) {
 		if dec != "" {
 			t.Fatalf("B's push over a stale holder: decision = %q (%s), want admit", dec, reason)
 		}
-		lease, err := kanban.ReadSlotLease(root, "push-develop")
+		lease, err := factory.ReadSlotLease(root, "push-develop")
 		if err != nil {
 			t.Fatalf("read reclaimed record: %v", err)
 		}
@@ -265,7 +265,7 @@ func TestPushLeaseReclaimAndFailOpen(t *testing.T) {
 		if dec != "" {
 			t.Fatalf("B's push over an expired bound: decision = %q (%s), want admit", dec, reason)
 		}
-		lease, err := kanban.ReadSlotLease(root, "push-develop")
+		lease, err := factory.ReadSlotLease(root, "push-develop")
 		if err != nil {
 			t.Fatalf("read reclaimed record: %v", err)
 		}
@@ -303,7 +303,7 @@ func TestPushLeaseReclaimAndFailOpen(t *testing.T) {
 		}
 
 		// No lease written: the record is still the undecodable bytes.
-		if _, err := kanban.ReadSlotLease(root, "push-develop"); err == nil {
+		if _, err := factory.ReadSlotLease(root, "push-develop"); err == nil {
 			t.Fatalf("record after fail-open reads clean, want still undecodable (no lease written)")
 		}
 	})

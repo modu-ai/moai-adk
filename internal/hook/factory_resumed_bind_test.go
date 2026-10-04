@@ -42,10 +42,10 @@ func TestFactoryHookBindsIntoResumedRun(t *testing.T) {
 
 	// The child session's environment, exactly what the launcher exports on
 	// the discovery path (REQ-009).
-	t.Setenv(config.EnvMoaiKanbanID, "runbind01")
+	t.Setenv(config.EnvFactoryRunID, "runbind01")
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
-	t.Setenv(config.EnvMoaiKanbanBackend, "glm")
+	t.Setenv(config.EnvFactoryBackend, "glm")
 
 	// The launcher half of the ordinary lane flow: exportFactoryLaunchFacts
 	// stages the launch-pending peer entry the SessionStart bind consumes.

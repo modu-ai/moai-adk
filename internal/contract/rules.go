@@ -4,6 +4,8 @@ import (
 	"path"
 	"slices"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/auditverdict"
 )
 
 // Field rules of design.md § Field rules (normative). Every rule adds to the
@@ -21,8 +23,6 @@ var (
 		"acceptance-change", "invariant-violation", "ownership-move",
 		"new-architecture-or-api", "contradictory-evidence", "irreversible-action",
 	}
-
-	passingVerdicts = []string{"PASS", "PASS-WITH-DEBT"}
 )
 
 // Review values.
@@ -154,7 +154,10 @@ func checkBudget(b *Budget, rs reasonSet) {
 }
 
 func checkPlanAudit(pa *PlanAudit, rs reasonSet) {
-	if pa == nil || !slices.Contains(passingVerdicts, pa.Verdict) {
+	// The contract records only the plan-audit label, so the shared
+	// predicate's label rule is the whole check this site can apply; the
+	// field-level plan predicate runs at the Kickoff evaluator and at T7.
+	if pa == nil || !auditverdict.AdmitLabel(pa.Verdict) {
 		rs.add(ReasonPlanAuditNotPassing)
 	}
 }

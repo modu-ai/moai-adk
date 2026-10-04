@@ -1,7 +1,6 @@
 package kickoff
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -17,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/auditverdict"
 	"github.com/modu-ai/moai-adk/internal/contract"
 	"github.com/modu-ai/moai-adk/internal/contract/receipt"
 	"github.com/modu-ai/moai-adk/internal/escalation"
@@ -53,7 +53,6 @@ var (
 	// a commit body, line by line (the same rule as the SPEC lint's ownership
 	// reader); git's trailer parser misses it when a signature line follows.
 	authoredByAgentLine = regexp.MustCompile(`(?mi)^\s*Authored-By-Agent:\s*(\S+)\s*$`)
-	tierThreshold       = map[string]float64{"S": 0.75, "M": 0.80, "L": 0.85}
 )
 
 // Decide evaluates the kickoff preconditions and outcome rules for one SPEC
@@ -371,56 +370,13 @@ func planAuditCheck(in DecideInput, dir string) (*contract.ReceiptFileRef, strin
 	rel := filepath.ToSlash(filepath.Join(".moai", "reports", in.Card, best))
 	ref := &contract.ReceiptFileRef{Path: rel, SHA256: receipt.SHA256Hex(data)}
 
-	verdict, score, hash, scoreOK := "", 0.0, "", false
-	sc := bufio.NewScanner(bytes.NewReader(data))
-	for sc.Scan() {
-		key, value, ok := strings.Cut(strings.TrimSpace(sc.Text()), ":")
-		if !ok {
-			continue
-		}
-		key = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(key), " ", "_"))
-		value = strings.TrimSpace(strings.Trim(strings.TrimSpace(value), "`"))
-		switch key {
-		case "verdict":
-			verdict = value
-		case "overall_score", "score":
-			f, err := strconv.ParseFloat(value, 64)
-			score, scoreOK = f, err == nil
-		case "plan_artifact_hash", "plan-artifact-hash":
-			hash = value
-		}
-	}
-	if verdict != "PASS" && verdict != "PASS-WITH-DEBT" {
-		return ref, "verdict " + verdict
-	}
-	if !scoreOK {
-		return ref, "unparseable Overall Score"
-	}
-	if score < tierThreshold[specTier(dir)] {
-		return ref, fmt.Sprintf("score %.3f below the tier threshold", score)
-	}
+	fields := auditverdict.Parse(data)
 	cur, err := runtime.NewInMemoryCache().ComputeHash(dir)
-	if err != nil || hash == "" || hash != cur {
-		return ref, "plan_artifact_hash does not bind the current plan artifacts"
+	hashOK := err == nil && fields.PlanArtifactHash != "" && fields.PlanArtifactHash == cur
+	if ok, reason := auditverdict.Admit(fields, auditverdict.PhasePlan, auditverdict.PlanThreshold(dir), hashOK); !ok {
+		return ref, reason
 	}
 	return ref, ""
-}
-
-// specTier reads spec.md's tier (absent → L, the backward-compatible default).
-func specTier(dir string) string {
-	data, err := os.ReadFile(filepath.Join(dir, "spec.md"))
-	if err != nil {
-		return "L"
-	}
-	for _, l := range strings.Split(string(data), "\n") {
-		if v, ok := strings.CutPrefix(strings.TrimSpace(l), "tier:"); ok {
-			v = strings.Trim(strings.TrimSpace(v), `"'`)
-			if _, known := tierThreshold[v]; known {
-				return v
-			}
-		}
-	}
-	return "L"
 }
 
 // commitBodies returns the bodies of the commits that touched the SPEC

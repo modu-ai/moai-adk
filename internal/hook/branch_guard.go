@@ -101,7 +101,7 @@ type branchStatePattern struct {
 //     trailing token is not in the mutating set and the bare-prefix branch is
 //     anchored to end-of-string. AC-REQ-2a/2b/2d.
 //
-// Branch-form completion (kanban card t42, 2026-08-15 measurement; superseded
+// Branch-form completion (card t42, 2026-08-15 measurement; superseded
 // for `git branch` by SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001, card t467):
 // the card's measured incident — `git branch --list develop -v` denied in the
 // primary checkout — does NOT reproduce against any committed state of this
@@ -1013,7 +1013,7 @@ func isPrimaryCheckout(projectDir string) (bool, error) {
 // The deny fires ONLY on positive evidence; uncertainty never denies.
 //
 // The deny reason's remediation directs the caller to a worktree and
-// deliberately does NOT suggest delegating to a manager-git agent. Kanban card
+// deliberately does NOT suggest delegating to a manager-git agent. Card
 // t43 introduced that rule because the old "(use a worktree or invoke via
 // manager-git)" wording sent two orchestrator sessions down what was believed
 // to be a dead end, burning a turn each. The rule survives but its reason is

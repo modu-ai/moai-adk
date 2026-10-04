@@ -29,7 +29,7 @@ import (
 func registerTodoMCPTools(add func(name string, tool mcp.Tool, handler server.ToolHandlerFunc)) {
 	add("todo_add", mcp.NewTool(
 		"todo_add",
-		mcp.WithDescription("Append one card to the kanban backlog queue. Same implementation as `moai todo add` (without --pick/--force). "+projectRootDesc),
+		mcp.WithDescription("Append one card to the backlog queue. Same implementation as `moai todo add` (without --pick/--force). "+projectRootDesc),
 		mcp.WithString("text", mcp.Required(), mcp.Description("The card text.")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),

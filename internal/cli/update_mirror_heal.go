@@ -21,6 +21,7 @@ import (
 	"io"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
@@ -42,6 +43,15 @@ func mirrorRepairGateOpen(templateVersion string) bool {
 // Codex-visibility convenience would be a wildly disproportionate reaction,
 // which is the same stance skill_mirror.go takes at deploy time.
 func repairSkillMirrorBestEffortAt(projectRoot string, out, errOut io.Writer) {
+	// SPEC-INIT-SHRINK-001 REQ-019 (card t1438 review finding 3): a
+	// plugin-mode project's thin deploy carries no mirror, and no update run
+	// may resurrect one. The gate reads the mode RECORD: a local-mode
+	// project heals as today, a record-less project keeps today's behavior
+	// (the migration trigger owns that arm), and a plugin-mode project skips
+	// the repair entirely.
+	if config.ReadDeployMode(projectRoot) == "plugin" {
+		return
+	}
 	stamp, err := plan.GetProjectConfigVersion(projectRoot)
 	if err != nil {
 		warnMirrorRepair(errOut, fmt.Sprintf("cannot read the project's template_version: %v", err))

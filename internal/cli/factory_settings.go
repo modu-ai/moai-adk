@@ -1,0 +1,125 @@
+package cli
+
+// factory_settings.go implements the transient --settings injection that lets
+// cross-session messages flow between factory sessions without the operator
+// having to relax their project/local settings.
+//
+// The accept/hold/refuse ladder for `crossSessionInbound` cannot be satisfied
+// from any persistent settings layer moai writes: the stricter tier wins, so an
+// operator whose local settings carry `hold` (or leave the field absent) cannot
+// be relaxed from project settings. The transient file sidesteps the tier
+// hierarchy: `--settings <file>` is documented to take the strictest merge, and
+// a file carrying `accept` therefore wins regardless of the operator's config.
+//
+// @MX:NOTE: [AUTO] the transient settings file is session-private (PID + nanosecond) and cleaned up on exit
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+)
+
+// settingsFlagLong is the claude / glm flag that accepts a settings JSON file.
+const settingsFlagLong = "--settings"
+
+// operatorSuppliedSettings reports whether the operator passed --settings
+// <file> on the command line (before the pass-through marker). The operator's
+// intent wins: moai does NOT inject its own settings file in that case.
+//
+// The `--` discipline matches the launcher entry parse: nothing past the
+// marker is read — a `--settings` after `--` is a passthrough arg to the
+// backend, not a moai-level flag.
+func operatorSuppliedSettings(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			return false
+		}
+		if arg == settingsFlagLong {
+			return true
+		}
+		if strings.HasPrefix(arg, settingsFlagLong+"=") {
+			return true
+		}
+	}
+	return false
+}
+
+// prepareFactorySettings writes a transient settings file carrying
+// {"crossSessionInbound": "accept"} (plus the user's crosssession.yaml extras
+// — dialogExpiry and an isolatePeerMachines opt-in ride along, only the
+// inbound value is forced to accept, because factory dispatch stalls without
+// it) to a session-private path under os.TempDir(), and returns the
+// --settings flag pair to append to the backend's argv (followed by
+// `--effort max` when the profile resolves max — see applyLaunchEffort), plus
+// a cleanup function that removes the file and restores the signal env var.
+//
+// When the operator supplied their own --settings (REQ-FB-007), OR when the
+// write fails (fail-open, C8/EC-4), no flag is returned and cleanup is a no-op.
+// In both cases the signal env var EnvFactorySettingsInjected stays unset,
+// which tells the SessionStart hook to print the operator advisory instead of
+// the auto-accept notice.
+//
+// The signal env var is set via os.Setenv (restored on cleanup) so it reaches
+// the child process through os.Environ(), matching the enter*Mode helpers.
+func prepareFactorySettings(profileName string, args []string) (flag []string, cleanup func()) {
+	if operatorSuppliedSettings(args) {
+		return nil, func() {}
+	}
+
+	// The factory payload: the user's cross-session preferences overlaid with
+	// the profile's launch effort and the dispatch-required accept. An
+	// unreadable config degrades to the accept-only payload (fail-open — same
+	// as before the merge existed). The effort rides here rather than in
+	// CLAUDE_CODE_EFFORT_LEVEL for the reason launch_effort_settings.go gives:
+	// the env var refuses an in-session /effort or /model change, so a lane
+	// could never raise its own effort mid-card.
+	payload, effortArgs := applyLaunchEffort(crossSessionSettingsPayload(crossSessionConfigRootFn()), profileName)
+	effortArgs = launchEffortArgs(effortArgs, args)
+	if payload == nil {
+		payload = map[string]any{}
+	}
+	payload["crossSessionInbound"] = "accept"
+
+	path, err := writeTransientSettingsFile(payload, "moai-factory")
+	if err != nil {
+		// Fail-open (C8/EC-4): launch without the injected --settings. The hook
+		// will print the verify advisory because EnvFactorySettingsInjected
+		// is unset.
+		return nil, func() {}
+	}
+
+	restoreInjected := captureEnvState(config.EnvFactorySettingsInjected)
+	_ = os.Setenv(config.EnvFactorySettingsInjected, "1")
+
+	return append([]string{settingsFlagLong, path}, effortArgs...), func() {
+		_ = os.Remove(path)
+		restoreInjected()
+	}
+}
+
+// writeTransientSettingsFile writes the given settings payload to a
+// session-private file under os.TempDir() and returns its path. The prefix
+// names the injector ("moai-factory" / "moai-crosssession") in the filename.
+func writeTransientSettingsFile(payload map[string]any, prefix string) (string, error) {
+	dir := os.TempDir()
+	// Session-private by PID + nanosecond; two concurrent launches in the same
+	// PID (impossible) and same nanosecond (implausible) is the only collision
+	// path, and the cost of a collision is a benign shared file.
+	name := fmt.Sprintf("%s-%d-%d.json", prefix, os.Getpid(), time.Now().UnixNano())
+	path := filepath.Join(dir, name)
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return "", err
+	}
+	return path, nil
+}

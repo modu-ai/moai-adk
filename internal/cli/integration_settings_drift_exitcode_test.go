@@ -25,8 +25,8 @@ import (
 // implementation and test, given relative to internal/cli.
 func settingsDriftSourceFiles() []string {
 	return []string{
-		"../kanban/settings_drift.go",
-		"../kanban/settings_drift_test.go",
+		"../factory/settings_drift.go",
+		"../factory/settings_drift_test.go",
 		// integration.go carries the acquire wiring that propagates the
 		// refusal to the caller — part of the gate, so part of the sweep
 		// (sync-audit F5, a coverage gap rather than a live defect).
@@ -61,8 +61,8 @@ func TestSettingsDriftVerdictNeverReadsAnExitCode(t *testing.T) {
 	// The control also has to prove the swept set is the RIGHT set, not merely
 	// a non-empty one: an implementation file that does not define the
 	// predicate would satisfy "non-empty" while checking the wrong code.
-	if !strings.Contains(swept["../kanban/settings_drift.go"], "func DetectSettingsDrift(") {
-		t.Fatalf("control: ../kanban/settings_drift.go does not define DetectSettingsDrift")
+	if !strings.Contains(swept["../factory/settings_drift.go"], "func DetectSettingsDrift(") {
+		t.Fatalf("control: ../factory/settings_drift.go does not define DetectSettingsDrift")
 	}
 	if !strings.Contains(swept["integration_settings_drift.go"], "func newIntegrationPreflightCmd(") {
 		t.Fatalf("control: integration_settings_drift.go does not define the preflight command")

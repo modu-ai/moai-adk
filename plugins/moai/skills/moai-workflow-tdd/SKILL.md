@@ -1,0 +1,380 @@
+---
+name: moai-workflow-tdd
+description: >
+  Test-Driven Development workflow specialist using RED-GREEN-REFACTOR
+  cycle for test-first software development. Use when developing new
+  features from scratch or when behavior specification drives
+  implementation.
+
+when_to_use: >
+  Use for Test-Driven Development: the RED-GREEN-REFACTOR cycle for
+  test-first software development, new-feature implementation from
+  scratch, and behavior-specification-driven implementation.
+
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read, Write, Edit, Bash(pytest:*), Bash(ruff:*), Bash(npm:*), Bash(npx:*), Bash(node:*), Bash(jest:*), Bash(vitest:*), Bash(go:*), Bash(cargo:*), Bash(mix:*), Bash(uv:*), Bash(bundle:*), Bash(php:*), Bash(phpunit:*), Grep, Glob
+user-invocable: false
+metadata:
+  version: "1.0.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-03"
+  modularized: "true"
+  tags: "workflow, tdd, test-driven, red-green-refactor, test-first"
+  author: "MoAI-ADK Team"
+  related-skills: "moai-workflow-ddd, moai-workflow-testing, moai-foundation-quality"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+---
+
+# Test-Driven Development (TDD) Workflow
+
+## Development Mode Configuration (CRITICAL)
+
+[NOTE] This workflow is selected based on `.moai/config/sections/quality.yaml`:
+
+```yaml
+constitution:
+  development_mode: tdd    # or ddd
+```
+
+**When to use this workflow**:
+- `development_mode: tdd` → Use TDD (this workflow, default)
+- `development_mode: ddd` → Use DDD instead (moai-workflow-ddd)
+
+**Key distinction**:
+- **TDD** (default): Test-first development for all work, including brownfield projects with pre-RED analysis
+- **DDD**: Characterization-test-first for existing codebases with minimal test coverage
+
+## Quick Reference
+
+Test-Driven Development provides a disciplined approach for creating new functionality where tests define the expected behavior before implementation.
+
+Core Cycle - RED-GREEN-REFACTOR:
+
+- RED: Write a failing test that defines desired behavior
+- GREEN: Write minimal code to make the test pass
+- REFACTOR: Improve code structure while keeping tests green
+
+When to Use TDD:
+
+- Creating new functionality from scratch
+- Building isolated modules with no existing dependencies
+- When behavior specification drives development
+- New API endpoints with clear contracts
+- New UI components with defined behavior
+- Greenfield projects (rare - usually Hybrid is better)
+
+When NOT to Use TDD:
+
+- Refactoring existing code (use DDD instead)
+- When behavior preservation is the primary goal
+- Legacy codebase without test coverage (use DDD first)
+- When modifying existing files (consider Hybrid mode)
+
+---
+
+## Core Philosophy
+
+### TDD vs DDD Comparison
+
+TDD Approach:
+
+- Cycle: RED-GREEN-REFACTOR
+- Goal: Create new functionality through tests
+- Starting Point: No code exists
+- Test Type: Specification tests that define expected behavior
+- Outcome: New working code with test coverage
+
+DDD Approach:
+
+- Cycle: ANALYZE-PRESERVE-IMPROVE
+- Goal: Improve structure without behavior change
+- Starting Point: Existing code with defined behavior
+- Test Type: Characterization tests that capture current behavior
+- Outcome: Better structured code with identical behavior
+
+### Test-First Principle
+
+The golden rule of TDD is that tests must be written before implementation code:
+
+- Tests define the contract
+- Tests document expected behavior
+- Tests catch regressions immediately
+- Implementation is driven by test requirements
+
+---
+
+## Implementation Guide
+
+### Phase 1: RED - Write a Failing Test
+
+The RED phase focuses on defining the desired behavior through a failing test.
+
+#### Writing Effective Tests
+
+Before writing any implementation code:
+
+- Understand the requirement clearly
+- Define the expected behavior in test form
+- Write one test at a time
+- Keep tests focused and specific
+- Use descriptive test names that document behavior
+
+#### Test Structure
+
+Follow the Arrange-Act-Assert pattern:
+
+- Arrange: Set up test data and dependencies
+- Act: Execute the code under test
+- Assert: Verify the expected outcome
+
+#### Verification
+
+The test must fail initially:
+
+- Confirms the test actually tests something
+- Ensures the test is not passing by accident
+- Documents the gap between current and desired state
+
+### Phase 2: GREEN - Make the Test Pass
+
+The GREEN phase focuses on writing minimal code to satisfy the test.
+
+#### Minimal Implementation
+
+Write only enough code to make the test pass:
+
+- Do not over-engineer
+- Do not add features not required by tests
+- Focus on correctness, not perfection
+- Hardcode values if necessary (refactor later)
+
+#### Verification
+
+Run the test to confirm it passes:
+
+- All assertions must succeed
+- No other tests should break
+- Implementation satisfies the test requirements
+
+### Phase 3: REFACTOR - Improve the Code
+
+The REFACTOR phase focuses on improving code quality while maintaining behavior.
+
+#### Safe Refactoring
+
+With passing tests as a safety net:
+
+- Remove duplication
+- Improve naming and readability
+- Extract methods and classes
+- Apply design patterns where appropriate
+
+#### Continuous Verification
+
+After each refactoring step:
+
+- Run all tests
+- If any test fails, revert immediately
+- Commit when tests pass
+
+---
+
+## TDD Workflow Execution
+
+### Standard TDD Session
+
+When executing TDD through manager-develop:
+
+Step 1 - Understand Requirements:
+
+- Read SPEC document for feature scope
+- Identify test cases from acceptance criteria
+- Plan test implementation order
+
+Step 2 - RED Phase:
+
+- Write first failing test
+- Verify test fails for the right reason
+- Document expected behavior
+
+Step 3 - GREEN Phase:
+
+- Write minimal implementation
+- Run test to verify it passes
+- Move to next test
+
+Step 4 - REFACTOR Phase:
+
+- Review code for improvements
+- Apply refactoring with tests as safety net
+- Commit clean code
+
+Step 5 - Repeat:
+
+- Continue RED-GREEN-REFACTOR cycle
+- Until all requirements are implemented
+- Until all acceptance criteria pass
+
+### TDD Loop Pattern
+
+For features requiring multiple test cases:
+
+- Identify all test cases upfront
+- Prioritize by dependency and complexity
+- Execute RED-GREEN-REFACTOR for each
+- Maintain cumulative test suite
+
+---
+
+## Quality Metrics
+
+### TDD Success Criteria
+
+Test Coverage (Required):
+
+- Minimum 80% coverage per commit
+- 90% recommended for new code
+- All public interfaces tested
+
+Code Quality (Goals):
+
+- All tests pass
+- No test written after implementation
+- Clear test names documenting behavior
+- Minimal implementation satisfying tests
+
+### TDD-Specific TRUST Validation
+
+Apply TRUST 5 framework with TDD focus:
+
+- Tested: Test-first approach ensures coverage
+- Readability: Tests document expected behavior
+- Unified: Style and structure consistent with the surrounding code
+- Security: Security tests written before implementation
+- Trackable: Test failures provide immediate, attributable feedback
+
+---
+
+## Integration Points
+
+### With DDD Workflow
+
+TDD and DDD are complementary:
+
+- TDD for new code
+- DDD for existing code refactoring
+- Hybrid mode combines both approaches
+
+### With Testing Workflow
+
+TDD integrates with testing workflow:
+
+- Uses specification tests
+- Integrates with coverage tools
+- Supports mutation testing for test quality
+
+### With Quality Framework
+
+TDD outputs feed into quality assessment:
+
+- Coverage metrics tracked
+- TRUST 5 validation for changes
+- Quality gates enforce standards
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+Test is Too Complex:
+
+- Break into smaller, focused tests
+- Test one behavior at a time
+- Use test fixtures for complex setup
+
+Implementation Grows Too Fast:
+
+- Resist urge to implement untested features
+- Return to RED phase for new functionality
+- Keep GREEN phase minimal
+
+Refactoring Breaks Tests:
+
+- Revert immediately
+- Refactor in smaller steps
+- Ensure tests verify behavior, not implementation
+
+### Recovery Procedures
+
+When TDD discipline breaks down:
+
+- Stop and assess current state
+- Write characterization tests for existing code
+- Resume TDD for remaining features
+- Consider switching to Hybrid mode
+
+---
+
+Version: 1.0.0
+Status: Active
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll add tests after the implementation works" | Post-hoc tests verify what the code does, not what it should do. They miss the bugs RED phase catches. |
+| "The existing tests cover this case" | Existing tests verify old behavior. New behavior needs its own failing test first. |
+| "This function is too simple to test" | Simple functions accumulate complexity. The test documents expected behavior before drift. |
+| "I tested it manually in the terminal" | Manual checks do not persist. Tomorrow's change breaks the contract with no signal. |
+| "The test requires complex mocking" | If the test is hard to write, the code is hard to reason about. Refactor the design first. |
+| "Tests slow me down" | Test-first surfaces design problems early, when they are cheapest to fix. |
+| "I'll skip REFACTOR this cycle to keep moving" | Skipped refactors compound. The next cycle starts from a worse baseline. |
+
+**DAMP over DRY**: In test code, prefer Descriptive And Meaningful Phrases over Don't Repeat Yourself. Duplication inside a test that makes the intent obvious is better than an abstraction that hides it.
+
+**Beyonce Rule**: If you liked it, you should have put a test on it. Any behavior CI does not verify will eventually break without warning.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Implementation file created in the same commit as its test file (RED phase skipped)
+- Test names describe implementation (test_function_returns_true) instead of behavior (test_user_login_rejects_expired_token)
+- All tests in a new file pass on first run — no RED phase was captured
+- Commit message says "add tests" after the feature is already merged
+- Test suite contains mocks of the code under test (mocking implementation, not collaborators)
+- Coverage dropped in the commit that added a new feature
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Git history shows a failing-test commit before the implementation commit, or evidence of RED in the same commit
+- [ ] Test names read as behavior specifications, not function descriptions
+- [ ] Every new public function has at least one corresponding test case
+- [ ] Full test suite passes (paste command output)
+- [ ] Coverage for changed files is measured and reported (show tool output)
+- [ ] No `skip`, `xit`, or disabled tests were added in this change
+- [ ] REFACTOR phase was executed or explicitly justified as unnecessary
+
+<!-- moai:evolvable-end -->
+
+## Test-First Anti-Cheat
+
+[ZONE:Evolvable] [HARD] The Red Flags and Verification checklists above sit in advisory (evolvable) blocks and are consumed by no completion gate. This section promotes them into two enforced invariants that make test-first falsifiable in the completion matrix.
+
+- **Invariant i — RED failure output is mandatory completion evidence.** The verbatim RED failing-test output (the failing-test run captured BEFORE any implementation makes it pass) MUST be observed and shown as part of run-phase completion evidence. A run that cannot produce this output skipped RED and cannot be reported as clean.
+- **Invariant ii — implementation written before its failing test is deleted and re-derived test-first.** Any implementation code written before its failing test exists MUST be deleted and re-derived from a failing test (RED then GREEN). "I already wrote the implementation, so the test passes on first run" is the exact failure mode this invariant forbids — it is test-after, not test-first, and it leaves no RED output (Invariant i) to show as evidence.
+
+These two invariants close the falsifiability gap: before them, a fully-passing self-verification matrix was producible with NO RED evidence, so test-first could not be distinguished from test-after by the completion report. After them, the matrix requires the verbatim pre-GREEN RED output, so a run that skipped RED has no such output to supply and the matrix is structurally incomplete.

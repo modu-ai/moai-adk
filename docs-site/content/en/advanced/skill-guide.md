@@ -139,7 +139,7 @@ This skill's source lint mechanically enforces two families of rules. `SVG060`-`
 | ---------------------- | ------------------------------------------- |
 | `moai-meta-harness`    | **DEPRECATED** — the legacy 7-Phase meta-harness. Redirects to the v4 Builder (`/moai:harness <natural-language request>`) |
 | `moai-harness-learner` | The harness learning subsystem, auto-update proposals |
-| `moai-kanban-foreman`  | One unattended kanban foreman iteration — watch the backlog, dispatch a picked card to an isolated worker, collect evidence |
+| `moai-factory-foreman`  | One unattended factory foreman iteration — watch the backlog, dispatch a picked card to an isolated worker, collect evidence |
 
 > The 34 skills ship with the MoAI-ADK template (21 core immediately, 13 via optional packs), and each skill loads independently to save tokens. Users can additionally author per-project custom `hns-*` harness skills (the legacy `harness-*` prefix is also recognized).
 

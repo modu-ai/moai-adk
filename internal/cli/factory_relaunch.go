@@ -3,7 +3,7 @@ package cli
 // factory_relaunch.go — the `moai factory relaunch` verb
 // (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-012..014, REQ-SRH-016): the
 // executable way back for a lane session whose run died or was replaced. The
-// stale-run notices print its command line (internal/kanban builds it from the
+// stale-run notices print its command line (internal/factory builds it from the
 // same flag names registered here), and the verb re-executes the provider's own
 // lane-join entry, so the shared join gate does the run resolution.
 
@@ -15,9 +15,9 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/spf13/cobra"
 )
 
@@ -31,36 +31,36 @@ var factoryRelaunchExecFn = func(c *exec.Cmd) error { return c.Run() }
 // (REQ-SRH-014, SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009: detection, never a
 // mapping), and a Codex pin is refused naming the Codex limitation
 // (REQ-SRH-016).
-func buildRelaunchCommand(provider, lane, run, fromRun string) (kanban.RelaunchCommand, error) {
-	c := kanban.RelaunchCommand{Provider: provider, Lane: lane, Run: run, FromRun: fromRun}
+func buildRelaunchCommand(provider, lane, run, fromRun string) (factory.RelaunchCommand, error) {
+	c := factory.RelaunchCommand{Provider: provider, Lane: lane, Run: run, FromRun: fromRun}
 	switch provider {
-	case kanban.RelaunchProviderCC, kanban.RelaunchProviderGLM, kanban.RelaunchProviderCodex:
+	case factory.RelaunchProviderCC, factory.RelaunchProviderGLM, factory.RelaunchProviderCodex:
 	default:
-		return c, fmt.Errorf("--%s must be %s, %s, or %s (got %q)", kanban.RelaunchFlagProvider,
-			kanban.RelaunchProviderCC, kanban.RelaunchProviderGLM, kanban.RelaunchProviderCodex, provider)
+		return c, fmt.Errorf("--%s must be %s, %s, or %s (got %q)", factory.RelaunchFlagProvider,
+			factory.RelaunchProviderCC, factory.RelaunchProviderGLM, factory.RelaunchProviderCodex, provider)
 	}
 	if lane != "" {
 		lowered := strings.ToLower(lane)
-		if kanban.IsLegacyFactoryRoleValue(lowered) {
-			if n, isLabel := kanban.SplitFactoryLegacyLabel(lowered); isLabel {
-				return c, fmt.Errorf("--%s %q is the legacy lane label; use %q", kanban.RelaunchFlagLane, lane, kanban.FactoryLaneLabel(n))
+		if factory.IsLegacyFactoryRoleValue(lowered) {
+			if n, isLabel := factory.SplitFactoryLegacyLabel(lowered); isLabel {
+				return c, fmt.Errorf("--%s %q is the legacy lane label; use %q", factory.RelaunchFlagLane, lane, factory.FactoryLaneLabel(n))
 			}
 			return c, fmt.Errorf("--%s %q is a legacy role token; use a lane-<n> label, or omit --%s to join as the next free lane",
-				kanban.RelaunchFlagLane, lane, kanban.RelaunchFlagLane)
+				factory.RelaunchFlagLane, lane, factory.RelaunchFlagLane)
 		}
-		if _, ok := kanban.SplitFactoryLaneLabel(lane); !ok {
-			return c, fmt.Errorf("--%s must be a lane-<n> label (omit it to join as the next free lane), got %q", kanban.RelaunchFlagLane, lane)
+		if _, ok := factory.SplitFactoryLaneLabel(lane); !ok {
+			return c, fmt.Errorf("--%s must be a lane-<n> label (omit it to join as the next free lane), got %q", factory.RelaunchFlagLane, lane)
 		}
 	}
-	if provider == kanban.RelaunchProviderCodex {
-		for _, pin := range [][2]string{{kanban.RelaunchFlagLane, lane}, {kanban.RelaunchFlagRun, run}} {
+	if provider == factory.RelaunchProviderCodex {
+		for _, pin := range [][2]string{{factory.RelaunchFlagLane, lane}, {factory.RelaunchFlagRun, run}} {
 			if pin[1] != "" {
 				return c, fmt.Errorf("--%s is not available with --%s %s: the Codex launcher accepts only '%s' (the next free lane of the single active run)",
-					pin[0], kanban.RelaunchFlagProvider, kanban.RelaunchProviderCodex, kanban.RelaunchCommand{Provider: provider}.LaunchLine())
+					pin[0], factory.RelaunchFlagProvider, factory.RelaunchProviderCodex, factory.RelaunchCommand{Provider: provider}.LaunchLine())
 			}
 		}
 	}
-	for _, id := range [][2]string{{kanban.RelaunchFlagRun, run}, {kanban.RelaunchFlagFromRun, fromRun}} {
+	for _, id := range [][2]string{{factory.RelaunchFlagRun, run}, {factory.RelaunchFlagFromRun, fromRun}} {
 		if id[1] != "" && !factorymsg.ValidRunID(id[1]) {
 			return c, fmt.Errorf("--%s %q is not a run id", id[0], id[1])
 		}
@@ -106,6 +106,15 @@ func relaunchRetireFromRun(ctx context.Context, runID string) string {
 	}
 }
 
+// relaunchLaneIgnoredNote is the one stderr line printed when --lane is
+// supplied: the launcher join the verb runs is `-l`, which takes no argument
+// (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-002), so the supplied label cannot pin
+// the slot and the session joins as the next free lane.
+func relaunchLaneIgnoredNote(lane string) string {
+	return fmt.Sprintf("--%s %s is ignored: the launcher join -l takes no argument, so the session joins as the next free lane",
+		factory.RelaunchFlagLane, lane)
+}
+
 // newFactoryRelaunchCommand builds the verb. Its flag names are the shared
 // builder's constants, so a line the hook prints is accepted verbatim.
 func newFactoryRelaunchCommand() *cobra.Command {
@@ -116,9 +125,11 @@ func newFactoryRelaunchCommand() *cobra.Command {
 		Short: "Relaunch a factory lane session into a live run",
 		Long: `Relaunch a factory lane session into a live run.
 
-The verb re-executes the provider's own lane-join entry — 'moai cc -f lane[-<n>]'
-or 'moai glm -f lane[-<n>]' through the shared lane-join gate, 'moai codex -f lane'
-for Codex — so the run is resolved exactly as when the operator types that line.
+The verb re-executes the provider's own lane entry — 'moai cc -l' or 'moai glm -l'
+through the shared lane-join gate, 'moai codex -l' for Codex — so the run is
+resolved exactly as when the operator types that line. '-l' takes no argument, so
+a supplied --lane is not passed on: the verb says so on stderr and the session
+joins as the next free lane.
 Run it from a terminal after ending the stale session; the stale-run notice prints
 the command with its arguments filled in.
 
@@ -149,6 +160,9 @@ card leases or worktrees.`,
 			if fromRun != "" {
 				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), relaunchRetireFromRun(ctx, fromRun))
 			}
+			if lane != "" {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), relaunchLaneIgnoredNote(lane))
+			}
 			self, err := os.Executable()
 			if err != nil {
 				return fmt.Errorf("locate the moai binary: %w", err)
@@ -165,10 +179,10 @@ card leases or worktrees.`,
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&provider, kanban.RelaunchFlagProvider, kanban.RelaunchProviderCC, "Launcher to re-enter through: cc, glm, or codex")
-	cmd.Flags().StringVar(&lane, kanban.RelaunchFlagLane, "", "Lane label to take (lane-<n>); omitted joins as the next free lane (not available with codex)")
-	cmd.Flags().StringVar(&run, kanban.RelaunchFlagRun, "", "Run to join (--factory-run); omitted resolves the single active run (not available with codex)")
-	cmd.Flags().StringVar(&fromRun, kanban.RelaunchFlagFromRun, "", "Retire this run first when it is active and its owner is dead; otherwise leave it untouched")
-	cmd.Flags().BoolVar(&dryRun, kanban.RelaunchFlagDryRun, false, "Print the launch line and write nothing")
+	cmd.Flags().StringVar(&provider, factory.RelaunchFlagProvider, factory.RelaunchProviderCC, "Launcher to re-enter through: cc, glm, or codex")
+	cmd.Flags().StringVar(&lane, factory.RelaunchFlagLane, "", "Lane label the stale session carried (lane-<n>); recorded for the notice only: the join takes the next free lane, since -l takes no argument (not available with codex)")
+	cmd.Flags().StringVar(&run, factory.RelaunchFlagRun, "", "Run to join (--factory-run); omitted resolves the single active run (not available with codex)")
+	cmd.Flags().StringVar(&fromRun, factory.RelaunchFlagFromRun, "", "Retire this run first when it is active and its owner is dead; otherwise leave it untouched")
+	cmd.Flags().BoolVar(&dryRun, factory.RelaunchFlagDryRun, false, "Print the launch line and write nothing")
 	return cmd
 }

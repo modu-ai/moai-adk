@@ -15,7 +15,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +48,7 @@ func TestCCDebugTokenObserveOnly(t *testing.T) {
 	c, errB := freshLauncherEntry(t, "cc")
 	launches := 0
 	var gotArgs []string
-	err := runClaudeEntry(c, []string{"-d", "--", "extra"}, "cc", "claude", kanban.BackendClaude, func(_ string, _ string, args []string) error {
+	err := runClaudeEntry(c, []string{"-d", "--", "extra"}, "cc", "claude", factory.BackendClaude, func(_ string, _ string, args []string) error {
 		launches++
 		gotArgs = args
 		return nil
@@ -101,7 +101,7 @@ func TestGLMDebugTokenObserveOnly(t *testing.T) {
 func TestCCDebugTokenAfterDashDashInactive(t *testing.T) {
 	c, errB := freshLauncherEntry(t, "cc")
 	launches := 0
-	err := runClaudeEntry(c, []string{"--", "-d"}, "cc", "claude", kanban.BackendClaude, func(_ string, _ string, _ []string) error {
+	err := runClaudeEntry(c, []string{"--", "-d"}, "cc", "claude", factory.BackendClaude, func(_ string, _ string, _ []string) error {
 		launches++
 		return nil
 	})
@@ -156,7 +156,7 @@ func TestThreeRunnerDebugUniformityMatrix(t *testing.T) {
 			case "cc":
 				c, errB := freshLauncherEntry(t, "cc")
 				var args []string
-				err := runClaudeEntry(c, []string{tc.token}, "cc", "claude", kanban.BackendClaude, func(_ string, _ string, a []string) error {
+				err := runClaudeEntry(c, []string{tc.token}, "cc", "claude", factory.BackendClaude, func(_ string, _ string, a []string) error {
 					args = a
 					return nil
 				})

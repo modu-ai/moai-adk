@@ -2,7 +2,7 @@
 // doctor divergence check over a stale project-local queue store.
 //
 // After the home-database cutover a rollback snapshot can remain under
-// .moai/state/todo/ or .moai/state/kanban/ while every read is answered by
+// .moai/state/todo/ or the legacy retired-mode state directory while every read is answered by
 // ~/.moai/db/<project-key>/todo/backlog.db. The read surface discloses the
 // ghost store (M1); this check makes the SAME divergence reproducible with
 // one doctor line (REQ-TSS-010), from the SAME detector the disclosure
@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // todoStoreDivergenceCheckName is the doctor check identifier (also the
@@ -34,7 +34,7 @@ const todoStoreDivergenceCheckName = "Todo Store Divergence"
 func checkTodoStoreDivergence(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: todoStoreDivergenceCheckName, Status: uikit.CheckOK}
 
-	fact := kanban.InspectStaleLocalStores(projectRoot)
+	fact := factory.InspectStaleLocalStores(projectRoot)
 	if len(fact.Stores) == 0 {
 		check.Message = "no stale project-local queue store"
 		return check

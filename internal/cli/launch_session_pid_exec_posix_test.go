@@ -58,7 +58,7 @@ func TestExecOrSpawnClaude_StampsLiveSessionPID(t *testing.T) {
 // never reach a live broker.
 func TestExecOrSpawnClaude_StampsLiveSessionPIDUnderLaneEnv(t *testing.T) {
 	t.Setenv(config.EnvHome, t.TempDir())
-	t.Setenv(config.EnvMoaiKanbanID, "run-t1222-probe")
+	t.Setenv(config.EnvFactoryRunID, "run-t1222-probe")
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
 	checkExecStampsLiveSessionPID(t)

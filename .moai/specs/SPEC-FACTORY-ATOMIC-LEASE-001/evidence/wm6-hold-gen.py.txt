@@ -1,0 +1,36 @@
+import os, json, subprocess
+R = "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1458"
+S = "/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t1458/7d4e885f-da08-4e41-929b-fed94cc2ab02/scratchpad/mu/hold"
+os.makedirs(S, exist_ok=True)
+src = open(R + "/internal/cli/factory_card.go").read()
+old = """func factoryLeaseSection(store *kanban.BacklogStore, fn func(*kanban.LockedBacklog)) (ran bool, err error) {
+	err = store.WithLock(func(l *kanban.LockedBacklog) error {
+		ran = true
+		fn(l)
+		return nil
+	})
+	return ran, err
+}
+"""
+new = """func factoryLeaseSection(store *kanban.BacklogStore, fn func(*kanban.LockedBacklog)) (ran bool, err error) {
+	t0 := time.Now()
+	err = store.WithLock(func(l *kanban.LockedBacklog) error {
+		ran = true
+		t1 := time.Now()
+		fn(l)
+		probeHoldRec(time.Since(t1), t1.Sub(t0))
+		return nil
+	})
+	return ran, err
+}
+
+// probeHoldRec is the WM6 measurement hook (probe only; see evidence/probe-hold_test.go.txt).
+var probeHoldRec = func(hold, wait time.Duration) {}
+"""
+assert src.count(old) == 1
+open(S + "/factory_card.go", "w").write(src.replace(old, new))
+json.dump({"Replace": {
+    R + "/internal/cli/factory_card.go": S + "/factory_card.go",
+    R + "/internal/cli/zz_t1458_hold_probe_test.go": R + "/.moai/specs/SPEC-FACTORY-ATOMIC-LEASE-001/evidence/probe-hold_test.go.txt",
+}}, open(S + "/overlay.json", "w"), indent=1)
+print("ok")

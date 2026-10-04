@@ -70,7 +70,7 @@ var zeroExecutionLiterals = []string{
 // exhaustiveness test red.
 var zeroExecutionSamples = map[string][]string{
 	"go test": {
-		"ok  \tgithub.com/modu-ai/moai-adk/internal/kanban\t0.434s [no tests to run]\n",
+		"ok  \tgithub.com/modu-ai/moai-adk/internal/factory\t0.434s [no tests to run]\n",
 		"?   \tgithub.com/modu-ai/moai-adk/cmd/moai\t[no test files]\n",
 	},
 	"pytest": {

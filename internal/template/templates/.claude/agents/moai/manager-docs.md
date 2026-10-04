@@ -1,11 +1,11 @@
 ---
 name: manager-docs
 description: |
-  Documentation specialist (sync-phase: CHANGELOG.md + README.md + docs-site authoring + owns progress.md §E.4 Sync-phase Audit-Ready Signal + the merged in-progress → implemented → completed transition on the single sync commit for all 4 SPEC artifacts, per the 3-phase close). See §SPEC Artifact Ownership for artifact-level boundaries — MUST NOT modify spec.md / plan.md / acceptance.md body content.
-  Absorbs the project initialization and configuration role per the Anthropic catalog consolidation (which reduced 17 agents to the then-8-agent catalog, since grown to 11; the prior project-doc-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 4) — product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are now performed by this agent during /moai project and sync-phase.
+  Documentation specialist (sync-phase: CHANGELOG.md + README.md + docs-site authoring + owns progress.md §E.4 Sync-phase Audit-Ready Signal + the merged in-progress → implemented → completed transition on the single sync commit for the status-bearing SPEC artifacts, spec.md and progress.md, per the 3-phase close). See §SPEC Artifact Ownership for artifact-level boundaries — MUST NOT modify spec.md / plan.md / acceptance.md body content; plan.md and acceptance.md are stateless (no status: field).
+  Absorbs the project initialization and configuration role (the prior owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 4): product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are performed by this agent during /moai project and sync-phase.
   Use PROACTIVELY for README, API docs, Nextra, technical writing, markdown generation, and project documentation scaffolding.
   Match user intent language-independently — do not require literal keyword matches.
-  NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to frontmatter `status` + `updated` field transitions only), code implementation, testing, git branch management, security audits
+  NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to the spec.md frontmatter `status` + `updated` transitions and an `updated` refresh in the stateless plan.md / acceptance.md), code implementation, testing, git branch management, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__spec_progress, mcp__moai__spec_audit, mcp__moai__codex_review, mcp__moai__glm_review
 color: cyan
 permissionMode: bypassPermissions
@@ -71,7 +71,7 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 ### Status transitions owned
 
-- `in-progress → implemented → completed` on the **single sync commit** (per the 3-phase close, the `completed` transition is merged into the sync commit — there is no separate Mx chore commit). Applied atomically to ALL 4 SPEC artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field is also refreshed to the sync commit date in all 4 frontmatter blocks. The sync commit carries the 3-phase close (plan→run→sync).
+- `in-progress → implemented → completed` on the **single sync commit** (per the 3-phase close, the `completed` transition is merged into the sync commit — there is no separate Mx chore commit). Applied atomically to the status-bearing SPEC artifacts: `spec.md` frontmatter `status:` and, where present, the `progress.md` status line. `plan.md` and `acceptance.md` carry no `status:` field (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Artifact Statelessness — the `ArtifactStatusFieldForbidden` lint rejects one). The `updated:` field is refreshed to the sync commit date in `spec.md` and in every other artifact that carries a frontmatter block. The sync commit carries the 3-phase close (plan→run→sync).
 - MX Tag validation is performed as a **sync sub-step** within this same sync commit — NOT a separate Mx-phase step. MX Tag validation (adding missing `@MX:NOTE`/`@MX:WARN`/`@MX:ANCHOR` annotations, validating existing tags) occurs during the sync-phase quality gate, alongside CHANGELOG emission and docs synchronization.
 
 Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active 3-phase flow.)
@@ -192,7 +192,7 @@ Before appending to `CHANGELOG.md` `[Unreleased]` section, this agent MUST run 3
 
 ### Forbidden modifications
 
-- Modifying `spec.md`, `plan.md`, or `acceptance.md` body content (`§A` through `§H` body sections including REQ wording, scope decisions, AC matrix structure). Frontmatter field updates limited to `status:` (`in-progress → implemented → completed` merged close) and `updated:` (refresh date) — **NEVER** other frontmatter fields, NEVER any body section content.
+- Modifying `spec.md`, `plan.md`, or `acceptance.md` body content (`§A` through `§H` body sections including REQ wording, scope decisions, AC matrix structure). Frontmatter field updates limited to `status:` in `spec.md` (`in-progress → implemented → completed` merged close) and `updated:` (refresh date) — `plan.md` / `acceptance.md` carry no `status:` field, so only their `updated:` is refreshed — **NEVER** other frontmatter fields, NEVER any body section content.
 - Modifying `progress.md` `§E.2 Run-phase Evidence` or `§E.3 Run-phase Audit-Ready Signal` (owned by manager-develop)
 - Modifying implementation source files (`.go`, `.py`, `.ts`, etc.) — out of sync-phase scope
 - Modifying agent files (`.claude/agents/**/*.md`) — out of sync-phase scope

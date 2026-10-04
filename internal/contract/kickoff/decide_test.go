@@ -72,6 +72,12 @@ func (f *dfx) hash() string {
 func (f *dfx) writeReport(r auditReport) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# plan-audit\n\nVerdict: %s\nOverall Score: %s\n", r.verdict, r.score)
+	// The shared admission predicate (internal/auditverdict) requires the
+	// must-pass and blocking fields, and enumerated debts for PASS-WITH-DEBT.
+	b.WriteString("must_pass_failed: 0\nblocking_count: 0\n")
+	if r.verdict == "PASS-WITH-DEBT" {
+		b.WriteString("debts:\n- debt: D1 dispose_in=run fixture debt\n")
+	}
 	switch r.hash {
 	case "":
 		fmt.Fprintf(&b, "plan_artifact_hash: %s\n", f.hash())

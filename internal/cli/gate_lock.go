@@ -11,7 +11,7 @@ package cli
 // fails the gate and never blocks without bound.
 //
 // The substrate reuses the repository's existing cross-process per-scope lock
-// PATTERN (internal/spec/lock.go and internal/kanban/board_lock.go with their
+// PATTERN (internal/spec/lock.go and internal/factory/board_lock.go with their
 // platform counterparts: flock on Unix, atomic-create on Windows); the
 // try-semantics give the bounded wait its natural form — attempt, sleep
 // briefly, attempt again, until the budget expires. The lock lives in this
@@ -28,7 +28,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // ErrGateLockHeld is returned by AcquireGateLock when another process holds
@@ -239,7 +239,7 @@ func waitForGateLock(projectDir string, budget time.Duration, w io.Writer) gateL
 				lastNotifiedPID = resHolder
 				_, _ = fmt.Fprintf(w, "gate-run lock: held by pid %d — waiting (budget %s)\n", resHolder, budget)
 			}
-			if !kanban.FactoryProcessAlive(resHolder) {
+			if !factory.FactoryProcessAlive(resHolder) {
 				// The recorded holder is gone. Clear the stale artifact and
 				// retry immediately rather than sleeping the delay first; a
 				// changed-hands abort means a live process holds it now, and

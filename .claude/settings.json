@@ -408,6 +408,10 @@
     "refreshInterval": 10
   },
   "skillListingBudgetFraction": 0.02,
+  "disableClaudeAiConnectors": true,
+  "enabledPlugins": {
+    "vercel@claude-plugins-official": false
+  },
   "showThinkingSummaries": false,
   "cleanupPeriodDays": 30,
   "outputStyle": "MoAI-Easy",
