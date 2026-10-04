@@ -3,7 +3,6 @@
 package harness
 
 import (
-	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
@@ -35,11 +34,7 @@ func TestPruneStateFIFODoesNotHang(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(3 * time.Second):
-		// Release the blocked open so the goroutine and the temp dir do not leak.
-		if f, err := os.OpenFile(statePath, os.O_RDWR, 0); err == nil {
-			_ = f.Close()
-		}
-		<-done
+		// No wait for the goroutine: a prune blocked in a FIFO read cannot be released from here.
 		t.Fatal("PruneStaleEntries blocked on a FIFO at the state path")
 	}
 }

@@ -32,6 +32,9 @@ All commands run in this run against worktree HEAD 30ce3a02d plus the uncommitte
 - Only the pre-check read was repaired. The locked path (`openStateFile` default branch, `O_RDWR|O_CREATE` on a FIFO) was not probed for a hang beyond the test completing within 3 s.
 - Independent card-review not run (lane self-review only).
 
+## REQ-HRH-008 judgment (one line)
+REQ-HRH-008 (t1432 spec.md:196) bars adding "no lock, no file open and no system call beyond those present at base"; `O_NONBLOCK` changes the flags of the one existing open and adds none, so the wording does not forbid it, but AC-009's function-scoped diff over `readStampFile` will now show a change and t1432 spec.md:64 calls the FIFO hang "not repaired here (REQ-HRH-008 forbids a call added)" — that sentence needs a follow-up edit when t1432 lands (read, not run against t1432's tree).
+
 ## Residual-risk
 - SPEC-HARNESS-RETENTION-HARDEN-001 (t1432) REQ-HRH-008 forbids adding a system call to the pre-lock path; this change adds a flag, not a call, but t1432's wording/AC-009 should be reconciled when that SPEC is revisited.
 - A FIFO with an active writer would deliver its bytes to the stamp read (bounded by `maxStampBytes`).
