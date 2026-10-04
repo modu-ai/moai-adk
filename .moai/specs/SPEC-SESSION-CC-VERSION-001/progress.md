@@ -74,7 +74,66 @@ commits these artifacts; nothing is committed or pushed by the plan phase.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Pre-flight baselines (measured before M1, tree `3dc8c9760`)
+
+| # | Command | Observed result |
+|---|---|---|
+| 1 | `git branch --show-current` + `git rev-parse --short HEAD` | `WT-session-cc-version` @ `3dc8c9760`, clean tree |
+| 2 | `go build ./...` | exit 0 |
+| 3 | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
+| 4 | `golangci-lint run --timeout=2m ./internal/session/... ./internal/cli/...` | `0 issues.` (installed build: v2.1.6 — the CI-pinned version) |
+| 5 | `grep -rn "Retired\|TestHarnessRetirement\|superseded" internal/session/ internal/cli/` | hits only in unrelated retirement records (`cg.go` retired launcher, `harness_route.go` supersedence note) — no policy conflict with this SPEC's surface |
+
+### M1 — The version reads behind seams
+
+**E6 RED evidence (TDD)** — the three fixture tests of AC-SCV-001..003, run against
+signature-only stubs (no reader logic; bodies returned zero values), before any reader
+existed. Command: `go test ./internal/session/ -run '^(TestRunningVersionFromInjectedMapping|TestInstalledVersionFromResolvedPath|TestVersionDegradationRendersUnknown)$' -v`
+→ exit **1**; verbatim (abridged to the assertion lines — full log retained):
+
+```
+=== RUN   TestRunningVersionFromInjectedMapping
+    ccversion_test.go:49: ResolveCCVersions(4242).Running = "", want 2.1.281 (a library mapping's version shape must not satisfy the read)
+--- FAIL: TestRunningVersionFromInjectedMapping (0.00s)
+=== RUN   TestInstalledVersionFromResolvedPath
+=== RUN   TestInstalledVersionFromResolvedPath/versions_shape
+    ccversion_test.go:66: installed version = "", want 2.1.288
+=== RUN   TestInstalledVersionFromResolvedPath/claude-code_shape
+    ccversion_test.go:72: installed version = "", want 2.1.284
+=== NAME  TestInstalledVersionFromResolvedPath
+    ccversion_test.go:87: versionSegmentFromPath("/Users/dev/.local/share/claude/versions/2.1.281/claude") = "", want "2.1.281"
+    ccversion_test.go:87: versionSegmentFromPath("/opt/node/lib/node_modules/@anthropic-ai/claude-code/2.1.284/cli") = "", want "2.1.284"
+--- FAIL: TestInstalledVersionFromResolvedPath (0.01s)
+=== RUN   TestVersionDegradationRendersUnknown
+    ccversion_test.go:133: dead pid running = "", want "unknown"
+    ccversion_test.go:141: probe error running = "", want "unknown"
+    ccversion_test.go:152: unversioned running = "", want "unknown"
+    ccversion_test.go:168: unsupported platform running = "", want "unknown"
+--- FAIL: TestVersionDegradationRendersUnknown (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/session	0.317s
+```
+
+**GREEN** — the same selector after the readers landed → exit 0; verbatim tail:
+
+```
+--- PASS: TestRunningVersionFromInjectedMapping (0.00s)
+--- PASS: TestInstalledVersionFromResolvedPath (0.01s)
+--- PASS: TestVersionDegradationRendersUnknown (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/session	0.355s
+```
+
+**M1 milestone gate** — `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...`
+→ exit 0; `go test ./internal/session/` → `ok … 17.618s` exit 0 (whole package, no selector);
+`golangci-lint run --timeout=2m ./internal/session/... ./internal/cli/...` → `0 issues.`.
+
+**Gaps (M1)**: none — every AC-SCV-001..003 command was run in this phase on this tree.
+**Residual-risk (M1)**: the `ccversion_other.go` runtime path cannot execute on this darwin
+machine; its contract is carried by the `unsupported platform read` subtest standing in
+through the shared seam, plus the windows cross-build proving the file compiles. The darwin
+`lsof` exec site itself is seam-excluded from unit coverage per REQ-SCV-004 (no test spawns a
+process); its real-world behavior is measured live in §F.4 below.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

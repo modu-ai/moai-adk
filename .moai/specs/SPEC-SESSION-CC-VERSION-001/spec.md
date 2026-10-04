@@ -2,7 +2,7 @@
 id: SPEC-SESSION-CC-VERSION-001
 title: "Running-binary staleness visibility and the launcher-mediated --resume emergency path"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-10-04
 updated: 2026-10-04
 author: manager-spec
