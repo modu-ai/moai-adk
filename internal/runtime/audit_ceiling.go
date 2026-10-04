@@ -7,6 +7,9 @@
 //
 // The C5 exemption holds: no syscall and no build-tag literal exist in this
 // file's scope.
+//
+// @MX:NOTE: [AUTO] the plan-audit ceiling surface — count, resolve, evaluate, record; the exported functions stay reachable only through the single EvaluatePlanAuditCeiling entry and the spec ceiling CLI verb
+// @MX:SPEC: SPEC-AUDIT-CEILING-002
 package runtime
 
 import (
@@ -320,6 +323,10 @@ func splitProposalReference(specID string) string {
 // RecordCeilingOutcome writes the outcome record to
 // .moai/state/audit-ceiling/<SPEC-ID>.json (machine-local state). It is the
 // ONE recording path: no other code writes a ceiling outcome record.
+//
+// @MX:ANCHOR: [AUTO] the ONE ceiling-outcome recording path — every recorded plan-audit ceiling outcome is written by this function, never elsewhere
+// @MX:REASON: a second writer would fork the record format and let two audit-ceiling truth sources drift silently
+// @MX:SPEC: SPEC-AUDIT-CEILING-002
 func RecordCeilingOutcome(specID string, outcome CeilingOutcome) error {
 	if specID == "" || specID == "." || specID == ".." || strings.ContainsAny(specID, `/\`) {
 		return fmt.Errorf("RecordCeilingOutcome: invalid SPEC id %q", specID)

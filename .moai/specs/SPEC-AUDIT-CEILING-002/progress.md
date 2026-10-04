@@ -122,6 +122,38 @@ run_status: audit-ready
 run_complete_at: 2026-10-05
 audit_ready: true
 
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_status: audit-ready
+sync_complete_at: 2026-10-05
+audit_ready: true
+sync_commit_sha: pending-backfill-sync
+
+Sync close (manager-docs, 2026-10-05, branch `WT-audit-ceiling-guard`, worktree `.claude/worktrees/t1500`): the single sync commit carries (a) the CHANGELOG `[Unreleased]` → `### Added` entry (the B12 pre-check first — `grep -c 'SPEC-AUDIT-CEILING-002' CHANGELOG.md` → `0`, exit 1, no duplicate; every plan §B implementation file read before drafting per B12, paths verified against the branch diff `e497f6936..HEAD`), (b) the MX sync pass (below), (c) the spec.md frontmatter merged transition `in-progress → implemented → completed` on this one commit with the `Authored-By-Agent: manager-docs` trailer, and (d) this §E.4 with the `pending-backfill-sync` placeholder, backfilled in the following commit (the D3 sanctioned follow-up — a commit cannot cite its own SHA). plan.md and acceptance.md carry no frontmatter (omitted by design), so no `updated:` refresh applies to them; spec.md's `updated: 2026-10-05` already reads today.
+
+### Sync gates (observed, this run, this tree)
+
+- `go run ./cmd/moai spec lint SPEC-AUDIT-CEILING-002 --strict` → `✓ No findings — all SPEC documents are valid`, exit 0 (from-tree invocation per §E.1 item 5's binary-lag rationale).
+- Runtime family, count-first: `go test -list` with the M1+M2 union selector names exactly 11 tests → `go test -run` same selector → `ok  github.com/modu-ai/moai-adk/internal/runtime 0.122s`, exit 0. (The dispatch brief said "10-test"; the M1 six + M2 five union is 11 — the observed count is reported, not the brief's.)
+- CLI family, count-first: `-list` names exactly 5 (`TestSpecCeilingRecordWritesJSON`, `TestResolveAuditGatesConfigErrorDistinct`, `TestWorkflowAuditPinsErrorNotFolded`, `TestWorktreeRootSurfacesGateError`, `TestGateErrorPropagatesToCallerSites`) → `-run` → `ok  github.com/modu-ai/moai-adk/internal/cli 1.699s`, exit 0.
+- `go test -run '^TestHarnessConfigPlanAuditCeilings$' ./internal/config` → `ok ... (cached)`, exit 0.
+- `go build ./...` → exit 0.
+
+### MX sync pass
+
+Fan-in measured mechanically (grep of production callers, tests excluded) before any tag was chosen — none of the five new exported functions reaches the fan_in ≥ 3 anchor trigger: `CountPlanAuditRounds` 1, `SelectLatestVerdict` 1, `ResolvePlanAuditCeiling` 2, `EvaluatePlanAuditCeiling` 1, `RecordCeilingOutcome` 1. Tags added/updated in house style (`[AUTO]` prefix, `code_comments: en`):
+
+- `internal/runtime/audit_ceiling.go` — file-surface `@MX:NOTE` + `@MX:SPEC: SPEC-AUDIT-CEILING-002` (the ceiling surface's shape), and `@MX:ANCHOR` + `@MX:REASON` + `@MX:SPEC` on `RecordCeilingOutcome` (public-API invariant: the ONE recording path; anchored on the invariant, not on fan-in).
+- `internal/cli/spec_ceiling.go` — file-surface `@MX:NOTE` + `@MX:SPEC` (the recording path's only caller this SPEC builds, D7).
+- `internal/auditverdict/verdict.go` — the existing `@MX:ANCHOR` on `Admit` updated per the fan-in-change rule: its description now names the plan-audit ceiling evaluation as the fourth caller class.
+- No `@MX:WARN`: the new code carries no goroutine, no global-state mutation, and no complexity ≥ 15 construct.
+
+### Sync-phase observations (honest record)
+
+1. **Plan §B row 17 not executed, not covered by any AC.** The harness.yaml note above `plan_audit_tier_ceilings` (:69-84 in the plan's terms) still does not name the new Go reader — the describing-surface currency edit (shipped copy + template twin) was not performed in run and is not recorded in §E.2's deviations. No AC fails on it (the note edit has no criterion). Recorded here rather than silently dropped; repair is a one-line describing-surface edit, available to any later card touching that surface.
+2. Plan §B row 4's named-file displacement (loader.go `knownHarnessTopLevelKeys`, not audit_registry.go) was already recorded in §E.2 deviation item 1 — no sync action needed.
+3. §K's condition-3 sweep predates the sync edits by construction; the sync commit's own text-bearing surfaces (CHANGELOG entry, this section, MX comments) were written against the re-read implementation files this phase, and the B12 pre-check plus the lint gate above cover them.
+
 ## §G Plan-Phase Notes
 
 1. Lint record, inline (iter1 D15): v0.1.0 — corrections applied during authoring were (a) the OutOfScopeRule shape (the conforming form is an H3 `### Out of Scope — …` heading with list items; the `## Out of Scope`-heading-only shape triggers MissingExclusions) and (b) anchored `-run` selectors; final result "✓ No findings — all SPEC documents are valid", exit 0, from this tree. v0.2.0 repair — re-run after the D1-D10 edits: "✓ No findings — all SPEC documents are valid", exit 0. v0.3.0 repair — re-run after the N1-N7+N10 edits: "✓ No findings — all SPEC documents are valid", exit 0. v0.4.0 repair — re-run after the R1-R6 edits and again after the §K sweep: "✓ No findings — all SPEC documents are valid", exit 0 (all measured from this tree).

@@ -200,7 +200,7 @@ func PlanThreshold(specDir string) float64 {
 // hash binds the current plan artifacts. Both are ignored in the sync phase.
 // A refusal always carries a reason.
 //
-// @MX:ANCHOR: [AUTO] the single verdict admission predicate shared by contract rules, kickoff decide, and the card-transition guard
+// @MX:ANCHOR: [AUTO] the single verdict admission predicate shared by contract rules, kickoff decide, the card-transition guard, and the plan-audit ceiling evaluation
 // @MX:REASON: a second copy of this rule is exactly the drift that let PASS-WITH-DEBT pass three code sites while doctrine blocked it
 func Admit(f Fields, phase Phase, threshold float64, hashOK bool) (bool, string) {
 	if len(f.DuplicateKeys) > 0 {

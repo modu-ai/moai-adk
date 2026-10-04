@@ -7,6 +7,9 @@ package cli
 //
 // C1/C-HRA-008: this verb asks nothing of anyone — no prompt, no interactive
 // input of any kind. Read-only by default; --record is the explicit write.
+//
+// @MX:NOTE: [AUTO] the ceiling recording path's only caller this SPEC builds (D7) — evaluate, print, and with --record write through runtime.RecordCeilingOutcome
+// @MX:SPEC: SPEC-AUDIT-CEILING-002
 
 import (
 	"errors"
