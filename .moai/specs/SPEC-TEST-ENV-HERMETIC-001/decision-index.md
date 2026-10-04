@@ -27,11 +27,11 @@ Authority anchor: n/a (no anchor for this label)
 Why unresolved: a value-prefix rule picks up new axes automatically but misses a future axis with a different prefix; an explicit list never misses a listed axis but is blind to an unlisted one. Neither is settled by a committed rule (spec.md §H O1).
 Operator verdict:
 
-### Q4: Which of `MOAI_AUTONOMY_TIER`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_FACTORY_MANAGED`, `MOAI_FACTORY_SLOW_LAUNCH_MS` enter the cli scrub set and which take a reasoned, cited exemption?
+### Q4: Which of `MOAI_AUTONOMY_TIER`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_FACTORY_MANAGED`, `MOAI_FACTORY_SLOW_LAUNCH_MS`, `MOAI_FACTORY_MANAGED_TUI`, `MOAI_FACTORY_APP_SERVER_TOKEN` enter the cli scrub set and which take a reasoned, cited exemption?
 
 Label: EVIDENCE-NEEDED
 Authority anchor: n/a (no anchor for this label)
-Why unresolved: these five and `MOAI_FACTORY_ROLE` (whose need is measured, acceptance.md E-1 / E-1b) are the six family axes `internal/cli` production code references and the test binary's start-up scrub does not cover (spec.md §A.6). Every test site that touches the five sets or clears the axis itself, but whether any test depends on an ambient value is unmeasured; the whole-package scrubbed arm at plan.md M4 decides it (spec.md §H O2).
+Why unresolved: these seven and `MOAI_FACTORY_ROLE` (whose need is measured, acceptance.md E-1 / E-1b) are the eight family axes `internal/cli` production code references and the test binary's start-up scrub does not cover (spec.md §A.6, re-derived at `8cb2444e7` after the develop absorption). Every test site that touches the five pre-absorption axes sets or clears the axis itself; the two absorption-added axes have no static read; whether any test depends on an ambient value is unmeasured, and the whole-package scrubbed arm at plan.md M4 decides it (spec.md §H O2).
 Operator verdict:
 
 ### Q5: Does the sweep extend to a cross-package registry check covering `internal/discovery` and any future package?

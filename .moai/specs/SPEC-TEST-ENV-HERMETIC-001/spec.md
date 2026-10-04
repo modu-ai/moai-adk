@@ -1,7 +1,7 @@
 ---
 id: SPEC-TEST-ENV-HERMETIC-001
 title: "Test env hermeticity sweep — tests that read the factory/kanban lane gate axes must not change verdict with the ambient env of the session that runs them"
-version: "0.5.0"
+version: "0.6.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-04
@@ -46,7 +46,7 @@ no local change at measurement time) in a lane session whose ambient env carries
 whose Go sources are identical to `2de0a2cb6` (`git rev-list --count 2de0a2cb6..a5a63a0bc` = 1 and
 that commit's `git diff-tree` lists five SPEC-directory paths, no Go file). The deciding command
 and verbatim output of each item is carried in `acceptance.md` §D.0 (evidence ledger, ids
-E-1..E-8). The earlier local-only baseline `.moai/reports/t1356/baseline.md` (gitignored by
+E-1..E-9). The earlier local-only baseline `.moai/reports/t1356/baseline.md` (gitignored by
 operator directive 2026-09-14 — `.moai/reports/*`; it is never force-added) is context only: the
 ledger carries every fact the committed record relies on, including the cli scrubbed-arm green
 (E-1b), so the committed record does not depend on it.
@@ -61,7 +61,13 @@ ledger carries every fact the committed record relies on, including the cli scru
    The family axes the set lacks are **six**: `MOAI_FACTORY_ROLE`, `MOAI_AUTONOMY_TIER`,
    `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_FACTORY_MANAGED`, and
    `MOAI_FACTORY_SLOW_LAUNCH_MS` (read at `internal/cli/factory_launch_timing.go:172`); production
-   code in the package references all six (§A.6). `TestTodoClaim_LaneGovernance` pins only the
+   code in the package references all six (§A.6). (Measured on the plan-time trees, which predate
+   the develop absorption; at the absorbed HEAD `8cb2444e7` the census is re-derived — §A.6: the
+   set lacks **eight** of the current sixteen family axes, the six above plus
+   `MOAI_FACTORY_MANAGED_TUI` (`managed_codex_tui.go:186`) and `MOAI_FACTORY_APP_SERVER_TOKEN`
+   (`managed_codex_tui.go:338-345`), and production references all eight. The five observed reds
+   and their mechanism — the role axis outside the scrub set — are unchanged.)
+   `TestTodoClaim_LaneGovernance` pins only the
    lane-label axis (`t.Setenv(EnvMoaiFactoryWorker, "")`), which is exactly the partial pin the
    card names.
 2. **internal/hook — two observed reds, responsible axes isolated by measurement.**
@@ -96,35 +102,62 @@ ledger carries every fact the committed record relies on, including the cli scru
    enumerates the hook guard's `os.Getenv` call sites against a closed set.
 6. **The axis family and its reach.** The guard's family is read by one rule: the constants in
    `internal/config/envkeys.go` whose value starts with `MOAI_FACTORY_` or `MOAI_KANBAN`, plus
-   `MOAI_AUTONOMY_TIER`. At HEAD `a5a63a0bc` that rule yields **17** constants (the same 17 as the
-   name rule `Env(AutonomyTier|MoaiKanban*|MoaiFactory*|Factory*)`): `MOAI_AUTONOMY_TIER`,
-   `MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_ID`, `MOAI_KANBAN_LABEL`,
-   `MOAI_KANBAN_SETTINGS_INJECTED`, `MOAI_KANBAN_LEAD_ADDR`, `MOAI_KANBAN_BACKEND`,
-   `MOAI_KANBAN_CARD`, `MOAI_KANBAN_LEAD_NAME`, `MOAI_FACTORY_WORKERS`,
-   `MOAI_FACTORY_SLOW_LAUNCH_MS`, `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_MANAGED`,
-   `MOAI_FACTORY_ROLE`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`. Per package
+   `MOAI_AUTONOMY_TIER`. The census is re-derived whenever the tree under it changes — at
+   pre-flight and after every develop absorption (the same discipline as `<BASE>` in plan.md B10).
+   The absorption of develop `30ce3a02d` at merge `960ea3012` retired `MOAI_KANBAN`,
+   `MOAI_KANBAN_SPEC` and `MOAI_KANBAN_LABEL` and added `MOAI_FACTORY_APP_SERVER_TOKEN` and
+   `MOAI_FACTORY_MANAGED_TUI`, so the rule yields **16** constants at HEAD `8cb2444e7` (the same
+   16 as the name rule `Env(AutonomyTier|MoaiKanban*|MoaiFactory*|Factory*)`; it was **17** at
+   `a5a63a0bc`, the plan-time tree, before the absorption). The census command and its counts:
+   `grep -oE '"MOAI_(FACTORY_|KANBAN)[A-Z_]*"|"MOAI_AUTONOMY_TIER"' internal/config/envkeys.go`
+   redirected to a file, then `sort -u` and `wc -l` on the sorted file — **16** at `8cb2444e7`;
+   the same commands on `git show 646a7860d:internal/config/envkeys.go` — **17**. The sixteen,
+   with the family identifiers: `MOAI_AUTONOMY_TIER` (`EnvAutonomyTier`), `MOAI_KANBAN_ID`
+   (`EnvFactoryRunID`), `MOAI_KANBAN_SETTINGS_INJECTED` (`EnvFactorySettingsInjected`),
+   `MOAI_KANBAN_LEAD_ADDR` (`EnvFactoryLeadAddr`), `MOAI_KANBAN_BACKEND` (`EnvFactoryBackend`),
+   `MOAI_KANBAN_CARD` (`EnvFactoryCard`), `MOAI_KANBAN_LEAD_NAME` (`EnvFactoryLeadName`),
+   `MOAI_FACTORY_WORKERS` (`EnvMoaiFactoryWorkers`), `MOAI_FACTORY_SLOW_LAUNCH_MS`
+   (`EnvMoaiFactorySlowLaunchMS`), `MOAI_FACTORY_WORKER` (`EnvMoaiFactoryWorker`),
+   `MOAI_FACTORY_MANAGED` (`EnvMoaiFactoryManaged`), `MOAI_FACTORY_MANAGED_TUI`
+   (`EnvMoaiFactoryManagedTUI`), `MOAI_FACTORY_APP_SERVER_TOKEN`
+   (`EnvMoaiFactoryAppServerToken`), `MOAI_FACTORY_ROLE` (`EnvFactoryRole`),
+   `MOAI_FACTORY_CLEAR_POLICY` (`EnvFactoryClearPolicy`), `MOAI_FACTORY_AUTO_DISPATCH`
+   (`EnvFactoryAutoDispatch`).
+   **Secret-valued axes — one redaction rule for the whole SPEC.** A family axis whose value
+   carries a credential is marked **secret** in this census (at HEAD exactly one:
+   `MOAI_FACTORY_APP_SERVER_TOKEN`, the owned Codex App Server's capability token, passed to the
+   operator TUI child at `internal/cli/managed_codex_tui.go:338-345`). Every recording surface of
+   acceptance.md §D.3 writes a secret-valued axis as `NAME=<redacted>` — in the recorded arm env
+   line, and in the child-visible env file, which is passed through the same redaction before
+   recording — and every byte-identity comparison over those lines compares the redacted forms, so
+   the comparison still proves what it proved: the axis's presence and the non-secret values,
+   never the secret's value. A new credential-class axis joins this marker in the same change that
+   adds the constant. Per package
    (production = non-`_test.go` files in the package directory; a **reference** is either the
    identifier `config.<Name>` **or** the axis's quoted literal value — either form counts, so
    `os.Getenv("MOAI_AUTONOMY_TIER")` at `internal/cli/codex_sync_gate.go:262` is not missed; the
    counts below hold under either form, because the one quoted literal in `internal/cli` is also
-   referenced by identifier and `internal/hook` production carries no quoted family literal at
-   HEAD `669cf18c9`):
+   referenced by identifier and `internal/hook` production carries no quoted family literal —
+   re-checked at `8cb2444e7`):
 
    | package | family axes referenced by production | covered by the test binary's start-up scrub today | not covered — decided by this SPEC |
    |---------|---------------------------------------|---------------------------------------------------|-----------------------------------|
-   | `internal/cli` | **17** of 17 | **11** (Workers, Worker, Kanban, KanbanID, KanbanSpec, KanbanLabel, KanbanSettingsInjected, KanbanLeadAddr, KanbanBackend, KanbanCard, KanbanLeadName) | **6**: Role, AutonomyTier, ClearPolicy, AutoDispatch, Managed, SlowLaunchMS |
-   | `internal/hook` | **13** of 17 (Kanban, KanbanSpec, KanbanID, KanbanLabel, KanbanSettingsInjected, KanbanLeadAddr, KanbanBackend, KanbanCard, KanbanLeadName, Workers, Worker, Role, AutoDispatch) | **0** | **13** (the four unreferenced axes — AutonomyTier, ClearPolicy, Managed, SlowLaunchMS — are outside the guard's judgment) |
+   | `internal/cli` | **16** of 16 | **8** (Workers, Worker, KanbanID, KanbanSettingsInjected, KanbanLeadAddr, KanbanBackend, KanbanCard, KanbanLeadName — the slice also still unsets the three retired names as markers) | **8**: Role, AutonomyTier, ClearPolicy, AutoDispatch, Managed, SlowLaunchMS, ManagedTUI, AppServerToken |
+   | `internal/hook` | **10** of 16 (KanbanID, KanbanSettingsInjected, KanbanLeadAddr, KanbanBackend, KanbanCard, KanbanLeadName, Workers, Worker, Role, AutoDispatch) | **0** | **10** (the six unreferenced axes — AutonomyTier, ClearPolicy, Managed, ManagedTUI, AppServerToken, SlowLaunchMS — are outside the guard's judgment) |
    | `internal/discovery` | 1 (KanbanID) | no `TestMain` scrub | narrow lane-vs-scrubbed pair (E-7) |
-   | `internal/cli/ptycaptest` | 9 (the Kanban axes) | own drift guard | not measured here (R4) |
+   | `internal/cli/ptycaptest` | 6 (the Kanban axes) | own drift guard | not measured here (R4) |
 
-   Reach, measured by one command per directory,
-   `grep -lE 'config\.Env(AutonomyTier|MoaiKanban[A-Za-z]*|MoaiFactory[A-Za-z]*|Factory[A-Za-z]*)\b' <dir>/*.go`
-   split into non-test and `_test.go` files at HEAD `a5a63a0bc`: `internal/cli` 24 production /
-   55 test files; `internal/hook` 9 / 33; `internal/discovery` 3 / 2; `internal/cli/ptycaptest`
-   1 / 1 (`internal/cli` production reaches 25 files when the one quoted literal
-   `"MOAI_AUTONOMY_TIER"` at `codex_sync_gate.go:262` is counted). Test files referencing the five
-   lane axes (`EnvFactoryRole`, `EnvMoaiFactoryWorker`, `EnvMoaiFactoryWorkers`,
-   `EnvMoaiKanbanBackend`, `EnvMoaiKanbanID`): 46 in `internal/cli`, 28 in `internal/hook`.
+   Reach, measured per directory over the directory's tracked Go files split into non-test and
+   `_test.go`, a file counted when it carries a family reference by the either-form rule above, at
+   HEAD `8cb2444e7`: `internal/cli` 27 production / 67 test files (26 by identifier alone — the
+   one quoted literal `"MOAI_AUTONOMY_TIER"` at `codex_sync_gate.go:262` is the +1);
+   `internal/hook` 8 / 34; `internal/discovery` 3 / 2; `internal/cli/ptycaptest` 1 / 1. Test
+   files referencing the five lane axes (`EnvFactoryRole`, `EnvMoaiFactoryWorker`,
+   `EnvMoaiFactoryWorkers`, `EnvFactoryBackend`, `EnvFactoryRunID`): 53 in `internal/cli`
+   (54 with the ptycaptest subdirectory), 28 in `internal/hook`. (Plan-time figures at
+   `a5a63a0bc`, before the absorption: family 17; cli 24 production / 55 test, 25 with the
+   literal, 46 five-axis test files; hook 9 / 33. The absorption moved them; this census is the
+   re-derivation, and a further absorption re-derives it again.)
 
 ## §B Scope
 
@@ -306,13 +339,16 @@ tree at test time: the **family** (§A.6, read from `internal/config/envkeys.go`
   (empty reason, empty citation, or a citation to a file that does not reference the axis);
   (3) a liveness input of the coverage test — the reference scan finds **zero** referenced axes,
   or the scrub set is empty, or the family read from `envkeys.go` has fewer members than the
-  floor recorded at c2 (**17**, §A.6) (an empty sweep asserts nothing,
+  floor recorded at c2 (**16**, §A.6 — the census of the tree c2 is built on, re-derived at
+  pre-flight and after every develop absorption) (an empty sweep asserts nothing,
   `verification-completeness.md` §1.1; a scan that silently drops most constants would otherwise
   stay green on `referenced >= 1`). Each of the three is its own `t.Errorf`, so the hook coverage
   test at c2 — whose scrub set is deliberately empty (plan.md D5) — carries **both** the
-  empty-scrub-set message and the thirteen uncovered-axis names; the cli coverage test at c2
-  (non-empty scrub set) carries the six uncovered-axis names only. A deliberate edit that
-  removes a family constant lowers the floor in the same change; (4) the binary's start-up scrub is not
+  empty-scrub-set message and the ten uncovered-axis names; the cli coverage test at c2
+  (non-empty scrub set) carries the eight uncovered-axis names only. A deliberate edit that
+  removes a family constant lowers the floor in the same change; a develop absorption that moves
+  the census instead re-derives it and the floor at pre-flight (§A.6), the edit being develop's,
+  not this branch's; (4) the binary's start-up scrub is not
   applied — the child still sees a referenced axis; (5) the sibling package's guard file is absent
   or no longer declares its guard tests. Inputs (1)-(2) reintroduce the card's hazard for a future
   axis; input (4) is the hazard in the form a declared-only guard would miss. The family is read
@@ -404,11 +440,14 @@ in one place, AC-THE-005.
 - **R7 — machine load flips verdicts.** The lease serializes heavy runs; a verdict that changes
   between a repeated identical arm is reported as load noise, not attributed to env. A name printed
   by §D.3 command 8 (the `final − c1` difference) or command 9 (the arm difference) is repeated
-  once as a whole-package arm — for command 9, both arms of the pair — a name printed in either run
-  is recorded with both outputs, a name printed only in the repeat counts as a hit, and only a name
-  failing in both runs is excused as load noise; the comparison stays by full test path.
+  once as a whole-package arm — for command 9, both arms of the pair — and every name printed in
+  either run is recorded with both outputs: a name printed in **both** runs counts as a hit
+  against the clause it was printed for, a name printed only in the repeat — absent from the
+  initial run — **also** counts as a hit and is never load noise, and load noise is the reverse
+  case, a name printed in the initial run and absent from the repeat; the comparison stays by full
+  test path (the rule §D.3 states and commands 8 and 9 operate under).
 - **R8 — the lane arm models the measuring session, not every possible lane.** The lane arm sets
-  the nine family axes the measuring session exported and unsets the other eight; a real lane with
+  the nine family axes the measuring session exported and unsets the other seven; a real lane with
   a different subset is not reproduced by it. The coverage test, the applied-behaviour test, and
   the scrubbed arm bound that gap: every referenced axis is declared stripped, shown stripped, and
   no test goes red when stripped. The arm is a lane only when its recorded env carries the modelled
@@ -426,13 +465,17 @@ in one place, AC-THE-005.
   (`MOAI_FACTORY_`, `MOAI_KANBAN`, `MOAI_AUTONOMY_TIER`; recommended in §E because a new constant
   joins automatically) or from an explicit list in the guard (simpler, but a new axis outside the
   list is invisible)? A future axis with a different prefix escapes the value-prefix rule.
-- **O2** — Which of the five cli axes other than the observed-red cause — `MOAI_AUTONOMY_TIER`,
+- **O2** — Which of the seven cli axes other than the observed-red cause — `MOAI_AUTONOMY_TIER`,
   `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_FACTORY_MANAGED`,
-  `MOAI_FACTORY_SLOW_LAUNCH_MS` — belong in cli's scrub set versus the exemption table?
-  Production references them. Static read at plan time: every test site that touches
+  `MOAI_FACTORY_SLOW_LAUNCH_MS`, `MOAI_FACTORY_MANAGED_TUI`, `MOAI_FACTORY_APP_SERVER_TOKEN` —
+  belong in cli's scrub set versus the exemption table?
+  Production references them (§A.6, re-derived at `8cb2444e7`). Static read at plan time: every
+  test site that touches
   `MOAI_FACTORY_SLOW_LAUNCH_MS` sets it itself (five `t.Setenv` sites in
   `factory_launch_timing_test.go:20,71` and `codex_debug_composition_test.go:85,112,122`) and none
-  reads it from ambient; the other four are set or cleared by their tests the same way. Whether
+  reads it from ambient; the other four are set or cleared by their tests the same way. The two
+  absorption-added axes (`MOAI_FACTORY_MANAGED_TUI`, and `MOAI_FACTORY_APP_SERVER_TOKEN`, which is
+  secret-valued, §A.6) have no such static read at plan time. Whether
   any test depends on an ambient value is decided by the M4 whole-package scrubbed arm: a test that
   goes red because the axis was stripped is the evidence for an exemption row (reason plus cited
   test file); otherwise the axis stays in the scrub set. The final exemption tables, and for each
@@ -465,9 +508,9 @@ in one place, AC-THE-005.
   `.claude/rules/moai/core/verification-claim-integrity.md` §2.3;
   `.claude/rules/local/gitflow-lane-protocol.md` §8.
 - `.moai/reports/t1356/baseline.md` — local-only on-disk measurement (gitignored; not committed);
-  `.moai/reports/t1356/plan-audit.md` and `.moai/reports/t1356/plan-audit-iter2.md` — the
-  iteration-1 and iteration-2 plan-audit reports, and `.moai/reports/t1356/plan-audit-iter3.md`
-  (iteration 3) (local, gitignored, cited by path only).
+  `.moai/reports/t1356/plan-audit.md`, `plan-audit-iter2.md`, `plan-audit-iter3.md`,
+  `plan-audit-iter4.md` and `plan-audit-iter5.md` — the iteration-1 through iteration-5
+  plan-audit reports (local, gitignored, cited by path only).
 
 ## §J HISTORY
 
@@ -478,3 +521,4 @@ in one place, AC-THE-005.
 | 2026-10-03 | manager-spec | v0.3.0 plan-audit iteration 2 revision (FAIL 0.86 vs 0.80, driven by one must-fix mutant hole; findings D1-D11; this feeds the final permitted audit). REQ-THE-003 and AC-THE-003 gain the c1-containment clause (e): a failure is env-unrelated only when identical in both arms and present in the c1 failing set of the same arm type, with the `final − c1` difference recorded and required empty (R6 reworded to match); AC-THE-004's mutant-probe text no longer overstates closure (the unscrubbed-axis-plus-padded-citation variant is named and left to review, with a closure DoD item listing the final exemption tables and each surviving row's red test); the hook coverage test's c2 red carries both the empty-scrub-set liveness message and the thirteen axis names (liveness uses `t.Errorf`); the class label of AC-THE-004 and AC-THE-008 is relabelled (the v0.2.0 \"on adoption\" label is retired) and one phrase is used across AC-THE-003, 004 and 008 for a cell completed by a later record; an AC-THE-005 step 7 content witness on the c2r commit; AC-THE-004 and AC-THE-008 bound to the M4 exit; lease cap and `-timeout` relation stated; the guard's reference rule pinned (identifier or quoted literal) with a family-size liveness floor of 17; REQ-THE-009's trigger reworded; the E-5 control gets an explicit upper bound and plan-time `go test -list` counts are recorded (E-8). |
 | 2026-10-03 | manager-spec | v0.4.0 delta revision for the leader-approved fourth plan-audit (iteration 3: FAIL 0.87, two must-fix holes in AC-THE-003; findings MF-1, MF-2, SF-1..SF-4). AC-THE-003 gains clause (f), a lane-arm positive control (env recorded and identical at c1 and final, every modelled axis present, five reds in the c1 lane arm, otherwise INVALID and failed) and a pre-flight env-read step; the failing-name comparison is by full test path, subtests included (REQ-THE-003 and REQ-THE-007 state the unit); exemption axes are left at their lane value in the scrubbed arm; the c2r cell carries exact command, exit code field and the c2 SHA with the pre-run HEAD read, and the sync re-execution records its own stdout; a one-repeat rule for a name absent from c1; AC-THE-006 gains assertion-removal and bare-return greps; `LC_ALL=C` on `sort` and `comm`; the §F wording slip is fixed. No REQ or AC added. |
 | 2026-10-04 | manager-spec | v0.5.0 iteration-4 residue revision (leader-authorized delta re-audit round; findings MF-3, SF-1..SF-6, N1 from `plan-audit-iter4.md`). The failing-name extraction regex is escape-aware (`"Test":"([^"\\]|\\.)+"`) in acceptance.md §D.3 commands 2, 3 and 6 and in the new command 11, so a quote inside a subtest name no longer truncates it and two quote-bearing names cannot collapse (E-9 control: the old form truncates to `TestParent/q\` and its `comm -13` prints nothing across `q"uote` → `q"uoted`; the new form prints both names whole and its `comm -13` prints the new failing name); skipped-set equality gains a command form (§D.3 command 11, `comm -3` over escape-aware skip-rows names files, must print nothing); REQ-THE-001/002 state the scrubbed arm leaves an axis carrying a reasoned, cited exemption at its lane value, aligning the requirement layer with the AC/plan mechanism (SF-1); the c2r cell obligations gain the `git status --short` read and the DoD re-execution claim is scoped to the sampled cell, the one-of-four sampling unchanged (SF-2); the repeat rule states a name printed in either run is recorded and a repeat-only name counts as a hit, and command 9 repeats both arms, with R7 citing commands 8 and 9 (SF-3); §D.3 command 10 is scoped to the c1 lane arms and the final-tree lane arm records its child-visible env beside the arm, identical to the c1 line (SF-4); the AC-THE-004 residual names the weakened-condition hollowing (SF-6); the acceptance.md c2r row is reworded without an ordering keyword — the iteration-4 CN-4 `CONFLICT:` line was a verb cross-cell false positive, disposition recorded in progress.md §E.1 (SF-5). develop `30ce3a02d` absorbed at merge `960ea3012` (551 commits); the five observed reds re-verified intact on `960ea3012`. No REQ or AC added. |
+| 2026-10-04 | manager-spec | v0.6.0 iteration-5 residue revision (leader-authorized second delta round; findings I5-D1..I5-D4 from `plan-audit-iter5.md`). R7's tail restored to the polarity the §D.3 repeat rule defines — a name printed in both runs counts as a hit, a repeat-only name also counts as a hit and is never load noise, load noise is the initial-run-only case — the v0.5.0 wording had inverted the both-runs case (I5-D1); §D.3 command 11 re-wired to the clause it serves — skipped-set equality is the lane arm's skip set against the scrubbed arm's skip set of the same tree stage, the pairing command 9 uses for the failing sets, with the c1-vs-final form kept as a labelled no-new-skip extra and the c1-side skip names files carried in §E.2 (I5-D2); the family census re-derived at the absorbed HEAD `8cb2444e7` — **16** axes (17 at `a5a63a0bc`; −`MOAI_KANBAN`, −`MOAI_KANBAN_SPEC`, −`MOAI_KANBAN_LABEL`, +`MOAI_FACTORY_APP_SERVER_TOKEN`, +`MOAI_FACTORY_MANAGED_TUI`) — with the census command recorded in §A.6 and the floor, the per-package referenced/covered/uncovered sets, the expected guard reds (eight cli axes, ten hook axes), R8's remainder (seven), §H O2, decision-index Q4 and plan.md's census-carrying lines restated against it (I5-D3); secret-valued axes marked in the census (`MOAI_FACTORY_APP_SERVER_TOKEN`) with one redaction rule — `NAME=<redacted>` in the recorded arm env line and in the child-visible env file before recording, the byte-identity comparisons run over the redacted forms (I5-D4). Incidental: the four stale references the audit listed as I5-D5 refreshed (E-1..E-9, the §I report paths, the §E.1 plan_status and audit-ready lines). No REQ or AC added. |

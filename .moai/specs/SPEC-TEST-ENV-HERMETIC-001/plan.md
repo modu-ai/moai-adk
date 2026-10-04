@@ -77,12 +77,14 @@ Then, one command per call:
 1. Re-establish the five observed reds with the RED-now commands of acceptance.md §D.0 (E-1, E-2)
    and the green arm E-1b — same commands, same tree lineage; record verbatim output and the tree SHA.
 2. List the family from `internal/config/envkeys.go` (constants whose value starts `MOAI_FACTORY_`
-   or `MOAI_KANBAN`, plus `MOAI_AUTONOMY_TIER`; 17 at `a5a63a0bc`) — this list builds both arms'
+   or `MOAI_KANBAN`, plus `MOAI_AUTONOMY_TIER`; 16 at the absorbed HEAD `8cb2444e7`, 17 at
+   `a5a63a0bc` before the develop absorption — re-derive it here and again after any further
+   absorption, spec.md §A.6) — this list builds both arms'
    env; do not copy it from this plan. Read the session's own family env, once, before any arm,
    with `env | grep -E '^(MOAI_FACTORY_|MOAI_KANBAN|MOAI_AUTONOMY_TIER)'` (a form the worktree guard
    accepts; it printed the nine axes at plan time, exit `0`, acceptance.md E-9): the lane arm
    reproduces it verbatim (nine axes at plan time: eight non-empty plus `MOAI_FACTORY_CLEAR_POLICY`
-   set empty) and unsets the other eight. Record the output as the arm env lines of progress.md
+   set empty) and unsets the other seven. Record the output as the arm env lines of progress.md
    §E.2. The read must show at least `MOAI_FACTORY_ROLE=lane` and non-empty `MOAI_FACTORY_WORKER`,
    `MOAI_FACTORY_WORKERS` and `MOAI_KANBAN_ID`; a session without them cannot measure the lane arm,
    so the run returns a blocker report and AC-THE-003 stays failed (acceptance.md §D.3 clause (f)).
@@ -151,17 +153,19 @@ Then, one command per call:
   `internal/config/envkeys_factory_role_test.go:60` forbids there, spec.md §G).
 - **D4 — guards are ordinary test functions, not `TestMain`** (spec.md §H O4). Liveness: the
   coverage test asserts its own swept count (non-zero references found, non-empty scrub set, family
-  size at least the floor 17 recorded at c2) and prints it under `-v`; every liveness assertion
+  size at least the floor 16 recorded at c2) and prints it under `-v`; every liveness assertion
   reports with `t.Errorf`, so the comparison always runs to completion; it also asserts that the
   sibling package's guard file exists and declares its guard tests (the unasked stale-guard
   signal, spec.md §E). The floor is a constant in the guard file, lowered in the same change that
-  deliberately removes a family constant; the reference scan sees Go source only (spec.md §G R4).
+  deliberately removes a family constant; a develop absorption that moves the census instead
+  re-derives it and the floor at pre-flight (spec.md §A.6) — the removal is develop's edit, not
+  this branch's; the reference scan sees Go source only (spec.md §G R4).
 - **D5 — hook scrub-set variable is declared empty in c2** (so the tree compiles and the guards are
   red for the right reason: the set is empty against referenced axes) and filled in c4; the scrub
   function and its `TestMain` call are added in c4, not c2, so c2 carries no unused symbol. The
   hook coverage test is therefore red at c2 for **two** reasons, both reported because liveness
-  uses `t.Errorf` (D4): the empty-scrub-set liveness message and the thirteen uncovered-axis
-  names; the cli coverage test at c2 (non-empty scrub set) carries the six axis names only; the
+  uses `t.Errorf` (D4): the empty-scrub-set liveness message and the ten uncovered-axis
+  names; the cli coverage test at c2 (non-empty scrub set) carries the eight axis names only; the
   applied tests carry the surviving axes. The c2r record states which message(s) the observed red
   carries, per package and per test.
 - **D6 — the whole-package arms are real arms.** The lane arm reproduces the measuring session's
@@ -215,10 +219,10 @@ Files (exact):
 - c2r (record only): progress.md §E.2 — for each package the coverage test and the applied test run
   on the c2 tree, on a plain shell and under the lane env (it must be red in both, being
   ambient-independent): command, verbatim output naming the uncovered axes (expected from spec.md
-  §A.6: six cli axes, thirteen hook axes), exit code, and the c2 SHA. For each coverage test the
+  §A.6: eight cli axes, ten hook axes), exit code, and the c2 SHA. For each coverage test the
   cell states which message(s) the observed red carries — expected: the hook coverage test, the
-  empty-scrub-set liveness message **and** the thirteen axis names (D5); the cli coverage test,
-  the six axis names only. The record is written so that the content witness of AC-THE-005
+  empty-scrub-set liveness message **and** the ten axis names (D5); the cli coverage test,
+  the eight axis names only. The record is written so that the content witness of AC-THE-005
   (acceptance.md §D.8 step 7) holds: each of the four guard-test `--- FAIL:` lines is present and
   the c2 SHA is named.
 Steps: pre-flight (§C); record c1; write c2; run each guard pair and record the **red**; record c2r.
@@ -226,12 +230,15 @@ Exit: AC-THE-005
 
 ### M2 — internal/cli scrub-set fix + measured diff — Priority High
 Files: `internal/cli/factory_test.go` (extend `factoryAmbientEnvKeys` with `config.EnvFactoryRole`
-— the observed-red cause, E-1 / E-1b — and the other five uncovered axes `EnvAutonomyTier`,
+— the observed-red cause, E-1 / E-1b — and the other seven uncovered axes `EnvAutonomyTier`,
 `EnvFactoryClearPolicy`, `EnvFactoryAutoDispatch`, `EnvMoaiFactoryManaged`,
-`EnvMoaiFactorySlowLaunchMS`; any axis left out is added to the guard's exemption table with a
-reason and a cited test file in `internal/cli/factory_env_axes_test.go`). Default is to scrub all
-six: static read at plan time shows every test site that touches the five non-Role axes sets or
-clears it itself (SlowLaunchMS: five `t.Setenv` sites, no ambient read), so an exemption needs a
+`EnvMoaiFactorySlowLaunchMS`, `EnvMoaiFactoryManagedTUI`, `EnvMoaiFactoryAppServerToken`
+(spec.md §A.6, re-derived at `8cb2444e7`; any axis left out is added to the guard's exemption table
+with a reason and a cited test file in `internal/cli/factory_env_axes_test.go`). Default is to
+scrub all eight: static read at plan time shows every test site that touches the five
+pre-absorption non-Role axes sets or
+clears it itself (SlowLaunchMS: five `t.Setenv` sites, no ambient read); the two absorption-added
+axes have no such static read, and the same rule decides them — an exemption needs a
 measurement that shows a test going red because the axis was stripped — which only the M4
 whole-package scrubbed arm can show; M2 does not decide it alone.
 Steps: apply; run the narrow AC command of AC-THE-001 under the explicit lane env → green with 3
@@ -241,7 +248,7 @@ Whole-package pairs are measured once at M4 on the final tree; M2 does not run t
 Exit: AC-THE-001
 
 ### M3 — internal/hook fix — Priority High
-Files: `internal/hook/lane_env_axes_test.go` (fill the scrub-set declaration with the thirteen
+Files: `internal/hook/lane_env_axes_test.go` (fill the scrub-set declaration with the ten
 referenced axes; add the scrub function; finalize the exemption table), `internal/hook/main_test.go`
 (`TestMain` calls the scrub before the first test, beside the existing `CLAUDE_PROJECT_DIR` scrub;
 a re-executed child composing env is honored through the pin-marker pattern if the §C census found
@@ -252,9 +259,10 @@ test ./internal/hook -count=1 -v -run '^(TestStaleRunNoticeLegacyLeaderSpelling|
 (plan-phase result, to be re-observed: `MOAI_KANBAN_ID` and `MOAI_FACTORY_WORKERS` each alone flip
 the verdict; ROLE/WORKER/BACKEND do not) — record all five before choosing the set. These arms are
 scoped to the two observed reds, whose gate reads only the ID ∧ WORKERS conjunction; the other
-eight referenced axes (`MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_LABEL`,
-`MOAI_KANBAN_SETTINGS_INJECTED`, `MOAI_KANBAN_LEAD_ADDR`, `MOAI_KANBAN_CARD`,
-`MOAI_KANBAN_LEAD_NAME`, `MOAI_FACTORY_AUTO_DISPATCH`) are **not** isolated by single-axis arms —
+eight referenced axes (`MOAI_KANBAN_SETTINGS_INJECTED`, `MOAI_KANBAN_LEAD_ADDR`,
+`MOAI_KANBAN_BACKEND`, `MOAI_KANBAN_CARD`, `MOAI_KANBAN_LEAD_NAME`, `MOAI_FACTORY_ROLE`,
+`MOAI_FACTORY_WORKER`, `MOAI_FACTORY_AUTO_DISPATCH` — §A.6's re-derived hook referenced set minus
+the two gate axes) are **not** isolated by single-axis arms —
 an arm that removes one of them cannot move those two tests — and are decided by the guard pair
 and AC-THE-003's whole-package scrubbed arm. Then apply and run the narrow AC command of
 AC-THE-002 under the explicit lane env → green with 2 `--- PASS`; the positive control, the hook
