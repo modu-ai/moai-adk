@@ -17,7 +17,7 @@ against the repository; corrections are recorded per row.
 | 4 | phase-execution.md :99-113 still offers "Override and proceed" on FAIL | CONFIRMED | 4c (grace expired) at `.claude/skills/moai/workflows/run/phase-execution.md:99-106`: "[HARD] Present options to user via AskUserQuestion (orchestrator responsibility): … Option 2: Override and proceed — skip the gate (sets `--skip-audit` implicitly, records BYPASSED)". Baseline grep: `Override and proceed` = 1 hit @ `2f492df19` |
 | 5 | auto-semantics.md :200 says bypass flags retired | CONFIRMED | §9 row: "plan-audit bypass flags | RETIRED into the default path — the audit cross IS the entry evidence (§9.1)" at `.claude/rules/moai/workflow/auto-semantics.md:200`. Also 4d INCONCLUSIVE offers "Proceed with acknowledgement" (:111-113) and "max 3 retries total" (:112) — a second prose ceiling the note did not name |
 | 6 | auto-semantics.md :154-160 fail-closed authority-gate invariant | CONFIRMED | §7: "a NEGATIVE or INCONCLUSIVE audit verdict is FAIL-CLOSED — the gate does not open on an unresolved audit" (:154-160) |
-| 7 | §9 gate inventory lists ~10 of the note's 30 gates | CONFIRMED | §9 (:190-201) carries 10 disposition rows; the missing-gate set this SPEC adds is scoped in spec.md §D.3 (11 rows, each source-verified in this session: section names located in `spec-assembly.md:446`, `run.md:159`, `sync.md:97-98`, `quality-gates-context.md:190-196`, `ci-autofix-protocol.md:35,104`, `coding-standards.md` § Bash Risk-Amplifier Doctrine (3), `agent-common-protocol.md` § Hook Invocation Surface / § Pre-Spawn Sync Check / § Pre-Edit Sync Check) |
+| 7 | §9 gate inventory lists ~10 of the note's 30 gates | CONFIRMED | §9 (:190-201) carries 10 disposition rows; the missing-gate set this SPEC adds is scoped in spec.md §D.2 (11 rows, each source-verified in this session: section names located in `spec-assembly.md:446`, `run.md:159`, `sync.md:97-98`, `quality-gates-context.md:190-196`, `ci-autofix-protocol.md:35,104`, `coding-standards.md` § Bash Risk-Amplifier Doctrine (3), `agent-common-protocol.md` § Hook Invocation Surface / § Pre-Spawn Sync Check / § Pre-Edit Sync Check) |
 | 8 | spec-workflow.md already describes the ceiling policy in prose | CONFIRMED | `.claude/rules/moai/workflow/spec-workflow.md:158`: "The tier ceiling in `harness.plan_audit_tier_ceilings` is the only iteration cap; a ceiling hit follows `harness.plan_audit_ceiling_policy` … in every session" — SPEC constraint C1 binds to this text instead of duplicating it |
 | 9 | (note B4) "the ceiling is prose in an agent body, not a counter that refuses" | CONFIRMED (mechanically) | `grep -rn "audit.round\|AuditRound\|iteration.count" internal/runtime/*.go` (non-test) = 0 hits; `AuditResult` (`internal/runtime/audit_gate.go:54-95`) carries no round/counter field |
 | 10 | (note B4) t1469/t1482: convergence fail + auditor PASS admitted | UNVERIFIABLE here | `.moai/reports/t1469/` and `.moai/reports/t1482/` do not exist in this tree. Recorded as operator-reported motivating instances only; the mechanical half is confirmed instead: the verdict-file format (`.moai/docs/audit-artifact-convention.md` § What) carries no convergence fields and `internal/auditverdict/verdict.go` parses none (grep "convergence\|receipt" = 0 hits), so a required-backend fail cannot influence admission today |
@@ -31,6 +31,13 @@ against the repository; corrections are recorded per row.
   the auditor spawn point a ceiling check must precede; the default branch
   :288-292 folds unknown verdicts into INCONCLUSIVE); `EnvSkipAudit` :48 and
   the bypass path :206-219 (the CLI-side bypass the §9 RETIRED row governs).
+  Liveness (measured at f2f815008, correcting this section's earlier
+  presentation of `Invoke` as live infrastructure): `grep -rn
+  "runtime\.GateConfig" internal/ cmd/ --include="*.go" | grep -v _test` → 0
+  non-test matches (17 test-only) — `GateConfig` is test-only
+  infrastructure, which is why the ceiling enforcement of design.md §2 lands
+  at the LIVE seams (`decide.go`, `homestate`) and `Invoke` carries the same
+  Step 0 only as a library-level consumer.
 - `internal/runtime/audit_cache.go` — `ComputeHash` :121-141 (hash-only cache
   validity, SPEC-AUDIT-SNAPSHOT-001 A1); `planArtifactNames` :92-100 (the
   artifact subject set, includes `decision-index.md`).
@@ -77,9 +84,11 @@ All five edit targets have existing mirrors under
 - `.moai/config/sections/harness.yaml`
 - `.moai/docs/audit-artifact-convention.md`
 
-Mirror state measured: `harness.yaml` and `phase-execution.md` mirrors
-DIFFER from their deployed copies today (pre-existing drift, Out of Scope);
-`auto-semantics.md` and `audit-artifact-convention.md` mirrors are identical.
+Mirror state measured (re-measured at f2f815008, correcting the first
+measurement which omitted plan-auditor.md): `plan-auditor.md`,
+`phase-execution.md`, and `harness.yaml` mirrors DIFFER from their deployed
+copies today (pre-existing drift, Out of Scope); `auto-semantics.md` and
+`audit-artifact-convention.md` mirrors are identical.
 
 ## 4. Config decision (simplicity ladder)
 
@@ -95,7 +104,7 @@ the YAML would add a second place the ladder could disagree with the CLI.
   tree (see table row 10); the SPEC cites them as operator-reported instances
   and enforces the mechanically-verified gap instead.
 - The note's B2 30-gate table was not adopted wholesale; only the 11 rows of
-  spec.md §D.3 were source-verified. The remaining note rows are unverified
+  spec.md §D.2 were source-verified. The remaining note rows are unverified
   and deliberately out of scope.
 - Exact `git rev-list` counts and usage-log figures quoted in the note (B3)
   were not re-measured — none are load-bearing for this SPEC.

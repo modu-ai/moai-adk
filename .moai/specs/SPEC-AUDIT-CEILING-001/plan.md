@@ -49,16 +49,21 @@ go test ./internal/runtime/... ./internal/auditverdict/... ./internal/config/...
 go run ./cmd/moai spec lint SPEC-AUDIT-CEILING-001 --strict   # must be 0/0 before any commit
 ```
 
-RED-now baselines (verbatim commands, this run, this tree):
+RED-now baselines (verbatim commands, this run, this tree, exit codes recorded):
 
 | Baseline | Command | Observed |
 |---|---|---|
-| conflict text present | `grep -c "Override and proceed" .claude/skills/moai/workflows/run/phase-execution.md` | 1 |
-| no counter | `grep -rn "audit.round\|AuditRound\|iteration.count" internal/runtime/*.go` | 0 hits |
-| no receipt parsing | `grep -c "convergence\|receipt" internal/auditverdict/verdict.go` | 0 |
+| conflict text present | `grep -c "Override and proceed" .claude/skills/moai/workflows/run/phase-execution.md` | 1 (exit 0) |
+| acknowledgement option present | `grep -c "Proceed with acknowledgement" .claude/skills/moai/workflows/run/phase-execution.md` | 1 (exit 0) |
+| no counter | `grep -rn "audit.round\|AuditRound\|iteration.count" internal/runtime/*.go` | 0 hits (exit 1) |
+| no receipt parsing | `grep -c "convergence\|receipt" internal/auditverdict/verdict.go` | 0 (exit 1) |
 | §9 rows | sed -n '190,201p' auto-semantics.md, count `\|^| ` lines | 11 lines = header + separator + 10 disposition rows |
-| config orphan note | loader.go:345-346 | "no Go reader" on both ceiling keys |
-| mirror drift | `diff -q` deployed vs template | harness.yaml DIFF, phase-execution.md DIFF, auto-semantics.md SAME, convention doc SAME |
+| §9 named rows absent | the 11-row named grep of acceptance.md AC-ACE-014 | 0 (exit 1) |
+| retired row present | `grep -c "plan-audit bypass flags" .claude/rules/moai/workflow/auto-semantics.md` | 1 (exit 0) |
+| config orphan note | `grep -c "no Go reader" internal/config/loader.go` | 2 (exit 0) |
+| bare symmetry selector absent | `grep -cE "func TestStructYAMLSymmetry\(" internal/config/audit_struct_yaml_symmetry_test.go` | 0 (exit 1; only `_`-suffixed variants exist) |
+| GateConfig production-dead | `grep -rn "runtime\.GateConfig" internal/ cmd/ --include="*.go" \| grep -v _test` | 0 non-test matches; 17 test-only |
+| mirror drift | `diff -q` deployed vs template | plan-auditor.md DIFF, phase-execution.md DIFF, harness.yaml DIFF; auto-semantics.md SAME, convention doc SAME |
 
 ## §D Constraints
 
@@ -87,8 +92,9 @@ Per-milestone, reported in the 5-section evidence-bearing format:
 - E5 `golangci-lint run --timeout=2m` — NEW issues named separately from the
   measured baseline.
 - E6 RED evidence per TDD AC (verbatim pre-GREEN failure output) — required
-  for AC-ACE-003/004/005/006/009/010 whose RED is a new test, and
-  grep-class RED for AC-ACE-002/013/014 (baselines in §C).
+  for every RB criterion whose RED is a new test (AC-ACE-001/003/004/006/
+  007/009/010/015/017/018/019/020/021/022), and grep-class RED cells with
+  recorded exit codes for AC-ACE-002/013/014 (baselines in §C).
 
 ## §F Milestones
 
@@ -98,12 +104,14 @@ Data-model first: the receipt schema is the least reversible decision.
 
 - Extend `.moai/docs/audit-artifact-convention.md` § What with the receipt
   line format (design.md §3): `convergence_overall: <pass|fail>` and a
-  repeatable `required_backend_fail: <backend>` line.
+  repeatable `required_backend: <backend> <pass|fail|inconclusive>` line,
+  one per required backend.
 - Extend `internal/auditverdict`: `Parse` reads the receipt keys;
   `Admit` (PhasePlan) gains the tree's required-backend set as input and
-  refuses on (a) any required backend fail regardless of label (REQ-ACE-009),
-  (b) required backend configured + receipt absent (REQ-ACE-010, Q4
-  default refuse), (c) explicit override path feeding REQ-ACE-011.
+  refuses on (a) any required backend fail or inconclusive regardless of
+  label (REQ-ACE-009), (b) required backend configured + receipt absent or
+  missing that backend's line (REQ-ACE-010, Q4 default refuse). The override
+  is NOT an `Admit` input — it lives at the CLI seam (M3, design.md §4).
 - Update the three call sites (`decide.go`, `contract/rules.go`,
   `homestate/card_evidence_readers.go`) to pass the configured gate set.
 - Mirrors: convention doc mirror in the same change.
@@ -114,46 +122,65 @@ Data-model first: the receipt schema is the least reversible decision.
 
 - Add `PlanAuditTierCeilingsConfig` and `PlanAuditCeilingPolicyConfig`
   structs (`internal/config/types.go`), wire into the harness config load,
-  defaults, and `audit_struct_yaml_symmetry_test.go`; remove the two
+  defaults, and the symmetry audit; validate `on_final_hit` (accepted value
+  `hold-and-split`, anything else a config error); remove the two
   "no Go reader" orphan entries (`loader.go:345-346`).
-- Mirrors: `harness.yaml` template mirror — note the measured pre-existing
-  drift; sync only the keys this SPEC touches and name the residue.
+- Add a bare `func TestStructYAMLSymmetry` harness — the exact name
+  AC-ACE-002's selector runs (only `_`-suffixed variants exist today;
+  §C baseline 0 matches) — covering `harness.yaml` with a symmetry case for
+  the new structs.
+- No `harness.yaml` edit: the config content is unchanged (design.md §6), so
+  no mirror sync belongs to this milestone; the measured pre-existing
+  `harness.yaml` mirror drift stays untouched (Out of Scope).
 
 ### M3 (Priority High) — counter + ceiling-policy engine + enforcement
 
 - `internal/runtime`: round-count derivation from iteration evidence
-  (both families, one-iteration-once identity; REQ-ACE-001), the policy
-  outcome engine (debt-admit / scope-split / hold-record; REQ-ACE-004..006),
-  and the ceiling check placed before the auditor spawn in
-  `GateConfig.Invoke` (REQ-ACE-003).
-- Enforcement wiring: `kickoff decide` and `homestate` card transition
-  surface the same refusal + outcome (exit nonzero / refusal record).
+  (both families, one-iteration-once identity = SPEC id + iteration number;
+  REQ-ACE-001), the delta-eligibility check (fix_scope anchors + REQ/AC id
+  sets + STOP; REQ-ACE-003), and the policy outcome engine (debt-admit /
+  scope-split / hold-record; REQ-ACE-004..006).
+- Enforcement wiring at the LIVE admission seams (the iter1 D4 finding —
+  `GateConfig.Invoke` has no production caller, measured 0 non-test
+  references): the kickoff evaluator (`decide.go`) and the homestate card
+  transition call the engine before admission and surface the same refusal +
+  outcome (exit nonzero / refusal record); `GateConfig.Invoke` gains the same
+  Step-0 call as the library-level consumer for when a caller exists. An
+  integration test proves a ceiling-hit round refuses at a production entry
+  point (AC-ACE-022).
 - Refusal output: structured (JSON or parseable lines) carrying outcome,
   reasons, evidence paths; persist to `progress.md`; audit-trail log append
   (REQ-ACE-007, REQ-ACE-012). Design the AuditResult extension per
   design.md §7 (separate outcome field, not a new Verdict enum value that
   the default branch would fold into INCONCLUSIVE).
 - Override input for required-backend refusals (REQ-ACE-011) — explicit
-  flag + note + logging only.
+  flag + note + logging only; the CLI writes the ack to `progress.md` §G
+  Override and Refusal Record (outside the plan-artifact hash subject set)
+  and the REQ-ACE-012 trail.
+- Depends on: decision-index Q2/Q3/Q5 verdicts (blocker report if
+  unresolved — the SPEC's embedded defaults stand while the questions stay
+  open, each recorded kickoff-amendable).
 
 ### M4 (Priority Medium) — doc reconciliation
 
 - `phase-execution.md` Step 4c/4d: rewrite to the fail-closed path — the
   ceiling-policy outcome is the only non-block exit; no AskUserQuestion
   branch, no override-and-proceed, no BYPASSED recording (REQ-ACE-013).
-- `auto-semantics.md` §9: add the 11 rows of spec.md §D.3 with dispositions
+- `auto-semantics.md` §9: add the 11 rows of spec.md §D.2 with dispositions
   from the existing vocabulary, each citing file + section (REQ-ACE-014).
-  Retire/adjust the `plan-audit bypass flags` row wording to name the
-  machine enforcement.
+  Row 2 REPLACES the `plan-audit bypass flags` row: 10 existing rows − 1 + 11
+  = 20 disposition rows after M4.
 - Cross-check `run.md` § Run-phase Autonomy and the operator-form gate text
   for residual references to the removed override branch.
 - Mirrors in the same change.
 
 ### M5 (Priority Low) — regression guard + mirror verification
 
-- Template audit tests extended: deployed-vs-mirror byte equality for every
-  file this SPEC edits (names the pre-existing drift files as known-FAIL
-  until repaired — never as expected-pass).
+- Template audit tests extended: region-scoped deployed-vs-mirror equality
+  for every file this SPEC edits; the three files carrying pre-existing
+  whole-file drift (phase-execution.md, plan-auditor.md, harness.yaml —
+  each measured DIFF at f2f815008) are named known-FAIL until repaired,
+  never expected-pass (AC-ACE-015's carve-out list).
 - Static guard: no interactive prompt in the new CLI surface.
 - Full lint + spec lint --strict 0/0; §E self-verification report.
 
@@ -171,7 +198,7 @@ Data-model first: the receipt schema is the least reversible decision.
 
 ## §H Cross-References
 
-- spec.md §B (REQ-ACE-001..016), §C constraints, §D.3 row list
+- spec.md §B (REQ-ACE-001..016), §C constraints, §D.2 row list
 - acceptance.md §D (AC-ACE-001..016), §C edge cases
 - design.md §1-§10 (counter model, receipt schema, enforcement, open points)
 - research.md §1-§5 (source verification, Go surfaces, mirrors, gaps)

@@ -43,7 +43,41 @@ plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md
   edits by those agents are expected and permitted.
 - decision-index.md rows carry empty Operator verdicts; the kickoff
   conversation should surface Q2-Q6 before or during run entry (Q4 gates
-  M1's receipt-absence branch).
+  M1's receipt-absence branch; Q2/Q3/Q5 gate M3).
+
+### Plan-audit iter1 repair (2026-10-04, this change)
+
+- iter1 verdict: FAIL 0.69 (Tier L threshold 0.85) —
+  `.moai/reports/t1500/plan-audit-iter1.md`; 18 findings, 13 blocking. This
+  change closes the defect delta; the lane runs iter2 (delta-scoped
+  re-audit).
+- spec.md version → 0.2.0; §H Amendments carries the per-defect record.
+- Blocking closures: D1 (E8 new-test declarations on every RB new-test row;
+  bare `TestStructYAMLSymmetry` harness added to M2; exit codes recorded in
+  grep-class RED cells), D2 (debt-admit re-gated to label-only failures;
+  hash mismatch and no-findings verdicts hold; AC-ACE-017), D3 (receipt
+  projects every required backend's verdict; REQ-ACE-008 trigger moved to
+  required-configured trees; AC-ACE-018/019), D4 (refusal rerouted to the
+  live seams decide.go/homestate; `GateConfig.Invoke` measured
+  production-dead — 0 non-test refs; AC-ACE-022), D5 (identity = SPEC id +
+  iteration number; AC-ACE-020), D6 (delta eligibility encoded;
+  AC-ACE-021), D7 (at-ceiling condition on REQ-ACE-004..006), D8 (one
+  negative-verdict outcome vocabulary naming the override, `EnvSkipAudit`,
+  and FAIL_WARNED), D9 (AC-ACE-015 rescoped region-scoped with a named
+  known-FAIL list; research §3 corrected — plan-auditor.md mirror DIFF),
+  D10 (override record → progress.md §G, outside the hash set), D11 (M1
+  override input removed), D12 (AC-ACE-014 replace arithmetic 10−1+11=20 +
+  per-named-row verification), D13 (`.moi/` → `.moai/`, ×3), D14
+  (AC-ACE-016 → REQ-ACE-007 remap; AC-ACE-022 added for REQ-ACE-016; edge
+  links restated), D15 (M3 gated on Q2/Q3/Q5, defaults kickoff-amendable),
+  D16 (§D.3 → §D.2), D17 (`on_final_hit` validated; M2 harness.yaml mirror
+  step dropped; plan_audit_global orphan out of scope), D18 (per-key
+  receipt repeat rule stated).
+- Held coherence passes: the Ceiling-field choice (design §7), receipt
+  projection from real `ConvergenceResult` fields, the §9 vocabulary match,
+  spec lint --strict 0.
+- No REQ id changed (16 REQs); the AC set extended 16 → 22 (Tier L ceiling
+  25).
 
 ## §E.2 Run-phase Evidence
 

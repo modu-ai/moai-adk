@@ -5,7 +5,10 @@ Authored at plan phase per `interview.decision_gate: on`
 during assembly that the operator has not settled. Labels:
 `DECIDED` / `POLICY-COVERED` / `EVIDENCE-NEEDED` / `FOUNDER`. No row carries
 a recommendation. All rows currently carry empty operator verdicts; Q4 gates
-plan.md M1.
+plan.md M1, and Q2/Q3/Q5 gate plan.md M3 the same way. Every FOUNDER row's
+SPEC-embedded default stands while the row is open and is kickoff-amendable:
+an operator answer at kickoff supersedes the default, and the affected
+REQ/AC set is re-audited before run entry.
 
 ### Q1: How many delta audit rounds run automatically once the tier ceiling is reached?
 
@@ -46,5 +49,5 @@ Operator verdict:
 
 Label: FOUNDER
 Authority anchor: (none — the card directs "add the missing rows" without enumerating them; the research note's 30-row table is a research artifact, not authority)
-Why unresolved: The SPEC selects the 11 rows of spec.md §D.3 — the plan/run/sync gate rows whose sources were verified in this session. The note's remaining rows (intake/plan interview gates, card mechanics, harness-learning applies, LSEL, goal ceilings) are unverified or belong to other subsystems. Adding more rows widens M4; trimming narrows the reconciliation.
+Why unresolved: The SPEC selects the 11 rows of spec.md §D.2 — the plan/run/sync gate rows whose sources were verified in this session. The note's remaining rows (intake/plan interview gates, card mechanics, harness-learning applies, LSEL, goal ceilings) are unverified or belong to other subsystems. Adding more rows widens M4; trimming narrows the reconciliation.
 Operator verdict:
