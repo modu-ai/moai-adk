@@ -308,7 +308,7 @@ fixtures per subtest — queue latency on a loaded machine, not a defect).
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-04
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 6ccbc4218
 status_transition: in-progress → implemented → completed, frontmatter `status` only, riding the single sync commit (spec.md `status: completed`; `updated: 2026-10-04` already carried today's date, so the frontmatter's only changed line is `status`)
 sync_commits: the one sync commit (subject `chore(SPEC-SESSION-CC-VERSION-001): sync-phase artifacts — 3-phase close (card t1465)`); its own SHA is backfilled by a following commit per the D3 exemption
 files_changed_by_sync: `CHANGELOG.md` (one `[Unreleased]` / Added entry), `.moai/specs/SPEC-SESSION-CC-VERSION-001/spec.md` (frontmatter `status` only), this file (§E.4)
