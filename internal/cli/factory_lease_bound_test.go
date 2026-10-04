@@ -8,6 +8,7 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -186,6 +187,64 @@ func TestFactoryLeaseRecordStallBounded(t *testing.T) {
 			t.Errorf("queue state after the bare stall = %s, want picked (spec §F R4, third shape)", q)
 		}
 	})
+}
+
+// flClaimSegmentMargin is the margin above the wait cap C allowed to the claim
+// segment TestFactoryLeaseClaimRespectsWaitCap measures. The segment is nearly
+// pure product code — the record is opened before the clock starts and the
+// measured call is the claim itself — so the time above the deadline it waits
+// out is only the cancellation propagating through one blocked write:
+// measured (t1506) at 0.896–0.930 s across twenty -race runs on a loaded
+// machine (two ten-run passes), i.e. 0.10–0.13 s above the 800 ms deadline and
+// 0.07–0.10 s inside the cap. 250 ms is ~2x that worst observed overshoot,
+// keeps the bound at over 1.3x the worst observed segment, and is a quarter of
+// C, so the review's overlay mutation (the deadline alone moved to 2 s,
+// segment ~2.1 s) fails the bound by ~0.85 s — a detector margin, not a
+// measured ceiling.
+const flClaimSegmentMargin = 250 * time.Millisecond
+
+// TestFactoryLeaseClaimRespectsWaitCap — the mutation-detector for the claim
+// cap itself (card-review round 1 P2, card t1506; AC-FAL-007's give-up bound).
+// The end-to-end arms in TestFactoryLeaseRecordStallBounded are hang guards on
+// the whole process wall-clock: a claim deadline loosened by overlay (the
+// review's mutation moved only factoryClaimContext's limit, 800 ms → 2 s)
+// gives up at ~2.4 s, inside the 3.8 s guard and above the 800 ms lower bound,
+// so nothing failed. This test measures the claim segment directly and
+// narrowly: it invokes factoryNextRecordAndClaim in-process, exactly as the
+// nominated lease does (homestate.OpenFactoryBounded with the claim's busy
+// timeout, factory_card.go factoryNextNominate), against a record write
+// transaction held by a second connection (flHoldRecord), reading the clock
+// immediately around the call — no CLI startup or teardown inside the measured
+// segment. It then asserts AC-FAL-007's semantic invariant on that segment:
+// the claim under a permanently held record returns no earlier than its own
+// deadline (it waited the record out) and no later than the wait cap
+// C = factoryLeaseClaimWaitCap plus the segment margin above — so a give-up
+// past the declared cap fails here even while every wall-clock guard passes.
+func TestFactoryLeaseClaimRespectsWaitCap(t *testing.T) {
+	root, _ := nmQueuedNominee(t)
+	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
+	if err != nil {
+		t.Fatalf("open the factory record with the claim's busy timeout: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	end := flHoldRecord(t, root)
+	start := time.Now()
+	_, leased, retry, claimErr := factoryNextRecordAndClaim(context.Background(), db, root, fcRun, "t1", "lane-1")
+	segment := time.Since(start)
+	end()
+	t.Logf("claim segment under a held record: %s busy=%v leased=%v retry=%v", segment, errors.Is(claimErr, errFactoryRecordBusy), leased, retry)
+	if !errors.Is(claimErr, errFactoryRecordBusy) {
+		t.Fatalf("the claim under a held record returned %v (leased=%v retry=%v), want the busy refusal errFactoryRecordBusy — without it the segment did not measure the give-up at the cap", claimErr, leased, retry)
+	}
+	if leased || retry {
+		t.Errorf("the claim under a held record reported leased=%v retry=%v, want both false (the give-up is a hard busy refusal, not a race to retry)", leased, retry)
+	}
+	if segment < factoryLeaseClaimDeadline {
+		t.Errorf("the claim segment returned after %s, below the claim's own %s deadline — with the record held the whole time the claim cannot have given up before waiting it out", segment, factoryLeaseClaimDeadline)
+	}
+	if segment > factoryLeaseClaimWaitCap+flClaimSegmentMargin {
+		t.Errorf("the claim segment returned after %s, want within %s (the wait cap %s + %s segment margin) — the claim gave up past its declared cap", segment, factoryLeaseClaimWaitCap+flClaimSegmentMargin, factoryLeaseClaimWaitCap, flClaimSegmentMargin)
+	}
 }
 
 // TestFactoryLeaseMidClaimStallBounded — AC-FAL-007 (b): the same stall started
