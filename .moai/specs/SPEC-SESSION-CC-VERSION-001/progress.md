@@ -83,3 +83,21 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending run-phase>_
+
+## §F Phase 4 Mode Selection
+
+Input parameters: tier M; scope ~13 files across 2 packages (`internal/session`, `internal/cli`); domain count 2 (Go source only); file language mix 100% Go; concurrency benefit LOW (coding-heavy implementation, coupled milestone ordering M1→M5); Agent Teams prereqs not requested (no operator `--team`).
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| `direct` | not selected | Semantic multi-file feature work, not a typo/single-line fix |
+| `serial` | **selected** | Coding-heavy work in 2 coupled packages; single writer in the card worktree; per-Anthropic coding-task parallelism caveat |
+| `fanout` | not selected | No independent multi-domain research split; coding tasks favor sequential |
+| `sweep` | not selected | ~13 files, semantic new-code work — fails the ≥~30-file mechanical-uniform test |
+| `agent-team` | not selected | Explicit-request-only experimental surface; no request |
+
+Decision: `serial`
+
+Justification: the milestones are ordered by decision reversibility (plan §D — M1 seam shape, M4 guard semantics) and each consumes the previous one's types, so parallel spawns would only create integration risk inside one worktree. `serial` keeps one writer per tree and matches the coding-heavy caveat.
+
+Kickoff gate: met in autonomous form — plan-audit iter2 PASS 1.0 (threshold 0.80), artifact hash `49065ad2…` unchanged since the verdict (re-measured this run); decision record: `.moai/reports/t1465/kickoff-decision.md`.
