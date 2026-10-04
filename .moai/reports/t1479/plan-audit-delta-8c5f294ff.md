@@ -99,3 +99,14 @@ PASS-WITH-DEBT. D5, D6, D7 resolved on evidence above; no unsafe develop move, n
 - Run the cross-model receipt separately — `mcp__moai__audit_multi` with `project_root` = `git rev-parse --show-toplevel` (status: assumption).
 
 AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-MERGE-WINDOW-QUEUE-001 receipts=none
+
+## Addendum — leader cross-model receipt (recorded by lane-19, not by the auditor)
+
+The section above is the auditor's own verdict and is left unedited. This addendum records, verbatim from the leader's message, the cross-model result obtained afterwards; it is a record, not a re-audit by this lane.
+
+- Backend: `codex_audit`, adversarial, baseBranch, run by the leader with project_root = this worktree.
+- Result: **FAIL**. Receipt `rcpt-a4710f11b166439d2a5911bc`. Tree HEAD at the time: `c74487141`. The leader reports the installed moai binary used was `0732cc699` (an ancestor), so a build-lag warning accompanied the run; the leader states the findings concern the SPEC text, not the binary. This lane did not re-measure either claim.
+- [P1] `spec.md:188` — when the same path changes from a gitlink to a file, `node` is a leaf in both trees, so the added-path set is empty and an ignored file `node/secret` is deleted. The leader reports reproducing it on Git 2.54.0 (merge exit 0, also loss in an initialised submodule). Recommendation: also check the type-change target and its local files beneath it.
+- [P2] `acceptance.md:167` — running the RED block as one sequence in a single scratch repository leaves the `runtime.local` file and `cand` branch from row 13b, so row 13d does not reproduce. Recommendation: each case starts in a fresh repository.
+
+Disposition (leader, operator instruction "one more round, FAIL again means hold"): the card is HELD. No run phase was started and no further SPEC repair was made. The branch and worktree are preserved. The auditor's PASS-WITH-DEBT and the codex FAIL disagree; the codex required gate is not downgraded.
