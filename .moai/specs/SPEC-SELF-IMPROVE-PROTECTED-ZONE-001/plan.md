@@ -26,10 +26,11 @@
 
 Decisions most likely to change; nothing here touches runtime behaviour yet.
 
-- Define manifest schema v1: `version`, `categories.<name>.runtime` (bool) and `categories.<name>.paths` (list). Strict decode; unknown keys, a wrong `version`, an entry using a form outside the four, an entry containing `..`, or an absolute entry make the file invalid. Duplicate entries and empty categories are valid.
+- Define manifest schema v1: `version`, `categories.<name>.paths` and `categories.<name>.runtime_paths` (lists; category names `[a-z0-9_]`, at most 32 bytes). Strict decode; unknown keys, a wrong `version`, an entry using a form outside the four, an entry containing `..`, or an absolute entry make the file invalid. Duplicate entries and empty category lists are valid. The shipped file must declare all seven required categories, so a zero-byte or `categories: {}` shipped file is invalid; a zero-byte overlay is valid. Basename globs use `path.Match` on the final segment, case-folded, `[` always a class (REQ-SIPZ-001).
 - Author the shipped manifest (spec §D shipped column) and the dogfood overlay (overlay column); the local `.moai/config/sections/protected-zone.yaml` is the shipped file plus nothing — the overlay carries the dogfood paths.
 - Add the loader (two files, union, overlay add-only, category order = shipped first then overlay) in `internal/config` beside the other dedicated loaders; register the section in the completeness audit.
-- Add the pure matcher: normalization (REQ-SIPZ-006) and the four-form comparison, taking the root and the path as strings so the same table runs on every OS.
+- Add the matcher in two layers (REQ-SIPZ-006): a pure lexical function (backslashes, its own absolute-path rule for `/`, `X:/` and `//`, root stripping, clean, NFC, case-fold, the four-form comparison) taking the root and the path as strings so the same table runs on every OS, and a filesystem layer that resolves the root and the target's deepest existing ancestor with one function and matches both forms. Do not copy the existing check's resolve-the-root-only-when-the-path-resolved asymmetry (P5/P6 watch it).
+- Author the shipped manifest with `runtime_paths` per spec §D (settings files, `CLAUDE.local.md`/`AGENTS*.md`, `.moai/harness/*`, `.moai/logs/`, the overlay self-entry), `.claude/skills/moai/` in `moai_managed`, and the shipped file's own path in `gate_policy`.
 - Tests (subtests of `TestProtectedZone` in their package): loader valid/invalid table including the edge cases in `acceptance.md` §D, overlay-cannot-narrow, template-neutrality, shipped⊆dogfood, Windows-shaped normalization table.
 - Flips: AC-SIPZ-009, AC-SIPZ-012; AC-SIPZ-004 loader half.
 
@@ -37,7 +38,7 @@ Decisions most likely to change; nothing here touches runtime behaviour yet.
 
 - In `internal/hook`, add the guard module and one call site in the Write/Edit branch of the PreToolUse handler. The order inside the branch: identity gate (compiled set) → normalize → compiled baseline first (so P1–P4 and S1 keep their legacy sentinels) → manifest. Normalization is also applied to the existing baseline check by routing it through the new normalizer (the one change to existing code; AC-SIPZ-002 and AC-SIPZ-005 are the pair that watches it).
 - Failure modes: present-but-invalid → deny every identity Write/Edit/Bash-mutation with `manifest=invalid`; absent → baseline floor plus audit row.
-- Deny reason format and the new sentinel constant; audit row append to `.moai/logs/protected-zone-audit.jsonl` (single append, fail-open on write error with a stderr notice).
+- Deny reason format `SENTINEL: <identity> category=<c> route=human next=return-blocker-report path=<rel>` with only the path truncated to keep the whole reason within 240 bytes (REQ-SIPZ-011); the new sentinel constant; audit row append to `.moai/logs/protected-zone-audit.jsonl` (single append, fail-open on write error with a stderr notice).
 - Cost seam: the manifest is opened only after the identity and tool gates; a test injects a read counter.
 - Update the sentinel catalog test (ninth sentinel) and the baseline-coverage drift test (count 21).
 - Flips: AC-SIPZ-001, 002, 004, 005, 006, 007 (read-counter half), 008, 010.
@@ -45,9 +46,9 @@ Decisions most likely to change; nothing here touches runtime behaviour yet.
 ### M3 — Shell rule, liveness, evidence (Priority Medium)
 
 - The Bash rule: split into segments with the existing splitter, tokenize, pair a mutating verb with a zone-covered argument or redirection target. Under-match and pass on anything unclassifiable.
-- Liveness test (REQ-SIPZ-015): matcher group of both settings files, both manifests parse, dead-entry sweep with the `runtime` exemption and a non-zero swept count, end-to-end handler denial of a known input.
+- Liveness test (REQ-SIPZ-015): matcher group of both settings files, both manifests parse, dead-entry sweep (shipped file against the template tree, overlay against the local tree; `runtime_paths` exempt per entry, not per category) reporting resolved and skipped counts, end-to-end handler denial of a known input.
 - Execute every mutant in `acceptance.md` §C and record the observed red in `progress.md` §E.2 — the checks are unfinished until each red has been seen.
-- Re-run the probe and the judge against a binary built from the final tree: expect `JUDGE swept=47 expected=47 fail=0`. Run the paired latency A/B (base build vs final build, same session).
+- Re-run the probe and the judge against a binary built from the final tree: expect `JUDGE swept=67 expected=67 fail=0` from the live form (the replay form on the recorded base TSV stays red by construction). Run the interleaved paired latency A/B with its A/A control (base build vs final build, same session; rule in AC-SIPZ-007).
 - `make build`, `go vet`, `golangci-lint run`, `go test -race ./internal/hook/...`, and the template and config packages.
 - Flips: AC-SIPZ-003, 007 (latency half), 011, 013.
 

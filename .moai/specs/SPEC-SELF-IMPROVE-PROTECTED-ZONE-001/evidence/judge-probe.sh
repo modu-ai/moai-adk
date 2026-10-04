@@ -3,13 +3,17 @@
 # REPORTS what the real PreToolUse handler decided; this script JUDGES those rows against
 # the post-implementation expectation table below and exits non-zero on any divergence.
 #
-# Usage (from the repository root):
-#   bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh [-o ID-REGEX] [probe.tsv | moai-binary]
-#     -o ID-REGEX   judge only the case ids matching the (extended) regex, e.g. '^R' or '^(P|S)'
-#     - an existing non-executable file -> judged as a recorded probe output
-#     - anything else / none            -> the probe is run first (a binary path is passed
-#                                          through; with no argument the probe builds one
-#                                          from ./cmd/moai)
+# Two forms, and they are not interchangeable:
+#   LIVE    judge-probe.sh [-o ID-REGEX] [moai-binary]
+#           runs the probe against the tree (builds ./cmd/moai when no binary is given) and
+#           judges what it just observed. THIS is the form whose output changes when the
+#           implementation lands, and the form every green-path cell names.
+#   REPLAY  judge-probe.sh [-o ID-REGEX] <recorded.tsv>
+#           judges a recorded probe output. It is evidence of what the base tree did and can
+#           never flip; it carries the RED record, not the green.
+#
+#   -o ID-REGEX  judge only the case ids matching the (extended) regex, e.g. '^R' or '^(P|S)'
+#   A non-executable regular file argument selects REPLAY; anything else selects LIVE.
 #
 # Exit codes:  0 every expectation met and the swept set is exactly the expected size
 #              1 at least one divergence, an unexpected/missing id, or a wrong swept count
@@ -29,56 +33,45 @@ else
   bash "$HERE/probe-protected-zone.sh" ${ARG:+"$ARG"} > "$TSV" || { echo "PROBE_FAILED"; exit 2; }
 fi
 
-# id  want-decision  want-sentinel  want-reason-substring   ("-" = no constraint / none)
+# Expectation rows: id  want-decision  want-sentinel  want-reason-substrings (comma list; "-" = none)
 PZ=HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+RT="route=human,category=,next=return-blocker-report"
 EXPECT="C1 deny HARNESS_FROZEN_HOOK_VIOLATION -
 C2 deny HARNESS_FROZEN_RULE_VIOLATION -
 C3 deny HARNESS_FROZEN_INSTRUCTION_VIOLATION -
-C4 deny HARNESS_FROZEN_AGENT_VIOLATION -
-R1 deny $PZ route=human
-R2 deny $PZ route=human
-R3 deny $PZ route=human
-R4 deny $PZ route=human
-R5 deny $PZ route=human
-R6 deny $PZ route=human
-R7 deny $PZ route=human
-R8 deny $PZ route=human
-R9 deny $PZ route=human
-R10 deny $PZ route=human
-R11 deny $PZ route=human
-R12 deny $PZ route=human
-R13 deny $PZ route=human
-R14 deny $PZ route=human
-R15 deny $PZ route=human
-R16 deny $PZ route=human
-R17 deny $PZ route=human
-R18 deny $PZ route=human
-R19 deny $PZ route=human
-R20 deny $PZ route=human
+C4 deny HARNESS_FROZEN_AGENT_VIOLATION -"
+for i in $(seq 1 21); do EXPECT="$EXPECT
+R$i deny $PZ $RT"; done
+# R21 (.claude/skills/moai/) is a baseline-list member; it keeps a legacy sentinel when the
+# compiled floor covers it and the new sentinel otherwise — either is a deny with a route.
+EXPECT="$EXPECT
 P1 deny HARNESS_FROZEN_HOOK_VIOLATION -
 P2 deny HARNESS_FROZEN_HOOK_VIOLATION -
 P3 deny HARNESS_FROZEN_HOOK_VIOLATION -
 P4 deny HARNESS_FROZEN_HOOK_VIOLATION -
+P5 deny HARNESS_FROZEN_HOOK_VIOLATION -
+P6 deny HARNESS_FROZEN_HOOK_VIOLATION -
 S1 deny HARNESS_FROZEN_HOOK_VIOLATION -
-B1 deny $PZ route=human
-B2 deny $PZ route=human
-B3 deny $PZ route=human
-M1 deny $PZ manifest=invalid
-M2 deny HARNESS_FROZEN_HOOK_VIOLATION -
-M3 allow - -
-M4 deny $PZ category=probe_docs
-M5 allow - -
-M6 deny $PZ category=probe_docs
-E1 deny $PZ route=human
-N1 allow - -
-N2 allow - -
-N3 allow - -
-N4 allow - -
-N5 allow - -
-N6 allow - -
-N7 allow - -
-N8 allow - -"
+LP1 deny $PZ $RT
+LP2 deny $PZ $RT"
+for i in $(seq 1 13); do EXPECT="$EXPECT
+B$i deny $PZ $RT"; done
+EXPECT="$EXPECT
+MS1 deny $PZ manifest=invalid,route=human
+MS2 deny HARNESS_FROZEN_HOOK_VIOLATION -
+MS3 allow - -
+MS4 deny $PZ category=probe_docs,route=human
+MS5 allow - -
+MS6 deny $PZ category=probe_docs,route=human
+MS7 deny $PZ category=probe_base,route=human
+MS8 deny $PZ manifest=invalid,route=human
+E1 deny $PZ $RT
+E2 deny $PZ $RT
+E3 deny $PZ $RT"
+for i in 1 2 3 4 5 6 7 8 9; do EXPECT="$EXPECT
+N$i allow - -"; done
 
+# R21 is judged on the decision and a route marker only (sentinel may be legacy or new).
 fail=0; swept=0; expected=0
 SEEN=" "   # space-delimited id list (portable: macOS ships bash 3.2, no associative arrays)
 while IFS=$'\t' read -r id tool agent dec sent path reason; do
@@ -92,15 +85,23 @@ while IFS=$'\t' read -r id tool agent dec sent path reason; do
   fi
   set -- $line
   want_dec="$1"; want_sent="$2"; want_reason="$3"
+  if [ "$id" = "R21" ]; then
+    if [ "$dec" != "deny" ]; then echo "FAIL R21 got=$dec/$sent want=deny/<any sentinel>"; fail=$((fail+1)); fi
+    continue
+  fi
   if [ "$dec" != "$want_dec" ] || [ "$sent" != "$want_sent" ]; then
     echo "FAIL $id got=$dec/$sent want=$want_dec/$want_sent"
     fail=$((fail+1)); continue
   fi
   if [ "$want_reason" != "-" ]; then
-    case "$reason" in
-      *"$want_reason"*) ;;
-      *) echo "FAIL $id reason-missing '$want_reason' (reason: $reason)"; fail=$((fail+1));;
-    esac
+    oldifs="$IFS"; IFS=','
+    for sub in $want_reason; do
+      case "$reason" in
+        *"$sub"*) ;;
+        *) echo "FAIL $id reason-missing '$sub' (reason: $reason)"; fail=$((fail+1));;
+      esac
+    done
+    IFS="$oldifs"
   fi
 done < "$TSV"
 while read -r eid _; do
