@@ -35,5 +35,17 @@ Operator verdict:
 ### Q6: Should `state/verify` scratch and `state/todo` per-session residue be GC targets in v1, given their on-disk shapes are the least uniform of the target classes?
 Label: FOUNDER
 Authority anchor: n/a — inclusion is a scope judgment the card leaves to the SPEC
-Why unresolved: The audit measured real residue in both (911 aged verify files; 201 dead todo files), and the design contains the shape risk (session-keyed UUID names only; the shared `backlog.json`/`backlog.db` stores are on the never-touch negative list; undatable/unresolvable candidates spared). An operator preferring a narrower first cut would drop both from the target registry (one-list change in plan.md M3) and re-card them. Working default: included (spec.md REQ-HYG-005).
+Why unresolved: The audit measured real residue in both (911 aged verify files; 201 dead todo files), and the design contains the shape risk (session-keyed UUID names only; the shared `backlog.json`/`backlog.db` stores are on the never-touch negative list; undatable/unresolvable candidates spared; per-class dating fields pinned by M3 RED tests per REQ-HYG-005's table). An operator preferring a narrower first cut would drop both from the target registry (one-list change in plan.md M3) and re-card them. Working default: included (spec.md REQ-HYG-005).
+Operator verdict:
+
+### Q7: How should stale `spec-close-*.lock` files eventually be reclaimed, given the GC excludes the class?
+Label: EVIDENCE-NEEDED
+Authority anchor: n/a — requires a writer-side change this SPEC's module does not own
+Why unresolved: Plan-audit iteration 2 (D18) demonstrated that lock reclamation is unsafe without a writer-side post-acquire inode re-verification in `internal/spec/lock.go` (the two-live-locks window: a close op holding the old inode's lock while another acquires at the recreated path), and lock files are created empty so content-only dating can never establish their age. Both fixes live in the lock writer, outside this SPEC's module (`internal/hygiene`); the SPEC excludes the class (REQ-HYG-011) and the 15 measured stale locks stay until a writer-side SPEC lands. The decision needs that future SPEC's design evidence before a route can be chosen.
+Operator verdict:
+
+### Q8: Should a second, evidence-heavier DEAD route exist for the majority entry-missing residue?
+Label: EVIDENCE-NEEDED
+Authority anchor: n/a — needs data the install does not yet produce
+Why unresolved: With entry-missing and transcript-absent classified unmeasured (the correct fail-closed direction, plan-audit D2/D20), most of the measured residue (1,017 + 911 motivating figures) is reclaimed only when an affirmative DEAD case is provable — the expected reclaim fraction is far below the motivating numbers (D25). A second DEAD route (e.g. transcript-proven-absent from an authoritative profile-root enumeration plus content age well beyond the floor) requires first establishing which profile roots are authoritative for which sessions — data this install does not record. Parked here for the operator rather than silently narrowing the SPEC's utility.
 Operator verdict:
