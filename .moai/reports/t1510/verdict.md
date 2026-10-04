@@ -31,3 +31,13 @@ Open blocking defects (iteration 2):
 `plan_audit_ceiling_policy` allows one delta round (`auto_delta_rounds: 1`); it was not taken without the leader's call. Decision owed to the leader: (A) run that delta round (fix D20, D21, D23 plus the touched minors, delta re-audit; leader runs `codex_audit` for a cross-model receipt) or (B) hold-and-split. Run has NOT started.
 
 Gaps: no cross-backend audit (receipts=none); latency not re-measured; Go tests do not exist at plan phase.
+
+## HELD — operator decision (relayed by the leader)
+
+Operator decision: **hold until card t1500 (audit overhaul) lands, then process under the new rules.** Not started: run phase. Not done: any repair. The tree at `73775d36a` and this verdict record are preserved as-is. No push and no `develop` merge occurred.
+
+### Resume conditions
+
+1. **Plan-audit defects open at the ceiling** (iteration 2, FAIL 0.78): **D20** — move `**/CLAUDE.local.md` out of the shipped manifest (spec.md:L144; template-neutrality rejects it) into the dogfood overlay; **D21** — reconcile the "seven required categories" validity rule with the one-category probe fixtures MS4/MS7/MS8 and AC-SIPZ-004's `category=probe_docs` / `category=probe_base` expectations; **D23** — state the real scope of human routing (baseline-matched denials keep the legacy reason without `route=human`) or add the routing fields. Minor D22, D24-D26 fix where touched.
+2. **Open questions (decision-index Q1-Q7), unresolved:** Q1 — which spawn names besides `harness-learner` are self-improvement identities (needs observed real `agent_type` values); Q2 — is fail-closed on an invalid manifest acceptable against the opt-in guard family's fail-open norm; Q3 — widen the PreToolUse matcher to `MultiEdit` / `NotebookEdit` (a pinned test currently forbids it); Q4 — who keeps the manifest in step with files that t1500 adds (the liveness check catches dead entries, not unlisted new ones); Q5 — unify the four frozen lists and wire or retire `HARNESS_FROZEN_CONFIG_VIOLATION`; Q6 — is manifest membership an adequate reading of "regardless of zone", or is content-level detection wanted; Q7 — keep or drop the JSONL audit log (REQ-SIPZ-014).
+3. **Resume trigger:** card t1500 landed. On resume, re-read the SPEC against t1500's auditor definitions and thresholds (they sit inside the protected zone), repair D20/D21/D23 and settle Q1-Q7, then re-audit under the new audit rules; no existing PASS stands (both audits FAIL, `receipts=none`). Run starts only after the leader's reply following that.
