@@ -10,4 +10,4 @@ Disposition: FIXED in the next commit.
 - `retention_fifo_unix_test.go`: the unbounded `<-done` wait and the recovery open were removed; a timeout now fails the test immediately.
 
 ## Round 2
-See the section below once recorded.
+HEAD e347941fa, same base and backend. Verdict: pass, no findings. Reviewer stated it ran the `Prune|Retention` tests and the FIFO regression test here; Linux was compiled only and Windows was `go vet` only, neither executed.
