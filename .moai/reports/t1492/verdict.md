@@ -7,6 +7,7 @@ Card t1492 · Class B (cause measured first, no SPEC) · branch `WT-race-cli-tim
 1. The red `Race Test` is not flaky and not one slow test. `internal/cli` under `-race` has no headroom under the `-timeout 20m` cap, so any slow runner or added test pushes it over.
 2. Minimal fix: raise the `test-race` job to `-timeout 35m` and `timeout-minutes: 40` in `.github/workflows/ci.yml`. This is a ceiling raise, not a structural fix.
 3. Whether the fix turns CI green is NOT observed (see Gaps).
+4. Leader decision (2), received in-session after the first commit: apply the same ceiling to the required `Release PR Multi-OS Gate` in `.github/workflows/release-pr-multi-os.yml` (`-timeout 25m -> 35m` at the `go test -race` step, job `timeout-minutes 30 -> 40`) in this card, with the comment updated to the same measured figures. The checks are unchanged; only the upper bound moves. Sharding / real-time wait cuts are issued by the leader as a follow-up card (decision (1)).
 
 ## Evidence
 
@@ -59,6 +60,14 @@ python3 yaml.safe_load: parsed ok; test-race timeout-minutes = 40
 actionlint .github/workflows/ci.yml: exit=0 (no output)
 ```
 
+Re-run after the release workflow edit (both files, `actionlint .github/workflows/ci.yml .github/workflows/release-pr-multi-os.yml`, log `.moai/reports/t1492/actionlint.log`, 0 bytes):
+
+```
+actionlint exit=0
+release full-matrix-test timeout-minutes = 40
+ci test-race timeout-minutes = 40
+```
+
 ## Baseline-attribution
 
 All timings come from the two CI artifacts/logs named above (this run's downloads, not carried over from memory). The workflow edit was checked on tree `WT-race-cli-timeout` after base develop `948d444b9`. The failing run's head is `30ce3a02d`, a different commit from the card base; the fix is in the CI file only, so the base difference does not change the diagnosis. Tool provenance: `actionlint` and `python3` are installed binaries; no moai build was used for any measurement.
@@ -73,6 +82,6 @@ All timings come from the two CI artifacts/logs named above (this run's download
 ## Residual-risk
 
 - Ceiling raise only. The suite keeps growing; the structural fix is to shard `internal/cli` across two jobs or cut Factory lease/stall tests that wait in real time. Recommend a follow-up card.
-- `.github/workflows/release-pr-multi-os.yml:210` runs the same `go test -race ./...` with `-timeout 25m` on the required `Release PR Multi-OS Gate` ubuntu leg. By the same arithmetic it can hit the same wall. I did not change it (out of this card's scope; changing a required gate needs the leader's call) and did not measure it.
+- `release-pr-multi-os.yml` carried the same `go test -race ./...` with `-timeout 25m` (job `timeout-minutes: 30`). Changed here on the leader's decision (Claim 4). The `-timeout` value and the job `timeout-minutes` are shared by all three matrix legs (ubuntu/macos/windows), so the macos and windows legs also get the higher ceiling; only the ubuntu leg was reasoned about. It is a ceiling, so no leg can fail that passed before. This leg's own runtime was never measured; the 35m figure is carried over from the ci.yml sizing, not measured here.
 - A 40-minute advisory job is slower feedback; it is non-required, so merges are not blocked by it.
 - Scratch files in `.moai/reports/t1492/` (`stream/`, `stream-green/`, `*.py`, `*.sh`, logs) stay uncommitted; their loss costs only re-download time (`gh run download`).
