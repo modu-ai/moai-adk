@@ -681,7 +681,12 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 	if strings.TrimSpace(diff) == "" {
 		return glmInconclusive("no reviewable change: target " + target + " produced an empty diff")
 	}
-	me := resolveGLMAuditModelEffort(root) // pin > backend default, from the SAME tree as the diff (CR #8)
+	me, pinErr := resolveGLMAuditModelEffort(root) // pin > backend default, from the SAME tree as the diff (CR #8)
+	if pinErr != nil {
+		// The pin read failed: surface it rather than auditing with an
+		// assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+		return glmInconclusive("workflow.audit pins unreadable: " + pinErr.Error())
+	}
 	return callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, nil)
 }
 
@@ -824,6 +829,11 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	var (
 		enforcementGates config.AuditGates
 		gateAssumedNote  string
+		// gateReadErr carries a workflow.audit configuration the resolution
+		// path could not read: it is surfaced on the result (never silently
+		// read as an absent configuration) and fails the gate posture closed
+		// (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+		gateReadErr error
 		// receiptCodexRequired is the call-start codex gate the receipt exposure
 		// follows; nil (no plan carried) keeps the configuration re-read.
 		receiptCodexRequired *bool
@@ -833,7 +843,17 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		codexRequired := enforcementGates.Codex == config.AuditGateRequired
 		receiptCodexRequired = &codexRequired
 	} else {
-		enforcementGates, gateAssumedNote = workflowAuditGates(cfg.ProjectRoot)
+		enforcementGates, gateAssumedNote, gateReadErr = workflowAuditGates(cfg.ProjectRoot)
+		if gateReadErr != nil {
+			// Fail-closed: with the gate posture unreadable, every backend's
+			// missing verdict is treated as an unmet required gate, and the
+			// cause rides the result's gate_unmet.
+			enforcementGates = config.AuditGates{
+				Claude: config.AuditGateRequired,
+				Codex:  config.AuditGateRequired,
+				GLM:    config.AuditGateRequired,
+			}
+		}
 	}
 	// The actual Claude backend is a default-required independent audit. Unlike
 	// the legacy optional backends, an unavailable required Claude review must
@@ -842,6 +862,17 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		enforcementGates.Claude = config.AuditGateRequired
 	}
 	result = enforceRequiredGateUnmet(result, verdicts, enforcementGates)
+	if gateReadErr != nil {
+		// The configuration error surfaces on the result whatever the verdict
+		// outcome: a caller must be able to tell a broken audit configuration
+		// from an absent one (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+		gateErrNote := "workflow.audit gates unreadable: " + gateReadErr.Error()
+		if result.GateUnmet == "" {
+			result.GateUnmet = gateErrNote
+		} else {
+			result.GateUnmet = gateErrNote + "; " + result.GateUnmet
+		}
+	}
 	if gateAssumedNote != "" && result.GateUnmet != "" {
 		result.ResidualRiskNote = gateAssumedNote + " | " + result.ResidualRiskNote
 	}
@@ -988,21 +1019,22 @@ func explicitGateFor(gates config.AuditGates, backend string) string {
 // single-backend surface, so both surfaces read one config the same way.
 // projectRoot names the tree when the caller supplied one (SPEC-MCP-WORKTREE-
 // ROOT-001); empty falls back to resolveProjectDir, the same convention
-// performGLMAudit uses. Absent file, unreadable file, and parse errors all
-// yield zero gates — the enforcement fails OPEN on config trouble, so a broken
-// workflow.yaml can never invent a block.
+// performGLMAudit uses. An absent file yields zero gates — the legitimate
+// not-configured case. An unreadable/unparseable file and a resolver
+// rejection return the error: the enforcement never treats a broken
+// configuration as an absent one (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
 //
 // A config-orphaned worktree root takes the gate from its primary checkout;
 // when that primary cannot be identified the codex gate is assumed `required`
 // and the second return value says so (SPEC-MCP-WORKTREE-UNTRACKED-001
 // REQ-MWU-011/012). Every other root keeps the behaviour above.
-func workflowAuditGates(projectRoot string) (config.AuditGates, string) {
+func workflowAuditGates(projectRoot string) (config.AuditGates, string, error) {
 	root := strings.TrimSpace(projectRoot)
 	if root == "" {
 		root = resolveProjectDir()
 	}
 	if root == "" {
-		return config.AuditGates{}, ""
+		return config.AuditGates{}, "", nil
 	}
 	return resolveAuditGates(root)
 }

@@ -52,6 +52,10 @@ type Fields struct {
 	// DuplicateKeys names decision keys that appeared more than once; any
 	// entry makes the file inadmissible.
 	DuplicateKeys []string
+	// RequiredBackendFails collects every required_backend_fail line's named
+	// backend; any entry makes the file inadmissible regardless of its label
+	// (SPEC-AUDIT-CEILING-002 REQ-ACR-005). Repeats both collect.
+	RequiredBackendFails []string
 	// MalformedDebts counts debt lines that did not carry an id, a valid
 	// dispose_in, and a description.
 	MalformedDebts int
@@ -102,6 +106,12 @@ func Parse(raw []byte) Fields {
 			}
 			if _, dup := seen[canonical]; !dup {
 				seen[canonical] = norm
+			}
+		case "required_backend_fail":
+			// Every occurrence collects — a backend recorded fail is a refusal
+			// signal, never a dedupe candidate (REQ-ACR-005).
+			if value != "" {
+				f.RequiredBackendFails = append(f.RequiredBackendFails, value)
 			}
 		}
 		switch key {
@@ -196,6 +206,13 @@ func Admit(f Fields, phase Phase, threshold float64, hashOK bool) (bool, string)
 	if len(f.DuplicateKeys) > 0 {
 		return false, "duplicated decision key(s): " + strings.Join(f.DuplicateKeys, ", ")
 	}
+	// Unconditional (the sync phase included): a required backend the exporting
+	// auditor recorded as fail refuses the verdict regardless of its own label
+	// (SPEC-AUDIT-CEILING-002 REQ-ACR-005). The absence of lines refuses
+	// nothing — the label and field checks below stay the primary gates.
+	if len(f.RequiredBackendFails) > 0 {
+		return false, "required backend(s) recorded fail: " + strings.Join(dedupeStrings(f.RequiredBackendFails), ", ")
+	}
 	if !AdmitLabel(f.Label) {
 		if f.Label == "" {
 			return false, "no verdict"
@@ -230,4 +247,18 @@ func Admit(f Fields, phase Phase, threshold float64, hashOK bool) (bool, string)
 		}
 	}
 	return true, ""
+}
+
+// dedupeStrings returns the values in order, duplicates removed — refusal
+// reasons name each backend once.
+func dedupeStrings(values []string) []string {
+	seen := make(map[string]bool, len(values))
+	out := values[:0:0]
+	for _, v := range values {
+		if !seen[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
+	return out
 }

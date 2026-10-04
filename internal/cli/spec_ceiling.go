@@ -87,28 +87,28 @@ func runSpecCeiling(cmd *cobra.Command, specID string, listedDirs []string, reco
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "SPEC %s — tier %s, plan threshold %.2f\n", specID, in.Tier, in.Threshold)
-	fmt.Fprintf(out, "ceiling: %d  policy: %q\n", ceiling, onFinalHit)
+	_, _ = fmt.Fprintf(out, "SPEC %s — tier %s, plan threshold %.2f\n", specID, in.Tier, in.Threshold)
+	_, _ = fmt.Fprintf(out, "ceiling: %d  policy: %q\n", ceiling, onFinalHit)
 	if !hit {
-		fmt.Fprintln(out, "no ceiling outcome: the ceiling does not apply (below ceiling, or a clean admitted PASS at the ceiling)")
+		_, _ = fmt.Fprintln(out, "no ceiling outcome: the ceiling does not apply (below ceiling, or a clean admitted PASS at the ceiling)")
 		return nil
 	}
-	fmt.Fprintf(out, "ceiling HIT at %d rounds — latest verdict %q (admitted=%t) — disposition %q\n", outcome.Count, outcome.VerdictLabel, outcome.VerdictAdmitted, outcome.Disposition)
+	_, _ = fmt.Fprintf(out, "ceiling HIT at %d rounds — latest verdict %q (admitted=%t) — disposition %q\n", outcome.Count, outcome.VerdictLabel, outcome.VerdictAdmitted, outcome.Disposition)
 	if outcome.SplitProposalRef != "" {
-		fmt.Fprintf(out, "split-proposal reference: %s\n", outcome.SplitProposalRef)
+		_, _ = fmt.Fprintf(out, "split-proposal reference: %s\n", outcome.SplitProposalRef)
 	}
 	if len(outcome.DebtIDs) > 0 {
-		fmt.Fprintf(out, "debts: %s\n", strings.Join(outcome.DebtIDs, ", "))
+		_, _ = fmt.Fprintf(out, "debts: %s\n", strings.Join(outcome.DebtIDs, ", "))
 	}
 
 	if !record {
-		fmt.Fprintln(out, "read-only evaluation (pass --record to write the outcome record)")
+		_, _ = fmt.Fprintln(out, "read-only evaluation (pass --record to write the outcome record)")
 		return nil
 	}
 	if err := runtime.RecordCeilingOutcome(specID, outcome); err != nil {
 		return fmt.Errorf("spec ceiling: %w", err)
 	}
-	fmt.Fprintf(out, "recorded: %s\n", filepath.Join(runtime.AuditCeilingStateDir, specID+".json"))
+	_, _ = fmt.Fprintf(out, "recorded: %s\n", filepath.Join(runtime.AuditCeilingStateDir, specID+".json"))
 	return nil
 }
 
