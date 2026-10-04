@@ -84,10 +84,14 @@ progress.md §E.2.
 
 ### M5 — Lane merge verb (Priority High)
 - `moai integration merge --card <id>`: holder check first (read only; a non-holder or an
-  expired-lease holder is refused with the record unchanged), then lease renewal and drops; branch
-  resolution, SHA pinned once; pre-merge checks in order — record validity, base equals tip, SHA
-  descends from base, tree identity, landing check — then `git merge --no-ff <sha>`, merge-tree
-  verification, release; nine causes with distinct exit codes; merge failure → `git merge --abort` +
+  expired-lease holder is refused with the record unchanged), then lease renewal and drops; the card
+  gate (merge-ready, own unexpired card lease, version as read; requested card equals the window
+  card); clean integration-worktree check; branch resolution, SHA pinned once; pre-merge checks in
+  order — record validity, base equals tip, nothing to merge (pinned SHA differs from base), SHA
+  descends from base, tree identity, landing check, added-path collision check (an added path, its
+  ancestors, or paths beneath it already present as ignored/untracked bytes) — then
+  `git merge --no-ff <sha>`, merge-tree and clean-worktree verification, release; thirteen causes
+  with distinct exit codes; merge failure → `git merge --abort` +
   clean-worktree check, else `hold`; any failure after the merge commit exists leaves the commit,
   sets `hold` naming the SHA, releases.
 - ACs: AC-MWQ-017, -018.

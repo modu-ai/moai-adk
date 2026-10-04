@@ -129,7 +129,7 @@
   valid record, When B runs the verb, Then it refuses, no merge commit is created, and the window
   record's bytes are unchanged.
 - **AC-MWQ-018** (maps REQ-MWQ-018) — Each row is a scenario run as holder B with C queued; in every
-  row the window is released, the exit code is distinct from every other row's (thirteen codes; rows 11a-11c share code 11), and
+  row the window is released, the exit code is distinct from every other row's (thirteen codes; rows 11a-11c share code 11 and rows 13a-13c share code 13), and
   the last two columns state whether a merge commit is on the integration branch afterwards and
   whether C is promoted:
 
@@ -149,8 +149,12 @@
   | 11b | card gate: not merge-ready | card t0002 still in its sync-audit state | none | yes | card state and version unchanged |
   | 11c | card ≠ window card | window record's card is t0003, verb called with `--card t0002` | none | yes | both cards unchanged |
   | 12 | dirty before merge | integration worktree has an untracked file | none — `git merge` never invoked | yes | — |
-  | 13 | added path collides with ignored file | pinned SHA adds `runtime.local`; the integration worktree holds an ignored `runtime.local` with known bytes | none — `git merge` never invoked | yes | the ignored file's bytes are unchanged (checksum equal before and after); window released |
+  | 13a | collision: added path itself | pinned SHA adds `runtime.local`; the integration worktree holds an ignored file `runtime.local` with known bytes | none — `git merge` never invoked | yes | the ignored file's bytes are unchanged (checksum equal before and after); window released |
+  | 13b | collision: ancestor of an added path | pinned SHA adds `runtime.local/payload`; the integration worktree holds an ignored regular file `runtime.local` with known bytes | none — `git merge` never invoked (merge seam records zero calls) | yes | `runtime.local` is still a regular file with the same checksum (not replaced by a directory); integration tip unchanged; window released; cause 13's code |
+  | 13c | collision: path beneath an added path | pinned SHA adds the file `runtime.local`; the integration worktree holds an ignored directory `runtime.local/` containing a file with known bytes | none — `git merge` never invoked | yes | the directory's file bytes are unchanged (checksum equal before and after); window released; cause 13's code |
   | 8b | dirty after merge (cause 8) | `merge.autostash=true` + conflicting local edit fixture; merge commit created, autostash residue left | **yes — left in place** | no — policy `hold`, reason names the cause and merge SHA | exit code is cause 8's |
+
+  **Row 13b is the RED fixture the run phase writes first** — before any collision check exists, and observed failing on the plan tree before the pre-check is implemented. Fixture steps: (1) create a scratch repository on branch `main` whose `.gitignore` lists `runtime.local`, and commit; (2) create branch `cand` from `main`, force-add `runtime.local/payload` (`git add -f`), and commit; (3) back on `main`, write the ignored regular file `runtime.local` containing known bytes, and record its checksum; (4) run the merge verb as holder with the record built for `cand`'s pinned SHA, the merge seam instrumented to count calls. Expected after the pre-check lands: refusal with cause 13's exit code, the checksum of `runtime.local` unchanged and the path still a regular file, zero merge-seam calls, no merge commit, the window released and C promoted. RED-now cell (why it is red): on a tree without the widened pre-check, the verb passes the exact-path test because `runtime.local/payload` does not exist, calls the merge seam once, and the merge replaces the file with a directory — the plan-audit delta re-read measured plain `git merge --no-ff cand` in this exact setup as exit 0 with `runtime.local` turned into a directory (`.moai/reports/t1479/plan-audit-delta-d468ff19c.md` § Evidence (3), tree `25b0eeec8`). The flip is the cause-13 pre-check milestone (M5), and the same fixture shape, mirrored, gives rows 13a and 13c.
 
 ### Completion gate
 

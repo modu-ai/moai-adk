@@ -40,7 +40,7 @@
 
 - Final re-read (`.moai/reports/t1479/plan-audit-final.md`, verbatim copy): one critical (data loss
   on an added path colliding with an ignored/untracked file) fixed as REQ-MWQ-018 cause 13
-  (thirteen codes, AC-MWQ-018 row 13). Per the Q22 convergence rule the remaining non-critical
+  (thirteen codes, AC-MWQ-018 rows 13a-13c as of v0.8.0). Per the Q22 convergence rule the remaining non-critical
   findings are run-phase obligations:
   - **O1** — separate the adoption path's failure handling from the merge step's: a
     post-adoption transition failure must not release or alter a window held by another session
@@ -54,6 +54,21 @@
     and assert `hold` is written before release.
   - **O4** — pin the merge verb card gate's "version as read" to the same read REQ-MWQ-019 step 1
     uses.
+
+- Delta re-read of `d468ff19c` (`.moai/reports/t1479/plan-audit-delta-d468ff19c.md`, FAIL 0.80,
+  D1 critical + D2 major). v0.8.0, leader decision Q24 (last repair round, no new REQ): D1 — cause 13
+  widened to added path, ancestor of an added path, and path beneath an added path (AC-MWQ-018 rows
+  13a-13c; row 13b is the auditor's reproduction and the RED fixture the run phase writes first);
+  D2 — plan.md M5 corrected to thirteen causes and the REQ-MWQ-017 pre-merge order. 23 REQ / 23 AC,
+  cause count thirteen. Remaining findings are run-phase obligations:
+  - **O2 (extended, D3)** — the untracked (non-ignored) half of cause 13 is shadowed by cause 12 unless
+    `status.showUntrackedFiles=no`; cover it with an AC-MWQ-018 row/regression run under
+    `status.showUntrackedFiles=no` together with the O2 clean-check regression.
+  - **O5 (D4)** — symlink collisions and case-insensitive filesystems (macOS default) are unspecified
+    for cause 13's existence test; the run phase decides the handling (for example an `lstat` or
+    `git ls-files`-based test rather than case-sensitive path equality), records the decision and its
+    evidence in §E.2, and tests the check against a varied collision fixture set rather than only
+    rows 13a-13c. Not a plan blocker; no REQ is created for it.
 
 ## §E.2 Run-phase Evidence
 

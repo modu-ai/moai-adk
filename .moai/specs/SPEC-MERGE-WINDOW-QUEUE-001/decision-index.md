@@ -271,3 +271,18 @@ Authority anchor: — (리더 결정, 미션 계약 11c79e1a. Q22 수렴 규칙 
 Why unresolved: 해당 없음 — 리더가 결정했다. 고정 SHA가 새로 추가하는 경로가 통합 워크트리에 무시되었거나 추적되지 않은 파일로 이미 있으면, 병합하는 과정에서 그 파일의 내용을 잃을 수 있다.
 
 Operator verdict: 리더 결정(LEADER-DECIDED, 미션 계약 11c79e1a). REQ-MWQ-017은 `git merge` 전에 고정 SHA가 통합 브랜치 끝보다 새로 추가하는 경로를 계산한다. 그중 하나라도 통합 워크트리에 무시되었거나 추적되지 않은 파일·디렉터리로 이미 있으면, 원인 13(고유 코드)으로 병합 전에 거부하고, 그 파일의 내용은 건드리지 않은 채 창을 놓는다. 원인 수는 열셋으로 맞춘다. 남은 치명적이지 않은 지적 O1–O4는 Q22 규칙에 따라 run 단계 의무로 progress.md §E.1에 기록한다. 반영: REQ-MWQ-017, REQ-MWQ-018(원인 13, 열세 개), REQ-MWQ-019(코드 수), AC-MWQ-018 13행, AC-MWQ-019 시나리오 8의 코드 수, design.md D3, progress.md.
+
+### Q24: 델타 재독(`.moai/reports/t1479/plan-audit-delta-d468ff19c.md`, FAIL 0.80)에서 나온 D1(치명)·D2(주요)는 어떻게 닫는가?
+
+Label: FOUNDER
+
+Authority anchor: — (리더 결정, 카드 t1479. Q22 수렴 규칙과 Q23의 연장이며 커밋된 근거가 없어 이 행이 첫 커밋 기록이다.)
+
+Why unresolved: 해당 없음 — 리더가 결정했다. 원인 13은 고정 SHA가 추가하는 경로 자체가 이미 있을 때만 거부해서, `runtime.local/payload`를 추가하는 후보가 무시된 파일 `runtime.local`을 디렉터리로 바꾸는 경우(감사자가 재현: 병합 exit 0, 파일 소실)는 통과했다. plan.md M5는 여전히 「원인 9가지」였고 병합 전 검사 순서에 카드 게이트·깨끗한 트리·병합할 것 없음·원인 13이 빠져 있었다.
+
+Operator verdict: 리더 결정(LEADER-DECIDED, 카드 t1479). **이번이 리더의 마지막 수리 라운드다.** 새 REQ도, 범위 확대도 없다.
+- D1: REQ-MWQ-017의 충돌 검사와 REQ-MWQ-018 원인 13은 추가된 경로, 추가된 경로의 상위 경로, 추가된 경로 아래의 경로 중 어느 하나라도 통합 워크트리에 무시되었거나 추적되지 않은 파일·디렉터리로 이미 있으면 `git merge` 전에 거부하고, 충돌한 바이트는 그대로 두고, 창을 놓고, 원인 13과 같은 코드로 끝난다. 원인 수는 열셋 그대로다. 감사자의 스크래치 재현은 AC-MWQ-018 13b 행이며 run 단계가 가장 먼저 쓰는 RED 픽스처다.
+- D2: plan.md M5를 원인 열셋과 spec.md REQ-MWQ-017/018의 병합 전 순서로 고친다.
+- D3은 run 의무 O2에 합치고(`status.showUntrackedFiles=no` 회귀), D4(심볼릭 링크·대소문자 비구분 파일시스템)는 run 의무 O5로 기록한다. 둘 다 새 REQ를 만들지 않는다.
+
+반영: REQ-MWQ-017, REQ-MWQ-018(원인 13), AC-MWQ-018 행 13a–13c와 RED 픽스처 문단, design.md D3, plan.md M5, progress.md §E.1(O2 확장·O5). REQ·AC 개수는 23/23, 원인 수는 열셋 그대로다.
