@@ -135,9 +135,174 @@ through the shared seam, plus the windows cross-build proving the file compiles.
 `lsof` exec site itself is seam-excluded from unit coverage per REQ-SCV-004 (no test spawns a
 process); its real-world behavior is measured live in §F.4 below.
 
+### M2 — `moai session list --cc-version`
+
+**RED** (flag absent) — `go test ./internal/cli/ -run '^(TestSessionListCCVersion|TestSessionListDefaultNoProbe)$' -v`
+→ exit 1; cobra `unknown flag: --cc-version` usage error failed every `TestSessionListCCVersion`
+subtest, and the key-set comparison surfaced a test-side ordering bug (fixed: both sides
+sorted — the criterion is set equality). **GREEN** → exit 0: `ok github.com/modu-ai/moai-adk/internal/cli`.
+
+**M2 milestone gate** — builds native + windows exit 0; `golangci-lint … ./internal/cli/...` →
+`0 issues.`; the full cli suite under the default 10-minute timeout exceeded it on this loaded
+machine (see Gaps) — the session-scoped family (`-run 'TestSession'`) passed: `ok … 15.996s`.
+
+### M3 — The doctor staleness check
+
+**RED** (check absent) — `go test ./internal/cli/ -run '^TestDoctorCCVersionStaleness$' -v` →
+exit 1, `[build failed]` (`undefined: checkSessionCCVersionStaleness`, `undefined: doctorCCVersionEntries`).
+**GREEN** → exit 0: 7 subtests `--- PASS`. First GREEN attempt failed with
+`expected 'package', found 'import'` (missing `package cli` declaration) — repaired, GREEN.
+The doctor golden snapshots caught the new row (4 golden tests failed); regenerated with
+`UPDATE_GOLDEN=1` and verified green — the diff is exactly one added `ok` row
+(`Session CC Version — no active sessions registered — nothing to compare`) and the count
+`13 ok → 14 ok`. Check name registered in the binary-lag allowlist (`binary_lag_test.go`).
+
+### M4 — The resume emergency path
+
+**RED** (pieces absent) — the three test functions → exit 1, `[build failed]`
+(`undefined: laneJoinChildArgv`, `undefined: validateResumeArgs`). **GREEN** → exit 0 after
+implementation; the first GREEN run's positive-control subtest (`no resume token enters the
+loop`) failed on `factoryAssertParentCheckout` (the test binary runs in the worktree, not the
+primary checkout) — repaired by reusing the rerun SPEC's `relaunchLoopDrive` harness, which
+drives the loop against a fixture primary checkout. `TestRelaunchLoopReResolvesRun` (the
+existing loop contract) unchanged and passing.
+
+**M4 milestone gate** — builds exit 0; the launcher-scoped family
+(`TestParseLauncherEntry|TestParseFactoryFlag|TestLauncher|TestLaneJoin|TestResume|TestRelaunch|TestCCWorktree|TestSpawn|TestSession|TestDoctorGolden|TestBinaryLag|TestProfileFlag`)
+→ `ok … 36.530s`; lint `0 issues.`. A wider `-run 'TestFactory…'` scoped batch exceeded its own
+8-minute timeout with zero failures — the running-at-alarm test
+(`TestFactoryNextNominateRecordStateTokens`) passes standalone (`ok … 68.848s`; real git
+fixtures per subtest — queue latency on a loaded machine, not a defect).
+
+### M5 — §F live measurements (E7)
+
+- **§F.1 — the one-shot emergency form, end to end.** Mechanism note (measured, not assumed):
+  the launcher's debug dump prints step timings only (`moai-launcher-debug: lane claim took …
+  (label=lane-1)`), NOT the child argv — so the argv observation was obtained by placing a
+  stub `claude` script on PATH (prints its argv, exits 0 — no interactive child, no claude
+  process left running; pgrep verified). Command: fixture git repo at
+  `/tmp/t1465-probe/project` with a seeded active run row, then `env -u <factory stamps>
+  CLAUDE_PROJECT_DIR=… PATH=<stub dir>:… /tmp/t1465-moai cc -l -d -- --resume probe-t1465`.
+  The stub observed the child argv **verbatim**:
+
+  ```
+  1=[-d]
+  2=[--name]
+  3=[lane-1]
+  4=[--resume]
+  5=[probe-t1465]
+  6=[--settings]
+  7=[/var/folders/…/moai-factory-93761-1791100496168819000.json]
+  ```
+
+  All three carry: the desugared `--name lane-1` (the launcher claims the lane name), the
+  injected settings pair, and the pass-through `--resume` token (exit 0; `-d` forwarded
+  verbatim per its observe-only contract).
+- **§F.2 — the refused spelling, observed.** From /tmp with the factory stamps scrubbed:
+  `/tmp/t1465-moai cc -f lane-3 -- --resume probe-t1465` → exit 1, rendered
+  `-F/--Factory takes no argument (bare -f starts the factory leader); a lane joins with -l or
+  --lane, got "lane-3".` (`factoryFlagUsageError`).
+- **§F.3 — the relaunch guard, observed.** Same fixture, seeded active run:
+  `/tmp/t1465-moai cc -l --clear-policy relaunch -- --resume probe-t1465` → exit 1, rendered
+  `Factory lane: --resume cannot run under --clear-policy relaunch — every card session the
+  loop starts would resume the same conversation in a foreign worktree; the emergency form is
+  the one-shot lane join: moai cc -l -- --resume <session-id>.` — the safe form named
+  verbatim; zero card sessions started (the guard precedes the parent-checkout assertion and
+  the loop's first iteration).
+- **§F.4 — the live lsof positive control.** `lsof -a -d txt -p 3900` (the live lane-1 claude
+  process) → the binary mapping line
+  `2.1.287 3900 goos txt REG … /Users/goos/.local/share/claude/versions/2.1.287` — **which
+  caught a real M1 defect**: the native installer ships the binary NAMED BY ITS VERSION, so
+  the original `/claude`-suffix anchor rendered unknown for every real session. Repaired
+  (commit `312ff5c47`): the anchor now satisfies the product-directory layout
+  (`…/claude/versions/…`), the npm layout (`…/claude-code/…`), and the binary-named tail;
+  the case-sensitive match still refuses macOS frameworks' capitalized `Versions/<n>`.
+  Re-verified end to end on this machine: fixture registry pointing at pid 3900 →
+  `/tmp/t1465-moai session list --cc-version` → `cc=2.1.287 installed=2.1.289` (readlink
+  confirms `~/.local/bin/claude → …/versions/2.1.289`); `moai doctor --check "Session CC Version"`
+  → `warn Session CC Version  a session runs Claude Code 2.1.287 but the installed version is
+  2.1.289 — …` with **exit 0** — the staleness this SPEC exists to surface is live on this
+  machine, and the advisory property (doctor's exit status unchanged) is observed, not assumed.
+
+### Final verification batch (tree `312ff5c47`)
+
+- **E1** — all ten AC commands, acceptance.md forms verbatim: AC-SCV-001..010 exit 0 each
+  (logs `/tmp/t1465-ac1..10.log`; session package `ok`, cli package `ok`). AC-SCV-004's
+  swept count: `--- PASS` ×11 (3 top-level + 8 subtests), `[no tests to run]` ×0,
+  `grep -n "exec.Command" internal/session/ccversion*_test.go` → 0 hits.
+- **E2** — `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- **E3** — coverage: see the coverage lines below (measured on this tree).
+- **E4** — `grep -rn "AskUserQuestion" internal/session/ internal/cli/ | grep -v _test | grep -v "// "`
+  → 3 hits, ALL pre-existing at the base SHA (`internal/cli/harness.go:224/226/291` — the
+  harness-learner boundary's own documentation strings, verified via
+  `git grep … 3dc8c9760`), and `git diff 3dc8c9760..HEAD -- internal/cli/harness.go` is
+  empty — **0 new hits**.
+- **E5** — `golangci-lint run --timeout=2m ./internal/session/... ./internal/cli/...` (v2.1.6):
+  baseline `0 issues.` → final `0 issues.` — **0 new issues**.
+- `go vet ./internal/session/ ./internal/cli/` → exit 0.
+- **PRESERVE** — `git diff --name-only 3dc8c9760..HEAD` outside `internal/session/`,
+  `internal/cli/`, `.moai/specs/` → empty.
+- **E8** — commit SHAs (one per milestone): M1 `dec4fd34a`, M2 `7cf7ad0fb`, M3 `3ca2f3a5b`,
+  M4 `2ee51ef7f`, M5 anchor repair `312ff5c47`.
+
+### Gaps (run-phase, explicit)
+
+1. **The Linux running read has no live measurement** — `ccversion_linux.go`
+   (`/proc/<pid>/exe`) is fixture-tested only; this darwin machine cannot execute it (plan
+   §F.4 anticipated exactly this gap).
+2. **The `ccversion_other.go` runtime path** cannot execute here; its contract is carried by
+   the seam stand-in subtest plus the windows cross-build.
+3. **The darwin lsof exec site is seam-excluded from unit coverage** (REQ-SCV-004 forbids a
+   test spawning a process); its real-world behavior is covered by the §F.4 live measurement.
+4. **The full cli suite exceeds go test's default 10-minute timeout on this loaded machine**
+   (observed twice: 601s at M2, an 8m scoped batch at M4) — the only failing member both
+   times was the pre-existing `TestStopChainMemberCostWithinBudget` timing-budget test
+   (codex stop-hook chain, domain-disjoint from this SPEC's diff; fails standalone under
+   load: hook member 1.46s > its declared 1s budget). Every scoped family touching this
+   SPEC's surfaces passed.
+
+### Residual-risk (run-phase)
+
+- The installed read resolves the FIRST `claude` on PATH — a PATH-shadowed install reads that
+  one (that is the definition of "installed" this SPEC chose: what the next launch would run).
+- The staleness compare assumes numeric dot segments; the parser only ever produces those, so
+  a non-numeric segment reads as "not older" rather than guessing.
+- The relaunch guard lives at `runFactoryLaneRelaunch`'s entry; a future second relaunch door
+  must re-apply it (the M4 comment names the REQ).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: audit-ready
+- run_complete_at: 2026-10-04
+- AC matrix: **10/10 PASS** (AC-SCV-001..010, each command run verbatim from
+  `acceptance.md` on this tree; §E.2 Final verification batch carries the attributions)
+- Builds: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+- `go vet ./internal/session/ ./internal/cli/`: exit 0
+- Lint: golangci-lint v2.1.6 — baseline `0 issues.` → final `0 issues.` (0 new)
+- E4 boundary grep: 0 new hits (3 pre-existing `internal/cli/harness.go` doc strings, present
+  at the base SHA, file untouched by this run)
+- Coverage (new files, `go tool cover -func` on this tree):
+  - `internal/session/ccversion.go` — runningCCVersion 100%, mappingPathNamesClaudeBinary
+    100%, versionSegmentFromPath 100%, runningCCVersionFromMapping 90%,
+    installedCCVersion 77.8% (aggregate ≈ 94%)
+  - `internal/cli/lane_resume.go` — 100% (all four functions)
+  - `internal/cli/doctor_ccversion.go` — checkSessionCCVersionStaleness 86.8%,
+    ccVersionOlder 90.0% (aggregate ≈ 88%)
+  - `internal/session/ccversion_darwin.go` — 0% by design: the lsof exec site is
+    REQ-SCV-004-excluded from unit tests (no test spawns a process); its real-world behavior
+    is verified live by §F.4 (the measurement that caught the anchor defect)
+  - `internal/session` package total: 85.9% of statements
+- §F live measurements: F.1/F.2/F.3/F.4 all observed (none inferred); §F.4 caught and repaired
+  a real M1 defect (commit `312ff5c47`), then verified the full chain live — running 2.1.287 vs
+  installed 2.1.289 on this machine, doctor warn naming both with exit 0
+- Commits (E8): `dec4fd34a` M1 · `7cf7ad0fb` M2 · `3ca2f3a5b` M3 · `2ee51ef7f` M4 ·
+  `312ff5c47` M5 anchor repair — branch `WT-session-cc-version`, base `3dc8c9760`
+- PRESERVE: `git diff --name-only 3dc8c9760..HEAD` outside `internal/session/`,
+  `internal/cli/`, `.moai/specs/` → empty; `registry.go` untouched
+- sync-phase handoff note for manager-docs: the doctor check's name is
+  `Session CC Version` (`--check "Session CC Version"`); CHANGELOG should name the
+  `--cc-version` flag, the doctor check, the assembler/validation/guard trio, and the
+  REQ-SCV-010 refusal text's verbatim form `moai cc -l -- --resume <session-id>`
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
