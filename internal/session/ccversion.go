@@ -104,6 +104,12 @@ func installedCCVersion() string {
 	return UnknownCCVersion
 }
 
+// deletedExeSuffix is the Linux kernel's marker on a /proc/<pid>/exe value
+// whose binary was deleted on disk — the binary was replaced while the
+// process still runs it, which is exactly the staleness case this read
+// exists to surface (card-review round 1, P2).
+const deletedExeSuffix = " (deleted)"
+
 // @MX:NOTE: the anchor duty — `-d txt` also lists mapped frameworks and
 // dylibs, and macOS framework bundles carry Versions/<n>/ directories whose
 // version-shaped segments a naive parse would misread (t1348 §2.2).
@@ -114,9 +120,11 @@ func installedCCVersion() string {
 // /proc/<pid>/exe link target. Only a mapping line naming the claude binary
 // itself may satisfy the read — a version-shaped path on a library mapping
 // must not — so each line's path field is anchored on the binary name before
-// the version segment is parsed from it.
+// the version segment is parsed from it. A trailing " (deleted)" is stripped
+// before both, so a replaced-while-running binary still yields its version.
 func runningCCVersionFromMapping(mapping string) string {
 	for _, line := range strings.Split(mapping, "\n") {
+		line = strings.TrimSuffix(line, deletedExeSuffix)
 		fields := strings.Fields(line)
 		if len(fields) == 0 {
 			continue

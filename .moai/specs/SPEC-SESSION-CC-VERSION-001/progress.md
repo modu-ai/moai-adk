@@ -261,6 +261,46 @@ fixtures per subtest — queue latency on a loaded machine, not a defect).
    load: hook member 1.46s > its declared 1s budget). Every scoped family touching this
    SPEC's surfaces passed.
 
+### Card-review round-1 repairs (codex FAIL → repaired)
+
+Codex card-review round 1 (`.moai/reports/t1465/card-review.md`): **FAIL** — P1 ×1 + P2 ×2,
+all implementation-completeness repairs of existing REQ-SCV-009/010/001 (no REQ body change).
+
+- **P1 — the `-r` alias evaded the resume guard** (`lane_resume.go`). Claude's `-r` is the
+  short alias of `--resume`; both the validation and the relaunch guard recognized only the
+  long form. Repaired: exact-token recognition of `-r` (space) and `-r=` (equals) in
+  `validateResumeArgs` and `carriesResumeToken` — `-rx`/`-root`/`--resumex` are other tokens
+  and are judged by neither (pinned by `TestResumeAliasExactTokenOnly`).
+- **P2 — deleted-binary parse** (`ccversion.go`). Linux names a deleted executable's
+  `/proc/<pid>/exe` value `<path> (deleted)`; the path-field selection then parsed
+  `(deleted)` as the path → `unknown`, missing exactly the replaced-while-running staleness
+  this SPEC exists to surface. Repaired: the trailing ` (deleted)` is stripped from the
+  mapping line before the anchor and the version parse
+  (`TestRunningVersionFromDeletedBinary`, both install shapes).
+- **P2 — the resume scan must stop at Claude's argument separator** (`lane_resume.go`).
+  The first `--` in the scanned args is MoAI's pass-through separator (the emergency form's
+  resume tokens live after it); the second is Claude's own argument separator, after which
+  every token is prompt text — the previous scan judged them, regressing the base behavior
+  of `moai cc -- -- --resume …`. Repaired: both scanners stop at the second `--`
+  (`TestResumeScanStopsAtClaudeSeparator`: (a) tokens after MoAI's separator stay validated,
+  (b) tokens after Claude's separator never judged — validation and guard, (c) the
+  double-separator input reaches launch, base parity).
+
+**RED evidence** — the four new test functions against the pre-repair tree → exit 1 both
+packages: `TestResumeShortAliasRequiresValue` (2 FAIL — no refusal), `TestRelaunchRefusesResumeAlias`
+(2 FAIL — loop entered), `TestResumeScanStopsAtClaudeSeparator` (2 FAIL — prompt text judged);
+`TestRunningVersionFromDeletedBinary` (FAIL — `unknown` instead of the version). The two
+parity pins already passed at the pre-repair tree (as predicted — they are the mutant-killers
+for a wrong fix) and `TestResumeAliasExactTokenOnly` passed (the pin for exact-token matching).
+**GREEN** — after the repairs: exit 0 both packages (cli 27 `--- PASS`, session 13 `--- PASS`).
+
+**Repair gate** — gofmt clean; `go build ./...` + `GOOS=windows` exit 0; `go vet` exit 0;
+golangci-lint `0 issues.`; session AC family (AC-SCV-001..003 + deleted-binary) `ok`; cli
+scoped family (AC-SCV-005..010 selectors + TestSession/TestDoctorGolden/TestBinaryLag/
+launcher-entry families) `ok … 35.704s`. One intermediate build failure
+(`undefined: argSeparator` — the const declaration was authored after its first use) was
+caught by the test run and repaired before any commit.
+
 ### Residual-risk (run-phase)
 
 - The installed read resolves the FIRST `claude` on PATH — a PATH-shadowed install reads that

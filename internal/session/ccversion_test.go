@@ -72,6 +72,35 @@ func TestRunningVersionFromInjectedMapping(t *testing.T) {
 	})
 }
 
+// TestRunningVersionFromDeletedBinary (card-review round 1, P2) — Linux
+// names a deleted executable's /proc/<pid>/exe value "<path> (deleted)":
+// the binary was replaced on disk while the process still runs it — exactly
+// the staleness case this SPEC exists to surface. The read boundary strips
+// the suffix before the anchor and the version parse, in both install
+// shapes, so the version is still recovered.
+func TestRunningVersionFromDeletedBinary(t *testing.T) {
+	saveCCVersionSeams(t)
+	pidIsAlive = func(int) bool { return true }
+	readProcessMapping = func(pid int) (string, bool) {
+		if pid != 4242 {
+			return "", false
+		}
+		return "/Users/dev/.local/share/claude/versions/2.1.287 (deleted)", true
+	}
+	if got := (ResolveCCVersions(4242)).Running; got != "2.1.287" {
+		t.Fatalf("deleted-binary path resolved %q, want 2.1.287", got)
+	}
+
+	t.Run("binary-named tail with the deleted suffix", func(t *testing.T) {
+		readProcessMapping = func(int) (string, bool) {
+			return "/opt/installs/claude/versions/2.1.281/claude (deleted)", true
+		}
+		if got := (ResolveCCVersions(4242)).Running; got != "2.1.281" {
+			t.Fatalf("deleted binary-named path resolved %q, want 2.1.281", got)
+		}
+	})
+}
+
 // TestInstalledVersionFromResolvedPath (AC-SCV-002, REQ-SCV-002) — a fixture
 // PATH directory whose claude entry is a symlink resolving to a versioned
 // install path reports the path's version segment, for both house shapes

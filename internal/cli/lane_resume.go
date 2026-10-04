@@ -21,8 +21,20 @@ import (
 // it reaches the child argv and resumes one interrupted conversation in that
 // card's worktree. Under the relaunch policy it cannot mean what it says —
 // every card session the loop starts would receive it — which is what the
-// guard refuses.
-const resumeFlag = "--resume"
+// guard refuses. resumeFlagShort is Claude's short alias of the same option
+// and is recognized identically (card-review round 1, P1).
+const (
+	resumeFlag      = "--resume"
+	resumeFlagShort = "-r"
+)
+
+// argSeparator is the bare `--` token. In the args these functions scan it
+// appears at most twice with two owners: the FIRST one is MoAI's
+// pass-through separator (the launcher's parsers treat it so, and the
+// emergency form's resume tokens live after it), the SECOND is Claude's own
+// argument separator, after which every token is prompt text and is never
+// judged (card-review round 1, P2).
+const argSeparator = "--"
 
 // resumeRequiresValueError is REQ-SCV-009's refusal text; it names the
 // required form verbatim.
@@ -54,43 +66,78 @@ func laneJoinChildArgv(launcherArgs []string, sessionName string, settingsFlag [
 	return append(argv, settingsFlag...)
 }
 
-// validateResumeArgs refuses a --resume token that carries no session id, in
-// either spelling: the space form with no following token, and the equals
-// form with an empty value. A space-form token followed by another flag is
-// refused too — a session id never begins with "-", so a flag there means
-// the value is missing (and claude would otherwise consume that flag as the
-// value). It returns nil when every --resume token carries a value.
+// validateResumeArgs refuses a --resume (or -r) token that carries no
+// session id, in either spelling: the space form with no following token,
+// and the equals form with an empty value. A space-form token followed by
+// another flag is refused too — a session id never begins with "-", so a
+// flag there means the value is missing (and claude would otherwise consume
+// that flag as the value). The scan stops at Claude's argument separator:
+// tokens after the second `--` are prompt text, not options. It returns nil
+// when every resume token carries a value.
 func validateResumeArgs(args []string) error {
+	separators := 0
 	for i := 0; i < len(args); i++ {
-		switch arg := args[i]; {
-		case arg == resumeFlag:
+		if args[i] == argSeparator {
+			separators++
+			if separators >= 2 {
+				return nil // Claude's separator: everything after is prompt text
+			}
+			continue
+		}
+		if value, isEquals := resumeEqualsValue(args[i]); isEquals {
+			if value == "" {
+				return errors.New(resumeRequiresValueError)
+			}
+			continue
+		}
+		if args[i] == resumeFlag || args[i] == resumeFlagShort {
 			if i+1 >= len(args) || !resumeValuePlausible(args[i+1]) {
 				return errors.New(resumeRequiresValueError)
 			}
-			i++ // the value is consumed; a later --resume is judged on its own
-		case strings.HasPrefix(arg, resumeFlag+"="):
-			if arg[len(resumeFlag)+1:] == "" {
-				return errors.New(resumeRequiresValueError)
-			}
+			i++ // the value is consumed; a later resume token is judged on its own
 		}
 	}
 	return nil
 }
 
-// resumeValuePlausible reports whether the token following --resume can be
-// its value.
+// resumeEqualsValue reports the value a `--resume=`/`-r=`-prefixed token
+// carries. ok is false for tokens in no equals form.
+func resumeEqualsValue(arg string) (value string, ok bool) {
+	if v, isLong := strings.CutPrefix(arg, resumeFlag+"="); isLong {
+		return v, true
+	}
+	if v, isShort := strings.CutPrefix(arg, resumeFlagShort+"="); isShort {
+		return v, true
+	}
+	return "", false
+}
+
+// resumeValuePlausible reports whether the token following a resume token
+// can be its value.
 func resumeValuePlausible(token string) bool {
 	return token != "" && !strings.HasPrefix(token, "-")
 }
 
-// carriesResumeToken reports whether args contain a --resume token in either
-// its --resume <value> or --resume=<value> spelling — REQ-SCV-010's dual
-// recognition, so the equals form cannot evade the relaunch guard.
+// carriesResumeToken reports whether args contain a resume token — `--resume`
+// or its `-r` alias, in space or equals spelling — before Claude's argument
+// separator (tokens after it are prompt text, not options, and cannot resume
+// anything). REQ-SCV-010's dual recognition extends to the alias, so no
+// spelling can evade the relaunch guard.
 func carriesResumeToken(args []string) bool {
+	seen := false
+	separators := 0
 	for _, arg := range args {
-		if arg == resumeFlag || strings.HasPrefix(arg, resumeFlag+"=") {
-			return true
+		if arg == argSeparator {
+			separators++
+			if separators >= 2 {
+				return seen // Claude's separator stops the scan
+			}
+			continue
+		}
+		if arg == resumeFlag || arg == resumeFlagShort ||
+			strings.HasPrefix(arg, resumeFlag+"=") || strings.HasPrefix(arg, resumeFlagShort+"=") {
+			seen = true
 		}
 	}
-	return false
+	return seen
 }
