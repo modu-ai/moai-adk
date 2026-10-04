@@ -220,7 +220,7 @@ test. Each count takes two plain commands (the listing redirected to a file, the
 Plan-time L: cli **4884**, hook **1322**. The run phase records L0 again on the pre-guard tree (it
 differs if the branch absorbs `develop`, plan.md B10).
 
-### E-9 — form controls for §D.3 commands 6-10 and the AC-THE-006 diff greps (diagnostic)
+### E-9 — form controls for §D.3 commands 6-11 and the AC-THE-006 diff greps (diagnostic)
 
 Iteration 4. Scratch Go module outside the repository (tree-independent: it demonstrates the
 extraction forms, not repository behaviour; arms are `go test -C <module> ./lane -count=1 -json`,
@@ -259,6 +259,21 @@ each exit `1` unless stated, files sorted with `LC_ALL=C sort -o`). Selector
   internal/hook > <file>` is 4176 lines; the removed-assertion grep printed `45` and the bare-`return`
   grep `5`; on `2de0a2cb6..47ae8ecb1` the saved diff has 0 lines and the first grep printed `0`
   (exit `1`).
+- MF-3 escape-aware control (iteration 5; scratch module `t1356e9` under `/tmp/t1356-e9`,
+  tree-independent — it tests the extraction form, not repository behaviour; go1.26.8
+  darwin/arm64; measured at tree `960ea3012`). Runs: `env ARM=<arm> go test -C /tmp/t1356-e9 .
+  -count=1 -json`, c1 exit `1`, final exit `1` (all four greps exit `0`). `TestParent` carries
+  subtests `q"uote` and `q"uoted` (red arm-switched: `q"uote` on c1, `q"uoted` on final) and
+  `back\\slash` (red in both arms). The v0.4.0 regex `"Test":"[^"]+"` truncates both quote-bearing
+  names to `"Test":"TestParent/q\"`, so the sorted c1 and final old-form names files are identical
+  and `LC_ALL=C comm -13 <c1 old> <final old>` prints **nothing**, exit `0` — the new failing name
+  is missed. The escape-aware regex `"Test":"([^"\\]|\\.)+"` extracts
+  `"Action":"fail","Package":"t1356e9","Test":"TestParent/q\"uote"`,
+  `"Action":"fail","Package":"t1356e9","Test":"TestParent/q\"uoted"` and
+  `"Action":"fail","Package":"t1356e9","Test":"TestParent/back\\slash"` whole, and its
+  `LC_ALL=C comm -13 <c1 new> <final new>` prints
+  `"Action":"fail","Package":"t1356e9","Test":"TestParent/q\"uoted"` — the new failing name —
+  exit `0`. The same escape-aware form over the skip rows is §D.3 command 11.
 
 ## §D AC Matrix
 
@@ -287,12 +302,12 @@ chain of c1, c2 and c2r (§D.8 steps 0-5 and 7); M4 re-evaluates the full enumer
 |----|-----|-------|--------------------------------|--------------|-----------|
 | AC-THE-001 | REQ-THE-001 | **release-blocking** | Given the cli test binary; When `env MOAI_FACTORY_ROLE=lane go test ./internal/cli -count=1 -v -run '^(TestTodoClaim_LaneGovernance\|TestTodoClaimMCP_Mirror\|TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit)$'` runs; Then exit 0, exactly three `--- PASS:` lines for these names, zero `--- SKIP`, no `[no tests to run]` | **E-1** (tree `a5a63a0bc`, exit 1; the AC's own command) — red because `MOAI_FACTORY_ROLE` is outside the cli `TestMain` scrub set; diagnostic green arm **E-1b** (compound) shows the same three pass when that one axis is unset | M2 flips it: same command, exit 0, three `--- PASS:` lines |
 | AC-THE-002 | REQ-THE-002 | **release-blocking** | Given the hook test binary; When the E-2 command runs; Then exit 0, exactly two `--- PASS:` lines for the two StaleRunNotice tests, zero `--- SKIP`; AND `git diff <BASE> -- internal/hook/stale_run_m1_test.go` leaves the assertion lines (`Fatalf` / `Errorf` / `Contains`) of both tests untouched | **E-2** (tree `a5a63a0bc`, exit 1; the AC's own command) — red because the hook `TestMain` scrubs no factory axis and `MOAI_KANBAN_ID` ∧ `MOAI_FACTORY_WORKERS` route the notice through the run-state gate (E-3) | M3 flips it: E-2 command, exit 0, two `--- PASS:` lines; assertion diff empty |
-| AC-THE-003 | REQ-THE-001, REQ-THE-002, REQ-THE-003, REQ-THE-007 | **release-blocking** | Given the post-M3 tree; When the four whole-package runs of §D.3 execute (cli and hook, each a lane arm and a scrubbed arm, no `-run` selector, `-count=1`, under the lease); Then per package (a) each arm is **valid** — exit code recorded, its terminal top-level count T equals the independently listed count L of the same tree, no `panic: test timed out` / goroutine-leak / build-or-setup-failure line, and a non-zero exit shows at least one test-level failure row; (b) the two arms' failing-test sets are equal — by full test path, subtests included, so §D.3 command 9 prints nothing, an axis of a surviving exemption row being left at its lane value in the scrubbed arm and so identical in both — and their skipped sets are equal; (c) both failing sets are empty modulo failures named as env-unrelated, each of which is identical in both arms and present in the c1 failing set; (d) neither set names a guard test or any of the five observed reds; (e) every name in a final-tree arm's failing set (full test path) is also in the c1 failing set of the same arm type — the difference `final − c1` of §D.3 commands 6-8 prints nothing for the lane arm and for the scrubbed arm of each package (a name absent from c1 is a regression caused by the change, never env-unrelated); (f) the lane arm is **a lane**: its env (every set `NAME=value`, every unset name) is recorded as one line per arm in progress.md §E.2 for the c1 and the final lane arm of each package, the four lines are byte-identical (the final arm replays the c1 line, not the then-current session), each carries every axis of the pre-flight family read (plan.md §C step 2) and at least `MOAI_FACTORY_ROLE=lane` with non-empty `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_WORKERS` and `MOAI_KANBAN_ID`, and in the c1 arms the lane names file holds the five observed reds (§D.3 command 10 prints 3 for cli, 2 for hook) while the c1 scrubbed names file holds none (prints 0). A session whose pre-flight read lacks a required axis, or a c1 lane arm without the five reds, makes the lane arm INVALID and AC-THE-003 FAIL — never skipped, never passed; the run returns a blocker report | Witness by existence: **E-1 + E-2** (tree `a5a63a0bc`) show the lane-arm set contains at least those 5 tests; the scrubbed-arm greens are **E-1b** (cli) and E-3 (hook, unset arms), so the two sets differ now — red because the five observed reds are lane-only. Cell completed by the c1 record: the full pairs on the pre-guard tree, with their sorted failing-name files and the lane-arm env lines, are recorded in the baseline record commit (progress.md §E.2) | M4 flips it: the final-tree pairs recorded in progress.md §E.2 with commands, exit codes, lists, T and L, the `comm -13` and `comm -3` outputs, the env lines, lease lines |
-| AC-THE-004 | REQ-THE-005 | **regression-guard at plan time; becomes release-blocking when its four-element cell is recorded at c2r** | Given the coverage tests committed in the guard commit (cli `TestFactoryEnvAxesCovered`, hook `TestLaneEnvAxesCovered`); When each is run with `-count=1 -v -run '^<name>$'` on the c2 tree, on the final tree, under mutations P1, P3, P4 and P5 (plan.md M4), and on the synthetic inputs of plan.md D3; Then it is RED on the c2 tree naming each uncovered axis and the production file that references it (expected: the six cli axes; for hook the thirteen axes **and** the empty-scrub-set liveness message, because plan.md D5 declares the hook scrub set empty at c2 and liveness assertions use `t.Errorf` — spec.md §E input (3); the cell records which message(s) the observed red carries), GREEN on the final tree with `--- PASS` and a liveness line showing referenced ≥ 1, scrub-set size ≥ 1 and family size ≥ the floor 17, RED naming the removed axis (P1), RED on a padded exemption row (P3) and on each synthetic input (uncovered axis, empty-reason exemption, exemption citing an absent file or a file that does not mention the axis, empty reference set, family below the floor), RED on an empty reference scan (P4), and RED naming the missing file when the sibling package's guard file is absent (P5) | **Not re-executable on `a5a63a0bc`**: the guard does not exist (E-5b shows no guard file); a selector here would print `[no tests to run]` and exit 0, a vacuous green. Cell completed by the c2r record: the exact command, its verbatim stdout, its exit code as its own field, and the c2 SHA together with the `git rev-parse --short HEAD` read taken immediately before the run (equal to it), per package, recorded in progress.md §E.2 and witnessed by §D.8 step 7 | Green path M2 (cli green) → M3 (hook green); mutation probes recorded at M4, the AC's Exit milestone |
+| AC-THE-003 | REQ-THE-001, REQ-THE-002, REQ-THE-003, REQ-THE-007 | **release-blocking** | Given the post-M3 tree; When the four whole-package runs of §D.3 execute (cli and hook, each a lane arm and a scrubbed arm, no `-run` selector, `-count=1`, under the lease); Then per package (a) each arm is **valid** — exit code recorded, its terminal top-level count T equals the independently listed count L of the same tree, no `panic: test timed out` / goroutine-leak / build-or-setup-failure line, and a non-zero exit shows at least one test-level failure row; (b) the two arms' failing-test sets are equal — by full test path, subtests included, so §D.3 command 9 prints nothing, an axis of a surviving exemption row being left at its lane value in the scrubbed arm and so identical in both — and their skipped sets are equal; (c) both failing sets are empty modulo failures named as env-unrelated, each of which is identical in both arms and present in the c1 failing set; (d) neither set names a guard test or any of the five observed reds; (e) every name in a final-tree arm's failing set (full test path) is also in the c1 failing set of the same arm type — the difference `final − c1` of §D.3 commands 6-8 prints nothing for the lane arm and for the scrubbed arm of each package (a name absent from c1 is a regression caused by the change, never env-unrelated); (f) the lane arm is **a lane**: its env (every set `NAME=value`, every unset name) is recorded as one line per arm in progress.md §E.2 for the c1 and the final lane arm of each package, the four lines are byte-identical (the final arm replays the c1 line, not the then-current session, and the final arm's child-visible env line of §D.3 — the `env`-in-place-of-the-run form — is recorded beside it and identical to the c1 line), each carries every axis of the pre-flight family read (plan.md §C step 2) and at least `MOAI_FACTORY_ROLE=lane` with non-empty `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_WORKERS` and `MOAI_KANBAN_ID`, and in the c1 arms the lane names file holds the five observed reds (§D.3 command 10 prints 3 for cli, 2 for hook) while the c1 scrubbed names file holds none (prints 0). A session whose pre-flight read lacks a required axis, or a c1 lane arm without the five reds, makes the lane arm INVALID and AC-THE-003 FAIL — never skipped, never passed; the run returns a blocker report | Witness by existence: **E-1 + E-2** (tree `a5a63a0bc`) show the lane-arm set contains at least those 5 tests; the scrubbed-arm greens are **E-1b** (cli) and E-3 (hook, unset arms), so the two sets differ now — red because the five observed reds are lane-only. Cell completed by the c1 record: the full pairs on the pre-guard tree, with their sorted failing-name files and the lane-arm env lines, are recorded in the baseline record commit (progress.md §E.2) | M4 flips it: the final-tree pairs recorded in progress.md §E.2 with commands, exit codes, lists, T and L, the `comm -13` and `comm -3` outputs, the env lines, lease lines |
+| AC-THE-004 | REQ-THE-005 | **regression-guard at plan time; becomes release-blocking when its four-element cell is recorded at c2r** | Given the coverage tests committed in the guard commit (cli `TestFactoryEnvAxesCovered`, hook `TestLaneEnvAxesCovered`); When each is run with `-count=1 -v -run '^<name>$'` on the c2 tree, on the final tree, under mutations P1, P3, P4 and P5 (plan.md M4), and on the synthetic inputs of plan.md D3; Then it is RED on the c2 tree naming each uncovered axis and the production file that references it (expected: the six cli axes; for hook the thirteen axes **and** the empty-scrub-set liveness message, because plan.md D5 declares the hook scrub set empty at c2 and liveness assertions use `t.Errorf` — spec.md §E input (3); the cell records which message(s) the observed red carries), GREEN on the final tree with `--- PASS` and a liveness line showing referenced ≥ 1, scrub-set size ≥ 1 and family size ≥ the floor 17, RED naming the removed axis (P1), RED on a padded exemption row (P3) and on each synthetic input (uncovered axis, empty-reason exemption, exemption citing an absent file or a file that does not mention the axis, empty reference set, family below the floor), RED on an empty reference scan (P4), and RED naming the missing file when the sibling package's guard file is absent (P5) | **Not re-executable on `a5a63a0bc`**: the guard does not exist (E-5b shows no guard file); a selector here would print `[no tests to run]` and exit 0, a vacuous green. Cell completed by the c2r record: the exact command, its verbatim stdout, its exit code as its own field, and the c2 SHA together with the `git rev-parse --short HEAD` read taken as the immediately preceding step of the run (equal to it) and the `git status --short` read (expected empty) beside it, per package, recorded in progress.md §E.2 and witnessed by §D.8 step 7 | Green path M2 (cli green) → M3 (hook green); mutation probes recorded at M4, the AC's Exit milestone |
 | AC-THE-005 | REQ-THE-006 | **release-blocking** | Given the card branch; When the procedure of §D.8 is run (it names c1, c2 and c2r by exact subject or file set, checks each commit's file set, tests the chain with `git merge-base --is-ancestor` plus `git rev-list --count`, and enumerates **every** commit that touches `internal/`); Then c1, c2 and c2r are each found exactly once with the prescribed shape, each is a strict ancestor of the next in that order, and every `internal/` commit other than c2 is a strict descendant of c2r; the c2r record carries each of the four guard-test red names and the c2 SHA (§D.8 step 7); the SHAs are recorded in progress.md §E.2 | **E-5** (tree `a5a63a0bc`, exit 0, empty stdout for E-5a, E-5a2, E-5b and E-5c) and **E-5d** (exit 1, empty stdout) — red because none of the three commits exists, so the exactly-once checks of §D.8 and the content witness of step 7 cannot hold | M1 creates c1, c2, c2r in that order and evaluates steps 0-5 and 7; later commits descend from them and M4 re-evaluates the step 6 enumeration |
 | AC-THE-006 | REQ-THE-004, REQ-THE-008 | **regression-guard** | Given the branch diff vs `<BASE>`, evaluated at the M4 tip and again at the sync tip; When `git diff --name-only <BASE>..HEAD` and `git diff -U0 <BASE>..HEAD -- internal/cli internal/hook` are read; Then every path is a `*_test.go` file or under `.moai/specs/SPEC-TEST-ENV-HERMETIC-001/` (the sync commit adds SPEC-directory paths only); no `func Test…` line present at `<BASE>` is removed; no `t.Skip` / `t.Skipf` / `t.SkipNow` is added; no assertion line is removed and no early bare `return` / `testing.Short()` guard is added in a pre-existing test file (the greps of §D.1, last paragraph) | **N/A (preservation)**: green today — on `a5a63a0bc` the diff names only SPEC-directory paths, so the criterion holds vacuously; it guards the change, not the starting tree, and is not recorded as a pass on that basis | M4 (re-read at the sync tip) |
 | AC-THE-007 | REQ-THE-007 | **regression-guard** | Given the post-M2/M3 tree; When the E-4a and E-4b commands run (with `-v`); Then exit 0 and the `--- PASS:` lines of E-4a (two tests) and E-4b (the test and its four subtests) are present; and the applied-behaviour test of AC-THE-008, which reads every added axis, is green | **N/A (positive control)**: green today by E-4a / E-4b (exit 0); E-4a does not read `MOAI_FACTORY_ROLE` (disclosure under E-4), so the separation control for the added axes is AC-THE-008; both must stay green once the scrub is applied | M2 / M3 |
-| AC-THE-008 | REQ-THE-009, REQ-THE-005 | **regression-guard at plan time; becomes release-blocking when its four-element cell is recorded at c2r** | Given the applied-behaviour tests committed in the guard commit (cli `TestFactoryEnvAxesScrubApplied`, hook `TestLaneEnvAxesScrubApplied`); When each is run with `-count=1 -v -run '^<name>$'` on the c2 tree, on the final tree, and under mutation P2 (the `TestMain` scrub call removed); Then it is RED on the c2 tree naming every referenced axis still present after the child's `TestMain` (expected: six cli axes, thirteen hook axes), GREEN on the final tree with its own `--- PASS:` line and a child `--- PASS:` line visible in the log, RED naming every surviving axis under P2 even though the declared scrub set is full, and RED if the child was pinned (cli) or the witness list was empty | **Not re-executable on `a5a63a0bc`**: the test does not exist (E-5b). Cell completed by the c2r record exactly as AC-THE-004 — exact command, verbatim stdout, exit code as its own field, c2 SHA with the pre-run `HEAD` read, per package, witnessed by §D.8 step 7. The two observed reds E-1 and E-2 are the production-shaped instances of this failure (an axis survives `TestMain`) | Green path M2 (cli green) → M3 (hook green); P2 recorded at M4, the AC's Exit milestone |
+| AC-THE-008 | REQ-THE-009, REQ-THE-005 | **regression-guard at plan time; becomes release-blocking when its four-element cell is recorded at c2r** | Given the applied-behaviour tests committed in the guard commit (cli `TestFactoryEnvAxesScrubApplied`, hook `TestLaneEnvAxesScrubApplied`); When each is run with `-count=1 -v -run '^<name>$'` on the c2 tree, on the final tree, and under mutation P2 (the `TestMain` scrub call removed); Then it is RED on the c2 tree naming every referenced axis still present after the child's `TestMain` (expected: six cli axes, thirteen hook axes), GREEN on the final tree with its own `--- PASS:` line and a child `--- PASS:` line visible in the log, RED naming every surviving axis under P2 even though the declared scrub set is full, and RED if the child was pinned (cli) or the witness list was empty | **Not re-executable on `a5a63a0bc`**: the test does not exist (E-5b). Cell completed by the c2r record exactly as AC-THE-004 — exact command, verbatim stdout, exit code as its own field, c2 SHA with the pre-run `HEAD` read and the `git status --short` read (expected empty) beside it, per package, witnessed by §D.8 step 7. The two observed reds E-1 and E-2 are the production-shaped instances of this failure (an axis survives `TestMain`) | Green path M2 (cli green) → M3 (hook green); P2 recorded at M4, the AC's Exit milestone |
 
 ### §D.1 Mutant probes (release-blocking ACs)
 
@@ -361,7 +376,9 @@ must print `0` (a rewrite that re-indents or removes an assertion removes the li
 named and justified in progress.md §E.2. Controls (E-9): on `2de0a2cb6~60..2de0a2cb6` the two
 greps print `45` and `5`; on `2de0a2cb6..47ae8ecb1` the saved diff is empty and the first prints `0`
 with grep exit `1`. Residual, left to review: a hollowing built from added lines alone — a `defer`
-that swallows the failure, an early `panic`-and-recover — is not visible to a line grep.)
+that swallows the failure, an early `panic`-and-recover — is not visible to a line grep, and
+neither is a hollowing by a weakened condition: `- if got == "" {` / `+ if false {` removes a line
+carrying no assertion token, so the removed-assertion grep stays `0` (SF-6).)
 
 ### §D.2 Preconditions (adoption discipline)
 
@@ -405,7 +422,11 @@ it is strictly below the cap and the lease cannot lapse at the instant the test 
   `lane-arm env: set NAME=value … ; unset NAME …` (names sorted, a set-empty axis written `NAME=`),
   in progress.md §E.2 beside the arm; the final lane arm's command carries the c1 line verbatim.
   An arm is a lane only when clause (f) of AC-THE-003 holds: a family read that lacks a required
-  axis, or a c1 lane arm without the five reds, makes the arm INVALID.
+  axis, or a c1 lane arm without the five reds, makes the arm INVALID. The final-tree lane arm also
+  records the env its child actually sees — `unset <the family axes> && env <the nine lane axes>
+  env > <file>`, the arm command's prefix with `env` in place of the test run — beside the arm,
+  formatted the same way, and that line must be identical to the c1 recorded env line (SF-4: the
+  replayed c1 line alone is self-recorded; this witness reads the child-visible env).
 - **scrubbed arm**: `unset <every family variable listed from internal/config/envkeys.go at pre-flight> && go test P -count=1 -timeout <cap - 2m> -json > <arm file>`.
   An axis of a surviving exemption row (spec.md §E) is not stripped by the binary, so it is left at
   its lane-arm value in this arm — `unset <the other family variables> && env <exempt NAME=value> go
@@ -417,15 +438,19 @@ target); the deciding lines are copied into progress.md §E.2, the committed car
 read-only commands on the arm file, each recorded with its output:
 
 1. terminal top-level count T: `grep -cE '"Action":"(pass|fail|skip)".*"Test":"[^/"]+"' <arm file>` (top-level only, so it compares with the listed count L);
-2. failing test rows, subtests included: `grep -E '"Action":"fail".*"Test":"[^"]+"' <arm file>` (a failing subtest is its own row, named by its full path, `TestParent/sb`);
-3. skipped test rows, subtests included: the same with `"Action":"skip"`;
+2. failing test rows, subtests included: `grep -E '"Action":"fail".*"Test":"([^"\\]|\\.)+"' <arm file>` (a failing subtest is its own row, named by its full path, `TestParent/sb`; the name pattern is escape-aware — `go test -json` writes a quote or backslash inside a name escaped, and the naive `[^"]+` stops at the first `\"`, truncating the name, MF-3);
+3. skipped test rows, subtests included: the same escape-aware pattern as command 2, with `"Action":"skip"`;
 4. invalid-arm markers: `grep -cE 'panic: test timed out|goleak: |\[(build|setup) failed\]' <arm file>` must print `0` (grep exits 1 when it prints `0`; the printed count is the reading);
 5. when the arm's exit code is non-zero: `grep -cE '"Action":"fail".*"Test":"' <arm file>` must print at least `1` (otherwise the failure is a non-test failure and the arm is invalid).
 
 An arm is **valid** only when T equals L, command 4 prints `0`, and command 5 holds; a lane arm is
-valid only when clause (f) of AC-THE-003 also holds (command 10). Both arms of a package must be
+valid only when clause (f) of AC-THE-003 also holds — command 10 witnesses clause (f) on the **c1
+lane arms only** (it runs on the recorded c1 names files), and a final-tree lane arm's lane-ness
+rests on its recorded env line replaying the c1 line plus its child-visible env line, both
+identical to the c1 line (SF-4). Both arms of a package must be
 valid before their sets are compared; the failing sets and the skipped sets must be equal (the
-failing sets by full test path, command 9), and both failing sets empty modulo failures that appear
+failing sets by full test path, command 9; the skipped sets by command 11, the same form over the
+skip rows), and both failing sets empty modulo failures that appear
 identically in both arms **and** are present in the c1 failing set of the same arm type, which the
 run names as env-unrelated. The unit of every comparison below is the Go test row, a subtest
 included, named by its full path. (E-7c shows command 1 on a real arm file; the plan-time L figures are E-8.)
@@ -435,10 +460,14 @@ package and each arm type (lane, scrubbed), the failing names of the final-tree 
 of the failing names of the c1 arm of the same type. Five more plain commands, no pipe, each
 recorded with its output:
 
-6. names file: `grep -oE '"Action":"fail","Package":"[^"]+","Test":"[^"]+"' <arm file> > <names file>` —
+6. names file: `grep -oE '"Action":"fail","Package":"[^"]+","Test":"([^"\\]|\\.)+"' <arm file> > <names file>` —
    each match is one failing test row by its full path, subtests included (`go test -json` writes
    the keys in the order Time, Action, Package, Test, Elapsed, so the matched text is stable; the
-   package-level fail row carries no `Test` key and does not match). `grep` exits 1 and leaves an
+   package-level fail row carries no `Test` key and does not match). The name pattern is
+   escape-aware (`([^"\\]|\\.)+`): a quote or backslash inside a subtest name is written escaped
+   in the JSON, so the naive `[^"]+` stops at the first `\"` — `TestParent/q"uote` extracts as
+   `TestParent/q\` — and two quote-bearing names sharing the text up to the quote collapse into
+   one line, hiding a new failure from `comm -13` (MF-3, E-9). `grep` exits 1 and leaves an
    empty file when the arm has no failing test row, which is a valid empty set once the arm is
    valid (commands 1, 4 and 5); a package-level failure with no test-level row (a build failure, a
    `TestMain` failure after the tests) also yields an empty file, and commands 4 and 5 then make the
@@ -454,14 +483,26 @@ recorded with its output:
    `TestStaleRunNoticeLegacyLeaderSpelling`, `TestStaleRunNoticeLegacySessionRecord` — **must print
    `3` / `2` on the c1 lane names file** and `0` on the c1 scrubbed names file (grep exits 1 then). It
    runs on the names file, not the arm file, which carries those names on `run`, `output` and `pass`
-   rows too (E-9).
+   rows too (E-9);
+11. skipped-set equality (the clause "the skipped sets are equal"): per arm,
+   `grep -oE '"Action":"skip","Package":"[^"]+","Test":"([^"\\]|\\.)+"' <arm file> > <skip names file>` —
+   the escape-aware pattern of command 6 over the skip rows — then
+   `LC_ALL=C sort -o <skip names file> <skip names file>`, and
+   `LC_ALL=C comm -3 <c1 skip names file of the same arm type> <final skip names file>`
+   **must print nothing** (exit 0; grep exits 1 and leaves an empty file when the arm has no skipped
+   test row, which is a valid empty set once the arm is valid — command 3 reads the same rows on the
+   arm file, command 11 makes them comparable, N1).
 
 A name printed by command 8 or 9 is not final on one run: the affected arm is run once more on the
 same tree under the same lease (the identical command, itself a valid arm, its output recorded
-beside the first); a name printed in **both** runs fails (b) or (e), a name absent from the repeat is
-recorded as load noise with both outputs (spec.md R7). The comparison stays by the full path of
-command 6, and the repeat is a whole-package arm, not an isolated re-run, so a repeat never excuses
-a subtest and never excuses a test that fails only in package context.
+beside the initial run); every name printed in **either** run is recorded in progress.md §E.2 with
+both outputs; a name printed in **both** runs fails (b) or (e); a name printed only in the repeat —
+absent from the initial run — also counts as a hit against (b) or (e) and is never load noise; load
+noise is the reverse, a name printed in the initial run and absent from the repeat, recorded with
+both outputs (spec.md R7). Command 9 compares two arms, so **both** arms of the pair are repeated,
+and the repeat comparison for command 9 runs between the two repeat files. The comparison stays by
+the full path of command 6, and the repeat is a whole-package arm, not an isolated re-run, so a
+repeat never excuses a subtest and never excuses a test that fails only in package context.
 
 The sorted c1 names files and the lane-arm env lines are copied verbatim into progress.md §E.2 in the
 baseline record commit, so the comparison does not depend on scratch surviving. Form controls (the
@@ -499,21 +540,26 @@ runs; Then every check exits as stated and no two of the named commits coincide.
 - [ ] AC-THE-001, 002, 003, 004, 005, 008 PASS with recorded evidence (command, verbatim output, exit
       code, tree SHA); AC-THE-006, 007 evidence recorded and not counted as release gates.
 - [ ] AC-THE-004 and AC-THE-008 have their cell **completed by the c2r record**: the c2-tree RED
-      records (the exact command, verbatim stdout, the exit code as its own field, the c2 SHA and
-      the pre-run `git rev-parse --short HEAD` read equal to it, per package; for the hook coverage
+      records (the exact command, verbatim stdout, the exit code as its own field, the c2 SHA, the
+      pre-run `git rev-parse --short HEAD` read equal to it and the `git status --short` read
+      (expected empty) taken beside it, per package; for the hook coverage
       test the message(s) the observed red carries) are in progress.md §E.2 from the guard-red
       record commit, and the §D.8 step 7 content witness holds on c2r; an absent record leaves the
       AC unadopted and blocks closure. The sync auditor re-executes one of the four cells at the c2
       tree — materialized read-only with `git archive -o <scratch>/c2.tar <c2>` and `tar -xf
       <scratch>/c2.tar -C <scratch dir>`, never `git worktree add` or a checkout — and records its
       own verbatim stdout and exit code beside the cell (string presence in progress.md is not
-      execution evidence; this re-execution is what closes that gap).
+      execution evidence; the re-execution closes that gap for the one cell it re-executes, and the
+      other three cells stay witnessed by their recorded strings, SF-2).
 - [ ] progress.md §E.2 carries: the baseline pairs with L, T and the arm-validity checks, the sorted
-      c1 failing-name files, the four lane-arm env lines (c1 and final, per package, byte-identical)
+      c1 failing-name files, the four lane-arm env lines (c1 and final, per package, byte-identical),
+      the final-tree lane arms' child-visible env lines (the §D.3 `env`-in-place-of-the-run form,
+      identical to the c1 lines)
       and the clause (f) outputs of §D.3 command 10 (`3` / `2` for the c1 lane arms, `0` for the c1
       scrubbed arms), the discovery pair re-recorded, the guard reds on the c2 tree, the M3
-      one-axis arms, the final pairs with the `comm -13` outputs of §D.3 command 8 and the `comm -3`
-      outputs of command 9 (empty for each arm type of each package), the mutation probes P1-P5
+      one-axis arms, the final pairs with the `comm -13` outputs of §D.3 command 8, the `comm -3`
+      outputs of command 9 and the `comm -3` outputs of command 11 (empty for each arm type of each
+      package), the mutation probes P1-P5
       (each reverted: empty `git diff --stat` afterwards), every lease acquire/release line, and
       the SHAs of c1, c2 and c2r (plus `<BASE>` where re-derived).
 - [ ] The **final exemption tables** of both guard files are listed in progress.md §E.2, and each

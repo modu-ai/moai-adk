@@ -1,10 +1,10 @@
 ---
 id: SPEC-TEST-ENV-HERMETIC-001
 title: "Test env hermeticity sweep — tests that read the factory/kanban lane gate axes must not change verdict with the ambient env of the session that runs them"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-04
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
@@ -173,10 +173,14 @@ carries the requirement layer only.
 
 - **REQ-THE-001** — **While** the `internal/cli` test binary runs inside a session whose env
   carries the factory/kanban lane gate axes, the package's set of failing tests shall equal its
-  set of failing tests under a fully scrubbed env.
+  set of failing tests under a fully scrubbed env, where the scrubbed arm is a scrubbed env that
+  leaves an axis carrying a reasoned, cited exemption (spec.md §E) at its lane value, so the
+  exempt axis carries the identical value in both arms.
 - **REQ-THE-002** — **While** the `internal/hook` test binary runs inside a session whose env
   carries the factory/kanban lane gate axes, the package's set of failing tests shall equal its
-  set of failing tests under a fully scrubbed env.
+  set of failing tests under a fully scrubbed env, where the scrubbed arm is a scrubbed env that
+  leaves an axis carrying a reasoned, cited exemption (spec.md §E) at its lane value, so the
+  exempt axis carries the identical value in both arms.
 - **REQ-THE-003** — **When** the run phase begins, the run shall measure the whole-package
   failing-test set of `internal/cli` and of `internal/hook` under a lane env and under a scrubbed
   env, both before and after the change, and shall record each command, exit code, failing-test
@@ -398,9 +402,11 @@ in one place, AC-THE-005.
   (REQ-THE-003); it is neither fixed nor hidden here. A failure identical in both final arms but
   absent from c1 is a change-induced regression, never env-unrelated (AC-THE-003 clause (e)).
 - **R7 — machine load flips verdicts.** The lease serializes heavy runs; a verdict that changes
-  between a repeated identical arm is reported as load noise, not attributed to env. A name that
-  appears in a final arm and not in c1 is repeated once as a whole-package arm (acceptance.md §D.3),
-  and only a name failing in both runs counts; the comparison stays by full test path.
+  between a repeated identical arm is reported as load noise, not attributed to env. A name printed
+  by §D.3 command 8 (the `final − c1` difference) or command 9 (the arm difference) is repeated
+  once as a whole-package arm — for command 9, both arms of the pair — a name printed in either run
+  is recorded with both outputs, a name printed only in the repeat counts as a hit, and only a name
+  failing in both runs is excused as load noise; the comparison stays by full test path.
 - **R8 — the lane arm models the measuring session, not every possible lane.** The lane arm sets
   the nine family axes the measuring session exported and unsets the other eight; a real lane with
   a different subset is not reproduced by it. The coverage test, the applied-behaviour test, and
@@ -471,3 +477,4 @@ in one place, AC-THE-005.
 | 2026-10-03 | manager-spec | v0.2.0 plan-audit iteration 1 revision (FAIL 0.79 vs 0.80; findings F1-F13). Guard spec gains an applied-behaviour test and a tightened exemption rule (REQ-THE-005 reworded, REQ-THE-009 added, AC-THE-004 and AC-THE-008 added as guard criteria whose cell is completed at the c2r record); ordering check rewritten to enumerate every `internal/` commit with prescribed c1/c2/c2r shapes (REQ-THE-006 widened to match); the 17-axis family and per-package referenced/covered/undecided sets re-measured, the sixth cli axis `MOAI_FACTORY_SLOW_LAUNCH_MS` carried through §A, §H O2, decision-index Q4 and plan M2; reach figures replaced by a reproducible command; AC-THE-003 gains an independent swept-count floor; evidence ledger re-recorded with `-v` and full stdout (E-1, E-2), cli scrubbed arm added (E-1b), discovery narrow pair added (E-7); stale-guard signal, REQ-THE-008 judging point, and minor count corrections. |
 | 2026-10-03 | manager-spec | v0.3.0 plan-audit iteration 2 revision (FAIL 0.86 vs 0.80, driven by one must-fix mutant hole; findings D1-D11; this feeds the final permitted audit). REQ-THE-003 and AC-THE-003 gain the c1-containment clause (e): a failure is env-unrelated only when identical in both arms and present in the c1 failing set of the same arm type, with the `final − c1` difference recorded and required empty (R6 reworded to match); AC-THE-004's mutant-probe text no longer overstates closure (the unscrubbed-axis-plus-padded-citation variant is named and left to review, with a closure DoD item listing the final exemption tables and each surviving row's red test); the hook coverage test's c2 red carries both the empty-scrub-set liveness message and the thirteen axis names (liveness uses `t.Errorf`); the class label of AC-THE-004 and AC-THE-008 is relabelled (the v0.2.0 \"on adoption\" label is retired) and one phrase is used across AC-THE-003, 004 and 008 for a cell completed by a later record; an AC-THE-005 step 7 content witness on the c2r commit; AC-THE-004 and AC-THE-008 bound to the M4 exit; lease cap and `-timeout` relation stated; the guard's reference rule pinned (identifier or quoted literal) with a family-size liveness floor of 17; REQ-THE-009's trigger reworded; the E-5 control gets an explicit upper bound and plan-time `go test -list` counts are recorded (E-8). |
 | 2026-10-03 | manager-spec | v0.4.0 delta revision for the leader-approved fourth plan-audit (iteration 3: FAIL 0.87, two must-fix holes in AC-THE-003; findings MF-1, MF-2, SF-1..SF-4). AC-THE-003 gains clause (f), a lane-arm positive control (env recorded and identical at c1 and final, every modelled axis present, five reds in the c1 lane arm, otherwise INVALID and failed) and a pre-flight env-read step; the failing-name comparison is by full test path, subtests included (REQ-THE-003 and REQ-THE-007 state the unit); exemption axes are left at their lane value in the scrubbed arm; the c2r cell carries exact command, exit code field and the c2 SHA with the pre-run HEAD read, and the sync re-execution records its own stdout; a one-repeat rule for a name absent from c1; AC-THE-006 gains assertion-removal and bare-return greps; `LC_ALL=C` on `sort` and `comm`; the §F wording slip is fixed. No REQ or AC added. |
+| 2026-10-04 | manager-spec | v0.5.0 iteration-4 residue revision (leader-authorized delta re-audit round; findings MF-3, SF-1..SF-6, N1 from `plan-audit-iter4.md`). The failing-name extraction regex is escape-aware (`"Test":"([^"\\]|\\.)+"`) in acceptance.md §D.3 commands 2, 3 and 6 and in the new command 11, so a quote inside a subtest name no longer truncates it and two quote-bearing names cannot collapse (E-9 control: the old form truncates to `TestParent/q\` and its `comm -13` prints nothing across `q"uote` → `q"uoted`; the new form prints both names whole and its `comm -13` prints the new failing name); skipped-set equality gains a command form (§D.3 command 11, `comm -3` over escape-aware skip-rows names files, must print nothing); REQ-THE-001/002 state the scrubbed arm leaves an axis carrying a reasoned, cited exemption at its lane value, aligning the requirement layer with the AC/plan mechanism (SF-1); the c2r cell obligations gain the `git status --short` read and the DoD re-execution claim is scoped to the sampled cell, the one-of-four sampling unchanged (SF-2); the repeat rule states a name printed in either run is recorded and a repeat-only name counts as a hit, and command 9 repeats both arms, with R7 citing commands 8 and 9 (SF-3); §D.3 command 10 is scoped to the c1 lane arms and the final-tree lane arm records its child-visible env beside the arm, identical to the c1 line (SF-4); the AC-THE-004 residual names the weakened-condition hollowing (SF-6); the acceptance.md c2r row is reworded without an ordering keyword — the iteration-4 CN-4 `CONFLICT:` line was a verb cross-cell false positive, disposition recorded in progress.md §E.1 (SF-5). develop `30ce3a02d` absorbed at merge `960ea3012` (551 commits); the five observed reds re-verified intact on `960ea3012`. No REQ or AC added. |
