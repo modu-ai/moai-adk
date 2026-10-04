@@ -306,7 +306,15 @@ fixtures per subtest — queue latency on a loaded machine, not a defect).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending run-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-10-04
+sync_commit_sha: pending-backfill-sync
+status_transition: in-progress → implemented → completed, frontmatter `status` only, riding the single sync commit (spec.md `status: completed`; `updated: 2026-10-04` already carried today's date, so the frontmatter's only changed line is `status`)
+sync_commits: the one sync commit (subject `chore(SPEC-SESSION-CC-VERSION-001): sync-phase artifacts — 3-phase close (card t1465)`); its own SHA is backfilled by a following commit per the D3 exemption
+files_changed_by_sync: `CHANGELOG.md` (one `[Unreleased]` / Added entry), `.moai/specs/SPEC-SESSION-CC-VERSION-001/spec.md` (frontmatter `status` only), this file (§E.4)
+sync_scope_note: Tier M internal CLI feature — no README or docs-site sweep per plan §B; codemap regeneration not run (owned by the periodic codemaps cards, t1443/t1456 pattern)
+b12_self_test: pre-emission `grep -c SPEC-SESSION-CC-VERSION-001 CHANGELOG.md` was 0 before the entry and is 1 after; live AC count 10 of 10 (acceptance.md carries no `[RETIRED]`/`[REF]` markers), matching the entry's "10 acceptance criteria AC-SCV-001..010"; every file path named in the entry ls-verified
+handoff_followed: §E.3's sync-phase note — the entry names the `--cc-version` flag, the doctor staleness check, the assembler/validation/guard trio, and the verbatim emergency form `moai cc -l -- --resume <session-id>`
 
 ## §F Phase 4 Mode Selection
 
