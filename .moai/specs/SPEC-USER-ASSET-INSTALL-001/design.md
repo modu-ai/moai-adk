@@ -26,8 +26,8 @@ BEFORE (today, two modes)                    AFTER (this SPEC)
 
 Per-profile settings folders (`~/.moai/claude-profiles/<name>`, the
 `CLAUDE_CONFIG_DIR` roots) remain per-profile for SETTINGS and are never an
-install target for the shared asset tree (decision-index D-Q3 governs how a
-profile session sees the user-level assets).
+install target for the shared asset tree (decision-index D-Q3: closed at plan
+phase — profile sessions do not see the shared user assets in v1; premise P6).
 
 ## 2. Components
 
@@ -38,17 +38,27 @@ profile session sees the user-level assets).
 - Writes to four user roots, resolved at run time:
   - Claude: `$HOME/.claude/skills/`, `$HOME/.claude/agents/`
   - Codex: `$HOME/.agents/skills/`, `$HOME/.codex/agents/`
-- Per-file rule set (inherited semantics from V17 evidence):
-  - target exists AND per-user manifest tracks it → refreshable (hash compare)
+- Per-file rule set (inherited semantics from V17 evidence, extended by the
+  iter1 D3 repair):
+  - target exists AND manifest tracks it AND current hash == manifest hash AND
+    differs from shipped bytes → refreshable (REQ-008)
+  - target exists AND manifest tracks it AND current hash equals NEITHER the
+    manifest hash NOR the shipped bytes → divergence: preserve (back up the
+    shipped replacement alongside the user folder), leave the tracked path
+    unmodified by refresh AND by removal, report (REQ-023) — a user edit to a
+    tracked file is never silently overwritten or deleted
   - target exists AND manifest does NOT track it → SKIP + report (collision;
     the file may be the user's — mirrors `rehomeOneSkill`'s skip-and-report and
     `UserCreated` provenance semantics)
   - target absent → install
 - Per-file failure (permissions, EISDIR, …) → continue + surface in summary
   (fail-open per file, loud at the end; never a silent partial install).
-- Project-root confinement (`validateDeployPath`) gets a user-scope counterpart:
-  every destination MUST be under one of the four declared roots — the user
-  installer refuses any path outside them (path-trust boundary).
+- Four-root confinement is judged on the symlink-RESOLVED destination: unlike
+  the project-side `validateDeployPath` (deployer.go:451-477 — lexical only:
+  Clean + `..` rejection + string-prefix containment, no symlink resolution),
+  the user installer resolves symlinks along the destination's parent chain
+  before writing and refuses any destination whose resolved path falls outside
+  the four roots (AC-025's parent-symlink sentinel).
 
 ### 2.2 Per-user manifest (new)
 
@@ -56,8 +66,13 @@ profile session sees the user-level assets).
   `~/.moai/user-assets.json` — the leading candidate because `~/.moai/` is
   already moai's user-level state home per `internal/paths/paths.go`;
   `~/.claude/moai-manifest.json`; per-root split files).
-- Schema: `schema_version`, `installed_at`, `moai_version`, `files: {path →
-  {sha256, bundle, installed_at}}`, `collisions: [{path, first_seen_at}]`.
+- Schema: `schema_version`, `installed_at`, `files: {path → {sha256, bundle,
+  installed_at, moai_version}}`, `collisions: [{path, first_seen_at}]`. The
+  installing moai version is PER FILE (REQ-006): the field records the moai
+  build that successfully wrote that file; a failed write leaves the prior
+  entry and its version untouched, so REQ-013's partial-failure continuation
+  yields accurate mixed-version history. There is deliberately no top-level
+  `moai_version` — a single top-level value cannot record that state.
 - Reuses the sha256 hex convention of `catalog.yaml` entries and the triple-hash
   spirit of the project manifest (`internal/manifest/types.go`) minus the parts
   the user scope does not need (no 3-way merge at user scope: collision = skip).
@@ -79,12 +94,18 @@ profile session sees the user-level assets).
 
 ### 2.4 `moai update` integration
 
-- New user-asset phase in the update flow: refresh (hash-diff) → removal
-  (manifest-tracked files no longer in ANY shipped bundle) → summary counts
-  (installed/refreshed/removed/collision-skipped — REQ-011).
+- New user-asset phase in the update flow: refresh (only when the file's
+  current hash equals its manifest hash and differs from the shipped bytes) →
+  removal (manifest-tracked files no longer in ANY shipped bundle, same
+  current-hash precondition) → tracked-file divergence preserve + backup +
+  report (REQ-023) → summary counts (installed/refreshed/removed/
+  collision-skipped/divergence-preserved — REQ-011).
 - Removal is manifest-driven ONLY: a file in a user folder that the manifest
   does not track is never a removal candidate (REQ-010 collision rule covers
   it; deletion of untracked files is out of scope).
+- If no per-user manifest exists (init never ran on the machine), the
+  user-asset phase reports an advisory and performs nothing — the first
+  install belongs to init (REQ-024), not to update.
 - Ordering: user-asset phase runs BEFORE the project phase so a mid-update
   failure leaves the project phase untouched (project behavior unchanged by a
   user-side failure).
@@ -110,16 +131,30 @@ profile session sees the user-level assets).
   project). Both read-only, report-only (matching the doctor house style).
 - Retired-carrier checks (`checkPluginDeployment`, `checkPluginVersion`) are
   repointed to the user-manifest comparison or removed with their SPEC's REQs
-  cited in the commit (REQ-019).
+  cited in the commit (REQ-019). The existing project-scope Codex asset
+  diagnostics (research V13: `inspectSkillMirror`, the mirror/agent-count
+  inputs of `codexStaleSkillFinding` at `doctor_codex.go:429`/`:870`) are
+  repointed to the user-install path in M4 — the same milestone that stops
+  emitting project assets — with a clean-on-correct-install regression test
+  (iter1 D12); left alone they would misreport every correct install as
+  drift.
 
 ### 2.7 Plugin carrier disposition
 
-- `internal/template/pluginemit/` (generator + 13 test files), the committed
-  `plugins/moai/` tree, `.claude-plugin/marketplace.json`,
+- `internal/template/pluginemit/` (generator + 8 test files; 13 .go files
+  total), the committed `plugins/moai/` tree, `.claude-plugin/marketplace.json`,
   `.agents/plugins/marketplace.json`, Makefile `plugin-emit`/`plugin-emit-check`
   targets (and their `build:` prerequisite), the roster-guard sweep-skip note
   (`internal/harness/rosterguard/check.go:338-341`), and the plugin install
   step (`internal/cli/plugin_install.go` + init/update call sites) go away.
+- The release-chain gates go with them (iter1 D4): release.yml provenance
+  Check 8 (`release.yml:123-128`, invoking `scripts/check-plugin-version.sh`,
+  citing SPEC-PLUGIN-MARKETPLACE-001 REQ-024), `scripts/check-plugin-version.sh`
+  (reads `plugins/moai/.claude-plugin/plugin.json`), and
+  `scripts/check-plugin-discoverable.sh` (reads `.claude-plugin/marketplace.json`
+  + `plugins/moai/.mcp.json`) — all deleted with the carrier (hard delete,
+  P5); no orphaned release check remains (C5). SPEC-PLUGIN-MARKETPLACE-001
+  REQ-024 is recorded as retired in spec.md §7.
 - `deployer_mode.go`'s split (DeployModePlugin, PluginMirrorPolicy, the
   exclusion walk, the MCP strip, the plugin re-home) is retired; the deployer
   returns to a single project payload shape (the slim one).
@@ -140,8 +175,8 @@ cross-harness evidence.
 
 | Risk | Mitigation |
 |---|---|
-| Wide retire blast radius (13+ test files, build chain, roster guard) | M6/M7 isolated; each deletion cites the owning REQ; golden tests deleted WITH the generator in the same commit |
+| Wide retire blast radius (8 test files / 13 .go files, build chain, roster guard, release chain) | M6/M7 isolated; each deletion cites the owning REQ; golden tests deleted WITH the generator in the same commit; release-chain gates dispositioned in M6 (iter1 D4) |
 | Users left with plugin installs from the old model | Migration report names the manual `claude plugin uninstall` step (doctor informational row); no silent divergence |
-| Profile sessions not seeing user assets (D-Q3 unresolved) | Gate blocks M2 completion on the operator answer; M8 measures the chosen policy |
-| Collision rule too strict (user never gets updates after a manual edit) | Summary distinguishes tracked-but-modified (refreshable) from untracked (collision); doctor lists collisions persistently in the manifest |
-| Manifest corruption / partial write | Atomic write (same pattern as `atomicWriteFile`); schema-version refusal for removal |
+| Profile sessions not seeing user assets (D-Q3 closed: P6) | Declared limitation documented in M8; doc-visible so a later SPEC can lift it |
+| User edits to tracked files silently overwritten or deleted (iter1 D3) | Refresh/removal gated on current-hash == manifest-hash; divergence → preserve (backup) + report + a REQ-011 count category; doctor's "modified" row lists it persistently |
+| Manifest corruption / partial write | Atomic write (same pattern as `atomicWriteFile`); schema-version refusal for removal; corrupt-JSON recovery path (AC-021) |

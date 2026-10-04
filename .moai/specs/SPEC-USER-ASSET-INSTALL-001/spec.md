@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -24,6 +24,20 @@ related_specs: [SPEC-PLUGIN-MARKETPLACE-001, SPEC-INIT-SHRINK-001, SPEC-CODEX-CO
   t1509) are settled premises: (D3) L0 core includes factory; (D4) no plugin
   carrier — moai copies common skills and agents into per-user folders. Open
   sub-decisions are recorded in decision-index.md and referenced from §5.
+- 2026-10-05: v0.2.0 plan-audit iter1 repair (card t1509, verdict FAIL 0.64).
+  Defects D1-D13 closed: D1 decision register renumbered to D-Q1..D-Q6;
+  D2 RED-now + green-path cells authored for every release-blocking AC
+  (acceptance.md evidence ledger, baseline tree b965a3912); D3 tracked-file
+  divergence preserve (REQ-023, REQ-008/009 gated on current-hash ==
+  manifest-hash, REQ-011 fifth count, AC-006/008 rewritten); D4 release-chain
+  gates dispositioned in M6 (release.yml Check 8, both check-plugin scripts);
+  D5 hook payload defined project-deployed-but-counted-in-L0 (REQ-003);
+  D6 first-install trigger bound to init (REQ-024); D7 dead gate options
+  dropped, D-Q3/D-Q6 closed by constraint (premises P5/P6); D8 four-root
+  confinement AC with parent-symlink sentinel (AC-025) + symlink-resolved
+  confinement specified; D9 acceptance-layer claims corrected (GWT for
+  Blockers, primary REQ marks, §3 map sync, corrupt-manifest AC clause);
+  D10-D13 counts/V-row/Codex-doctor-repoint/per-file-manifest-version.
 
 ## 1. Background and Premise
 
@@ -35,24 +49,35 @@ USER's harness folders — Claude reads `~/.claude/skills` and
 `~/.claude/agents`; Codex reads `$HOME/.agents/skills` and `~/.codex/agents`.
 Projects keep only what is project-scoped: default settings, AGENTS.md, the
 project lock file, and the project-only harness payload. The operator has
-further decided (D3) that the L0 core bundle — installed for every user —
-contains the plan/run/sync workflow surface, five core agents, the hook
-payload, and the factory skill set (multi-lane operation); everything else
-ships as opt-in bundles.
+further decided (D3) that the L0 core bundle — installed for every user by
+`moai init` — contains the plan/run/sync workflow surface, five core agents,
+the hook payload, and the factory skill set (multi-lane operation); everything
+else ships as opt-in bundles. L0's hook payload constituent deploys with the
+project payload (REQ-005), never as a user-folder write (REQ-003).
 
 A per-USER manifest file (with hashes) makes the user-folder install
 accountable: `moai update` refreshes changed files and removes files no longer
-shipped, user-created files with colliding names are never overwritten (they
-are reported), and `moai doctor` compares the installed user tree against the
-manifest and the project tree against the project lock file.
+shipped — but only when the file on disk still matches what moai last wrote
+(REQ-023 protects user edits to tracked files) — user-created files with
+colliding names are never overwritten (they are reported), and `moai doctor`
+compares the installed user tree against the manifest and the project tree
+against the project lock file.
 
-Premises (settled by the operator, not re-opened here):
+Premises (settled by the operator, or forced by this SPEC's own constraints —
+not re-opened during run phase):
 - P1 (D4): no plugin, no marketplace — plain file copies from the binary's
   embedded assets.
-- P2 (D3): L0 = plan/run/sync + 5 core agents + hooks + factory; the rest is
-  opt-in bundles.
+- P2 (D3): L0 = plan/run/sync + 5 core agents + hook payload (project-deployed)
+  + factory; the rest is opt-in bundles.
 - P3: user-created files are inviolable — skip and report.
 - P4: per-profile settings folders stay per-profile.
+- P5: the retired plugin carrier is hard-deleted atomically (no deprecation
+  window). Forced by REQ-016 and C5: any window keeps the carrier generating,
+  committing, or shipping, which those rules forbid.
+- P6: profile sessions do not see the shared user assets in v1 (declared
+  limitation, doc-visible). Forced by REQ-002 and C2: every
+  install-into-profile mechanism writes into a `CLAUDE_CONFIG_DIR` profile,
+  which is never an install target. A later SPEC may lift the limitation.
 
 ## 2. Requirements (GEARS)
 
@@ -67,15 +92,16 @@ Premises (settled by the operator, not re-opened here):
   target of the shared user-asset install.
 - REQ-003: The L0 core bundle shall contain the plan/run/sync workflow
   surface, the five core agents as resolved by decision gate D-Q1, the hook
-  payload, and the factory skill set.
+  payload, and the factory skill set; the hook payload deploys with the
+  project payload (REQ-005) and is never a user-folder write target — the
+  four roots of C2 carry no hook destination.
 - REQ-004: The system shall ship every common asset outside L0 as an opt-in
   bundle; a bundle is installed or removed as a unit, and bundle membership is
   declared in the shipped catalog.
 - REQ-005: `moai init` shall deploy to the project only the default settings,
-  AGENTS.md, the project lock file, and the project-only harness payload; it
-  shall not copy any common skill or agent file into the project.
-- REQ-022: Codex agent definitions shall follow the same install, refresh,
-  collision, and removal rules as skills, landing in `~/.codex/agents`.
+  AGENTS.md, the project lock file, and the project-only harness payload
+  (hooks and `.mcp.json` included); it shall not copy any common skill or
+  agent file into the project.
 
 ### Per-user manifest
 
@@ -88,16 +114,19 @@ Premises (settled by the operator, not re-opened here):
 
 ### moai update
 
-- REQ-008: When `moai update` runs, the system shall refresh each installed
-  user-folder file whose hash differs from the shipped bytes.
+- REQ-008: When `moai update` runs against a manifest-tracked user-folder file
+  whose current hash equals its manifest hash while differing from the shipped
+  bytes, the system shall refresh the file to the shipped bytes and record the
+  new hash and installing version in the manifest.
 - REQ-009: When a file recorded in the per-user manifest is no longer part of
-  any shipped bundle, `moai update` shall remove it from the user folder.
+  any shipped bundle and its current hash equals its manifest hash, `moai
+  update` shall remove it from the user folder and from the manifest.
 - REQ-010: When the target path of an install, refresh, or removal holds a
   file the per-user manifest does not track, the system shall leave that file
   untouched and report the collision.
 - REQ-011: When a `moai update` run completes its user-asset phase, the system
-  shall report the counts of installed, refreshed, removed, and
-  collision-skipped files.
+  shall report the counts of installed, refreshed, removed, collision-skipped,
+  and divergence-preserved files.
 - REQ-012: The user-asset install shall be idempotent: repeating it against an
   already-current tree changes no file and reports zero deltas.
 - REQ-013: When a user-folder write fails, the system shall continue
@@ -134,16 +163,40 @@ Premises (settled by the operator, not re-opened here):
   shall refuse manifest-driven removal against an unknown schema version while
   still permitting append-only install and refresh.
 
+### Codex agent parity
+
+- REQ-022: Codex agent definitions shall follow the same install, refresh,
+  divergence, collision, and removal rules as skills, landing in
+  `~/.codex/agents`.
+
+### Tracked-file divergence
+
+- REQ-023: When a file tracked in the per-user manifest has a current hash
+  equal to neither its manifest hash nor the shipped bytes, the system shall
+  preserve the installed file — writing a backup of the shipped replacement
+  alongside the user folder — leave the tracked path unmodified by refresh and
+  by removal, and report the divergence.
+
+### First-install trigger
+
+- REQ-024: When `moai init` runs on a machine that has no per-user install,
+  the system shall install the L0 core bundle and every opted-in bundle into
+  the user folders before the run reports success; subsequent `moai update`
+  runs refresh and prune that install (REQ-008/009) rather than performing the
+  first install.
+
 ## 3. Acceptance Criteria (summary)
 
-The authoritative Given-When-Then matrix lives in `acceptance.md`
-(AC-001..AC-024, 24 criteria, each binary-testable). Coverage map: REQ-001 →
-AC-001/002/012; REQ-003 → AC-017; REQ-004 → AC-018; REQ-005 → AC-011/012;
-REQ-006 → AC-003; REQ-008 → AC-005; REQ-009 → AC-006; REQ-010 → AC-007/008;
-REQ-011 → AC-022; REQ-012 → AC-004; REQ-013 → AC-023; REQ-014 → AC-009;
-REQ-015 → AC-010; REQ-016 → AC-013; REQ-017 → AC-014; REQ-018 → AC-015;
-REQ-019 → AC-016; REQ-020 → AC-020; REQ-021 → AC-021; REQ-002 → AC-019;
-REQ-007 → AC-024; REQ-022 → AC-002.
+The authoritative matrix lives in `acceptance.md` (AC-001..AC-025, 25
+criteria, each binary-testable; Blocker criteria carry explicit
+Given-When-Then renderings there, plus RED-now + green-path cells for every
+release-blocking criterion). Coverage map: REQ-001 → AC-001/002/012/025;
+REQ-002 → AC-019; REQ-003 → AC-017; REQ-004 → AC-018; REQ-005 → AC-011/012;
+REQ-006 → AC-003; REQ-007 → AC-024; REQ-008 → AC-005; REQ-009 → AC-006;
+REQ-010 → AC-007/008; REQ-011 → AC-022; REQ-012 → AC-004; REQ-013 → AC-023;
+REQ-014 → AC-009; REQ-015 → AC-010; REQ-016 → AC-013; REQ-017 → AC-014;
+REQ-018 → AC-015; REQ-019 → AC-016; REQ-020 → AC-020; REQ-021 → AC-006/021;
+REQ-022 → AC-002; REQ-023 → AC-006/008; REQ-024 → AC-001/002.
 
 ## 4. Constraints
 
@@ -151,14 +204,15 @@ REQ-007 → AC-024; REQ-022 → AC-002.
   the same binary version against the same tree produces the same result.
 - C2: Every user-folder destination is confined to the four declared roots
   (`~/.claude/skills`, `~/.claude/agents`, `$HOME/.agents/skills`,
-  `~/.codex/agents`); the installer refuses any path outside them.
+  `~/.codex/agents`); the installer refuses any path outside them, judging
+  confinement on the symlink-resolved destination path.
 - C3: The project lock file (`.moai/manifest.json`) keeps its existing role
   and schema; this SPEC extends doctor's READING of it, not its format.
-- C4: User-facing collision and failure reports are actionable: each names the
-  path, the reason, and the suggested action.
+- C4: User-facing collision, divergence, and failure reports are actionable:
+  each names the path, the reason, and the suggested action.
 - C5: The retired plugin artifacts are removed together with their golden
-  tests, Makefile targets, and build-chain wiring in the same change — no
-  orphaned drift check may remain.
+  tests, Makefile targets, build-chain wiring, and release-workflow checks in
+  the same change — no orphaned drift check may remain.
 - C6: The migration path never deletes a file classified `user_modified` or
   `user_created` without an explicit operator-facing report; `user_modified`
   files are preserved (backup + report), not silently replaced.
@@ -167,19 +221,23 @@ REQ-007 → AC-024; REQ-022 → AC-002.
 
 ## 5. Open Decisions
 
-Recorded in `decision-index.md`; none may be silently decided during run
-phase:
-- D-Q1 (gate for REQ-003): the exact five L0 core agents.
-- D-Q2 (gate for REQ-006): the per-user manifest location and file name.
-- D-Q3 (gate for REQ-002's shared-asset visibility): how `CLAUDE_CONFIG_DIR`
-  profile sessions see the user-level assets (symlink, per-profile copy, or
-  declared limitation).
+Recorded in `decision-index.md`; the open gates may not be silently decided
+during run phase:
+- D-Q1 (gate for REQ-003; BLOCKS M0/M1): the exact five L0 core agents.
+- D-Q2 (gate for REQ-006; BLOCKS M0/M1): the per-user manifest location and
+  file name.
 - D-Q4 (input to REQ-003): whether "plan·run·sync" names the published command
   skills, the workflow skills, or both.
 - D-Q5: bundle granularity — whether the six existing optional packs stand as
   the bundles or current-core remainders re-bundle differently.
-- D-Q6: disposition depth — hard delete of the retired plugin surfaces vs
-  deprecation window.
+
+Resolved at plan phase by constraint (iter1 repair D7; recorded as premises
+P5/P6 and closed in the decision register):
+- D-Q3 (profile visibility): profiles do not see the shared user assets in v1
+  (declared limitation) — every install-into-profile option violated REQ-002
+  and C2. Doc-visible per acceptance §D.7.
+- D-Q6 (disposition depth): hard delete of the retired plugin surfaces — the
+  deprecation-window option violated REQ-016 and C5.
 
 ## 6. Non-goals and Out of Scope
 
@@ -193,13 +251,14 @@ phase:
 ### Out of Scope — non-asset harness surfaces
 
 - Output styles, rules, workflows, and command wrappers stay project-scoped in
-  this SPEC; only skills and agents (plus the hook payload as part of L0) move
-  to user folders. [NEEDS CLARIFICATION is NOT raised: the card names
-  skills/agents/hooks/factory only.]
+  this SPEC; only skills and agents move to user folders. The hook payload is
+  part of L0 (P2) but deploys project-side (REQ-003/REQ-005). [NEEDS
+  CLARIFICATION is NOT raised: the card names skills/agents/hooks/factory
+  only.]
 - Shell-hook scripts stay project-deployed; their packaging follows the L0
   hook payload definition but no new hook execution model is introduced.
 
-### Out of Scope —Claude Code / Codex runtime behavior
+### Out of Scope — Claude Code / Codex runtime behavior
 
 - Teaching either harness new discovery paths beyond the four documented
   folders is out of scope; the SPEC works within the folders the harnesses
@@ -221,7 +280,11 @@ phase:
 
 - SPEC-PLUGIN-MARKETPLACE-001 (completed): introduced the plugin carrier this
   SPEC retires; its doctor checks (REQ-020..023 there) are dispositioned in
-  REQ-019 here.
+  REQ-019 here, and its release-workflow gate (REQ-024 there — release.yml
+  Check 8, `scripts/check-plugin-version.sh`) plus the discoverability check
+  it contracts (`scripts/check-plugin-discoverable.sh`, REQ-025 carve-out
+  there) are retired with the carrier in M6 under REQ-016/C5 — no orphaned
+  release check remains.
 - SPEC-INIT-SHRINK-001 (completed): introduced the deploy-mode split
   (`deployer_mode.go`) and the mirror policy this SPEC retires (REQ-018), and
   the collision/rehome semantics (V17) this SPEC inherits at user scope.
