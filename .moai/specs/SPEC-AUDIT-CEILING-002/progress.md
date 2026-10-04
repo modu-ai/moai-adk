@@ -45,6 +45,83 @@ Evidence ledger (all measurements from the worktree root, per-cell tree pins in 
 4. SPEC id uniqueness: `SPEC-AUDIT-CEILING-002` matched nothing under `.moai/specs/` before adoption (grep exit 1). `related_specs` names only SPECs present on this tree (`SPEC-WF-AUDIT-GATE-001`, `SPEC-AUDIT-MODEL-CONVERGE-001` — both verified present).
 5. Lint: `go run ./cmd/moai spec lint SPEC-AUDIT-CEILING-002 --strict` from this tree — see §G item 1 for the observed result. From-tree invocation is deliberate: the installed `moai` binary (build 0732cc699) predates this tree, and a tree-built run avoids attributing a measurement to a lagging build (verification-claim-integrity §2.2).
 
+## §E.2 Run-Phase Evidence (M1-M4, card t1500)
+
+Run phase on branch `WT-audit-ceiling-guard`, worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1500`, executed 2026-10-05 by manager-develop. Commits: M1 `192d18a30`, M2 `84c27a0fb`, M3 `6b25fe8ad`, M4 (this commit). Every command ran from the worktree root against this tree. Each RED observation (§ RED column of acceptance.md §C, evidenced here in the RED-failure record below) was captured BEFORE the implementation that made it green. All test-based judgments below are swept-count-first (`-list` names exactly N, then `-run` exits 0).
+
+### AC binary PASS/FAIL matrix (13/13 PASS)
+
+| AC | Status | GREEN command (count-first) | Observed output | Exit |
+|----|--------|----------------------------|-----------------|------|
+| AC-ACR-001 | PASS | `go test -list '^(TestCountPlanAuditRounds\|TestLatestVerdictTieIsError)$' ./internal/runtime` → 2 listed; `-run` same selector | `TestCountPlanAuditRounds` / `TestLatestVerdictTieIsError` / `ok  github.com/modu-ai/moai-adk/internal/runtime 0.337s` → `ok ... 0.110s` | 0 |
+| AC-ACR-002 | PASS | `-list '^TestCountPlanAuditRoundsUnparseable$'` → 1; `-run` | `TestCountPlanAuditRoundsUnparseable` / `ok ... 0.098s` → `ok ... 0.107s` | 0 |
+| AC-ACR-003 | PASS | config: `-list '^TestHarnessConfigPlanAuditCeilings$' ./internal/config` → 1; `-run`. runtime: `-list '^(TestResolvePlanAuditCeiling\|TestResolvePlanAuditCeilingInvalid)$'` → 2; `-run` | `TestHarnessConfigPlanAuditCeilings` / `ok ...internal/config 0.301s` → `ok 0.131s`; `TestResolvePlanAuditCeiling` / `TestResolvePlanAuditCeilingInvalid` / `ok ...internal/runtime 0.130s` → `ok 0.129s` | 0 |
+| AC-ACR-004 | PASS | runtime: `-list '^(TestRecordCeilingOutcome\|TestEvaluatePlanAuditCeiling)$'` → 2; `-run`. help: `go run ./cmd/moai spec ceiling --help \| grep -c "ceiling"`. CLI: `-list '^TestSpecCeilingRecordWritesJSON$' ./internal/cli` → 1; `-run`. boundary: two single-file `grep -c AskUserQuestion` runs | 2 listed / `ok ...internal/runtime 0.109s` → `ok 0.108s`; count `9` (≥1); `TestSpecCeilingRecordWritesJSON` / `ok ...internal/cli 0.824s` → `ok 0.648s`; `0` and `0` (grep exit 1 = no match = pass) | 0 |
+| AC-ACR-005 | PASS | `-list '^TestEvaluatePlanAuditCeiling$'` → 1; `-run` | `TestEvaluatePlanAuditCeiling` / `ok ...internal/runtime 0.103s` → `ok 0.105s` | 0 |
+| AC-ACR-006 | PASS | `-list '^TestAdmitRequiredBackendFail$' ./internal/auditverdict` → 1; `-run`; plus `-race` run | `TestAdmitRequiredBackendFail` / `ok ...internal/auditverdict 0.258s` → `ok (cached)`; `-race`: `ok ... 1.328s` | 0 |
+| AC-ACR-007 | PASS | `grep -c "required_backend_fail" .moai/docs/audit-artifact-convention.md` and the template copy — per-file pair | `1` and `1` (both exit 0, ≥1) | 0 |
+| AC-ACR-008 | PASS | `-list '^(TestResolveAuditGatesConfigErrorDistinct\|TestWorkflowAuditPinsErrorNotFolded)$' ./internal/cli` → 2; `-run`; `grep -c "this path fails open" internal/cli/mcp_worktree_root.go`; `grep -c "(N3)" internal/cli/audit_pin.go` | 2 listed / `ok ...internal/cli 0.656s` → `ok 0.646s`; `0` (exit 1); `0` (exit 1) | 0 |
+| AC-ACR-009 | PASS | `-list '^TestRecordCeilingOutcomeDebtProceed$'` → 1; `-run` | `TestRecordCeilingOutcomeDebtProceed` / `ok ...internal/runtime 0.107s` → `ok 0.140s` | 0 |
+| AC-ACR-010 | PASS | `-list '^TestRecordCeilingOutcomeUnknownPolicy$'` → 1; `-run` | `TestRecordCeilingOutcomeUnknownPolicy` / `ok ...internal/runtime 0.108s` → `ok 0.101s` | 0 |
+| AC-ACR-011 | PASS | `-list '^(TestGateErrorPropagatesToCallerSites\|TestWorktreeRootSurfacesGateError)$' ./internal/cli` → 2; `-run`; static no-discarded-error grep | 2 listed / `ok ...internal/cli 0.623s` → `ok 1.547s`; `grep -rnE "(_ =\|= _) ?(workflowAuditPins\|resolveAuditGates)\(" internal/cli --include="*.go"` → no output, exit 1 | 0 |
+| AC-ACR-012 | PASS | `-list '^TestRecordCeilingOutcomeSplitValue$'` → 1; `-run` | `TestRecordCeilingOutcomeSplitValue` / `ok ...internal/runtime 0.132s` → `ok 0.112s` | 0 |
+| AC-ACR-013 | PASS | `-list '^TestCountPlanAuditRoundsListedDirMissing$'` → 1; `-run` | `TestCountPlanAuditRoundsListedDirMissing` / `ok ...internal/runtime 0.110s` → `ok 0.110s` | 0 |
+
+### RED-failure record (verbatim first-failure observations, before GREEN)
+
+- **M1 runtime counter** (192d18a30 pre-implementation): `go test -list '^(TestCountPlanAuditRounds|...|TestResolvePlanAuditCeilingInvalid)$' ./internal/runtime` → compile errors: `internal/runtime/audit_ceiling_test.go:38:15: undefined: CountPlanAuditRounds` (+ `undefined: SelectLatestVerdict` at :134, `too many errors`), `FAIL ... [build failed]`. One test-first fix inside M1: `plan-audit-iter.md` (empty suffix) initially passed silently — the family regex `(.+)` became `(.*)` so an iter-with-no-number file fails the count closed.
+- **M2 runtime outcome half**: compile errors `undefined: CeilingInput` (:246), `undefined: EvaluatePlanAuditCeiling` (:265), `undefined: CeilingDispositionHold` (:272), `undefined: RecordCeilingOutcome` (:285), `undefined: CeilingOutcome` (:292), `FAIL ... [build failed]`.
+- **M2 CLI verb** (behavioral RED, the R1 arm): `go test -run '^TestSpecCeilingRecordWritesJSON$' ./internal/cli` → `spec_ceiling_test.go:68: spec ceiling --record: unknown command "ceiling" for "spec"`, `FAIL`.
+- **M3 admission arm**: `go test -list '^TestAdmitRequiredBackendFail$' ./internal/auditverdict` → `verdict_test.go:220:56: f.RequiredBackendFails undefined (type Fields has no field or method RequiredBackendFails)`, `FAIL ... [build failed]`.
+- **M3 resolution path**: `go vet ./internal/cli` → 10+ `assignment mismatch` errors — the tests' new 2-/3-value signatures against the 1-/2-value pre-M3 surfaces (`workflowAuditPins returns 1 value`, `resolveAuditGates returns 2 values`, `resolveClaudeAuditModelEffort returns 1 value`...), `FAIL ...internal/cli [build failed]`.
+
+### Cross-platform build (C5)
+
+- `go build ./...` → exit 0 (native).
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (no syscall, no build-tag literal — the C5 exemption holds).
+
+### Coverage (E3; per-package, this tree)
+
+- `go test -cover ./internal/runtime ./internal/auditverdict ./internal/config`: `runtime 85.4% of statements` (≥85 target met), `auditverdict 95.5%`, `config 83.8%` (below the 85% package target by 1.2 points — reported, not padded; the config gap is pre-existing package-wide surface, not the new fields, which TestHarnessConfigPlanAuditCeilings covers on all three arms).
+- `internal/cli`: the package-wide coverage run is unmeasurable on this machine — the full cli suite hit both the 10m default and the 30m `-timeout` cap (`FAIL ...internal/cli 600.687s`, then `FAIL ...1801.000s` = `panic: test timed out` at the 30m cap; load 6-9 night machine; TOOL_FAILURE per the TDD results contract, not a regression). Scoped per-file coverage of the new/changed code under the M2/M3 test families (`go test -coverprofile ... -run '^(TestSpecCeilingRecordWritesJSON|...|TestLoadWorkflowAuditSection)$'`): `audit_pin.go` loadWorkflowAuditSection 100% / workflowAuditPins 100%; `spec_ceiling.go` newSpecCeilingCmd 100% / runSpecCeiling 79.4% / loadCeilingConfig 57.1%; `resolveAuditGates` 88.9%. The package-wide number is CI's verdict surface.
+
+### Subagent boundary (E4; two single-file invocations)
+
+- `grep -c AskUserQuestion internal/runtime/audit_ceiling.go` → `0` (exit 1).
+- `grep -c AskUserQuestion internal/cli/spec_ceiling.go` → `0` (exit 1).
+
+### Lint (E5; NEW vs baseline)
+
+- Baseline (pre-flight, pre-M1): `golangci-lint run --timeout=2m` → `0 issues.`
+- Final: `golangci-lint run --timeout=5m ./internal/runtime/... ./internal/auditverdict/... ./internal/config/... ./internal/cli/...` → `0 issues.` — zero NEW findings at M4 close. (One transient NEW batch during M2 — 8 errcheck findings on the new verb's unchecked `fmt.Fprintf` returns — was fixed before the M3 commit and did not land.)
+
+### Lint + structural gates (M4)
+
+- `go run ./cmd/moai spec lint SPEC-AUDIT-CEILING-002 --strict` from this tree → `✓ No findings — all SPEC documents are valid`, exit 0.
+
+### R1-R6 condition closure (per §J binding conditions)
+
+- **R1** (`--record` CLI-observable): closed by AC-ACR-004's CLI-level arm — `TestSpecCeilingRecordWritesJSON` drives the compiled verb with `--record` against a temp project and asserts the written JSON (disposition hold, count/ceiling, verdict label, split-proposal reference, evidence paths); a read-only run after deleting the record writes nothing.
+- **R2** (Evaluate-level invalid-ceiling arm): closed by AC-ACR-005's second arm — `TestEvaluatePlanAuditCeiling`'s "invalid resolved ceiling propagates the error with no record" subtest (missing M key → error, `hit=false`, no record file).
+- **R3** (accuracy residue): closed by the plan-side sweep already recorded in §K; the run phase re-verified the anchors it consumed (the M3 edits moved line numbers — e.g. `resolveAuditGates` now at mcp_worktree_root.go:128, `applyGateUnmet` at mcp_codex.go:2069; the SPEC's plan-time pointers remain dated pre-implementation pointers per §D, not post-implementation citations).
+- **R4** (six-site propagation per site): closed by `TestGateErrorPropagatesToCallerSites` — one subtest per inventoried site (claude resolver, launch refusal, glm resolver, codex resolver, convergence gate read, applyGateUnmet), plus the static no-discarded-error grep. Observation: the audit_multi handler's call-start section read is a SEVENTH caller the LEDGER-ACR-N inventory undercounted (it calls `auditSectionForRoot`, the surface's internal step); it propagates as a tool error, in the same commit.
+- **R5** (listed-absent arm + split input): closed by AC-ACR-013 (`TestCountPlanAuditRoundsListedDirMissing`) and the `(specDir, listedDirs)` split the counter ships.
+- **R6** (format residue): closed by the runtime arms of AC-ACR-009/010/012 (debt-proceed / unknown-or-unreadable→hold with no split ref / split) and the R6 edge cases in the counter tests (duplicate listings deduplicate; cross-directory tie errors).
+
+### Deviations and observations (honest-record items)
+
+1. **Plan file-map row 4's named file**: the two keys' no-Go-reader disposition text lived in `internal/config/loader.go` (`knownHarnessTopLevelKeys` comments), not in `audit_registry.go` (whose :73-75 text names the section-level dedicated loader and remains accurate); the disposition was retired at its actual site.
+2. **Seventh caller site**: `mcp_audit_multi.go`'s call-start `auditSectionForRoot` read (the audit_multi handler) also propagated the new error — the plan's six-site inventory enumerated the sites of the two named surfaces, and this one reaches them through the internal step. Recorded in the R4 item above.
+3. **cli full-suite TOOL_FAILURE**: `go test ./internal/cli` failed only by timeout on this loaded night machine (600s default, then 1801s at the `-timeout=30m` cap — `panic: test timed out`, zero failing test names in the output). No retry per the lane-lead disposition; narrow-selector M3/M4 greens stand; the full-suite verdict belongs to CI (origin/develop). Consistent with the t1495 sharding motivation.
+4. **`hashOK=true` in the ceiling path's admission check**: `EvaluatePlanAuditCeiling` runs the shared predicate with hashOK=true by design — the plan-artifact hash binding belongs to the run-entry seams (kickoff evaluator, card guard) that run before any ceiling evaluation; this path judges repetition against the verdict's recorded fields. The choice is documented at the call site.
+5. **Plan M4's "§E.1" label**: the plan text names progress.md §E.1 for the run matrix; §E.1 is the plan-phase signal this file already carries, so the run evidence records here in §E.2 and the run audit-ready signal in §E.3 per the canonical progress.md section map (the plan's own §D references §E.2-§E.4 for run/sync concerns).
+
+## §E.3 Run-Phase Audit-Ready Signal
+
+run_status: audit-ready
+run_complete_at: 2026-10-05
+audit_ready: true
+
 ## §G Plan-Phase Notes
 
 1. Lint record, inline (iter1 D15): v0.1.0 — corrections applied during authoring were (a) the OutOfScopeRule shape (the conforming form is an H3 `### Out of Scope — …` heading with list items; the `## Out of Scope`-heading-only shape triggers MissingExclusions) and (b) anchored `-run` selectors; final result "✓ No findings — all SPEC documents are valid", exit 0, from this tree. v0.2.0 repair — re-run after the D1-D10 edits: "✓ No findings — all SPEC documents are valid", exit 0. v0.3.0 repair — re-run after the N1-N7+N10 edits: "✓ No findings — all SPEC documents are valid", exit 0. v0.4.0 repair — re-run after the R1-R6 edits and again after the §K sweep: "✓ No findings — all SPEC documents are valid", exit 0 (all measured from this tree).
