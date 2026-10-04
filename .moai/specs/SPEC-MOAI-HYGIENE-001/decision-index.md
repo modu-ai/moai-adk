@@ -23,17 +23,17 @@ Operator verdict:
 ### Q4: May the GC remove an aged `spec-close-*.lock` when the fd probe cannot run?
 Label: DECIDED
 Authority anchor: SPEC-WORKTREE-SWEEP-001 (status: completed), REQ-WS-006 — "lsof absent or failing returns an error, which the sweep renders as an unanswerable predicate: the tree is preserved, never reported unoccupied"
-Why resolved: The identical question — may deletion proceed when the external probe that would establish safety cannot run — is decided fail-closed by the completed sweep SPEC for the same probe family. This SPEC adopts the same disposition: probe unavailable → INDETERMINATE → kept (spec.md REQ-HYG-013).
+Why resolved: The identical question — may deletion proceed when the external probe that would establish safety cannot run — is decided fail-closed by the completed sweep SPEC for the same probe family. This SPEC adopts the same disposition and goes one step safer per plan-audit D7: the GC acquires the lock itself non-blockingly (acquired ⇒ free ⇒ remove while holding; blocked ⇒ kept; Windows ⇒ always kept `platform-unsupported`) — there is no probe-then-remove sequence at all (spec.md REQ-HYG-011).
 Operator verdict:
 
 ### Q5: Should the operator surface be a `moai clean` extension or a dedicated verb?
 Label: FOUNDER
 Authority anchor: n/a — no committed authority fixes the CLI surface for hygiene
-Why unresolved: Extending `moai clean` with `--audit-logs` / `--session-state` / `--apply` reuses an existing dry-run-default cleanup verb; a dedicated `moai hygiene` verb would read better in help text but adds a surface. Working default: extend `moai clean` (spec.md REQ-HYG-017). An operator preferring a dedicated verb changes plan.md M4 and REQ-HYG-017 only.
+Why unresolved: Extending `moai clean` with `--audit-logs` / `--session-state` / `--apply` reuses an existing dry-run-default cleanup verb; a dedicated `moai hygiene` verb would read better in help text but adds a surface. Working default: extend `moai clean` (spec.md REQ-HYG-013). An operator preferring a dedicated verb changes plan.md M4 and REQ-HYG-013 only.
 Operator verdict:
 
 ### Q6: Should `state/verify` scratch and `state/todo` per-session residue be GC targets in v1, given their on-disk shapes are the least uniform of the target classes?
 Label: FOUNDER
 Authority anchor: n/a — inclusion is a scope judgment the card leaves to the SPEC
-Why unresolved: The audit measured real residue in both (911 aged verify files; 201 dead todo files), and the design contains the shape risk (session-keyed names only; the shared `backlog.json`/`backlog.db` stores are on the never-touch negative list; undatable/unresolvable candidates spared). An operator preferring a narrower first cut would drop both from the target registry (one-list change in plan.md M3) and re-card them. Working default: included (spec.md REQ-HYG-006).
+Why unresolved: The audit measured real residue in both (911 aged verify files; 201 dead todo files), and the design contains the shape risk (session-keyed UUID names only; the shared `backlog.json`/`backlog.db` stores are on the never-touch negative list; undatable/unresolvable candidates spared). An operator preferring a narrower first cut would drop both from the target registry (one-list change in plan.md M3) and re-card them. Working default: included (spec.md REQ-HYG-005).
 Operator verdict:
