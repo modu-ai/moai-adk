@@ -1,0 +1,79 @@
+# Judge runs against the recorded base-tree probe (red-probe-base-e497f6936.tsv).
+# Tree SHA of the measurement: e497f693608ac7ea45a08b06304dc585e927ff49 (clean tree, binary built from it this run).
+# Each block: the command (repo-root-relative), its verbatim stdout, and its exit code.
+# Re-run: the same commands against a freshly built binary (omit the .tsv argument and the judge builds one).
+
+## cmd: bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh -o '^R' .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/red-probe-base-e497f6936.tsv
+FAIL R1 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R2 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R3 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R4 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R5 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R6 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R7 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R8 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R9 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R10 got=ask/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R11 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R12 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R13 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R14 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R15 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R16 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R17 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R18 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R19 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL R20 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+JUDGE swept=20 expected=20 fail=20
+## exit: 1
+
+## cmd: bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh -o '^(P|S)' .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/red-probe-base-e497f6936.tsv
+FAIL P1 got=allow/- want=deny/HARNESS_FROZEN_HOOK_VIOLATION
+FAIL P2 got=allow/- want=deny/HARNESS_FROZEN_HOOK_VIOLATION
+FAIL P3 got=allow/- want=deny/HARNESS_FROZEN_HOOK_VIOLATION
+FAIL P4 got=allow/- want=deny/HARNESS_FROZEN_HOOK_VIOLATION
+FAIL S1 got=allow/- want=deny/HARNESS_FROZEN_HOOK_VIOLATION
+JUDGE swept=5 expected=5 fail=5
+## exit: 1
+
+## cmd: bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh -o '^B' .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/red-probe-base-e497f6936.tsv
+FAIL B1 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL B2 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL B3 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+JUDGE swept=3 expected=3 fail=3
+## exit: 1
+
+## cmd: bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh -o '^(M|E)' .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/red-probe-base-e497f6936.tsv
+FAIL M1 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL M4 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL M6 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+FAIL E1 got=allow/- want=deny/HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
+JUDGE swept=7 expected=7 fail=4
+## exit: 1
+
+## cmd: bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh -o '^(C|N)' .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/red-probe-base-e497f6936.tsv
+JUDGE swept=12 expected=12 fail=0
+## exit: 0
+
+## cmd: bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/red-probe-base-e497f6936.tsv
+(32 FAIL rows: R1-R20, P1-P4, S1, B1-B3, M1, M4, M6, E1 — identical to the blocks above)
+JUDGE swept=47 expected=47 fail=32
+## exit: 1
+
+# Pass rows at base (15): C1-C4 (legacy sentinels hold), M2, M3, M5, N1-N8 — the non-regression side of the pair.
+# Probe totals line at base: SWEPT=47 DENY=5 ALLOW=41 ASK=1 OTHER=0
+
+## Go-test selector hazard at base (AC-SIPZ-006/007/008/009/010/011):
+## cmd: go test -count=1 -timeout 30m -run '^TestProtectedZone$' -v ./internal/hook/
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.573s [no tests to run]
+## exit: 0
+
+## Manifest absent at base:
+## cmd: ls internal/template/templates/.moai/config/sections/protected-zone.yaml
+ls: internal/template/templates/.moai/config/sections/protected-zone.yaml: No such file or directory
+## exit: 1
+## cmd: ls .moai/config/sections/protected-zone.yaml
+ls: .moai/config/sections/protected-zone.yaml: No such file or directory
+## exit: 1
