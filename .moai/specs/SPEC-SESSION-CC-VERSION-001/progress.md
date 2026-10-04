@@ -301,6 +301,59 @@ launcher-entry families) `ok … 35.704s`. One intermediate build failure
 (`undefined: argSeparator` — the const declaration was authored after its first use) was
 caught by the test run and repaired before any commit.
 
+### Card-review round-2 repairs (codex FAIL → structural repair)
+
+Codex card-review round 2 (appended to `.moai/reports/t1465/card-review.md`): **FAIL** —
+P1 ×1 + P2 ×1 (0.99 confidence, live reproductions), judged a STRUCTURE defect: the scanners
+did not know the value-taking option surface, so bypass (P1-class) and misjudgment (P2-class)
+alternate. Last repair round — r3 is the final re-review.
+
+- **P1 — the attached short form `-r<uuid>` evaded the guard.** Claude accepts the value
+  glued to the flag; the guard recognized `-r`/`-r=` only. Repaired structurally:
+  `carriesResumeToken` counts ANY `-r`-prefixed token that is not a `--` long option — with a
+  value-taking `-r`, `-r<anything>` IS resume-with-value. Over-matching `-root` is the SAFE
+  side (documented in the function: a false fire costs a restatable launch, a false pass
+  leaks a resume across every card). The VALIDATOR is unchanged for attached forms (an
+  attached form always carries its value — nothing to refuse).
+- **P2 — a token that is another option's value was misjudged.** The reviewer's repro
+  `moai cc -- --append-system-prompt '--resume'`: `--resume` there is the VALUE of
+  `--append-system-prompt`, but the validator refused it as valueless (base reached launch).
+  Repaired structurally in BOTH scanners: a shared value-taking option table; the walk
+  consumes the next token after a table option written in space form — never judged, never
+  counted as a separator (the separator counter skips values too, closing the escape where a
+  resume token after a value-`--` would dodge the guard).
+- **The table** — measured from `claude --help` (Claude Code **2.1.289**,
+  `~/.local/bin/claude` → `…/versions/2.1.289`, 2026-10-04): every option whose synopsis
+  marks a REQUIRED value (`<value>`) — `--add-dir, --agent, --agents, --allowedTools,
+  --allowed-tools, --append-system-prompt, --autocompact, --betas, --debug-file,
+  --disallowedTools, --disallowed-tools, --effort, --environment, --fallback-model, --file,
+  --input-format, --json-schema, --max-budget-usd, --mcp-config, --model, --name/-n,
+  --output-format, --permission-mode, --permission-prompts, --plugin-dir, --plugin-url,
+  --session-id, --setting-sources, --settings, --system-prompt, --system-prompt-snapshot,
+  --tools` — plus the launcher-side value-taking flags the raw scan meets before MoAI's own
+  parsers (`-p/--profile, -w/--worktree, --branch, --factory-run, --leader, --clear-policy,
+  -m`). OPTIONAL-value synopses (`[value]`: `--cloud, --debug, --from-pr,
+  --prompt-suggestions, --remote-control, --teleport`, claude's own `--worktree`) are
+  deliberately absent — that parser class refuses a flag-shaped token as the value, so the
+  token after them is a real option and stays judged. Marked `@MX:DEBT` + `@MX:CEILING`
+  (option-surface churn) + `@MX:UPGRADE` (re-sync from `claude --help` per update, or read
+  dynamically when a machine-readable surface appears).
+
+**RED evidence** — five new test functions against the pre-repair tree → exit 1:
+`TestGuardRecognizesAttachedShortForm` (carriers unrecognized; the attached-form relaunch
+repro entered the loop), `TestValidatorSkipsOptionValues` (the reviewer's exact repro
+refused), `TestGuardSkipsOptionValues` (the guard fired on another option's value),
+`TestSeparatorInterplaySkipsValues` (the value-`--` counted as Claude's separator, letting a
+carrier escape). `TestResumeAliasExactTokenOnly` (refined: validator exactness) and
+`TestValidatorStillRefusesValueless` passed pre-repair as designed — they are the pins that
+kill an over-broad fix. **GREEN** — after the repairs: exit 0, 34 `--- PASS` across the full
+resume test set. One intermediate regression (the rework dropped the empty-equals refusal,
+REQ-SCV-009) was caught by the committed r1 tests and repaired before commit.
+
+**Repair gate** — gofmt clean; builds native + windows exit 0; vet 0; golangci-lint
+`0 issues.`; session AC family `ok`; cli scoped family (AC-SCV-005..010 selectors +
+TestSession/TestDoctorGolden/TestBinaryLag/launcher-entry families) `ok … 34.054s`.
+
 ### Residual-risk (run-phase)
 
 - The installed read resolves the FIRST `claude` on PATH — a PATH-shadowed install reads that

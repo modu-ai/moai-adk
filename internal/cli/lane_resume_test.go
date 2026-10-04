@@ -143,18 +143,140 @@ func TestResumeShortAliasRequiresValue(t *testing.T) {
 	})
 }
 
-// TestResumeAliasExactTokenOnly (card-review round 1, P1) — exact-token
-// matching only: `-rx`, `-root`, and `--resumex` are other tokens, not
-// resume aliases, and must be judged by neither the validation nor the
-// guard.
+// TestResumeAliasExactTokenOnly (card-review round 1, P1; refined round 2) —
+// the VALIDATOR judges exact resume tokens only: `-rx`, `-root`,
+// `--resumex` are other tokens and are never refused by it. (The GUARD is
+// different by design since round 2: any `-r`-prefixed token counts as a
+// resume carrier — see TestGuardRecognizesAttachedShortForm.)
 func TestResumeAliasExactTokenOnly(t *testing.T) {
 	for _, token := range []string{"-rx", "-root", "--resumex"} {
 		if err := validateResumeArgs([]string{"--", token}); err != nil {
 			t.Errorf("%q judged by the validation: %v", token, err)
 		}
-		if carriesResumeToken([]string{"--name", "lane-3", "--", token, "x"}) {
-			t.Errorf("%q judged by the guard", token)
+	}
+}
+
+// TestGuardRecognizesAttachedShortForm (card-review round 2, P1) — Claude
+// accepts the attached short form `-r<uuid>` (value glued to the flag), so
+// the guard counts ANY `-r`-prefixed token that is not a `--` long option as
+// a resume carrier. Over-matching a token that merely starts with `-r`
+// (`-root`) is the SAFE side: this guard refuses with the safe form, so a
+// false fire costs a restatable launch while a false pass leaks a resume
+// across every card the loop starts.
+func TestGuardRecognizesAttachedShortForm(t *testing.T) {
+	carriers := []string{"-r", "-r=<session-id>", "-rabc", "-r0a1b2c3d-4e5f", "-root"}
+	for _, token := range carriers {
+		if !carriesResumeToken([]string{"--name", "lane-3", "--", token}) {
+			t.Errorf("%q not recognized as a resume carrier", token)
 		}
+	}
+	// `--`-prefixed tokens are long options, never the short alias.
+	for _, token := range []string{"--resume-only-mode", "--root"} {
+		if carriesResumeToken([]string{"--name", "lane-3", "--", token}) {
+			t.Errorf("%q wrongly recognized as a resume carrier", token)
+		}
+	}
+
+	t.Run("attached form refuses the relaunch loop", func(t *testing.T) {
+		gateCalls, leaseCalls, launchCalls := saveRelaunchSeams(t)
+		cmd := &cobra.Command{}
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+
+		err := runFactoryLaneRelaunch(cmd, "lane-3", []string{"--name", "lane-3", "--", "-r0a1b2c3d-4e5f"}, "", "")
+		if err == nil {
+			t.Fatal("expected the relaunch loop to refuse an attached -r token")
+		}
+		if !strings.Contains(err.Error(), "moai cc -l -- --resume <session-id>") {
+			t.Errorf("refusal must name the one-shot lane-join form verbatim; got: %v", err)
+		}
+		if *gateCalls != 0 || *leaseCalls != 0 || *launchCalls != 0 {
+			t.Errorf("refusal must precede every seam: gate=%d lease=%d launch=%d, want all 0",
+				*gateCalls, *leaseCalls, *launchCalls)
+		}
+	})
+}
+
+// TestValidatorSkipsOptionValues (card-review round 2, P2) — a token that is
+// the VALUE of another value-taking option (space form) is prompt data, not
+// an option: the reviewer's repro `moai cc -- --append-system-prompt
+// '--resume'` must reach launch as it did at base.
+func TestValidatorSkipsOptionValues(t *testing.T) {
+	for _, args := range [][]string{
+		{"--append-system-prompt", "--resume"},
+		{"--settings", "--resume"},
+		{"--model", "--resume"},
+		{"--", "--append-system-prompt", "--resume"},
+	} {
+		if err := validateResumeArgs(args); err != nil {
+			t.Errorf("validateResumeArgs(%q) = %v, want nil (the token is another option's value)", args, err)
+		}
+	}
+}
+
+// TestValidatorStillRefusesValueless (card-review round 2, P2 pins) — the
+// value-skip must consume exactly one token: a resume token that is nobody's
+// value still refuses.
+func TestValidatorStillRefusesValueless(t *testing.T) {
+	for _, args := range [][]string{
+		{"--resume"},
+		{"--resume="},
+		{"--append-system-prompt", "--resume", "--resume"}, // the second one is bare
+		{"--append-system-prompt", "--", "--resume"},       // the `--` is a value; this resume is bare
+	} {
+		err := validateResumeArgs(args)
+		if err == nil {
+			t.Errorf("validateResumeArgs(%q) = nil, want the valueless-resume refusal", args)
+			continue
+		}
+		if !strings.Contains(err.Error(), "--resume <session-id>") {
+			t.Errorf("refusal must name --resume <session-id>; got: %v", err)
+		}
+	}
+}
+
+// TestGuardSkipsOptionValues (card-review round 2, P2) — the guard applies
+// the same value-skip: a system prompt that MENTIONS --resume is prompt
+// text, not a resume, and must not fire the refusal (propagating it to a
+// card session resumes nothing — claude parses it as the option's value).
+func TestGuardSkipsOptionValues(t *testing.T) {
+	if carriesResumeToken([]string{"--append-system-prompt", "--resume"}) {
+		t.Fatal("the guard judged another option's value")
+	}
+	if carriesResumeToken([]string{"--name", "lane-3", "--settings", "--resume"}) {
+		t.Fatal("the guard judged --settings' value")
+	}
+
+	t.Run("relaunch does not refuse a mentioned resume", func(t *testing.T) {
+		saveRelaunchSeams(t)
+		cmd := &cobra.Command{}
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+
+		err := runFactoryLaneRelaunch(cmd, "lane-3", []string{"--name", "lane-3", "--settings", "--resume"}, "", "")
+		if err != nil && strings.Contains(err.Error(), "cannot run under --clear-policy relaunch") {
+			t.Fatalf("the guard fired on another option's value: %v", err)
+		}
+		// Any error here is the parent-checkout assertion (the test binary
+		// runs outside a primary checkout) — the point is that the GUARD did
+		// not fire and the loop was entered.
+	})
+}
+
+// TestSeparatorInterplaySkipsValues (card-review round 2, P2 trace) — a `--`
+// consumed as another option's value is NOT Claude's argument separator: the
+// separator counter must skip values exactly like the token walk does, or a
+// resume token after it escapes the scan.
+func TestSeparatorInterplaySkipsValues(t *testing.T) {
+	// The value-`--` must not be counted as the second separator: `-rabc`
+	// after it is a real resume carrier and the guard must fire.
+	if !carriesResumeToken([]string{"--", "--append-system-prompt", "--", "-rabc"}) {
+		t.Fatal("the value-`--` was counted as Claude's separator; the carrier after it escaped the guard")
+	}
+	// Mirror for the validator: after the value-skip the trailing token is a
+	// well-formed resume, so the launch proceeds.
+	if err := validateResumeArgs([]string{"--append-system-prompt", "--", "--resume", "<session-id>"}); err != nil {
+		t.Fatalf("validateResumeArgs consumed a well-formed resume behind an option's value: %v", err)
 	}
 }
 
