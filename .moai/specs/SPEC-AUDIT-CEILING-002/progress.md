@@ -127,7 +127,7 @@ audit_ready: true
 sync_status: audit-ready
 sync_complete_at: 2026-10-05
 audit_ready: true
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 0bf0e2985
 
 Sync close (manager-docs, 2026-10-05, branch `WT-audit-ceiling-guard`, worktree `.claude/worktrees/t1500`): the single sync commit carries (a) the CHANGELOG `[Unreleased]` → `### Added` entry (the B12 pre-check first — `grep -c 'SPEC-AUDIT-CEILING-002' CHANGELOG.md` → `0`, exit 1, no duplicate; every plan §B implementation file read before drafting per B12, paths verified against the branch diff `e497f6936..HEAD`), (b) the MX sync pass (below), (c) the spec.md frontmatter merged transition `in-progress → implemented → completed` on this one commit with the `Authored-By-Agent: manager-docs` trailer, and (d) this §E.4 with the `pending-backfill-sync` placeholder, backfilled in the following commit (the D3 sanctioned follow-up — a commit cannot cite its own SHA). plan.md and acceptance.md carry no frontmatter (omitted by design), so no `updated:` refresh applies to them; spec.md's `updated: 2026-10-05` already reads today.
 
