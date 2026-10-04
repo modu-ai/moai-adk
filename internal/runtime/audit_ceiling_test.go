@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -217,4 +218,222 @@ func TestResolvePlanAuditCeilingInvalid(t *testing.T) {
 			t.Errorf("%s: expected a configuration error, got ceiling %d", c.name, got)
 		}
 	}
+}
+
+// Verdict bodies the ceiling fixtures record into their latest iteration file.
+const (
+	ceilingPassBody = "verdict: PASS\noverall_score: 0.90\nmust_pass_failed: 0\nblocking_count: 0\nplan_artifact_hash: abc123\n"
+	ceilingDebtBody = "verdict: PASS-WITH-DEBT\noverall_score: 0.88\nmust_pass_failed: 0\nblocking_count: 0\nplan_artifact_hash: abc123\n" +
+		"- debt: D1 dispose_in=run plan row omits an edit\n" +
+		"- debt: D2 dispose_in=sync trace is indirect\n"
+	ceilingFailBody = "verdict: FAIL\noverall_score: 0.70\nmust_pass_failed: 2\nblocking_count: 1\nplan_artifact_hash: abc123\n"
+)
+
+// ceilingFixture writes an evidence directory whose round count (3) sits at or
+// above every shipped ceiling and whose latest iteration carries body.
+func ceilingFixture(t *testing.T, body string) string {
+	t.Helper()
+	dir := evidenceDir(t, "plan-audit.md", "plan-audit-iter1.md")
+	writeRoundFile(t, dir, "plan-audit-iter2.md")
+	if err := os.WriteFile(filepath.Join(dir, "plan-audit-iter2.md"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+// ceilingInput builds a CeilingInput over the fixture with the shipped
+// ceilings, the Tier M threshold, and the given policy value.
+func ceilingInput(specID, evidenceDir, onFinalHit string) CeilingInput {
+	return CeilingInput{
+		SpecID:          specID,
+		SpecEvidenceDir: evidenceDir,
+		Tier:            "M",
+		Threshold:       0.80,
+		Ceilings:        map[string]int{"S": 1, "M": 2, "L": 3},
+		OnFinalHit:      onFinalHit,
+	}
+}
+
+// TestRecordCeilingOutcome — AC-ACR-004's runtime arm: a non-admitted verdict
+// under the shipped hold-and-split policy records exactly one JSON record
+// carrying disposition hold, the split-proposal reference, and the
+// count/ceiling/label/evidence fields.
+func TestRecordCeilingOutcome(t *testing.T) {
+	project := t.TempDir()
+	t.Chdir(project)
+
+	outcome, hit, err := EvaluatePlanAuditCeiling(ceilingInput("SPEC-CEIL-004", ceilingFixture(t, ceilingFailBody), "hold-and-split"))
+	if err != nil {
+		t.Fatalf("EvaluatePlanAuditCeiling: %v", err)
+	}
+	if !hit {
+		t.Fatal("3 rounds against a Tier M ceiling of 2 must hit the ceiling")
+	}
+	if outcome.Disposition != CeilingDispositionHold || outcome.SplitProposalRef == "" {
+		t.Fatalf("hold-and-split must record hold + a split-proposal reference, got %+v", outcome)
+	}
+	if outcome.Count != 3 || outcome.Ceiling != 2 {
+		t.Errorf("count/ceiling = %d/%d, want 3/2", outcome.Count, outcome.Ceiling)
+	}
+	if outcome.VerdictLabel != "FAIL" {
+		t.Errorf("verdict label = %q, want FAIL", outcome.VerdictLabel)
+	}
+	if len(outcome.EvidencePaths) == 0 {
+		t.Error("record carries no evidence paths")
+	}
+
+	if err := RecordCeilingOutcome("SPEC-CEIL-004", outcome); err != nil {
+		t.Fatalf("RecordCeilingOutcome: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(".moai", "state", "audit-ceiling", "SPEC-CEIL-004.json"))
+	if err != nil {
+		t.Fatalf("read record: %v", err)
+	}
+	var got CeilingOutcome
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("record is not JSON: %v", err)
+	}
+	if got.Disposition != "hold" || got.SplitProposalRef == "" || got.Count != 3 || got.Ceiling != 2 || got.VerdictLabel != "FAIL" || len(got.EvidencePaths) == 0 {
+		t.Errorf("written record = %+v", got)
+	}
+
+	// Recording again overwrites the same path — one record per SPEC, not an
+	// append log.
+	if err := RecordCeilingOutcome("SPEC-CEIL-004", outcome); err != nil {
+		t.Fatalf("re-record: %v", err)
+	}
+	entries, err := os.ReadDir(filepath.Join(".moai", "state", "audit-ceiling"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("record directory holds %d entries, want 1", len(entries))
+	}
+}
+
+// TestRecordCeilingOutcomeDebtProceed — AC-ACR-009: a PASS-WITH-DEBT verdict
+// passing the full shared predicate records debt-proceed and references the
+// verdict's debt ids.
+func TestRecordCeilingOutcomeDebtProceed(t *testing.T) {
+	t.Parallel()
+
+	outcome, hit, err := EvaluatePlanAuditCeiling(ceilingInput("SPEC-CEIL-009", ceilingFixture(t, ceilingDebtBody), "hold-and-split"))
+	if err != nil {
+		t.Fatalf("EvaluatePlanAuditCeiling: %v", err)
+	}
+	if !hit {
+		t.Fatal("expected the ceiling to apply")
+	}
+	if outcome.Disposition != CeilingDispositionDebtProceed {
+		t.Fatalf("disposition = %q, want debt-proceed", outcome.Disposition)
+	}
+	if len(outcome.DebtIDs) != 2 || outcome.DebtIDs[0] != "D1" || outcome.DebtIDs[1] != "D2" {
+		t.Errorf("debt ids = %v, want [D1 D2]", outcome.DebtIDs)
+	}
+	if outcome.VerdictAdmitted != true {
+		t.Error("a debt-proceed record is an admitted verdict")
+	}
+}
+
+// TestRecordCeilingOutcomeUnknownPolicy — AC-ACR-010: a policy value that is
+// neither hold-and-split nor split — or an unreadable one — records hold with
+// no split-proposal reference (fail-closed).
+func TestRecordCeilingOutcomeUnknownPolicy(t *testing.T) {
+	t.Parallel()
+
+	for _, policy := range []string{"escalate", ""} {
+		outcome, hit, err := EvaluatePlanAuditCeiling(ceilingInput("SPEC-CEIL-010", ceilingFixture(t, ceilingFailBody), policy))
+		if err != nil {
+			t.Fatalf("policy %q: %v", policy, err)
+		}
+		if !hit {
+			t.Fatalf("policy %q: expected the ceiling to apply", policy)
+		}
+		if outcome.Disposition != CeilingDispositionHold {
+			t.Errorf("policy %q: disposition = %q, want hold", policy, outcome.Disposition)
+		}
+		if outcome.SplitProposalRef != "" {
+			t.Errorf("policy %q: carry-over split reference %q, want none", policy, outcome.SplitProposalRef)
+		}
+	}
+}
+
+// TestRecordCeilingOutcomeSplitValue — AC-ACR-012: a policy value of exactly
+// split records the split disposition.
+func TestRecordCeilingOutcomeSplitValue(t *testing.T) {
+	t.Parallel()
+
+	outcome, hit, err := EvaluatePlanAuditCeiling(ceilingInput("SPEC-CEIL-012", ceilingFixture(t, ceilingFailBody), "split"))
+	if err != nil {
+		t.Fatalf("EvaluatePlanAuditCeiling: %v", err)
+	}
+	if !hit {
+		t.Fatal("expected the ceiling to apply")
+	}
+	if outcome.Disposition != CeilingDispositionSplit {
+		t.Fatalf("disposition = %q, want split", outcome.Disposition)
+	}
+	if outcome.SplitProposalRef != "" {
+		t.Errorf("split record carries a split-proposal reference %q; the reference belongs to hold-and-split", outcome.SplitProposalRef)
+	}
+}
+
+// TestEvaluatePlanAuditCeiling — AC-ACR-005: a clean admitted PASS at the
+// ceiling is not a ceiling outcome at all (the composed evaluate+record path
+// writes nothing), and an invalid resolved ceiling propagates the
+// configuration error before any comparison, writing no record (R2's
+// Evaluate-level arm).
+func TestEvaluatePlanAuditCeiling(t *testing.T) {
+	t.Run("clean admitted PASS at the ceiling writes no record", func(t *testing.T) {
+		project := t.TempDir()
+		t.Chdir(project)
+
+		outcome, hit, err := EvaluatePlanAuditCeiling(ceilingInput("SPEC-CEIL-005", ceilingFixture(t, ceilingPassBody), "hold-and-split"))
+		if err != nil {
+			t.Fatalf("EvaluatePlanAuditCeiling: %v", err)
+		}
+		if hit {
+			t.Fatalf("a clean admitted PASS at the ceiling must not apply the ceiling, got %+v", outcome)
+		}
+		// The composition the CLI verb runs: record only on hit.
+		if hit {
+			if err := RecordCeilingOutcome("SPEC-CEIL-005", outcome); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := os.Stat(filepath.Join(".moai", "state", "audit-ceiling", "SPEC-CEIL-005.json")); !os.IsNotExist(err) {
+			t.Errorf("record exists for a clean PASS at the ceiling (stat err = %v)", err)
+		}
+	})
+
+	t.Run("invalid resolved ceiling propagates the error with no record", func(t *testing.T) {
+		project := t.TempDir()
+		t.Chdir(project)
+
+		in := ceilingInput("SPEC-CEIL-005B", ceilingFixture(t, ceilingFailBody), "hold-and-split")
+		in.Tier = "M"
+		in.Ceilings = map[string]int{"S": 1, "L": 3} // M missing → configuration error
+		_, hit, err := EvaluatePlanAuditCeiling(in)
+		if err == nil {
+			t.Fatal("a missing resolved ceiling must propagate the configuration error")
+		}
+		if hit {
+			t.Error("no ceiling outcome applies when the ceiling never resolved")
+		}
+		if _, statErr := os.Stat(filepath.Join(".moai", "state", "audit-ceiling", "SPEC-CEIL-005B.json")); !os.IsNotExist(statErr) {
+			t.Errorf("record written despite the configuration error (stat err = %v)", statErr)
+		}
+	})
+
+	t.Run("rounds below the ceiling do not apply it", func(t *testing.T) {
+		t.Parallel()
+		dir := evidenceDir(t, "plan-audit.md") // 1 round
+		_, hit, err := EvaluatePlanAuditCeiling(ceilingInput("SPEC-CEIL-LOW", dir, "hold-and-split"))
+		if err != nil {
+			t.Fatalf("EvaluatePlanAuditCeiling: %v", err)
+		}
+		if hit {
+			t.Error("1 round against a Tier M ceiling of 2 must not hit")
+		}
+	})
 }
