@@ -865,13 +865,17 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	if gateReadErr != nil {
 		// The configuration error surfaces on the result whatever the verdict
 		// outcome: a caller must be able to tell a broken audit configuration
-		// from an absent one (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+		// from an absent one (SPEC-AUDIT-CEILING-002 REQ-ACR-006). And it
+		// promotes the OVERALL verdict to fail (CR2-P2-2): every backend may
+		// have carried a verdict, but a gate posture that cannot be read is
+		// not an absent one — pass must not survive on a note alone.
 		gateErrNote := "workflow.audit gates unreadable: " + gateReadErr.Error()
 		if result.GateUnmet == "" {
 			result.GateUnmet = gateErrNote
 		} else {
 			result.GateUnmet = gateErrNote + "; " + result.GateUnmet
 		}
+		result.OverallVerdict = overallVerdictFail
 	}
 	if gateAssumedNote != "" && result.GateUnmet != "" {
 		result.ResidualRiskNote = gateAssumedNote + " | " + result.ResidualRiskNote

@@ -139,6 +139,63 @@ func TestSpecCeilingRecordLandsUnderProjectNotCwd(t *testing.T) {
 	}
 }
 
+// TestSpecCeilingRecordFallsToHoldOnUnreadablePolicyValue — CR2-P2-1
+// (card-review r2): a policy VALUE the configuration decoder cannot read
+// (`on_final_hit: []`) must not fail the whole config load and leave --record
+// writing nothing. The unreadable policy is REQ-ACR-003's fail-closed arm:
+// the record still writes, disposition hold, no split-proposal reference.
+func TestSpecCeilingRecordFallsToHoldOnUnreadablePolicyValue(t *testing.T) {
+	project := ceilingVerbProject(t)
+	sections := filepath.Join(project, ".moai", "config", "sections")
+	if err := os.MkdirAll(sections, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	overlay := `harness:
+    evaluator:
+        memory_scope: per_iteration
+    plan_audit_tier_ceilings:
+        S: 1
+        M: 2
+        L: 3
+    plan_audit_ceiling_policy:
+        auto_delta_rounds: 1
+        on_final_hit: []
+`
+	if err := os.WriteFile(filepath.Join(sections, "harness.yaml"), []byte(overlay), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	t.Chdir(project)
+
+	cmd := newSpecCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"ceiling", "SPEC-CEILFIX-001", "--record"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("an unreadable policy value must fall to the hold arm, not fail the record: %v\noutput: %s", err, out.String())
+	}
+
+	raw, err := os.ReadFile(filepath.Join(project, ".moai", "state", "audit-ceiling", "SPEC-CEILFIX-001.json"))
+	if err != nil {
+		t.Fatalf("no record written under the unreadable-policy overlay: %v\noutput: %s", err, out.String())
+	}
+	var got runtime.CeilingOutcome
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("record is not the CeilingOutcome JSON: %v", err)
+	}
+	if got.Disposition != "hold" {
+		t.Errorf("disposition = %q, want hold (the unreadable-policy fail-closed arm)", got.Disposition)
+	}
+	if got.SplitProposalRef != "" {
+		t.Errorf("unreadable-policy hold carries a split-proposal reference %q, want none", got.SplitProposalRef)
+	}
+	if got.Count != 3 || got.Ceiling != 2 {
+		t.Errorf("count/ceiling = %d/%d, want 3/2 (the ceilings ride along the partial read)", got.Count, got.Ceiling)
+	}
+}
+
 // TestSpecCeilingBelowCeilingNoRecord — the read path's below-ceiling arm: no
 // ceiling outcome applies, and --record writes nothing.
 func TestSpecCeilingBelowCeilingNoRecord(t *testing.T) {

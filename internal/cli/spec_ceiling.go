@@ -22,6 +22,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // newSpecCeilingCmd builds the `moai spec ceiling` verb.
@@ -119,14 +120,68 @@ func runSpecCeiling(cmd *cobra.Command, specID string, listedDirs []string, reco
 // plan_audit_ceiling_policy.on_final_hit from the tree's harness.yaml; a
 // missing harness.yaml resolves the shipped defaults (an absent file is a
 // defaults project, not an error).
+//
+// A harness.yaml the strict loader rejects wholesale is distinguished by WHAT
+// cannot be read (CR2-P2-1): when the policy block's own values are the
+// unreadable part — on_final_hit as a sequence, auto_delta_rounds as a map —
+// that is REQ-ACR-003's unreadable-policy arm, not a fatal configuration
+// error: the ceilings ride along a partial read (or the shipped defaults) and
+// the empty policy string drops the evaluation to disposition hold, record
+// included. Every other load error stays fatal.
 func loadCeilingConfig(root string) (map[string]int, string, error) {
-	cfg, err := config.LoadHarnessConfig(filepath.Join(root, ".moai", "config", "sections", "harness.yaml"))
+	path := filepath.Join(root, ".moai", "config", "sections", "harness.yaml")
+	cfg, err := config.LoadHarnessConfig(path)
+	if err == nil {
+		return cfg.PlanAuditTierCeilings, cfg.PlanAuditCeilingPolicy.OnFinalHit, nil
+	}
 	if errors.Is(err, config.ErrConfigNotFound) {
 		def := config.DefaultPlanAuditCeilingPolicy()
 		return config.DefaultPlanAuditTierCeilings(), def.OnFinalHit, nil
 	}
-	if err != nil {
-		return nil, "", err
+	ceilings, policyUnreadable := looseReadCeilingPolicy(path)
+	if !policyUnreadable {
+		return nil, "", err // the failure lives elsewhere in the configuration — stay strict
 	}
-	return cfg.PlanAuditTierCeilings, cfg.PlanAuditCeilingPolicy.OnFinalHit, nil
+	if len(ceilings) == 0 {
+		ceilings = config.DefaultPlanAuditTierCeilings()
+	}
+	return ceilings, "", nil // unreadable policy value → the evaluation's hold arm
+}
+
+// looseReadCeilingPolicy re-reads the harness.yaml the strict loader rejected
+// and reports whether the POLICY block's own values are what cannot be read.
+// The policy fields decode into any so every value shape survives the tolerant
+// pass; a present-but-non-string on_final_hit, or a present-but-non-int
+// auto_delta_rounds, is the unreadable policy. A readable policy block means
+// the strict failure lives elsewhere and stays fatal.
+func looseReadCeilingPolicy(path string) (ceilings map[string]int, policyUnreadable bool) {
+	data, readErr := os.ReadFile(path)
+	if readErr != nil {
+		return nil, false
+	}
+	var raw struct {
+		Harness struct {
+			PlanAuditTierCeilings map[string]int `yaml:"plan_audit_tier_ceilings"`
+			PlanAuditCeilingPolicy struct {
+				AutoDeltaRounds any `yaml:"auto_delta_rounds"`
+				OnFinalHit      any `yaml:"on_final_hit"`
+			} `yaml:"plan_audit_ceiling_policy"`
+		} `yaml:"harness"`
+	}
+	_ = yaml.Unmarshal(data, &raw) // tolerant by construction: any-typed fields cannot mismatch
+	policy := raw.Harness.PlanAuditCeilingPolicy
+	if policy.OnFinalHit == nil && policy.AutoDeltaRounds == nil {
+		return nil, false // the policy block is absent — the strict failure lives elsewhere
+	}
+	unreadable := false
+	if _, isString := policy.OnFinalHit.(string); policy.OnFinalHit != nil && !isString {
+		unreadable = true
+	}
+	if _, isInt := policy.AutoDeltaRounds.(int); policy.AutoDeltaRounds != nil && !isInt {
+		unreadable = true
+	}
+	if !unreadable {
+		return nil, false // the policy values read fine — the strict failure lives elsewhere
+	}
+	return raw.Harness.PlanAuditTierCeilings, true
 }

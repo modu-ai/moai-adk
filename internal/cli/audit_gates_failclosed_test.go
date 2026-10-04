@@ -200,6 +200,13 @@ func TestGateErrorPropagatesToCallerSites(t *testing.T) {
 		if !strings.Contains(r.GateUnmet, "workflow.yaml") {
 			t.Errorf("gate_unmet = %q, want the unreadable configuration surfaced", r.GateUnmet)
 		}
+		// CR2-P2-2 (card-review r2): the gate lookup error must promote the
+		// OVERALL verdict to fail — every backend passed, but a gate posture
+		// that cannot be read is not an absent one, and pass must not survive
+		// on a note alone.
+		if r.OverallVerdict != overallVerdictFail {
+			t.Errorf("overall_verdict = %q with a gate lookup error and every backend passing, want %q", r.OverallVerdict, overallVerdictFail)
+		}
 	})
 
 	t.Run("mcp_codex.go applyGateUnmet", func(t *testing.T) {
