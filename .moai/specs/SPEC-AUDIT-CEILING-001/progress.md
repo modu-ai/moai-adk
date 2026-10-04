@@ -136,6 +136,32 @@ plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md
   the 22-AC count (extensions, not additions — Tier L ceiling 25 not
   approached).
 
+### Plan-audit iter3 — ceiling hit + STOP (2026-10-04, recorded by lane-26)
+
+- iter3 verdict: **FAIL 0.81 with STOP signal** (score regression 0.83 →
+  0.81; iter1 0.69 → iter2 0.83 → iter3 0.81) —
+  `.moai/reports/t1500/plan-audit-iter3.md`, audited_sha `9dd4d5c74`,
+  receipt `rcpt-daab786d53b574d2bbe55847`. All 12 iter2 defects (D19-D24
+  blocking + D25-D30 optional) verified RESOLVED; regression sweep fully
+  green (must-pass 9/9, RED cells verbatim, 16 REQ ↔ 22 AC, lint strict
+  0/0). New blocking: D31 (ceiling ladder has no arm for a fully-passing
+  verdict at/over the ceiling — healthy resumes fall to hold by omission),
+  D32 (receipt producer fed only from multi-model ConvergenceResult —
+  single-model audits on required-resolving trees have no writer and block
+  permanently), D33 (same-SHA dedupe vs "new card re-audit is a new round"
+  cannot both hold for no-repair cross-card re-audits — ceiling blind to
+  that churn), D34 (§G risk 2 contradicts v0.3.0's own REQ-ACE-001). Optional
+  D35-D36. Cross-model gate UNMET this round: claude required-but-
+  inconclusive (capacity), glm inconclusive, codex fail — this is the exact
+  situation the card's work item 2 exists to block run entry on.
+- Per the leader's dispatch discipline ("상한에 닿으면 수리를 이어 가지
+  말고 보고") and the plan-auditor STOP clause (score regression — no
+  unconditional iter4), the lane STOPS here: 3/3 numbered rounds consumed,
+  delta round NOT taken automatically. Operator choices per the verdict:
+  scope reduction / accept-with-debt / explicit override (or a leader
+  decision on any of these). Tree held at HEAD `9dd4d5c74` (v0.3.0),
+  unpushed; all three verdict files preserved.
+
 ## §E.2 Run-phase Evidence
 
 _pending run-phase — owned by manager-develop_
