@@ -33,27 +33,26 @@ const (
 // pass-through separator (the launcher's parsers treat it so, and the
 // emergency form's resume tokens live after it), the SECOND is Claude's own
 // argument separator, after which every token is prompt text and is never
-// judged (card-review round 1, P2). A `--` consumed as another option's
-// value is neither (round 2, P2 — the value-skip covers the counter too).
+// judged (card-review round 1, P2). Round 3's leader ruling bounds both
+// modes: a `--` token is NEVER consumed as an option's value — when an
+// option is followed by `--`, the separator wins, the option goes
+// valueless, and the tokens after the `--` are prompt text.
 const argSeparator = "--"
 
-// claudeValueTakingOptions is the set of options that consume the NEXT token
-// as their value when written in space form — the token after them is value
-// data, never a judged option and never a separator (card-review round 2,
-// P2). Measured from `claude --help` (Claude Code 2.1.289,
-// /Users/<u>/.local/bin/claude -> …/versions/2.1.289, 2026-10-04): every
-// option whose synopsis marks a REQUIRED value (<value>). Options marked
-// with an OPTIONAL value ([value] — --cloud, --debug, --from-pr,
-// --prompt-suggestions, --remote-control, --teleport, and claude's own
-// --worktree) are deliberately absent: that parser class refuses to consume
-// a flag-shaped token as the value, so the token after them is a real option
-// and must stay judged. Launcher-side flags that consume a value before
-// claude ever parses sit in the same table (-p/--profile, -w/--worktree,
-// --branch, --factory-run, --leader, --clear-policy) — the raw scan runs
-// before those parsers, and -p/-w mean the launcher's value-taking flags at
-// scan time even though claude's own -p/--print is boolean and claude's -w
-// is optional-value. `--resume`/`-r` are value-taking too but are
-// special-cased before this table (REQ-SCV-009's own value check).
+// claudeValueTakingOptions is the set of options whose value-ness is
+// DEFINITIVE: their synopsis marks a REQUIRED value (<value>), and the
+// measured parser consumes the next token as that value even when it is
+// flag-shaped (reviewer-verified for --append-system-prompt, card-review
+// round 2). Both modes skip the token after them — except a `--`, which is
+// never an option's value (round 3 ruling) and counts as the separator
+// instead. Measured from `claude --help` (Claude Code 2.1.289,
+// /Users/<u>/.local/bin/claude -> …/versions/2.1.289, 2026-10-04), plus the
+// launcher-side flags whose parsers consume a non-flag value before claude
+// ever parses (-p/--profile, --branch, --factory-run, --leader,
+// --clear-policy, -m — parseProfileFlag and parseFactoryFlag refuse a
+// flag-shaped value, so the launcher errors there either way).
+// `--resume`/`-r` are value-taking too but are special-cased before this
+// table (REQ-SCV-009's own value check).
 //
 // @MX:DEBT: hand-maintained snapshot of Claude Code's value-taking option surface
 // @MX:CEILING: options a Claude Code update adds are missing from the table, so a token that is really a new option's value can still be misjudged as a valueless resume — a false refusal, or a guard fire on a churned surface
@@ -72,10 +71,40 @@ var claudeValueTakingOptions = map[string]bool{
 	"--plugin-dir": true, "--plugin-url": true, "--session-id": true,
 	"--setting-sources": true, "--settings": true, "--system-prompt": true,
 	"--system-prompt-snapshot": true, "--tools": true,
-	// Launcher-side value-taking flags (consumed before claude parses):
-	"-p": true, "--profile": true, "-w": true, "--worktree": true,
-	"--branch": true, "--factory-run": true, "--leader": true,
-	"--clear-policy": true, "-m": true,
+	// Launcher-side definitive value-taking flags (consumed before claude
+	// parses):
+	"-p": true, "--profile": true, "--branch": true, "--factory-run": true,
+	"--leader": true, "--clear-policy": true, "-m": true,
+}
+
+// ambiguousValueOptions is the OPTIONAL-value class ([value] in the same
+// measured help): their parser refuses to consume a flag-shaped token as the
+// value, so whether the next token is a value or a real option DEPENDS on
+// its shape — the scanner cannot definitively interpret it. The two modes
+// resolve the ambiguity in opposite directions (card-review round 3, leader
+// ruling): the GUARD is fail-closed and judges the next token (an ambiguous
+// option followed by a resume-shaped token fires — `-w --resume <id>` cannot
+// be proven not to resume), while the VALIDATOR never refuses on ambiguity
+// and passes the next token silently. `-w`/`--worktree` sit here: claude's
+// own synopsis marks it [name], and launcher-side the worktree parsers
+// refuse a flag-shaped value the same way.
+var ambiguousValueOptions = map[string]bool{
+	"--cloud": true, "-d": true, "--debug": true, "--from-pr": true,
+	"--prompt-suggestions": true, "--remote-control": true, "--teleport": true,
+	"-w": true, "--worktree": true,
+}
+
+// isShortClusterCarryingR reports whether a token is a short-option cluster
+// (single leading dash, not a `--` long option) whose body carries an `r`
+// anywhere we cannot prove is a plain letter. With a value-taking `-r`, such
+// a cluster resumes exactly like `-r<uuid>` (`-pr<uuid>` = `-p` + `-r<uuid>`)
+// — card-review round 3, P1. Over-matching `-root` is the SAFE side for the
+// guard: a false fire costs a restatable launch, a false pass leaks a resume
+// across every card the loop starts. The validator never refuses on a
+// cluster: the r-segment's value is attached, or the shape is genuinely
+// ambiguous.
+func isShortClusterCarryingR(arg string) bool {
+	return strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") && strings.Contains(arg, "r")
 }
 
 // resumeRequiresValueError is REQ-SCV-009's refusal text; it names the
@@ -113,11 +142,12 @@ func laneJoinChildArgv(launcherArgs []string, sessionName string, settingsFlag [
 // and the equals form with an empty value. A space-form token followed by
 // another flag is refused too — a session id never begins with "-", so a
 // flag there means the value is missing (and claude would otherwise consume
-// that flag as the value). The walk consumes the values of value-taking
-// options (claudeValueTakingOptions), so a token that is another option's
-// value is never judged and never counted as a separator; the scan stops at
-// Claude's argument separator. It returns nil when every resume token
-// carries a value.
+// that flag as the value). The walk consumes the values of DEFINITIVE
+// value-taking options and passes AMBIGUOUS ones silently — ambiguity never
+// refuses (round 3 leader ruling); the only refusal stays the definitive
+// valueless resume. A `--` is never consumed as an option's value: it counts
+// as the separator instead, and the scan stops at Claude's separator. It
+// returns nil when every resume token carries a value.
 func validateResumeArgs(args []string) error {
 	separators := 0
 	for i := 0; i < len(args); i++ {
@@ -141,8 +171,18 @@ func validateResumeArgs(args []string) error {
 			}
 			continue // a non-empty equals form is self-contained
 		}
-		if claudeValueTakingOptions[args[i]] && i+1 < len(args) {
-			i++ // this token's value: never judged, never a separator
+		if isShortClusterCarryingR(args[i]) {
+			// The cluster's r-segment carries its value attached, or the
+			// shape is genuinely ambiguous — never a refusal here.
+			continue
+		}
+		if claudeValueTakingOptions[args[i]] || ambiguousValueOptions[args[i]] {
+			// Definitive: the next token is the value. Ambiguous: it MIGHT be
+			// the value, and ambiguity never refuses. Either way it is passed
+			// silently — unless it is the separator, which is never a value.
+			if i+1 < len(args) && args[i+1] != argSeparator {
+				i++
+			}
 		}
 	}
 	return nil
@@ -167,16 +207,16 @@ func resumeValuePlausible(token string) bool {
 }
 
 // carriesResumeToken reports whether args contain a resume carrier before
-// Claude's argument separator: `--resume` (space or equals spelling), or any
-// `-r`-prefixed token — Claude's short alias accepts the attached form
-// `-r<uuid>` with the value glued to the flag (card-review round 2, P1), so
-// every `-r`-prefixed non-`--` token IS resume-with-value. Over-matching a
-// token that merely starts with `-r` (`-root`) is the SAFE side: this guard
-// refuses with the safe form, so a false fire costs a restatable launch
-// while a false pass leaks a resume across every card the loop starts.
-// Values of value-taking options are skipped — a system prompt that MENTIONS
-// --resume is prompt text, not a resume, and propagating it to a card
-// session resumes nothing.
+// Claude's argument separator. The guard is FAIL-CLOSED on everything the
+// scanner cannot definitively interpret (card-review round 3, leader
+// ruling): a short-option cluster whose body carries an `r` (the attached
+// `-r<uuid>` and clusters like `-pr<uuid>` all resume), and the token after
+// an AMBIGUOUS value option (`-w --resume <id>` cannot be proven not to
+// resume, so it fires). What IS definitive skips: the value after a
+// required-value option (a system prompt that MENTIONS --resume is prompt
+// text, not a resume), and everything after Claude's own argument separator.
+// A `--` is never consumed as an option's value — it counts as the
+// separator.
 func carriesResumeToken(args []string) bool {
 	seen := false
 	separators := 0
@@ -189,19 +229,26 @@ func carriesResumeToken(args []string) bool {
 			continue
 		}
 		switch {
-		case args[i] == resumeFlag:
+		case args[i] == resumeFlag || args[i] == resumeFlagShort:
 			seen = true
-			if i+1 < len(args) {
+			if i+1 < len(args) && args[i+1] != argSeparator {
 				i++ // its value is consumed, not judged
 			}
 			continue
-		case strings.HasPrefix(args[i], resumeFlag+"="), strings.HasPrefix(args[i], "-r"):
-			// The short alias in bare, equals, and attached forms.
+		case strings.HasPrefix(args[i], resumeFlag+"="):
 			seen = true
 			continue
+		case isShortClusterCarryingR(args[i]):
+			seen = true // fail-closed: the cluster may carry `-r` with an attached value
+			continue
 		}
-		if claudeValueTakingOptions[args[i]] && i+1 < len(args) {
-			i++ // this token's value: never judged, never a separator
+		if ambiguousValueOptions[args[i]] {
+			// Fail-closed: the next token stays JUDGED — this is the
+			// validator's mirror (round 3 ruling).
+			continue
+		}
+		if claudeValueTakingOptions[args[i]] && i+1 < len(args) && args[i+1] != argSeparator {
+			i++ // definitive value: never judged, never a separator
 		}
 	}
 	return seen

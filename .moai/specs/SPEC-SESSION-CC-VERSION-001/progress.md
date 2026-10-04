@@ -354,6 +354,51 @@ REQ-SCV-009) was caught by the committed r1 tests and repaired before commit.
 `0 issues.`; session AC family `ok`; cli scoped family (AC-SCV-005..010 selectors +
 TestSession/TestDoctorGolden/TestBinaryLag/launcher-entry families) `ok … 34.054s`.
 
+### Card-review round-3 repairs (leader disposition ① — principle repair, r4 pending)
+
+Leader disposition: one more repair by PRINCIPLE (not case-adding), then r4 ONCE — a further
+FAIL holds the card. The principle: the GUARD is fail-closed (any argv shape the scanner
+cannot definitively interpret counts AS a resume); the VALIDATOR is precise/non-regressing
+(ambiguity never refuses — the only refusal stays the definitive valueless resume); and a
+`--` token is NEVER consumed as an option's value — the separator wins.
+
+- **P1 — short-option cluster `-pr<uuid>`** evaded the r2 `-r`-prefix rule. Repaired by the
+  cluster rule: `isShortClusterCarryingR` — any single-dash non-`--` token whose body
+  carries an `r` we cannot prove is a plain letter is a resume carrier for the guard
+  (fail-closed; over-matching `-root` documented safe-side in the function). The validator
+  never refuses a cluster (attached value, or genuine ambiguity).
+- **P1 — the ambiguous value class** (`[value]` options, `-w` included): `-w --resume <id>`
+  leaked because the r2 table treated `-w` as value-taking. Repaired by splitting the table:
+  `claudeValueTakingOptions` (DEFINITIVE required-value; both modes skip the next token) vs
+  `ambiguousValueOptions` (`[value]` class + `-w`/`--worktree`; the modes resolve in opposite
+  directions — the guard JUDGES the next token (fail-closed → `-w --resume` fires), the
+  validator passes it silently (ambiguity never refuses)).
+- **The separator rule** — `--` is never an option's value in either mode: a definitive or
+  ambiguous option followed by `--` goes valueless and the `--` counts as the separator.
+  This fixes the r3 false refusal (`-w -- -- --resume` one-shot: separator wins, the trailing
+  resume is post-separator prompt text, base parity) and closes the mirror escape where a
+  resume token behind a value-`--` would dodge the guard.
+- **One r2 pin reversed by the ruling, updated in place**: `TestSeparatorInterplaySkipsValues`
+  had pinned the r2 value-`--` reading (`["--","--append-system-prompt","--","-rabc"]` →
+  guard fires); under the round-3 separator rule that `--` IS Claude's separator and the
+  guard does NOT fire — the test now pins the ruling, with the supersession named in its
+  comment. Flagged to the leader in the round-3 report.
+
+**RED evidence** — the leader's three reproductions as regression tests, all failing at the
+r2 tree (exit 1, `/tmp/t1465-red-r3.log`): `TestGuardFiresOnShortCluster` (cluster unrecognized;
+the children=2-shaped relaunch repro entered the loop), `TestGuardFiresOnAmbiguousValueOption`
+(`-w --resume <id>` escaped the guard), `TestAmbiguityNeverRefusesInValidator`,
+`TestSeparatorWinsOverAmbiguousValue` (the false refusal + the guard escape behind the
+value-`--`), and the reversed interplay pin. **GREEN** — after the repair: exit 0, 41
+`--- PASS` across the complete resume set (every r1/r2 test kept green). One design note: the
+one-shot parity subtest asserts the resume validation is not what refuses (end to end the
+launcher's own untouched `-w` handling decides what `-w --` means — base-identical), rather
+than asserting a launch that the launcher's `-w` handling may legitimately refuse.
+
+**Repair gate** — gofmt clean; builds native + windows exit 0; vet 0; golangci-lint
+`0 issues.`; session AC family `ok`; cli scoped family (AC-SCV-005..010 selectors +
+TestSession/TestDoctorGolden/TestBinaryLag/launcher-entry families) `ok … 54.430s`.
+
 ### Residual-risk (run-phase)
 
 - The installed read resolves the FIRST `claude` on PATH — a PATH-shadowed install reads that

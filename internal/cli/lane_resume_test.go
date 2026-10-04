@@ -263,21 +263,136 @@ func TestGuardSkipsOptionValues(t *testing.T) {
 	})
 }
 
-// TestSeparatorInterplaySkipsValues (card-review round 2, P2 trace) — a `--`
-// consumed as another option's value is NOT Claude's argument separator: the
-// separator counter must skip values exactly like the token walk does, or a
-// resume token after it escapes the scan.
+// TestSeparatorInterplaySkipsValues (card-review round 2, P2; REVERSED by
+// the round-3 leader ruling) — round 2 pinned the value-`--` reading (a
+// definitive option consumes a following `--` as its value). Round 3's
+// principle states the opposite unconditionally: a `--` token is NEVER
+// consumed as an option's value — it is the separator, and the tokens after
+// it are prompt text. So the `-rabc` behind that `--` is prompt text and the
+// guard does NOT fire.
 func TestSeparatorInterplaySkipsValues(t *testing.T) {
-	// The value-`--` must not be counted as the second separator: `-rabc`
-	// after it is a real resume carrier and the guard must fire.
-	if !carriesResumeToken([]string{"--", "--append-system-prompt", "--", "-rabc"}) {
-		t.Fatal("the value-`--` was counted as Claude's separator; the carrier after it escaped the guard")
+	if carriesResumeToken([]string{"--", "--append-system-prompt", "--", "-rabc"}) {
+		t.Fatal("the `--` after a definitive option was consumed as its value; round-3 ruling: it is Claude's separator")
 	}
-	// Mirror for the validator: after the value-skip the trailing token is a
-	// well-formed resume, so the launch proceeds.
-	if err := validateResumeArgs([]string{"--append-system-prompt", "--", "--resume", "<session-id>"}); err != nil {
-		t.Fatalf("validateResumeArgs consumed a well-formed resume behind an option's value: %v", err)
+}
+
+// TestGuardFiresOnShortCluster (card-review round 3, P1) — a short-option
+// CLUSTER (single-dash, non-`--`) whose body carries an `r` anywhere we
+// cannot prove is a plain letter is a resume carrier: `-pr<uuid>` resumes
+// exactly like `-r<uuid>`.
+func TestGuardFiresOnShortCluster(t *testing.T) {
+	if !carriesResumeToken([]string{"--name", "lane-3", "--", "-pr0a1b2c3d"}) {
+		t.Fatal("a short cluster carrying r was not recognized as a resume carrier")
 	}
+
+	t.Run("cluster form refuses the relaunch loop", func(t *testing.T) {
+		gateCalls, leaseCalls, launchCalls := saveRelaunchSeams(t)
+		cmd := &cobra.Command{}
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+
+		err := runFactoryLaneRelaunch(cmd, "lane-3", []string{"--name", "lane-3", "--", "-pr0a1b2c3d"}, "", "")
+		if err == nil {
+			t.Fatal("expected the relaunch loop to refuse a resume-carrying cluster")
+		}
+		if !strings.Contains(err.Error(), "moai cc -l -- --resume <session-id>") {
+			t.Errorf("refusal must name the one-shot lane-join form verbatim; got: %v", err)
+		}
+		if *gateCalls != 0 || *leaseCalls != 0 || *launchCalls != 0 {
+			t.Errorf("refusal must precede every seam: gate=%d lease=%d launch=%d, want all 0",
+				*gateCalls, *leaseCalls, *launchCalls)
+		}
+	})
+}
+
+// TestGuardFiresOnAmbiguousValueOption (card-review round 3, P1) — an option
+// whose value-ness is AMBIGUOUS (the optional-value class, `-w` included)
+// does not shield the token after it: `-w --resume <id>` cannot be proven
+// not to resume, and the guard is fail-closed, so it fires.
+func TestGuardFiresOnAmbiguousValueOption(t *testing.T) {
+	if !carriesResumeToken([]string{"--name", "lane-3", "-w", "--resume", "<session-id>"}) {
+		t.Fatal("the ambiguous -w shielded a resume token from the guard")
+	}
+	// The measured-optional claude class behaves the same (pin; already true
+	// at round 2 — those options were never in the value table).
+	if !carriesResumeToken([]string{"-d", "--resume", "<session-id>"}) {
+		t.Fatal("the ambiguous --debug shielded a resume token from the guard")
+	}
+
+	t.Run("ambiguous -w refuses the relaunch loop", func(t *testing.T) {
+		gateCalls, leaseCalls, launchCalls := saveRelaunchSeams(t)
+		cmd := &cobra.Command{}
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+
+		err := runFactoryLaneRelaunch(cmd, "lane-3", []string{"--name", "lane-3", "-w", "--resume", "<session-id>"}, "", "")
+		if err == nil {
+			t.Fatal("expected the relaunch loop to refuse behind an ambiguous -w")
+		}
+		if !strings.Contains(err.Error(), "moai cc -l -- --resume <session-id>") {
+			t.Errorf("refusal must name the one-shot lane-join form verbatim; got: %v", err)
+		}
+		if *gateCalls != 0 || *leaseCalls != 0 || *launchCalls != 0 {
+			t.Errorf("refusal must precede every seam: gate=%d lease=%d launch=%d, want all 0",
+				*gateCalls, *leaseCalls, *launchCalls)
+		}
+	})
+}
+
+// TestAmbiguityNeverRefusesInValidator (card-review round 3, P1 — the
+// validator's half of the principle) — ambiguity is never a refusal: behind
+// an ambiguous option the next token may be its value, so the validator
+// passes it silently. The ONLY refusal stays the definitive valueless
+// resume.
+func TestAmbiguityNeverRefusesInValidator(t *testing.T) {
+	for _, args := range [][]string{
+		{"-w", "--resume"},
+		{"-w", "--resume", "<session-id>"},
+		{"-d", "--resume"},
+		{"--teleport", "-rabc"},
+	} {
+		if err := validateResumeArgs(args); err != nil {
+			t.Errorf("validateResumeArgs(%q) = %v, want nil (ambiguity never refuses)", args, err)
+		}
+	}
+}
+
+// TestSeparatorWinsOverAmbiguousValue (card-review round 3, P1 repro 3) —
+// `moai cc -w -- -- --resume` reaches launch as it did at base: the
+// ambiguous `-w` meets `--`, and the separator wins — a `--` is never
+// consumed as an option's value, so both `--` tokens count and the trailing
+// resume is post-separator prompt text.
+func TestSeparatorWinsOverAmbiguousValue(t *testing.T) {
+	if err := validateResumeArgs([]string{"-w", "--", "--", "--resume"}); err != nil {
+		t.Fatalf("the separator must win over an ambiguous option's value-ness: %v", err)
+	}
+	if carriesResumeToken([]string{"-w", "--", "--", "--resume", "x"}) {
+		t.Fatal("the guard judged prompt text behind two separators")
+	}
+
+	t.Run("one-shot parity: the resume validation never refuses", func(t *testing.T) {
+		calls := 0
+		launch := func(string, string, []string) error {
+			calls++
+			return nil
+		}
+		cmd := &cobra.Command{}
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+
+		// End to end the launcher's own -w handling decides what `-w --`
+		// means (base-identical: that code is untouched by this SPEC); the
+		// round-3 contract pins that the RESUME validation is not what
+		// refuses, so the launch seam either runs or the error carries some
+		// other surface's text — never the resume refusal.
+		err := runClaudeEntry(cmd, []string{"-w", "--", "--", "--resume"}, "cc", "claude", factory.BackendClaude, launch)
+		if err != nil && strings.Contains(err.Error(), "--resume <session-id>") {
+			t.Fatalf("the resume validation refused behind the separator rule: %v", err)
+		}
+		if err == nil && calls != 1 {
+			t.Errorf("launch seam called %d time(s), want 1 when the launch is reached", calls)
+		}
+	})
 }
 
 // TestRelaunchRefusesResumeAlias (card-review round 1, P1) — under the
