@@ -277,7 +277,7 @@ jobs:
     needs: detect
     if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -306,9 +306,13 @@ jobs:
         run: |
           rc=0
           # -timeout is per test binary, not per job: Go's 10m default kills
-          # internal/cli, whose -race runtime measures 546-1183s. 20m clears that
-          # ceiling while staying inside this job's timeout-minutes: 25 budget.
-          go test -json -race -count=1 -timeout 20m ./... > test-stream.json || rc=$?
+          # internal/cli, whose -race runtime was 1128s on the last green develop
+          # run (37135148076) and hit the old 20m cap on run 37161322193 with 276
+          # t.Parallel tests never started. The 3883 tests common to both runs
+          # took 716s then 1024s (+43%) on the same hosted runner class, so the
+          # ceiling needs headroom over the last green figure: 35m clears it
+          # while staying inside this job's timeout-minutes: 40 budget.
+          go test -json -race -count=1 -timeout 35m ./... > test-stream.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream.json
           exit $rc
 
