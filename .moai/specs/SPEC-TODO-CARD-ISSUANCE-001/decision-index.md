@@ -54,7 +54,7 @@
 ## Q8: 어휘 이웃의 척도와 표시 방식은? 소음을 줄이는 대신 재현율을 포기하는가? (D8)
 
 - Label: FOUNDER
-- Authority anchor: 없음. 맥락: `internal/kanban/backlog_analysis.go` 임계값 주석(근접 중복 임계가 낮으면 소견이 카드 수를 넘어 운영자가 목록을 읽지 않게 된다 — 오류가 비대칭이라 값이 높다).
+- Authority anchor: 없음. 맥락: `internal/factory/backlog_analysis.go` 임계값 주석(근접 중복 임계가 낮으면 소견이 카드 수를 넘어 운영자가 목록을 읽지 않게 된다 — 오류가 비대칭이라 값이 높다).
 - Why unresolved: 측정(`research.md` §3.3): 발행 시점 최근접 이웃 점수 중앙값 0.10, 하한 0.3 에서 알림이 뜨는 추가 비율 8.4%(최근 4.9%), 그러나 Jev·에이전트가 기록한 관계 상대를 상위 3개에서 찾는 비율은 하한 없음 52%, 하한 0.3 에서 6%. 선택지 (i) 기존 `TokenSetJaccard` 재사용에 표시 하한, (ii) idf 가중 척도 신설(하한 없음 재현율 65%), (iii) 하한 없이 항상 상위 3개 표시(소음이 91%대), (iv) 확실한 것(정규화 일치)은 항상, 어휘 이웃은 `--dry-run` 에서만. 점수와 척도 이름은 어느 선택에서나 함께 표기한다.
 - Operator verdict:
 
@@ -104,5 +104,5 @@
 
 - Label: DECIDED
 - Authority anchor: `.moai/specs/SPEC-INSTRUCTION-BUDGET-SCOPE-001/spec.md` § 1 Context(훅 `charBudget = 40000` 이 `LoadReason` 을 게이트로 쓰지 않으므로 `paths:` 한정 규칙도 글롭 적재마다 잰다) 와 그 HISTORY 0.1.0 행(범위 결정 `(c) + (a)` — 문서 교리를 훅에 맞춘다, 훅 쪽을 좁히는 `(b)` 는 기각).
-- Why unresolved: 해당 없음 — 앵커가 같은 조건의 같은 질문을 이미 정했다. 이 행은 새 `card-issuance.md` 와 편집되는 `gtd.md` 가 이 결정의 적용을 받는다는 사실만 기록한다. 동반 파일의 `paths:` 는 부모 패턴의 진부분집합이어야 한다는 같은 SPEC 의 규칙은 새 파일이 분할 산물이 아니라 신규 내용이므로 직접 적용되지 않지만, `kanban-dispatch*` 글롭과 자기 매칭하는 파일명은 피한다.
+- Why unresolved: 해당 없음 — 앵커가 같은 조건의 같은 질문을 이미 정했다. 이 행은 새 `card-issuance.md` 와 편집되는 `gtd.md` 가 이 결정의 적용을 받는다는 사실만 기록한다. 동반 파일의 `paths:` 는 부모 패턴의 진부분집합이어야 한다는 같은 SPEC 의 규칙은 새 파일이 분할 산물이 아니라 신규 내용이므로 직접 적용되지 않지만, `factory-dispatch*` 글롭과 자기 매칭하는 파일명은 피한다.
 - Operator verdict:

@@ -6,8 +6,8 @@
 
 | 층 | 패키지 | 이 SPEC 이 더하거나 바꾸는 것 |
 |---|---|---|
-| 순수 조회·모형 | `internal/kanban` | 읽기 전용 이웃·구성요소·완료 SPEC 조회, 발행 속성·처분 타입, 관계 어휘 정규화·제약·카드↔GTD 해석기 |
-| 저장 | `internal/kanban`(SQLite 엔진) | `items`·`archived_items`·`findings`·`archived_findings` 의 가산 컬럼, 읽기/쓰기/parity |
+| 순수 조회·모형 | `internal/factory` | 읽기 전용 이웃·구성요소·완료 SPEC 조회, 발행 속성·처분 타입, 관계 어휘 정규화·제약·카드↔GTD 해석기 |
+| 저장 | `internal/factory`(SQLite 엔진) | `items`·`archived_items`·`findings`·`archived_findings` 의 가산 컬럼, 읽기/쓰기/parity |
 | 명령 | `internal/cli` | `add` 의 제시와 `--dry-run`·발행 플래그, `todo trace`, `todo merge`, 처분 동사, `gtd engage` 제시, MCP `todo_add` |
 | 그래프 | `internal/graph` | 카드 귀속 병합의 변경 파일 간선 층, 출처 지문 |
 | 팩토리 | `internal/homestate`, `internal/cli` | `cards` 행의 묶음 속성, 적재 동사, 선택 호의 묶음 예약, 임베드 허브 파일 목록 |
@@ -15,7 +15,7 @@
 | 규칙 | `.claude/rules`, `.claude/skills`, `.claude/agents`, 템플릿 사본 | M5 |
 | 기준선 | `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/baseline/` | M0 — 추적되는 기록과 재현 스크립트, 허브 목록(§12) |
 
-의존 방향은 한쪽이다 — `kanban`(순수) ← `cli`/`web`/`graph`/`homestate`. 새 조회 함수는 입력으로 `BacklogRecord` 스냅숏을 받고 쓰지 않는다. 쓰기는 기존 `Mutate` 경로를 그대로 쓴다.
+의존 방향은 한쪽이다 — `factory`(순수) ← `cli`/`web`/`graph`/`homestate`. 새 조회 함수는 입력으로 `BacklogRecord` 스냅숏을 받고 쓰지 않는다. 쓰기는 기존 `Mutate` 경로를 그대로 쓴다.
 
 ## §2 `add` 경로의 데이터 흐름
 
@@ -46,13 +46,13 @@
 | 유사 카드 상위 3 | live(dropped 포함, 접두사 제거) + 보관 카드 | `measure=token-set-jaccard`, 점수, 상태(`live`·`dropped`·`archived` 중 하나), 본문 앞 60자, dropped 이면 사유 |
 | 같은 구성요소의 열린 카드 | 열린 카드(queued·picked·hold)의 본문 경로와 예상 파일 | `measure=component`, 구성요소 키, 카드 id·상태 |
 | 진행 중 레인과의 예상 파일 겹침 | 신규 카드의 예상 파일 × 진행 중 레인 카드(picked, 레인 배정 있음)의 예상 파일 — 아래 "예상 파일" 정의 | `measure=file-overlap`; 공유 경로마다 한 항목(진행 중 카드 id·레인·경로). 입력이 있는 비교에서 겹침이 없으면 `none`(줄을 쓰지 않는다), 후보에 입력이 없거나 비교할 진행 중 카드에 입력이 하나도 없으면 `unmeasured` 와 이유. 판정은 진행 중 카드 집합 단위라 입력이 없는 카드는 비교에서 빠지고 보고되지 않으며, 경로 일치는 정규화한 경로 전체의 일치다(파일 이름·문자열 접두사가 아니다) |
+| 이미 덮는 완료 SPEC | `status: completed` 인 SPEC 의 `card:`·`module:`·제목·태그 | `measure=spec-heuristic`, 표지 `heuristic` |
 
 **예상 파일(겹침 항목의 입력).** 카드의 예상 파일은 (i) 본문이 이름으로 대는 저장소 경로 토큰(읽기 전용 추출 — 저장하지 않는다, D13)과 (ii) M2 이후 `issuance.files` 의 합집합이다. 진행 중 레인 카드는 여기에 (iii) 그 레인 브랜치의 변경 파일(`git diff --name-only`, 시간 상한 안에서만; §3.4)을 더한다. 오늘은 `files` 속성이 어느 카드에도 없고 본문 경로가 열린 카드 37장 중 12장에만 있으므로(SB06) 대부분 `unmeasured` 로 나가며, 양성 겹침은 고정 입력 시험으로 관측한다(`acceptance.md` AC-TCI-002 (e), AC-TCI-003 (f)(g)). 허브 체인(§7.2)은 (ii) 만 읽는다 — 본문 추출은 재현율이 낮고(SB06 32%) 저장되지 않는 추론이라 체인을 만들지 않는다.
-| 이미 덮는 완료 SPEC | `status: completed` 인 SPEC 의 `card:`·`module:`·제목·태그 | `measure=spec-heuristic`, 표지 `heuristic` |
 
 ### 3.2 척도와 하한
 
-기존 `NormalizeCardText`·`TokenSetJaccard` 를 그대로 쓴다(재사용, 새 척도 없음). 표시 하한은 `kanban` 패키지의 이름 있는 상수이고 **값은 M0 의 기준선 기록에서 읽는다**(작업 기본값 0.30, `plan.md` §F.11). 하한 미만의 어휘 이웃은 일반 `add` 에서는 출력하지 않고 `--dry-run` 에서만 상위 3개를 점수와 함께 보인다. 정규화 본문이 같은 카드(점수 1.0)는 하한과 무관하게 항상 보이며 라벨이 `exact` 다 — 이것이 이 제시에서 가장 확실한 항목이다(live 가 아닌 보관·dropped 카드와의 일치는 `ClassifyCardText` 가 못 보던 것이다).
+기존 `NormalizeCardText`·`TokenSetJaccard` 를 그대로 쓴다(재사용, 새 척도 없음). 표시 하한은 `factory` 패키지의 이름 있는 상수이고 **값은 M0 의 기준선 기록에서 읽는다**(작업 기본값 0.30, `plan.md` §F.11). 하한 미만의 어휘 이웃은 일반 `add` 에서는 출력하지 않고 `--dry-run` 에서만 상위 3개를 점수와 함께 보인다. 정규화 본문이 같은 카드(점수 1.0)는 하한과 무관하게 항상 보이며 라벨이 `exact` 다 — 이것이 이 제시에서 가장 확실한 항목이다(live 가 아닌 보관·dropped 카드와의 일치는 `ClassifyCardText` 가 못 보던 것이다).
 
 근거(`research.md` §3.3): 하한 없이 항상 상위 3개를 보이면 추가의 91% 이상에서 점수 0.1 안팎의 소음이 나가고(SB02), 하한 0.3 으로 막으면 알림이 8.4%(최근 4.9%)로 줄지만 기록된 관계 상대의 재현율이 6% 로 떨어진다(SB03, SB05). 어휘 이웃은 의미 중복 판정의 대체물이 아니라 보조 신호이며, 의미 판정은 기존 Jev 소비자(발행 시 기록 전용)에 남는다(범위 밖 항목).
 
@@ -73,11 +73,11 @@ issuance: 겹침 제시 (읽기 전용, 아무것도 막지 않는다)
 
 ### 3.4 시간 상한과 락 규율
 
-git 탐침(진행 중 레인 브랜치와 병합 기준 사이의 `git diff --name-only`)은 레인 브랜치 하나에 약 0.25초이고(SB08) `WT-` 브랜치가 353개(이터레이션 2 재측정 356), 워크트리가 74개(재측정 79)다. 진행 중 레인 수만큼 직렬로 돌면 `add` 가 눈에 띄게 느려진다. 그래서 (a) 탐침은 `Mutate` 밖에서만, (b) 항목당·전체에 시간 상한, (c) 예상 파일이 있는 카드는 git 을 부르지 않고 필드끼리 비교, (d) 상한 초과는 `unmeasured (time bound)` 로 표기한다. 상한값은 M1 이 진행 중 레인 수와 탐침 지연을 먼저 재서 정한다(`plan.md` §F.11). 탐침은 락을 쥔 채 돌지 않는다는 것이 시험 가능한 성질이다(탐침 대기 중에 다른 프로세스의 `Mutate` 가 끝나야 한다).
+git 탐침(진행 중 레인 브랜치와 병합 기준 사이의 `git diff --name-only`)은 레인 브랜치 하나에 약 0.25초이고(SB08) `WT-` 브랜치가 353개(이터레이션 2 재측정 356), 워크트리가 74개(재측정 79)였다(2026-10-04 15:44 트리 `68a4d8137` 에서는 397개·121개 — `spec.md` §G; 읽은 시각의 값이다). 진행 중 레인 수만큼 직렬로 돌면 `add` 가 눈에 띄게 느려진다. 그래서 (a) 탐침은 `Mutate` 밖에서만, (b) 항목당·전체에 시간 상한, (c) 예상 파일이 있는 카드는 git 을 부르지 않고 필드끼리 비교, (d) 상한 초과는 `unmeasured (time bound)` 로 표기한다. 상한값은 M1 이 진행 중 레인 수와 탐침 지연을 먼저 재서 정한다(`plan.md` §F.11). 탐침은 락을 쥔 채 돌지 않는다는 것이 시험 가능한 성질이다(탐침 대기 중에 다른 프로세스의 `Mutate` 가 끝나야 한다).
 
 ### 3.5 분류기와의 분리
 
-제시용 조회는 `ClassifyCardText` 를 부르지 않고 `kanban` 에 새로 둔 읽기 전용 함수다. 분류기는 dropped 카드를 거절 대상에서 제외한다는 독트린(`backlog_analysis.go` 의 함수 주석)과 고정 테스트를 가지고 있어 건드리지 않는다. 제시는 dropped 카드도 **알림 대상**으로 포함하되 카드를 거절하거나 소견을 기록하지 않는다. 카드 본문이 요구했던 `ClassifyCardText` 와 `todoTriageSymbols` 의 재사용은 이 설계가 **의도적으로 하지 않는다**(`spec.md` §A.3 정정 7): 전자는 위 독트린 때문에, 후자는 기호를 최대 4개만 내는 상한 때문에 경로 겹침 용도에 맞지 않기 때문이다. 척도(`NormalizeCardText`·`TokenSetJaccard`)만 재사용한다.
+제시용 조회는 `ClassifyCardText` 를 부르지 않고 `factory` 에 새로 둔 읽기 전용 함수다. 분류기는 dropped 카드를 거절 대상에서 제외한다는 독트린(`backlog_analysis.go` 의 함수 주석)과 고정 테스트를 가지고 있어 건드리지 않는다. 제시는 dropped 카드도 **알림 대상**으로 포함하되 카드를 거절하거나 소견을 기록하지 않는다. 카드 본문이 요구했던 `ClassifyCardText` 와 `todoTriageSymbols` 의 재사용은 이 설계가 **의도적으로 하지 않는다**(`spec.md` §A.3 정정 7): 전자는 위 독트린 때문에, 후자는 기호를 최대 4개만 내는 상한 때문에 경로 겹침 용도에 맞지 않기 때문이다. 척도(`NormalizeCardText`·`TokenSetJaccard`)만 재사용한다.
 
 ## §4 스키마와 이주
 
@@ -94,7 +94,7 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 
 ### 4.2 닿는 곳 (모두 한 마일스톤 M2 의 한 커밋 묶음)
 
-카드 표 둘과 finding 표 둘은 **같은 규율**을 받는다 — 이주, 순수 읽기, 보관 왕복, parity, 동결 튜플, 큐 병합. 아래 줄 번호는 이터레이션 2 가 `1894984c3` 에서 `git grep` 으로 읽은 위치다(이터레이션 3 의 핀 `ad02a5677` 과 제품 경로가 같다 — `acceptance.md` G20 이 두 커밋 사이 `internal`·`cmd`·`.claude` 의 변화 없음을 읽었다).
+카드 표 둘과 finding 표 둘은 **같은 규율**을 받는다 — 이주, 순수 읽기, 보관 왕복, parity, 동결 튜플, 큐 병합. 아래 줄 번호는 이터레이션 5 가 `68a4d8137` 에서 다시 읽은 위치다 — 개명(`internal/kanban` → `internal/factory`, 카드 t1399 M8) 외에 이 층의 줄은 이터레이션 4 까지의 값과 같다(`research.md` §0 표).
 
 | 닿는 곳 | 위치 | 이유 |
 |---|---|---|
@@ -189,18 +189,18 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 
 ### 7.1 왜 지금 도구로는 안 되는가
 
-`assign --after` 의 이전 카드 병합 가드는 **할당 간선**에서 돈다(`guardAssign` → `predecessorMerged`). 그래서 이전 카드가 병합되기 전에는 다음 카드를 레인에 할당할 수 없다. 직렬은 레인별이 아니라 전군 슬롯이다. 임대 선택 호 (a)(b)(b2)(c)는 첫 후보에서 `return` 하고, 후보가 거절되면 `factoryNextClaimRefused` 가 경쟁(stale·holder)이 아닌 것을 실제 오류로 돌려준다 — 선행 미병합 후보가 앞에 서면 호출이 오류로 끝날 수 있다는 읽기 추정이 있다(M4 가 관측한다).
+`assign --after` 의 이전 카드 병합 가드는 **할당 간선**에서 돈다(`guardAssign` → `predecessorMerged`). 그래서 이전 카드가 병합되기 전에는 다음 카드를 레인에 할당할 수 없다. 직렬은 레인별이 아니라 전군 슬롯이다. 임대 선택 호 (a)(b)(b2)(c)는 첫 후보에서 `return` 하고, 후보가 거절되면 `factoryNextClaimRefused` 가 경쟁(stale·holder)이 아닌 것을 실제 오류로 돌려준다 — 선행 미병합 후보가 앞에 서면 호출이 오류로 끝날 수 있다는 읽기 추정이 있다(M4 가 관측한다). 이터레이션 5 가 SPEC-FACTORY-ATOMIC-LEASE-001(t1458) 뒤의 `factoryNextSelectAndLease` 를 다시 읽었다: 선택 호 전체가 큐 락 아래 한 임계 구역 안에서 돌고 호 (c) 만 `LockedBacklog.Mutate` 로 큐를 승격한다; 호 (a)(b)(b2)(c)의 첫 후보 반환과 `factoryNextClaimRefused` 의 매핑은 같다 — 추정은 여전히 실행으로 확인하지 못했다.
 
 ### 7.2 설계 (D14 작업 기본값)
 
 | 훅 | 변경 |
 |---|---|
-| `cards` 행 | 묶음 식별·순번·레인 속성(`ALTER TABLE … ADD COLUMN` 목록에 추가) |
+| `cards` 행 | 묶음 식별·순번·레인 속성(버전 이주 함수 — `migrateFactoryV3ToV4`·`cardF1Columns` 형 — 에 추가하고 `factorySchemaVersion` 을 올린다; `factoryDDL` 의 새 DB 정의에도 같은 컬럼) |
 | 적재 동사 | `moai factory bundle <lane> <card>…`: 각 카드의 레코드를 만들고(`RecordPicked`), 묶음 속성과 `HintAfter`(앞 멤버)를 채우고, 첫 멤버만 레인에 할당한다 |
 | 선택 호 | (1) 묶음 멤버가 선행 미병합이면 오류 대신 건너뛴다, (2) 묶음 레인이 다르면 건너뛴다, (3) 레인은 자기 묶음의 다음 멤버를 소유자 없는 picked 카드보다 우선한다 |
 | 허브 체인 | 레코드 생성 시점(`RecordPicked`)에 새 카드의 `files` 속성(명시 입력)이 **임베드된 허브 목록**(§7.4)의 경로를 담고 같은 허브 파일을 `files` 속성에 담은 열린 카드가 있으면 `HintAfter` 를 그 카드로 채운다 — 본문 경로 추출은 읽지 않는다(§3.1) |
 
-직렬 슬롯 의미(전군 단일 슬롯)는 그대로다. keep-set 은 파일 겹침을 읽지 않는다 — 허브 체인은 레코드 생성의 입력이지 keep-set 이나 선택의 입력이 아니다. 임대 선택 호가 묶음 속성을 읽는 것은 REQ-TAU-013 의 "새 입력이 임대 경로를 고치지 않는다"와 맞지 않으므로 개정 행 A3 에 기록한다. 선택 호 변경은 비묶음 카드의 동작이 같음을 골든으로 증명한다.
+직렬 슬롯 의미(전군 단일 슬롯)는 그대로다(이 핀의 "현재 의미"는 t1407 판정 — 호 (a) 가 단지 배정된 형제 카드를 세지 않는다, `factorySerialInFlightExcluding` 의 `ignoreAssigned` — 을 포함하고 t1480 이 다시 바꾸려 한다, `plan.md` §D). 선택 호 변경은 SPEC-FACTORY-ATOMIC-LEASE-001 의 임계 구역(큐 락 아래 결정 읽기부터 마지막 claim 쓰기까지, REQ-FAL-001·-007)의 **결정 읽기** 안에 머물며 git 프로세스·큐 쓰기·구역 밖 I/O 를 더하지 않는다. 허브 체인 계산(큐 카드의 `files` 와 임베드 목록의 교차)은 둘 다 보는 `internal/cli` 에서 하고 `internal/homestate` 는 목록 적재와 `RecordPicked` 의 `HintAfter` 입력만 가진다 — 같은 SPEC 의 REQ-FAL-010 이 `internal/homestate` 비시험 파일의 `internal/factory` 의존을 금한다. keep-set 은 파일 겹침을 읽지 않는다 — 허브 체인은 레코드 생성의 입력이지 keep-set 이나 선택의 입력이 아니다. 임대 선택 호가 묶음 속성을 읽는 것은 REQ-TAU-013 의 "새 입력이 임대 경로를 고치지 않는다"와 맞지 않으므로 개정 행 A3 에 기록한다. 선택 호 변경은 비묶음 카드의 동작이 같음을 골든으로 증명한다.
 
 ### 7.3 병합 동사
 
@@ -216,7 +216,7 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 
 배치(D1·D7·D15): 새 규칙은 **두 파일**이다.
 
-- `.claude/rules/moai/workflow/card-issuance.md` — 배포 규칙. 경로 한정(`paths:` = `**/.claude/skills/moai/workflows/gtd.md,**/.claude/agents/moai/manager-todo.md`; `kanban-dispatch*` 글롭과 자기 매칭하지 않는 이름), 템플릿 미러 있음, 40,000자 이하. **메커니즘만** — 여섯 섹션이 각 한도의 존재와 읽는 법을 말하고 값은 "프로젝트가 측정해 정한 값"이라 부른다.
+- `.claude/rules/moai/workflow/card-issuance.md` — 배포 규칙. 경로 한정(`paths:` = `**/.claude/skills/moai/workflows/gtd.md,**/.claude/agents/moai/manager-todo.md`; `factory-dispatch*` 글롭과 자기 매칭하지 않는 이름), 템플릿 미러 있음, 40,000자 이하. **메커니즘만** — 여섯 섹션이 각 한도의 존재와 읽는 법을 말하고 값은 "프로젝트가 측정해 정한 값"이라 부른다.
 - `.claude/rules/local/card-issuance-thresholds.md` — 로컬 전용(미러 없음, 이 저장소에서는 추적됨 — `.claude/rules/local/` 의 다른 규칙과 같다, G17). **수치만** — 각 값은 기준선 기록의 임계값 표와 같다(`TestCardIssuanceRuleValuesMatchBaseline` 가 두 추적 파일을 대조한다). `paths:` 는 배포 규칙과 같아 두 파일이 함께 적재된다.
 
 수치를 배포 사본에 쓰지 않는 이유와 대안:
@@ -235,13 +235,13 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 - **발행 체크리스트**: 발행 전 제시를 읽었는가(정확 일치·같은 구성요소·진행 중 겹침·완료 SPEC), 크기 하한·상한, 부모·출처 입력, 묶음 후보.
 - **부채 대장**: 큐의 카드(`origin` 값 `follow-up` 과 구분되는 부채 표지), 구성요소 노드로 묶음 조회.
 
-**발행 세션 도달성 (감사 D14).** 경로 한정 규칙은 그 경로의 파일을 여는 세션에서만 적재된다. 카드를 발행하는 세션(리더·운영자·`moai todo add` 를 부르는 세션)은 `gtd.md` 나 `manager-todo.md` 를 열지 않을 수 있다. 그래서 도달은 두 장치가 맡는다 — (i) 상시 로드 `kanban-dispatch.md` 가 규칙을 이름으로 가리키는 한 문장(기존 문장 압축으로 얻은 자리, 순증가 0)이 모든 세션에 도달하고, (ii) `card-issuance.md` 의 `paths:` 를 `workflow_rule_paths_pinned_test.go` 의 고정 목록에 등록해 경로가 바뀌면 시험이 붉어진다(점화 §1.3 — 조용히 멈추는 점검을 막는다). 그리고 규칙과 무관하게 발행 세션에 닿는 장치는 M1 의 제시 자체다 — `add` 가 stderr 로 내는 겹침 제시는 어떤 세션이 부르든 나간다. 이 도달은 AC-TCI-021 (h) 가 검증한다.
+**발행 세션 도달성 (감사 D14).** 경로 한정 규칙은 그 경로의 파일을 여는 세션에서만 적재된다. 카드를 발행하는 세션(리더·운영자·`moai todo add` 를 부르는 세션)은 `gtd.md` 나 `manager-todo.md` 를 열지 않을 수 있다. 그래서 도달은 두 장치가 맡는다 — (i) 상시 로드 `factory-dispatch.md` 가 규칙을 이름으로 가리키는 한 문장(기존 문장 압축으로 얻은 자리, 순증가 0)이 모든 세션에 도달하고, (ii) `card-issuance.md` 의 `paths:` 를 `workflow_rule_paths_pinned_test.go` 의 고정 목록에 등록해 경로가 바뀌면 시험이 붉어진다(점화 §1.3 — 조용히 멈추는 점검을 막는다). 그리고 규칙과 무관하게 발행 세션에 닿는 장치는 M1 의 제시 자체다 — `add` 가 stderr 로 내는 겹침 제시는 어떤 세션이 부르든 나간다. 이 도달은 AC-TCI-021 (h) 가 검증한다.
 
-미러: 바이트 동일 쌍은 동일 편집, 분기된 쌍(`kanban-dispatch.md`, `sync-auditor.md`)은 분기 보존(§plan F.8). 템플릿 사본에는 카드 id·SPEC·REQ id·날짜·`.moai/` 경로·측정 수치를 쓰지 않는다. 기계 검사의 범위: 측정 수치 검사(`TestCardIssuanceTemplateIsMechanismOnly`)는 새 `card-issuance.md` 사본 하나에만 걸리고, 편집되는 다섯 사본은 카드 id·중립성 가드까지만 기계가 보며 숫자 임계값은 M5 커밋의 `git diff` 리뷰가 읽는다(수용 잔여, MU-121). 압축이 카드 id 기준선 짝(`gtd.md t696`, `kanban-dispatch.md t1330`, `kanban-dispatch-detail.md t133`·`t224`)의 문장을 지우면 같은 커밋에서 `card_id_leak_test.go` 의 기준선 항목을 지워야 한다(`plan.md` §D).
+미러: 바이트 동일 쌍은 동일 편집, 분기된 쌍(`factory-dispatch.md`, `sync-auditor.md`)은 분기 보존(§plan F.8; `factory-dispatch.md` 의 분기는 `TestAutoPickMirrorParity` 도 고정한다). 생성 미러: 템플릿 `.md` 에서 `.codex` TOML(`make agents-emit`)이, 템플릿 `gtd.md` 에서 플러그인 페이로드(`make plugin-emit`)가 나온다 — 루트 `.codex/` 는 추적되지 않는다. 병합 독트린 개정은 `gtd.md` 의 "Analysis never folds one card into another, …" 문장을 지우거나 고치지 않고 예외 문장을 덧붙인다(`todo_auto_doc_test.go` 가 문장 전체를 고정한다, `plan.md` §D). 템플릿 사본에는 카드 id·SPEC·REQ id·날짜·`.moai/` 경로·측정 수치를 쓰지 않는다. 기계 검사의 범위: 측정 수치 검사(`TestCardIssuanceTemplateIsMechanismOnly`)는 새 `card-issuance.md` 사본 하나에만 걸리고, 편집되는 다섯 사본은 카드 id·중립성 가드까지만 기계가 보며 숫자 임계값은 M5 커밋의 `git diff` 리뷰가 읽는다(수용 잔여, MU-121). 압축이 카드 id 기준선 짝(`gtd.md t696`, `factory-dispatch.md t1330`, `factory-dispatch-detail.md t133`·`t224`)의 문장을 지우면 같은 커밋에서 `card_id_leak_test.go` 의 기준선 항목을 지워야 한다(`plan.md` §D).
 
 ## §9 웹 보기 설계
 
-`/todo?view=graph`. 읽기 이음매는 `readTodoQueue` 옆에 두고(`LoadPure` 와 읽기 전용 GTD 투영 소스 `GTDProjectionSource` 를 쓴다) 보관 카드·관계·해석기 결과를 `GraphVM{Nodes, Edges, Omitted}` 로 돌려준다. 노드 상한을 넘으면 열린 카드와 연결된 노드를 우선하고 나머지는 "N개 생략" 문구로 표기한다. 레이아웃은 입력이 같으면 출력이 같은 결정적 배치(연결 요소별, 파생·선행 방향의 깊이를 행으로)이고 SVG 는 Templ 이 서버에서 그린다. 새 JS 는 만들지 않는다(데이터는 서버 렌더). 스타일은 임베드 목록에 이미 있는 `console.css` 에 더하므로 임베드 목록은 바뀌지 않거나, 새 자산 파일을 만들면 `assets.go` 의 `//go:embed` 목록에 넣는다. 새 문자열은 모든 로케일 키를 가진다(`i18n_governance_test.go`). GET 전용이고 락·쓰기가 없으며 외부 요청이 없다(SPEC-WEB-TODO-QUEUE-001 의 규칙 유지). 락이 없다는 것은 락 파일의 바이트·mtime 으로 증언하지 않는다 — advisory flock 은 락 파일에 흔적을 남기지 않으므로 큐 읽기는 락이 없다는 `backlog_store.go` 머리 주석에 기대어, 저장소 자신의 `BacklogStore.Mutate` 로 락을 쥔 채 `GET /todo?view=graph` 가 2초(락 도우미의 대기 예산 3.3초보다 짧다) 안에 200 을 내는 시험(`TestTodoGraphViewDoesNotWaitOnQueueLock`)과 웹 패키지 비시험 소스의 락 토큰 어휘 검사(`TestTodoGraphViewReadOnly`)로 증언한다. 어휘 검사는 락을 시도만 하는 보기를 닫고, 한계는 토큰을 피해 이름을 바꾼 시도다(`acceptance.md` MU-122). 기존 표는 바뀌지 않는다(REQ-TCI-024).
+`/todo?view=graph`. 읽기 이음매는 `readTodoQueue` 옆에 두고(`LoadPure` 와 읽기 전용 GTD 투영 소스 `GTDProjectionSource` 를 쓴다) 보관 카드·관계·해석기 결과를 `GraphVM{Nodes, Edges, Omitted}` 로 돌려준다. 노드 상한을 넘으면 열린 카드와 연결된 노드를 우선하고 나머지는 "N개 생략" 문구로 표기한다. 레이아웃은 입력이 같으면 출력이 같은 결정적 배치(연결 요소별, 파생·선행 방향의 깊이를 행으로)이고 SVG 는 Templ 이 서버에서 그린다. 새 JS 는 만들지 않는다(데이터는 서버 렌더). 스타일은 임베드 목록에 이미 있는 `console.css` 에 더하므로 임베드 목록은 바뀌지 않거나, 새 자산 파일을 만들면 `assets.go` 의 `//go:embed` 목록에 넣는다. 새 문자열은 모든 로케일 키를 가진다(`i18n_governance_test.go`). GET 전용이고 락·쓰기가 없으며 외부 요청이 없다(SPEC-WEB-TODO-QUEUE-001 의 규칙 유지). 락이 없다는 것은 락 파일의 바이트·mtime 으로 증언하지 않는다 — advisory flock 은 락 파일에 흔적을 남기지 않으므로 큐 읽기는 락이 없다는 `backlog_store.go` 머리 주석에 기대어, 저장소 자신의 `BacklogStore.Mutate` 로 락을 쥔 채 `GET /todo?view=graph` 가 2초(락 도우미의 대기 예산 `stateLockWaitBudget` 3.3초보다 짧다) 안에 200 을 내는 시험(`TestTodoGraphViewDoesNotWaitOnQueueLock`)과 웹 패키지 비시험 소스의 락 토큰 어휘 검사(`TestTodoGraphViewReadOnly`)로 증언한다. 어휘 검사는 락을 시도만 하는 보기를 닫고, 한계는 토큰을 피해 이름을 바꾼 시도다(`acceptance.md` MU-122). 기존 표는 바뀌지 않는다(REQ-TCI-024).
 
 ## §10 가드·제약 목록 (변경이 지켜야 하는 것)
 
@@ -254,7 +254,7 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 - 직렬 슬롯·keep-set·임대 선택 테스트(`TestFactoryNext*`).
 - `moai graph` 결정성·신선도 테스트, `graph-freshness` CI.
 - 웹: `todo_route_test.go`·정렬·상세·live 테스트, i18n 거버넌스, `appjs_fire_*` 가드.
-- 템플릿: `card_id_leak_test.go`, `workflow_rule_paths_pinned_test.go`, `contract_mode_guided_test.go`, `jev_auto_exception_test.go`, `todo_skill_doc_parity_test.go`·`todo_classify_doc_parity_test.go`, `TestDeclaredRuleMirrorForks`, 카탈로그 해시 두 테스트, `TestGoldenCommittedArtifactsMatchEmission`.
+- 템플릿: `card_id_leak_test.go`, `workflow_rule_paths_pinned_test.go`, `contract_mode_guided_test.go`, `jev_auto_exception_test.go`, `todo_skill_doc_parity_test.go`·`todo_classify_doc_parity_test.go`, `TestDeclaredRuleMirrorForks`, 카탈로그 해시 두 테스트, `TestGoldenCommittedArtifactsMatchEmission`, `internal/template/pluginemit` 의 두 시험, `internal/cli` 의 `todo_auto_pick_doc_test.go`(`TestAutoPickMirrorParity`)·`todo_auto_doc_test.go`(금지 문장 고정). 편집 파일을 이름으로 대는 시험 전체 목록은 `acceptance.md` G34~G37.
 - 상시 로드 토큰 가드와 40,000자 훅.
 
 ## §11 결정 선택지와 근거 (D1~D15)
@@ -436,13 +436,13 @@ REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아
 
 - `TestHubFileListFromBaseline` — 임베드 목록의 경로 집합이 추적되는 `baseline/hub-files.txt` 의 경로 집합과 같다. 기준선 파일이 없으면 **실패**한다(건너뛰지 않는다 — 건너뛰는 시험은 목록을 아무것도 대조하지 않은 채 통과로 읽힌다).
 - `TestHubFileListMatchesMeasuringCommand` — 기준선이 적은 각 경로의 단일 호출 측정 명령(`git log --first-parent --since=<S> --until=<U> --format=%H <develop 팁 SHA> -- <path>` 의 출력 줄 수; 통합 브랜치 자체를 읽으므로 first-parent 가 맞다)을 기록된 develop 팁 SHA 에서 다시 돌려 기록된 개수와 비교한다. 그 SHA 를 클론이 갖지 않으면 사유를 출력하고 건너뛴다 — 건너뜀은 통과가 아니라 공백이며 레인의 전체 이력 클론에서는 통과해야 한다. 건너뜀은 `ok` 로 출력돼 묻지 않으면 보이지 않으므로(`verification-completeness.md` §1.3) 환경 변수 `CI` 가 있는 실행에서는 건너뛰지 않고 실패한다 — CI 의 test 작업은 `fetch-depth: 0` 이다(`.github/workflows/ci.yml:131`). 이 시험은 목록에 **오른** 경로가 기록 개수를 만족하는지(건전성)만 잰다. 목록에서 **빠진** 허브(완전성)는 M0 스크립트 실행 기록에만 기댄다 — 수용된 공백이다.
-- `TestHubFileMeasurementSkipPolicy` — 위 건너뜀/실패 결정이 순수 함수이고 표로 읽는다: SHA 없음 + `CI` 미설정 → 건너뜀, SHA 없음 + `CI` 설정 → 실패, SHA 있음 → 실행. 함수만 읽으면 측정 시험이 함수를 거치지 않고 SHA 가 없으면 무조건 건너뛰어도 이 시험은 통과하므로(이터레이션 3 감사 D32), 측정 시험의 본문을 건너뜀·실패·실행을 기록하는 작은 보고 이음매 하나를 받는 함수로 두고 이 시험이 그 함수를 같은 세 입력으로 직접 구동해 결과를 관측한다.
+- `TestHubFileMeasurementSkipPolicy` — 위 건너뜀/실패 결정이 순수 함수이고 표로 읽는다: SHA 없음 + `CI` 미설정 → 건너뜀, SHA 없음 + `CI` 설정 → 실패, SHA 있음 → 실행. 함수만 읽으면 측정 시험이 함수를 거치지 않고 SHA 가 없으면 무조건 건너뛰어도 이 시험은 통과하므로(이터레이션 3 감사 D32), 측정 시험의 본문을 건너뜀·실패·실행을 기록하는 작은 보고 이음매 하나를 받는 함수로 두고 이 시험이 그 함수를 같은 세 입력으로 직접 구동해 결과를 관측한다. 그것만으로는 래퍼가 함수를 건너뛰고 SHA 가 없으면 곧바로 건너뛰는 변이를 못 잡으므로(이터레이션 4 감사 D37) 정책 시험은 측정 시험 파일도 `go/parser` 로 읽어 래퍼가 측정 함수를 정확히 한 번 부르고 `t.Skip*`·`t.Fatal*`·`t.Error*` 를 직접 부르지 않음을 단언한다 — 별칭(`skip := t.Skip`)으로 건너뛰는 변이는 호출 표현만 보는 이 읽기가 못 본다(수용, `acceptance.md` MU-106).
 - `TestHubFileLoaderReadsNoProjectPath` — 목록 적재 코드가 `.moai` 문자열 리터럴을 읽지 않고 임베드 데이터만 쓴다는 정적 검사. 경로를 조각으로 조립하는 적재는 이 검사를 피한다.
 - `TestHubFileLoaderIgnoresProjectTree` — 동작 검사: 빈 임시 디렉터리와, `.moai/specs/SPEC-TODO-CARD-ISSUANCE-001/baseline/hub-files.txt`·`.moai/reports/` 아래에 표식 경로를 심은 임시 디렉터리를 각각 작업 디렉터리로 삼아 적재해 두 결과가 같고 임베드 목록과 같으며 표식이 없다. 한계: 작업 디렉터리와 리터럴만 본다 — 실행 파일 위치나 `$HOME` 에서 경로를 만드는 적재는 둘 다 통과한다(수용; 적재가 `go:embed` 한 함수라는 설계와 리뷰가 닫는다).
 
 ### 12.4 순서 증인
 
-기준선 커밋 `B` 는 `baseline/` 아래 파일만 담는 **자기 커밋**이고 제품 경로를 바꾸는 어떤 커밋보다 앞서야 한다. 증인은 커밋 그래프이고 읽는 명령은 `acceptance.md` AC-TCI-001 의 순서 증인 1~5 와 완료 정의 #2 다(기준선 커밋 찾기, 자기 커밋 증명, B 뒤의 변경 커밋이 모두 B 의 후손임을 보이는 두 질의의 `--full-history` SHA 목록 일치, 측정 트리 `card-head:` 대 B 의 부모, **B 보다 앞선 제품 커밋이 0 개임**). 증인 3 은 범위 `B^..HEAD` 만 보므로 B 앞의 제품 커밋을 보지 못한다 — 증인 5(`git rev-list --count --grep=t1454 <B>^ -- internal cmd pkg scripts .claude .codex` = 0)가 앞쪽을 본다. **증인 3 은 개수가 아니라 SHA 목록을 비교한다**(이터레이션 3 감사 D26): 곁가지의 제품 커밋을 카드 id 가 적힌 병합으로 들이면 첫 질의는 그 커밋을, 둘째 질의(`--ancestry-path`)는 병합 커밋을 세어 개수만 같다. 그리고 `--full-history` 를 쓴다 — 기본 이력 단순화는 병합이 한쪽 부모와 트리가 같으면 다른 부모를 따라가지 않아 곁가지의 제품 커밋을 통째로 가리고(곁가지에서 넣었다 되돌린 경우), 카드 id 를 적은 정당한 병합 하나를 첫 질의에서만 가려 정당한 이력에 거짓으로 실패시키기도 한다. 두 현상은 스크래치 저장소와 실제 이력(카드 t1460 대역)에서 실행해 관측했다(`acceptance.md` C37~C40 과 "이터레이션 4 가 스크래치 저장소에서 실행한 순서 증인 탐침" 표). 제품 커밋은 카드 id 를 메시지에 담고 `internal`·`cmd`·`pkg`·`scripts`·`.claude`·`.codex` 를 바꾸는 커밋이고 `.moai/` 만 바꾸는 SPEC·기준선 커밋은 세지 않는다 — 경로 필터는 정의의 일부다(필터가 없으면 `t1454` 를 적은 다른 카드의 SPEC plan 커밋이 센다: `acceptance.md` C27). 기준선이 무시되는 경로에 있으면 이 증인이 존재할 수 없다. 카드 id 없는 제품 커밋은 증인 3·5 가 못 보는 수용된 잔여다(MU-110).
+기준선 커밋 `B` 는 `baseline/` 아래 파일만 담는 **자기 커밋**이고 제품 경로를 바꾸는 어떤 커밋보다 앞서야 한다. 증인은 커밋 그래프이고 읽는 명령은 `acceptance.md` AC-TCI-001 의 순서 증인 1~5 와 완료 정의 #2 다(기준선 커밋 찾기, 자기 커밋 증명, B 뒤의 변경 커밋이 모두 B 의 후손임을 보이는 두 질의의 `--full-history` SHA 목록 일치, 측정 트리 `card-head:` 대 B 의 부모, **B 보다 앞선 제품 커밋이 0 개임**). 증인 3 은 범위 `B^..HEAD` 만 보므로 B 앞의 제품 커밋을 보지 못한다 — 증인 5(`git rev-list --full-history --simplify-merges --count --grep=t1454 <B>^ -- internal cmd pkg scripts .claude .codex` = 0)가 앞쪽을 본다 — 기본 단순화는 곁가지에서 넣었다 되돌린 제품 커밋 둘을 가려 통과시키므로 `--full-history` 가 필요하고(이터레이션 4 감사 D34), `--full-history` 단독형은 이 카드의 M0 앞 develop 흡수 병합(`68a4d8137`, 메시지에 카드 id)을 세어 정당한 M0 를 실패시키므로 `--simplify-merges` 가 필요하다(`acceptance.md` C42·C43; `--no-merges` 는 병합의 충돌 해결 안에 숨긴 제품 변경을 놓쳐 쓰지 않는다). **읽는 시점은 하나다**: 순서 증인 1~5 는 병합 전에 한 번만 읽는다 — 마지막 마일스톤이 끝난 뒤, 카드 브랜치가 통합 브랜치에 병합되기 전(sync-audit 이 증거를 읽는 시점). M0 종료에서는 읽지 않는다: 증인 3 이 B 뒤의 제품 커밋 목록이 비어 있지 않을 것을 요구하는데 M0 종료에는 제품 커밋이 하나도 없어 두 목록이 비기 때문이다(스크래치 S11). M0 종료 증거는 AC-TCI-001 (a)~(e) 다 — 기준선 파일과 그 안의 줄만 읽으므로 제품 커밋이 없는 트리에서 판정된다. **증인 3 은 개수가 아니라 SHA 목록을 비교한다**(이터레이션 3 감사 D26): 곁가지의 제품 커밋을 카드 id 가 적힌 병합으로 들이면 첫 질의는 그 커밋을, 둘째 질의(`--ancestry-path`)는 병합 커밋을 세어 개수만 같다. 그리고 `--full-history` 를 쓴다 — 기본 이력 단순화는 병합이 한쪽 부모와 트리가 같으면 다른 부모를 따라가지 않아 곁가지의 제품 커밋을 통째로 가리고(곁가지에서 넣었다 되돌린 경우), 카드 id 를 적은 정당한 병합 하나를 첫 질의에서만 가려 정당한 이력에 거짓으로 실패시키기도 한다. 두 현상은 스크래치 저장소와 실제 이력(카드 t1460 대역)에서 실행해 관측했다(`acceptance.md` C37~C40 과 "이터레이션 4 가 스크래치 저장소에서 실행한 순서 증인 탐침" 표). 제품 커밋은 카드 id 를 메시지에 담고 `internal`·`cmd`·`pkg`·`scripts`·`.claude`·`.codex` 를 바꾸는 커밋이고 `.moai/` 만 바꾸는 SPEC·기준선 커밋은 세지 않는다 — 경로 필터는 정의의 일부다(필터가 없으면 `t1454` 를 적은 다른 카드의 SPEC plan 커밋이 센다: `acceptance.md` C27). 기준선이 무시되는 경로에 있으면 이 증인이 존재할 수 없다. 카드 id 없는 제품 커밋은 증인 3·5 가 못 보는 수용된 잔여다(MU-110).
 
 ### 12.5 M5 초안
 
@@ -464,15 +464,16 @@ Mode B 의 초안(`anchors.md`, `card-issuance.md`, `card-issuance-thresholds.md
 
 ### 13.3 술어와 판독
 
-술어를 말로 하면 **"t1453 의 착지 병합 — 병합 제목 줄이 develop 을 그 브랜치에 흡수한다고 하지 않는 병합 — 을 기록한 커밋이 HEAD 의 조상이다"**(어느 부모 경로로든). 판독은 `plan.md` §F.8 의 다섯 가지다 — (1) `--first-parent` 없는 제목 커밋 수 `T` 에서 그 가운데 병합 제목 줄에 `absorb` 가 든 흡수 방향 병합 수 `A`(`--grep` 하나에 카드 id 와 `absorb` 를 같은 패턴으로 적는다 — git 이 정규식을 메시지의 줄 단위로 맞추므로 같은 줄이다)를 뺀 착지 후보, 그리고 `T ≥ 1` 인데 `T − A = 0` 이면 닫힘으로 읽기 전에 판독 2 의 목록을 읽는다, (2) 후보 목록에서 `absorb` 없는 줄의 SHA 를 고정하고 같은 줄 형태의 `git rev-list --no-walk --count -E -i --grep='^merge[( :]+(card )?t1453[^0-9].*absorb' <S>` 가 0 이며 `git merge-base --is-ancestor <S> HEAD`, (3) 양성 대조 t1448·t1344(그리고 t1448 의 `A` 가 0, 본문에만 `absorb` 가 든 착지 t1439 의 T 가 1 이고 `A` 가 0), (4) 같은 명령의 `--first-parent` 형태보다 엄격히 큰 일반 병합 수(이식 가능한 런타임 대조: 핀에서 333 대 214), (5) 제목 형태가 다를 때의 직접 SHA 판독. 판독 4 가 "눈먼 선택자 방지"를, 판독 1 의 `A` 가 "착지 없이 열림 방지"를 맡는다 — 선택자가 첫 부모 경로 밖의 커밋을 본다는 증거가 없으면 게이트는 "미측정 = 미충족"이다.
+술어를 말로 하면 **"t1453 의 착지 병합 — 병합 제목 줄이 develop 을 그 브랜치에 흡수한다고 하지 않는 병합 — 을 기록한 커밋이 HEAD 의 조상이다"**(어느 부모 경로로든). 판독은 `plan.md` §F.8 의 다섯 가지다 — (1) `--first-parent` 없는 제목 커밋 수 `T` 에서 그 가운데 병합 제목 줄에 `absorb` 가 든 흡수 방향 병합 수 `A`(`--grep` 하나에 카드 id 와 `absorb` 를 같은 패턴으로 적는다 — git 이 정규식을 메시지의 줄 단위로 맞추므로 같은 줄이다)를 뺀 착지 후보, 그리고 `T ≥ 1` 인데 `T − A = 0` 이면 닫힘으로 읽기 전에 판독 2 의 목록을 읽는다, (2) 후보 목록에서 `absorb` 없는 줄의 SHA 를 고정하고 같은 줄 형태의 `git rev-list --no-walk --count -E -i --grep='^merge[( :]+(card )?t1453[^0-9].*absorb' <S>` 가 0 이며 `git merge-base --is-ancestor <S> HEAD`, (3) 양성 대조 t1448·t1344(그리고 t1448 의 `A` 가 0, 본문에만 `absorb` 가 든 착지 t1439 의 T 가 1 이고 `A` 가 0), (4) 같은 명령의 `--first-parent` 형태보다 엄격히 큰 일반 병합 수(이식 가능한 런타임 대조: 핀 `68a4d8137` 에서 382 대 214), (5) 제목 형태가 다를 때의 직접 SHA 판독. 판독 4 가 "눈먼 선택자 방지"를, 판독 1 의 `A` 가 "착지 없이 열림 방지"를 맡는다 — 선택자가 첫 부모 경로 밖의 커밋을 본다는 증거가 없으면 게이트는 "미측정 = 미충족"이다.
 
-**흡수 방향 병합이 왜 문제인가.** 이터레이션 2 의 선택자는 제목 grep 이라 `merge(t1453): absorb … into WT-github-flow-default` 도 센다. 미푸시 브랜치 `WT-github-flow-default` 가 그런 커밋 다섯 개를 이미 갖고 있고(`acceptance.md` G23), 카드 브랜치가 미착지 코드에 기대려고 그 브랜치를 병합하면(kanban-dispatch 의 새 카드 조항) 이 다섯이 HEAD 에서 닿는다. 같은 두 질의를 흡수 병합 `b05c3be90…` 에 걸면 `T` 가 5, `A` 가 5 라 후보가 0 이고(C28·C29), 실제 착지 병합(t1448)은 `A` 가 0 이다(C30). 이터레이션 2 설계 §13.4 의 "그런 커밋은 이 카드의 브랜치에 존재하지 않는다고 가정한다"는 가정은 그 브랜치에 실제로 존재한다는 관측 앞에서 폐기했다.
+**흡수 방향 병합이 왜 문제인가.** 이터레이션 2 의 선택자는 제목 grep 이라 `merge(t1453): absorb … into WT-github-flow-default` 도 센다. 미푸시 브랜치 `WT-github-flow-default` 가 그런 커밋 다섯 개를 이미 갖고 있고(`acceptance.md` G23), 카드 브랜치가 미착지 코드에 기대려고 그 브랜치를 병합하면(factory-dispatch 의 새 카드 조항) 이 다섯이 HEAD 에서 닿는다. 같은 두 질의를 흡수 병합 `b05c3be90…` 에 걸면 `T` 가 5, `A` 가 5 라 후보가 0 이고(C28·C29), 실제 착지 병합(t1448)은 `A` 가 0 이다(C30). 이터레이션 2 설계 §13.4 의 "그런 커밋은 이 카드의 브랜치에 존재하지 않는다고 가정한다"는 가정은 그 브랜치에 실제로 존재한다는 관측 앞에서 폐기했다.
 
-**`absorb` 를 어디서 찾는가(이터레이션 3 감사 D27).** 이터레이션 3 의 `A` 는 `--all-match --grep=absorb` 라 메시지 **전체**에서 그 낱말을 찾았다. 병합 본문에 "absorbed tree" 같은 구절이 있는 진짜 착지는 `A` 에 세어져 후보가 0 이 되고 게이트가 닫힌 채 읽힌다 — 같은 착지 t1439(`d53e6ca59…`)에서 T=1, 옛 `A`=1(C35), 새 `A`=0(C34)이다. 핀 `ad02a5677` 에서 카드 id 를 담은 병합 제목 333개 가운데 제목 줄에 `absorb` 가 든 것이 76개, 본문에만 든 착지가 28개이며 옛 `A` 는 둘을 합한 104 였다(`python3` 로 줄 단위로 읽은 값). 새 `A` 는 `--grep='^merge[( :]+(card )?t1453[^0-9].*absorb'` 하나다 — git 의 `--grep` 은 정규식을 메시지의 줄 단위로 맞추므로 `.*` 가 줄바꿈을 건너지 못하고 병합 제목(첫 줄)에 `absorb` 가 있어야 센다. 판독 2 의 점검도 같은 형태로 맞췄다(옛 `--grep=absorb` 는 본문에 그 낱말이 든 착지 커밋에서 1 이라 착지를 흡수 방향으로 읽는다: C36).
+**`absorb` 를 어디서 찾는가(이터레이션 3 감사 D27).** 이터레이션 3 의 `A` 는 `--all-match --grep=absorb` 라 메시지 **전체**에서 그 낱말을 찾았다. 병합 본문에 "absorbed tree" 같은 구절이 있는 진짜 착지는 `A` 에 세어져 후보가 0 이 되고 게이트가 닫힌 채 읽힌다 — 같은 착지 t1439(`d53e6ca59…`)에서 T=1, 옛 `A`=1(C35), 새 `A`=0(C34)이다. 핀 `68a4d8137` 에서 카드 id 를 담은 병합 제목 382개 가운데 제목 줄에 `absorb` 가 든 것이 83개, 본문에만 든 착지가 31개이며 옛 `A` 는 둘을 합한 114 였다(이터레이션 4 핀 `ad02a5677` 에서는 333개 가운데 76개·28개·104; `python3` 로 줄 단위로 읽은 값). 새 `A` 는 `--grep='^merge[( :]+(card )?t1453[^0-9].*absorb'` 하나다 — git 의 `--grep` 은 정규식을 메시지의 줄 단위로 맞추므로 `.*` 가 줄바꿈을 건너지 못하고 병합 제목(첫 줄)에 `absorb` 가 있어야 센다. 판독 2 의 점검도 같은 형태로 맞췄다(옛 `--grep=absorb` 는 본문에 그 낱말이 든 착지 커밋에서 1 이라 착지를 흡수 방향으로 읽는다: C36).
 
 ### 13.4 한계
 
-- 판독 1 은 `merge(t1453)`·`Merge card t1453` 같은 제목 형태를 가정한다. t1453 이 다른 제목으로, 또는 빨리감기·스쿼시로 착지하면 판독 1 이 0 으로 남아 게이트가 닫힌 채 읽히고(안전한 방향: Mode B) 판독 5 가 보완한다. 착지 병합의 **제목 줄**에 `absorb` 라는 낱말이 들어 있으면 `A` 가 그것을 흡수 병합으로 세어 후보에서 빼므로 역시 닫힌 쪽(안전한 방향)이다 — 핀에서 제목 줄에 `absorb` 가 든 76개 가운데 착지로 읽히는 제목이 적어도 셋(`584cfc1a5`, `615d18c1f`, `4c3b1653c`; 제목 모양만 읽은 추정)이라 드물지 않으므로 `T ≥ 1` 인데 `T − A = 0` 이면 목록을 읽게 했다. 본문에만 든 낱말은 세지 않는다. 선택자의 `^` 는 메시지의 어느 줄 머리에나 맞으므로 본문 줄이 `merge(t1453)` 로 시작하면 `T` 에 들어오는데 핀의 12,444개 커밋에서는 카드 id 를 가리지 않는 같은 패턴으로 본 그런 커밋이 0개였다(`python3` 줄 단위 읽기, 원장 행 아님).
+- 판독 1 은 `merge(t1453)`·`Merge card t1453` 같은 제목 형태를 가정한다. t1453 이 다른 제목으로, 또는 빨리감기·스쿼시로 착지하면 판독 1 이 0 으로 남아 게이트가 닫힌 채 읽히고(안전한 방향: Mode B) 판독 5 가 보완한다. 착지 병합의 **제목 줄**에 `absorb` 라는 낱말이 들어 있으면 `A` 가 그것을 흡수 병합으로 세어 후보에서 빼므로 역시 닫힌 쪽(안전한 방향)이다 — 핀 `68a4d8137` 에서 제목 줄에 `absorb` 가 든 83개 가운데 착지로 읽히는 제목이 적어도 셋(`584cfc1a5`, `615d18c1f`, `4c3b1653c`; 제목 모양만 읽은 추정 — 첫 부모 사슬로 가른 값으로는 착지 260개 가운데 7개가 낱말을 담는다)이라 드물지 않으므로 `T ≥ 1` 인데 `T − A = 0` 이면 목록을 읽게 했다. 본문에만 든 낱말은 세지 않는다. 선택자의 `^` 는 메시지의 어느 줄 머리에나 맞으므로 본문 줄이 `merge(t1453)` 로 시작하면 `T` 에 들어오는데 핀 `68a4d8137` 의 12,998개 커밋(이터레이션 4 핀의 12,444개도 같다)에서는 카드 id 를 가리지 않는 같은 패턴으로 본 그런 커밋이 0개였다(`python3` 줄 단위 읽기, 원장 행 아님).
+- **거짓 열림**: 흡수 방향 병합인데 제목에 낱말 `absorb` 가 없으면 `A` 가 세지 못해 착지 후보로 읽힌다 — 고정한 통합 팁의 첫 부모 사슬로 가른 SHA 측정으로 핀 `68a4d8137` 에서 흡수 방향 74개 가운데 2개(`c2703f698`, `35e2d7157`; 2.7%), 이터레이션 4 핀에서 68개 가운데 같은 2개다(`spec.md` §G; 감사가 움직이는 ref 로 읽은 "75개 가운데 2개"는 SHA 로 재현되지 않는다). 이 길이 열려 있으므로 판독 2~4(SHA 고정, 같은 줄 점검, 부등식 대조)와 리더의 목록 판정이 뒤를 받친다.
 - 고정 SHA 대조 행(C17~C20, C28·C29·C31)은 미푸시 브랜치의 객체가 필요하다. 이식 가능한 대조는 판독 4 의 부등식이다.
 - 착지가 되돌려진(revert) 경우는 원래 병합이 조상으로 남아 게이트가 열린 채로 읽힌다 — 이 이력에 되돌림 사례가 없어 측정하지 못한 추정이다. 판독 2 가 SHA 를 `progress.md` 에 적어 리더가 그 출처를 읽을 수 있다.
 - 후보 목록에서 `absorb` 없는 줄을 고르는 것(판독 2)은 사람이 읽는 단계다 — 목록이 여러 줄이면 각 줄의 SHA 에 점검 질의를 건다.
