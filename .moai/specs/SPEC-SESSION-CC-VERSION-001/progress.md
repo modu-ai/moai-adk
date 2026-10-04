@@ -348,13 +348,19 @@ caught by the test run and repaired before any commit.
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-04
-sync_commit_sha: 6ccbc4218
+sync_commit_sha: 21db99ed8
 status_transition: in-progress → implemented → completed, frontmatter `status` only, riding the single sync commit (spec.md `status: completed`; `updated: 2026-10-04` already carried today's date, so the frontmatter's only changed line is `status`)
 sync_commits: the one sync commit (subject `chore(SPEC-SESSION-CC-VERSION-001): sync-phase artifacts — 3-phase close (card t1465)`); its own SHA is backfilled by a following commit per the D3 exemption
 files_changed_by_sync: `CHANGELOG.md` (one `[Unreleased]` / Added entry), `.moai/specs/SPEC-SESSION-CC-VERSION-001/spec.md` (frontmatter `status` only), this file (§E.4)
 sync_scope_note: Tier M internal CLI feature — no README or docs-site sweep per plan §B; codemap regeneration not run (owned by the periodic codemaps cards, t1443/t1456 pattern)
 b12_self_test: pre-emission `grep -c SPEC-SESSION-CC-VERSION-001 CHANGELOG.md` was 0 before the entry and is 1 after; live AC count 10 of 10 (acceptance.md carries no `[RETIRED]`/`[REF]` markers), matching the entry's "10 acceptance criteria AC-SCV-001..010"; every file path named in the entry ls-verified
 handoff_followed: §E.3's sync-phase note — the entry names the `--cc-version` flag, the doctor staleness check, the assembler/validation/guard trio, and the verbatim emergency form `moai cc -l -- --resume <session-id>`
+post-close repairs: sync close 6ccbc4218 landed; codex card-review round 1 returned FAIL with 3
+  implementation-completeness defects (P1 `-r` alias guard evasion, P2 `(deleted)` exe parse,
+  P2 Claude separator misjudgment) — no REQ or scope change. Repairs landed in 21db99ed8
+  (RED→GREEN, build/vet/lint gates green; record `.moai/reports/t1465/card-review.md`, repair
+  evidence in §E.2 "Card-review round-1 repairs"). The close-record SHA above converges onto
+  the repair tree per the leader's post-sync card-review pipeline.
 
 ## §F Phase 4 Mode Selection
 
