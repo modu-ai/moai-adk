@@ -37,6 +37,8 @@ Invalid values (NEVER use):
 
 [ZONE:Evolvable] [HARD] MoAI agents declare no `model:` and no `effort:` frontmatter key. Claude Code resolves a subagent's model as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, and an absent `effort` inherits the session's, so an agent with neither field runs on the main session's model and effort. MoAI never sets `CLAUDE_CODE_SUBAGENT_MODEL`; a user who exports it still pins every subagent (a documented user-environment residual).
 
+Consumption exception (opt-in only): a session that sets `llm.agent_overrides_consume: true` may have the orchestrator pass a stored `llm.agent_overrides` model on the Agent() call — the spawn-time `model` slot of the resolution order above is the delivery channel, so the override touches no frontmatter, no env var, and no agent definition. Stored values are restricted to the closed alias set {inherit, haiku, sonnet, opus, fable} (full model-ID strings stay intentionally disallowed), and the `[1m]` residual above applies to any non-`inherit` value exactly as it does to an alias pin — which is why `inherit` remains the sanctioned no-op and `false` (the default) keeps storage-only behaviour.
+
 Rationale (Claude Code session inheritance bug):
 - When the parent session uses an `[1m]` context variant (e.g., `claude-opus-5-5[1m]`, `claude-sonnet-5-5[1m]`) and a spawned subagent declares an explicit `model: sonnet` or `model: opus` in its frontmatter, the parent's 1M context entitlement does NOT propagate to the subagent.
 - Result: subagent spawn fails with `API Error: Usage credits required for 1M context · run /usage-credits to turn them on, or /model to switch to standard context`.

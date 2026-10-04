@@ -14,7 +14,7 @@
 // then worktree.original_cwd, then a git resolution of the session's
 // directory reusing gitcore.ResolveGitDirs — the git common directory's
 // parent, which is one root for every checkout and worktree of the
-// repository (the internal/kanban primaryCheckoutRoot shape). When nothing
+// repository (the internal/factory primaryCheckoutRoot shape). When nothing
 // resolves, the anchor is "": callers skip the state write or read and the
 // render completes normally (REQ-SA-003 — no project, no state).
 //

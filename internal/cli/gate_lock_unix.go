@@ -3,7 +3,7 @@
 package cli
 
 // gate_lock_unix.go — Unix substrate of the gate-run lock: flock(2) on an
-// open descriptor, mirroring internal/kanban/board_lock_unix.go's pattern.
+// open descriptor, mirroring internal/factory/board_lock_unix.go's pattern.
 // The kernel releases the flock when the descriptor closes, which it does on
 // process exit — so a killed holder leaves an artifact that blocks nothing on
 // this platform; the stale-lock clear exists for the Windows substrate, where

@@ -14,7 +14,7 @@ Prompt-caching-aware ordering rules for orchestrator execution. Caching is a **p
 
 4. **Consider `/clear` before large batches** [ZONE:Evolvable] `/clear` discards the warm cache but shrinks the prefix. When a large multi-spawn batch is about to start and the current context is bloated with completed unrelated work, a `/clear` + paste-ready resume BEFORE the batch is cheaper than carrying the bloated prefix through N spawns — even below the model-specific handoff threshold in `context-window-management.md`. When only short follow-up work remains, keep the warm cache instead.
 
-5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped: a per-spawn model override splits the spawn off from every cache the session has built. MoAI passes no model on a spawn and its agent definitions declare none, so every subagent shares the session's model; this directive records the caching cost of overriding it.
+5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped: a per-spawn model override splits the spawn off from every cache the session has built. MoAI passes no model on a spawn and its agent definitions declare none, so every subagent shares the session's model; this directive records the caching cost of overriding it. The one sanctioned override surface is the opt-in `llm.agent_overrides_consume` key (boolean, default `false`): a session that sets it `true` accepts this cache-split cost on its opted-in spawns — every override-bearing spawn starts on a cold model-scoped cache — while key-less sessions keep the inherit default, and directive 10's effort caution applies unchanged.
 
 6. **Pass files by `@`-mention, not by name** [ZONE:Evolvable] [HARD] When a prompt needs a file's content, pass it with an `@`-mention or a Read call rather than citing the filename for the model to fetch — one deterministic load beats a fetch-retry cycle. Use `/context` only as a one-shot audit of what is loaded, not a routine check.
 
@@ -39,5 +39,5 @@ Prompt-caching-aware ordering rules for orchestrator execution. Caching is a **p
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0 (directive 5 — the opt-in `llm.agent_overrides_consume` key named as the single sanctioned override surface)
 Classification: Evolvable operational rule — execution ordering only; gate semantics unchanged.

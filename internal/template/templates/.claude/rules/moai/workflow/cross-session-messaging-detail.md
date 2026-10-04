@@ -1,6 +1,6 @@
 ---
 description: "Detail companion for cross-session-messaging.md — the mechanism-selection table, addressing/reply frictions, the full configuration surface (inbound controls, isolation, dialog expiry, deny rules, inbox burst refusal), and the shared feature-flag slot that decides whether the channel exists at all"
-paths: "**/cross-session-messaging*.md,**/kanban-dispatch*.md"
+paths: "**/cross-session-messaging*.md,**/factory-dispatch*.md"
 ---
 
 # Cross-Session Messaging — Detail Companion
@@ -86,7 +86,7 @@ An arriving message carries **both** the sender's name and a reply address — n
 | `dialogExpiry` | Deadline after which a **default**-held message is dropped — the dialog closes, or in a non-interactive session the held message expires. Five minutes unless set; `never` holds until the session ends. It does not govern a message held by an explicit `hold` |
 | `permissions.deny: ["SendMessage", "ListAgents"]` | Turns off sending and listing. Also removes messaging to subagents and teammates, which share the tool |
 
-A fifth path stops a message and is not a setting at all. Each inbox accepts only so many messages in quick succession; once a rapid burst would exceed what the addressed session takes, further sends to it are **refused up front** rather than reported sent and then dropped. Fan-out is the shape that reaches it — a factory leader nudging N lanes within one turn (Factory Mode, `moai cc -f <N>`) is precisely a rapid burst. A refusal there is the channel working, not a channel fault, and it costs nothing: delegation rides the queue on disk, never the message (`kanban-dispatch.md` § The delegation channel is the queue). Read the send result rather than assuming it, and where every lane genuinely needs nudging, spread the sends across turns instead of firing them together.
+A fifth path stops a message and is not a setting at all. Each inbox accepts only so many messages in quick succession; once a rapid burst would exceed what the addressed session takes, further sends to it are **refused up front** rather than reported sent and then dropped. Fan-out is the shape that reaches it — a factory leader nudging N lanes within one turn (Factory Mode, `moai cc -f`) is precisely a rapid burst. A refusal there is the channel working, not a channel fault, and it costs nothing: delegation rides the queue on disk, never the message (`factory-dispatch.md` § The delegation channel is the queue). Read the send result rather than assuming it, and where every lane genuinely needs nudging, spread the sends across turns instead of firing them together.
 
 The two ways a message is held do not expire alike. A message the inbound **default** holds waits on `dialogExpiry` and is then dropped, and the sender is told it expired; a message held by an explicit `crossSessionInbound: hold` does not expire at all, and is delivered only when an `accept` later applies. A non-interactive worker cannot show an approval dialog, but a default-held message there still runs the same deadline rather than waiting indefinitely — so a worker meant to take messages unattended needs `accept` in its own settings. One asymmetry is worth knowing: while a background session has no terminal attached, the default-held dialog stays open past its deadline, and the countdown only runs properly once you attach.
 

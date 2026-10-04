@@ -35,7 +35,7 @@ Cross-references:
 - `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (this section is the canonical agent namespace SSOT)
 - `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (skill counterpart)
 - `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (canonical generator contract)
-- `.moai/docs/dev-only-commands-isolation.md` § 검증 체크리스트 (maintainer-local verification — `.claude/agents/local/` 누출 negative test)
+- `.moai/docs/dev-only-commands-isolation.md` § 검증 체크리스트 (maintainer-local verification — `.claude/agents/local/` 누출 negative test; dev repositories only — not shipped)
 
 Platform Support: Windows ARM64 (`win32-arm64`) is natively supported. No WSL required for ARM-based Windows devices.
 
@@ -143,7 +143,7 @@ Coordinate the SPEC plan/design/run/sync/audit lifecycle:
 - super-advisor: On-demand high-reasoning consultation (non-binding prescriptions, E1-E4 escalation entry)
 - builder-harness: Dynamic project-specific harness specialist generation (new agents, skills, plugins, commands, hooks, MCP/LSP servers)
 - e2e-tester: E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management)
-- manager-lead: Tier L coordination + the -k kanban / -f factory lead role (the sole Agent-carrier, depth-2 sealed)
+- manager-lead: Tier L coordination + the -f factory lead role (the sole Agent-carrier, depth-2 sealed)
 - manager-todo: todo-queue management agent — owns queue lifecycle, the `/moai:todo --auto` serial cycle, and dispatch guidance; consults Jev as a display-only signal (the `--auto` cycle's own ranking is the one auto-scoped ranking exception — selection order only); carries the read-only sealed-snapshot judgment (one bounded structured decision, never applies it) as a sub-role dispatched by the GTD auto-mission flow
 
 ### Anthropic Built-in (1)
@@ -260,7 +260,7 @@ Invoke agents via Agent tool:
 For team mode invocation:
 - Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
 - Team cleanup is automatic on session exit; no explicit teardown call is needed
-- See team-plan.md and team-run.md for complete workflow examples
+- Workflow examples: `orchestration-mode-selection.md` §C (the former team-plan.md / team-run.md examples retired with the static team layer)
 
 ## Plugin Agent Limitations
 

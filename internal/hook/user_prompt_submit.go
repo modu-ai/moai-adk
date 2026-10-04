@@ -165,7 +165,14 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 			additionalCtx += bindNotice
 		}
 	}
-	if factoryCtx, _, _ := factoryHookBatchForRun(ctx, input, EventUserPromptSubmit, reboundRun); factoryCtx != "" {
+	factoryCtx, _, inboxState := factoryHookBatchForRun(ctx, input, EventUserPromptSubmit, reboundRun)
+	if notice := surfaceFactoryInboxState(factoryHookRoot(input), input.SessionID, inboxState); notice != "" {
+		if factoryCtx != "" {
+			factoryCtx += "\n\n"
+		}
+		factoryCtx += notice
+	}
+	if factoryCtx != "" {
 		if additionalCtx != "" {
 			additionalCtx += "\n\n"
 		}
@@ -211,7 +218,7 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 		return ""
 	}
 
-	// No title yet, and this is a kanban or factory LEADER: the session's own name
+	// No title yet, and this is a factory LEADER: the session's own name
 	// is the title, so the operator finds it in the session list under the name
 	// they and every peer already address it by (issue #1596). This branch sits
 	// ABOVE the SPEC branch deliberately — a leader session sitting in a project
@@ -245,7 +252,7 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 }
 
 // leaderSessionTitle returns the leader session's resolved name, or "" when this
-// session is not a kanban or factory leader.
+// session is not a factory leader.
 //
 // The value is published by the launcher (exportLeaderSessionName) because the
 // launcher is the only actor that knows which name actually reached the backend
@@ -254,7 +261,7 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 // title and the messaging address the same string; a title that guessed the role
 // would disagree with the session's real name on every bumped leader.
 func leaderSessionTitle() string {
-	return strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLeadName))
+	return strings.TrimSpace(os.Getenv(config.EnvFactoryLeadName))
 }
 
 // conversationLanguage returns the configured conversation_language, or "" when

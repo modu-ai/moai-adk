@@ -21,12 +21,12 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // claimFileHash returns the sha256 of the fixture queue's engine artifact —
 // the byte-identity surface AC-TCL-003's 사전/사후 hash comparison names.
-func claimFileHash(t *testing.T, store *kanban.BacklogStore) string {
+func claimFileHash(t *testing.T, store *factory.BacklogStore) string {
 	t.Helper()
 	raw, err := os.ReadFile(store.EnginePath())
 	if err != nil {
@@ -38,14 +38,14 @@ func claimFileHash(t *testing.T, store *kanban.BacklogStore) string {
 
 // claimSeedRecord mutates the fixture record directly (the engine-bypass
 // seed pattern), stamping an optional lease.
-func claimSeedRecord(t *testing.T, store *kanban.BacklogStore, id, state, holder, expiresAt string) {
+func claimSeedRecord(t *testing.T, store *factory.BacklogStore, id, state, holder, expiresAt string) {
 	t.Helper()
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for i := range rec.Items {
 			if rec.Items[i].ID != id {
 				continue
 			}
-			rec.Items[i].State = kanban.BacklogState(state)
+			rec.Items[i].State = factory.BacklogState(state)
 			if holder != "" {
 				h, e := holder, expiresAt
 				rec.Items[i].PickedBy = &h
@@ -87,11 +87,11 @@ func TestTodoClaim_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}
-	if rec.Items[0].State != kanban.BacklogStatePicked {
+	if rec.Items[0].State != factory.BacklogStatePicked {
 		t.Fatalf("t1 state = %s, want picked", rec.Items[0].State)
 	}
-	if rec.Items[0].PickedBy == nil || *rec.Items[0].PickedBy != kanban.BacklogOperatorHolder {
-		t.Errorf("picked_by = %v, want %q", rec.Items[0].PickedBy, kanban.BacklogOperatorHolder)
+	if rec.Items[0].PickedBy == nil || *rec.Items[0].PickedBy != factory.BacklogOperatorHolder {
+		t.Errorf("picked_by = %v, want %q", rec.Items[0].PickedBy, factory.BacklogOperatorHolder)
 	}
 	if rec.Items[0].LeaseExpiresAt == nil {
 		t.Fatal("lease_expires_at = nil")
@@ -106,7 +106,7 @@ func TestTodoClaim_Success(t *testing.T) {
 	if rec.Items[0].PickedAt == nil {
 		t.Error("picked_at = nil, want stamped")
 	}
-	if rec.Items[1].State != kanban.BacklogStateQueued {
+	if rec.Items[1].State != factory.BacklogStateQueued {
 		t.Errorf("t2 state = %s, want still queued", rec.Items[1].State)
 	}
 
@@ -363,7 +363,7 @@ func TestTodoClaim_ListHistoryExposesLeaseColumns(t *testing.T) {
 // suspending the constraint exactly the way the migration corruption
 // fixture does, so the default-refuse arm has a genuine future state. The
 // refused claim writes nothing, so the planted row survives byte-identically.
-func insertFutureStateRow(t *testing.T, store *kanban.BacklogStore, id string) error {
+func insertFutureStateRow(t *testing.T, store *factory.BacklogStore, id string) error {
 	t.Helper()
 	db, err := sql.Open("sqlite", store.EnginePath())
 	if err != nil {
@@ -379,7 +379,7 @@ func insertFutureStateRow(t *testing.T, store *kanban.BacklogStore, id string) e
 }
 
 // storeAdd appends one card through the store and discards position.
-func storeAdd(t *testing.T, store *kanban.BacklogStore, text string) (*kanban.BacklogItem, int, error) {
+func storeAdd(t *testing.T, store *factory.BacklogStore, text string) (*factory.BacklogItem, int, error) {
 	t.Helper()
 	return store.Add(text)
 }
@@ -422,7 +422,7 @@ func TestTodoClaimMCP_Mirror(t *testing.T) {
 	if rerr != nil {
 		t.Fatalf("reload: %v", rerr)
 	}
-	if rec.Items[0].PickedBy == nil || *rec.Items[0].PickedBy != kanban.BacklogOperatorHolder {
+	if rec.Items[0].PickedBy == nil || *rec.Items[0].PickedBy != factory.BacklogOperatorHolder {
 		t.Errorf("picked_by = %v, want operator", rec.Items[0].PickedBy)
 	}
 }

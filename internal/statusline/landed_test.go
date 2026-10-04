@@ -23,7 +23,7 @@ import (
 
 	"github.com/mattn/go-runewidth"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // seedPicked writes the given ids as picked cards under root, each added at
@@ -37,15 +37,15 @@ func seedPicked(t *testing.T, root string, ids ...string) {
 // explicit added_at — the generation boundary reads it.
 func seedPickedAt(t *testing.T, root, addedAt string, ids ...string) {
 	t.Helper()
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRootAdopting(root))
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	store := factory.NewBacklogStore(factory.BacklogPathForRootAdopting(root))
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
 		for _, id := range ids {
 			rec.LastSeq++
-			rec.Items = append(rec.Items, kanban.BacklogItem{
+			rec.Items = append(rec.Items, factory.BacklogItem{
 				ID:      id,
 				Text:    "card " + id,
 				AddedAt: addedAt,
-				State:   kanban.BacklogStatePicked,
+				State:   factory.BacklogStatePicked,
 			})
 		}
 		return nil
@@ -349,7 +349,7 @@ func TestRefreshLandedCounts_OneInvocationRegardlessOfCardCount(t *testing.T) {
 		if got := calls.Load(); got != 1 {
 			t.Fatalf("cards=%d: git invocations = %d, want exactly 1", n, got)
 		}
-		wantArgs := kanban.LandedScanArgs(kanban.LandedRefFor(root))
+		wantArgs := factory.LandedScanArgs(factory.LandedRefFor(root))
 		if strings.Join(gotArgs, "\x1f") != strings.Join(wantArgs, "\x1f") {
 			t.Fatalf("cards=%d: argv = %q, want kanban's scan argv %q", n, gotArgs, wantArgs)
 		}
@@ -718,7 +718,7 @@ func TestRefreshLandedCounts_AsksTheConfiguredRef(t *testing.T) {
 	if err := RefreshLandedCounts(context.Background(), root); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
-	want := kanban.LandedRefFor(root)
+	want := factory.LandedRefFor(root)
 	if !namesArg(gotArgs, want) {
 		t.Fatalf("git args %v do not name the resolved ref %q", gotArgs, want)
 	}

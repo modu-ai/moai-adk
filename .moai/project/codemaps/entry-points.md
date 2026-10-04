@@ -1,6 +1,9 @@
 # 진입점
 
-**현재 부분 갱신 — t1456, worktree `.moai/worktrees/t1456`, 브랜치 `WT-codemaps-regen2`, base `5501c06af` (2026-10-03).**
+**현재 부분 갱신 — t1485, 브랜치 `WT-codemaps-regen3`, base `83086bec5` (2026-10-04).**
+앵커 `27aa8e282` 뒤 창(§ `modules.md` t1485 판)을 반영했다. 등록 수치를 이 트리에서 다시 쟀다 — 비테스트 `AddCommand(` 239→**246**, `rootCmd.AddCommand(` 66→**68**, `AddCommand`를 부르는 비테스트 파일 **78개**. 새 동사: `moai decision record|read`(card t1481), `moai plugin install`(card t1435), `moai verify run`(card t1452), `moai update` 마이그레이션 분류(SPEC-INIT-SHRINK-001). 은퇴: 보드 CLI와 칸반 모드 런처 진입(card t1399 — 은퇴한 진입점은 `internal/cli/launcher_retired_entries.go`가 안내 문면으로만 받는다).
+
+**이전 부분 갱신 — t1456, worktree `.moai/worktrees/t1456`, 브랜치 `WT-codemaps-regen2`, base `5501c06af` (2026-10-03).**
 앵커 `a2e03d8e0` 뒤 창(아홉 Go 카드 + 수리·템플릿 착지분 — § `modules.md` t1456 판)을 반영했다. 등록 수치는 이 트리 재측정에서 변동 없었다 — 비테스트 `AddCommand(` 239 · `rootCmd.AddCommand(` 66 · root.go init() 30 · 훅 설정 엔트리 34 · 셸 래퍼 48. 새 동사 둘은 기존 줄에 합류해 호출 줄 수를 움직이지 않았다 — `moai factory relaunch`(기존 factory 등록 줄의 인자 행, card t1345)와 `moai verify audit-plan`(`verifyExtraCommands` 레지스트리 슬라이스의 init append, card t1423). **MCP 도구는 45→47** — `internal/mcp/catalog.go`의 어드바이저리 `codex_review`·`glm_review` 등록(card t1422 — 영수증 없음·required 승격 없음). 합류 창의 동작 변화: 할당량 게이트가 링크된 워크트리 기록까지 읽고(card t1442), 감사 플랜이 콜스타트에 고정되며(card t1423), 스테일 런 처방이 운영자용 `moai factory relaunch` 명령줄을 안내한다(card t1345).
 
 **이전 부분 갱신 — t1443, worktree `.moai/worktrees/t1443`, 브랜치 `WT-codemaps-regen`, base `4bf547bca` (2026-10-02).**
@@ -153,7 +156,7 @@ root.go Execute()
 2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **76개**입니다
    (t1338 병합 판 재측정 — 이 카드 몫 +3: `factory_messaging.go`·`factory_merge.go`·`factory_pickup.go`; 흡수된 t1369·t1374 배치까지 합산한 이 트리 직접 측정)
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
-   `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
+   `hook.go`, `todo.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
    `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 앞선 판 사이에
    `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
    `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해진 바 있습니다.

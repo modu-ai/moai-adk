@@ -315,10 +315,23 @@ type LLMConfig struct {
 	// AgentOverrides is an optional per-agent {model, effort} override keyed
 	// by canonical agent name, applied on top of the active profile's cell
 	// (REQ-AFR-004; restored under SPEC-WEB-AGENTFM-RESTORE-001 M1).
-	// Validated by validateAgentOverrides. Runtime spawn-path consumption
-	// remains Out of Scope (decision-index Q2 — the follow-up card owns it);
-	// today only the console reads and writes this map.
+	// Validated by validateAgentOverrides.
 	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
+	// AgentOverridesConsume is the v0.3.0 opt-in switch (REQ-AFR-015,
+	// SPEC-WEB-AGENTFM-RESTORE-001, card t1421): when true, the session's
+	// subagent spawns consume llm.agent_overrides — the orchestrator consults
+	// the resolved overrides before each spawn and passes the configured
+	// model on the Agent() call (template.ResolveAgentOverrideConsumption).
+	// The zero value false keeps today's storage-only behaviour
+	// byte-for-byte: the override map stays a console-stored surface and
+	// every spawn keeps the session-inherit default (REQ-AFR-002). A
+	// non-boolean stored value joins the console's atomic-reject set through
+	// ValidateLLMYAMLSection (the write boundary re-checks the stored section
+	// strictly — a genuine type mismatch errors in the typed pass, and a
+	// string-coercible "yes"/"on"/"1" is rejected by tag strictness, since
+	// the yaml.v3 decoder would otherwise coerce it into an opt-in the
+	// operator never wrote as one).
+	AgentOverridesConsume bool `yaml:"agent_overrides_consume"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
@@ -956,6 +969,18 @@ type CodexReviewGateConfig struct {
 	// NormalizeCodexReviewGateTreeScope — any other value means review. The
 	// template ships this key only as a commented example.
 	TreeScope string `yaml:"tree_scope"`
+
+	// PrimaryScope decides what the gate does for a tree-scope session whose
+	// tree IS the repository's primary working tree
+	// (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-002): "skip" — the distributed
+	// default, since a primary checkout's non-card changes have no card to
+	// attribute them to — or "review", the explicit restore of the pre-SPEC
+	// whole-tree review (REQ-CGSC-004). Read through
+	// NormalizeCodexReviewGatePrimaryScope: the fail direction is REVERSED
+	// from TreeScope — only an explicit review wins; a missing key, an
+	// unknown value, an unreadable file or a YAML error all leave the default
+	// skip in force.
+	PrimaryScope string `yaml:"primary_scope"`
 }
 
 // MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate
@@ -1032,7 +1057,7 @@ type SecuritySandbox struct {
 type StateConfig struct {
 	RetentionDays int `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
 
-	// SessionRecordRetentionDays bounds the age of kanban session records
+	// SessionRecordRetentionDays bounds the age of factory session records
 	// (<state-dir>/<session>.json), pruned at SessionStart (card t1312). It
 	// is a pointer so an explicit 0 ("disable retention") stays
 	// distinguishable from a key the user omitted, which retains the

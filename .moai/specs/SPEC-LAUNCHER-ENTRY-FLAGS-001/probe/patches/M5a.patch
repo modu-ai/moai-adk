@@ -1,0 +1,1532 @@
+diff --git a/internal/cli/cc.go b/internal/cli/cc.go
+--- a/internal/cli/cc.go
++++ b/internal/cli/cc.go
+@@ -200,7 +200,6 @@
+ 	}
+ 	filteredArgs = entry.Rest
+ 	endEntry()
+-	label, isCompanion := parseCompanionLabel(filteredArgs)
+ 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
+ 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
+ 	case factoryBranchLeader:
+@@ -287,46 +286,6 @@
+ 		}
+ 		defer settingsCleanup()
+ 	}
+-	if !entry.FactoryEnabled {
+-		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
+-		case kanbanBranchLeader:
+-			// An operator-supplied `lead-<run-id>` name carries the run id this
+-			// session already belongs to — a relaunch of an existing leader, or a
+-			// board whose companions are already open. Adopting it is what keeps
+-			// the session name, MOAI_KANBAN_ID, the leader socket path, and the
+-			// companion commands the SessionStart notice prints on one run.
+-			leaderLabel, _ := parseLeaderLabel(filteredArgs)
+-			defer enterKanbanMode(entry.Spec, leaderLabel)()
+-			defer exportKanbanLaunchFacts(entry.Spec, backend)()
+-			// A leader launched bare has only an AI-generated title, which claude
+-			// discards on /clear; naming it explicitly is what survives.
+-			var leaderName string
+-			filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+-			defer exportLeaderSessionName(leaderName)()
+-			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+-			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+-			endSettings()
+-			if len(settingsFlag) > 0 {
+-				filteredArgs = append(filteredArgs, settingsFlag...)
+-			}
+-			defer settingsCleanup()
+-		case kanbanBranchCompanion:
+-			// A label held by a live session is bumped to the next free number
+-			// for the role, and the bumped value must reach the backend argv —
+-			// the session name is the address the leader dispatches to.
+-			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
+-			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
+-			defer enterKanbanCompanionMode(finalLabel)()
+-			defer exportKanbanLaunchFacts(entry.Spec, backend)()
+-			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+-			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+-			endSettings()
+-			if len(settingsFlag) > 0 {
+-				filteredArgs = append(filteredArgs, settingsFlag...)
+-			}
+-			defer settingsCleanup()
+-		}
+-	}
+ 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
+ 	// BEFORE normalizeWorktreeFlag so out-of-prefix paths are rejected with a
+ 	// clear error (AC-WES-010c) and L2 (~/.moai/worktrees/) paths are accepted
+diff --git a/internal/cli/cc_test.go b/internal/cli/cc_test.go
+--- a/internal/cli/cc_test.go
++++ b/internal/cli/cc_test.go
+@@ -299,86 +299,7 @@
+ }
+ 
+ // ── SPEC-FACTORY-MODE-001 M5: Kanban Mode entry surface ──
+-
+-// TestParseKanbanFlag_LongFormWithoutSpec asserts the bare --kanban form
+-// enables Kanban Mode, reports no SPEC identifier (REQ-FM-005: absence means
+-// the chain heads at plan-phase), and strips the token from the forwarded args.
+-func TestParseKanbanFlag_LongFormWithoutSpec(t *testing.T) {
+-	p, err := parseKanbanFlag([]string{"--kanban", "-b"})
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
+-	if !enabled {
+-		t.Error("--kanban must enable Kanban Mode")
+-	}
+-	if spec != "" {
+-		t.Errorf("bare --kanban carries no SPEC identifier, got %q", spec)
+-	}
+-	if !slices.Equal(rest, []string{"-b"}) {
+-		t.Errorf("--kanban must be stripped from the forwarded args, got %v", rest)
+-	}
+-}
+-
+-// TestParseKanbanFlag_ShortFormWithSpec is AC-FM-002: `moai cc -k
+-// SPEC-PLACEHOLDER` yields the identifier, enables the mode, and removes both
+-// tokens from the forwarded args.
+-func TestParseKanbanFlag_ShortFormWithSpec(t *testing.T) {
+-	p, err := parseKanbanFlag([]string{"-k", "SPEC-PLACEHOLDER", "--print"})
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
+-	if !enabled {
+-		t.Error("AC-FM-002: -k must enable Kanban Mode")
+-	}
+-	if spec != "SPEC-PLACEHOLDER" {
+-		t.Errorf("AC-FM-002: expected spec %q, got %q", "SPEC-PLACEHOLDER", spec)
+-	}
+-	if !slices.Equal(rest, []string{"--print"}) {
+-		t.Errorf("AC-FM-002: both tokens must be stripped, got %v", rest)
+-	}
+-}
+ 
+-// TestParseKanbanFlag_PassThroughBoundary is AC-FM-003: a --kanban token at
+-// or after the -- pass-through marker belongs to the child process, not to
+-// this parser. Mirrors stripSpawnFlag's boundary discipline exactly.
+-func TestParseKanbanFlag_PassThroughBoundary(t *testing.T) {
+-	p, err := parseKanbanFlag([]string{"--", "--kanban"})
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
+-	if enabled {
+-		t.Error("AC-FM-003: --kanban after -- must NOT enable Kanban Mode")
+-	}
+-	if spec != "" {
+-		t.Errorf("AC-FM-003: no SPEC identifier is consumed past --, got %q", spec)
+-	}
+-	if !slices.Equal(rest, []string{"--", "--kanban"}) {
+-		t.Errorf("AC-FM-003: tokens past -- are forwarded verbatim, got %v", rest)
+-	}
+-}
+-
+-// TestParseKanbanFlag_SpecIsNotStolenFromAFlag guards the optional-positional
+-// parse: a following flag token is a separate argument, never the SPEC value.
+-func TestParseKanbanFlag_SpecIsNotStolenFromAFlag(t *testing.T) {
+-	p, err := parseKanbanFlag([]string{"--kanban", "--print"})
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
+-	if !enabled {
+-		t.Error("--kanban must enable Kanban Mode")
+-	}
+-	if spec != "" {
+-		t.Errorf("a flag token must not be consumed as the SPEC identifier, got %q", spec)
+-	}
+-	if !slices.Equal(rest, []string{"--print"}) {
+-		t.Errorf("the following flag must survive, got %v", rest)
+-	}
+-}
+-
+ // TestCC_KanbanFlagStrippedBeforeLaunch is AC-FM-001: the seam sees neither
+ // --kanban nor -k, and the process environment carries the kanban signal at
+ // the moment the launch happens (the signal REQ-FM-023 transports).
+@@ -598,51 +519,9 @@
+ 				}
+ 			}
+ 		})
+-	}
+-}
+-
+-// TestEnterKanbanMode_RestoresPriorValue covers the other half of the restore
+-// contract: when a variable was ALREADY set before entry, the restore returns
+-// its prior value rather than unsetting it. Absence-restoration is asserted by
+-// TestCC_KanbanEnvMutationIsRestored; both branches must hold for the restore
+-// to be a genuine round-trip.
+-func TestEnterKanbanMode_RestoresPriorValue(t *testing.T) {
+-	t.Setenv(config.EnvMoaiKanban, "prior-kanban")
+-	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-PRIOR")
+-
+-	restore := enterKanbanMode("SPEC-PLACEHOLDER", "")
+-	if got := os.Getenv(config.EnvMoaiKanban); got != "1" {
+-		t.Errorf("inside Kanban Mode %s = %q, want %q", config.EnvMoaiKanban, got, "1")
+ 	}
+-	if got := os.Getenv(config.EnvMoaiKanbanSpec); got != "SPEC-PLACEHOLDER" {
+-		t.Errorf("inside Kanban Mode %s = %q, want %q", config.EnvMoaiKanbanSpec, got, "SPEC-PLACEHOLDER")
+-	}
+-
+-	restore()
+-	if got, ok := os.LookupEnv(config.EnvMoaiKanban); !ok || got != "prior-kanban" {
+-		t.Errorf("%s = (%q, %v) after restore, want (%q, true)", config.EnvMoaiKanban, got, ok, "prior-kanban")
+-	}
+-	if got, ok := os.LookupEnv(config.EnvMoaiKanbanSpec); !ok || got != "SPEC-PRIOR" {
+-		t.Errorf("%s = (%q, %v) after restore, want (%q, true)", config.EnvMoaiKanbanSpec, got, ok, "SPEC-PRIOR")
+-	}
+ }
+ 
+-// TestEnterKanbanMode_WithoutSpecLeavesSpecVarUntouched asserts the optional
+-// identifier is genuinely optional: a bare --kanban publishes the mode signal
+-// without inventing a SPEC identifier the operator never supplied.
+-func TestEnterKanbanMode_WithoutSpecLeavesSpecVarUntouched(t *testing.T) {
+-	_ = os.Unsetenv(config.EnvMoaiKanbanSpec)
+-	restore := enterKanbanMode("", "")
+-	defer restore()
+-
+-	if got := os.Getenv(config.EnvMoaiKanban); got != "1" {
+-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanban, got, "1")
+-	}
+-	if got, ok := os.LookupEnv(config.EnvMoaiKanbanSpec); ok {
+-		t.Errorf("%s must stay unset when no identifier was supplied, got %q", config.EnvMoaiKanbanSpec, got)
+-	}
+-}
+-
+ // TestCharacterize_CC_ModeIsAlwaysClaude verifies that runCC always passes
+ // modeOverride="claude" to unifiedLaunch regardless of extra flags.
+ func TestCharacterize_CC_ModeIsAlwaysClaude(t *testing.T) {
+diff --git a/internal/cli/codex_factory_retire_test.go b/internal/cli/codex_factory_retire_test.go
+--- a/internal/cli/codex_factory_retire_test.go
++++ b/internal/cli/codex_factory_retire_test.go
+@@ -113,23 +113,6 @@
+ 	}
+ }
+ 
+-// AC-CFR-001 — every kanban entry shape is refused with the kanban sentinel.
+-func TestCodexKanbanEntryIsRefused(t *testing.T) {
+-	cap := withCodexLaunchCapture(t)
+-	pinCodexRefusalRoot(t)
+-	for _, args := range codexRefusalCases("kanban") {
+-		stdout, stderr, err := runCodexCmd(t, args...)
+-		assertCodexRefused(t, args, stdout, stderr, err, kanbanUnsupportedBackendSentinel, "moai cc -k")
+-	}
+-	// Edge (acceptance §D.1): --name without -k stays the plain usage error.
+-	stdout, stderr, err := runCodexCmd(t, "--name", "plan")
+-	assertCodexRefused(t, []string{"--name", "plan"}, stdout, stderr, err, codexUsageDiag)
+-	if strings.Contains(stderr, kanbanUnsupportedBackendSentinel) {
+-		t.Errorf("--name plan carried the kanban sentinel: %q", stderr)
+-	}
+-	codexWantLaunches(t, cap, 0, 0, 0)
+-}
+-
+ // Legacy role names remain refused; the canonical lane forms are supported.
+ func TestCodexFactoryLegacyEntryIsRefused(t *testing.T) {
+ 	cap := withCodexLaunchCapture(t)
+diff --git a/internal/cli/codex_launcher.go b/internal/cli/codex_launcher.go
+--- a/internal/cli/codex_launcher.go
++++ b/internal/cli/codex_launcher.go
+@@ -314,10 +314,7 @@
+ // export. A plain Codex launch scrubs them. An explicit -f launch supplies a
+ // freshly selected factory identity after the scrub.
+ var codexLaneLaunchEnvKeys = []string{
+-	config.EnvMoaiKanban,
+ 	config.EnvMoaiKanbanID,
+-	config.EnvMoaiKanbanSpec,
+-	config.EnvMoaiKanbanLabel,
+ 	config.EnvMoaiKanbanLeadAddr,
+ 	config.EnvMoaiKanbanLeadName,
+ 	config.EnvMoaiKanbanBackend,
+@@ -768,8 +765,6 @@
+ // REQ-SD-004 names: every Codex factory shape except `-f lane` prints it
+ // byte-identically (AC-SD-004 compares stderr against this constant).
+ const (
+-	codexKanbanRefusalDiag = kanbanUnsupportedBackendSentinel +
+-		": moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead"
+ 	codexFactoryRefusalDiag = factoryUnsupportedBackendSentinel +
+ 		": moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader"
+ )
+@@ -831,9 +826,9 @@
+ 		var value string
+ 		hasValue := false
+ 		switch {
+-		case token == kanbanFlagShort || token == kanbanFlagLong ||
+-			strings.HasPrefix(token, kanbanFlagShort+"=") || strings.HasPrefix(token, kanbanFlagLong+"="):
+-			return codexFactoryEntryOther, codexKanbanRefusalDiag
++		case token == retiredShortFlag || token == retiredLongFlag ||
++			strings.HasPrefix(token, retiredShortFlag+"=") || strings.HasPrefix(token, retiredLongFlag+"="):
++			return codexFactoryEntryOther, retiredEntryRefusal
+ 		case token == codexFactoryRunFlag || strings.HasPrefix(token, codexFactoryRunFlag+"="):
+ 			return codexFactoryEntryOther, codexFactoryRefusalDiag
+ 		case token == factoryFlagLong || token == factoryFlagShort:
+@@ -956,9 +951,6 @@
+ 	// notices read MOAI_FACTORY_WORKER (REQ-RNC-011's kept name). One label,
+ 	// both carriers, stamped together so no reader of either sees an empty
+ 	// one; the child environment carries the same pair.
+-	restoreKanbanLabel := captureEnvState(config.EnvMoaiKanbanLabel)
+-	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
+-	defer restoreKanbanLabel()
+ 
+ 	ctx := cmd.Context()
+ 	if ctx == nil {
+@@ -1034,7 +1026,6 @@
+ 	return append(env,
+ 		config.EnvFactoryRole+"="+config.FactoryRoleLane,
+ 		config.EnvMoaiFactoryWorker+"="+label,
+-		config.EnvMoaiKanbanLabel+"="+label,
+ 		config.EnvMoaiKanbanBackend+"="+kanban.BackendGPT,
+ 		config.EnvMoaiKanbanCard+"="+cardID,
+ 	)
+diff --git a/internal/cli/factory.go b/internal/cli/factory.go
+--- a/internal/cli/factory.go
++++ b/internal/cli/factory.go
+@@ -350,10 +350,10 @@
+ // `lead-<suffix>` leader names) are refused before any branch resolves
+ // (REQ-RNC-003/-004/-005/-007).
+ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
+-	entry, err := parseKanbanFlag(args)
+-	if err != nil {
+-		return entry, err
++	if err := refuseRetiredEntry(args); err != nil {
++		return kanbanEntryParse{}, err
+ 	}
++	entry := kanbanEntryParse{Rest: append([]string(nil), args...)}
+ 	if err := refuseLegacyEntryNames(args); err != nil {
+ 		return entry, err
+ 	}
+@@ -364,11 +364,6 @@
+ 	if !fp.Enabled {
+ 		return entry, nil
+ 	}
+-	if entry.KanbanEnabled {
+-		return entry, fmt.Errorf("-k/--kanban and -f/--factory are two entry tokens; a launch carries at most one — " +
+-			"use -k [SPEC-ID] for the kanban chain or -f [N] for the factory")
+-	}
+-
+ 	entry.FactoryEnabled = true
+ 	entry.FactoryRun = fp.RunID
+ 	entry.FactoryLead = fp.Lead
+diff --git a/internal/cli/factory_test.go b/internal/cli/factory_test.go
+--- a/internal/cli/factory_test.go
++++ b/internal/cli/factory_test.go
+@@ -126,99 +126,9 @@
+ 		t.Fatalf("%s=%q after clearFactoryAmbientEnv with pin marker; the "+
+ 			"marker must keep a parent-composed family intact",
+ 			config.EnvMoaiKanbanID, got)
+-	}
+-}
+-
+-// TestParseKanbanFlagUnifiedEntry is the v1.2.0 truth table: ONE -k token
+-// selects either shape — bare/-k SPEC-ID is the kanban chain, a numeric
+-// positional (or a worker-shape --name with no positional) is the factory.
+-// The numeric discriminator is unambiguous: a SPEC identifier is never a bare
+-// integer, and an invalid SUPPLIED count errors rather than silently becoming
+-// a kanban SPEC identifier.
+-func TestParseKanbanFlagUnifiedEntry(t *testing.T) {
+-	t.Parallel()
+-
+-	cases := []struct {
+-		name        string
+-		args        []string
+-		wantSpec    string
+-		wantKanban  bool
+-		wantFactory bool
+-		wantWorkers int
+-		wantRest    []string
+-		wantErr     bool
+-		errMarker   string
+-	}{
+-		{name: "absent", args: []string{"-p", "work"}, wantRest: []string{"-p", "work"}},
+-		{name: "bare -k is kanban", args: []string{"-k"}, wantKanban: true},
+-		{name: "long form is kanban", args: []string{"--kanban", "-b"}, wantKanban: true, wantRest: []string{"-b"}},
+-		{name: "-k SPEC is kanban", args: []string{"-k", "SPEC-X-001", "--print"}, wantSpec: "SPEC-X-001", wantKanban: true, wantRest: []string{"--print"}},
+-		{name: "positional flag is not a value", args: []string{"-k", "-b"}, wantKanban: true, wantRest: []string{"-b"}},
+-		{name: "-k N is factory lead", args: []string{"-k", "4"}, wantKanban: true, wantFactory: true, wantWorkers: 4},
+-		{name: "-k=N", args: []string{"-k=3"}, wantKanban: true, wantFactory: true, wantWorkers: 3},
+-		{name: "--kanban N", args: []string{"--kanban", "12"}, wantKanban: true, wantFactory: true, wantWorkers: 12},
+-		{name: "--kanban=N", args: []string{"--kanban=1"}, wantKanban: true, wantFactory: true, wantWorkers: 1},
+-		{name: "-k N with lane name is factory lane", args: []string{"-k", "4", "--name", "worker-2"}, wantKanban: true, wantFactory: true, wantWorkers: 4, wantRest: []string{"--name", "worker-2"}},
+-		{
+-			// The count-less factory entry: the lane-shape NAME selects the
+-			// factory, so the operator default applies. A count-less FACTORY
+-			// LEADER does not exist — a bare -k is the kanban leader.
+-			name: "bare -k with lane name takes the default", args: []string{"-k", "--name", "lane-2"},
+-			wantKanban: true, wantFactory: true, wantWorkers: config.DefaultFactoryLanes, wantRest: []string{"--name", "lane-2"},
+-		},
+-		{name: "companion name stays kanban", args: []string{"-k", "--name", "plan"}, wantKanban: true, wantRest: []string{"--name", "plan"}},
+-		{name: "zero count errors", args: []string{"-k", "0"}, wantErr: true, errMarker: "lane count of 1 or more"},
+-		{name: "negative joined count errors", args: []string{"-k=-2"}, wantErr: true, errMarker: "lane count of 1 or more"},
+-		{name: "joined non-numeric is not a spec form", args: []string{"-k=abc"}, wantErr: true, errMarker: "lane count of 1 or more"},
+-	}
+-
+-	for _, c := range cases {
+-		t.Run(c.name, func(t *testing.T) {
+-			t.Parallel()
+-			p, err := parseKanbanFlag(c.args)
+-			if c.wantErr {
+-				if err == nil || !strings.Contains(err.Error(), c.errMarker) {
+-					t.Fatalf("parseKanbanFlag(%v) error = %v, want containing %q", c.args, err, c.errMarker)
+-				}
+-				return
+-			}
+-			if err != nil {
+-				t.Fatalf("parseKanbanFlag(%v) unexpected error: %v", c.args, err)
+-			}
+-			if p.Spec != c.wantSpec || p.KanbanEnabled != c.wantKanban ||
+-				p.FactoryEnabled != c.wantFactory || p.FactoryLanes != c.wantWorkers {
+-				t.Errorf("parseKanbanFlag(%v) = (spec %q, kanban %v, factory %v, workers %d), want (%q, %v, %v, %d)",
+-					c.args, p.Spec, p.KanbanEnabled, p.FactoryEnabled, p.FactoryLanes,
+-					c.wantSpec, c.wantKanban, c.wantFactory, c.wantWorkers)
+-			}
+-			wantRest := c.wantRest
+-			if wantRest == nil {
+-				wantRest = []string{}
+-			}
+-			if !slices.Equal(p.Rest, wantRest) {
+-				t.Errorf("parseKanbanFlag(%v) rest = %v, want %v", c.args, p.Rest, wantRest)
+-			}
+-		})
+ 	}
+ }
+ 
+-// TestParseKanbanFlagPassThroughBoundary asserts the shared `--` discipline on
+-// the unified parse: nothing past the marker is read (a lane name there
+-// never selects the factory), and the marker plus everything after it is
+-// forwarded verbatim.
+-func TestParseKanbanFlagPassThroughBoundary(t *testing.T) {
+-	t.Parallel()
+-
+-	args := []string{"--", "-k", "4", "--name", "worker-1"}
+-	p, err := parseKanbanFlag(args)
+-	if err != nil || p.KanbanEnabled || p.FactoryEnabled {
+-		t.Fatalf("read past the pass-through marker: (%v, %v, %v)", err, p.KanbanEnabled, p.FactoryEnabled)
+-	}
+-	if !slices.Equal(p.Rest, args) {
+-		t.Errorf("rest = %v, want %v verbatim", p.Rest, args)
+-	}
+-}
+-
+ // TestParseFactoryFlag is the t118 -f truth table: bare -f is enabled with
+ // no count, -f N carries the count, -f lane-<n> carries the lane number,
+ // the `=`-joined forms work, and a SUPPLIED value that is neither a positive
+@@ -777,28 +687,6 @@
+ 	}
+ }
+ 
+-// TestRejectKanbanOnCGLeavesFactoryForms is the other half of the cg split:
+-// rejectKanbanOnCG fires for the kanban forms and deliberately passes the
+-// factory forms through to rejectFactoryOnCG.
+-func TestRejectKanbanOnCGLeavesFactoryForms(t *testing.T) {
+-	t.Parallel()
+-
+-	if err := rejectKanbanOnCG([]string{"-k"}); err == nil || !strings.Contains(err.Error(), kanbanUnsupportedBackendSentinel) {
+-		t.Errorf("bare -k on cg must carry the kanban sentinel, got %v", err)
+-	}
+-	if err := rejectKanbanOnCG([]string{"-k", "SPEC-X-001"}); err == nil {
+-		t.Errorf("-k SPEC on cg must carry the kanban sentinel, got %v", err)
+-	}
+-	for _, args := range [][]string{
+-		{"-k", "4"},
+-		{"-k", "--name", "lane-2"},
+-	} {
+-		if err := rejectKanbanOnCG(args); err != nil {
+-			t.Errorf("factory form %v is the factory rejection's, not kanban's, got %v", args, err)
+-		}
+-	}
+-}
+-
+ // TestFactoryGenealogyInHelp is the binding genealogy AC (t118): both
+ // launchers' help must state the full flag history — renamed to -k in #1513
+ // (7f61332ef), retired v1.2.0, revived t118 — and must document the revived
+diff --git a/internal/cli/glm.go b/internal/cli/glm.go
+--- a/internal/cli/glm.go
++++ b/internal/cli/glm.go
+@@ -250,7 +250,6 @@
+ 	}
+ 	filteredArgs = entry.Rest
+ 	endEntry()
+-	label, isCompanion := parseCompanionLabel(filteredArgs)
+ 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
+ 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
+ 	case factoryBranchLeader:
+@@ -325,40 +324,6 @@
+ 		}
+ 		defer settingsCleanup()
+ 	}
+-	if !entry.FactoryEnabled {
+-		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
+-		case kanbanBranchLeader:
+-			// See cc.go: the operator's leader run id is adopted rather than replaced.
+-			leaderLabel, _ := parseLeaderLabel(filteredArgs)
+-			defer enterKanbanMode(entry.Spec, leaderLabel)()
+-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+-			// See cc.go: glm mirrors the leader branch exactly.
+-			var leaderName string
+-			filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+-			defer exportLeaderSessionName(leaderName)()
+-			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+-			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+-			endSettings()
+-			if len(settingsFlag) > 0 {
+-				filteredArgs = append(filteredArgs, settingsFlag...)
+-			}
+-			defer settingsCleanup()
+-		case kanbanBranchCompanion:
+-			// See cc.go: a live-held label is bumped, and the bumped value must
+-			// reach the backend argv.
+-			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
+-			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
+-			defer enterKanbanCompanionMode(finalLabel)()
+-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+-			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
+-			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+-			endSettings()
+-			if len(settingsFlag) > 0 {
+-				filteredArgs = append(filteredArgs, settingsFlag...)
+-			}
+-			defer settingsCleanup()
+-		}
+-	}
+ 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
+ 	endWt := debugTiming.beginDebug(launchStepWorktree, "")
+ 	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
+diff --git a/internal/cli/kanban.go b/internal/cli/kanban.go
+--- a/internal/cli/kanban.go
++++ b/internal/cli/kanban.go
+@@ -25,25 +25,6 @@
+ 	"github.com/modu-ai/moai-adk/internal/kanban"
+ )
+ 
+-// The entry tokens. `-k` is unbound on cc / glm / cg; the commands that do bind
+-// it (`doctor config dump`, `state`) are distinct and unaffected.
+-const (
+-	kanbanFlagLong  = "--kanban"
+-	kanbanFlagShort = "-k"
+-)
+-
+-// kanbanFlagUsageError names every accepted -k shape. It is the error text for
+-// an invalid SUPPLIED value and the reference the help texts paraphrase.
+-const kanbanFlagUsageError = "-k/--kanban takes a SPEC identifier (e.g. -k SPEC-X-001), " +
+-	"a lane count of 1 or more (e.g. -k 4) for Factory Mode, " +
+-	"or no argument for the plain kanban leader"
+-
+-// kanbanUnsupportedBackendSentinel is the machine-greppable marker on the
+-// `moai cg` rejection. A mixed leader/teammate backend contradicts the
+-// one-session / one-backend / one-chain premise, so the invocation is rejected
+-// rather than adapted.
+-const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
+-
+ // kanbanEntryParse is the unified -k/--kanban entry parse (v1.2.0): ONE flag
+ // token selects one of two session shapes —
+ //
+@@ -96,129 +77,6 @@
+ 	Rest               []string // args with -k and its consumed value removed
+ }
+ 
+-// parseKanbanFlag extracts --kanban / -k and its optional value from args.
+-//
+-// The SPEC identifier is optional: its absence means the chain begins at
+-// plan-phase from the operator's first prompt, which is a valid entry, not an
+-// error. A token that looks like a flag is never consumed as the identifier.
+-// A SUPPLIED value that is numeric but invalid (zero/negative) is an error —
+-// it names a count the operator clearly intended, and silently treating it as
+-// a kanban SPEC identifier would hide the typo.
+-//
+-// The `--` discipline matches stripSpawnFlag, parseProfileFlag, and
+-// normalizeWorktreeFlag exactly: iterate, break at the pass-through marker, and
+-// forward everything from that marker onward verbatim. Both commands set
+-// DisableFlagParsing, so a cobra flag registration would be silently inert —
+-// this manual parser is the only mechanism available.
+-func parseKanbanFlag(args []string) (p kanbanEntryParse, err error) {
+-	p.Rest = make([]string, 0, len(args))
+-
+-	for i := 0; i < len(args); i++ {
+-		arg := args[i]
+-		if arg == "--" {
+-			p.Rest = append(p.Rest, args[i:]...)
+-			break
+-		}
+-
+-		var value string
+-		hasValue := false
+-		joined := false
+-		switch {
+-		case arg == kanbanFlagLong || arg == kanbanFlagShort:
+-			// Consume a following positional token as the value. A flag or
+-			// the pass-through marker belongs to someone else.
+-			if next := i + 1; next < len(args) && args[next] != "--" && !strings.HasPrefix(args[next], "-") {
+-				value, hasValue = args[next], true
+-				i = next
+-			}
+-		case strings.HasPrefix(arg, kanbanFlagLong+"="), strings.HasPrefix(arg, kanbanFlagShort+"="):
+-			// The `=`-joined form exists for the FACTORY COUNT only (v1.2.0);
+-			// the kanban SPEC identifier never had one.
+-			value = strings.TrimPrefix(strings.TrimPrefix(arg, kanbanFlagShort+"="), kanbanFlagLong+"=")
+-			hasValue, joined = true, true
+-		default:
+-			p.Rest = append(p.Rest, arg)
+-			continue
+-		}
+-
+-		p.KanbanEnabled = true
+-		if !hasValue {
+-			continue
+-		}
+-		if n, perr := strconv.Atoi(value); perr == nil {
+-			if n < 1 {
+-				return p, fmt.Errorf("%s, got %q", kanbanFlagUsageError, value)
+-			}
+-			p.FactoryEnabled = true
+-			p.FactoryLanes = n
+-			p.FactoryLanesDeclared = true
+-			continue
+-		}
+-		if joined {
+-			return p, fmt.Errorf("%s, got %q", kanbanFlagUsageError, value)
+-		}
+-		p.Spec = value
+-	}
+-
+-	// A bare -k plus a lane-shape --name selected the factory with no count
+-	// supplied — the count-less factory entry, resolved to the default here.
+-	// parseFactoryLaneLabel stops at the pass-through marker like this
+-	// parser does, so a `-- --name lane-1` passthrough never selects it.
+-	if p.KanbanEnabled && !p.FactoryEnabled {
+-		if _, isLane := parseFactoryLaneLabel(args); isLane {
+-			p.FactoryEnabled = true
+-			p.FactoryLanes = config.DefaultFactoryLanes
+-		}
+-	}
+-
+-	return p, nil
+-}
+-
+-// @MX:ANCHOR: [AUTO] the deferred restore is a correctness requirement, not hygiene
+-// @MX:REASON: os.Setenv is process-global; an unrestored mutation leaves MOAI_KANBAN set for every later test in the internal/cli binary (making the block-cap negative control pass or fail by execution order) and lets a later production re-exec inherit kanban semantics it was never given
+-//
+-// enterKanbanMode publishes the kanban signal into the process environment
+-// and returns the function that puts the environment back.
+-//
+-// The restore returns each variable to its PRIOR PRESENCE, not merely its prior
+-// value: a variable that was unset is unset again rather than set to "". The
+-// distinction is observable — os.Getenv cannot see it but os.LookupEnv can, and
+-// downstream readers treat presence as the signal.
+-//
+-// Callers must defer the returned function so it also runs on the error path; a
+-// restore that only runs on success is the same leak with a narrower trigger.
+-// leaderLabel is the operator-supplied `leader-<run-id>` name for this session when
+-// there is one, and "" otherwise. Its run id is ADOPTED rather than replaced —
+-// see leaderRunID.
+-func enterKanbanMode(specID, leaderLabel string) func() {
+-	restoreKanban := captureEnvState(config.EnvMoaiKanban)
+-	restoreSpec := captureEnvState(config.EnvMoaiKanbanSpec)
+-	restoreID := captureEnvState(config.EnvMoaiKanbanID)
+-	restoreAddr := captureEnvState(config.EnvMoaiKanbanLeadAddr)
+-	restoreTier := seedAutonomyTier()
+-
+-	_ = os.Setenv(config.EnvMoaiKanban, "1")
+-	runID := leaderRunID(leaderLabel)
+-	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
+-	if specID != "" {
+-		_ = os.Setenv(config.EnvMoaiKanbanSpec, specID)
+-	}
+-	// SPEC-FACTORY-BOOTSTRAP-001 M3: surface a leader socket path for the
+-	// SessionStart hook to print. The actual messaging-substrate address is a
+-	// run-phase concern; this conventional path-shaped value gives the notice
+-	// a non-empty, grep-friendly address line. t118 socket scheme: the kanban
+-	// run's address lives under its own directory, never the factory's.
+-	_ = os.Setenv(config.EnvMoaiKanbanLeadAddr, kanban.LeaderSocketPath(runID))
+-
+-	return func() {
+-		restoreTier()
+-		restoreAddr()
+-		restoreID()
+-		restoreSpec()
+-		restoreKanban()
+-	}
+-}
+-
+ // leaderRunID resolves the run id a leader session publishes, in three steps: a
+ // `leader-<run-id>` name the operator pasted, then a run id already standing in
+ // the environment, then a fresh mint.
+@@ -311,81 +169,8 @@
+ 			strconv.Itoa(config.DefaultLaneMaxConcurrentSubagents))
+ 	}
+ 	return restore
+-}
+-
+-// enterKanbanCompanionMode publishes the companion signal for a label — the
+-// bare role under the naming policy, or a bumped `<role>-<n>` — and returns
+-// the function that puts the environment back, on the same prior-presence
+-// contract as enterKanbanMode.
+-//
+-// It deliberately does NOT set config.EnvMoaiKanban: that variable seeds the
+-// chain, and only the leader drives the chain. What the companion shares with the
+-// leader is the raised Stop-hook block cap, which the inject reads from either
+-// variable.
+-//
+-// It also deliberately does NOT set config.EnvMoaiKanbanID: the run id is
+-// leader-owned state, and publishing one on the companion side — historically
+-// derived from the label suffix — is the root of the t21 incident class (a
+-// leader's MOAI_KANBAN_ID disagreeing with a live companion's suffix produced
+-// announcements for a run id no live session carried). Under the bare-role
+-// policy no companion surface carries a run id at all, so the disagreement has
+-// nothing to disagree about. Nothing on the companion path reads the variable.
+-func enterKanbanCompanionMode(label string) func() {
+-	restoreLabel := captureEnvState(config.EnvMoaiKanbanLabel)
+-	// A companion is where the work actually lands — it plans, implements,
+-	// reviews, and commits. Seeding the tier on the leader alone would leave every
+-	// interruption exactly where it already was, because the leader does not
+-	// commit code. The same reasoning seeds the per-lane agent cap: the
+-	// companion's subagent fan-out is what the cap bounds.
+-	restoreTier := seedAutonomyTier()
+-	restoreCap := seedLaneAgentCap()
+-
+-	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
+-
+-	return func() {
+-		restoreCap()
+-		restoreTier()
+-		restoreLabel()
+-	}
+ }
+ 
+-// companionRegistryPath returns the liveness-checked companion-name registry's
+-// home, the sibling of the factory lane registry it shares its machinery
+-// with. A project's kanban companions claim names here so the bump has
+-// something to consult — Claude Code owns the session-name namespace but
+-// offers moai no query into it, so the claim set is moai's own state.
+-func companionRegistryPath(root string) string {
+-	return filepath.Join(kanban.RuntimeStateDirForRoot(root), "companions.json")
+-}
+-
+-// resolveCompanionName returns the label this companion session should launch
+-// under: label itself when it is free, or the next free number for its role
+-// (the "bump a conflicting name up" rule, the companion sibling of
+-// resolveFactoryLaneName).
+-//
+-// A label is taken when the registry maps it to a pid that is alive right now
+-// — a crashed or exited companion leaves a dead pid behind, and a dead claim
+-// frees the name so a relaunch reuses it instead of counting up forever. Dead
+-// entries are pruned on the way through. The bumped candidates are
+-// `<role>-<n>` regardless of the label's own suffix shape, so a held legacy
+-// `plan-abc123` bumps to `plan-1` (never a second hyphen). The final label is
+-// registered to this process's pid before returning.
+-//
+-// label MUST have the companion shape (kanban.SplitCompanionLabel); the caller
+-// has already branched on it. Best-effort throughout: an unreadable or
+-// unwritable registry degrades to using the label as supplied, exactly like
+-// every other launch-path state write — the launch must never block on it.
+-// notes, when non-nil, receives the operator-visible bump line.
+-func resolveCompanionName(root, label string, notes io.Writer) string {
+-	role, _, ok := kanban.SplitCompanionLabel(label)
+-	if !ok {
+-		return claimName(companionRegistryPath(root), label, nil, notes)
+-	}
+-	return claimName(companionRegistryPath(root), label, func(n int) string {
+-		return kanban.CompanionNumberLabel(role, n)
+-	}, notes)
+-}
+-
+ // leaderRegistryPath returns the liveness-checked leader-name registry's home.
+ //
+ // It is a SEPARATE file from the companion registry because the two namespaces
+@@ -542,19 +327,12 @@
+ // Callers must defer the returned function so it also runs on the error path.
+ func exportKanbanLaunchFacts(specID, backend string) func() {
+ 	restoreBackend := captureEnvState(config.EnvMoaiKanbanBackend)
+-	restoreSpec := captureEnvState(config.EnvMoaiKanbanSpec)
+ 
+ 	if backend != "" {
+ 		_ = os.Setenv(config.EnvMoaiKanbanBackend, backend)
+ 	}
+-	// An absent SPEC is not exported as an empty value: the session reads
+-	// PRESENCE, and an empty export would announce a SPEC that is not there.
+-	if specID != "" {
+-		_ = os.Setenv(config.EnvMoaiKanbanSpec, specID)
+-	}
+ 
+ 	return func() {
+-		restoreSpec()
+ 		restoreBackend()
+ 	}
+ }
+@@ -573,25 +351,6 @@
+ 	nameFlagShort = "-n"
+ )
+ 
+-// parseCompanionLabel reports the companion label in args, if any.
+-//
+-// It matches only the companion SHAPE (kanban.SplitCompanionLabel) because the
+-// alternative discriminators are worse. Treating every named session as a
+-// companion would
+-// silently raise the Stop-hook block cap from 8 to 200 for unrelated work, and a
+-// state file the leader writes and companions read buys nothing here beyond one
+-// more file to keep consistent.
+-//
+-// The `--` discipline matches parseKanbanFlag, stripSpawnFlag, parseProfileFlag
+-// and normalizeWorktreeFlag: iterate, break at the pass-through marker, and read
+-// nothing beyond it. args is returned to the caller untouched.
+-func parseCompanionLabel(args []string) (label string, ok bool) {
+-	return parseNamedLabel(args, func(candidate string) bool {
+-		_, _, isCompanion := kanban.SplitCompanionLabel(candidate)
+-		return isCompanion
+-	})
+-}
+-
+ // parseLeaderLabel reports the `leader-<run-id>` label in args, if any.
+ //
+ // It is parseCompanionLabel's counterpart and exists for the launcher to read
+@@ -744,58 +503,3 @@
+ 	_ = os.Setenv(config.EnvMoaiKanbanLeadName, name)
+ 	return restore
+ }
+-
+-// rejectKanbanOnCG returns the sentinel-bearing error when a kanban token
+-// appears in a `moai cg` invocation, and nil otherwise.
+-func rejectKanbanOnCG(args []string) error {
+-	p, err := parseKanbanFlag(args)
+-	if err != nil {
+-		return err
+-	}
+-	// v1.2.0: the FACTORY shapes of -k (a numeric count, or a lane-shape
+-	// name) are the factory rejection's to answer (rejectFactoryOnCG fires
+-	// right after this one); only the plain kanban shapes carry the kanban
+-	// sentinel here.
+-	if !p.KanbanEnabled || p.FactoryEnabled {
+-		return nil
+-	}
+-	return fmt.Errorf("%s: moai cg runs a mixed backend (CG leader Claude, CG teammates GLM), "+
+-		"which contradicts Kanban Mode's one-session / one-backend / one-chain premise; "+
+-		"use 'moai cc --kanban' or 'moai glm --kanban' instead", kanbanUnsupportedBackendSentinel)
+-}
+-
+-// kanbanBranch enumerates the three dispatch outcomes of the §A.2 truth table.
+-type kanbanBranch int
+-
+-const (
+-	kanbanBranchNone      kanbanBranch = iota // no-op — -k absent (regardless of --name shape)
+-	kanbanBranchLeader                        // -k present, --name is NOT companion-shape
+-	kanbanBranchCompanion                     // -k present, --name IS companion-shape
+-)
+-
+-// resolveKanbanBranch selects the dispatch branch from the combination of -k
+-// present and companion-shape --name present.
+-//
+-// This is the four-row truth table at spec.md §A.2 (REQ-FB-001, REQ-FB-002):
+-//
+-//	kanbanEnabled | isCompanion || branch
+-//	---------------++--------------
+-//	      true      |    false     || leader     (-k alone, or -k --name <non-companion>)
+-//	      true      |    true      || companion  (-k --name <role>, or a bumped <role>-<n>)
+-//	      false     |    false     || no-op      (--name <non-companion>, or no --name)
+-//	      false     |    true      || no-op      (--name <companion-shape> alone — BREAKING from 94025ce0a)
+-//
+-// The two !kanbanEnabled rows collapse to no-op because `isCompanion` is
+-// consulted only when -k is present (spec.md §A.2.1 / AC-FB-027): a companion-
+-// shape --name alone, which entered companion mode under 94025ce0a, is
+-// reclassified as a no-op by REQ-FB-001's no-`-k` clause.
+-func resolveKanbanBranch(kanbanEnabled, isCompanion bool) kanbanBranch {
+-	switch {
+-	case kanbanEnabled && isCompanion:
+-		return kanbanBranchCompanion
+-	case kanbanEnabled && !isCompanion:
+-		return kanbanBranchLeader
+-	default:
+-		return kanbanBranchNone
+-	}
+-}
+diff --git a/internal/cli/kanban_autonomy_test.go b/internal/cli/kanban_autonomy_test.go
+--- a/internal/cli/kanban_autonomy_test.go
++++ b/internal/cli/kanban_autonomy_test.go
+@@ -1,93 +1,5 @@
+ package cli
+ 
+-import (
+-	"os"
+-	"testing"
+-
+-	"github.com/modu-ai/moai-adk/internal/config"
+-)
+-
+ // The tier seed is the difference between a board that advances on its own and
+ // one that stops at every commit. These tests are deliberately NOT parallel:
+ // they read and write a process-global variable, and t.Setenv forbids it anyway.
+-
+-// TestKanbanModeSeedsFullyAutonomousTier is the load-bearing property of -k.
+-// Without the seed the variable stays unset, config.AutonomyTier fails safe to
+-// semi-auto, and every commit pays the synchronous vet+lint+test gate — the
+-// most-interrupted tier, reached by launching the mode built to avoid it.
+-func TestKanbanModeSeedsFullyAutonomousTier(t *testing.T) {
+-	cases := []struct {
+-		name  string
+-		enter func() func()
+-	}{
+-		{"lead", func() func() { return enterKanbanMode("SPEC-KANBAN-001", "") }},
+-		{"companion", func() func() { return enterKanbanCompanionMode("plan-tjlgt1") }},
+-	}
+-
+-	for _, c := range cases {
+-		t.Run(c.name, func(t *testing.T) {
+-			t.Setenv(config.EnvAutonomyTier, "placeholder")
+-			if err := os.Unsetenv(config.EnvAutonomyTier); err != nil {
+-				t.Fatalf("unsetenv: %v", err)
+-			}
+-
+-			restore := c.enter()
+-
+-			if got := os.Getenv(config.EnvAutonomyTier); got != config.AutonomyTierFullyAutonomous {
+-				t.Errorf("%s tier = %q, want %q", c.name, got, config.AutonomyTierFullyAutonomous)
+-			}
+-			if got := config.AutonomyTier(); got != config.AutonomyTierFullyAutonomous {
+-				t.Errorf("config.AutonomyTier() = %q, want %q — the seed must be readable through the canonical reader, not just the raw variable", got, config.AutonomyTierFullyAutonomous)
+-			}
+-
+-			restore()
+-
+-			if _, present := os.LookupEnv(config.EnvAutonomyTier); present {
+-				t.Errorf("%s left %s set after restore; prior presence was absent", c.name, config.EnvAutonomyTier)
+-			}
+-		})
+-	}
+-}
+-
+-// TestKanbanModePreservesExplicitTier: an operator who names a tier has made a
+-// choice, and -k is not entitled to overrule it. Someone running the board at
+-// semi-auto on purpose — to watch a risky card go through — must get semi-auto.
+-func TestKanbanModePreservesExplicitTier(t *testing.T) {
+-	for _, tier := range []string{config.AutonomyTierSemiAuto, config.AutonomyTierAutomatic} {
+-		t.Run(tier, func(t *testing.T) {
+-			t.Setenv(config.EnvAutonomyTier, tier)
+-
+-			restore := enterKanbanMode("", "")
+-			if got := os.Getenv(config.EnvAutonomyTier); got != tier {
+-				t.Errorf("explicit tier %q was overwritten with %q", tier, got)
+-			}
+-			restore()
+-
+-			if got := os.Getenv(config.EnvAutonomyTier); got != tier {
+-				t.Errorf("after restore tier = %q, want the operator's %q", got, tier)
+-			}
+-		})
+-	}
+-}
+-
+-// TestKanbanModeTreatsBlankTierAsUnset: a wrapper that exports the name with no
+-// value has not made a choice, and config.AutonomyTier already reads blank as
+-// semi-auto. Honoring the blank would hand -k the most-interrupted tier through
+-// an empty string nobody typed on purpose.
+-func TestKanbanModeTreatsBlankTierAsUnset(t *testing.T) {
+-	for _, blank := range []string{"", "   "} {
+-		t.Run("blank="+blank, func(t *testing.T) {
+-			t.Setenv(config.EnvAutonomyTier, blank)
+-
+-			restore := enterKanbanMode("", "")
+-			if got := os.Getenv(config.EnvAutonomyTier); got != config.AutonomyTierFullyAutonomous {
+-				t.Errorf("blank tier %q left as %q, want it filled in with %q", blank, got, config.AutonomyTierFullyAutonomous)
+-			}
+-			restore()
+-
+-			if got := os.Getenv(config.EnvAutonomyTier); got != blank {
+-				t.Errorf("after restore tier = %q, want the prior blank %q", got, blank)
+-			}
+-		})
+-	}
+-}
+diff --git a/internal/cli/kanban_bootstrap_test.go b/internal/cli/kanban_bootstrap_test.go
+--- a/internal/cli/kanban_bootstrap_test.go
++++ b/internal/cli/kanban_bootstrap_test.go
+@@ -1,130 +1 @@
+ package cli
+-
+-import (
+-	"os"
+-	"slices"
+-	"testing"
+-
+-	"github.com/modu-ai/moai-adk/internal/config"
+-	"github.com/modu-ai/moai-adk/internal/kanban"
+-)
+-
+-// TestParseCompanionLabelRecognizesWithoutConsuming is the load-bearing property
+-// of the `--name` recognition: moai learns the label, and claude still receives
+-// the flag. Consuming it would name the session nothing at all.
+-func TestParseCompanionLabelRecognizesWithoutConsuming(t *testing.T) {
+-	t.Parallel()
+-
+-	cases := []struct {
+-		name string
+-		args []string
+-		want string
+-	}{
+-		{"long form", []string{"--name", "plan-tjlgt1"}, "plan-tjlgt1"},
+-		{"short form", []string{"-n", "run-tjlgt1"}, "run-tjlgt1"},
+-		{"long equals form", []string{"--name=plan-tjlgt1"}, "plan-tjlgt1"},
+-		{"short equals form", []string{"-n=sync-tjlgt1"}, "sync-tjlgt1"},
+-		{"among other flags", []string{"-p", "dev", "--name", "sync-abc123", "--verbose"}, "sync-abc123"},
+-
+-		{"absent", []string{"-p", "dev"}, ""},
+-		{"no value", []string{"--name"}, ""},
+-		{"non-companion name", []string{"--name", "oauth-migration"}, ""},
+-		{"lead shape is not a companion role", []string{"--name", "lead-tjlgt1"}, ""},
+-		{"empty args", nil, ""},
+-	}
+-
+-	for _, c := range cases {
+-		t.Run(c.name, func(t *testing.T) {
+-			t.Parallel()
+-			before := slices.Clone(c.args)
+-
+-			got, ok := parseCompanionLabel(c.args)
+-			if got != c.want || ok != (c.want != "") {
+-				t.Errorf("parseCompanionLabel(%v) = (%q, %v), want (%q, %v)",
+-					before, got, ok, c.want, c.want != "")
+-			}
+-			if !slices.Equal(c.args, before) {
+-				t.Errorf("args mutated: %v -> %v (--name must reach claude unchanged)", before, c.args)
+-			}
+-		})
+-	}
+-}
+-
+-// TestParseCompanionLabelStopsAtPassThroughMarker asserts the `--` discipline
+-// shared with parseKanbanFlag, stripSpawnFlag, parseProfileFlag and
+-// normalizeWorktreeFlag: nothing past the marker is read.
+-func TestParseCompanionLabelStopsAtPassThroughMarker(t *testing.T) {
+-	t.Parallel()
+-
+-	if got, ok := parseCompanionLabel([]string{"--", "--name", "plan-tjlgt1"}); ok {
+-		t.Errorf("read %q from beyond the pass-through marker", got)
+-	}
+-	// A label BEFORE the marker is still recognized.
+-	if got, ok := parseCompanionLabel([]string{"--name", "plan-tjlgt1", "--", "-n", "run-zzz"}); !ok || got != "plan-tjlgt1" {
+-		t.Errorf("parseCompanionLabel = (%q, %v), want (\"plan-tjlgt1\", true)", got, ok)
+-	}
+-}
+-
+-// TestEnterKanbanModeSetsRunID asserts the lead mints a run id, and that the
+-// restore returns every variable to its PRIOR PRESENCE — an unset variable is
+-// unset again, not set to "".
+-//
+-// Non-parallel by construction: os.Setenv mutates process-global state.
+-func TestEnterKanbanModeSetsRunID(t *testing.T) {
+-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanSpec} {
+-		t.Setenv(key, "")
+-		_ = os.Unsetenv(key)
+-	}
+-
+-	restore := enterKanbanMode("SPEC-EXAMPLE-001", "")
+-
+-	runID := os.Getenv(config.EnvMoaiKanbanID)
+-	if runID == "" {
+-		t.Fatalf("%s not set by enterKanbanMode", config.EnvMoaiKanbanID)
+-	}
+-	if _, ok := kanban.SplitLeaderLabel(kanban.RoleLeader + "-" + runID); !ok {
+-		t.Errorf("run id %q does not produce a parseable lead label", runID)
+-	}
+-	if os.Getenv(config.EnvMoaiKanban) != "1" {
+-		t.Errorf("%s not set", config.EnvMoaiKanban)
+-	}
+-
+-	restore()
+-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanSpec} {
+-		if _, present := os.LookupEnv(key); present {
+-			t.Errorf("%s still present after restore (prior presence not restored)", key)
+-		}
+-	}
+-}
+-
+-// TestEnterKanbanCompanionModeSetsLabelNotKanban is the separation this whole
+-// change rests on: a companion takes the raised block cap but must NOT be seeded
+-// with the chain, or three sessions each drive the whole chain. Under the
+-// bare-role naming policy it also publishes no run id — the id is lead-owned
+-// state, and a companion-published one is the t21 mismatch root.
+-func TestEnterKanbanCompanionModeSetsLabelNotKanban(t *testing.T) {
+-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel} {
+-		t.Setenv(key, "")
+-		_ = os.Unsetenv(key)
+-	}
+-
+-	restore := enterKanbanCompanionMode("sync")
+-
+-	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "sync" {
+-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "sync")
+-	}
+-	if _, present := os.LookupEnv(config.EnvMoaiKanbanID); present {
+-		t.Errorf("%s must NOT be set on a companion (the run id is lead-owned state)",
+-			config.EnvMoaiKanbanID)
+-	}
+-	if _, present := os.LookupEnv(config.EnvMoaiKanban); present {
+-		t.Errorf("%s must NOT be set on a companion (it seeds the chain)", config.EnvMoaiKanban)
+-	}
+-
+-	restore()
+-	for _, key := range []string{config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel} {
+-		if _, present := os.LookupEnv(key); present {
+-			t.Errorf("%s still present after restore", key)
+-		}
+-	}
+-}
+diff --git a/internal/cli/kanban_companion_name_test.go b/internal/cli/kanban_companion_name_test.go
+--- a/internal/cli/kanban_companion_name_test.go
++++ b/internal/cli/kanban_companion_name_test.go
+@@ -6,139 +6,6 @@
+ // branch publishes no run id — the t21 incident class (lead MOAI_KANBAN_ID
+ // vs companion suffix mismatch) is removed at its root by the latter.
+ 
+-import (
+-	"bytes"
+-	"os"
+-	"strings"
+-	"testing"
+-
+-	"github.com/modu-ai/moai-adk/internal/config"
+-	"github.com/modu-ai/moai-adk/internal/kanban"
+-)
+-
+-// TestResolveCompanionName_FreeLabelUnchanged: a bare role nobody holds
+-// launches under itself, and the claim is registered so the NEXT companion
+-// bumps.
+-func TestResolveCompanionName_FreeLabelUnchanged(t *testing.T) {
+-	root := t.TempDir()
+-	if got := resolveCompanionName(root, "plan", nil); got != "plan" {
+-		t.Fatalf("free label = %q, want plan", got)
+-	}
+-	reg := loadFactoryRegistry(companionRegistryPath(root))
+-	if e, ok := reg["plan"]; !ok || e.PID != os.Getpid() {
+-		t.Errorf("plan not registered to this pid: %+v", reg)
+-	}
+-}
+-
+-// TestResolveCompanionName_LiveClaimBumps: a label held by a live session is
+-// bumped to the next free number for its role, and the bump is stated on the
+-// notes writer the operator reads at launch.
+-func TestResolveCompanionName_LiveClaimBumps(t *testing.T) {
+-	root := t.TempDir()
+-	// Simulate two live holders: plan and plan-1.
+-	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryLaneEntry{
+-		"plan":   {PID: 11100},
+-		"plan-1": {PID: 11101},
+-	}); err != nil {
+-		t.Fatalf("seed registry: %v", err)
+-	}
+-	probe := factoryProcessAlive
+-	factoryProcessAlive = func(pid int) bool { return pid == 11100 || pid == 11101 }
+-	defer func() { factoryProcessAlive = probe }()
+-
+-	var notes bytes.Buffer
+-	got := resolveCompanionName(root, "plan", &notes)
+-	if got != "plan-2" {
+-		t.Fatalf("bumped label = %q, want plan-2 (plan and plan-1 are live)", got)
+-	}
+-	if !strings.Contains(notes.String(), "plan-2") {
+-		t.Errorf("operator note missing the final label: %q", notes.String())
+-	}
+-	reg := loadFactoryRegistry(companionRegistryPath(root))
+-	if e, ok := reg["plan-2"]; !ok || e.PID != os.Getpid() {
+-		t.Errorf("plan-2 not registered to this pid: %+v", reg)
+-	}
+-}
+-
+-// TestResolveCompanionName_DeadClaimReclaimed: a crashed companion leaves a
+-// dead pid behind; a dead claim frees the name so a relaunch reuses it instead
+-// of counting up forever.
+-func TestResolveCompanionName_DeadClaimReclaimed(t *testing.T) {
+-	root := t.TempDir()
+-	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryLaneEntry{
+-		"plan": {PID: 11100},
+-	}); err != nil {
+-		t.Fatalf("seed registry: %v", err)
+-	}
+-	probe := factoryProcessAlive
+-	factoryProcessAlive = func(int) bool { return false }
+-	defer func() { factoryProcessAlive = probe }()
+-
+-	if got := resolveCompanionName(root, "plan", nil); got != "plan" {
+-		t.Fatalf("dead claim should free the label, got %q", got)
+-	}
+-}
+-
+-// TestResolveCompanionName_LegacySuffixHeldBumpsToNumbered: a legacy
+-// run-id-suffixed label still parses, and when held the bump produces the
+-// numbered form for the role — never a second hyphen.
+-func TestResolveCompanionName_LegacySuffixHeldBumpsToNumbered(t *testing.T) {
+-	root := t.TempDir()
+-	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryLaneEntry{
+-		"plan-abc123": {PID: 11100},
+-	}); err != nil {
+-		t.Fatalf("seed registry: %v", err)
+-	}
+-	probe := factoryProcessAlive
+-	factoryProcessAlive = func(pid int) bool { return pid == 11100 }
+-	defer func() { factoryProcessAlive = probe }()
+-
+-	got := resolveCompanionName(root, "plan-abc123", nil)
+-	if got != "plan-1" {
+-		t.Fatalf("bumped legacy label = %q, want plan-1", got)
+-	}
+-	if _, _, ok := kanban.SplitCompanionLabel(got); !ok {
+-		t.Errorf("bumped label %q does not parse as a companion label", got)
+-	}
+-}
+-
+-// TestResolveCompanionName_NonCompanionLabelUntouched: the bump machinery is
+-// reached only after the companion-shape branch, but it must also hold its own
+-// — a label that does not parse is registered and returned as supplied, not
+-// mangled.
+-func TestResolveCompanionName_NonCompanionLabelUntouched(t *testing.T) {
+-	root := t.TempDir()
+-	if got := resolveCompanionName(root, "board-watch", nil); got != "board-watch" {
+-		t.Fatalf("non-companion label = %q, want it back unchanged", got)
+-	}
+-}
+-
+-// TestEnterKanbanCompanionModeDoesNotPublishRunID is the t21 root removal: a
+-// companion's membership is its label, and no companion surface carries a run
+-// id anymore. Publishing one derived from the label suffix (a collision
+-// number under the new policy) would recreate exactly the mismatch class the
+-// bare-name policy removes.
+-func TestEnterKanbanCompanionModeDoesNotPublishRunID(t *testing.T) {
+-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel} {
+-		t.Setenv(key, "")
+-		_ = os.Unsetenv(key)
+-	}
+-
+-	restore := enterKanbanCompanionMode("plan")
+-	defer restore()
+-
+-	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "plan" {
+-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "plan")
+-	}
+-	if _, present := os.LookupEnv(config.EnvMoaiKanbanID); present {
+-		t.Errorf("%s must NOT be set on a companion (the run id is lead-owned state; "+
+-			"a companion-published id is the t21 mismatch root)", config.EnvMoaiKanbanID)
+-	}
+-	if _, present := os.LookupEnv(config.EnvMoaiKanban); present {
+-		t.Errorf("%s must NOT be set on a companion (it seeds the chain)", config.EnvMoaiKanban)
+-	}
+-}
+-
+ // The companion role a record carries is no longer parsed here. The launcher
+ // stopped writing the record (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-002),
+ // so the label-to-role parse moved to the session that writes it:
+diff --git a/internal/cli/kanban_dispatch_test.go b/internal/cli/kanban_dispatch_test.go
+--- a/internal/cli/kanban_dispatch_test.go
++++ b/internal/cli/kanban_dispatch_test.go
+@@ -30,97 +30,3 @@
+ 		_ = os.Unsetenv(key)
+ 	}
+ }
+-
+-// TestResolveKanbanBranchTruthTable is AC-FB-001..004 + AC-FB-027: the four-row
+-// truth table at spec.md §A.2, including the breaking-change 5th case
+-// (companion-shape --name alone → no-op).
+-func TestResolveKanbanBranchTruthTable(t *testing.T) {
+-	t.Parallel()
+-
+-	cases := []struct {
+-		name          string
+-		kanbanEnabled bool
+-		isCompanion   bool
+-		want          kanbanBranch
+-	}{
+-		{"row1: -k alone → lead", true, false, kanbanBranchLeader},
+-		{"row2: -k --name <companion> → companion", true, true, kanbanBranchCompanion},
+-		{"row3: --name <non-companion> alone → no-op", false, false, kanbanBranchNone},
+-		{"row4: -k --name <non-companion> → lead", true, false, kanbanBranchLeader},
+-		{"row5 (BREAKING): --name <companion-shape> alone → no-op", false, true, kanbanBranchNone},
+-	}
+-	for _, c := range cases {
+-		t.Run(c.name, func(t *testing.T) {
+-			t.Parallel()
+-			got := resolveKanbanBranch(c.kanbanEnabled, c.isCompanion)
+-			if got != c.want {
+-				t.Errorf("resolveKanbanBranch(kanbanEnabled=%v, isCompanion=%v) = %v, want %v",
+-					c.kanbanEnabled, c.isCompanion, got, c.want)
+-			}
+-		})
+-	}
+-}
+-
+-// TestDispatchOutcome_LeadEnvState is AC-FB-001 / AC-FB-006 / AC-FB-007: driving
+-// the lead branch (kanbanBranchLeader) through the real enterKanbanMode produces the correct env
+-// state (MOAI_KANBAN set, MOAI_KANBAN_ID set, MOAI_KANBAN_LABEL unset).
+-func TestDispatchOutcome_LeadEnvState(t *testing.T) {
+-	clearAllKanbanEnv(t)
+-	if resolveKanbanBranch(true, false) != kanbanBranchLeader {
+-		t.Fatal("expected lead branch")
+-	}
+-	restore := enterKanbanMode("SPEC-FOO-001", "")
+-	defer restore()
+-
+-	if os.Getenv(config.EnvMoaiKanban) == "" {
+-		t.Errorf("MOAI_KANBAN not set (lead must carry the chain seed)")
+-	}
+-	if os.Getenv(config.EnvMoaiKanbanID) == "" {
+-		t.Errorf("MOAI_KANBAN_ID not set")
+-	}
+-	if os.Getenv(config.EnvMoaiKanbanSpec) != "SPEC-FOO-001" {
+-		t.Errorf("MOAI_KANBAN_SPEC = %q, want SPEC-FOO-001", os.Getenv(config.EnvMoaiKanbanSpec))
+-	}
+-	if _, present := os.LookupEnv(config.EnvMoaiKanbanLabel); present {
+-		t.Errorf("MOAI_KANBAN_LABEL must NOT be set on a lead")
+-	}
+-}
+-
+-// TestDispatchOutcome_CompanionEnvState is AC-FB-002 / AC-FB-006: driving the
+-// companion branch through enterKanbanCompanionMode produces the correct env
+-// state (MOAI_KANBAN_LABEL set, MOAI_KANBAN unset, MOAI_KANBAN_ID unset), and
+-// t118 seeds the per-lane agent cap — the companion's subagent fan-out is
+-// what the cap bounds.
+-func TestDispatchOutcome_CompanionEnvState(t *testing.T) {
+-	clearAllKanbanEnv(t)
+-	if resolveKanbanBranch(true, true) != kanbanBranchCompanion {
+-		t.Fatal("expected companion branch")
+-	}
+-	restore := enterKanbanCompanionMode("run-abc123")
+-	defer restore()
+-
+-	if os.Getenv(config.EnvMoaiKanbanLabel) != "run-abc123" {
+-		t.Errorf("MOAI_KANBAN_LABEL = %q, want \"run-abc123\"", os.Getenv(config.EnvMoaiKanbanLabel))
+-	}
+-	if _, present := os.LookupEnv(config.EnvMoaiKanban); present {
+-		t.Errorf("MOAI_KANBAN must NOT be set on a companion")
+-	}
+-	if got := os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents); got != "10" {
+-		t.Errorf("%s = %q, want 10 (the per-lane cap on a companion)", config.EnvClaudeCodeMaxConcurrentSubagents, got)
+-	}
+-}
+-
+-// TestDispatchOutcome_NoOpEnvState is AC-FB-003 / AC-FB-027: the no-op branch
+-// leaves every kanban env var unset — including the breaking-change case where
+-// --name carries the companion shape but -k is absent.
+-func TestDispatchOutcome_NoOpEnvState(t *testing.T) {
+-	clearAllKanbanEnv(t)
+-	if resolveKanbanBranch(false, true) != kanbanBranchNone {
+-		t.Fatal("expected no-op branch for companion-shape --name alone (AC-FB-027)")
+-	}
+-	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel, config.EnvMoaiKanbanSpec} {
+-		if _, present := os.LookupEnv(key); present {
+-			t.Errorf("%s set on a no-op dispatch", key)
+-		}
+-	}
+-}
+diff --git a/internal/cli/kanban_lead_name_test.go b/internal/cli/kanban_lead_name_test.go
+--- a/internal/cli/kanban_lead_name_test.go
++++ b/internal/cli/kanban_lead_name_test.go
+@@ -6,7 +6,6 @@
+ // `--name lead-<run-id>` instead. The operator's own name always wins.
+ 
+ import (
+-	"os"
+ 	"testing"
+ 
+ 	"github.com/modu-ai/moai-adk/internal/config"
+@@ -93,86 +92,6 @@
+ 	}
+ }
+ 
+-// TestLeadNameArgs_LabelIsNotCompanionShape guards the reclassification hazard:
+-// the injected name must never satisfy the companion-shape discriminator, or a
+-// re-parse of the argv would route the lead down the companion branch.
+-func TestLeadNameArgs_LabelIsNotCompanionShape(t *testing.T) {
+-	clearAllKanbanEnv(t)
+-
+-	args := leaderNameArgs(nil)
+-	if len(args) != 2 {
+-		t.Fatalf("leaderNameArgs = %q, want a --name pair", args)
+-	}
+-	if _, _, isCompanion := kanban.SplitCompanionLabel(args[1]); isCompanion {
+-		t.Errorf("injected lead label %q reads as a companion label", args[1])
+-	}
+-	if _, ok := parseCompanionLabel(args); ok {
+-		t.Errorf("injected lead label %q is picked up by parseCompanionLabel", args[1])
+-	}
+-}
+-
+-// TestEnterKanbanMode_AdoptsOperatorLeadRunID is the assertion whose ABSENCE let
+-// the divergence ship green: the prior suite checked only that leaderNameArgs
+-// returned nil for an operator-named lead, never that the run id the launcher
+-// published matched the one in that name. It did not — the launcher minted a
+-// fresh id beside it, and the SessionStart notice, which reads the environment,
+-// then printed companion commands for a run the session was not on.
+-//
+-// Everything downstream of the mint is asserted, not just the id itself: the
+-// leader socket path is derived from the same value and is what a companion
+-// would address.
+-func TestEnterKanbanMode_AdoptsOperatorLeadRunID(t *testing.T) {
+-	clearAllKanbanEnv(t)
+-
+-	args := []string{"--name", "leader-abc123"}
+-	label, ok := parseLeaderLabel(args)
+-	if !ok {
+-		t.Fatalf("parseLeaderLabel(%q) did not recognize the lead name", args)
+-	}
+-	restore := enterKanbanMode("", label)
+-	defer restore()
+-
+-	if got := os.Getenv(config.EnvMoaiKanbanID); got != "abc123" {
+-		t.Errorf("%s = %q, want %q (the id from the operator's name)", config.EnvMoaiKanbanID, got, "abc123")
+-	}
+-	if got, want := os.Getenv(config.EnvMoaiKanbanLeadAddr), "/tmp/moai-socket-kanban/abc123"; got != want {
+-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLeadAddr, got, want)
+-	}
+-	// The operator's name still wins — adoption must not also inject a second
+-	// --name and hand claude two.
+-	if got := leaderNameArgs(args); got != nil {
+-		t.Errorf("leaderNameArgs(%q) = %q, want nil (operator name wins)", args, got)
+-	}
+-}
+-
+-// TestEnterKanbanMode_MintsWithoutLeadName is the other half of the contract: a
+-// lead with no usable name in argv still gets a run id, so the bare
+-// `moai cc -k` launch is unchanged by adoption.
+-func TestEnterKanbanMode_MintsWithoutLeadName(t *testing.T) {
+-	for _, c := range []struct {
+-		name  string
+-		label string
+-	}{
+-		{"no name at all", ""},
+-		{"non-lead name", "board-watch"},
+-		{"the bare leader name carries no id to adopt", "leader"},
+-		{"a bump number is not a run id", "leader-2"},
+-		{"lead prefix with no id", "leader-"},
+-		{"uppercase is not a run id shape", "leader-ABC123"},
+-		{"a second hyphen is not a run id shape", "leader-a-b"},
+-	} {
+-		t.Run(c.name, func(t *testing.T) {
+-			clearAllKanbanEnv(t)
+-			restore := enterKanbanMode("", c.label)
+-			defer restore()
+-
+-			if got := os.Getenv(config.EnvMoaiKanbanID); got == "" {
+-				t.Errorf("%s is empty, want a freshly minted run id", config.EnvMoaiKanbanID)
+-			}
+-		})
+-	}
+-}
+-
+ // TestParseLeaderLabel covers the four name forms claude accepts and the shapes
+ // that must NOT read as a lead label.
+ func TestParseLeaderLabel(t *testing.T) {
+@@ -211,21 +130,6 @@
+ 	}
+ }
+ 
+-// TestLeadLabelNeverReadsAsCompanion guards the branch that would be broken by
+-// recognizing lead names: resolveKanbanBranch must still route a lead-named
+-// `-k` launch down the lead branch, not the companion one.
+-func TestLeadLabelNeverReadsAsCompanion(t *testing.T) {
+-	t.Parallel()
+-
+-	args := []string{"--name", "leader-abc123"}
+-	if _, isCompanion := parseCompanionLabel(args); isCompanion {
+-		t.Fatalf("parseCompanionLabel(%q) matched a lead name", args)
+-	}
+-	if branch := resolveKanbanBranch(true, false); branch != kanbanBranchLeader {
+-		t.Errorf("resolveKanbanBranch = %v, want the lead branch", branch)
+-	}
+-}
+-
+ // TestLeadRunID_AdoptsEnvironmentRunID pins the carrier that REPLACED the name
+ // round-trip. With the run id gone from the session name, a relaunched lead
+ // recovers its id from MOAI_KANBAN_ID or not at all — so this is the whole
+@@ -286,21 +190,6 @@
+ 	}
+ }
+ 
+-// TestResolveLeadName_SeparateFromCompanions pins the namespace split: the lead
+-// registry is its own file, so a companion holding `plan` can never bump a lead
+-// and vice versa.
+-func TestResolveLeadName_SeparateFromCompanions(t *testing.T) {
+-	root := t.TempDir()
+-
+-	resolveCompanionName(root, kanban.CompanionLabel("plan"), nil)
+-	if got := resolveLeaderName(root, kanban.LeaderLabel(), nil); got != kanban.LeaderLabel() {
+-		t.Errorf("lead launched as %q after a companion claim, want the bare %q", got, kanban.LeaderLabel())
+-	}
+-	if leaderRegistryPath(root) == companionRegistryPath(root) {
+-		t.Error("lead and companion registries share one path")
+-	}
+-}
+-
+ // TestAppendLeadName_OperatorNameWins asserts the helper preserves the gate it
+ // wraps: an operator-named lead gets no injected name, bumped or otherwise.
+ func TestAppendLeadName_OperatorNameWins(t *testing.T) {
+diff --git a/internal/cli/launcher_blockcap_infinite.go b/internal/cli/launcher_blockcap_infinite.go
+--- a/internal/cli/launcher_blockcap_infinite.go
++++ b/internal/cli/launcher_blockcap_infinite.go
+@@ -54,8 +54,7 @@
+ 	// driven and long, and the run is meant to survive unattended. It is
+ 	// signalled by EnvMoaiFactoryWorkers, which both branches set and which
+ 	// never implies a kanban chain.
+-	if os.Getenv(config.EnvMoaiKanban) != "" || os.Getenv(config.EnvMoaiKanbanLabel) != "" ||
+-		os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
++	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+ 		return setStopHookBlockCap(base, DefaultRaisedStopHookBlockCap)
+ 	}
+ 	if projectRoot == "" || sessionID == "" {
+diff --git a/internal/cli/launcher_retired_entries.go b/internal/cli/launcher_retired_entries.go
+--- /dev/null
++++ b/internal/cli/launcher_retired_entries.go
+@@ -0,0 +1,28 @@
++package cli
++
++import (
++	"fmt"
++	"strings"
++)
++
++// Compile-probe model of the M5a file (SPEC-LAUNCHER-ENTRY-FLAGS-001): the retired -k
++// spellings live here, so the two token constants and the refusal text leave kanban.go.
++const (
++	retiredLongFlag  = "--kanban"
++	retiredShortFlag = "-k"
++)
++
++const retiredEntryRefusal = "-k/--kanban is retired: Kanban Mode was removed; use -f for the factory leader and -l for a lane"
++
++// refuseRetiredEntry returns the refusal when args carry a retired -k spelling.
++func refuseRetiredEntry(args []string) error {
++	for _, a := range args {
++		if a == "--" {
++			return nil
++		}
++		if a == retiredShortFlag || a == retiredLongFlag || strings.HasPrefix(a, retiredShortFlag+"=") || strings.HasPrefix(a, retiredLongFlag+"=") {
++			return fmt.Errorf("%s", retiredEntryRefusal)
++		}
++	}
++	return nil
++}
+diff --git a/internal/cli/role_naming_m3_homonym_test.go b/internal/cli/role_naming_m3_homonym_test.go
+--- a/internal/cli/role_naming_m3_homonym_test.go
++++ b/internal/cli/role_naming_m3_homonym_test.go
+@@ -5,26 +5,3 @@
+ // in factory.go and kanban.go) carry their CG qualifier next to each role
+ // noun. Qualify, never rename — the sentinels and the surrounding sentence
+ // stay.
+-
+-import (
+-	"strings"
+-	"testing"
+-)
+-
+-func TestCGMixedBackendRefusalsCarryQualifier(t *testing.T) {
+-	factoryErr := rejectFactoryOnCG([]string{"-f"})
+-	if factoryErr == nil {
+-		t.Fatal("rejectFactoryOnCG(-f 2) returned nil, want the mixed-backend refusal")
+-	}
+-	if !strings.Contains(factoryErr.Error(), "(CG leader Claude, CG teammates GLM)") {
+-		t.Errorf("factory refusal lacks the CG qualifiers: %v", factoryErr)
+-	}
+-
+-	kanbanErr := rejectKanbanOnCG([]string{"-k"})
+-	if kanbanErr == nil {
+-		t.Fatal("rejectKanbanOnCG(-k) returned nil, want the mixed-backend refusal")
+-	}
+-	if !strings.Contains(kanbanErr.Error(), "(CG leader Claude, CG teammates GLM)") {
+-		t.Errorf("kanban refusal lacks the CG qualifiers: %v", kanbanErr)
+-	}
+-}

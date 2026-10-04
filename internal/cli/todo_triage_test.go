@@ -119,8 +119,8 @@ func TestTodoTriageSymbols(t *testing.T) {
 		},
 		{
 			"korean card text with a backticked path",
-			"`internal/kanban/prlink.go` 의 판별식이 브랜치마다 다르게 읽힌다",
-			[]string{"internal/kanban/prlink.go"},
+			"`internal/factory/prlink.go` 의 판별식이 브랜치마다 다르게 읽힌다",
+			[]string{"internal/factory/prlink.go"},
 		},
 		{
 			"korean prose with no extractable shape",
@@ -396,7 +396,7 @@ func TestTodoTriage_PathNeighborhoodReadsTheCachedTree(t *testing.T) {
 		lsTree: spyLogAnswer{out: strings.Join([]string{
 			"internal/cli/todo_pr.go",
 			"internal/cli/todo.go",
-			"internal/kanban/todo_gone_helper.go",
+			"internal/factory/todo_gone_helper.go",
 		}, "\n")},
 	})
 
@@ -407,7 +407,7 @@ func TestTodoTriage_PathNeighborhoodReadsTheCachedTree(t *testing.T) {
 	if !strings.Contains(out, "2 entries in internal/cli") {
 		t.Errorf("expected the directory listing\n--- got ---\n%s", out)
 	}
-	if !strings.Contains(out, "internal/kanban/todo_gone_helper.go") {
+	if !strings.Contains(out, "internal/factory/todo_gone_helper.go") {
 		t.Errorf("expected the near-name sibling elsewhere\n--- got ---\n%s", out)
 	}
 	if !strings.Contains(out, "OPPOSITE conclusions") {

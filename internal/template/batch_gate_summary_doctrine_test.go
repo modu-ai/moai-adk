@@ -198,7 +198,9 @@ func batchGateAnchors() []batchGateAnchor {
 			unit(`approvable only when all four hold`),
 			unit(`reported as blocked`, `excluded from the (single )?approval`),
 		), rep("reported as blocked and excluded from the single approval", "left out without a report")},
-		{"A30", blockedState(`PASS-WITH-DEBT`), rep("PASS-WITH-DEBT, ", "")},
+		// A PASS-WITH-DEBT the plan-phase admission predicate admits is
+		// approvable (§9.1); only one it refuses stays a blocked state.
+		{"A30", blockedState(`PASS-WITH-DEBT not admitted by the predicate`), rep("PASS-WITH-DEBT not admitted by the predicate, ", "")},
 		{"A31", blockedState(`BYPASSED`), rep("BYPASSED, ", "")},
 		{"A32", blockedState(`\bFAIL\b`), rep("FAIL, INCONCLUSIVE", "INCONCLUSIVE")},
 		{"A33", blockedState(`INCONCLUSIVE`), rep("INCONCLUSIVE, ", "")},

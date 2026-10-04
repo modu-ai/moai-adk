@@ -103,7 +103,7 @@ type swgEvaluation struct {
 //
 // @MX:NOTE: [AUTO] the predicate's evaluation order is load-bearing — the two
 // payload-derived size conditions are decided BEFORE any git subprocess
-// (REQ-SWG-004). @MX:REASON: one `git rev-parse` per kanban session moved
+// (REQ-SWG-004). @MX:REASON: one `git rev-parse` per factory session moved
 // SessionStart from under 500ms to 650-890ms against a 5s hook budget
 // (session_start_record.go), and the Write path fires far more often.
 func evaluateSubagentWrite(input *HookInput, denyEnabled bool) swgEvaluation {

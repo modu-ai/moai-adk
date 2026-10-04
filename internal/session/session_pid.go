@@ -50,7 +50,7 @@ var wrapperProcessNames = map[string]bool{
 // procInfoFunc reports a process's parent PID and command name. It is a package
 // var so the ancestry walk can be tested against a synthetic process tree
 // without spawning anything — the same test seam `alive` uses in
-// internal/kanban/factory_slots.go.
+// internal/factory/factory_slots.go.
 type procInfoFunc func(pid int) (ppid int, comm string, ok bool)
 
 var (
@@ -88,7 +88,7 @@ var (
 // abandoned the instant it is written. A caller that cannot resolve an owner
 // gets (0, false) and decides for itself what an unknown owner means — see
 // resolveSessionPID below for the registry's answer, and
-// internal/kanban.IntegrationLock for the integration window's.
+// internal/factory.IntegrationLock for the integration window's.
 func ResolveOwnerPID() (pid int, resolved bool) {
 	return LiveProcessView().ResolveOwnerPID(os.Getenv(config.EnvMoaiSessionPID))
 }

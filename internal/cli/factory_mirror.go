@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // factoryRecordUnavailableTag prefixes the stderr line and the status line of
@@ -22,7 +22,7 @@ var factoryAssignmentWriter = writeFactoryAssignment
 // writeFactoryAssignment is the dispatch mirror (REQ-FR-025): T1 (when the
 // card has no record) and T2 through the transition API. A card already
 // assigned to the same lane is left as it is.
-func writeFactoryAssignment(ctx context.Context, root string, store *kanban.BacklogStore, runID, cardID, lane string) error {
+func writeFactoryAssignment(ctx context.Context, root string, store *factory.BacklogStore, runID, cardID, lane string) error {
 	record, err := store.LoadPure()
 	if err != nil {
 		return fmt.Errorf("read queue: %w", err)
@@ -30,7 +30,7 @@ func writeFactoryAssignment(ctx context.Context, root string, store *kanban.Back
 	picked := false
 	for _, item := range record.Items {
 		if item.ID == cardID {
-			picked = item.State == kanban.BacklogStatePicked
+			picked = item.State == factory.BacklogStatePicked
 		}
 	}
 	if !picked {
@@ -67,7 +67,7 @@ func writeFactoryAssignment(ctx context.Context, root string, store *kanban.Back
 // reports and the next successful write for the run reconciles.
 //
 // @MX:NOTE: [AUTO] fail-open by lead decision — the dispatch and its queue runtime row stand even when factory.db cannot be written
-func mirrorFactoryAssignment(ctx context.Context, stderr io.Writer, root string, store *kanban.BacklogStore, runID, cardID, lane string) {
+func mirrorFactoryAssignment(ctx context.Context, stderr io.Writer, root string, store *factory.BacklogStore, runID, cardID, lane string) {
 	err := factoryAssignmentWriter(ctx, root, store, runID, cardID, lane)
 	if err == nil {
 		return

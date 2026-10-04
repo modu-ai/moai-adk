@@ -88,6 +88,7 @@ scripts/jev/                   # Dev-only: TypeSafe(Jev) 로컬 전용 도구 (�
 scripts/ac-baseline/           # Dev-only: 커밋타임 AC-snapshot 가드(check-staged.sh·install-hook.sh) — git config 기반 pre-commit 훅으로 develop 병합 후 팩토리 리더가 1회 설치, 템플릿 미러 없음, 사용자 프로젝트로 배포되지 않음 (SPEC-ACSNAPSHOT-COMMIT-GUARD-001)
 ~/.moai/.env.typesafe          # Dev-only: TypeSafe API 키 (저장소 밖, chmod 600). settings/config/템플릿에 넣지 않는다 (§29)
 .claude/skills/hns-workflow-ci-loop/                       # Dev-only: CI watch+autofix skill (removed from template; mirror kept). §2.3에 따라 moai-workflow-ci-loop → hns-* 로 이동(2026-08-15): `.claude/skills/moai*` 글롭이 매 update마다 삭제했음
+.claude/skills/verify/                                     # Dev-only: CC 2.1.286+ 커밋 직전 verify 가이던스의 /moai gate 위임 도그푸드 스킬 (card t1417). 템플릿 승격은 사용자 소유 이름공간 계약(§24.4 비접두=보존) 결정 대기 — t1417 판정서 참조
 .claude/rules/local/ci-watch-protocol.md                     # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
 .claude/rules/local/ci-autofix-protocol.md                 # Dev-only 원본: scripts/ci-autofix 를 지배. 배포판(.claude/rules/moai/workflow/ 의 같은 이름, script-free)과 **의도적 쌍둥이** — SPEC-CI-LOOP-DEVONLY-001 의 결정이며 미해결 상태가 아니다. 둘은 `paths:` 범위가 서로 겹치지 않아 함께 로드되지 않는다(로컬판=데브 스킬 SKILL.md, 배포판=manager-develop + .github/workflows/**). #1557(ed04e40e6)이 이 파일을 관리 대상 뿌리 밖으로 옮겨 §2.3 경로 충돌도 해소됐다. 다만 배포판이 update 때마다 `.claude/rules/moai/workflow/` 에 미추적으로 재생성돼 git status 노이즈로 남는다
 AGENTS.local.md                # This file's parent guide

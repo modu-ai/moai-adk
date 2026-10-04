@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // LeaderPeerIdentity reports the process identity carried by a run's registered
@@ -91,8 +91,8 @@ func LiveLegacyPeer(ctx context.Context, projectRoot, runID string) (value strin
 		// "lead" is the legacy leader role value: detection only, read to
 		// classify the run's owner for the retire step (REQ-RNC-024), never
 		// mapped back to the leader role.
-		isLegacyPeer := role == "lead" || kanban.IsLegacyLeaderSpelling(slot) ||
-			kanban.IsLegacyFactoryRoleValue(role) || kanban.IsLegacyFactoryRoleValue(slot)
+		isLegacyPeer := role == "lead" || factory.IsLegacyLeaderSpelling(slot) ||
+			factory.IsLegacyFactoryRoleValue(role) || factory.IsLegacyFactoryRoleValue(slot)
 		if !isLegacyPeer {
 			continue
 		}

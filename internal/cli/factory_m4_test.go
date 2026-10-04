@@ -22,9 +22,9 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // sdScrubLauncherEnv neutralizes every MOAI_* variable the launcher stamps or
@@ -33,17 +33,17 @@ import (
 func sdScrubLauncherEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
-		config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel,
-		config.EnvMoaiKanbanLeadAddr, config.EnvMoaiKanbanSettingsInjected,
+		retiredLeaderMarker, config.EnvFactoryRunID, retiredLaneLabelMarker,
+		config.EnvFactoryLeadAddr, config.EnvFactorySettingsInjected,
 		config.EnvFactoryRole, config.EnvMoaiFactoryWorker, config.EnvMoaiFactoryWorkers,
-		config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanCard,
+		config.EnvFactoryBackend, config.EnvFactoryCard,
 		config.EnvFactoryClearPolicy, config.EnvFactoryAutoDispatch,
 	} {
 		t.Setenv(k, "")
 	}
 }
 
-// sdRecordLeaderRun inserts the active factory run a `-f lane` join resolves
+// sdRecordLeaderRun inserts the active factory run a `-l` join resolves
 // (the leader's recording, as fixture).
 func sdRecordLeaderRun(t *testing.T, root, runID, backend string) {
 	t.Helper()
@@ -106,7 +106,7 @@ func sdDriveLaneLaunch(t *testing.T, root string, entry func([]string) error, du
 	deps = nil
 	t.Cleanup(func() { deps = prevDeps })
 
-	if err := entry([]string{"-f", "lane"}); err != nil {
+	if err := entry([]string{"-l"}); err != nil {
 		t.Fatalf("lane launch: %v", err)
 	}
 	return captured
@@ -121,8 +121,8 @@ func sdGLMEntry(args []string) error { return runGLM(glmCmd, args) }
 // the assertion follows the roster rather than a guessed number.
 func sdNextFreeLaneLabel(t *testing.T, root string) string {
 	t.Helper()
-	next := kanban.NextFactoryLaneNumber(loadFactoryRegistry(factoryRegistryPath(root)), factoryProcessAlive)
-	return kanban.FactoryLaneLabel(next)
+	next := factory.NextFactoryLaneNumber(loadFactoryRegistry(factoryRegistryPath(root)), factoryProcessAlive)
+	return factory.FactoryLaneLabel(next)
 }
 
 // AC-SD-002 — cc/glm lane launch stamps the marker, the lane label, and the
@@ -133,12 +133,12 @@ func TestSD_AC002_LaneLaunchStampsMarkerAndLabel(t *testing.T) {
 		backend string
 		entry   func([]string) error
 	}{
-		{"cc", kanban.BackendClaude, sdCCEntry},
-		{"glm", kanban.BackendGLM, sdGLMEntry},
+		{"cc", factory.BackendClaude, sdCCEntry},
+		{"glm", factory.BackendGLM, sdGLMEntry},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, _ := fcFixture(t)
-			sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+			sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 			t.Chdir(root)
 			t.Setenv(config.EnvClaudeProjectDir, root)
 			wantLabel := sdNextFreeLaneLabel(t, root)
@@ -153,9 +153,9 @@ func TestSD_AC002_LaneLaunchStampsMarkerAndLabel(t *testing.T) {
 				t.Errorf("child env %s = %q, want the next free lane label %q",
 					config.EnvMoaiFactoryWorker, got, wantLabel)
 			}
-			if got := captured.env[config.EnvMoaiKanbanBackend]; got != tc.backend {
+			if got := captured.env[config.EnvFactoryBackend]; got != tc.backend {
 				t.Errorf("child env %s = %q, want %q (the backend value the launch already exports)",
-					config.EnvMoaiKanbanBackend, got, tc.backend)
+					config.EnvFactoryBackend, got, tc.backend)
 			}
 			if captured.cwd != root {
 				t.Errorf("child working directory = %q, want the parent checkout %q", captured.cwd, root)
@@ -192,7 +192,7 @@ func TestSD_AC005_LaneLaunchRequiresGitRepo(t *testing.T) {
 			deps = nil
 			t.Cleanup(func() { deps = prevDeps })
 
-			err := tc.entry([]string{"-f", "lane"})
+			err := tc.entry([]string{"-l"})
 			if err == nil {
 				t.Fatal("lane launch outside a git working tree succeeded; want the git-requirement refusal")
 			}
@@ -244,7 +244,7 @@ func TestSD_AC006_LaneCycleWithoutRemote(t *testing.T) {
 		t.Skip("the recording wrapper is a POSIX shell script (the TestFR_AC018 family)")
 	}
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStateQueued)
+	fcQueue(t, store, factory.BacklogStateQueued)
 	sdRegisterLane(t, root, "lane-1")
 	// The §B fixture layout: the integration branch is develop, configured as
 	// the project's integration branch and checked out in the provisioned
@@ -308,7 +308,7 @@ func TestSD_AC006_LaneCycleWithoutRemote(t *testing.T) {
 
 	// The lane holds the integration window on develop, then completes — the
 	// merge itself runs inside complete, inside the integration worktree.
-	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", kanban.BranchSourceConfig, integWT, "t1")
+	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 	if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {
 		t.Fatalf("complete: %v", err)
@@ -361,7 +361,7 @@ func TestSD_AC007_NoHeadlessEngineArgv(t *testing.T) {
 	capture := func(t *testing.T, name string, entry func([]string) error) sdLaunchPathArgv {
 		t.Helper()
 		root, _ := fcFixture(t)
-		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 		t.Chdir(root)
 		captured := sdDriveLaneLaunch(t, root, entry)
 		return sdLaunchPathArgv{name: name, binary: captured.binary, argv: captured.argv}
@@ -373,8 +373,8 @@ func TestSD_AC007_NoHeadlessEngineArgv(t *testing.T) {
 	captureCodex := func(t *testing.T) sdLaunchPathArgv {
 		t.Helper()
 		root, store := fcFixture(t)
-		fcQueue(t, store, kanban.BacklogStatePicked)
-		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 		t.Chdir(root)
 		sdScrubLauncherEnv(t)
 		var argv []string
@@ -385,14 +385,14 @@ func TestSD_AC007_NoHeadlessEngineArgv(t *testing.T) {
 			return nil
 		}
 		t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
-		if _, _, err := runCodexCmd(t, "-f", "lane"); err != nil {
+		if _, _, err := runCodexCmd(t, "-l"); err != nil {
 			t.Fatalf("codex lane: %v", err)
 		}
-		return sdLaunchPathArgv{name: "codex -f lane", binary: "codex", argv: argv}
+		return sdLaunchPathArgv{name: "codex -l", binary: "codex", argv: argv}
 	}
 	paths := []sdLaunchPathArgv{
-		capture(t, "cc -f lane", sdCCEntry),
-		capture(t, "glm -f lane", sdGLMEntry),
+		capture(t, "cc -l", sdCCEntry),
+		capture(t, "glm -l", sdGLMEntry),
 		captureCodex(t),
 	}
 	if len(paths) < 3 {
@@ -434,7 +434,7 @@ func sdReadSource(t *testing.T, path string) string {
 // do it only through the internal/config constants.
 func TestSD_AC017_StampedMarkerArmsContractGuard(t *testing.T) {
 	root, _ := fcFixture(t)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	t.Chdir(root)
 	t.Setenv(config.EnvClaudeProjectDir, root)
 
@@ -448,7 +448,7 @@ func TestSD_AC017_StampedMarkerArmsContractGuard(t *testing.T) {
 	t.Logf("captured %s=%q %s=%q %s=%q",
 		config.EnvFactoryRole, captured.env[config.EnvFactoryRole],
 		config.EnvMoaiFactoryWorker, captured.env[config.EnvMoaiFactoryWorker],
-		config.EnvMoaiKanbanBackend, captured.env[config.EnvMoaiKanbanBackend])
+		config.EnvFactoryBackend, captured.env[config.EnvFactoryBackend])
 	if decision != hook.DecisionDeny {
 		t.Fatalf("contract sign under the lane launch environment: decision = %q (reason %q), want deny", decision, reason)
 	}

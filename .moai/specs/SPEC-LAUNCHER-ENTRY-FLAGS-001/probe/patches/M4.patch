@@ -1,0 +1,75 @@
+diff --git a/internal/hook/session_start_factory.go b/internal/hook/session_start_factory.go
+--- a/internal/hook/session_start_factory.go
++++ b/internal/hook/session_start_factory.go
+@@ -226,18 +226,8 @@
+ 	// computed HERE from root (fail-open to all-free on any error) because
+ 	// the stagger rule above names free-slot lanes — the operator's
+ 	// opening screen names the capacity the run actually has.
+-	slots := kanban.FactoryFreeSlots(root, lanes, kanban.FactoryProcessAlive)
+-	slotLine := m.leaderSlotsNone
+-	if len(slots) > 0 {
+-		labels := make([]string, 0, len(slots))
+-		for _, n := range slots {
+-			labels = append(labels, kanban.FactoryLaneLabel(n))
+-		}
+-		slotLine = strings.Join(labels, ", ")
+-	}
+ 	var context []string
+ 	context = append(context, fmt.Sprintf(m.operationalStatus, runID))
+-	context = append(context, fmt.Sprintf(m.leaderFreeSlots, slotLine))
+ 	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
+ 		context = append(context, m.settingsAuto)
+ 	} else {
+diff --git a/internal/hook/session_start_factory_i18n.go b/internal/hook/session_start_factory_i18n.go
+--- a/internal/hook/session_start_factory_i18n.go
++++ b/internal/hook/session_start_factory_i18n.go
+@@ -41,9 +41,7 @@
+ 	leaderSocket      string // socket path
+ 	leaderClasses     string // whole-card routing: one lane runs the serial 3-stage path in-session
+ 	leaderStagger     string // fan-out-only staggered activation
+-	leaderFreeSlots   string // free-slot label list
+ 	operationalStatus string // explicit run-bound read-only operational query
+-	leaderSlotsNone   string // rendered when every slot is claimed
+ 	settingsAuto      string
+ 	settingsVerify    string
+ 	laneJoin          string // lane label %[1]s, lane count %[2]d
+@@ -93,9 +91,7 @@
+ 			"free-slot lanes. Concurrent requests cannot read a cache entry still being written " +
+ 			"(cache-aware-execution directive 2). This rule governs FACTORY fan-out only — the workflow " +
+ 			"runtime staggers itself (CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS) and is not governed here.",
+-		leaderFreeSlots:   "Free lane slots right now: %s.",
+ 		operationalStatus: "Inspect operational lanes with factory_msg_status({\"run_id\":%q}); endpoint liveness does not establish task activity, which remains unknown without evidence.",
+-		leaderSlotsNone:   "none — every slot is held by a live session",
+ 		settingsAuto:      "Cross-session messages are auto-accepted via the injected --settings.",
+ 		settingsVerify:    "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
+ 		laneJoin:          "Factory Mode: joined the leader's %[2]d-lane run as %[1]s.",
+@@ -141,9 +137,7 @@
+ 			"실제 출력을 내기 시작했다는 증거(첫 작업 수행 또는 진행 흔적)를 확인한 뒤 나머지 빈 슬롯의 레인을 활성화하세요. " +
+ 			"동시 요청은 아직 기록 중인 캐시 항목을 읽을 수 없습니다(cache-aware-execution directive 2). " +
+ 			"이 규칙은 팩토리 팬아웃에만 적용됩니다 — 워크플로 런타임은 스스로 스태거합니다(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS).",
+-		leaderFreeSlots:   "현재 빈 레인 슬롯: %s.",
+ 		operationalStatus: "factory_msg_status({\"run_id\":%q})로 운영 레인 상태를 조회하세요. 프로세스 생존 여부만으로 작업 중이라고 판단하지 않으며, 작업 관측이 없으면 unknown입니다.",
+-		leaderSlotsNone:   "없음 — 모든 슬롯을 생존 세션이 사용 중입니다",
+ 		settingsAuto:      "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
+ 		settingsVerify:    "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
+ 		laneJoin:          "팩토리 모드: 리더의 레인 %[2]d개 런에 %[1]s 로 합류했습니다.",
+@@ -186,9 +180,7 @@
+ 			"(最初のジョブまたは進行の形跡)を確認してから、残りの空きスロットのレーンを起動してください。 " +
+ 			"同時リクエストは書き込み中のキャッシュエントリを読めません(cache-aware-execution directive 2)。 " +
+ 			"このルールはファクトリーファンアウトにのみ適用されます — ワークフローランタイムは自身でスタガーします(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
+-		leaderFreeSlots:   "現在の空きレーンスロット: %s。",
+ 		operationalStatus: "factory_msg_status({\"run_id\":%q}) でレーンの稼働状態を確認してください。プロセスの生存は作業中である証拠ではなく、作業の観測がなければ unknown です。",
+-		leaderSlotsNone:   "なし — すべてのスロットを生存セッションが保持しています",
+ 		settingsAuto:      "セッション間メッセージは、注入された --settings により自動的に受理されます。",
+ 		settingsVerify:    "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
+ 		laneJoin:          "ファクトリーモード: リーダーのレーン %[2]d 本の run に %[1]s として参加しました。",
+@@ -230,9 +222,7 @@
+ 		leaderStagger: "分批启动 — 必须: 绝不要同时激活所有泳道。先激活第一条泳道，等到它确实开始产出 " +
+ 			"(首个任务或可见进展)之后，再激活其余空闲槽位的泳道。 并发请求无法读取仍在写入的缓存条目 " +
+ 			"(cache-aware-execution directive 2)。本规则仅约束工厂分发 — 工作流运行时会自行错峰(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
+-		leaderFreeSlots:   "当前空闲泳道：%s。",
+ 		operationalStatus: "使用 factory_msg_status({\"run_id\":%q}) 查询运行通道状态。进程存活不代表正在执行任务；没有任务观测依据时，状态为 unknown。",
+-		leaderSlotsNone:   "无 — 所有槽位均被存活会话占用",
+ 		settingsAuto:      "跨会话消息通过注入的 --settings 自动接受。",
+ 		settingsVerify:    "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",
+ 		laneJoin:          "工厂模式：已以 %[1]s 身份加入主导会话的 %[2]d 条泳道的 run。",

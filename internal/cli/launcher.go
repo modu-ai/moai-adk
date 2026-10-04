@@ -213,7 +213,7 @@ func runUnifiedLaunch(profileName, modeOverride string, extraArgs []string) erro
 	// effort — into an injected --settings file. Covers every launcher (cc /
 	// glm / gpt all funnel through here).
 	// No-ops when the operator supplied --settings themselves — which also
-	// covers the kanban/factory branches, whose args already carry the injected
+	// covers the factory branches, whose args already carry the injected
 	// flag by the time they reach this funnel. Fail-open: an unreadable config
 	// or a failed write launches without the injection.
 	extraArgs = appendCrossSessionSettings(root, profileName, extraArgs)
@@ -799,7 +799,7 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		// override.
 		//
 		// Both halves are pinned: TestLaunchEffortReachesGeneralInjection and
-		// TestLaunchEffortReachesKanbanInjection for the injected payload,
+		// TestLaunchEffortReachesFactoryInjection for the injected payload,
 		// TestClaudeLaunchEnvPreservesInheritedEffort for the inherited value.
 		//
 		// This block once carried a second paragraph extending the same

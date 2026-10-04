@@ -1,0 +1,135 @@
+package cli
+
+// Plan-phase probe for SPEC-FACTORY-ATOMIC-LEASE-001 (card t1458), iteration 2
+// repair (defect D12): the M5 worktree-step collision with a forced overlap.
+//
+// Evidence, not source (.txt suffix; mapped in by overlay-barrier.json). The
+// iteration-1 probe (probe-nominated, TestT1458ProbeM5RenameCollision) starts the
+// two lanes at the same instant and leaves the overlap of their git processes to
+// chance, so its per-iteration failure rate moved between 10% and 50% across
+// runs. This variant wraps the REAL materializer so that each lane, once its
+// worktree is created and BEFORE its branch rename runs, waits until the other
+// lane has also finished creating (or a grace window has passed). Both renames
+// then start together. On the unfixed tree the wait ends at once; on a tree
+// where the step is serialized under one lock the second lane cannot enter the
+// creator while the first holds the lock, so the first lane waits out the grace
+// window and proceeds alone (the harness must be tolerant, as plan WM1 says).
+//
+// The overlap is forced at the process-start level only. Two git processes
+// starting within microseconds of each other are still not guaranteed to
+// collide, so this probe raises the per-iteration rate and measures it; it does
+// not make the collision deterministic.
+
+import (
+	"context"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/cli/worktree"
+	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
+)
+
+func TestT1458ProbeM5BarrierRename(t *testing.T) {
+	const iters = 20
+	const grace = 1500 * time.Millisecond
+	real := worktree.WorktreeCreator
+	if real == nil {
+		t.Fatal("the real worktree creator is not wired in this test binary")
+	}
+	t.Cleanup(func() { worktree.WorktreeCreator = real })
+	failures, renameFailures, createFailures, stranded, firstFailure := 0, 0, 0, 0, ""
+	overlapIterations := 0
+	for i := 0; i < iters; i++ {
+		root, store := nmBase(t, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+		nmSetText(t, store, "t1", "alpha rename probe")
+		nmSetText(t, store, "t2", "beta rename probe")
+		far := "2099-01-01T00:00:00Z"
+		fcPlace(t, root,
+			homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: far, Stage: homestate.CardRun},
+			homestate.Card{CardID: "t2", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", LeaseExpiresAt: far, Stage: homestate.CardRun})
+		cards := []homestate.Card{fcCard(t, root, "t1"), fcCard(t, root, "t2")}
+		lanes := []string{"lane-1", "lane-2"}
+
+		var arrived, inflight, maxInflight int32
+		barrier := make(chan struct{})
+		worktree.WorktreeCreator = func(name string, out io.Writer) (string, error) {
+			cur := atomic.AddInt32(&inflight, 1)
+			for {
+				prev := atomic.LoadInt32(&maxInflight)
+				if cur <= prev || atomic.CompareAndSwapInt32(&maxInflight, prev, cur) {
+					break
+				}
+			}
+			defer atomic.AddInt32(&inflight, -1)
+			path, err := real(name, out)
+			if err != nil {
+				return path, err
+			}
+			if atomic.AddInt32(&arrived, 1) == 2 {
+				close(barrier)
+			}
+			select {
+			case <-barrier:
+			case <-time.After(grace):
+			}
+			return path, nil
+		}
+
+		errs := make([]error, 2)
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for k := range cards {
+			wg.Add(1)
+			go func(k int) {
+				defer wg.Done()
+				<-start
+				_, _, errs[k] = factoryEnsureCardWorktree(context.Background(), root, fcRun, cards[k], lanes[k], io.Discard)
+			}(k)
+		}
+		close(start)
+		wg.Wait()
+		worktree.WorktreeCreator = real
+		if atomic.LoadInt32(&maxInflight) >= 2 {
+			overlapIterations++
+		}
+
+		bad := false
+		for k := range errs {
+			if errs[k] == nil {
+				continue
+			}
+			bad = true
+			msg := errs[k].Error()
+			switch {
+			case strings.HasPrefix(msg, "rename the card worktree branch"):
+				renameFailures++
+			case strings.HasPrefix(msg, "create the card worktree"):
+				createFailures++
+			}
+			id := cards[k].CardID
+			if _, statErr := os.Lstat(filepath.Join(root, ".moai", "worktrees", id)); statErr == nil && fcCard(t, root, id).WorktreePath == "" && factoryRefuseForeignWorktree(root, id) != nil {
+				stranded++
+			}
+			if firstFailure == "" {
+				firstFailure = msg
+			}
+		}
+		if bad {
+			failures++
+		}
+	}
+	t.Logf("PROBE M5-barrier iterations=%d creator-overlap-iterations=%d failed-iterations=%d rename-step-failures=%d create-step-failures=%d stranded-dir-and-foreign-worktree-precheck-refusal=%d", iters, overlapIterations, failures, renameFailures, createFailures, stranded)
+	if overlapIterations > 0 {
+		t.Errorf("the creator ran concurrently for two lanes in %d of %d iterations (the step is not serialized)", overlapIterations, iters)
+	}
+	if failures > 0 {
+		t.Errorf("%d of %d barrier-forced concurrent worktree steps failed; first error: %.140s", failures, iters, firstFailure)
+	}
+}

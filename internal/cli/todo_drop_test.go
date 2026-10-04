@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 func TestTodoDrop_MarksDroppedAndRecordsTheReason(t *testing.T) {
@@ -37,8 +37,8 @@ func TestTodoDrop_MarksDroppedAndRecordsTheReason(t *testing.T) {
 		t.Fatalf("item count = %d, want 1 — drop keeps the card in the file", len(rec.Items))
 	}
 	got := rec.Items[0]
-	if got.State != kanban.BacklogStateDropped {
-		t.Errorf("state = %q, want %q", got.State, kanban.BacklogStateDropped)
+	if got.State != factory.BacklogStateDropped {
+		t.Errorf("state = %q, want %q", got.State, factory.BacklogStateDropped)
 	}
 	if want := "[DROPPED — 전제 반증] raise the coverage floor"; got.Text != want {
 		t.Errorf("text = %q, want %q", got.Text, want)
@@ -77,8 +77,8 @@ func TestTodoDrop_UndropRestoresAHandWrittenDroppedCard(t *testing.T) {
 	// hand, before any CLI verb existed. undrop reads the STATE as the
 	// authority and strips the marker only when it is there, so those cards
 	// are recoverable too.
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items[0].State = kanban.BacklogStateDropped
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items[0].State = factory.BacklogStateDropped
 		return nil
 	}); err != nil {
 		t.Fatalf("seed hand-edit: %v", err)
@@ -91,8 +91,8 @@ func TestTodoDrop_UndropRestoresAHandWrittenDroppedCard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if rec.Items[0].State != kanban.BacklogStateQueued {
-		t.Errorf("state = %q, want %q", rec.Items[0].State, kanban.BacklogStateQueued)
+	if rec.Items[0].State != factory.BacklogStateQueued {
+		t.Errorf("state = %q, want %q", rec.Items[0].State, factory.BacklogStateQueued)
 	}
 	if rec.Items[0].Text != "hand-edited card" {
 		t.Errorf("text = %q, want it untouched", rec.Items[0].Text)
@@ -176,7 +176,7 @@ func TestTodoDrop_ExpectMatchAllowsTheDrop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if rec.Items[0].State != kanban.BacklogStateDropped {
-		t.Errorf("state = %q, want %q", rec.Items[0].State, kanban.BacklogStateDropped)
+	if rec.Items[0].State != factory.BacklogStateDropped {
+		t.Errorf("state = %q, want %q", rec.Items[0].State, factory.BacklogStateDropped)
 	}
 }
