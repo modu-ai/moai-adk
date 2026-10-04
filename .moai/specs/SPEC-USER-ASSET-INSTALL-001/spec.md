@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -38,6 +38,20 @@ related_specs: [SPEC-PLUGIN-MARKETPLACE-001, SPEC-INIT-SHRINK-001, SPEC-CODEX-CO
   confinement specified; D9 acceptance-layer claims corrected (GWT for
   Blockers, primary REQ marks, §3 map sync, corrupt-manifest AC clause);
   D10-D13 counts/V-row/Codex-doctor-repoint/per-file-manifest-version.
+- 2026-10-05: v0.3.0 plan-audit iter2 repair (card t1509, verdict FAIL 0.75,
+  12/13 iter1 defects verified resolved). Closed: iter1-D12 residue/D19 (M4
+  repoint list corrected — the agent-count consumer is
+  `probeCodexReadiness`/`countCodexAgentTOMLs`, codex_readiness.go:131/:217;
+  the `codexStaleSkillFinding` attribution withdrawn); D14 upgrade-path
+  stranding (REQ-024 upgrade arm + REQ-020 same-run gating, AC-020 extended —
+  the 25-AC ceiling is why the Blocker upgrade criterion is an extension of
+  AC-020, not a 26th AC); D15 AC-011 rebuilt on catalog-derived placements
+  (the plain `moai` dirs); D16 REQ-023 truth table + `~/.moai/` backup home
+  with the C2 carve-out; D17 confinement edges (resolved-root containment,
+  leaf-symlink policy, write posture; AC-025 arms); D18 bundle selection
+  surface (REQ-004 + design §2.3 + AC-018); D20 claims corrections; D21-D23
+  optional nits taken. Evidence ledger re-executed in full (22 cells + 2
+  positive controls, verbatim, tree cfb903358) and re-pinned.
 
 ## 1. Background and Premise
 
@@ -57,11 +71,15 @@ project payload (REQ-005), never as a user-folder write (REQ-003).
 
 A per-USER manifest file (with hashes) makes the user-folder install
 accountable: `moai update` refreshes changed files and removes files no longer
-shipped — but only when the file on disk still matches what moai last wrote
-(REQ-023 protects user edits to tracked files) — user-created files with
-colliding names are never overwritten (they are reported), and `moai doctor`
-compares the installed user tree against the manifest and the project tree
-against the project lock file.
+in L0 or any opted-in bundle — but only when the file on disk still matches
+what moai last wrote (REQ-023 protects user edits to tracked files) —
+user-created files with colliding names are never overwritten (they are
+reported), and `moai doctor` compares the installed user tree against the
+manifest and the project tree against the project lock file. The upgrade
+population — projects initialized under the older per-project model — has no
+per-user install yet; their first post-adoption `moai update` performs the
+user install (REQ-024's upgrade arm) BEFORE the project slimming removes the
+old placement, so no run leaves the user with neither.
 
 Premises (settled by the operator, or forced by this SPEC's own constraints —
 not re-opened during run phase):
@@ -96,8 +114,10 @@ not re-opened during run phase):
   project payload (REQ-005) and is never a user-folder write target — the
   four roots of C2 carry no hook destination.
 - REQ-004: The system shall ship every common asset outside L0 as an opt-in
-  bundle; a bundle is installed or removed as a unit, and bundle membership is
-  declared in the shipped catalog.
+  bundle; a bundle is installed or removed as a unit, bundle membership is
+  declared in the shipped catalog, the opt-in selection is recorded in the
+  per-user manifest — set by `moai init --bundles` and adjusted by `moai
+  bundle add|remove` — and `moai update` honors the recorded selection.
 - REQ-005: `moai init` shall deploy to the project only the default settings,
   AGENTS.md, the project lock file, and the project-only harness payload
   (hooks and `.mcp.json` included); it shall not copy any common skill or
@@ -119,14 +139,16 @@ not re-opened during run phase):
   bytes, the system shall refresh the file to the shipped bytes and record the
   new hash and installing version in the manifest.
 - REQ-009: When a file recorded in the per-user manifest is no longer part of
-  any shipped bundle and its current hash equals its manifest hash, `moai
-  update` shall remove it from the user folder and from the manifest.
+  L0 or of any bundle recorded as opted-in in the manifest, and its current
+  hash equals its manifest hash, `moai update` shall remove it from the user
+  folder and from the manifest.
 - REQ-010: When the target path of an install, refresh, or removal holds a
   file the per-user manifest does not track, the system shall leave that file
   untouched and report the collision.
 - REQ-011: When a `moai update` run completes its user-asset phase, the system
-  shall report the counts of installed, refreshed, removed, collision-skipped,
-  and divergence-preserved files.
+  shall report the counts of installed, refreshed (including manifest-only
+  repairs of the REQ-023 truth table), removed, collision-skipped, and
+  divergence-preserved files.
 - REQ-012: The user-asset install shall be idempotent: repeating it against an
   already-current tree changes no file and reports zero deltas.
 - REQ-013: When a user-folder write fails, the system shall continue
@@ -157,11 +179,15 @@ not re-opened during run phase):
 
 - REQ-020: When a project carries template-managed common skills or agents
   from an earlier deployment, `moai update` shall offer and apply the
-  migration that removes them from the project, preserving user-modified and
-  user-created files and reporting each disposition.
+  migration that removes them from the project only after the same run has
+  completed the user-side first install (REQ-024 upgrade arm), preserving
+  user-modified and user-created files and reporting each disposition.
 - REQ-021: The per-user manifest shall carry a schema version; the system
   shall refuse manifest-driven removal against an unknown schema version while
-  still permitting append-only install and refresh.
+  still permitting append-only install and refresh; a manifest write performed
+  against a known schema version shall preserve fields it does not understand
+  (the consumers-ignore-unknown-fields premise of acceptance §D.7) — an
+  implementation that would drop unknown fields refuses the write instead.
 
 ### Codex agent parity
 
@@ -173,17 +199,28 @@ not re-opened during run phase):
 
 - REQ-023: When a file tracked in the per-user manifest has a current hash
   equal to neither its manifest hash nor the shipped bytes, the system shall
-  preserve the installed file — writing a backup of the shipped replacement
-  alongside the user folder — leave the tracked path unmodified by refresh and
-  by removal, and report the divergence.
+  preserve the installed file — backing up the shipped replacement to the
+  backup home under `~/.moai/` (C2's sole out-of-root write carve-out) when
+  shipped bytes exist, and omitting the backup when the file is dropped from
+  every bundle, where no shipped bytes exist — leave the tracked path
+  unmodified by refresh and by removal, and report the divergence; the
+  remaining states follow the design §2.1 truth table: manifest-stale (current
+  equals the shipped bytes while differing from the manifest hash) is repaired
+  in the manifest without a file rewrite and counted as refreshed, and a
+  tracked file missing on disk is reinstalled at refresh or dropped from the
+  manifest at removal.
 
 ### First-install trigger
 
 - REQ-024: When `moai init` runs on a machine that has no per-user install,
   the system shall install the L0 core bundle and every opted-in bundle into
-  the user folders before the run reports success; subsequent `moai update`
-  runs refresh and prune that install (REQ-008/009) rather than performing the
-  first install.
+  the user folders before the run reports success; when `moai update` runs on
+  a machine with no per-user install whose project carries prior-model common
+  skills or agents (the REQ-020 upgrade population — init ran under the
+  pre-SPEC model), it shall perform that same first install in the same run
+  and before REQ-020's project-side removal, so no run leaves the user with
+  neither placement; subsequent `moai update` runs refresh and prune that
+  install (REQ-008/009) rather than performing the first install.
 
 ## 3. Acceptance Criteria (summary)
 
@@ -196,7 +233,7 @@ REQ-006 → AC-003; REQ-007 → AC-024; REQ-008 → AC-005; REQ-009 → AC-006;
 REQ-010 → AC-007/008; REQ-011 → AC-022; REQ-012 → AC-004; REQ-013 → AC-023;
 REQ-014 → AC-009; REQ-015 → AC-010; REQ-016 → AC-013; REQ-017 → AC-014;
 REQ-018 → AC-015; REQ-019 → AC-016; REQ-020 → AC-020; REQ-021 → AC-006/021;
-REQ-022 → AC-002; REQ-023 → AC-006/008; REQ-024 → AC-001/002.
+REQ-022 → AC-002; REQ-023 → AC-006/008; REQ-024 → AC-001/002/020.
 
 ## 4. Constraints
 
@@ -204,8 +241,17 @@ REQ-022 → AC-002; REQ-023 → AC-006/008; REQ-024 → AC-001/002.
   the same binary version against the same tree produces the same result.
 - C2: Every user-folder destination is confined to the four declared roots
   (`~/.claude/skills`, `~/.claude/agents`, `$HOME/.agents/skills`,
-  `~/.codex/agents`); the installer refuses any path outside them, judging
-  confinement on the symlink-resolved destination path.
+  `~/.codex/agents`); confinement is judged on resolved paths — each root is
+  resolved once at install start (a symlinked root, e.g. a dotfile-manager
+  `~/.claude`, is a legal boundary at its resolved location), each
+  destination is resolved immediately before write, and the destination's
+  resolved path must remain inside its own root's resolved tree; a leaf that
+  resolves outside its root is refused at install and classified as
+  divergence (REQ-023 preserve + report) at refresh/removal, never written
+  through; the sole permitted write destination outside the four roots is the
+  REQ-023 backup home under `~/.moai/`; the resolve-then-write window is
+  closed by the design §2.1 write posture (temp file + atomic rename inside
+  the validated resolved directory).
 - C3: The project lock file (`.moai/manifest.json`) keeps its existing role
   and schema; this SPEC extends doctor's READING of it, not its format.
 - C4: User-facing collision, divergence, and failure reports are actionable:

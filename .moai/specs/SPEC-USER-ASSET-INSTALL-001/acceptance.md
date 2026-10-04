@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "acceptance.md — acceptance criteria matrix"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -20,9 +20,13 @@ new Blocker AC-025) carries a RED-now cell — observed on the
 pre-implementation tree and carried as an evidence-ledger entry (§D.2b) with
 command, verbatim stdout, exit code, and tree SHA — and a green-path cell
 naming the milestone that flips it. All RED cells were executed by
-manager-spec on the baseline tree
+manager-spec: first on the baseline tree
 `b965a3912c0e97ef81aeeea773019e633591e1cd` (branch `WT-user-asset-copy`,
-status clean) in the iter1-repair audit run; no cell carries an invented
+status clean) in the iter1-repair audit run, then RE-EXECUTED IN FULL — all
+22 cells plus both positive controls, outputs byte-identical — on tree
+`cfb9033582eff27f9031e1a6438d8558aaa48115` in the iter2-repair audit run
+(the source bytes are identical between the two trees: both intervening
+commits touch only SPEC artifacts); no cell carries an invented
 value. Minor criteria (AC-019/023/024) are not release-blocking and carry
 green paths only.
 
@@ -31,30 +35,30 @@ green paths only.
 | AC | Verifies (primary first) | Binary test | RED now | Green path |
 |---|---|---|---|---|
 | AC-001 | REQ-001, REQ-024 | After `moai init` on a fresh temp HOME: L0 skill dirs exist under `$HOME/.claude/skills/` with bytes matching the per-user manifest hashes | EV-001 | M2 |
-| AC-002 | REQ-001, REQ-022 | After the same init: `$HOME/.agents/skills/<skill>/SKILL.md` + `~/.codex/agents/<name>.toml` exist for the L0 set | EV-002 | M2 |
+| AC-002 | REQ-001, REQ-022, REQ-024 | After the same init: `$HOME/.agents/skills/<skill>/SKILL.md` + `~/.codex/agents/<name>.toml` exist for the L0 set | EV-002 | M2 |
 | AC-003 | REQ-006 | Per-user manifest written; every installed path carries sha256 + bundle + per-file moai version | EV-003 | M1+M2 |
 | AC-004 | REQ-012 | Second install run: zero file writes (mtime/hash proof), zero-delta report | EV-004 | M2 |
 | AC-005 | REQ-008 | Shipped-byte change where current hash == manifest hash → update rewrites the tracked file; hash + version refreshed | EV-005 | M3 |
-| AC-006 | REQ-009, REQ-023, REQ-021 | Dropped-from-bundles tracked file (current == manifest hash) → removed; dropped file with diverged hash → preserved (backup) + reported; foreign schema_version → removal refused while install/refresh proceed | EV-006 | M3 |
+| AC-006 | REQ-009, REQ-023, REQ-021 | Dropped-from-bundles tracked file (current == manifest hash) → removed; dropped file with diverged hash → preserved in place + reported with NO shipped-bytes backup (none exists); tracked file missing on disk at removal → manifest entry dropped + counted removed; foreign schema_version → removal refused while install/refresh proceed | EV-006 | M3 |
 | AC-007 | REQ-010 | Untracked file at an install target → left byte-identical, collision reported | EV-007 | M2 |
-| AC-008 | REQ-023, REQ-010 | Tracked file whose current hash matches neither manifest nor shipped bytes → preserved (backup alongside), path unmodified by refresh, divergence reported | EV-008 | M3 |
-| AC-009 | REQ-014 | Doctor user-install check: detects manifest-tracked file deleted / hash-modified / untracked entry in the four roots | EV-009 | M5 |
+| AC-008 | REQ-023, REQ-010 | Tracked file whose current hash matches neither manifest nor shipped bytes → preserved, shipped replacement backed up under `~/.moai/`, path unmodified by refresh, divergence reported; manifest-stale file (current == shipped ≠ manifest) → manifest repaired, no file rewrite, counted under refreshed; tracked file missing on disk → reinstalled at refresh | EV-008 | M3 |
+| AC-009 | REQ-014 | Doctor user-install check: detects manifest-tracked file deleted / hash-modified / untracked entry in the four roots; the repointed project-scope Codex diagnostics (`inspectSkillMirror`, `probeCodexReadiness`/`countCodexAgentTOMLs`) report a correct user install as clean (no false drift after M4) | EV-009 | M4+M5 |
 | AC-010 | REQ-015 | Doctor project-vs-lock check: detects project file absent from lock AND lock entry absent from project | EV-010 | M5 |
-| AC-011 | REQ-005 | Post-init project tree contains NO `moai-*` skill or agent asset | EV-011 | M4 |
+| AC-011 | REQ-005 | Post-init project tree contains NO catalog-derived common-asset placement: no `.claude/skills/moai*` directory (incl. the plain `moai` pack dir), no `.claude/agents/moai/`, no `.codex/agents/moai/`, no `.agents/skills/moai*` | EV-011 | M4 |
 | AC-012 | REQ-005, REQ-001 | Post-init project tree contains settings, AGENTS.md, lock file, hooks, `.mcp.json` (with moai MCP entry) | EV-012 | M4 |
-| AC-013 | REQ-016 | Repo tree carries no `plugins/moai/`, no marketplace manifests; `make build` green without plugin-emit targets | EV-013 | M6 |
+| AC-013 | REQ-016 | Repo tree carries no `plugins/moai/`, no marketplace manifests; `make build` green without plugin-emit targets; boundary grep over `.github/workflows/` + `scripts/` + Makefile: zero references to the deleted check scripts (`check-plugin-version.sh`, `check-plugin-discoverable.sh`) | EV-013 | M6 |
 | AC-014 | REQ-017 | Boundary grep: init/update paths hold zero plugin marketplace/install invocations | EV-014 | M6 |
 | AC-015 | REQ-018 | Boundary grep + build: zero `DeployModePlugin`/`PluginMirrorPolicy` references; single deploy payload shape | EV-015 | M7 |
-| AC-016 | REQ-019 | Doctor output carries no "Plugin Deployment"/"Plugin Version" carrier rows; each removed or repointed per REQ-019 with the owning requirement cited in the commit (hard delete, P5) | EV-016 | M5+M6 |
+| AC-016 | REQ-019 | Doctor output carries no "Plugin Deployment"/"Plugin Version" carrier rows; each removed or repointed per REQ-019 with the owning requirement cited in the commit (hard delete, P5); the migration advisory row (manual `claude plugin uninstall` step for prior plugin installs, design §4) is present as a doctor informational row | EV-016 | M5+M6 |
 | AC-017 | REQ-003 | Installed L0 user-folder set equals the resolved gate answer (5 agents by name, plan/run/sync surface, factory); the hook payload is project-deployed (AC-012), not user-folder content | EV-017 | M0+M2 |
-| AC-018 | REQ-004 | Bundle install adds exactly the bundle's catalog entries; bundle removal takes exactly them | EV-018 | M0+M2 |
+| AC-018 | REQ-004 | Via `moai init --bundles` and the `moai bundle` add/remove commands: bundle install adds exactly the bundle's catalog entries, bundle removal takes exactly them, the manifest's bundle list reflects each change, and `moai update` honors the recorded selection | EV-018 | M0+M2+M3 |
 | AC-019 | REQ-002 | Profile dirs (`~/.moai/claude-profiles/<name>`) byte-unchanged by install/update (settings isolation) | n/a (Minor) | M2/M3 |
-| AC-020 | REQ-020 | Migration: template-managed project skills removed; user-modified preserved + reported; user-created untouched | EV-020 | M4 |
-| AC-021 | REQ-021 | Manifest with foreign schema_version → install/refresh proceed, removal refuses with named error; corrupt manifest JSON → removal refuses, corruption reported, rebuild-from-scan offered (doctor informational), never auto-delete | EV-021 | M3 |
+| AC-020 | REQ-020, REQ-024 | Migration: template-managed project common skills AND agents removed (incl. the plain `moai` dirs); user-modified preserved + reported; user-created untouched; the same run's user-side first install (REQ-024 upgrade arm) is COMPLETED before the removal — after the run the user holds the user-folder placement (no neither-state) | EV-020 | M4 |
+| AC-021 | REQ-021 | Manifest with foreign schema_version → install/refresh proceed, removal refuses with named error; corrupt manifest JSON → removal refuses, corruption reported, rebuild-from-scan offered (doctor informational), never auto-delete; a known-schema write of a manifest carrying unknown fields preserves them (or refuses the write) | EV-021 | M3 |
 | AC-022 | REQ-011 | Mixed update run summary: installed/refreshed/removed/collision-skipped/divergence-preserved counts each match a seeded fixture | EV-022 | M3 |
 | AC-023 | REQ-013 | Read-only target dir → remaining files still processed; summary lists the failure with path + reason | n/a (Minor) | M2 |
 | AC-024 | REQ-007 | Install executes with network disabled (no dial in trace); same output as online run | n/a (Minor) | M2 |
-| AC-025 | REQ-001 (C2 confinement) | Installer refuses a destination outside the four roots (refusal names the path, nothing written); a parent-symlink sentinel (destination parent chain symlinked outside the roots) is refused after symlink resolution — sentinel target unmodified | EV-023 | M2 |
+| AC-025 | REQ-001 (C2 confinement) | Installer refuses a destination outside the four roots (refusal names the path, nothing written); a parent-symlink sentinel (destination parent chain symlinked outside the roots) is refused after symlink resolution — sentinel target unmodified; a symlinked ROOT installs into its resolved location and an escape from the RESOLVED root is refused; a managed leaf replaced by an outside-pointing symlink is never written through (refused at install, divergence-classified at refresh/removal) | EV-023 | M2 |
 
 ## D.1 Severity and Blocker Given-When-Then
 
@@ -81,27 +85,42 @@ Explicit Given-When-Then renderings for every Blocker criterion:
   file is byte-identical afterward and the run reports the collision naming
   the path, the reason, and the suggested action.
 - **AC-011** — Given a project initialized after M4; When the project tree is
-  scanned for skill/agent assets; Then no `moai-*` skill or agent directory
-  exists anywhere under the project.
+  scanned for skill/agent assets; Then no catalog-derived common-asset
+  placement exists anywhere under the project: no `.claude/skills/moai*`
+  directory (the plain `moai` pack dir included — measured baseline: 38 skill
+  dirs, 37 `moai-*` + 1 plain `moai`), no `.claude/agents/moai/`, no
+  `.codex/agents/moai/`, and no `.agents/skills/moai*` directory.
 - **AC-013** — Given the M6 retirement; When the repo tree and the build are
   inspected; Then no `plugins/moai/` tree and no marketplace manifest exists,
   and `make build` is green without the plugin-emit targets.
 - **AC-020** — Given an existing project holding template-managed,
-  user-modified, and user-created `moai-*` skills; When the REQ-020 migration
-  runs; Then template-managed files are removed, user-modified files are
-  preserved with a report, user-created files are untouched, and every
-  disposition is reported.
-- **AC-025** — Given a destination path outside the four roots, and a
+  user-modified, and user-created `moai-*` skills (and template-managed
+  agents under `.claude/agents/moai/`), and NO per-user install on the
+  machine; When the REQ-020 migration runs inside `moai update`; Then the
+  user-side first install (REQ-024 upgrade arm) completes BEFORE any removal,
+  template-managed files are removed, user-modified files are
+  preserved with a report, user-created files are untouched, every
+  disposition is reported, and after the run the user holds the user-folder
+  placement (no neither-state).
+- **AC-025** — Given a destination path outside the four roots, a
   sentinel target whose parent directory is a symlink pointing outside the
-  roots; When the installer validates the destination; Then the outside-root
-  path is refused by name with nothing written, and the symlink-resolved
-  escape is refused with the sentinel target unmodified.
+  roots, a root that is itself a symlink (dotfile-manager `~/.claude`), and a
+  managed leaf replaced by a symlink pointing outside the root; When the
+  installer validates and writes; Then the outside-root
+  path is refused by name with nothing written, the parent-symlink
+  escape is refused with the sentinel target unmodified, the symlinked
+  root's install lands inside the resolved root while an escape from the
+  RESOLVED root is refused, and the outside-pointing leaf symlink is never
+  followed (no write through it; refused at install, divergence-classified at
+  refresh/removal).
 
 ## D.2 Traceability
 
 Every REQ-001..REQ-024 maps to ≥1 AC (spec.md §3); every AC maps to at least
-one REQ, with the primary REQ marked first in the Verifies column — AC-002,
-AC-006, AC-008, AC-012, and AC-025 carry secondary REQs after their primary.
+one REQ, with the primary REQ marked first in the Verifies column — AC-001,
+AC-002, AC-006, AC-008, AC-012, and AC-020 carry secondary REQs after their
+primary; AC-025 carries a single REQ (its `(C2 confinement)` note is a
+constraint reference, not a REQ).
 No orphan AC, no uncovered REQ.
 
 ## D.2b Evidence Ledger — RED-now baseline (iter1 repair, D2)
@@ -112,7 +131,21 @@ verbatim stdout, exit code, and the tree SHA. All entries were executed in one
 audit run on the baseline tree below; exit codes were metered in the same run.
 Empty stdout with a non-zero exit is a complete observation.
 
-Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd`
+Proxy-cell note (iter2 D20e): the token-absence cells are BASELINE absence
+probes establishing the RED state. For cells whose green path lands in a
+package the command does not name (EV-001, EV-002, EV-004, EV-007, EV-021 —
+the new installer / user-manifest packages per design §2.1-2.2), the flip
+evidence is the green milestone's own test named in the green-path line and
+the cell is NOT re-run as flip evidence; for cells whose green path genuinely
+touches the grepped file (EV-005/006/008 update.go, EV-009/010/016 doctor.go,
+EV-017 catalog.yaml, EV-018 update.go — the M3/M5/M0 wiring), the same
+command is the flip instrument and its post-green output is named in the
+green-path line.
+
+Baseline tree SHA (binds every entry):
+`cfb9033582eff27f9031e1a6438d8558aaa48115` (iter2-repair full re-execution,
+all 22 cells + 2 positive controls verbatim; identical outputs previously
+measured on the iter1 baseline `b965a3912c0e97ef81aeeea773019e633591e1cd`).
 
 ### EV-001 — AC-001
 - Command: `grep -c UserAsset internal/cli/update.go`
@@ -122,7 +155,12 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
   L0 skills into the user root; the installer (M2) and the init trigger
   (REQ-024) do not exist yet.
 - Green path: M2 — the temp-HOME installer test asserts L0 dirs + byte match
-  and passes, flipping the cell.
+  and passes, flipping the cell. Proxy note (iter2 D20e): the AC's flip
+  evidence is that installer test itself — the installer code lands in the
+  new user-asset package and the init trigger in `init.go`, not in
+  `update.go`, so this grep is a baseline absence probe of the wrong file for
+  the flip and is not expected to change (the M3 update-phase wiring is
+  measured by EV-005/006/008's cells instead).
 
 ### EV-002 — AC-002
 - Command: `grep -c UserHomeDir internal/template/deployer.go`
@@ -132,6 +170,10 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
   four-root installer writing `$HOME/.agents/skills` and `~/.codex/agents`
   does not exist.
 - Green path: M2 — the Codex-roots installer test on a temp HOME flips it.
+  Proxy note (iter2 D20e): the flip evidence is that installer test — the
+  user-home resolution lands in the new user-asset package, not in
+  `deployer.go` (whose project deploy walk is intentionally untouched), so
+  this grep is a baseline probe, not the flip instrument.
 
 ### EV-003 — AC-003
 - Command: `grep -rn user-assets internal/cli internal/template internal/manifest`
@@ -152,7 +194,9 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
   "idempotent" mention, line 394, is a comment on runCleanReinstall — a
   different surface.)
 - Green path: M2 — the double-install test proves zero writes + zero-delta
-  report.
+  report. Proxy note (iter2 D20e): the flip evidence is that installer test —
+  idempotency lives in the new user-asset package at M2 (update.go's
+  user-asset phase wiring arrives with M3), so this grep is a baseline probe.
 
 ### EV-005 — AC-005
 - Command: `grep -c installed_at internal/cli/update.go`
@@ -168,8 +212,11 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
 - Stdout: `0`
 - Exit code: 1
 - Why red: update has no manifest-driven removal and no schema gate — neither
-  the removal path (REQ-009/023) nor the refusal (REQ-021) exists.
-- Green path: M3 — the removal/refusal test set on seeded fixtures flips it.
+  the removal path (REQ-009/023) nor the refusal (REQ-021) exists; the
+  extended arms (no-backup dropped divergence, missing-at-removal manifest
+  drop, iter2 D16) are equally absent.
+- Green path: M3 — the removal/refusal test set on seeded fixtures flips it,
+  now covering the dropped-divergence and missing-at-removal arms.
 
 ### EV-007 — AC-007
 - Command: `grep -c ProtectedSkips internal/cli/update.go`
@@ -178,16 +225,22 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
 - Why red: the skip-and-report semantic exists only in the project deployer
   (`deployer_mode.go` rehome path, research V17); update's user-asset phase
   has no collision surface.
-- Green path: M2 — the untracked-collision installer test flips it.
+- Green path: M2 — the untracked-collision installer test flips it. Proxy
+  note (iter2 D20e): the flip evidence is that installer test — the collision
+  surface lives in the new user-asset package, not in `update.go`, so this
+  grep is a baseline probe (the M3 summary-count wiring is EV-022's cell).
 
 ### EV-008 — AC-008
 - Command: `grep -ci divergence internal/cli/update.go`
 - Stdout: `0`
 - Exit code: 1
 - Why red: the tracked-file divergence preserve semantics are new in this
-  repair (REQ-023); no code branches on a manifest-vs-disk hash mismatch.
+  repair (REQ-023); no code branches on a manifest-vs-disk hash mismatch, and
+  the extended truth-table arms (backup under `~/.moai/`, manifest-stale
+  repair, missing-file reinstall — iter2 D16) have no implementation.
 - Green path: M3 — the divergence test (tracked file edited by hand → update
-  preserves + backs up + reports) flips it.
+  preserves + backs up + reports) and the truth-table tests (manifest-stale
+  repair without rewrite; missing-file reinstall) flip it.
 
 ### EV-009 — AC-009
 - Command: `grep -ci "user install" internal/cli/doctor.go`
@@ -218,11 +271,14 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
   `-rw-r--r--@  1 goos  staff  20339 Oct  5 02:44 SKILL.md`
 - Exit code: 0
 - Why red: the embedded tree still carries the skills init deploys into
-  projects today (38 `moai-*` dirs under `templates/.claude/skills/`); the
-  AC's post-M4 emptiness does not hold. Positive control inherent — the
-  deployed-to-be-removed asset is observed present.
-- Green path: M4 — the post-init payload assertion (no `moai-*` skill dirs)
-  flips it.
+  projects today — `/bin/ls internal/template/templates/.claude/skills/`
+  names 38 directories (37 `moai-*` plus the plain `moai` pack dir the
+  former `moai-*` glob missed, iter2 D15), and the agent placements
+  `.claude/agents/moai/` and `.codex/agents/moai/` are likewise present
+  (measured this tree); the AC's post-M4 emptiness does not hold. Positive
+  control inherent — the deployed-to-be-removed asset is observed present.
+- Green path: M4 — the post-init payload assertion over the AC-011
+  placement set (incl. the plain `moai` dirs) flips it.
 
 ### EV-012 — AC-012
 - Command: `grep -c stripMoaiFromMcpJSON internal/template/deployer_mode.go`
@@ -243,7 +299,9 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
   lists `.claude-plugin`, `.codex-plugin`, `.mcp.json`, `commands`, `skills`;
   `.claude-plugin/marketplace.json` exists (586 bytes).
 - Green path: M6 — the same `test ! -d` command exits 0 post-retirement and
-  `make build` is green without the plugin-emit targets.
+  `make build` is green without the plugin-emit targets; the extended
+  release-chain arm (iter2 D22) flips via the workflows/scripts/Makefile
+  boundary grep over the deleted check scripts running zero-hit (exit 1).
 
 ### EV-014 — AC-014
 - Command: `grep -c installPluginFor internal/cli/plugin_install.go`
@@ -251,8 +309,10 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
 - Exit code: 0
 - Why red: init's plugin install step exists (research V7: `init.go:431`,
   `:445-456`); the boundary the AC demands is crossed today.
-- Green path: M6 — the boundary grep runs zero-hit after the call sites and
-  the file are removed.
+- Green path: M6 — the file is deleted (its absence verified by a `test ! -f`
+  form, since a grep AT the deleted path exits 2 on a missing file, not
+  zero-hit — iter2 D20d), and AC-014's init/update boundary grep over the
+  surviving init/update paths runs zero-hit (exit 1).
 
 ### EV-015 — AC-015
 - Command: `grep -c DeployModePlugin internal/template/deployer_mode.go`
@@ -297,19 +357,27 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
 - Exit code: 0
 - Why red: the tree's own comment documents the contrary behavior — update
   REINSTALLS project skills today and never offers their removal; the
-  provenance-classified migration (M4) does not exist. (update.go's single
+  provenance-classified migration (M4) and the REQ-024 upgrade arm (the same
+  run's completed user install BEFORE the removal, iter2 D14) do not exist.
+  (update.go's single
   `user_modified` mention, line 590, is a historical-incident comment, not
   migration code.)
-- Green path: M4 — the three-provenance-class migration report test flips it.
+- Green path: M4 — the three-provenance-class migration report test plus the
+  upgrade-order test (install-before-removal, no neither-state) flip it.
 
 ### EV-021 — AC-021
 - Command: `grep -c schema_version internal/manifest/types.go`
 - Stdout: `0`
 - Exit code: 1
 - Why red: neither the project manifest schema nor any user-manifest code
-  carries a schema-version gate; the refusal (REQ-021) and the corrupt-JSON
-  recovery path have no implementation.
-- Green path: M1+M3 — the foreign-schema and corrupt-manifest tests flip it.
+  carries a schema-version gate; the refusal (REQ-021), the corrupt-JSON
+  recovery path, and the unknown-field preservation arm (iter2 D23) have no
+  implementation.
+- Green path: M1+M3 — the foreign-schema, corrupt-manifest, and
+  unknown-field-preservation tests flip it. Proxy note (iter2 D20e): the
+  grep target is the PROJECT manifest types file; the user-manifest
+  subsystem (M1) lives in its own package per design §2.2, so the flip
+  evidence is the M1/M3 test set itself, not this grep's count.
 
 ### EV-022 — AC-022
 - Command: `grep -c collision internal/cli/update.go`
@@ -327,9 +395,11 @@ Baseline tree SHA (binds every entry): `b965a3912c0e97ef81aeeea773019e633591e1cd
   (deployer.go:451-477), which is lexical-only (Clean + `..` rejection +
   string-prefix containment — research V1, iter1 D8); no symlink resolution
   exists anywhere in the deploy path, and no user installer exists to enforce
-  the four-root boundary.
-- Green path: M2 — the confinement test (outside-root refusal +
-  parent-symlink sentinel) flips it.
+  the four-root boundary — the extended arms (symlinked-root containment,
+  leaf-symlink policy, temp+rename write posture; iter2 D17) are equally
+  absent.
+- Green path: M2 — the confinement test set (outside-root refusal +
+  parent-symlink + symlinked-root + leaf-symlink sentinels) flips it.
 
 ## D.3 Indirect Verification
 

@@ -17,8 +17,44 @@ author: manager-spec
   `WT-user-asset-copy`, authored against HEAD `6643c7bba` (research
   baseline), repaired in the iter1-defect-closure commit.
 - Plan audit: iter1 FAIL 0.64 (Tier L threshold 0.85; MP-8 firewall — no
-  RED-now cells). Iter1 defects D1-D13 closed in the v0.2.0 repair; iter2 is
-  the lane's delta-scoped re-audit.
+  RED-now cells). Iter1 defects D1-D13 closed in the v0.2.0 repair; iter2
+  delta re-audit FAIL 0.75 (improving, no STOP signal): 12/13 iter1 defects
+  verified RESOLVED; the D12 residue (renamed D19) plus new findings
+  D14-D23 closed in the v0.3.0 repair. Iter3 is the last numbered round.
+- v0.3.0 iter2 repair closure map: D19/D12-residue — plan M4 + design §2.6 +
+  research V13 repoint list corrected (`probeCodexReadiness`/
+  `countCodexAgentTOMLs`, codex_readiness.go:131/:215-217; the
+  `codexStaleSkillFinding` attribution withdrawn, doctor_codex.go:857-870
+  reads user-layer `[[skills.config]]`, no agent-count input); D14 — REQ-024
+  upgrade arm + REQ-020 same-run gating + design §2.4 no-manifest branch
+  relabeled + M3/M4 wiring + AC-020 extended (Blocker) with REQ-024
+  secondary; D15 — AC-011 rebuilt on catalog-derived placements (38 skill
+  dirs = 37 `moai-*` + plain `moai`; `/bin/ls` measured); D16 — REQ-023
+  truth table + `~/.moai/` backup home with the C2 carve-out + REQ-011
+  manifest-repair count + AC-006/008 arms; D17 — C2 resolved-root/leaf/
+  TOCTOU edges + design §2.1 write posture + AC-025 arms; D18 — REQ-004
+  selection surface (`--bundles`, `moai bundle add|remove`, manifest
+  `bundles:` list) + design §2.3 + AC-018 + M2/M3 assignment; D20 — §D.2
+  enumeration, AC-002 REQ-024, research §3 D-Q3 closure text, EV-014 green
+  path, proxy-cell notes; D21 — versions 0.3.0, baseline-SHA policy in plan
+  §C.2, M0 heading + D-Q2, decision-index iter1-D4 prefix, research V16
+  38-dir correction; D22 — AC-009 repoint binding, AC-013 release-chain
+  grep, AC-016 advisory row; D23 — REQ-021 unknown-field preservation +
+  design §2.2 note + AC-021 arm.
+- REQ/AC accounting (unchanged counts, stated per ceiling): REQ stays 24
+  (all new assertions folded into REQ-004/009/011/020/021/023/024). AC stays
+  25 — the auditor's "add a Blocker AC for the upgrade case" (D14) is
+  satisfied as an EXTENSION of Blocker AC-020 (Verifies + REQ-024 secondary,
+  GWT extended), not a 26th AC; no AC was swapped out (none was orphanable —
+  every AC is its REQ's sole or primary coverage).
+- Evidence ledger: all 22 cells + 2 positive controls RE-EXECUTED verbatim
+  on tree cfb9033582eff27f9031e1a6438d8558aaa48115 (source bytes identical
+  across b965a3912 → cfb903358 → this repair: only SPEC artifacts touched);
+  document pin re-bound accordingly; proxy-cell notes added (D20e).
+- Deferred (none blocking): D22's "add Major ACs for the repointed
+  diagnostics and the advisory row" was folded as EXTENSIONS of AC-009 and
+  AC-016 respectively (25-AC ceiling; stated here per the fold-and-state
+  rule). No other optional deferred — D21/D22/D23 all taken.
 - Source verification: 19 rows (V1-V13, V17, V18, V19 CONFIRMED; V14
   UNRESOLVED-routed; V15 AMBIGUOUS-routed; V16 partially-confirmed with 2
   corrections) — research.md.

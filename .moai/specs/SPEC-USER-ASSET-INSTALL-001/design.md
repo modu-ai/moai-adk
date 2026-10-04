@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "design.md — user-folder asset install architecture"
-version: "0.1.0"
+version: "0.3.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -38,27 +38,53 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
 - Writes to four user roots, resolved at run time:
   - Claude: `$HOME/.claude/skills/`, `$HOME/.claude/agents/`
   - Codex: `$HOME/.agents/skills/`, `$HOME/.codex/agents/`
-- Per-file rule set (inherited semantics from V17 evidence, extended by the
-  iter1 D3 repair):
-  - target exists AND manifest tracks it AND current hash == manifest hash AND
-    differs from shipped bytes → refreshable (REQ-008)
-  - target exists AND manifest tracks it AND current hash equals NEITHER the
-    manifest hash NOR the shipped bytes → divergence: preserve (back up the
-    shipped replacement alongside the user folder), leave the tracked path
-    unmodified by refresh AND by removal, report (REQ-023) — a user edit to a
-    tracked file is never silently overwritten or deleted
+- Per-file rule set — the four-state hash truth table (iter2 D16; state ×
+  action for a manifest-tracked file):
+  - **manifest-match** (current == manifest hash, ≠ shipped): refresh →
+    rewrite to shipped bytes + re-record hash/version (REQ-008); removal →
+    remove (REQ-009).
+  - **up-to-date** (current == manifest hash == shipped): refresh → no-op,
+    not counted; removal → remove.
+  - **manifest-stale** (current ≠ manifest hash, == shipped bytes — e.g. a
+    prior refresh crashed before the manifest write): refresh → repair the
+    manifest entry to the shipped state WITHOUT a file rewrite, counted under
+    "refreshed" (REQ-011); removal → remove (the bytes are moai's own).
+  - **divergence** (current equals NEITHER manifest hash NOR shipped bytes):
+    preserve (REQ-023) — at refresh, back up the shipped replacement to the
+    backup home under `~/.moai/` (`~/.moai/backups/<path>`; C2's sole
+    out-of-root write carve-out — NOT "alongside the user folder", which
+    would sit outside the four roots or pollute them as an untracked file);
+    at removal of a file dropped from every bundle, NO shipped-bytes backup
+    exists, so the file is preserved in place + reported; the tracked path is
+    unmodified by refresh AND by removal; always reported.
+  - **missing** (tracked in manifest, absent on disk): refresh → reinstall +
+    record; removal → drop the manifest entry, count as removed.
   - target exists AND manifest does NOT track it → SKIP + report (collision;
     the file may be the user's — mirrors `rehomeOneSkill`'s skip-and-report and
     `UserCreated` provenance semantics)
-  - target absent → install
+  - target absent AND untracked → install
 - Per-file failure (permissions, EISDIR, …) → continue + surface in summary
   (fail-open per file, loud at the end; never a silent partial install).
-- Four-root confinement is judged on the symlink-RESOLVED destination: unlike
-  the project-side `validateDeployPath` (deployer.go:451-477 — lexical only:
-  Clean + `..` rejection + string-prefix containment, no symlink resolution),
-  the user installer resolves symlinks along the destination's parent chain
-  before writing and refuses any destination whose resolved path falls outside
-  the four roots (AC-025's parent-symlink sentinel).
+- Four-root confinement is judged on RESOLVED paths, covering all three
+  second-order edges (iter2 D17):
+  1. **Symlinked root** — each root is resolved once at install start
+     (`filepath.EvalSymlinks`); a root that is itself a symlink (dotfile-manager
+     `~/.claude` → elsewhere) is a legal boundary at its RESOLVED location —
+     containment is judged resolved-root vs resolved-destination, so such a
+     setup neither collapses into wholesale refusal nor escapes the boundary.
+  2. **Leaf symlink inside a root** — a managed leaf that is itself a symlink
+     is resolved; if it resolves outside its own root's resolved tree it is
+     NEVER written through: refused at install, classified as divergence
+     (REQ-023 preserve + report) at refresh/removal.
+  3. **TOCTOU (check-then-open)** — the resolve-then-write window is closed by
+     posture, not by a second race-prone check: the payload is written to a
+     temp file created inside the validated RESOLVED directory and moved onto
+     the final path with an atomic rename — `rename(2)` does not follow a
+     symlink on its destination, so a leaf swapped in after validation is
+     replaced, not followed — with the resolved parent re-validated
+     immediately before the rename (the O_NOFOLLOW-equivalent semantics for
+     the update path). Manifest writes keep the existing `atomicWriteFile`
+     pattern.
 
 ### 2.2 Per-user manifest (new)
 
@@ -66,13 +92,22 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   `~/.moai/user-assets.json` — the leading candidate because `~/.moai/` is
   already moai's user-level state home per `internal/paths/paths.go`;
   `~/.claude/moai-manifest.json`; per-root split files).
-- Schema: `schema_version`, `installed_at`, `files: {path → {sha256, bundle,
+- Schema: `schema_version`, `installed_at`, `bundles: [opted-in bundle
+  names]`, `files: {path → {sha256, bundle,
   installed_at, moai_version}}`, `collisions: [{path, first_seen_at}]`. The
   installing moai version is PER FILE (REQ-006): the field records the moai
   build that successfully wrote that file; a failed write leaves the prior
   entry and its version untouched, so REQ-013's partial-failure continuation
   yields accurate mixed-version history. There is deliberately no top-level
-  `moai_version` — a single top-level value cannot record that state.
+  `moai_version` — a single top-level value cannot record that state. The
+  `bundles:` list is the recorded opt-in selection (REQ-004, iter2 D18) —
+  the state `moai bundle add|remove` mutates and `moai update` reads.
+- Unknown-field preservation (iter2 D23): a write performed against a KNOWN
+  schema_version carries through fields the writing binary does not
+  understand (top-level and per-file) — the consumers-ignore-unknown-fields
+  premise of acceptance §D.7. An implementation whose decode would drop
+  unknown fields refuses the write instead of silently shrinking the
+  document (protects against an older binary rewriting a newer manifest).
 - Reuses the sha256 hex convention of `catalog.yaml` entries and the triple-hash
   spirit of the project manifest (`internal/manifest/types.go`) minus the parts
   the user scope does not need (no 3-way merge at user scope: collision = skip).
@@ -91,6 +126,16 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   `moai-factory-foreman` + `moai-lane-watchdog` ride the core bundle; the
   factory doctor check (`checkFactoryRun`) keeps reading project state as
   today.
+- Selection surface (iter2 D18): bundle MEMBERSHIP is declared in the
+  catalog (above); the user's opt-in SELECTION is the `bundles:` list in the
+  per-user manifest (§2.2). `moai init --bundles <name,...>` sets the
+  initial selection (default: L0 only); `moai bundle add <name>` / `moai
+  bundle remove <name>` adjust the list and apply the install/removal of
+  exactly that bundle's catalog entries (respecting REQ-010 collision and
+  REQ-023 divergence semantics); `moai update` honors the recorded selection —
+  installs/refreshes L0 + opted-in bundles, prunes per REQ-009 (no longer in
+  L0 nor any opted-in bundle). Milestones: the `--bundles` init flag in M2;
+  the `moai bundle` command and update honoring in M3.
 
 ### 2.4 `moai update` integration
 
@@ -103,12 +148,22 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
 - Removal is manifest-driven ONLY: a file in a user folder that the manifest
   does not track is never a removal candidate (REQ-010 collision rule covers
   it; deletion of untracked files is out of scope).
-- If no per-user manifest exists (init never ran on the machine), the
-  user-asset phase reports an advisory and performs nothing — the first
-  install belongs to init (REQ-024), not to update.
+- No-manifest branch (iter2 D14 — the former label "init never ran on the
+  machine" was wrong for the upgrade population, whose init ran under the
+  pre-SPEC model): the phase branches on project provenance.
+  - Project carries prior-model common skills/agents (the REQ-020 upgrade
+    population) → the phase performs the FIRST user install (REQ-024 upgrade
+    arm) in the same run, and the project phase's migration removal runs only
+    AFTER that install completes — no update run leaves the user with
+    neither placement.
+  - No manifest AND no prior-model project assets → the advisory; there is
+    nothing to install from and nothing to strand (the first install belongs
+    to init, REQ-024).
 - Ordering: user-asset phase runs BEFORE the project phase so a mid-update
   failure leaves the project phase untouched (project behavior unchanged by a
-  user-side failure).
+  user-side failure); within the upgrade case this ordering IS the
+  stranding guard — the install that replaces the project placement has
+  landed before the removal runs.
 
 ### 2.5 Project slimming
 
@@ -132,11 +187,19 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
 - Retired-carrier checks (`checkPluginDeployment`, `checkPluginVersion`) are
   repointed to the user-manifest comparison or removed with their SPEC's REQs
   cited in the commit (REQ-019). The existing project-scope Codex asset
-  diagnostics (research V13: `inspectSkillMirror`, the mirror/agent-count
-  inputs of `codexStaleSkillFinding` at `doctor_codex.go:429`/`:870`) are
-  repointed to the user-install path in M4 — the same milestone that stops
-  emitting project assets — with a clean-on-correct-install regression test
-  (iter1 D12); left alone they would misreport every correct install as
+  diagnostics are repointed to the user-install path in M4 — the same
+  milestone that stops emitting project assets — with a clean-on-correct-
+  install regression test extending to the readiness output (iter1 D12
+  residue, corrected by iter2 D19): the PROJECT-root readers are
+  `inspectSkillMirror` (`internal/cli/doctor_codex.go:429`) and the readiness
+  pair `probeCodexReadiness`/`countCodexAgentTOMLs`
+  (`internal/cli/codex_readiness.go:131` consumer, `:215-217` definition —
+  the agent-TOML count reads `.codex/agents/moai/*.toml` under the project
+  root). `codexStaleSkillFinding` (`doctor_codex.go:857-870`) is NOT one of
+  them: it reads user-layer `[[skills.config]]` entries and has no
+  agent-count input — iter1's attribution to it was wrong; M5 judges whether
+  that user-layer check needs its own repoint. Left alone the project-root
+  readers would misreport every correct install as
   drift.
 
 ### 2.7 Plugin carrier disposition

@@ -69,7 +69,9 @@ generating, committing, or shipping and violates REQ-016, C5, and AC-013;
 hard delete is the only surviving option, recorded as premise P5 in spec.md
 §1.
 Operator verdict: closed by constraint — hard delete (M6 disposition list;
-release-chain gates included per D4 of the iter1 audit).
+release-chain gates included per iter1-D4 — the iter1 audit defect list's
+release-gate finding, NOT operator decision D4; identifier prefixed iter2
+D21).
 
 ## Open founder questions (operator verdict pending)
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "plan.md — implementation plan"
-version: "0.1.0"
+version: "0.3.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -46,7 +46,13 @@ table).
    POLICY-COVERED; premises P5/P6 in spec.md §1) — M2 ships without profile
    provisioning (P6) and M6 hard-deletes the carrier (P5).
 2. `git rev-parse --short HEAD` == `6643c7bba` (or the merged successor of
-   this SPEC's landing branch).
+   this SPEC's landing branch). Baseline-SHA policy (iter2 D21): this check
+   is a RE-MEASUREMENT at run entry against the landing branch's tip, never a
+   hard pin; the acceptance ledger's tree pins (`b965a3912…` iter1,
+   `cfb903358…` iter2-repair re-execution) are plan-phase MEASUREMENT trees
+   per verification-completeness.md §4. The two kinds of SHA answer different
+   questions (run-entry baseline vs cell-measurement tree) and neither
+   invalidates the other.
 3. Baseline measurement: `go test ./internal/template/... ./internal/cli/...`
    green before the first change (this worktree's develop tip is the
    baseline).
@@ -79,7 +85,7 @@ Each milestone's exit evidence:
 
 ## F. Milestones
 
-### M0 — Bundle taxonomy and L0 resolution (BLOCKING gate: D-Q1, D-Q4, D-Q5)
+### M0 — Bundle taxonomy and L0 resolution (BLOCKING gates: D-Q1, D-Q2, D-Q4, D-Q5)
 Extend `internal/template/catalog.yaml` + loader with the user-install view:
 L0 core (plan/run/sync surface, five core agents per D-Q1, hook payload,
 factory) and opt-in bundles. Add a catalog drift guard pinning the L0 list to
@@ -101,39 +107,61 @@ Implement the user-asset installer over the embedded tree: install, collision
 skip-and-report (REQ-010), per-file failure isolation (REQ-013), idempotency
 (REQ-012), summary counts (REQ-011 groundwork), symlink-resolved four-root
 confinement (C2 — resolved-path judgment, not the project-side lexical check;
-AC-025). Wire `moai init` as the first-install trigger (REQ-024: install L0 +
-opted-in bundles when no per-user manifest exists). Claude roots and Codex
+AC-025, incl. the symlinked-root and leaf-symlink arms). Wire `moai init` as
+the first-install trigger (REQ-024: install L0 + opted-in bundles when no
+per-user manifest exists), with `--bundles <name,...>` setting the initial
+opt-in selection recorded in the manifest (REQ-004 selection surface, iter2
+D18). Claude roots and Codex
 roots, agents included (REQ-022). No profile provisioning ships (D-Q3 closed:
 P6 declared limitation). Priority: High. Evidence: table-driven installer
 tests on temp HOMEs (collision, failure, idempotency, both harnesses,
-confinement refusal incl. the parent-symlink sentinel).
+confinement refusal incl. the parent-symlink, symlinked-root, and
+leaf-symlink sentinels).
 
 ### M3 — `moai update` user-asset phase
 Wire the update flow: refresh (REQ-008 — only when the file's current hash
 equals its manifest hash), manifest-driven removal (REQ-009 — same
-precondition), tracked-file divergence preserve + backup + report (REQ-023),
-collision report (REQ-010), summary counts incl. divergence-preserved
-(REQ-011), no-manifest advisory (init is the install trigger per REQ-024 —
-update performs no first install), ordering before the project phase, no
+precondition; candidates are files no longer in L0 nor any opted-in bundle),
+tracked-file divergence preserve + backup + report (REQ-023, full truth
+table incl. the manifest-stale and missing-file arms), collision report
+(REQ-010), summary counts incl. divergence-preserved (REQ-011), the
+no-manifest BRANCH (REQ-024 upgrade arm — a prior-model project gets the
+first user install in the same run, BEFORE the project phase's migration
+removal; a machine with no manifest and no prior-model assets gets the
+advisory), the `moai bundle add|remove` command adjusting the manifest's
+bundle list and applying exactly that bundle's catalog entries (REQ-004,
+iter2 D18), ordering before the project phase, no
 regression of the existing global-settings cleanup. Priority: High.
-Evidence: update-flow tests with temp HOME + project fixture; existing update
-tests stay green.
+Evidence: update-flow tests with temp HOME + project fixture, incl. the
+upgrade case (prior-model project + no manifest → first install precedes the
+migration removal in the same run; no neither-state) and the bundle
+add/remove tests; existing update tests stay green.
 
 ### M4 — Project slimming and migration
 Project deploy stops emitting common skills/agents (REQ-005); the payload
 keeps settings, AGENTS.md/CLAUDE.md, lock file, hooks, `.mcp.json` (always
 with the moai entry again), output-styles, rules, command wrappers. Migration
 for existing projects per REQ-020 (provenance-classified removal/preservation
-with reports). Repoint the EXISTING project-scope Codex asset diagnostics that
-read project skill/agent paths — `inspectSkillMirror` and
-`codexStaleSkillFinding`'s mirror/agent-count inputs
-(`internal/cli/doctor_codex.go:429` / `:870` family, research V13) — to the
-user-install path in the same change, with a regression test asserting a
-correct user-install reports clean (after this milestone they misreport a
-correct install as drift). Priority: High. Evidence: init/update payload
-assertions (project tree carries no `moai-*` skill dirs after migration);
-migration report tests for all three provenance classes; the repointed
-Codex-diagnostics clean-install regression test.
+with reports; the removal step is gated on the same-run completed user
+install per REQ-024's upgrade arm, wired by M3's phase ordering — removal
+never precedes the install it replaces). Repoint the EXISTING project-scope
+Codex asset diagnostics that read project skill/agent paths to the
+user-install path in the same change — `inspectSkillMirror`
+(`internal/cli/doctor_codex.go:429`) and the Codex readiness probe pair
+`probeCodexReadiness`/`countCodexAgentTOMLs` (`internal/cli/codex_readiness.go:131`
+consumer, `:215-217` definition — the agent-TOML count reads
+`.codex/agents/moai/*.toml` under the PROJECT root; iter2 D19 correcting
+iter1's misattribution to `codexStaleSkillFinding`, which reads user-layer
+`[[skills.config]]` entries at `doctor_codex.go:857-870` and has no
+agent-count input — whether that user-layer check needs its own repoint is
+judged in M5, not assumed here) — with a regression test asserting a correct
+user-install reports clean, extending to the readiness output (the
+`AgentsTOMLs` count), because after this milestone the project-root readers
+misreport a correct install as drift. Priority: High. Evidence: init/update
+payload assertions (project tree carries no catalog-derived skill/agent
+placement after migration — the AC-011 placement set, incl. the plain `moai`
+dirs); migration report tests for all three provenance classes; the repointed
+Codex-diagnostics clean-install regression test incl. readiness output.
 
 ### M5 — `moai doctor` integration
 New doctor checks: user-install integrity (REQ-014) and project-vs-lock
