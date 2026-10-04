@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // newTodoClaimCmd — `moai todo claim [--lane <label>] [--renew <id>]`.
@@ -76,15 +76,15 @@ supervising launcher can distinguish it from failure.`,
 // the type. The copy is shallow on the record and fresh on the item slice:
 // mutating the shared item structs would strip the fields the caller's
 // still-open record holds.
-func todoJSONProjection(rec *kanban.BacklogRecord) *kanban.BacklogRecord {
+func todoJSONProjection(rec *factory.BacklogRecord) *factory.BacklogRecord {
 	out := *rec
-	out.Items = make([]kanban.BacklogItem, len(rec.Items))
+	out.Items = make([]factory.BacklogItem, len(rec.Items))
 	for i, it := range rec.Items {
 		it.PickedBy, it.LeaseExpiresAt = nil, nil
 		out.Items[i] = it
 	}
 	if len(rec.Archived) > 0 {
-		out.Archived = make([]kanban.BacklogArchiveEntry, len(rec.Archived))
+		out.Archived = make([]factory.BacklogArchiveEntry, len(rec.Archived))
 		for i, entry := range rec.Archived {
 			entry.Item.PickedBy, entry.Item.LeaseExpiresAt = nil, nil
 			out.Archived[i] = entry
@@ -119,7 +119,7 @@ func claimStrOr(s *string, fallback string) string {
 // always the last field (the extension point the history line contract
 // names). The JSON surface is a different face entirely: the omitempty
 // pointers keep it excluded (REQ-TCL-014).
-func todoLeaseCells(it kanban.BacklogItem) string {
+func todoLeaseCells(it factory.BacklogItem) string {
 	if it.PickedBy == nil && it.LeaseExpiresAt == nil {
 		return ""
 	}
@@ -132,14 +132,14 @@ func todoClaimHolder(lane string) string {
 	if l := strings.TrimSpace(lane); l != "" {
 		return l
 	}
-	return kanban.BacklogOperatorHolder
+	return factory.BacklogOperatorHolder
 }
 
 // todoClaimReclaimLines renders the C5 audit surface: one human-readable
 // line per card the operation's expiry-first pass returned to queued,
 // naming the id and the previous holder. No events table (C5) — the output
 // line IS the audit.
-func todoClaimReclaimLines(out *strings.Builder, reclaimed []kanban.BacklogReclamation) {
+func todoClaimReclaimLines(out *strings.Builder, reclaimed []factory.BacklogReclamation) {
 	for _, r := range reclaimed {
 		fmt.Fprintf(out, "reclaimed %s prev_holder=%s returned to queued\n", r.ItemID, dash(r.PrevHolder))
 	}
@@ -151,7 +151,7 @@ func todoClaimReclaimLines(out *strings.Builder, reclaimed []kanban.BacklogRecla
 // (REQ-TCL-012); every other refusal surfaces its distinct message on
 // stderr (REQ-TCL-003/006).
 func todoClaimRefusal(cmd *cobra.Command, err error) error {
-	if errors.Is(err, kanban.ErrClaimNoCard) {
+	if errors.Is(err, factory.ErrClaimNoCard) {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no queued card is available")
 		return &exitCodeError{code: factoryNextNoCardExit, msg: "todo claim: no card is available"}
 	}

@@ -1,0 +1,123 @@
+// probe-hold_test.go.txt — WM6 measurement for AC-FAL-009 (iv) / REQ-FAL-011.
+//
+// A probe, not part of the suite: it is mapped into internal/cli by an overlay
+// (evidence/overlay-hold.json) together with an instrumented copy of
+// factory_card.go whose factoryLeaseSection reports, per section, the time fn ran
+// while the queue lock was held ("hold") and the time spent waiting for the lock
+// ("wait"). It drives the real lease function (factoryNextLeaseOnceGated, the
+// bare form, arm (c): record read, queue read, promotion, three record writes)
+// on a real queue store and a real factory record in a temp project.
+//
+//   10 sequential leases by one lane, then 2, 4 and 10 concurrent lanes
+//   (PROBE_ROUNDS fresh fixtures per concurrent size, default 1).
+package cli
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/kanban"
+)
+
+func probePct(d []time.Duration, p float64) time.Duration {
+	if len(d) == 0 {
+		return 0
+	}
+	s := append([]time.Duration(nil), d...)
+	sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })
+	idx := int(float64(len(s))*p+0.9999999) - 1
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(s) {
+		idx = len(s) - 1
+	}
+	return s[idx]
+}
+
+func probeReport(label string, holds, waits []time.Duration) {
+	fmt.Printf("HOLD config=%s n=%d hold p50=%s p95=%s max=%s | lock-wait p50=%s p95=%s max=%s\n", label, len(holds),
+		probePct(holds, 0.50).Round(10*time.Microsecond), probePct(holds, 0.95).Round(10*time.Microsecond), probePct(holds, 1.0).Round(10*time.Microsecond),
+		probePct(waits, 0.50).Round(10*time.Microsecond), probePct(waits, 0.95).Round(10*time.Microsecond), probePct(waits, 1.0).Round(10*time.Microsecond))
+}
+
+func TestZZProbeSectionHoldTime(t *testing.T) {
+	rounds := 1
+	if v, err := strconv.Atoi(os.Getenv("PROBE_ROUNDS")); err == nil && v > 0 {
+		rounds = v
+	}
+	var mu sync.Mutex
+	var holds, waits []time.Duration
+	prev := probeHoldRec
+	probeHoldRec = func(hold, wait time.Duration) {
+		mu.Lock()
+		holds, waits = append(holds, hold), append(waits, wait)
+		mu.Unlock()
+	}
+	t.Cleanup(func() { probeHoldRec = prev })
+	reset := func() {
+		mu.Lock()
+		holds, waits = nil, nil
+		mu.Unlock()
+	}
+	states := func(n int) []kanban.BacklogState {
+		s := make([]kanban.BacklogState, n)
+		for i := range s {
+			s[i] = kanban.BacklogStateQueued
+		}
+		return s
+	}
+	ctx := context.Background()
+
+	// 10 sequential leases by one lane.
+	root, _ := nmBase(t, states(10)...)
+	reset()
+	for i := 0; i < 10; i++ {
+		card, leased, err := factoryNextLeaseOnceGated(ctx, root, fcRun, "lane-1", false)
+		if err != nil || !leased {
+			t.Fatalf("sequential lease %d: card=%v leased=%v err=%v", i, card.CardID, leased, err)
+		}
+	}
+	probeReport("sequential-10", holds, waits)
+
+	// 2, 4, 10 concurrent lanes, PROBE_ROUNDS fresh fixtures each.
+	for _, n := range []int{2, 4, 10} {
+		var allHolds, allWaits []time.Duration
+		for r := 0; r < rounds; r++ {
+			root, _ := nmBase(t, states(n)...)
+			for i := 3; i <= n; i++ {
+				sdRegisterLane(t, root, fmt.Sprintf("lane-%d", i))
+			}
+			reset()
+			start := make(chan struct{})
+			var wg sync.WaitGroup
+			errs := make([]error, n)
+			got := make([]bool, n)
+			for i := 0; i < n; i++ {
+				wg.Add(1)
+				go func(i int) {
+					defer wg.Done()
+					<-start
+					_, got[i], errs[i] = factoryNextLeaseOnceGated(ctx, root, fcRun, fmt.Sprintf("lane-%d", i+1), false)
+				}(i)
+			}
+			close(start)
+			wg.Wait()
+			for i := 0; i < n; i++ {
+				if errs[i] != nil || !got[i] {
+					t.Fatalf("concurrent n=%d round %d lane-%d: leased=%v err=%v", n, r, i+1, got[i], errs[i])
+				}
+			}
+			mu.Lock()
+			allHolds, allWaits = append(allHolds, holds...), append(allWaits, waits...)
+			mu.Unlock()
+		}
+		probeReport(fmt.Sprintf("concurrent-%d(rounds=%d)", n, rounds), allHolds, allWaits)
+	}
+}

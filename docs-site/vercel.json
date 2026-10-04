@@ -180,23 +180,33 @@
       "permanent": true
     },
     {
-      "source": "/:locale(ko|en|ja|zh)/advanced/factory-mode",
-      "destination": "/:locale/advanced/kanban-mode",
+      "source": "/:locale(ko|en|ja|zh)/advanced/kanban-mode",
+      "destination": "/:locale/advanced/factory-mode",
       "permanent": true
     },
     {
-      "source": "/advanced/factory-mode",
-      "destination": "/ko/advanced/kanban-mode",
+      "source": "/advanced/kanban-mode",
+      "destination": "/ko/advanced/factory-mode",
       "permanent": true
     },
     {
-      "source": "/:locale(ko|en|ja|zh)/multi-llm/factory-mode",
-      "destination": "/:locale/multi-llm/kanban-mode",
+      "source": "/:locale(ko|en|ja|zh)/multi-llm/kanban-mode",
+      "destination": "/:locale/advanced/factory-mode",
       "permanent": true
     },
     {
-      "source": "/multi-llm/factory-mode",
-      "destination": "/ko/multi-llm/kanban-mode",
+      "source": "/multi-llm/kanban-mode",
+      "destination": "/ko/advanced/factory-mode",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/core-concepts/kanban-board-terms",
+      "destination": "/:locale/advanced/factory-mode",
+      "permanent": true
+    },
+    {
+      "source": "/core-concepts/kanban-board-terms",
+      "destination": "/ko/advanced/factory-mode",
       "permanent": true
     },
     {

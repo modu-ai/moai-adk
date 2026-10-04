@@ -12,10 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	verifyExtraCommands = append(verifyExtraCommands, newVerifySyncGateCmd)
-}
-
 // verifyReceiptContext returns the command's context, or a background one when
 // the command runs outside Execute (tests call RunE directly).
 func verifyReceiptContext(c *cobra.Command) context.Context {

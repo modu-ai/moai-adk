@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/auditverdict"
 	"github.com/modu-ai/moai-adk/internal/jev"
 )
 
@@ -58,7 +59,8 @@ func TestSpecTier(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if got := specTier(dir); got != c.want {
+			// The tier reader moved to the shared verdict predicate package.
+			if got := auditverdict.SpecTier(dir); got != c.want {
 				t.Errorf("specTier = %q, want %q", got, c.want)
 			}
 		})

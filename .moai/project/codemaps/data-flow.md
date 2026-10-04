@@ -50,17 +50,17 @@ internal/cli/deps.go                    합성 루트 조립
 internal/cli/root.go → fang.go          runFang → cobra 라우팅
 internal/cli/todo.go                    newTodoCmd() → add 서브커맨드 RunE
 internal/cli/todo.go                    resolveTodoQueueRoot()
-  └ internal/kanban/todo_root.go        ResolveTodoQueueRootAdopting
+  └ internal/factory/todo_root.go        ResolveTodoQueueRootAdopting
                                           — primary checkout 정규화 → project-key 산출
-internal/kanban/state_dir.go            StateDirForRoot
+internal/factory/state_dir.go            StateDirForRoot
                                           → ~/.moai/db/<project-key>/todo
-internal/cli/todo.go                    todoBacklogPath() → kanban.BacklogPathForRootAdopting
-internal/cli/todo.go                    newTodoStore() → kanban.NewBacklogStore(path)
+internal/cli/todo.go                    todoBacklogPath() → factory.BacklogPathForRootAdopting
+internal/cli/todo.go                    newTodoStore() → factory.NewBacklogStore(path)
 internal/cli/todo_analysis.go           appendAnalyzedCard(rec, text, BacklogStateQueued, force)
-internal/kanban/backlog_store.go        NewBacklogStore / Mutate(func(*BacklogRecord) error)
-internal/kanban/board_lock.go           크로스 프로세스 backlog.lock (+ _unix / _windows)
-internal/kanban/backlog_store.go        openEngine (정의 위치) → backlog_sqlite.go 엔진
-internal/kanban/backlog_sqlite.go       WAL + busy_timeout ≥ 5000 + BEGIN IMMEDIATE
+internal/factory/backlog_store.go        NewBacklogStore / Mutate(func(*BacklogRecord) error)
+internal/factory/state_lock.go           크로스 프로세스 backlog.lock (+ _unix / _windows)
+internal/factory/backlog_store.go        openEngine (정의 위치) → backlog_sqlite.go 엔진
+internal/factory/backlog_sqlite.go       WAL + busy_timeout ≥ 5000 + BEGIN IMMEDIATE
                                           ↳ <queue-dir>/backlog.db
 ```
 
@@ -329,7 +329,7 @@ moai web 설정 저장                        handleSave — 9개 persistence se
 moai integration acquire                창을 기록하기 전에 (precondition)
 moai integration preflight [경로]        창을 잡지 않고 같은 질문만
   └ internal/cli/integration_settings_drift.go   CLI 절반 — 두 표면의 배선
-      └ internal/kanban/settings_drift.go        도메인 절반 — 검출 · 보존 · 원장
+      └ internal/factory/settings_drift.go        도메인 절반 — 검출 · 보존 · 원장
             git --no-optional-locks status --porcelain -- .claude/settings.json
               (--no-optional-locks 는 필수다: 평범한 status 는 인덱스 WRITE 락을 수십 ms 잡아,
                레인 여럿이 도는 머신에서 병합 직전 검사가 스스로 경합을 만든다.
@@ -477,8 +477,8 @@ internal/cli/goal.go                    goal --auto "<mission>" → 승인 대�
     internal/mission/auto_state.go      SaveAutoMission → 미션 상태 파일 (internal/atomicfile 경유)
   run (한 operation씩)
     internal/mission/policy.go          ValidateMissionDecision(sealed, snapshot, decision, now)
-    internal/kanban/gtd_engage.go       EngageGTDItem — 권한·증거 신선도·의존성·레인 조건 판정
-    internal/kanban/gtd_operation.go    ExecuteGTDOperation — 준비된 operation 실행 후 readback
+    internal/factory/gtd_engage.go       EngageGTDItem — 권한·증거 신선도·의존성·레인 조건 판정
+    internal/factory/gtd_operation.go    ExecuteGTDOperation — 준비된 operation 실행 후 readback
                                           ↳ ~/.moai/db/<project-key>/todo/backlog.db (GTD 확장 테이블)
   supervise
     internal/mission/supervisor.go      SuperviseAutoMission — 증거 적재 → 정책 검증 → 실행 → readback
@@ -488,7 +488,7 @@ internal/cli/goal.go                    goal --auto "<mission>" → 승인 대�
 ```
 
 **`internal/mission`의 비테스트 소비자는 `internal/cli/goal.go` 하나**이며, 같은 파일이
-`internal/kanban`의 GTD 함수도 직접 부릅니다. 미션 텍스트는 셸 명령이나 goal 조건으로 해석되지
+`internal/factory`의 GTD 함수도 직접 부릅니다. 미션 텍스트는 셸 명령이나 goal 조건으로 해석되지
 않습니다(`--auto` 플래그 도움말: "without condition or shell parsing"). 거버넌스 receipt의
 발행자는 `manager-todo`(구 판정 역할의 개명 후 이름)이고 상태는 권고(`GovernanceRecommended`)이며, 효과는 위 소유자
 어댑터가 적용합니다. 원격 push·PR·보호 브랜치 병합은 설정된 provider가 없으면 일어나지

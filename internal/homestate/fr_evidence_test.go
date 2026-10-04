@@ -15,7 +15,7 @@ func frLeasedCard(repo frRepo, cardID, state string) Card {
 	return Card{
 		RunID: frRun, CardID: cardID, State: state, Version: 1, OwnerLabel: "worker-1",
 		LeaseHolder: "worker-1", LeaseExpiresAt: frLeaseUntil(time.Hour), HeartbeatAt: frNow.Format(time.RFC3339Nano),
-		WorktreePath: repo.Dir, Stage: state,
+		WorktreePath: repo.Dir, Stage: state, SpecID: frSpecID,
 	}
 }
 

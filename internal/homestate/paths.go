@@ -106,13 +106,13 @@ func primaryCheckoutRootFromCommonDir(commonDir string) (string, bool) {
 	return filepath.Dir(commonDir), true
 }
 
-// tempRoots mirrors the production anchor set of kanban's TempOriginReason
-// (internal/kanban/temp_origin.go defaultTempRoots, REQ-THG-002): os.TempDir()
+// tempRoots mirrors the production anchor set of the factory package's TempOriginReason
+// (internal/factory/temp_origin.go defaultTempRoots, REQ-THG-002): os.TempDir()
 // plus the /tmp and /var/folders spellings, whose containment os.TempDir()
 // alone misses on machines where TMPDIR points at the per-user directory
 // (/var/folders/... on macOS) while a project sits under /tmp. /var/tmp stays
-// excluded for the same reboot-survival reason the kanban set records. The
-// set is duplicated here — homestate cannot import kanban (kanban imports
+// excluded for the same reboot-survival reason the factory set records. The
+// set is duplicated here — homestate cannot import factory (factory imports
 // homestate) — and TestTempDiscriminantParity asserts the two discriminants
 // agree so the sibling resolvers cannot split again.
 func tempRoots() []string {

@@ -101,7 +101,7 @@ rm -rf "$P1" "$SANDBOX/proj-j1b"
 # ------------------------------------------------------------ J1: moai init ----
 
 j_begin
-run_to j1-init 180 "$SANDBOX" "NO_COLOR=1 '$BIN' init proj-j1 --non-interactive --language go --git-mode manual"
+run_to j1-init 180 "$SANDBOX" "MOAI_SKIP_PLUGIN_INSTALL=1 NO_COLOR=1 '$BIN' init proj-j1 --non-interactive --language go --git-mode manual"
 [ "$RC" -eq 0 ]; check "J1 init exit=0 (got $RC)" $?
 [ -d "$P1/.moai" ];   check "J1 .moai scaffold present" $?
 [ -d "$P1/.claude" ]; check "J1 .claude scaffold present" $?
@@ -112,7 +112,7 @@ j_end J1 "$RUN_DIR/j1-init.log"
 # J1b (informational sub-journey): bare non-TTY init WITHOUT --non-interactive —
 # TUX v3 plain-fallback guarantee. Timeout => hang => FAIL.
 j_begin
-run_to j1b-init-notty 120 "$SANDBOX" "NO_COLOR=1 '$BIN' init proj-j1b"
+run_to j1b-init-notty 120 "$SANDBOX" "MOAI_SKIP_PLUGIN_INSTALL=1 NO_COLOR=1 '$BIN' init proj-j1b"
 if [ "$RC" -eq 137 ] || [ "$RC" -eq 143 ]; then
   bad "J1b bare non-TTY init hung (killed by timeout)"
 else

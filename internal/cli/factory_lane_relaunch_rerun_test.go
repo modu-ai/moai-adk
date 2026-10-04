@@ -46,7 +46,7 @@ func relaunchLoopDrive(t *testing.T, gateAnswers []string, leaseCards int, expli
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	sdScrubLauncherEnv(t)
 	// The launcher's own gate stamped the first run before the divert.
-	t.Setenv(config.EnvMoaiKanbanID, "X")
+	t.Setenv(config.EnvFactoryRunID, "X")
 
 	obs := &relaunchLoopRun{}
 
@@ -55,7 +55,7 @@ func relaunchLoopDrive(t *testing.T, gateAnswers []string, leaseCards int, expli
 	prevLaunch := factoryLaneCardLaunchFn
 	factoryLaneCardLaunchFn = func(c *exec.Cmd) error {
 		env := sdEnvOf(t, c.Env)
-		obs.childRunIDs = append(obs.childRunIDs, env[config.EnvMoaiKanbanID])
+		obs.childRunIDs = append(obs.childRunIDs, env[config.EnvFactoryRunID])
 		obs.childDirs = append(obs.childDirs, c.Dir)
 		return nil
 	}
@@ -71,13 +71,13 @@ func relaunchLoopDrive(t *testing.T, gateAnswers []string, leaseCards int, expli
 		if refusal, refused := strings.CutPrefix(answer, "!"); refused {
 			return func() {}, errors.New(refusal)
 		}
-		prev, had := os.LookupEnv(config.EnvMoaiKanbanID)
-		_ = os.Setenv(config.EnvMoaiKanbanID, answer)
+		prev, had := os.LookupEnv(config.EnvFactoryRunID)
+		_ = os.Setenv(config.EnvFactoryRunID, answer)
 		return func() {
 			if had {
-				_ = os.Setenv(config.EnvMoaiKanbanID, prev)
+				_ = os.Setenv(config.EnvFactoryRunID, prev)
 			} else {
-				_ = os.Unsetenv(config.EnvMoaiKanbanID)
+				_ = os.Unsetenv(config.EnvFactoryRunID)
 			}
 		}, nil
 	}
@@ -123,10 +123,10 @@ func TestRelaunchLoopReResolvesRun(t *testing.T) {
 			t.Errorf("leases were taken from runs %v, want %v (iteration 2 must lease from the NEW run)", obs.leaseRunIDs, want)
 		}
 		if want := []string{"X", "Y"}; !reflect.DeepEqual(obs.childRunIDs, want) {
-			t.Errorf("children saw %s=%v, want %v (iteration 2's child must carry the new run)", config.EnvMoaiKanbanID, obs.childRunIDs, want)
+			t.Errorf("children saw %s=%v, want %v (iteration 2's child must carry the new run)", config.EnvFactoryRunID, obs.childRunIDs, want)
 		}
-		if got := os.Getenv(config.EnvMoaiKanbanID); got != "X" {
-			t.Errorf("after the loop %s = %q, want the launcher's own stamp %q restored", config.EnvMoaiKanbanID, got, "X")
+		if got := os.Getenv(config.EnvFactoryRunID); got != "X" {
+			t.Errorf("after the loop %s = %q, want the launcher's own stamp %q restored", config.EnvFactoryRunID, got, "X")
 		}
 	})
 

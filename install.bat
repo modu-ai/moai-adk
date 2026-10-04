@@ -166,6 +166,20 @@ REM Verify installation
 echo.
 echo [INFO] Verifying installation...
 "%TARGET_PATH%" version
+
+REM Install the moai plugin into the Claude Code and Codex found on PATH. The call
+REM uses the install path (the install directory need not be on PATH) and is
+REM fail-open: the binary is installed, so an older binary that lacks the verb
+REM only warns. The script ends with exit /b 0 so the call's errorlevel is not
+REM handed back. MOAI_SKIP_PLUGIN_INSTALL=1 is inherited by the verb.
+echo.
+echo [INFO] Installing the moai plugin (set MOAI_SKIP_PLUGIN_INSTALL=1 to skip)...
+"%TARGET_PATH%" plugin install
+if errorlevel 1 (
+    echo [WARNING] The moai plugin was not installed. Install it yourself:
+    echo     claude plugin marketplace add modu-ai/moai-adk
+    echo     claude plugin install moai@moai-adk
+)
 echo.
 echo [SUCCESS] Installation complete!
 echo.
@@ -175,7 +189,7 @@ echo     moai doctor        # Check system health
 echo     moai update --project # Update project templates
 echo.
 echo Documentation: https://github.com/modu-ai/moai-adk
-goto :eof
+exit /b 0
 
 :show_help
 echo Usage: install.bat [OPTIONS]

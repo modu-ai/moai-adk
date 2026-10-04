@@ -38,24 +38,15 @@ const DefaultRaisedStopHookBlockCap = 200
 // (the launch must never block on a goal-state read).
 func injectStopHookBlockCapForGoal(ctx context.Context, base []string, projectRoot, sessionID string) []string {
 	_ = ctx
-	// SPEC-FACTORY-MODE-001 REQ-FM-023: the kanban branch is UNCONDITIONAL and
-	// sits ahead of the goal read. The goal-conditional branch below reads goal
-	// state at launch time; a kanban chain arms its goal mid-session, so that
-	// predicate is structurally unable to see it and the chain would otherwise
-	// stay capped at the runtime default of 8.
-	//
-	// A COMPANION of a kanban run has the same problem — it arms its own goal
-	// mid-session too — so it takes the same raise. It is signalled by the label
-	// variable rather than the kanban one because it must not be seeded with
-	// the chain, which only the leader drives.
-	//
-	// A FACTORY session (lead or worker, SPEC-FACTORY-WORKER-FANOUT-001) takes
-	// the same raise for the same reason: a factory turn chain is dispatch-
-	// driven and long, and the run is meant to survive unattended. It is
-	// signalled by EnvMoaiFactoryWorkers, which both branches set and which
-	// never implies a kanban chain.
-	if os.Getenv(config.EnvMoaiKanban) != "" || os.Getenv(config.EnvMoaiKanbanLabel) != "" ||
-		os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+	// A FACTORY session (leader or lane, SPEC-FACTORY-WORKER-FANOUT-001) takes
+	// the raise unconditionally, ahead of the goal read: a factory turn chain is
+	// dispatch-driven and long, and the run is meant to survive unattended. The
+	// goal-conditional branch below reads goal state at launch time, and a
+	// factory session arms its goal mid-session, so that predicate is
+	// structurally unable to see it and the session would otherwise stay capped
+	// at the runtime default of 8. The session is signalled by
+	// EnvMoaiFactoryWorkers, which both branches set.
+	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		return setStopHookBlockCap(base, DefaultRaisedStopHookBlockCap)
 	}
 	if projectRoot == "" || sessionID == "" {

@@ -117,7 +117,7 @@ func TestLauncherNeverInjectsIsolatePeerMachinesByDefault(t *testing.T) {
 			}
 			// The kanban payload too: forced accept + user extras, but the
 			// isolation key appears only on explicit opt-in.
-			flag, cleanup := prepareKanbanSettings("", []string{"-p", "dev"})
+			flag, cleanup := prepareFactorySettings("", []string{"-p", "dev"})
 			t.Cleanup(cleanup)
 			if len(flag) != 2 {
 				t.Fatalf("kanban settings flag = %v, want [--settings <path>]", flag)
@@ -178,19 +178,19 @@ func TestTemplateNeverShipsIsolatePeerMachines(t *testing.T) {
 	}
 }
 
-// TestPrepareKanbanSettingsMergesUserConfig verifies the kanban merge: the
+// TestPrepareFactorySettingsMergesUserConfig verifies the kanban merge: the
 // kanban-required crossSessionInbound=accept wins (dispatch would stall
 // otherwise), while the user's dialog_expiry / isolate opt-in ride along.
-func TestPrepareKanbanSettingsMergesUserConfig(t *testing.T) {
+func TestPrepareFactorySettingsMergesUserConfig(t *testing.T) {
 	withNoLaunchEffort(t)
 	withCrossSessionConfig(t, "crosssession:\n  inbound: refuse\n  isolate_machines: true\n  dialog_expiry: never\n")
 
-	for _, key := range []string{config.EnvMoaiKanbanSettingsInjected} {
+	for _, key := range []string{config.EnvFactorySettingsInjected} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
 	}
 
-	flag, cleanup := prepareKanbanSettings("", []string{"-p", "dev"})
+	flag, cleanup := prepareFactorySettings("", []string{"-p", "dev"})
 	t.Cleanup(cleanup)
 	if len(flag) != 2 || flag[0] != "--settings" {
 		t.Fatalf("flag = %v, want [--settings <path>]", flag)

@@ -52,7 +52,7 @@ func TestLaneRecheckDoctrine(t *testing.T) {
 	const (
 		skill    = ".claude/skills/moai-lane-watchdog/SKILL.md"
 		auto     = ".claude/rules/moai/workflow/auto-semantics.md"
-		dispatch = ".claude/rules/moai/workflow/kanban-dispatch.md"
+		dispatch = ".claude/rules/moai/workflow/factory-dispatch.md"
 	)
 	needs := []doctrineNeed{
 		{

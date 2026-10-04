@@ -67,32 +67,11 @@ func TestFactoryWorkerNoticeCarriesSpawnAuthority(t *testing.T) {
 	}
 }
 
-// TestKanbanCompanionNoticeCarriesSpawnAuthority pins the same authority onto
-// the kanban companion notice — the factory sibling of the tk8hce surface.
-func TestKanbanCompanionNoticeCarriesSpawnAuthority(t *testing.T) {
-	got := kanbanCompanionNotice("run", "en")
-	for _, marker := range authorityMarkers {
-		if !strings.Contains(got, marker) {
-			t.Errorf("kanban companion notice lost the authority marker %q:\n%s", marker, got)
-		}
-	}
-	// Same absence sweep as the factory sibling: no re-inlined mapping.
-	// Raw-string literals on purpose (see the factory twin above).
-	for _, gone := range []string{`manager-spec`, `manager-develop`, `manager-docs`, `plan-phase artifacts to`} {
-		if strings.Contains(got, gone) {
-			t.Errorf("kanban companion notice re-inlines the specialist mapping (%q):\n%s", gone, got)
-		}
-	}
-}
-
 // TestLaneSpawnAuthorityFailOpenPreserved: an unparseable label still emits
 // NOTHING — the authority must never turn a degraded join into a mislabeled
 // one (the fail-open contract the join notices already carry).
 func TestLaneSpawnAuthorityFailOpenPreserved(t *testing.T) {
 	if got := factoryLaneNotice("not-a-lane", 5, "en"); got != "" {
 		t.Errorf("unparseable factory label must emit no notice, got:\n%s", got)
-	}
-	if got := kanbanCompanionNotice("not-a-role", "en"); got != "" {
-		t.Errorf("unparseable companion label must emit no notice, got:\n%s", got)
 	}
 }

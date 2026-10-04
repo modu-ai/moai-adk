@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/mission"
 )
 
@@ -22,7 +22,7 @@ import (
 // fcRuntimeRow is the stable part of a queue runtime assignment row.
 type fcRuntimeRow struct{ RunID, CardID, Owner, State, Event string }
 
-func fcRuntimeRows(t *testing.T, store *kanban.BacklogStore) []fcRuntimeRow {
+func fcRuntimeRows(t *testing.T, store *factory.BacklogStore) []fcRuntimeRow {
 	t.Helper()
 	record, err := store.LoadPure()
 	if err != nil {
@@ -50,7 +50,7 @@ func runGTDCapture(t *testing.T, args ...string) (string, string, error) {
 // fcGTDDispatch walks one item through capture → clarify → organize → engage
 // --pick --dispatch and returns the engage stdout and stderr and the published
 // card id.
-func fcGTDDispatch(t *testing.T, store *kanban.BacklogStore, content, event, lane, runID string) (string, string, string) {
+func fcGTDDispatch(t *testing.T, store *factory.BacklogStore, content, event, lane, runID string) (string, string, string) {
 	t.Helper()
 	out, _, err := runGTDCapture(t, "capture", content, "--event", event, "--source", "user", "--sensitivity", "private", "--json")
 	if err != nil {
@@ -72,7 +72,7 @@ func fcGTDDispatch(t *testing.T, store *kanban.BacklogStore, content, event, lan
 	if err != nil {
 		t.Fatalf("engage: %v (stderr %s)", err, stderr)
 	}
-	item, err := kanban.LoadGTDItem(context.Background(), store, captured.ItemID)
+	item, err := factory.LoadGTDItem(context.Background(), store, captured.ItemID)
 	if err != nil {
 		t.Fatalf("load gtd item: %v", err)
 	}
@@ -82,17 +82,17 @@ func fcGTDDispatch(t *testing.T, store *kanban.BacklogStore, content, event, lan
 // fcGoalDispatch drives one auto mission through publish, pick, and dispatch
 // (the goal.go owner-adapter path) and returns the dispatch operation, the
 // dispatched card id, and the supervise stderr.
-func fcGoalDispatch(t *testing.T, root string, store *kanban.BacklogStore, content, event, session, lane, runID string) (kanban.GTDOperation, string, string) {
+func fcGoalDispatch(t *testing.T, root string, store *factory.BacklogStore, content, event, session, lane, runID string) (factory.GTDOperation, string, string) {
 	t.Helper()
 	ctx := context.Background()
-	item, err := kanban.CaptureGTDItem(ctx, store, kanban.CaptureInput{Content: content, Source: "user", SourceAllowed: true, Sensitivity: kanban.SensitivityPrivate, EventID: event})
+	item, err := factory.CaptureGTDItem(ctx, store, factory.CaptureInput{Content: content, Source: "user", SourceAllowed: true, Sensitivity: factory.SensitivityPrivate, EventID: event})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.ClarifyGTDItem(ctx, store, kanban.ClarifyInput{ItemID: item.ItemID, Disposition: kanban.DispositionAction, DesiredOutcome: "dispatched", CompletionEvidence: "assignment", Authority: "queue,dispatch", SourceTrusted: true}); err != nil {
+	if _, err := factory.ClarifyGTDItem(ctx, store, factory.ClarifyInput{ItemID: item.ItemID, Disposition: factory.DispositionAction, DesiredOutcome: "dispatched", CompletionEvidence: "assignment", Authority: "queue,dispatch", SourceTrusted: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.OrganizeGTDItem(ctx, store, kanban.OrganizeInput{ItemID: item.ItemID, Class: kanban.ClassAction}); err != nil {
+	if _, err := factory.OrganizeGTDItem(ctx, store, factory.OrganizeInput{ItemID: item.ItemID, Class: factory.ClassAction}); err != nil {
 		t.Fatal(err)
 	}
 	target := "gtd:" + item.ItemID
@@ -110,7 +110,7 @@ func fcGoalDispatch(t *testing.T, root string, store *kanban.BacklogStore, conte
 	if err := run("approve", "--session", session, "--scope", target, "--action", "publish", "--action", "pick", "--action", "dispatch", "--completion-evidence", "assignment"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{Resource: lane, SessionID: session, MaxDuration: time.Hour}); err != nil {
+	if _, err := factory.AcquireSlotLease(root, factory.SlotLeaseRequest{Resource: lane, SessionID: session, MaxDuration: time.Hour}); err != nil {
 		t.Fatal(err)
 	}
 	head := gitFixtureCLI(t, root, "rev-parse", "HEAD")
@@ -134,7 +134,7 @@ func fcGoalDispatch(t *testing.T, root string, store *kanban.BacklogStore, conte
 			t.Fatal(err)
 		}
 	}
-	current, err := kanban.LoadGTDItem(ctx, store, item.ItemID)
+	current, err := factory.LoadGTDItem(ctx, store, item.ItemID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,9 +151,9 @@ func fcGoalDispatch(t *testing.T, root string, store *kanban.BacklogStore, conte
 	if err != nil {
 		t.Fatal(err)
 	}
-	var dispatchOp kanban.GTDOperation
+	var dispatchOp factory.GTDOperation
 	for _, id := range state.OperationIDs {
-		op, err := kanban.LoadGTDOperation(ctx, store, id)
+		op, err := factory.LoadGTDOperation(ctx, store, id)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -164,7 +164,7 @@ func fcGoalDispatch(t *testing.T, root string, store *kanban.BacklogStore, conte
 	if dispatchOp.OperationID == "" {
 		t.Fatalf("no dispatch operation recorded (ops %v, blocker %q)", state.OperationIDs, state.LastBlocker)
 	}
-	published, err := kanban.LoadGTDItem(ctx, store, item.ItemID)
+	published, err := factory.LoadGTDItem(ctx, store, item.ItemID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestFR_AC025_CharacterizeGoalDispatch(t *testing.T) {
 
 // fcAssertGoalDispatchOp checks the stable fields of the recorded dispatch
 // operation receipt: reconciled, action dispatch, the mission, a gtd target.
-func fcAssertGoalDispatchOp(t *testing.T, op kanban.GTDOperation, session string) {
+func fcAssertGoalDispatchOp(t *testing.T, op factory.GTDOperation, session string) {
 	t.Helper()
 	if op.State != "reconciled" || op.Action != "dispatch" || op.MissionID != session || !strings.HasPrefix(op.Target, "gtd:") {
 		t.Fatalf("dispatch operation = state %s action %s mission %s target %s", op.State, op.Action, op.MissionID, op.Target)

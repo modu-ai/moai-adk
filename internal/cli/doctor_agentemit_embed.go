@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
@@ -353,8 +354,10 @@ func extractEmissionViaInit(binPath string) (string, func(), error) {
 	cmd.Dir = base
 	// AGENTEMIT_UPDATE is the regeneration switch of the emitter's golden
 	// path. It has no role here, but scrubbing it keeps this check's verdict
-	// independent of the environment it happens to inherit.
-	cmd.Env = append(os.Environ(), "AGENTEMIT_UPDATE=")
+	// independent of the environment it happens to inherit. The plugin opt-out
+	// (SPEC-PLUGIN-MARKETPLACE-001 REQ-016) keeps this `--llm both` init from
+	// acting on the invoking person's real Claude and Codex profiles.
+	cmd.Env = append(os.Environ(), "AGENTEMIT_UPDATE=", config.EnvSkipPluginInstall+"=1")
 	if out, runErr := cmd.CombinedOutput(); runErr != nil {
 		return "", cleanup, fmt.Errorf("%s init: %w (%s)", filepath.Base(binPath), runErr, boundedTail(out))
 	}

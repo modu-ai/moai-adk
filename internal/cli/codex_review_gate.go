@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
@@ -42,6 +43,24 @@ var reviewGateRuntimePrefixes = []string{
 	".claude/agent-memory/",
 }
 
+// reviewGateTreeConfigExactPaths and reviewGateTreeConfigDirPrefixes are the
+// runtime-managed CONFIGURATION surfaces the TREE-scope self-gate additionally
+// ignores (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-007): the session's local
+// Claude settings file and the MoAI managed config tree are known local state,
+// not reviewable work. Deliberately SEPARATE from reviewGateRuntimePrefixes
+// AND from the shared parser below (card-review repair R1): the exclusion is
+// consulted only by the tree-scope self-gate (treeConfigOnlyFromPorcelain) —
+// the card scope's path filter shares only the runtime list, a card's own
+// commits under .moai/config/ keep counting as card work (REQ-CGSC-005 /
+// AC-CGSC-009), and the multi-review gates keep the shared baseline detector.
+// The settings file matches EXACTLY (card-review repair R4): a sibling name
+// that merely extends it (.claude/settings.json.template) is a source-shaped
+// path and stays reviewable; only the directory matches by prefix.
+var (
+	reviewGateTreeConfigExactPaths  = []string{".claude/settings.json"}
+	reviewGateTreeConfigDirPrefixes = []string{".moai/config/"}
+)
+
 // reviewGateChangeDetector is the injectable "is there reviewable uncommitted
 // work?" seam. The production default runs `git status --porcelain` and filters
 // runtime-managed paths; tests swap it to drive the self-gate deterministically
@@ -63,7 +82,9 @@ var reviewGateChangeDetector = hasReviewableChanges
 //  4. no reviewable change IN THE SCOPE     → ALLOW (self-gate; no false block)
 //  5. codex missing                         → ALLOW (fail-open; can't trap the session)
 //  6. codex review pass / inconclusive      → ALLOW
-//  7. codex review FAIL                     → BLOCK (the gate's only block path)
+//  7. codex review FAIL, every finding on a runtime-managed config surface
+//     → ALLOW + recorded reclassification (REQ-CGSC-008); otherwise BLOCK
+//     (the gate's only block path)
 //
 // `enabled` is read by the caller (runCodexReviewGate via
 // readCodexReviewGateEnabled) and passed in; it is re-checked here as
@@ -121,6 +142,17 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 		return allow, rpcErr
 	}
 	if isBlockVerdict(out.Verdict) {
+		// (7-pre) REQ-CGSC-008: a TREE-scope review whose every finding targets
+		// only the runtime-managed configuration surfaces is known local drift
+		// (settings/config churn), not a review defect this session owns — the
+		// turn is allowed and the reclassification recorded (REQ-CGSC-011).
+		// Mixed findings keep the gate's only block path below.
+		if scope.Class == reviewScopeTree {
+			if targets, ok := runtimeConfigOnlyFindings(out.Findings, scope.Dir); ok {
+				logRuntimeDriftReclassification(scope, targets)
+				return allow, nil
+			}
+		}
 		return &hook.HookOutput{
 			Decision: hook.DecisionBlock, // (7) the gate's only BLOCK path
 			Reason:   "codex review gate: " + out.Summary,
@@ -162,6 +194,13 @@ func hasReviewableChanges(projectDir string) bool {
 // TrimSpace'd copy (TrimSpace would strip a leading-space status and shift the
 // path off by one, dropping its leading "." and defeating the prefix filter).
 // Renames use "XY <old> -> <new>"; the prefix check against <old> is sufficient.
+//
+// This is the SHARED baseline parser (card-review repair R1): it consults only
+// the runtime-managed state prefixes, never the tree-only config surfaces —
+// the multi-review gate (HandleMultiReviewGate) and Codex Stop-chain member 7
+// consume it through the reviewGateChangeDetector seam, and a config-only
+// exclusion here let them silently allow over a stored required FAIL. The
+// tree-scope counterpart is treeConfigOnlyFromPorcelain below.
 func reviewableFromPorcelain(porcelain string) bool {
 	for _, raw := range strings.Split(porcelain, "\n") {
 		if strings.TrimSpace(raw) == "" {
@@ -182,6 +221,71 @@ func reviewableFromPorcelain(porcelain string) bool {
 	return false
 }
 
+// treeExcludedPath reports whether one porcelain path is excluded on the TREE
+// path: the shared runtime-managed state prefixes plus the tree-only config
+// surfaces.
+func treeExcludedPath(path string) bool {
+	return isRuntimeManagedPath(path) || isTreeRuntimeConfigPath(path)
+}
+
+// treeConfigOnlyFromPorcelain is the pure TREE-scope counterpart of
+// reviewableFromPorcelain (card-review repair R1): it reports whether a
+// `git status --porcelain` payload carries at least one change and EVERY one
+// of them is excluded on the tree path — the config-only turn the tree
+// self-gate must not review (REQ-CGSC-007). An empty payload and any
+// non-excluded record read false, so the probe can only narrow the shared
+// detector's answer, never widen it. A rename record is config-only only when
+// BOTH sides are excluded (card-review repair R5):
+// `.claude/settings.json -> main.go` is a real source change — the
+// destination must not inherit the source's exclusion.
+func treeConfigOnlyFromPorcelain(porcelain string) bool {
+	any := false
+	for _, raw := range strings.Split(porcelain, "\n") {
+		if strings.TrimSpace(raw) == "" {
+			continue
+		}
+		if len(raw) <= 3 {
+			continue // malformed — no path column
+		}
+		path := strings.TrimSpace(raw[3:]) // path column; trim trailing space / CR only
+		excluded := false
+		if idx := strings.Index(path, " -> "); idx >= 0 {
+			excluded = treeExcludedPath(strings.TrimSpace(path[:idx])) &&
+				treeExcludedPath(strings.TrimSpace(path[idx+4:]))
+		} else {
+			excluded = treeExcludedPath(path)
+		}
+		if !excluded {
+			return false
+		}
+		any = true
+	}
+	return any
+}
+
+// treeConfigOnlyChanges reports whether the working tree at dir carries ONLY
+// tree-excluded changes (treeConfigOnlyFromPorcelain over `git status
+// --porcelain`). Fail-open in the PRESERVE direction: a measurement failure
+// reads false — the exclusion never widens on an unreadable tree, so the
+// scoped self-gate keeps the shared detector's answer there.
+//
+// The untracked leg is collected at FILE level (--untracked-files=all,
+// card-review repair round 2, N5): default porcelain collapses a fully
+// untracked .moai/ tree to `?? .moai/`, an entry the exclusion sets cannot
+// see .moai/config/ inside, so a config-only untracked change counted as
+// reviewable. Individual file paths keep the probe honest — the
+// cardChangedPaths precedent.
+func treeConfigOnlyChanges(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	out, err := exec.Command("git", "-C", dir, "status", "--porcelain", "--untracked-files=all").Output()
+	if err != nil {
+		return false
+	}
+	return treeConfigOnlyFromPorcelain(string(out))
+}
+
 // isRuntimeManagedPath reports whether path falls under a hook/session-written
 // prefix the gate must ignore (otherwise every turn's .moai/state drift would
 // trip the self-gate).
@@ -192,6 +296,111 @@ func isRuntimeManagedPath(path string) bool {
 		}
 	}
 	return false
+}
+
+// isTreeRuntimeConfigPath reports whether path falls under a runtime-managed
+// configuration surface the TREE path ignores (REQ-CGSC-007). The card path's
+// filter never consults this: a card commit under .moai/config/ stays card
+// work (REQ-CGSC-005). The settings FILE matches exactly (card-review repair
+// R4); the managed config DIRECTORY matches by prefix.
+func isTreeRuntimeConfigPath(path string) bool {
+	for _, p := range reviewGateTreeConfigExactPaths {
+		if path == p {
+			return true
+		}
+	}
+	for _, p := range reviewGateTreeConfigDirPrefixes {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// normalizeFindingPath brings a review finding's file anchor into the
+// repo-relative slash form the exclusion sets are written in (card-review
+// repair R3): a "./"-prefixed relative is stripped, and an absolute path is
+// relativized against the reviewed scope's tree. A path OUTSIDE the scope
+// relativizes to a "../" form that matches no prefix — the fail-closed block.
+func normalizeFindingPath(file, dir string) string {
+	p := strings.TrimSpace(file)
+	if p == "" {
+		return ""
+	}
+	p = strings.TrimPrefix(p, "./")
+	if filepath.IsAbs(p) && dir != "" {
+		if rel, err := filepath.Rel(dir, filepath.FromSlash(p)); err == nil {
+			p = filepath.ToSlash(rel)
+		}
+	}
+	return p
+}
+
+// reviewExclusionRoot returns the tree the finding-path exclusion comparison
+// anchors on (card-review repair round 2, N3): the GIT REPOSITORY ROOT of the
+// reviewed scope's tree, never the scope dir itself. A session sitting in a
+// subdirectory made an absolute repo-root config path relativize to a "../"
+// form that escapes the exclusion sets, and a config-only FAIL stayed BLOCK.
+// Fail-open to dir when the root cannot be resolved (a non-git dir), so the
+// anchor never moves on an unreadable tree.
+func reviewExclusionRoot(dir string) string {
+	if dir == "" {
+		return dir
+	}
+	if root, err := reviewScopeGit(dir, "rev-parse", "--show-toplevel"); err == nil && root != "" {
+		return root
+	}
+	return dir
+}
+
+// runtimeConfigOnlyFindings reports whether EVERY finding of a review targets
+// only the runtime-managed configuration surfaces, and returns the distinct
+// targets when so (REQ-CGSC-008). A review with no findings at all is NOT
+// config-only: a fail verdict behind an unparseable findings list is the
+// contradiction state, never a licence to allow. Findings without a file
+// anchor, and anchors outside the surfaces, keep the review's block. The
+// anchor is normalized against the reviewed scope's tree dir before the
+// comparison (card-review repair R3), so an absolute anchor reclassifies
+// exactly as its relative twin. The anchor must also be UNAMBIGUOUS
+// (card-review repair round 2, N1): codexFindingsOf leaves File empty when a
+// finding message carries several distinct path candidates, and an
+// anchor-less finding keeps the strict disposition below.
+func runtimeConfigOnlyFindings(findings []Finding, dir string) ([]string, bool) {
+	if len(findings) == 0 {
+		return nil, false
+	}
+	anchor := reviewExclusionRoot(dir)
+	var targets []string
+	seen := make(map[string]bool)
+	for _, f := range findings {
+		file := normalizeFindingPath(f.File, anchor)
+		if file == "" || !isTreeRuntimeConfigPath(file) {
+			return nil, false
+		}
+		if !seen[file] {
+			seen[file] = true
+			targets = append(targets, file)
+		}
+	}
+	return targets, true
+}
+
+// logRuntimeDriftReclassification writes the reclassification row to stderr,
+// the gate's diagnostic channel (REQ-CGSC-011): the reason in the SPEC's own
+// words and the targeted paths, distinguishable from a skip row. stdout stays
+// the pure HookOutput contract.
+func logRuntimeDriftReclassification(scope reviewScope, targets []string) {
+	row := map[string]any{
+		"gate":         "codex-review-gate",
+		"scope":        scope.Class,
+		"reclassified": "runtime-managed drift",
+		"targets":      targets,
+	}
+	b, err := json.Marshal(row)
+	if err != nil {
+		return
+	}
+	fmt.Fprintln(os.Stderr, string(b))
 }
 
 // runCodexReviewGate is the cobra RunE for `moai hook codex-review-gate`

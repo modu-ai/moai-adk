@@ -148,12 +148,9 @@ func TestClampPct(t *testing.T) {
 	}
 }
 
-// TestBuildAttentionOrderAndCap pins the attention list: the chain's idle role
-// leads, MUST-FIX findings follow with their spec-targeted links, non-must
-// severities are skipped, and the list caps so a catastrophic audit cannot
-// drown the kanban warning.
+// TestBuildAttentionOrderAndCap pins the attention list: MUST-FIX findings lead with their spec-targeted
+// links, non-must severities are skipped, and the list caps so a catastrophic audit cannot drown the screen.
 func TestBuildAttentionOrderAndCap(t *testing.T) {
-	chain := ChainVM{Present: true, IdleRole: "sync"}
 	rows := []SpecRowVM{{ID: "SPEC-A-001"}, {ID: "SPEC-B-002"}}
 	findings := map[string][]FindingVM{}
 	for i := 0; i < 12; i++ {
@@ -161,16 +158,12 @@ func TestBuildAttentionOrderAndCap(t *testing.T) {
 	}
 	findings["SPEC-B-002"] = []FindingVM{{Severity: "SHOULD-FIX", Message: "minor", File: "type"}}
 
-	got := buildAttention(rows, findings, chain)
+	got := buildAttention(rows, findings)
 	if len(got) != maxOverviewRows {
 		t.Fatalf("attention rows = %d, want capped at %d", len(got), maxOverviewRows)
 	}
-	first := got[0]
-	if first.Source != "kanban" || first.Role != "sync" || first.Href != "/kanban" {
-		t.Errorf("the idle-role warning did not lead: %+v", first)
-	}
-	if got[1].Href != "/specs?id=SPEC-A-001" {
-		t.Errorf("must-fix rows lost their spec target: %+v", got[1])
+	if got[0].Href != "/specs?id=SPEC-A-001" {
+		t.Errorf("must-fix rows lost their spec target: %+v", got[0])
 	}
 	for _, a := range got {
 		if a.Text == "minor" {
@@ -178,31 +171,9 @@ func TestBuildAttentionOrderAndCap(t *testing.T) {
 		}
 	}
 
-	quiet := buildAttention(rows, map[string][]FindingVM{}, ChainVM{Present: true})
+	quiet := buildAttention(rows, map[string][]FindingVM{})
 	if len(quiet) != 0 {
-		t.Errorf("a healthy chain and clean audit produced attention rows: %+v", quiet)
-	}
-}
-
-// TestChainCardIDAndRoleFilter pins the chain helpers: the first recorded SPEC
-// becomes the card id, a chain with no SPEC has none, and lane records are
-// filtered out of the chain feed while chain roles survive.
-func TestChainCardIDAndRoleFilter(t *testing.T) {
-	if got := chainCardID([]KanbanRecord{{SpecID: ""}, {SpecID: "SPEC-A-001"}}); got != "SPEC-A-001" {
-		t.Errorf("chainCardID = %q, want the first recorded SPEC", got)
-	}
-	if got := chainCardID([]KanbanRecord{{SpecID: ""}}); got != "" {
-		t.Errorf("chainCardID = %q, want empty for a plan-stage chain", got)
-	}
-
-	records := []KanbanRecord{
-		{SessionID: "s1", Role: "Leader"}, // case-insensitive role match
-		{SessionID: "s2", Role: "lane"},
-		{SessionID: "s3", Role: ""},
-	}
-	filtered := chainRoleRecords(records)
-	if len(filtered) != 1 || filtered[0].SessionID != "s1" {
-		t.Errorf("chainRoleRecords kept %d records, want only the chain role", len(filtered))
+		t.Errorf("a clean audit produced attention rows: %+v", quiet)
 	}
 }
 

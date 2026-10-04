@@ -10,7 +10,7 @@ import (
 // docs_delegation_lane_flow_test.go: content guard for the reconciliation
 // procedure of an isolated specialist spawn.
 //
-// The procedure section in kanban-dispatch-mechanics.md and the duty
+// The procedure section in factory-dispatch-mechanics.md and the duty
 // sentence in agent-common-protocol.md are documentation-only artifacts —
 // exactly the kind of content a rule diet, split, or compression deletes
 // silently. This guard fails when the section or any of its mandatory step
@@ -67,8 +67,8 @@ func TestReconciliationProcedureDocumented(t *testing.T) {
 		path  string
 		kind  string // "mechanics" | "protocol"
 	}{
-		{"local", filepath.Join("..", "..", ".claude", "rules", "moai", "workflow", "kanban-dispatch-mechanics.md"), "mechanics"},
-		{"template", filepath.Join("templates", ".claude", "rules", "moai", "workflow", "kanban-dispatch-mechanics.md"), "mechanics"},
+		{"local", filepath.Join("..", "..", ".claude", "rules", "moai", "workflow", "factory-dispatch-mechanics.md"), "mechanics"},
+		{"template", filepath.Join("templates", ".claude", "rules", "moai", "workflow", "factory-dispatch-mechanics.md"), "mechanics"},
 		{"local", filepath.Join("..", "..", ".claude", "rules", "moai", "core", "agent-common-protocol.md"), "protocol"},
 		{"template", filepath.Join("templates", ".claude", "rules", "moai", "core", "agent-common-protocol.md"), "protocol"},
 	}
@@ -95,7 +95,7 @@ func checkMechanicsSection(t *testing.T, label, content string) {
 
 	start := strings.Index(content, reconciliationSectionHeading)
 	if start < 0 {
-		t.Errorf("%s: reconciliation procedure section %q missing from kanban-dispatch-mechanics.md — the mandatory steps it carries (landing verification, WT- rename, ff-only merge, evidence harvest, run-to-sync adjacency) have nowhere to live", label, reconciliationSectionHeading)
+		t.Errorf("%s: reconciliation procedure section %q missing from factory-dispatch-mechanics.md — the mandatory steps it carries (landing verification, WT- rename, ff-only merge, evidence harvest, run-to-sync adjacency) have nowhere to live", label, reconciliationSectionHeading)
 		return
 	}
 
@@ -108,7 +108,7 @@ func checkMechanicsSection(t *testing.T, label, content string) {
 
 	for _, marker := range reconciliationMechanicsMarkers {
 		if !strings.Contains(body, marker) {
-			t.Errorf("%s: reconciliation procedure section lost a mandatory step marker %q (kanban-dispatch-mechanics.md)", label, marker)
+			t.Errorf("%s: reconciliation procedure section lost a mandatory step marker %q (factory-dispatch-mechanics.md)", label, marker)
 		}
 	}
 

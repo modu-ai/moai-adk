@@ -56,4 +56,4 @@ The LLM and the read-only judgment sub-role of `manager-todo` produce structured
 
 The current implementation supplies owner adapters for deterministic policy, recovery, dispatch, explicit-path commits, and local develop `--no-ff` merges. A commit requires a repository-local `0600` test receipt for the current HEAD; a local merge rechecks the manager-git role, `WT-*` branch, base SHA, and a `0600` lease below `.git`. Backup, restore, and export include GTD extensions only through explicit opt-in, while private projections rebuild from the SQLite revision. It does not promise operation after the session ends or completed remote pushes, pull requests, and merges until a real provider has demonstrated every required start, reconnect, replacement, credential, and process-identity capability.
 
-Related: [`/moai goal --auto`](/en/utility-commands/moai-goal#auto-mission-mode) · [Kanban Mode](/en/advanced/kanban-mode)
+Related: [`/moai goal --auto`](/en/utility-commands/moai-goal#auto-mission-mode) · [Factory Mode](/en/advanced/factory-mode)

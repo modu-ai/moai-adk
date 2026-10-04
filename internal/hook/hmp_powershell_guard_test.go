@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // hmpInput builds a PreToolUse payload for tool with the given command.
@@ -140,7 +140,7 @@ func TestHMPBranchGuardParity(t *testing.T) {
 // hmpSeedForeignLock records a live lock held by another session.
 func hmpSeedForeignLock(t *testing.T, root string) {
 	t.Helper()
-	seedLock(t, root, kanban.IntegrationLock{
+	seedLock(t, root, factory.IntegrationLock{
 		SessionID:   "sess-holder",
 		SessionName: "lane-9",
 		PID:         os.Getpid(),

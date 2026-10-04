@@ -239,7 +239,7 @@ var (
 	coCeiling   = regexp.MustCompile(`(?i)\bat most (2|two)\b`)
 )
 
-// coDetailProblems judges kanban-dispatch-detail.md: the ordered stage list
+// coDetailProblems judges factory-dispatch-detail.md: the ordered stage list
 // puts card-review after run-exit verification and before integration, the
 // re-review ceiling and the evidence path are written down, and no sentence in
 // the section negates the stage.
@@ -271,7 +271,7 @@ func coDetailProblems(detail string) []string {
 	return problems
 }
 
-// coStubProblems judges kanban-dispatch.md: the stage is named in the lane
+// coStubProblems judges factory-dispatch.md: the stage is named in the lane
 // stage section, the leader's conditional sentence sits there, and the leader's
 // completion-read section lists the evidence path and the gap rule.
 func coStubProblems(stub string) []string {
@@ -316,7 +316,7 @@ func coStubProblems(stub string) []string {
 	if rule == "" {
 		return append(problems, "stub: the completion-read section does not name card-review.md")
 	}
-	for _, need := range []string{coCardReviewPath, "neither cites", "nor records a reason", "gap", "stays in its column"} {
+	for _, need := range []string{coCardReviewPath, "neither cites", "nor records a reason", "gap", "stays in its stage"} {
 		if !strings.Contains(rule, need) {
 			problems = append(problems, "stub: the completion-read gap rule lacks "+need)
 		}
@@ -337,8 +337,8 @@ func coRead(t *testing.T, root, rel string) string {
 }
 
 const (
-	coStubRel   = ".claude/rules/moai/workflow/kanban-dispatch.md"
-	coDetailRel = ".claude/rules/moai/workflow/kanban-dispatch-detail.md"
+	coStubRel   = ".claude/rules/moai/workflow/factory-dispatch.md"
+	coDetailRel = ".claude/rules/moai/workflow/factory-dispatch-detail.md"
 	coTplPrefix = "internal/template/templates/"
 )
 
@@ -537,7 +537,7 @@ func TestReviewOwnership_CardReviewDoctrine(t *testing.T) {
 	// stays so; the stub may differ elsewhere, so only the card-review text is
 	// compared there.
 	if coRead(t, root, coDetailRel) != coRead(t, root, coTplPrefix+coDetailRel) {
-		t.Error("kanban-dispatch-detail.md differs between the local and distributed trees")
+		t.Error("factory-dispatch-detail.md differs between the local and distributed trees")
 	}
 	for _, h := range []string{coStubStageHeading, coStubReadHeading} {
 		if a, b := coSection(coRead(t, root, coStubRel), h), coSection(coRead(t, root, coTplPrefix+coStubRel), h); a != b {
@@ -632,7 +632,7 @@ func TestReviewOwnership_DoctrineMutants(t *testing.T) {
 			return strings.Replace(s, "With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate", "The leader session carries no turn-end codex review gate when `tree_scope: skip` is configured for its checkout, and it", 1)
 		}, ""},
 		{"gap rule negated", func(s string) string {
-			return strings.Replace(s, "is a gap and stays in its column", "is not a gap and need not stay in its column", 1)
+			return strings.Replace(s, "is a gap and stays in its stage", "is not a gap and need not stay in its stage", 1)
 		}, "gap rule"},
 		{"gap rule moved out of the completion-read section", func(s string) string {
 			i := strings.Index(s, coStubReadHeading)

@@ -16,7 +16,7 @@ Three properties bound everything below:
 
 ## Availability constraints
 
-"On with nothing to enable" holds only where the platform provides the channel. Five constraints bound where it exists at all, and because Kanban Mode uses this channel only to nudge companions, they bound where its nudges reach. The five axes, and the one diagnostic that separates "absent" from "blocked": **operating system**, **provider**, **runtime version**, **feature-flag evaluation** (the four opt-out env vars), and **the shared machine-global flag slot** that third-party-backend sessions inherit and can lose mid-session.
+"On with nothing to enable" holds only where the platform provides the channel. Five constraints bound where it exists at all, and because Factory Mode uses this channel only to nudge lanes, they bound where its nudges reach. The five axes, and the one diagnostic that separates "absent" from "blocked": **operating system**, **provider**, **runtime version**, **feature-flag evaluation** (the four opt-out env vars), and **the shared machine-global flag slot** that third-party-backend sessions inherit and can lose mid-session.
 
 Where a constraint bites, the failure is quiet — nothing errors, dispatch just has no channel. Surface the constraint to the operator instead of retrying or re-spawning.
 
@@ -66,13 +66,13 @@ respawn the name deliberately. Registry path, audit rows, and the entry lifecycl
 
 The third shape is the one that used to leave no trace: a different permission mode holds inbound peer messages until its user approves them, and the notice is the only signal. **A notice never arrives for a Remote Control, cloud, or Claude Desktop peer** — silence there is the absence of a channel, never a reply. Per-mode detail: `cross-session-messaging-detail.md` § Addressing, sending, and replying.
 
-**The queue is what survives all three shapes.** Because a dispatch is delegated through the queue on disk and completion is read from evidence (`kanban-dispatch.md` § The delegation channel is the queue, § Completion is read, never trusted), a held or lost message costs the board nothing. That is exactly why reading the send result matters: it tells the sender whether a *nudge* landed, and nothing more. Advancing a card because a send reported success is an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
+**The queue is what survives all three shapes.** Because a dispatch is delegated through the queue on disk and completion is read from evidence (`factory-dispatch.md` § The delegation channel is the queue, § Completion is read, never trusted), a held or lost message costs the run nothing. That is exactly why reading the send result matters: it tells the sender whether a *nudge* landed, and nothing more. Advancing a card because a send reported success is an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
 
 ## An idle notice is a scheduling hint
 
 A send may ask the addressed session to report back once, when it next goes idle (`notify_when_idle`). It is opt-in per send and one-shot — the request is spent on the first notice, so a second notice needs a second request — and it replaces a polling loop on the asking side.
 
-[ZONE:Evolvable] [HARD] **An idle notice is not completion evidence.** A session goes idle when it finishes, when it stops at a permission prompt, and when it dies, and the notice cannot tell those three apart. What it establishes is *when to go look*; what it says about the work is nothing. Treating it as a completion signal converts the [HARD] read-don't-trust rule (`kanban-dispatch.md` § Completion is read, never trusted) into an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1) — the notice arrives, the card advances, and no one read the evidence.
+[ZONE:Evolvable] [HARD] **An idle notice is not completion evidence.** A session goes idle when it finishes, when it stops at a permission prompt, and when it dies, and the notice cannot tell those three apart. What it establishes is *when to go look*; what it says about the work is nothing. Treating it as a completion signal converts the [HARD] read-don't-trust rule (`factory-dispatch.md` § Completion is read, never trusted) into an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1) — the notice arrives, the card advances, and no one read the evidence.
 
 Used for what it is, it removes waste: instead of re-reading a progress file on a guessed interval, ask for the notice and read the evidence once, when there is something to read.
 

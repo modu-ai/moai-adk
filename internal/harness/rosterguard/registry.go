@@ -627,11 +627,6 @@ func readmeSite(id, path, countPattern, numeralUnreachable string) Site {
 // exemption list large enough becomes what a reader reviews instead of the
 // roster. What prices each entry is the mandatory reason.
 func NumeralExemptions() []NumeralExempt {
-	const historicalConsolidation = "HISTORICAL CITATION: describes the 17→8 catalog consolidation as it was at the time. " +
-		"Not drift and not repaired (the card's scope excludes prose repair). " +
-		"OBSERVED, not adjudicated: the same sentence's live tail (\"since grown to 11\") is itself stale, " +
-		"and the adopted noun class does not reach it — no noun follows that numeral."
-
 	const t1171Fixture = "HISTORICAL CITATION: a captured test fixture — a copy of an emitted codex agent " +
 		"definition or a recorded codex session, quoting roster counts as they stood at capture (the 17→8 " +
 		"consolidation sentence; \"13 retained agents\" in the recorded session). " +
@@ -640,12 +635,6 @@ func NumeralExemptions() []NumeralExempt {
 
 	return []NumeralExempt{
 		// ── Historical citations ───────────────────────────────────────────
-		{ID: "manager-docs-then-8", Path: ".claude/agents/moai/manager-docs.md", Reason: historicalConsolidation},
-		{ID: "manager-spec-then-8", Path: ".claude/agents/moai/manager-spec.md", Reason: historicalConsolidation},
-		{ID: "manager-docs-then-8-mirror", Path: "internal/template/templates/.claude/agents/moai/manager-docs.md", Reason: historicalConsolidation + " Template mirror."},
-		{ID: "manager-spec-then-8-mirror", Path: "internal/template/templates/.claude/agents/moai/manager-spec.md", Reason: historicalConsolidation + " Template mirror."},
-		{ID: "manager-docs-then-8-codex", Path: "internal/template/templates/.codex/agents/moai/manager-docs.toml", Reason: historicalConsolidation + " Machine-emitted codex form; never hand-edited."},
-		{ID: "manager-spec-then-8-codex", Path: "internal/template/templates/.codex/agents/moai/manager-spec.toml", Reason: historicalConsolidation + " Machine-emitted codex form; never hand-edited."},
 		{
 			ID:   "git-workflow-doctrine-retain-matrix",
 			Path: ".moai/docs/git-workflow-doctrine.md",

@@ -26,14 +26,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/closure/gitio"
 	"github.com/modu-ai/moai-adk/internal/contract"
 	"github.com/modu-ai/moai-adk/internal/escalation"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // contractQueueRootFn resolves the queue root (the primary checkout — the
 // queue is a property of one repository, never of a worktree). Tests replace
 // it.
 var contractQueueRootFn = func() string {
-	return kanban.ResolveTodoQueueRoot(resolveProjectDir())
+	return factory.ResolveTodoQueueRoot(resolveProjectDir())
 }
 
 // contractRunDirFn is the tree the command runs in; the card evidence home
@@ -43,7 +43,7 @@ var contractRunDirFn = func() (string, error) { return findProjectRootFn() }
 // cardToSpecID resolves a card's SPEC ID from the queue store, "" with a
 // cause when the card is unknown or carries no SPEC.
 func cardToSpecID(card string) (string, string) {
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(contractQueueRootFn()))
+	store := factory.NewBacklogStore(factory.BacklogPathForRoot(contractQueueRootFn()))
 	rec, err := store.LoadPure()
 	if err != nil {
 		return "", "queue store unreadable: " + err.Error()

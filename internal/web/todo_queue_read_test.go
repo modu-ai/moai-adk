@@ -16,9 +16,9 @@ import (
 // backlogStoreSymbols are the store-facing symbols the console must reach only
 // through readTodoQueue.
 var backlogStoreSymbols = []string{
-	"kanban.ResolveTodoQueueRoot",
-	"kanban.NewBacklogStore",
-	"kanban.BacklogPathForRoot",
+	"factory.ResolveTodoQueueRoot",
+	"factory.NewBacklogStore",
+	"factory.BacklogPathForRoot",
 	"BacklogItem",
 	"BacklogRecord",
 }

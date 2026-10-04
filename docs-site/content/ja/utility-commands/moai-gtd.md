@@ -56,4 +56,4 @@ LLM と `manager-todo` の読み取り専用判定サブロールは構造化さ
 
 現時点の実装は、決定論的なポリシー・復旧・配車・明示パスのコミット・local develop `--no-ff` マージを担う owner adapter を提供します。コミットには現在の HEAD に対応するリポジトリ内 `0600` テスト receipt が必要で、ローカルマージでは manager-git 役割、`WT-*` ブランチ、基準 SHA、`.git` 配下の `0600` lease を再確認します。バックアップ・復元・エクスポートは明示的 opt-in の場合だけ GTD 拡張を含み、private projection は SQLite revision から再生成します。実プロバイダーで開始・再接続・交代・資格情報・プロセス識別の全能力が確認されるまでは、セッション終了後の継続実行やリモート push・PR・マージ完了を保証しません。
 
-関連: [`/moai goal --auto`](/ja/utility-commands/moai-goal#auto-ミッションモード) · [Kanban Mode](/ja/advanced/kanban-mode)
+関連: [`/moai goal --auto`](/ja/utility-commands/moai-goal#auto-ミッションモード) · [ファクトリーモード](/ja/advanced/factory-mode)

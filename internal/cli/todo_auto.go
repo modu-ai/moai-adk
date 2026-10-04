@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // `/moai:todo --auto` — the serial card-processing cycle (SPEC-MANAGER-TODO-001).
 //
-// The cycle is the moai-kanban-foreman contract driven from the CLI surface:
+// The cycle is the factory foreman skill's contract driven from the CLI surface:
 // pick one card → emit the dispatch directive for ONE isolated in-session
 // worker → judge completion only by reading the worker's disk evidence →
 // record `done` on that evidence → emit the /clear guidance → accept the next
@@ -142,11 +142,11 @@ func (lv autoLiveness) ownerAlive(root, cardID string) (alive bool, degraded boo
 // carve-out — so a future card state (a `hold`, say) is excluded from pickup
 // automatically. Liveness is re-measured per decision; the notes slice
 // carries the labelled non-findings (degraded measurement, live-owner skip).
-func autoPickTargets(rec *kanban.BacklogRecord, lv autoLiveness, root string) (targets []kanban.BacklogItem, notes []string, err error) {
+func autoPickTargets(rec *factory.BacklogRecord, lv autoLiveness, root string) (targets []factory.BacklogItem, notes []string, err error) {
 	for _, it := range rec.Items {
 		// REQ-THS-012: machine selectors enumerate the states they accept
 		// positively — this scan admits exactly `picked` (dead-owner rescue).
-		if it.State == kanban.BacklogStatePicked {
+		if it.State == factory.BacklogStatePicked {
 			alive, degraded, liveErr := lv.ownerAlive(root, it.ID)
 			if liveErr != nil {
 				notes = append(notes, fmt.Sprintf("non-finding: %s owner liveness unmeasurable (%v) — card skipped, no takeover", it.ID, liveErr))
@@ -163,7 +163,7 @@ func autoPickTargets(rec *kanban.BacklogRecord, lv autoLiveness, root string) (t
 		}
 	}
 	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStateQueued {
+		if it.State == factory.BacklogStateQueued {
 			// SPEC-RELATION-PICKUP-FILTER-001 (REQ-RPF-001/002): a queued
 			// card on the blocked side of a live sequencing finding waits
 			// for its predecessor — it is not a pickup candidate while the
@@ -178,7 +178,7 @@ func autoPickTargets(rec *kanban.BacklogRecord, lv autoLiveness, root string) (t
 				// whose blocked side (the waits-on waiter) IS this card, so
 				// the edge's target is always the predecessor.
 				for _, f := range blockers {
-					_, predecessor, _ := kanban.WaitsOnOf(f)
+					_, predecessor, _ := factory.WaitsOnOf(f)
 					notes = append(notes, fmt.Sprintf(
 						"non-finding: %s skipped (relation-blocked: %s %s %s) — waiting for predecessor %s",
 						it.ID, f.SubjectID, f.Relation, f.RelatedID, predecessor))
@@ -222,7 +222,7 @@ type autoQuotaLine func(root string) string
 // runAutoCycle executes the serial cycle against the store, writing the
 // narrated output (accept → directive → evidence → done/unpick → guidance)
 // to out. Exactly one card is in flight at any time.
-func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts autoOptions) error {
+func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts autoOptions) error {
 	if opts.sleep == nil {
 		opts.sleep = time.Sleep
 	}
@@ -283,15 +283,15 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 		// Claim the card before dispatch: a queued card becomes picked (the
 		// cycle's own pick); a dead-owner picked card is already claimed. The
 		// card this cycle picked is the only one it may later close.
-		if card.State == kanban.BacklogStateQueued {
-			if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+		if card.State == factory.BacklogStateQueued {
+			if err := store.Mutate(func(r *factory.BacklogRecord) error {
 				for i := range r.Items {
 					if r.Items[i].ID == card.ID {
 						// REQ-THS-012: positive enumeration — the pick
 						// admits exactly `queued`, refuses everything else
 						// by name.
-						if r.Items[i].State == kanban.BacklogStateQueued {
-							r.Items[i].State = kanban.BacklogStatePicked
+						if r.Items[i].State == factory.BacklogStateQueued {
+							r.Items[i].State = factory.BacklogStatePicked
 							return nil
 						}
 						return fmt.Errorf("auto: card %s is %s, not queued — refusing the pick", card.ID, r.Items[i].State)
@@ -321,13 +321,13 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 
 		if collected {
 			_, _ = fmt.Fprintf(out, "evidence collected: %s\n", evidence)
-			err := store.Mutate(func(r *kanban.BacklogRecord) error {
+			err := store.Mutate(func(r *factory.BacklogRecord) error {
 				for i := range r.Items {
 					if r.Items[i].ID == card.ID {
 						// REQ-THS-012: positive enumeration — the done
 						// admits exactly `picked`, refuses everything else
 						// by name.
-						if r.Items[i].State == kanban.BacklogStatePicked {
+						if r.Items[i].State == factory.BacklogStatePicked {
 							return r.ArchiveCard(card.ID)
 						}
 						return fmt.Errorf("auto: card %s is %s, not picked — changed hands mid-flight", card.ID, r.Items[i].State)
@@ -348,11 +348,11 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 
 		// Failure path: no readable evidence at the deadline — unpick with a
 		// labelled non-finding. Never silently done, never left picked here.
-		if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+		if err := store.Mutate(func(r *factory.BacklogRecord) error {
 			for i := range r.Items {
 				if r.Items[i].ID == card.ID {
-					if r.Items[i].State == kanban.BacklogStatePicked {
-						r.Items[i].State = kanban.BacklogStateQueued
+					if r.Items[i].State == factory.BacklogStatePicked {
+						r.Items[i].State = factory.BacklogStateQueued
 						r.Items[i].SpecID = nil
 					}
 					return nil
@@ -391,7 +391,7 @@ func consultJev(root string) string {
 // pointer, not a copy, ten lines at most. The directive names ONE isolated
 // in-session Agent() worker (isolation: worktree); it creates no factory
 // lease and claims no slot.
-func writeAutoDirective(out io.Writer, card kanban.BacklogItem, evidence string) {
+func writeAutoDirective(out io.Writer, card factory.BacklogItem, evidence string) {
 	_, _ = fmt.Fprintln(out, "dispatch (one isolated in-session Agent() worker, isolation: worktree):")
 	_, _ = fmt.Fprintf(out, "card: %s\n", card.ID)
 	if card.SpecID != nil && *card.SpecID != "" {
