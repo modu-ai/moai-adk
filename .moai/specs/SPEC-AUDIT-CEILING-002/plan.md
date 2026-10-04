@@ -1,6 +1,6 @@
 # SPEC-AUDIT-CEILING-002 — Plan
 
-> Tier M. 6 REQ / 8 AC. Every code anchor below was measured on this tree at HEAD `e497f6936` (branch `WT-audit-ceiling-guard`, clean). Line numbers are dated pointers — re-verify at run start, never trust across absorbs.
+> Tier M. 6 REQ / 11 AC (v0.2.0 — iter1 repair added AC-ACR-009..011 and extended AC-ACR-003). Every code anchor below was measured on this tree at HEAD `e497f6936`, re-measured at `58282d5ac` for the repair-round cells (branch `WT-audit-ceiling-guard`, clean). Line numbers are dated pointers — re-verify at run start, never trust across absorbs.
 
 ## §A Approach Summary
 
@@ -10,7 +10,7 @@ Three work items land as four milestones. Work items 1+2 share the new file `int
 
 | # | File | Action | What |
 |---|------|--------|------|
-| 1 | `internal/config/types.go` | edit | `HarnessConfig` (struct at :1328; `PlanAudit` block at :1401) gains `PlanAuditTierCeilings map[string]int` (yaml `plan_audit_tier_ceilings`) and `PlanAuditCeilingPolicy PlanAuditCeilingPolicyConfig` (yaml `plan_audit_ceiling_policy`); new struct `PlanAuditCeilingPolicyConfig { AutoDeltaRounds int; OnFinalHit string }` |
+| 1 | `internal/config/types.go` | edit | `HarnessConfig` (struct at :1328-1353) gains `PlanAuditTierCeilings map[string]int` (yaml `plan_audit_tier_ceilings`) and `PlanAuditCeilingPolicy PlanAuditCeilingPolicyConfig` (yaml `plan_audit_ceiling_policy`), beside `PlanAuditGlobal` (:1349-1350) — the `plan_audit` member at :1401 belongs to `LevelConfig`, not `HarnessConfig` (measured; D16); new struct `PlanAuditCeilingPolicyConfig { AutoDeltaRounds int; OnFinalHit string }` |
 | 2 | `internal/config/defaults.go` | edit | defaults for both: ceilings {S:1, M:2, L:3}; policy {AutoDeltaRounds: 1, OnFinalHit: "hold-and-split"} — mirroring `.moai/config/sections/harness.yaml:75-84` verbatim |
 | 3 | `internal/config/loader_harness_extended_test.go` | edit | new `TestHarnessConfigPlanAuditCeilings`: the two fields bind the shipped yaml values and the defaults apply on an absent file (the harness section is a dedicated loader entry point outside `Loader.Load()` — measured, no `TestStructYAMLSymmetry_*` case covers it) |
 | 4 | `internal/config/audit_registry.go` | edit | the two keys' no-Go-reader disposition retires to Go-read |
@@ -23,8 +23,10 @@ Three work items land as four milestones. Work items 1+2 share the new file `int
 | 11 | `.moai/docs/audit-artifact-convention.md` | edit | § What gains the `required_backend_fail: <backend>` line: produced by the exporting auditor from the convergence result's per-backend verdicts or its own single-backend review; absent line refuses nothing |
 | 12 | `internal/template/templates/.moai/docs/audit-artifact-convention.md` | edit | same paragraph (C2 mirror discipline — same change) |
 | 13 | `internal/cli/mcp_worktree_root.go` | edit | `resolveAuditGates` (:122-132) keeps a resolution error distinct from the empty result; the callers at the tool surface report the error instead of an empty "not configured" set |
-| 14 | `internal/cli/mcp_worktree_root_test.go` (or sibling) | edit | `TestResolveAuditGatesConfigErrorDistinct` |
-| 15 | `.moai/config/sections/harness.yaml` + `internal/template/templates/.moai/config/sections/harness.yaml` | edit | the keys' note (lines 69-84) gains one line naming the Go reader added by this SPEC — describing-surface currency, both copies in one change (C2) |
+| 14 | `internal/cli/audit_pin.go` | edit | `workflowAuditPins` (:58-63) keeps a load error distinct from the zero configuration — the documented "(N3)" fold (comment at :54-57) retires; both error classes the loader produces (`read workflow.yaml` :38-40, `parse workflow.yaml` :47-49) propagate to `auditSectionForRoot` (:109) |
+| 15 | `internal/cli/audit_pin_test.go` (or sibling) | edit | `TestWorkflowAuditPinsErrorNotFolded` — an unreadable and an unparseable workflow.yaml each return an error, while an absent file still reads as absent (the legitimate not-configured case keeps its meaning) |
+| 16 | `internal/cli/mcp_worktree_root_test.go` (or sibling) | edit | `TestResolveAuditGatesConfigErrorDistinct` + `TestWorktreeRootSurfacesGateError` (the caller-surfacing half, AC-ACR-011) |
+| 17 | `.moai/config/sections/harness.yaml` + `internal/template/templates/.moai/config/sections/harness.yaml` | edit | the keys' note (lines 69-84) gains one line naming the Go reader added by this SPEC — describing-surface currency, both copies in one change (C2) |
 
 PRESERVE (untouched): `internal/runtime/audit_gate.go`, `internal/runtime/audit_review.go`, `internal/auditverdict/Admit`'s existing check order after the new arm, both `plan-auditor` agent bodies, all `run/phase-execution.md` / `auto-semantics.md` gate texts, `.moai/reports/**` (read-only measurement surface), the old card tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1500` (read-only reference).
 
@@ -32,25 +34,25 @@ PRESERVE (untouched): `internal/runtime/audit_gate.go`, `internal/runtime/audit_
 
 ### M1 — configuration + counter (work item 1)
 
-Files 1-6. Additive config fields with defaults + symmetry case + registry disposition update; `CountPlanAuditRounds` + `ResolvePlanAuditCeiling` with table tests (fixture dirs: `plan-audit.md` + `iter1..3` → 4; unparseable `plan-audit-iterX.md` → error; empty/absent dir → 0; tier absent → L ceiling).
+Files 1-6. Additive config fields with defaults + the harness-loader test `TestHarnessConfigPlanAuditCeilings` (file 3 — the harness section's own test surface) + registry disposition update; `CountPlanAuditRounds` + `ResolvePlanAuditCeiling` with table tests (fixture dirs: `plan-audit.md` + `iter1..3` → 4; empty/absent dir → 0; tier absent → L ceiling; a tier key missing from the map or resolving ≤ 0 → configuration error), plus `TestCountPlanAuditRoundsUnparseable` as its own test for the unparseable-suffix case.
 
-**Exit:** `go test -run '^(TestCountPlanAuditRounds|TestResolvePlanAuditCeiling)$' ./internal/runtime` exit 0; `go test -run '^TestHarnessConfigPlanAuditCeilings$' ./internal/config` exit 0; `go build ./...` exit 0.
+**Exit:** `go test -run '^(TestCountPlanAuditRounds|TestCountPlanAuditRoundsUnparseable|TestResolvePlanAuditCeiling|TestResolvePlanAuditCeilingInvalid)$' ./internal/runtime` exit 0; `go test -run '^TestHarnessConfigPlanAuditCeilings$' ./internal/config` exit 0; `go build ./...` exit 0.
 
 ### M2 — one recording path + CLI verb (work item 2)
 
-Files 5 (outcome half), 7, 8. `CeilingOutcome` + `RecordCeilingOutcome` + the single evaluation entry; CLI verb read + `--record`. Disposition selection order in code matches REQ-ACR-003 exactly; clean-PASS writes nothing (REQ-ACR-004). No `AskUserQuestion` anywhere in the new files (static grep stays 0).
+Files 5 (outcome half), 7, 8. `CeilingOutcome` + `RecordCeilingOutcome` + the single evaluation entry; CLI verb read + `--record`. Disposition selection order in code matches REQ-ACR-003 exactly (debt-proceed / hold-and-split→hold+ref / split / other-unreadable→hold); clean PASS writes nothing (REQ-ACR-004). No `AskUserQuestion` anywhere in the new files (static grep stays 0).
 
-**Exit:** `go test -run '^(TestRecordCeilingOutcome|TestEvaluatePlanAuditCeiling)$' ./internal/runtime` exit 0; `go run ./cmd/moai spec ceiling --help` exit 0; `grep -c AskUserQuestion internal/runtime/audit_ceiling.go internal/cli/spec_ceiling.go` → 0 for both (exit 1 per file).
+**Exit:** `go test -run '^(TestRecordCeilingOutcome|TestRecordCeilingOutcomeDebtProceed|TestRecordCeilingOutcomeUnknownPolicy|TestEvaluatePlanAuditCeiling)$' ./internal/runtime` exit 0; `go run ./cmd/moai spec ceiling --help | grep -c "ceiling"` ≥ 1 — the output-content gate (the help exit code alone is vacuous: it exits 0 on the unstarted tree; RED value recorded in LEDGER-ACR-J); `grep -c AskUserQuestion internal/runtime/audit_ceiling.go internal/cli/spec_ceiling.go` → 0 for both (exit 1 per file).
 
-### M3 — required-backend refusal + resolver + convention line (work item 3)
+### M3 — required-backend refusal + resolution path + convention line (work item 3)
 
-Files 9-14. Predicate signal + refusal arm; convention doc line in both copies (same change); resolver error distinct from empty with caller surfacing.
+Files 9-17. Predicate signal + refusal arm; convention doc line in both copies (same change); the resolution path fail-closed end to end — resolver error distinct (file 13/16), pins-loader "(N3)" fold retired (files 14/15), caller surfacing (file 16).
 
-**Exit:** `go test -run '^TestAdmitRequiredBackendFail$' ./internal/auditverdict` exit 0; `grep -c "required_backend_fail" .moai/docs/audit-artifact-convention.md` ≥ 1 AND `grep -c "required_backend_fail" internal/template/templates/.moai/docs/audit-artifact-convention.md` ≥ 1 (per-file pair, not a sum); `go test -run '^TestResolveAuditGatesConfigErrorDistinct$' ./internal/cli` exit 0.
+**Exit:** `go test -run '^TestAdmitRequiredBackendFail$' ./internal/auditverdict` exit 0; `grep -c "required_backend_fail" .moai/docs/audit-artifact-convention.md` ≥ 1 AND `grep -c "required_backend_fail" internal/template/templates/.moai/docs/audit-artifact-convention.md` ≥ 1 (per-file pair, not a sum); `go test -run '^(TestResolveAuditGatesConfigErrorDistinct|TestWorkflowAuditPinsErrorNotFolded|TestWorktreeRootSurfacesGateError)$' ./internal/cli` exit 0.
 
 ### M4 — verification + evidence
 
-RED→GREEN matrix for all 8 ACs recorded into `progress.md` §E.1 with verbatim outputs; narrow selectors only (no whole-package `go test ./...` — lane discipline); `go run ./cmd/moai spec lint SPEC-AUDIT-CEILING-002 --strict` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (C5).
+RED→GREEN matrix for all 11 ACs recorded into `progress.md` §E.1 with verbatim outputs; narrow selectors only (no whole-package `go test ./...` — lane discipline); `go run ./cmd/moai spec lint SPEC-AUDIT-CEILING-002 --strict` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (C5).
 
 **Exit:** lint strict 0 findings; all AC GREEN cells carry command + verbatim output + exit code; §E.1 `audit_ready: true`.
 
