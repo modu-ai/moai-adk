@@ -321,9 +321,16 @@ func LoadProtectedZone(projectRoot string) ProtectedZoneLoad {
 		{ProtectedZoneOverlayRel, false},
 	}
 	for _, f := range files {
-		data, err := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(f.rel)))
+		full := filepath.Join(projectRoot, filepath.FromSlash(f.rel))
+		data, err := os.ReadFile(full)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
+				// A dangling symlink surfaces the same ENOENT as a truly
+				// absent file, but the path EXISTS: present-but-unreadable is
+				// invalid, fail closed (merge-gate round 5 P2).
+				if _, lerr := os.Lstat(full); lerr == nil {
+					return ProtectedZoneLoad{State: ZoneStateInvalid, InvalidFile: f.rel, Err: fmt.Errorf("read %s: %w", f.rel, err)}
+				}
 				continue
 			}
 			return ProtectedZoneLoad{State: ZoneStateInvalid, InvalidFile: f.rel, Err: fmt.Errorf("read %s: %w", f.rel, err)}

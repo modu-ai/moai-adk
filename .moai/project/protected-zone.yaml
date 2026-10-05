@@ -11,8 +11,12 @@ categories:
       - internal/hook/
       - internal/harness/safety/
       - internal/harness/frozen_guard.go
+      - internal/config/protected_zone.go
       - .claude/lsel/
       - .moai/hooks/
+  gate_policy:
+    paths:
+      - internal/template/templates/.moai/config/sections/protected-zone.yaml
   regression_tests:
     paths:
       - "**/*_test.go"

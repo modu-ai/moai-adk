@@ -113,6 +113,19 @@ func TestProtectedZone(t *testing.T) {
 		if got.State != ZoneStateInvalid || got.InvalidFile != ProtectedZoneShippedRel {
 			t.Errorf("unreadable: state=%q file=%q", got.State, got.InvalidFile)
 		}
+
+		// a dangling symlink at the manifest path exists but cannot be read:
+		// invalid, never absent (merge-gate round 5 P2 — ReadFile's ENOENT
+		// cannot tell them apart on its own)
+		root = t.TempDir()
+		if err := os.Symlink(filepath.Join(root, "missing-target.yaml"), filepath.Join(root, filepath.FromSlash(ProtectedZoneShippedRel))); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		got = LoadProtectedZone(root)
+		swept++
+		if got.State != ZoneStateInvalid || got.InvalidFile != ProtectedZoneShippedRel {
+			t.Errorf("dangling symlink: state=%q file=%q, want invalid", got.State, got.InvalidFile)
+		}
 		zoneSweptFloor(t, swept, 9)
 	})
 
