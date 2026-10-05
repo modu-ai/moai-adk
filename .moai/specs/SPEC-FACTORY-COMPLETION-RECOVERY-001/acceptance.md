@@ -8,12 +8,12 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 
 | probe | command | verbatim 결과 | exit |
 |---|---|---|---|
-| P1 receipt 부재 | `grep -rn 'Receipt\|receipt' internal/cli/todo_autodone.go internal/cli/todo.go` | todo.go:818·:873 주석 2건(스토어 발급 receipt, 무관) | 0 |
-| P2 facts 필드 | `grep -n 'type AutoDoneFacts' -A 12 internal/factory/*.go` | autodone_scan.go:108 — receipt 필드 없음 | 0 |
+| P1 receipt 부재 | `grep -rn 'Receipt\|receipt' internal/cli/todo_autodone.go internal/cli/todo.go` | `internal/cli/todo.go:818:	// REQ-TSS-001 family) — the response's issued id is a receipt for the` + `internal/cli/todo.go:873:	// the issued id is a receipt for the store that answered. Scoped to the` | 0 |
+| P2 facts 필드 | `grep -n 'type AutoDoneFacts' -A 12 internal/factory/*.go` | `internal/factory/autodone_scan.go:108:type AutoDoneFacts struct {` 이하 RecordedSHA·SHAReachable·SubjectHit·SubjectKnown… — receipt 필드 없음 | 0 |
 | P3 active-only | `grep -n 'classifyRuns(ctx, opts, ' internal/homestate/factory_run_retire.go` | :162 `""`(전체), :333·:350 `"active"` | 0 |
 | P4 reassign 부재 | `grep -in 'reassign' internal/homestate/*.go` | (출력 없음) | 1 |
 | P5 관계 disposition 부재 | `grep -n 'disposition' internal/factory/backlog_gtd_schema.go internal/factory/gtd_relation.go` | backlog_gtd_schema.go:36만(gtd_items) — gtd_relations·gtd_relation.go 0건 | 0 |
-| P6 watchdog 부재 | `grep -rn 'watchdog\|waiting_since\|review_deadline\|WaitingSince' internal/homestate --include='*.go' \| grep -v _test` | (출력 없음) | 0(필터 후) |
+| P6 watchdog 부재 | `grep -rn 'watchdog\|waiting_since\|review_deadline\|WaitingSince' internal/homestate --include='*.go' \| grep -v _test` | (출력 없음 — 두 번째 grep이 선택한 행이 없어 exit 1) | 1 |
 | P7 reserved edge | `grep -n 'CardPushed\|CardCIGreen\|reserved' internal/homestate/card_transition.go` | :173 술어, :267 거부 | 0 |
 | P8 발급 출력 | `sed -n '851p' internal/cli/todo.go` | `fmt.Fprintf(cmd.OutOrStdout(), "%s %d\n", item.ID, pos)` | 0 |
 
@@ -38,12 +38,12 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-004 — auto-done이 receipt 없이 닫지 않음 (REQ-FCR-003)
 
 - RED-now: P2 — `AutoDoneFacts`(autodone_scan.go:108)에 receipt 필드 없음.
-- green(M1): `go test ./internal/cli -run '^TestAutoDoneReceiptSkip$'` — receipt 미검증 후보는 close 대상에서 skip/downgrade, 스캔 전체는 계속. INPUT: 조건은 모두 충족하되 receipt 없는 카드.
+- green(M1): `go test ./internal/cli -run '^TestAutoDoneReceiptSkip$'` — receipt 미검증 후보는 close 대상에서 skip/downgrade, 스캔 전체는 계속. INPUT: 조건은 모두 충족하되 receipt 없는 카드. **경합 변이 포함**: 스캔 승인 뒤 factory 전이로 카드 version이 증가한 행 — archive 직전 삼중 바인딩 재검증(factory version 포함)이 stale receipt를 거부하고 close를 skip한다(REQ-FCR-004의 직전 재검증).
 
 ### AC-FCR-005 — 잠금 재검증 전면 비교 (REQ-FCR-004)
 
 - RED-now: 본 트리 판독 — todo_autodone.go:385가 ID 동등만 확인하고 :397 archive까지 진행(스캔-스냅샷과 lock 사이 hold/drop/edit 행도 닫힘).
-- green(M1): `go test ./internal/cli -run '^TestAutoDoneRecheckStaleRow$'` — UUID·본문·state·SPEC·landing 중 하나라도 현재값과 다르면 close skip + inconclusive downgrade, 5항목 모두 동일 시 close. INPUT: 스냅샷 후 변형된 행 5종 변이.
+- green(M1): `go test ./internal/cli -run '^TestAutoDoneRecheckStaleRow$'` — UUID·본문·state·SPEC·landing 중 하나라도 현재값과 다르면 close skip + inconclusive downgrade, 5항목 모두 동일하더라도 **archive 직전에 receipt의 factory version·증거 해시를 lock 안에서 최종 재검증**해 stale receipt는 거부하고, 재검증은 동시 factory 전이와 직렬화된다. INPUT: 스냅샷 후 변형된 행 5종 변이 + 승인 뒤 version 증가 변이.
 
 ## §B — M2: 회수
 

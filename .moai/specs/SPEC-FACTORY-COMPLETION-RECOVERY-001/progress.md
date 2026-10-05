@@ -5,7 +5,8 @@
 - **2026-10-06** — phase=plan 시작. lane-1, 트리 `.moai/worktrees/t1538`, 브랜치 `WT-t1538-factory-recovery`, base = local develop `a158b4b5f`.
 - **임대 거절·영수증 경로**: `moai factory next --card t1538` → `refused serial-slot`(설치 빌드에 t1513 수리 `de388878e` 미반영). t1522식 영수증 경로(리더 배차=권한)로 진행, 크론 재시도 유지. 본 SPEC의 M1 receipt 게이트가 이 경로의 도구적 뒷받침이다.
 - **앵커 검증 완료**: 리포트(main@ec13872f3) 앵커 14건을 본 트리 기준 전수 재확인 — 13건 일치, 1건 부분 이동(todo_analysis.go:74는 기록 분기, 임계 상수는 internal/factory/backlog_analysis.go:33). 상세는 spec.md §B.2. RED-now probe 8건(P1-P8)은 acceptance.md §0에 verbatim 기록.
-- **자체 해결 스코프 질문**: (1) 통합 경로 표기 — 미션 문구 "PR to main per GitHub Flow"를 저장소 현행 상태(카드 PR은 develop 대상, PR #1748 선례, gitflow 전환 경과)에 맞춰 "통합 브랜치(develop)로 PR"로 기록; (2) "receipt" 명칭 충돌 — todo.go:818/:873의 스토어 발급 receipt와 구별되는 이름(LeaderApproval 계열)을 plan §D에 명시.
+- **자체 해결 스코프 질문**: (1) 통합 경로 표기 — 스폰 초안은 낡은 로컬 규칙(git-flow 시절 develop 통합)을 따라 "develop 대상 PR"로 적었으나 **레인이 시정**: 2026-10-05 GitHub Flow 재전환 이후 리더 운영 관행이 권한 원천 — t1453 PR #1751·t1513 PR #1758 모두 base=main이고 t1513 배차에는 `gh pr create --base main` 지시가 명시(plan.md §H 교정, 독립 감사자가 PR 3건 전부 base=main으로 재확인); (2) "receipt" 명칭 충돌 — todo.go:818/:873의 스토어 발급 receipt와 구별되는 이름(LeaderApproval 계열)을 plan §D에 명시.
+- **plan-audit iter1 FAIL 수령**: 0.75(Tier M 문턱 0.80 미달, 판정서 `.moai/reports/t1538/plan-audit-iter1.md`, audited_sha `8fd632009` — 수리 2라운드 이전 기준). D1~D4는 이미 수리됨(`98a44b87a`·`7e65ff552`). 잔여 D5 stale-receipt 경합·D6 watchdog 기존 행 도달·D7 §0 프로브 기록 오류는 본 커밋(수리 3라운드)으로 처리 — 다음 감사는 delta로.
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
