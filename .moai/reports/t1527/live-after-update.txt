@@ -2,8 +2,8 @@ Current version   moai-adk archive/t1401
 ·  v2 detected  running clean reinstall · signals: version=false agency=false deprecated=true
 [clean-reinstall] v2 fingerprint detected (signals: version=false agency=false deprecated=true)
 [clean-reinstall] PRESERVE inventory: 4 files
-[clean-reinstall] Backup created at /tmp/t1527-sandbox-after/.moai/backups/v2-to-v3-2026-10-05T10-57-39Z
-[clean-reinstall] Deprecated paths backed up at /tmp/t1527-sandbox-after/.moai/backup/agency-2026-10-05T10-57-39Z (1 files)
+[clean-reinstall] Backup created at /tmp/t1527-sandbox-after/.moai/backups/v2-to-v3-2026-10-05T12-22-45Z
+[clean-reinstall] Deprecated paths backed up at /tmp/t1527-sandbox-after/.moai/backup/agency-2026-10-05T12-22-45Z (1 files)
 [clean-reinstall] Removed 4 deprecated paths
 [clean-reinstall]   - .moai/db
 [clean-reinstall]   - .claude/agents/core

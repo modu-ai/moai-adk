@@ -112,3 +112,26 @@ race targeted ok, vet darwin+windows clean, golangci-lint 0 issues, GOOS=windows
 build ok. Live-after captures re-taken on the e24ae0298+repair build
 (/tmp/t1527-moai-after2).
 
+## Repair round 3 (re-review: 2xP2 + 2xP3, range e24ae0298..bea674873)
+
+- R2-1 (P2) the banner marker moved from env to ARGV: hidden persistent flag
+  `--moai-reexeced` inserted into the child argv by reexecNewBinary
+  (reexecChildArgv); runUpdate reads the parsed flag; MOAI_UPDATE_REEXEC and its
+  envkeys constant deleted. Env inheritance can no longer fake the pass;
+  MOAI_SKIP_BINARY_UPDATE stays env-based as the loop guard (safe when
+  inherited). Contract tests replaced (flag-gated, argv insertion order,
+  hidden+persistent registration). Commits bdc865755.
+- R2-2 (P2) the two raw emitters F2 missed migrated: healManifestBestEffort and
+  writeTemplateSnapshotBestEffort → ! severity lines; their two package-cli
+  test literals updated to the body text. Commit 1e4c6b2b5.
+- R2-3 (P3) FailureIsNonFatal now also asserts stdout stays empty on failure.
+- R2-4 (P3) retrackSectionFiles returns its failure; the init tail Collect()s it
+  into the warning summary panel (post-card surface), update-flow/--restore
+  callers keep an immediate ! line, and the runUpdate tail call joins the
+  terminal block.
+- Round-3 verification: all listed families green (incl. -v PASS lines for the
+  provision family), race targeted ok, vet darwin+windows clean, golangci-lint
+  0 issues, GOOS=windows build ok; live-after captures re-taken on the
+  bea674873+repair build (/tmp/t1527-moai-after3) — shapes unchanged on success
+  paths (the round-3 changes touch failure paths and the marker mechanism only).
+
