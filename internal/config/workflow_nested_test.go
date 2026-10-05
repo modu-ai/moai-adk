@@ -58,9 +58,6 @@ func TestWorkflowYAMLUnmarshalProductionFixture(t *testing.T) {
 	if got := wf.Worktree.SessionNamePattern; got != "moai-{ProjectName}-{SPEC-ID}" {
 		t.Errorf("Worktree.SessionNamePattern: got %q, want %q", got, "moai-{ProjectName}-{SPEC-ID}")
 	}
-	if got := wf.Worktree.TmuxPreferred; got != true {
-		t.Errorf("Worktree.TmuxPreferred: got %v, want true", got)
-	}
 }
 
 // TestWorkflowYAMLUnmarshal_OmittedTokenBudget_PreservesDefaults verifies that

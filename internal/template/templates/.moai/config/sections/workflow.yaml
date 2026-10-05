@@ -63,7 +63,6 @@ workflow:
         auto_create: false
         auto_merge: false
         auto_cleanup: false
-        tmux_preferred: true
         # session_name_pattern: declared but not read — no code builds a session
         # name from this value (reserved). Retained as a placeholder only.
         session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"

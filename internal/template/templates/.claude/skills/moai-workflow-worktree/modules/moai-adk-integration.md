@@ -189,10 +189,9 @@ workflow.worktree section (real keys + real defaults):
 - `auto_create` (bool, default: **false**) — automatically create worktrees. Opt-in; the default flow runs phases on a feature branch in the main checkout.
 - `auto_merge` (bool, default: **false**) — automatically merge worktree branches. Opt-in; off by default.
 - `session_name_pattern` (string, default: `moai-{ProjectName}-{SPEC-ID}`) — naming pattern for sessions spawned inside a worktree.
-- `tmux_preferred` (bool, default: **true**) — prefer tmux for worktree session display.
 
 Notes:
-- The previously-documented fields `auto_sync`, `cleanup_merged`, `worktree_root`, `default_base`, `sync_strategy`, and `registry_type` are NOT fields on the Go struct and MUST NOT be presented as live config keys. (The legacy content that listed them with `true` defaults inverted the real defaults and is corrected here.)
+- The previously-documented fields `auto_sync`, `cleanup_merged`, `worktree_root`, `default_base`, `sync_strategy`, `registry_type`, and `tmux_preferred` are NOT fields on the Go struct and MUST NOT be presented as live config keys. (The legacy content that listed them with `true` defaults inverted the real defaults and is corrected here. `tmux_preferred` was retired at t1287 — prefer tmux explicitly with `moai cc -w <name> --spawn`.)
 - Worktree automation defaults to OFF in both the distributed template and the local dev config. Changing a default requires a dedicated SPEC.
 
 ---
