@@ -309,7 +309,7 @@ mentions an id later in the sentence still falls through, and
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoHoldCmd(), newTodoUnholdCmd(),
-		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
+		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(), newTodoTraceCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoShowCmd(), newTodoTriageCmd())
 	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
@@ -353,6 +353,7 @@ var todoLaneReadOnlyVerbs = map[string]bool{
 	"why":     true,
 	"pr":      true,
 	"triage":  true,
+	"trace":   true,
 }
 
 // todoTreeRoot returns the todo tree's own root for run: the nearest

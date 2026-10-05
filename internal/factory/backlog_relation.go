@@ -12,6 +12,7 @@ package factory
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -130,9 +131,139 @@ func ResolveFindingDirection(f BacklogFinding) BacklogDirection {
 	return BacklogDirection{From: from, To: to, Kind: kind, Qualifier: qualifier, Source: f.Source}
 }
 
+// RelationKindClosesCycle reports whether recording `from` —kind→ `to`
+// would close a cycle within that kind's mapped edges (legacy names count:
+// replaces rides as supersedes, depends as blocks). Exported for the CLI's
+// pre-write refusal (REQ-TCI-013).
+func (r *BacklogRecord) RelationKindClosesCycle(from, to string, kinds ...string) bool {
+	kindSet := map[BacklogRelationKind]bool{}
+	for _, k := range kinds {
+		kindSet[BacklogRelationKind(k)] = true
+	}
+	adjacent := map[string][]string{}
+	for i := range r.Findings {
+		f := r.Findings[i]
+		kind, _ := MapLegacyRelation(f.Relation)
+		if !kindSet[kind] {
+			continue
+		}
+		d := ResolveFindingDirection(f)
+		adjacent[d.From] = append(adjacent[d.From], d.To)
+	}
+	seen := map[string]bool{}
+	queue := []string{to}
+	for len(queue) > 0 {
+		node := queue[0]
+		queue = queue[1:]
+		if node == from {
+			return true
+		}
+		if seen[node] {
+			continue
+		}
+		seen[node] = true
+		queue = append(queue, adjacent[node]...)
+	}
+	return false
+}
+
 // RecordRelation validates one relate write against the kind's constraints
 // (design §5.3): self-edges refused for every writable kind, blocks and
 // supersedes cycle-checked through the existing guard, symmetric pairs
+// normalized so an opposite-order re-record maps onto the first record.
+// The returned finding is appended by the caller inside its locked write;
+// nothing here touches the record.
+// TraceCardRelations walks the mapped relation edges from start id, up to
+// depth (0 = unbounded), over the named kinds (empty = all). Each visited
+// edge renders as one deterministic line: depth, kind, from → to, qualifier,
+// source. Cycles terminate through the visit set; nothing is written.
+func TraceCardRelations(rec *BacklogRecord, start string, kinds []string, depth int) []string {
+	wanted := map[BacklogRelationKind]bool{}
+	for _, k := range kinds {
+		wanted[BacklogRelationKind(k)] = true
+	}
+	type edge struct {
+		depth int
+		line  string
+		sort  [3]string
+	}
+	visited := map[string]bool{start: true}
+	var out []edge
+	type queued struct {
+		id    string
+		depth int
+	}
+	queue := []queued{{start, 0}}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if depth > 0 && cur.depth >= depth {
+			continue
+		}
+		var edges []BacklogDirection
+		for i := range rec.Findings {
+			f := rec.Findings[i]
+			if !f.Names(cur.id) {
+				continue
+			}
+			d := ResolveFindingDirection(f)
+			if len(wanted) > 0 && !wanted[d.Kind] {
+				continue
+			}
+			// Walk from the card's side: whichever endpoint is cur.
+			if d.From != cur.id && d.To != cur.id {
+				continue
+			}
+			other := d.To
+			if d.To == cur.id {
+				other = d.From
+			}
+			edges = append(edges, BacklogDirection{
+				From: cur.id, To: other, Kind: d.Kind, Qualifier: d.Qualifier, Source: d.Source,
+			})
+		}
+		sort.Slice(edges, func(i, j int) bool {
+			if edges[i].To != edges[j].To {
+				return edges[i].To < edges[j].To
+			}
+			return string(edges[i].Kind) < string(edges[j].Kind)
+		})
+		for _, e := range edges {
+			if visited[e.To] {
+				continue
+			}
+			visited[e.To] = true
+			q := ""
+			if e.Qualifier != "" {
+				q = " (" + e.Qualifier + ")"
+			}
+			out = append(out, edge{
+				depth: cur.depth + 1,
+				line: fmt.Sprintf("depth %d  %s  %s → %s%s  source=%s",
+					cur.depth+1, e.Kind, e.From, e.To, q, e.Source),
+				sort: [3]string{fmt.Sprintf("%03d", cur.depth+1), string(e.Kind), e.To},
+			})
+			queue = append(queue, queued{e.To, cur.depth + 1})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		for k := range out[i].sort {
+			if out[i].sort[k] != out[j].sort[k] {
+				return out[i].sort[k] < out[j].sort[k]
+			}
+		}
+		return false
+	})
+	lines := make([]string, 0, len(out))
+	for _, e := range out {
+		lines = append(lines, e.line)
+	}
+	return lines
+}
+
+// RecordRelation validates one relate write against the kind's constraints
+// (design §5.3): self-edges refused for every writable kind, blocks and
+// supersedes cycle-checked through the mapped kind's edges, symmetric pairs
 // normalized so an opposite-order re-record maps onto the first record.
 // The returned finding is appended by the caller inside its locked write;
 // nothing here touches the record.
@@ -153,10 +284,14 @@ func RecordRelation(rec *BacklogRecord, subject, related, relation string) (Back
 	}
 	// Cycle guards: blocks (with legacy depends rows counting as blocks)
 	// and supersedes walk their own kind over the mapped record.
-	if relation == "blocks" || relation == "supersedes" {
-		if relationClosesCycle(rec, subject, related, relation) {
-			return BacklogFinding{}, fmt.Errorf("relation %s: %s → %s closes a cycle",
-				relation, subject, related)
+	if relation == "blocks" {
+		if rec.RelationKindClosesCycle(subject, related, "blocks", "depends") {
+			return BacklogFinding{}, fmt.Errorf("relation blocks: %s → %s closes a cycle", subject, related)
+		}
+	}
+	if relation == "supersedes" {
+		if rec.RelationKindClosesCycle(subject, related, "supersedes", "replaces") {
+			return BacklogFinding{}, fmt.Errorf("relation supersedes: %s → %s closes a cycle", subject, related)
 		}
 	}
 	if BacklogRelationIsSymmetricForDedup(relation) {
@@ -183,34 +318,7 @@ func RecordRelation(rec *BacklogRecord, subject, related, relation string) (Back
 	}, nil
 }
 
-// relationClosesCycle walks the mapped kind's edges from the prospective
-// successor and reports whether the prospective predecessor is reachable —
-// the same visit-set termination the trace command uses, so legacy cycles
-// in OTHER kinds cannot hang the walk.
-func relationClosesCycle(rec *BacklogRecord, from, to, relation string) bool {
-	adjacent := map[string][]string{}
-	for i := range rec.Findings {
-		f := rec.Findings[i]
-		kind, _ := MapLegacyRelation(f.Relation)
-		if kind != BacklogRelationKind(relation) {
-			continue
-		}
-		d := ResolveFindingDirection(f)
-		adjacent[d.From] = append(adjacent[d.From], d.To)
-	}
-	seen := map[string]bool{}
-	queue := []string{to}
-	for len(queue) > 0 {
-		node := queue[0]
-		queue = queue[1:]
-		if node == from {
-			return true
-		}
-		if seen[node] {
-			continue
-		}
-		seen[node] = true
-		queue = append(queue, adjacent[node]...)
-	}
-	return false
-}
+// relationClosesCycle is superseded by RelationKindClosesCycle (the
+// exported pre-write refusal used by todo relate's blocks/supersedes
+// guards); the unexported spelling had one caller and is retained only for
+// this comment to record the succession.

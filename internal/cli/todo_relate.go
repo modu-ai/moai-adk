@@ -67,7 +67,7 @@ func newTodoRelateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&relation, "relation", "",
-		"One of: "+strings.Join(factory.BacklogSemanticRelations, ", "))
+		"One of: "+strings.Join(factory.BacklogWriteableRelations, ", "))
 	cmd.Flags().StringVar(&note, "note", "",
 		"Free text recorded with the finding")
 	cmd.Flags().StringVar(&disposition, "disposition", "",
@@ -78,12 +78,18 @@ func newTodoRelateCmd() *cobra.Command {
 // runTodoRelate validates the relation and both ids, then appends exactly
 // one agent finding under the lock.
 func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) error {
-	if !isSemanticRelation(relation) {
+	if !isWriteableRelation(relation) {
 		return fmt.Errorf("todo relate: --relation must be one of %s (got %q)",
-			strings.Join(factory.BacklogSemanticRelations, ", "), relation)
+			strings.Join(factory.BacklogWriteableRelations, ", "), relation)
 	}
 	if subject == related {
 		return fmt.Errorf("todo relate: a card cannot be related to itself (%s)", subject)
+	}
+	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013: symmetric kinds normalize the
+	// pair (smaller id first) BEFORE the dedup check, so an opposite-order
+	// re-record maps onto the first finding instead of creating a second.
+	if factory.BacklogRelationIsSymmetricForDedup(relation) {
+		subject, related, _ = factory.NormalizeRelationPair(subject, related)
 	}
 	var index int
 	err := newTodoStore().Mutate(func(rec *factory.BacklogRecord) error {
@@ -106,6 +112,13 @@ func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) 
 			if rec.WaitsOnClosesCycle(waiter, target) {
 				return fmt.Errorf("todo relate: %s %s %s would close a dependency cycle (%s already waits on %s through recorded relations)",
 					subject, relation, related, waiter, target)
+			}
+		}
+		// REQ-TCI-013: supersedes cycles are refused the same way — the
+		// mapped walk sees legacy replaces rows as supersedes edges.
+		if relation == "supersedes" {
+			if rec.RelationKindClosesCycle(subject, related, "supersedes", "replaces") {
+				return fmt.Errorf("todo relate: %s supersedes %s would close a supersedes cycle", subject, related)
 			}
 		}
 		finding := factory.BacklogFinding{
@@ -173,6 +186,18 @@ func newTodoUnrelateCmd() *cobra.Command {
 // `near-duplicate` would claim a measurement nobody measured.
 func isSemanticRelation(r string) bool {
 	for _, allowed := range factory.BacklogSemanticRelations {
+		if r == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+// isWriteableRelation — SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013: relate's
+// writable set widens to the three new kinds; the projection kinds stay
+// refused (they are add-time attribute projections or todo merge's output).
+func isWriteableRelation(r string) bool {
+	for _, allowed := range factory.BacklogWriteableRelations {
 		if r == allowed {
 			return true
 		}
