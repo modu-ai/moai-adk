@@ -227,7 +227,13 @@ jobs:
         shell: bash
         run: |
           rc=0
-          go test -json -coverprofile=coverage.out -covermode=atomic ./... > test-stream.json || rc=$?
+          # -timeout is per test binary, not per job: the Go 10m default lands
+          # on internal/cli, whose non-race runtime measured 594.437s on the
+          # last green develop run (37220274195) and crossed the 600.215s alarm
+          # on the next (37221992371, card t1519) with the last test still
+          # starting. 25m clears the edge while staying inside this job's
+          # timeout-minutes: 30 budget.
+          go test -json -coverprofile=coverage.out -covermode=atomic -timeout 25m ./... > test-stream.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream.json
           exit $rc
 
