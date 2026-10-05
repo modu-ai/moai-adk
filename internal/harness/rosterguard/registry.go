@@ -539,6 +539,27 @@ func Registry() []Site {
 		// the layer is expected not to see them. Declaring that — rather than
 		// widening the noun class or quietly dropping the equality — is what
 		// keeps AC-RNA-006(b) strict instead of unsatisfiable.
+
+		// ── Cutover preservation snapshots (PR #1748 transition M2) ────────
+		// The github-flow cutover preserved deployed policies, manifests and
+		// audit captures into the tracked tree. Each enumerates the agent
+		// names as they stood at capture — a legitimate partial listing, not
+		// a roster claim. Membership only; the numeral layer's citations for
+		// the overlapping paths are carried by the NumeralExemptions rows.
+		// Removing the preservation copies removes these rows with them.
+		{ID: "cutover-manifest-listing", Path: ".moai/manifest.json", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: the cutover-preserved manifest enumerates the agent definitions as deployed."},
+		{ID: "cutover-policy-agent-authoring-listing", Path: ".moai/policies/development/agent-authoring.md", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: preserved policy copy quoting the agent names as deployed."},
+		{ID: "cutover-policy-agent-patterns-listing", Path: ".moai/policies/development/agent-patterns.md", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: preserved policy copy quoting the agent names as deployed."},
+		{ID: "cutover-policy-spec-workflow-listing", Path: ".moai/policies/workflow/spec-workflow.md", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: preserved policy copy quoting the agent names as deployed."},
+		{ID: "cutover-audit-cards-before-listing", Path: "reports/hooks-audit-20260911-01a08e35/cards-before.json", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: a 2026-09-11 hooks-audit card capture, listing agents as they stood."},
+		{ID: "cutover-audit-cards-after-listing", Path: "reports/hooks-audit-20260911-01a08e35/cards-after.json", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: a 2026-09-11 hooks-audit card capture, listing agents as they stood."},
+		{ID: "cutover-audit-agent-inventory-listing", Path: "reports/workflow-performance-audit-20260911/agent-inventory.json", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: a 2026-09-11 audit inventory of agent files as they stood."},
+		{ID: "cutover-audit-baseline-listing", Path: "reports/workflow-performance-audit-20260911/baseline.json", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: a 2026-09-11 audit baseline capture listing agents as measured."},
+		{ID: "cutover-audit-evidence-listing", Path: "reports/workflow-performance-audit-20260911/evidence.json", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: a 2026-09-11 audit evidence capture listing agents as measured."},
+		{ID: "cutover-audit-print-check-listing", Path: "reports/workflow-performance-audit-20260911/print-check.pdf", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: the audit's print-check PDF, quoting the report's listings."},
+		{ID: "cutover-audit-report-html-listing", Path: "reports/workflow-performance-audit-20260911/report.html", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: the audit report's HTML rendering, quoting the agent listings."},
+		{ID: "cutover-audit-report-md-listing", Path: "reports/workflow-performance-audit-20260911/report.md", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: the audit report, quoting the agent listings it measured."},
+		{ID: "cutover-audit-rules-inventory-listing", Path: "reports/workflow-performance-audit-20260911/rules-inventory.json", Axis: AxisSubsetByDesign, Claims: ClaimMembership, Note: "HISTORICAL CAPTURE: a 2026-09-11 audit capture whose rule inventory quotes the agent names."},
 	}
 }
 
