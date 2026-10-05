@@ -491,7 +491,7 @@ Release-blocking.
 
 **Given** 이웃이 있는 큐, 그리고 이웃이 없는 빈 큐
 **When** MCP `todo_add` 와 `gtd engage` 가 카드를 admit 한다
-**Then** (a) MCP 결과 텍스트의 첫 줄은 `<id> <pos>` 이고 그 뒤 빈 줄과 제시가 이어지며, (b) 이웃이 없을 때 MCP 결과 텍스트는 CLI stdout 과 같고(기존 `TestSD_AC014_MCPMatchesCLIWithProjectRoot` 가 그대로 통과), (c) engage 는 제시를 stderr 로 내고 소견을 기록하지 않으며 거절하지 않는다.
+**Then** (a) MCP 결과 텍스트의 첫 줄은 `<id> <pos>` 이고 그 뒤 빈 줄과 제시가 이어지며, (b) 이웃이 없을 때 — 빈 큐라 진행 중 카드 자체가 없어 제시가 빈 형태일 때 — MCP 결과 텍스트는 CLI stdout 에서 후행 개행을 정리한 것과 같다. 두 표면의 비교는 언제나 개행 정리 후 기준이고, 빈 제시에 빈 줄만 덧붙이는 것은 (b) 위반이다(기존 `TestSD_AC014_MCPMatchesCLIWithProjectRoot` 가 그대로 통과), (c) engage 는 제시를 stderr 로 내고 소견을 기록하지 않으며 거절하지 않는다. (card t1454 P2-1 수리 — 수리 전 문구는 개행 차이를 정의하지 않아 빈 큐 비교가 모호했다.)
 
 필수 시험 3개(앞의 둘은 새 시험, 셋째는 이미 있는 패리티 시험): `TestTodoAddMCPCarriesPresentation`, `TestGTDEngagePresentationRecordsNothing`, `TestSD_AC014_MCPMatchesCLIWithProjectRoot`.
 
