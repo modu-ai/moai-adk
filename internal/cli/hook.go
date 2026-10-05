@@ -164,6 +164,24 @@ func init() {
 		RunE:  runHarnessObserveUserPromptSubmit,
 	})
 
+	// retention-prune: hidden utility child verb (SPEC-HARNESS-DETACHED-PRUNE-001
+	// REQ-DP-003, spec D1). Spawned detached by the harness-observe record gate;
+	// runs the same lock-protected, idempotent PruneStaleEntries path when invoked
+	// manually, so a stray manual call is harmless.
+	retentionPruneCmd := &cobra.Command{
+		Use:    "retention-prune",
+		Short:  "Run the harness usage-log prune (detached child of the observe gate)",
+		Long:   "Runs Retention.PruneStaleEntries against --log, archiving retention-expired events into monthly gzip archives under --archive (<YYYY-MM>.jsonl.gz). Hidden child spawned detached by the harness-observe spawn gate (SPEC-HARNESS-DETACHED-PRUNE-001); the state-file lock and the once-per-interval stamp make a manual invocation harmless.",
+		Hidden: true,
+		RunE:   runHookRetentionPrune,
+	}
+	retentionPruneCmd.Flags().String("log", "", "path to usage-log.jsonl (required)")
+	retentionPruneCmd.Flags().String("archive", "", "monthly archive directory (required)")
+	retentionPruneCmd.Flags().Int("days", harness.DefaultRetentionDays, "retention window in days")
+	_ = retentionPruneCmd.MarkFlagRequired("log")
+	_ = retentionPruneCmd.MarkFlagRequired("archive")
+	hookCmd.AddCommand(retentionPruneCmd)
+
 	// Add "spec-status" subcommand (SPEC-STATUS-AUTO-001)
 	specStatusCmd := &cobra.Command{
 		Use:   "spec-status",
@@ -1251,6 +1269,22 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-user-prompt-submit: event recording failed: %v\n", err)
 	}
 
+	return nil
+}
+
+// runHookRetentionPrune is the RunE of the hidden `moai hook retention-prune`
+// child verb (REQ-DP-003). It enters the prune through Retention.PruneStaleEntries
+// — never the lock internals directly (spec D5) — so the child inherits
+// pruneLocked's stamp re-check under the state-file exclusive lock and a
+// double-spawn collapses into one worker (REQ-DP-003/AC-DP-004).
+func runHookRetentionPrune(cmd *cobra.Command, _ []string) error {
+	logPath, _ := cmd.Flags().GetString("log")
+	archiveDir, _ := cmd.Flags().GetString("archive")
+	days, _ := cmd.Flags().GetInt("days")
+	retention := harness.NewRetention(logPath, archiveDir, nil)
+	if err := retention.PruneStaleEntries(days); err != nil {
+		return fmt.Errorf("retention-prune: %w", err)
+	}
 	return nil
 }
 
