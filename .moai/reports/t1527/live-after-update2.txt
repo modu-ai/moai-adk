@@ -1,5 +1,4 @@
 Current version   moai-adk archive/t1401
-!  Worktree migration  failed · git worktree list --porcelain: fatal: not a git repository (or any of the parent directories): .git: exit status 128
 [1;38;2;217;119;87m◆ MoAI-ADK[m  archive/t1401  [38;2;154;163;160mgo1.26.8 · claude[m
 ●  Syncing templates  from embedded filesystem
   ○ Checking template version...
@@ -15,7 +14,7 @@ Proceeding with template deployment ---
   ○ Backing up .moai/config...
   ✓ .moai/config backed up
   ○ Backing up user-owned namespace...
-  ✓ User-owned namespace backed up: .moai/backups/update-2026-10-05T09-22-16Z
+  ✓ User-owned namespace backed up: .moai/backups/update-2026-10-05T10-57-41Z
   ○ Validating templates...
   ✓ All templates validated
  total: 0 skills archived, 0 user customizations modified 
@@ -45,9 +44,9 @@ Proceeding with template deployment ---
  ✓ Updated 722 files 
 [38;2;154;163;160m~ 188 update · ! 2 conflict[m
 [38;2;154;163;160m190 merged/added + 532 managed re-deployed · removed 483 under managed paths (all re-deployed)[m
-[38;2;154;163;160mBackup: .moai-backups/20261005_182216[m                       
-[38;2;154;163;160mRecover: moai update --restore .moai-backups/20261005_182216[m
-[38;2;154;163;160mNamespace backup: .moai/backups/update-2026-10-05T09-22-16Z (user-owned — copy back manually)[m
+[38;2;154;163;160mBackup: .moai-backups/20261005_195740[m                       
+[38;2;154;163;160mRecover: moai update --restore .moai-backups/20261005_195740[m
+[38;2;154;163;160mNamespace backup: .moai/backups/update-2026-10-05T10-57-41Z (user-owned — copy back manually)[m
 [38;2;154;163;160mConfig restore covers .moai/config/sections/*.yaml only — customizations under evaluator-profiles/ and astgrep-rules/ are not merge-restored; recover them from the backup[m
 [38;2;91;191;154m✓[m Pre-push hook installed (.git/hooks/pre-push)
 [38;2;91;191;154m✓[m Pre-commit hook installed (.git/hooks/pre-commit)
@@ -55,7 +54,7 @@ Proceeding with template deployment ---
 
 Post-update actions ---
 [1;38;2;216;222;219mAction required[m
-[1;38;2;237;125;107m✗[m 2 conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at .moai-backups/20261005_182216)
+[1;38;2;237;125;107m✗[m 2 conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at .moai-backups/20261005_195740)
 [1;38;2;227;161;74m![m Hooks: running Claude Code sessions need a /hooks review (or a Claude Code restart) for new or changed hooks to take effect.
 [1;38;2;216;222;219mReference[m
 [38;2;107;115;112m·[m worktree migration failed: git worktree list --porcelain: fatal: not a git repository (or any of the parent directories): .git: exit status 128
