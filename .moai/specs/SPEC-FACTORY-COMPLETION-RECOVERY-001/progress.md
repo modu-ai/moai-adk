@@ -12,7 +12,20 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-10-06
-비고: plan-audit 최종 판정 **PASS-WITH-DEBT 0.94 @ 6f01022e3**(Tier M 문턱 0.80 충족, 차단 0·필수 0, Clarity 0.95/Completeness 0.90/Testability 0.90/Traceability 1.00) — 판정서 `.moai/reports/t1538/plan-audit-iter3.md` 닫는 기록(§Final delta rounds 3-5). **run 진입 해시 바인딩(실제 구현)**: `ComputeHash`(`internal/runtime/audit_cache.go:119`의 순서 고정 공식)로 현재 아티팩트를 재계산 — **`8708bcfe5ff9b78a2536a86f2e6f8491637651da07bf36987120f870e9721f31`**(동일 구현 셸 재현, 게이트 측정과 일치). 판정서 본문의 `29794e62…`는 감사자 자체 공식 계산치로 실제 구현과 어긋나며, 진입 조건의 바인딩은 본 실현값이다(게이트 지적 P2 — admitVerdictFile이 29794e62로는 admitted=false를 반환한 실측 반영). 감사 사슬: iter1 0.75 → iter2 0.86 → iter3 0.89 → 개정 0.94(리더 (a) 승인 하 최종 라운드, t1546 조건). 부채 6건(D15-D20·D22-D24)은 run/sync 단계로 이월 기록. run 진입: 리더 결정 (a)에 따라 자율 진입(방침상 자율 — 결정 기록은 §F).
+비고: plan-audit 최종 판정 **PASS-WITH-DEBT 0.94 @ 6f01022e3**(Tier M 문턱 0.80 충족, 차단 0·필수 0, Clarity 0.95/Completeness 0.90/Testability 0.90/Traceability 1.00) — 판정서 `.moai/reports/t1538/plan-audit-iter3.md` 닫는 기록(§Final delta rounds 3-5). **run 진입 해시 바인딩**: 아티팩트 동결 후 감사자가 실제 `ComputeHash`(`internal/runtime/audit_cache.go:119` 공식)로 확인한 값으로 기록한다 — 동결 전 값은 수리 커밋마다 이동하므로 기재하지 않는다(판정서 본문의 `29794e62…`는 감사자 자체 공산 계산치로 실제 구현과 어긋난 사실은 게이트가 admitVerdictFile refused로 실측). 동결 해시: 아래 Binding run conditions 이후 감사자 확인 행에 기록. 감사 사슬: iter1 0.75 → iter2 0.86 → iter3 0.89 → 개정 0.94(리더 (a) 승인 하 최종 라운드, t1546 조건). run 진입: 리더 결정 (a)에 따라 자율 진입(방침상 자율 — 결정 기록은 §F).
+
+## Binding run conditions (이월 부채 장부 — 판정서 열거 8건, sync-auditor 재검증 대상)
+
+| 부채 | 내용 | dispose_in | 처분 상태 |
+|---|---|---|---|
+| D15 | AC-FCR-005의 RED-now 셀이 bare reading(:385 stale 앵커) — 재실행 가능한 probe(command+output+exit)로 보강, :386 동기화 | run | M1 스폰 브리프 이관 — 처분 증거는 §E.2에 기록 |
+| D16 | `TestLeaderReceiptGateSelfIssued` 개명(수행자≠승인자 축에서 misnomer) — M1 RED 저작 전 | run | M1 스폰 브리프 이관 — §E.2에 기록 |
+| D20 | AC-FCR-005 green 셀을 네 바인딩 전체 재검증 목록(run id 포함)으로 동기화 + run 교체 race INPUT 변이 | run | M1 스폰 브리프 이관 — §E.2에 기록 |
+| D24 | plan merge-base 피연산자를 흡수 ref(develop)로 정렬 | run | **처분됨 — `17a0d79c3`**(plan §H 현행) |
+| D17 | plan §D에 t1533의 제외 파일 4종 명명 | sync | sync 단계 처분 예정 |
+| D18 | REQ-FCR-002b → REQ-FCR-002(b) 표기 통일(acceptance:78·plan:69) | sync | sync 단계 처분 예정 |
+| D22 | progress §E.1 hold record 경로 오탈자(.moi→.moai) | sync(즉시) | **처분됨 — 본 커밋**(§E.1 현행 경로 `.moai/…` 확인) |
+| D23 | AC018 예외 분할 — 기대 반전 2건(PushGateStore·DecidePushGate)과 유지 가드 1건(NeverFetches) 구분 | sync(즉시) | **처분됨 — 본 커밋**(acceptance §E 현행) |
 
 ## §E.2 Run-phase Evidence
 
