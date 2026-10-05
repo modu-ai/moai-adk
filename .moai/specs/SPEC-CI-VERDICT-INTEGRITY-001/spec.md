@@ -43,7 +43,7 @@ Problem statement: five CI verdict surfaces misjudge failure-class results as su
 
 - **REQ-CI-006** — **When** the test-install summary job evaluates its dependency results, the summary shall exit non-zero unless every job it lists — the install-script-parity job included — concluded `success`, and shall treat `cancelled`, `timed_out`, and `skipped` as non-success.
 
-- **REQ-CI-007** — **When** a required install-feature probe finds its target absent, the compatibility-check step shall exit non-zero; printing a "missing" marker with a zero exit shall not count as a verdict.
+- **REQ-CI-007** — **When** a required install-feature probe finds its target absent, the compatibility-check step shall exit non-zero; printing a "missing" marker with a zero exit shall not count as a verdict. The compatibility-check probe set shall list only features the corresponding install script actually implements (install.sh implements `--install-dir`, `--help`, and darwin/linux detection but no `MOAI_INSTALL_DIR`; install.ps1 implements `IsWindows`, `GetTempPath`, and `MOAI_INSTALL_DIR` — plan.md §B E19/E20): a probe whose target the script cannot express is stale and shall be realigned to the script's real surface, never hardened into a guaranteed failure.
 
 ### M2 — required-checks SSoT
 

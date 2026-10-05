@@ -1,6 +1,6 @@
 # acceptance.md — SPEC-CI-VERDICT-INTEGRITY-001
 
-Tier M verification layer. Tree pin for every RED cell: **`a158b4b5f`** (document-level pin; binds all criteria). The evidence ledger (command / verbatim stdout / exit / tree per entry, E1-E18) lives in `plan.md` §B and is cited here by id — the ledger is the carrier per verification-completeness §2.1.
+Tier M verification layer. Tree pin for every RED cell: **`a158b4b5f`** (document-level pin; binds all criteria). The evidence ledger (command / verbatim stdout / exit / tree per entry, E1-E20) lives in `plan.md` §B and is cited here by id — the ledger is the carrier per verification-completeness §2.1.
 
 Classification: **release-blocking (RB)** — RED re-executable on this tree, flips with this SPEC's work; **keep-set (KS)** — operator-executed, process criterion; probes that are template-substitution simulations of a gate script (E2, E4, E7) are marked as such inside the ledger and are treated as faithful RED evidence of the script logic, not of runner execution.
 
@@ -56,11 +56,11 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 
 ### AC-CI-007 — A missing required install feature fails the compatibility step (RB; maps REQ-CI-007)
 
-- **Given** the compatibility-check feature probes (e.g. `MOAI_INSTALL_DIR`, `--help`, platform detection, `IsWindows`, `GetTempPath`),
-- **When** a probe's target is absent from the install script,
-- **Then** the step exits non-zero; printing a "missing" marker with exit 0 is not a verdict.
-- RED: E9 (lines 309/317 — `grep -q … && echo ✓ || echo ✗` shape can only ever exit 0).
-- Green path: M1 — required probes become hard checks; E9's shape no longer terminates in `\|\| echo` for required features.
+- **Given** the compatibility-check feature probes, each targeting a feature its script implements (install.sh: `--install-dir`, `--help`, darwin/linux detection; install.ps1: `IsWindows`, `GetTempPath`, `MOAI_INSTALL_DIR`),
+- **When** a probe's target is absent from its install script,
+- **Then** the step exits non-zero; printing a "missing" marker with exit 0 is not a verdict; and the probe set carries no stale entry — a probe targeting a feature the script does not implement is realigned to the script's real surface within this milestone, not hardened into a guaranteed failure.
+- RED: E9 (lines 309/317 — `grep -q … && echo ✓ || echo ✗` shape can only ever exit 0) + E19 (the :309 install.sh probe targets `MOAI_INSTALL_DIR`, which install.sh does not implement — 0 hits, exit 1; a hard-check repair without the probe realignment would fail every install, the impossible direction the two-cell rule forbids). E20 confirms the :317 install.ps1 probe is live (3 hits, exit 0).
+- Green path: M1 — required probes become hard checks AND the stale :309 probe is realigned to install.sh's real surface (`--install-dir`); E9's shape no longer terminates in `\|\| echo` for required probes and no probe targets an unimplemented feature.
 
 ### AC-CI-008 — SSoT lists only published check names (RB; maps REQ-CI-008)
 
@@ -126,6 +126,7 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 4. SSoT `auxiliary:` entries — M2's publishability dimension must not start requiring auxiliary checks (they stay advisory; ci-watch-protocol).
 5. A required check that legitimately does not run on a PR type (e.g. the gate on a workflow_dispatch-only run) — the missing-required-pending rule (AC-CI-014) must key off the PR's base branch context, not blindly on all runs.
 6. gh version drift — the repaired field list is validated against the CLI at pre-flight; a future CLI that drops a field fails loudly (exit 1), which is the intended fail-closed direction.
+7. A probe target the script does not implement (found pre-implementation: install.sh `MOAI_INSTALL_DIR`, E19) — M1-5 realigns the probe list to the scripts' real surface; a hard-check repair alone would fail every install. The docs-site mirror copy (`docs-site/static/install.sh`) matches install.sh (0 hits), so no divergence case arises from it.
 
 ## §D. Quality gates (TRUST 5)
 
