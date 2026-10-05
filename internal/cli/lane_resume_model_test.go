@@ -206,6 +206,39 @@ func containsResumeRefusal(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "--resume <session-id>")
 }
 
+// TestClaudeHelpReferenceLinesNeverOverwrite (card-review r1, P1) — a
+// flag-prefixed PROSE line inside the help's description columns (here at
+// the shallow option indent, which the synopsis-indent gate admits) is a
+// reference to an option, not its synopsis: once a flag is classified from
+// a real synopsis line, later flag-prefixed lines naming it must not
+// reclassify it — otherwise `--print <format> ...` prose flips --print to
+// required-value and the guard consumes a resume token behind it.
+func TestClaudeHelpReferenceLinesNeverOverwrite(t *testing.T) {
+	const fixtureReferenceLines = `Claude Code
+
+  Options:
+  -p, --print                          print response and exit (non-interactive)
+  -d, --debug [filters]                enable debug mode with optional filters
+
+  Notes:
+  --print <format> selects the output format
+  see --debug <level> for filter syntax
+`
+	m := parseClaudeOptionModel(fixtureReferenceLines)
+	if m["--print"] != claudeOptionBoolean {
+		t.Fatalf("--print classified %d, want boolean (the Notes reference line must not reclassify it)", m["--print"])
+	}
+	if m["-p"] != claudeOptionBoolean {
+		t.Fatalf("-p classified %d, want boolean", m["-p"])
+	}
+	if m["--debug"] != claudeOptionOptionalValue {
+		t.Fatalf("--debug classified %d, want optional-value (the reference line must not reclassify it)", m["--debug"])
+	}
+	if !carriesResumeToken([]string{"--", "--print", "--resume", "<id>"}) {
+		t.Fatal("the guard missed a resume behind --print — the reference line flipped its class to required-value")
+	}
+}
+
 // TestRemoteControlPrefixValue (AC-SCV-015's r5 instance, REQ-SCV-015) —
 // `--remote-control-session-name-prefix` is required-value in the measured
 // model (live re-measure, M4), so a legit call whose prefix value literally

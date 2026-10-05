@@ -50,6 +50,14 @@ type claudeOptionModel map[string]claudeOptionClass
 // changes any exit status (REQ-SCV-012).
 const claudeHelpTimeout = 3 * time.Second
 
+// claudeHelpWaitDelay bounds the post-Cancel pipe wait: exec's default of
+// zero makes Output() wait for stdout EOF even after the context's Cancel
+// kills the direct child, so a PATH wrapper that exits while a backgrounded
+// child of its own still holds the pipe would block launcher entry until
+// that grandchild exits (card-review r1, P2①). After the grace the wait is
+// abandoned and the probe degrades like any other derivation failure.
+const claudeHelpWaitDelay = time.Second
+
 // claudeHelpSynopsis is the derivation probe, in the procInfoFunc seam
 // pattern (session_pid.go): a package var the launcher entries call through
 // and tests substitute. The default runs the resolved binary's `--help`,
@@ -57,7 +65,9 @@ const claudeHelpTimeout = 3 * time.Second
 var claudeHelpSynopsis = func(binaryPath string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), claudeHelpTimeout)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, binaryPath, "--help").Output()
+	cmd := exec.CommandContext(ctx, binaryPath, "--help")
+	cmd.WaitDelay = claudeHelpWaitDelay
+	out, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
@@ -177,11 +187,15 @@ var claudeFlagTokenRe = regexp.MustCompile(`-{1,2}[A-Za-z][\w-]*`)
 // parseClaudeOptionModel reads a `--help` text into the option model. Each
 // option line's synopsis (the flag spellings plus any `<value>`/`[value]`
 // placeholder) sits before the commander gap; the class is the placeholder
-// it carries, applied to every spelling on the line. Lines that are not
-// option synopses — descriptions, wrapped description continuations,
-// command names — start with something other than a flag and are skipped.
-// The resume tokens are never carried: the walk special-cases them before
-// the model is consulted (REQ-SCV-009).
+// it carries, applied to every spelling on the line. Classification is
+// FIRST-WINS per flag: an option's synopsis precedes any prose that
+// mentions it, so once a flag carries a class, later flag-prefixed lines
+// naming it — description references, help cross-references, even ones the
+// synopsis-indent gate admits — are prose and must not reclassify it
+// (card-review r1, P1). Lines that are not option synopses — descriptions,
+// wrapped description continuations, command names — start with something
+// other than a flag and are skipped. The resume tokens are never carried:
+// the walk special-cases them before the model is consulted (REQ-SCV-009).
 func parseClaudeOptionModel(help string) claudeOptionModel {
 	m := claudeOptionModel{}
 	for _, line := range strings.Split(help, "\n") {
@@ -199,6 +213,9 @@ func parseClaudeOptionModel(help string) claudeOptionModel {
 		for _, flag := range claudeFlagTokenRe.FindAllString(synopsis, -1) {
 			if flag == resumeFlag || flag == resumeFlagShort {
 				continue
+			}
+			if _, classified := m[flag]; classified {
+				continue // first-classification-wins: this line is a reference, not the synopsis
 			}
 			m[flag] = class
 		}

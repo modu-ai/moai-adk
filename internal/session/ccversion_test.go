@@ -176,6 +176,10 @@ func TestVersionSegmentAnchoredToInstallRoot(t *testing.T) {
 		// The overlay repro (RED at plan time, `= "9"`): an unrelated
 		// /opt/versions/9 prefix upstream of the real install root.
 		"/opt/versions/9/tools/claude/versions/2.1.281": "2.1.281",
+		// card-review r1, P2②: an early claude-code/<n> decoy upstream of
+		// the real native install root must not shadow it — the native
+		// …/claude/versions/<v> shape outranks the npm shape.
+		"/opt/claude-code/9/tools/claude/versions/2.1.281": "2.1.281",
 		// The house shapes (unchanged from the unanchored read):
 		"/Users/dev/.local/share/claude/versions/2.1.287":                  "2.1.287",
 		"/opt/node/lib/node_modules/@anthropic-ai/claude-code/2.1.284/cli": "2.1.284",

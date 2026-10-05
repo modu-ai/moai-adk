@@ -180,26 +180,44 @@ var trailingBinaryVersionRe = regexp.MustCompile(`/([0-9]+(?:\.[0-9]+)*)/` + reg
 // caller rendering unknown, never an inferred value (REQ-SCV-017). An
 // unrelated versions/ or claude-code/ prefix outside a claude product
 // directory can no longer satisfy the read: /opt/versions/9/tools/claude/
-// versions/2.1.281 reads 2.1.281, not 9 (the r5 overlay repro).
+// versions/2.1.281 reads 2.1.281, not 9 (the r5 overlay repro). The shapes
+// are judged in PREFERENCE order, not candidate order — the native
+// …/claude/versions/<v> shape outranks the npm …/claude-code/<v> shape, and
+// within a shape the candidate closest to the path end wins — so an early
+// decoy directory upstream of the real install root shadows nothing
+// (card-review r1, P2②): /opt/claude-code/9/tools/claude/versions/2.1.281
+// reads 2.1.281.
 func versionSegmentFromPath(path string) string {
 	// The binary-name shape: the path ENDS in the claude binary inside a
 	// version-named directory — the anchor is the product binary itself.
 	if m := trailingBinaryVersionRe.FindStringSubmatch(path); m != nil {
 		return m[1]
 	}
-	// The product-directory shapes: only a versions/<v> segment directly
-	// under a …/claude directory, or a claude-code/<v> segment (the claude-
-	// code directory IS the product directory), satisfies the read. Every
-	// candidate match is checked — a stale unrelated prefix upstream of the
-	// real install root must not shadow it.
-	for _, loc := range versionSegmentRe.FindAllStringSubmatchIndex(path, -1) {
-		v := path[loc[2]:loc[3]]
-		tail := path[loc[0]:]
-		if strings.HasPrefix(tail, "/versions/") && strings.HasSuffix(path[:loc[0]], "/"+claudeBinaryName) {
-			return v // native …/claude/versions/<v>
+	// The product-directory shapes, two passes so the first HIT of the
+	// preferred shape wins over any hit of the other shape regardless of
+	// where in the path each candidate sits. Within a pass, left-to-right
+	// iteration makes the LAST assignment the candidate closest to the end.
+	locs := versionSegmentRe.FindAllStringSubmatchIndex(path, -1)
+	for _, shape := range [...]struct {
+		prefix        string
+		needClaudeDir bool
+	}{
+		{prefix: "/versions/", needClaudeDir: true}, // native …/claude/versions/<v>
+		{prefix: "/claude-code/"},                   // npm-style …/claude-code/<v>
+	} {
+		best := ""
+		for _, loc := range locs {
+			tail := path[loc[0]:]
+			if !strings.HasPrefix(tail, shape.prefix) {
+				continue
+			}
+			if shape.needClaudeDir && !strings.HasSuffix(path[:loc[0]], "/"+claudeBinaryName) {
+				continue
+			}
+			best = path[loc[2]:loc[3]]
 		}
-		if strings.HasPrefix(tail, "/claude-code/") {
-			return v // npm-style …/claude-code/<v>
+		if best != "" {
+			return best
 		}
 	}
 	return ""
