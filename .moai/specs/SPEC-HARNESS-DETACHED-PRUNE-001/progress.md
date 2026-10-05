@@ -2,9 +2,9 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: pending-audit
+plan_status: audit-ready
 plan_complete_at: 2026-10-05
-note: plan-phase artifacts (spec.md, plan.md, acceptance.md) authored on this turn at HEAD `d05d1d5f0`; the audit-ready flag flips when the plan-auditor verdict (expected at `.moai/reports/t1497/plan-audit.md`) reads PASS and the artifact hashes are pinned.
+attribution: plan-audit iter2 PASS 0.94 (verdict .moai/reports/t1497/plan-audit-iter2.md, commit fd08d4da8; repair 2d29b0509; codex adversarial enforced-required gate pass, zero findings; audit_receipt absent — measured stale-server gap documented in the verdict appendix, disposition routed to the leader).
 
 ## §E.2 Run-phase Evidence
 
