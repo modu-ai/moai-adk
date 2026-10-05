@@ -1,6 +1,6 @@
 # acceptance.md — SPEC-CI-VERDICT-INTEGRITY-001
 
-Tier M verification layer. Tree pin for every RED cell: **`a158b4b5f`** (document-level pin; binds all criteria; measured files verified unchanged through `861a3ba56`). The evidence ledger (command / verbatim stdout / exit / tree per entry, E1-E24, with fenced verbatim-stdout blocks L-E2..L-E24) lives in `plan.md` §B and is cited here by id — the ledger is the carrier per verification-completeness §2.1. The workflow probes (E2/E4/E7) are committed `repro/` scripts that EXTRACT the step body from the live workflow at run time and substitute the declared dependency values — the substitution values are simulated (no runner execution), the script logic under test is the live file's.
+Tier M verification layer. Tree pin for every RED cell: **`a158b4b5f`** (document-level pin; binds all criteria; measured files verified unchanged through `861a3ba56`). The evidence ledger (command / verbatim stdout / exit / tree per entry, E1-E25, with fenced verbatim-stdout blocks L-E2..L-E25) lives in `plan.md` §B and is cited here by id — the ledger is the carrier per verification-completeness §2.1. The workflow probes (E2/E4/E7) are committed `repro/` scripts that EXTRACT the step body from the live workflow at run time and substitute the declared dependency values — the substitution values are simulated (no runner execution), the script logic under test is the live file's.
 
 Classification: **release-blocking (RB)** — RED re-executable on this tree, flips with this SPEC's work; **keep-set (KS)** — operator-executed, process criterion; probes that are template-substitution simulations of a gate script (E2, E4, E7) are marked as such inside the ledger and are treated as faithful RED evidence of the script logic, not of runner execution.
 
@@ -114,9 +114,9 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 
 - **Given** the SSoT required list for the PR's base branch and a poll response,
 - **When** the loop classifies the tick,
-- **Then** required checks are determined via `is_required`, an expected required check absent from the response counts as pending (never as pass), check names are iterated without whitespace splitting, and `gh pr checks` is invoked without `--required` ambiguity — classification comes from the SSoT, not from name substrings.
-- RED: E15 (`is_required` unused, exit 1) + E16 (unquoted substitution at :134) + the structural read (the loop iterates only names present in the JSON, so absent required checks are invisible).
-- Green path: M3 — run_test.sh extended: a fixture JSON missing one SSoT-required check yields `pending ≥ 1` and no exit 0; a spaced-name fixture classifies as one check.
+- **Then** required checks are determined via `is_required`, an expected required check absent from the response counts as pending (never as pass), check names are iterated without whitespace splitting, classification comes from the SSoT rather than name substrings, and the gh CLI's pending signal — exit code 8 ("Checks pending", E25) accompanied by a valid JSON body — classifies as pending and CONTINUES the wait; only a non-8 non-zero exit is a fatal error.
+- RED: E15 (`is_required` unused, exit 1) + E16 (unquoted substitution at :134) + the structural read (the loop iterates only names present in the JSON, so absent required checks are invisible) + the run.sh:122-124 failure branch, which aborts with exit 1 on ANY gh failure — an exit-8 pending signal today terminates a watch that should keep waiting.
+- Green path: M3 — run_test.sh's fixture set gains the exit-8 pair: a mock gh exiting 8 with a valid JSON body continues the wait (pending classification, no abort), and a non-8 failure mock exits non-zero; both fixtures flip only when the repair lands. Plus the existing fixtures: a JSON missing one SSoT-required check yields `pending ≥ 1` with no exit 0; a spaced-name fixture classifies as one check.
 
 ## §C. Edge cases
 

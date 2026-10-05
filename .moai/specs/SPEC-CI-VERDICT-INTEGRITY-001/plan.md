@@ -53,6 +53,7 @@ Document-level tree pin: **`a158b4b5f`** (verified via `git rev-parse --short HE
 | E22 | Healthy-input positive control: validator with yq present against the repo's real SSoT — every dimension executes on real content and passes (baseline for AC-CI-010's two-directional form; an always-fail mutant fails this) | `sh scripts/ci-mirror/validate-required-checks.sh` | verbatim block L-E22 | 0 | a158b4b5f |
 | E23 | AC-CI-009 RED-now: the keep-set apply package does not exist yet on this tree (flips when run-phase delivers `.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md`) | `test -e .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` | (no output — file absent) | 1 | a158b4b5f |
 | E24 | Validator against a VALID-YAML SSoT carrying a phantom required context (`Test (windows-latest)`, committed fixture `repro/phantom/`): silent pass, exit 0 — no dimension inspects required-context publishability (grounds AC-CI-011; a parser-handling-only repair does not flip this) | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom.sh` | verbatim block L-E24 | 0 | a158b4b5f |
+| E25 | `gh pr checks` documents exit code 8 = "Checks pending" (line 10 of the help stdout; verbatim block L-E25) — the ground for REQ-CI-013's pending classification: a watch that treats every non-zero gh exit as fatal terminates during normal CI runs, when checks are legitimately pending | `gh pr checks --help` | verbatim block L-E25 (39 lines, quoted in full) | 0 | a158b4b5f |
 
 Codex-provenance items cited but NOT re-measured here (recorded as supports, not observations): the live branch-protection context values on `main` (codex used the leader-measured values and did not re-query the API; the protection GET needs admin scope and is packaged below as an operator-executable pre-apply diff step); real Actions-runner-level cancellation behavior (E2/E4/E7 now extract the step body from the LIVE workflow at run time, but the `cancelled`/failure values are still template substitutions, not runner executions). Corroborating read: `internal/cli/branch_protection.go:100-105` renders any SSoT branch key into the protection payload, and `.github/required-checks.yml` lines 10-40 currently list `Test (macos-latest)`, `Test (windows-latest)`, `CodeQL` on both keys and omit `Release PR Multi-OS Gate` — E13 shows each of those four facts is wrong against live names.
 
@@ -206,6 +207,46 @@ L-E24 | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom.sh
 ✓ docs-i18n-check not in branches.release/*.contexts
 
 ✅ All validations passed
+
+L-E25 | gh pr checks --help
+Show CI status for a single pull request.
+
+Without an argument, the pull request that belongs to the current branch
+is selected.
+
+When the `--json` flag is used, it includes a `bucket` field, which categorizes
+the `state` field into `pass`, `fail`, `pending`, `skipping`, or `cancel`.
+
+Additional exit codes:
+	8: Checks pending
+
+For more information about output formatting flags, see `gh help formatting`.
+
+USAGE
+  gh pr checks [<number> | <url> | <branch>] [flags]
+
+FLAGS
+      --fail-fast         Exit watch mode on first check failure
+  -i, --interval int      Refresh interval in seconds in watch mode (default 10)
+  -q, --jq expression     Filter JSON output using a jq expression
+      --json fields       Output JSON with the specified fields
+      --required          Only show checks that are required
+  -t, --template string   Format JSON output using a Go template; see "gh help formatting"
+      --watch             Watch checks until they finish
+  -w, --web               Open the web browser to show details about checks
+
+INHERITED FLAGS
+      --help                     Show help for command
+  -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
+
+JSON FIELDS
+  bucket, completedAt, description, event, link, name, startedAt, state, workflow
+
+LEARN MORE
+  Use `gh <command> <subcommand> --help` for more information about a command.
+  Read the manual at https://cli.github.com/manual
+  Learn about exit codes using `gh help exit-codes`
+  Learn about accessibility experiences using `gh help accessibility`
 ```
 
 ### Audit-record notes (iteration-1, P3 disclosures)
@@ -280,7 +321,7 @@ Files: `scripts/ci-watch/run.sh` (+ `lib/classify.sh`, `test/run_test.sh` as nee
 | Criterion | RED cell | Green path |
 |---|---|---|
 | Supported fields + JSON-array processing + bucket classification (AC-CI-013) | E12 (Unknown JSON field: "status") + E12's available-fields list | Request `name,state,bucket,link`; classify by `bucket`; gh failure → exit 1 (never all-pass); E12's field set now validates |
-| Required completeness + `is_required` wired + no whitespace split (AC-CI-014) | E15 + E16 (+ structural: absent required checks never counted — the loop only iterates observed names) | Required set from SSoT via `is_required` for the PR's base branch; expected-but-absent = pending; name iteration without IFS splitting; run_test.sh extended and green |
+| Required completeness + `is_required` wired + no whitespace split + exit-8 pending classification (AC-CI-014) | E15 + E16 (+ structural: absent required checks never counted — the loop only iterates observed names; run.sh:122-124 aborts on ANY gh failure, exit 8 included — E25 documents that 8 means "Checks pending") | Required set from SSoT via `is_required` for the PR's base branch; expected-but-absent = pending; name iteration without IFS splitting; exit 8 + valid JSON classified as pending-and-continue, non-8 failures fatal — run_test.sh gains the exit-8 fixture pair (exit-8 mock continues; non-8 mock exits); run_test.sh extended and green |
 
 Sequencing: M1 → M2 → M3 per the card's priority. M3 can proceed in parallel with M2's file edits (disjoint trees) but the keep-set package lands only after M2's SSoT edit is final.
 
