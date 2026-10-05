@@ -32,3 +32,22 @@ in the card's contract. The SPEC's REQ-DP-005 "bounded by the prune itself"
 should be read with this qualification.
 
 🗿 MoAI
+
+## Addendum — turn-end gate re-flag (P2, HEAD 176578494, high confidence)
+
+The turn-end codex gate reproduced the accumulation at the final HEAD: with
+the lock held, 3 spawned children survived 6s (`detached_utility_children_
+after_6s 3`); all exited normally after release.
+
+Sharpened analysis (lane): the production accumulation window is narrower
+than the repro suggests — the lock holder is a real pruner and the retention
+machinery stamps BEFORE work (stamp-before-work, retention.go), so once the
+first child acquires the lock it stamps immediately and every later gate call
+reads a fresh stamp (no further spawns). The repro held a lock WITHOUT a
+stamping holder, which is not the production shape. The genuinely unbounded
+case remains the archive-as-FIFO hazard. Disposition unchanged: follow-up
+card candidate (child LOCK_NB + special-file rejection + optional deadline),
+leader adjudicates whether it lands as an in-place amendment of this
+completed SPEC or a new card.
+
+🗿 MoAI
