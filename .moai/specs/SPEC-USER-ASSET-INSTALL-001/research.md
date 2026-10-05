@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "research.md — codebase research and source-verification table"
-version: "0.5.0"
+version: "0.6.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -94,13 +94,23 @@ placement: user folders for common assets, project for the slim harness only.
 | W6 | The dispatcher's INTERNAL workflow references are project-relative and break post-M4 (fold A2) | CONFIRMED, count corrected upward | `Read .claude/skills/moai/workflows/<name>.md` appears EIGHTEEN times in templates/.claude/skills/moai/SKILL.md (:126 plan, :134 run, :142 sync — the fold's three — plus gate :150, e2e :158, goal :167, gtd :182, fix :190, and the remaining rows; `grep -c` = 18). All one class: every internal workflow reference rebinds, not only the L0 three. PRECISION on the dispatch wording: the dispatcher is NOT a commandemit output — templates/.claude/skills/moai/SKILL.md IS its source layer (deployed verbatim); the fix is a direct template-source edit (template-first rule), no emitter regeneration involved. |
 | W7 | On-demand `Skill()` invoke sites in the L0 agent bodies (fold B1) | CONFIRMED, swept | Full sweep of the five bodies: manager-spec :40 (workflow-spec, already preload), :244 foundation-thinking, :245 foundation-quality, :246 workflow-ddd, :247 workflow-tdd, :248 workflow-testing, :249 workflow-project, :250 workflow-worktree; manager-develop :235 tdd, :236 ddd, :237 testing, :238 foundation-quality, :239 spec, :240 thinking, :241 project, :242 worktree; manager-docs :37/:220 project, :221 spec, :222 foundation-quality, :223 thinking, :224 domain-html-report; plan-auditor :237/:762/:764 foundation-quality (read-only), ref-cross-model-audit; sync-auditor :191/:226 ref-cross-model-audit, :223 ref-owasp-checklist, :224 ref-testing-pyramid, :225 foundation-core. NEW union members beyond the eight: `moai-workflow-testing`, `moai-workflow-worktree` (both measured present under templates/.claude/skills/). Classified OUT as per-mission domain injections: `moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`, `moai-ref-testing-pyramid`, `moai-domain-html-report`. Union total: TEN. |
 | W8 | `checkSkillsAllowlist` miswarns post-M4 (fold A3) | CONFIRMED | `internal/cli/doctor.go:957-958` (comment :957, `func checkSkillsAllowlist` :958): reads `filepath.Join(projectRoot, ".claude", "skills")` and sets `CheckWarn` ".claude/skills/ not found" on `os.IsNotExist` — a healthy post-M4 install (no project skills) draws the spurious warn exactly as the gate observed. Disposition pinned: REPOINT to the user-install path in M4 (not removed — the allowlist integrity check survives scoped to the user folders). |
+| W9 | Sub-workflow project-relative references (final-class item 1) | CONFIRMED, counts measured at two pattern widths | Narrow pattern (`.claude/skills/…`/`.agents/skills/…` raw paths): 32 occurrences across 12 top-level workflows `.md` files (design.md:4, harness.md:4, fix.md:4, gtd.md:1, harness-build-entry.md:7, plan.md:1, loop.md:3, sync.md:4, moai.md:1, review.md:2, harness-builder.md:4, run.md:4). Broad pattern (any `.claude/`/`.agents/`/`.codex/` path shape) across the whole workflows subtree INCLUDING the plan/project/references/run/sync subdirectories: 274 raw occurrences over 26 top-level files + 5 subdirs. The auditor's "17 files / 44 occurrences" sits between the two widths; the CLASS CLAUSE makes the count non-load-bearing — the sweep covers the tree. Also: the dispatcher's 18 Read-rows are Read-row-accurate; the RAW pattern count is 19 (the in-prose `hand off to .claude/skills/moai/workflows/harness-builder.md` occurrence at SKILL.md:282, final-class item 8). |
+| W10 | Mirror-repair rollback (final-class item 6) | CONFIRMED | `internal/cli/update.go:535` calls `repairSkillMirrorBestEffort(out, cmd.ErrOrStderr())` outside any deploy; `RepairSkillMirror` (`internal/template/skill_mirror_repair.go:89,:113`) Path B restores the published `.agents/skills/moai-<command>/SKILL.md` files restore-missing-only — a repeated post-M4 update re-creates the seventeen published copies in the project (and Path A re-symlinks any template-shipped skill whose canonical dir exists), exactly undoing M4's slimming. |
+| W11 | Command-source split for the dispatcher reference (final-class item 2) | CONFIRMED | 17/17 generated copies carry `agents/skills/moai/SKILL.md`; the literal's SOURCES split 13/4: thirteen command sources carry it (clean, codemaps, e2e, feedback, fix, gate, harness, loop, mx, plan, project, review, run) and rebind at source; goal, gtd, sync, todo lack it — their line comes from the emitter's injected fallback, so the rebind for those four lands in `internal/template/commandemit`'s injected-line source. `make commands-emit` regenerates all seventeen either way. |
+| W12 | In-round extensions E1/E2 (same final class round) | CONFIRMED | E1: `.claude/rules/moai/workflow/factory-dispatch.md:104` [HARD] "The deputy is resident, not optional... spawns exactly one UNNAMED background `Agent()` running manager-lead as its coordination deputy" — template mirror `templates/.claude/rules/moai/workflow/factory-dispatch.md:104` identical; manager-lead is a REQUIRED factory dependency, pinned under the factory entry (not a sixth core agent — D-Q1 stands). E2: sync-auditor.md:223-224 (`templates/.claude/agents/moai/sync-auditor.md`) invoke `moai-ref-owasp-checklist` / `moai-ref-testing-pyramid`; the DEFAULT path reaches both — the shipped sync.md:50 phase routing table runs Phase 8 Security Scan and Phase 10 Coverage Analysis as STANDARD phases, and `workflows/sync/quality-gates-quality.md:70-73` wires the 4-dimension judges (Functionality 40% / Security 25% HARD-threshold / Craft 20% / Consistency 15%) into the shared snapshot (lead adjudication + anchors; confirms the in-round E2 IN call). DESIGN CALL: both join L0 (a degraded absent-path would be a second classification standard). `moai-domain-html-report` alone stays OUT (no default path renders HTML). |
 
-The eight-skill closure union (W1-W3): `moai`, `moai-foundation-core`,
-`moai-workflow-spec`, `moai-foundation-quality` (tier 1) +
-`moai-foundation-thinking`, `moai-workflow-tdd`, `moai-workflow-ddd`,
-`moai-workflow-project` (tier 2) — all eight measured present under
-`templates/.claude/skills/`. The catalog L0 view enumerates this union
-explicitly (design §2.3); the M0 drift guard pins it to the W1-W2 sources.
+The closure union (W1-W3 + W7 + W10 + W12; final count THIRTEEN under the
+DEFAULT-FLOW REACHABILITY criterion, final-class item 7 + in-round
+extensions E1/E2): `moai`, `moai-foundation-core`, `moai-workflow-spec`,
+`moai-foundation-quality` (tier 1) + `moai-foundation-thinking`,
+`moai-workflow-tdd`, `moai-workflow-ddd`, `moai-workflow-project` (tier 2)
++ `moai-workflow-testing`, `moai-workflow-worktree`,
+`moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`,
+`moai-ref-testing-pyramid` (tier 3 on-demand) — all thirteen measured
+present under `templates/.claude/skills/` — plus the factory entry's
+declared AGENT dependency `manager-lead` (E1, W12; an agent body, not a
+skill). The catalog L0 view enumerates this union explicitly (design
+§2.3); the M0 drift guard pins it to the W1-W2 + W7 + W12 sources.
 
 ## 3. Gaps (explicitly NOT verified)
 

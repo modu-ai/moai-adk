@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "plan.md — implementation plan"
-version: "0.5.0"
+version: "0.6.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -98,13 +98,19 @@ factory) and opt-in bundles (the six optional packs stand; current-`core`
 remainders re-bundle by theme per D-Q5; the published command-skill set
 folds into the catalog view — iter4 D29). Catalog entries carry per-entry
 skill dependencies, and the L0 view explicitly enumerates the transitive
-runtime skill closure (design §2.3's eight-skill two-tier table — round-5
-F1). Add a catalog drift guard pinning the L0 list AND its dependency
+runtime skill closure (design §2.3's thirteen-skill three-tier union under
+the DEFAULT-FLOW REACHABILITY criterion — round-5 F1 + fold B1 +
+final-class item 7 + in-round extensions E1/E2 — plus the factory entry's
+declared agent dependency `manager-lead`). Add a catalog drift guard
+pinning the L0 list AND its
+dependency
 closure to the sources (agent frontmatter `skills:` unions, the dispatcher
 routing-table Skills lines, the command skills' dispatcher references, AND
 the on-demand `Skill()` invoke-site sweep of the L0 agent bodies — round-5
-fold B1 — with the per-mission moai-ref-*/moai-domain-* domain injections
-explicitly classified out of the guard's expected set).
+fold B1 — classified by DEFAULT-FLOW REACHABILITY (final-class item 7 +
+E2: `moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`,
+`moai-ref-testing-pyramid` are IN; `moai-domain-html-report` is
+classified out; E1: manager-lead pinned under the factory entry),
 Reclassify current-`core` entries that are not L0 into bundles. Priority:
 High. Evidence: catalog loader tests + drift guards (L0 list + dependency
 closure union).
@@ -114,7 +120,9 @@ Implement the per-user manifest at `~/.moai/user-assets.json` (D-Q2): schema
 (schema_version, files{path → sha256, bundle, installed_at, moai_version},
 collisions — the installing version is PER FILE per REQ-006; there is no
 top-level moai_version field, because REQ-013's partial-failure continuation
-makes mixed-version states real), atomic read/write, schema-version refusal
+makes mixed-version states real; the pending-install journal record —
+final-class item 5: path+intended-sha256 delta entries, cleared atomically
+with the manifest save), atomic read/write, schema-version refusal
 for removal (REQ-021) plus the corrupt-JSON recovery path (AC-021 second
 clause), unknown-field preservation on EVERY write incl. foreign-schema
 append-only writes (REQ-021, iter4 D27), four-root path validation (C2).
@@ -132,7 +140,10 @@ truth table (REQ-024, round-5 F3 + fold A1: absent tracked targets install;
 present tracked files refresh / manifest-repair / divergence-preserve per
 the table — a user-edited file's bytes are never clobbered; untracked
 targets are collisions; a manifest left by a partial install does not
-suppress the run — init completes the shortfall idempotently), with
+suppress the run — init completes the shortfall idempotently; the
+pending-install journal is written before the asset writes and
+reconciled at run start, so the retry claims its own interrupted
+installs by expected-hash match — final-class item 5), with
 `--bundles <name,...>`
 setting the initial opt-in selection recorded in the manifest (REQ-004
 selection surface, iter2 D18). The installer resolves L0's transitive
@@ -172,7 +183,13 @@ applying exactly that bundle's catalog entries (REQ-004, iter2 D18),
 user-level serialization of manifest read-modify-write (REQ-006, round-5
 F4 — a lock or equivalent spanning read → asset changes → save, so
 concurrent init/update/bundle runs from different projects cannot lose one
-another's writes), ordering before the project phase, no regression of the
+another's writes), the pending-install journal RECONCILIATION at run start
+(final-class item 5 — journal-expected-hash match completes the run's own
+interrupted installs before any collision judgment), the Route B entry
+precondition (final-class item 4 — the Tier L/`--pr` delivery verifies the
+manager-git role body is installed and refuses with the named
+`moai bundle add <bundle>` remediation per C4 when the git-delivery bundle
+is unopted), ordering before the project phase, no regression of the
 existing global-settings cleanup. Priority: High.
 Evidence: update-flow tests with temp HOME + project fixture, incl. the
 upgrade cases (prior-model project + no manifest → install precedes the
@@ -186,13 +203,29 @@ keeps settings, AGENTS.md/CLAUDE.md, lock file, hooks, `.mcp.json` (always
 with the moai entry again), output-styles, rules, command wrappers (non-skill
 command files only — the 17 published Codex command skills move user-side
 per D-Q4/D-Q5 and design §2.5, iter4 D29). Dispatcher reference rebind at
-SOURCE level (round-5 F2): edit the command sources `.claude/commands/
-moai/{plan,run,sync}*.md` to the user-folder dispatcher path and regenerate
-the published copies with `make commands-emit` (the committed
+SOURCE level, ALL SEVENTEEN command skills (final-class item 2 widening
+round-5 F2's three): edit the THIRTEEN command sources carrying the
+literal (`.claude/commands/moai/{clean,codemaps,e2e,feedback,fix,gate,
+harness,loop,mx,plan,project,review,run}.md`) to the user-folder
+dispatcher path, and rebind the emitter's INJECTED fallback line for the
+four whose sources lack it (goal, gtd, sync, todo) — then regenerate all
+seventeen published copies with `make commands-emit` (the committed
 templates/.agents/skills copies are commandemit outputs — never
 hand-edited; `commands-emit-check` rides the build chain and rejects a
 hand-edited copy); rebind the AGENTS.md.tmpl:40-41 skill-path sentences to
-the user folders in the same change. Migration
+the user folders in the same change. CLASS-CLAUSE SWEEP (final-class
+round, design §2.5): the recursive rebind covers the workflows tree
+itself (dispatcher 19 raw occurrences incl. the SKILL.md:282 in-prose
+one; the workflows subtree's project-relative references — broad-pattern
+sweep, measured 274 raw occurrences across the 26 top-level files and
+the plan/project/references/run/sync subdirectories) — zero-hit after
+the rebind, recorded as M4 evidence. MIRROR-REPAIR TERMINATION
+(final-class item 6): remove the update-time
+`repairSkillMirrorBestEffort()` call (`internal/cli/update.go:535`) —
+`RepairSkillMirror`'s Path B re-creates the seventeen published copies
+restore-missing-only (`skill_mirror_repair.go:89,:113`), actively
+undoing this milestone; the mirror concept retires with the project-side
+placement. Migration
 for existing projects per REQ-020 (provenance-classified removal/preservation
 with reports; each removal is gated per-asset on its user counterpart being
 manifest-tracked with a matching hash, per REQ-024's upgrade arm — iter4

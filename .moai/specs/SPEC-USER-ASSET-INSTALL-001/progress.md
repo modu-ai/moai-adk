@@ -155,6 +155,42 @@ author: manager-spec
   audit ×2 agents, ref-owasp-checklist, ref-testing-pyramid,
   domain-html-report); REQ-003 + design §2.3 + plan M0 drift guard pin the
   union and the classification-out. Sweep evidence: research §2b W6-W8.
+- v0.6.0 FINAL CLASS ROUND (2026-10-06; operator disposition α — the LAST
+  plan→run branch; STANDING RULE recorded: any NEW gate finding after
+  this round is run-phase debt, no further plan folds). The CLASS CLAUSE
+  pinned verbatim (design §2.5): "every project-relative reference in the
+  user-scope deployed tree rebinds to its installed location, verified by
+  a raw-pattern sweep + run-phase loading ACs" — replacing
+  layer-by-layer enumerations for the whole rebind family. Items 1-8
+  closed: recursive workflows-tree rebind (broad sweep measured 274 raw
+  occurrences over 26 files + 5 subdirs; AC-017 step-document loading
+  arm); all-17 command-skill rebind (source split 13 sources + 4
+  emitter-injected — goal/gtd/sync/todo — W11); six remaining grep cells
+  converted to behavior-test verdict bases (EV-006/008/009/010/017/018 +
+  §D.2b conversion note, extending the adjudicated-SOUND EV-005 ruling);
+  manager-git policy DECIDED require-a-bundle (Route B precondition +
+  `moai bundle add` remediation, AC-018 arm); pending-install recovery
+  journal designed (expected-hash match claims the run's own installs
+  without absorbing user files — REQ-006, AC-001 arm); mirror-repair
+  rollback terminated (update.go:535 / skill_mirror_repair.go:89,:113
+  verified re-growing the 17 published copies — AC-011 repeated-update
+  arm); `moai-ref-cross-model-audit` joined L0 under the DEFAULT-FLOW
+  REACHABILITY criterion (closure ELEVEN; corrects fold B1's prefix
+  classification); stale "eight-skill" labels re-pointed here-exterior
+  (plan M0 + research §2b; this file's earlier entries stay as history).
+- IN-ROUND EXTENSION (same final class round, v0.6.0 — two more item-7
+  criterion instances from the gate's mid-flight review): E1 —
+  manager-lead pinned as the FACTORY entry's declared agent dependency
+  (factory-dispatch.md:104 [HARD] resident deputy, template mirror
+  identical; NOT a sixth core agent — D-Q1's five stands); closure table
+  + drift guard + REQ-003 + AC-017 carry it. E2 —
+  `moai-ref-owasp-checklist` + `moai-ref-testing-pyramid` reclassified IN
+  (the DEFAULT Phase 7 evaluation scores Security + test coverage by
+  default — the fold-B1 per-mission reading was wrong for these two);
+  DESIGN CALL: both join L0, no degraded absent-path (one criterion,
+  no second standard); closure THIRTEEN skills + the factory agent
+  dependency; `moai-domain-html-report` alone stays out. Evidence:
+  research §2b W12.
 
 ## §E.2 Run-phase Evidence
 

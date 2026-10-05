@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
-version: "0.5.0"
+version: "0.6.0"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -99,6 +99,31 @@ related_specs: [SPEC-PLUGIN-MARKETPLACE-001, SPEC-INIT-SHRINK-001, SPEC-CODEX-CO
   read-modify-write serialized per user (REQ-006, design §2.2, AC-018
   concurrent arm). No new REQ (zero-new-REQ holds); all new verification
   absorbed into AC-001/002/017/018 (25/25 ceiling holds).
+- 2026-10-06: v0.6.0 FINAL CLASS ROUND (card t1509; operator disposition
+  α — the last plan→run branch; the standing rule records that any NEW
+  gate finding after this round is run-phase debt, no further plan
+  folds). The CLASS CLAUSE pinned verbatim as the governing principle
+  (design §2.5): "every project-relative reference in the user-scope
+  deployed tree rebinds to its installed location, verified by a
+  raw-pattern sweep + run-phase loading ACs." Items: (1) sub-workflow
+  recursive rebind — the rebind reaches the workflows tree itself
+  (recursive through the run/sync subdirectory step documents; AC-017
+  extends to end-to-end step-document LOADING); (2) the dispatcher
+  reference widened to ALL SEVENTEEN command skills — 13 command sources
+  rebind at source, 4 (goal/gtd/sync/todo) via the emitter's injected
+  fallback line; AC-002 gains the non-L0-command fixture; (3) the
+  remaining six grep cells (EV-006/008/009/010/017/018) converted to
+  behavior-test verdict bases, greps demoted auxiliary; (4) manager-git
+  policy DECIDED: require-a-bundle (Route B precondition + `moai bundle
+  add` remediation per C4), not re-route — AC-018 arm; (5) pending-install
+  recovery journal designed (expected-hash match lets retry claim its own
+  installs without absorbing user files) — REQ-006 + AC-001 arm; (6)
+  mirror-repair rollback terminated in M4 (update.go:535 /
+  skill_mirror_repair.go:89,:113 Path B re-grows the 17 published copies)
+  — AC-011 repeated-update arm; (7) `moai-ref-cross-model-audit` joins L0
+  (default-flow reachability corrects fold B1's prefix classification) —
+  closure ELEVEN; (8) stale "eight-skill" labels re-pointed (plan,
+  research; progress keeps its history entry).
 
 ## 1. Background and Premise
 
@@ -182,10 +207,18 @@ not re-opened during run phase):
   skill dependencies, explicitly enumerated in the catalog's L0 view — the
   `moai` dispatcher skill the three command skills invoke, the agents'
   preload skills, the default flows' delegation-injected workflow skills,
-  and the agents' on-demand `Skill()` invoke sites (the per-mission
-  moai-ref-*/moai-domain-* domain injections are explicitly classified out
-  — design §2.3 closure table) — so the default plan/run/sync flow loads
-  everything it calls from the installed set alone (round-5 F1 + fold B1,
+  and the agents' on-demand `Skill()` invoke sites classified by
+  DEFAULT-FLOW REACHABILITY (a documented default-configuration path of
+  the chain invokes it — `moai-ref-cross-model-audit`,
+  `moai-ref-owasp-checklist`, and `moai-ref-testing-pyramid` are IN (the
+  default audit plan and the default Phase 7 evaluation reach them);
+  `moai-domain-html-report` is classified out (HTML-rendering missions
+  only); the factory entry additionally carries `manager-lead` as its own
+  declared agent dependency — factory-dispatch.md:104's
+  resident-deputy requirement — not a sixth core agent; design §2.3
+  closure table; final-class item 7 + in-round extensions E1/E2) — so the
+  default plan/run/sync flow loads everything it calls from the installed
+  set alone (round-5 F1 + fold B1 + final-class item 7,
   "default-install-runs").
 - REQ-004: The system shall ship every common asset outside L0 as an opt-in
   bundle; a bundle is installed or removed as a unit, bundle membership is
@@ -208,7 +241,13 @@ not re-opened during run phase):
   Manifest read-modify-write is serialized per user — a user-level lock (or
   equivalent) spans manifest read → asset changes → manifest save — so
   concurrent init/update/bundle operations from different projects cannot
-  lose one another's writes (round-5 F4).
+  lose one another's writes (round-5 F4). Each run records a
+  pending-install journal (the intended path+sha256 delta, a manifest-path
+  sibling under `~/.moai/`) BEFORE its asset writes; a later run
+  reconciles an existing journal first — a user-folder file hashing to the
+  journal's recorded value is the run's OWN interrupted install and is
+  completed in the manifest, never collision-skipped; anything else falls
+  through to the normal collision/divergence path (final-class item 5).
 - REQ-007: The user-asset install shall operate offline: the binary carries
   every asset it installs, and no network access is part of the install,
   refresh, or removal path.

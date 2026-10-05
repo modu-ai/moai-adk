@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "design.md — user-folder asset install architecture"
-version: "0.5.0"
+version: "0.6.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -167,6 +167,24 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   entries, file records). The lock is a user-level concern (one lock file
   beside the manifest under `~/.moai/`), not a project-level one — the
   concurrent writers are different projects sharing one manifest.
+- Pending-install recovery journal (final-class item 5): the
+  READ → asset-changes → SAVE ordering has a crash window — an install
+  interrupted AFTER asset writes but BEFORE the manifest save leaves
+  moai-written files in the user folders that the manifest does not track,
+  and the retry classifies them as REQ-010 collision-skips FOREVER (the
+  gate reproduced it): moai's own installs become permanent untracked
+  squatters, and their real owners never install. Design: before the
+  asset-write phase, the run writes a PENDING-INSTALL JOURNAL (a
+  manifest-path sibling under `~/.moai/`) recording the intended delta —
+  each target path with its intended sha256; on run start, an existing
+  journal is RECONCILED before any install/collision judgment: a
+  user-folder file whose bytes hash to the journal's recorded value is
+  COMPLETED (its manifest entry is committed — the retry identified its
+  OWN install), and a file NOT matching the journal (or not in it) falls
+  through to the normal collision/divergence path — the journal's
+  expected-hash match is what lets retry claim its own installs WITHOUT
+  absorbing user files. The journal is cleared atomically with the
+  manifest save.
 - Schema-version gate: unknown `schema_version` → refuse manifest-driven
   removal (REQ-021); install/refresh may still proceed in append-only fashion.
 
@@ -220,17 +238,42 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   - Tier 3 — on-demand `Skill("...")` invoke sites in the L0 agent bodies
     (fold B1: the default TDD flow invokes skills at need — e.g.
     manager-develop.md:237 "invoke Skill(\"moai-workflow-testing\")"):
-    `moai-workflow-testing` (manager-spec:248, manager-develop:237) and
-    `moai-workflow-worktree` (manager-spec:250, manager-develop:242).
-  UNION TOTAL: TEN skills. Classified OUT of L0 (the drift guard carries
-  the classification so it does not flag them): the per-mission DOMAIN
-  injections — `moai-ref-cross-model-audit` (plan-auditor:237/:764,
-  sync-auditor:191/:226), `moai-ref-owasp-checklist` (sync-auditor:223),
-  `moai-ref-testing-pyramid` (sync-auditor:224), and
-  `moai-domain-html-report` (manager-docs:224) — per-mission specialist
-  skills the delegation map injects by mission type, not default-flow
-  requirements; a missing one degrades that specific mission, not the
-  default plan/run/sync flow.
+    `moai-workflow-testing` (manager-spec:248, manager-develop:237),
+    `moai-workflow-worktree` (manager-spec:250, manager-develop:242),
+    `moai-ref-cross-model-audit` (plan-auditor:764, sync-auditor:226 —
+    final-class item 7 CORRECTING fold B1's exclusion: the DEFAULT audit
+    plan exercises the cross-model path whenever a GPT/GLM session obtains
+    a Claude verdict), `moai-ref-owasp-checklist` (sync-auditor:223) and
+    `moai-ref-testing-pyramid` (sync-auditor:224) — in-round extension E2
+    CORRECTING fold B1's exclusion a second time: the shipped sync flow
+    runs Phase 8 Security Scan and Phase 10 Coverage Analysis as STANDARD
+    default phases (sync.md:50 phase routing table), and
+    quality-gates-quality.md:70-73 wires the 4-dimension judges into the
+    shared snapshot — Functionality 40% / Security 25% (HARD threshold) /
+    Craft 20% / Consistency 15% — so Security and test-coverage scoring
+    are default-path, and both skills are default-flow reachable, not
+    per-mission emphasis (lead adjudication + anchors; confirms the
+    in-round E2 call). DESIGN CALL (stated per the dispatch): both JOIN
+    L0 — documenting a degraded absent-path would be a second
+    classification standard, exactly what the single reachability
+    criterion exists to prevent.
+  UNION TOTAL: THIRTEEN skills. Classification criterion (final-class item 7,
+  upgrading fold B1's prefix heuristic): **DEFAULT-FLOW REACHABILITY** — a
+  skill is IN the closure when a documented default-configuration path of
+  the plan/run/sync chain invokes it, and OUT otherwise, regardless of
+  name prefix. Classified OUT (mission-type injection, no default path):
+  `moai-domain-html-report` (manager-docs:224 — HTML-rendering missions
+  only; no default plan/run/sync path renders HTML).
+  AGENT DEPENDENCY (in-round extension E1): the factory entry (P2 —
+  `moai-factory-foreman` + `moai-lane-watchdog` in L0) carries
+  `manager-lead` as its OWN declared dependency — factory-dispatch.md:104
+  [HARD]: "The deputy is resident, not optional... spawns exactly one
+  UNNAMED background `Agent()` running manager-lead as its coordination
+  deputy" (template mirror :104 identical). manager-lead is NOT a sixth
+  core agent (D-Q1's five stands for the core-agent answer); it rides the
+  catalog's per-entry dependency mechanism (REQ-004) under the factory
+  entry, its role body landing in `~/.claude/agents/` with the rest of
+  the agent set. The drift guard carries it under the factory entry.
   A catalog drift guard pins this enumeration to its sources — the agent
   frontmatter `skills:` unions, the dispatcher's routing-table Skills
   lines, the command skills' dispatcher references, AND the on-demand
@@ -247,13 +290,16 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   the dispatcher's INTERNAL workflow references are also project-relative —
   `Read .claude/skills/moai/workflows/<name>.md` appears EIGHTEEN times in
   templates/.claude/skills/moai/SKILL.md (:126 plan, :134 run, :142 sync,
-  and the same pattern for gate/e2e/goal/gtd/fix and the remaining rows) —
+  and the same pattern for gate/e2e/goal/gtd/fix and the remaining rows;
+  the RAW pattern including the in-prose `harness-builder.md` mention at
+  SKILL.md:282 is NINETEEN — final-class item 8) —
   and break identically post-M4 (the gate observed FileNotFoundError with
   user-folder copies present, because the path resolves against the project
   root). The rebind is at TEMPLATE SOURCE — the dispatcher is not a
   commandemit output; templates/.claude/skills/moai/SKILL.md IS its source
-  layer (deployed verbatim) — and rebinds the WHOLE eighteen-reference
-  family (not only the L0 plan/run/sync three the fold named) to paths
+  layer (deployed verbatim) — and rebinds the WHOLE reference family (all
+  nineteen raw occurrences, not only the L0 plan/run/sync three the fold
+  named) to paths
   relative to the installed skill directory, so one form resolves in
   `~/.claude/skills/moai/` and `$HOME/.agents/skills/moai/` alike.
 
@@ -318,6 +364,70 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   three via L0 (D-Q4), the remaining fourteen via the D-Q5 re-bundling (§2.3)
   — so AC-011's `no .agents/skills/moai*` placement ban holds unchanged over
   the post-M4 project tree.
+- THE CLASS CLAUSE (final-class round, operator wording, verbatim — the
+  governing principle for this ENTIRE rebind family, replacing
+  layer-by-layer enumerations): **"every project-relative reference in the
+  user-scope deployed tree rebinds to its installed location, verified by a
+  raw-pattern sweep + run-phase loading ACs."** Two instruments, by design
+  so the family cannot re-sprout: (a) the RAW-PATTERN SWEEP — a boundary
+  grep over the user-scope deployed sources
+  (`templates/.claude/skills/**`, `templates/.agents/skills/**`) for the
+  project-relative path patterns (`.claude/`, `.agents/`, `.codex/`
+  path-shaped references), zero-hit after the rebind, counted per M4
+  evidence (measured shape on tree `06faee0b4`: dispatcher 18 Read-rows +
+  1 raw in-prose occurrence at SKILL.md:282 = 19; workflows subtree broad
+  pattern = 274 raw occurrences across the 26 top-level files and the
+  plan/project/references/run/sync subdirectories); (b) the RUN-PHASE
+  LOADING ACs (AC-002/AC-017 arms). Standing rule (operator, recorded in
+  the verdict file): any NEW gate finding after this round is run-phase
+  debt — no further plan folds.
+- Sub-workflow recursive rebind (final-class item 1): the class clause
+  reaches the dispatcher's POINTED-TO documents — the workflows tree
+  itself carries project-relative references (top-level `.md` files with
+  skill-path references measured: 12 files / 32 narrow-pattern
+  occurrences, plan.md and sync.md among them; the run/ and sync/
+  subdirectory step documents included in the broad-pattern sweep), so the
+  rebind is RECURSIVE through the workflows tree, and AC-017's executable
+  arm extends to end-to-end STEP-DOCUMENT loading (the run/sync flow's
+  sub-documents load from the user folders), not merely the dispatcher
+  body.
+- Command-skill reference widening (final-class item 2): the dispatcher
+  reference lives in ALL SEVENTEEN generated copies (measured 17/17) —
+  the round-5 fix naming only {plan,run,sync} was instance-scoped. Source
+  split (measured): 13 command sources carry the literal
+  (`.claude/commands/moai/{clean,codemaps,e2e,feedback,fix,gate,harness,
+  loop,mx,plan,project,review,run}.md`) and rebind at source; the
+  remaining four (goal, gtd, sync, todo) carry the line via the EMITTER's
+  injected fallback (their sources lack the literal) and rebind through
+  the emitter's injected-line template. `make commands-emit` regenerates
+  all seventeen.
+- Mirror-repair rollback termination (final-class item 6):
+  `runUpdate` calls `repairSkillMirrorBestEffort()` OUTSIDE deploy
+  (`internal/cli/update.go:535`), and `RepairSkillMirror`
+  (`internal/template/skill_mirror_repair.go:89,:113`) Path B re-creates
+  the seventeen published `.agents/skills/moai-<command>/SKILL.md` files
+  restore-missing-only — so a repeated `moai update` after M4 actively
+  re-grows the project placement M4 removed. M4 TERMINATES this path: the
+  update-time repair call is removed (the mirror concept it served is
+  retired with the project-side placement; no user-side equivalent is
+  needed — the user folders are the primary, not a mirror), with a
+  repeated-update regression test (AC-011 arm).
+- Manager-git policy (final-class item 4 — the SPEC's design decision):
+  Route B (Tier L OR explicit `--pr`) of the sync delivery
+  (`workflows/sync/delivery.md` Route B row) invokes `manager-git`, which
+  is NOT one of the L0 five (D-Q1). CHOSEN POLICY: REQUIRE-A-BUNDLE, not
+  re-route — re-routing Tier L git operations to an installed role
+  (manager-docs) would blur the DRI the agent catalog owns (PR/branch
+  delivery specialty), and D-Q1's five-agent answer is settled. manager-git's
+  role body ships in an OPT-IN bundle (the D-Q5 re-bundling assigns it —
+  the git/delivery theme), and the Route B row gains an entry PRECONDITION:
+  the flow verifies the manager-git role body is installed and, when it is
+  not, refuses with the named remediation `moai bundle add <bundle>` per
+  C4's actionable-report rule — never a missing-file error mid-flow. The
+  default Route A flow (manager-docs + lane self-delivery) needs nothing
+  beyond L0. Anchors: design §2.3 (bundle assignment), plan M3 (the
+  precondition check rides the `moai bundle` command milestone), AC-018
+  (the requires-unopted-bundle arm).
 - Dispatcher reference rebind at SOURCE level (round-5 F2): the published
   command skills are GENERATED artifacts — the command sources under
   `.claude/commands/moai/` are consumed READ-ONLY by the
