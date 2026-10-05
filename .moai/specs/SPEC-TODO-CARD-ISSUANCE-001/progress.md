@@ -40,7 +40,7 @@ _<pending: the orchestrator appends the audit-ready signal after the independent
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: 2887363c9
 - sync_summary: CHANGELOG [Unreleased] Added 에 본 SPEC 항목 신규 기재(중복 0 실측 후). 카드 판정서에 run 판정 절 부록(§E.3 요약 + 병합 트리 재측정 + card-review 인용). 카드 리뷰 기록 `.moai/reports/t1454/card-review.md` — codex_review 2회·glm_review 1회 inconclusive(본문 보존), codex 턴엔드 게이트 P2 2건 수리. SPEC frontmatter 전이 in-progress → completed 가 본 커밋에 탄다. MX 스캔 대상 신규 코드의 태그: 신규 함수에 godoc+핀 근거 주석 유지(패키지 관례), ANCHOR 요구 fan_in≥3 신규 함수 없음, WARN 요구 위험 구조(고루틴·복잡도≥15) 신규 미해당.
 - sync_status: audit-ready
 
