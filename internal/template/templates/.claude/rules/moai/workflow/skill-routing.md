@@ -36,6 +36,8 @@ Config coupling (report): the orchestrator reads `report.format` from the settin
 
 [ZONE:Evolvable] [HARD] **Anti-pattern (named)**: reaching for `artifact-design` when the task is a markdown→HTML **report render**. `artifact-design` calibrates visual identity for claude.ai-hosted web pages (landing pages, apps, shareable artifacts); `moai-domain-html-report` owns the report-render surface (six report modes, audience tiers, md-twin asymmetry). A report request that loads `artifact-design` instead of `moai-domain-html-report` is a routing miss. The corrective is intent-based: any request — in any language — whose intent is "produce a report/document as HTML" routes to `moai-domain-html-report`; `artifact-design` routes only "produce a hosted visual-identity page" intents.
 
+[ZONE:Evolvable] [HARD] **The delivery surface is harness-bound**: claude.ai-hosted artifacts are a Claude Code-only capability. Under the GLM or Codex backends (`moai glm` / `moai cg` GLM panes, Codex sessions), an `html` / `html+md` report MUST be delivered as `moai-domain-html-report`'s self-contained single-file HTML written into the project — the hosted artifact page is unreachable there, and `artifact-design`'s hosted-page intent falls back to the same file delivery.
+
 ## 2. Agent Obligation
 
 Agents whose `tools:` include `Skill` load conditional skills per the "Conditional Skill Loading" section in their own body. The static `skills:` frontmatter preload stays at most 2 entries per agent (token diet — progressive disclosure does the rest). An agent loads a conditional skill when its body's stated trigger situation actually arises, not preemptively.

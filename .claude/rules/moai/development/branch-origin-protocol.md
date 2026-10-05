@@ -18,11 +18,12 @@ Getting this wrong is quiet and expensive. Branching from a stale local `main` s
 |------|----------------|
 | `/moai plan --branch` (skill body) | yes (orchestrator `AskUserQuestion`) |
 
-The orchestrator evaluates the signals below, recommends a base, and asks. There is no CLI entry point: `moai worktree new` and its `--base` / `--from-current` flags are retired, and a worktree is now entered with `moai cc -w <name>` rather than created by a MoAI subcommand.
+The orchestrator evaluates the signals below, recommends a base, and asks. There is no CLI entry point for the BODP decision itself. `moai worktree new <name>` now exists only as a thin creator over the configured shared materializer; the former implementation and its `--base` / `--from-current` flags remain retired. Enter the created tree separately through a launcher.
 
 ## HARD Rules
 
 - [ZONE:Frozen] [HARD] Skill body BODP gate MUST follow the askuser-protocol Socratic structure: `(권장)` first, ≤4 options, conversation_language match, "Other" auto-appended.
+- [ZONE:Evolvable] [HARD] The clause above is the `push`-mode branch and applies verbatim while `interview.recommendation_mode` is absent, empty, `push`, or unrecognized. While the mode is `pull`, the `(권장)` first-option label is withheld and no option carries a preference claim; the remaining structure — ≤4 options, conversation_language match, "Other" auto-appended — is unchanged, and the gate itself still fires. An explicit user request for a recommendation restores the labelled form (`.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles → On-request emission).
 - [ZONE:Evolvable] [HARD] The recommended base MUST be derived from the signals below, not assumed. When no signal fires, the recommendation is `origin/main` — team-safe, because it reflects the latest merged state rather than whatever the local checkout happens to hold.
 - [ZONE:Evolvable] [HARD] `main` (the local ref) is the explicit opt-in for solo workflows where the user has committed locally without pushing. Recommend it only when `git log main` actually shows such commits — otherwise it silently reintroduces the stale-base hazard.
 

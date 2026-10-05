@@ -89,7 +89,8 @@ The deciding question is **who should hold the plan**: the script (workflow), a 
 
 - The runtime executes the script in an isolated environment, separate from the conversation.
 - Up to **16 concurrent agents** (fewer on machines with limited CPU cores); **1,000 agents total per run** as a runaway-loop backstop.
-- **Workflow size is user-tunable** — the `/config` **Dynamic workflow size** setting (`small` / `medium` / `large` / `unrestricted`, v2.1.202+; `unrestricted` added in v2.1.219) sets a guideline for how many agents a workflow targets, scaling the effective agent count within the 16-concurrent / 1,000-total ceilings above. The default is explicitly `medium` (aim for fewer than 15 agents) as of v2.1.219. The guideline can also be set from any settings file via the `workflowSizeGuideline` settings key (v2.1.219+; the `/config` row is hidden while one is set — see `.claude/rules/moai/core/settings-management.md`). MoAI does not pin a size in the deployed template — the choice is left to the user/org, so a size guideline surfaced in a session (e.g. "keep workflows under 15 agents") is user configuration, not a MoAI default.
+- **The 16-concurrent ceiling is raisable** — `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS` (v2.1.269) accepts 1-256 and exists for fan-outs bound by inference rather than by CPU. MoAI does not set it: raising the ceiling multiplies concurrent spend, and the default already sits above MoAI's own 3-5 fan-out advisory.
+- **Workflow size is user-tunable** — the `/config` **Dynamic workflow size** setting (`small` / `medium` / `large` / `unrestricted`, v2.1.202+; `unrestricted` added in v2.1.219) sets a guideline for how many agents a workflow targets, scaling the effective agent count within the 16-concurrent / 1,000-total ceilings above. The default is `medium`, which v2.1.271 lowered from "fewer than 15 agents" to **fewer than 10**; the same release changed the default to `small` on Pro plans. The guideline can also be set from any settings file via the `workflowSizeGuideline` settings key (v2.1.219+; the `/config` row is hidden while one is set — see `.claude/rules/moai/core/settings-management.md`). MoAI does not pin a size in the deployed template — the choice is left to the user/org, so a size guideline surfaced in a session (e.g. "keep workflows under 10 agents") is user configuration, not a MoAI default. The number a session reports is the authority — a plan-tier default and a settings pin both move it.
 - **No mid-run user input** — only agent permission prompts can pause a run. For sign-off between stages, run each stage as its own workflow.
 - The workflow script itself has **no direct filesystem or shell access** — its agents read, write, and run commands; the script only coordinates them.
 - Runs are **resumable within the same session**: completed agents return cached results, the rest run live. Exiting Claude Code restarts a running workflow fresh in the next session.
@@ -116,29 +117,9 @@ While a workflow run is active, the `/workflows` TUI lets you manage it: list ac
   - **User-owned Runner Workflows** — the `hns-*` and `harness-*` prefixes are **not template-managed**. MoAI never ships them, and `moai update` preserves whatever the user has authored there.
 - **Plan / provider availability**: dynamic workflows require a paid plan and are available on the Claude API, Amazon Bedrock, Google Vertex AI, and Microsoft Foundry; on the Pro plan the feature is enabled via `/config`.
 
-## Purpose-driven model+effort selection
+## Workflow agent model and effort
 
-The dynamic workflow `agent()` primitive accepts an opts object `{model, effort, agentType, isolation, phase, schema, label}` (per `https://code.claude.com/docs/en/workflows`). Omitting `model` inherits the main-loop model; omitting `effort` inherits the session effort. Because a paste-ready resume message's `ultrathink.` opener commonly leaves the session at `xhigh`, a workflow `agent()` call that omits `effort` silently runs every spawned agent at `xhigh` — including mechanical read-only extraction, which the official guidance recommends at `low`. That silent inheritance is a cost leak.
-
-[ZONE:Evolvable] [HARD] When a `.claude/workflows/*.js` script invokes `agent()`, the script author SHALL set `effort` explicitly per the purpose taxonomy below rather than inheriting the session default. Set `model` explicitly only when the purpose demands a specific tier (sonnet with `effort: low` for mechanical extraction; opus for deep architectural reasoning); otherwise omit it to inherit the main-loop model.
-
-The official effort levels are `low`, `medium`, `high` (default), `xhigh`, `max` (`https://platform.claude.com/docs/en/build-with-claude/effort`). The taxonomy below maps each workflow-agent purpose to a recommended `(model, effort)`.
-
-> **Config surface.** The `workflow_agents:` block in `.moai/config/sections/workflow.yaml` is the SSOT for these per-purpose `(model, effort)` DEFAULTS — the web console and tooling read/write that block, and per-script literals in `.claude/workflows/*.js` remain overrides that win over the config defaults. Values are validated against the closed sets above (model: inherit/sonnet/opus; effort: low/medium/high/xhigh/max — the Go validator additionally tolerates a retired legacy model value for backward compatibility).
-
-| Purpose | Example surfaces | Recommended model | Recommended effort | Official citation |
-|---------|------------------|-------------------|--------------------|-------------------|
-| **read-only-extract** | per-package dep-graph + public-surface extraction; mechanical AST/grep sweeps | sonnet | **low** | "`low` — Simpler tasks that need the best speed and lowest costs, such as subagents" |
-| **mechanical-transform** | large migrations (call-site rename, API shape change); mechanical refactors | sonnet | **medium** | "`medium` — Balanced reasoning for general tasks" |
-| **synthesize** | architectural synthesis layered on deterministic extraction; multi-source research synthesis | sonnet | **high** | "`high` — Most tasks; good balance of quality and speed" |
-| **research** | cross-checked research with adversarial voting; deep single-topic investigation | sonnet or opus | **high** or **xhigh** | research effort should scale with claim density the research must adjudicate (project-internal heuristic, not a verbatim prescription) |
-| **verify-judge** | code review (security/perf/arch dimensions); independent plan/spec audit; quality scoring | sonnet or opus | **xhigh** | "minimum `high` for intelligence-sensitive work" |
-| **implement** | code generation (backend/frontend/full-stack); test writing | sonnet or opus | **xhigh** | "`xhigh` for coding/agentic work" |
-| **design-architecture** | solution architecture decisions; system design; deep reasoning over trade-offs | opus | **xhigh** | "`xhigh` for coding/agentic work" + "minimum `high` for intelligence-sensitive work" |
-
-**Reading order.** When a workflow agent serves multiple purposes, pick the highest-effort purpose in the table. When purpose is ambiguous, prefer the cheaper effort — the cost of over-efforting a read-only extraction is a silent token leak; the cost of under-efforting a verify-judge is a missed defect.
-
-**Worked example — codemaps-extract.js.** The bundled `.claude/workflows/codemaps-extract.js` fans out one `Explore` agent per source package for read-only dep-graph + public-surface extraction plus an architectural-synthesis layer. Each per-package `agent()` call carries `agentType: 'Explore'` and `effort: 'low'` — the read-only-extract purpose, per the official "`low` — such as subagents" guidance. The synthesis layer's architecture-insight value comes from the prompt, not from raising effort; raising effort on the extraction step would multiply token cost without improving the mechanical baseline (see the script's VERDICT SCOPING header). This is the canonical pattern for mechanical read-only fan-out.
+The dynamic workflow `agent()` primitive accepts an opts object that includes `model` and `effort` (per `https://code.claude.com/docs/en/workflows`). MoAI's shipped workflow scripts pass neither, so every workflow agent inherits the main session's model and effort, the same rule MoAI agent definitions follow (`.claude/rules/moai/development/model-policy.md`).
 
 ## Disabling Workflows
 

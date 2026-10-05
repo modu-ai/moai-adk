@@ -80,7 +80,9 @@ All agent definitions use YAML frontmatter. The following fields are available:
 
 **isolation**: Controls agent execution isolation. When set to "worktree", the agent runs in an isolated git worktree, preventing conflicts with the main working directory. Available since Claude Code v2.1.49.
 
-**effort**: Overrides session effort level for this agent. Valid values: `low`, `medium`, `high`, `xhigh`, `max`. The `xhigh` and `max` values require Opus 4.7 or later (current substrate: Opus 4.7+ / 4.8). On Opus 4.6, the highest supported effort level is `high`.
+MoAI agent definitions omit both `model` and `effort`, so every subagent inherits the main session's model and effort (`.claude/rules/moai/development/model-policy.md`). The two fields remain available to an agent file a user authors.
+
+**effort**: Overrides session effort level for this agent. Valid values: `low`, `medium`, `high`, `xhigh`, `max`. The `xhigh` and `max` values require Opus 4.7 or later (current substrate: Opus 4.7+ / 4.8). On Opus 4.6, the highest supported effort level is `high`. Opus 5.5 defaults to `effort: medium` on the Claude API and Claude Code, and `medium` is MoAI's recommended session effort; other effort-capable models default to a higher level. The vendor guidance that `low` and `medium` are stronger than on earlier Opus models was measured on Opus 5, so treat them as the primary token-cost lever rather than a last resort.
 
 **color**: Display color for the agent in the task list and transcript UI. Valid values: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`.
 
@@ -125,9 +127,9 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-The MoAI agent catalog consists of exactly **12 retained agents** (11 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture (SPEC-AGENT-ARCH-V2-001) added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog; `manager-lead` (hierarchical-team Tier L coordination) was added later per the hierarchical-team SPEC. Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
+The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog; `manager-lead` (hierarchical-team Tier L coordination) was added later, and the original GTD auto-mission decision role was later renamed and repurposed as `manager-todo` (todo-queue management + dispatch ownership, judgment retained as a read-only sub-role). Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
 
-### Retained MoAI-custom Agents (11)
+### Retained MoAI-custom Agents (12)
 
 Coordinate the SPEC plan/design/run/sync/audit lifecycle:
 
@@ -141,6 +143,8 @@ Coordinate the SPEC plan/design/run/sync/audit lifecycle:
 - super-advisor: On-demand high-reasoning consultation (non-binding prescriptions, E1-E4 escalation entry)
 - builder-harness: Dynamic project-specific harness specialist generation (new agents, skills, plugins, commands, hooks, MCP/LSP servers)
 - e2e-tester: E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management)
+- manager-lead: Tier L coordination + the -k kanban / -f factory lead role (the sole Agent-carrier, depth-2 sealed)
+- manager-todo: todo-queue management agent — owns queue lifecycle, the `/moai:todo --auto` serial cycle, and dispatch guidance; consults Jev as a display-only signal; carries the read-only sealed-snapshot judgment (one bounded structured decision, never applies it) as a sub-role dispatched by the GTD auto-mission flow
 
 ### Anthropic Built-in (1)
 
@@ -160,7 +164,7 @@ Domain-specific implementation work (backend, frontend, security, devops, perfor
 
 **Spawn pattern** (Agent Teams only):
 ```
-Agent(subagent_type: "general-purpose", name: "researcher", model: "haiku")
+Agent(subagent_type: "general-purpose", name: "researcher")
 ```
 
 > Note: the `researcher` role_profile here is a workflow.yaml role, unrelated to the retired `researcher` agent file.
@@ -177,7 +181,7 @@ Role profiles were formerly defined in workflow.yaml under a `team.role_profiles
 | designer | sonnet | acceptEdits | worktree | UI/UX design with MCP tools |
 | reviewer | haiku | plan (read-only) | none | Code review, quality validation |
 
-The Agent Teams layer that consumed these role profiles is experimental (re-allowed; a `--mode team` request selects it per `orchestration-mode-selection.md` §C.1 — the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back). The native `moai cg` teammate runtime is unaffected (see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode).
+The Agent Teams layer that consumed these role profiles is experimental (re-allowed; a `--mode team` request selects it per `orchestration-mode-selection.md` §C.1 — the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back). Native teammate availability does not verify mixed-provider routing. Legacy CG requires explicit migration (see `.claude/rules/moai/core/glm-web-tooling.md` § CG Retirement and Migration).
 
 ## Frontmatter Format Rules
 
@@ -214,10 +218,10 @@ Agent bodies are system prompts. Author them per Anthropic's prompting best prac
 - Be clear and direct; state scope explicitly. Opus 4.8 follows instructions literally and does not silently generalize one instruction to other items ("apply to every section, not just the first").
 - Do NOT add Opus 4.6-era defensive scaffolding ("double-check N times", "verify before returning", "explicitly confirm before proceeding") — counterproductive given literal instruction following.
 - Use normal tool-trigger phrasing ("Use this tool when…"), not "CRITICAL: you MUST" — aggressive language overtriggers tools/skills on the latest models.
-- Control reasoning depth with `effort` (xhigh for coding/agentic, minimum high for intelligence-sensitive); never `budget_tokens` (rejected on Opus 4.7+).
+- Control reasoning depth with the session's `effort` (xhigh for coding/agentic, minimum high for intelligence-sensitive) — MoAI agent definitions omit `effort` and inherit it; never `budget_tokens` (rejected on Opus 4.7+).
 - Steer subagent fan-out explicitly: Opus 4.8 spawns fewer subagents by default — say when fan-out across items/files is desirable, and when to work directly instead.
 
-See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding principles) and `.claude/rules/moai/core/moai-constitution.md` § Opus 5 / 4.8 Prompt Philosophy.
+See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding principles) and `.claude/rules/moai/core/moai-constitution.md` § Opus 5.5 Prompt Philosophy.
 
 ## Tool Permissions
 
@@ -232,7 +236,7 @@ Builder agents: Read, Write, Edit, Grep, Glob
 Dynamic teammates (general-purpose): Inherit all tools from parent session. The spawn-time `mode` parameter is deprecated and ignored since Claude Code v2.1.213 (changelog-sourced); teammates inherit the parent session's permission mode.
 
 Notes:
-- Read-only enforcement for dynamic teammates rests on tool restriction (`Explore`, or a `tools:` list omitting Write/Edit) — the deprecated spawn-time `mode` parameter is ignored (v2.1.213+), and a parent in `bypassPermissions`/`acceptEdits` takes precedence over any child permission setting
+- Read-only enforcement for dynamic teammates rests on tool restriction, and the criterion is that **no tool in the list can write** — omitting `Write`/`Edit` is necessary but NOT sufficient. Three other channels reach the working tree on their own: `Bash` (a shell redirect writes any path), a write-capable MCP tool (`mcp__moai__codex_task` declares `WithReadOnlyHintAnnotation(false)` and modifies the working tree under the `workflow.codex.task.allow_write` project opt-in), and `Agent` (spawns a write-capable subagent). The built-in `Explore` omits `Write`/`Edit` yet carries `Bash`, so a list is not read-only merely because `Write`/`Edit` are absent from it. The deprecated spawn-time `mode` parameter is ignored (v2.1.213+), so tool restriction remains the only channel that carries the guarantee — which is why the list is audited against all three write paths, not one. A parent in `bypassPermissions`/`acceptEdits` takes precedence over any child permission setting
 - Project-specific context is included in the spawn prompt, not preloaded skills
 - Teammates can self-load skills via Skill() tool when deeper documentation is needed
 
@@ -325,54 +329,6 @@ Choosing an extension mechanism is a context-cost decision. Prefer the cheapest 
 
 ### Parallel cost axes
 
-This mechanism→context-cost ladder is a *cross-mechanism* cost axis. It runs parallel to two other cost axes already documented in the rule tree, and the three together form a coherent cost-model layer for harness authoring:
+This mechanism→context-cost ladder is a *cross-mechanism* cost axis. It runs parallel to the **within-skill** cost axis already documented in the rule tree, and the two together form the cost-model layer for harness authoring:
 
-- the **within-skill** cost axis — `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure (the 3-level metadata / body / bundled taxonomy that sets a Skill's "low" position on the ladder above);
-- the **per-spawn** cost axis — `.claude/rules/moai/workflow/dynamic-workflows.md` § Purpose-driven model+effort selection (the purpose→effort taxonomy, read-only-extract→low … implement→xhigh, governing the token cost of each agent spawn).
-
-
-## Effort-Level Calibration Matrix
-
-Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` frontmatter field overrides the session effort level and is scoped to a single agent run; `xhigh` and `max` require Opus 4.7 or later. For the substrate-level effort policy (defaults, when to raise/lower), see `.claude/rules/moai/core/moai-constitution.md` § Opus 5 / 4.8 Prompt Philosophy.
-
-### Retained Agents (10 — active, spawnable)
-
-The values below are the **medium (default) profile column** of the `llm.profiles` matrix, which the shipped frontmatter mirrors. Because the `Agent` tool has no `effort` parameter, this frontmatter value is the effective effort on the standard sub-agent path — it is load-bearing, not documentation.
-
-| Agent | Default effort (medium column) | Rationale |
-|-------|-------------------------------|-----------|
-| `manager-spec` | high | plan-phase GEARS/EARS authoring; the `high` profile holds it at Opus `high` |
-| `manager-develop` | medium | run-phase implementation; **this cell is the matrix anchor** — the `high` profile raises it to `max` |
-| `manager-design` | medium | design pipeline; the `high` profile raises this to Opus `high` |
-| `manager-docs` | low | sync-phase documentation + frontmatter transitions (mechanical doc sync) |
-| `manager-git` | low | git operations, PR creation, Tier-L routing (fast bash execution) |
-| `plan-auditor` | high | adversarial plan audit, bias prevention; the `high` profile holds it at Opus `high` |
-| `sync-auditor` | medium | skeptical 4-dimension quality scoring; `high` profile raises to Opus `high` |
-| `super-advisor` | high | on-demand high-reasoning consultation; rare invocation justifies the depth, and the `high` profile raises it to Opus `max` |
-| `builder-harness` | medium | artifact scaffolding (agents/skills/plugins/hooks) |
-| `Explore` (Anthropic built-in) | low (call-time) | read-only codebase exploration. Explore has NO agent file, so neither the frontmatter channel nor an `effort` parameter can carry this value — it is stated at call time in the spawn prompt alongside the search-breadth qualifier. Raise to `medium` when asking for a `very thorough` sweep. |
-
-The per-profile model+effort variation is the `llm.profiles` matrix (11 agents × {high, medium, low} = 33 cells; Go SSOT `template.DefaultProfileMatrix`) — see `.claude/rules/moai/development/model-policy.md` § Per-Agent Profile Resolver. The former "(FIXED) across all tiers" markers on `manager-design` and `super-advisor` are retired: every agent now varies with the profile, and both agents' rows remain monotone (`high >= medium >= low`). Deployments that want maximum reasoning depth set `llm.profile: high`, which raises the reasoning rows to Opus `high` and the two rarest-invocation rows (`manager-develop`, `super-advisor`) to Opus `max`. No column uses `xhigh`: on Opus it scores the same as `high` at materially higher cost.
-
-Generated harness specialists are NOT in this table: they are model-uniform (`opus`) with effort drawn from `llm.harness_agents` — see `.claude/rules/moai/development/model-policy.md` § Harness-Agent Model Policy.
-
-### Archived Agents (legacy reference — MUST NOT be spawned)
-
-The following agents were retired during the catalog consolidation (10 retained + 12 archived — see `archived-agent-rejection.md` §C for the canonical 12-row migration table) and are listed here for historical traceability only. They MUST NOT be spawned; route their former work per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table.
-
-| Archived agent | Former role | Successor routing |
-|----------------|-------------|-------------------|
-| `manager-strategy` | planning | `manager-spec` (absorbed) |
-| `manager-brain` | reasoning / orchestration | sequential chain `Explore` → `manager-spec` |
-| `manager-quality` | quality gates | global Stop hook `sync-phase-quality-gate.sh` + `sync-auditor` |
-| `manager-project` | project docs | `manager-docs` (absorbed) |
-| `expert-backend` | backend domain | `Agent(general-purpose)` + backend scope |
-| `expert-frontend` | frontend domain | `Agent(general-purpose)` + frontend scope |
-| `expert-security` | security domain | `Agent(general-purpose)` + security scope |
-| `expert-devops` | devops domain | `Agent(general-purpose)` + infra scope |
-| `expert-performance` | performance domain | `Agent(general-purpose)` + perf scope |
-| `expert-refactoring` | refactoring | `manager-develop` (cycle_type=ddd) |
-| `claude-code-guide` | Claude Code Q&A | `Explore` |
-| `researcher` | research | `Explore` / WebSearch |
-
-Effort values: `low` / `medium` / `high` / `xhigh` / `max`. Opus 5 defaults to `effort: high` on the Claude API and Claude Code; raise to `xhigh` for coding/agentic work. On Opus 5, `low` and `medium` are stronger than on earlier Opus models, so they are the primary token-cost lever rather than a last resort.
+- the **within-skill** cost axis — `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure (the 3-level metadata / body / bundled taxonomy that sets a Skill's "low" position on the ladder above).

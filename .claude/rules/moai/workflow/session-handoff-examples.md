@@ -7,6 +7,13 @@ paths: "**/session-handoff.md"
 
 > Path-scoped reference file for `session-handoff.md`: illustrative examples, the full 4-locale Localization Table, and the per-block/anti-pattern detail relocated from the always-loaded doctrine file to reduce context weight. The core doctrine (6-block skeleton, cut-line markers, binding per-block summary, Pre-emit self-check, Auto-Memory Integration, Diet Constraints) remains in `session-handoff.md`.
 
+## Drift-mitigation self-check sentinel (SSOT → render surface)
+
+Relocated from the stub's § Cross-references by an always-loaded surface diet. The firing path is exact rather than argued: the sentinel fires **before committing an edit to `session-handoff.md`**, and this companion is `paths:`-scoped to `**/session-handoff.md` — the trigger condition and the load condition are the same event, so an editor who must obey the sentinel has it loaded by construction.
+
+<!-- self-check sentinel — references the render surface's structural invariant by content, not line number, so it survives line drift. This is mitigation + visibility (it surfaces drift to a reading editor), NOT mechanical prevention. A future editor who changes one surface without reading the other surface's sentinel produces silent drift; the only mechanical catch is a deferred lint rule. -->
+`session-handoff.md` is the SSOT; `.claude/output-styles/moai/moai.md §8` is the render surface. Before committing any edit to the Localization Table, the 6-block skeleton, the cut-line marker spec, the Pre-emit self-check labels, § Emission-Time Save Obligation, or § Auto-Injected Resume Flow in the stub, verify the parity check against the render surface: the moai.md §8 Localization Contract carries the full 4-locale table (en / ko / ja / zh); the stub carries the en / ko subset inline with the ja / zh columns relocated here, the moai.md §8 Pre-emit self-check labels must use the same concern-name qualifiers (`paste-ready budget` / `localization render` / `session-handoff template completeness`) as the stub, and the moai.md §8 emission clause (the `moai handoff save` save duty + auto-flow pointer) must remain a compact pointer consistent with § Emission-Time Save Obligation and § Auto-Injected Resume Flow there (pointer, NOT full duplication). If the two surfaces have diverged, `session-handoff.md` is the canonical surface — update the render surface to match.
+
 ## Localization Table (Full 4-Locale)
 
 The cut-line marker text AND the 6-block skeleton verbs/headers translate per `conversation_language`. This table is the SSOT for the locale renderings (the canonical skeleton uses the `<entering verb>` / `<header>` placeholders; concrete locale renderings live here). Cross-verified for consistency with `.claude/output-styles/moai/moai.md §8` (the canonical render surface).
@@ -24,72 +31,11 @@ The cut-line marker text AND the 6-block skeleton verbs/headers translate per `c
 
 Read `conversation_language` at render time; substitute the localized text between the `✂────` decorators (`✂` / `─` verbatim) and the locale rendering for each Block 1/3/5/6 placeholder.
 
-**Fallback rule for locales not in the table** (binding text in `session-handoff.md` § Localization Table): en / ko / ja / zh are listed above; any other ISO-639 code falls back to the English structural skeleton with the label text rendered in the configured language (naturalization, never literal transliteration) — English-skeleton fallback, not English-output.
-
-## Example (Illustrative; substitute project-specific values when adapting)
-
-```
-✂──── 여기부터 복사 ────✂
-
-ultrathink. SPEC-MYPROJ-001 implementation 진입.
-applied lessons: <lesson-id-1>, <lesson-id-2>.
-source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>
-
-전제 검증:
-1) git log --oneline -1 → <commit-sha> 확인
-2) ls .moai/specs/SPEC-MYPROJ-001/ → N files
-
-실행: /moai run SPEC-MYPROJ-001
-
-머지 후: SPEC-MYPROJ-002 → SPEC-MYPROJ-003
-
-✂──── 여기까지 복사 ────✂
-```
-
-> Block 5 carries the work-starting action. Where the next SPEC declares a machine-verifiable end-state, the orchestrator arms `/moai goal "<condition>"` alongside it after Implementation Kickoff Approval — arm-only, so it never replaces the `실행:` action (§ Canonical Format, Field-by-Field Block 5).
-
-## Example with Block 0 (Illustrative)
-
-```
-✂──── 여기부터 복사 ────✂
-
-[New Terminal — START IN WORKTREE]
-$ moai cc -w ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
-   # (launcher -w accepts L2 absolute paths; or moai glm -w ... | moai cg -w ...)
-
-ultrathink. SPEC-MYPROJ-001 Epic N 진입.
-applied lessons: <lesson-id-1>, <lesson-id-2>.
-
-전제 검증:
-0) git rev-parse --show-toplevel → ~/.moai/worktrees/<project>/SPEC-MYPROJ-001 (★ critical)
-1) gh pr view <PR-number> → MERGED
-
-실행: /moai run SPEC-MYPROJ-001 --team
-
-후속: Milestone M<N+1> (single-SPEC next step) 또는 Epic N+1 (multi-SPEC next grouping)
-
-✂──── 여기까지 복사 ────✂
-```
-
----
+**Fallback rule for locales not in the table** (binding text: `session-handoff-format.md` § Localization Table): en/ko/ja/zh are listed above; any other ISO-639 code falls back to the English structural skeleton with the label text rendered in the configured language (naturalization, never literal transliteration) — English-skeleton fallback, not English-output.
 
 # Moved Sections (extracted from session-handoff.md for context diet)
 
-## Goal-first bootstrap variant (documented alternative — NOT the default)
-
-[ZONE:Evolvable] An explicit alternative single-paste form exists: the **goal-first bootstrap** — a one-line `/moai goal` message whose condition text carries both a resume pointer and the compact completion condition. Illustrative:
-
-```text
-/moai goal "resume SPEC-X run: read <handoff-file> from memory and progress.md, then continue. Completion: <machine-verifiable end-state>, or stop after N turns."
-```
-
-(The condition text follows the user's `conversation_language`; shown above in English-canonical form. The `/moai goal` token itself is locale-verbatim.)
-
-Normative content:
-
-- **(a) Selection criterion**: choose goal-first bootstrap when the user wants one-paste + autonomous continuation; the standard 6-block paste (§ Canonical Format) remains the DEFAULT.
-- **(b) Caveats**: effort keywords (`ultrathink` / `ultracode`) placed inside a command argument are NOT documented to fire — the session may run at default effort; and precondition verification shifts from paste-time structure (the Block 4 verifiable commands) to **model discretion** via the directive text.
-- **(c) Invariants preserved**: the condition must stay compact (one measurable end state); the Implementation Kickoff Approval gate is unaffected — arming never authorizes autonomous run-phase entry; the `/moai goal` token stays locale-verbatim (never translated).
+> § Example (Illustrative), § Example with Block 0, and the goal-first bootstrap variant moved to `.moai/docs/session-handoff-appendix.md` (outside the loaded-instruction budget); the pointers below resolve to it.
 
 ## Paste-Time Activation Matrix
 
@@ -166,17 +112,17 @@ Block 0 is **prepended** before Block 1. Two forms exist; pick by **where the wo
 
 ```
 [New Terminal — START IN WORKTREE]
-$ moai cc -w <worktree-name>     # or: moai glm -w <name> | moai cg -w <name>
+$ moai cc -w <worktree-name>     # or: moai glm -w <name>
    └─ Claude Code session starts here (cwd = .claude/worktrees/<name>/)
 ```
 
-`-w <name>` takes the **worktree name**, not a branch name and not a SPEC ID; it resolves to `.claude/worktrees/<name>/`. An existing worktree of that name is **reused, not recreated**, which is what makes this a valid re-entry path. Naming the worktree after the SPEC ID at creation time (`git worktree add -b feat/SPEC-X-001 .claude/worktrees/SPEC-X-001 origin/main`) lets the resume line read `moai cc -w SPEC-X-001`.
+`-w <name>` takes the **worktree name**, not a branch name and not a SPEC ID; it resolves to `.claude/worktrees/<name>/`. An existing worktree of that name is **reused, not recreated**, which is what makes this a valid re-entry path. Naming the worktree after the SPEC ID at creation time (`moai worktree new SPEC-X-001` — the sanctioned L1 creation verb; it creates the tree and returns its absolute path without entering it) lets the resume line read `moai cc -w SPEC-X-001`.
 
 **Form B — L2 worktree at `~/.moai/worktrees/<project>/<spec>/` (cross-session launch via extended `-w`):**
 
 ```
 [New Terminal — START IN WORKTREE]
-$ moai cc -w <worktree-absolute-path>     # or: moai glm -w <abs-path> | moai cg -w <abs-path>
+$ moai cc -w <worktree-absolute-path>     # or: moai glm -w <abs-path>
    └─ Claude Code session starts here (cwd = the L2 worktree at the given absolute path)
 ```
 
@@ -204,7 +150,7 @@ The new-terminal Block 0 above is a cold-start path. Claude Code 2.1.169+ ships 
 
 Advanced launchers (use only when user explicitly requests, NOT auto-surfaced in Block 0):
 - `moai cc --bypass` — sandboxed-only execution (testing scenarios)
-- `moai cg` — Claude leader + GLM teammates parallel mode (requires `tmux new-session -s <name>` first; pair with `--team`)
+- Legacy CG configuration — stop and preview with `moai migrate cg`; do not substitute a launcher or assume mixed-role teammate support.
 
 ### Updated Block 4 (Preconditions)
 
@@ -222,7 +168,7 @@ Block 0 is REQUIRED only for worktree work. For `--branch` (or no flag — the d
 
 [ZONE:Evolvable] [HARD] If a worktree was used and the user is NOT comfortable with a multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` in the main checkout for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See the single-session vs multi-session decision rationale below.
 
-> **Example with Block 0**: see § Example with Block 0 (Illustrative) in this file.
+> **Example with Block 0**: see § Example with Block 0 (Illustrative) in `.moai/docs/session-handoff-appendix.md`.
 
 ## V0 Abort Gate Doctrine
 
@@ -309,7 +255,7 @@ Retained in lesson memory, not in this rule body — per AP-D-002, history belon
     - **Single-SPEC close** (no further SPEC/phase queued): omit Block 6 entirely
   - **Single action principle**: `<next-action-or-spec>` MUST be one concrete SPEC ID, one command, or one phase transition — avoid vague "cycle-repeat" / "iteration loop" phrasing that reads as infinite recursion.
 
-> **Example**: see § Example (Illustrative; substitute project-specific values when adapting) in this file.
+> **Example**: see § Example (Illustrative; substitute project-specific values when adapting) in `.moai/docs/session-handoff-appendix.md`.
 
 ---
 

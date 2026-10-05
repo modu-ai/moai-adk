@@ -31,6 +31,21 @@ tags: "tag1, tag2, tag3"
 ---
 ```
 
+### Artifact Statelessness
+
+The canonical 12-field obligation above binds `spec.md` only.
+Every other artifact in a SPEC directory is governed by this sub-section instead.
+
+The four sibling artifacts — `plan.md`, `acceptance.md`, `design.md`, and `research.md` — are **stateless on the status axis**: they MUST NOT carry a `status:` field in their YAML frontmatter. A SPEC's lifecycle state lives in exactly one place, `spec.md`, which is the file every lint, audit, and close path reads it from.
+
+Frontmatter itself is permitted in those four artifacts.
+Statelessness is confined to the status axis: fields such as `id`, `title`, `version`, and `created` are outside the scope of this rule, and an artifact may carry a frontmatter block or omit one entirely, as its author prefers. Reading statelessness as a blanket ban on frontmatter is a misreading of the axis this rule governs.
+
+This declaration is Tier-independent.
+It holds for every SPEC directory whatever the `tier:` value says, so a SPEC that carries `design.md` or `research.md` while declaring a Tier other than L falls under exactly the same rule as one that declares `tier: L`.
+
+Two files sit outside this sub-section: `spec.md`, which carries the canonical `status:` field per the schema above, and `progress.md`, which records phase progress in body sections rather than in frontmatter.
+
 ## Field Reference
 
 | Field | Type | Constraints | Notes |
@@ -72,7 +87,7 @@ Valid values: `draft`, `planned`, `in-progress`, `implemented`, `completed`, `su
 
 > **`planned` is legacy-optional — NOT part of the active V3R6 flow.** The modern flow transitions `draft → in-progress` directly (manager-develop, on the first run-phase commit). `planned` is retained in the enum for backward compatibility with pre-V3R6 SPECs that recorded it, but it has **no active-flow owner** — no agent authors a `draft → planned` transition in the current lifecycle, and the Status Transition Ownership Matrix below deliberately omits a `draft → planned` row. Do NOT invent a new owner for it, and do NOT remove it from the enum (removal would break parsing of grandfathered SPECs that carry `status: planned`).
 
-> **`completed → in-progress (amendment)` transition** — a SPEC with `status: completed` MAY transition back to `status: in-progress` for an in-place amendment. This reuses the existing `in-progress` status (NO new `amended` enum value is added). The amendment is declared via the `amendment_of:` optional frontmatter field (self-referential for in-place, or parent SPEC ID for successor) plus a HISTORY `## Amendments` sub-section recording the prior completed version, prior_completed_sha, rationale, and scope. See the `completed → in-progress (amendment)` row in the matrix below. During amendment, the `internal/spec/audit.go` completed-no-drift predicate does NOT fire (frontmatter is `in-progress`, not `completed`), so normal drift detection resumes — no Go change required.
+> **`completed → in-progress (amendment)` transition** — a SPEC with `status: completed` MAY transition back to `status: in-progress` for an in-place amendment. This reuses the existing `in-progress` status (NO new `amended` enum value is added). The amendment is declared via the `amendment_of:` optional frontmatter field (self-referential for in-place, or parent SPEC ID for successor) plus a HISTORY `## Amendments` sub-section recording the prior completed version, prior_completed_sha, rationale, and scope. See the `completed → in-progress (amendment)` row in the matrix below. During amendment, progress.md still carries the prior close's §E.2 + §E.4 + `sync_commit_sha`, so the `SyncStatusDrift` check of `moai spec audit` would report the SPEC as drift. It exempts an in-place amendment only when ALL hold: `status: in-progress`, `amendment_of:` is set, the body has an `## Amendments` (or `### Amendments`) section, and that section cites the prior close's `sync_commit_sha` as `prior_completed_sha`. Authors MUST therefore record `prior_completed_sha` equal to the prior close's `sync_commit_sha`; otherwise the audit reports drift.
 
 ## Status Transition Ownership Matrix
 
@@ -178,14 +193,21 @@ See `internal/spec/lint.go` `FrontmatterSchemaRule.Check()` for the authoritativ
 
 ## OwnershipTransitionRule Cross-Reference
 
-The Status Transition Ownership Matrix above is enforced at lint-time by the `OwnershipTransitionRule` in `internal/spec/lint_ownership.go` (registered in `defaultRules()` of `internal/spec/lint.go`). The rule emits two finding codes:
+The Status Transition Ownership Matrix above is enforced at lint-time by the `OwnershipTransitionRule` in `internal/spec/lint_ownership.go` (registered in `defaultRules()` of `internal/spec/lint.go`). The rule reads the SPEC's git-log history for the most recent `status:` transition within the lookback window and compares the transition actor against the matrix. The WHO signal is the `Authored-By-Agent:` commit-body trailer — the single mechanical source of truth for who performed a transition. The commit subject is never consulted as the WHO signal (subject-prefix classification survives in the source only to pin the subject→owner mapping regression tests).
 
-- **`OwnershipTransitionInvalid`** (Warning severity): Emitted when a SPEC's git-log history shows a status transition performed by an agent whose commit subject prefix does NOT match the canonical owner for that transition. Example: `manager-docs` performing `draft → in-progress` (which the matrix above assigns to `manager-develop`) triggers a finding.
+The rule emits three finding codes:
+
+- **`OwnershipTransitionInvalid`** (Warning severity): Emitted when the transition commit carries an `Authored-By-Agent:` trailer whose actor does NOT match the canonical owner for that transition. Example: a trailer reading `manager-docs` on a `draft → in-progress` transition (which the matrix above assigns to `manager-develop`) triggers a finding.
 - **`OwnershipTransitionUnreachable`** (Info severity): Emitted when the rule cannot read git history for the SPEC file (non-git environment, fresh clone without history, or `git log --follow` error). Graceful observation — no panic, no error escalation.
+- **`OwnershipTransitionUnmeasured`** (Info severity): Emitted when a transition was found but its commit carries no `Authored-By-Agent:` trailer. A statement about measurement state, not a violation — the transition cannot be attributed, so it is reported instead of passing silently.
 
-Default subset (per the ownership-transition lint policy): the rule evaluates the two most common transitions by default (`draft → in-progress` and `in-progress → implemented`). Terminal states (`superseded`, `archived`, `rejected`) are exempted via the `terminalStatusEnum` shared with `StatusGitConsistencyRule`.
+Three transitions are silent by design (not gaps):
 
-Configuration: severity can be promoted to Error under `--strict` mode (same as `StatusGitConsistencyRule`). Per-SPEC opt-out via `lint.skip: [OwnershipTransitionInvalid]` in optional frontmatter (see Optional Fields above).
+- No `status:` transition within the lookback window — nothing to judge.
+- A transition the matrix does not map (for example a backwards status move) — no violation is defined for it; status-value validity is other rules' responsibility.
+- A trailer naming an actor outside the transition matrix (for example `manager-git`) — that actor cannot own any transition.
+
+`--strict` mode escalates only non-Advisory **Warning** findings to errors, so the Info findings above (`OwnershipTransitionUnreachable`, `OwnershipTransitionUnmeasured`) never change the lint exit status. Per-SPEC opt-out for the Invalid warning is available via `lint.skip: [OwnershipTransitionInvalid]` in optional frontmatter (see Optional Fields above).
 
 Implementation files: `internal/spec/lint_ownership.go` (rule body) + `internal/spec/lint_ownership_test.go` (TDD coverage).
 
