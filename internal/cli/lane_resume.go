@@ -204,10 +204,11 @@ func scanResumeArgs(args []string, guard bool) (carrier, valuelessResume bool) {
 				i++ // the validator consumes silently — ambiguity never refuses
 			}
 			// The guard judges the token after it: fail-closed.
+		case claudeOptionBoolean, claudeOptionUnknown:
+			// Nothing is consumed — both modes judge the next token (the
+			// guard fires on an unprovable carrier; the validator refuses
+			// a bare resume).
 		}
-		// Boolean or unknown: nothing is consumed — both modes judge the
-		// next token (the guard fires on an unprovable carrier; the
-		// validator refuses a bare resume).
 	}
 	return seen, valueless
 }
