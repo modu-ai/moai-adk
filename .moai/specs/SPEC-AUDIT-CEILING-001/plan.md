@@ -1,10 +1,14 @@
 # plan.md — SPEC-AUDIT-CEILING-001
 
-Tier L implementation plan. Milestones are ordered by decision-reversibility:
-the data-model decisions (verdict receipt schema, admission predicate
-signature, config reader) come first because they are the least reversible and
-the most likely to change under review; mechanical mirror-sync and regression
-guarding come last. No wall-clock estimates — priority labels only.
+Tier L implementation plan (v0.4.0, narrowed scope per operator decision D9).
+Milestones are ordered by decision-reversibility: the data-model decisions
+(verdict receipt schema, admission predicate signature, config reader) come
+first because they are the least reversible and the most likely to change
+under review; mechanical mirror-sync and regression guarding come last. No
+wall-clock estimates — priority labels only.
+
+The D9 scope cut removed the former M4 (phase-execution.md /
+auto-semantics.md doc reconciliation); the current M4 is the former M5.
 
 ## §A Context
 
@@ -14,9 +18,13 @@ guarding come last. No wall-clock estimates — priority labels only.
   plan.md, acceptance.md, design.md, research.md).
 - The measured defect chain: prose-only ceiling (405 audits / 160 SPECs, max
   11 vs configured 1/2/3) + a required-backend convergence `fail` that cannot
-  influence admission (no receipt fields anywhere) + two governing texts that
-  disagree on the negative-verdict path. Full evidence:
+  influence admission (no receipt fields anywhere). Full evidence:
   `research.md` §1-§2.
+- Operator decision D9 (card t1500, 2026-10-06): resume with narrowed scope —
+  the counter, the single no-question policy-outcome path, and required-backend
+  fail blocking run entry. The run-gate doc reconciliation (former work item
+  3) and the cross-card re-audit counting refinement are follow-up card
+  material.
 - Infrastructure: `internal/runtime/audit_gate.go` (GateConfig.Invoke),
   `internal/runtime/audit_review.go` (iteration-stream reader),
   `internal/auditverdict/verdict.go` (the one admission predicate),
@@ -26,55 +34,55 @@ guarding come last. No wall-clock estimates — priority labels only.
 
 ## §B Known Issues (auto-injection, relevant subset)
 
-- **B2 cross-SPEC policy conflict**: `phase-execution.md` Step 4c/4d vs
-  `auto-semantics.md` §7/§9 — the conflict this SPEC resolves (REQ-ACE-013);
-  do not "fix" one side without the other.
 - **B3/C-HRA-008 subagent boundary**: the CLI path gains no interactive
   prompt; static guard test required (AC-ACE-016).
 - **B5 CI 3-tier**: spec-lint, golangci-lint, go test fail separately;
   baselines measured in §C to separate NEW defects from pre-existing.
 - **B8 working-tree hygiene**: stage by explicit pathspec; no `.moai/state/`
   or `.moai/harness/` writes.
-- **Pre-existing mirror drift**: `harness.yaml`, `phase-execution.md`, and
-  `plan-auditor.md` mirrors already differ from deployed copies (research.md
-  §3). Do not encode the drift as expected state; do not repair unrelated
-  drift.
+- **Pre-existing mirror drift**: `plan-auditor.md` mirrors already differ
+  from its deployed copy (research.md §3; re-measured DIFF at 69a085b2d).
+  Do not encode the drift as expected state; do not repair unrelated drift.
+  (The D9 scope cut removed phase-execution.md from this SPEC's edit targets;
+  its drift is the follow-up card's material.)
 
-## §C Pre-flight (all measured on `2f492df19`, 2026-10-04)
+## §C Pre-flight (re-measured on `69a085b2d`, 2026-10-06 — the v0.4.0 re-plan HEAD; originally measured on `2f492df19`, 2026-10-04)
 
 ```bash
-git rev-parse --short HEAD          # 2f492df19
+git rev-parse --short HEAD          # 69a085b2d (v0.4.0 work start)
 git branch --show-current           # WT-audit-ceiling-counter
 go build ./...                      # green baseline
 go test ./internal/runtime/... ./internal/auditverdict/... ./internal/config/...   # green baseline
 go run ./cmd/moai spec lint SPEC-AUDIT-CEILING-001 --strict   # must be 0/0 before any commit
 ```
 
-RED-now baselines (verbatim commands, this run, this tree, exit codes recorded):
+RED-now baselines (verbatim commands, this run, this tree, exit codes recorded; every value re-executed at 69a085b2d and matching the pre-implementation measurement at 2f492df19):
 
-| Baseline | Command | Observed |
+| Baseline | Command | Observed @69a085b2d |
 |---|---|---|
-| conflict text present | `grep -c "Override and proceed" .claude/skills/moai/workflows/run/phase-execution.md` | 1 (exit 0) |
-| acknowledgement option present | `grep -c "Proceed with acknowledgement" .claude/skills/moai/workflows/run/phase-execution.md` | 1 (exit 0) |
-| no counter | `grep -rn "audit.round\|AuditRound\|iteration.count" internal/runtime/*.go` | 0 hits (exit 1) |
+| no counter | `grep -rn "audit.round\|AuditRound\|iteration.count" internal/runtime/*.go` (non-test) | 0 hits (exit 1) |
 | no receipt parsing | `grep -c "convergence\|receipt" internal/auditverdict/verdict.go` | 0 (exit 1) |
-| §9 rows | sed -n '190,201p' auto-semantics.md, count `\|^| ` lines | 11 `\|^| ` lines = header + 10 disposition rows (the separator row does not match the pattern) |
-| §9 named rows absent | the 11-row named grep of acceptance.md AC-ACE-014 | 0 (exit 1) |
-| retired row present | `grep -c "plan-audit bypass flags" .claude/rules/moai/workflow/auto-semantics.md` | 1 (exit 0) |
 | config orphan note | `grep -c "no Go reader" internal/config/loader.go` | 2 (exit 0) |
 | bare symmetry selector absent | `grep -cE "func TestStructYAMLSymmetry\(" internal/config/audit_struct_yaml_symmetry_test.go` | 0 (exit 1; only `_`-suffixed variants exist) |
-| GateConfig production-dead | `grep -rn "runtime\.GateConfig" internal/ cmd/ --include="*.go" \| grep -v _test` | 0 non-test matches; 17 test-only |
-| mirror drift | `diff -q` deployed vs template | plan-auditor.md DIFF, phase-execution.md DIFF, harness.yaml DIFF; auto-semantics.md SAME, convention doc SAME |
+| package-wide selector listing | `go test -list '^TestStructYAMLSymmetry$' ./internal/config` | `ok github.com/modu-ai/moai-adk/internal/config 0.352s`, exit 0, no test listed |
+| GateConfig production-dead | `grep -rn "runtime\.GateConfig" internal/ cmd/ --include="*.go" \| grep -v _test` | 0 non-test matches |
+| receipt export instruction absent | `grep -c "convergence_overall" .claude/agents/moai/plan-auditor.md` | 0 (exit 1) |
+| mirror drift | `diff -q` deployed vs template | plan-auditor.md DIFF; audit-artifact-convention.md SAME (phase-execution.md DIFF measured but no longer an edit target — Out of Scope) |
+| Tier ceilings verified | `sed -n '75,84p' .moai/config/sections/harness.yaml` | S:1 M:2 L:3; policy auto_delta_rounds=1, on_final_hit=hold-and-split |
+| resolver fail-open confirmed | `sed -n '123,131p' internal/cli/mcp_worktree_root.go` | `if err != nil { return config.AuditGates{}, "" }` — the fail-open path REQ-ACE-010 corrects |
 
 ## §D Constraints
 
 - Template-First: every deployed edit lands with its
-  `internal/template/templates/` mirror in the same commit (REQ-ACE-015).
+  `internal/template/templates/` mirror in the same commit (REQ-ACE-014).
 - No interactive prompt anywhere in the CLI path (C3; guard test).
 - Admission thresholds and auditor behavior untouched (§C5, Out of Scope).
-- No new config keys (research.md §4): the three-outcome ladder is
-  REQ-encoded behavior; config keeps `auto_delta_rounds` +
-  `on_final_hit` and gains only a Go reader.
+- No new config keys (research.md §4): the outcome ladder is REQ-encoded
+  behavior; config keeps `auto_delta_rounds` + `on_final_hit` and gains only
+  a Go reader.
+- D9 scope cut: no edit to `.claude/skills/moai/workflows/run/phase-execution.md`,
+  `.claude/rules/moai/workflow/auto-semantics.md`, or their mirrors; the
+  run-gate doc reconciliation is follow-up card material (spec.md §E).
 - `phase:`/`status:` frontmatter discipline per the schema SSOT; artifacts
   other than spec.md carry no `status:` field.
 - progress.md §E.2/§E.3 belong to manager-develop and §E.4 to manager-docs —
@@ -94,8 +102,8 @@ Per-milestone, reported in the 5-section evidence-bearing format:
   measured baseline.
 - E6 RED evidence per TDD AC (verbatim pre-GREEN failure output) — required
   for every RB criterion whose RED is a new test (AC-ACE-001/003/004/006/
-  007/008/009/010/011/015/017/018/019/020/021/022), and grep-class RED cells
-  with recorded exit codes for AC-ACE-002/013/014 plus AC-ACE-008's
+  007/008/009/010/011/013/014/015/017/018/019/020/021), and grep-class RED
+  cells with recorded exit codes for AC-ACE-002 plus AC-ACE-008's
   export-path grep (baselines in §C).
 
 ## §F Milestones
@@ -108,14 +116,22 @@ Data-model first: the receipt schema is the least reversible decision.
   line format (design.md §3): `convergence_overall: <pass|fail>` and a
   repeatable `required_backend: <backend> <pass|fail|inconclusive>` line,
   one per required backend.
-- Receipt producer (D19): the plan-auditor agent body is the writer — its
-  export step (`.claude/agents/moai/plan-auditor.md` § Output Format)
-  appends the receipt lines from the `audit_multi` convergence result it
-  already receives (`ConvergenceResult.OverallVerdict` + `PerBackendVerdicts`,
-  design.md §3) to the exported verdict file per the convention § What; the
-  step lands in the deployed agent body AND its template mirror in the same
-  change (research.md §3 edit target; the pre-existing whole-file drift keeps
-  it on AC-ACE-015's known-FAIL carve-out list for the untouched regions).
+- Receipt producer (D19 + D32): the plan-auditor agent body is the writer —
+  its export step (`.claude/agents/moai/plan-auditor.md` § Output Format)
+  appends the receipt lines to the exported verdict file per the convention
+  § What, covering BOTH audit shapes REQ-ACE-008's trigger names:
+  - multi-model audit: project the `audit_multi` convergence result it
+    already receives (`ConvergenceResult.OverallVerdict` +
+    `PerBackendVerdicts`, design.md §3);
+  - single-model audit: write `convergence_overall` from its own verdict and
+    one `required_backend:` line for the backend it actually ran, sourced
+    from the named field of its own review output; a required backend the
+    audit did not cover stays absent from the receipt and refuses under
+    REQ-ACE-010 (correct fail-closed).
+  The step lands in the deployed agent body AND its template mirror in the
+  same change (research.md §3 edit target; the pre-existing whole-file drift
+  keeps it on AC-ACE-014's known-FAIL carve-out list for the untouched
+  regions).
 - Config-error disposition (D21): the M1 call sites resolve the gate set
   with the opposite of today's `resolveAuditGates` fail-open path — the
   resolution result distinguishes an error from a genuinely-empty
@@ -146,15 +162,18 @@ Data-model first: the receipt schema is the least reversible decision.
   the new structs.
 - No `harness.yaml` edit: the config content is unchanged (design.md §6), so
   no mirror sync belongs to this milestone; the measured pre-existing
-  `harness.yaml` mirror drift stays untouched (Out of Scope).
+  `plan-auditor.md` mirror drift stays untouched (Out of Scope).
 
 ### M3 (Priority High) — counter + ceiling-policy engine + enforcement
 
 - `internal/runtime`: round-count derivation from iteration evidence
-  (both families, one-iteration-once identity = SPEC id + iteration number;
-  REQ-ACE-001), the delta-eligibility check (fix_scope anchors + REQ/AC id
-  sets + STOP; REQ-ACE-003), and the policy outcome engine (debt-admit /
-  scope-split / hold-record; REQ-ACE-004..006).
+  (both families, one-iteration-once identity = the (SPEC id, iteration
+  number) pair, unconditional — the D9-narrowed identity of REQ-ACE-001),
+  the delta-eligibility check (fix_scope anchors + REQ/AC id sets + STOP;
+  REQ-ACE-003), and the policy outcome engine (pass-through for a
+  fully-admission-clean verdict at/over the ceiling (REQ-ACE-013, D31);
+  debt-admit / scope-split / hold-record for refused ones;
+  REQ-ACE-004..006).
 - Enforcement wiring at the LIVE admission seams (the iter1 D4 finding —
   `GateConfig.Invoke` has no production caller, measured 0 non-test
   references): the kickoff evaluator (`decide.go`) and the homestate card
@@ -162,13 +181,14 @@ Data-model first: the receipt schema is the least reversible decision.
   outcome (exit nonzero / refusal record); `GateConfig.Invoke` gains the same
   Step-0 call as the library-level consumer for when a caller exists. An
   integration test proves a ceiling-hit round refuses at a production entry
-  point at BOTH seams — AC-ACE-022 carries one arm per LIVE seam, the card
+  point at BOTH seams — AC-ACE-015 carries one arm per LIVE seam, the card
   transition and the kickoff evaluator (D23).
 - Refusal output: structured (JSON or parseable lines) carrying outcome,
   reasons, evidence paths; persist to `progress.md`; audit-trail log append
   (REQ-ACE-007, REQ-ACE-012). Design the AuditResult extension per
   design.md §7 (separate outcome field, not a new Verdict enum value that
-  the default branch would fold into INCONCLUSIVE).
+  the default branch would fold into INCONCLUSIVE); the outcome vocabulary
+  is `pass-through | debt-admit | split | hold` (design.md §2).
 - Override input for required-backend refusals (REQ-ACE-011) — explicit
   flag + note + logging only; the CLI writes the ack to `progress.md` §G
   Override and Refusal Record (outside the plan-artifact hash subject set)
@@ -177,46 +197,37 @@ Data-model first: the receipt schema is the least reversible decision.
   unresolved — the SPEC's embedded defaults stand while the questions stay
   open, each recorded kickoff-amendable).
 
-### M4 (Priority Medium) — doc reconciliation
-
-- `phase-execution.md` Step 4c/4d: rewrite to the fail-closed path — the
-  ceiling-policy outcome is the only non-block exit the question branches
-  offer; no AskUserQuestion branch, no override-and-proceed, no BYPASSED
-  recording (REQ-ACE-013).
-- `auto-semantics.md` §9: add the 11 rows of spec.md §D.2 with dispositions
-  from the existing vocabulary, each citing file + section (REQ-ACE-014).
-  Row 2 REPLACES the `plan-audit bypass flags` row: 10 existing rows − 1 + 11
-  = 20 disposition rows after M4.
-- Cross-check `run.md` § Run-phase Autonomy and the operator-form gate text
-  for residual references to the removed override branch.
-- Mirrors in the same change.
-
-### M5 (Priority Low) — regression guard + mirror verification
+### M4 (Priority Medium) — regression guard + mirror verification
 
 - Template audit tests extended: region-scoped deployed-vs-mirror equality
-  for every file this SPEC edits; the three files carrying pre-existing
-  whole-file drift (phase-execution.md, plan-auditor.md, harness.yaml —
-  each measured DIFF at f2f815008) are named known-FAIL until repaired,
-  never expected-pass (AC-ACE-015's carve-out list).
+  for every file this SPEC edits; the one file carrying pre-existing
+  whole-file drift among this SPEC's edit targets (plan-auditor.md —
+  measured DIFF at f2f815008 and re-measured DIFF at 69a085b2d) is named
+  known-FAIL until repaired, never expected-pass (AC-ACE-014's carve-out).
 - Static guard: no interactive prompt in the new CLI surface.
 - Full lint + spec lint --strict 0/0; §E self-verification report.
 
 ## §G Anti-Patterns
 
-- Do not import the research note's C2 tier taxonomy into §9 (spec.md Out of
-  Scope).
+- Do not edit `phase-execution.md` or `auto-semantics.md` — the D9 scope cut
+  removed them; the run-gate doc reconciliation is follow-up card material.
+- Do not reintroduce the audited-state dedupe resolution or a cross-card
+  never-collapsed clause into REQ-ACE-001 — the D9-narrowed identity is the
+  plain (SPEC id, iteration number) pair; the refinement is follow-up
+  material.
 - Do not count the daily run-history file (`.moai/reports/plan-audit/…`) as
   round evidence — iteration stream only.
 - Do not add a second prose statement of the ceiling policy; C1 keeps one
   policy with the CLI as its machine consumer.
 - Do not weaken `Admit`'s existing checks while adding refusal causes.
-- Do not "fix" the pre-existing harness.yaml / phase-execution.md mirror
-  drift inside this SPEC's commits beyond the keys/sections this SPEC edits.
+- Do not "fix" the pre-existing plan-auditor.md mirror drift inside this
+  SPEC's commits beyond the keys/sections this SPEC edits.
 
 ## §H Cross-References
 
-- spec.md §B (REQ-ACE-001..016), §C constraints, §D.2 row list
-- acceptance.md §D (AC-ACE-001..022), §C edge cases
+- spec.md §B (REQ-ACE-001..015), §C constraints, §D.1 id-history note
+- acceptance.md §D (AC-ACE-001..021), §C edge cases
 - design.md §1-§10 (counter model, receipt schema, enforcement, open points)
 - research.md §1-§5 (source verification, Go surfaces, mirrors, gaps)
-- decision-index.md Q1-Q6 (unresolved operator decisions)
+- decision-index.md Q0-Q6 (the D9 decision record, the disposition table,
+  and the unresolved operator decisions)

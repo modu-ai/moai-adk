@@ -3,13 +3,52 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
-plan_complete_at: 2026-10-04
-plan_phase_head: 2f492df19
+plan_complete_at: 2026-10-06
+plan_phase_head: 69a085b2d (re-measurement tree for the v0.4.0 re-plan; the v0.4.0 commit lands on top)
 plan_phase_branch: WT-audit-ceiling-counter
 plan_phase_worktree: .moai/worktrees/t1500
 plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md, progress.md, decision-index.md — Tier L set of 5 + progress + decision-index per interview.decision_gate: on)
 
-### Baseline measurements (this run, this tree, HEAD 2f492df19, 2026-10-04)
+### v0.4.0 re-plan under operator decision D9 (2026-10-06, this tree, HEAD 69a085b2d)
+
+- Operator decision D9 (card t1500): resume with NARROWED scope — (1) a
+  CLI-side per-SPEC audit-iteration counter, (2) a single path that records
+  the policy outcome when the cap is reached (record debt then proceed /
+  split scope / hold — no questions asked), (3) codify that a required-
+  backend fail blocks run entry. Extra rules surfaced by iter3 (D33
+  cross-card re-audit dedupe; the run-gate doc reconciliation) are SPLIT
+  OFF to follow-up work. The narrowed scope supersedes v0.3.0's scope; the
+  iter3 verdict and tree are reference only.
+- Scope-cut cross-layer sweep completed: former REQ-ACE-013/014 (doc
+  reconciliation) deleted with their AC-ACE-013/014, §D.2 row list, and
+  LEDGER-ACE-013-A/014-A/014-B; former REQ-ACE-015/016 renumbered to
+  REQ-ACE-014/015; new REQ-ACE-013 = the D31 pass-through arm. No
+  requirement cites a deleted surface (spec.md §E carries the two new
+  Out-of-Scope topics; acceptance.md §D.1 carries the id-history map).
+- D31-D36 disposition table recorded in decision-index.md; Q0 = D9 row
+  marked OPERATOR-DECIDED; Q6 marked FELL AWAY.
+- Tier judgment: STAYS Tier L — the narrowed SPEC remains multi-subsystem
+  (runtime + auditverdict + config + homestate/contract wiring + 2 deployed
+  docs + mirrors + state) and gate-semantics (constitutional-adjacent);
+  REQ 15/25 and AC 21/21→21/25 within the L ceilings. Re-tiering to M would
+  churn the plan-audit threshold (0.85 → 0.80) and demote existing
+  design.md/research.md for no benefit — recorded, not taken.
+- Baseline re-measurements RE-EXECUTED in this tree at 69a085b2d (not
+  carried over from iter1/iter2): every value in plan.md §C and the
+  grep-class RED cells of acceptance.md reproduced (no counter 0/exit 1;
+  receipt grep 0/exit 1; orphan note 2/exit 0; bare symmetry selector
+  0/exit 1; `go test -list` ok-line-only/exit 0; GateConfig 0 non-test;
+  plan-auditor.md convergence_overall 0/exit 1; mirrors plan-auditor.md
+  DIFF + convention doc SAME; ceilings S1/M2/L3 + auto_delta_rounds 1 +
+  hold-and-split; resolver fail-open re-read at mcp_worktree_root.go:123-131).
+  The phase-execution.md / auto-semantics.md baseline greps were RETIRED
+  with the deleted surfaces (those files are no longer edit targets).
+- Fresh audit series: the narrowed v0.4.0 re-plan starts a NEW plan-audit
+  iteration series (iter1 of the new series) under the card's own ceiling
+  accounting — the prior series (0.69 → 0.83 → 0.81 + STOP) is closed with
+  the D9 decision; this re-plan is not an iter4 of the exhausted series.
+
+### Baseline measurements (v0.1.0 original run, this tree, HEAD 2f492df19, 2026-10-04 — superseded by the v0.4.0 re-measurement above, retained for history)
 
 | # | Measurement | Command | Observed |
 |---|---|---|---|

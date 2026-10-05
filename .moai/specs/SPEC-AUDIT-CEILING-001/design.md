@@ -1,8 +1,12 @@
 # design.md — SPEC-AUDIT-CEILING-001
 
-System design for the three work items. WHAT/WHY lives in spec.md; this file
-fixes the shape of the data model and the enforcement seams so run-phase
-review focuses on the decisions most likely to change.
+System design for the narrowed work items (v0.4.0, per operator decision D9).
+WHAT/WHY lives in spec.md; this file fixes the shape of the data model and
+the enforcement seams so run-phase review focuses on the decisions most
+likely to change. The v0.4.0 scope cut removed the doc-reconciliation design
+(§9 of v0.3.0 — phase-execution.md / auto-semantics.md edits) and the
+audited-state dedupe resolution (§1 of v0.3.0); both moves are recorded in
+the sections below and in decision-index.md's disposition table.
 
 ## §1 Round-count evidence model (REQ-ACE-001)
 
@@ -14,48 +18,50 @@ Two iteration-file families exist on disk and both are evidence:
 - Legacy stream: `<reportDir>/<SPEC-ID>-review-<N>.md` — enumerated today by
   `internal/runtime/audit_review.go` `ResolveLatestPlanAudit`.
 
-Count rule: the round count is the number of DISTINCT iterations across both
-families. Identity for dedupe: the pair (SPEC id, iteration number N) — two
-evidence files naming the same SPEC and the same N are one round; different
+Count rule: the round count is the number of DISTINCT (SPEC id, iteration
+number N) pairs across both families. Identity for dedupe: the pair (SPEC
+id, N) — two evidence files naming the same SPEC and the same N are one
+round regardless of which family or card directory recorded them; different
 N are different rounds even when the verdict label, score, and audited hash
-are identical (the repeated-audit-on-unchanged-artifacts case is exactly what
-the ceiling exists to cap — a label+score+hash identity would collapse it to
-one count and the ceiling would never fire). A file missing its iteration
-number still counts (fail-counted: an unidentifiable iteration is evidence of
-an iteration, not of its absence).
+are identical (the repeated-audit-on-unchanged-artifacts case is exactly
+what the ceiling exists to cap). A file missing its iteration number still
+counts (fail-counted: an unidentifiable iteration is evidence of an
+iteration, not of its absence).
 
-Cross-card rule (D22): the identity's second component resolves within one
-audited state. Two convention-family files at the same (SPEC, N) under
-different card directories are one round only when they record the same
-audited-SHA field (one iteration exported twice); different audited states
-at the same (SPEC, N) are distinct rounds — the count can never be stalled
-by a new card renumbering its audits from iter1, so the ceiling is not
-dodgeable by opening a new card, and the count saturates at the number of
-distinct audits, not at max-N-per-card. A file whose audited state is
-unreadable is never collapsed into another file (fail-counted, mirroring the
-missing-iteration rule). The legacy↔convention same-round reading is
-therefore evidence-based on the audited-SHA field, not an assumption that
-`-review-<N>` and `iter<N>` numberings denote the same round.
+Known accepted limitation (D9 scope cut — former v0.3.0 cross-card rule and
+iter3 D33 deferred): because the identity is the bare (SPEC, N) pair, a
+no-repair re-audit recorded under a NEW card directory at a reused
+iteration number (same tree → same audited state, new card → iter1)
+collapses into the earlier round and does not advance the count — the
+ceiling is blind to audit-without-repair churn across cards. The v0.3.0
+audited-state resolution that addressed one half of this was removed by the
+scope cut because it could not resolve the same-SHA case without
+contradicting the never-collapsed clause (iter3 D33); the refinement — a
+run-distinguishing identity component, or collapse gated on explicit
+double-export evidence — is follow-up card material. Within one card's own
+audit stream (the case the ceiling policy governs), different N always
+count, so the policy's own retry loop is capped exactly as configured.
+The count saturates at the number of distinct (SPEC, N) pairs, i.e. at
+max-N per SPEC under this identity.
 
-SPEC attribution: a convention-family file
-belongs to the SPEC named in its report header; the counter resolves a
-SPEC's evidence from `.moai/reports/<SPEC-ID>/` plus every
-`.moai/reports/<card-id>/` directory whose plan-audit iteration files name
-that SPEC. The daily run-history file (`.moai/reports/plan-audit/…`) is
-never counted (plan.md §G).
+SPEC attribution: a convention-family file belongs to the SPEC named in its
+report header; the counter resolves a SPEC's evidence from
+`.moai/reports/<SPEC-ID>/` plus every `.moai/reports/<card-id>/` directory
+whose plan-audit iteration files name that SPEC. The daily run-history file
+(`.moai/reports/plan-audit/…`) is never counted (plan.md §G).
 
 Proposed API (internal/runtime):
 
 ```go
 type RoundEvidence struct {
-    Count    int      // distinct iterations
+    Count    int      // distinct (SPEC, N) pairs
     Sources  []string // file paths consulted
     Latest   *auditverdict.Fields // parsed latest iteration, nil if none
 }
 func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 ```
 
-## §2 Ceiling-policy outcome engine (REQ-ACE-003..007)
+## §2 Ceiling-policy outcome engine (REQ-ACE-003..007, REQ-ACE-013)
 
 Inputs: `RoundEvidence`, the tier ceiling (M2 structs), the policy values
 (`auto_delta_rounds`, `on_final_hit`), and the latest verdict's
@@ -70,8 +76,23 @@ audited SHAs stays inside them (plus `progress.md` and `.moai/reports/**`),
 and the REQ/AC id sets are unchanged. An ineligible delta or a STOP signal is
 a final hit: the outcomes below fire immediately at the tier ceiling.
 
-Ladder (fixed by spec.md §B; NOT config keys — research.md §4), evaluated on
-the refusal of REQ-ACE-003:
+Ladder (fixed by spec.md §B; NOT config keys — research.md §4), evaluated
+when a verdict is presented at a LIVE admission seam for a SPEC at/over the
+effective ceiling:
+
+0. `pass-through` (D31, REQ-ACE-013) — the verdict satisfies every
+   admission check of the shared predicate (label, score, must-pass,
+   blocking, hash binding, duplicate keys, and the §4 receipt checks). The
+   CLI admits the round and records a ceiling-reached outcome naming that
+   the ceiling was reached; no question is asked. The ceiling caps
+   repetition, not a healthy result — a healthy resume presented at/over
+   the ceiling is never held by omission, which would force a mandatory
+   operator question on exactly the population §A measures (35% of SPECs
+   audited 3+ times) and contradict the SPEC's own no-question purpose.
+   The outcome record names the SPECs admitted this way so the population
+   stays auditable.
+
+For a verdict that FAILS admission, evaluated on the refusal of REQ-ACE-003:
 
 1. `debt-admit` — the verdict fails admission on the LABEL ALONE: score at
    or above the tier threshold, `must_pass_failed == 0`, `blocking_count ==
@@ -97,21 +118,26 @@ and keeps its refusing force. A verdict carrying a receipt refusal is
 excluded from debt-admit eligibility (REQ-ACE-004), so work item 1 cannot
 admit what work item 2 refuses: the combination (ceiling hit + label-only
 failure + required-backend fail) holds (AC-ACE-004's negative arm,
-`TestCeilingPolicyReceiptHold`).
+`TestCeilingPolicyReceiptHold`). The pass-through rung needs no conversion:
+a verdict that clears the full predicate is admitted by the seam's own
+predicate evaluation; the engine's only act is recording the
+ceiling-reached outcome (AC-ACE-013, `TestCeilingPolicyPassThrough`).
+
 2. `split` — blocking findings exist and every one carries a scoped fix
    anchor: hold record + split proposal naming the anchor scope; blocked.
 3. `hold` — otherwise (hash mismatch, no findings, unanchored blocking
    findings, missing fields): hold record; blocked.
 
 Refusal point (D4): `GateConfig.Invoke` is production-dead — 0 non-test
-references, 17 test-only (measured, research.md §2) — so a refusal wired only
-there refuses nothing. The engine is called at the two LIVE admission seams —
-the kickoff evaluator (`internal/contract/kickoff/decide.go:373-376`) and the
-homestate card transition (`internal/homestate/card_evidence_readers.go`
+references, 17 test-only (measured at 2f492df19 and re-measured at
+69a085b2d, research.md §2) — so a refusal wired only there refuses nothing.
+The engine is called at the two LIVE admission seams — the kickoff evaluator
+(`internal/contract/kickoff/decide.go:373-376`) and the homestate card
+transition (`internal/homestate/card_evidence_readers.go`
 `admitVerdictFile`) — before `Admit`; `GateConfig.Invoke` gains the same
 Step 0 as the library-level consumer for when a production caller exists. An
 integration test proves a ceiling-hit round refuses at a production entry
-point at both seams (AC-ACE-022, one arm per LIVE seam), so neither can
+point at both seams (AC-ACE-015, one arm per LIVE seam), so neither can
 silently go dead the way `Invoke` did (verification-completeness §1.3
 liveness). REQ-ACE-003's trigger is accordingly the admission-seam event —
 the moment a produced verdict is presented for admission — not the
@@ -140,16 +166,28 @@ required_backend: <backend-name> <pass|fail|inconclusive>   # repeatable, one li
   required backend with no line at all (D3 — receipts record every required
   backend's state, so an absent or inconclusive required backend is
   distinguishable from a passing one).
-- The projection is mechanical: `ConvergenceResult.OverallVerdict` and the
-  `PerBackendVerdicts` entries whose `Gate == required`, projecting each
-  entry's `Backend` and `Verdict` (mcp_convergence.go:92-99 — the verdict
-  vocabulary is already pass|fail|inconclusive). No new convergence
-  semantics.
+- Producer paths (D19 + D32 — both shapes REQ-ACE-008's trigger names):
+  - Multi-model audit: the projection is mechanical from the convergence
+    result the auditor already receives — `ConvergenceResult.OverallVerdict`
+    and the `PerBackendVerdicts` entries whose `Gate == required`,
+    projecting each entry's `Backend` and `Verdict` (mcp_convergence.go:92-99
+    — the verdict vocabulary is already pass|fail|inconclusive). No new
+    convergence semantics.
+  - Single-model audit (D32): the deployed auditor contract runs its own
+    review in single claude/glm/codex modes and calls no convergence tool,
+    so a single-model producer fed only from `ConvergenceResult` would leave
+    required-resolving trees with no writer and a permanent REQ-ACE-010
+    block. The single-model path instead writes `convergence_overall` from
+    the auditor's own verdict and one `required_backend:` line for the
+    backend it actually ran, sourced from the named field of its own review
+    output. A required backend the audit did not cover stays absent from the
+    receipt and refuses under REQ-ACE-010 — correct fail-closed, never
+    weakened by this extension.
 - The convention doc's export mandate extends to these lines whenever the
-  tree resolves a non-empty required-backend set (REQ-ACE-008's trigger — a
-  single-required-backend tree emits receipts too, which is what keeps
-  REQ-ACE-010 from permanently blocking it); a tree resolving no required
-  backend omits them and admits without them (C4).
+  tree resolves a non-empty required-backend set (REQ-ACE-008's trigger —
+  a single-required-backend tree emits receipts under either producer path,
+  which is what keeps REQ-ACE-010 from permanently blocking it); a tree
+  resolving no required backend omits them and admits without them (C4).
 
 ## §4 Admission predicate extension (REQ-ACE-009, REQ-ACE-010)
 
@@ -170,14 +208,15 @@ the existing checks:
    repeat rule).
 
 Config-error disposition (D21): `resolveAuditGates` today returns an empty
-gate set when `ResolveAuditPlan` errors (mcp_worktree_root.go:127-130) —
-fail-open against §7's posture. The M1 call sites resolve with the opposite
-disposition: the resolution result distinguishes an error from a
-genuinely-empty configuration, and an audit section that exists but cannot
-be read or parsed refuses (REQ-ACE-010's third trigger arm). Config absent →
-C4 admission without a receipt; config error → refuse. The two paths are
-distinct values end to end — the error is never folded into the empty set on
-an admission path.
+gate set when `ResolveAuditPlan` errors (mcp_worktree_root.go:127-130 —
+re-read and confirmed at 69a085b2d, plan.md §C) — fail-open against §7's
+posture. The M1 call sites resolve with the opposite disposition: the
+resolution result distinguishes an error from a genuinely-empty
+configuration, and an audit section that exists but cannot be read or parsed
+refuses (REQ-ACE-010's third trigger arm). Config absent → C4 admission
+without a receipt; config error → refuse. The two paths are distinct values
+end to end — the error is never folded into the empty set on an admission
+path.
 
 Override (REQ-ACE-011) is NOT an `Admit` input — admission stays pure. The
 override lives at the CLI seam: an explicit flag/env carrying
@@ -236,10 +275,10 @@ known values and the default branch folds unknowns into INCONCLUSIVE
 ```go
 type AuditResult struct {
     // ... existing fields ...
-    Ceiling *CeilingOutcome `json:"ceiling,omitempty"` // set only on refusal
+    Ceiling *CeilingOutcome `json:"ceiling,omitempty"` // set on ceiling evaluation
 }
 type CeilingOutcome struct {
-    Outcome   string   `json:"outcome"`   // debt-admit | split | hold
+    Outcome   string   `json:"outcome"`   // pass-through | debt-admit | split | hold
     Reasons   []string `json:"reasons"`
     Evidence  []string `json:"evidence"`  // iteration file paths
     Blocked   bool     `json:"blocked"`   // run-entry stays closed
@@ -248,7 +287,9 @@ type CeilingOutcome struct {
 
 `Invoke` returns the result with `Verdict` set to the honest underlying
 state (FAIL/INCONCLUSIVE as measured) and `Ceiling` carrying the policy
-result; refusal is observable via `Ceiling != nil && Ceiling.Blocked`.
+result; refusal is observable via `Ceiling != nil && Ceiling.Blocked`. A
+`pass-through` outcome carries `Blocked == false` and records that the
+ceiling was reached with an admission-clean verdict (REQ-ACE-013).
 
 ## §8 Override surface (REQ-ACE-011)
 
@@ -266,19 +307,14 @@ never terminal-silent: the hold record names its release path (REQ-ACE-006)
 — the split/new-SPEC route of REQ-ACE-005, or an operator decision recorded
 in progress.md §G (D30).
 
-## §9 Doc changes (REQ-ACE-013, REQ-ACE-014)
+## §9 Doc reconciliation — REMOVED from scope (D9)
 
-- phase-execution.md Step 4c: FAIL after grace → the gate blocks; the text
-  names the ceiling-policy path as the only non-block exit the question
-  branches offer, and the fail-closed rule of auto-semantics §7 as the
-  owner. Step 4d: INCONCLUSIVE
-  → fail-closed, record + escalate per §7's ladder; "max 3 retries total"
-  (a second prose ceiling) is replaced by the machine counter reference.
-- auto-semantics.md §9: the 11 rows of spec.md §D.2, each
-  `<gate> | <disposition from the existing vocabulary> — classified from
-  <file §section>`. Row 2 REPLACES the existing "plan-audit bypass flags |
-  RETIRED" row with the reconciled wording naming the machine enforcement
-  (counter + admission refusal): 10 existing rows − 1 + 11 = 20.
+The v0.3.0 §9 (phase-execution.md Step 4 rewrite + auto-semantics.md §9
+11-row inventory expansion, former REQ-ACE-013/014) was removed by operator
+decision D9: this SPEC no longer edits either file or their mirrors. The
+run-gate doc reconciliation is follow-up card material; its design notes are
+preserved in the v0.3.0 tree (`git show 9dd4d5c74:.moai/specs/SPEC-AUDIT-CEILING-001/design.md`)
+for the follow-up author. No AC of this SPEC reads either file.
 
 ## §10 Open points → decision-index
 
@@ -288,5 +324,6 @@ in progress.md §G (D30).
 | Round-count evidence source | Q3 |
 | Receipt-absent disposition | Q4 |
 | Debt-admit eligibility mapping | Q5 |
-| §9 row set | Q6 |
+| Pass-through posture at the ceiling | settled in-scope per D9's no-question mandate (REQ-ACE-013; recorded in the disposition table) |
 | Delta-round count (1) | Q1 (settled — POLICY-COVERED) |
+| §9 row set | removed with the D9 scope cut (former Q6) |
