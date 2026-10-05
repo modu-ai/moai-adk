@@ -177,7 +177,7 @@ instance is pinned by `TestRemoteControlPrefixValue`; the §A.4 residual is meas
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_status: complete
-sync_commit_sha: 42ed25265   # post-close convergence (t1465 패턴) — card-review r1 수리 트리의 최종 커밋; 원 close 커밋 6f646a29d (D3 backfill)
+sync_commit_sha: 5a5d179f5   # post-close convergence (t1465 패턴) — card-review r1~r4 전 라운드 수리 트리의 최종 커밋; 원 close 커밋 6f646a29d (D3 backfill). card-review r1 FAIL(P1 1+P2 2)→수리→r2 FAIL(테스트 P2)→수리→r3 FAIL(테스트 P2, 상한)→리더 ① 마이크로 수리+사전확정 조건→r4 PASS(신규 0). 전체 이력 .moai/reports/t1515/card-review.md
 sync_complete_at: 2026-10-06
 b12_self_test_a: pass   # grep -c 'SPEC-SESSION-CC-VERSION-002' CHANGELOG.md → 0 before emission (duplicate-free), 1 after (exactly the entry added)
 b12_self_test_c: pass   # every file path named in the CHANGELOG entry verified present: internal/cli/lane_resume.go, internal/cli/lane_resume_model.go, internal/cli/cc.go, internal/cli/factory_lane_relaunch.go, internal/session/ccversion.go
