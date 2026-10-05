@@ -929,8 +929,41 @@ func testZoneShellMutation(t *testing.T) {
 		t.Errorf("read-only sed after a mutating command: decision=%q reason=%q, want allow", d, r)
 	}
 
-	if swept < 60 {
-		t.Fatalf("swept %d rows, want at least 60", swept)
+	// review-repair round 7/8 rows (merge-gate re-verdicts, observed red first —
+	// the operator-approved sound set-semantics walker: compound redirects at
+	// entry, backslash unescaping, cd failure worlds, &&/||/loop/case path
+	// unions)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n  probe_sp:\n    paths: [\"zone dir/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	if err := os.MkdirAll(filepath.Join(root, "zone dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, cmd := range []string{
+		"(true) > zone_dir/secret",                                    // subshell redirect at entry (r7)
+		"{ cd docs; } > zone_dir/secret",                              // block redirect before its body (r7)
+		"cd missing; rm zone_dir/secret",                              // a failed cd keeps the old cwd (r7)
+		"false && cd docs; rm zone_dir/secret",                        // the && right side may be skipped (r7)
+		"if false; then true; elif rm zone_dir/secret; then true; fi", // elif condition executes (r7)
+		"while false; do cd docs; done; rm zone_dir/secret",           // 0-iteration world (r7)
+		"case x in y) cd docs;; x) rm zone_dir/secret;; esac",         // arms from one entry set (r7)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+	// the backslash-escaped space names its own "zone dir/" entry
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "rm zone\\ dir/secret"})
+	wantZoneDeny(t, "rm zone\\ dir/secret", d, r, harnessLearnerIdentity, "category", "probe_sp")
+	// control: a read-only git grep must not trip the mutating-subcommand scan
+	// (round 7 P2)
+	swept++
+	if d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "git grep rm -- zone_dir/a.log"}); d == DecisionDeny {
+		t.Errorf("git grep read-only: decision=%q reason=%q, want allow", d, r)
+	}
+
+	if swept < 71 {
+		t.Fatalf("swept %d rows, want at least 71", swept)
 	}
 
 	if swept < 50 {

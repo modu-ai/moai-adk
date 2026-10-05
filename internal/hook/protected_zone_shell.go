@@ -12,23 +12,28 @@ package hook
 // words are mutating, which arguments and redirection targets are zone-
 // covered, and how the tracked working directory moves.
 //
-// The tracked directory is a SET of possible directories (round 6 P1): a
-// candidate is denied when ANY possible directory covers it — sound over-
-// approximation of bash's control flow:
+// The tracked directory is a SET of possible directories (round 8, the
+// operator-approved sound set semantics): a candidate is denied when ANY
+// possible directory covers it — a sound over-approximation of bash's control
+// flow:
+//   - a statement's redirections open BEFORE the statement runs, in the
+//     walker's current directory — every statement shape, compound included;
 //   - a statement with Background (trailing "&"), a pipeline element, and an
 //     explicit Subshell run in a subshell: their cd never moves the main
 //     shell, while their mutations and redirections are real;
-//   - `&&` carries the updated directory to the right side; `||` restores the
-//     pre-left set AND keeps the post-left set (the right side runs only when
-//     the left failed, and a successful cd inside a failed chain persists);
-//   - an if unions the condition-false, then, and else worlds; a condition
-//     EXECUTES and is judged like any other statement list (round 6 P1);
-//   - a cd's own redirections evaluate before the cd takes effect, and the
-//     cd's directory arguments are its non-redirection words (the AST
+//   - a cd may fail, so its pre-cd set survives; either side of a && or ||
+//     may be skipped, so the post-left set survives past the operator;
+//   - an if's condition executes and its effects survive into every branch;
+//     the then and else worlds union (an elif is an IfClause as the Else
+//     member, whose condition executes too); a loop keeps its zero-iteration
+//     world and unrolls its body once; every case arm is judged from the
+//     same entry set, independently;
+//   - a cd's directory arguments are its non-redirection words (the AST
 //     separates them by construction);
 //   - git's `-C <dir>` moves the directory its file arguments resolve against,
 //     accumulated per possible start directory, consecutive and quoted
-//     options included.
+//     options included; only the first non-option word is the subcommand
+//     (round 7 P2).
 //
 // Dynamic words (expansions, globs) under-match: they normalize to paths no
 // entry matches. A parse failure under-matches like unclassifiable text.
@@ -72,6 +77,27 @@ func zoneParse(command string) (*syntax.File, bool) {
 	return file, true
 }
 
+// zoneUnescapeLit resolves the backslash escapes a literal keeps in its
+// source text (`\ ` -> ` `, `\\` -> `\`, `\"` -> `"`). Every two-character
+// escape resolves to its second character — a slight over-approximation
+// inside double quotes, where `\n` is not an escape and the shell keeps the
+// backslash: the guard prefers matching a file the command cannot touch over
+// missing one it can (round 8 P1).
+func zoneUnescapeLit(v string) string {
+	if !strings.Contains(v, "\\") {
+		return v
+	}
+	var b strings.Builder
+	b.Grow(len(v))
+	for i := 0; i < len(v); i++ {
+		if v[i] == '\\' && i+1 < len(v) {
+			i++
+		}
+		b.WriteByte(v[i])
+	}
+	return b.String()
+}
+
 // zoneWordText returns the literal text of a word and whether the word is
 // fully literal. Words carrying expansions or globs are dynamic: their text
 // normalizes to a path no entry matches, so callers drop them (under-match).
@@ -83,16 +109,16 @@ func zoneWordText(w *syntax.Word) (string, bool) {
 	for _, part := range w.Parts {
 		switch p := part.(type) {
 		case *syntax.Lit:
-			b.WriteString(p.Value)
+			b.WriteString(zoneUnescapeLit(p.Value))
 		case *syntax.SglQuoted:
-			b.WriteString(p.Value)
+			b.WriteString(p.Value) // single quotes carry no escapes
 		case *syntax.DblQuoted:
 			for _, dp := range p.Parts {
 				lit, ok := dp.(*syntax.Lit)
 				if !ok {
 					return "", false
 				}
-				b.WriteString(lit.Value)
+				b.WriteString(zoneUnescapeLit(lit.Value))
 			}
 		default:
 			return "", false
@@ -346,27 +372,15 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root stri
 }
 
 // zoneCall judges one simple command: a mutating verb, an in-place sed, a
-// mutating git subcommand — plus whatever the statement's redirections write.
-// A leading assignment prefix is skipped, and `X=1 cd dir` is a cd (round 4).
-// The statement's redirections evaluate in the walker's CURRENT directory —
-// for a cd, before the cd takes effect (round 4 P1).
-func (w *zoneWalker) zoneCall(stmt *syntax.Stmt, cmd *syntax.CallExpr) {
-	// every redirection of the call judges here, in the walker's current
-	// directory — for a cd, before the cd takes effect (round 4 P1)
-	redirectsDone := false
-	defer func() {
-		if !redirectsDone {
-			w.zoneRedirects(stmt.Redirs)
-		}
-	}()
+// mutating git subcommand. The statement's redirections are judged by the
+// walker before this runs — the shell opens them before the command executes,
+// for every statement shape (round 8).
+func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	name, literal := zoneFirstArgWord(cmd.Args)
 	if !literal {
-		redirectsDone = true
 		return // a dynamic command word under-matches
 	}
 	if name == "cd" {
-		redirectsDone = true
-		w.zoneRedirects(stmt.Redirs)
 		var dirs []string
 		for _, a := range cmd.Args[1:] {
 			if t, lit := zoneWordText(a); lit {
@@ -375,10 +389,14 @@ func (w *zoneWalker) zoneCall(stmt *syntax.Stmt, cmd *syntax.CallExpr) {
 				dirs = append(dirs, "?dynamic")
 			}
 		}
-		next := make([]string, 0, len(w.cwds))
+		next := make([]string, 0, len(w.cwds)*2)
 		for _, cwd := range w.cwds {
 			next = append(next, zoneNextCwd(cwd, dirs))
 		}
+		// the cd may fail (a missing directory leaves the caller where it
+		// was): the pre-cd set survives into the next statement either way
+		// (round 8 P1)
+		next = append(next, w.cwds...)
 		w.setCwds(next)
 		return
 	}
@@ -402,43 +420,62 @@ func (w *zoneWalker) zoneCall(stmt *syntax.Stmt, cmd *syntax.CallExpr) {
 		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
 		return
 	case "git":
-		// every possible directory is a base the subcommand's file arguments
-		// can resolve against; a -C <dir> moves that base, relative -C values
-		// accumulating onto it (rounds 4–5 P1)
-		for _, base := range w.cwds {
-			gitDir := base
-			for j := 0; j < len(cmd.Args); j++ {
-				t, lit := zoneWordText(cmd.Args[j])
-				if !lit {
-					continue
-				}
-				if t == "-C" && j+1 < len(cmd.Args) {
-					dir, lit2 := zoneWordText(cmd.Args[j+1])
-					if !lit2 {
-						break // under-match
-					}
-					if gitDir == "" || zoneIsAbs(dir) {
-						gitDir = dir
-					} else {
-						gitDir = gitDir + "/" + dir
-					}
-					j++
-					continue
-				}
-				if zoneGitMutating[t] {
-					w.mutating = true
-					var fileArgs []string
-					for _, a := range cmd.Args[j+1:] {
-						if ft, flit := zoneWordText(a); flit && ft != "--" {
-							fileArgs = append(fileArgs, ft)
+		// only the FIRST non-option word is the subcommand — a later argument
+		// that merely names a mutating verb (a grep pattern, a path) must not
+		// trip the guard (round 7 P2). Valued global options consume their
+		// argument; a -C <dir> records the directory the subcommand's file
+		// arguments resolve against, relative values accumulating across
+		// consecutive -C options, quoted spellings included (rounds 4–5 P1).
+		dirOpt := ""
+		sub := ""
+		subIdx := -1
+		for j := 1; j < len(cmd.Args); j++ {
+			t, lit := zoneWordText(cmd.Args[j])
+			if !lit {
+				break // dynamic global argument: under-match
+			}
+			if strings.HasPrefix(t, "-") {
+				if t == "-C" || t == "-c" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" {
+					if t == "-C" && j+1 < len(cmd.Args) {
+						if dir, lit2 := zoneWordText(cmd.Args[j+1]); lit2 {
+							if dirOpt == "" || zoneIsAbs(dir) {
+								dirOpt = dir
+							} else {
+								dirOpt = dirOpt + "/" + dir
+							}
 						}
 					}
-					// the candidates anchor to git's -C directory, not to the
-					// shell's working directory (round 5 P1)
-					w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
-					break
+					j++ // the option's value is consumed
+				}
+				continue
+			}
+			sub = t
+			subIdx = j
+			break
+		}
+		if subIdx == -1 || !zoneGitMutating[sub] {
+			return
+		}
+		w.mutating = true
+		var fileArgs []string
+		for _, a := range cmd.Args[subIdx+1:] {
+			if ft, flit := zoneWordText(a); flit && ft != "--" && !strings.HasPrefix(ft, "-") {
+				fileArgs = append(fileArgs, ft)
+			}
+		}
+		// every possible directory is a base the subcommand's file arguments
+		// can resolve against (round 6 P1); a -C moves that base — an absolute
+		// -C replaces it, a relative one accumulates (round 5 P1)
+		for _, base := range w.cwds {
+			gitDir := base
+			if dirOpt != "" {
+				if zoneIsAbs(dirOpt) || gitDir == "" || gitDir == "." {
+					gitDir = dirOpt
+				} else {
+					gitDir = gitDir + "/" + dirOpt
 				}
 			}
+			w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
 		}
 		return
 	}
@@ -464,10 +501,24 @@ func zonePathCandidates(args []*syntax.Word) []string {
 	return out
 }
 
-// zoneWalkStmt walks one statement. The mutations and redirections of every
-// branch are real; the working directory becomes a SET of possible values —
-// control flow multiplies it, and subshells (background statements, pipeline
-// elements, explicit subshells) never leak their directory back.
+// zoneWalkStmt walks one statement. Every branch's mutations and redirections
+// are real; the working directory is a SET of possible values, and the walk
+// unions the worlds control flow can produce (round 8, the operator-approved
+// sound set semantics):
+//   - a statement's redirections open BEFORE the statement runs, in the
+//     walker's current directory — true for every statement shape, compound
+//     ones included;
+//   - a cd may fail, so its pre-cd set survives into the next statement;
+//   - either side of a && or || may be skipped, so the post-left set survives
+//     past the operator;
+//   - an if's condition executes and its effects survive into every branch;
+//     the then and else worlds union (an elif is an IfClause as the Else
+//     member, whose condition executes too);
+//   - a loop keeps its zero-iteration world and unrolls its body once — the
+//     post-body set carries every candidate the repeated body can name;
+//   - every case arm is judged from the same entry set, independently;
+//   - a statement with Background (trailing "&"), a pipeline element, and an
+//     explicit Subshell run in a subshell: their cd never leaks.
 func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 	if stmt == nil {
 		return
@@ -481,10 +532,12 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 			w.setCwds(pre)
 		}
 	}()
+	// redirections open before the statement runs, whatever its shape — a
+	// nil command ("> f"), a block, a subshell, a compound clause (round 8)
+	w.zoneRedirects(stmt.Redirs)
 	switch cmd := stmt.Cmd.(type) {
 	case nil:
 		// a statement of redirections only (round 6 P1)
-		w.zoneRedirects(stmt.Redirs)
 	case *syntax.BinaryCmd:
 		switch cmd.Op {
 		case syntax.Pipe, syntax.PipeAll:
@@ -496,18 +549,14 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 			w.setCwds(side)
 			w.zoneWalkStmt(cmd.Y)
 			w.setCwds(side)
-		case syntax.AndStmt: // &&
+		case syntax.AndStmt, syntax.OrStmt: // && and ||
 			w.zoneWalkStmt(cmd.X)
+			afterX := append([]string(nil), w.cwds...)
 			w.zoneWalkStmt(cmd.Y)
-		case syntax.OrStmt: // ||
-			pre := append([]string(nil), w.cwds...)
-			w.zoneWalkStmt(cmd.X)
-			// the right side runs only if the left failed: the directory is
-			// either where the left left it or where it started — keep both
-			// (round 6 P1: a successful cd inside a failed chain persists)
-			w.cwds = append(w.cwds, pre...)
+			// the right side may be skipped (the left failed under && or
+			// succeeded under ||): the post-left set survives (round 8 P1)
+			w.cwds = append(w.cwds, afterX...)
 			w.setCwds(w.cwds)
-			w.zoneWalkStmt(cmd.Y)
 		default:
 			w.zoneWalkStmt(cmd.X)
 			w.zoneWalkStmt(cmd.Y)
@@ -517,67 +566,86 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		for _, s := range cmd.Stmts {
 			w.zoneWalkStmt(s)
 		}
-		w.setCwds(side)
+		w.setCwds(side) // a subshell's cd never leaks
 	case *syntax.Block:
 		for _, s := range cmd.Stmts {
 			w.zoneWalkStmt(s)
 		}
-		w.zoneRedirects(stmt.Redirs) // a block's own redirect (round 6 P1)
 	case *syntax.IfClause:
+		w.walkIfChain(cmd)
+	case *syntax.ForClause:
+		pre := append([]string(nil), w.cwds...)
+		for _, s := range cmd.Do {
+			w.zoneWalkStmt(s)
+		}
+		afterDo := append([]string(nil), w.cwds...)
+		// zero-iteration world: the entry set survives (round 8 P1)
+		w.cwds = append(pre, afterDo...)
+		w.setCwds(w.cwds)
+	case *syntax.WhileClause:
 		pre := append([]string(nil), w.cwds...)
 		for _, s := range cmd.Cond {
-			w.zoneWalkStmt(s) // a condition executes (round 6 P1)
+			w.zoneWalkStmt(s) // the condition executes (round 6 P1)
 		}
 		afterCond := append([]string(nil), w.cwds...)
-		for _, s := range cmd.Then {
+		w.setCwds(afterCond)
+		for _, s := range cmd.Do {
 			w.zoneWalkStmt(s)
 		}
-		afterThen := append([]string(nil), w.cwds...)
-		w.setCwds(pre)
-		w.zoneWalkIf(cmd.Else)
-		// the condition-false world is the pre-if set; union every world
-		w.cwds = append(w.cwds, afterCond...)
-		w.cwds = append(w.cwds, afterThen...)
+		afterDo := append([]string(nil), w.cwds...)
+		// the zero-iteration world keeps the post-condition set, the repeated
+		// world carries the post-body set — one unroll covers every candidate
+		// the repeated body can name (round 8 P1; WhileClause.Until folds
+		// `until` into the same shape)
+		w.cwds = append(pre, afterCond...)
+		w.cwds = append(w.cwds, afterDo...)
 		w.setCwds(w.cwds)
-		w.zoneRedirects(stmt.Redirs)
-	case *syntax.ForClause:
-		for _, s := range cmd.Do {
-			w.zoneWalkStmt(s)
-		}
-	case *syntax.WhileClause:
-		// the condition executes too (round 6 P1)
-		for _, s := range cmd.Cond {
-			w.zoneWalkStmt(s)
-		}
-		for _, s := range cmd.Do {
-			w.zoneWalkStmt(s)
-		}
 	case *syntax.CaseClause:
+		pre := append([]string(nil), w.cwds...)
+		worlds := append([]string(nil), pre...) // no arm may match: entry survives
 		for _, item := range cmd.Items {
+			w.setCwds(pre) // every arm starts from the same entry set (round 8 P1)
 			for _, s := range item.Stmts {
 				w.zoneWalkStmt(s)
 			}
+			worlds = append(worlds, w.cwds...)
 		}
+		w.setCwds(worlds)
 	case *syntax.CallExpr:
-		w.zoneCall(stmt, cmd)
+		w.zoneCall(cmd)
 	default:
 		// function declarations, coprocesses, arithmetic, extended tests:
 		// under-match
-		return
 	}
 }
 
-// zoneWalkIf walks an if/elif/else chain — the else member is itself an
-// IfClause (an "elif") or carries no command; each branch's statements share
-// the walker's directory set.
-func (w *zoneWalker) zoneWalkIf(clause *syntax.IfClause) {
+// walkIfChain walks one if/elif/else clause. The condition executes and its
+// effects survive into every branch (a successful cd inside a condition is
+// where the branches run); the then branch runs from the post-condition set,
+// the else branch from the post-condition set as well — and the Else member
+// of an "elif" is itself an IfClause, whose condition executes too. The
+// resulting set unions every world (rounds 6/8).
+func (w *zoneWalker) walkIfChain(clause *syntax.IfClause) {
 	if clause == nil {
 		return
 	}
+	pre := append([]string(nil), w.cwds...)
+	for _, s := range clause.Cond {
+		w.zoneWalkStmt(s) // a condition executes (round 6 P1)
+	}
+	afterCond := append([]string(nil), w.cwds...)
+	w.setCwds(afterCond)
 	for _, s := range clause.Then {
 		w.zoneWalkStmt(s)
 	}
-	w.zoneWalkIf(clause.Else)
+	afterThen := append([]string(nil), w.cwds...)
+	w.setCwds(afterCond)
+	w.walkIfChain(clause.Else)
+	afterElse := append([]string(nil), w.cwds...)
+	// union: the then world, the else world, the condition-false world
+	w.cwds = append(pre, afterThen...)
+	w.cwds = append(w.cwds, afterElse...)
+	w.setCwds(w.cwds)
 }
 
 // checkProtectedZoneShell decides one identity Bash call against the zone and

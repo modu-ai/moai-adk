@@ -163,6 +163,37 @@ The gate's first verdict on the mvdan head failed with 7×P1 + 1×P2 — qualita
 
 GREEN on the whole family: `TestProtectedZone` hook 10/10 subtests (ShellMutation swept 60 — the 9 new deny rows plus the read-only-sed allow control) + config 3/3, `go build ./...` exit 0, `golangci-lint` 0 issues, live judge `JUDGE swept=67 expected=67 fail=0` on a binary built from the repaired tree. Escalation note: if the next verdict surfaces ANOTHER set of new P1s, the walker's control-flow model itself goes back to the operator with this round's union-vs-sequence data.
 
+### Repair round 7 — ESCALATION per the pre-approved protocol, no repairs executed (2026-10-06)
+
+The gate's verdict on the round-6 push failed with 8×P1, all new. The leader pre-approved this exact trigger before round 6 ("7차 재판정 신규 P1 시 통제흐름 모델(순서 vs 집합) 운영자 판정 상신 갱신도 사전 승인"), so **no repairs were executed**; the findings are recorded verbatim as the decision package's evidence:
+
+- **P1 compound-command redirects** — `(true) > zone_dir/secret` allowed: Subshell/loop/case redirect judgment missing, and a Block's redirect was judged AFTER its body (`{ cd docs; } > f` misread).
+- **P1 backslash escapes** — `rm zone\ dir/secret` allowed: `syntax.Lit.Value` keeps the backslash, and the later normalization reads it as a separator; unquoted escape interpretation is missing.
+- **P1 cd failure** — `cd missing; rm …` allowed: the analyzer assumed cd success and dropped the pre-directory; both pre and post must stay possible.
+- **P1 `&&` right-skip** — `false && cd docs; rm …` allowed: the right side may not run, leaving the pre-chain directory; the post-right and left-failed states must union.
+- **P1 elif condition** — `if false; then true; elif rm secret; then true; fi` allowed: zoneWalkIf skipped the elif's Cond.
+- **P1 else entry state** — `if cd zone_dir && false; then true; else rm secret; fi` allowed: the else world starts from AFTER the condition (a successful cd inside it persists), not from pre-if.
+- **P1 loop zero-iteration** — `while false; do cd docs; done; rm …` allowed: the body was analyzed as always-run; the entry state and the post-iteration state must both judge later candidates.
+- **P1 case arm isolation** — `case x in x) true;; y) cd docs;; esac; rm …` allowed: mutually exclusive arms were walked as a sequence; each arm analyzes from the same entry set and the exit states union.
+- **P2 git subcommand misparse (added 2026-10-06, second observation of the same verdict)** — `git grep rm -- zone_dir/secret` (read-only) denied: the argument scan matched the SEARCH TERM "rm" as a mutating subcommand because every argument is checked. The subcommand is the first word after git's global options; later arguments must never be re-interpreted as the subcommand.
+
+All eight are the same class: the walker's CONTROL-FLOW MODEL mixes sequence and set semantics inconsistently. The fix is bounded and mechanical — a sound possible-directory-set walk (redirects judged at every statement entry against the entry set; cd keeps pre∪post; `&&` unions post-right with post-left; `||` unions pre-left with post-left then walks right from the union; if/case walk each arm from the same entry set and union; while judges the body from pre and post once; Lit backslash unescaping). This is the operator decision the protocol reserved.
+
+### Repair round 8 — operator option A executed: the sound possible-directory-set walker (2026-10-06)
+
+The operator chose option A on the round-7 verdict; the leader ordered execution. All eight findings went in as RED regression rows first (observed red on the round-6 tree: 8 deny rows allowed + `git grep rm --` false-denied), then `protected_zone_shell.go` was reworked onto the sound set semantics in one pass:
+
+- **Redirects at statement entry, every shape** — the redirect judgment moved to `zoneWalkStmt` before the command switch: a nil-command statement, a Block (its redirect opens BEFORE the body runs — `{ cd docs; } > f` truncates at the entry cwd), a Subshell, a For/While/Case/If clause all judge `stmt.Redirs` against the entry set (the old code judged a Block's redirect AFTER its body and missed the Subshell/loop/case statements entirely).
+- **cd failure worlds** — the cd branch unions its pre-directory set with the post-directory set (a failed cd leaves the caller where it was): `cd missing; rm zone_dir/secret` judges the rm against the entry directory and is denied.
+- **`&&`/`||` skip worlds** — after either operator the post-left set is re-unioned into the possible set (the right side may be skipped): `false && cd docs; rm …` judges the rm against the pre-chain directory.
+- **if/elif/else** — `walkIfChain` (replacing `zoneWalkIf`) walks the condition, runs the then branch from the post-condition set, runs the else branch from the post-condition set too (a successful cd inside the condition persists into the else), and unions the then/else/post-condition worlds; an elif is an IfClause as the Else member, so its condition is walked as well.
+- **loops** — a For/While keeps the zero-iteration world (the entry/post-condition set survives) and unrolls the body once, carrying the post-body set forward; the condition is walked (round 6 P1, kept).
+- **case arms independent** — every arm is walked from a clone of the same entry set; the arm worlds union, and the no-arm-matches world (the entry set) survives.
+- **Lit backslash unescaping** — `zoneUnescapeLit` resolves `\X` → `X` in literal words (`rm zone\ dir/secret` now names `zone dir/secret`; a documented slight over-approximation inside double quotes, where the shell would keep `\n` — the guard prefers matching a file the command cannot touch over missing one it can).
+- **git subcommand misparse (P2)** — the argument scan finds the FIRST non-option word as the subcommand; valued global options (`-c`, `--git-dir`, `--work-tree`, `--namespace`, `--super-prefix`, plus the `-C` accumulator) consume their argument, so `git -c core.quotePath=false checkout -- …` resolves the subcommand correctly and `git grep rm -- …` can never match its search term. The subcommand's file arguments anchor to each possible shell directory, with an accumulated `-C` on top.
+
+GREEN on the whole family: `TestProtectedZone` hook subtests (ShellMutation swept 73 — the 8 new deny rows plus the git grep allow control) + config 3/3, `go build ./...` exit 0, `golangci-lint` 0 issues on hook+config, live judge `JUDGE swept=67 expected=67 fail=0` exit 0 on a binary built from the repaired tree. Escalation contingency stands: another verdict with NEW P1 findings re-escalates with rounds 6/7/8 data.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
