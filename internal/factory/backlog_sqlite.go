@@ -464,6 +464,17 @@ func (e *backlogEngine) ensureSchema(ctx context.Context) error {
 	if err := e.ensureLeaseColumns(ctx); err != nil {
 		return err
 	}
+	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-007/010: the issuance attributes
+	// ride the card-bearing tables, the finding disposition rides the
+	// finding-bearing tables — all four through the same metadata-gated
+	// ADD COLUMN path, AFTER the lease columns so the physical order
+	// converges identically on a fresh and an upgraded database.
+	if err := e.ensureIssuanceColumns(ctx); err != nil {
+		return err
+	}
+	if err := e.ensureDispositionColumns(ctx); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -582,6 +593,59 @@ func (e *backlogEngine) ensureLeaseColumns(ctx context.Context) error {
 			// or runtime input reaches the statement text. This is the
 			// established in-repo additive-DDL pattern every retrofit
 			// (landing, transition stamps) already runs through.
+			if err := e.ensureColumn(ctx, table, column); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// backlogIssuanceColumns lists the issuance column
+// (SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-007) per card-bearing table, added by
+// the same additive migration discipline as the lease columns. Compile-time
+// constants only.
+var backlogIssuanceColumns = map[string][]string{
+	"items":          {"issuance"},
+	"archived_items": {"issuance"},
+}
+
+// backlogDispositionColumns lists the finding disposition column
+// (SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-010) per finding-bearing table —
+// BOTH of them, because an archived finding that lost its disposition would
+// break the archive round-trip the archived finding type exists to
+// guarantee. Compile-time constants only.
+var backlogDispositionColumns = map[string][]string{
+	"findings":          {"disposition"},
+	"archived_findings": {"disposition"},
+}
+
+// ensureIssuanceColumns runs the issuance columns through the
+// metadata-gated ADD COLUMN path immediately after the lease columns, at the
+// same point in the open sequence, so a fresh and an upgraded database
+// converge on the identical tuple (the freeze test pins it).
+func (e *backlogEngine) ensureIssuanceColumns(ctx context.Context) error {
+	for _, table := range []string{"items", "archived_items"} {
+		for _, column := range backlogIssuanceColumns[table] {
+			// SECURITY DISPOSITION: compile-time constants only — see the
+			// lease-columns call site for the established in-repo additive-DDL
+			// pattern rationale.
+			if err := e.ensureColumn(ctx, table, column); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// ensureDispositionColumns runs the finding disposition columns through the
+// same metadata-gated ADD COLUMN path, immediately after the issuance
+// columns.
+func (e *backlogEngine) ensureDispositionColumns(ctx context.Context) error {
+	for _, table := range []string{"findings", "archived_findings"} {
+		for _, column := range backlogDispositionColumns[table] {
+			// SECURITY DISPOSITION: compile-time constants only — see the
+			// lease-columns call site.
 			if err := e.ensureColumn(ctx, table, column); err != nil {
 				return err
 			}
