@@ -960,11 +960,17 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
-	// Status/warning lines are human-facing -> stderr (REQ-CTX-016).
-	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())
+	// Status/warning lines are human-facing -> stderr (REQ-CTX-016). Card
+	// t1527 D5: an install failure reaches the warning collector, so the
+	// terminal summary panel carries it.
+	if pushErr := installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); pushErr != nil {
+		p.Warn("Pre-push hook installation failed: %v", pushErr)
+	}
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
-	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())
+	if commitErr := installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); commitErr != nil {
+		p.Warn("Pre-commit hook installation failed: %v", commitErr)
+	}
 
 	// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): surface the shared-checkout
 	// worktree advisory. Phrased per workflow.worktree.auto_create; rides stdout

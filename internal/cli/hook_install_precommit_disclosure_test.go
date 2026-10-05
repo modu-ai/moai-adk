@@ -267,7 +267,7 @@ func runOptionalOnUserModifiedHook(t *testing.T, root string) (out, warn *bytes.
 	t.Helper()
 	writeExistingHook(t, root, previousPreCommitHookContent)
 	out, warn = &bytes.Buffer{}, &bytes.Buffer{}
-	installPreCommitHookOptional(root, false, out, warn)
+	_ = installPreCommitHookOptional(root, false, out, warn)
 	return out, warn
 }
 
@@ -421,7 +421,7 @@ func TestPreCommitSupportWriteFailureNonFatal(t *testing.T) {
 		}
 
 		var out, warn bytes.Buffer
-		installPreCommitHookOptional(root, false, &out, &warn) // MUST NOT panic or abort the caller
+		_ = installPreCommitHookOptional(root, false, &out, &warn) // MUST NOT panic or abort the caller
 
 		// Card t1527 D4: the ✗ severity glyph replaces the "Warning:" prefix;
 		// the message still names the backup failure.
@@ -450,7 +450,7 @@ func TestPreCommitSupportWriteFailureNonFatal(t *testing.T) {
 		}
 
 		var out1, warn1 bytes.Buffer
-		installPreCommitHookOptional(root, false, &out1, &warn1) // MUST NOT panic or abort the caller
+		_ = installPreCommitHookOptional(root, false, &out1, &warn1) // MUST NOT panic or abort the caller
 
 		if got := readHook(t, root); got != preCommitHookContent {
 			t.Fatalf("the hook must BE replaced when only the post-write provenance write fails; got %d bytes", len(got))
@@ -468,7 +468,7 @@ func TestPreCommitSupportWriteFailureNonFatal(t *testing.T) {
 		// replacement notice. (The provenance warning may repeat: the record
 		// is still unwritable, and that is a different, correct warning.)
 		var out2, warn2 bytes.Buffer
-		installPreCommitHookOptional(root, false, &out2, &warn2)
+		_ = installPreCommitHookOptional(root, false, &out2, &warn2)
 
 		if got := findBackups(t, root); len(got) != len(backupsAfterRun1) {
 			t.Errorf("run 2 must take no backup: found %d backups, want %d", len(got), len(backupsAfterRun1))

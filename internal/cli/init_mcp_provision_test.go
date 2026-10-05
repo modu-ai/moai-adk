@@ -29,7 +29,7 @@ func TestProvisionMCPEntryUnlessDeclined_Default(t *testing.T) {
 	tmp := t.TempDir()
 	var out, errOut bytes.Buffer
 
-	provisionMCPEntryUnlessDeclined(&out, &errOut, tmp, false)
+	_ = provisionMCPEntryUnlessDeclined(&out, &errOut, tmp, false)
 
 	data, err := os.ReadFile(filepath.Join(tmp, ".mcp.json"))
 	if err != nil {
@@ -69,7 +69,7 @@ func TestProvisionMCPEntryUnlessDeclined_Declined(t *testing.T) {
 	tmp := t.TempDir()
 	var out, errOut bytes.Buffer
 
-	provisionMCPEntryUnlessDeclined(&out, &errOut, tmp, true)
+	_ = provisionMCPEntryUnlessDeclined(&out, &errOut, tmp, true)
 
 	if _, err := os.Stat(filepath.Join(tmp, ".mcp.json")); !os.IsNotExist(err) {
 		t.Errorf("an explicit decline must leave .mcp.json absent, stat err = %v", err)
@@ -90,7 +90,7 @@ func TestProvisionMCPEntryUnlessDeclined_FailureIsNonFatal(t *testing.T) {
 	}
 	var out, errOut bytes.Buffer
 
-	provisionMCPEntryUnlessDeclined(&out, &errOut, tmp, false)
+	_ = provisionMCPEntryUnlessDeclined(&out, &errOut, tmp, false)
 
 	if !strings.Contains(strings.ToLower(errOut.String()), "warning") {
 		t.Errorf("a provisioning failure must warn on stderr, got %q", errOut.String())

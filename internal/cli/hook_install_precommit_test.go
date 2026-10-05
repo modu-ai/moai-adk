@@ -186,7 +186,7 @@ func TestPreCommitInstall_OptionalSkipSilent(t *testing.T) {
 		t.Skipf("git init failed: %v", err)
 	}
 	var out, warn strings.Builder
-	installPreCommitHookOptional(dir, true, &out, &warn)
+	_ = installPreCommitHookOptional(dir, true, &out, &warn)
 
 	hookPath := filepath.Join(dir, ".git", "hooks", "pre-commit")
 	if _, err := os.Stat(hookPath); err == nil {
@@ -208,7 +208,7 @@ func TestPreCommitInstall_OptionalFreshPrints(t *testing.T) {
 		t.Skipf("git init failed: %v", err)
 	}
 	var out, warn strings.Builder
-	installPreCommitHookOptional(dir, false, &out, &warn)
+	_ = installPreCommitHookOptional(dir, false, &out, &warn)
 
 	if _, err := os.Stat(filepath.Join(dir, ".git", "hooks", "pre-commit")); err != nil {
 		t.Fatalf("hook not installed by optional wrapper: %v", err)
@@ -235,7 +235,7 @@ func TestPreCommitInstall_OptionalPreservedNote(t *testing.T) {
 	}
 
 	var out, warn strings.Builder
-	installPreCommitHookOptional(dir, false, &out, &warn)
+	_ = installPreCommitHookOptional(dir, false, &out, &warn)
 
 	if !strings.Contains(out.String(), "preserved") {
 		t.Errorf("expected preserved note, got: %q", out.String())
@@ -314,7 +314,7 @@ func TestPreCommitInstall_NonFatalFailure(t *testing.T) {
 	}
 
 	var out, warn strings.Builder
-	installPreCommitHookOptional(dir, false, &out, &warn) // MUST NOT panic / abort
+	_ = installPreCommitHookOptional(dir, false, &out, &warn) // MUST NOT panic / abort
 
 	// Card t1527 D4: the ✗ severity glyph replaces the "Warning:" prefix.
 	if !strings.Contains(stripSGR(out.String()), "✗ pre-commit hook install failed") {

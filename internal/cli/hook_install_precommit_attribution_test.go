@@ -163,7 +163,7 @@ func TestPreCommitVersionBumpIsSilent(t *testing.T) {
 	installWithContent(t, root, previousPreCommitHookContent)
 
 	var out, warn bytes.Buffer
-	installPreCommitHookOptional(root, false, &out, &warn)
+	_ = installPreCommitHookOptional(root, false, &out, &warn)
 
 	if got := readHook(t, root); got != preCommitHookContent {
 		t.Errorf("hook was not replaced: got %d bytes, want the incoming content (%d bytes)", len(got), len(preCommitHookContent))
