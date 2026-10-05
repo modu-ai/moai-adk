@@ -2,9 +2,9 @@
 id: SPEC-HARNESS-DETACHED-PRUNE-001
 title: "Detached prune off the hook synchronous path — observer records, gate spawns, child prunes"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-10-05
-updated: 2026-10-05
+updated: 2026-10-06
 author: "manager-spec"
 priority: P1
 phase: "v3.2.0 target"
