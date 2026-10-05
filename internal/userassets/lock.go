@@ -1,0 +1,78 @@
+// lock.go — the user-level manifest read-modify-write lock (round-5 F4,
+// REQ-006). Manifest mutation is serialized per user: the lock spans
+// manifest READ → asset changes → manifest SAVE, so concurrent
+// init/update/bundle runs from different projects of the same user cannot
+// lose one another's writes (bundle-list entries, file records).
+//
+// The lock is a file under ~/.moai/ — a user-level concern, because the
+// concurrent writers are different projects sharing one manifest. The file
+// is created O_EXCL and carries the holder's PID; a lock whose mtime is
+// older than staleAfter is taken over (a crashed holder must not deadlock
+// every later run). flock(2) is deliberately not used: it has no portable
+// Windows form, and the B1 cross-platform build must pass untagged.
+package userassets
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+// DefaultStaleAfter bounds how long a lock file may sit untouched before a
+// later run takes it over. Generous by design: a run's install phase can
+// legitimately take minutes on a cold tree.
+const DefaultStaleAfter = 30 * time.Minute
+
+// UserLock is a held user-level lock. Release unlocks and removes the file.
+type UserLock struct {
+	path string
+}
+
+// AcquireUserLock takes the user-level lock under the given moai home,
+// retrying until timeout. It returns ErrLocked when the window elapses
+// while a live holder keeps the lock.
+func AcquireUserLock(home string, timeout time.Duration) (*UserLock, error) {
+	return acquireUserLockStale(LockPath(home), timeout, DefaultStaleAfter)
+}
+
+func acquireUserLockStale(path string, timeout, staleAfter time.Duration) (*UserLock, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, fmt.Errorf("userassets: mkdir lock home: %w", err)
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			_, _ = fmt.Fprintf(f, "pid=%d acquired=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339))
+			_ = f.Close()
+			return &UserLock{path: path}, nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return nil, fmt.Errorf("userassets: acquire lock: %w", err)
+		}
+		// Held. Take over a stale lock — a crashed holder must not wedge
+		// the user's manifest forever.
+		if info, statErr := os.Stat(path); statErr == nil && time.Since(info.ModTime()) > staleAfter {
+			if removeErr := os.Remove(path); removeErr == nil || os.IsNotExist(removeErr) {
+				continue
+			}
+		}
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("%w: %s", ErrLocked, path)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// Release removes the lock file.
+func (l *UserLock) Release() error {
+	if l == nil {
+		return nil
+	}
+	if err := os.Remove(l.path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("userassets: release lock: %w", err)
+	}
+	return nil
+}
