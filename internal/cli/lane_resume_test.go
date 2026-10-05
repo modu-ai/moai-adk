@@ -357,6 +357,75 @@ func TestAmbiguityNeverRefusesInValidator(t *testing.T) {
 	}
 }
 
+// TestPostSeparatorLauncherFlagsAreInert (card-review round 4, P2) —
+// interpretation splits at MoAI's separator: after it, `-p` is Claude's
+// boolean --print, not the launcher's value-taking --profile — the
+// launcher-side value flags are not claude's options in that region and must
+// not consume a phantom value, so a valueless `--resume` behind them is
+// refused.
+func TestPostSeparatorLauncherFlagsAreInert(t *testing.T) {
+	for _, args := range [][]string{
+		{"--", "-p", "--resume"},
+		{"--", "--profile", "--resume"},
+		{"--", "--branch", "--resume"},
+	} {
+		err := validateResumeArgs(args)
+		if err == nil {
+			t.Errorf("validateResumeArgs(%q) = nil, want the valueless-resume refusal (the launcher flag is inert post-separator)", args)
+			continue
+		}
+		if !strings.Contains(err.Error(), "--resume <session-id>") {
+			t.Errorf("refusal must name --resume <session-id>; got: %v", err)
+		}
+	}
+}
+
+// TestPostSeparatorLauncherFlagsInertGuard (card-review round 4, P2) — the
+// guard applies the same split: a `-p` after MoAI's separator cannot shield a
+// resume token (the reviewer's repro reached children=2 with a valueless
+// --resume).
+func TestPostSeparatorLauncherFlagsInertGuard(t *testing.T) {
+	if !carriesResumeToken([]string{"--name", "lane-3", "--", "-p", "--resume", "<session-id>"}) {
+		t.Fatal("the launcher's -p shielded a resume token post-separator")
+	}
+
+	t.Run("relaunch refuses behind the inert flag", func(t *testing.T) {
+		gateCalls, leaseCalls, launchCalls := saveRelaunchSeams(t)
+		cmd := &cobra.Command{}
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+
+		err := runFactoryLaneRelaunch(cmd, "lane-3", []string{"--name", "lane-3", "--", "-p", "--resume", "<session-id>"}, "", "")
+		if err == nil {
+			t.Fatal("expected the relaunch loop to refuse behind the inert -p")
+		}
+		if !strings.Contains(err.Error(), "moai cc -l -- --resume <session-id>") {
+			t.Errorf("refusal must name the one-shot lane-join form verbatim; got: %v", err)
+		}
+		if *gateCalls != 0 || *leaseCalls != 0 || *launchCalls != 0 {
+			t.Errorf("refusal must precede every seam: gate=%d lease=%d launch=%d, want all 0",
+				*gateCalls, *leaseCalls, *launchCalls)
+		}
+	})
+}
+
+// TestPreSeparatorLauncherFlagsKeepValueBehavior (card-review round 4 pins) —
+// before MoAI's separator the launcher-side value flags still consume their
+// values (r1-r3 behavior unchanged).
+func TestPreSeparatorLauncherFlagsKeepValueBehavior(t *testing.T) {
+	for _, args := range [][]string{
+		{"-p", "--resume", "<session-id>"},
+		{"-m", "--resume"},
+		{"--profile", "--resume"},
+	} {
+		if err := validateResumeArgs(args); err != nil {
+			t.Errorf("validateResumeArgs(%q) = %v, want nil (pre-separator launcher value behavior)", args, err)
+		}
+	}
+}
+
+// `moai cc -w -- -- --resume` reaches launch as it did at base: the
+// ambiguous `-w` meets `--`, and the separator wins — a `--` is never
 // TestSeparatorWinsOverAmbiguousValue (card-review round 3, P1 repro 3) —
 // `moai cc -w -- -- --resume` reaches launch as it did at base: the
 // ambiguous `-w` meets `--`, and the separator wins — a `--` is never

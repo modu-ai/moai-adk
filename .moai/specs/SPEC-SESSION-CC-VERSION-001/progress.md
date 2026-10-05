@@ -399,6 +399,36 @@ than asserting a launch that the launcher's `-w` handling may legitimately refus
 `0 issues.`; session AC family `ok`; cli scoped family (AC-SCV-005..010 selectors +
 TestSession/TestDoctorGolden/TestBinaryLag/launcher-entry families) `ok … 54.430s`.
 
+### Card-review round-4 repair (operator-approved resume; segment-split tables)
+
+Operator approved resuming the card (2026-10-05). Codex r4: **FAIL** — one P2, live repro
+(`moai cc -- -p --resume`: error=nil, launches=1). Round-4's single repair, by the leader's
+prescription: **segment-split option tables** — interpretation splits at MoAI's separator.
+Before it, the launcher's value flags (`-p/--profile, -w/--worktree, --branch,
+--factory-run, --leader, --clear-policy, -m`) consume their values; after it the argv belongs
+to claude, where those flags do not exist — `-p` there is claude's boolean `--print`, so the
+launcher table is INERT post-separator and can no longer consume a phantom value that
+shields a valueless `--resume`. Claude's own tables (required-value + the `[value]`
+ambiguous class) apply in both segments; the `--`-never-a-value rule and the cluster
+fail-closed rule are unchanged from round 3.
+
+Implementation: the launcher-side flags moved out of the merged table into
+`launcherValueTakingOptions`, gated by the segment (`takesValueInSegment(arg, preSeparator)`);
+both scanners consult it. All r1-r3 behavior pinned: the pre-separator launcher value
+behavior test (`TestPreSeparatorLauncherFlagsKeepValueBehavior`) passed at the pre-repair
+tree and stays green.
+
+**RED evidence** — the r4 repro as regression tests, failing at the r3 tree (exit 1,
+`/tmp/t1465-red-r4.log`): `TestPostSeparatorLauncherFlagsAreInert` (post-separator
+`["--","-p","--resume"]`-shaped inputs were NOT refused), `TestPostSeparatorLauncherFlagsInertGuard`
+(the guard did not fire behind the inert flag; the relaunch repro entered the loop).
+**GREEN** — after the repair: exit 0, 51 `--- PASS` across the complete resume set (every
+r1-r4 reproduction kept as regression tests, all green).
+
+**Repair gate** — gofmt clean; builds native + windows exit 0; vet 0; golangci-lint
+`0 issues.`; session AC family `ok`; cli scoped family (AC-SCV-005..010 selectors +
+TestSession/TestDoctorGolden/TestBinaryLag/launcher-entry families) `ok … 40.788s`.
+
 ### Residual-risk (run-phase)
 
 - The installed read resolves the FIRST `claude` on PATH — a PATH-shadowed install reads that

@@ -39,18 +39,12 @@ const (
 // valueless, and the tokens after the `--` are prompt text.
 const argSeparator = "--"
 
-// claudeValueTakingOptions is the set of options whose value-ness is
-// DEFINITIVE: their synopsis marks a REQUIRED value (<value>), and the
+// claudeValueTakingOptions is the set of CLAUDE's options whose value-ness
+// is DEFINITIVE: their synopsis marks a REQUIRED value (<value>), and the
 // measured parser consumes the next token as that value even when it is
 // flag-shaped (reviewer-verified for --append-system-prompt, card-review
-// round 2). Both modes skip the token after them — except a `--`, which is
-// never an option's value (round 3 ruling) and counts as the separator
-// instead. Measured from `claude --help` (Claude Code 2.1.289,
-// /Users/<u>/.local/bin/claude -> …/versions/2.1.289, 2026-10-04), plus the
-// launcher-side flags whose parsers consume a non-flag value before claude
-// ever parses (-p/--profile, --branch, --factory-run, --leader,
-// --clear-policy, -m — parseProfileFlag and parseFactoryFlag refuse a
-// flag-shaped value, so the launcher errors there either way).
+// round 2). Measured from `claude --help` (Claude Code 2.1.289,
+// /Users/<u>/.local/bin/claude -> …/versions/2.1.289, 2026-10-04).
 // `--resume`/`-r` are value-taking too but are special-cased before this
 // table (REQ-SCV-009's own value check).
 //
@@ -71,8 +65,17 @@ var claudeValueTakingOptions = map[string]bool{
 	"--plugin-dir": true, "--plugin-url": true, "--session-id": true,
 	"--setting-sources": true, "--settings": true, "--system-prompt": true,
 	"--system-prompt-snapshot": true, "--tools": true,
-	// Launcher-side definitive value-taking flags (consumed before claude
-	// parses):
+}
+
+// launcherValueTakingOptions is the LAUNCHER's own value-taking flags — they
+// consume a value ONLY in the pre-separator segment (card-review round 4,
+// P2): after MoAI's `--` the argv belongs to claude, where `-p` is the
+// boolean --print, not the value-taking --profile, and none of these flags
+// exist — letting them consume there manufactured a phantom value that
+// shielded a valueless --resume. Measured from the launcher's own parsers
+// (parseProfileFlag refuses a flag-shaped value, parseFactoryFlag likewise;
+// both error before any launch).
+var launcherValueTakingOptions = map[string]bool{
 	"-p": true, "--profile": true, "--branch": true, "--factory-run": true,
 	"--leader": true, "--clear-policy": true, "-m": true,
 }
@@ -145,9 +148,11 @@ func laneJoinChildArgv(launcherArgs []string, sessionName string, settingsFlag [
 // that flag as the value). The walk consumes the values of DEFINITIVE
 // value-taking options and passes AMBIGUOUS ones silently — ambiguity never
 // refuses (round 3 leader ruling); the only refusal stays the definitive
-// valueless resume. A `--` is never consumed as an option's value: it counts
-// as the separator instead, and the scan stops at Claude's separator. It
-// returns nil when every resume token carries a value.
+// valueless resume. Interpretation splits at MoAI's separator (round 4): the
+// launcher's value flags consume only BEFORE it — after it the argv belongs
+// to claude, where they do not exist. A `--` is never consumed as an
+// option's value: it counts as the separator instead, and the scan stops at
+// Claude's separator. It returns nil when every resume token carries a value.
 func validateResumeArgs(args []string) error {
 	separators := 0
 	for i := 0; i < len(args); i++ {
@@ -176,7 +181,7 @@ func validateResumeArgs(args []string) error {
 			// shape is genuinely ambiguous — never a refusal here.
 			continue
 		}
-		if claudeValueTakingOptions[args[i]] || ambiguousValueOptions[args[i]] {
+		if takesValueInSegment(args[i], separators == 0) {
 			// Definitive: the next token is the value. Ambiguous: it MIGHT be
 			// the value, and ambiguity never refuses. Either way it is passed
 			// silently — unless it is the separator, which is never a value.
@@ -186,6 +191,18 @@ func validateResumeArgs(args []string) error {
 		}
 	}
 	return nil
+}
+
+// takesValueInSegment reports whether the token consumes the next token as
+// its value in the current segment: interpretation splits at MoAI's
+// separator (round 4) — claude's options take values everywhere they appear,
+// the launcher's value flags only before the separator (after it the argv
+// belongs to claude, where they do not exist).
+func takesValueInSegment(arg string, preSeparator bool) bool {
+	if claudeValueTakingOptions[arg] || ambiguousValueOptions[arg] {
+		return true
+	}
+	return preSeparator && launcherValueTakingOptions[arg]
 }
 
 // resumeEqualsValue reports the value a `--resume=`/`-r=`-prefixed token
@@ -247,7 +264,7 @@ func carriesResumeToken(args []string) bool {
 			// validator's mirror (round 3 ruling).
 			continue
 		}
-		if claudeValueTakingOptions[args[i]] && i+1 < len(args) && args[i+1] != argSeparator {
+		if takesValueInSegment(args[i], separators == 0) && i+1 < len(args) && args[i+1] != argSeparator {
 			i++ // definitive value: never judged, never a separator
 		}
 	}
