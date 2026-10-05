@@ -514,6 +514,32 @@ const (
 	DefaultMemoryStaleAggregateThreshold = 10  // stale files >= this count emit one aggregated warning
 	DefaultMemoryTopicFileCap            = 50  // topic files beyond this trigger MEMORY_TOPIC_COUNT_OVER_CAP
 
+	// Memory index budget and card-close fold defaults
+	// (SPEC-MEMORY-FOLD-BUDGET-001, plan.md M1).
+	//
+	// DefaultMemoryIndexByteCap is the doctor's advisory byte cap for
+	// MEMORY.md: the smaller reading of the host's announced "25KB"
+	// (25,000 vs 25,600). The loader's actual cut is unconfirmed
+	// (spec.md §1.4) — the cap is a conservative proxy that decides only
+	// when a warning appears, never what is lost. DefaultMemoryIndexWarnPercent
+	// is the warn percentage both budget axes share, applied with the integer
+	// test value*100 >= warnPercent*cap.
+	//
+	// DefaultMemoryFoldOnDone is the compiled default of the card-close fold
+	// gate: off. Wiring every queue close to a shared-store mutation is
+	// opt-in (plan.md OD-1); the gate reads config.EnvMemoryFoldOnDone.
+	//
+	// DefaultMemoryFoldOnDoneBound bounds one card's fold-on-done step. 2s
+	// mirrors DefaultHookAsyncJoinTimeout rather than inventing a second
+	// calibration (plan.md OD-11): the bounded work — a file read, one
+	// append, one rename — sits orders of magnitude below it. The 5s ceiling
+	// is asserted by the test (AC-MFB-008 (x)), not carried as a second
+	// constant. Consumed by the close paths (plan.md M4).
+	DefaultMemoryIndexByteCap     = 25000
+	DefaultMemoryIndexWarnPercent = 80
+	DefaultMemoryFoldOnDone       = false
+	DefaultMemoryFoldOnDoneBound  = 2 * time.Second
+
 	// DefaultFeedbackRepository is the default target repository for the /moai
 	// feedback workflow (SPEC-INVOCATION-MODEL-001). Feedback targets the remote
 	// MoAI-ADK tool repository (bug reports about the tool itself), NOT the user's
