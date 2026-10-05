@@ -49,7 +49,8 @@ func compatibilityHelp(t *testing.T, root *cobra.Command, verb string) (string, 
 func TestGTDAllTodoVerbsParity(t *testing.T) {
 	// hold/unhold join the surface per SPEC-TODO-HOLD-STATE-001 (REQ-THS-006/008).
 	// claim joins per SPEC-TODO-CLAIM-LEASE-001 (REQ-TCL-005).
-	todoWant := []string{"add", "analyze", "auto-done", "claim", "done", "drop", "edit", "export-json", "history", "hold", "landed", "list", "move", "next", "pr", "relate", "show", "triage", "undone", "undrop", "unhold", "unpick", "unrelate", "why"}
+	// merge joins per SPEC-TODO-CARD-ISSUANCE-001 (REQ-TCI-019); trace joins per REQ-TCI-015.
+	todoWant := []string{"add", "analyze", "auto-done", "claim", "done", "drop", "edit", "export-json", "history", "hold", "landed", "list", "merge", "move", "next", "pr", "relate", "show", "trace", "triage", "undone", "undrop", "unhold", "unpick", "unrelate", "why"}
 	sort.Strings(todoWant)
 	gtdWant := append(slices.Clone(todoWant), "capture", "clarify", "organize", "reflect", "engage", "answer")
 	sort.Strings(gtdWant)

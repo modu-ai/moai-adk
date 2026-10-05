@@ -234,53 +234,64 @@ func (f *FactoryDB) Transition(ctx context.Context, req TransitionRequest) (Card
 	now = now.UTC()
 	var result Card
 	err := f.withCardTx(ctx, req.RunID, func(tx *sql.Tx) (func(), error) {
-		cur, err := loadCard(ctx, tx, req.RunID, req.CardID)
+		c, err := transitionTx(ctx, f, tx, req, now)
 		if err != nil {
 			return nil, err
 		}
-		// An expired lease is returned before any other transition (T27/T28),
-		// whatever the request asked for and whatever version it carried.
-		if cur.LeaseExpired(now) {
-			if err := applyLeaseExpiry(ctx, tx, cur, now); err != nil {
-				return nil, err
-			}
-			return nil, commitThen(fmt.Errorf("%w: card %s lease held by %q expired at %s", ErrLeaseExpired, cur.CardID, cur.LeaseHolder, cur.LeaseExpiresAt))
-		}
-		// The version compare comes first: a caller whose read is stale has no
-		// standing to be told anything about the current state's edges.
-		if cur.Version != req.ExpectedVersion {
-			return nil, staleErr(cur, req.ExpectedVersion)
-		}
-		if cur.Legacy() {
-			if req.To != CardAbandoned {
-				return nil, fmt.Errorf("%w: card %s holds pre-F1 state %q; only an operator abandon is accepted", ErrLegacyState, cur.CardID, cur.State)
-			}
-			if req.Decider != DeciderHuman {
-				return nil, fmt.Errorf("%w: abandon requires decider %q", ErrDecider, DeciderHuman)
-			}
-			next := cur
-			next.State = CardAbandoned
-			result, err = commitTransition(ctx, tx, cur, transitionPlan{next: next, kind: "card.transition", keepColumns: true}, req, now)
-			return nil, err
-		}
-		if isReservedEdge(cur.State, req.To) {
-			return nil, fmt.Errorf("%w: %s → %s is reserved; the CI verdict reader that admits it is owned by F3", ErrReservedEdge, cur.State, req.To)
-		}
-		edge, ok := findEdge(cur.State, req.To)
-		if !ok {
-			return nil, fmt.Errorf("%w: %s → %s", ErrIllegalTransition, cur.State, req.To)
-		}
-		plan, err := f.planTransition(ctx, tx, cur, edge, req, now)
-		if err != nil {
-			return nil, err
-		}
-		result, err = commitTransition(ctx, tx, cur, plan, req, now)
-		return nil, err
+		result = c
+		return nil, nil
 	})
 	if err != nil {
 		return Card{}, err
 	}
 	return result, nil
+}
+
+// transitionTx is Transition's body inside the caller's transaction, so
+// compound record acts (the bundle loader) can run a transition beside
+// record writes without a second transaction boundary. The request's ids
+// and target state must already be validated; now must be normalized.
+func transitionTx(ctx context.Context, f *FactoryDB, tx *sql.Tx, req TransitionRequest, now time.Time) (Card, error) {
+	cur, err := loadCard(ctx, tx, req.RunID, req.CardID)
+	if err != nil {
+		return Card{}, err
+	}
+	// An expired lease is returned before any other transition (T27/T28),
+	// whatever the request asked for and whatever version it carried.
+	if cur.LeaseExpired(now) {
+		if err := applyLeaseExpiry(ctx, tx, cur, now); err != nil {
+			return Card{}, err
+		}
+		return Card{}, commitThen(fmt.Errorf("%w: card %s lease held by %q expired at %s", ErrLeaseExpired, cur.CardID, cur.LeaseHolder, cur.LeaseExpiresAt))
+	}
+	// The version compare comes first: a caller whose read is stale has no
+	// standing to be told anything about the current state's edges.
+	if cur.Version != req.ExpectedVersion {
+		return Card{}, staleErr(cur, req.ExpectedVersion)
+	}
+	if cur.Legacy() {
+		if req.To != CardAbandoned {
+			return Card{}, fmt.Errorf("%w: card %s holds pre-F1 state %q; only an operator abandon is accepted", ErrLegacyState, cur.CardID, cur.State)
+		}
+		if req.Decider != DeciderHuman {
+			return Card{}, fmt.Errorf("%w: abandon requires decider %q", ErrDecider, DeciderHuman)
+		}
+		next := cur
+		next.State = CardAbandoned
+		return commitTransition(ctx, tx, cur, transitionPlan{next: next, kind: "card.transition", keepColumns: true}, req, now)
+	}
+	if isReservedEdge(cur.State, req.To) {
+		return Card{}, fmt.Errorf("%w: %s → %s is reserved; the CI verdict reader that admits it is owned by F3", ErrReservedEdge, cur.State, req.To)
+	}
+	edge, ok := findEdge(cur.State, req.To)
+	if !ok {
+		return Card{}, fmt.Errorf("%w: %s → %s", ErrIllegalTransition, cur.State, req.To)
+	}
+	plan, err := f.planTransition(ctx, tx, cur, edge, req, now)
+	if err != nil {
+		return Card{}, err
+	}
+	return commitTransition(ctx, tx, cur, plan, req, now)
 }
 
 func staleErr(cur Card, expected int64) error {
@@ -663,12 +674,13 @@ func updateCardRow(ctx context.Context, tx *sql.Tx, c Card, expected int64) erro
 	res, err := tx.ExecContext(ctx, `UPDATE cards SET owner_label=?,state=?,version=?,evidence_path=?,updated_at=?,`+
 		`stage=?,lease_holder=?,lease_expires_at=?,heartbeat_at=?,decision_gate=?,decision_question=?,decision_resume=?,`+
 		`decider=?,decided_at=?,failure_reason=?,hint_prefer=?,hint_after=?,spec_id=?,worktree_path=?,evidence_sha=?,`+
-		`merge_sha=?,merge_tree=?,remeasure_path=?,contract_spec_id=?,contract_sha256=?,contract_signed_at=?,contract_event=? `+
+		`merge_sha=?,merge_tree=?,remeasure_path=?,bundle_id=?,bundle_order=?,`+
+		`contract_spec_id=?,contract_sha256=?,contract_signed_at=?,contract_event=? `+
 		`WHERE run_id=? AND card_id=? AND version=?`,
 		c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt,
 		c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume,
 		c.Decider, c.DecidedAt, c.FailureReason, c.HintPrefer, c.HintAfter, c.SpecID, c.WorktreePath, c.EvidenceSHA,
-		c.MergeSHA, c.MergeTree, c.RemeasurePath, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent,
+		c.MergeSHA, c.MergeTree, c.RemeasurePath, c.BundleID, c.BundleOrder, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent,
 		c.RunID, c.CardID, expected)
 	if err != nil {
 		return err
