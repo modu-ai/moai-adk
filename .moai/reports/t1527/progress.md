@@ -135,3 +135,34 @@ build ok. Live-after captures re-taken on the e24ae0298+repair build
   bea674873+repair build (/tmp/t1527-moai-after3) — shapes unchanged on success
   paths (the round-3 changes touch failure paths and the marker mechanism only).
 
+## Repair round 4 (final micro-round: 1xP2 confirmed-RED + 2xP3)
+
+- R3-1 (P2, leader-confirmed RED) the shared helper snapCountPrefixed counted
+  with TrimSpace+HasPrefix — the severity glyph (and its SGR escape) precedes
+  the body, so every migrated warning counted 0 and
+  TestCleanReinstall_SnapshotWarningGoesToErrOut went red. Helper fixed ONCE:
+  stripSGR + contains (glyph- and colour-agnostic). All six call sites
+  re-verified by EXACT test name with -v: identity :94 positive (now PASS)
+  and :97 negative; settings :516 positive, :519 negative, :542 positive
+  (all three inside TestSettingsSnapshot_WriteFailureDoesNotBlock); mcp :217
+  positive (TestMCPSnapshot_WriteFailureDoesNotBlock).
+- R3-2 (P3) the retrack block moved BEFORE the init completion card: the
+  card's p.Count() and its "see the warning summary" hint now include a
+  retrack failure, and nothing but the deferred summary panel follows the
+  card (ordering property kept).
+- R3-3 (P3) new TestRetrackSectionFiles_FailureReturnsErrorAndPrintsNothing:
+  .moai made read-only AFTER the helper's own Load (a broken load is the
+  documented no-op escape — the first injection attempt broke Load, not
+  Save), asserting the save error IS returned AND the writer stayed empty.
+  The success-path call site at :166 asserts the error explicitly instead of
+  discarding it.
+
+Round-4 verification: the confirmed-RED test now PASSes (-v observed);
+init/retrack/snapshot/mcp/identity families green (60s ok); race targeted ok;
+vet darwin+windows clean; golangci-lint 0 issues; GOOS=windows build ok.
+Capture shapes unchanged on success paths (round-4 touches warning paths and
+test-only code); live-after-init.txt re-taken on the after4 build (25 lines,
+exit 0). Note: two -run no-match artifacts were caught and corrected IN-round
+(anchored exact-name patterns matching zero tests) — every family claim above
+is backed by -v RUN lines or whole-file runs.
+
