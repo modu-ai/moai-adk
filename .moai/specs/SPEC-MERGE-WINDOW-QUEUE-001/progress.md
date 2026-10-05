@@ -251,8 +251,8 @@ closure names the command, the verbatim output, and the tree.
   39 decision points measured in the body, over the complexity-15 bar), (c) the
   `spec.md` `in-progress → implemented → completed` transition (frontmatter only —
   `status:` + `updated:`), and (d) this §E.4 signal.
-- `sync_commit_sha: pending-backfill-sync` (the placeholder is backfilled by the
-  following chore commit — a commit cannot cite its own hash).
+- `sync_commit_sha: e26e99c64` (the sync commit; this backfill is the following
+  chore commit — a commit cannot cite its own hash).
 - Scope note: the dispatch named "required-backend fail-closed resolution wiring" for
   this entry; measured against this branch's diff (`git diff 5c406769d..HEAD`), no
   required-backend wiring exists in it — that item belongs to
