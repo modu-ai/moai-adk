@@ -229,7 +229,7 @@ func TestFactoryLeaseClaimRespectsWaitCap(t *testing.T) {
 	defer func() { _ = db.Close() }()
 	end := flHoldRecord(t, root)
 	start := time.Now()
-	_, leased, retry, claimErr := factoryNextRecordAndClaim(context.Background(), db, root, fcRun, "t1", "lane-1")
+	_, leased, retry, claimErr := factoryNextRecordAndClaim(context.Background(), db, root, fcRun, "t1", "lane-1", homestate.CardFields{})
 	segment := time.Since(start)
 	end()
 	t.Logf("claim segment under a held record: %s busy=%v leased=%v retry=%v", segment, errors.Is(claimErr, errFactoryRecordBusy), leased, retry)

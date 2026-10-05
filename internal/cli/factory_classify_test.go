@@ -309,7 +309,7 @@ func TestFactoryNextRecordAndClaimRaceOnLeasedRow(t *testing.T) {
 	}
 
 	// lane-2 claims t1 through the b2 arm: no error, a race signal.
-	card, owned, raced, err := factoryNextRecordAndClaim(ctx, db, root, fcRun, "t1", "lane-2")
+	card, owned, raced, err := factoryNextRecordAndClaim(ctx, db, root, fcRun, "t1", "lane-2", homestate.CardFields{})
 	if err != nil {
 		t.Fatalf("RecordAndClaim on an already-leased card: %v", err)
 	}

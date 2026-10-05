@@ -1,0 +1,201 @@
+// factory_bundle.go — SPEC-TODO-CARD-ISSUANCE-001 M4 (REQ-TCI-018/-020):
+// the bundle loader and the hub-chain hint. The bundle is the operator's
+// loading act: it records the members in order with the bundle identity and
+// position, chains each later member to the one before it through the after
+// hint, and assigns ONLY the first member to the lane — the selection host
+// serves the rest to that lane as the predecessors reach the local merge.
+package cli
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
+)
+
+// newFactoryBundleCommand — `moai factory bundle <lane> <card>…` (REQ-TCI-018):
+// load a bundle chain as one leader-side act. Every member's queue item must
+// already be picked — the same precondition RecordPicked states
+// (REQ-FR-022) — and one member missing it refuses the whole bundle: a
+// half-loaded chain would lease its head and strand the rest.
+func newFactoryBundleCommand() *cobra.Command {
+	var run string
+	cmd := &cobra.Command{
+		Use:   "bundle <lane> <card>…",
+		Short: "Load a bundle chain: record the members in order, assign the first to the lane",
+		Args:  cobra.MinimumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			lane := strings.TrimSpace(args[0])
+			cards := args[1:]
+			if err := runFactoryBundle(cmd, lane, cards, run); err != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: factory bundle: %v\n", err)
+				return err
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	return cmd
+}
+
+// runFactoryBundle is the bundle body: verify every member's queue
+// precondition under the queue lock, then record the chain and assign the
+// head. The record writes run after the lock is released, exactly like the
+// assign path's record write does.
+func runFactoryBundle(cmd *cobra.Command, lane string, cards []string, run string) error {
+	if lane == "" {
+		return fmt.Errorf("the lane label is required")
+	}
+	root := factoryCardRoot()
+	store := newTodoStore()
+	// The queue precondition, verified under the lock so no member's state
+	// moves between the check and the decision.
+	var refusal error
+	ran, err := factoryLeaseSection(store, func(l *factory.LockedBacklog) {
+		rec, rerr := l.LoadPure()
+		if rerr != nil {
+			refusal = fmt.Errorf("read the queue: %w", rerr)
+			return
+		}
+		byID := make(map[string]factory.BacklogItem, len(rec.Items))
+		for _, it := range rec.Items {
+			byID[it.ID] = it
+		}
+		for _, id := range cards {
+			it, ok := byID[id]
+			if !ok {
+				refusal = fmt.Errorf("no card %s in the queue", id)
+				return
+			}
+			// POSITIVE enumeration (REQ-THS-012): picked is the only state
+			// the loader takes a member from; every other state — a state
+			// added later included — falls to the refusal.
+			switch it.State {
+			case factory.BacklogStatePicked:
+				// the only state the loader takes a member from
+			default:
+				refusal = fmt.Errorf("%s is %s, not picked — pick every member first", id, it.State)
+				return
+			}
+		}
+	})
+	if err != nil {
+		return err
+	}
+	if !ran {
+		return fmt.Errorf("the queue lock stayed held for the whole wait budget, so the bundle was not loaded; retry")
+	}
+	if refusal != nil {
+		return refusal
+	}
+
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	runID, err := resolveFactoryCardRun(ctx, root, run)
+	if err != nil {
+		return err
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	now := factoryCardNow()
+	bundleID := fmt.Sprintf("bundle-%s-%s", cards[0], now.UTC().Format("20060102T150405"))
+	// Each later member's after hint names the member recorded just before
+	// it — the chain the selection host serves in order.
+	var head homestate.Card
+	for i, id := range cards {
+		fields := homestate.CardFields{
+			BundleID:    &bundleID,
+			BundleOrder: &i,
+		}
+		if i > 0 {
+			after := cards[i-1]
+			fields.HintAfter = &after
+		}
+		picked, err := db.RecordPicked(ctx, runID, id, fields, "bundle", now)
+		if err != nil {
+			return err
+		}
+		if i == 0 {
+			head = picked
+		}
+	}
+	// Only the FIRST member is assigned; the selection host serves the rest
+	// to this lane as their predecessors reach the local merge.
+	head, err = db.Transition(ctx, homestate.TransitionRequest{
+		RunID: runID, CardID: cards[0], To: homestate.CardAssigned,
+		ExpectedVersion: head.Version, Actor: "bundle", Owner: lane, Now: now,
+	})
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "bundle %s loaded: %s assigned to %s, %d member(s) chained\n", bundleID, head.CardID, lane, len(cards))
+	return nil
+}
+
+// factoryHubChainFields computes the hub-chain hint for a card about to be
+// recorded (REQ-TCI-020): when the card's recorded files cross the embedded
+// hub list and another open, RECORDED card's files share a hub path, the new
+// record's after hint names the first such card in queue order. The queue
+// read supplies the files attributes and homestate the embedded list — this
+// is the one place that sees both (design §7.2). A card with no files, no
+// crossing, or no chainable predecessor carries no hint. Keep-set and
+// selection read no file overlap: the hint is a RECORD-CREATION input only.
+func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Card, cardID string) homestate.CardFields {
+	hub := make(map[string]bool)
+	for _, p := range homestate.HubFiles() {
+		hub[p] = true
+	}
+	sharesHub := func(files []string) bool {
+		for _, f := range files {
+			if hub[f] {
+				return true
+			}
+		}
+		return false
+	}
+	var candidate *factory.BacklogItem
+	for i := range queueRec.Items {
+		if queueRec.Items[i].ID == cardID {
+			candidate = &queueRec.Items[i]
+			break
+		}
+	}
+	if candidate == nil || candidate.Issuance == nil || !sharesHub(candidate.Issuance.Files) {
+		return homestate.CardFields{}
+	}
+	recorded := make(map[string]bool, len(cards))
+	for _, c := range cards {
+		recorded[c.CardID] = true
+	}
+	for i := range queueRec.Items {
+		it := &queueRec.Items[i]
+		if it.ID == cardID || it.Issuance == nil || !sharesHub(it.Issuance.Files) {
+			continue
+		}
+		// POSITIVE enumeration (REQ-THS-012): the open states a chain can
+		// order behind; every other state — a state added later included —
+		// falls through.
+		switch it.State {
+		case factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStateHold:
+		default:
+			continue
+		}
+		// The T2 after guard needs the predecessor's factory record; a card
+		// never dispatched carries no record to reach the local merge with.
+		if !recorded[it.ID] {
+			continue
+		}
+		after := it.ID
+		return homestate.CardFields{HintAfter: &after}
+	}
+	return homestate.CardFields{}
+}
