@@ -82,7 +82,7 @@ func TestRecordRunStampsSessionOwnerIdentity(t *testing.T) {
 	}
 	// The chain continues past v3 into the F1 card-record step (v4) and the
 	// lane-capacity column (v5, SPEC-CODEX-LANE-SLOTS-001).
-	if version != "5" {
+	if version != "6" {
 		t.Fatalf("schema_version = %q, want \"5\"", version)
 	}
 }
@@ -282,7 +282,7 @@ INSERT INTO runs(run_id,status,created_at,updated_at) VALUES('old-2','active','t
 	}
 	// The chain continues past v3 into the F1 card-record step (v4) and the
 	// lane-capacity column (v5, SPEC-CODEX-LANE-SLOTS-001).
-	if version != "5" {
+	if version != "6" {
 		t.Fatalf("schema_version = %q, want \"5\"", version)
 	}
 	var pid int

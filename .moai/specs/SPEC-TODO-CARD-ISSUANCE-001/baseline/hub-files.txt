@@ -1,0 +1,15 @@
+# SPEC-TODO-CARD-ISSUANCE-001 M0 hub-file list (card t1454)
+# absorbed develop tip: 4964d0796
+# period: --since=2026-08-13T00:00:00Z --until=2026-10-05T12:00:00+09:00 (first-parent only; the since is the full instant the recorded counts were measured at — a date-only --since moves with the run timezone, card t1454 r2c)
+# command form: git log --first-parent --since=<S> --until=<U> --format=%H <develop-tip-sha> -- <path> | wc -l
+# cut: hub threshold = 72h-window max overlap >= 10 (baseline.md threshold table, figure GB15)
+# note: none of the five paths has a renamed history in this period (the
+#       factory-dispatch*.md rename noted in plan §D concerns different files);
+#       all five carry their current path for the whole measured window.
+# consumer: internal/homestate embeds this list (plan F.6 M4); the embedded
+#           path set must equal this baseline copy (TestHubFileListMatchesMeasuringCommand).
+internal/template/catalog.yaml	133
+internal/config/defaults.go	70
+internal/cli/todo.go	44
+internal/web/assets/i18n.js	49
+.claude/rules/moai/workflow/kanban-dispatch.md	45
