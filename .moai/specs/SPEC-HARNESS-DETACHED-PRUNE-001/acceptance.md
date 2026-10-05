@@ -42,7 +42,13 @@ LEDGER-DP-D
   exit: 0
   why:  package-wide corroboration — none of the five gate/child AC test
         names exists yet (AC-DP-002/004/005/006).
-  tree: d05d1d5f0
+  cmd:  go test -list 'TestDetachedChildPrunes|TestDetachedChildDoubleSpawnCollapses' ./internal/cli
+  out:  ok  	github.com/modu-ai/moai-adk/internal/cli	1.100s
+  exit: 0
+  why:  second half added by gate round 4 — those two test names moved from
+        the harness to the cli package (the import-cycle fix), so their
+        zero-match is re-corroborated in the package they now live in.
+  tree: d05d1d5f0 (first command); 8a430d101 (second command)
 
 LEDGER-DP-E
   cmd:  ls internal/harness/retention_spawn_unix.go internal/harness/retention_spawn_windows.go
@@ -158,10 +164,13 @@ LEDGER-DP-GREEN-B
   command above, readable directly for the missing usage line.
   tree: d05d1d5f0
 
-  GREEN effect half (M2/M3, count-first):
-  cmd:  go test -list '^(TestDetachedChildPrunes)$' ./internal/harness
-  expect:  lists exactly 1 (LEDGER-DP-D corroborates the name is new)
-  cmd:  go test -run '^(TestDetachedChildPrunes)$' ./internal/harness
+  GREEN effect half (M2/M3, count-first — the test lives in the cli package
+  per gate round 4: it drives the CLI verb's run function, which a harness
+  test cannot import):
+  cmd:  go test -list '^(TestDetachedChildPrunes)$' ./internal/cli
+  expect:  lists exactly 1 (LEDGER-DP-D's second command corroborates the
+           name is new in this package)
+  cmd:  go test -run '^(TestDetachedChildPrunes)$' ./internal/cli
   expect:  exit 0 — the test drives the verb's run function against a temp
            log seeded with an over-retention entry and asserts the prune's
            observable effects: the kept-line count shrinks and an archive
@@ -203,7 +212,7 @@ LEDGER-DP-I
 | AC-DP-005 | REQ-DP-006 | LEDGER-DP-E (files absent), LEDGER-DP-F (no SysProcAttr anywhere in the package) | M2 files exist; M4: `GOOS=windows GOARCH=amd64 go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go vet ./internal/harness ./internal/cli` exit 0. Windows runtime behavior of the detached child stays documented-unobserved (spec §F F3) | release-blocking (build+vet half); runtime half unobserved-by-declaration |
 | AC-DP-006 | REQ-DP-007 (seam), REQ-DP-002 (wrapper) | LEDGER-DP-C, LEDGER-DP-D, LEDGER-DP-H | M3: the seam is a function field replaced by a recording fake (asserted inside `TestMaybeSpawnRetentionPruner`/`TestSpawnGateSuppressesOnFreshStamp`); no test spawns a real detached child (plan M3 boundary grep: no `exec.Command` invocation from test files on the spawn path); the four handlers reach the gate through ONE wrapper (`TestHarnessObserveGateWiring`) | release-blocking |
 | AC-DP-007 | REQ-DP-008 (semantics preserved) | none — the 1-hour interval, stamp-before-work, and atomic archive are correct on this tree today (`pruneSkipDuration = time.Hour`, retention.go:22; `TestPruneSkipsIfRecentlyPruned` green); no input turns it red before the work | M1/M2 re-verification: `go test ./internal/harness` exit 0 including the existing `TestPruneStaleEntries*` family and the t1467 M1 `retention_archive_atomic_test.go` suite — the semantics must still pass on the changed tree | regression-guard (never release-blocking — §A disposition) |
-| AC-DP-008 | REQ-DP-009 | LEDGER-DP-I (regression-test names absent; no retention token in the aggregator — both corroborated this session), plus the gate's overlay measurement (5×60-day fixture → 1 spurious promotion + 1 proposal on the removed path vs 0 current) as the causal finding source | M3: `TestStopClassificationFiltersExpiredEvents` exit 0 count-first — the 5×60-day fixture yields 0 promotions and 0 proposals from expired events; the window is applied at classification time, never waiting on the detached child; the sweep's whole-package re-verification `go test -timeout 30m ./internal/cli` exit 0 | release-blocking |
+| AC-DP-008 | REQ-DP-009 | LEDGER-DP-I (regression-test names absent; no retention token in the aggregator — both corroborated this session), plus the gate's overlay measurement (5×60-day fixture → 1 spurious promotion + 1 proposal on the removed path vs 0 current; 4-expired+1-recent aggregates identically to 5-recent) as the causal finding source | M3: `TestStopClassificationFiltersExpiredEvents` exit 0 count-first — the mixed-vintage fixture (4 expired + 1 recent) classifies the recent-only pattern `observation`, never `rule`, and the expired four contribute nothing; the filter sits at the aggregation input (REQ-DP-009, gate round 4); the sweep's whole-package re-verification `go test -timeout 30m ./internal/cli` exit 0 | release-blocking |
 
 ## §D Quality Gates and Definition of Done
 
