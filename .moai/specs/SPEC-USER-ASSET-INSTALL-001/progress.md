@@ -206,6 +206,29 @@ author: manager-spec
   Route B + the run flow's Route B (task-decomposition.md:302-303,
   Phase 19, W13); design §2.5 policy block + plan M3 + AC-018 arm
   verifies BOTH paths.
+- v0.6.2 CLASS REPAIR (leader 2nd-audit order — class sweeps ending the
+  instance parade; the last edit before the 3rd receipt ceremony): R-c —
+  the install-coverage DERIVATION MATRIX promoted to plan content (design
+  §2.3 + plan M0): M0 mechanically sweeps every loading instruction
+  across the deployed workflow tree (run/sync paths incl.
+  task-decomposition, phase-execution, quality-gates, delivery,
+  spec-assembly) AND the L0 agent bodies, crosses each invoked role and
+  loaded skill against the L0+bundle install set, and every gap becomes a
+  remediation row; the MATRIX is the M0 drift guard's source of truth
+  (the derived set, never a hand list — absorbs JD-8). Derived rows:
+  api-patterns/react-patterns/domain-database → per-mission domain
+  bundle rows (step 4b, W14); manager-git → the R-b precheck row;
+  `moai-ref-secops` → IN via the default Phase 8 delegate path
+  (quality-gates-quality.md:135 — same reachability as E2's owasp) —
+  closure FOURTEEN skills. R-d — the rewrite-scope extension (design
+  §2.5/§2.6 + plan M4): rebind target extends to skills tree + agent
+  sources + GENERATED TOMLs (`make agents-emit`; measured instance
+  e2e-tester.md:141 whose emitted TOMLs inherit the moved-asset
+  reference), the RETAINED-FILE→MOVED-ASSET class (templates/CLAUDE.md:
+  31/:47 rewritten), and the doctor consumer completion — `runHarnessCheck`
+  L4 (doctor_harness.go:20/:70; the dispatch's "plan.md:243" label did
+  not resolve — verified anchors cited) joins the M4 repoint list with
+  the healthy-install regression arm (AC-009/AC-017 + absorption map).
 
 ## §E.2 Run-phase Evidence
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
-version: "0.6.1"
+version: "0.6.2"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -140,6 +140,29 @@ related_specs: [SPEC-PLUGIN-MARKETPLACE-001, SPEC-INIT-SHRINK-001, SPEC-CODEX-CO
   (task-decomposition.md:302-303, Phase 19) — design §2.5 policy block +
   plan M3 + AC-018 arm verifies both. (The in-round E1/E2 extensions and
   the final-class round items 1-8 remain as recorded above.)
+- 2026-10-06: v0.6.2 CLASS REPAIR (leader 2nd-audit order — class sweeps
+  ending the instance parade; the last edit before the 3rd receipt
+  ceremony). R-c — the install-coverage DERIVATION MATRIX promoted to
+  plan content (design §2.3 + plan M0): M0 mechanically sweeps every
+  loading instruction across the deployed workflow tree AND the L0 agent
+  bodies, crosses each invoked role and loaded skill against the
+  L0+bundle install set, and every gap becomes a remediation row; the
+  MATRIX is the M0 drift guard's source of truth (the derived set, never
+  a hand list). Derived rows: moai-ref-api-patterns / moai-ref-react-
+  patterns / moai-domain-database (per-mission domain injections,
+  run/phase-execution.md:252) → bundle rows; manager-git → the R-b
+  precheck row; `moai-ref-secops` → IN via the default Phase 8 delegate
+  path (quality-gates-quality.md:135 — the same reachability that
+  admitted owasp in E2) — the closure is FOURTEEN skills. R-d — the
+  rewrite-scope extension (design §2.5/§2.6 + plan M4): the rebind target
+  extends to the skills tree + the AGENT SOURCES + the GENERATED TOMLs
+  (`make agents-emit` regeneration; measured instance e2e-tester.md:141
+  whose emitted TOMLs inherit the moved-asset reference), the
+  RETAINED-FILE→MOVED-ASSET class (templates/CLAUDE.md:31/:47 rewritten —
+  CLAUDE.md stays, its moved-asset references rebind), and the doctor
+  consumer completion — `runHarnessCheck`'s L4 (doctor_harness.go:20/:70)
+  joins the M4 repoint list with the healthy-install regression arm
+  (post-migration L4 must PASS reading workflows from the user folder).
 
 ## 1. Background and Premise
 

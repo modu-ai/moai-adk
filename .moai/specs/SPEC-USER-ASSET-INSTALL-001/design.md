@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "design.md — user-folder asset install architecture"
-version: "0.6.1"
+version: "0.6.2"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -253,17 +253,41 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
     Craft 20% / Consistency 15% — so Security and test-coverage scoring
     are default-path, and both skills are default-flow reachable, not
     per-mission emphasis (lead adjudication + anchors; confirms the
-    in-round E2 call). DESIGN CALL (stated per the dispatch): both JOIN
+    in-round E2 call). `moai-ref-secops` (quality-gates-quality.md:135 —
+    class repair R-c): the Phase 8 delegate — the documented security
+    replacement path on the STANDARD Phase 8 — loads it alongside
+    `moai-ref-owasp-checklist`, so the same reachability criterion admits
+    it. DESIGN CALL (stated per the dispatch): these JOIN
     L0 — documenting a degraded absent-path would be a second
     classification standard, exactly what the single reachability
     criterion exists to prevent.
-  UNION TOTAL: THIRTEEN skills. Classification criterion (final-class item 7,
+  UNION TOTAL: FOURTEEN skills. Classification criterion (final-class item 7,
   upgrading fold B1's prefix heuristic): **DEFAULT-FLOW REACHABILITY** — a
   skill is IN the closure when a documented default-configuration path of
   the plan/run/sync chain invokes it, and OUT otherwise, regardless of
   name prefix. Classified OUT (mission-type injection, no default path):
   `moai-domain-html-report` (manager-docs:224 — HTML-rendering missions
   only; no default plan/run/sync path renders HTML).
+- THE INSTALL-COVERAGE DERIVATION MATRIX (class repair R-c — promoted to
+  plan content; absorbs the JD-8 mechanical-derivation requirement): M0
+  MECHANICALLY DERIVES the install matrix by sweeping EVERY loading
+  instruction across (i) the deployed workflow tree — run/sync paths
+  INCLUDING `run/task-decomposition.md`, `run/phase-execution.md`,
+  `sync/quality-gates-*.md`, `sync/delivery.md`, `plan/spec-assembly` —
+  and (ii) the L0 agent bodies. Each invoked ROLE (manager-*/auditor) and
+  each loaded SKILL (`moai-*`) crosses against the L0+bundle install set;
+  every GAP becomes a matrix ROW carrying its install-verification and
+  the `moai bundle add <bundle>` remediation. Known rows the matrix MUST
+  capture (measured this tree): `moai-ref-api-patterns`
+  (run/phase-execution.md:252 — step 4b's per-domain mapping, with its
+  siblings `moai-ref-react-patterns` and `moai-domain-database`: all
+  three are per-mission DOMAIN injections → BUNDLE rows, not L0);
+  `moai-ref-secops` (quality-gates-quality.md:135 — default Phase 8 path
+  → IN, the fourteenth member); `manager-git` (delivery Route B +
+  task-decomposition:302 — the R-b precheck row). THE MATRIX IS THE M0
+  DRIFT GUARD'S SOURCE OF TRUTH: the guard pins the DERIVED set, never a
+  hand list — a hand-maintained closure cannot survive the next skill
+  added to a workflow body.
   AGENT DEPENDENCY (in-round extension E1): the factory entry (P2 —
   `moai-factory-foreman` + `moai-lane-watchdog` in L0) carries
   `manager-lead` as its OWN declared dependency — factory-dispatch.md:104
@@ -388,6 +412,29 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   RUN-PHASE LOADING ACs (AC-002/AC-017 arms). Standing rule (operator,
   recorded in the verdict file): any NEW gate finding after this round is
   run-phase debt — no further plan folds.
+- REWRITE-SCOPE EXTENSION (class repair R-d): the rebind/rewrite-check
+  target is the WHOLE user-scope deployed surface, not only workflow
+  markdown — it extends to the SKILLS TREE, the AGENT SOURCES
+  (`templates/.claude/agents/moai/*.md`), and the GENERATED TOMLs they
+  emit, with `make agents-emit` regeneration in the M4 procedure (the
+  agentemit pipeline: the .md layer is the source, the .codex TOMLs are
+  golden-pinned outputs — a source edit obliges the explicit
+  regeneration). Measured instance: `e2e-tester.md:141` carries a
+  moved-asset reference (`.claude/skills/moai-workflow-testing/references/
+  e2e-desktop-native-recipes.md`) — the emitted TOMLs inherit it, so the
+  rebind at source + agents-emit is required or the Codex-side agent
+  keeps the stale project path. Two more same-class instances enumerated
+  inside the sweep: (i) RETAINED-FILE→MOVED-ASSET references get
+  REWRITTEN, not merely verified — `templates/CLAUDE.md:31` and `:47`
+  route `.claude/skills/moai/SKILL.md`; CLAUDE.md itself STAYS
+  project-side, but its moved-asset references rebind to the installed
+  location, with post-rewrite verification; (ii) DOCTOR CONSUMER
+  completion — `runHarnessCheck`'s L4 inspects the PROJECT
+  `.claude/skills/moai/workflows` directory
+  (`internal/cli/doctor_harness.go:20`, L4 wiring at `:70`) and joins the
+  M4 repoint list alongside `checkSkillsAllowlist` and the Codex mirror
+  diagnostics, with a healthy-install regression test: post-migration,
+  L4 must PASS with the workflows read from the user folder.
 - Sub-workflow recursive rebind (final-class item 1): the class clause
   reaches the dispatcher's POINTED-TO documents — the workflows tree
   itself carries project-relative references (top-level `.md` files with
@@ -490,9 +537,14 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   ".claude/skills/ not found" on a healthy post-M4 install — it is
   REPOINTED to the user-install path in M4 (the same milestone that stops
   emitting project assets), not removed, so the allowlist integrity check
-  survives scoped to the user folders. Left alone the project-root
-  readers — and the allowlist check — would misreport every correct install
-  as drift.
+  survives scoped to the user folders. `runHarnessCheck`'s L4 (which
+  inspects the project `.claude/skills/moai/workflows` directory —
+  `internal/cli/doctor_harness.go:20`, L4 wiring `:70`) joins the same
+  repoint list (class repair R-d, instance ii): post-migration L4 must
+  PASS with the workflows read from the user folder, covered by a
+  healthy-install regression test. Left alone the project-root
+  readers — the allowlist check, and the harness L4 — would misreport
+  every correct install as drift.
 
 ### 2.7 Plugin carrier disposition
 

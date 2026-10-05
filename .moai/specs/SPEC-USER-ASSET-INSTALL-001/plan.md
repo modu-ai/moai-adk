@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "plan.md — implementation plan"
-version: "0.6.1"
+version: "0.6.2"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -98,18 +98,28 @@ factory) and opt-in bundles (the six optional packs stand; current-`core`
 remainders re-bundle by theme per D-Q5; the published command-skill set
 folds into the catalog view — iter4 D29). Catalog entries carry per-entry
 skill dependencies, and the L0 view explicitly enumerates the transitive
-runtime skill closure (design §2.3's thirteen-skill three-tier union under
+runtime skill closure (design §2.3's fourteen-skill three-tier union under
 the DEFAULT-FLOW REACHABILITY criterion — round-5 F1 + fold B1 +
-final-class item 7 + in-round extensions E1/E2 — plus the factory entry's
-declared agent dependency `manager-lead`). Add a catalog drift guard
-pinning the L0 list AND its
+final-class item 7 + in-round extensions E1/E2 + class repair R-c's
+`moai-ref-secops` — plus the factory entry's declared agent dependency
+`manager-lead`). DERIVE the install-coverage matrix MECHANICALLY
+(design §2.3, class repair R-c): sweep every loading instruction across
+the deployed workflow tree (run/sync paths incl. task-decomposition,
+phase-execution, quality-gates, delivery, spec-assembly) AND the L0 agent
+bodies; cross each invoked role and loaded skill against the L0+bundle
+install set; every gap becomes a matrix row with install-verification +
+the `moai bundle add <bundle>` remediation (known rows: api-patterns /
+react-patterns / domain-database — per-mission domain injections → bundle
+rows; manager-git — the R-b precheck row). THE MATRIX IS THIS DRIFT
+GUARD'S SOURCE OF TRUTH — the guard pins the DERIVED set, never a hand
+list. The guard additionally pins the L0 list AND its
 dependency
 closure to the sources (agent frontmatter `skills:` unions, the dispatcher
 routing-table Skills lines, the command skills' dispatcher references, AND
 the on-demand `Skill()` invoke-site sweep of the L0 agent bodies — round-5
 fold B1 — classified by DEFAULT-FLOW REACHABILITY (final-class item 7 +
-E2: `moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`,
-`moai-ref-testing-pyramid` are IN; `moai-domain-html-report` is
+E2 + R-c: `moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`,
+`moai-ref-testing-pyramid`, `moai-ref-secops` are IN; `moai-domain-html-report` is
 classified out; E1: manager-lead pinned under the factory entry),
 Reclassify current-`core` entries that are not L0 into bundles. Priority:
 High. Evidence: catalog loader tests + drift guards (L0 list + dependency
@@ -215,7 +225,16 @@ seventeen published copies with `make commands-emit` (the committed
 templates/.agents/skills copies are commandemit outputs — never
 hand-edited; `commands-emit-check` rides the build chain and rejects a
 hand-edited copy); rebind the AGENTS.md.tmpl:40-41 skill-path sentences to
-the user folders in the same change. CLASS-CLAUSE SWEEP (final-class
+the user folders in the same change. REWRITE-SCOPE EXTENSION (class
+repair R-d): the rebind target extends to the SKILLS TREE + the AGENT
+SOURCES + the GENERATED TOMLs — the agent sources (`templates/.claude/
+agents/moai/*.md`) are edited at source (measured instance:
+e2e-tester.md:141's moved-asset reference) and the emitted TOMLs are
+regenerated with `make agents-emit` (the agentemit pipeline — the .md
+layer is the source, the TOMLs are golden-pinned outputs); the
+RETAINED-FILE→MOVED-ASSET references get REWRITTEN (templates/CLAUDE.md:
+31/:47 route `.claude/skills/moai/SKILL.md` — CLAUDE.md stays, its
+moved-asset references rebind, post-rewrite verification). CLASS-CLAUSE SWEEP (final-class
 round, design §2.5): the recursive rebind covers the workflows tree
 itself (dispatcher 19 raw occurrences incl. the SKILL.md:282 in-prose
 one; the workflows subtree's project-relative references — broad-pattern
@@ -254,7 +273,12 @@ judged in M5, not assumed here; `checkSkillsAllowlist`
 (`internal/cli/doctor.go:957-958`) also joins the list per round-5 fold
 A3 — repointed to the user-install path in this milestone, not removed,
 since a healthy post-M4 install otherwise draws a spurious
-".claude/skills/ not found" warn) — with a regression test asserting a correct
+".claude/skills/ not found" warn; `runHarnessCheck`'s L4
+(`internal/cli/doctor_harness.go:20`, L4 wiring `:70` — inspects the
+project `.claude/skills/moai/workflows` directory) joins per class
+repair R-d instance ii — repointed the same way, with the
+healthy-install regression test: post-migration L4 must PASS reading
+workflows from the user folder) — with a regression test asserting a correct
 user-install reports clean, extending to the readiness output (the
 `AgentsTOMLs` count), because after this milestone the project-root readers
 misreport a correct install as drift. Priority: High. Evidence: init/update
