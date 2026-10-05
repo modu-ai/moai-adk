@@ -28,7 +28,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-002 — receipt 네 바인딩 불일치 거부 (REQ-FCR-002/005)
 
 - RED-now: P1 동일.
-- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateBinding$'` — UUID 불일치·**run id 불일치(다른 run의 receipt)**·factory version stale·증거 해시 불일치 각각 거부, 네 값 모두 일치 시 통과. INPUT: 네 바인딩 값을 하나씩 틀어놓은 fixture receipt 4종 — run 변이는 동일 카드·version·증거 SHA를 가진 두 번째 run(측정: cards 스키마에서 생성 가능).
+- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateBinding$'` — UUID 불일치·**run id 불일치(다른 run의 receipt)**·factory version stale·증거 해시 불일치 각각 거부, 네 값 모두 일치 시 통과. INPUT: 네 바인딩 값을 하나씩 틀어놓은 fixture receipt 4종 — run 변이는 동일 카드·version·증거 SHA를 가진 두 번째 run(측정: cards 스키마에서 생성 가능). **경합 변이(표면 a)**: 수동 done 실행 중 factory 전이로 version이 증가한 행 — archive 직전 재검증이 거부한다(REQ-FCR-002a).
 
 ### AC-FCR-003 — 수행자 발급 receipt 거부, 리더 발급+리더 실행 허용 (REQ-FCR-005)
 
@@ -70,7 +70,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-010 — 대기 신호·검토 기한·리더 재판정 (REQ-FCR-009)
 
 - RED-now: P6 — watchdog/waiting_since/review_deadline 개념 0건.
-- green(M2): `go test ./internal/homestate -run '^TestStalledWaitWatchdog$'` — owner 있음+임대 부재 행이 기한 초과 시 재판정 요구 기록; 자동 완료·자동 해제 0. INPUT: 구동 중 정지 행 fixture + 시간 진행.
+- green(M2): `go test ./internal/homestate -run '^TestStalledWaitWatchdog$'` — owner 있음+임대 부재 행이 기한 초과 시 재판정 요구 기록; 자동 완료·자동 해제 0. **백필 핀(D6)**: 기존 정체 행도 watchdog 첫 관측에서 `waiting_since`가 소급 기록되어 검토 기한이 성숙한다 — 백필 없는 행은 대상화되지 않는다. INPUT: 구동 중 정지 행 fixture + 시간 진행 + **스키마 이전 시점부터 정체 중이던 기존 행**.
 
 ### AC-FCR-011 — CI reader가 정확한 SHA만 인정 (REQ-FCR-010/011)
 
