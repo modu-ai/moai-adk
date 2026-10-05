@@ -99,7 +99,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-015 — transaction 내 재검증 + version-checked 전이 (REQ-FCR-015)
 
 - RED-now: P3·P4(신규 경로 — 처음 적용).
-- green(M2): `go test ./internal/homestate -run '^(TestReaperTransactionalReverify|TestOperatorReassignEdge)$'` — 만료 재검증이 transaction 안에서 행을 다시 읽는지(도중 변경 fixture), reassign이 version 충돌 시 거부하는지. INPUT: transaction 도중 행 변형 fixture.
+- green(M2): 두 시험을 **각각 따로** 실행한다 — OR 패턴 한 번은 한쪽 시험만 존재해도 exit 0으로 `[no tests to run]` 없이 통과하므로(게이트 실측) 빈 스윕이 은폐된다: `go test ./internal/homestate -run '^TestReaperTransactionalReverify$'`(만료 재검증이 transaction 안에서 행을 다시 읽는지 — 도중 변경 fixture)와 `go test ./internal/homestate -run '^TestOperatorReassignEdge$'`(reassign이 version 충돌 시 거부) — 각각 exit 0 + `[no tests to run]` 아님 둘 다 충족. INPUT: transaction 도중 행 변형 fixture.
 
 ### AC-FCR-016 — 어떤 회수 경로도 완료 처리하지 않음 (REQ-FCR-016)
 
@@ -116,7 +116,21 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 
 | AC | REQ | milestone | 패키지 |
 |---|---|---|---|
-| AC-FCR-001..005 | FCR-001..005 | M1 | internal/cli (+internal/factory) |
-| AC-FCR-006..011 | FCR-006..011 | M2 | internal/homestate |
-| AC-FCR-012..013 | FCR-012..013 | M3 | internal/cli + internal/factory |
-| AC-FCR-014..016 | FCR-014..016 | M1-M3 | internal/homestate + internal/cli |
+| AC-FCR-001 | REQ-FCR-001, REQ-FCR-002 | M1 | internal/cli (+internal/factory) |
+| AC-FCR-002 | REQ-FCR-002, REQ-FCR-005 | M1 | internal/cli (+internal/factory) |
+| AC-FCR-003 | REQ-FCR-005 | M1 | internal/cli |
+| AC-FCR-004 | REQ-FCR-003 | M1 | internal/cli |
+| AC-FCR-005 | REQ-FCR-004 | M1 | internal/cli |
+| AC-FCR-006 | REQ-FCR-006 | M2 | internal/homestate |
+| AC-FCR-007 | REQ-FCR-007 | M2 | internal/homestate |
+| AC-FCR-008 | REQ-FCR-008 | M2 | internal/homestate |
+| AC-FCR-009 | REQ-FCR-008 | M2 | internal/homestate |
+| AC-FCR-010 | REQ-FCR-009 | M2 | internal/homestate |
+| AC-FCR-011 | REQ-FCR-010, REQ-FCR-011 | M2 | internal/homestate |
+| AC-FCR-012 | REQ-FCR-012 | M3 | internal/cli + internal/factory |
+| AC-FCR-013 | REQ-FCR-013 | M3 | internal/factory |
+| AC-FCR-014 | REQ-FCR-014 | M2-M3 | internal/homestate + internal/cli |
+| AC-FCR-015 | REQ-FCR-015 | M2 | internal/homestate |
+| AC-FCR-016 | REQ-FCR-016 | M1-M3 | internal/homestate + internal/cli |
+
+전체 REQ-FCR-001..016이 위 표에서 최소 1개 AC와 연결된다(coverage reader가 읽는 전체 ID 형태 — 축약 `FCR-001..005`는 reader 미인약, 게이트 실측으로 16건 전부 CoverageIncomplete로 보고된 바 있음).
