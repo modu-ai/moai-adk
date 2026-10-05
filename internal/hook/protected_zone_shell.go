@@ -149,6 +149,11 @@ type zoneWalker struct {
 	mutating  bool
 	unbounded bool
 	cands     []string
+	// funcs maps a function name declared in THIS command to its body — a
+	// call runs the body in the caller's state (round 10 P2). calling holds
+	// the names currently being walked, breaking recursive declarations.
+	funcs   map[string]*syntax.Stmt
+	calling map[string]bool
 }
 
 // setCwds replaces the possible-directory set, dropping duplicates.
@@ -212,7 +217,9 @@ func zoneRedirectTargets(redirs []*syntax.Redirect) (bool, []string) {
 	var targets []string
 	for _, rd := range redirs {
 		switch rd.Op {
-		case syntax.RdrIn, syntax.Hdoc, syntax.DashHdoc, syntax.WordHdoc, syntax.DplIn:
+		// DplOut (`2>&1`) duplicates one descriptor onto another — it creates
+		// and truncates nothing, so it is not a write (round 10 P3)
+		case syntax.RdrIn, syntax.Hdoc, syntax.DashHdoc, syntax.WordHdoc, syntax.DplIn, syntax.DplOut:
 			continue
 		}
 		t, literal := zoneWordText(rd.Word)
@@ -384,6 +391,18 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	name, literal := zoneFirstArgWord(cmd.Args)
 	if !literal {
 		return // a dynamic command word under-matches
+	}
+	if body, declared := w.funcs[name]; declared {
+		// a call to a function declared in this command runs its body in the
+		// caller's directory state (round 10 P2); a recursive declaration
+		// breaks the walk here, the documented under-match
+		if w.calling[name] {
+			return
+		}
+		w.calling[name] = true
+		w.zoneWalkStmt(body)
+		delete(w.calling, name)
+		return
 	}
 	if name == "cd" {
 		var dirs []string
@@ -685,10 +704,19 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 			worlds = append(worlds, w.cwds...)
 		}
 		w.setCwds(worlds)
+	case *syntax.TimeClause:
+		// `time cmd` runs cmd, timed (round 10 P2)
+		w.zoneWalkStmt(cmd.Stmt)
+	case *syntax.FuncDecl:
+		// a declaration alone runs nothing; the name registers so a later
+		// call in the same command walks the body (round 10 P2)
+		if cmd.Name != nil {
+			w.funcs[cmd.Name.Value] = cmd.Body
+		}
 	case *syntax.CallExpr:
 		w.zoneCall(cmd)
 	default:
-		// function declarations, coprocesses, arithmetic, extended tests:
+		// coprocesses, arithmetic, extended tests, zsh anonymous functions:
 		// under-match
 	}
 }
@@ -746,7 +774,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	if !ok {
 		return ""
 	}
-	w := &zoneWalker{h: h, cwds: []string{"."}}
+	w := &zoneWalker{h: h, cwds: []string{"."}, funcs: map[string]*syntax.Stmt{}, calling: map[string]bool{}}
 	for _, stmt := range file.Stmts {
 		w.zoneWalkStmt(stmt)
 	}

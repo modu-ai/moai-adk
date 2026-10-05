@@ -205,6 +205,18 @@ The gate's verdict on the round-8 head (`32ec393a9`) failed with 2×P1 + 1×P2. 
 
 GREEN: `TestProtectedZone` hook+config (ShellMutation swept 78 — 5 new deny rows: for-iteration, while-accumulation, `;&`, `;;&`, and the loop-unbounded fail-closed row). One test-fixture correction during GREEN: the loop-unbounded row originally shared the `a/a/` manifest, whose directory entry already covers the deep-world candidates via prefix — the row moved to a zone_dir-only manifest so the deny provably comes from the bound itself.
 
+### Repair round 10 — absorb origin/main (PR conflict) + the independent auditor's findings (2026-10-06)
+
+Two inputs landed together after the round-9 push:
+
+- **PR #1757 became CONFLICTING with base main** (observed: `gh pr view` → `mergeable: CONFLICTING`, `mergeStateStatus: DIRTY`; `graph-freshness-conflict-guard` failed with "mergeable state unknown after polling" — the merge ref could not be created, so the docs gate was ABSENT, not red). The main side had moved (the transition PR fleet merging). Absorbed `origin/main` at `9da74469a` via a merge commit into this branch (`d4d9c56dd`). Conflict surface was exactly two files (`comm -12` of the two changed-file sets from merge-base `1c2336de0`): `.github/workflows/spec-lint.yml` and `CHANGELOG.md` (auto-merged). spec-lint resolved to the MAIN side: its fetch-step is the completed cutover my round-3 interim repair had deferred to — under GitHub Flow only `origin/main` is fetched and the deleted develop ref is never named. My interim best-effort develop fetch is fully superseded by it.
+- **The independent fallback auditor's verdict** (`.moai/reports/t1510/card-review-r8.md`, FAIL — 3×P2 + 2×P3 on the round-8 head) cross-checked against the round-9 tree: its case-fallthrough finding (P2 #1) and its `git -c "$CFG"` finding (P3 #5) were already repaired in round 9 — the gate and the auditor converged on the same holes from independent reads, and both repro strings are now regression rows. Three findings were new, repaired RED-first:
+  - **P2 TimeClause** — `time rm zone_dir/a.log` parsed to `TimeClause` and fell to the under-match default; the clause's inner statement now walks (`time` runs the command, timed).
+  - **P2 function decl+call** — `cleanup() { rm zone_dir/a.log; }; cleanup`: a `FuncDecl` registers its body under its name (a declaration alone runs nothing); a later `CallExpr` naming it walks the body in the caller's directory state, with a `calling` set breaking recursive declarations (documented under-match). mvdan has no FuncCall node — calls are plain CallExprs, which is why the call site needed the registry.
+  - **P3 DplOut** — `2>&1` (`DplOut`) duplicates one descriptor onto another and writes nothing, but it was not in the redirect skip list: read-only commands were flagged mutating, so under an INVALID manifest even `echo hi 2>&1` hit the fail-closed deny (observed RED). DplOut now skips alongside RdrIn/Hdoc/DplIn; the invalid-manifest fail-closed keeps its positive control (`rm zone_dir/a.log` under the same loader still denies with `manifest=invalid`).
+
+GREEN on the MERGED tree: `TestProtectedZone` hook+config (ShellMutation swept 84 — 4 new deny rows: TimeClause, function call, the auditor's `;;& *` fall-through repro, `git -c "$CFG" rm`; plus the DplOut allow control and its invalid-manifest positive control), `go build ./...` exit 0, GOOS=windows build OK, `golangci-lint` 0 issues, gofmt clean, `TestHMPSourceGuard` ok, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready

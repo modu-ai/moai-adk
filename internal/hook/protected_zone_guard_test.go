@@ -3,6 +3,7 @@ package hook
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -996,6 +997,36 @@ func testZoneShellMutation(t *testing.T) {
 	swept++
 	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "while true; do cd a; done; rm b/x"})
 	wantZoneDeny(t, "while true; do cd a; done; rm b/x", d, r, harnessLearnerIdentity, "category", "loop-unbounded")
+
+	// review-repair round 10 rows (the independent fallback auditor's findings
+	// on the round-8 head: constructs whose inner statements were never
+	// walked, plus the stderr-duplicate misclassification)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	for _, cmd := range []string{
+		"time rm zone_dir/a.log",                           // TimeClause's inner statement runs (r10)
+		"cleanup() { rm zone_dir/a.log; }; cleanup",        // a declared function's call runs its body (r10)
+		"case x in x) cd zone_dir ;;& *) rm a.log ;; esac", // fall-through repro, r9 fix confirmation (r10)
+		"git -c \"$CFG\" rm zone_dir/a.log",                // a dynamic -c value must not hide the subcommand (r10)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+	// control: a stderr duplicate writes nothing — under an INVALID manifest
+	// the mutating flag must stay unset so the fail-closed deny does not fire
+	// on read-only commands (r10 P3)
+	h.zoneLoader = func(string) config.ProtectedZoneLoad {
+		return config.ProtectedZoneLoad{State: config.ZoneStateInvalid, InvalidFile: "protected-zone.yaml", Err: errors.New("invalid")}
+	}
+	swept++
+	if d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "echo hi 2>&1"}); d == DecisionDeny {
+		t.Errorf("stderr duplicate under an invalid manifest: decision=%q reason=%q, want allow", d, r)
+	}
+	// positive control: a real mutation under the same invalid manifest denies
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "rm zone_dir/a.log"})
+	wantZoneDeny(t, "rm zone_dir/a.log (invalid manifest)", d, r, harnessLearnerIdentity, "manifest", "invalid")
 
 	if swept < 71 {
 		t.Fatalf("swept %d rows, want at least 71", swept)
