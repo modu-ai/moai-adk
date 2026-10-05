@@ -46,4 +46,3 @@ func newTodoTraceCmd() *cobra.Command {
 		"Maximum walk depth (0 = unbounded)")
 	return cmd
 }
-
