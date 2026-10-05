@@ -4,6 +4,8 @@
 
 Every criterion below adopts the two-cell discipline (`.claude/rules/moai/development/verification-completeness.md` §2): a RED-now cell observed on the pre-implementation tree and a GREEN path naming the milestone that flips it. All RED cells were measured in this plan session on **`d05d1d5f0`** — branch `WT-harness-prune-detached`, worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1497`, status clean, from the worktree root. Each RED cell states why it is red: the matched identifiers name code this SPEC will create, or — for the defect-presence cells (A, G) — the defect exists; no wrong-reason red. New-test cells use the package-wide `go test -list` corroboration so a bare selector matching nothing cannot read as a pass (LEDGER-DP-B and LEDGER-DP-D are that guard). Every check names WHEN it runs (its milestone exit), the input that turns it red, and who sees the red (the exit code of the milestone's exit gate, then the plan-auditor and the run-phase orchestrator via progress.md §E.1). AC-DP-007 is classified regression-guard (its green is the pre-existing state; no input on this tree turns it red today), never release-blocking, per §2.1's undecidable disposition.
 
+GREEN-side executable commands live in the fenced ledger too wherever they carry alternation: a markdown table cell cannot hold a bare pipe, and the escaped form is a literal pipe in Go regexp — the iter1 audit's D1 defect — so AC-DP-001's GREEN commands were moved to LEDGER-DP-GREEN-A. LEDGER-DP-FORM records the grammar form-controls (Go-regexp selector pair; grep BRE alternation) so a zero-hit grep or a zero-match selector can never read as a dead-pattern pass. The `\|` sequences that remain inside fenced ledger commands are the quoted input bytes of those controls, not cell escaping.
+
 ## §B RED-Now Evidence Ledger
 
 ```
@@ -83,13 +85,58 @@ LEDGER-DP-H
   why:  package-wide corroboration for AC-DP-002/003's cli-side test names —
         the selector matches no test in the package.
   tree: d05d1d5f0
+
+LEDGER-DP-GREEN-A
+  (AC-DP-001's GREEN commands, carried here rather than in the §C table:
+  a table cell cannot hold a bare pipe and the escaped form is a literal
+  pipe in Go regexp — the iter1 D1 defect. The `\|` in the first control
+  command below is the quoted input bytes of the control itself.)
+
+  GREEN (M1, count-first — the plan M1 exit's form):
+  cmd:  go test -list '^(TestRecordExtendedEventDoesNotPrune|TestRecordEventDoesNotPrune)$' ./internal/harness
+  expect:  lists exactly the two new tests — non-empty, exact count; an
+           empty listing is a FAIL of this cell, not a pass
+  cmd:  go test -run '^(TestRecordExtendedEventDoesNotPrune|TestRecordEventDoesNotPrune)$' ./internal/harness
+  expect:  exit 0 with the tests executed; a run printing the runner's
+           no-tests token is a FAIL of this cell, not a pass
+  plus:  grep -c "PruneStaleEntries" internal/harness/observer.go → 0, exit 1
+         (kept in the §C cell — no metacharacter); go test ./internal/harness
+         exit 0 (the F5 drift net)
+
+  syntax control (measured this tree d05d1d5f0 — the auditor's iter1
+  positive control, re-executed by the authoring lane):
+  cmd:  go test -run '^(TestPruneStaleEntriesRemovesOldEvents\|TestRecordEvent)$' ./internal/harness
+  out:  ok  	github.com/modu-ai/moai-adk/internal/harness	(cached) [no tests to run]
+  exit: 0
+        ← the escaped form is the vacuous shape: zero tests selected, exit 0
+  cmd:  go test -count=1 -v -run '^(TestPruneStaleEntriesRemovesOldEvents|TestRecordEvent)$' ./internal/harness
+  out:  === RUN   TestPruneStaleEntriesRemovesOldEvents
+        --- PASS: TestPruneStaleEntriesRemovesOldEvents (0.01s)
+        PASS
+        ok  	github.com/modu-ai/moai-adk/internal/harness	0.769s
+  exit: 0
+        ← the raw form SELECTS AND RUNS the existing test
+  tree: d05d1d5f0
+
+LEDGER-DP-FORM
+  (grammar form-control for the grep BRE alternation used by LEDGER-DP-C
+  and plan.md M3's boundary grep — the same two-character sequence as the
+  D1 defect with a different, correct grammar; recorded so a zero hit can
+  never read as a broken pattern. Measured this tree, d05d1d5f0.)
+  cmd:  grep -c "PruneStaleEntries\|pruneSkipDuration" internal/harness/retention.go
+  out:  8
+  exit: 0
+  why:  the escaped alternation matches known identifiers, so the form is
+        live: LEDGER-DP-C's zero and plan M3's expected zero are absence
+        findings, not dead-pattern artifacts.
+  tree: d05d1d5f0
 ```
 
 ## §C Acceptance Criteria
 
 | AC | Covers REQ | RED-now (ledger) | GREEN path (milestone + command) | Classification |
 |----|-----------|------------------|----------------------------------|----------------|
-| AC-DP-001 | REQ-DP-001 | LEDGER-DP-A (count `2`, exit 0 — the calls exist), LEDGER-DP-B (new tests corroborated absent) | M1: `grep -c "PruneStaleEntries" internal/harness/observer.go` → `0` exit 1; `go test -run '^(TestRecordExtendedEventDoesNotPrune\|TestRecordEventDoesNotPrune)$' ./internal/harness` exit 0; `go test ./internal/harness` exit 0 | release-blocking |
+| AC-DP-001 | REQ-DP-001 | LEDGER-DP-A (count `2`, exit 0 — the calls exist), LEDGER-DP-B (new tests corroborated absent) | M1: LEDGER-DP-GREEN-A (count-first — `-list` lists exactly the two tests, THEN `-run` exit 0 with tests executed; raw-pipe alternation, syntax control recorded in-ledger); `grep -c "PruneStaleEntries" internal/harness/observer.go` → `0` exit 1; `go test ./internal/harness` exit 0 | release-blocking |
 | AC-DP-002 | REQ-DP-002, REQ-DP-004 | LEDGER-DP-C (gate absent), LEDGER-DP-D, LEDGER-DP-H (test names absent) | M2+M3: `TestMaybeSpawnRetentionPruner`, `TestSpawnGateSuppressesOnFreshStamp`, `TestSpawnFailureFailOpen` exit 0 — gate reads the stamp lock-free once, spawns only on stale-or-absent, suppresses on fresh, and a seam failure returns the error the wrapper logs at exit 0 | release-blocking |
 | AC-DP-003 | REQ-DP-003 | LEDGER-DP-G (verb dies at flag parsing, exit 1), LEDGER-DP-H | M2+M3: `go run ./cmd/moai hook retention-prune --help` exit 0; `TestDetachedChildPrunes` exit 0 — the verb's run function performs a real prune against a temp log and enters through `Retention.PruneStaleEntries` (D5), hidden from `moai hook --help` | release-blocking |
 | AC-DP-004 | REQ-DP-003 (double-check), REQ-DP-005 (orphan harmlessness) | LEDGER-DP-D (`TestDetachedChildDoubleSpawnCollapses` absent) | M3: `TestDetachedChildDoubleSpawnCollapses` exit 0 — two children against one stamp file: the second reads the fresh stamp under the lock (`pruneLocked`, retention.go:187) and exits without a second rewrite; the attempt stamp written before the work (retention.go:195) keeps a killed/orphaned pruner from repeating within the interval | release-blocking |
@@ -104,3 +151,4 @@ LEDGER-DP-H
 - `golangci-lint run` (CI-pinned v2.1.6): no NEW issues attributable to this SPEC (pre-existing baseline reported separately, per the E5 discipline).
 - `go test -cover ./internal/harness` ≥ 85%.
 - REQ-HL-001's contract (under 100 ms, never blocks) holds on the gate path: the wrapper's added synchronous work is one stamp read plus one spawn call — asserted by `TestSpawnFailureFailOpen` and the wrapper's construction; the parent verdict's under-5s-budget observation is the motivation, not a re-measured gate here.
+- The detachment property (REQ-DP-005's parent-exits-without-wait / child-reparents) is verified by construction only, and deliberately carries no AC: no input on the pre-implementation tree turns it red (nothing spawns before M2 — LEDGER-DP-C), and REQ-DP-007 forecloses the runtime experiment that would observe reparenting. The gate path's no-`Wait` shape and the seam's recorded argv are the construction evidence (iter1 D4 disposition; plan.md §D carries the same line).

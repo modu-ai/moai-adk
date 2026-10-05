@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-DETACHED-PRUNE-001
 title: "Detached prune off the hook synchronous path — observer records, gate spawns, child prunes"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -47,7 +47,7 @@ Requirement id prefix: `REQ-DP` (Detached Prune).
 
 - **REQ-DP-005** (Ubiquitous): The parent hook process shall exit without waiting on the child (no `Wait` call — the child outlives the parent and reparents, so the parent leaves no zombie), the child's lifetime is bounded by the prune itself (one `PruneStaleEntries` and exit), and an orphaned child is harmless — the prune is lock-protected and idempotent and the attempt stamp is written before the work (`retention.go:195`), so a killed or orphaned pruner is not repeated until the interval ends.
 
-- **REQ-DP-006** (Where the platform is Windows): the detached spawn shall use `CREATE_NEW_PROCESS_GROUP|DETACHED_PROCESS` (plus `CREATE_NO_WINDOW`/`HideWindow` so no console flashes), delivered as build-tag-split files following the `retention_heal_unix.go`/`retention_heal_windows.go` precedent; `GOOS=windows GOARCH=amd64 go build ./...` and `go vet` parity is an acceptance criterion, while the Windows runtime behavior of the detached child — including the documented in-process-only state-file mutex (`retention.go:110-112`, the F5 limitation) — stays unobserved and documented as such, not claimed.
+- **REQ-DP-006** (Where the platform is Windows): the detached spawn shall produce a detached child in its own process group with no console flash — `CREATE_NEW_PROCESS_GROUP` plus exactly one console-suppression mode (`DETACHED_PROCESS` or `CREATE_NO_WINDOW`, alternatives, not a mandatory pair), the concrete combination finalized at run start per C4 against the pinned Go version's exported constants, with `HideWindow` where available — delivered as build-tag-split files following the `retention_heal_unix.go`/`retention_heal_windows.go` precedent; `GOOS=windows GOARCH=amd64 go build ./...` and `go vet` parity is an acceptance criterion, while the Windows runtime behavior of the detached child — including the documented in-process-only state-file mutex (`retention.go:110-112`, the F5 limitation) — stays unobserved and documented as such, not claimed.
 
 ### §B.4 Work item 4 — test discipline and semantics preservation
 
@@ -86,7 +86,7 @@ Requirement id prefix: `REQ-DP` (Detached Prune).
 
 ## §F Risks
 
-- **F1 — spawn cost on a loaded host.** The gate adds one fork/exec per stale-stamp event, at most once per hour per project; a loaded host where the fork itself is slow still pays only the fork (fail-open bounds the wrapper's synchronous cost; the prune runs outside the budget).
+- **F1 — spawn rate on a loaded host.** The gate adds one fork/exec per stale-stamp event — once per interval when the child's stamp write succeeds. The work is once per interval, not the spawn: a stamp-write failure (`retention.go:195-196` skips the prune and leaves the stamp absent) or a slow first child leaves the gate's view stale, so further events within the same interval spawn repeated children, each collapsing at the child-side lock re-check into one worker's work (the Windows burst of §E exclusion 2 is the same shape cross-process). A loaded host where the fork itself is slow still pays only the fork (fail-open bounds the wrapper's synchronous cost; the prune runs outside the budget).
 - **F2 — a still-running child holds the lock into the next interval.** The next hour's gate reads the stamp as fresh (written before the work), so no second child spawns while one runs; only after the interval expires can a waiter queue on the lock — the documented unbounded-waiter behavior (`retention.go:155-158`) is inherited, bounded by the prune duration, and now paid by the child instead of the hook.
 - **F3 — Windows runtime behavior is unobserved.** The detached child is specified and build-verified on Windows, not runtime-verified (no Windows host in this lane); REQ-DP-006 carries that honestly and GOOS=windows build+vet parity is the enforced half.
 - **F4 — hidden-verb discoverability.** The verb is deliberately hidden from help; this SPEC and the source registration are its documentation. A user invoking it manually is harmless (it runs the same lock-protected prune path).
@@ -95,3 +95,4 @@ Requirement id prefix: `REQ-DP` (Detached Prune).
 ## §G History
 
 - 2026-10-05, v0.1.0 (card t1497): initial plan-phase authoring on branch `WT-harness-prune-detached`, HEAD `d05d1d5f0`. Scope is the parent verdict's approved M2 shape (t1467 §4 J2 + §5 M2), inlined into the delegation because `.moai/reports` is disk-only and absent from this tree. Every code anchor and every RED-now cell in acceptance.md §B was measured on this tree in this session; the child-entry (D1) and gate-placement (D2) decisions named by the delegation as open were resolved and recorded here.
+- 2026-10-05, v0.1.1 (card t1497, plan-audit iter1 repair — verdict FAIL 0.88 at artifact commit `080578aec`, D1 blocking + D2/D3/D5 advisories absorbed, D4 dispositioned): AC-DP-001's GREEN commands moved out of the acceptance §C table into LEDGER-DP-GREEN-A with the raw-pipe alternation — the escaped form is a literal pipe in Go regexp and selected zero tests while exiting 0, a vacuous green on a release-blocking AC (D1; the auditor's positive control re-executed by this lane, both forms recorded in-ledger). LEDGER-DP-FORM added for the grep-BRE alternation form-control — the same-class sweep found the `\|` sequence in three more places: plan.md's M3 boundary grep and LEDGER-DP-C (correct grep BRE grammar, now control-proven live) and plan file 5's quoted Go bitwise-OR in a table cell (removed by the D3 rewrite). F1's spawn-rate quantifier corrected to the interval-conditional with the stamp-write-failure/slow-child repeat-spawn residual named (D2). REQ-DP-006 and plan file 5 aligned onto one canonical Windows flag contract — semantic contract plus named alternatives, finalized at run start per C4 (D3). The detachment property's construction-only verification basis declared in acceptance §D and plan §D; deliberately no AC — no RED-now-able input exists on this tree (D4 disposition).
