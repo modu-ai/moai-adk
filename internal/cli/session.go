@@ -133,6 +133,7 @@ func newSessionDeregisterCmd() *cobra.Command {
 func newSessionListCmd() *cobra.Command {
 	var jsonOutput bool
 	var filterSpec string
+	var ccVersion bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List active sessions (optionally filtered by --filter-spec)",
@@ -144,25 +145,66 @@ func newSessionListCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("list: %w", err)
 			}
+			if !ccVersion {
+				// REQ-SCV-006 (SPEC-SESSION-CC-VERSION-001): the default path
+				// performs zero probes and emits exactly the field set it has
+				// always emitted — it is the third command of the orchestrator
+				// pre-spawn sync-check batch, and its shape is a contract.
+				if jsonOutput {
+					out, err := json.MarshalIndent(entries, "", "  ")
+					if err != nil {
+						return fmt.Errorf("marshal: %w", err)
+					}
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(out))
+					return nil
+				}
+				if len(entries) == 0 {
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(no active sessions)")
+					return nil
+				}
+				for _, e := range entries {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+						"session=%s spec=%s phase=%s started=%s last_hb=%s pid=%d host=%s\n",
+						shortID(e.SessionID), e.SpecID, e.Phase,
+						e.StartedAt.Format("2006-01-02T15:04:05Z"),
+						e.LastHeartbeat.Format("2006-01-02T15:04:05Z"),
+						e.PID, e.Host,
+					)
+				}
+				return nil
+			}
+			// REQ-SCV-005: --cc-version enriches each entry with the running
+			// and installed version reads — additive JSON fields plus the
+			// human rendering. A degrading entry renders unknown and is never
+			// omitted, and the command still exits 0 (the surface half of
+			// REQ-SCV-003's degradation contract).
+			type ccVersionEntry struct {
+				session.Entry
+				CCVersion session.CCVersions `json:"cc_version"`
+			}
+			views := make([]ccVersionEntry, 0, len(entries))
+			for _, e := range entries {
+				views = append(views, ccVersionEntry{Entry: e, CCVersion: session.ResolveCCVersions(e.PID)})
+			}
 			if jsonOutput {
-				out, err := json.MarshalIndent(entries, "", "  ")
+				out, err := json.MarshalIndent(views, "", "  ")
 				if err != nil {
 					return fmt.Errorf("marshal: %w", err)
 				}
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(out))
 				return nil
 			}
-			if len(entries) == 0 {
+			if len(views) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(no active sessions)")
 				return nil
 			}
-			for _, e := range entries {
+			for _, v := range views {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-					"session=%s spec=%s phase=%s started=%s last_hb=%s pid=%d host=%s\n",
-					shortID(e.SessionID), e.SpecID, e.Phase,
-					e.StartedAt.Format("2006-01-02T15:04:05Z"),
-					e.LastHeartbeat.Format("2006-01-02T15:04:05Z"),
-					e.PID, e.Host,
+					"session=%s spec=%s phase=%s started=%s last_hb=%s pid=%d host=%s cc=%s installed=%s\n",
+					shortID(v.SessionID), v.SpecID, v.Phase,
+					v.StartedAt.Format("2006-01-02T15:04:05Z"),
+					v.LastHeartbeat.Format("2006-01-02T15:04:05Z"),
+					v.PID, v.Host, v.CCVersion.Running, v.CCVersion.Installed,
 				)
 			}
 			return nil
@@ -170,6 +212,7 @@ func newSessionListCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "emit machine-readable JSON output (orchestrator pre-spawn check format)")
 	cmd.Flags().StringVar(&filterSpec, "filter-spec", "", "only return entries matching this spec_id")
+	cmd.Flags().BoolVar(&ccVersion, "cc-version", false, `resolve each session's running and installed Claude Code version (one probe per live entry; unreadable processes render "unknown")`)
 	return cmd
 }
 
