@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "design.md — user-folder asset install architecture"
-version: "0.6.2"
+version: "0.6.3"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -185,6 +185,45 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   expected-hash match is what lets retry claim its own installs WITHOUT
   absorbing user files. The journal is cleared atomically with the
   manifest save.
+  Journal COMPLETENESS (directed repair R-e, v0.6.3 — the gate's temp
+  model reproduced the empty-selection recovery: `recovered bundle
+  selection: []` followed by REQ-009 re-pruning the files the interrupted
+  run had just installed — that exact sequence is the red this
+  completeness closes). Per entry AND for the run, the journal records:
+  (1) the bundle-SELECTION delta — the `bundles:` list change the
+  interrupted run intended — so an `init --bundles` interrupted before
+  the manifest save recovers WITH the recorded selection intact, never
+  empty, and the recovered files are never REQ-009 re-pruned on the next
+  update; (2) the FULL manifest-entry provenance per file — bundle,
+  moai_version, installed_at, not merely path+sha256 — so a
+  different-binary replay restores the SAME versions (path+sha256 alone
+  makes two same-byte installs by different binaries indistinguishable,
+  which would defeat REQ-006's per-file installing version); (3) the
+  ownership evidence — a write-completion flag per entry, reconciled
+  atomically with the manifest save. The flag's EXACT meaning and the
+  rename→flag window (in-round extension E4, v0.6.3 — the gate
+  reproduced permanent REQ-010 collisions from an interruption exactly
+  between the rename and the flag save): the STAGING record — written
+  BEFORE the rename, carrying path + intended sha256 + full provenance —
+  is itself the intent-and-content proof; `rename(2)` is atomic, so a
+  file standing at the FINAL path whose bytes hash to a staged entry's
+  recorded value is a COMPLETED write of the intended content whether or
+  not the flag write landed. The recovery lattice is EXACTLY THREE CASES
+  (in-round extension E5 sharpening E4 — a hash mismatch is NOT evidence
+  the write never completed: after an interruption-before-manifest-save
+  the USER may have edited the file, and reinstalling on mismatch
+  overwrites the user's edit — the gate reproduced user_bytes_preserved=
+  False): (1) target ABSENT → install from the journal entry (the
+  staging record's provenance); (2) target PRESENT and hash == the
+  journal's sha256 → claim as OWN (the staging record is the
+  intent-and-content proof, flag or no flag — E4); (3) target PRESENT
+  and hash != the journal's sha256 → NEVER reinstall: preserve the
+  file's bytes and classify per the ownership evidence — a
+  flag-complete entry (the run's write was observed, then the file
+  changed underneath) is REQ-023 divergence (backup + report); an
+  unflagged entry (cannot distinguish user-edit-after-write from
+  user-file-never-written) is REQ-010 collision — both preserve the
+  user's bytes, and no recovery path ever overwrites on a mismatch.
 - Schema-version gate: unknown `schema_version` → refuse manifest-driven
   removal (REQ-021); install/refresh may still proceed in append-only fashion.
 
@@ -211,10 +250,19 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
 - Selection surface (iter2 D18): bundle MEMBERSHIP is declared in the
   catalog (above); the user's opt-in SELECTION is the `bundles:` list in the
   per-user manifest (§2.2). `moai init --bundles <name,...>` sets the
-  initial selection (default: L0 only); `moai bundle add <name>` / `moai
-  bundle remove <name>` adjust the list and apply the install/removal of
-  exactly that bundle's catalog entries (respecting REQ-010 collision and
-  REQ-023 divergence semantics); `moai update` honors the recorded selection —
+  initial selection (default: L0 only); `moai bundle add <name>` applies
+  the install of exactly that bundle's catalog entries; `moai bundle
+  remove <name>` applies the COMPLEMENT removal (in-round extension E3,
+  v0.6.3): the removal target is the entries of the removed bundle that
+  are NOT in (L0 ∪ the union of the remaining opted-in selections) —
+  entries the removed bundle SHARES with L0 or with another still-opted
+  bundle survive with a report note, because "remove exactly that
+  bundle's entries" would delete required L0 skills (measured: the
+  historical `devops` pack carries `moai-ref-owasp-checklist`
+  (catalog.yaml:230), `moai-ref-cross-model-audit` (:240), and
+  `moai-ref-secops` (:250) — all three are L0 since E2/R-c; the gate
+  reproduced their deletion). Both respect REQ-010 collision and
+  REQ-023 divergence semantics; `moai update` honors the recorded selection —
   installs/refreshes L0 + opted-in bundles, prunes per REQ-009 (no longer in
   L0 nor any opted-in bundle). Milestones: the `--bundles` init flag in M2;
   the `moai bundle` command and update honoring in M3.

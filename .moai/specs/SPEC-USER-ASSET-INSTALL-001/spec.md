@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
-version: "0.6.2"
+version: "0.6.3"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -260,7 +260,11 @@ not re-opened during run phase):
   set alone (round-5 F1 + fold B1 + final-class item 7,
   "default-install-runs").
 - REQ-004: The system shall ship every common asset outside L0 as an opt-in
-  bundle; a bundle is installed or removed as a unit, bundle membership is
+  bundle; a bundle is installed as a unit and removed as a unit EXCEPT its
+  shared assets — entries the removed bundle shares with L0 or with any
+  remaining opted-in selection survive the removal with a report note
+  (the removal target is the complement: entries not in L0 ∪ the remaining
+  selections — in-round extension E3), bundle membership is
   declared in the shipped catalog — entries carrying their skill
   dependencies, so the installer resolves L0's transitive closure from the
   catalog's explicit enumeration, never by discovering dependencies at
@@ -281,12 +285,26 @@ not re-opened during run phase):
   equivalent) spans manifest read → asset changes → manifest save — so
   concurrent init/update/bundle operations from different projects cannot
   lose one another's writes (round-5 F4). Each run records a
-  pending-install journal (the intended path+sha256 delta, a manifest-path
-  sibling under `~/.moai/`) BEFORE its asset writes; a later run
-  reconciles an existing journal first — a user-folder file hashing to the
-  journal's recorded value is the run's OWN interrupted install and is
-  completed in the manifest, never collision-skipped; anything else falls
-  through to the normal collision/divergence path (final-class item 5).
+  pending-install journal (a manifest-path sibling under `~/.moai/`)
+  BEFORE its asset writes, recording per entry the FULL provenance —
+  path, intended sha256, bundle, moai_version, installed_at — and a
+  write-completion flag, plus for the run the intended bundle-SELECTION
+  delta; the staging record — written before the rename with the
+  intended path, sha256, and provenance — is the intent-and-content
+  proof, and since the rename is atomic a later run reconciles an
+  existing journal first: a file standing at the recorded final path
+  with bytes hashing to a staged entry's value is the run's OWN
+  interrupted install and is completed in the manifest with its recorded
+  provenance whether or not the flag write landed (never a permanent
+  collision — in-round extension E4), the intended selection is restored
+  intact (never recovered empty), and nothing is collision-skipped; an
+  entry with no final-path file reinstalls from the journal's
+  provenance, while a present file that MISMATCHES the recorded sha256
+  is NEVER reinstalled — preserved as REQ-023 divergence (backup +
+  report) or REQ-010 collision per the ownership evidence, since a
+  mismatch is not evidence of an incomplete write: the user may have
+  edited after the interrupted install (final-class item 5 + directed
+  repair R-e + in-round extension E5).
 - REQ-007: The user-asset install shall operate offline: the binary carries
   every asset it installs, and no network access is part of the install,
   refresh, or removal path.

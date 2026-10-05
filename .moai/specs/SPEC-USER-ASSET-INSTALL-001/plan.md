@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "plan.md — implementation plan"
-version: "0.6.2"
+version: "0.6.3"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -131,8 +131,13 @@ Implement the per-user manifest at `~/.moai/user-assets.json` (D-Q2): schema
 collisions — the installing version is PER FILE per REQ-006; there is no
 top-level moai_version field, because REQ-013's partial-failure continuation
 makes mixed-version states real; the pending-install journal record —
-final-class item 5: path+intended-sha256 delta entries, cleared atomically
-with the manifest save), atomic read/write, schema-version refusal
+final-class item 5 + directed repair R-e + in-round extension E5:
+per-entry FULL provenance
+(path, intended sha256, bundle, moai_version, installed_at) +
+write-completion flags + the run's intended bundle-SELECTION delta,
+cleared atomically with the manifest save; recovery is the THREE-CASE
+lattice (absent → install; hash-match → claim as own; mismatch → never
+reinstall, preserve as REQ-023 divergence or REQ-010 collision), atomic read/write, schema-version refusal
 for removal (REQ-021) plus the corrupt-JSON recovery path (AC-021 second
 clause), unknown-field preservation on EVERY write incl. foreign-schema
 append-only writes (REQ-021, iter4 D27), four-root path validation (C2).
@@ -189,7 +194,10 @@ arm; non-L0 project assets stay project-side until opted in; a failed
 counterpart write leaves its project file un-removed; a machine with no
 manifest and no prior-model assets gets the advisory — iter4 D24), the
 `moai bundle add|remove` command adjusting the manifest's bundle list and
-applying exactly that bundle's catalog entries (REQ-004, iter2 D18),
+applying exactly that bundle's catalog entries (REQ-004, iter2 D18) —
+removal applying the COMPLEMENT rule (in-round extension E3: entries
+shared with L0 or remaining selections survive with a report note — the
+devops pack's L0 trio is the measured case, W15),
 user-level serialization of manifest read-modify-write (REQ-006, round-5
 F4 — a lock or equivalent spanning read → asset changes → save, so
 concurrent init/update/bundle runs from different projects cannot lose one

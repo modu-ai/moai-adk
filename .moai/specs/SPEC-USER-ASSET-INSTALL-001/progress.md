@@ -229,6 +229,52 @@ author: manager-spec
   L4 (doctor_harness.go:20/:70; the dispatch's "plan.md:243" label did
   not resolve — verified anchors cited) joins the M4 repoint list with
   the healthy-install regression arm (AC-009/AC-017 + absorption map).
+- v0.6.3 DIRECTED REPAIR (leader 3rd-audit order — JD-1 promoted from run
+  debt into plan content; closes the journal finding in the documents):
+  the pending-install journal's COMPLETENESS specified (design §2.2 +
+  REQ-006 + AC-001 + plan M1) — per entry AND per run the journal records
+  (1) the bundle-SELECTION delta (an `init --bundles` interrupted before
+  manifest-save recovers with the selection INTACT, never `[]` — the
+  gate's temp model reproduced `recovered bundle selection: []` → REQ-009
+  re-pruning the just-installed files; that sequence is the red), (2) the
+  FULL manifest-entry provenance per file (bundle, moai_version,
+  installed_at — path+sha256 alone makes two same-byte installs by
+  different binaries indistinguishable, defeating REQ-006's per-file
+  version), (3) the ownership evidence (write-completion flag per entry,
+  reconciled atomically — an unflagged entry is NOT claimed; the
+  ambiguous file stays a REQ-010 collision). AC-001 gains the
+  interrupted-init --bundles arm (the reproduction as a GWT: selection
+  restored intact, provenance restored, `moai update` does NOT re-prune
+  the recovered files).
+- IN-ROUND EXTENSION (same R-e round, v0.6.3 — two gate mid-flight
+  findings, E1/E2 precedent): E3 — bundle removal preserves L0-shared
+  assets: the removal target is the COMPLEMENT (entries of the removed
+  bundle NOT in L0 ∪ the remaining opted-in selections; shared assets
+  survive with a report note) — measured: the historical devops pack
+  (catalog.yaml:225-251) carries the L0 trio owasp-checklist(:230)/
+  cross-model-audit(:240)/secops(:250), and "remove exactly that bundle's
+  entries" would delete them (gate reproduced the deletion); design
+  §2.3 + REQ-004 + plan M3 + AC-018 shared-asset arm. E4 — the
+  rename→written-flag window: the journal's STAGING record (written
+  pre-rename: path+sha256+provenance) IS the intent-and-content proof;
+  rename(2) is atomic, so a final-path file hash-matching a staged entry
+  is claimed as OWN whether or not the flag write landed — never a
+  permanent REQ-010 collision on any number of retries (gate reproduced
+  repeated-retry non-recovery); the flag only separates
+  completed-vs-uncompleted at reconciliation (no final-path file →
+  reinstall from the journal's provenance); design §2.2 claim rule +
+  REQ-006 + AC-001 rename→flag-window arm. Evidence: research §2b W15.
+- IN-ROUND EXTENSION E5 (same R-e round, v0.6.3 — the gate sharpened the
+  recovery lattice; user_bytes_preserved=False reproduced): the recovery
+  branch's hash-MISMATCH case NEVER reinstalls — a mismatch is not
+  evidence of an incomplete write (the user may have edited after the
+  interrupted install; reinstalling on mismatch overwrites the user's
+  edit). The recovery lattice is EXACTLY THREE CASES (design §2.2 +
+  REQ-006 + AC-001 mismatch arm + plan M1): absent → install from the
+  journal entry; present hash-matching → claim as own (E4 staging
+  proof); present mismatching → NEVER reinstall, preserve as REQ-023
+  divergence (flag-complete) or REQ-010 collision (unflagged) — both
+  preserve the user's bytes.
 
 ## §E.2 Run-phase Evidence
 
