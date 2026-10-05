@@ -378,13 +378,14 @@ func TestHookCmd_PrePushSubcommandCount(t *testing.T) {
 	// +1 "multi-review-gate" (SPEC-AUDIT-MULTI-MODEL-001 M5 REQ-AMM-013) = 42.
 	// +1 "chain-event" (SPEC-CHAIN-CORE-001 REQ-CHAIN-012) = 43.
 	// +1 "interrupt" (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e, Codex-only) = 44.
+	// +1 "retention-prune" (SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-003) = 45.
 	count := len(hookCmd.Commands())
-	if count != 44 {
+	if count != 45 {
 		names := make([]string, 0, count)
 		for _, cmd := range hookCmd.Commands() {
 			names = append(names, cmd.Name())
 		}
-		t.Errorf("hook should have 44 subcommands, got %d: %v", count, names)
+		t.Errorf("hook should have 45 subcommands, got %d: %v", count, names)
 	}
 }
 
