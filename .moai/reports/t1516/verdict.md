@@ -74,3 +74,29 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	210.016s
 The same selector set on the pre-fix tree under the same ambient env produced 21 `--- FAIL` lines with `todo add: moai add: refused — lane boundary: a lane session cannot mutate the queue …` (Baseline-attribution, above).
 
 2. **SPEC citation update — commit `67cc5fe22`.** The four citations of the renamed guard in `.moai/specs/SPEC-FACTORY-ATOMIC-LEASE-001/acceptance.md` (the L21 sweep command and the AC-FAL-003 command line) and `plan.md` (the guard list and MU18) now name `TestFactoryLeaseArmAExcludesHeldAssignedCard` — identifier rename only, surrounding prose untouched. `progress.md` keeps the historical record under the name the run actually executed; its two mentions remain intentionally unchanged. The ac-baseline-guard hook reported report-only at commit time: acceptance.md COUNT 15, unrecorded in the t338 baseline (informational; no count moved).
+
+3. **CI repair — the hold-boundary guard's detection precision — commit `348ac1ee1`.** PR #1755's Test (ubuntu-latest) and Race Test 1 failed on `TestTodoHold_ActorBoundaryLeasePathsCannotHold` (internal/cli/todo_hold_test.go:288): the AC-THS-010 guard scanned for the plain substring `= factory.BacklogStateHold`, which this delivery's lease-edge comparison `st == factory.BacklogStateHold` (factory_card.go) also matches — a guard false positive, since the guard's intent comment forbids only statements that SET OR CLEAR the state. Repaired in the GUARD (no production change, no file moved out of the scan list): the scan now uses `[^=!<>]=\s*factory\.BacklogStateHold`, which refuses `==`/`!=`/`<=`/`>=` while matching real assignments. Probe observations, verbatim:
+
+   Guard with the comparison present, after the repair (contract 1):
+
+   ```
+   ok  	github.com/modu-ai/moai-adk/internal/cli	1.509s
+   ```
+
+   Mutant probe — a real assignment `st = factory.BacklogStateHold` inserted into the arm (a) loop of factory_card.go (compilable probe: declared, assigned, discarded), guard run (contract 2, the guard's red observed after the repair):
+
+   ```
+   --- FAIL: TestTodoHold_ActorBoundaryLeasePathsCannotHold (0.02s)
+       todo_hold_test.go:295: factory_card.go carries a hold assignment on a lease/lane path: st = factory.BacklogStateHold
+   FAIL
+   FAIL	github.com/modu-ai/moai-adk/internal/cli	1.636s
+   ```
+
+   Mutant removed (factory_card.go back to its committed state — `git diff` empty), guard green again inside the family re-run (contract 3):
+
+   ```
+   $ go test ./internal/cli/ -run 'TestTodoHold|TestTodoUnhold|TestFactoryNextArmASkipsHoldQueueItem|TestFactoryNextArmAQueuedQueueItemPromotesFirst|TestFactoryNextArmALeasesOwnAssignedPickedCard|TestFactoryNextNominateRefusesKeepSet|TestFactoryNextNominateRefusalLeavesStateUnchanged|TestFactoryLeaseArmAExcludesHeldAssignedCard|TestFactoryLeaseSectionRecordWritesPerArm' -count=1 -timeout 30m
+   ok  	github.com/modu-ai/moai-adk/internal/cli	267.223s
+   ```
+
+   `go vet ./internal/cli/...` clean; `golangci-lint run ./internal/cli/...` → `0 issues.` on the repaired tree.
