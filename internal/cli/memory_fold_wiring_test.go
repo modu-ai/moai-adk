@@ -39,8 +39,9 @@ func pathBeneath(root, path string) bool {
 // developer's real home.
 //
 // It runs in the TestMain-sandboxed environment exactly as the pre-existing
-// close-path tests do: no per-test HOME, USERPROFILE, CLAUDE_CONFIG_DIR or
-// MOAI_HOME override. M0 asserts on the candidate list the shared resolver
+// close-path tests do: no per-test HOME, USERPROFILE or MOAI_HOME override.
+// CLAUDE_CONFIG_DIR alone is pinned empty in the body — see the comment there.
+// M0 asserts on the candidate list the shared resolver
 // (memoryCandidateStores) returns. The gate constant (config.EnvMemoryFoldOnDone,
 // M1) and the recorder seam of foldClosedCardMemory (M4) do not exist yet; M4
 // extends this cell to set the gate and drive the three close paths.
@@ -48,6 +49,16 @@ func TestMemoryFoldOnDone_ExistingClosePathsContained(t *testing.T) {
 	if capturedRealHome == "" || homeSandboxDir == "" {
 		t.Fatalf("TestMain home sandbox not initialised (real=%q sandbox=%q): the cell is unmeasured", capturedRealHome, homeSandboxDir)
 	}
+
+	// The TestMain sandbox unsets CLAUDE_CONFIG_DIR once at start, but the
+	// suite cannot keep it unset: profile.EnsureDir (reached by the
+	// named-profile launch tests, e.g. TestUnifiedLaunch_Claude) sets it
+	// process-wide with no restore, so the ambient value is order-dependent
+	// mid-suite. An operator-set CLAUDE_CONFIG_DIR pointing outside the
+	// sandbox is by design — the resolver reports the operator's path
+	// faithfully — so the cell establishes its own premise (the var unset)
+	// instead of inheriting the suite's ordering.
+	t.Setenv(config.EnvClaudeConfigDir, "")
 
 	stores, err := memoryCandidateStores(t.TempDir())
 	if err != nil {
