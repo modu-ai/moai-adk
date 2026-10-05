@@ -2,7 +2,7 @@
 id: SPEC-MERGE-WINDOW-QUEUE-001
 title: "Merge-window automation — FIFO acquire queue, leader nomination abolished, re-measure outside the window, lane merge verb, substantive complete gate"
 version: "0.9.0"
-status: draft
+status: in-progress
 created: 2026-10-03
 updated: 2026-10-04
 author: manager-spec

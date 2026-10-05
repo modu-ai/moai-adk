@@ -150,6 +150,59 @@ type IntegrationLock struct {
 	// two of them leaves the record unable to say which was intended.
 	SettingsDriftBypass    bool   `json:"settings_drift_bypass,omitempty"`
 	SettingsDriftPreserved string `json:"settings_drift_preserved,omitempty"`
+
+	// The merge-window queue (card t1479, SPEC-MERGE-WINDOW-QUEUE-001).
+	// Every field below is additive and optional exactly like BranchSource:
+	// a record written before it existed carries no key and is read as it
+	// always was (REQ-MWQ-001), and no read path outside the window verbs
+	// decides on it.
+	//
+	// Queue is the FIFO of waiting sessions. omitempty is load-bearing, not
+	// cosmetic: with no ticket, the record must carry no queue key at all,
+	// and a legacy record re-written by the new code must stay byte-shape
+	// compatible.
+	Queue []IntegrationTicket `json:"queue,omitempty"`
+
+	// LeaseExpiresAt stamps the holder's lease (REQ-MWQ-008), RFC3339. An
+	// absent stamp is a legacy record or a disabled lease: validity is then
+	// decided by owning-session liveness alone, exactly as before this SPEC.
+	LeaseExpiresAt string `json:"lease_expires_at,omitempty"`
+
+	// Displaced records the last holder this record took the window from
+	// (stale takeover, --force, or promotion past a displaced holder), with
+	// DisplacedReason naming why. Today's stale takeover returns the replaced
+	// record to its caller; the queue needs the record to persist the
+	// displacement so a later `status` can show who was displaced (REQ-MWQ-006).
+	Displaced       *IntegrationLock `json:"displaced,omitempty"`
+	DisplacedReason string           `json:"displaced_reason,omitempty"`
+}
+
+// IntegrationTicket is one waiting session in the merge-window FIFO queue
+// (card t1479, REQ-MWQ-001). The owning-session fields are a copy of the
+// holder record's anchor — the pid resolved the same way acquire resolves it
+// together with its session-owner source — so promotion can stamp them onto
+// the holder record and the promoted holder behaves exactly like a directly
+// acquired one (REQ-MWQ-006). The waiter fields are the ticket's own
+// liveness: a waiting process refreshes Heartbeat every 15 seconds, and a
+// ticket whose waiter process (matched on id AND start time) or owner is
+// gone is dropped (REQ-MWQ-003).
+type IntegrationTicket struct {
+	SessionID    string `json:"session_id"`
+	SessionName  string `json:"session_name,omitempty"`
+	Card         string `json:"card,omitempty"`
+	OwnerPID     int    `json:"owner_pid"`
+	PIDSource    string `json:"pid_source,omitempty"`
+	Branch       string `json:"branch,omitempty"`
+	BranchSource string `json:"branch_source,omitempty"`
+	Worktree     string `json:"worktree,omitempty"`
+	WaiterPID    int    `json:"waiter_pid"`
+	// WaiterStart is the waiter process's start instant (RFC3339Nano). The
+	// pair (WaiterPID, WaiterStart) is the ticket's waiter identity: pids
+	// recycle, so a live process with the same pid but a different start is
+	// not this waiter.
+	WaiterStart string `json:"waiter_start,omitempty"`
+	Heartbeat   string `json:"heartbeat"`
+	EnqueuedAt  string `json:"enqueued_at"`
 }
 
 // Held reports whether the record names a holder at all.
