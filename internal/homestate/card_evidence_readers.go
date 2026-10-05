@@ -245,8 +245,12 @@ type mergeEvidence struct {
 
 // verifyMerge is E-MERGE (T16): a two-parent merge commit whose tree equals
 // its second parent's tree, reachable from the local integration branch, and
-// a re-measure file that names it.
-func verifyMerge(ctx context.Context, dir, sha, remeasure, integration string) (mergeEvidence, error) {
+// a re-measure that SATISFIES THE RECORD (card t1479, REQ-MWQ-021): when
+// verifyRemeasure is wired, the record keyed to the merge commit's tree is
+// the gate and a file that merely names the merge SHA as text is refused —
+// the gate a gated command wrote can no longer satisfy it. A nil callback
+// keeps the pre-t1479 file read for callers that predate the store.
+func verifyMerge(ctx context.Context, dir, sha, remeasure, integration string, verifyRemeasure func(treeSHA, mergeSHA string) error) (mergeEvidence, error) {
 	if !validBranchName(integration) {
 		return mergeEvidence{}, evidenceErr("integration branch %q is not usable", integration)
 	}
@@ -274,6 +278,27 @@ func verifyMerge(ctx context.Context, dir, sha, remeasure, integration string) (
 	}
 	if !isAncestor(ctx, dir, full, "refs/heads/"+integration) {
 		return mergeEvidence{}, evidenceErr("merge %s is not reachable from %s", full, integration)
+	}
+	if verifyRemeasure != nil {
+		// REQ-MWQ-021: the record keyed to the merge commit's TREE is the
+		// re-measure — the tree identity property above is exactly the key
+		// the re-measure verb wrote (REQ-MWQ-014).
+		if err := verifyRemeasure(tree, full); err != nil {
+			return mergeEvidence{}, evidenceErr("the re-measure record for tree %s does not satisfy the gate: %v", tree[:12], err)
+		}
+		path := strings.TrimSpace(remeasure)
+		if path == "" {
+			// The lane passed no evidence file: the record itself is the
+			// evidence, and the recorded command rides in it.
+			return mergeEvidence{SHA: full, Tree: tree, RemeasurePath: "(re-measure record store)"}, nil
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(dir, path)
+		}
+		if _, err := readBoundedFile(path); err != nil {
+			return mergeEvidence{}, evidenceErr("re-measure file %s: %v", path, err)
+		}
+		return mergeEvidence{SHA: full, Tree: tree, RemeasurePath: path}, nil
 	}
 	path := strings.TrimSpace(remeasure)
 	if path == "" {

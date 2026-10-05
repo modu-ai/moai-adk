@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
@@ -44,10 +45,19 @@ func sdGitFlowDevelop(t *testing.T, root string) {
 // branch — checked out in a provisioned integration worktree, checked out in
 // the parent itself, or held by no tree — plus one worktree per card on its
 // own WT- branch carrying one commit. withConfig stamps the git-flow
-// integration branch; without it the project reads as github-flow.
+// integration branch; without it the project reads as github-flow. The
+// lock root (CLAUDE_PROJECT_DIR) pins to THIS fixture — otherwise the
+// running session's own project dir leaks in and the complete under test
+// reads (and would write) the real primary checkout's window state.
 func sdMergeFixture(t *testing.T, withConfig, provisioned, onParent bool, n int) (string, string, []sdCardTree) {
 	t.Helper()
+	// The lane env leaks into tests from the lane session running them
+	// (the recorded lesson: env-reading guards go locally red here) — the
+	// fixture clears what its queue setup must not trip on; a test that
+	// needs the lane claim re-sets it AFTER the fixture.
+	sdClearLaneEnv(t)
 	root, store := fcFixture(t)
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	states := make([]factory.BacklogState, n)
 	for i := range states {
 		states[i] = factory.BacklogStatePicked
@@ -82,13 +92,17 @@ func sdMergeFixture(t *testing.T, withConfig, provisioned, onParent bool, n int)
 }
 
 // sdPlaceMergeReady records a merge-ready card leased by lane with tree as
-// its worktree.
+// its worktree. The lease is LIVE — REQ-MWQ-019 step 1 (card t1479) reads
+// the lease as a gate, so a fixture placement whose lease has lapsed would
+// refuse every complete before its own assertion fires.
 func sdPlaceMergeReady(t *testing.T, root, cardID, lane string, tree sdCardTree) {
 	t.Helper()
 	fcPlace(t, root, homestate.Card{
 		CardID: cardID, State: homestate.CardMergeReady, Stage: homestate.CardMergeReady,
-		OwnerLabel: lane, LeaseHolder: lane, LeaseExpiresAt: "2026-10-01T00:00:00Z",
-		WorktreePath: tree.wt,
+		OwnerLabel: lane, LeaseHolder: lane,
+		LeaseExpiresAt: time.Now().UTC().Add(time.Hour).Format(time.RFC3339),
+		HeartbeatAt:    time.Now().UTC().Format(time.RFC3339),
+		WorktreePath:   tree.wt,
 	})
 }
 
@@ -126,6 +140,8 @@ func sdCardUnchanged(t *testing.T, where string, root, cardID string, before hom
 // AC-SD-013 — Claude `complete` through the integration worktree.
 func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	t.Run("pre-merged card reaches merged-local; the window stays held", func(t *testing.T) {
+	sdClearLaneEnv(t)
+	sdClearLaneEnv(t)
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
@@ -142,6 +158,13 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 
 		sdLaneEnv(t, "lane-1", "")
 		t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
+		// REQ-MWQ-019 step 2 (adoption): the record keyed to the MERGED
+		// tree is the gate's evidence — the lane re-measured on the merged
+		// tree after its verb merge, and complete adopts without calling
+		// the merge step.
+		if _, remErr := factory.RunRemeasure(root, integWT, "develop", "true"); remErr != nil {
+			t.Fatalf("remeasure on the merged tree: %v", remErr)
+		}
 		if _, _, err := runFactory(t, "complete", "t1", remeasure, "--run", fcRun); err != nil {
 			t.Fatalf("complete: %v", err)
 		}
@@ -163,9 +186,18 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	})
 
 	t.Run("complete performs the merge itself and records the re-measure evidence", func(t *testing.T) {
+		sdClearLaneEnv(t)
+	sdClearLaneEnv(t)
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
+		// REQ-MWQ-019 steps 3-4: the re-measure runs BEFORE the window (the
+		// lane measured the candidate tree), and complete merges ONLY by
+		// calling the merge step — no stand-in record is ever written
+		// (REQ-MWQ-020).
+		if _, remErr := factory.RunRemeasure(root, cards[0].wt, "develop", "true"); remErr != nil {
+			t.Fatalf("remeasure on the candidate tree: %v", remErr)
+		}
 
 		sdLaneEnv(t, "lane-1", "")
 		t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
@@ -188,19 +220,20 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 		if got := fcGit(t, integWT, "rev-list", "--parents", "-n", "1", head); len(strings.Fields(got)) != 3 {
 			t.Errorf("HEAD is not a two-parent merge: %s", got)
 		}
+		// REQ-MWQ-020/021: the lane passed no re-measure FILE, so complete
+		// records no stand-in — the recorded path names the record store,
+		// and the gate's evidence is the record keyed to the merge tree.
 		if c.RemeasurePath == "" {
 			t.Fatal("no re-measure path recorded")
 		}
-		raw, err := os.ReadFile(c.RemeasurePath)
-		if err != nil {
-			t.Fatalf("read remeasure: %v", err)
-		}
-		if !strings.Contains(string(raw), c.MergeSHA[:12]) {
-			t.Errorf("remeasure record %q does not name merge %s", raw, c.MergeSHA)
+		if c.RemeasurePath != "(re-measure record store)" {
+			t.Fatalf("remeasure path = %q, want the record-store placeholder (no stand-in file is written)", c.RemeasurePath)
 		}
 	})
 
 	t.Run("integration branch held only by the parent checkout: not provisioned", func(t *testing.T) {
+	sdClearLaneEnv(t)
+	sdClearLaneEnv(t)
 		root, _, cards := sdMergeFixture(t, true, false, true, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")
@@ -215,6 +248,8 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	})
 
 	t.Run("integration branch held by no tree: not provisioned", func(t *testing.T) {
+	sdClearLaneEnv(t)
+	sdClearLaneEnv(t)
 		root, _, cards := sdMergeFixture(t, true, false, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")
@@ -231,6 +266,8 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	t.Run("caller-source window: refused naming --branch", func(t *testing.T) {
 		// A github-flow fixture: no configured integration branch, so the
 		// lane's own acquire fell back to its card worktree.
+	sdClearLaneEnv(t)
+	sdClearLaneEnv(t)
 		root, _, cards := sdMergeFixture(t, false, false, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")
@@ -251,6 +288,8 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	t.Run("window naming the card's own branch: refused", func(t *testing.T) {
 		// A window acquired with --branch <the card's own WT- branch>: source
 		// flag, tree = the card worktree.
+	sdClearLaneEnv(t)
+	sdClearLaneEnv(t)
 		root, _, cards := sdMergeFixture(t, true, false, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")

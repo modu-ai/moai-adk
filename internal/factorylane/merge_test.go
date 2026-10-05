@@ -96,8 +96,8 @@ func TestEvaluateMergeTriple_AllPassRecordsThreeChecks(t *testing.T) {
 	if run.FailedCondition != "" {
 		t.Fatalf("failed_condition set on the passing shape: %q", run.FailedCondition)
 	}
-	if len(run.Checks) != 3 {
-		t.Fatalf("got %d recorded checks, want 3: %+v", len(run.Checks), run.Checks)
+	if len(run.Checks) != 4 {
+		t.Fatalf("got %d recorded checks, want 4 (the REQ-MWQ-021 record condition joined the triple): %+v", len(run.Checks), run.Checks)
 	}
 	for i, want := range []string{CheckSyncAudit, CheckConflictFree, CheckTreeIdentity} {
 		if run.Checks[i].Name != want {

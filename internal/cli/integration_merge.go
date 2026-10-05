@@ -36,7 +36,11 @@ func newIntegrationMergeCmd() *cobra.Command {
 			if integBranch == "" {
 				integBranch = "develop"
 			}
-			integ := worktreeForBranch(integBranch)
+			// The integration worktree resolves at the RECORD's repository —
+			// the lock root (the primary checkout), never the process cwd: a
+			// verb invoked from a card worktree would otherwise read that
+			// worktree's own repository and find a different develop.
+			integ := factoryWorktreeForBranchIn(root, integBranch)
 			if integ == "" {
 				return fmt.Errorf("integration merge: no worktree holds the integration branch %q — the leader provisions the integration worktree", integBranch)
 			}
@@ -47,9 +51,17 @@ func newIntegrationMergeCmd() *cobra.Command {
 			// The card-gate read (O4): the SAME predicate complete's step 1
 			// runs, over the factory db — merge-ready, the caller's own
 			// unexpired lease, version as read.
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			runID, runErr := resolveFactoryCardRun(ctx, root, runFlag)
+			if runErr != nil {
+				return runErr
+			}
 			seams := factory.MergeStepSeams{
 				ReadCard: func(cardID string) (factory.MergeCardState, error) {
-					return integrationReadMergeCard(cmd.Context(), root, cardID, lane)
+					return integrationReadMergeCardForRun(ctx, root, runID, cardID, lane)
 				},
 			}
 			mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
@@ -71,17 +83,13 @@ func newIntegrationMergeCmd() *cobra.Command {
 	return cmd
 }
 
-// integrationReadMergeCard is the card-gate read O4 pins: one predicate
-// shared by the merge verb's gate and factory complete's step 1. It reads
-// the card's stage, the caller's lease, and the version AS READ — the
-// callers never bump the version between the read and the gate.
-func integrationReadMergeCard(ctx context.Context, root, cardID, lane string) (factory.MergeCardState, error) {
+// integrationReadMergeCardForRun is the card-gate read O4 pins: one
+// predicate shared by the merge verb's gate and factory complete's step 1.
+// It reads the card's stage, the caller's lease, and the version AS READ —
+// the callers never bump the version between the read and the gate.
+func integrationReadMergeCardForRun(ctx context.Context, root, runID, cardID, lane string) (factory.MergeCardState, error) {
 	if ctx == nil {
 		ctx = context.Background()
-	}
-	runID, err := resolveFactoryCardRun(ctx, root, "")
-	if err != nil {
-		return factory.MergeCardState{}, err
 	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
