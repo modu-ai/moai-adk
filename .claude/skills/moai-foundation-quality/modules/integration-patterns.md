@@ -90,11 +90,9 @@ When the gate or review surfaces a cluster of fixable issues:
 reached without full resolution — surface that verdict rather than
 silently stopping.
 
-## Team Mode Quality (native Claude Code teammate runtime — CG Mode)
+## Team Mode Quality (native Claude Code teammate runtime)
 
-The native Claude Code teammate runtime (the `moai cg` GLM panes + `moai cc -w
-<name> --spawn` surface — see CLAUDE.md §15 CG Mode) binds two hooks that
-enforce per-teammate quality:
+Native Claude Code Agent Teams (see CLAUDE.md §15) bind two hooks that enforce per-teammate quality. Their experimental availability does not verify mixed-provider routing:
 
 - **TeammateIdle hook** — validates a teammate's work before accepting idle
   state. If LSP errors exceed the threshold, the teammate is kept working.
@@ -106,7 +104,7 @@ the MoAI static Agent Teams layer (agent-team `agent-team` — experimental,
 re-allowed, explicit-request-only per `orchestration-mode-selection.md` §C.1;
 the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent
 mode). Do not conflate
-the two: the native teammate runtime is live (CG Mode), the static Agent
+the two: native teammate support is separate from retired CG routing; the static Agent
 Teams layer is the explicit-request experimental surface. See the spec-workflow rule for the full team-quality
 contract.
 

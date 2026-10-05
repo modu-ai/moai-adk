@@ -1,0 +1,21 @@
+{
+  "command": "moai todo list --json",
+  "cards": 11,
+  "unique_card_ids": 11,
+  "queued": 11,
+  "exact_text_match": 11,
+  "previous_items_changed": [],
+  "finding_ids": [
+    "H01",
+    "H02",
+    "H03",
+    "H04",
+    "H05",
+    "H06",
+    "H07",
+    "H08",
+    "H09",
+    "H10",
+    "H11"
+  ]
+}

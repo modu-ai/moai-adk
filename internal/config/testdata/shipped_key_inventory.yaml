@@ -2460,6 +2460,24 @@
 - path: "workflow.multi.review_gate.enabled"
   class: W
   evidence: reader
+- path: "workflow.hygiene.audit_log_kept_rotations"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.audit_log_max_bytes"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.heartbeat_stale_window"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.min_age_days"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.mode"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.transcript_activity_window"
+  class: W
+  evidence: reader
 - path: "workflow.project.continuation"
   class: P
   evidence: .claude/skills/moai/workflows/project/doc-generation.md
@@ -2509,10 +2527,6 @@
   class: W
   evidence: reader
 - path: "workflow.worktree.session_name_pattern"
-  class: D
-  evidence: none
-  deprecate_after: "v3.1.0"
-- path: "workflow.worktree.tmux_preferred"
   class: D
   evidence: none
   deprecate_after: "v3.1.0"

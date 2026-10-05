@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>MoAI Factory 호스트 조합 실세션 검증</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <style>
+  :root{--ivory:#faf9f5;--paper:#fff;--slate:#141413;--clay:#b85c3e;--oat:#e3dacc;--olive:#596e42;--g100:#f0eee6;--g300:#d1cfc5;--g500:#696963;--g700:#3d3d3a;--sans:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;--serif:Georgia,serif;--mono:ui-monospace,"SF Mono",monospace;--max-width:960px;--radius-panel:12px;--radius-row:8px;--border:1px solid var(--g300)}
+  *{box-sizing:border-box}body{margin:0;background:var(--ivory);color:var(--slate);font:16px/1.68 var(--sans)}main{max-width:var(--max-width);margin:0 auto;padding:56px 28px 96px}header{border-top:5px solid var(--clay);padding-top:24px}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.2;margin:0 0 16px}h2{font-size:1.5rem;margin:50px 0 14px;border-bottom:1px solid var(--oat);padding-bottom:9px}h3{font-size:1.13rem;margin-top:28px}p,li{max-width:85ch}a{color:var(--clay);text-decoration-thickness:1px;text-underline-offset:3px}strong{color:#2d4933}table{width:100%;border-collapse:collapse;margin:22px 0;background:var(--paper);font-size:.91rem}th,td{border:1px solid var(--g300);padding:11px 13px;text-align:left;vertical-align:top}th{background:var(--g100)}tr:nth-child(even) td{background:#faf9f6}code,pre{font-family:var(--mono);font-size:.84em}code{overflow-wrap:anywhere;background:var(--g100);padding:.08em .3em;border-radius:4px}pre{background:#202927;color:#f3f1e9;padding:17px 19px;border-radius:var(--radius-panel);overflow:auto;line-height:1.5}pre code{background:none;padding:0;color:inherit}blockquote{border-left:4px solid var(--olive);margin:20px 0;padding:10px 20px;background:#f1f3ec}hr{border:0;border-top:1px solid var(--oat);margin:38px 0}@media(max-width:720px){main{padding:30px 16px 64px}table{display:block;overflow-x:auto;white-space:normal}th,td{min-width:150px}}@media print{body{background:#fff}main{max-width:none;padding:0}a{color:#000}pre,table{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<h1 id="moai-factory-호스트-조합-실세션-검증">MoAI Factory 호스트 조합
+실세션 검증</h1>
+<p>2026-09-24 · macOS 실측 · MoAI MCP 메시지 경로 · 판정: <strong>통신
+4/4 성공, 자동 카드 처리·병합 미검증</strong></p>
+<h2 id="claim">Claim</h2>
+<p>macOS의 독립된 실제 호스트 세션에서 <code>moai codex -f</code>와
+<code>moai cc -f</code>를 lead/worker로 조합한 네 경우 모두, MoAI MCP를
+통해 <code>dispatch_notice</code>를 보내고 worker가 접수한 다음
+<code>status_report</code>를 돌려보내 lead가 접수했다. 각 worker는
+<strong>배차를 읽은 뒤에</strong> 지정 파일을 썼다. Claude Code 세션은
+<code>moai-adk</code> 프로필의 Anthropic 직접 인증 계정과 Claude Code
+2.1.281을 사용했다.</p>
+<p>이 결과는 <strong>명시적 MCP 호출과 폴링에 대한 성공</strong>이다.
+<code>moai todo</code> 카드 발행과 <code>picked</code> 상태는 실측했으나
+Factory의 <code>assignments</code>는 <code>[]</code>였다. 자동 카드
+배차, plan/run/sync, 카드 상태 전이, Git worktree, PR, 병합 요청, 원격
+병합, 기존 세션 자동 깨우기는 이번 운영 시험에서 실행하지 않았다. 따라서
+네 조합에 대해 Claude Code Factory 전체와 동등하다는 판정은 아직 내릴 수
+없다.</p>
+<p>이전 <a href="moai-claude-codex-factory-live-20260924.html">초기
+실세션 보고서</a>의 <code>launch_pending</code> 관찰은 뒤이은 성공
+시험으로 갱신됐다. 초기 보고서의 미완료 판정을 현재 최종 결과로 읽으면
+안 된다.</p>
+<h2 id="baseline-attribution">Baseline-attribution</h2>
+<p>이 보고서의 운영 관찰은
+<code>/private/tmp/moai-factory-cross-test-20260924</code>에서
+<code>MOAI_HOME=/private/tmp/moai-factory-cross-test-20260924/moai-home</code>을
+설정하고 실행한 결과다. 시험 파일, 카드, 메시지 DB는 이 격리 프로젝트에
+있다. 공유 저장소의 기존 변경은 건드리지 않았다.</p>
+<pre class="text"><code>$ moai version
+moai-adk v3.2.0-rc.13
+[v3.2.0-rc.13] [moai_cp/20260910_130400-2916-g60017eb83] [built 2026-09-23T23:56:01Z]
+$ codex --version
+codex-cli 0.156.1
+$ claude --version
+2.1.281 (Claude Code)
+$ uname -s
+Darwin</code></pre>
+<p>Go 라이브 픽스처 네 개는 별도 clean <code>develop</code> worktree에서
+실행했으며 실행 당시 HEAD는 <code>5cdfa51fb</code>였다. 조사 중 다른
+세션이 이 worktree의 HEAD를 <code>6ed819fcf</code>로 전진시켰다. 설치
+MoAI 바이너리의 빌드 커밋 <code>60017eb83</code>은 현재
+<code>develop</code>의
+조상이다(<code>git merge-base --is-ancestor 60017eb83 HEAD</code> → 종료
+코드 <code>0</code>). 설치본과 현재 checkout을 같은 소스 버전으로
+취급하지 않는다. 운영 시험은 <strong>설치본</strong>, Go 라이브 픽스처는
+<strong>당시 checkout</strong>에 대한 결과다.</p>
+<h2 id="evidence-실제-factory-런처와-claude-직접-인증-계정">Evidence —
+실제 Factory 런처와 Claude 직접 인증 계정</h2>
+<p>운영 명령의 공통 형태는 다음과 같다. Codex는
+<code>moai codex -f [worker] -- exec ...</code>, Claude는
+<code>moai cc -p moai-adk -f [worker] --print ... --mcp-config ... --strict-mcp-config</code>로
+시작했다. 각 역할은 별도의 CLI 프로세스와 세션 UUID를 가졌다. Codex는
+내장 <code>moai</code> MCP를, Claude는 명시적 설정 파일
+<code>/private/tmp/moai-factory-cross-test-20260924/claude-mcp-explicit.json</code>의
+<code>moai mcp-server</code>를 사용했다. 파일은 각 배차 본문에 지정한
+정확한 문자열을 저장했다.</p>
+<p>다음은 이 실행에서 <code>moai todo list --json</code>과 해당 run의
+<code>broker.db</code>를 읽은 결과다. DB는 조회만 했다. 메시지 상태는
+lead/worker 종료 뒤의 최종 상태다.</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr>
+<th>lead → worker</th>
+<th>카드 / run</th>
+<th>배차 메시지 ID</th>
+<th>완료 보고 ID</th>
+<th>결과 파일 내용</th>
+<th>최종 상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Codex → Codex</td>
+<td><code>t2</code> / <code>tlutvh</code></td>
+<td><code>3099d9baca726ff4217ff9fbb5b063ba</code></td>
+<td><code>e4bd656723ae34f68c67737af2c745c1</code></td>
+<td><code>CODEX_CODEX_DONE_0924</code></td>
+<td>둘 다 <code>acknowledged/accepted</code></td>
+</tr>
+<tr>
+<td>Codex → Claude</td>
+<td><code>t3</code> / <code>tlutzb</code></td>
+<td><code>5276823ba4cd0898a5c576614d0d5e7d</code></td>
+<td><code>7e578eda41d3b1a9ff41d3a1e9111ca0</code></td>
+<td><code>CODEX_CLAUDE_DONE_0924</code></td>
+<td>둘 다 <code>acknowledged/accepted</code></td>
+</tr>
+<tr>
+<td>Claude → Codex</td>
+<td><code>t6</code> / <code>tluudw</code></td>
+<td><code>202c83ecff5c114a4e10d702dbfb3529</code></td>
+<td><code>b8961904a11ae8eb5ac9596354e40d26</code></td>
+<td><code>CLAUDE_CODEX_DONE_0924</code></td>
+<td>둘 다 <code>acknowledged/accepted</code></td>
+</tr>
+<tr>
+<td>Claude → Claude</td>
+<td><code>t8</code> / <code>tluul7</code></td>
+<td><code>e90ca6df0c8bc44a6b683aac9f215d92</code></td>
+<td><code>0c21acbf2dc29c6968b50566680fa278</code></td>
+<td><code>CLAUDE_CLAUDE_DONE_0924</code></td>
+<td>둘 다 <code>acknowledged/accepted</code></td>
+</tr>
+</tbody>
+</table>
+<p>재현 가능한 조회 명령과 실제 출력 중 Claude → Codex 한 건:</p>
+<pre class="text"><code>$ python3 - &lt;&lt;&#39;PY&#39;
+import sqlite3
+p=&#39;/private/tmp/moai-factory-cross-test-20260924/moai-home/db/moai-factory-cross-test-20260924-805fe8bf/factory/messages/tluudw/broker.db&#39;
+c=sqlite3.connect(p)
+print(c.execute(&#39;select slot,backend,session_uuid from peers&#39;).fetchall())
+print(c.execute(&#39;select id,kind,state,disposition,sender_slot from messages order by created_at&#39;).fetchall())
+PY
+[(&#39;lead&#39;, &#39;claude&#39;, &#39;b12f3630-af13-4a06-abf2-d105d8f62ba7&#39;), (&#39;worker-1&#39;, &#39;codex&#39;, &#39;01a0d207-d4ab-7b70-b544-464be771c769&#39;)]
+[(&#39;202c83ecff5c114a4e10d702dbfb3529&#39;, &#39;dispatch_notice&#39;, &#39;acknowledged&#39;, &#39;accepted&#39;, &#39;lead&#39;), (&#39;b8961904a11ae8eb5ac9596354e40d26&#39;, &#39;status_report&#39;, &#39;acknowledged&#39;, &#39;accepted&#39;, &#39;worker-1&#39;)]
+$ cat /private/tmp/moai-factory-cross-test-20260924/claude-codex-receipt.txt
+CLAUDE_CODEX_DONE_0924</code></pre>
+<p>나머지 세 run도 같은 조회에서 각각 lead/worker UUID 두 개와 배차·보고
+두 행이 나왔다. 원본 호스트 출력은
+<code>/private/tmp/moai-factory-matrix-20260924/operational-&lt;조합&gt;-{lead,worker}.log</code>에
+있다. Claude → Codex는 파일명에 <code>-final</code>, Claude → Claude의
+최종 성공 시험은 <code>-retry</code>가 붙는다. 각 성공 프로세스 종료
+코드는 <code>0</code>이었다. 시험 run은 종료 뒤
+<code>moai factory runs --retire &lt;run-id&gt;</code>로 정리했다.</p>
+<p><code>moai todo list --json</code>에서는 <code>t2</code>,
+<code>t3</code>, <code>t6</code>, <code>t8</code>이 모두
+<code>state:"picked"</code>로 나왔다. 같은 JSON의
+<code>runtime.assignments</code> 출력은
+<strong><code>[]</code></strong>였다. 카드 번호를 MCP 본문과
+<code>task_ref</code>에 넣어 수동 배차한 것이며, Todo ↔︎ Factory의 정식
+배차 연결을 통과한 것은 아니다.</p>
+<h2 id="evidence-라이브-카드-흐름-픽스처">Evidence — 라이브 카드 흐름
+픽스처</h2>
+<p>별도의 네 Go 테스트도 각각 실제 Codex/Claude 모델 턴과 MCP 호출을
+수행해 통과했다. 실행 형태:
+<code>MOAI_FACTORY_LIVE=1 MOAI_FACTORY_LIVE_CASE=cardflow-&lt;조합&gt; MOAI_T1100_EVIDENCE_DIR=/private/tmp/moai-factory-matrix-20260924/evidence go test ./internal/cli -run '^TestFactoryLiveCardFlow&lt;조합&gt;$' -count=1 -v</code>.</p>
+<pre class="text"><code>--- PASS: TestFactoryLiveCardFlowCodexCodex (193.75s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli  194.792s
+--- PASS: TestFactoryLiveCardFlowCodexClaude (196.04s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli  196.944s
+--- PASS: TestFactoryLiveCardFlowClaudeCodex (170.34s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli  171.367s
+--- PASS: TestFactoryLiveCardFlowClaudeClaude (110.46s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli  111.299s</code></pre>
+<p>원본 로그는
+<code>/private/tmp/moai-factory-matrix-20260924/{codex-codex,codex-claude,claude-codex,claude-claude}.log</code>,
+구조화 근거는 같은 디렉터리의
+<code>evidence/ac018-evidence-*.json</code>이다. 각 JSON에서
+<code>applied_results:1</code>,
+<code>late_result_outcome:"stale"</code>,
+<code>current_result_outcome:"accepted"</code>,
+<code>final_state:"integrated"</code>를 확인했다. 이 테스트의 Claude
+역할은 <code>moai glm</code>으로 구동된 Claude Code 호스트다. 또한 <a
+href="../internal/cli/factory_live_test.go"><code>factory_live_test.go</code></a>의
+픽스처가 peer를 직접 등록하고 카드 상태를 구동한다. <strong>픽스처의
+<code>integrated</code>는 실제 Todo 카드의 PR 병합 증거가
+아니다.</strong></p>
+<h2 id="관찰한-결함과-운영-조건">관찰한 결함과 운영 조건</h2>
+<h3 id="high-claude-worker의----구분자-뒤-역할-인식-실패">High — Claude
+worker의 <code>--</code> 구분자 뒤 역할 인식 실패</h3>
+<p><code>moai cc -p moai-adk -f worker -- --print ...</code>로 시작한
+초기 시험은 Codex lead의 run <code>tlutle</code>에 합류하지 않고 새
+Claude lead run <code>tlutlz</code>를 만들었다. DB 조회 원문:</p>
+<pre class="text"><code>tlutle [(&#39;lead&#39;, &#39;codex&#39;, &#39;lead&#39;)] []
+tlutlz [(&#39;lead&#39;, &#39;claude&#39;, &#39;lead&#39;)] []</code></pre>
+<p>구분자를 생략한 뒤의
+<code>moai cc -p moai-adk -f worker --print ...</code>는 동일한 worker
+역할로 정상 합류해 Codex → Claude 시험을 통과했다. 조사한 소스에서 <a
+href="../internal/cli/factory.go"><code>factory.go</code></a>는 worker
+<code>--name</code>을 <code>entry.Rest</code> 끝에 추가하고, <a
+href="../internal/cli/kanban.go"><code>kanban.go</code></a>의
+<code>parseNamedLabel</code>은 <code>--</code>에서 탐색을 멈춘다. 이것이
+관찰된 오분류를 설명한다. <code>--</code> 앞에서 역할을 확정하거나
+추가된 플래그를 구분자 앞에 삽입하는 수정을 우선 적용하고, Claude·Codex
+런처 양쪽에 실제 argv 회귀 시험이 필요하다.</p>
+<h3 id="high-mcp-스키마와-저장소의-필수값-불일치">High — MCP 스키마와
+저장소의 필수값 불일치</h3>
+<p><code>factory_msg_send</code>의 MCP 도구 스키마는
+<code>task_ref</code>, <code>correlation_id</code>를 선택 항목으로
+선언하지만 <a
+href="../internal/factorymsg/store.go"><code>store.go</code></a>는 두 값
+모두 <code>safeID</code> 정규식으로 검사한다. 초기 run
+<code>tlutpr</code>에서 <code>correlation_id</code> 없이 호출한 결과는
+다음과 같았다.</p>
+<pre class="text"><code>&quot;tool&quot;:&quot;factory_msg_send&quot;,&quot;arguments&quot;:{...&quot;task_ref&quot;:&quot;t1&quot;,...},&quot;result&quot;:{&quot;content&quot;:[{&quot;type&quot;:&quot;text&quot;,&quot;text&quot;:&quot;factory_msg_send: invalid correlation id&quot;}],...&quot;status&quot;:&quot;failed&quot;}</code></pre>
+<p>이 경우 배차는 생성되지 않았는데 Claude worker가 파일과 보고를 만든
+시도까지 있었다. <strong>파일 존재와 worker 보고만으로 배차 성공을
+판정하면 거짓 양성</strong>이 된다. 스키마를 실제 필수 계약에 맞추고,
+lead가 발급한 배차 ID와 worker가 접수한 ID, 보고의 카드·상관관계를 함께
+검증해야 한다.</p>
+<h3 id="high-claude-mcp-연결과-세션-등록-순서">High — Claude MCP 연결과
+세션 등록 순서</h3>
+<p>자동 <code>.mcp.json</code>만 둔 Claude lead 시험
+<code>tluu43</code>에서는 모델이 도구 이름을 찾았지만 실제 MCP 호출 대신
+Bash 명령으로 실행했고, 메시지는 <code>[]</code>였다. 명시적
+<code>--mcp-config ... --strict-mcp-config</code>를 적용한 뒤 실제 MCP
+도구 호출에 성공했다. 이 격리 프로젝트의 Claude 실행에는 프로젝트 신뢰
+경고도 출력됐다. 자동 연결의 실패 원인이 설정 발견, 신뢰 상태, 모델 행동
+중 어느 것인지는 분리 검증이 필요하다. 제품 진입점은 세션 시작 직후 필수
+MCP 도구의 실사용 가능 여부를 확인해 실패를 명시해야 한다.</p>
+<p>worker 등록 전에 보내면
+<code>factory_msg_send: sql: no rows in result set</code>가
+나왔다(<code>tluua2</code>). lead가 전송을 재시도하거나 worker 준비
+상태를 기다려야 한다. <code>tluui3</code>에서는 Claude lead가 대기를
+백그라운드로 시작한 뒤 턴을 끝내 배차 없이 종료했다. 모델 프롬프트의
+대기 지시만으로 준비 상태를 보장할 수 없으므로 호스트 밖의 결정적 준비
+확인을 권장한다.</p>
+<h3 id="medium-비동기-전달-보장의-표현">Medium — 비동기 전달 보장의
+표현</h3>
+<p>이 시험의 worker는 <code>factory_msg_list</code>를 <strong>명시적으로
+호출</strong>해 배차를 가져왔다. 이미 끝난 턴을 깨우는 push 또는 Claude
+네이티브 채널과 같은 자동 도착은 관찰하지 않았다. 리드·워커가 살아 있는
+동안의 폴링 간격, 종료 후 재시작, 메시지 만료·재시도·중복 처리까지
+실측하기 전에는 <code>push</code>라고 안내하면 안 된다. UI와 문서에는
+“MCP 받은편지함 폴링”으로 표현하는 것이 정확하다.</p>
+<h2 id="플랫폼별-판정과-gaps">플랫폼별 판정과 Gaps</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr>
+<th>실행 환경</th>
+<th>Codex → Codex</th>
+<th>Codex → Claude</th>
+<th>Claude → Codex</th>
+<th>Claude → Claude</th>
+<th>근거 범위</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>macOS</td>
+<td>성공</td>
+<td>성공</td>
+<td>성공</td>
+<td>성공</td>
+<td>Claude 직접 인증 계정과 Codex CLI의 실제 별도 세션, MoAI MCP
+송신·폴링·접수</td>
+</tr>
+<tr>
+<td>Linux 네이티브</td>
+<td>미실측</td>
+<td>미실측</td>
+<td>미실측</td>
+<td>미실측</td>
+<td>현재 호스트는 macOS; Linux Docker는 인증된 양쪽 호스트 세션 시험을
+대신하지 않음</td>
+</tr>
+<tr>
+<td>Windows 네이티브</td>
+<td>미실측</td>
+<td>미실측</td>
+<td>미실측</td>
+<td>미실측</td>
+<td>사용자가 접속 가능한 Windows 호스트·인증 원격 러너가 없다고
+확인함</td>
+</tr>
+</tbody>
+</table>
+<p>Mac/Linux의 Claude lead + Claude worker는 네이티브 세션 소켓을 사용할
+수 있는 별도 제품 경로로 취급한다. 이 보고서의 Claude → Claude 성공은
+<strong>MCP 경로</strong> 실측이며 네이티브 소켓 성능이나 자동 전달을
+검증한 결과가 아니다. Windows와 Codex가 포함된 조합에 대해서는 네이티브
+소켓을 전제로 하지 않고 MCP 폴링을 기준 경로로 설계해야 한다. Windows가
+실제로 동작한다는 주장은 이번 결과로 할 수 없다.</p>
+<p>다음 항목은 전부 <strong>NOT-RUN</strong>이다: 실제
+<code>moai todo</code> ↔︎ Factory assignment 배차, worker의 worktree
+작업과 검사, lead의 증거 심사, PR 생성·병합 요청·원격 병합, 장기 세션의
+자동 깨우기, Linux 네이티브, Windows 네이티브, Claude 네이티브 소켓
+경로의 비교, 장애 주입·재시작 복구. 이 범위는 현 결과의 잔여
+위험이다.</p>
+<h2 id="개선-계획">개선 계획</h2>
+<ol type="1">
+<li><strong>High — 런처 계약을 고정한다.</strong>
+<code>-f worker</code>와 <code>-f agent</code> 별칭, <code>--</code> 뒤
+pass-through, <code>--factory-run</code> 선택을 Claude/Codex 양쪽 실제
+argv로 검증한다. 역할은 호스트 인자 분리 전에 결정하고 잘못된 lead
+생성이 없음을 회귀 시험한다. <code>agent</code>는 경고를 유지하며
+<code>worker</code>를 정식 표기로 통일한다.</li>
+<li><strong>High — MCP 계약과 준비 상태를 고정한다.</strong> 필수
+<code>task_ref</code>·<code>correlation_id</code>를 도구 스키마와 입력
+검증에 일치시킨다. run·slot·session UUID의 바인딩 및 도구 가용성을 진입
+시 검사한다. worker가 준비됐다는 기계적 신호를 받은 뒤 배차하고, 등록
+지연은 제한된 재시도로 처리한다. Claude의 MCP 설정 자동 발견·신뢰 경로를
+별도 실세션에서 확인한다.</li>
+<li><strong>High — 카드 배차를 제품 워크플로우에 연결한다.</strong>
+<code>picked</code> 카드가 Factory <code>assignments</code>에 기록되고
+worker가 카드 UUID·revision을 받은 뒤에만 작업하도록 한다.
+배차·접수·결과 보고·lead 수락은 동일한 작업 식별자와 기대 revision으로
+검증한다. 보고가 배차보다 먼저 온 경우 완료로 처리하지 않는다.</li>
+<li><strong>High — 실작업 수용 시험을 만든다.</strong> 격리 Git 원격과
+새 worktree에서 네 조합 각각 카드 발행 → 배차 → 수정 → 범위 검사 → 보고
+→ lead 검증 → PR·병합 요청 → 원격 병합까지 실행한다. 현재 라이브
+픽스처와 운영 런처 시험을 분리해 각각의 통과 범위를 명시한다. PR/병합
+완료를 브로커 메시지 수락과 혼동하지 않는다.</li>
+<li><strong>Medium — 폴링 운영을 명시한다.</strong>
+백오프·만료·재접속·중복 방지·worker 종료·lead 교체를 테스트하고, 지연과
+재시도 횟수를 측정한다. 자동 깨우기가 필요하다면 별도 호스트 제어 경로를
+설계·실세션 검증한 후에만 기능으로 표기한다.</li>
+<li><strong>Medium — 플랫폼을 각각 인증한다.</strong> macOS 결과를
+Linux·Windows로 확대하지 않는다. 인증된 Linux 네이티브와 Windows
+네이티브 러너에서 같은 네 조합, 파일 결과, 메시지 상태, 재시작을 각각
+수집한다. Windows 호스트가 준비되기 전에는 Windows를 계속
+<code>미실측</code>으로 표시한다.</li>
+<li><strong>Medium — 토큰·지연 비용을 계측한다.</strong> 이번 Claude
+운영 로그에 큰 캐시 읽기량이 보였지만 단일 호출만으로 구조적 낭비를
+확정할 수 없다. 공통 작업을 최소 MCP 설정과 전체 하네스로 반복해 도구
+설명·초기 프롬프트·스킬 로딩·폴링 비용과 성공률을 함께 비교한다. 기능을
+줄이는 결정은 동등 성공률 확인 뒤에 한다.</li>
+</ol>
+<h2 id="residual-risk">Residual-risk</h2>
+<p>이번 네 성공은 격리 프로젝트의 짧은 비대화형 턴에 한정된다. 사용자
+실제 저장소의 동시 카드, 긴 작업, 실패 복구, 승인 정책, 원격 Git 통합은
+다르다. Claude는 명시적 MCP 설정을 요구했고, 구분자 버그에는 우회 문법을
+사용했다. 따라서 현 단계의 정확한 제품 문구는 <strong>“macOS에서 네
+호스트 조합의 MoAI MCP 명시적 메시지 왕복을 실측”</strong>이다.
+<strong>“전체 Factory 자동 운영·크로스 플랫폼 완료”는
+미검증</strong>이다.</p>
+</body>
+</html>

@@ -76,7 +76,7 @@ Examples:
 - Quality level (good enough vs perfect)
 - Team preferences (how vs what)
 
-Handling: Use AskUserQuestion to clarify which are truly negotiable.
+Handling: use the harness's `question-channel` capability to clarify which are truly negotiable (where the harness lacks it, name the open question in the report instead of asking).
 
 ### Self-Imposed Constraints
 
@@ -124,15 +124,15 @@ Solution Space:
 - Data model redesign (denormalization, aggregation)
 - Hardware upgrade (faster disks, more memory)
 
-Use AskUserQuestion to explore which directions are viable given constraints.
+Use the question channel to explore which directions are viable given constraints.
 
 ## Integration with AskUserQuestion
 
 When decomposing problems:
-- Use AskUserQuestion to verify understanding of the problem
-- Use AskUserQuestion to explore why certain constraints exist
-- Use AskUserQuestion to confirm root cause identification
-- Use AskUserQuestion to validate decomposition completeness
+- Use the question channel to verify understanding of the problem
+- Use the question channel to explore why certain constraints exist
+- Use the question channel to confirm root cause identification
+- Use the question channel to validate decomposition completeness
 
 ---
 

@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-9b9df361",
+  "generated_at": "2026-08-12T16:26:49Z",
+  "generator_version": "0.1.0",
+  "observation_count": 10,
+  "pattern_key": "tool_failure:Bash:ContextCancelled",
+  "source_ts": "2026-08-12T16:42:39Z",
+  "tier": "auto_update"
+}

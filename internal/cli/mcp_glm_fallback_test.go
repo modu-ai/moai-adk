@@ -57,7 +57,10 @@ func TestResolveGLMAuditModel_UnreadableLLMYAML(t *testing.T) {
 	projectDirResolver = func() string { return root }
 	t.Cleanup(func() { projectDirResolver = old })
 
-	got := resolveGLMAuditModelEffort("")
+	got, gotErr := resolveGLMAuditModelEffort("")
+	if gotErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort: %v", gotErr)
+	}
 	if got.Model != config.DefaultGLM53 || got.Effort != "max" {
 		t.Errorf("unreadable llm.yaml: resolveGLMAuditModelEffort() = {%s %s}, want {%s max}", got.Model, got.Effort, config.DefaultGLM53)
 	}
@@ -90,7 +93,10 @@ func TestResolveGLMAuditModel_NonGLMSession(t *testing.T) {
 	projectDirResolver = func() string { return root }
 	t.Cleanup(func() { projectDirResolver = old })
 
-	got := resolveGLMAuditModelEffort("")
+	got, gotErr := resolveGLMAuditModelEffort("")
+	if gotErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort: %v", gotErr)
+	}
 	if got.Model != config.DefaultGLM53 || got.Effort != "max" {
 		t.Errorf("non-GLM session: resolveGLMAuditModelEffort() = {%s %s}, want {%s max}", got.Model, got.Effort, config.DefaultGLM53)
 	}

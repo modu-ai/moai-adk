@@ -3,7 +3,6 @@
 Purpose: Automated quality gates ensuring code quality, security, maintainability, and traceability through five core principles.
 
 Version: 2.0.0 (Modular Split)
-Last Updated: 2026-01-06
 
 ---
 
@@ -235,5 +234,4 @@ Commands:
 ---
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 Status: Production Ready

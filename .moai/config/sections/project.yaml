@@ -1,8 +1,16 @@
+# Project Metadata Configuration
+# Project-specific information and settings
 project:
-    created_at: ""
-    description: ""
-    initialized: true
-    mode: personal
-    name: ""
-    optimized: false
-    template_version: v2.14.0
+  # Project name (derived from directory name or user input)
+  name: ""
+  # Project description (optional, user-provided)
+  description: ""
+  # Project creation timestamp (ISO 8601 format)
+  created_at: ""
+  # Project initialization status
+  initialized: true
+  # Optimization status (true if project structure has been optimized)
+  optimized: false
+  # Template version used to create/update this project
+  template_version: "v3.2.0-rc.23"
+  mode: personal

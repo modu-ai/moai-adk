@@ -199,7 +199,6 @@ Performance Features:
 ## Resources
 
 Status: Production Ready
-Last Updated: 2026-01-11
 Maintained by: MoAI-ADK Database Team
 
 <!-- moai:evolvable-start id="rationalizations" -->
@@ -296,12 +295,3 @@ match /users/{userId} {
 ```
 
 Offline persistence: Enable via `enableIndexedDbPersistence(db)` (web) or SDK default (mobile).
-
-## Refactor Notes
-
-**Refactor scope** (deferred to future sub-SPEC):
-- Separate moai-domain-db-docs workflow skill from this query/schema design skill
-- Extract cloud vendor deep-dives (Neon, Supabase, Firestore) into dedicated Level-3 modules
-- Consolidate overlapping ORM pattern content across database types
-
-This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC. Cloud vendor content absorbed from moai-platform-database-cloud in Wave 1.2.

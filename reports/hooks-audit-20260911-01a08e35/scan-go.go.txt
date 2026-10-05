@@ -1,0 +1,4 @@
+package main
+import("encoding/json";"fmt";"go/ast";"go/parser";"go/token";"os";"path/filepath";"strings")
+type Item struct{Path string `json:"path"`}
+func main(){b,_:=os.ReadFile(os.Args[1]);var items []Item;json.Unmarshal(b,&items);n:=0;errs:=0;funcs:=0;for _,it:=range items {if !strings.HasSuffix(it.Path,".go"){continue};n++;f,e:=parser.ParseFile(token.NewFileSet(),filepath.Join(os.Args[2],it.Path),nil,parser.AllErrors);if e!=nil{fmt.Printf("ERROR %s: %v\n",it.Path,e);errs++;continue};ast.Inspect(f,func(n ast.Node)bool{if _,ok:=n.(*ast.FuncDecl);ok{funcs++};return true})};fmt.Printf("go_ast_files=%d parse_errors=%d functions=%d\n",n,errs,funcs);if errs>0{os.Exit(1)}}

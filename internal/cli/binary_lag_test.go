@@ -235,6 +235,10 @@ var namesAddedAfterBaseline = map[string]bool{
 	// the "Plugin Version" installed-plugin vs binary comparison. Registered
 	// through a constant, hence bare.
 	"pluginVersionCheckName": true,
+	// ccVersionStalenessCheckName — SPEC-SESSION-CC-VERSION-001 (card t1465),
+	// the "Session CC Version" running-vs-installed staleness diagnostic.
+	// Registered through a constant, hence bare.
+	"ccVersionStalenessCheckName": true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of

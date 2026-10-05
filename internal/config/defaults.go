@@ -467,6 +467,19 @@ const (
 	// the reports-archive action warns before moving.
 	DefaultReportsArchiveWarnBytes int64 = 1 << 30 // 1 GiB
 
+	// Hygiene thresholds (SPEC-MOAI-HYGIENE-001 REQ-HYG-016). Every size,
+	// count, age, window, and mode default of the hygiene engine lives
+	// here — no call site carries a magic number. KeptRotations is PINNED
+	// to 1 (D30): the REQ-HYG-002 chunk sequence is keep-1 by construction,
+	// and the hygiene engine validates the override (any other value is a
+	// config-invalid refusal, never a silent clamp).
+	HygieneAuditLogMaxBytes         = 10 * 1024 * 1024
+	HygieneAuditLogKeptRotations    = 1
+	HygieneTranscriptActivityWindow = 48 * time.Hour
+	HygieneHeartbeatStaleWindow     = 24 * time.Hour
+	HygieneMinAgeDays               = 7
+	HygieneModeDefault              = "report"
+
 	// DefaultSessionRecordRetentionDays is the shipped default for the
 	// project-tier `state.session_record_retention_days` key (card t1312):
 	// the age bound past which SessionStart prunes factory session records.
@@ -942,6 +955,23 @@ func NewDefaultConfig() *Config {
 	}
 }
 
+// DefaultPlanAuditTierCeilings returns the shipped plan_audit_tier_ceilings
+// values ({S:1, M:2, L:3}), mirroring the template harness.yaml verbatim
+// (SPEC-AUDIT-CEILING-002: a project without the keys resolves these).
+func DefaultPlanAuditTierCeilings() map[string]int {
+	return map[string]int{"S": 1, "M": 2, "L": 3}
+}
+
+// DefaultPlanAuditCeilingPolicy returns the shipped plan_audit_ceiling_policy
+// values {AutoDeltaRounds: 1, OnFinalHit: hold-and-split}, mirroring the
+// template harness.yaml verbatim.
+func DefaultPlanAuditCeilingPolicy() PlanAuditCeilingPolicyConfig {
+	return PlanAuditCeilingPolicyConfig{
+		AutoDeltaRounds: 1,
+		OnFinalHit:      PlanAuditCeilingOnFinalHoldAndSplit,
+	}
+}
+
 // NewDefaultFeedbackConfig returns a FeedbackConfig whose target repository is
 // the default tool feedback channel (DefaultFeedbackRepository). An absent
 // feedback.yaml therefore still resolves to the tool channel.
@@ -1274,7 +1304,6 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			AutoCreate:         false,
 			AutoMerge:          false,
 			SessionNamePattern: "moai-{ProjectName}-{SPEC-ID}",
-			TmuxPreferred:      true,
 		},
 		// SPEC-TODO-ENABLE-FLAG-001 REQ-1: Todo is left at its zero value on
 		// purpose — Enabled stays nil, which TodoEnabled reads as ENABLED.
@@ -1288,6 +1317,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// so this line is belt-and-braces: it makes the default readable from
 		// the struct rather than only from the resolver.
 		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
+		// SPEC-MOAI-HYGIENE-001 REQ-HYG-016: the hygiene engine's defaults
+		// mirror the Hygiene* constants above. Mode ships "report" — the
+		// non-mutating default (REQ-HYG-013).
+		Hygiene: WorkflowHygieneConfig{
+			Mode:                     HygieneModeDefault,
+			AuditLogMaxBytes:         HygieneAuditLogMaxBytes,
+			AuditLogKeptRotations:    HygieneAuditLogKeptRotations,
+			TranscriptActivityWindow: HygieneTranscriptActivityWindow,
+			HeartbeatStaleWindow:     HygieneHeartbeatStaleWindow,
+			MinAgeDays:               HygieneMinAgeDays,
+		},
 		// The out-of-band drift-cache fill ships ENABLED. Unlike the guard
 		// family below it, this feature is not inert when on — it starts a
 		// child process on a cache miss — so the default is an accepted cost
