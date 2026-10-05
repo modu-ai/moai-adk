@@ -7,8 +7,10 @@
 package cli
 
 import (
+	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
@@ -423,6 +425,72 @@ func TestFactoryHubChainChainsToTheLastPredecessor(t *testing.T) {
 		if c := fcCard(t, root, "t3"); c.HintAfter != "t2" {
 			t.Fatalf("t3's after = %q, want t2 (the chain's tail)", c.HintAfter)
 		}
+	}
+}
+
+// TestFactoryNominateRefusesForeignBundleMember — card t1454 card-review
+// r2c: the nominated lease applies the bundle-lane restriction too. With the
+// bundle's head merged, a member's after guard no longer refuses, and
+// `next --card` from another lane leased lane-1's member outright — the
+// selection arms skip another lane's member, the nominated path must refuse
+// it.
+func TestFactoryNominateRefusesForeignBundleMember(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	sdRegisterLane(t, root, "lane-1")
+	sdRegisterLane(t, root, "lane-2")
+	t.Chdir(root)
+
+	fbBundle(t, root, "lane-1", "t1", "t2")
+	fcSetCardState(t, root, "t1", homestate.CardMergedLocal)
+
+	sdLaneEnv(t, "lane-2", "")
+	if _, _, err := runFactory(t, "next", "--card", "t2", "--run", fcRun); err == nil {
+		t.Fatal("lane-2's nominated lease took lane-1's bundle member")
+	}
+	if c := fcCard(t, root, "t2"); c.State != homestate.CardPicked || strings.TrimSpace(c.OwnerLabel) != "" {
+		t.Fatalf("t2 = %s owner=%q, want an unowned picked row (the refusal changed nothing)", c.State, c.OwnerLabel)
+	}
+}
+
+// TestFactoryBundleRecordsUnderTheQueueLock — card t1454 card-review r2d
+// finding D1: the verify→record span is ONE critical section. The record
+// step's lock probe must NOT be able to take the queue lock; on the
+// pre-repair shape the record ran after the section released it and the
+// probe walked straight in — the window another session's unpick fits
+// through.
+func TestFactoryBundleRecordsUnderTheQueueLock(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	probe := factory.NewBacklogStore(todoBacklogPath(root))
+	var lockWasFree bool
+	prev := factoryBundleRecord
+	factoryBundleRecord = func(ctx context.Context, db *homestate.FactoryDB, runID string, members []homestate.BundleMemberSpec, lane string, now time.Time) (homestate.Card, error) {
+		done := make(chan bool, 1)
+		go func() {
+			err := probe.WithLock(func(*factory.LockedBacklog) error { return nil })
+			done <- (err == nil)
+		}()
+		select {
+		case lockWasFree = <-done:
+		case <-time.After(200 * time.Millisecond):
+			// Still blocked after the window — the lock is held.
+		}
+		return db.RecordBundleChain(ctx, runID, members, lane, "bundle", now)
+	}
+	t.Cleanup(func() { factoryBundleRecord = prev })
+
+	sdClearLaneEnv(t)
+	if _, _, err := runFactory(t, "bundle", "lane-1", "t1", "t2", "--run", fcRun); err != nil {
+		t.Fatalf("bundle: %v", err)
+	}
+	if lockWasFree {
+		t.Fatal("the record step ran with the queue lock free — the verify→record span is not one critical section")
 	}
 }
 

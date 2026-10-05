@@ -50,6 +50,27 @@ func TestTodoWhyShowsFollowUpChildToOrigin(t *testing.T) {
 	}
 }
 
+// card t1454 card-review r2c: the supersedes cycle guard keys on the
+// MAPPED kind. `replaces` is the legacy spelling of supersedes and rides
+// the same edges; checking the input name alone let a replaces input close
+// a supersedes cycle without the guard firing.
+func TestTodoRelateReplacesRunsTheSupersedesCycleGuard(t *testing.T) {
+	_, store := todoFixture(t)
+	_ = store
+	if _, _, err := runTodo(t, "add", "the first card"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runTodo(t, "add", "the second card"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runTodo(t, "relate", "t1", "t2", "--relation", "replaces"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runTodo(t, "relate", "t2", "t1", "--relation", "replaces"); err == nil {
+		t.Fatal("the opposite replaces input closed a supersedes cycle without the guard firing")
+	}
+}
+
 // card t1454 card-review r2 finding 15, the CLI half: `todo relate`'s
 // duplicate check normalizes the STORED rows — a pair an older writer
 // recorded in the opposite order still maps onto the first record.

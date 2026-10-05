@@ -1143,6 +1143,25 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
 		return nom, r, nil
 	}
+	// Another lane's bundle member is never a nominee (card t1454
+	// card-review r2c finding C2). The unnominated selection skips it; the
+	// nominated path refused nothing once the head had merged — the member's
+	// own after guard passed and lane-2 leased lane-1's member outright. The
+	// bundle's lane is the owner recorded on any of its members, the same
+	// read the selection's bundleLane map makes.
+	if nom.row != nil && nom.row.BundleID != "" {
+		for i := range cards {
+			c := cards[i]
+			owner := strings.TrimSpace(c.OwnerLabel)
+			if c.BundleID != nom.row.BundleID || owner == "" {
+				continue
+			}
+			if owner != lane {
+				return nom, factoryRefusal(factoryRefuseOwned, "the card is %s's bundle member", owner), nil
+			}
+			break
+		}
+	}
 	// The claim would refuse a foreign tree only after the promotion; deciding
 	// it here keeps the refusal write-free. The carry-over read runs first: a
 	// landing directory the card's own previous run recorded is that card's

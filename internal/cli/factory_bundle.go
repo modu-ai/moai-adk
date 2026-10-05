@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -43,45 +44,23 @@ func newFactoryBundleCommand() *cobra.Command {
 }
 
 // runFactoryBundle is the bundle body: verify every member's queue
-// precondition under the queue lock, then record the chain and assign the
-// head. The record writes run after the lock is released, exactly like the
-// assign path's record write does.
+// precondition AND record the chain inside ONE critical section (card t1454
+// card-review r2d finding D1). Releasing the lock between the picked check
+// and the record left a window another session's unpick fit through — the
+// check passed, the member left `picked`, and the load recorded a member
+// whose precondition no longer held. The section's contract holds here: the
+// queue is read only through the locked handle, and nothing below starts a
+// git process or creates a worktree (REQ-FAL-007) — the record writes are
+// sqlite only.
 func runFactoryBundle(cmd *cobra.Command, lane string, cards []string, run string) error {
 	if lane == "" {
 		return fmt.Errorf("the lane label is required")
 	}
 	root := factoryCardRoot()
 	store := newTodoStore()
-	// The queue precondition, verified under the lock so no member's state
-	// moves between the check and the decision.
-	var refusal error
+	var loadErr error
 	ran, err := factoryLeaseSection(store, func(l *factory.LockedBacklog) {
-		rec, rerr := l.LoadPure()
-		if rerr != nil {
-			refusal = fmt.Errorf("read the queue: %w", rerr)
-			return
-		}
-		byID := make(map[string]factory.BacklogItem, len(rec.Items))
-		for _, it := range rec.Items {
-			byID[it.ID] = it
-		}
-		for _, id := range cards {
-			it, ok := byID[id]
-			if !ok {
-				refusal = fmt.Errorf("no card %s in the queue", id)
-				return
-			}
-			// POSITIVE enumeration (REQ-THS-012): picked is the only state
-			// the loader takes a member from; every other state — a state
-			// added later included — falls to the refusal.
-			switch it.State {
-			case factory.BacklogStatePicked:
-				// the only state the loader takes a member from
-			default:
-				refusal = fmt.Errorf("%s is %s, not picked — pick every member first", id, it.State)
-				return
-			}
-		}
+		loadErr = runFactoryBundleLocked(cmd, l, root, lane, cards, run)
 	})
 	if err != nil {
 		return err
@@ -89,8 +68,33 @@ func runFactoryBundle(cmd *cobra.Command, lane string, cards []string, run strin
 	if !ran {
 		return fmt.Errorf("the queue lock stayed held for the whole wait budget, so the bundle was not loaded; retry")
 	}
-	if refusal != nil {
-		return refusal
+	return loadErr
+}
+
+// runFactoryBundleLocked is the verify→record body with the queue lock held.
+func runFactoryBundleLocked(cmd *cobra.Command, l *factory.LockedBacklog, root, lane string, cards []string, run string) error {
+	rec, err := l.LoadPure()
+	if err != nil {
+		return fmt.Errorf("read the queue: %w", err)
+	}
+	byID := make(map[string]factory.BacklogItem, len(rec.Items))
+	for _, it := range rec.Items {
+		byID[it.ID] = it
+	}
+	for _, id := range cards {
+		it, ok := byID[id]
+		if !ok {
+			return fmt.Errorf("no card %s in the queue", id)
+		}
+		// POSITIVE enumeration (REQ-THS-012): picked is the only state
+		// the loader takes a member from; every other state — a state
+		// added later included — falls to the refusal.
+		switch it.State {
+		case factory.BacklogStatePicked:
+			// the only state the loader takes a member from
+		default:
+			return fmt.Errorf("%s is %s, not picked — pick every member first", id, it.State)
+		}
 	}
 
 	ctx := cmd.Context()
@@ -119,12 +123,18 @@ func runFactoryBundle(cmd *cobra.Command, lane string, cards []string, run strin
 			members[i].HintAfter = cards[i-1]
 		}
 	}
-	head, err := db.RecordBundleChain(ctx, runID, members, lane, "bundle", now)
+	head, err := factoryBundleRecord(ctx, db, runID, members, lane, now)
 	if err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "bundle %s loaded: %s assigned to %s, %d member(s) chained\n", bundleID, head.CardID, lane, len(cards))
 	return nil
+}
+
+// factoryBundleRecord is the record step of the bundle load — the seam the
+// lock-hold test drives. The default is one RecordBundleChain transaction.
+var factoryBundleRecord = func(ctx context.Context, db *homestate.FactoryDB, runID string, members []homestate.BundleMemberSpec, lane string, now time.Time) (homestate.Card, error) {
+	return db.RecordBundleChain(ctx, runID, members, lane, "bundle", now)
 }
 
 // factoryHubChainFields computes the hub-chain hint for a card about to be

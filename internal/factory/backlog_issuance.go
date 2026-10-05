@@ -380,8 +380,10 @@ var IssuanceDispositionValues = []string{"accept", "merge", "reject"}
 // RecordFindingDisposition sets the disposition of the finding naming the
 // given pair (either order), through the locked whole-record write.
 // Recording changes no card, no relation and no queue order (D11); a pair
-// with no finding, or a value outside the closed set, is refused with
-// nothing written.
+// with no finding, a SELF pair — subject==related made the two endpoint
+// tests identical and matched every finding naming the card (card t1454
+// card-review r2c finding C4) — or a value outside the closed set, is
+// refused with nothing written.
 func RecordFindingDisposition(store *BacklogStore, subject, related, disposition string) error {
 	valid := false
 	for _, v := range IssuanceDispositionValues {
@@ -394,11 +396,17 @@ func RecordFindingDisposition(store *BacklogStore, subject, related, disposition
 		return fmt.Errorf("disposition must be one of %s (got %q)",
 			strings.Join(IssuanceDispositionValues, ", "), disposition)
 	}
+	if subject == related {
+		return fmt.Errorf("disposition names one card twice (%s); a finding pairs two cards", subject)
+	}
 	return store.Mutate(func(rec *BacklogRecord) error {
 		matched := 0
 		for i := range rec.Findings {
 			f := &rec.Findings[i]
-			if f.Names(subject) && f.Names(related) {
+			// Exact endpoints, either order — Names alone matches a finding
+			// whose OTHER endpoint is neither argument.
+			if (f.SubjectID == subject && f.RelatedID == related) ||
+				(f.SubjectID == related && f.RelatedID == subject) {
 				matched++
 				v := disposition
 				f.Disposition = &v

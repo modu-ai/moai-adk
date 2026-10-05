@@ -167,9 +167,14 @@ func TestHubFileLoaderIgnoresProjectTree(t *testing.T) {
 }
 
 // The measurement constants are the tracked baseline header's recorded
-// period and develop tip — the same values hub-files.txt names.
+// period and develop tip — the same values hub-files.txt names. The since
+// is a FULL timestamp with its offset, never a bare date: a date-only
+// --since is interpreted in the run environment's local timezone, so the
+// window — and the counts — moved with the machine the command ran on
+// (card t1454 card-review r2c finding C1: the recorded counts answered to
+// a UTC-interpreted window and failed 134-vs-133 on a KST one).
 const (
-	hubMeasureSince = "2026-08-13"
+	hubMeasureSince = "2026-08-13T00:00:00Z"
 	hubMeasureUntil = "2026-10-05T12:00:00+09:00"
 	hubMeasureTip   = "4964d0796"
 )

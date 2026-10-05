@@ -115,8 +115,11 @@ func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) 
 			}
 		}
 		// REQ-TCI-013: supersedes cycles are refused the same way — the
-		// mapped walk sees legacy replaces rows as supersedes edges.
-		if relation == "supersedes" {
+		// mapped walk sees legacy replaces rows as supersedes edges. The
+		// guard keys on the MAPPED kind (card t1454 card-review r2c finding
+		// C3): `replaces` is the legacy spelling of the same edges, and
+		// checking the input name alone let a replaces input bypass it.
+		if kind, _ := factory.MapLegacyRelation(relation); kind == factory.CardRelationSupersedes {
 			if rec.RelationKindClosesCycle(subject, related, "supersedes", "replaces") {
 				return fmt.Errorf("todo relate: %s supersedes %s would close a supersedes cycle", subject, related)
 			}
