@@ -10,9 +10,9 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: pending-audit
-plan_complete_at: (plan-audit 통과 시 기록)
-비고: 산출물 3종(spec/plan/acceptance) + 본 파일. Tier M, REQ 16건, AC 16건. plan-auditor 판정 대기 중.
+plan_status: hold-ceiling-reached
+plan_complete_at: (미기록 — 감사 상한 도달, 보류 기록 참조)
+비고: iter3 최종 delta FAIL 0.89(문턱 0.80 위·D21 차단)로 상한 도달 — 보류 기록 `.moai/reports/t1538/hold-record.md`(분할 제안 포함). D21 수리는 본 트리에 적용했으나 판정 후 수리라 미검증(좁은 delta 1회 잔여). 리더/운영자 결정 대기.
 
 ## §E.2 Run-phase Evidence
 
