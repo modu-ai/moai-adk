@@ -3,7 +3,7 @@
 // The templates/ subdirectory contains curated template content that is embedded
 // into the moai binary at compile time via //go:embed. This includes agent
 // definitions, skill files, rules, output styles, configuration references,
-// and root files (CLAUDE.md, .gitignore).
+// and root files (AGENTS.md, .gitignore).
 //
 // Runtime-generated files (settings.json, .lsp.json) are
 // intentionally excluded from the embedded templates per ADR-011

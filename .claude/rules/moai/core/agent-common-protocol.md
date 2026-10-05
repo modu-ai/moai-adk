@@ -6,7 +6,7 @@ description: Shared protocol auto-loaded for all MoAI agents — user-interactio
 
 Shared protocol for all MoAI agent definitions. This rule is automatically loaded for all agents, eliminating the need to duplicate these sections in each agent body.
 
-> **Detail companion**: `agent-common-protocol-reference.md` — verbatim verification batch, output contracts, CLI idioms, Ledger Closure clause bodies, sync-check rationale + incident records, and the bodies relocated from here: § Orchestrator Obligations · § Re-delegation Procedure · § Skeptical Evaluation Stance · § CLAUDE.md Reference · § File Operations Pattern · § Search Pattern · § Tool Selection by Task · § Bash Timeout · § Error Recovery Pattern · § Super-Advisor Escalation (E1-E4) · § Read-only verification batching · § Attributable diff-check doctrinal switch. Load it when composing a verification batch, selecting a tool, recovering from a failed call, escalating to super-advisor, or handling an aborted delegation.
+> **Detail companion**: `agent-common-protocol-reference.md` — verbatim verification batch, output contracts, CLI idioms, Ledger Closure clause bodies, sync-check rationale + incident records, and the bodies relocated from here: § Orchestrator Obligations · § Re-delegation Procedure · § Skeptical Evaluation Stance · § AGENTS.md Reference · § File Operations Pattern · § Search Pattern · § Tool Selection by Task · § Bash Timeout · § Error Recovery Pattern · § Super-Advisor Escalation (E1-E4) · § Read-only verification batching · § Attributable diff-check doctrinal switch. Load it when composing a verification batch, selecting a tool, recovering from a failed call, escalating to super-advisor, or handling an aborted delegation.
 
 ## User Interaction Boundary
 
@@ -22,7 +22,7 @@ Rules for subagents:
 - All user preferences must arrive via the orchestrator's spawn prompt
 - If the orchestrator omitted critical data, respond with a structured "missing inputs" section and stop
 
-Rationale: subagents run in isolated, stateless contexts — prompting there is a dead channel, and the orchestrator stays the user's single point of contact (CLAUDE.md §8).
+Rationale: subagents run in isolated, stateless contexts — prompting there is a dead channel, and the orchestrator stays the user's single point of contact (askuser-protocol.md).
 
 **Lane sessions are orchestrator-class, not subagent-class.** A factory lane holds the question channel for its own card through the factory leader, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the leader is not the lane's user. A specialist spawn's working-tree attachment is a **runtime decision** the lane neither controls nor predicts, so the lane verifies where each spawn's work landed before advancing the card stage; when it landed in an isolated agent worktree, the lane reconciles it into the lane tree by `factory-dispatch-mechanics.md` § Reconciling an isolated specialist spawn. That reconciliation grants merge, harvest, and record authority only — never editing authority over SPEC-artifact bodies. Normative home: `.claude/rules/moai/workflow/factory-dispatch.md` § Lane spawn authority.
 

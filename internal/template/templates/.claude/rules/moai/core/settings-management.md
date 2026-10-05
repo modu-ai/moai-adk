@@ -167,7 +167,7 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 **New loaders** (`internal/config/loader_{constitution,context,interview,design}.go`):
 
 - `LoadConstitutionConfig(path)` — constitution.yaml; exposes `ForbiddenPatterns` (ForbiddenLibraries alias) policy enforcement.
-- `LoadContextConfig(path)` — context.yaml; provides `TokenBudget.MaxInjectionTokens` and `Search.DateRangeDays` for CLAUDE.md §16 Context Search.
+- `LoadContextConfig(path)` — context.yaml; provides `TokenBudget.MaxInjectionTokens` and `Search.DateRangeDays` for verification-claim-integrity.md §2 Context Search.
 - `LoadInterviewConfig(path)` — interview.yaml; provides `ClarityThreshold`, `Plan.MaxRounds`, `SkipConditions`.
 - `LoadDesignConfig(path)` — design.yaml; provides `GanLoop.PassThreshold` (FROZEN floor 0.60), `GanLoop.SprintContract.Enabled`, `Adaptation.IterationLimits` for GAN loop runtime.
 
@@ -184,7 +184,7 @@ acknowledged as-is — `security.yaml`, `observability.yaml`, `report.yaml`, `su
 (DORMANT by design), `archive.yaml`, `cache.yaml` (dedicated `LoadCacheConfig`),
 `feedback.yaml`, `project.yaml`. Maintainer-only surfaces (`tool-policy.yaml`,
 `mcp-matrix.yaml`) are not distributed to user projects; `lsp.yaml` is the LSP-gate
-threshold SSOT referenced from CLAUDE.md §6. The Go-side registry of these dispositions
+threshold SSOT referenced from harness.yaml. The Go-side registry of these dispositions
 is `internal/config/audit_registry.go` + the loader-completeness allowlist.
 
 **Adding a new YAML section** (5-step procedure):

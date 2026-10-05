@@ -442,7 +442,7 @@ func TestCodexLocalInstructions_AllFunnelsPreserveInputs(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".claude", "worktrees", "fixture"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	names := []string{codexClaudeLocalName, codexLocalInstructionName, codexAgentsRelPath, codexClaudeRelPath}
+	names := []string{codexClaudeLocalName, codexLocalInstructionName, codexAgentsRelPath, "CLAUDE.md"}
 	before := make(map[string]os.FileInfo)
 	bodies := make(map[string][]byte)
 	for _, name := range names {

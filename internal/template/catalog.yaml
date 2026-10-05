@@ -111,7 +111,7 @@ catalog:
             - name: moai-workflow-worktree
               tier: core
               path: templates/.claude/skills/moai-workflow-worktree/
-              hash: e90525aaf18e0c48e359e2c665b1315f9a425eb949c04feb92e530e67ab42055
+              hash: 27d71d161af2c0b4cbcf561e9c77f100fd9de6b11884bd178eb661f440903b7d
               version: 1.0.0
             - name: moai-domain-html-report
               tier: core

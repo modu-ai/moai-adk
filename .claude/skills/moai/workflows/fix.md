@@ -43,7 +43,7 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 
 ## Pipeline Contract (Agentless Classification)
 
-<!-- @MX:NOTE - Agentless fixed-pipeline classification; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+<!-- @MX:NOTE - Agentless fixed-pipeline classification; localize→repair→validate contract. See spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent. -->
 
 This subcommand is classified as **Agentless fixed-pipeline**.
 It executes a deterministic 3-phase contract: **localize → repair → validate**.
@@ -55,7 +55,7 @@ It executes a deterministic 3-phase contract: **localize → repair → validate
 - **`--mode` flag handling**: Any `--mode` flag passed to this subcommand is ignored. The system logs `MODE_FLAG_IGNORED_FOR_UTILITY` at info level and proceeds with the fixed pipeline.
 - **Repeatability**: Even when the parent invocation supplies `--mode loop`, the pipeline runs once per command invocation. Re-entry requires explicit user re-invocation.
 
-See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+See [Subcommand Classification matrix](../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent) for the full pipeline-vs-multi-agent contract.
 
 ## Loop Taxonomy Position — goal engine + presets
 
@@ -283,7 +283,7 @@ When the fix report is generated with non-empty residue, the report recommends `
 
 ## Safe Development Protocol
 
-All fixes follow CLAUDE.md Section 7 Safe Development Protocol:
+All fixes follow AGENTS.md §13 Safe Development Protocol:
 - Reproduction-first: Write a failing test that reproduces the bug before fixing
 - Approach-first: For Level 3+ fixes, explain approach before applying
 - Post-fix review: List potential side effects after each fix

@@ -10,10 +10,10 @@
 //	<!-- moai:contract-mode-end -->
 //
 // The guards here need no base ref: they read the working tree (local copies
-// under .claude/ and CLAUDE.md, template copies under
-// internal/template/templates/) and check pairing, nesting, evolvable-zone
-// placement, forbidden internal-content classes, block size, local↔template
-// parity, the SSOT section layout, and the content of named blocks.
+// under .claude/, template copies under internal/template/templates/) and
+// check pairing, nesting, evolvable-zone placement, forbidden internal-content
+// classes, block size, local↔template parity, the SSOT section layout, and the
+// content of named blocks.
 //
 // Every checker returns its findings instead of failing the test directly,
 // so the falsifier subtests can feed it a known-bad fixture and observe a
@@ -45,8 +45,10 @@ type grTarget struct {
 }
 
 // grTargets are the block-bearing documents (the SSOT is handled apart).
+// The AGENTS.md-primary product carries the contract-mode guidance for the
+// primary instruction file as plain contract prose (AGENTS.md §2/§7), not as
+// marker blocks, so no primary-file row is registered here.
 var grTargets = []grTarget{
-	{path: "CLAUDE.md", ids: []string{"contract-signing-pipeline", "contract-safe-dev"}, alwaysLoaded: true, emitter: true},
 	{path: ".claude/rules/moai/core/askuser-protocol.md", ids: []string{"contract-ambiguity"}, alwaysLoaded: true, emitter: true},
 	{path: ".claude/rules/moai/workflow/goal-directive.md", ids: []string{"contract-signing-goal"}, alwaysLoaded: true, emitter: true},
 	{path: ".claude/rules/moai/workflow/orchestration-mode-selection.md", ids: []string{"contract-signing"}, emitter: true},

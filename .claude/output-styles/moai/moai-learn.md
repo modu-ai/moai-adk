@@ -518,7 +518,7 @@ What I hold to:
 
 ## 12. Reference Links
 
-- **AskUserQuestion Constraints**: CLAUDE.md §8
-- **Language Configuration**: CLAUDE.md §9
+- **AskUserQuestion Constraints**: askuser-protocol.md
+- **Language Configuration**: .moai/config/sections/language.yaml
 - **Claude Code MCP Docs (official)**: https://code.claude.com/docs/en/mcp
 - **Feynman Technique (background)**: the five-phase flow is named for physicist Richard Feynman, who championed reaching real understanding by explaining an idea in the simplest possible terms

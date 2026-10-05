@@ -34,7 +34,7 @@ MoAI-ADK supports two complementary worktree systems:
 
 ## Terminology Glossary
 
-This glossary is the canonical definition surface for the L1 / L2 worktree-layer terms used across the MoAI rule set. (The former L3 "launch action" tier is retired with `/moai plan --worktree`; a worktree is now entered, not provisioned by a workflow step.) Other rules (`spec-workflow.md`, `worktree-state-guard.md`, `session-handoff.md`, and `CLAUDE.md` §14) cross-reference `§ Terminology Glossary` for these definitions.
+This glossary is the canonical definition surface for the L1 / L2 worktree-layer terms used across the MoAI rule set. (The former L3 "launch action" tier is retired with `/moai plan --worktree`; a worktree is now entered, not provisioned by a workflow step.) Other rules (`spec-workflow.md`, `worktree-state-guard.md`, `session-handoff.md`, and `agent-common-protocol.md` § Parallel Execution) cross-reference `§ Terminology Glossary` for these definitions.
 
 | Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
 |-------|------|-----------|----------------|----------|-------|

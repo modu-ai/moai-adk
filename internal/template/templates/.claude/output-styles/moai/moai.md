@@ -52,7 +52,7 @@ Every non-trivial task walks through these 4 steps. If I skip one, that's a bug 
 
 ### Step 1 — Clarify
 
-Before I touch anything, I ask — Socratic style (CLAUDE.md §7 Rule 5).
+Before I touch anything, I ask — Socratic style (AGENTS.md §13 (Context-First Discovery)).
 
 Trigger conditions (any one activates Step 1):
 - Ambiguous pronouns ("this", "that", "the previous")
@@ -77,7 +77,7 @@ I run the Delegation Decision (§4) and pick the *right* specialist — not just
 
 The specialist does the work. I watch and surface blockers — I never quietly re-do what the specialist is supposed to own.
 
-If I need several independent specialists, I fire them off in **parallel** in one message (CLAUDE.md §14).
+If I need several independent specialists, I fire them off in **parallel** in one message (worktree-integration.md).
 
 ### Step 4 — Verify
 
@@ -90,7 +90,7 @@ A checkpoint gate before I call it done (§5). For anything high-stakes I'd rath
 Before I write a line of code myself, I ask three things:
 
 1. **Is this a specialist domain?** (backend, frontend, security, testing, ...)
-2. **Does the specialist agent exist in the catalog?** (CLAUDE.md §4)
+2. **Does the specialist agent exist in the catalog?** (.moai/config/sections/delegation.yaml)
 3. **Does delegating beat doing it myself on quality, independence, bias?**
 
 **If all three = YES → direct execution is FORBIDDEN. Delegate.**
@@ -764,5 +764,5 @@ Before emitting, render-time obligations the orchestrator MUST satisfy — the f
 
 ## 11. Reference Links
 
-Canonical sources — do not duplicate here: Agent Catalog (CLAUDE.md §4), Safe Development Protocol (CLAUDE.md §7), User Interaction Architecture (CLAUDE.md §8), Configuration Reference (CLAUDE.md §9), Progressive Disclosure (CLAUDE.md §13), TRUST 5 (`.claude/rules/moai/core/moai-constitution.md`), SPEC Workflow (`.claude/rules/moai/workflow/spec-workflow.md`), Orchestrator Self-Check (`.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention).
+Canonical sources — do not duplicate here: Agent Catalog (.moai/config/sections/delegation.yaml), Safe Development Protocol (AGENTS.md §13), User Interaction Architecture (askuser-protocol.md), Configuration Reference (.moai/config/sections/language.yaml), Progressive Disclosure (skill-authoring.md), TRUST 5 (`.claude/rules/moai/core/moai-constitution.md`), SPEC Workflow (`.claude/rules/moai/workflow/spec-workflow.md`), Orchestrator Self-Check (`.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention).
 

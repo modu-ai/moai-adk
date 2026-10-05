@@ -64,7 +64,7 @@ Handoff directives by activation mechanism: (a) paste-time keywords (`ultrathink
 ## Cross-references
 
 - `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
-- CLAUDE.md §11 (Error Handling) — token-limit recovery
+- context-window-management.md — token-limit recovery
 
 ## Block 1 couplings
 

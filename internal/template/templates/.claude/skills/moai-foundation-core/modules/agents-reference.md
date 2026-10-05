@@ -8,7 +8,7 @@ Version: 3.0.0
 
 ## Quick Reference (30 seconds)
 
-MoAI delegates specialist tasks to **11 retained agents**: 10 MoAI-custom agents plus the Anthropic built-in `Explore`. The catalog is intentionally flat — agents are invoked through natural-language delegation, never via a `subagent_type` string literal in code.
+MoAI delegates specialist tasks to **13 retained agents**: 12 MoAI-custom agents plus the Anthropic built-in `Explore`. The catalog is intentionally flat — agents are invoked through natural-language delegation, never via a `subagent_type` string literal in code.
 
 | Agent | Phase scope |
 |-------|-------------|
@@ -39,7 +39,7 @@ Delegation pattern (natural language, not a code call):
 
 ### Flat Catalog (no tiers)
 
-MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention. The catalog is a flat set of 11 retained agents, aligned with Anthropic's published guidance: "Subagents cannot spawn other subagents", "Start with 3-5 teammates for most workflows", and "Define a custom subagent when you keep spawning the same kind of worker".
+MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention. The catalog is a flat set of 13 retained agents, aligned with Anthropic's published guidance: "Subagents cannot spawn other subagents", "Start with 3-5 teammates for most workflows", and "Define a custom subagent when you keep spawning the same kind of worker".
 
 ### Selection Decision Tree
 
@@ -70,11 +70,13 @@ MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention.
 | `super-advisor` | meta / advisor | On-demand high-reasoning consultation; returns non-binding prescriptions (E1-E4 escalation entry) |
 | `manager-design` | core / manager | Design-phase collaboration (Claude Design bidirectional sync, D1-D5 pipeline) |
 | `e2e-tester` | core / specialist | E2E test execution (web/mobile/desktop journey scripting, CLI-first runs, artifact management) |
+| `manager-lead` | meta / coordinator | Tier L multi-milestone coordination (≥3 milestones AND ≥10 files); the factory/kanban leader role (the depth-1 fan-out seam) |
+| `manager-todo` | core / manager | Todo-queue management (queue lifecycle, `/moai:todo --auto` serial cycle, dispatch guidance) |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (invoked directly, no MoAI file) |
 
 ### Archived Agent Names (rejected at spawn)
 
-Legacy agent names from the former tiered catalog are **archived** and MUST NOT be spawned. The archived set is: `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the six `expert-*` agents (`expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`). When a delegation references an archived agent, the orchestrator rejects the spawn (`ARCHIVED_AGENT_REJECTED`) and routes the work to one of the 11 retained agents above, or to a per-spawn general-purpose agent with a domain whitelist. Domain-specific work (backend / frontend / security / performance / refactoring) is handled in run-phase by `manager-develop` or a per-spawn general-purpose agent, not by a dedicated tiered expert.
+Legacy agent names from the former tiered catalog are **archived** and MUST NOT be spawned. The archived set is: `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the six `expert-*` agents (`expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`). When a delegation references an archived agent, the orchestrator rejects the spawn (`ARCHIVED_AGENT_REJECTED`) and routes the work to one of the 13 retained agents above, or to a per-spawn general-purpose agent with a domain whitelist. Domain-specific work (backend / frontend / security / performance / refactoring) is handled in run-phase by `manager-develop` or a per-spawn general-purpose agent, not by a dedicated tiered expert.
 
 ---
 

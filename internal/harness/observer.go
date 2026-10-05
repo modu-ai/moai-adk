@@ -163,7 +163,11 @@ const (
 // eagerWeightSources are the eagerly-loaded context files whose combined byte
 // size estimates the eager context weight (REQ-CGA-001). Paths are relative to
 // the project root (cwd). Missing files are skipped silently (EC-1 fail-open).
+// AGENTS.md is the instruction file of the AGENTS.md-primary product; the
+// legacy CLAUDE.md entry stays for projects not yet migrated — the two never
+// coexist in a tree init/update wrote.
 var eagerWeightSources = []string{
+	"AGENTS.md",
 	"CLAUDE.md",
 	".claude/output-styles/moai/moai.md",
 	".claude/agent-memory/manager-develop/MEMORY.md",

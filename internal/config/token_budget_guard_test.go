@@ -56,8 +56,8 @@ func TestAlwaysLoadedTokenBudget(t *testing.T) {
 	if !ok {
 		t.Skip("repo root (go.mod) not found; skipping always-loaded budget guard")
 	}
-	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
-		t.Skip("CLAUDE.md not found at repo root; skipping (not the real repo tree)")
+	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
+		t.Skip("AGENTS.md not found at repo root; skipping (not the real repo tree)")
 	}
 
 	total, surface, err := measureAlwaysLoaded(root)
@@ -236,10 +236,12 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 // nested contract re-added anywhere is counted without anyone remembering to
 // update this list.
 //
-// Excluded: `.git`, and `.claude/worktrees` — each worktree is a full checkout
+// Excluded: `.git`, and the worktree tiers (`.claude/worktrees`,
+// `.moai/worktrees`) plus `.moai/reports` — each worktree is a full checkout
 // of this same repository, so counting them would multiply the root contract by
 // the number of live worktrees and measure the developer's checkout layout
-// rather than the shipped tree.
+// rather than the shipped tree. The `.moai/` tiers joined the list when card
+// worktrees moved there.
 func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -257,7 +259,10 @@ func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".git" || path == filepath.Join(root, ".claude", "worktrees") {
+			if d.Name() == ".git" ||
+				path == filepath.Join(root, ".claude", "worktrees") ||
+				path == filepath.Join(root, ".moai", "worktrees") ||
+				path == filepath.Join(root, ".moai", "reports") {
 				return filepath.SkipDir
 			}
 			return nil
@@ -308,9 +313,9 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 3 // + CLAUDE.md + AGENTS.md + moai.md fixed slots
+	wantTotal := wantRuleCount + 2 // + AGENTS.md + moai.md fixed slots (the CLAUDE.md slot retired with the AGENTS.md-primary conversion)
 	if len(surface) != wantTotal {
-		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 3 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
+		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 2 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
 	}
 
 	// AC-TEF-004: a known paths:-scoped rule (languages/go.md carries a paths:
@@ -379,7 +384,7 @@ func TestHasPathsRestriction(t *testing.T) {
 func TestMeasureAlwaysLoaded(t *testing.T) {
 	root := t.TempDir()
 	// Fixed surfaces.
-	writeFile(t, filepath.Join(root, "CLAUDE.md"), strings.Repeat("a", 400))                                   // 100 tokens
+	writeFile(t, filepath.Join(root, "AGENTS.md"), strings.Repeat("a", 400))                                   // 100 tokens
 	writeFile(t, filepath.Join(root, ".claude", "output-styles", "moai", "moai.md"), strings.Repeat("b", 800)) // 200 tokens
 	// One no-paths: rule (counted) + one paths:-scoped rule (excluded).
 	writeFile(t, filepath.Join(root, ".claude", "rules", "moai", "core", "keep.md"), "---\ntitle: x\n---\n"+strings.Repeat("c", 400)) // ~100+ tokens
@@ -389,10 +394,10 @@ func TestMeasureAlwaysLoaded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("measureAlwaysLoaded: %v", err)
 	}
-	// Enumeration: 1 no-paths: rule + 3 fixed slots = 4. AGENTS.md is absent from this
-	// temp tree and contributes 0 tokens (hermetic), but is still enumerated.
-	if len(surface) != 4 {
-		t.Errorf("surface len = %d, want 4 (1 no-paths: rule + 3 fixed)", len(surface))
+	// Enumeration: 1 no-paths: rule + 2 fixed slots = 3. AGENTS.md is present in
+	// this temp tree; a legacy CLAUDE.md is not a slot any more.
+	if len(surface) != 3 {
+		t.Errorf("surface len = %d, want 3 (1 no-paths: rule + 2 fixed)", len(surface))
 	}
 	// Lower bound: CLAUDE(100) + moai(200), plus the rule.
 	if total < 100+200 {
@@ -450,8 +455,8 @@ func TestFixedSlotsExistInRepoTree(t *testing.T) {
 	if !ok {
 		t.Skip("repo root (go.mod) not found; skipping fixed-slot existence check")
 	}
-	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
-		t.Skip("CLAUDE.md not found at repo root; skipping (not the real repo tree)")
+	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
+		t.Skip("AGENTS.md not found at repo root; skipping (not the real repo tree)")
 	}
 
 	surface, err := alwaysLoadedSurface(root)

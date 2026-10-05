@@ -658,12 +658,9 @@ var versionStampExclusionGroups = []string{
 	".moai/reports/",
 	".moai/specs/",
 	".moai/release-notes/",
-	".moai/archive/",
-	".moai/lessons-inbox.jsonl",
 	"CHANGELOG.md",
 	"*_test.go",
 	"docs-site/content/*/changelog*",
-	"reports/",
 }
 
 // versionStampExclusionGlobRes holds the compiled forms of the groups that
