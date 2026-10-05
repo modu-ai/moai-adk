@@ -149,6 +149,20 @@ The shell module's hand-rolled tokenizer, async-group splitter, and redirect sca
 
 All 13 round-4/5 findings are regression rows in `TestProtectedZone/ShellMutation` (swept 50; FileTools 26; config Load/Overlay/Validation 47). GREEN on the whole family: hook+config TestProtectedZone 0 FAIL, config/template/harness packages 0 FAIL, `golangci-lint` 0 issues, `go build ./...` exit 0, live judge `JUDGE swept=67 expected=67 fail=0` on a binary built from the repaired tree.
 
+### Repair round 6 — walker-semantics findings on the mvdan head (2026-10-06)
+
+The gate's first verdict on the mvdan head failed with 7×P1 + 1×P2 — qualitatively DIFFERENT from rounds 4–5: these are implementation defects in the walker's policy port (clear semantic rules with small provable fixes), not tokenizer-class gaps. Classified as ordinary repair, distinct from the analyzer-structural escalation; every row RED-first:
+
+- **P1 conditions execute** — IfClause.Cond and WhileClause.Cond are `[]*Stmt` statement lists and are now walked (`if rm secret; then` deleted the file).
+- **P1 statement-wide redirects** — `> zone_dir/secret` (nil Cmd) and `{ true; } > zone_dir/secret` (Block) were missed because the redirect judgment lived only in the CallExpr branch; the walk now judges `stmt.Redirs` for every statement shape, with the CallExpr branch marking itself handled.
+- **P1 git resolves against the tracked cwd** — `gitDir` starts from each possible cwd (not ""), a relative `-C` accumulates onto it, and the subcommand's file arguments anchor to the accumulated `-C` (round-5 accumulation preserved).
+- **P1 cd redirect ordering** — the cd branch judges its redirects inline BEFORE the cwd update (the round-4 deferred judgment ran after it, misreading `cd docs > zone_dir/secret`).
+- **P1 pipeline side isolation** — each pipeline element starts from the same pre-pipe directory set (`cd docs | tee zone_dir/secret` no longer judges the tee target against docs).
+- **P1 control-flow directory union** — the walker tracks a SET of possible directories: `||` restores the pre-left set while keeping the post-left set (a successful cd inside a failed `&&` chain persists: `cd zone_dir && false || rm secret` is a denial), and an if unions the condition-false, then, and else worlds (a skipped cd is never applied: `if false; then cd docs; fi; rm zone_dir/secret` is a denial).
+- **P2 sed locality** — sed's in-place decision uses a local flag: an earlier mutating command (`rm docs/disposable; sed -n '1p' zone_dir/secret`) no longer turns a read-only sed into a denial.
+
+GREEN on the whole family: `TestProtectedZone` hook 10/10 subtests (ShellMutation swept 60 — the 9 new deny rows plus the read-only-sed allow control) + config 3/3, `go build ./...` exit 0, `golangci-lint` 0 issues, live judge `JUDGE swept=67 expected=67 fail=0` on a binary built from the repaired tree. Escalation note: if the next verdict surfaces ANOTHER set of new P1s, the walker's control-flow model itself goes back to the operator with this round's union-vs-sequence data.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready

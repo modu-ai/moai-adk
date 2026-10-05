@@ -902,6 +902,37 @@ func testZoneShellMutation(t *testing.T) {
 		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_logs")
 	}
 
+	// review-repair round 6 rows (merge-gate re-verdict, observed red first —
+	// walker semantics on the mvdan head: conditions execute, redirects are
+	// statement-wide, git resolves against the tracked cwd, control flow
+	// unions the possible directories)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n  probe_logs:\n    paths: [\".moai/logs/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	for _, cmd := range []string{
+		"if rm zone_dir/secret; then true; fi",           // a condition executes (r6)
+		"while rm zone_dir/secret; do break; done",       // r6
+		"> zone_dir/secret",                              // a command-less redirect (r6)
+		"{ true; } > zone_dir/secret",                    // a block's own redirect (r6)
+		"cd zone_dir && git restore -- secret",           // git resolves against the tracked cwd (r6)
+		"cd docs > zone_dir/secret",                      // a cd's redirect evaluates pre-cd (r6)
+		"cd docs | tee zone_dir/secret",                  // pipeline sides share the pre-pipe cwd (r6)
+		"cd zone_dir && false || rm secret",              // a successful cd survives a failed chain (r6)
+		"if false; then cd docs; fi; rm zone_dir/secret", // a skipped cd never applied (r6)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+	// control: a read-only sed is not denied because an earlier command mutated
+	swept++
+	if d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "rm docs/disposable; sed -n '1p' zone_dir/a.log"}); d == DecisionDeny {
+		t.Errorf("read-only sed after a mutating command: decision=%q reason=%q, want allow", d, r)
+	}
+
+	if swept < 60 {
+		t.Fatalf("swept %d rows, want at least 60", swept)
+	}
+
 	if swept < 50 {
 		t.Fatalf("swept %d rows, want at least 50", swept)
 	}

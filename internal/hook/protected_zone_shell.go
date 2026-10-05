@@ -2,35 +2,39 @@ package hook
 
 // protected_zone_shell.go — the shell half of the protected-zone guard
 // (SPEC-SELF-IMPROVE-PROTECTED-ZONE-001, plan.md M3; hardened in merge-gate
-// repair rounds 1–3, then re-platformed on a real shell parser by the
-// operator's decision after rounds 4 and 5 kept finding hand-rolled-analyzer
-// gaps).
+// repair rounds 1–3, re-platformed on the mvdan/sh parser by the operator's
+// option-A decision after rounds 4–5, and reworked in round 6 onto a
+// possible-directory-set walk).
 //
 // The lexical analysis is mvdan/sh's parser (already a direct dependency,
 // v3.14.0): quoting, expansions, async boundaries, pipelines, and redirections
-// come from the AST instead of hand-rolled word splitting. What remains here
-// is the POLICY layer: which command words are mutating, which arguments and
-// redirection targets are zone-covered, and how the tracked working directory
-// moves. Dynamic words (expansions, globs) under-match: they normalize to
-// paths no entry matches, the shell rule's accepted direction (spec §C.6).
+// come from the AST. What remains here is the POLICY layer: which command
+// words are mutating, which arguments and redirection targets are zone-
+// covered, and how the tracked working directory moves.
 //
-// The tracked-directory rules, in shell semantics:
-//   - a statement with Background (trailing "&") or a pipe element runs in a
-//     subshell: its cd never moves the main shell, while its mutations and
-//     redirections are real;
+// The tracked directory is a SET of possible directories (round 6 P1): a
+// candidate is denied when ANY possible directory covers it — sound over-
+// approximation of bash's control flow:
+//   - a statement with Background (trailing "&"), a pipeline element, and an
+//     explicit Subshell run in a subshell: their cd never moves the main
+//     shell, while their mutations and redirections are real;
 //   - `&&` carries the updated directory to the right side; `||` restores the
-//     pre-left directory, because the right side runs only when the left
-//     FAILED — a failed cd leaves the main shell where it was;
-//   - an explicit Subshell never leaks its directory;
+//     pre-left set AND keeps the post-left set (the right side runs only when
+//     the left failed, and a successful cd inside a failed chain persists);
+//   - an if unions the condition-false, then, and else worlds; a condition
+//     EXECUTES and is judged like any other statement list (round 6 P1);
 //   - a cd's own redirections evaluate before the cd takes effect, and the
-//     cd's directory arguments are its non-redirection words (the AST separates
-//     them by construction);
+//     cd's directory arguments are its non-redirection words (the AST
+//     separates them by construction);
 //   - git's `-C <dir>` moves the directory its file arguments resolve against,
-//     and consecutive relative `-C` paths accumulate.
+//     accumulated per possible start directory, consecutive and quoted
+//     options included.
 //
-// Unlike a baseline Write/Edit denial, every shell-mutation denial carries the
-// protected-zone sentinel and the routing fields — there is no legacy shell
-// reason to keep (spec §C.7).
+// Dynamic words (expansions, globs) under-match: they normalize to paths no
+// entry matches. A parse failure under-matches like unclassifiable text.
+// Unlike a baseline Write/Edit denial, every shell-mutation denial carries
+// the protected-zone sentinel and the routing fields — there is no legacy
+// shell reason to keep (spec §C.7).
 
 import (
 	"encoding/json"
@@ -106,20 +110,32 @@ func zoneFirstArgWord(args []*syntax.Word) (string, bool) {
 	return zoneWordText(args[0])
 }
 
-// zoneWalker carries one shell-policy walk: the working directory the next
-// relative name resolves against, and the candidates collected so far. A deny
-// candidate is anything a mutating form or a write redirection points at.
+// zoneWalker carries one shell-policy walk. cwds is the set of POSSIBLE
+// working directories at this point — control flow multiplies them, and a
+// candidate is denied when any of them covers it (round 6 P1).
 type zoneWalker struct {
 	h        *preToolHandler
-	cwd      string
+	cwds     []string
 	mutating bool
 	cands    []string
 }
 
-// zoneRelativeTo prefixes a tracked directory (the shell's cwd, or git's -C
-// directory) onto relative candidates, keeping the raw segments for the
-// normalization and symlink layers; absolute candidates are judged as they
-// land. An empty dir leaves the candidates unchanged.
+// setCwds replaces the possible-directory set, dropping duplicates.
+func (w *zoneWalker) setCwds(dirs []string) {
+	seen := map[string]bool{}
+	w.cwds = w.cwds[:0]
+	for _, d := range dirs {
+		if d == "" || seen[d] {
+			continue
+		}
+		seen[d] = true
+		w.cwds = append(w.cwds, d)
+	}
+}
+
+// zoneRelativeTo prefixes one directory onto relative candidates, keeping the
+// raw segments for the normalization and symlink layers; absolute candidates
+// are judged as they land. An empty dir leaves the candidates unchanged.
 func zoneRelativeTo(dir string, cands []string) []string {
 	out := make([]string, 0, len(cands))
 	for _, cand := range cands {
@@ -130,6 +146,30 @@ func zoneRelativeTo(dir string, cands []string) []string {
 		}
 	}
 	return out
+}
+
+// zoneRelativeToSet expands one candidate against every possible working
+// directory; absolute candidates and an unset root pass through as they land.
+func zoneRelativeToSet(cwds []string, cand string) []string {
+	if len(cwds) == 0 {
+		return []string{cand}
+	}
+	out := make([]string, 0, len(cwds))
+	for _, dir := range cwds {
+		if dir == "" || dir == "." || zoneIsAbs(cand) {
+			out = append(out, cand)
+		} else {
+			out = append(out, dir+"/"+cand)
+		}
+	}
+	return out
+}
+
+// zoneCands expands every candidate against the walker's possible directories.
+func (w *zoneWalker) zoneCands(cands []string) {
+	for _, cand := range cands {
+		w.cands = append(w.cands, zoneRelativeToSet(w.cwds, cand)...)
+	}
 }
 
 // zoneRedirectTargets returns the targets of the write redirections in the
@@ -154,22 +194,23 @@ func zoneRedirectTargets(redirs []*syntax.Redirect) (bool, []string) {
 	return mutating, targets
 }
 
-// zoneRedirects judges a statement's write redirections against the walker's
-// current working directory.
+// zoneRedirects judges a statement's write redirections against every
+// possible working directory.
 func (w *zoneWalker) zoneRedirects(redirs []*syntax.Redirect) {
 	if hits, targets := zoneRedirectTargets(redirs); hits {
 		w.mutating = true
-		w.cands = append(w.cands, zoneRelativeTo(w.cwd, targets)...)
+		w.zoneCands(targets)
 	}
 }
 
-// zoneNextCwd returns the working directory after a cd. Only a plain literal
-// relative argument is tracked — a bare cd, several arguments (bash rejects
-// them and the cd fails), substitution, a glob, an option, or an absolute
-// path leaves it untracked (reset to the root), the documented under-match
-// (merge-gate round 1 P1-3). The dots are cleaned here because the shell's cd
-// already resolved the directory: this is the logical cwd the next segment's
-// relative names concatenate onto, never a pre-clean of a target path.
+// zoneNextCwd returns the working directory after a cd from cur. Only a plain
+// literal relative argument is tracked — a bare cd, several arguments (bash
+// rejects them and the cd fails), substitution, a glob, an option, or an
+// absolute path leaves it untracked (reset to the root), the documented
+// under-match (merge-gate round 1 P1-3). The dots are cleaned here because
+// the shell's cd already resolved the directory: this is the logical cwd the
+// next segment's relative names concatenate onto, never a pre-clean of a
+// target path.
 func zoneNextCwd(cur string, dirs []string) string {
 	if len(dirs) != 1 {
 		return "."
@@ -307,75 +348,96 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root stri
 // zoneCall judges one simple command: a mutating verb, an in-place sed, a
 // mutating git subcommand — plus whatever the statement's redirections write.
 // A leading assignment prefix is skipped, and `X=1 cd dir` is a cd (round 4).
+// The statement's redirections evaluate in the walker's CURRENT directory —
+// for a cd, before the cd takes effect (round 4 P1).
 func (w *zoneWalker) zoneCall(stmt *syntax.Stmt, cmd *syntax.CallExpr) {
-	// the statement's redirections evaluate before the command runs — for a
-	// cd, in the directory the cd is about to leave
-	defer w.zoneRedirects(stmt.Redirs)
-
+	// every redirection of the call judges here, in the walker's current
+	// directory — for a cd, before the cd takes effect (round 4 P1)
+	redirectsDone := false
+	defer func() {
+		if !redirectsDone {
+			w.zoneRedirects(stmt.Redirs)
+		}
+	}()
 	name, literal := zoneFirstArgWord(cmd.Args)
 	if !literal {
+		redirectsDone = true
 		return // a dynamic command word under-matches
 	}
-	rest := cmd.Args[1:]
-	switch name {
-	case "cd":
-		// the cd's own redirections were judged above, against the directory
-		// the shell evaluates them in; the directory arguments are the words
-		// left once the AST set the redirections aside
+	if name == "cd" {
+		redirectsDone = true
+		w.zoneRedirects(stmt.Redirs)
 		var dirs []string
-		for _, a := range rest {
+		for _, a := range cmd.Args[1:] {
 			if t, lit := zoneWordText(a); lit {
 				dirs = append(dirs, t)
 			} else {
 				dirs = append(dirs, "?dynamic")
 			}
 		}
-		w.cwd = zoneNextCwd(w.cwd, dirs)
+		next := make([]string, 0, len(w.cwds))
+		for _, cwd := range w.cwds {
+			next = append(next, zoneNextCwd(cwd, dirs))
+		}
+		w.setCwds(next)
 		return
+	}
+	switch name {
 	case "sed":
-		for _, a := range rest {
+		// in-place is decided by THIS command's options alone — an earlier
+		// mutating command must not turn a read-only sed into a denial
+		// (round 6 P2)
+		inPlace := false
+		for _, a := range cmd.Args[1:] {
 			if t, lit := zoneWordText(a); lit {
 				if t == "--in-place" || (strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "--") && strings.Contains(strings.TrimPrefix(t, "-"), "i")) {
-					w.mutating = true
+					inPlace = true
 				}
 			}
 		}
-		if !w.mutating {
+		if !inPlace {
 			return
 		}
-		w.cands = append(w.cands, zoneRelativeTo(w.cwd, zonePathCandidates(rest))...)
+		w.mutating = true
+		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
 		return
 	case "git":
-		gitDir := ""
-		for j := 0; j < len(rest); j++ {
-			t, lit := zoneWordText(rest[j])
-			if !lit {
-				continue
-			}
-			if t == "-C" && j+1 < len(rest) {
-				dir, lit2 := zoneWordText(rest[j+1])
-				if !lit2 {
-					return // under-match
+		// every possible directory is a base the subcommand's file arguments
+		// can resolve against; a -C <dir> moves that base, relative -C values
+		// accumulating onto it (rounds 4–5 P1)
+		for _, base := range w.cwds {
+			gitDir := base
+			for j := 0; j < len(cmd.Args); j++ {
+				t, lit := zoneWordText(cmd.Args[j])
+				if !lit {
+					continue
 				}
-				// consecutive relative -C paths accumulate (round 5 P1)
-				if gitDir == "" || zoneIsAbs(dir) {
-					gitDir = dir
-				} else {
-					gitDir = gitDir + "/" + dir
-				}
-				j++
-				continue
-			}
-			if zoneGitMutating[t] {
-				w.mutating = true
-				var fileArgs []string
-				for _, a := range rest[j+1:] {
-					if ft, flit := zoneWordText(a); flit {
-						fileArgs = append(fileArgs, ft)
+				if t == "-C" && j+1 < len(cmd.Args) {
+					dir, lit2 := zoneWordText(cmd.Args[j+1])
+					if !lit2 {
+						break // under-match
 					}
+					if gitDir == "" || zoneIsAbs(dir) {
+						gitDir = dir
+					} else {
+						gitDir = gitDir + "/" + dir
+					}
+					j++
+					continue
 				}
-				w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
-				return
+				if zoneGitMutating[t] {
+					w.mutating = true
+					var fileArgs []string
+					for _, a := range cmd.Args[j+1:] {
+						if ft, flit := zoneWordText(a); flit && ft != "--" {
+							fileArgs = append(fileArgs, ft)
+						}
+					}
+					// the candidates anchor to git's -C directory, not to the
+					// shell's working directory (round 5 P1)
+					w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
+					break
+				}
 			}
 		}
 		return
@@ -384,7 +446,7 @@ func (w *zoneWalker) zoneCall(stmt *syntax.Stmt, cmd *syntax.CallExpr) {
 		return
 	}
 	w.mutating = true
-	w.cands = append(w.cands, zoneRelativeTo(w.cwd, zonePathCandidates(rest))...)
+	w.zoneCands(zonePathCandidates(cmd.Args[1:]))
 }
 
 // zonePathCandidates drops flags and empty words (an empty quoted word is
@@ -403,66 +465,90 @@ func zonePathCandidates(args []*syntax.Word) []string {
 }
 
 // zoneWalkStmt walks one statement. The mutations and redirections of every
-// branch are real; the working directory moves only where the shell says it
-// moves — never out of a subshell, a pipeline element, or a backgrounded
-// statement, and back to the pre-left directory on the right side of `||`.
+// branch are real; the working directory becomes a SET of possible values —
+// control flow multiplies it, and subshells (background statements, pipeline
+// elements, explicit subshells) never leak their directory back.
 func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 	if stmt == nil {
 		return
 	}
-	pre := w.cwd
+	pre := append([]string(nil), w.cwds...)
 	defer func() {
 		if stmt.Background {
 			// the statement ran asynchronously in a subshell: its cd never
 			// moved the main shell (round 4 P1 — the restore point is the
-			// directory before the whole backgrounded list)
-			w.cwd = pre
+			// directory set before the whole backgrounded list)
+			w.setCwds(pre)
 		}
 	}()
 	switch cmd := stmt.Cmd.(type) {
 	case nil:
-		// a statement of redirections only
+		// a statement of redirections only (round 6 P1)
+		w.zoneRedirects(stmt.Redirs)
 	case *syntax.BinaryCmd:
 		switch cmd.Op {
 		case syntax.Pipe, syntax.PipeAll:
 			// a pipeline runs every element in a subshell: a cd inside it
-			// never moves the main shell (rounds 3–4), while its mutations
-			// are real
-			side := w.cwd
+			// never moves the main shell, and each element starts from the
+			// same pre-pipe directory (round 3–4)
+			side := append([]string(nil), w.cwds...)
 			w.zoneWalkStmt(cmd.X)
+			w.setCwds(side)
 			w.zoneWalkStmt(cmd.Y)
-			w.cwd = side
+			w.setCwds(side)
 		case syntax.AndStmt: // &&
 			w.zoneWalkStmt(cmd.X)
 			w.zoneWalkStmt(cmd.Y)
 		case syntax.OrStmt: // ||
-			pre := w.cwd
+			pre := append([]string(nil), w.cwds...)
 			w.zoneWalkStmt(cmd.X)
-			// the right side runs only if the left failed: a failed cd left
-			// the main shell where it was (round 4 P1)
-			w.cwd = pre
+			// the right side runs only if the left failed: the directory is
+			// either where the left left it or where it started — keep both
+			// (round 6 P1: a successful cd inside a failed chain persists)
+			w.cwds = append(w.cwds, pre...)
+			w.setCwds(w.cwds)
 			w.zoneWalkStmt(cmd.Y)
 		default:
 			w.zoneWalkStmt(cmd.X)
 			w.zoneWalkStmt(cmd.Y)
 		}
 	case *syntax.Subshell:
-		side := w.cwd
+		side := append([]string(nil), w.cwds...)
 		for _, s := range cmd.Stmts {
 			w.zoneWalkStmt(s)
 		}
-		w.cwd = side
+		w.setCwds(side)
 	case *syntax.Block:
 		for _, s := range cmd.Stmts {
 			w.zoneWalkStmt(s)
 		}
+		w.zoneRedirects(stmt.Redirs) // a block's own redirect (round 6 P1)
 	case *syntax.IfClause:
-		w.zoneWalkIf(cmd)
+		pre := append([]string(nil), w.cwds...)
+		for _, s := range cmd.Cond {
+			w.zoneWalkStmt(s) // a condition executes (round 6 P1)
+		}
+		afterCond := append([]string(nil), w.cwds...)
+		for _, s := range cmd.Then {
+			w.zoneWalkStmt(s)
+		}
+		afterThen := append([]string(nil), w.cwds...)
+		w.setCwds(pre)
+		w.zoneWalkIf(cmd.Else)
+		// the condition-false world is the pre-if set; union every world
+		w.cwds = append(w.cwds, afterCond...)
+		w.cwds = append(w.cwds, afterThen...)
+		w.setCwds(w.cwds)
+		w.zoneRedirects(stmt.Redirs)
 	case *syntax.ForClause:
 		for _, s := range cmd.Do {
 			w.zoneWalkStmt(s)
 		}
 	case *syntax.WhileClause:
+		// the condition executes too (round 6 P1)
+		for _, s := range cmd.Cond {
+			w.zoneWalkStmt(s)
+		}
 		for _, s := range cmd.Do {
 			w.zoneWalkStmt(s)
 		}
@@ -481,9 +567,9 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 	}
 }
 
-// zoneWalkIf walks an if/elif/else chain. Every branch shares the walker's
-// working directory: a cd inside a taken branch moves the main shell, exactly
-// like the if's own syntax level.
+// zoneWalkIf walks an if/elif/else chain — the else member is itself an
+// IfClause (an "elif") or carries no command; each branch's statements share
+// the walker's directory set.
 func (w *zoneWalker) zoneWalkIf(clause *syntax.IfClause) {
 	if clause == nil {
 		return
@@ -518,7 +604,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	if !ok {
 		return ""
 	}
-	w := &zoneWalker{h: h, cwd: "."}
+	w := &zoneWalker{h: h, cwds: []string{"."}}
 	for _, stmt := range file.Stmts {
 		w.zoneWalkStmt(stmt)
 	}
