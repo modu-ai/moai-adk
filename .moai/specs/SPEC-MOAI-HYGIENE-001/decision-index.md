@@ -21,9 +21,9 @@ Why unresolved as written: The question was raised during assembly because the a
 Operator verdict:
 
 ### Q4: May the GC remove an aged `spec-close-*.lock` when the fd probe cannot run?
-Label: DECIDED
-Authority anchor: SPEC-WORKTREE-SWEEP-001 (status: completed), REQ-WS-006 — "lsof absent or failing returns an error, which the sweep renders as an unanswerable predicate: the tree is preserved, never reported unoccupied"
-Why resolved: The identical question — may deletion proceed when the external probe that would establish safety cannot run — is decided fail-closed by the completed sweep SPEC for the same probe family. This SPEC adopts the same disposition and goes one step safer per plan-audit D7: the GC acquires the lock itself non-blockingly (acquired ⇒ free ⇒ remove while holding; blocked ⇒ kept; Windows ⇒ always kept `platform-unsupported`) — there is no probe-then-remove sequence at all (spec.md REQ-HYG-011).
+Label: EVIDENCE-NEEDED
+Authority anchor: n/a — the reclamation route requires a writer-side change this SPEC's module does not own
+Why unresolved: **This question is folded into Q7 and carries no route of its own.** The lock class is excluded from GC scope entirely (REQ-HYG-011): the GC has no evaluate, probe, acquire, or delete path for a lock-named file — scan hits are reported `lock-class-excluded` and left untouched. The v0.2.0/v0.3.0 text of this row carried a DECIDED label instructing a non-blocking acquire-then-remove route; that route is exactly the shape plan-audit D18 demonstrated unsafe (the two-live-locks window: removing a lock whose inode another holder still has open re-admits a second live lock at the recreated path) and REQ-HYG-011 now prohibits, and the DECIDED instruction was removed at v0.4.0 (D26) — the exclusion is the decision; only the *upstream reclamation design* (writer-side post-acquire inode re-verification in `internal/spec`) remains open, and it needs the same future SPEC's design evidence Q7 waits for. Until that evidence exists, the answer to this question is: this SPEC does not remove locks, in any mode, under any probe outcome.
 Operator verdict:
 
 ### Q5: Should the operator surface be a `moai clean` extension or a dedicated verb?
