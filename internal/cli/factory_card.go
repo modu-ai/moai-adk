@@ -2076,7 +2076,14 @@ func newFactoryAssignCommand() *cobra.Command {
 				if _, cerr := db.LoadCard(ctx, runID, cardID); errors.Is(cerr, homestate.ErrCardNotFound) {
 					if rec, qerr := newTodoStore().LoadPure(); qerr == nil {
 						if rows, rerr := db.ListCards(ctx, runID); rerr == nil {
-							fields = factoryHubChainFields(rec, rows, cardID)
+							// Merge ONLY the computed after hint — the operator's
+							// own fields (prefer, spec, worktree, contract) were
+							// set above and must survive the fill (AC-TCI-020's
+							// explicit-input-outranks clause cuts the other way
+							// for --after alone, never for the whole struct).
+							if hub := factoryHubChainFields(rec, rows, cardID); hub.HintAfter != nil {
+								fields.HintAfter = hub.HintAfter
+							}
 						} else {
 							return fmt.Errorf("factory assign: read the records for the hub chain: %w", rerr)
 						}
