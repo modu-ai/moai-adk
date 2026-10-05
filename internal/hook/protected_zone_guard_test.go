@@ -1028,6 +1028,31 @@ func testZoneShellMutation(t *testing.T) {
 	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "rm zone_dir/a.log"})
 	wantZoneDeny(t, "rm zone_dir/a.log (invalid manifest)", d, r, harnessLearnerIdentity, "manifest", "invalid")
 
+	// review-repair round 11 rows (gate verdict on the round-10 head: the
+	// DplOut correction over-skipped file-target `>&`, a dangling symlink's
+	// destination went unfollowed, a loop's condition runs EVERY iteration,
+	// and a subshell's function redefinitions leaked to the caller)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n  probe_deep:\n    paths: [\"a/a/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	if err := os.Symlink("zone_dir/new.md", filepath.Join(root, "innocent.md")); err != nil {
+		t.Fatal(err)
+	}
+	for _, cmd := range []string{
+		"printf changed >& zone_dir/secret",             // >& onto a WORD is a file write (r11)
+		"f(){ rm zone_dir/secret; }; ( f(){ :; }; ); f", // subshell redefinitions die with it (r11)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "while cd a; do printf changed > secret; done"})
+	wantZoneDeny(t, "while cd a; do printf changed > secret; done", d, r, harnessLearnerIdentity, "category", "probe_deep")
+	// the dangling symlink's destination resolves through the zone (r11)
+	swept++
+	d, r = zoneCall(t, h, "Write", harnessLearnerIdentity, map[string]any{"file_path": "innocent.md", "content": "x"})
+	wantZoneDeny(t, "Write innocent.md (dangling -> zone_dir/new.md)", d, r, harnessLearnerIdentity, "category", "probe_zone")
+
 	if swept < 71 {
 		t.Fatalf("swept %d rows, want at least 71", swept)
 	}

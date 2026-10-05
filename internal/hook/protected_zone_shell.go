@@ -216,11 +216,20 @@ func zoneRedirectTargets(redirs []*syntax.Redirect) (bool, []string) {
 	mutating := false
 	var targets []string
 	for _, rd := range redirs {
-		switch rd.Op {
-		// DplOut (`2>&1`) duplicates one descriptor onto another — it creates
-		// and truncates nothing, so it is not a write (round 10 P3)
-		case syntax.RdrIn, syntax.Hdoc, syntax.DashHdoc, syntax.WordHdoc, syntax.DplIn, syntax.DplOut:
-			continue
+		if rd.Op == syntax.DplOut {
+			// `>&` onto a NUMBERED descriptor (`2>&1`) duplicates a file
+			// descriptor and writes nothing; onto a word (`>& file`) it is a
+			// file write in the dialects that accept the spelling — only the
+			// numeric form skips (round 11 P1, correcting round 10 P3's
+			// blanket skip)
+			if t, literal := zoneWordText(rd.Word); literal && isZoneDigits(t) {
+				continue
+			}
+		} else {
+			switch rd.Op {
+			case syntax.RdrIn, syntax.Hdoc, syntax.DashHdoc, syntax.WordHdoc, syntax.DplIn:
+				continue
+			}
 		}
 		t, literal := zoneWordText(rd.Word)
 		if !literal || t == "" {
@@ -230,6 +239,20 @@ func zoneRedirectTargets(redirs []*syntax.Redirect) (bool, []string) {
 		targets = append(targets, t)
 	}
 	return mutating, targets
+}
+
+// isZoneDigits reports whether s is a non-empty run of ASCII digits — a file
+// descriptor number, not a path.
+func isZoneDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // zoneRedirects judges a statement's write redirections against every
@@ -560,6 +583,11 @@ const (
 	zoneLoopFixedPoint = 16
 )
 
+// zoneSymlinkDepthBound bounds how many symlink hops zoneResolve follows
+// through a chain of dangling destinations; deeper chains read as outside
+// the project (fail closed), standing in for the kernel's ELOOP.
+const zoneSymlinkDepthBound = 32
+
 // zoneCwdsEqual compares two possible-directory sets member for member.
 func zoneCwdsEqual(a, b []string) bool {
 	if len(a) != len(b) {
@@ -579,9 +607,14 @@ func zoneCwdsEqual(a, b []string) bool {
 // and the walk stops when a pass adds no new directory. A pass cap bounds
 // the accumulation; exhausting it sets the unbounded flag (fail closed)
 // rather than truncating the loop's states silently.
-func (w *zoneWalker) walkBodyFixedPoint(stmts []*syntax.Stmt) {
+func (w *zoneWalker) walkBodyFixedPoint(cond []*syntax.Stmt, stmts []*syntax.Stmt) {
 	for i := 0; i < zoneLoopFixedPoint; i++ {
 		before := append([]string(nil), w.cwds...)
+		// the condition runs EVERY iteration, so it walks with the body —
+		// each pass is one loop round (round 11 P1)
+		for _, s := range cond {
+			w.zoneWalkStmt(s)
+		}
 		for _, s := range stmts {
 			w.zoneWalkStmt(s)
 		}
@@ -590,6 +623,17 @@ func (w *zoneWalker) walkBodyFixedPoint(stmts []*syntax.Stmt) {
 		}
 	}
 	w.unbounded = true
+}
+
+// cloneZoneFuncs copies the function registry — a subshell's redefinitions
+// die with the subshell, so every subshell-shaped walk runs on its own copy
+// (round 11 P1).
+func cloneZoneFuncs(m map[string]*syntax.Stmt) map[string]*syntax.Stmt {
+	out := make(map[string]*syntax.Stmt, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }
 
 // zoneWalkStmt walks one statement. Every branch's mutations and redirections
@@ -615,12 +659,18 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		return
 	}
 	pre := append([]string(nil), w.cwds...)
+	var preFuncs map[string]*syntax.Stmt
+	if stmt.Background {
+		preFuncs = cloneZoneFuncs(w.funcs)
+	}
 	defer func() {
 		if stmt.Background {
 			// the statement ran asynchronously in a subshell: its cd never
 			// moved the main shell (round 4 P1 — the restore point is the
-			// directory set before the whole backgrounded list)
+			// directory set before the whole backgrounded list), and its
+			// function redefinitions die with it (round 11 P1)
 			w.setCwds(pre)
+			w.funcs = preFuncs
 		}
 	}()
 	// redirections open before the statement runs, whatever its shape — a
@@ -634,11 +684,15 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		case syntax.Pipe, syntax.PipeAll:
 			// a pipeline runs every element in a subshell: a cd inside it
 			// never moves the main shell, and each element starts from the
-			// same pre-pipe directory (round 3–4)
+			// same pre-pipe directory (round 3–4); redefinitions die with
+			// their element (round 11 P1)
 			side := append([]string(nil), w.cwds...)
+			funcs := cloneZoneFuncs(w.funcs)
 			w.zoneWalkStmt(cmd.X)
 			w.setCwds(side)
+			w.funcs = cloneZoneFuncs(funcs)
 			w.zoneWalkStmt(cmd.Y)
+			w.funcs = funcs
 			w.setCwds(side)
 		case syntax.AndStmt, syntax.OrStmt: // && and ||
 			w.zoneWalkStmt(cmd.X)
@@ -654,9 +708,11 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		}
 	case *syntax.Subshell:
 		side := append([]string(nil), w.cwds...)
+		funcs := cloneZoneFuncs(w.funcs) // a subshell's redefinitions die with it (round 11 P1)
 		for _, s := range cmd.Stmts {
 			w.zoneWalkStmt(s)
 		}
+		w.funcs = funcs
 		w.setCwds(side) // a subshell's cd never leaks
 	case *syntax.Block:
 		for _, s := range cmd.Stmts {
@@ -676,20 +732,16 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 				}
 			}
 		} else {
-			w.walkBodyFixedPoint(cmd.Do)
+			w.walkBodyFixedPoint(nil, cmd.Do)
 		}
 	case *syntax.WhileClause:
-		for _, s := range cmd.Cond {
-			w.zoneWalkStmt(s) // the condition executes (round 6 P1)
-		}
-		afterCond := append([]string(nil), w.cwds...)
-		// the iteration count is unknown: the body walks to its fixed point,
-		// and the zero-iteration world (the condition already failed) keeps
-		// the post-condition set (round 8 P1; WhileClause.Until folds `until`
-		// into the same shape)
-		w.walkBodyFixedPoint(cmd.Do)
-		w.cwds = append(w.cwds, afterCond...)
-		w.setCwds(w.cwds)
+		// the iteration count is unknown: condition and body walk together
+		// to the fixed point — the condition runs every iteration (round 11
+		// P1), and the zero-iteration world (the first condition evaluation
+		// failing) is the first pass's post-condition set, which the walk
+		// already unions (round 8 P1; WhileClause.Until folds `until` into
+		// the same shape)
+		w.walkBodyFixedPoint(cmd.Cond, cmd.Do)
 	case *syntax.CaseClause:
 		entry := append([]string(nil), w.cwds...)
 		worlds := append([]string(nil), entry...) // no arm may match: entry survives

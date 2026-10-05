@@ -101,6 +101,13 @@ func zoneLexicalRel(root, p string) (rel string, inside bool) {
 // (merge-gate round 1 P1-4, observed red first.) p must be absolute — the
 // symlink arm of resolveZoneTarget guarantees it.
 func zoneResolve(p string) (string, bool) {
+	return zoneResolveDepth(p, 0)
+}
+
+// zoneResolveDepth carries the symlink-following depth; a chain deeper than
+// the bound reads as outside (fail closed), standing in for the kernel's
+// ELOOP.
+func zoneResolveDepth(p string, depth int) (string, bool) {
 	if real, err := filepath.EvalSymlinks(p); err == nil {
 		return real, true
 	}
@@ -130,8 +137,37 @@ func zoneResolve(p string) (string, bool) {
 			probe := resolved + part
 			real, err := filepath.EvalSymlinks(probe)
 			if err != nil {
-				// the first missing component starts the unresolved tail
-				return filepath.Join(resolved, strings.Join(parts[i:], "/")), true
+				// EvalSymlinks fails for a MISSING component and equally for
+				// an EXISTING symlink whose target is missing — only the
+				// first is an unresolved tail. The second is a real link the
+				// shell would still follow (a Write through it creates the
+				// destination), so its destination rejoins the walk (round
+				// 11 P1: `innocent.md -> zone_dir/new.md` let a Write create
+				// the file inside the zone).
+				if _, lerr := os.Lstat(probe); lerr != nil {
+					// the first genuinely missing component starts the
+					// unresolved tail
+					return filepath.Join(resolved, strings.Join(parts[i:], "/")), true
+				}
+				dest, rerr := os.Readlink(probe)
+				if rerr != nil {
+					return "", false // an unreadable existing entry: fail closed
+				}
+				if !filepath.IsAbs(dest) {
+					dest = resolved + dest
+				}
+				if depth >= zoneSymlinkDepthBound {
+					return "", false // chain too deep: fail closed
+				}
+				sub, ok := zoneResolveDepth(dest, depth+1)
+				if !ok {
+					return "", false
+				}
+				// the link's resolution takes the component's place; what
+				// remains of the original path rejoins onto it
+				resolved = strings.TrimSuffix(sub, "/") + "/"
+				skipped++
+				continue
 			}
 			resolved = strings.TrimSuffix(real, "/") + "/"
 			skipped++

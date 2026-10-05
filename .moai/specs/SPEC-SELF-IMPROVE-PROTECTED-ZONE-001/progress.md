@@ -217,6 +217,22 @@ Two inputs landed together after the round-9 push:
 
 GREEN on the MERGED tree: `TestProtectedZone` hook+config (ShellMutation swept 84 — 4 new deny rows: TimeClause, function call, the auditor's `;;& *` fall-through repro, `git -c "$CFG" rm`; plus the DplOut allow control and its invalid-manifest positive control), `go build ./...` exit 0, GOOS=windows build OK, `golangci-lint` 0 issues, gofmt clean, `TestHMPSourceGuard` ok, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
 
+### Repair round 11 — verdict findings: correction, dangling symlinks, loop conditions, subshell functions + a second main absorb (2026-10-06)
+
+The gate's verdict on the round-10 head failed with 4×P1 + 4×P2. Scope split first:
+
+- **P2 4건은 이 카드의 소관이 아니다 — 보고로 라우팅, 수리하지 않음.** `internal/cli/factory_card.go` 자동 힌트 덮어쓰기, `internal/cli/factory_bundle.go` 묶음 중복 ID, `internal/cli/todo.go` 신규 카드 `--files` 겹침 누락과 `add --pick` 발행 제시 누락 — 네 파일 모두 이 카드가 한 번도 건드리지 않은 main 착지 코드다(이 카드의 diff에 없음). 실측: main은 흡수 지점 `9da74469a`에서 `10df085da`(t1502, #1759)로 진행했고 그 delta는 `todo.go` 5줄뿐 — 네 발견은 main 자체의 결함으로, 소관 카드(팩토리 카드·묶음·todo 발행 경로)의 후속 수리 대상이다. 이 PR에서 외부 범위를 섞지 않는다(범위 규율). 리더 착지 보고에 전문을 실어 라우팅을 청구한다.
+- **재흡수**: main 진행분을 다시 흡수했다(`10df085da`, 병합 커밋 `c419cc5a2`, 무충돌) — PR diff가 다시 카드 스코프만 담도록.
+
+The 4 P1s are this card's protected-zone surface, repaired RED-first (all four observed allow on the round-10 tree, matching the verdict):
+
+- **P1 `>&` file target** — round 10's blanket DplOut skip over-corrected: `printf changed >& zone_dir/secret` writes the file in dialects accepting the spelling. Only a NUMERIC descriptor target (`2>&1`) writes nothing now; a word target judges as a write (`isZoneDigits` gate). The round-10 `echo hi 2>&1` control stays allow (its target is the digit `1`).
+- **P1 dangling symlink destination** — `zoneResolve` treated ANY `EvalSymlinks` failure at a component as "missing": `innocent.md -> zone_dir/new.md` (target absent) resolved to the bare link name and a Write through it created the file inside the zone (observed RED). The component walk now distinguishes: `Lstat` fails → genuinely missing → unresolved tail (unchanged); the component EXISTS → a real link the shell would follow → `Readlink` its destination, rejoin it onto the walk recursively, with a depth bound (`zoneSymlinkDepthBound` 32, fail closed beyond — standing in for ELOOP).
+- **P1 loop condition every iteration** — `while cd a; do printf changed > secret; done` runs the CONDITION each round (its `cd a` accumulates: pass 2 writes at `a/a`), but the fixed point walked only the body. `walkBodyFixedPoint` now takes the condition and alternates cond+body per pass — one pass is one loop round; convergence and the `loop-unbounded` fail-closed bound are unchanged.
+- **P1 subshell function redefinitions** — `( f(){ :; }; )` overwrote the shared `funcs` registry, so a later caller-side call `f` walked the EMPTY body. Every subshell-shaped walk now runs on its own registry copy (`cloneZoneFuncs`): explicit Subshell, each pipeline element, and background statements — redefinitions die with the subshell exactly as the directory set does.
+
+GREEN on the re-absorbed tree: `TestProtectedZone` hook+config (ShellMutation swept 88 — 3 new deny rows plus the dangling-symlink Write row), `go build ./...` exit 0, GOOS=windows OK, `golangci-lint` 0 issues, gofmt clean, `TestHMPSourceGuard` ok, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
