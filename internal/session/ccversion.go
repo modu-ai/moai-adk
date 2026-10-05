@@ -169,6 +169,10 @@ var versionSegmentRe = regexp.MustCompile(`(?:^|/)(?:versions|claude-code)/([0-9
 // versionSegmentFromPath extracts the version segment from an install path,
 // or "" when the path carries none — the caller renders unknown, never an
 // inferred value.
+//
+// @MX:DEBT: version segment is the FIRST versions/<n> match, not anchored to the claude install root — /opt/versions/9/tools/claude/versions/2.1.281 reads as "9" (r5 overlay repro), so a stale process can escape the doctor warn
+// @MX:CEILING: correct for install-root-shaped paths (~/.local/share/claude/versions, npm claude-code/); exotic prefixes misreport
+// @MX:UPGRADE: t1515 — anchor extraction to the claude install root
 func versionSegmentFromPath(path string) string {
 	m := versionSegmentRe.FindStringSubmatch(path)
 	if m == nil {

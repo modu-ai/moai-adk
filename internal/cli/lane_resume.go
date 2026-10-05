@@ -48,9 +48,9 @@ const argSeparator = "--"
 // `--resume`/`-r` are value-taking too but are special-cased before this
 // table (REQ-SCV-009's own value check).
 //
-// @MX:DEBT: hand-maintained snapshot of Claude Code's value-taking option surface
-// @MX:CEILING: options a Claude Code update adds are missing from the table, so a token that is really a new option's value can still be misjudged as a valueless resume — a false refusal, or a guard fire on a churned surface
-// @MX:UPGRADE: re-sync this table from `claude --help` on each Claude Code update, or read it dynamically when a stable machine-readable option surface appears
+// @MX:DEBT: required-value table may lag claude's option surface — r5 found --remote-control-session-name-prefix (required in 2.1.289) missing, so a legit call whose prefix value is literally "--resume" is falsely refused (validator + guard)
+// @MX:CEILING: table hand-synced to claude 2.1.289 --help as of 2026-10-05; unknown later options repeat this class
+// @MX:UPGRADE: t1515 — replace the hand-rolled scan with a real argv parse or spawn-time resume detection
 var claudeValueTakingOptions = map[string]bool{
 	// Claude Code 2.1.289, required <value> synopses (measured):
 	"--add-dir": true, "--agent": true, "--agents": true,
