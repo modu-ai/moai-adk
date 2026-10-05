@@ -100,10 +100,17 @@ func TestClaudeHelpSynopsisBoundedUnderLingeringChild(t *testing.T) {
 	}
 	_ = text // whatever partial output arrived is discarded by the degradation
 
-	// The degradation shape: applyClaudeOptionModel over the failed probe
-	// must leave the active model — the pinned snapshot — untouched.
+	// The degradation shape, INJECTED through the seam (card-review r3):
+	// applyClaudeOptionModel must retain the pinned snapshot when the probe
+	// fails. The failure is a seam stub, not a second run of the wrapper —
+	// the real probe call above stays the test's ONLY child process, its
+	// recorded pid keeps the cleanup exact, and no linger.pid overwrite can
+	// orphan the first grandchild.
+	prevSynopsis := claudeHelpSynopsis
+	claudeHelpSynopsis = func(string) (string, error) { return "", errors.New("injected probe failure") }
+	t.Cleanup(func() { claudeHelpSynopsis = prevSynopsis })
 	applyClaudeOptionModel(script)
 	if !reflect.DeepEqual(activeClaudeOptionModel, claudeOptionModelSnapshot) {
-		t.Fatalf("active model swapped off the snapshot after a bounded probe failure: %v", activeClaudeOptionModel)
+		t.Fatalf("active model swapped off the snapshot after an injected probe failure: %v", activeClaudeOptionModel)
 	}
 }
