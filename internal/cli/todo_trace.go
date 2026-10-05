@@ -15,7 +15,10 @@ import (
 
 // newTodoTraceCmd — `moai todo trace <id> [--kind <k>]… [--depth <n>]`:
 // print every node reachable from the card over the named kinds up to the
-// depth bound, deterministically ordered.
+// depth bound, deterministically ordered. The walk reads the common
+// resolver's three sources — stored findings, the spawned_by projections,
+// and the GTD relations resolved onto card ids (card t1454 card-review r2
+// finding 11).
 func newTodoTraceCmd() *cobra.Command {
 	var kinds []string
 	var depth int
@@ -29,7 +32,8 @@ func newTodoTraceCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			lines := factory.TraceCardRelations(rec, id, kinds, depth)
+			gtd := factory.ListGTDCardRelations(cmd.Context(), newTodoStore())
+			lines := factory.TraceCardRelations(rec, gtd, id, kinds, depth)
 			if len(lines) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no relations reachable from "+id)
 				return nil

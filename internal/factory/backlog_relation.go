@@ -86,7 +86,11 @@ func NormalizeRelationPair(a, b string) (first, second string, swapped bool) {
 // WaitsOnOf's direction, near-duplicate and duplicate-forced to duplicates,
 // replaces to supersedes, contains/absorbs/conflicts to relates-to with the
 // legacy name kept as a qualifier. The returned qualifier is "" for names
-// that map one-to-one.
+// that map one-to-one. The CURRENT vocabulary kinds — the writable three
+// and the stored projection kind merged-into, todo merge's write — pass
+// through with their own kind: remapping them to relates-to made todo
+// merge's cycle guard, which reads the mapped kind, see no merged-into
+// edges at all (card t1454 card-review r2 finding 12).
 func MapLegacyRelation(relation string) (kind BacklogRelationKind, qualifier string) {
 	switch relation {
 	case "blocks", "depends":
@@ -98,9 +102,9 @@ func MapLegacyRelation(relation string) (kind BacklogRelationKind, qualifier str
 	case "contains", "absorbs", "conflicts":
 		return CardRelationRelatesTo, relation
 	default:
-		// New-kind rows (duplicates/supersedes/relates-to) pass through.
 		k := BacklogRelationKind(relation)
-		if k == CardRelationDuplicates || k == CardRelationSupersedes || k == CardRelationRelatesTo {
+		if k == CardRelationDuplicates || k == CardRelationSupersedes || k == CardRelationRelatesTo ||
+			k == CardRelationMergedInto || k == CardRelationParentOf || k == CardRelationFollowUpOf {
 			return k, ""
 		}
 		return CardRelationRelatesTo, relation
@@ -166,20 +170,89 @@ func (r *BacklogRecord) RelationKindClosesCycle(from, to string, kinds ...string
 	return false
 }
 
-// RecordRelation validates one relate write against the kind's constraints
-// (design §5.3): self-edges refused for every writable kind, blocks and
-// supersedes cycle-checked through the existing guard, symmetric pairs
-// normalized so an opposite-order re-record maps onto the first record.
-// The returned finding is appended by the caller inside its locked write;
-// nothing here touches the record.
-// TraceCardRelations walks the mapped relation edges from start id, up to
-// depth (0 = unbounded), over the named kinds (empty = all). Each visited
-// edge renders as one deterministic line: depth, kind, from → to, qualifier,
-// source. Cycles terminate through the visit set; nothing is written.
-func TraceCardRelations(rec *BacklogRecord, start string, kinds []string, depth int) []string {
-	wanted := map[BacklogRelationKind]bool{}
+// GTDCardRelation is one GTD relation whose endpoints the caller resolved
+// onto todo card ids — the GTD store keys relations by GTD item id, and a
+// GTD item links to its card through card_id. A relation whose endpoints
+// name no card is dropped by the reader.
+type GTDCardRelation struct {
+	From, To string
+	Kind     string // the GTD kind, rendered verbatim — its own vocabulary
+	Source   string
+}
+
+// RelationEdge is one resolved relation edge naming a card, whatever its
+// source: a stored finding mapped onto the unified vocabulary, an issuance
+// attribute projection (spawned_by), or a GTD relation the caller resolved
+// onto card ids.
+type RelationEdge struct {
+	// Index is the finding's 1-based record index — the address `todo
+	// unrelate` takes; 0 for edges that are not findings.
+	Index     int
+	From, To  string
+	Kind      string
+	Qualifier string
+	Source    string
+}
+
+// ResolveCardEdges is the common relation resolver (card t1454 card-review
+// r2 finding 11): every edge the queue knows about the card, from the three
+// sources — the stored findings (mapped onto the unified vocabulary), the
+// issuance spawned_by projections, and the caller's GTD relations. The
+// follow-up projection reads child → origin (the card is the follow-up of
+// its origin), the parent projection parent → child. Deterministic:
+// findings in record order, then the projections in queue order, then the
+// GTD edges in the caller's order.
+func ResolveCardEdges(rec *BacklogRecord, gtd []GTDCardRelation, id string) []RelationEdge {
+	var out []RelationEdge
+	for i := range rec.Findings {
+		f := rec.Findings[i]
+		if !f.Names(id) {
+			continue
+		}
+		d := ResolveFindingDirection(f)
+		out = append(out, RelationEdge{Index: i + 1, From: d.From, To: d.To, Kind: string(d.Kind), Qualifier: d.Qualifier, Source: d.Source})
+	}
+	for i := range rec.Items {
+		it := &rec.Items[i]
+		if it.Issuance == nil || it.Issuance.SpawnedBy == "" {
+			continue
+		}
+		// The projection is the child's attribute, but the edge names both
+		// ends: resolving either endpoint surfaces it.
+		var child, origin string
+		if it.ID == id {
+			child, origin = id, it.Issuance.SpawnedBy
+		} else if it.Issuance.SpawnedBy == id {
+			child, origin = it.ID, id
+		} else {
+			continue
+		}
+		kind, from, to := CardRelationFollowUpOf, child, origin
+		if it.Issuance.Origin == "split" {
+			kind, from, to = CardRelationParentOf, origin, child
+		}
+		out = append(out, RelationEdge{From: string(from), To: string(to), Kind: string(kind), Source: "issuance"})
+	}
+	for _, g := range gtd {
+		if g.From != id && g.To != id {
+			continue
+		}
+		out = append(out, RelationEdge{From: g.From, To: g.To, Kind: g.Kind, Source: g.Source})
+	}
+	return out
+}
+
+// TraceCardRelations walks the resolved relation edges from start id, up to
+// depth (0 = unbounded), over the named kinds (empty = all; the GTD kinds
+// carry their own vocabulary and appear only in the all-kinds walk). Each
+// visited edge renders as one deterministic line: depth, kind, from → to,
+// qualifier, source — from → to is the edge's STORED or resolved direction,
+// never the walk order (card t1454 card-review r2 finding 13). Cycles
+// terminate through the visit set; nothing is written.
+func TraceCardRelations(rec *BacklogRecord, gtd []GTDCardRelation, start string, kinds []string, depth int) []string {
+	wanted := map[string]bool{}
 	for _, k := range kinds {
-		wanted[BacklogRelationKind(k)] = true
+		wanted[k] = true
 	}
 	type edge struct {
 		depth int
@@ -199,39 +272,38 @@ func TraceCardRelations(rec *BacklogRecord, start string, kinds []string, depth 
 		if depth > 0 && cur.depth >= depth {
 			continue
 		}
-		var edges []BacklogDirection
-		for i := range rec.Findings {
-			f := rec.Findings[i]
-			if !f.Names(cur.id) {
+		var edges []RelationEdge
+		for _, e := range ResolveCardEdges(rec, gtd, cur.id) {
+			if len(wanted) > 0 && !wanted[e.Kind] {
 				continue
 			}
-			d := ResolveFindingDirection(f)
-			if len(wanted) > 0 && !wanted[d.Kind] {
-				continue
-			}
-			// Walk from the card's side: whichever endpoint is cur.
-			if d.From != cur.id && d.To != cur.id {
-				continue
-			}
-			other := d.To
-			if d.To == cur.id {
-				other = d.From
-			}
-			edges = append(edges, BacklogDirection{
-				From: cur.id, To: other, Kind: d.Kind, Qualifier: d.Qualifier, Source: d.Source,
-			})
+			edges = append(edges, e)
 		}
 		sort.Slice(edges, func(i, j int) bool {
-			if edges[i].To != edges[j].To {
-				return edges[i].To < edges[j].To
+			a, b := edges[i], edges[j]
+			aOther, bOther := a.To, b.To
+			if a.To == cur.id {
+				aOther = a.From
 			}
-			return string(edges[i].Kind) < string(edges[j].Kind)
+			if b.To == cur.id {
+				bOther = b.From
+			}
+			if aOther != bOther {
+				return aOther < bOther
+			}
+			return a.Kind < b.Kind
 		})
 		for _, e := range edges {
-			if visited[e.To] {
+			// The walk follows whichever endpoint is cur; the rendered line
+			// keeps the edge's own direction.
+			other := e.To
+			if e.To == cur.id {
+				other = e.From
+			}
+			if visited[other] {
 				continue
 			}
-			visited[e.To] = true
+			visited[other] = true
 			q := ""
 			if e.Qualifier != "" {
 				q = " (" + e.Qualifier + ")"
@@ -240,9 +312,9 @@ func TraceCardRelations(rec *BacklogRecord, start string, kinds []string, depth 
 				depth: cur.depth + 1,
 				line: fmt.Sprintf("depth %d  %s  %s → %s%s  source=%s",
 					cur.depth+1, e.Kind, e.From, e.To, q, e.Source),
-				sort: [3]string{fmt.Sprintf("%03d", cur.depth+1), string(e.Kind), e.To},
+				sort: [3]string{fmt.Sprintf("%03d", cur.depth+1), e.Kind, other},
 			})
-			queue = append(queue, queued{e.To, cur.depth + 1})
+			queue = append(queue, queued{other, cur.depth + 1})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -260,11 +332,40 @@ func TraceCardRelations(rec *BacklogRecord, start string, kinds []string, depth 
 	return lines
 }
 
+// normalizedFindingPairPair reports whether the stored finding names the
+// same normalized pair, relation, and source as f (card t1454 card-review
+// r2 finding 15): the stored rows are normalized too, so a pair an older
+// writer recorded in the opposite order still maps onto the first record.
+func normalizedFindingTuple(f BacklogFinding, existing BacklogFinding) bool {
+	if existing.Relation != f.Relation || existing.Source != f.Source {
+		return false
+	}
+	subject, related := f.SubjectID, f.RelatedID
+	eSubject, eRelated := existing.SubjectID, existing.RelatedID
+	if BacklogRelationIsSymmetricForDedup(f.Relation) {
+		subject, related, _ = NormalizeRelationPair(subject, related)
+		eSubject, eRelated, _ = NormalizeRelationPair(eSubject, eRelated)
+	}
+	return subject == eSubject && related == eRelated
+}
+
+// HasNormalizedFindingTuple reports whether a finding with f's source,
+// relation, and normalized pair is already recorded.
+func (r *BacklogRecord) HasNormalizedFindingTuple(f BacklogFinding) bool {
+	for _, existing := range r.Findings {
+		if normalizedFindingTuple(f, existing) {
+			return true
+		}
+	}
+	return false
+}
+
 // RecordRelation validates one relate write against the kind's constraints
 // (design §5.3): self-edges refused for every writable kind, blocks and
 // supersedes cycle-checked through the mapped kind's edges, symmetric pairs
-// normalized so an opposite-order re-record maps onto the first record.
-// The returned finding is appended by the caller inside its locked write;
+// normalized — the stored rows included (card t1454 card-review r2 finding
+// 15) — so an opposite-order re-record maps onto the first record. The
+// returned finding is appended by the caller inside its locked write;
 // nothing here touches the record.
 func RecordRelation(rec *BacklogRecord, subject, related, relation string) (BacklogFinding, error) {
 	if subject == related {
@@ -301,7 +402,8 @@ func RecordRelation(rec *BacklogRecord, subject, related, relation string) (Back
 			if kind != BacklogRelationKind(relation) {
 				continue
 			}
-			if first == f.SubjectID && second == f.RelatedID {
+			fFirst, fSecond, _ := NormalizeRelationPair(f.SubjectID, f.RelatedID)
+			if first == fFirst && second == fSecond {
 				return BacklogFinding{}, fmt.Errorf("relation %s: %s/%s already recorded",
 					relation, first, second)
 			}

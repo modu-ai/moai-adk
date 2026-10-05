@@ -129,9 +129,13 @@ func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) 
 			Note:      note,
 			At:        time.Now().UTC().Format(time.RFC3339),
 		}
-		if !rec.AppendFindingOnce(finding) {
+		// REQ-TCI-013 (card t1454 card-review r2 finding 15): the stored rows
+		// are normalized in the dedup too — a pair an older writer recorded
+		// in the opposite order still maps onto the first record.
+		if rec.HasNormalizedFindingTuple(finding) {
 			return fmt.Errorf("todo relate: %s %s %s is already recorded", subject, relation, related)
 		}
+		rec.Findings = append(rec.Findings, finding)
 		index = len(rec.Findings)
 		return nil
 	})
