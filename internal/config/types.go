@@ -1348,9 +1348,41 @@ type HarnessConfig struct {
 	ModelUpgradeReview ModelUpgradeReviewConfig `yaml:"model_upgrade_review,omitempty"`
 	// PlanAuditGlobal holds the global plan audit settings.
 	PlanAuditGlobal PlanAuditGlobalConfig `yaml:"plan_audit_global,omitempty"`
+	// PlanAuditTierCeilings is the per-Tier plan-auditor retry ceiling map
+	// (harness.yaml plan_audit_tier_ceilings, keyed {S,M,L}).
+	// SPEC-AUDIT-CEILING-002 REQ-ACR-002: Go-read by the ceiling evaluation;
+	// the former no-Go-reader disposition is retired.
+	PlanAuditTierCeilings map[string]int `yaml:"plan_audit_tier_ceilings,omitempty"`
+	// PlanAuditCeilingPolicy is the ceiling-hit policy block
+	// (harness.yaml plan_audit_ceiling_policy). SPEC-AUDIT-CEILING-002
+	// REQ-ACR-002/003: on_final_hit drives the recorded outcome selection.
+	PlanAuditCeilingPolicy PlanAuditCeilingPolicyConfig `yaml:"plan_audit_ceiling_policy,omitempty"`
 	// Evaluator is the HRN-002 substrate — used for memory_scope FROZEN validation.
 	Evaluator EvaluatorConfig `yaml:"evaluator"`
 }
+
+// PlanAuditCeilingPolicyConfig is the configuration struct for the
+// plan_audit_ceiling_policy block: what happens when a plan audit reaches its
+// tier ceiling without an admitted verdict.
+type PlanAuditCeilingPolicyConfig struct {
+	// AutoDeltaRounds is the count of delta audits that run without asking
+	// when the fix stays inside fix_scope. Parsed and carried here; the
+	// eligibility computation stays prose-consumed (SPEC-AUDIT-CEILING-002 §E).
+	AutoDeltaRounds int `yaml:"auto_delta_rounds"`
+	// OnFinalHit is the policy value applied when the final ceiling hit
+	// reaches no admitted verdict. Shipped value: hold-and-split.
+	OnFinalHit string `yaml:"on_final_hit"`
+}
+
+// The on_final_hit policy values the ceiling evaluation selects on (the closed
+// set; any other value — or an empty/unreadable one — fails closed to `hold`).
+const (
+	// PlanAuditCeilingOnFinalHoldAndSplit is the shipped value: a hold record
+	// carrying the split-proposal reference.
+	PlanAuditCeilingOnFinalHoldAndSplit = "hold-and-split"
+	// PlanAuditCeilingOnFinalSplit records a bare split disposition.
+	PlanAuditCeilingOnFinalSplit = "split"
+)
 
 // AutoDetectionConfig is the configuration struct for the auto_detection block.
 // REQ-HRN-001-007: the rules map priority is minimal → standard → thorough.

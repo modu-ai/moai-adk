@@ -22,17 +22,26 @@ import (
 func TestAuditResolverTerminalFallbacks_OperatorTable(t *testing.T) {
 	root := newGLMReviewTree(t, false) // a tree with NO workflow.yaml → absent pin
 
-	claude := resolveClaudeAuditModelEffort(root, "", "")
+	claude, claudeErr := resolveClaudeAuditModelEffort(root, "", "")
+	if claudeErr != nil {
+		t.Fatalf("resolveClaudeAuditModelEffort on an absent workflow.yaml: %v", claudeErr)
+	}
 	if claude.Model != "claude-opus-5-5" || claude.Effort != "high" {
 		t.Errorf("claude terminal fallback = {%s %s}, want {claude-opus-5-5 high}", claude.Model, claude.Effort)
 	}
 
-	glme := resolveGLMAuditModelEffort(root)
+	glme, glmErr := resolveGLMAuditModelEffort(root)
+	if glmErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort on an absent workflow.yaml: %v", glmErr)
+	}
 	if glme.Model != "glm-5.3" || glme.Effort != "max" {
 		t.Errorf("glm terminal fallback = {%s %s}, want {glm-5.3 max}", glme.Model, glme.Effort)
 	}
 
-	codex := resolveCodexAuditModelEffort(map[string]any{"cwd": root})
+	codex, codexErr := resolveCodexAuditModelEffort(map[string]any{"cwd": root})
+	if codexErr != nil {
+		t.Fatalf("resolveCodexAuditModelEffort on an absent workflow.yaml: %v", codexErr)
+	}
 	if codex.Model != "gpt-6.1-sol" || codex.Effort != "high" {
 		t.Errorf("codex terminal fallback = {%s %s}, want {gpt-6.1-sol high}", codex.Model, codex.Effort)
 	}

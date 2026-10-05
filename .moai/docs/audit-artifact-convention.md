@@ -115,6 +115,21 @@ An exported audit artifact carries at minimum:
   - debt: <id> dispose_in=<run|sync> <description>
   ```
 
+  A verdict that records a required backend the audit could not admit carries
+  one line per failed backend, each at the start of its own line:
+
+  ```
+  required_backend_fail: <backend>
+  ```
+
+  The line's producer is the exporting auditor: from the multi-model
+  convergence result's per-backend verdicts, or from a single-backend audit's
+  own review. The shared admission rule refuses a verdict carrying the line
+  regardless of the verdict's own label, naming the recorded backend.
+  Required backends the audit did not cover carry no line, and the absence of
+  lines refuses nothing — the label and field checks above remain the primary
+  admission gates.
+
   A sync-audit verdict file keeps the two lines above; its label alone decides.
 
 An inline response summary alone does not satisfy this convention. The

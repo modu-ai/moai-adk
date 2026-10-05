@@ -86,14 +86,11 @@ func (h *configChangeHandler) EventType() EventType {
 func (h *configChangeHandler) Handle(_ context.Context, input *HookInput) (*HookOutput, error) {
 	// Official stdin field is config_source; configuration_source is the
 	// legacy MoAI field name (kept as fallback for old payloads).
-	configSource := input.ConfigSource
-	if configSource == "" {
-		configSource = input.ConfigurationSource
-	}
+	configSource := configChangeSource(input)
 
 	slog.Info("config file changed",
 		"session_id", input.SessionID,
-		"config_file_path", input.ConfigFilePath,
+		"config_file_path", configChangePath(input),
 		"config_source", configSource,
 	)
 
@@ -139,9 +136,9 @@ func (h *configChangeHandler) runReload(ctx context.Context, input *HookInput) {
 	}
 
 	// Validate the config file as YAML first.
-	if err := h.validateConfig(input.ConfigFilePath); err != nil {
+	if err := h.validateConfig(configChangePath(input)); err != nil {
 		slog.Warn("config reload rejected (async)",
-			"path", input.ConfigFilePath,
+			"path", configChangePath(input),
 			"error", err,
 			"action", "old settings retained",
 		)
@@ -182,6 +179,30 @@ func (h *configChangeHandler) runReload(ctx context.Context, input *HookInput) {
 		"path", input.ConfigFilePath,
 	)
 	appendConfigChangeAudit(input, configChangeResultReloaded, "fallback")
+}
+
+// configChangePath returns the changed config file's path. Claude Code's live
+// ConfigChange payload (captured on 2.1.289) carries it as `file_path`;
+// `config_file_path` is the older MoAI-era name, kept as the first choice so
+// old payloads resolve exactly as before.
+func configChangePath(input *HookInput) string {
+	if input.ConfigFilePath != "" {
+		return input.ConfigFilePath
+	}
+	return input.FilePath
+}
+
+// configChangeSource returns the config scope that changed. The live payload
+// carries it as `source` (e.g. "project_settings"); `config_source` and the
+// legacy `configuration_source` are honored first for older payloads.
+func configChangeSource(input *HookInput) string {
+	if input.ConfigSource != "" {
+		return input.ConfigSource
+	}
+	if input.ConfigurationSource != "" {
+		return input.ConfigurationSource
+	}
+	return input.Source
 }
 
 // configChangeAuditRelPath is the durable record of what the async reload
@@ -237,11 +258,8 @@ func appendConfigChangeAudit(input *HookInput, result, detail string) {
 	source := ""
 	if input != nil {
 		sessionID = input.SessionID
-		configPath = input.ConfigFilePath
-		source = input.ConfigSource
-		if source == "" {
-			source = input.ConfigurationSource
-		}
+		configPath = configChangePath(input)
+		source = configChangeSource(input)
 	}
 
 	entry := fmt.Sprintf("[%s] session=%s path=%s source=%s result=%s detail=%q\n",
