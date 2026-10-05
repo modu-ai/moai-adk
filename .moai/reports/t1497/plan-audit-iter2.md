@@ -78,3 +78,22 @@ None. (Iter1 D1 resolved-verified; D2/D3/D5 resolved; D4 dispositioned with decl
 ## Recommendation
 
 Proceed to run-phase per the plan→run Kickoff gate: flip progress.md §E.1 to `plan_status: audit-ready` citing this verdict and pin the artifact hash `cbc931b3…ea8846`; the hash recompute above is the pin. The one discretionary nit (REQ-DP-002 read-error path) can be closed in one sentence when the gate function is written — treat read-error as stale (spawn; the child-side re-check absorbs it) and say so in the gate's doc comment.
+
+## Receipt Corroboration Gap (post-verdict addendum, 2026-10-05 ~21:45 KST)
+
+The SubagentStop receipt guard refused the first PASS close (`AUDIT_RECEIPT_VIOLATION: no receipt cited`; store rejection record `.moai/state/audit-receipts/rejections/plan-auditor--SPEC-HARNESS-DETACHED-PRUNE-001.json`, cause `no receipt cited`, agent `aaeae1e7b90e33f0c`). Per the guard's instruction, the codex audit was called for this tree as demanded:
+
+- `mcp__moai__codex_audit` (adversarial, project_root = this worktree, current tree `2d29b0509`): **verdict pass, zero findings** — "the existing blocking defect is closed; the repaired selector ran both overlay-injected failing tests; no new blocking defect in the declared remaining changes." Recorded here as the required-backend corroboration of this PASS. **No `audit_receipt` id came back on the result.**
+
+Root cause of the missing id (measured, not inferred):
+
+- The receipt minter lives in `internal/cli/mcp_codex.go` → `recordAuditReceipt` (→ `auditreceipt.WriteReceipt`, store dir `.moai/state/audit-receipts/receipts/`). Minting entered at commit `ffe36d8e3` (SPEC-CODEX-AUDIT-GATE-AXES-001, card t686, 2026-09-18).
+- The running MCP server's build is `c8f245c2c` (v3.2.0-rc.24, server banner). `git merge-base --is-ancestor ffe36d8e3 c8f245c2c` → NOT an ancestor: the running server predates the minting feature on the receipt axis, while the hook chain (a newer installed CLI — it wrote this store's rejection record) enforces the guard. This is the server banner's own documented hazard ("after reinstalling the moai binary, reconnect the server so the host respawns it").
+- No CLI mint verb exists (`moai --help` carries no audit/receipt verb; the receipt writer is reachable only through the MCP server handlers). `audit_multi` cannot synthesize without a `claude_verdict` anchor, which a GLM-session auditor cannot legitimately supply.
+
+Resolution belongs to the leader/host (two paths, either suffices):
+
+1. Reconnect the MCP server so the host respawns it from the current install, then re-run one `codex_audit` for this tree — the result will carry `audit_receipt`, which the final verdict line then cites.
+2. Or the leader records the exception on the decision board per the ceiling policy, with this addendum as the evidence that the audit itself ran and passed.
+
+No receipt id is fabricated here: the verdict line below cites `receipts=none` truthfully, and the refusal the guard re-raises until the server reconnects is the documented stale-server gap, not a missing audit.
