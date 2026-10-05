@@ -16,7 +16,11 @@ import (
 )
 
 // newTodoWhyCmd — `moai todo why <n>` (REQ-TA-012): print every finding
-// naming the card, lock-free.
+// naming the card, lock-free. SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-014: the
+// output additionally shows the card's issuance attribute projections
+// (parent-of / follow-up-of) for cards that carry them — additive for
+// attributed cards, absent for legacy records (REQ-TCI-017 as clarified by
+// P2-3).
 func newTodoWhyCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "why <n>",
@@ -32,6 +36,22 @@ func newTodoWhyCmd() *cobra.Command {
 				return err
 			}
 			out := cmd.OutOrStdout()
+			// Issuance attribute projection (card t1454): show the parent
+			// follow-up origin before the findings so the operator sees the
+			// card's provenance first.
+			for i := range rec.Items {
+				it := &rec.Items[i]
+				if it.ID != id || it.Issuance == nil {
+					continue
+				}
+				if it.Issuance.SpawnedBy != "" {
+					kind := "follow-up-of"
+					if it.Issuance.Origin == "split" {
+						kind = "parent-of"
+					}
+					_, _ = fmt.Fprintf(out, "  %s %s → %s\n", kind, it.Issuance.SpawnedBy, id)
+				}
+			}
 			findings, indexes := rec.FindingsNaming(id)
 			if len(findings) == 0 {
 				_, _ = fmt.Fprintf(out, "%s: no findings\n", id)
