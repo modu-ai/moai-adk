@@ -1,0 +1,42 @@
+---
+id: go-error-ignored-blank
+language: go
+# warning, not error: this is a style rule, not a security rule. The pre-write
+# scan gate translates error severity directly into a refused write, and
+# `_ = foo()` is a routine Go idiom, so error severity here would refuse
+# ordinary edits across a codebase. The rule keeps reporting on the warning
+# path.
+severity: warning
+message: The returned error is discarded with _. Handle it or mark the intentional ignore with a comment.
+note: Ignoring an error can cause data corruption or silent failures. At
+  minimum, log the error or add a // nolint:errcheck comment.
+rule:
+  pattern: $_, $ERR = $FUNC($$$ARGS)
+---
+id: go-error-not-wrapped
+language: go
+severity: warning
+message: 'Error returned as-is without context. Use the fmt.Errorf("operation: %w", err) pattern.'
+note: Error wrapping is essential for tracing the error path without a stack
+  trace. The %w verb is required for errors.Is/As to work correctly.
+# The bare `return $ERR` pattern matched every single-expression return
+# (return nil/0/true/""/f()), producing ~16k false positives and a
+# catastrophic autofix that wrapped non-error returns in fmt.Errorf. The
+# name constraint ($ERR regex ^err(e?|s)$) is the type proxy: Go variables
+# named err/errs are overwhelmingly errors. The fix fires under the SAME
+# guard as the match, so non-matches are never rewritten.
+rule:
+  pattern: return $ERR
+fix: 'return fmt.Errorf("TODO: operation: %w", $ERR)'
+constraints:
+  ERR:
+    regex: '^err(e?|s)$'
+---
+id: go-errors-new-in-var
+language: go
+severity: warning
+message: errors.New() assigned to a package-level variable — the sentinel error pattern. Mind backward compatibility.
+note: Exporting a sentinel error as a variable makes it part of the package
+  API. Changing it later is a breaking change for callers.
+rule:
+  pattern: var $NAME = errors.New("$MSG")

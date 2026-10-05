@@ -13,6 +13,10 @@
 gate:
   enabled: true
   skip_tests: false
+  # Disable individual steps by step name (e.g. "mypy", "dotnet format",
+  # "pytest"). Note the inverted convention: an entry whose value is FALSE
+  # skips that step. Omit the section entirely to run every detected step.
+  disabled_steps: {}
   timeouts:
     vet: 30
     lint: 60
@@ -20,6 +24,11 @@ gate:
     # A type-check over a large monorepo routinely outlasts the test budget,
     # so it gets its own.
     typecheck: 300
+    # How long a starting `moai gate` run waits for the gate-run lock — the
+    # advisory lock that serializes concurrent manual gate runs in one
+    # project — before degrading to an unserialized run. On expiry the run
+    # proceeds and reports that it did; the lock never fails the gate.
+    lock_wait: 30
   # The typecheck axis runs between vet and lint, so a type error surfaces
   # before the slower style pass and a project whose linter config is absent
   # still gets a correctness gate.
@@ -41,19 +50,23 @@ gate:
     # NOT interpreted — put a pipeline or a redirect in a script and name the
     # script here.
     command: ""
+  # Pre-commit context: the git pre-commit hook's `moai gate` invocation.
+  # The project-wide heavy steps (vet / lint / test / typecheck) are OFF there
+  # by default, so one pre-existing failure unrelated to your staged change
+  # cannot block every commit; the hook still runs the fast staged-files
+  # subset (gofmt + go vet) on every commit. Set enabled: true to opt in and
+  # block commits on project-wide failures — e.g. via `moai web`, Gate panel.
+  # A standalone `moai gate` run ignores this key and keeps following the
+  # `enabled` key above.
+  pre_commit:
+    enabled: true
   ast_grep_gate:
     enabled: true
-    # rules_dir is the single source of truth for where this checkout's
-    # ast-grep rules live (t50): the code carries NO fallback default — the
-    # gate loaders and the `moai ast-grep`/`moai ast-edit` CLIs resolve this
-    # key and treat empty as "unconfigured" (0 rules). This checkout keeps
-    # its dogfood ruleset at .moai/astgrep-rules, outside .moai/config/,
-    # which `moai update` wipes wholesale.
-    #
-    # This file is itself under .moai/config/ and template-mirrored, so an
-    # update restores the template's value (.moai/config/astgrep-rules —
-    # where the template deploys the bundled ruleset, a working default).
-    # To re-link the dogfood ruleset after an update, restore this value.
+    # Where this project's ast-grep rules live. This is the single source of
+    # truth: the code carries no fallback default, and `moai ast-grep` /
+    # `moai ast-edit` resolve their --rules-dir from this key when the flag
+    # is omitted. The value below is where `moai init`/`moai update` deploy
+    # the bundled ruleset; keep it in sync if you move the rules.
     rules_dir: ".moai/astgrep-rules"
     block_on_error: false
     warn_only_mode: true

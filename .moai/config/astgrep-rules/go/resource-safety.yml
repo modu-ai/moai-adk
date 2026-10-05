@@ -1,0 +1,9 @@
+---
+id: go-map-no-ok-check
+language: go
+severity: warning
+message: Map lookup without an ok check. A missing key returns the zero value, which can hide bugs.
+note: Always use the v, ok := m[key] pattern to check key presence, and write
+  the handling for ok == false explicitly.
+rule:
+  pattern: $VALUE = $MAP[$KEY]

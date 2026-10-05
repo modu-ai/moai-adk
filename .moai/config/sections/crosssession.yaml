@@ -1,6 +1,6 @@
 # Cross-session messaging preferences (crosssession.yaml).
 #
-# The moai launchers (moai cc / glm / cg) translate these values into a
+# The moai launchers (moai cc / glm) translate these values into a
 # transient --settings file at launch; the web console edits this file through
 # the settings seam. Sessions launched without moai (a bare `claude` command)
 # do not read this file.
@@ -30,6 +30,6 @@
 #   "never" (keep default-held messages until the session ends). A message
 #   held by an explicit inbound "hold" does not expire.
 crosssession:
-  inbound: ""
+  inbound: "accept"
   isolate_machines: false
-  dialog_expiry: ""
+  dialog_expiry: "never"
