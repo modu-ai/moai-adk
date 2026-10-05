@@ -60,6 +60,10 @@ type foldTestSeam struct {
 	// failAt injects a write failure: "append" (cell i, before anything
 	// lands) or "rewrite" (cell ii, after the archive append landed).
 	failAt string
+	// mutateDuringWrite is invoked inside atomicWriteFoldFile after the temp
+	// file is prepared and before the pre-rename re-check — the window a
+	// concurrent writer races (gate overlay cell iii-b).
+	mutateDuringWrite func(dir, name string)
 }
 
 var memoryFoldSeam foldTestSeam
@@ -395,9 +399,6 @@ func checkFoldUnchanged(dir, name string, planTime []byte) error {
 // directory carries the new content and one rename publishes it, so no
 // reader observes a partial file. No temporary file remains on any path.
 func atomicWriteFoldFile(dir, name string, want, planTime []byte) error {
-	if err := checkFoldUnchanged(dir, name, planTime); err != nil {
-		return err
-	}
 	tmp, err := os.CreateTemp(dir, ".moai-fold-*.tmp")
 	if err != nil {
 		return fmt.Errorf("memory fold: temp file for %s: %w", name, err)
@@ -424,6 +425,16 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte) error {
 	}
 	if err := os.Chmod(tmpName, mode); err != nil {
 		return fmt.Errorf("memory fold: chmod %s: %w", name, err)
+	}
+	if memoryFoldSeam.mutateDuringWrite != nil {
+		memoryFoldSeam.mutateDuringWrite(dir, name)
+	}
+	// The content re-check is the LAST step before the rename (REQ-MFB-004;
+	// plan.md §G "immediately before each rename"): a concurrent update that
+	// lands during the temp-file preparation aborts here, so the rename
+	// never overwrites it.
+	if err := checkFoldUnchanged(dir, name, planTime); err != nil {
+		return err
 	}
 	if err := os.Rename(tmpName, filepath.Join(dir, name)); err != nil {
 		return fmt.Errorf("memory fold: rename %s: %w", name, err)

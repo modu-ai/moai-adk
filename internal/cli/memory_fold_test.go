@@ -902,6 +902,36 @@ func TestMemoryFold_Idempotent(t *testing.T) {
 		t.Errorf("the card's topic file became unreachable across the retried fold")
 	}
 	requireNoTempFiles(t, dir5)
+
+	// (iii-b, gate overlay) the content re-check is the LAST step before
+	// each rename: a concurrent update that lands after the temp file is
+	// prepared must abort the rename, and the concurrent update must
+	// survive — the rename may never overwrite it.
+	dir6 := specFixtureCopy(t)
+	memoryFoldSeam = foldTestSeam{mutateDuringWrite: func(storeDir, name string) {
+		if name != "MEMORY.md" {
+			return
+		}
+		data, err := os.ReadFile(filepath.Join(storeDir, name))
+		if err != nil {
+			panic(err)
+		}
+		concurrent := append([]byte(nil), data...)
+		concurrent = append(concurrent, "- [concurrent writer](feedback_alpha.md) — landed mid-apply\n"...)
+		if err := os.WriteFile(filepath.Join(storeDir, name), concurrent, 0o600); err != nil {
+			panic(err)
+		}
+	}}
+	runFoldRefused(t, "--card", "t9001", "--yes", "--dir", dir6)
+	memoryFoldSeam = foldTestSeam{}
+	after6 := foldRead(t, dir6, "MEMORY.md")
+	if !strings.Contains(after6, "- [concurrent writer](feedback_alpha.md) — landed mid-apply") {
+		t.Errorf("(iii-b) the concurrent update did not survive the fold's rename")
+	}
+	if !strings.Contains(after6, line9001) {
+		t.Errorf("(iii-b) the fold removed the planned line despite aborting")
+	}
+	requireNoTempFiles(t, dir6)
 }
 
 // countArchiveLines counts the archive lines carrying the same link-target
