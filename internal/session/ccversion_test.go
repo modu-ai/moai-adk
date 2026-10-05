@@ -180,6 +180,15 @@ func TestVersionSegmentAnchoredToInstallRoot(t *testing.T) {
 		// the real native install root must not shadow it — the native
 		// …/claude/versions/<v> shape outranks the npm shape.
 		"/opt/claude-code/9/tools/claude/versions/2.1.281": "2.1.281",
+		// card-review r2 strength: two candidates of the SAME shape in one
+		// path — the one closest to the path end wins (r1's preference rule,
+		// pinned per shape class). The third case pins the TRAILING
+		// binary-name shape's precedence: it is its own shape, judged before
+		// the product-directory shapes, so …/versions/1.0.0/claude wins over
+		// the earlier …/claude/versions/2.0.0.
+		"/a/claude/versions/1.0.0/mid/claude/versions/2.0.0":        "2.0.0",
+		"/opt/claude-code/1.0.0/x/claude-code/2.0.0/cli":            "2.0.0",
+		"/a/claude/versions/2.0.0/mid/claude/versions/1.0.0/claude": "1.0.0",
 		// The house shapes (unchanged from the unanchored read):
 		"/Users/dev/.local/share/claude/versions/2.1.287":                  "2.1.287",
 		"/opt/node/lib/node_modules/@anthropic-ai/claude-code/2.1.284/cli": "2.1.284",

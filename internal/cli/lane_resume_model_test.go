@@ -206,13 +206,16 @@ func containsResumeRefusal(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "--resume <session-id>")
 }
 
-// TestClaudeHelpReferenceLinesNeverOverwrite (card-review r1, P1) — a
-// flag-prefixed PROSE line inside the help's description columns (here at
-// the shallow option indent, which the synopsis-indent gate admits) is a
-// reference to an option, not its synopsis: once a flag is classified from
-// a real synopsis line, later flag-prefixed lines naming it must not
-// reclassify it — otherwise `--print <format> ...` prose flips --print to
-// required-value and the guard consumes a resume token behind it.
+// TestClaudeHelpReferenceLinesNeverOverwrite (card-review r1, P1; r2
+// strength) — a flag-prefixed PROSE line inside the help's description
+// columns is a reference to an option, not its synopsis: once a flag is
+// classified from a real synopsis line, later flag-prefixed lines naming it
+// must not reclassify it — otherwise `--print <format> ...` prose flips
+// --print to required-value and the guard consumes a resume token behind
+// it. The sweeps cover the synopsis-indent gate's whole admitted range
+// (indent 2 through its 6-space boundary), and the PARSED fixture model is
+// installed as the active model so the guard and validator OUTCOMES are
+// asserted through the walks, not just the classification map.
 func TestClaudeHelpReferenceLinesNeverOverwrite(t *testing.T) {
 	const fixtureReferenceLines = `Claude Code
 
@@ -223,19 +226,44 @@ func TestClaudeHelpReferenceLinesNeverOverwrite(t *testing.T) {
   Notes:
   --print <format> selects the output format
   see --debug <level> for filter syntax
+      --print <format> is also accepted here (six spaces, the gate's boundary)
+    --debug <level> implies --print (four spaces)
 `
 	m := parseClaudeOptionModel(fixtureReferenceLines)
 	if m["--print"] != claudeOptionBoolean {
-		t.Fatalf("--print classified %d, want boolean (the Notes reference line must not reclassify it)", m["--print"])
+		t.Fatalf("--print classified %d, want boolean (no reference line, at any admitted indent, may reclassify it)", m["--print"])
 	}
 	if m["-p"] != claudeOptionBoolean {
 		t.Fatalf("-p classified %d, want boolean", m["-p"])
 	}
 	if m["--debug"] != claudeOptionOptionalValue {
-		t.Fatalf("--debug classified %d, want optional-value (the reference line must not reclassify it)", m["--debug"])
+		t.Fatalf("--debug classified %d, want optional-value (the reference lines must not reclassify it)", m["--debug"])
 	}
+
+	// Install the parsed model: the outcomes below must come from THIS
+	// model through the real walks (r2 strength).
+	saveActiveClaudeOptionModel(t)
+	activeClaudeOptionModel = m
+
+	// Guard: --print is boolean, so the token after it is JUDGED — the
+	// resume carrier behind it fires. A flipped required-value class would
+	// consume the resume and miss.
 	if !carriesResumeToken([]string{"--", "--print", "--resume", "<id>"}) {
 		t.Fatal("the guard missed a resume behind --print — the reference line flipped its class to required-value")
+	}
+	// Guard: --debug is optional-value, so the next token stays judged
+	// (fail-closed) — the resume carrier behind it fires.
+	if !carriesResumeToken([]string{"--", "--debug", "--resume", "<id>"}) {
+		t.Fatal("the guard missed a resume behind --debug — the reference line flipped its class to required-value")
+	}
+	// Validator: a boolean option consumes nothing, so a bare --resume
+	// behind --print refuses; an optional-value option consumes silently,
+	// so the well-formed pair behind --debug passes.
+	if err := validateResumeArgs([]string{"--", "--print", "--resume"}); err == nil {
+		t.Fatal("the validator passed a bare resume behind boolean --print")
+	}
+	if err := validateResumeArgs([]string{"--", "--debug", "--resume", "<id>"}); err != nil {
+		t.Fatalf("ambiguity refused behind --debug: %v", err)
 	}
 }
 
