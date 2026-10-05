@@ -37,7 +37,35 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M0 (prior session, card t1502) — commit `74fdbaaa9`
+
+- The (xi) containment cell written first, verbatim RED captured, then the one-line seam edit (`memory.go:123` `userHomeDir()` → `userHomeDirFn()`). Attributed to the prior session's branch history (`WT-memory-fold-budget`), not re-observed in this session.
+
+### M1 shared core — commit `9edc8361f` (+`8ed5536e7` gofmt)
+
+- RED-first per TDD contract (stub implementation, 11+13 intended-assertion failures, swept counts recorded); GREEN on committed HEAD `9edc8361f`: taxonomy `ok 0.411s` (AC-MFB-013: correct fold PASS, 8 lossy mutants FAIL — five (a)-(c), three (d); threshold boundary at the accessor), config `ok`. windows build exit 0; lint 0 issues; taxonomy coverage 90.4%.
+- Lane verification: `go test -count=1 ./internal/hook/memo/taxonomy/ ./internal/config/` → both `ok`; gofmt fix applied by the lane (`8ed5536e7`).
+
+### M2 doctor — commit `bc00fb8b3`
+
+- G-DOCTOR 5/5 PASS (Measures/TopicCapUnchanged/BudgetBoundaries/BytesProxyWarns/LinkClasses); gate command green both packages. windows build exit 0; lint 0 issues; taxonomy coverage 90.1%.
+- 5 gate-review findings fixed in-round (secondary-index qualification by full path; overflow-replaces-budget-warning shared line count; audit without topic files; fixture newline arithmetic; text-render details for the new codes), each RED-first.
+
+### M3 fold core — commits `fecf5a7eb` + `725e109d9`
+
+- G-FOLD 8/8 PASS; D39 reordered-variant RED (`[d2]` at the multi-line cell) then GREEN. windows build exit 0; lint 0 issues; taxonomy 89.5%, memory_fold.go 89.6% avg/19 funcs.
+- 3 rounds of gate-review findings folded RED-first: retry-path archive re-verification made unconditional (whole-byte expected-archive comparison on every path, not gated on Appended); original permission bits preserved on replace (0600 survives rename); the content re-check moved to the LAST step before each rename (temp-prep window race closed). (iii-b) overlay cell added as the regression seal.
+
+### M4 card-close wiring — commit `1d0983a68`
+
+- AC-MFB-008 cell matrix 12/12 PASS (lane re-run `ok 15.318s`): disabled differential + gate accepted-values table, enabled fold, fail-open absent archive, ordering after queue write, seeded panic, blocked-read FIFO (bound 200ms, fold wait <400ms, store zero-write), gate-off never-opens (3 paths <1s, empty recorder), production bound ∈ [2s,3s], bound constant ==2s ≤5s, M0 (xi) containment unchanged, gate-P1-4 abandoned-step regression.
+- Gate-review findings folded: the three close-path wirings themselves (the gate's first-round core finding — no operational caller existed); FIFO fixtures split build-tagged (unix/windows) reusing mkfifoForTest (windows `go test -c` exit 0); reader/writer deadlock restructured; abandoned-step cancellation propagated to the write path (mutant probe: FIFO-fed data recovery was a weak assertion — rewritten as a 500ms pause-seam between plan and apply before it bit); timing assertion re-bound to the fold wait window (close-path wall clock excluded), `-count=3` stable.
+- Coverage (lane-measured, selector `TestMemoryFold|TestMemoryDoctor|TestMemoryFoldOnDone`, package internal/cli): memory_fold.go per-function — foldOnDoneGateOpen 100%, foldClosedCardMemory 100%, foldOnDoneReport 100%, foldIndexGuard 83.3%, foldOnDoneStep 83.8%, classifier/renderer helpers 80–100%. Package-level 7.2% (diluted — internal/cli is a 200+-file package; the selector exercises the memory surface only).
+- Wiring attribution: one call each in todo.go / todo_autodone.go / todo_auto.go after successful queue mutation, outside the lock (plan §F M4).
+
+### Cross-milestone process note
+
+- M3's final gate-fix commit (`725e109d9`) landed while the M4 delegate was reading in the same tree; the M4 delegate detected the concurrent writer (lsof, PID 93991 = this lane's own session) and stopped with a structured blocker, zero writes. The lane re-verified M3's landing (G-FOLD green on `725e109d9`) before resuming M4 with an all-clear. Lesson recorded in lane memory.
 
 ### M0 — test-containment repair (seam `userHomeDirFn`) — prior session (branch history), not re-measured here
 
