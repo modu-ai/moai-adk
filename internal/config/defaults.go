@@ -942,6 +942,23 @@ func NewDefaultConfig() *Config {
 	}
 }
 
+// DefaultPlanAuditTierCeilings returns the shipped plan_audit_tier_ceilings
+// values ({S:1, M:2, L:3}), mirroring the template harness.yaml verbatim
+// (SPEC-AUDIT-CEILING-002: a project without the keys resolves these).
+func DefaultPlanAuditTierCeilings() map[string]int {
+	return map[string]int{"S": 1, "M": 2, "L": 3}
+}
+
+// DefaultPlanAuditCeilingPolicy returns the shipped plan_audit_ceiling_policy
+// values {AutoDeltaRounds: 1, OnFinalHit: hold-and-split}, mirroring the
+// template harness.yaml verbatim.
+func DefaultPlanAuditCeilingPolicy() PlanAuditCeilingPolicyConfig {
+	return PlanAuditCeilingPolicyConfig{
+		AutoDeltaRounds: 1,
+		OnFinalHit:      PlanAuditCeilingOnFinalHoldAndSplit,
+	}
+}
+
 // NewDefaultFeedbackConfig returns a FeedbackConfig whose target repository is
 // the default tool feedback channel (DefaultFeedbackRepository). An absent
 // feedback.yaml therefore still resolves to the tool channel.
