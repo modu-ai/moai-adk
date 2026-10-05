@@ -35,7 +35,7 @@ Document-level tree pin: **`a158b4b5f`** (verified via `git rev-parse --short HE
 | E4 | Checks-lookup failure/empty output yields `should_merge=true` (auto-merge.yml:91-129 loop: `2>&1` capture + `\|\| true`, merge decision only from FAILED>0 / PENDING==0) — body extracted from the LIVE workflow at run time; stub at `repro/stubbin/gh` | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-checks-loop.sh` | verbatim block L-E4 | 0 | a158b4b5f |
 | E5 | Job budget 20 min vs internal waits 10+15=25 min | `grep -n 'timeout-minutes\|MAX_WAIT' .github/workflows/auto-merge.yml` | verbatim block L-E5 (7 lines, full) | 0 | a158b4b5f |
 | E6 | Install summary never tests `cancelled` | `grep -c 'cancelled' .github/workflows/test-install.yml` | `0` | 1 | a158b4b5f |
-| E7 | Summary rejects only `failure` — three-variant input matrix (P2-I): A full-success control exit 0 (legitimate); B `test-sh=cancelled` + parity success → exit 0 (a cancelled dependency is invisible); C `install-script-parity=cancelled` + test-sh success → exit 0 (parity is not even a dependency pre-M1). The all-cancelled single input cannot catch partial-dependency mutants; the matrix does — body extracted from the LIVE workflow at run time | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-install-summary-cancelled.sh` | verbatim block L-E7 (matrix, 3 variant exits) | 0 | a158b4b5f |
+| E7 | Summary rejects only `failure` — FULL per-dependency matrix (P2-I + leader addendum): the control plus EVERY dependency in the needs set flipped one at a time to EACH of `cancelled`/`timed_out`/`skipped` (6 × 3 = 18 single-failure cases). Pre-repair: control exit 0 legitimately, all 18 exit 0 — every non-success conclusion is invisible (and parity is not even a dependency). A partial-dependency mutant (checking only test-sh+parity) survives the old all-cancelled input but fails this matrix; body extracted from the LIVE workflow at run time | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-install-summary-cancelled.sh` | verbatim block L-E7 (matrix, 19 case exits) | 0 | a158b4b5f |
 | E8 | Summary `needs` list (line 338) omits the `install-script-parity` job (defined at line 48) | `grep -n 'install-script-parity\|needs: \[' .github/workflows/test-install.yml` | verbatim block L-E8 | 0 | a158b4b5f |
 | E9 | Required-feature probes print a missing marker but cannot fail (grep -q && echo ✓ \|\| echo ✗) — and the :309 install.sh probe's target is stale (E19) | `grep -n 'MOAI_INSTALL_DIR' .github/workflows/test-install.yml` | verbatim block L-E9 | 0 | a158b4b5f |
 | E10 | Validator with yq absent from PATH: vacuous pass, exit 0 (get_yaml_list `2>/dev/null \|\| true` at :28 swallows the missing parser; empty lists skip every dimension) | `env PATH=/usr/bin:/bin sh scripts/ci-mirror/validate-required-checks.sh` | verbatim block L-E10 | 0 | a158b4b5f |
@@ -49,11 +49,11 @@ Document-level tree pin: **`a158b4b5f`** (verified via `git rev-parse --short HE
 | E18 | actionlint baseline on the five in-scope workflows | `actionlint -color=false -shellcheck= .github/workflows/release-pr-multi-os.yml .github/workflows/auto-merge.yml .github/workflows/test-install.yml .github/workflows/ci.yml .github/workflows/codeql.yml` | (no output) | 0 | a158b4b5f |
 | E19 | install.sh implements NO `MOAI_INSTALL_DIR` — the test-install.yml:309 probe targets a feature the script cannot express (stale probe; hard-checking it as-is would fail every install, the impossible direction). Real surface: `--install-dir` (:354), `-h\|--help` (:358-364), darwin/linux detection (:37-41) | `grep -c 'MOAI_INSTALL_DIR' install.sh` | `0` | 1 | a158b4b5f |
 | E20 | install.ps1 DOES implement `MOAI_INSTALL_DIR` (env read at :307-308, set at :460) plus `IsWindows` (:287/:306) and `GetTempPath` (:221) — the :317 probe is live and stays | `grep -c 'MOAI_INSTALL_DIR' install.ps1` | `3` | 0 | a158b4b5f |
-| E21 | All three producing workflows restrict their pull_request triggers to `branches: [main]` — no corrected context (nor any Lint/Test/Build/Gate context) publishes on a release-targeting PR; grounds the decision-index Q1 resolution (release/* list = published-only → empty; trigger expansion out via t1536). Raw stdout recorded byte-faithfully from this shell (BSD grep): file order as captured, no `--` separator lines — GNU-grep environments may order args and emit separators differently; the anchor facts are identical | `grep -n -A3 'pull_request:' .github/workflows/ci.yml .github/workflows/codeql.yml .github/workflows/release-pr-multi-os.yml` | verbatim block L-E21 (12 lines, raw) | 0 | a158b4b5f |
+| E21 | All three producing workflows restrict their pull_request triggers to `branches: [main]` — no corrected context (nor any Lint/Test/Build/Gate context) publishes on a release-targeting PR; grounds the decision-index Q1 resolution (release/* list = published-only → empty; trigger expansion out via t1536). Measurement environment (corrected at amendment 5): this shell's grep is **ugrep 7.8.4 aarch64-apple-macosx**, which printed 12 lines in codeql→release→ci order with NO `--` separator lines; the auditor's **BSD grep 2.6.0-FreeBSD** yields 14 lines (ci→codeql→release, with `--` separators) — both are real outputs of the same command; the anchor facts are identical in both | `grep -n -A3 'pull_request:' .github/workflows/ci.yml .github/workflows/codeql.yml .github/workflows/release-pr-multi-os.yml` | verbatim block L-E21 (12 lines, raw, ugrep 7.8.4) | 0 | a158b4b5f |
 | E22 | Healthy-input positive control: validator with yq present against the repo's real SSoT — every dimension executes on real content and passes (baseline for AC-CI-010's two-directional form; an always-fail mutant fails this) | `sh scripts/ci-mirror/validate-required-checks.sh` | verbatim block L-E22 | 0 | a158b4b5f |
 | E23 | AC-CI-009 RED-now: the keep-set apply package does not exist yet on this tree (flips when run-phase delivers `.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md`) | `test -e .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` | (no output — file absent) | 1 | a158b4b5f |
-| E24 | Validator against a VALID-YAML SSoT carrying a phantom required context (`Test (windows-latest)`, committed fixture `repro/phantom/`): silent pass, exit 0 — no dimension inspects required-context publishability (grounds AC-CI-011; a parser-handling-only repair does not flip this). Fixture now mirrors a real producing tree: its workflow set publishes every LEGIT required name (`Lint` via `repro/phantom/.github/workflows/ci.yml`), so post-M2 the phantom alone is the discriminator | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom.sh` | verbatim block L-E24 | 0 | a158b4b5f |
-| E26 | Deadline-absence probe (AC-CI-005 mutant record; auditor iteration-2 shape): the LIVE merge-step `if:` condition (folded scalar, extracted at run time) references NO deadline term, and with all three guard outputs true the merge proceeds at `merge_at = declared_deadline + 1` — exit 0 | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-deadline-mutant.sh` | verbatim block L-E26 | 0 | a158b4b5f |
+| E24 | Validator against a VALID-YAML SSoT carrying a phantom required context (`Test (windows-latest)`, committed fixture `repro/phantom/`): silent pass, exit 0 — no dimension inspects required-context publishability (grounds AC-CI-011; a parser-handling-only repair does not flip this). Fixture mirrors a real producing tree: its workflow set publishes every LEGIT required name (`Lint` AND `Test (ubuntu-latest)` — leader repair P1-1 added the second publisher), so post-M2 the phantom alone is the discriminator | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom.sh` | verbatim block L-E24 | 0 | a158b4b5f |
+| E26 | Deadline-absence probe, BEHAVIORAL form (AC-CI-005 mutant record; leader repair P1-2 replaces the string-presence branch the reviewers' mutants fooled): extracts the LIVE merge-step condition (folded scalar), maps the three known output terms to shell tests, exposes `deadline`/`current_time` clock inputs, and requires BOTH observed decisions — pre-deadline (current_time=1000) must PROCEED, post-deadline (current_time=1200) must HOLD. Current tree: both proceed → exit 0 (RED). Post-M1: post-deadline held → exit 2 (flip); a guard blocking pre-deadline or yielding neither pair → exit 3 (loud, never a pass). Verified against both reviewer mutants — `&& 'deadline' == 'deadline'` and `&& false` each yield held/held → not counted as repaired | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-deadline-mutant.sh` | verbatim block L-E26 | 0 | a158b4b5f |
 | E27 | Positive control for E24: the SAME fixture tree with the phantom context replaced by the genuinely published `Test (ubuntu-latest)` (ledger E13) — vacuous pass, exit 0 pre-repair; post-M2 it must REMAIN exit 0 while E24 flips, which only a context-reading publishability dimension achieves | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom-control.sh` | verbatim block L-E27 | 0 | a158b4b5f |
 | E25 | `gh pr checks` documents exit code 8 = "Checks pending" (line 10 of the help stdout; verbatim block L-E25) — the ground for REQ-CI-013's pending classification: a watch that treats every non-zero gh exit as fatal terminates during normal CI runs, when checks are legitimately pending | `gh pr checks --help` | verbatim block L-E25 (39 lines, quoted in full) | 0 | a158b4b5f |
 
@@ -82,34 +82,26 @@ L-E5  | grep -n 'timeout-minutes\|MAX_WAIT' .github/workflows/auto-merge.yml
 171:              *)                echo "CodeRabbit status: '${STATE:-<absent>}' - waiting ($WAIT/$MAX_WAIT)" ;;
 
 L-E7  | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-install-summary-cancelled.sh
-E7 input matrix (Actions default shell: bash -e -o pipefail):
-=== Test Results Summary ===
-test-sh: success
-test-ps1-pwsh: success
-test-ps1-powershell: success
-test-bat: success
-compatibility-check: success
-
-✅ All tests passed!
+E7 input matrix (Actions default shell: bash -e -o pipefail; 1 control + 18 single-failure cases):
 variant A-full-success: exit 0
-=== Test Results Summary ===
-test-sh: cancelled
-test-ps1-pwsh: success
-test-ps1-powershell: success
-test-bat: success
-compatibility-check: success
-
-✅ All tests passed!
-variant B-test-sh-cancelled-parity-success: exit 0
-=== Test Results Summary ===
-test-sh: success
-test-ps1-pwsh: success
-test-ps1-powershell: success
-test-bat: success
-compatibility-check: success
-
-✅ All tests passed!
-variant C-parity-cancelled-test-sh-success: exit 0
+variant test-sh-cancelled: exit 0
+variant test-sh-timed_out: exit 0
+variant test-sh-skipped: exit 0
+variant test-ps1-pwsh-cancelled: exit 0
+variant test-ps1-pwsh-timed_out: exit 0
+variant test-ps1-pwsh-skipped: exit 0
+variant test-ps1-powershell-cancelled: exit 0
+variant test-ps1-powershell-timed_out: exit 0
+variant test-ps1-powershell-skipped: exit 0
+variant test-bat-cancelled: exit 0
+variant test-bat-timed_out: exit 0
+variant test-bat-skipped: exit 0
+variant compatibility-check-cancelled: exit 0
+variant compatibility-check-timed_out: exit 0
+variant compatibility-check-skipped: exit 0
+variant install-script-parity-cancelled: exit 0
+variant install-script-parity-timed_out: exit 0
+variant install-script-parity-skipped: exit 0
 
 L-E8  | grep -n 'install-script-parity\|needs: \[' .github/workflows/test-install.yml
 48:  install-script-parity:
@@ -280,8 +272,9 @@ merge-step condition (extracted):
 steps.checks.outputs.should_merge == 'true' &&
 steps.head.outputs.ok == 'true' &&
 steps.coderabbit.outputs.ok == 'true'
-condition references a deadline: NO
-merge proceeds at merge_at=1141 (declared_deadline=1140) — deadline never evaluated
+pre-deadline  (current_time=1000): MERGE_PROCEEDS
+post-deadline (current_time=1200): MERGE_PROCEEDS
+DEFECT: merge proceeds at merge_at=1141 (declared_deadline=1140) — deadline never evaluated
 
 L-E27 | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom-control.sh
 === Dimension A: Validating auxiliary → workflow name mapping ===
@@ -327,7 +320,7 @@ Manager-develop reports per manager-develop-prompt-template §E with the attribu
 - E1 matrix: AC-CI-001..AC-CI-014 PASS/FAIL, each citing the flipped RED cell (plan §B) and the new green output.
 - E2 build: `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
 - E3 tests: `go test -timeout 30m ./internal/template/...` (parity + any new guard test) and `sh scripts/ci-watch/test/run_test.sh`, verbatim outputs.
-- E4 gate surfaces: actionlint clean on touched workflows; the committed repro/ probes (E2/E4/E7/E11/E24) re-run against the REPAIRED tree and flip to their green expectations; E22 (healthy pass) stays exit 0; ci-watch E12's rejected field list now validates.
+- E4 gate surfaces: actionlint clean on touched workflows; the committed repro/ probes (E2/E4/E7/E11/E24/E26/E27) re-run against the REPAIRED tree and flip to their green expectations — E2 gate fails a cancelled matrix, E4 withholds on lookup failure, E7's control stays exit 0 while ALL 18 single-failure variants exit non-zero, E10/E11/E24 exit non-zero; E22/E27 (healthy + control) stay exit 0; E26 flips to exit 2 (post-deadline held); ci-watch E12's rejected field list now validates.
 - E5 keep-set package: `.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` delivered (flips E23); the operator-executed apply commands + GET read-back pasted into `.moai/reports/t1534/` after the operator window.
 - E6 scope proof: `git status --short` showing only in-scope files; `git diff --stat` confirming `internal/template/templates/**` untouched.
 - E7 blockers, if any (structured, never user-prompted).

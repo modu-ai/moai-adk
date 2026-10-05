@@ -51,8 +51,8 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 - **Given** the test-install summary job and its dependency set,
 - **When** any needed job — `install-script-parity` included — concludes `cancelled`, `timed_out`, or `skipped`,
 - **Then** the summary exits non-zero; it prints "All tests passed" only when every need concluded `success`.
-- RED: E6 (no `cancelled` handling, exit 1) + E7 (three-variant matrix, all exit 0 pre-repair: A full-success control legitimately; B `test-sh=cancelled` — a cancelled dependency is invisible; C `install-script-parity=cancelled` — parity is not even a dependency; the single all-cancelled input cannot catch partial-dependency mutants, the per-dependency matrix does) + E8 (needs list at :338 omits the job defined at :48).
-- Green path: M1 — E7 re-run: variant A stays exit 0; variants B and C exit non-zero (every non-success dependency result fails the summary, parity included); E8's grep shows parity in the needs list.
+- RED: E6 (no `cancelled` handling, exit 1) + E7 (FULL per-dependency matrix — 1 control + 18 single-failure cases, every need × each of `cancelled`/`timed_out`/`skipped`: the control exits 0 legitimately and ALL 18 exit 0 pre-repair, because only `failure` is rejected — every non-success conclusion is invisible, and parity is not even a dependency; the old all-cancelled single input passes a partial-dependency mutant checking only test-sh+parity, the per-dependency matrix does not) + E8 (needs list at :338 omits the job defined at :48).
+- Green path: M1 — E7 re-run: the control stays exit 0; all 18 single-failure variants exit non-zero (every non-success dependency result fails the summary, parity included, timed_out and skipped included); E8's grep shows parity in the needs list.
 
 ### AC-CI-007 — A missing required install feature fails the compatibility step (RB; maps REQ-CI-007)
 
@@ -92,7 +92,7 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 - **When** the validator runs,
 - **Then** it verifies each required context against the check names the pull_request-triggered workflows deterministically publish (derived from workflow `name:` fields and matrix values), and fails naming any context that no workflow can publish on that branch's PRs.
 - RED: E24 — a VALID-YAML SSoT carrying a phantom required context (`Test (windows-latest)`) passes silently, exit 0 (committed fixture `repro/phantom/`): no dimension inspects `branches.*.contexts` for publishability, so this observation is red because the publishability dimension itself is missing — a parser-handling-only repair (fixing E10/E11) leaves E24 red, which is exactly why the phantom is the right RED for this criterion and E10/E11 are not. (E10/E11 remain AC-CI-010's parser-direction RED.)
-- Green path: M2 — E24 re-run on the repaired validator → non-zero naming the phantom context; E22 (healthy SSoT) → still exit 0.
+- Green path: M2 — E24 re-run on the repaired validator → non-zero naming the phantom context; E27 (positive control: identical tree, context swapped to the published `Test (ubuntu-latest)`) → STILL exit 0 — the pair is the two-directional requirement, because a context-blind implementation cannot separate the two fixtures; E22 (healthy SSoT) → still exit 0.
 
 ### AC-CI-012 — Detect filter covers the parity test's input + correspondence guard (RB; maps REQ-CI-011)
 
@@ -106,7 +106,7 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 
 - **Given** the installed gh CLI's published `pr checks` field set (E12: `name, state, bucket, link, …`),
 - **When** the ci-watch loop polls,
-- **Then** it requests only supported fields — the repaired poll command is `gh pr checks <PR> --json name,state,bucket,link`, which validates against the CLI (no field error, unlike E12's rejected `name,status,conclusion,detailsUrl` list) — processes the response as one JSON array, classifies each check by `bucket`, and exits non-zero on any gh failure — a fetch failure is never read as all-pass.
+- **Then** it requests only supported fields — the repaired poll command is `gh pr checks <PR> --json name,state,bucket,link`, which validates against the CLI (no field error, unlike E12's rejected `name,status,conclusion,detailsUrl` list) — processes the response as one JSON array, classifies each check by `bucket`, and exits non-zero on any NON-8 non-zero gh failure — a fetch failure is never read as all-pass. The pending signal (exit 8 with a valid JSON body, E25) classifies as pending and continues the wait.
 - RED: E12 (`Unknown JSON field: "status"` on stderr, stdout empty, exit 1) — every poll aborts before any classification.
 - Green path: M3 — the repaired field list `name,state,bucket,link` validates against the CLI (E12's rerun with THAT list is the flip probe: no field error, exit per the PR's real state) and the loop classifies a real PR read-only. The unrepaired list still exits 1 — the criterion flips only when the repair lands.
 

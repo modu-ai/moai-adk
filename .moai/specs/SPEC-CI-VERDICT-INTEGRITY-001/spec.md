@@ -57,7 +57,7 @@ Problem statement: five CI verdict surfaces misjudge failure-class results as su
 
 ### M3 — ci-watch verdict integrity
 
-- **REQ-CI-012** — The ci-watch poll shall request only check-run fields the installed gh CLI supports for `pr checks` (`name`, `state`, `bucket`, `link`), shall process the response as one JSON array, and shall classify each check by its `bucket` value; a field-validation rejection or any other gh failure shall exit non-zero and shall never be read as an all-pass signal.
+- **REQ-CI-012** — The ci-watch poll shall request only check-run fields the installed gh CLI supports for `pr checks` (`name`, `state`, `bucket`, `link`), shall process the response as one JSON array, and shall classify each check by its `bucket` value; a field-validation rejection or any other gh failure shall exit non-zero and shall never be read as an all-pass signal — except the pending signal of REQ-CI-013 (exit code 8 with a valid JSON body), which classifies as pending and continues the wait.
 
 - **REQ-CI-013** — **When** the ci-watch loop classifies a poll tick, it shall determine required checks from the SSoT required list for the PR's base branch (the existing `is_required` classifier), shall count an expected required check that is absent from the poll response as pending, and shall iterate check names without splitting them on whitespace. The loop shall classify the gh CLI's pending signal — exit code 8 ("Checks pending", per `gh pr checks --help`; ledger E25) accompanied by a valid JSON body — as the pending state and continue waiting; only a non-8 non-zero exit is a fatal error.
 

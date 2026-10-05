@@ -11,3 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: "true"
+  # Publishes the second legit required context (`Test (ubuntu-latest)`) —
+  # identical to the phantom fixture's copy; the trees differ ONLY in the SSoT
+  # context value (leader-sanctioned post-ceiling repair, P1-1).
+  test-ubuntu:
+    name: Test (ubuntu-latest)
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"
