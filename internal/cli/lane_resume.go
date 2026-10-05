@@ -3,6 +3,15 @@
 // (REQ-SCV-008), the valueless-token validation (REQ-SCV-009), and the token
 // detector the relaunch guard judges (REQ-SCV-010's dual-spelling clause).
 //
+// Since SPEC-SESSION-CC-VERSION-002 the two interpreters read the child
+// argv as TWO SEGMENTS (REQ-SCV-011) through the claude option model of
+// REQ-SCV-012 (lane_resume_model.go): the launcher segment before MoAI's
+// `--`, the claude segment after it, and everything after Claude's own
+// second `--` is prompt text. The predecessor's three hand-synced value
+// tables are gone — the claude side is the derived model with its
+// compile-time snapshot fallback, and the launcher side is the repo-owned
+// launcherSegmentValueFlags surface.
+//
 // The emergency form is the bare lane join `moai cc -l -- --resume
 // <session-id>`: the entry parse desugars -l into the injected --name pair,
 // the pass-through tokens survive into the child argv, and the launcher adds
@@ -39,62 +48,18 @@ const (
 // valueless, and the tokens after the `--` are prompt text.
 const argSeparator = "--"
 
-// claudeValueTakingOptions is the set of CLAUDE's options whose value-ness
-// is DEFINITIVE: their synopsis marks a REQUIRED value (<value>), and the
-// measured parser consumes the next token as that value even when it is
-// flag-shaped (reviewer-verified for --append-system-prompt, card-review
-// round 2). Measured from `claude --help` (Claude Code 2.1.289,
-// /Users/<u>/.local/bin/claude -> …/versions/2.1.289, 2026-10-04).
-// `--resume`/`-r` are value-taking too but are special-cased before this
-// table (REQ-SCV-009's own value check).
-//
-// @MX:DEBT: required-value table may lag claude's option surface — r5 found --remote-control-session-name-prefix (required in 2.1.289) missing, so a legit call whose prefix value is literally "--resume" is falsely refused (validator + guard)
-// @MX:CEILING: table hand-synced to claude 2.1.289 --help as of 2026-10-05; unknown later options repeat this class
-// @MX:UPGRADE: t1515 — replace the hand-rolled scan with a real argv parse or spawn-time resume detection
-var claudeValueTakingOptions = map[string]bool{
-	// Claude Code 2.1.289, required <value> synopses (measured):
-	"--add-dir": true, "--agent": true, "--agents": true,
-	"--allowedTools": true, "--allowed-tools": true,
-	"--append-system-prompt": true, "--autocompact": true, "--betas": true,
-	"--debug-file": true, "--disallowedTools": true, "--disallowed-tools": true,
-	"--effort": true, "--environment": true, "--fallback-model": true,
-	"--file": true, "--input-format": true, "--json-schema": true,
-	"--max-budget-usd": true, "--mcp-config": true, "--model": true,
-	"--name": true, "-n": true, "--output-format": true,
-	"--permission-mode": true, "--permission-prompts": true,
-	"--plugin-dir": true, "--plugin-url": true, "--session-id": true,
-	"--setting-sources": true, "--settings": true, "--system-prompt": true,
-	"--system-prompt-snapshot": true, "--tools": true,
-}
-
-// launcherValueTakingOptions is the LAUNCHER's own value-taking flags — they
-// consume a value ONLY in the pre-separator segment (card-review round 4,
-// P2): after MoAI's `--` the argv belongs to claude, where `-p` is the
-// boolean --print, not the value-taking --profile, and none of these flags
-// exist — letting them consume there manufactured a phantom value that
-// shielded a valueless --resume. Measured from the launcher's own parsers
-// (parseProfileFlag refuses a flag-shaped value, parseFactoryFlag likewise;
-// both error before any launch).
-var launcherValueTakingOptions = map[string]bool{
+// launcherSegmentValueFlags is the LAUNCHER's own value-taking surface —
+// decided by the launcher's own parsers (parseProfileFlag refuses a
+// flag-shaped value, parseFactoryFlag likewise; both error before any
+// launch), so it is repo-owned and not drift-prone the way a hand-synced
+// claude table was. Its flags consume a value ONLY in the pre-separator
+// segment (card-review round 4, P2): after MoAI's `--` the argv belongs to
+// claude, where `-p` is the boolean --print, not the value-taking --profile,
+// and none of these flags exist — letting them consume there manufactured a
+// phantom value that shielded a valueless --resume.
+var launcherSegmentValueFlags = map[string]bool{
 	"-p": true, "--profile": true, "--branch": true, "--factory-run": true,
 	"--leader": true, "--clear-policy": true, "-m": true,
-}
-
-// ambiguousValueOptions is the OPTIONAL-value class ([value] in the same
-// measured help): their parser refuses to consume a flag-shaped token as the
-// value, so whether the next token is a value or a real option DEPENDS on
-// its shape — the scanner cannot definitively interpret it. The two modes
-// resolve the ambiguity in opposite directions (card-review round 3, leader
-// ruling): the GUARD is fail-closed and judges the next token (an ambiguous
-// option followed by a resume-shaped token fires — `-w --resume <id>` cannot
-// be proven not to resume), while the VALIDATOR never refuses on ambiguity
-// and passes the next token silently. `-w`/`--worktree` sit here: claude's
-// own synopsis marks it [name], and launcher-side the worktree parsers
-// refuse a flag-shaped value the same way.
-var ambiguousValueOptions = map[string]bool{
-	"--cloud": true, "-d": true, "--debug": true, "--from-pr": true,
-	"--prompt-suggestions": true, "--remote-control": true, "--teleport": true,
-	"-w": true, "--worktree": true,
 }
 
 // isShortClusterCarryingR reports whether a token is a short-option cluster
@@ -145,64 +110,119 @@ func laneJoinChildArgv(launcherArgs []string, sessionName string, settingsFlag [
 // and the equals form with an empty value. A space-form token followed by
 // another flag is refused too — a session id never begins with "-", so a
 // flag there means the value is missing (and claude would otherwise consume
-// that flag as the value). The walk consumes the values of DEFINITIVE
-// value-taking options and passes AMBIGUOUS ones silently — ambiguity never
-// refuses (round 3 leader ruling); the only refusal stays the definitive
-// valueless resume. Interpretation splits at MoAI's separator (round 4): the
-// launcher's value flags consume only BEFORE it — after it the argv belongs
-// to claude, where they do not exist. A `--` is never consumed as an
-// option's value: it counts as the separator instead, and the scan stops at
-// Claude's separator. It returns nil when every resume token carries a value.
+// that flag as the value). The validator's polarity (REQ-SCV-013): a
+// required-value option's next token is consumed in both modes, an
+// optional-value option's next token is consumed silently (ambiguity never
+// refuses), and a boolean or unknown token consumes nothing — the only
+// refusal stays the definitive valueless resume. Interpretation splits at
+// MoAI's separator (round 4): the launcher's value flags consume only BEFORE
+// it — after it the argv belongs to claude, where they do not exist. A `--`
+// is never consumed as an option's value: it counts as the separator
+// instead, and the scan stops at Claude's separator. It returns nil when
+// every resume token carries a value.
 func validateResumeArgs(args []string) error {
-	separators := 0
-	for i := 0; i < len(args); i++ {
-		if args[i] == argSeparator {
-			separators++
-			if separators >= 2 {
-				return nil // Claude's separator: everything after is prompt text
-			}
-			continue
-		}
-		if args[i] == resumeFlag || args[i] == resumeFlagShort {
-			if i+1 >= len(args) || !resumeValuePlausible(args[i+1]) {
-				return errors.New(resumeRequiresValueError)
-			}
-			i++ // the value is consumed; a later resume token is judged on its own
-			continue
-		}
-		if value, isEquals := resumeEqualsValue(args[i]); isEquals {
-			if value == "" {
-				return errors.New(resumeRequiresValueError)
-			}
-			continue // a non-empty equals form is self-contained
-		}
-		if isShortClusterCarryingR(args[i]) {
-			// The cluster's r-segment carries its value attached, or the
-			// shape is genuinely ambiguous — never a refusal here.
-			continue
-		}
-		if takesValueInSegment(args[i], separators == 0) {
-			// Definitive: the next token is the value. Ambiguous: it MIGHT be
-			// the value, and ambiguity never refuses. Either way it is passed
-			// silently — unless it is the separator, which is never a value.
-			if i+1 < len(args) && args[i+1] != argSeparator {
-				i++
-			}
-		}
+	if _, valueless := scanResumeArgs(args, false); valueless {
+		return errors.New(resumeRequiresValueError)
 	}
 	return nil
 }
 
-// takesValueInSegment reports whether the token consumes the next token as
-// its value in the current segment: interpretation splits at MoAI's
-// separator (round 4) — claude's options take values everywhere they appear,
-// the launcher's value flags only before the separator (after it the argv
-// belongs to claude, where they do not exist).
-func takesValueInSegment(arg string, preSeparator bool) bool {
-	if claudeValueTakingOptions[arg] || ambiguousValueOptions[arg] {
-		return true
+// carriesResumeToken reports whether args contain a resume carrier before
+// Claude's argument separator. The guard is FAIL-CLOSED on everything the
+// model does not definitively interpret (card-review round 3, leader
+// ruling): a short-option cluster whose body carries an `r` (the attached
+// `-r<uuid>` and clusters like `-pr<uuid>` all resume), and the token after
+// an optional-value, boolean, or unknown option (`-w --resume <id>` cannot
+// be proven not to resume, so it fires). What IS definitive skips: the value
+// after a required-value option (a system prompt that MENTIONS --resume is
+// prompt text, not a resume), and everything after Claude's own argument
+// separator. A `--` is never consumed as an option's value — it counts as
+// the separator.
+func carriesResumeToken(args []string) bool {
+	carrier, _ := scanResumeArgs(args, true)
+	return carrier
+}
+
+// scanResumeArgs is the single two-segment walk behind both interpreters
+// (REQ-SCV-011): one pass over the argv, in one of the two polarities. The
+// guard polarity (guard=true) is fail-closed — only a model-known
+// required-value option (and, pre-separator, a launcher-owned value flag)
+// shields the token after it. The validator polarity consumes the optional-
+// value option's next token silently and records the valueless resume
+// instead of refusing inline, so one walk serves both refusals and
+// detections. It reports whether a resume carrier was seen and whether a
+// definitive valueless resume token stands before Claude's separator.
+func scanResumeArgs(args []string, guard bool) (carrier, valuelessResume bool) {
+	seen := false
+	valueless := false
+	separators := 0
+	moaiSeparated := false
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == argSeparator {
+			separators++
+			if separators >= 2 {
+				return seen, valueless // Claude's separator: everything after is prompt text
+			}
+			moaiSeparated = true
+			continue
+		}
+		if arg == resumeFlag || arg == resumeFlagShort {
+			seen = true
+			if i+1 >= len(args) || !resumeValuePlausible(args[i+1]) {
+				valueless = true // the definitive valueless resume; a later token is judged on its own
+				continue
+			}
+			i++ // the value is consumed, not judged
+			continue
+		}
+		if value, isEquals := resumeEqualsValue(arg); isEquals {
+			seen = true
+			if value == "" {
+				valueless = true
+			}
+			continue // a non-empty equals form is self-contained
+		}
+		if isShortClusterCarryingR(arg) {
+			// The cluster's r-segment carries its value attached, or the shape
+			// is genuinely ambiguous: the guard is fail-closed and fires; the
+			// validator never refuses on the shape.
+			if guard {
+				seen = true
+			}
+			continue
+		}
+		switch segmentClass(arg, !moaiSeparated) {
+		case claudeOptionRequiredValue:
+			// Definitive: the next token is the value, in both modes — unless
+			// it is the separator, which is never a value.
+			if i+1 < len(args) && args[i+1] != argSeparator {
+				i++
+			}
+		case claudeOptionOptionalValue:
+			if !guard && i+1 < len(args) && args[i+1] != argSeparator {
+				i++ // the validator consumes silently — ambiguity never refuses
+			}
+			// The guard judges the token after it: fail-closed.
+		}
+		// Boolean or unknown: nothing is consumed — both modes judge the
+		// next token (the guard fires on an unprovable carrier; the
+		// validator refuses a bare resume).
 	}
-	return preSeparator && launcherValueTakingOptions[arg]
+	return seen, valueless
+}
+
+// segmentClass classifies a non-resume token in its segment. Before MoAI's
+// separator the launcher-owned value flags take precedence — there they are
+// the launcher's own parsers' surface, whatever claude would make of the
+// spelling (`-p` is the profile flag launcher-side and the boolean --print
+// claude-side). After it the launcher's flags do not exist and the token
+// reads the claude option model alone.
+func segmentClass(arg string, preSeparator bool) claudeOptionClass {
+	if preSeparator && launcherSegmentValueFlags[arg] {
+		return claudeOptionRequiredValue
+	}
+	return activeClaudeOptionModel[arg]
 }
 
 // resumeEqualsValue reports the value a `--resume=`/`-r=`-prefixed token
@@ -221,52 +241,4 @@ func resumeEqualsValue(arg string) (value string, ok bool) {
 // can be its value.
 func resumeValuePlausible(token string) bool {
 	return token != "" && !strings.HasPrefix(token, "-")
-}
-
-// carriesResumeToken reports whether args contain a resume carrier before
-// Claude's argument separator. The guard is FAIL-CLOSED on everything the
-// scanner cannot definitively interpret (card-review round 3, leader
-// ruling): a short-option cluster whose body carries an `r` (the attached
-// `-r<uuid>` and clusters like `-pr<uuid>` all resume), and the token after
-// an AMBIGUOUS value option (`-w --resume <id>` cannot be proven not to
-// resume, so it fires). What IS definitive skips: the value after a
-// required-value option (a system prompt that MENTIONS --resume is prompt
-// text, not a resume), and everything after Claude's own argument separator.
-// A `--` is never consumed as an option's value — it counts as the
-// separator.
-func carriesResumeToken(args []string) bool {
-	seen := false
-	separators := 0
-	for i := 0; i < len(args); i++ {
-		if args[i] == argSeparator {
-			separators++
-			if separators >= 2 {
-				return seen // Claude's separator stops the scan
-			}
-			continue
-		}
-		switch {
-		case args[i] == resumeFlag || args[i] == resumeFlagShort:
-			seen = true
-			if i+1 < len(args) && args[i+1] != argSeparator {
-				i++ // its value is consumed, not judged
-			}
-			continue
-		case strings.HasPrefix(args[i], resumeFlag+"="):
-			seen = true
-			continue
-		case isShortClusterCarryingR(args[i]):
-			seen = true // fail-closed: the cluster may carry `-r` with an attached value
-			continue
-		}
-		if ambiguousValueOptions[args[i]] {
-			// Fail-closed: the next token stays JUDGED — this is the
-			// validator's mirror (round 3 ruling).
-			continue
-		}
-		if takesValueInSegment(args[i], separators == 0) && i+1 < len(args) && args[i+1] != argSeparator {
-			i++ // definitive value: never judged, never a separator
-		}
-	}
-	return seen
 }

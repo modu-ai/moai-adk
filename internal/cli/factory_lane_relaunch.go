@@ -56,6 +56,11 @@ var (
 // the same shared gate; an explicit selection that retires stops the loop.
 // @MX:SPEC: SPEC-FACTORY-STALE-RUN-HEAL-001
 func runFactoryLaneRelaunch(cmd *cobra.Command, label string, claudeArgs []string, explicit, leadTarget string) error {
+	// REQ-SCV-012 (SPEC-SESSION-CC-VERSION-002): derive the claude option
+	// model once per process from the binary on PATH before the guard scans;
+	// a derivation failure degrades silently to the snapshot and the scan
+	// below stays a pure argv walk over package state.
+	refreshActiveClaudeOptionModel()
 	// REQ-SCV-010 (SPEC-SESSION-CC-VERSION-001): the guard runs before the
 	// parent-checkout assertion and the loop's first iteration — a --resume
 	// token under the relaunch policy cannot mean what it says (every card

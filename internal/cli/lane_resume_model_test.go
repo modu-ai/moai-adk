@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -112,4 +113,90 @@ func TestClaudeOptionModelDerivation(t *testing.T) {
 			t.Fatalf("active model swapped to an empty parse: %v", activeClaudeOptionModel)
 		}
 	})
+}
+
+// TestOptionModelPolarityDefaults (AC-SCV-013, REQ-SCV-013) — the guard and
+// the validator classify tokens through the one model with opposite safe
+// defaults, one subtest per cell of the class × mode matrix. The probe is a
+// novel option the fixture invents: whether it shields the token after it is
+// decided by the MODEL CLASS, never by the token shape (plan.md §A.3 — no
+// shape-only rule separates `--profile` from `-w`).
+func TestOptionModelPolarityDefaults(t *testing.T) {
+	const probe = "--t1515-probe"
+
+	t.Run("guard, unknown option, fires (fail-closed)", func(t *testing.T) {
+		saveActiveClaudeOptionModel(t)
+		activeClaudeOptionModel = claudeOptionModel{} // the probe is absent
+		if !carriesResumeToken([]string{"--name", "lane-3", "--", probe, "--resume", "<id>"}) {
+			t.Fatal("the guard did not judge the token after the unknown option")
+		}
+	})
+
+	t.Run("guard, required-value option, does not fire", func(t *testing.T) {
+		saveActiveClaudeOptionModel(t)
+		activeClaudeOptionModel = claudeOptionModel{probe: claudeOptionRequiredValue}
+		if carriesResumeToken([]string{"--name", "lane-3", "--", probe, "--resume", "<id>"}) {
+			t.Fatal("the guard judged the model-known required value")
+		}
+	})
+
+	t.Run("validator, unknown option, refuses the bare resume", func(t *testing.T) {
+		saveActiveClaudeOptionModel(t)
+		activeClaudeOptionModel = claudeOptionModel{} // the probe is absent
+		err := validateResumeArgs([]string{"--", probe, "--resume"})
+		if err == nil {
+			t.Fatal("the validator passed a bare resume behind an unknown option")
+		}
+		if !containsResumeRefusal(err) {
+			t.Fatalf("refusal must be the valueless-resume error; got: %v", err)
+		}
+	})
+
+	t.Run("validator, optional-value option, passes silently", func(t *testing.T) {
+		saveActiveClaudeOptionModel(t)
+		activeClaudeOptionModel = claudeOptionModel{probe: claudeOptionOptionalValue}
+		if err := validateResumeArgs([]string{"--", probe, "--resume", "<id>"}); err != nil {
+			t.Fatalf("ambiguity refused: %v", err)
+		}
+	})
+}
+
+// TestOptionModelResidualCompound (AC-SCV-014's residual half, plan.md
+// §A.4) — the named residual is measured, not left silent: with the active
+// model's snapshot deliberately stripped of one required-value entry, the
+// guard still fires (no leak) and the validator false-refuses — the
+// compound condition (derivation down + option snapshot-absent + resume-
+// shaped value) asserted as exactly that outcome.
+func TestOptionModelResidualCompound(t *testing.T) {
+	stripped := make(claudeOptionModel, len(claudeOptionModelSnapshot))
+	for k, v := range claudeOptionModelSnapshot {
+		stripped[k] = v
+	}
+	delete(stripped, "--settings") // a genuinely required-value option, absent from the fallback
+
+	t.Run("guard fires behind the stripped option", func(t *testing.T) {
+		saveActiveClaudeOptionModel(t)
+		activeClaudeOptionModel = stripped
+		if !carriesResumeToken([]string{"--name", "lane-3", "--", "--settings", "--resume", "<id>"}) {
+			t.Fatal("the stripped option shielded a resume token — a silently leaked resume")
+		}
+	})
+
+	t.Run("validator false-refuses under the compound condition", func(t *testing.T) {
+		saveActiveClaudeOptionModel(t)
+		activeClaudeOptionModel = stripped
+		err := validateResumeArgs([]string{"--", "--settings", "--resume"})
+		if err == nil {
+			t.Fatal("expected the compound-condition false refusal to be observed")
+		}
+		if !containsResumeRefusal(err) {
+			t.Fatalf("the false refusal must be the valueless-resume error; got: %v", err)
+		}
+	})
+}
+
+// containsResumeRefusal reports whether err is the valueless-resume refusal
+// (the pinned text of REQ-SCV-009).
+func containsResumeRefusal(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "--resume <session-id>")
 }

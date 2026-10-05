@@ -77,10 +77,10 @@ var activeClaudeOptionModel = claudeOptionModelSnapshot
 // validator false-refusal residual named under plan.md §A.4 — never a
 // silently leaked resume under the relaunch policy.
 //
-// Source-version provenance: every entry below was measured from
-// `claude --help` (Claude Code 2.1.289, 2026-10-04; the same measurement the
-// predecessor's tables carried). REQ-SCV-014 requires the snapshot to keep
-// carrying its source version in these comments.
+// The snapshot's source-version provenance: every entry below was measured
+// from `claude --help` (Claude Code 2.1.289, 2026-10-04; the same
+// measurement the predecessor's tables carried). REQ-SCV-014 requires the
+// snapshot to keep carrying its source version in these comments.
 var claudeOptionModelSnapshot = claudeOptionModel{
 	// Required <value> synopses (2.1.289, measured):
 	"--add-dir": claudeOptionRequiredValue, "--agent": claudeOptionRequiredValue,
@@ -192,13 +192,30 @@ func parseClaudeOptionModel(help string) claudeOptionModel {
 	return m
 }
 
+// claudeHelpSynopsisMaxIndent is the widest indent a line may carry and
+// still be an option synopsis. Commander aligns wrapped description
+// continuations under the description column — dozens of spaces, and the
+// measured help's continuations can BEGIN with a flag mention
+// ("…--append-system-prompt included — sent,") that would otherwise parse
+// as a valueless synopsis and silently reclassify the option — while the
+// option synopses sit at the option block's shallow indent (two spaces in
+// the measured 2.1.289 help).
+const claudeHelpSynopsisMaxIndent = 6
+
 // claudeHelpSynopsisSegment returns the option synopsis a help line carries:
 // the flag-prefixed head of the line, before the commander gap. A synopsis
 // too long for its description wraps — commander puts the description on the
 // next line and leaves the synopsis alone on its own — so a flag-prefixed
-// line with no gap is a synopsis too.
+// line at the option indent with no gap is a synopsis too.
 func claudeHelpSynopsisSegment(line string) (string, bool) {
-	trimmed := strings.TrimLeft(line, " \t")
+	indent := 0
+	for indent < len(line) && (line[indent] == ' ' || line[indent] == '\t') {
+		indent++
+	}
+	if indent > claudeHelpSynopsisMaxIndent {
+		return "", false // a wrapped description continuation, not an option line
+	}
+	trimmed := line[indent:]
 	if !strings.HasPrefix(trimmed, "-") {
 		return "", false
 	}
