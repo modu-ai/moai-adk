@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-func r2Repo(t *testing.T) *r1FixtureRepo {
-	return newR1Repo(t)
-}
 
 // TestR2_A_LiteralPathspecBracketCollision is the NEW P1 RED: the candidate
 // adds the leaf `[a]`; the worktree holds an ignored regular file `[a]` and
