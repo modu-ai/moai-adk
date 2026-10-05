@@ -85,7 +85,10 @@ Then, one command per call:
    accepts; it printed the nine axes at plan time, exit `0`, acceptance.md E-9): the lane arm
    reproduces it verbatim (nine axes at plan time: eight non-empty plus `MOAI_FACTORY_CLEAR_POLICY`
    set empty) and unsets the other seven. Record the output as the arm env lines of progress.md
-   §E.2. The read must show at least `MOAI_FACTORY_ROLE=lane` and non-empty `MOAI_FACTORY_WORKER`,
+   §E.2, passed through the §A.6 redaction first — a non-empty secret-valued axis written
+   `NAME=<redacted>`, the variable name kept — so a credential the measuring session carries never
+   lands verbatim in the committed record. The read must show at least `MOAI_FACTORY_ROLE=lane` and
+   non-empty `MOAI_FACTORY_WORKER`,
    `MOAI_FACTORY_WORKERS` and `MOAI_KANBAN_ID`; a session without them cannot measure the lane arm,
    so the run returns a blocker report and AC-THE-003 stays failed (acceptance.md §D.3 clause (f)).
 3. Hook child re-exec census: for each `os.Args[0]` site in `internal/hook/*_test.go` (B9), record
@@ -209,9 +212,13 @@ Files (exact):
   (4 leased runs, acceptance.md §D.3), each with command, exit code, failing-test list, terminal
   top-level count T against L, lease acquire/release lines, and the sorted failing-name file of
   each arm (acceptance.md §D.3 commands 6-7, copied verbatim — the c1 side of clause (e)); the
-  lane-arm env line of each package's c1 lane arm and the clause (f) counts of §D.3 command 10
+  sorted skip names file of each of the four c1 arms and the c1-stage command 11 outputs (the
+  cross-arm skip comparison with its recorded output — acceptance.md §D.3 command 11, the c1
+  baseline record); the lane-arm env line of each package's c1 lane arm and the clause (f)
+  counts of §D.3 command 10
   (3 / 2 on the lane names files, 0 on the scrubbed ones); the hook child census; the discovery
-  narrow pair re-recorded (E-7 is the plan-time measurement); the session family env read (§C step 2).
+  narrow pair re-recorded (E-7 is the plan-time measurement); the session family env read (§C step 2),
+  recorded in its redacted form (§A.6).
 - c2 (guards): `internal/cli/factory_env_axes_test.go` (new — cli coverage test and applied test;
   reads `factoryAmbientEnvKeys` from `factory_test.go`); `internal/hook/lane_env_axes_test.go`
   (new — hook coverage test and applied test, the **empty** scrub-set declaration, and the
@@ -280,8 +287,11 @@ panic / goroutine-leak / non-test failure line), recording failing sets and thei
 (AC-THE-003), and the c1-containment check of clause (e) for each arm type of each package
 (acceptance.md §D.3 commands 6-8: `final − c1` by `comm -13`, required empty; a name outside c1
 is a change-induced regression, not env-unrelated), plus command 9 (`comm -3` of the two arms'
-names, empty) and clause (f): each final lane arm replays the c1 lane-arm env line byte for byte
-(never the then-current session env) and the two lines per package are compared; (2) for any test
+names, empty), command 11 (the skipped-set equality — the cross-arm comparison empty on the final
+tree, the no-new-skip c1-vs-final extra recorded beside it) and clause (f): each final lane arm
+replays the c1 lane-arm env line byte for byte (never the then-current session env; a redacted
+axis replays its recorded masked state — acceptance.md §D.3) and the two lines per package are
+compared; (2) for any test
 still differing: RED/GREEN pair, Option-B pin with `t.Setenv` of
 every axis the code path reads, `t.Parallel()` dropped where B1 applies, no skip. A test that
 went red in the all-axes-unset scrubbed arm because an axis was stripped is fixed the same way, by

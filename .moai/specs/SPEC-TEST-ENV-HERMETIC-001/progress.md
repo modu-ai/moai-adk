@@ -128,6 +128,8 @@ plan.md lines touched (census/floor-carrying sweep): §C step 2 (family count 17
 
 Unobserved at this iteration (Gaps): the census was measured by the stated commands in this session, not by the guard at c2 (the guard re-reads `envkeys.go` at test time, so c2 re-measures on its own tree); the secret marker is a maintained census list, not mechanically derived (a future credential-class axis joins it in the change that adds the constant); the guard pair and the c1/c2/c2r commits still do not exist; no whole-package run (lane-local rule); the c1-stage command 11 baseline (a pre-existing env-gated skip, or its absence) is unobserved until M1.
 
+Iteration-6 repair (v0.7.0, 2026-10-05): the four round-6 defects repaired per the leader's dispatch — I5-D4 residual/I6-D2 (the §A.6 redaction scope widened to every recording surface of this SPEC: plan.md §C step 2's recorded read output, the M1 c1 commit, the recorded lane-arm commands in §D.3; masking the value, keeping the variable name; set-empty written form stated), I6-D1 (R7's opening sentence narrowed to the initial-run-only case, matching its repaired tail and §D.3), I6-D3 (replay semantics for a redacted axis defined — the replay reproduces the recorded masked state, never the then-current session value — in §D.3's replay clause, AC-THE-003 clause (f) and plan.md M4 step 1), I6-D4 (the sorted c1 skip names files of all four arms and the c1-stage command 11 output added to the c1-commit enumerations in plan.md M1 c1 and §D.3's baseline-record paragraph; command 11 added to plan.md M4 step 1). `moai spec lint` clean, exit 0. No REQ or AC added.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase — owned by manager-develop>_

@@ -1,10 +1,10 @@
 ---
 id: SPEC-TEST-ENV-HERMETIC-001
 title: "Test env hermeticity sweep — tests that read the factory/kanban lane gate axes must not change verdict with the ambient env of the session that runs them"
-version: "0.6.0"
+version: "0.7.0"
 status: draft
 created: 2026-10-03
-updated: 2026-10-04
+updated: 2026-10-05
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
@@ -127,9 +127,14 @@ ledger carries every fact the committed record relies on, including the cli scru
    carries a credential is marked **secret** in this census (at HEAD exactly one:
    `MOAI_FACTORY_APP_SERVER_TOKEN`, the owned Codex App Server's capability token, passed to the
    operator TUI child at `internal/cli/managed_codex_tui.go:338-345`). Every recording surface of
-   acceptance.md §D.3 writes a secret-valued axis as `NAME=<redacted>` — in the recorded arm env
-   line, and in the child-visible env file, which is passed through the same redaction before
-   recording — and every byte-identity comparison over those lines compares the redacted forms, so
+   this SPEC writes a secret-valued axis as `NAME=<redacted>` — the value masked, the variable
+   name kept, so the family axes stay provable as present or absent. The surfaces are every form
+   progress.md carries: the recorded arm env line, the child-visible env file, and the recorded
+   lane-arm commands of acceptance.md §D.3, plus the pre-flight family read's recorded output
+   (plan.md §C step 2, committed at M1 c1) — each passed through the same redaction before
+   recording. Masking applies to a non-empty value; an axis recorded present but set empty keeps
+   the written form `NAME=` (the empty string carries no credential, so the two written forms
+   never collide). Every byte-identity comparison over those lines compares the redacted forms, so
    the comparison still proves what it proved: the axis's presence and the non-secret values,
    never the secret's value. A new credential-class axis joins this marker in the same change that
    adds the constant. Per package
@@ -437,8 +442,9 @@ in one place, AC-THE-005.
   present in the c1 baseline of the same arm type is named and classified env-unrelated
   (REQ-THE-003); it is neither fixed nor hidden here. A failure identical in both final arms but
   absent from c1 is a change-induced regression, never env-unrelated (AC-THE-003 clause (e)).
-- **R7 — machine load flips verdicts.** The lease serializes heavy runs; a verdict that changes
-  between a repeated identical arm is reported as load noise, not attributed to env. A name printed
+- **R7 — machine load flips verdicts.** The lease serializes heavy runs; a verdict present in the
+  initial run and absent from an identical repeat is reported as load noise, not attributed to
+  env. A name printed
   by §D.3 command 8 (the `final − c1` difference) or command 9 (the arm difference) is repeated
   once as a whole-package arm — for command 9, both arms of the pair — and every name printed in
   either run is recorded with both outputs: a name printed in **both** runs counts as a hit
@@ -522,3 +528,4 @@ in one place, AC-THE-005.
 | 2026-10-03 | manager-spec | v0.4.0 delta revision for the leader-approved fourth plan-audit (iteration 3: FAIL 0.87, two must-fix holes in AC-THE-003; findings MF-1, MF-2, SF-1..SF-4). AC-THE-003 gains clause (f), a lane-arm positive control (env recorded and identical at c1 and final, every modelled axis present, five reds in the c1 lane arm, otherwise INVALID and failed) and a pre-flight env-read step; the failing-name comparison is by full test path, subtests included (REQ-THE-003 and REQ-THE-007 state the unit); exemption axes are left at their lane value in the scrubbed arm; the c2r cell carries exact command, exit code field and the c2 SHA with the pre-run HEAD read, and the sync re-execution records its own stdout; a one-repeat rule for a name absent from c1; AC-THE-006 gains assertion-removal and bare-return greps; `LC_ALL=C` on `sort` and `comm`; the §F wording slip is fixed. No REQ or AC added. |
 | 2026-10-04 | manager-spec | v0.5.0 iteration-4 residue revision (leader-authorized delta re-audit round; findings MF-3, SF-1..SF-6, N1 from `plan-audit-iter4.md`). The failing-name extraction regex is escape-aware (`"Test":"([^"\\]|\\.)+"`) in acceptance.md §D.3 commands 2, 3 and 6 and in the new command 11, so a quote inside a subtest name no longer truncates it and two quote-bearing names cannot collapse (E-9 control: the old form truncates to `TestParent/q\` and its `comm -13` prints nothing across `q"uote` → `q"uoted`; the new form prints both names whole and its `comm -13` prints the new failing name); skipped-set equality gains a command form (§D.3 command 11, `comm -3` over escape-aware skip-rows names files, must print nothing); REQ-THE-001/002 state the scrubbed arm leaves an axis carrying a reasoned, cited exemption at its lane value, aligning the requirement layer with the AC/plan mechanism (SF-1); the c2r cell obligations gain the `git status --short` read and the DoD re-execution claim is scoped to the sampled cell, the one-of-four sampling unchanged (SF-2); the repeat rule states a name printed in either run is recorded and a repeat-only name counts as a hit, and command 9 repeats both arms, with R7 citing commands 8 and 9 (SF-3); §D.3 command 10 is scoped to the c1 lane arms and the final-tree lane arm records its child-visible env beside the arm, identical to the c1 line (SF-4); the AC-THE-004 residual names the weakened-condition hollowing (SF-6); the acceptance.md c2r row is reworded without an ordering keyword — the iteration-4 CN-4 `CONFLICT:` line was a verb cross-cell false positive, disposition recorded in progress.md §E.1 (SF-5). develop `30ce3a02d` absorbed at merge `960ea3012` (551 commits); the five observed reds re-verified intact on `960ea3012`. No REQ or AC added. |
 | 2026-10-04 | manager-spec | v0.6.0 iteration-5 residue revision (leader-authorized second delta round; findings I5-D1..I5-D4 from `plan-audit-iter5.md`). R7's tail restored to the polarity the §D.3 repeat rule defines — a name printed in both runs counts as a hit, a repeat-only name also counts as a hit and is never load noise, load noise is the initial-run-only case — the v0.5.0 wording had inverted the both-runs case (I5-D1); §D.3 command 11 re-wired to the clause it serves — skipped-set equality is the lane arm's skip set against the scrubbed arm's skip set of the same tree stage, the pairing command 9 uses for the failing sets, with the c1-vs-final form kept as a labelled no-new-skip extra and the c1-side skip names files carried in §E.2 (I5-D2); the family census re-derived at the absorbed HEAD `8cb2444e7` — **16** axes (17 at `a5a63a0bc`; −`MOAI_KANBAN`, −`MOAI_KANBAN_SPEC`, −`MOAI_KANBAN_LABEL`, +`MOAI_FACTORY_APP_SERVER_TOKEN`, +`MOAI_FACTORY_MANAGED_TUI`) — with the census command recorded in §A.6 and the floor, the per-package referenced/covered/uncovered sets, the expected guard reds (eight cli axes, ten hook axes), R8's remainder (seven), §H O2, decision-index Q4 and plan.md's census-carrying lines restated against it (I5-D3); secret-valued axes marked in the census (`MOAI_FACTORY_APP_SERVER_TOKEN`) with one redaction rule — `NAME=<redacted>` in the recorded arm env line and in the child-visible env file before recording, the byte-identity comparisons run over the redacted forms (I5-D4). Incidental: the four stale references the audit listed as I5-D5 refreshed (E-1..E-9, the §I report paths, the §E.1 plan_status and audit-ready lines). No REQ or AC added. |
+| 2026-10-05 | manager-spec | v0.7.0 iteration-6 residue revision (leader-authorized repair round; findings I5-D4 residual/I6-D2, I6-D1, I6-D3, I6-D4 from `plan-audit-iter6.md`). The §A.6 redaction rule's scope widened from the §D.3 recording surfaces to every recording surface of this SPEC — the pre-flight family read's recorded output (plan.md §C step 2, committed at M1 c1) and the recorded lane-arm commands included — masking the value and keeping the variable name, with the set-empty written form stated (`NAME=`; masking applies to non-empty values only), applied in plan.md §C step 2 and M1 c1 and in §D.3's lane-arm command and family-read recording clauses (I5-D4 residual); R7's opening sentence narrowed to the initial-run-only case its own repaired tail and §D.3 define, removing the self-contradiction (I6-D1); replay semantics defined for a redacted axis — the replay reproduces the recorded masked state (the variable present, its value the literal mask string), never the then-current session value — stated in §D.3's replay clause, AC-THE-003 clause (f) and plan.md M4 step 1 (I6-D3); the c1-commit enumerations now name the set the DoD requires — the sorted c1 skip names files of all four arms and the c1-stage command 11 output added to plan.md M1 c1 and §D.3's baseline-record paragraph, command 11 added to plan.md M4 step 1 (I6-D4). No REQ or AC added. |
