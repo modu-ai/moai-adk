@@ -89,7 +89,21 @@ GREEN on the whole family after the repairs: `TestProtectedZone` 10/10 subtests 
 
 Residual from the round, recorded: `resolveThroughExistingParent` (shared with `checkFileAccess`) still resolves a `..`-after-symlink target lexically — the same shape of hole this round fixed for the zone guard, living in code this SPEC's plan deliberately did not touch (the existing outside-project deny). Left for a follow-up card with the leader's routing.
 
+### Repair round 2 — merge-gate re-verdict findings (2026-10-05, post-push)
+
+The gate's re-verdict on the round-1 push failed again: 5×P1 + 1×P2, all in the shell rule, all adopted as rows first (RED observed: `mv .moai moved: allow`, `true & rm zone_dir/a.log: allow`, `cd . > zone_dir/a.log: allow`, `sed -e s/a/b/ -i '' …: allow`, `git -c core.quotePath=false checkout -- …: allow`, and the quoted-`>` control falsely denied):
+
+- **P1 parent-directory move** — the coverage gained an ancestor pass: a candidate that is a parent directory of protected entries (or the project root itself) is denied with the contained entry's category, since moving or removing it removes them wholesale. `.claude/` is still deliberately excluded from wholesale protection (the identity's legitimate surface lives there).
+- **P1 single `&`** — the shared splitter does not segment on an async `&`; `zoneAsyncGroups` now splits each segment's words at an unquoted `&` (including one embedded in a word, which the shell reads as a separator), and the working-directory tracking resets at every async boundary because a cd inside an async group runs in a subshell.
+- **P1 cd's own redirection** — the cd branch judges its segment's redirection targets against the directory the shell evaluates them in (before the cd takes effect) instead of skipping the segment.
+- **P1 sed option order** — in-place is signalled by any argument carrying `-i`, wherever it sits, not only the first option slot.
+- **P1 git global options** — the subcommand is looked up past git's global options (`-c k=v`, `--git-dir=…`) instead of being assumed the second token.
+- **P2 quoted `>`** — the tokenizer now records per word whether quoting contributed; only unquoted words carry redirection operators, while a quoted word after a bare `>` is still the target. `echo '>zone_dir/a.log'` returns to allow.
+
+GREEN on the whole family after the repairs: `TestProtectedZone` hook+config 0 FAIL (ShellMutation swept 30), `golangci-lint` 0 issues, live judge `JUDGE swept=67 expected=67 fail=0` on a binary built from the repaired tree. The shell module's tokenizer, grouping, verb scan, and coverage are now round-2 shaped throughout; the token-cost seam (no manifest read before the identity and mutating gates) is preserved by construction — the async-group and redirect walks touch no files.
+
 ## §E.3 Run-phase Audit-Ready Signal
+
 
 
 run_status: audit-ready

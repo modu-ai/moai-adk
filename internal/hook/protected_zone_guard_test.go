@@ -775,8 +775,32 @@ func testZoneShellMutation(t *testing.T) {
 		t.Errorf("absolute rm after cd: decision=%q reason=%q, want allow", d, r)
 	}
 
-	if swept < 24 {
-		t.Fatalf("swept %d rows, want at least 24", swept)
+	// review-repair round 2 rows (merge-gate re-verdict, observed red first)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n  probe_moai:\n    paths: [\".moai/config/sections/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	for _, cmd := range []string{
+		"true & rm zone_dir/a.log",                               // a single & separates commands
+		"cd . > zone_dir/a.log",                                  // the cd segment's own redirection
+		"sed -e s/a/b/ -i '' zone_dir/a.log",                     // -i not in the first option slot
+		"git -c core.quotePath=false checkout -- zone_dir/a.log", // global options before the subcommand
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+	// moving a parent of protected entries denies with the contained entry's
+	// category — the ancestor pass names what would be lost
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "mv .moai moved"})
+	wantZoneDeny(t, "mv .moai moved", d, r, harnessLearnerIdentity, "category", "probe_moai")
+	// control: a quoted > is string data, not a redirection operator
+	swept++
+	if d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "echo '>zone_dir/a.log'"}); d == DecisionDeny {
+		t.Errorf("quoted > data: decision=%q reason=%q, want allow", d, r)
+	}
+
+	if swept < 30 {
+		t.Fatalf("swept %d rows, want at least 30", swept)
 	}
 	t.Logf("swept=%d", swept)
 }
