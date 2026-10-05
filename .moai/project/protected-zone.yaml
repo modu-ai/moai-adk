@@ -1,0 +1,39 @@
+# Dogfood protected-zone overlay for this repository (local-only; never shipped).
+#
+# Adds this repository's own guard code, tests, CI workflow, apply/rollback code,
+# budgets and local-only state to the shipped manifest at
+# .moai/config/sections/protected-zone.yaml. An overlay can only add entries.
+# `moai update` does not touch .moai/project/, so these entries survive it.
+version: 1
+categories:
+  safety_guards:
+    paths:
+      - internal/hook/
+      - internal/harness/safety/
+      - internal/harness/frozen_guard.go
+      - .claude/lsel/
+      - .moai/hooks/
+  regression_tests:
+    paths:
+      - "**/*_test.go"
+      - "**/*_test.sh"
+      - .github/workflows/
+      - .claude/workflows/tests/
+  apply_rollback:
+    paths:
+      - internal/harness/applier.go
+      - internal/harness/curator_dispatch.go
+      - internal/harness/curator/
+      - internal/harness/retention*
+      - .claude/skills/hns-lsel-applier/
+      - .claude/skills/hns-lsel-curator/
+  budgets:
+    paths:
+      - internal/harness/safety/rate_limit.go
+      - internal/harness/curator/budget.go
+  logs:
+    runtime_paths:
+      - .moai/state/lsel/
+  moai_managed:
+    runtime_paths:
+      - "**/CLAUDE.local.md"

@@ -1,0 +1,66 @@
+# Protected zone manifest.
+#
+# Declares the checking apparatus (safety guards, gate policy, auditor, regression
+# tests, apply/rollback machinery, budgets, logs) that an autonomous self-improvement
+# agent must not modify. The PreToolUse guard denies such a call and asks the denied
+# agent to return a blocker report, so a person decides.
+#
+# A project may ADD entries in .moai/project/protected-zone.yaml (same schema, no
+# required categories); an overlay can never remove or narrow an entry listed here.
+# `moai update` regenerates this file, so keep project-specific entries in the overlay.
+#
+# Entry forms (repository-relative, forward slashes, matched case-insensitively):
+#   exact path       .claude/settings.json
+#   directory        .claude/hooks/          (trailing /)
+#   raw prefix       .claude/skills/moai-*   (trailing *)
+#   basename glob    **/CLAUDE.md            (the pattern holds no /)
+#
+# paths          must exist in the tree this file ships with (a liveness check fails otherwise)
+# runtime_paths are created at init, update or run time and may be absent when shipped
+version: 1
+categories:
+  safety_guards:
+    paths:
+      - .claude/hooks/
+    runtime_paths:
+      - .claude/settings.json
+      - .claude/settings.local.json
+  gate_policy:
+    paths:
+      - .moai/config/sections/
+      - .moai/config/sections/protected-zone.yaml
+      - .moai/config/evaluator-profiles/
+      - .claude/rules/moai/
+    runtime_paths:
+      - .moai/project/protected-zone.yaml
+  auditor:
+    paths:
+      - .claude/agents/moai/
+      - .claude/workflows/sync-audit-4dim.js
+      - .claude/skills/moai-*
+  regression_tests:
+    paths: []
+  apply_rollback:
+    paths: []
+  budgets:
+    runtime_paths:
+      - .moai/harness/learning-history/rate-limit-state.json
+  logs:
+    paths:
+      - .moai/logs/
+    runtime_paths:
+      - .moai/harness/learning-history/
+      - .moai/harness/usage-log.jsonl
+  moai_managed:
+    paths:
+      - .claude/agents/moai/
+      - .claude/skills/moai-*
+      - .claude/skills/moai/
+      - .claude/rules/moai/
+      - .claude/commands/
+      - .claude/hooks/
+      - .claude/output-styles/
+      - "**/CLAUDE.md"
+    runtime_paths:
+      - "**/AGENTS.md"
+      - "**/AGENTS.local.md"
