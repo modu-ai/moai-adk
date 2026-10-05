@@ -2,7 +2,7 @@
 id: SPEC-SELF-IMPROVE-PROTECTED-ZONE-001
 title: "Self-improvement protected zone — declare the checking apparatus in a manifest and block calls carrying a self-improvement agent identity from modifying it"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-10-04
 updated: 2026-10-05
 author: manager-spec

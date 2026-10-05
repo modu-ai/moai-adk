@@ -86,4 +86,9 @@ unobserved_gaps: Windows behaviour (G6, table-tested only); a stale deployed bin
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-10-05
+sync_commit_sha: pending-backfill-sync
+artifacts: CHANGELOG.md entry ([Unreleased]/Fixed, SPEC-ID count 0 before this entry — B12 checked); spec.md status transition in-progress → implemented → completed merged into this sync commit; codemaps not rotated (the guard module is documented in its package CLAUDE.md scope and the SPEC artifacts — no structural surface added)
+sync_audit: deferred to the leader's integration review gates (factory card flow; the lane's card-review evidence lands at .moai/reports/t1510/card-review.md before integration)
+
