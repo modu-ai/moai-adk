@@ -2421,6 +2421,24 @@
 - path: "workflow.multi.review_gate.enabled"
   class: W
   evidence: reader
+- path: "workflow.hygiene.audit_log_kept_rotations"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.audit_log_max_bytes"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.heartbeat_stale_window"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.min_age_days"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.mode"
+  class: W
+  evidence: reader
+- path: "workflow.hygiene.transcript_activity_window"
+  class: W
+  evidence: reader
 - path: "workflow.project.continuation"
   class: P
   evidence: .claude/skills/moai/workflows/project/doc-generation.md

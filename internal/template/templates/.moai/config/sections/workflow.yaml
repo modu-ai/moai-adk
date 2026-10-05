@@ -309,3 +309,16 @@ workflow:
             # check only. It runs at an on-demand checkpoint whose invocation
             # surface is pending, never inside a tool-call hook.
             new_api_detector: graph   # graph | off
+    # .moai hygiene engine: size-based audit-log rotation and finished-session
+    # state GC. mode governs the SessionStart auto path only — the
+    # `moai clean --audit-logs/--session-state` CLI mutates only with --apply
+    # on that invocation. report (default) never rotates or deletes anything.
+    # audit_log_kept_rotations is pinned to 1; any other value refuses the
+    # run (config-invalid) rather than clamping.
+    hygiene:
+        mode: report              # report | apply (auto path only)
+        audit_log_max_bytes: 10485760
+        audit_log_kept_rotations: 1
+        transcript_activity_window: 48h
+        heartbeat_stale_window: 24h
+        min_age_days: 7
