@@ -33,11 +33,16 @@ _<pending: the orchestrator appends the audit-ready signal after the independent
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_complete_at: 2026-10-05T18:05:00+09:00 (lane-25, 재개 세션의 마지막 검증 완료 시점). 연대기 주석 — §E.2 의 M3 착지 행과 핸드오프 행이 2026-10-06 로 적혀 있는 것은 이전 세션의 잘못 적기(미래 날짜)다; 커밋 연대기가 증거다(M3 착지 커밋 c01ca032d 는 2026-10-05 13:5x+09:00 에, 핸드오프 커밋 df95d2102 는 같은 날 짚혀 있다). 본 신호와 커밋 연대기를 기준으로 읽고, 그 두 행의 날짜는 원본 보존 원칙으로 고치지 않는다.
+- run_status: audit-ready
+- run_summary: M0~M6 전 마일스톤 착지 + M3 잔여(그래프 build/check 통합) 착지. 커밋 사슬 9350dfad5(M0) → … → 6aa475c0b(흡수) → … → 9438fcb9f(M3 잔여) → 8fcc21f99·a7d0ddb67·fa87bf131·737b35b0c(M4) → 30e739714(M6) → 6b105f7bf(흡수 37c8737e7) → 757250000(M5 Mode B). codex P2 3건 전부 수리(M1·첫 단계·M3). AC-TCI-001~019·022~023의 필수 시험 전부 GREEN(본 기록 §E.2 각 착지 행의 실측 출력). **AC-TCI-020(필수)는 Mode B 분기로 충족** — 게이트 다섯 판독 기록·여섯 파일+사본 무변화 실측·추적되는 m5-draft 3종·후속 카드 문안이 그 증거(§E.2 M5 Mode B 행). **AC-TCI-021(조건부)는 Mode B에서 해당 없음(N/A)** — AC-TCI-020의 Mode B 절이 같은 파일을 건드리지 않음을 보증하므로 통과로 세지 않는다. AC-TCI-024 회귀 가드 초록. 병합 트리 재측정: 흡수 6b105f7bf 병합 트리에서 cli 팩토리 가족·Todo 가족 재실행(§E.2 재측정 행 참조).
+- run_residuals: (1) AC-TCI-019 (f)의 측정은 임베드 목록에 오른 경로의 건전성만 다시 잰다 — 목록에 빠진 허브의 완전성은 M0 스크립트 실행 기록에만 기댄다(수용). (2) 소문자 흡수 제목의 form-2 귀속 관측(§E.2 M3 잔여 행) — 단일 귀속 지점 준수로 레이어가 닫을 수 없는 자리. (3) 그래프 보기의 열린 카드 우선 배치(design §9 권고)는 저장소 순서 결정적 배치로 채택 — AC 요구(상한+생략)는 충족, 우선순위 배치는 후속 여지. (4) merge 덩어리의 구현-우선 절차 편차(§E.2 M4 착지 3 행). (5) M5는 Mode B — 규칙은 효력 없음, 후속 카드 문안은 §E.2 M5 행.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_commit_sha: pending-backfill-sync
+- sync_summary: CHANGELOG [Unreleased] Added 에 본 SPEC 항목 신규 기재(중복 0 실측 후). 카드 판정서에 run 판정 절 부록(§E.3 요약 + 병합 트리 재측정 + card-review 인용). 카드 리뷰 기록 `.moai/reports/t1454/card-review.md` — codex_review 2회·glm_review 1회 inconclusive(본문 보존), codex 턴엔드 게이트 P2 2건 수리. SPEC frontmatter 전이 in-progress → completed 가 본 커밋에 탄다. MX 스캔 대상 신규 코드의 태그: 신규 함수에 godoc+핀 근거 주석 유지(패키지 관례), ANCHOR 요구 fan_in≥3 신규 함수 없음, WARN 요구 위험 구조(고루틴·복잡도≥15) 신규 미해당.
+- sync_status: audit-ready
 
 ## §G Plan-phase Record (manager-spec, nothing here is run-phase evidence)
 

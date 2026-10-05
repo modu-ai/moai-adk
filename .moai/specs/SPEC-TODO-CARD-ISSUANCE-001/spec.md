@@ -2,7 +2,7 @@
 id: SPEC-TODO-CARD-ISSUANCE-001
 title: "카드 발행 품질 — 발행 시점의 겹침·중복 제시, 카드 관계 그래프, 묶음 직렬 경로, 과분할 억제 규칙"
 version: "0.5.1"
-status: in-progress
+status: completed
 created: 2026-10-03
 updated: 2026-10-05
 author: MoAI
