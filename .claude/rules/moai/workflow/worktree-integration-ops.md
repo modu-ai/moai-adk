@@ -204,7 +204,7 @@ guard itself is the binary's):
    code is the verification's own field (`verification-completeness.md` §2.1), never a
    `$()`-captured variable.
 3. Never git inside `$()`. Derive ranges with the three-dot form (`git diff --name-only
-   develop...HEAD`) and record the merge-base on its own line (`git merge-base develop HEAD`)
+   main...HEAD`) and record the merge-base on its own line (`git merge-base main HEAD`)
    when the base value itself is evidence.
 4. No write/cleanup composition tail in a verification command. Scratch writes live under
    `/tmp`; cleanup is a separate plain step, never an `rm -rf` bundled into the same invocation.
@@ -216,13 +216,13 @@ Working example — a refused form and its executable restatement:
 
 ```bash
 # REFUSED (assignment + later expansion of a git-bearing substitution):
-B=$(git merge-base develop HEAD)
+B=$(git merge-base main HEAD)
 git diff --name-only "$B"..HEAD -- internal/pkg/ | wc -l
 
 # EXECUTABLE (plain verbs; base recorded on its own line; three-dot range):
-git merge-base develop HEAD                          # record the base value as evidence
-git diff --name-only develop...HEAD -- internal/pkg/ | wc -l
-git diff --quiet develop...HEAD -- internal/pkg/; echo "diff_exit=$?"
+git merge-base main HEAD                            # record the base value as evidence
+git diff --name-only main...HEAD -- internal/pkg/ | wc -l
+git diff --quiet main...HEAD -- internal/pkg/; echo "diff_exit=$?"
 ```
 
 **Versions measured**: the trigger table and the delimiter asymmetry were measured at Claude Code **2.1.251**. The message-shape catalogue, the git-axis counter-example, and the heredoc disagreement were measured at **2.1.275** (card t852; `claude --version` read in the measuring session). The subagent-anchor observations were measured at the version current when card t741 was measured, which was not recorded there.
