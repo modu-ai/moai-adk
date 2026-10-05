@@ -163,7 +163,7 @@ func TestRetrackSectionFilesCoversSectionDirectory(t *testing.T) {
 		t.Fatalf("rewrite: %v", err)
 	}
 
-	retrackSectionFiles(root, os.Stderr)
+	_ = retrackSectionFiles(root, os.Stderr)
 
 	reloaded := manifest.NewManager()
 	if _, err := reloaded.Load(root); err != nil {

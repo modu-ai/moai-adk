@@ -516,7 +516,7 @@ func TestSettingsSnapshot_WriteFailureDoesNotBlock(t *testing.T) {
 		if n := snapCountPrefixed(errOut, backup.SettingsSnapshotWriteFailedPrefix); n != 1 {
 			t.Errorf("write-failed lines on stderr = %d, want 1:\n%s", n, errOut)
 		}
-		if n := snapCountPrefixed(out+errOut, "Warning: template snapshot write failed:"); n != 0 {
+		if n := snapCountPrefixed(out+errOut, "template snapshot write failed:"); n != 0 {
 			t.Errorf("the sections-snapshot warning fired (%d); the planted file must not affect sections", n)
 		}
 		if got, _ := snapRead(t, root, snapLiveRel); got != want {

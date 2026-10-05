@@ -663,8 +663,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// card t1275: RestoreMoaiConfigRetained + ApplyHarness just
 				// rewrote .moai/config/sections/*.yaml on top of the deployed
 				// render — re-record those hashes so the manifest matches what
-				// this update actually left on disk.
-				retrackSectionFiles(projectRoot, errOut)
+				// this update actually left on disk. Card t1527 repair round 3:
+				// the failure now returns; the ! line keeps the immediate
+				// surface the internal print used to own.
+				if retrackErr := retrackSectionFiles(projectRoot, errOut); retrackErr != nil {
+					emitSeverityLine(errOut, sevWarn, resolveTheme(), "manifest retrack (config sections) failed: %v", retrackErr)
+				}
 				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)

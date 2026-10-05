@@ -100,6 +100,12 @@ func TestProvisionMCPEntryUnlessDeclined_FailureIsNonFatal(t *testing.T) {
 	if errOut.Len() != 0 {
 		t.Errorf("the helper must not print the failure (one-surface rule), stderr=%q", errOut.String())
 	}
+	// Card t1527 repair round 3: the helper must not print the failure on
+	// stdout either — a regression that moved the message to the progress
+	// stream would otherwise still pass the stderr assertion alone.
+	if out.Len() != 0 {
+		t.Errorf("the helper must not print the failure on stdout either (one-surface rule), stdout=%q", out.String())
+	}
 }
 
 // TestRunInit_CallsMCPProvisioning is the reachability guard: it asserts by

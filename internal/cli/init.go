@@ -1050,7 +1050,13 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// section hashes here — the LAST writer wins, so one retrack at the tail
 	// covers the whole family. template_managed-only filtering keeps
 	// user-owned entries untouched (two-way invariant).
-	retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr())
+	// Card t1527 repair round 3: a retrack FAILURE routes into the warning
+	// collector — the summary panel carries it, so no separate diagnostic
+	// prints after the completion card. (Per-file skip notes still stream to
+	// stderr: they are per-file bookkeeping noise, not the failure verdict.)
+	if retrackErr := retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr()); retrackErr != nil {
+		p.Collect("manifest retrack (config sections) failed: " + retrackErr.Error())
+	}
 
 	// The template snapshot is written by opts.AfterTemplateDeploy (set before
 	// executor.Execute), not here: by this point the section files carry the
