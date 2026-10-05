@@ -248,19 +248,22 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 // The write goes through the shared atomic-config seam
 // (provisionMoaiMCPServerEntryAt -> mutateClaudeJSONAtomic), so it inherits the
 // same lock + backup + idempotent-skip behaviour the other entry writers use.
-// Provisioning is best-effort: a failure warns and is swallowed, so a broken or
-// unwritable config can never fail an init. The user's explicit decline is
-// honored absolutely (C-A-5): default-on is a default, not a mandate.
-func provisionMCPEntryUnlessDeclined(out, errOut io.Writer, projectRoot string, declined bool) {
+// Provisioning is best-effort: a failure is returned for the caller's
+// warning collector (card t1527 D5 — it reaches the terminal summary panel
+// instead of dying mid-noise on stderr), so a broken or unwritable config can
+// never fail an init. The user's explicit decline is honored absolutely
+// (C-A-5): default-on is a default, not a mandate.
+func provisionMCPEntryUnlessDeclined(out, errOut io.Writer, projectRoot string, declined bool) error {
 	if declined {
-		return
+		return nil
 	}
 	configPath := filepath.Join(projectRoot, ".mcp.json")
 	if err := provisionMoaiMCPServerEntryAt(configPath); err != nil {
-		_, _ = fmt.Fprintf(errOut, "warning: MCP server entry provisioning failed: %v\n", err)
-		return
+		emitSeverityLine(errOut, sevErr, resolveTheme(), "MCP server entry provisioning failed: %v", err)
+		return err
 	}
 	_, _ = fmt.Fprintln(out, "Provisioned the moai MCP server entry in .mcp.json (default-on).")
+	return nil
 }
 
 // applyWizardPage3ToOpts applies the wizard result's fixed Page-3 seeds to
@@ -906,19 +909,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	backup.SettleMCPSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
 
 	// Route executor result warnings into the collector (they surface once,
-	// in the exit summary panel — REQ-TUX2-013) and display the completion
-	// card with the next-action sequence (REQ-TUX2-016). Human-facing status
-	// belongs on stderr (internal/cli/CLAUDE.md Output streams; REQ-CTX-012).
+	// in the exit summary panel — REQ-TUX2-013). Human-facing status belongs
+	// on stderr (internal/cli/CLAUDE.md Output streams; REQ-CTX-012).
+	// Card t1527 D5: the completion card itself MOVED below the tail — the
+	// profile/Jev/harness/hooks/MCP tail steps used to print their lines after
+	// the card, so the card did not read as the end of the run.
 	for _, w := range result.Warnings {
 		p.Collect(w)
 	}
-	cardName := opts.ProjectName
-	if cardName == "" {
-		cardName = filepath.Base(opts.ProjectRoot)
-	}
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
-		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count()))
 
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
@@ -1001,7 +999,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	case agentWiringBoth:
 		mcpDeclined = false
 	}
-	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined)
+	// Card t1527 D5: a provisioning failure reaches the warning collector, so
+	// the terminal summary panel carries it instead of a stray mid-noise
+	// stderr line.
+	if mcpErr := provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined); mcpErr != nil {
+		p.Warn("MCP server entry provisioning failed: %v", mcpErr)
+	}
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
 	// --llm gpt|both — hooks.json (EventTable-derived, whitelist-gated),
@@ -1012,7 +1015,17 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects
-	// the init result.
+	// the init result. Card t1527 D5: the completion card prints FIRST here —
+	// after every tail step above, so its "initialized" verdict is the last
+	// thing the operator reads before the collected warning summary panel.
+	cardName := opts.ProjectName
+	if cardName == "" {
+		cardName = filepath.Base(opts.ProjectRoot)
+	}
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
+		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count()))
+
 	flushUpdateNotice(p)
 
 	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
