@@ -167,6 +167,33 @@ func installedVersionViaSymlink(t *testing.T, shape string) string {
 	return installedCCVersion()
 }
 
+// TestVersionSegmentAnchoredToInstallRoot (AC-SCV-016, REQ-SCV-016) — the
+// extraction anchors on the claude product-directory shapes: the r5 overlay
+// repro's unrelated versions/ prefix upstream of the real install root can
+// no longer satisfy the read, while every house shape still resolves.
+func TestVersionSegmentAnchoredToInstallRoot(t *testing.T) {
+	cases := map[string]string{
+		// The overlay repro (RED at plan time, `= "9"`): an unrelated
+		// /opt/versions/9 prefix upstream of the real install root.
+		"/opt/versions/9/tools/claude/versions/2.1.281": "2.1.281",
+		// The house shapes (unchanged from the unanchored read):
+		"/Users/dev/.local/share/claude/versions/2.1.287":                  "2.1.287",
+		"/opt/node/lib/node_modules/@anthropic-ai/claude-code/2.1.284/cli": "2.1.284",
+		"/opt/installs/claude/versions/2.1.281/claude":                     "2.1.281",
+		// A claude product directory under an exotic prefix resolves — the
+		// /claude-code directory IS the product directory.
+		"/opt/versions/9/tools/claude-code/2.1.284/cli": "2.1.284",
+		// No claude product directory anywhere: "" — the caller renders
+		// unknown, never an inferred value (REQ-SCV-017).
+		"/opt/versions/9/tools/other/versions/3.0.0": "",
+	}
+	for path, want := range cases {
+		if got := versionSegmentFromPath(path); got != want {
+			t.Errorf("versionSegmentFromPath(%q) = %q, want %q", path, got, want)
+		}
+	}
+}
+
 // TestVersionDegradationRendersUnknown (AC-SCV-003, REQ-SCV-003) — each of
 // the four degradations renders `unknown`, never an error and never an
 // inferred value: a dead pid, an injected probe error, a resolved path with
