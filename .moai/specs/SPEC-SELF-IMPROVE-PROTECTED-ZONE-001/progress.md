@@ -274,6 +274,15 @@ The gate's verdict on the round-14 head failed with 1×P1 (this card) + 5×P2 (f
 
 GREEN: `TestProtectedZone` hook+config (ShellMutation swept 97 — 1 new deny row), `go build ./...` exit 0, GOOS=linux+windows OK, `golangci-lint` 0 issues, gofmt clean, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
 
+### CI repair — codemaps rotation (2026-10-06)
+
+The graph-freshness required check failed on the round-15 head (`codemaps metric=described-source-diff value=57 threshold=40 verdict=stale`) — the window since the codemaps anchor `d0378d37c` had accumulated this card's 13 rounds plus the absorbed fleet commits without a rotation. The rotation followed the established convention (t1524 판 모양):
+
+- 측정 먼저: 창 57개를 검사기와 같은 술어로 독립 재현(신규 17 · 수정 40 · 삭제 0), 규모 표 일곱 값 재측정(비테스트 1559→1576 · 테스트 2851→2885 · 패키지 169 불변 · 최상위 87 불변 · 엣지 476/301→476/313 · 템플릿 606→607 · go.mod 불변), 패키지 행 앵커 트리 직접 대조(cli 427→433 · hook 158→163 — 신규 5파일 삭제 0 · factory 61→63 · config 64→66 · homestate 32→33 · 나머지 불변). 측정 과정에서 "memo/taxonomy가 신규 패키지"라는 1차 판독이 틀렸음을 파일 집합 대조가 잡아냈다 — taxonomy는 앵커에 존재하고 창 신규는 +2파일.
+- 저작: modules.md 새 창(일곱 착지분 카드별 산문) · overview.md 머리 재측정 단락(이전 판은 이전으로 강등) · entry-points.md(등록 줄 불변, 다중 등록 줄 안 표면 추가) · data-flow.md 보호 구역 거부 흐름 § · fold-judgments.txt(신규 판정 없음 — 전부 named row).
+- 커밋 2벌(t1485 패턴): `docs(t1510): codemaps regenerate…`(`faa179e7e`) → `chore(t1510): stamp codemaps provenance at the refresh commit`(`f63af2034`, provenance가 갱신 커밋을 가리킴 + generated_at 실측시각).
+- 검증: `go run ./cmd/moai mx scan --quiet && go run ./cmd/moai graph check` — codemaps fresh(value=0) · mx-index fresh · citations fresh · exit 0(CI 작업과 동일 순서 미러링). 첫 검사에서 citations가 적색로 전환됐는데 원인은 내가 쓴 중괄호 축약 `protected_zone_{guard,shell,path}.go`가 실존하지 않는 인용 경로로 읽힌 것 — 실경로 나열로 수리. 하나의 교훈: `$?`를 파이프 뒤에서 읽으면 head의 종료코드를 읽는다 — 검증 판정은 파이프 없이.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
