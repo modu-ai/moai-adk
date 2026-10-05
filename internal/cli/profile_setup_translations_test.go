@@ -115,6 +115,39 @@ func TestGetProfileText_OpusAliasValues(t *testing.T) {
 	}
 }
 
+// TestGetProfileText_FableAliasValues verifies the `fable` alias labels name
+// the model the alias ACTUALLY resolves to — the same falsifiability contract
+// as TestGetProfileText_OpusAliasValues (card t1503, re-applying the closed
+// PR #1739 test). The whole-token matcher is required because "Fable 5" is a
+// prefix of "Fable 5.1": a bare "Fable 5" label must not satisfy the current
+// generation, and the negative half of the opus guard has no substring-free
+// equivalent here.
+func TestGetProfileText_FableAliasValues(t *testing.T) {
+	fableID := template.ModelAliasCanonicalID("fable")
+	wantVersion := strings.ReplaceAll(strings.TrimPrefix(fableID, "claude-fable-"), "-", ".")
+	if wantVersion == "" || wantVersion == fableID {
+		t.Fatalf("fable alias resolves to %q; update the expected label version token", fableID)
+	}
+	namesFableVersion := func(label, version string) bool {
+		return regexp.MustCompile(`Fable ` + regexp.QuoteMeta(version) + `([^.0-9]|$)`).MatchString(label)
+	}
+	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+		txt := getProfileText(lang)
+		for name, label := range map[string]string{
+			"ModelFable":   txt.ModelFable,
+			"ModelFable1M": txt.ModelFable1M,
+		} {
+			if !namesFableVersion(label, wantVersion) {
+				t.Errorf("lang=%q: %s %q should reference Fable %s (derived from %q)",
+					lang, name, label, wantVersion, fableID)
+			}
+		}
+		if !containsStr(txt.ModelFable1M, "1M") {
+			t.Errorf("lang=%q: ModelFable1M %q should reference 1M context", lang, txt.ModelFable1M)
+		}
+	}
+}
+
 // namesOpusVersion reports whether label names "Opus <version>" as a whole
 // version token, so a bare "Opus 5" never satisfies "Opus 5.5" and "Opus 5.5"
 // never satisfies "Opus 5".

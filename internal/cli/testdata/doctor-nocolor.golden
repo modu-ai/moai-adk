@@ -24,6 +24,7 @@
 │    info    Served Model             run with --check "Served Model"                                                                                    │
 │    ok      Todo Store Divergence    no stale project-local queue store                                                                                 │
 │    ok      Todo Ghost Inventory     no ghost queue artifacts                                                                                           │
+│    ok      Session CC Version       no active sessions registered — nothing to compare                                                                 │
 │    ok      Agent Emit Embed   not applicable: no committed agent-emit artifacts                                                                          │
 │    warn    Constitution Registry    zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
 │    ok      Harness 5-Layer          .moai/harness/ not present (no harness configured)                                                                 │
@@ -31,7 +32,7 @@
 │    ok      Plugin Deployment        no plugin marker (binary-managed)                                                                                  │
 │    info    Plugin Version           moai plugin not installed (run: moai plugin install)                                                               │
 │    ok      Home Disk Usage          no ~/.moai home found — nothing to report                                                                          │
-│    13 ok, 3 warn, 0 fail                                                                                                                               │
+│    14 ok, 3 warn, 0 fail                                                                                                                               │
 │                                                                                                                                                        │
 │  Workspace ---                                                                                                                                         │
 │    STATUS  CHECK                  MESSAGE                                                                                                              │
@@ -55,6 +56,6 @@
 │    ok      Jev                    disabled (workflow.jev.enabled: false) — no request constructed, no network call                                     │
 │    8 ok, 9 warn, 0 fail                                                                                                                                │
 │                                                                                                                                                        │
-│  [Pass 27]  [Warn 12]  [Fail 0]                                                                                                                        │
+│  [Pass 28]  [Warn 12]  [Fail 0]                                                                                                                        │
 │                                                                                                                                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

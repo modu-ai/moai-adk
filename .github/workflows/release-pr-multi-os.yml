@@ -91,7 +91,7 @@ jobs:
     name: Release Verify (${{ matrix.os }})
     needs: detect-release
     if: needs.detect-release.outputs.proceed == 'true' && (github.event_name == 'workflow_dispatch' || needs.detect-release.outputs.go_code != 'false')
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -207,7 +207,14 @@ jobs:
         shell: bash
         run: |
           rc=0
-          go test -json -race -timeout 25m ./... > test-stream.json || rc=$?
+          # -timeout is per test binary, not per job. internal/cli under -race
+          # was 1128s on the last green develop run (37135148076) and hit a 20m
+          # cap on run 37161322193 (the same 3883 tests took 716s then 1024s,
+          # +43%, on the same hosted runner class). This leg runs the same
+          # `go test -race ./...`, so it gets the same ceiling as ci.yml: 35m,
+          # inside this job's timeout-minutes: 40 budget. Applies to every
+          # matrix leg; the value is only an upper bound.
+          go test -json -race -timeout 35m ./... > test-stream.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream.json
           exit $rc
 

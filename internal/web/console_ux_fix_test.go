@@ -181,14 +181,14 @@ func TestLLMSectionRenamedGLMSettings(t *testing.T) {
 
 // TestModelOptLabelsEnglishUnified verifies the model <option> labels render as
 // unified English names across all 4 locales (no context-window annotation):
-// Fable 5 / Opus 5.5 (Recommended) / Sonnet 5.5 / Haiku 4.5. opus/sonnet/fable are
+// Fable 5.1 / Opus 5.5 (Recommended) / Sonnet 5.5 / Haiku 4.5. opus/sonnet/fable are
 // exposed ONLY as their [1m] variants (1M always on), so the picker surface is
 // exactly 4 options and each English label appears exactly 4 times in i18n.js
 // (one per locale). The opus option carries the recommendation marker.
 func TestModelOptLabelsEnglishUnified(t *testing.T) {
 	dict := readEmbeddedAsset(t, "i18n.js")
 	wants := map[string]string{
-		"f.model.opt.fable[1m]":  "Fable 5",
+		"f.model.opt.fable[1m]":  "Fable 5.1",
 		"f.model.opt.opus[1m]":   "Opus 5.5 (Recommended)",
 		"f.model.opt.sonnet[1m]": "Sonnet 5.5",
 		"f.model.opt.haiku":      "Haiku 4.5",

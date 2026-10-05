@@ -36,7 +36,9 @@ func TestCodexResolution_IgnoresPerAgentLLMCells(t *testing.T) {
 	// SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001: without a project pin the AUDIT
 	// path lands on the terminal fallback pin — no longer the zero value
 	// (REQ-AMP-005 neutrality superseded by operator directive 2026-09-30).
-	if got := resolveCodexAuditModelEffort(map[string]any{"cwd": root}); got != (config.ModelEffort{Model: "gpt-6.1-sol", Effort: "high"}) {
+	if got, gotErr := resolveCodexAuditModelEffort(map[string]any{"cwd": root}); gotErr != nil {
+		t.Fatalf("resolveCodexAuditModelEffort: %v", gotErr)
+	} else if got != (config.ModelEffort{Model: "gpt-6.1-sol", Effort: "high"}) {
 		t.Errorf("codex audit without pin = %+v, want {gpt-6.1-sol high}", got)
 	}
 	// An explicit caller model still wins, sent verbatim.
@@ -60,7 +62,9 @@ func TestGLMResolution_IgnoresPerAgentLLMCells(t *testing.T) {
 	if got := resolveGLMTaskModel(); got != config.DefaultGLMHigh {
 		t.Errorf("glm task default = %q, want %q", got, config.DefaultGLMHigh)
 	}
-	if got := resolveGLMAuditModelEffort(root); got != (config.ModelEffort{Model: glmAuditDefaultModel, Effort: glmAuditDefaultEffort}) {
+	if got, gotErr := resolveGLMAuditModelEffort(root); gotErr != nil {
+		t.Fatalf("resolveGLMAuditModelEffort: %v", gotErr)
+	} else if got != (config.ModelEffort{Model: glmAuditDefaultModel, Effort: glmAuditDefaultEffort}) {
 		t.Errorf("glm audit without pin = %+v, want the {%s, %s} default pin (REQ-TIER-004 — the former empty-effort backend default fell with the operator pin flip)", got, glmAuditDefaultModel, glmAuditDefaultEffort)
 	}
 }

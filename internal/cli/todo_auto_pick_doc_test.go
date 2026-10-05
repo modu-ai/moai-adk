@@ -130,8 +130,10 @@ func autoPickSurfaces() []autoPickSurface {
 			},
 		},
 		{
-			name: "factory-dispatch-detail.md",
-			live: filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch-detail.md"),
+			// The card-pick skip-input sentence lives in the card-lifecycle
+			// companion since the per-file-budget split (card t1483).
+			name: "factory-dispatch-cards.md",
+			live: filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch-cards.md"),
 			contain: []string{
 				"a pull request or landed state is a skip input for a queued candidate the session chose and is report-only for an operator-picked card",
 			},
@@ -257,7 +259,7 @@ func TestAutoPickDocDoctrine(t *testing.T) {
 func autoPickMirrorPairs() []string {
 	return []string{
 		filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
-		filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch-detail.md"),
+		filepath.Join(".claude", "rules", "moai", "workflow", "factory-dispatch-cards.md"),
 		filepath.Join(".claude", "rules", "moai", "workflow", "auto-semantics.md"),
 		filepath.Join(".claude", "skills", "moai", "workflows", "gtd.md"),
 		filepath.Join(".claude", "agents", "moai", "manager-todo.md"),
