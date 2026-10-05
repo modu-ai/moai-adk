@@ -71,7 +71,7 @@ func newIntegrationPolicyHoldCmd() *cobra.Command {
 // and the record's bytes are untouched on a refusal.
 func integrationSetWindowPolicy(cmd *cobra.Command, policy factory.IntegrationWindowPolicy) error {
 	if integrationLaneRoleSet() {
-		return fmt.Errorf("integration policy: refused — this session declares the lane role (MOAI_FACTORY_ROLE); the window policy is the leader's control (REQ-MWQ-012)")
+		return fmt.Errorf("integration policy: refused — this session declares the lane role (%s); the window policy is the leader's control (REQ-MWQ-012)", config.EnvFactoryRole)
 	}
 	root := integrationLockRoot()
 	if err := factory.WriteIntegrationWindowPolicy(root, policy); err != nil {

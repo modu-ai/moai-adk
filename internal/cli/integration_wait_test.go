@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
@@ -21,7 +22,7 @@ func waitTestRoot(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
-	t.Setenv("MOAI_FACTORY_ROLE", "")
+	t.Setenv(config.EnvFactoryRole, "")
 	return root
 }
 

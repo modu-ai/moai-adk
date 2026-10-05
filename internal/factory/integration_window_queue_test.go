@@ -113,11 +113,11 @@ func TestIntegrationTicketFieldsRoundTrip(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(root, ".moai", "state", IntegrationLockFileName))
 	var raw struct {
 		Queue []struct {
-			OwnerPID   int    `json:"owner_pid"`
-			PIDSource  string `json:"pid_source"`
-			WaiterPID  int    `json:"waiter_pid"`
+			OwnerPID    int    `json:"owner_pid"`
+			PIDSource   string `json:"pid_source"`
+			WaiterPID   int    `json:"waiter_pid"`
 			WaiterStart string `json:"waiter_start"`
-			Heartbeat  string `json:"heartbeat"`
+			Heartbeat   string `json:"heartbeat"`
 		} `json:"queue"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {

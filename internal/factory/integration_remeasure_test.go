@@ -50,7 +50,7 @@ func TestClassifyEmptySweepAndUnstructured(t *testing.T) {
 	// and the VERIFIER refuses the zero count — and a run of go test
 	// WITHOUT -json is refused at classification (the tool supports
 	// structured output and the caller did not ask for it).
-	count, structured, err := ClassifyStructuredOutput("go test -json -run '^NONE$' ./p/...", strings.NewReader(`{"Action":"pass","Package":"p"}` + "\n"))
+	count, structured, err := ClassifyStructuredOutput("go test -json -run '^NONE$' ./p/...", strings.NewReader(`{"Action":"pass","Package":"p"}`+"\n"))
 	if err != nil {
 		t.Fatalf("zero-count classification must not error: %v", err)
 	}

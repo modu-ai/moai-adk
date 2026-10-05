@@ -42,19 +42,19 @@ import (
 // what separates "no tests ran" from "the tool reports no structure", the
 // distinction REQ-MWQ-015 exists to enforce.
 type RemeasureRecord struct {
-	Tree        string `json:"tree"`
-	Base        string `json:"base"`
-	Command     string `json:"command"`
-	ExitCode    int    `json:"exit_code"`
+	Tree     string `json:"tree"`
+	Base     string `json:"base"`
+	Command  string `json:"command"`
+	ExitCode int    `json:"exit_code"`
 	// StructuredRequired records that the command's tool SUPPORTS a
 	// recognized structured report (go test): the verifier then demands
 	// one. A tool with no recognized report leaves it false and is valid
 	// on exit code zero (REQ-MWQ-015's last clause).
 	StructuredRequired bool   `json:"structured_required"`
-	HasStructured  bool   `json:"structured_count"`
-	TestCount      int    `json:"test_count,omitempty"`
-	BuildIdentity  string `json:"build_identity"`
-	RecordedAt string `json:"recorded_at"`
+	HasStructured      bool   `json:"structured_count"`
+	TestCount          int    `json:"test_count,omitempty"`
+	BuildIdentity      string `json:"build_identity"`
+	RecordedAt         string `json:"recorded_at"`
 }
 
 // remeasureDir resolves the re-measure store under the project's state
@@ -340,15 +340,15 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 		return nil, err
 	}
 	rec := &RemeasureRecord{
-		Tree: tree,
-		Base: base,
-		Command: command,
-		ExitCode: exitCode,
+		Tree:               tree,
+		Base:               base,
+		Command:            command,
+		ExitCode:           exitCode,
 		StructuredRequired: isGoTestCommand(command),
-		HasStructured: structured,
-		TestCount: count,
-		BuildIdentity: moaiBuildIdentity(),
-		RecordedAt: WindowClock().Format(time.RFC3339),
+		HasStructured:      structured,
+		TestCount:          count,
+		BuildIdentity:      moaiBuildIdentity(),
+		RecordedAt:         WindowClock().Format(time.RFC3339),
 	}
 	if err := WriteRemeasureRecord(projectRoot, tree, *rec); err != nil {
 		return nil, err

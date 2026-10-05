@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
@@ -16,7 +17,7 @@ func TestPolicyHoldRefusedForLaneRole(t *testing.T) {
 	// REQ-MWQ-012: a session that declares the lane role cannot write the
 	// policy, and the record is unchanged.
 	root := t.TempDir()
-	t.Setenv("MOAI_FACTORY_ROLE", "lane-2")
+	t.Setenv(config.EnvFactoryRole, "lane-2")
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	cmd := newIntegrationPolicyHoldCmd()
 	cmd.SetArgs([]string{"--reason", "release-cut"})

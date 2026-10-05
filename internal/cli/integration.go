@@ -335,11 +335,11 @@ func newIntegrationStatusCmd() *cobra.Command {
 			}
 			if jsonOut {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{
-					"held":   lock.Held(),
-					"stale":  lock.Stale(),
-					"lock":   lock,
-					"root":   root,
-					"policy": policy,
+					"held":    lock.Held(),
+					"stale":   lock.Stale(),
+					"lock":    lock,
+					"root":    root,
+					"policy":  policy,
 					"dropped": report.Dropped,
 				})
 			}

@@ -64,6 +64,16 @@ func newIntegrationMergeCmd() *cobra.Command {
 					return integrationReadMergeCardForRun(ctx, root, runID, cardID, lane)
 				},
 			}
+			// The landing check rides the candidate-CI key (spec.md §F):
+			// absent/false is the absent no-op seam. While t1478 is
+			// unlanded the key cannot read true — but if a future
+			// configuration flips it early, the step refuses LOUDLY rather
+			// than silently skipping a gate the project asked for.
+			if candidateCIEnabled(root) {
+				seams.LandingCheck = func(string, string) error {
+					return fmt.Errorf("the shared landing check is not wired until SPEC-CANDIDATE-CI-001 lands")
+				}
+			}
 			mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
 				Root:                root,
 				IntegrationWorktree: integ,
@@ -118,7 +128,13 @@ func integrationReadMergeCardForRun(ctx context.Context, root, runID, cardID, la
 // SPEC-CANDIDATE-CI-001 (card t1478) owns the workflow.candidate_ci.enabled
 // key and has not landed: absent reads FALSE, so the landing check is the
 // absent no-op seam (spec.md §F), and whichever card lands second wires
-// this read to the real key.
+// this read to the real key and assigns the LandingCheck seam its real
+// implementation.
+//
+// @MX:DEBT: constant-false placeholder for the landing-check gate
+// @MX:CEILING: only until SPEC-CANDIDATE-CI-001 lands its key
+// @MX:UPGRADE: t1478's landing — replace with the real config read and
+// wire factory.MergeStepSeams.LandingCheck
 func candidateCIEnabled(root string) bool {
 	_ = root // the key arrives with t1478; absent reads false today
 	return false

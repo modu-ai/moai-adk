@@ -127,7 +127,7 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 				}
 				return nil
 			}
-		}
+		} //nolint:staticcheck // QF1001: the early returns above are the clarity this shape exists for
 
 		// A dropped ticket (REQ-MWQ-003 scenario 5): the waiter observes its
 		// own disappearance and exits non-zero naming the reason, without
@@ -136,7 +136,7 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 		if readErr != nil {
 			return readErr
 		}
-		if factory.TicketPosition(lock, sessionID) == 0 && !(lock.Held() && lock.SessionID == sessionID) {
+		if factory.TicketPosition(lock, sessionID) == 0 && !(lock.Held() && lock.SessionID == sessionID) { //nolint:staticcheck // QF1001 — the negated conjunction IS the documented drop condition
 			return fmt.Errorf("integration window: your ticket was dropped (%s) — re-acquire with --wait re-enters at the tail", waiterDropReason(lock, ticket, now))
 		}
 

@@ -65,8 +65,8 @@ type MergeStepError struct {
 	Msg  string
 }
 
-func (e *MergeStepError) Error() string  { return e.Msg }
-func (e *MergeStepError) ExitCode() int  { return e.Code }
+func (e *MergeStepError) Error() string { return e.Msg }
+func (e *MergeStepError) ExitCode() int { return e.Code }
 
 // MergeExitCode reports the step's cause code carried by err.
 func MergeExitCode(err error) (int, bool) {
@@ -149,6 +149,12 @@ type MergeStepInput struct {
 	IntegrationBranch   string
 	CardID              string
 	CallerSessionID     string
+	// DeferRelease (REQ-MWQ-019 step 4): complete calls the step with the
+	// release DEFERRED — its state transitions finish first, and complete
+	// releases the window itself (or, on a post-merge transition conflict,
+	// holds first and then releases). The verb leaves it false and the step
+	// releases as its final act.
+	DeferRelease bool
 }
 
 // RunMergeStep executes the merge step and returns the merge commit SHA.
@@ -340,13 +346,42 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the worktree is not clean after the merge (autostash residue included)"), mergeSHA)
 	}
 
-	// Success: release the window so the next live ticket is promoted.
+	// Success. The verb releases here; complete (DeferRelease) takes the
+	// window's fate with it — its transitions run first, and ITS failure
+	// path holds with cause post-merge-transition-conflict naming this
+	// merge SHA (REQ-MWQ-019).
+	if in.DeferRelease {
+		return mergeSHA, nil
+	}
 	if err := releaseHeldWindow(in, seams); err != nil {
 		// The merge commit exists — a release failure is the post-merge
 		// class, not a pre-merge one.
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: releasing the window failed: %v", err), mergeSHA)
 	}
 	return mergeSHA, nil
+}
+
+// CompletePostMergeHold is the hold complete writes when a state
+// transition fails after the merge commit exists (REQ-MWQ-019's
+// post-merge-transition-conflict): a system write naming the cause and the
+// merge SHA, released after — so no queued ticket is promoted onto the
+// conflict and the leader reads the SHA from the policy record.
+func CompletePostMergeHold(projectRoot, cardID, mergeSHA string) error {
+	return WriteIntegrationWindowPolicy(projectRoot, IntegrationWindowPolicy{
+		Policy: PolicyHold,
+		Reason: fmt.Sprintf("post-merge-transition-conflict: the card %s state transition failed after the merge commit %s — the commit stays on the integration branch for the leader", cardID, mergeSHA[:minStrLen(mergeSHA, 12)]),
+		SetBy:  fmt.Sprintf("factory-complete (card %s)", cardID),
+		SetAt:  WindowClock().Format(time.RFC3339),
+	})
+}
+
+// minStrLen returns the shorter of the string's length and max — the small
+// guard the SHA prefix renders use.
+func minStrLen(s string, max int) int {
+	if len(s) < max {
+		return len(s)
+	}
+	return max
 }
 
 // readCardState calls the gate read and wraps its absence.

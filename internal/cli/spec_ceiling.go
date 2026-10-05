@@ -161,7 +161,7 @@ func looseReadCeilingPolicy(path string) (ceilings map[string]int, policyUnreada
 	}
 	var raw struct {
 		Harness struct {
-			PlanAuditTierCeilings map[string]int `yaml:"plan_audit_tier_ceilings"`
+			PlanAuditTierCeilings  map[string]int `yaml:"plan_audit_tier_ceilings"`
 			PlanAuditCeilingPolicy struct {
 				AutoDeltaRounds any `yaml:"auto_delta_rounds"`
 				OnFinalHit      any `yaml:"on_final_hit"`

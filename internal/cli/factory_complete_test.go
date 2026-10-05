@@ -140,8 +140,8 @@ func sdCardUnchanged(t *testing.T, where string, root, cardID string, before hom
 // AC-SD-013 — Claude `complete` through the integration worktree.
 func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	t.Run("pre-merged card reaches merged-local; the window stays held", func(t *testing.T) {
-	sdClearLaneEnv(t)
-	sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
@@ -187,7 +187,7 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 
 	t.Run("complete performs the merge itself and records the re-measure evidence", func(t *testing.T) {
 		sdClearLaneEnv(t)
-	sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
@@ -232,8 +232,8 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	})
 
 	t.Run("integration branch held only by the parent checkout: not provisioned", func(t *testing.T) {
-	sdClearLaneEnv(t)
-	sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
 		root, _, cards := sdMergeFixture(t, true, false, true, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")
@@ -248,8 +248,8 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	})
 
 	t.Run("integration branch held by no tree: not provisioned", func(t *testing.T) {
-	sdClearLaneEnv(t)
-	sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
 		root, _, cards := sdMergeFixture(t, true, false, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")
@@ -266,8 +266,8 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	t.Run("caller-source window: refused naming --branch", func(t *testing.T) {
 		// A github-flow fixture: no configured integration branch, so the
 		// lane's own acquire fell back to its card worktree.
-	sdClearLaneEnv(t)
-	sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
 		root, _, cards := sdMergeFixture(t, false, false, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")
@@ -288,8 +288,8 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 	t.Run("window naming the card's own branch: refused", func(t *testing.T) {
 		// A window acquired with --branch <the card's own WT- branch>: source
 		// flag, tree = the card worktree.
-	sdClearLaneEnv(t)
-	sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
+		sdClearLaneEnv(t)
 		root, _, cards := sdMergeFixture(t, true, false, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 		before := fcCard(t, root, "t1")

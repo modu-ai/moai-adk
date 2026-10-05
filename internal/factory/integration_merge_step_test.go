@@ -162,7 +162,7 @@ func (f *stepFixture) withCardTree(card *MergeCardState) *MergeCardState {
 // reads it live — tests that verify a promotion after release need the
 // recorded holder alive at release time only if the release path probes
 // staleness; the release of a LIVE holder skips staleness entirely.
-func requireCode(t *testing.T, err error, want int) *MergeStepError {
+func requireCode(t *testing.T, err error, want int) {
 	t.Helper()
 	if err == nil {
 		t.Fatalf("expected merge-step error with code %d, got success", want)
@@ -175,7 +175,7 @@ func requireCode(t *testing.T, err error, want int) *MergeStepError {
 	if !errors.As(err, &step) {
 		t.Fatalf("error is not a MergeStepError: %T", err)
 	}
-	return step
+	_ = step
 }
 
 func requireWindowReleasedAndCPromoted(t *testing.T, f *stepFixture) {
@@ -307,8 +307,8 @@ func TestMergeStepPreMergeCausesReleaseWithDistinctCodes(t *testing.T) {
 	// C is promoted. Each subtest rebuilds its own fixture (codex-P2's
 	// fresh-per-case reading applies to these too).
 	cases := []struct {
-		name string
-		code int
+		name   string
+		code   int
 		mutate func(f *stepFixture, seams *MergeStepSeams, card *MergeCardState)
 	}{
 		{"1 record invalid", MergeExitRecordInvalid, func(f *stepFixture, seams *MergeStepSeams, card *MergeCardState) {
@@ -501,14 +501,18 @@ func TestMergeStepCause8LeavesCommitAndHoldsNamingSHA(t *testing.T) {
 		return string(out), err
 	}
 	_, err := RunMergeStep(f.input(), seams)
-	step := requireCode(t, err, MergeExitPostMerge)
-	if !strings.Contains(step.Msg, "merge commit") {
-		t.Fatalf("the cause-8 message must name the merge commit: %s", step.Msg)
+	requireCode(t, err, MergeExitPostMerge)
+	var cause8 *MergeStepError
+	if !errors.As(err, &cause8) {
+		t.Fatalf("error is not a MergeStepError: %T", err)
+	}
+	if !strings.Contains(cause8.Msg, "merge commit") {
+		t.Fatalf("the cause-8 message must name the merge commit: %s", cause8.Msg)
 	}
 	// The merge commit is on the integration branch.
 	head := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD"))
-	if !strings.Contains(step.Msg, head[:12]) {
-		t.Fatalf("the hold must name the merge SHA %s: %s", head[:12], step.Msg)
+	if !strings.Contains(cause8.Msg, head[:12]) {
+		t.Fatalf("the hold must name the merge SHA %s: %s", head[:12], cause8.Msg)
 	}
 	policy, err := ReadIntegrationWindowPolicy(f.root)
 	if err != nil || policy.Policy != PolicyHold {
