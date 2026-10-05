@@ -15,6 +15,7 @@
 package factory
 
 import (
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -357,6 +358,58 @@ func IssuanceInFlightOverlap(candidateFiles []string, inFlight []IssuanceInFligh
 // ok=false means the probe produced no input (the card is excluded from the
 // comparison).
 type LaneFilesProbe func(cardID, lane string) (files []string, ok bool)
+
+// CardClosedAt derives a card's closing time from the stamps the record
+// already carries (D9 — the closing time is never stored): the archive
+// stamp when the caller read one, else the drop stamp, else "unknown". One
+// accessor, three answers.
+func CardClosedAt(item BacklogItem, archivedAt *string) string {
+	if archivedAt != nil {
+		return *archivedAt
+	}
+	if item.DroppedAt != nil {
+		return *item.DroppedAt
+	}
+	return "unknown"
+}
+
+// IssuanceDispositionValues is the closed disposition set a finding may
+// carry (REQ-TCI-011): recording-only, operator verb only.
+var IssuanceDispositionValues = []string{"accept", "merge", "reject"}
+
+// RecordFindingDisposition sets the disposition of the finding naming the
+// given pair (either order), through the locked whole-record write.
+// Recording changes no card, no relation and no queue order (D11); a pair
+// with no finding, or a value outside the closed set, is refused with
+// nothing written.
+func RecordFindingDisposition(store *BacklogStore, subject, related, disposition string) error {
+	valid := false
+	for _, v := range IssuanceDispositionValues {
+		if v == disposition {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return fmt.Errorf("disposition must be one of %s (got %q)",
+			strings.Join(IssuanceDispositionValues, ", "), disposition)
+	}
+	return store.Mutate(func(rec *BacklogRecord) error {
+		matched := 0
+		for i := range rec.Findings {
+			f := &rec.Findings[i]
+			if f.Names(subject) && f.Names(related) {
+				matched++
+				v := disposition
+				f.Disposition = &v
+			}
+		}
+		if matched == 0 {
+			return fmt.Errorf("no finding names %s and %s", subject, related)
+		}
+		return nil
+	})
+}
 
 // IssuancePresentation is everything the renderer prints for one candidate.
 // Empty means no item fired anywhere — the CLI prints nothing and the MCP

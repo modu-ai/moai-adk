@@ -560,6 +560,52 @@ func decodeIssuance(s string) (BacklogIssuance, error) {
 	return iss, nil
 }
 
+func derefIssuance(i *BacklogIssuance) string {
+	if i == nil {
+		return "<nil>"
+	}
+	b, _ := json.Marshal(i)
+	return string(b)
+}
+
+func equalStringPtr(a, b *string) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	return a == nil || *a == *b
+}
+
+func equalIntPtr(a, b *int) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	return a == nil || *a == *b
+}
+
+func equalIssuance(a, b *BacklogIssuance) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	if a == nil {
+		return true
+	}
+	if a.SpawnedBy != b.SpawnedBy || a.Origin != b.Origin || a.DropReason != b.DropReason {
+		return false
+	}
+	if !equalIntPtr(a.SizeLines, b.SizeLines) {
+		return false
+	}
+	if len(a.Files) != len(b.Files) {
+		return false
+	}
+	for k := range a.Files {
+		if a.Files[k] != b.Files[k] {
+			return false
+		}
+	}
+	return true
+}
+
 // readLastSeq reads the persisted high-water mark; an unstamped database
 // reads as 0, which normalizeBacklogRecord then lifts to max-present.
 func (e *backlogEngine) readLastSeq(ctx context.Context) (int, error) {
@@ -1018,13 +1064,28 @@ func assertBacklogParity(source, migrated *BacklogRecord) error {
 			return fmt.Errorf("item %d (%s): landing %v != %v", i, want.ID,
 				derefLandingEvidence(want.Landing), derefLandingEvidence(got.Landing))
 		}
+		// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-009: the parity assertion
+		// covers the issuance attributes (value equality, pointer identity
+		// is irrelevant after a round-trip).
+		if !equalIssuance(want.Issuance, got.Issuance) {
+			return fmt.Errorf("item %d (%s): issuance %+v != %+v", i, want.ID,
+				derefIssuance(want.Issuance), derefIssuance(got.Issuance))
+		}
 	}
 	if len(source.Findings) != len(migrated.Findings) {
 		return fmt.Errorf("finding count %d != %d", len(source.Findings), len(migrated.Findings))
 	}
 	for i := range source.Findings {
-		if source.Findings[i] != migrated.Findings[i] {
-			return fmt.Errorf("finding %d: %+v != %+v", i, source.Findings[i], migrated.Findings[i])
+		want, got := source.Findings[i], migrated.Findings[i]
+		// Field-wise: the Disposition pointer survives a round-trip as a NEW
+		// pointer to an equal string, so struct equality would refuse every
+		// dispositioned finding (REQ-TCI-009 — the parity covers the new
+		// storage).
+		if want.SubjectID != got.SubjectID || want.RelatedID != got.RelatedID ||
+			want.Relation != got.Relation || want.Source != got.Source ||
+			want.Score != got.Score || want.Note != got.Note || want.At != got.At ||
+			!equalStringPtr(want.Disposition, got.Disposition) {
+			return fmt.Errorf("finding %d: %+v != %+v", i, want, got)
 		}
 	}
 	// The archive is part of parity, not an extra. A legacy file can carry
@@ -1066,14 +1127,26 @@ func assertBacklogParity(source, migrated *BacklogRecord) error {
 			return fmt.Errorf("archived %d (%s): landing_verdict %v != %v", i, want.Item.ID,
 				derefLandingVerdict(want.LandingVerdict), derefLandingVerdict(got.LandingVerdict))
 		}
+		if !equalIssuance(want.Item.Issuance, got.Item.Issuance) {
+			return fmt.Errorf("archived %d (%s): issuance %+v != %+v", i, want.Item.ID,
+				derefIssuance(want.Item.Issuance), derefIssuance(got.Item.Issuance))
+		}
 		if len(want.Findings) != len(got.Findings) {
 			return fmt.Errorf("archived %d (%s): finding count %d != %d", i, want.Item.ID,
 				len(want.Findings), len(got.Findings))
 		}
 		for j := range want.Findings {
-			if want.Findings[j] != got.Findings[j] {
+			wantF, gotF := want.Findings[j].Finding, got.Findings[j].Finding
+			if wantF.SubjectID != gotF.SubjectID || wantF.RelatedID != gotF.RelatedID ||
+				wantF.Relation != gotF.Relation || wantF.Source != gotF.Source ||
+				wantF.Score != gotF.Score || wantF.Note != gotF.Note || wantF.At != gotF.At ||
+				!equalStringPtr(wantF.Disposition, gotF.Disposition) {
 				return fmt.Errorf("archived %d (%s): finding %d: %+v != %+v", i, want.Item.ID, j,
 					want.Findings[j], got.Findings[j])
+			}
+			if want.Findings[j].Position != got.Findings[j].Position {
+				return fmt.Errorf("archived %d (%s): finding %d position %d != %d", i, want.Item.ID, j,
+					want.Findings[j].Position, got.Findings[j].Position)
 			}
 		}
 	}
