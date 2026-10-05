@@ -141,6 +141,32 @@ func (s StoreSnapshot) resolvedTargets(name string) map[string]bool {
 	return out
 }
 
+// ResolvedLinkCount returns the number of distinct existing store files the
+// store file name resolves links to — the resolved links of file f in §1.5.
+// The fold reads the archive index's count after the fold through this so
+// the under-threshold refusal (REQ-MFB-006) judges with the checker's own
+// resolution rule, never a second one.
+func (s StoreSnapshot) ResolvedLinkCount(name string) int {
+	return len(s.resolvedTargets(name))
+}
+
+// LineTargetSetKey exposes the comparable key of one line's link-target set —
+// the identity REQ-MFB-004's step-2 re-read and REQ-MFB-005's differing-text
+// check compare lines by. The checker uses it internally for invariant (c);
+// exporting it keeps one statement of the identity.
+func LineTargetSetKey(line string) string {
+	return lineTargetSetKey(line)
+}
+
+// IsArchiveIndexName reports whether name matches the archive-index shape
+// project_card_archive_<YYYY>_<MM>.md — the shape A(S) is selected among
+// (§1.5). The selection itself stays ArchiveIndexName, the single statement
+// of the criterion; this exposes the shape for the fold's information
+// listing of present-but-unlinked candidates.
+func IsArchiveIndexName(name string) bool {
+	return archiveIndexPattern.MatchString(name)
+}
+
 // IndexSet returns I(S) (§1.5): MEMORY.md itself plus every store file
 // carrying at least SecondaryIndexLinkThreshold() resolved links. The
 // threshold is read through the accessor, so it cannot drift between the

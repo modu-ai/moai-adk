@@ -228,7 +228,7 @@ selected automatically.`,
 			return cmd.Help()
 		},
 	}
-	cmd.AddCommand(newMemoryDoctorCmd(), newMemoryArchiveCmd(), newMemoryDrainCmd())
+	cmd.AddCommand(newMemoryDoctorCmd(), newMemoryArchiveCmd(), newMemoryDrainCmd(), newMemoryFoldCmd())
 	return cmd
 }
 

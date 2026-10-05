@@ -39,6 +39,36 @@
 
 _<pending run-phase>_
 
+### M0 — test-containment repair (seam `userHomeDirFn`) — prior session (branch history), not re-measured here
+
+- `internal/cli/memory.go`: the home lookup in `memoryCandidateStores` goes through `userHomeDirFn` (the TestMain-sandboxed seam), not `userHomeDir` directly (commit `3577e290b` absorb). Containment cell `TestMemoryFoldOnDone_ExistingClosePathsContained` (AC-MFB-008 (xi)) lives in `memory_fold_wiring_test.go`; M4 extends the cell to the three close paths.
+
+### M1 — shared core (budget + reachability) — prior session (branch history), not re-measured here
+
+- `internal/config/defaults.go` (`DefaultMemoryIndexByteCap` 25000, `DefaultMemoryIndexWarnPercent` 80, `DefaultMemoryFoldOnDone` false, `DefaultMemoryFoldOnDoneBound` 2s), `internal/config/envkeys.go` (`EnvMemoryFoldOnDone`), `internal/hook/memo/taxonomy/linkage.go` (`SecondaryIndexLinkThreshold()` accessor + class-aware dangling + `MEMORY_REPO_RELATIVE_LINK`), `budget.go` (MeasureIndex / AuditIndexBudget), `reach.go` (classification, snapshots, I/R/T, A(S), `CheckFoldInvariants` (a)-(d); commits `9edc8361f`, `8ed5536e7`). M3 additions to `reach.go` (this session): `ResolvedLinkCount`, `LineTargetSetKey`, `IsArchiveIndexName` — re-exposures of the checker's own internals, one statement each.
+- E8 RED-before-GREEN for the M1 checker self-test was the M1 session's record; its verbatim output is not re-quoted here (not measured in this session). Covered post-M3 in this session: `go test -count=1 ./internal/hook/memo/taxonomy` → `ok github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy 0.301s`, exit 0.
+
+### M2 — doctor (budget + link classes) — prior session (branch history), not re-measured here
+
+- `internal/cli/memory.go` (commit `bc00fb8b3`): `index_bytes` / `index_chars` / `index_loaded_chars` / `index_link_targets`, `byte_cap` / `warn_percent` / `line_cap`, flags `--byte-cap` / `--line-cap` / `--warn-percent`. The plan-phase RED (E2/E3) is the branch history's; not re-observed here.
+- This session's regression evidence: `go test -run '^TestMemoryDoctor_Measures$|^TestMemoryDoctor_TopicCapUnchanged$|^TestMemoryDoctor_BudgetBoundaries$|^TestMemoryDoctor_BytesProxyWarns$|^TestMemoryDoctor_LinkClasses$' -count=1 -v ./internal/cli` → exit 0, 5/5 `--- PASS`, `ok … 2.377s`.
+
+### M3 — fold core (this session, branch WT-memory-doctor-budget)
+
+- TDD sequence: test file written first; RED captured against a compiling behavior-absent skeleton — `go test -run '<G-FOLD pattern>' -count=1 ./internal/cli` → exit 1, 8 `--- FAIL` lines, every failure at its intended assertion (first cell: `memory fold --card t9001 --dir … exited with error: memory fold: not implemented`); then implemented → GREEN.
+- GREEN (final, this tree): `go test -run '^TestMemoryFold_DryRunWritesNothing$|^TestMemoryFold_Classification$|^TestMemoryFold_ReachabilityPreserved$|^TestMemoryFold_VerbatimFiling$|^TestMemoryFold_ArchiveSelection$|^TestMemoryFold_Idempotent$|^TestMemoryFold_EdgeInputs$|^TestMemoryFold_ApplyOrderAndAbort$' -count=1 -v ./internal/cli` → exit 0, 8/8 `--- PASS`, `ok github.com/modu-ai/moai-adk/internal/cli 8.365s`. Swept count: `go test -list '<same pattern>' ./internal/cli` lists exactly the 8 pattern branches.
+- E8 D39 RED-then-GREEN (multi-line reordered variant): with a temporary reversed-append mutant in `buildFoldPlan`, `go test -run '^TestMemoryFold_VerbatimFiling$' -count=1 ./internal/cli` → exit 1, `memory_fold_test.go:712: fold violates invariants [d2] of the reachability model` (the D39 multi-line cell; single-line cells are reversal no-ops); mutant removed → the same command exit 0, `--- PASS: TestMemoryFold_VerbatimFiling (0.68s)`.
+- Gate findings folded in before the commit (coordinator messages, both RED-first):
+  - P1 retry path skipped archive re-verification when `Appended` is empty — regression cell added to `TestMemoryFold_Idempotent` (retry with a concurrent author stripping the moved line: RED `… exited 0, want non-zero`); fix: the archive re-read + target-set verification runs on every apply path.
+  - P1 residual (gate overlay): the same retry must abort on ANY archive drift, not only loss of the moved line — a concurrent author removing the archive's OTHER links drops index qualification while the moved line survives, and the deletion made the card unreachable. Overlay cell added (RED: `… exited 0, want non-zero`); fix: unconditional `checkFoldUnchanged` whole-byte comparison of the archive against the plan-time content before any deletion (REQ-MFB-004's letter, now on every path). Post-fix: `TestMemoryFold_Idempotent` PASS.
+  - P2 the atomic replace forced 0644 — regression cell added to `TestMemoryFold_VerbatimFiling` (0600 MEMORY.md + archive; RED `MEMORY.md permission = 644 after the fold, want the original 0600` ×2); fix: `atomicWriteFoldFile` stats the original and applies its permission bits to the temp file (0644 fallback only for a genuinely new file). Post-fix: PASS.
+- E1 G-FOLD evidence: AC-MFB-001 → `DryRunWritesNothing`, AC-MFB-002 → `Classification`, AC-MFB-003 → `ReachabilityPreserved`, AC-MFB-004 → `VerbatimFiling` + `ArchiveSelection`, AC-MFB-005 → `Idempotent`, AC-MFB-006 → `EdgeInputs`, AC-MFB-007 → `ApplyOrderAndAbort`; all 8 PASS with the swept count above. AC-MFB-013 (checker, M1) re-confirmed via the full taxonomy package run (`ok … 0.301s`, exit 0). G-DOCTOR regression: 5/5 `--- PASS`, exit 0.
+- E2 `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (post-gate-fix tree).
+- E3 coverage: `go test -cover ./internal/hook/memo/taxonomy/` → `coverage: 89.5% of statements`. `internal/cli` measured with the scoped fold+doctor selector and `-coverprofile`: `memory_fold.go` 19 functions, average 89.6% (`buildFoldPlan` 98.1%, `applyFold` 86.4%, `classifyFoldLine` 100%; `resolveFoldStore` 33.3% — its auto-resolution branch is exercised by the M4 wiring cells, `atomicWriteFoldFile` 65.2% — error branches).
+- E5 lint: `golangci-lint run --timeout=5m ./internal/cli/... ./internal/hook/memo/taxonomy/...` → exit 0, `0 issues.` (baseline on this tree: no findings; one earlier 2m-budget attempt timed out on an unrelated package scan and printed `0 issues.` before the timeout — read as a measurement artifact, retried at 5m).
+- E4 subagent boundary: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/memory*.go` → empty.
+- Baseline attribution: all M3 measurements on branch `WT-memory-doctor-budget`, tree HEAD at the M3 commit; `internal/cli` runs serialized (B9), scoped selectors only, no full-package run — the full suite waits for CI.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
