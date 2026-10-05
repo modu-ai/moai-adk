@@ -101,10 +101,13 @@ skill dependencies, and the L0 view explicitly enumerates the transitive
 runtime skill closure (design §2.3's eight-skill two-tier table — round-5
 F1). Add a catalog drift guard pinning the L0 list AND its dependency
 closure to the sources (agent frontmatter `skills:` unions, the dispatcher
-routing-table Skills lines, the command skills' dispatcher references).
+routing-table Skills lines, the command skills' dispatcher references, AND
+the on-demand `Skill()` invoke-site sweep of the L0 agent bodies — round-5
+fold B1 — with the per-mission moai-ref-*/moai-domain-* domain injections
+explicitly classified out of the guard's expected set).
 Reclassify current-`core` entries that are not L0 into bundles. Priority:
 High. Evidence: catalog loader tests + drift guards (L0 list + dependency
-closure).
+closure union).
 
 ### M1 — Per-user manifest subsystem (BLOCKING gate: D-Q2 — resolved: ~/.moai/user-assets.json)
 Implement the per-user manifest at `~/.moai/user-assets.json` (D-Q2): schema
@@ -124,21 +127,30 @@ skip-and-report (REQ-010), per-file failure isolation (REQ-013), idempotency
 (REQ-012), summary counts (REQ-011 groundwork), symlink-resolved four-root
 confinement (C2 — resolved-path judgment, not the project-side lexical check;
 AC-025, incl. the symlinked-root and leaf-symlink arms). Wire `moai init` as
-the first-install trigger with PER-ASSET-STATE judgment (REQ-024, round-5
-F3: absent/changed targets install, present manifest-matching targets
-no-op; a manifest left by a partial install does not suppress the run —
-init completes the shortfall idempotently), with `--bundles <name,...>`
+the first-install trigger with PER-ASSET-STATE judgment applying the REQ-023
+truth table (REQ-024, round-5 F3 + fold A1: absent tracked targets install;
+present tracked files refresh / manifest-repair / divergence-preserve per
+the table — a user-edited file's bytes are never clobbered; untracked
+targets are collisions; a manifest left by a partial install does not
+suppress the run — init completes the shortfall idempotently), with
+`--bundles <name,...>`
 setting the initial opt-in selection recorded in the manifest (REQ-004
 selection surface, iter2 D18). The installer resolves L0's transitive
 dependency closure from the catalog's explicit enumeration (design §2.3)
 and writes the user-side dispatcher mirror `$HOME/.agents/skills/moai/`
-(round-5 F2). Claude roots and Codex
+(round-5 F2). The dispatcher template source's INTERNAL workflow
+references (the eighteen `Read .claude/skills/moai/workflows/<name>.md`
+lines — fold A2) are rebound to installed-skill-relative paths at source
+in this milestone, so the user-folder dispatcher LOADS its workflows, not
+merely resolves. Claude roots and Codex
 roots, agents included (REQ-022). No profile provisioning ships (D-Q3 closed:
 P6 declared limitation). Priority: High. Evidence: table-driven installer
 tests on temp HOMEs (collision, failure, idempotency, both harnesses,
 confinement refusal incl. the parent-symlink, symlinked-root, and
-leaf-symlink sentinels; the partial-manifest retry case; the dependency-
-closure set landing; the dispatcher mirror).
+leaf-symlink sentinels; the partial-manifest retry case; the init retry
+with an EDITED tracked file preserving its bytes (fold A1); the dependency-
+closure union landing incl. the on-demand tier (fold B1); the dispatcher
+mirror + its workflow-loading check (fold A2)).
 
 ### M3 — `moai update` user-asset phase
 Wire the update flow: refresh (REQ-008 — only when the file's current hash
@@ -188,14 +200,18 @@ D24 — wired by M3's phase ordering — removal never precedes the install it
 replaces). Repoint the EXISTING project-scope
 Codex asset diagnostics that read project skill/agent paths to the
 user-install path in the same change — `inspectSkillMirror`
-(`internal/cli/doctor_codex.go:429`) and the Codex readiness probe pair
+(`internal/cli/doctor_codex.go:429`), the Codex readiness probe pair
 `probeCodexReadiness`/`countCodexAgentTOMLs` (`internal/cli/codex_readiness.go:131`
 consumer, `:215-217` definition — the agent-TOML count reads
 `.codex/agents/moai/*.toml` under the PROJECT root; iter2 D19 correcting
 iter1's misattribution to `codexStaleSkillFinding`, which reads user-layer
 `[[skills.config]]` entries at `doctor_codex.go:857-870` and has no
 agent-count input — whether that user-layer check needs its own repoint is
-judged in M5, not assumed here) — with a regression test asserting a correct
+judged in M5, not assumed here; `checkSkillsAllowlist`
+(`internal/cli/doctor.go:957-958`) also joins the list per round-5 fold
+A3 — repointed to the user-install path in this milestone, not removed,
+since a healthy post-M4 install otherwise draws a spurious
+".claude/skills/ not found" warn) — with a regression test asserting a correct
 user-install reports clean, extending to the readiness output (the
 `AgentsTOMLs` count), because after this milestone the project-root readers
 misreport a correct install as drift. Priority: High. Evidence: init/update

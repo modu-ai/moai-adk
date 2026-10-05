@@ -133,6 +133,28 @@ author: manager-spec
   manifest read-modify-write serialized per user (REQ-006, design §2.2);
   cross-run coverage absorbed into AC-018. Absorption map written into
   acceptance §D.2; no new REQ, 25/25 AC ceiling holds.
+- Round-5 ADDENDUM (fold batches A1-A4 + B1, operator-approved while the
+  core round was mid-flight; VERSION STAYS 0.5.0 — one version per round):
+  A1 — init's per-asset judgment reworded to the REQ-023 truth table (the
+  first cut's "bytes differ → reinstall" clobbered user edits; design
+  §2.1 + REQ-024 + AC-001 edited-file preservation arm); A2 — the
+  dispatcher's EIGHTEEN internal `Read .claude/skills/moai/workflows/*.md`
+  references (the fold named the L0 three; the same-class sweep found 18)
+  rebind at template source to installed-skill-relative paths (the
+  dispatcher is a source template, NOT a commandemit output — precision
+  recorded); AC-017's executable arm extended to LOADS, not merely
+  resolves; A3 — `checkSkillsAllowlist` (doctor.go:957-958) joins M4's
+  repoint list, repointed NOT removed; AC-009 enumeration extended; A4 —
+  AC-005's verdict basis converted to the M3 behavior test, the EV-005
+  grep demoted to auxiliary with the conversion record written into the
+  cell (the auditor makes the final call at the gate re-run); B1 — the L0
+  closure restated as the TEN-skill three-tier union (static preload ∪
+  dispatcher routing ∪ on-demand invoke sites: + moai-workflow-testing,
+  moai-workflow-worktree) with moai-ref-*/moai-domain-* per-mission
+  injections explicitly classified out (4 sites swept: ref-cross-model-
+  audit ×2 agents, ref-owasp-checklist, ref-testing-pyramid,
+  domain-html-report); REQ-003 + design §2.3 + plan M0 drift guard pin the
+  union and the classification-out. Sweep evidence: research §2b W6-W8.
 
 ## §E.2 Run-phase Evidence
 

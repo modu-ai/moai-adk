@@ -34,15 +34,15 @@ green paths only.
 
 | AC | Verifies (primary first) | Binary test | RED now | Green path |
 |---|---|---|---|---|
-| AC-001 | REQ-001, REQ-024 | After `moai init` on a fresh temp HOME: L0 skill dirs exist under `$HOME/.claude/skills/` with bytes matching the per-user manifest hashes; partial-failure-retry arm (round-5 F3): after a first init interrupted mid-install (manifest written, assets missing), a retry init completes exactly the missing assets — present manifest-matching targets untouched (zero rewrite), no duplicate or skipped entry | EV-001 | M2 |
+| AC-001 | REQ-001, REQ-024 | After `moai init` on a fresh temp HOME: L0 skill dirs exist under `$HOME/.claude/skills/` with bytes matching the per-user manifest hashes; partial-failure-retry arm (round-5 F3): after a first init interrupted mid-install (manifest written, assets missing), a retry init completes exactly the missing assets — present manifest-matching targets untouched (zero rewrite), no duplicate or skipped entry; edited-file preservation arm (round-5 fold A1): a retry init against an EDITED tracked file preserves its bytes (REQ-023 divergence preserve + backup + report) — init never clobbers user edits via a blanket reinstall | EV-001 | M2 |
 | AC-002 | REQ-001, REQ-022, REQ-024 | After the same init: `$HOME/.agents/skills/<skill>/SKILL.md` + `~/.codex/agents/<name>.toml` exist for the L0 set; dispatcher-mirror arm (round-5 F2): `$HOME/.agents/skills/moai/SKILL.md` exists (the user-side dispatcher mirror), and loading verification — a project carrying NO project-side skills resolves the dispatcher at that user-folder path (the rebound command-source reference), with no `.agents/skills` under the project | EV-002 | M2+M4 |
 | AC-003 | REQ-006 | Per-user manifest written; every installed path carries sha256 + bundle + per-file moai version | EV-003 | M1+M2 |
 | AC-004 | REQ-012 | Second install run: zero file writes (mtime/hash proof), zero-delta report | EV-004 | M2 |
-| AC-005 | REQ-008 | Shipped-byte change where current hash == manifest hash → update rewrites the tracked file; hash + version refreshed | EV-005 | M3 |
+| AC-005 | REQ-008 | Shipped-byte change where current hash == manifest hash → update rewrites the tracked file; hash + version refreshed. Verdict basis is the M3 BEHAVIOR test (round-5 fold A4) — the EV-005 grep cell is auxiliary observation only (its token count flips on a comment addition, so it can never be the pass instrument) | EV-005 | M3 |
 | AC-006 | REQ-009, REQ-023, REQ-021 | Dropped-from-bundles tracked file (current == manifest hash) → removed; dropped file with diverged hash → preserved in place + reported with NO shipped-bytes backup (none exists); manifest-stale file (current == shipped, ≠ manifest) at removal → removed under REQ-009's shipped-bytes alternative (iter4 D25); tracked file missing on disk at removal → manifest entry dropped + counted removed; foreign schema_version → removal refused while install/refresh proceed | EV-006 | M3 |
 | AC-007 | REQ-010 | Untracked file at an install target → left byte-identical, collision reported | EV-007 | M2 |
 | AC-008 | REQ-023, REQ-010 | Tracked file whose current hash matches neither manifest nor shipped bytes → preserved, shipped replacement backed up under `~/.moai/`, path unmodified by refresh, divergence reported; manifest-stale file (current == shipped ≠ manifest) → manifest repaired, no file rewrite, counted under refreshed; tracked file missing on disk → reinstalled at refresh | EV-008 | M3 |
-| AC-009 | REQ-014 | Doctor user-install check: detects manifest-tracked file deleted / hash-modified / untracked entry in the four roots; the repointed project-scope Codex diagnostics (`inspectSkillMirror`, `probeCodexReadiness`/`countCodexAgentTOMLs`) report a correct user install as clean (no false drift after M4) | EV-009 | M4+M5 |
+| AC-009 | REQ-014 | Doctor user-install check: detects manifest-tracked file deleted / hash-modified / untracked entry in the four roots; the repointed project-scope Codex diagnostics (`inspectSkillMirror`, `probeCodexReadiness`/`countCodexAgentTOMLs`) and the repointed `checkSkillsAllowlist` (round-5 fold A3 — repointed, not removed) report a correct user install as clean (no false drift after M4) | EV-009 | M4+M5 |
 | AC-010 | REQ-015 | Doctor project-vs-lock check: detects project file absent from lock AND lock entry absent from project | EV-010 | M5 |
 | AC-011 | REQ-005 | Post-init project tree contains NO catalog-derived common-asset placement: no `.claude/skills/moai*` directory (incl. the plain `moai` pack dir), no `.claude/agents/moai/`, no `.codex/agents/moai/`, no `.agents/skills/moai*` — the ban holds because the 17 published Codex command skills move user-side (D-Q4/D-Q5, design §2.5; the project-scope "command wrappers" list names non-skill files only — iter4 D29) | EV-011 | M4 |
 | AC-012 | REQ-005, REQ-001 | Post-init project tree contains settings, AGENTS.md, lock file, hooks, `.mcp.json` (with moai MCP entry) | EV-012 | M4 |
@@ -50,7 +50,7 @@ green paths only.
 | AC-014 | REQ-017 | Boundary grep: init/update paths hold zero plugin marketplace/install invocations | EV-014 | M6 |
 | AC-015 | REQ-018 | Boundary grep + build: zero `DeployModePlugin`/`PluginMirrorPolicy` references; single deploy payload shape | EV-015 | M7 |
 | AC-016 | REQ-019 | Doctor output carries no "Plugin Deployment"/"Plugin Version" carrier rows; each removed or repointed per REQ-019 with the owning requirement cited in the commit (hard delete, P5); the migration advisory row (manual `claude plugin uninstall` step for prior plugin installs, design §4) is present as a doctor informational row | EV-016 | M5+M6 |
-| AC-017 | REQ-003 | Installed L0 user-folder set equals the resolved gate answer (5 agents by name, plan/run/sync surface, factory) PLUS the enumerated transitive runtime skill closure (design §2.3's eight-skill two-tier table — round-5 F1); executable-flow arm ("default-install-runs", round-5 F1): after a default init (no `--bundles`), the default plan/run/sync flow resolves every skill it invokes — the three command skills, the dispatcher, the agent preload skills, the delegation-injected workflow skills — from the user folders alone, with no project-side dependency; the hook payload is project-deployed (AC-012), not user-folder content | EV-017 | M0+M2 |
+| AC-017 | REQ-003 | Installed L0 user-folder set equals the resolved gate answer (5 agents by name, plan/run/sync surface, factory) PLUS the enumerated transitive runtime skill closure (design §2.3's TEN-skill three-tier union — static preload ∪ dispatcher routing ∪ on-demand invoke sites, moai-ref-*/moai-domain-* classified out — round-5 F1 + fold B1); executable-flow arm ("default-install-runs", round-5 F1 + fold A2): after a default init (no `--bundles`), the default plan/run/sync flow resolves AND LOADS every skill it invokes — the three command skills, the dispatcher, the agent preload skills, the delegation-injected and on-demand workflow skills — from the user folders alone, and the user-folder dispatcher LOADS its own workflows (the rebound installed-skill-relative references), with no project-side dependency; the hook payload is project-deployed (AC-012), not user-folder content | EV-017 | M0+M2 |
 | AC-018 | REQ-004 | Via `moai init --bundles` and the `moai bundle` add/remove commands: bundle install adds exactly the bundle's catalog entries, bundle removal takes exactly them, the manifest's bundle list reflects each change, and `moai update` honors the recorded selection — a file of a shipped-but-DESELECTED bundle (the artifact of `moai bundle remove`) is pruned under the selection-based criterion (REQ-009/design §2.3), not kept (iter4 D28 flip-criterion arm); serialization arm (round-5 F4): two concurrent manifest mutations from different projects (an update and a `moai bundle add`) both survive — the earlier run's selection is not erased by the later writer | EV-018 | M0+M2+M3 |
 | AC-019 | REQ-002 | Profile dirs (`~/.moai/claude-profiles/<name>`) byte-unchanged by install/update (settings isolation) | n/a (Minor) | M2/M3 |
 | AC-020 | REQ-020, REQ-024 | Migration: template-managed project common skills AND agents removed (incl. the plain `moai` dirs); user-modified preserved + reported; user-created untouched; each removal is gated per-asset on its user counterpart being manifest-tracked with a matching hash (REQ-024 upgrade arm) — after the run the user holds the user-folder placement (no neither-state). Three machine-state arms (iter4 D24): (a) manifest ALREADY exists (another project's update / partial install) → missing counterparts installed append-only before their project-side removal, no stall, no neither-state; (b) optional-pack (non-L0) template-managed project asset with no manifest and no `--bundles` → stays project-side, reported, not installed into an unopted bundle, not removed; (c) a user-side write FAILS mid-upgrade (read-only dir fixture) → the failed file's project counterpart is NOT removed (stays + reported), remaining files complete, summary lists the failure | EV-020 | M4 |
@@ -78,7 +78,12 @@ Explicit Given-When-Then renderings for every Blocker criterion:
   init was interrupted mid-install (manifest written, some L0 assets
   missing); When `moai init` runs again; Then exactly the missing assets are
   installed, present manifest-matching targets are not rewritten, and the
-  manifest holds no duplicate or skipped entry.
+  manifest holds no duplicate or skipped entry. Edited-file preservation
+  arm (round-5 fold A1): Given the retry where one present tracked file
+  was EDITED by the user after install (hash matches neither manifest nor
+  shipped bytes); When the retry init runs; Then that file's bytes are
+  preserved untouched (REQ-023 divergence preserve + backup + report) —
+  init never clobbers user edits.
 - **AC-002** — Given the same fresh-HOME init; When the Codex roots are
   inspected; Then `$HOME/.agents/skills/<skill>/SKILL.md` exists for each L0
   skill and `~/.codex/agents/<name>.toml` exists for each L0 agent.
@@ -172,6 +177,27 @@ auditor verifies this judgment at the gate re-run):
   absorbed into **AC-018** (serialization arm; REQ-006 gained the
   read-modify-write serialization obligation).
 
+Round-5 FOLD absorption (same ACs, extended in place — version stays
+0.5.0, one version per round):
+- Fold A1 (init applies the REQ-023 truth table, no blanket reinstall) →
+  **AC-001** edited-file preservation arm (matrix + GWT); REQ-024 init arm
+  and design §2.1 reworded to the truth-table judgment.
+- Fold A2 (dispatcher-INTERNAL workflow references rebind; loading not
+  merely resolution) → **AC-017** executable-flow arm extended ("resolves
+  AND LOADS ... the user-folder dispatcher LOADS its own workflows"); the
+  eighteen-reference rebind pinned in design §2.3 / plan M2 at template
+  source.
+- Fold A3 (`checkSkillsAllowlist` repoint) → **AC-009** repoint
+  enumeration extended (repointed, not removed); design §2.6 + plan M4.
+- Fold A4 (EV-005 verdict basis conversion) → **AC-005** matrix row names
+  the M3 behavior test as the verdict basis; EV-005 cell rewritten with
+  the conversion record; the auditor makes the final call at the gate
+  re-run.
+- Fold B1 (closure includes on-demand invoke sites; moai-ref-*/moai-domain-*
+  classified out) → **AC-017** closure set restated as the ten-skill
+  three-tier union; REQ-003 + design §2.3 + plan M0 drift guard pin the
+  union and the classification-out.
+
 ## D.2b Evidence Ledger — RED-now baseline (iter1 repair, D2)
 
 Carrier for the matrix's RED-now cells (verification-completeness.md §2.1):
@@ -204,8 +230,9 @@ measured on the iter1 baseline `b965a3912c0e97ef81aeeea773019e633591e1cd`).
   L0 skills into the user root; the installer (M2) and the init trigger
   (REQ-024) do not exist yet.
 - Green path: M2 — the temp-HOME installer test asserts L0 dirs + byte match
-  and passes, flipping the cell (the round-5 F3 partial-retry arm is part of
-  that M2 test set). Proxy note (iter2 D20e): the AC's flip
+  and passes, flipping the cell (the round-5 F3 partial-retry and fold-A1
+  edited-file preservation arms are part of that M2 test set). Proxy note
+  (iter2 D20e): the AC's flip
   evidence is that installer test itself — the installer code lands in the
   new user-asset package and the init trigger in `init.go`, not in
   `update.go`, so this grep is a baseline absence probe of the wrong file for
@@ -251,16 +278,26 @@ measured on the iter1 baseline `b965a3912c0e97ef81aeeea773019e633591e1cd`).
   idempotency lives in the new user-asset package at M2 (update.go's
   user-asset phase wiring arrives with M3), so this grep is a baseline probe.
 
-### EV-005 — AC-005
-- Command: `grep -c installed_at internal/cli/update.go`
-- Stdout: `0`
-- Exit code: 1
-- Why red: update records nothing per user-folder file today — no manifest
-  entry exists to refresh, so the hash-refresh behavior is absent.
-- Green path: M3 — the update refresh test on a temp HOME (mutate shipped
-  bytes → update → file rewritten, manifest hash + version updated).
-- Flip expectation: `grep -c installed_at internal/cli/update.go` ≥ 1, exit
-  0 (iter4 D30c).
+### EV-005 — AC-005 (verdict basis CONVERTED to a behavior test — round-5 fold A4)
+- Historical baseline observation (AUXILIARY — no longer the verdict
+  basis): Command `grep -c installed_at internal/cli/update.go`, stdout
+  `0`, exit 1, measured on the plan-phase baseline trees (b965a3912 →
+  cfb903358 document pin).
+- Conversion record (fold A4): the grep's token count flips on a COMMENT
+  addition — a comment containing `installed_at` flips it 0/exit-1 →
+  1/exit-0 with zero behavior change (the gate demonstrated the flip
+  class) — so a string-grep can never be AC-005's pass instrument. The
+  criterion's VERDICT BASIS is the M3 behavior test: Given a
+  manifest-tracked user file with current hash == manifest hash ≠ shipped
+  bytes, When `moai update` runs, Then the file is rewritten to the shipped
+  bytes and the manifest's hash + version are updated. That test carries
+  its own RED (authored failing at M3 before the implementation, per the
+  TDD cycle) → GREEN pair; this plan-phase grep cell remains as the
+  auxiliary baseline-absence observation and is never re-read as the
+  verdict.
+- Green path: M3 — the behavior test above (RED at M3 authorship → GREEN
+  on implementation) is the flip instrument; the grep may be quoted as
+  auxiliary color only.
 
 ### EV-006 — AC-006
 - Command: `grep -c schema_version internal/cli/update.go`

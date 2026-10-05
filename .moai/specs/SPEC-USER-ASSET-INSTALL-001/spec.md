@@ -181,9 +181,11 @@ not re-opened during run phase):
   carry no hook destination. L0's content includes its TRANSITIVE runtime
   skill dependencies, explicitly enumerated in the catalog's L0 view — the
   `moai` dispatcher skill the three command skills invoke, the agents'
-  preload skills, and the default flows' delegation-injected workflow
-  skills (design §2.3 closure table) — so the default plan/run/sync flow
-  loads everything it calls from the installed set alone (round-5 F1,
+  preload skills, the default flows' delegation-injected workflow skills,
+  and the agents' on-demand `Skill()` invoke sites (the per-mission
+  moai-ref-*/moai-domain-* domain injections are explicitly classified out
+  — design §2.3 closure table) — so the default plan/run/sync flow loads
+  everything it calls from the installed set alone (round-5 F1 + fold B1,
   "default-install-runs").
 - REQ-004: The system shall ship every common asset outside L0 as an opt-in
   bundle; a bundle is installed or removed as a unit, bundle membership is
@@ -312,11 +314,15 @@ not re-opened during run phase):
 
 - REQ-024: When `moai init` runs, the system shall ensure every L0 and
   opted-in-bundle asset is present user-side before the run reports
-  success — the judgment is PER-ASSET-STATE (an absent or changed target is
-  installed; a present, manifest-matching target is a no-op), so a manifest
-  left by a PARTIAL install does not suppress the run: init completes the
-  shortfall idempotently, sharing the shortfall-append semantics with the
-  update upgrade arm below (round-5 F3). When `moai update` runs
+  success — the judgment is PER-ASSET-STATE applying the REQ-023 truth
+  table exactly as update does: an ABSENT tracked target is installed; a
+  present tracked file is refreshed, manifest-repaired, or
+  divergence-preserved per the table (a user-edited file's bytes are never
+  clobbered by init — round-5 fold A1); an untracked target is a REQ-010
+  collision. A manifest left by a PARTIAL install does not suppress the
+  run: init completes the shortfall idempotently, sharing the
+  shortfall-append semantics with the update upgrade arm below (round-5
+  F3). When `moai update` runs
   against a project carrying prior-model common skills or agents (the
   REQ-020 upgrade population — init ran under the pre-SPEC model), the run
   shall confirm every user counterpart REQ-020 will remove is present

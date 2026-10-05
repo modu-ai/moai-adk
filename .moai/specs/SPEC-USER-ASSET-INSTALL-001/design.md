@@ -75,16 +75,23 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
     the file may be the user's — mirrors `rehomeOneSkill`'s skip-and-report and
     `UserCreated` provenance semantics)
   - target absent AND untracked → install
-- Init trigger semantics (round-5 F3): init's install is PER-ASSET-STATE
-  based, not manifest-absence based — for each L0 and opted-in-bundle asset,
-  an absent target, or one whose bytes differ from its manifest record, is
-  (re)installed; a present, manifest-matching target is a no-op. A manifest
-  left by a PARTIAL install therefore does not suppress the run: init
-  completes the shortfall idempotently, sharing the shortfall-append
-  semantics with update's upgrade branch (§2.4 state (a)). The former
-  "no per-user install" wording (v0.4.0 and earlier) left the
-  partial-install retry skipping the missing assets with no project
-  fallback after M4.
+- Init trigger semantics (round-5 F3; fold A1 correcting the first cut):
+  init's install is PER-ASSET-STATE based, not manifest-absence based — and
+  the per-asset judgment applies the §2.1 truth table EXACTLY as update
+  does, never a blanket reinstall: an ABSENT tracked target is installed;
+  a present tracked file whose bytes differ from its manifest record is
+  classified by the truth table — manifest-hash match (stale install) →
+  refresh per REQ-008; current == shipped (manifest-stale) → manifest
+  repair, no rewrite; NEITHER (user edit) → REQ-023 divergence preserve +
+  backup + report, bytes untouched; a present UNTRACKED target → REQ-010
+  collision skip + report. "Bytes differ" alone is ambiguous between
+  stale-install and user-edit — the fold-A1 gate measured user bytes
+  clobbered on exactly that wording. A manifest left by a PARTIAL install
+  therefore does not suppress the run: init completes the shortfall
+  idempotently, sharing the shortfall-append semantics with update's
+  upgrade branch (§2.4 state (a)). The former "no per-user install"
+  wording (v0.4.0 and earlier) left the partial-install retry skipping the
+  missing assets with no project fallback after M4.
 - Per-file failure (permissions, EISDIR, …) → continue + surface in summary
   (fail-open per file, loud at the end; never a silent partial install).
 - Four-root confinement is judged on RESOLVED paths, covering all three
@@ -193,32 +200,62 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   installs/refreshes L0 + opted-in bundles, prunes per REQ-009 (no longer in
   L0 nor any opted-in bundle). Milestones: the `--bundles` init flag in M2;
   the `moai bundle` command and update honoring in M3.
-- L0 transitive runtime skill closure (round-5 F1): catalog L0 entries
-  carry PER-ENTRY skill dependencies, and the L0 view explicitly enumerates
-  the resolved transitive closure — the installer copies the enumerated
-  set; it never discovers dependencies by walking skill bodies at runtime.
-  The closure, verified against the template sources on tree `064ff9960`
-  (research §2b), is EIGHT skills in two tiers:
-  - Tier 1 — invocation/preload (required for the flow to start): `moai`
-    (the dispatcher — invoked by all three published command skills),
-    `moai-foundation-core` (static preload of manager-spec, manager-develop,
-    manager-docs), `moai-workflow-spec` (static preload of manager-spec),
+- L0 transitive runtime skill closure (round-5 F1; fold B1 extending the
+  enumeration to on-demand invoke sites): catalog L0 entries carry
+  PER-ENTRY skill dependencies, and the L0 view explicitly enumerates the
+  resolved transitive closure — the installer copies the enumerated set; it
+  never discovers dependencies by walking skill bodies at runtime. The
+  closure is the UNION of three source classes, verified against the
+  template sources on tree `064ff9960` (research §2b W1-W3, W7):
+  - Tier 1 — invocation/static preload: `moai` (the dispatcher — invoked
+    by all three published command skills), `moai-foundation-core` (static
+    preload of manager-spec, manager-develop, manager-docs),
+    `moai-workflow-spec` (static preload of manager-spec),
     `moai-foundation-quality` (static preload of sync-auditor).
     plan-auditor declares NO static `skills:` preload (its body says so
     verbatim) — it contributes nothing to the static union.
-  - Tier 2 — delegation-injected by the default flows' dispatcher routing
-    rows: `moai-foundation-thinking` (plan row), `moai-workflow-tdd` and
+  - Tier 2 — dispatcher routing rows (delegation-injected by the default
+    flows): `moai-foundation-thinking` (plan row), `moai-workflow-tdd` and
     `moai-workflow-ddd` (run rows), `moai-workflow-project` (sync row).
+  - Tier 3 — on-demand `Skill("...")` invoke sites in the L0 agent bodies
+    (fold B1: the default TDD flow invokes skills at need — e.g.
+    manager-develop.md:237 "invoke Skill(\"moai-workflow-testing\")"):
+    `moai-workflow-testing` (manager-spec:248, manager-develop:237) and
+    `moai-workflow-worktree` (manager-spec:250, manager-develop:242).
+  UNION TOTAL: TEN skills. Classified OUT of L0 (the drift guard carries
+  the classification so it does not flag them): the per-mission DOMAIN
+  injections — `moai-ref-cross-model-audit` (plan-auditor:237/:764,
+  sync-auditor:191/:226), `moai-ref-owasp-checklist` (sync-auditor:223),
+  `moai-ref-testing-pyramid` (sync-auditor:224), and
+  `moai-domain-html-report` (manager-docs:224) — per-mission specialist
+  skills the delegation map injects by mission type, not default-flow
+  requirements; a missing one degrades that specific mission, not the
+  default plan/run/sync flow.
   A catalog drift guard pins this enumeration to its sources — the agent
   frontmatter `skills:` unions, the dispatcher's routing-table Skills
-  lines, and the command skills' dispatcher references — so the closure
-  cannot rot silently (the same drift-guard pattern as the L0 list guard).
-- User-side dispatcher mirror (round-5 F2): the Codex skill root
+  lines, the command skills' dispatcher references, AND the on-demand
+  invoke-site sweep of the L0 agent bodies (minus the classified-out
+  moai-ref-*/moai-domain-* prefixes) — so the closure cannot rot silently
+  (the same drift-guard pattern as the L0 list guard).
+- User-side dispatcher mirror (round-5 F2; fold A2 extending the rebind to
+  the dispatcher's own internals): the Codex skill root
   `$HOME/.agents/skills/` carries `moai/SKILL.md` — the dispatcher mirror
   the published command skills reference — the user-folder successor of the
   retired project-side mirror; without it a post-M4 Codex CLI harness
   cannot resolve the `read .agents/skills/moai/SKILL.md` instruction, which
-  is why the reference itself is also rebound at source (§2.5).
+  is why the reference itself is also rebound at source (§2.5). Fold A2:
+  the dispatcher's INTERNAL workflow references are also project-relative —
+  `Read .claude/skills/moai/workflows/<name>.md` appears EIGHTEEN times in
+  templates/.claude/skills/moai/SKILL.md (:126 plan, :134 run, :142 sync,
+  and the same pattern for gate/e2e/goal/gtd/fix and the remaining rows) —
+  and break identically post-M4 (the gate observed FileNotFoundError with
+  user-folder copies present, because the path resolves against the project
+  root). The rebind is at TEMPLATE SOURCE — the dispatcher is not a
+  commandemit output; templates/.claude/skills/moai/SKILL.md IS its source
+  layer (deployed verbatim) — and rebinds the WHOLE eighteen-reference
+  family (not only the L0 plan/run/sync three the fold named) to paths
+  relative to the installed skill directory, so one form resolves in
+  `~/.claude/skills/moai/` and `$HOME/.agents/skills/moai/` alike.
 
 ### 2.4 `moai update` integration
 
@@ -325,9 +362,15 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   root). `codexStaleSkillFinding` (`doctor_codex.go:857-870`) is NOT one of
   them: it reads user-layer `[[skills.config]]` entries and has no
   agent-count input — iter1's attribution to it was wrong; M5 judges whether
-  that user-layer check needs its own repoint. Left alone the project-root
-  readers would misreport every correct install as
-  drift.
+  that user-layer check needs its own repoint. `checkSkillsAllowlist`
+  (`internal/cli/doctor.go:957-958`) joins the repoint list (round-5 fold
+  A3): it reads `.claude/skills` under the PROJECT root and warns
+  ".claude/skills/ not found" on a healthy post-M4 install — it is
+  REPOINTED to the user-install path in M4 (the same milestone that stops
+  emitting project assets), not removed, so the allowlist integrity check
+  survives scoped to the user folders. Left alone the project-root
+  readers — and the allowlist check — would misreport every correct install
+  as drift.
 
 ### 2.7 Plugin carrier disposition
 
