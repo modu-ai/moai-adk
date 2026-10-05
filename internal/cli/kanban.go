@@ -63,9 +63,10 @@ const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
 type kanbanEntryParse struct {
 	Spec           string   // non-numeric positional — the kanban SPEC identifier
 	KanbanEnabled  bool     // -k present (any shape)
-	FactoryEnabled bool     // -k selected the factory (numeric count or lane-shape name)
+	FactoryEnabled bool     // a factory shape selected the factory (-k N, -f, -l)
 	FactoryWorkers int      // the factory count (explicit or the default)
-	Rest           []string // args with -k and its consumed value removed
+	LaneAuto       bool     // -l present: the launcher injects the next free lane name
+	Rest           []string // args with the entry token and its consumed value removed
 }
 
 // parseKanbanFlag extracts --kanban / -k and its optional value from args.

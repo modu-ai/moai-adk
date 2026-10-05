@@ -37,7 +37,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f lane-<n>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f lane-<n> | -l] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -85,19 +85,24 @@ Factory Mode (dedicated -f entry):
                                 n — and connect it to the lead socket of the
                                 running factory. A number whose label is held by a
                                 live session is bumped to the next free number.
+  -l, --lane                   Join the running factory as the next free
+                                lane — the registry's first unheld number
+                                is picked for you; a live-held number is
+                                bumped as usual.
   -k <N> / -k <N> --name lane-<i>
                                 The v1.2.0 unified -k factory shapes, still
                                 valid: -k N is the lead of an N-lane run,
                                 -k N --name lane-<i> is lane i of it (a
                                 bare -k --name lane-<i> defaults to 8).
-                                One entry token per launch: -k and -f
+                                One entry token per launch: -k and -f/-l
                                 together is an error.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
   -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
   above. -f briefly returned as the factory fan-out flag and was RETIRED
   (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the dedicated
-  factory entry — the kanban chain keeps -k, the factory gets -f.
+  factory entry — the kanban chain keeps -k, the factory gets -f (lead)
+  and -l (next free lane).
 
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
@@ -117,6 +122,7 @@ Examples:
   moai glm -f              # Factory lead on GLM: one lane (lane-1)
   moai glm -f 4            # Factory lead on GLM: announces lane-1..lane-4
   moai glm -f lane-2       # Add lane 2 to the running factory (GLM backend)
+  moai glm -l              # Join the factory as the next free lane (GLM backend)
 
 For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -216,6 +222,13 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	filteredArgs = entry.Rest
+	// -l desugars here, where the project root is known: the factory
+	// registry's first unheld claim names the lane, and the injected --name
+	// lets the worker branch below run unchanged (bump, replaceNamedLabel,
+	// per-lane env). See cc.go for the full comment.
+	if entry.LaneAuto {
+		filteredArgs = append(filteredArgs, nameFlagLong, nextFreeFactoryLane(launchProjectRoot()))
+	}
 	label, isCompanion := parseCompanionLabel(filteredArgs)
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {

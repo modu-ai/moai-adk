@@ -189,6 +189,112 @@ func TestParseFactoryFlag(t *testing.T) {
 	}
 }
 
+// TestLaneEntryAuto covers the -l entry: the parse records the intent, the
+// conflicts surface as errors, cg rejects the form, and the launcher helper
+// picks the factory registry's first unheld lane number.
+func TestLaneEntryAuto(t *testing.T) {
+	t.Parallel()
+
+	t.Run("bare -l records the lane intent", func(t *testing.T) {
+		t.Parallel()
+		p, err := parseLauncherEntry([]string{"-l"})
+		if err != nil {
+			t.Fatalf("parseLauncherEntry(-l): %v", err)
+		}
+		if !p.FactoryEnabled || !p.LaneAuto {
+			t.Errorf("-l = (factory %v, laneAuto %v), want (true, true)", p.FactoryEnabled, p.LaneAuto)
+		}
+		if len(p.Rest) != 0 {
+			t.Errorf("-l rest = %v, want empty (the token must not reach the launcher)", p.Rest)
+		}
+	})
+
+	t.Run("joined -l forms take no argument", func(t *testing.T) {
+		t.Parallel()
+		for _, args := range [][]string{{"-l=3"}, {"--lane=lane-2"}} {
+			if _, err := parseFactoryFlag(args); err == nil || !strings.Contains(err.Error(), "takes no argument") {
+				t.Errorf("parseFactoryFlag(%v) = %v, want the no-argument error", args, err)
+			}
+		}
+	})
+
+	t.Run("-l and -f are two factory shapes", func(t *testing.T) {
+		t.Parallel()
+		for _, args := range [][]string{{"-l", "-f"}, {"-f", "4", "-l"}, {"--factory=2", "-l"}} {
+			if _, err := parseFactoryFlag(args); err == nil || !strings.Contains(err.Error(), "two factory shapes") {
+				t.Errorf("parseFactoryFlag(%v) = %v, want the shape conflict", args, err)
+			}
+		}
+	})
+
+	t.Run("-l with an operator --name is a conflict", func(t *testing.T) {
+		t.Parallel()
+		if _, err := parseLauncherEntry([]string{"-l", "--name", "lane-3"}); err == nil ||
+			!strings.Contains(err.Error(), "already picks the next free lane") {
+			t.Errorf("parseLauncherEntry(-l --name lane-3) = %v, want the naming conflict", err)
+		}
+	})
+
+	t.Run("-l with -k is a conflict", func(t *testing.T) {
+		t.Parallel()
+		if _, err := parseLauncherEntry([]string{"-l", "-k", "SPEC-X-001"}); err == nil ||
+			!strings.Contains(err.Error(), "at most one") {
+			t.Errorf("parseLauncherEntry(-l -k SPEC-X-001) = %v, want the one-entry-token conflict", err)
+		}
+	})
+
+	t.Run("pass-through marker protects a backend -l", func(t *testing.T) {
+		t.Parallel()
+		args := []string{"--", "-l"}
+		p, err := parseLauncherEntry(args)
+		if err != nil || p.FactoryEnabled || p.LaneAuto {
+			t.Fatalf("read past the pass-through marker: (%v, %+v)", err, p)
+		}
+		if !slices.Equal(p.Rest, args) {
+			t.Errorf("rest = %v, want %v verbatim", p.Rest, args)
+		}
+	})
+
+	t.Run("cg rejects the -l factory form", func(t *testing.T) {
+		t.Parallel()
+		if err := rejectFactoryOnCG([]string{"-l"}); err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
+			t.Errorf("-l on cg must carry the sentinel, got %v", err)
+		}
+	})
+
+	t.Run("next free lane picks the first unheld number", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		if got := nextFreeFactoryLane(root); got != "lane-1" {
+			t.Fatalf("empty registry pick = %q, want lane-1", got)
+		}
+		if err := saveFactoryRegistry(factoryRegistryPath(root), map[string]factoryWorkerEntry{
+			"lane-1": {PID: 11100},
+			"lane-2": {PID: 11101},
+		}); err != nil {
+			t.Fatalf("seed registry: %v", err)
+		}
+		probe := factoryProcessAlive
+		factoryProcessAlive = func(pid int) bool { return pid == 11100 }
+		defer func() { factoryProcessAlive = probe }()
+		if got := nextFreeFactoryLane(root); got != "lane-2" {
+			t.Fatalf("pick with lane-1 live = %q, want lane-2 (its claim is dead)", got)
+		}
+	})
+
+	t.Run("both launchers document the -l entry", func(t *testing.T) {
+		t.Parallel()
+		for _, c := range []struct{ use, long string }{{ccCmd.Use, ccCmd.Long}, {glmCmd.Use, glmCmd.Long}} {
+			if !strings.Contains(c.use, "| -l]") {
+				t.Errorf("use line missing the -l token: %q", c.use)
+			}
+			if !strings.Contains(c.long, "-l, --lane") {
+				t.Errorf("help text missing the -l entry doc")
+			}
+		}
+	})
+}
+
 // TestParseFactoryFlagPassThroughBoundary asserts the shared `--` discipline
 // on the -f parse: nothing past the marker is read, and the marker plus
 // everything after it is forwarded verbatim.

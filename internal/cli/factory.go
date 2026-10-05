@@ -50,6 +50,15 @@ const (
 	factoryFlagShort = "-f"
 )
 
+// The lane entry tokens. `-l` joins Factory Mode as the next free lane —
+// the operator never names the number; the factory registry's first unheld
+// claim wins, and a number claimed mid-launch is bumped by the usual worker
+// path. `--lane` is its long form.
+const (
+	laneFlagLong  = "--lane"
+	laneFlagShort = "-l"
+)
+
 // factoryFlagUsageError names every accepted -f shape. It is the error text
 // for an invalid SUPPLIED value and the reference the help texts paraphrase.
 const factoryFlagUsageError = "-f/--factory takes a lane count of 1 or more (e.g. -f 4), " +
@@ -70,10 +79,11 @@ const factoryFlagUsageError = "-f/--factory takes a lane count of 1 or more (e.g
 // nor a lane label is an error — there is no second interpretation to
 // silently fall into, and hiding the typo would be worse than naming it.
 type factoryFlagParse struct {
-	Enabled      bool     // -f present (any shape)
+	Enabled      bool     // -f or -l present (any shape)
 	Workers      int      // the explicit count; 0 when omitted or lane-form
 	WorkerNumber int      // n of `-f lane-<n>`; 0 unless the lane form
-	Rest         []string // args with -f and its consumed value removed
+	LaneAuto     bool     // -l present: join as the next free lane
+	Rest         []string // args with the entry token and its consumed value removed
 }
 
 // parseFactoryFlag extracts --factory / -f and its optional value from args.
@@ -104,6 +114,16 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		case strings.HasPrefix(arg, factoryFlagLong+"="), strings.HasPrefix(arg, factoryFlagShort+"="):
 			value = strings.TrimPrefix(strings.TrimPrefix(arg, factoryFlagShort+"="), factoryFlagLong+"=")
 			hasValue = true
+		case arg == laneFlagLong || arg == laneFlagShort:
+			// -l joins as the next free lane; it never takes a value.
+			if p.LaneAuto {
+				return p, fmt.Errorf("%s may appear only once", laneFlagLong)
+			}
+			p.Enabled = true
+			p.LaneAuto = true
+			continue
+		case strings.HasPrefix(arg, laneFlagLong+"="), strings.HasPrefix(arg, laneFlagShort+"="):
+			return p, fmt.Errorf("%s takes no argument; it joins the next free lane (use -f lane-<n> for a specific one)", laneFlagLong)
 		default:
 			p.Rest = append(p.Rest, arg)
 			continue
@@ -125,6 +145,23 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			continue
 		}
 		return p, fmt.Errorf("%s, got %q", factoryFlagUsageError, value)
+	}
+
+	// -f and -l are two shapes of one factory entry: a launch carries at most
+	// one, and which shape the operator meant would otherwise be ambiguous.
+	// The scan mirrors this parser's `--` discipline — a factory flag after
+	// the marker is a claude-arg, not ours.
+	if p.LaneAuto {
+		for _, a := range args {
+			if a == "--" {
+				break
+			}
+			if a == factoryFlagLong || a == factoryFlagShort ||
+				strings.HasPrefix(a, factoryFlagLong+"=") || strings.HasPrefix(a, factoryFlagShort+"=") {
+				return p, fmt.Errorf("-f/--factory and -l/--lane are two factory shapes; carry at most one — " +
+					"-f [N|lane-<n>] names the lead or a specific lane, -l joins the next free lane")
+			}
+		}
 	}
 
 	return p, nil
@@ -161,8 +198,8 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 		return entry, nil
 	}
 	if entry.KanbanEnabled {
-		return entry, fmt.Errorf("-k/--kanban and -f/--factory are two entry tokens; a launch carries at most one — " +
-			"use -k [SPEC-ID] for the kanban chain or -f [N] for the factory")
+		return entry, fmt.Errorf("-k/--kanban and the factory entry (-f/-l) are two entry tokens; a launch carries at most one — " +
+			"use -k [SPEC-ID] for the kanban chain or -f [N] / -l for the factory")
 	}
 
 	entry.FactoryEnabled = true
@@ -171,6 +208,14 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	// --name on top of these.)
 	entry.Rest = fp.Rest
 	switch {
+	case fp.LaneAuto:
+		// -l joins as the next free lane. The number is resolved at dispatch,
+		// where the project root (and the factory registry) is available; the
+		// parse records the intent and enforces the no-explicit-name rule.
+		if operatorSuppliedName(fp.Rest) {
+			return entry, fmt.Errorf("-l already picks the next free lane; drop the --name/-n flag (got args %v)", fp.Rest)
+		}
+		entry.LaneAuto = true
 	case fp.WorkerNumber > 0:
 		if operatorSuppliedName(fp.Rest) {
 			return entry, fmt.Errorf("-f lane-<n> already names the lane; drop the --name/-n flag (got args %v)", fp.Rest)
@@ -361,6 +406,25 @@ func resolveFactoryWorkerName(root, label string, notes io.Writer) string {
 	reg[final] = kanban.NewFactoryWorkerEntry()
 	_ = saveFactoryRegistry(path, reg)
 	return final
+}
+
+// nextFreeFactoryLane returns the lowest lane-<n> label that no live session
+// holds — the -l entry's pick. Dead claims are pruned on the way through, so
+// a crashed lane's number is immediately reusable. It does NOT register the
+// label: the worker launch path (resolveFactoryWorkerName) registers the
+// final label and bumps it if a concurrent lane claimed the same number in
+// between. Best-effort like every registry read on the launch path — an
+// unreadable registry yields lane-1, and the bump rule reconciles from there.
+func nextFreeFactoryLane(root string) string {
+	path := factoryRegistryPath(root)
+	reg := kanban.PruneFactoryDeadClaims(loadFactoryRegistry(path), factoryProcessAlive)
+	for n := 1; ; n++ {
+		label := kanban.FactoryLaneLabel(n)
+		claim, taken := reg[label]
+		if !taken || claim.PID <= 0 || !factoryProcessAlive(claim.PID) {
+			return label
+		}
+	}
 }
 
 // replaceNamedLabel returns args with the first `--name` / `-n` value equal
