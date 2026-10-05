@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -208,6 +209,9 @@ func TestRetrackSectionFiles_FailureReturnsErrorAndPrintsNothing(t *testing.T) {
 	// Break the SAVE, not the load: .moai goes read-only so the helper's own
 	// Load still succeeds (a broken load is the documented no-op escape) but
 	// mgr.Save's write into .moai fails.
+	if runtime.GOOS == "windows" {
+		t.Skip("a 0500 directory does not deny writes on Windows; the failure injection cannot reproduce there")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("running as root bypasses directory permission checks")
 	}
