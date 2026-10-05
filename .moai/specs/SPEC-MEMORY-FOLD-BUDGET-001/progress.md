@@ -32,7 +32,8 @@
 
 - iteration 1 (0.1.0, audited sha `73c4ab646880c68743966b9d6e8c1b98e3112632`): FAIL 0.69, 12 blocking (D1-D12), 8 optional (D13-D20). Report: `.moai/reports/t1502/plan-audit.md` (gitignored card evidence). Leader disposition: `.moai/reports/t1502/leader-disposition.md`.
 - iteration 2 (0.2.0, audited sha `0dfae6d4a172cd8609c3c310988d74be12774b5b`): FAIL 0.71, D8 carried plus D21-D26 blocking, D27-D33 optional. Report: `.moai/reports/t1502/plan-audit-iter2.md` (gitignored card evidence). Second leader disposition: second split, one more delta authorized, Q1 and Q7 confirmed by the operator.
-- iteration 3 input (0.3.0): this revision. Disposition of every iteration-2 finding: `plan.md` §M; iteration-1 optional findings: `plan.md` §L. A confirming audit has not run.
+- iteration 3 (0.3.0, audited sha `b2c254d444bad455dbcca599ca726a97bd98a946`): FAIL 0.79 (threshold 0.80), no must-pass failed, blocking D34, D35, D36, D38, D39, D40. Report: `.moai/reports/t1502/plan-audit-iter3.md` (gitignored card evidence). Single-model verdict, no cross-model receipt. Disposition of every iteration-2 finding: `plan.md` §M; iteration-1 optional findings: `plan.md` §L.
+- ceiling reached; hold 2026-10-04, resumed 2026-10-05 on the operator's approval relayed by the leader: run enters as PASS-with-debt. Delta 4 (0.4.0, commit `30fd5d1b9`) wrote the iteration-3 findings down as run-entry repairs (`plan.md` §N); no confirming audit runs. The audit verdict of record stays FAIL 0.79 — the debt is accepted, not cleared.
 
 ## §E.2 Run-phase Evidence
 
@@ -45,3 +46,36 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Mode Selection (orchestrator log, written before the first run-phase `Agent()` spawn).
+
+- Input parameters: tier M; scope 15 certain files (plan.md §A); domains 3 (Go CLI, taxonomy package, SPEC artifacts); file language 100% Go plus markdown; concurrency benefit LOW (coding-heavy, shared package `internal/cli`); Agent Teams not requested.
+- Mode evaluation: direct — not selected (15 files, new code); serial — **selected**; fanout — not selected (coding-heavy); sweep — not selected (not mechanical-uniform); agent-team — not selected (explicit-request only).
+- Decision: serial — one `manager-develop` per milestone, M0 first, then M1 to M4; the lane verifies each milestone's landing on disk before the next spawn.
+- Justification: coding-heavy work in one package; per `orchestration-mode-selection.md` §B.2 coding-heavy + multi-file defaults to serial. A milestone's output is the next milestone's input (the shared core feeds the doctor and the fold).
+
+### Kickoff record (plan to run gate, operator form)
+
+- Gate form: operator form, not the autonomous transition. The autonomous predicate cannot hold: plan-audit verdict of record is FAIL 0.79 (`auto-semantics.md` §9.1 keeps FAIL a hard block) and `blocking_count` is not 0.
+- Approval: the operator's approval of 2026-10-05, **relayed by the leader** in a cross-session message (`leader-disposition.md` Disposition 4); the lane did not observe it first-hand. Recorded as a Gap, not as a first-hand confirmation.
+- Scope of approval: run, then sync, then a codex card review (at most 2 rounds, the leader may run it), then report merge-ready. Not granted: push, merge window, real memory store access.
+- Preferences collected: Q1 default OFF behind an env gate and Q7 split to the follow-up card (operator-confirmed 2026-10-04); Q2, Q4, Q5, Q8, Q9, Q10 DEFAULT-APPLIED; Q3 and Q6 carry empty verdicts (D41) — run-time defaults, recorded here as accepted debt.
+- Progression mode: semi-autonomous; no `/moai goal` armed (the lane is its own judge, completion is read from evidence).
+
+### Run-entry debt register (iteration-3 findings accepted as debt)
+
+| Finding | Class | Where it is closed | State at run entry |
+|---|---|---|---|
+| D34 | DoD clause red at arrival | `acceptance.md` §7, `plan.md` §D and M5 line (delta 4, `30fd5d1b9`) | closed in SPEC text; the verifying command runs at the end of run |
+| D35 | existing `internal/cli` close-path tests not HOME-isolated | `plan.md` M0 — run-mandatory FIRST code step, seam `userHomeDirFn` in `internal/cli/memory.go:123`, containment cell AC-MFB-008 (xi) | open — code, M0 |
+| D36 | OD-11 row missing | `decision-index.md` row Q10 (delta 4) | closed in SPEC text |
+| D38 | `linkage_test.go` assertions :99/:377/:392 | `plan.md` §A recount, B8 (delta 4) | closed in SPEC text |
+| D39 | reordered multi-line fold passes every cell | `acceptance.md` AC-MFB-004 variant, AC-MFB-003 fixed expectations (delta 4) | closed in SPEC text; the variant cell must be RED-then-GREEN in the run |
+| D40 | "checker and doctor cannot disagree" false | `spec.md` §1.5, AC-MFB-003 (delta 4) | closed in SPEC text |
+| D37 | stamps predating rewritten text | `decision-index.md` re-stamped (delta 4) | closed |
+| D41 | Q3/Q6 EVIDENCE-NEEDED rows block an autonomous Kickoff | n/a — operator form used here | open debt, named |
+| D42 | optional | not addressed | open debt, named |
+
+Absorption note: local `develop` moved 22 commits past the plan base `2f492df19` (tip `5e26ee139` at 2026-10-05); the run stays on `30fd5d1b9` as dispatched and absorbs `develop` before the merge window, with the pinned plan counts (file census, assertion counts) re-derived on the absorbed tree.
