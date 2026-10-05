@@ -104,7 +104,7 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: b7c0d2474
 sync_note: single sync commit carrying the `implemented → completed` transition (spec.md frontmatter), the CHANGELOG [Unreleased] entry, and this §E.4 record; `sync_commit_sha` backfilled in the following commit per the D3 placeholder exemption.
 sync_scope: auto — changed surfaces are the M0-M4 implementation files (memory.go, memory_fold.go, memory_fold_wiring_test.go, memory_budget_test.go, memory_fold_test.go, defaults.go, envkeys.go, taxonomy budget/reach/linkage), CHANGELOG.md, spec.md frontmatter transition, progress.md evidence; docs-site untouched (no user-facing doc change this SPEC); codemaps untouched (no exported-surface change beyond the new verb, already covered by the M4-era tree).
 
