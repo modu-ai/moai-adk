@@ -60,6 +60,16 @@ const secondaryIndexLinkThreshold = 3
 // set of files the index can reach.
 var markdownLinkTarget = regexp.MustCompile(`\]\(([^)]+\.md)\)`)
 
+// SecondaryIndexLinkThreshold exposes the secondary-index threshold so every
+// reader of the rule — the doctor above and the fold's reachability checker
+// (SPEC-MEMORY-FOLD-BUDGET-001 §1.5) — reads one number. The checker builds
+// its index set from this accessor, so the threshold cannot drift between the
+// doctor and the checker, and the boundary test is written against it rather
+// than against a literal.
+func SecondaryIndexLinkThreshold() int {
+	return secondaryIndexLinkThreshold
+}
+
 // topicFiles returns the memory topic files directly under dir: .md files,
 // excluding the index itself. A missing directory yields no files and no
 // error — a project that has not written a memory yet is not a defect.
