@@ -2,7 +2,7 @@
 id: SPEC-MEMORY-FOLD-BUDGET-001
 title: "Memory hygiene pass 1 — card-done fold into the archive index, byte-aware index budget, link-class report"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-10-04
 updated: 2026-10-05
 author: GOOS행님
