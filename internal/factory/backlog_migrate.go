@@ -413,8 +413,17 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 	}
 
+	// The disposition column rides the same tolerant accessor the main
+	// findings read uses: a database opened read-only (or one predating
+	// REQ-TCI-010) carries no disposition column, and an archived finding
+	// read NULL there — the same absent-means-nil reading the queue side
+	// takes.
+	archiveDispositionExpr, err := e.columnExpr(ctx, "archived_findings", "disposition")
+	if err != nil {
+		return err
+	}
 	findingRows, err := e.queryDB().QueryContext(ctx,
-		`SELECT archive_seq, position, subject_id, related_id, relation, source, score, note, at, disposition
+		`SELECT archive_seq, position, subject_id, related_id, relation, source, score, note, at, `+archiveDispositionExpr+`
 		 FROM archived_findings ORDER BY archive_seq, rowid`)
 	if err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)

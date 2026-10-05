@@ -307,7 +307,7 @@ mentions an id later in the sentence still falls through, and
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
 		newTodoClaimCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
-		newTodoDropCmd(), newTodoUndropCmd(),
+		newTodoDropCmd(), newTodoUndropCmd(), newTodoMergeCmd(),
 		newTodoHoldCmd(), newTodoUnholdCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(), newTodoTraceCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),

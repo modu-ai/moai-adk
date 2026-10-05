@@ -199,6 +199,18 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 					// carries no dropped stamp, and a later re-drop stamps
 					// afresh.
 					rec.Items[i].DroppedAt = nil
+					// Exact reversal reaches the drop-reason attribute too
+					// (REQ-TCI-010's mirror): a reason left behind would
+					// survive undrop as a machine-readable claim the state
+					// no longer backs. An issuance carrying ONLY the reason
+					// is removed whole; one carrying more keeps its other
+					// keys.
+					if iss := rec.Items[i].Issuance; iss != nil && iss.DropReason != "" {
+						iss.DropReason = ""
+						if iss.SpawnedBy == "" && iss.Origin == "" && iss.SizeLines == nil && len(iss.Files) == 0 {
+							rec.Items[i].Issuance = nil
+						}
+					}
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)
