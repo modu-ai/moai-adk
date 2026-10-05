@@ -88,7 +88,7 @@ git 탐침(진행 중 레인 브랜치와 병합 기준 사이의 `git diff --na
 | `items`, `archived_items` | `issuance` | nullable TEXT, JSON 객체. 없음 = NULL |
 | `findings`, `archived_findings` | `disposition` | nullable TEXT(`accept`/`merge`/`reject`). 없음 = NULL |
 
-`issuance` JSON 의 키(모두 선택): `spawned_by`(카드 id), `origin`(닫힌 집합: `operator`, `leader`, `audit-finding`, `follow-up`, `ci-repair`, `standing`, `external`, `split`), `size_lines`(예상 제품 줄 수, 정수), `files`(예상 파일 경로 배열), `drop_reason`(문자열). 카드가 어느 키도 갖지 않으면 컬럼은 NULL 이고 직렬화에서 사라진다(`omitempty`). 닫힌 `origin` 집합은 카드 머리말 분류(`research.md` §3.2 의 02 스크립트 분류)를 겹치지 않는 값으로 줄인 것이다.
+`issuance` JSON 의 키(모두 선택): `spawned_by`(카드 id), `origin`(닫힌 집합: `operator`, `leader`, `audit-finding`, `follow-up`, `ci-repair`, `standing`, `external`, `split`, `debt`), `size_lines`(예상 제품 줄 수, 정수), `files`(예상 파일 경로 배열), `drop_reason`(문자열). 카드가 어느 키도 갖지 않으면 컬럼은 NULL 이고 직렬화에서 사라진다(`omitempty`). 닫힌 `origin` 집합은 카드 머리말 분류(`research.md` §3.2 의 02 스크립트 분류)를 겹치지 않는 값으로 줄인 것이다.
 
 REQ-TCI-007 은 이 형태를 행동으로만 말한다(없음은 빈 값이 아니라 없음, 속성이 없는 카드는 이전과 같게 저장·직렬화·내보내짐). "가산 컬럼 경로로 추가하고 v1→v2 재구성 목록에는 넣지 않는다", "없음은 SQL NULL 과 nil" 같은 구현 방법은 이 절과 §4.2·§4.4 가 소유한다.
 
