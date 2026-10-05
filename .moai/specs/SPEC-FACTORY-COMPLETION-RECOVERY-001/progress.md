@@ -25,3 +25,11 @@ plan_complete_at: 2026-10-06
 ## §E.4 Sync-phase Audit-Ready Signal
 
 (sync-phase에서 작성 — manager-docs 소관. sync_commit_sha는 sync 커밋에서 pending-backfill로 기록 후 후속 커밋에서 백필.)
+
+## §F Phase 4 Mode Selection
+
+- 입력: tier=M, scope=9파일(plan §C 파일별 변경표), 도메인=1(CLI+homestate 단일 Go 축), 언어 혼합=Go 100%, concurrency benefit=LOW(coding-heavy — Anthropic coding-task caveat), agent-team 요건=미요청.
+- 모드 평가: direct=아님(다중 파일·신규 로직) / fanout=아님(coding-heavy·단일 도메인) / sweep=아님(기계 균일 변형 아님) / **serial=선택**(마일스톤당 단일 구현 스폰 — M1→M2→M3 순차).
+- Decision: serial
+- 근거: Anthropic의 coding-task 병렬성 주의에 따라 구현 중심 작업은 순차가 기본 — M1의 게이트 설계가 M2/M3의 전제(완료 표면 열거·receipt 타입)라 의존성도 순차를 지지. manager-develop 역할의 per-spawn 일반 스폰이 본 카드 트리에서 수행한다(manager-* 타입 스폰의 자가 격리 회피 — t1318).
+- 경계 사례: 해당 없음. Kickoff: 리더 결정 (a)에 따른 자율 진입 — plan-audit PASS-WITH-DEBT 0.94(≥0.80)·plan_artifact_hash `29794e62…` @6f01022e3·blocker 없음(결정 기록 본 절).
