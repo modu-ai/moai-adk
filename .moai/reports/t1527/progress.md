@@ -44,14 +44,28 @@ from every before/after capture → **not pinned by capture**. D5 shipped as the
 
 ## Machine-load context (affects the verification record)
 
-The box ran factory siblings at load 20-48 / 16 cores through this card. Attempts 1-3
+The box ran factory siblings at load 20-56 / 16 cores through this card. Attempts 1-3
 of the root-package run hit the 30m binary timeout (attempt 3's binary was compiled
 pre-edit, so its transcript IS the pre-change baseline evidence; 4 pre-existing FAILs
-recorded, not fixed). The post-change whole-package run launched with -timeout 45m
-under the held slot lease. Targeted test families (the tests my diff can affect) all
-green: severity/terminal-block/reexec/banner/outcome/worktree-advisory/merge-history +
-hook-install families + init/MCP + preview family + race (tui, cli/update/...,
-cli targeted) + vet + lint (0 issues) + GOOS=windows build/vet.
+recorded, not fixed). Attempt 4 (the post-change whole-package run, -timeout 45m under
+the held lease) exited 1 after ~44 min with zero output lines written — no panic dump,
+no package verdict; recorded as-is, not retried into load 56.
+
+Verification that DID land, all green:
+- small packages whole, post-change: tui x3 + cli/update x6 (exit 0, re-run after the
+  final edits)
+- targeted root-package families covering every test the diff can touch: severity,
+  terminal-block, reexec/banner, outcome/classify, worktree-advisory, merge-history,
+  hook-install (push+commit+disclosure+attribution+preserve), init/MCP-provision,
+  preview family + regenerated golden, skip-sync, retained-advisory, identity,
+  worktree-migration, harness, dry-run, e2e, mode, legacy/current snapshot,
+  clean-legacy-hooks, agency-adapter, flag-matrix, fast-path, archive-skill,
+  clean-install
+- go test -race: internal/tui/... + internal/cli/update/... whole, + cli targeted
+- go vet (cli, cli/update, config) darwin + GOOS=windows; GOOS=windows build ./...
+- golangci-lint run ./internal/cli/... ./internal/config/ → 0 issues
+- the repository-wide verdict belongs to the CI run on the integration branch (PENDING
+  at report time, per the run-phase contract)
 
 ## Same-class deferred (recorded, not done)
 
