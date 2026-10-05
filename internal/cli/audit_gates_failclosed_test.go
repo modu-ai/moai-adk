@@ -145,26 +145,15 @@ func TestWorktreeRootSurfacesGateError(t *testing.T) {
 
 // TestGateErrorPropagatesToCallerSites — AC-ACR-011's R4 arm: the propagation
 // claim is verified PER SITE, one subtest per inventoried caller of plan file
-// 18 (LEDGER-ACR-N's six sites outside the two repaired surfaces).
+// 18 (LEDGER-ACR-N's sites outside the two repaired surfaces). The
+// prepareCodexAudit site lives in audit_gates_failclosed_codex_test.go — the
+// fake codex is POSIX-only, and keeping it here would break the Windows build
+// (CI red at ca29eaf16).
 func TestGateErrorPropagatesToCallerSites(t *testing.T) {
 	t.Run("mcp_claude.go resolveClaudeAuditModelEffort", func(t *testing.T) {
 		_, err := resolveClaudeAuditModelEffort(writeTreeWorkflow(t, unparseableWorkflow), "", "")
 		if err == nil || !strings.Contains(err.Error(), "workflow.yaml") {
 			t.Errorf("err = %v, want the pins read error surfaced", err)
-		}
-	})
-
-	t.Run("codex_audit_launch.go prepareCodexAudit", func(t *testing.T) {
-		repo := newAuditRepo(t)
-		installFakeCodex(t)
-		breakTreeWorkflow(t, repo.a1)
-
-		r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1})
-		if r.res.ExitCode == 0 {
-			t.Fatal("a launch whose audit configuration cannot be read must refuse")
-		}
-		if !strings.Contains(r.stderr, "workflow.audit pins unreadable") || !strings.Contains(r.stderr, "workflow.yaml") {
-			t.Errorf("stderr = %q, want the pins error surfaced", r.stderr)
 		}
 	})
 

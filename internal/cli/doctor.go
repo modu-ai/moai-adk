@@ -228,6 +228,11 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// artifact inventory (legacy backlog.json, .migrated, session
 		// records), judged from the same detector (REQ-TSP-042). Read-only.
 		{todoGhostInventoryCheckName, func(v bool) DiagnosticCheck { return checkTodoGhostInventory(cwd, v) }},
+		// SPEC-SESSION-CC-VERSION-001 REQ-SCV-007: per live registry session,
+		// the running Claude Code version against the installed one. Read-only,
+		// at most one probe per live entry, advisory — never CheckFail, so it
+		// never gates doctor's exit status.
+		{ccVersionStalenessCheckName, func(v bool) DiagnosticCheck { return checkSessionCCVersionStaleness(cwd, v) }},
 		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
 		// Applicable only in a tree carrying the committed emission set — a
 		// deployed project sees one added `ok` row and the same exit status.

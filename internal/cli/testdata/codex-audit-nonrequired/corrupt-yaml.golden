@@ -4,20 +4,22 @@
     "build_commit": "\u003cbuild_commit\u003e",
     "build_lag": "\u003cbuild_lag\u003e",
     "findings": [],
+    "gate_unmet": "workflow.audit gates unreadable: parse workflow.yaml: yaml: line 1: did not find expected ',' or ']'",
     "next_steps": [
       "fall back to the active auditor (claude)"
     ],
-    "summary": "codex unavailable: codex binary not found in PATH",
-    "verdict": "inconclusive"
+    "summary": "workflow.audit gates unreadable: parse workflow.yaml: yaml: line 1: did not find expected ',' or ']': codex unavailable: codex binary not found in PATH",
+    "verdict": "fail"
   },
   "text": {
     "build_commit": "\u003cbuild_commit\u003e",
     "build_lag": "\u003cbuild_lag\u003e",
     "findings": [],
+    "gate_unmet": "workflow.audit gates unreadable: parse workflow.yaml: yaml: line 1: did not find expected ',' or ']'",
     "next_steps": [
       "fall back to the active auditor (claude)"
     ],
-    "summary": "codex unavailable: codex binary not found in PATH",
-    "verdict": "inconclusive"
+    "summary": "workflow.audit gates unreadable: parse workflow.yaml: yaml: line 1: did not find expected ',' or ']': codex unavailable: codex binary not found in PATH",
+    "verdict": "fail"
   }
 }

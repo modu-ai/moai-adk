@@ -33,8 +33,13 @@ progressive_disclosure:
 One unattended pass of the factory foreman: watch the backlog queue, dispatch
 the next operator-picked card to an isolated worker, collect completion
 evidence, report. The queue surface is `moai gtd`; the dispatch protocol and
+<<<<<<< HEAD:plugins/moai/skills/moai-factory-foreman/SKILL.md
 card classes live in the factory dispatch rule (`.claude/rules/moai/workflow/factory-dispatch.md`).
 `foreman` — an auxiliary role of the leader: the unattended watcher that dispatches the already-picked card to an isolated worker when no leader session is holding the queue.
+=======
+card classes live in the kanban dispatch rule (`.claude/rules/moai/workflow/kanban-dispatch.md`).
+`foreman` — an auxiliary role of the leader: the unattended watcher that dispatches the already-picked card to an isolated worker when no leader session holds the board.
+>>>>>>> main:.claude/skills/moai-kanban-foreman/SKILL.md
 
 ## Running unattended
 
@@ -66,10 +71,15 @@ not something this loop can do for itself.
    idle. A batch authorization (`/moai:todo --auto` — the operator's typed
    invocation-as-approval) is the card-pick gate's autonomous form
    (`.claude/rules/moai/workflow/auto-semantics.md` §9): within it, serial
+<<<<<<< HEAD:plugins/moai/skills/moai-factory-foreman/SKILL.md
    consumption on its own judgment, outside the keep-set (bar a `[보류` card,
    which is ranked last, not excluded), is authorized; queue
    ADMISSION stays the operator's. A lane takes its card through
    `moai factory next --card <id>`, never through this loop.
+=======
+   consumption in queue order is authorized; queue ADMISSION stays the
+   operator's.
+>>>>>>> main:.claude/skills/moai-kanban-foreman/SKILL.md
 2. **No approval gate is answered on the operator's behalf.** When a card's
    next step needs a human decision that is not already recorded as made
    (plan-to-run kickoff approval, a review severity call, a scope choice),
@@ -103,7 +113,11 @@ not something this loop can do for itself.
    - `command`:
 
      ```sh
+<<<<<<< HEAD:plugins/moai/skills/moai-factory-foreman/SKILL.md
      # The queue directory, resolved the way factory.StateDirForRoot does for a
+=======
+     # The queue directory, resolved the way kanban.StateDirForRoot does for a
+>>>>>>> main:.claude/skills/moai-kanban-foreman/SKILL.md
      # standard git-repository project: <moai-home>/db/<project-key>/todo,
      # keyed by the repository's canonical (primary-checkout) root.
      mh=${MOAI_HOME:-$HOME/.moai}
@@ -141,7 +155,11 @@ not something this loop can do for itself.
    input schema, so treat a shorter-than-requested expiry there as expected
    rather than as a fault.
 
+<<<<<<< HEAD:plugins/moai/skills/moai-factory-foreman/SKILL.md
    The watch resolves the queue directory the way `factory.StateDirForRoot`
+=======
+   The watch resolves the queue directory the way `kanban.StateDirForRoot`
+>>>>>>> main:.claude/skills/moai-kanban-foreman/SKILL.md
    does for a standard git-repository project — a project-keyed directory
    under the moai home (`MOAI_HOME` when that is set to an absolute path,
    otherwise `~/.moai`), keyed by the primary checkout's root — so a linked

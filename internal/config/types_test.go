@@ -331,7 +331,6 @@ func TestWorkflowConfigNestedFieldReachability(t *testing.T) {
 		{wfType, []string{"Worktree", "AutoCreate"}},
 		{wfType, []string{"Worktree", "AutoMerge"}},
 		{wfType, []string{"Worktree", "SessionNamePattern"}},
-		{wfType, []string{"Worktree", "TmuxPreferred"}},
 	}
 	for _, c := range checks {
 		cur := c.typ

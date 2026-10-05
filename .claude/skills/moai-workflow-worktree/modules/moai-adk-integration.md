@@ -23,7 +23,7 @@ MoAI-ADK Integration Points (EnterWorktree-first doctrine):
 
 The plan phase does NOT create a worktree. A worktree is entered by the USER before a phase runs, not provisioned by a workflow step. The EnterWorktree-first doctrine is the SSOT:
 
-- New-session launch (post-`/clear` or new terminal): `moai cc -w <name>` (or `moai glm -w` / `moai cg -w`). The `-w` flag accepts both short names (resolved under `.claude/worktrees/`) and absolute paths under `~/.moai/worktrees/<project>/...`.
+- New-session launch (post-`/clear` or new terminal): `moai cc -w <name>` (or `moai glm -w`). The `-w` flag accepts both short names (resolved under `.claude/worktrees/`) and absolute paths under `~/.moai/worktrees/<project>/...`.
 - Current-session re-entry (same session continuing): the runtime tool `EnterWorktree(<path>)`.
 - The retired `/moai plan --worktree` flag and the retired `moai worktree new` command MUST NOT be presented as live entry points.
 

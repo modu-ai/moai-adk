@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# navigator-enrich.sh — Project Navigator AST symbol enrichment (SPEC-PROJECT-NAVIGATOR-003).
+# navigator-enrich.sh — Project Navigator AST symbol enrichment (the Project Navigator AST enrichment feature).
 #
 # Sibling to the 001 regeneration script and the 002 audit script. Wraps the
 # `moai navigator-enrich` Go entry point which reads 001's capability-map.md
@@ -11,13 +11,13 @@
 #   * Self-contained bash (git + the moai binary; NO jq). The tree-sitter
 #     parsing happens inside the Go entry point; this script only resolves the
 #     project root, performs the capability gate, and invokes the binary.
-#   * Capability gate (REQ-NT-001 / REQ-NT-002): if capability-map.md is
+#   * Capability gate (the capability-gate REQ): if capability-map.md is
 #     absent, emit an info log and exit 0 WITHOUT writing any output file.
 #   * Atomic writes (.tmp -> mv) and idempotence live inside the Go entry
 #     point; this script inherits both.
 #   * Fail-open on every error mode: exit 0 always (never aborts /moai codemaps).
 #   * Provenance uses git (commit SHA + committer date), never wall-clock
-#     (REQ-NT-012 idempotence).
+#     (the governing REQ idempotence).
 #
 # Boundary: writes ONLY .moai/project/codemaps/{capability-symbols.md,json} and
 # appends ONLY to .moai/logs/navigator-astx.log. It NEVER touches 001/002
@@ -38,7 +38,7 @@ ASTX_LOG="$ROOT/.moai/logs/navigator-astx.log"
 
 mkdir -p "$(dirname "$ASTX_LOG")" 2>/dev/null || true
 
-# Capability gate (REQ-NT-001 vs REQ-NT-002).
+# Capability gate (the governing REQ vs the governing REQ).
 if [ ! -f "$CAP_MAP" ]; then
     printf '%s navigator-astx: capability-map.md absent at %s; skipping AST enrichment\n' \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '?')" "$CAP_MAP" >> "$ASTX_LOG" 2>/dev/null || true

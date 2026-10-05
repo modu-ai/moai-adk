@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MoAI-ADK Claude Code + Codex 상세 구현계획</title>
+  <style>
+    :root{--ivory:#faf9f5;--paper:#fff;--slate:#141413;--clay:#d97757;--clay-d:#b85c3e;--oat:#e3dacc;--olive:#788c5d;--g100:#f0eee6;--g300:#d1cfc5;--g500:#76756f;--g700:#3d3d3a;--blue:#315b78;--red:#a7443a;--max:1180px;--sans:"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif;--serif:"Noto Serif KR","AppleMyungjo",serif;--mono:"SFMono-Regular",Consolas,monospace}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--ivory);color:var(--slate);font:15px/1.7 var(--sans)}a{color:var(--clay-d);text-underline-offset:3px}code,pre{font-family:var(--mono)}code{padding:.08rem .32rem;border-radius:4px;background:var(--g100);font-size:.92em}pre{margin:12px 0 0;padding:16px 18px;overflow:auto;border:1px solid var(--g300);border-radius:9px;background:#202421;color:#edf1eb;font-size:12px;line-height:1.55}h1,h2,h3{letter-spacing:-.025em;line-height:1.28}h1{max-width:1040px;margin:18px 0 14px;font:700 clamp(34px,4.5vw,60px)/1.12 var(--serif);word-break:keep-all}h2{margin:0 0 18px;font:700 28px/1.3 var(--serif)}h3{margin:26px 0 10px;font-size:18px}p{margin:9px 0}ul,ol{padding-left:22px}li+li{margin-top:5px}.wrap{width:min(var(--max),calc(100% - 36px));margin:auto}
+    header{padding:64px 0 38px;border-bottom:1px solid var(--oat);background:linear-gradient(125deg,#faf9f5 55%,#efe4d8)}.eyebrow,.label{color:var(--clay-d);font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}.lede{max-width:840px;color:var(--g700);font-size:18px}.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.chip{padding:5px 10px;border:1px solid var(--g300);border-radius:999px;background:rgba(255,255,255,.65);font-size:12px}.chip.ok{border-color:#a7b696;color:#48613e}.chip.gap{border-color:#d3ad78;color:#81592d}
+    nav{position:sticky;top:0;z-index:5;border-bottom:1px solid var(--oat);background:rgba(250,249,245,.93);backdrop-filter:blur(12px)}nav .wrap{display:flex;gap:18px;padding-top:11px;padding-bottom:11px;overflow:auto}nav a{white-space:nowrap;color:var(--g700);text-decoration:none;font-size:12px;font-weight:700}main{padding:34px 0 74px}section{scroll-margin-top:60px;margin-bottom:26px;padding:28px;border:1px solid var(--oat);border-radius:13px;background:var(--paper);box-shadow:0 10px 28px rgba(70,54,40,.06)}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:13px}.card{grid-column:span 4;padding:17px;border:1px solid var(--g300);border-radius:10px;background:#fff}.card.half{grid-column:span 6}.card.full{grid-column:1/-1}.card .big{display:block;margin:5px 0;color:var(--clay-d);font-size:25px;font-weight:850}.callout{margin:17px 0;padding:15px 18px;border-left:4px solid var(--clay);border-radius:3px 8px 8px 3px;background:#fff4ec}.callout.warn{border-left-color:#c29347;background:#fff8e8}.callout.good{border-left-color:var(--olive);background:#f2f6ed}
+    .table-wrap{overflow:auto;border:1px solid var(--g300);border-radius:9px}table{width:100%;min-width:760px;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border-bottom:1px solid var(--g300);text-align:left;vertical-align:top}th{background:var(--g100);font-size:12px}tr:last-child td{border-bottom:0}.tree{white-space:pre;overflow:auto;padding:16px;border:1px solid var(--g300);border-radius:9px;background:#f6f4ee;color:#2f3631;font:12px/1.55 var(--mono)}
+    .diagram{overflow:auto;margin:16px 0;padding:10px;border:1px solid var(--g300);border-radius:10px;background:#fbfaf7}.diagram svg{display:block;width:100%;min-width:900px;height:auto}.milestone{display:grid;grid-template-columns:105px 1fr;gap:17px;padding:17px 0;border-top:1px solid var(--oat)}.milestone:first-of-type{border-top:0}.badge{width:max-content;height:max-content;padding:5px 9px;border-radius:999px;background:#e6efe0;color:#4d6541;font-size:11px;font-weight:800}.badge.med{background:#f4ead5;color:#82602f}.file-list{columns:2;column-gap:28px}.file-list li{break-inside:avoid}.check{padding-left:0;list-style:none}.check li{position:relative;padding-left:23px}.check li:before{position:absolute;left:0;content:"✓";color:var(--olive);font-weight:900}.evidence h3{color:var(--clay-d)}.small{color:var(--g500);font-size:12px}footer{padding:0 0 48px;color:var(--g500);font-size:12px}
+    @media(max-width:760px){header{padding-top:40px}section{padding:20px}.card,.card.half{grid-column:1/-1}.milestone{grid-template-columns:1fr;gap:7px}.file-list{columns:1}}
+    @media print{nav{display:none}body{background:#fff}section,.card,.diagram,pre{break-inside:avoid;box-shadow:none}}
+  </style>
+</head>
+<body>
+  <header><div class="wrap">
+    <div class="eyebrow">Implementation plan · Expert tier · 2026-09-21</div>
+    <h1>MoAI-ADK<br>Claude Code + Codex 이중 하네스</h1>
+    <p class="lede">공통 정책·Skill·Agent를 한 번만 작성하고 두 개발 환경에 정확히 배포하기 위한 상세 실행계획. 파일 구조, milestone, 의미 동등성 게이트, 테스트, rollout과 rollback까지 포함한다.</p>
+    <div class="meta"><span class="chip ok">Plan / Expert</span><span class="chip ok">기존 구현 재사용</span><span class="chip gap">코드 변경 미포함</span><span class="chip">HEAD 2213871af</span><span class="chip">origin/main 0↔0</span></div>
+  </div></header>
+  <nav aria-label="목차"><div class="wrap"><a href="#summary">요약</a><a href="#baseline">현재 기반</a><a href="#structure">구조</a><a href="#policy">Rules</a><a href="#skills">Skills·Agents</a><a href="#session">세션</a><a href="#worktree">Worktree</a><a href="#milestones">Milestones</a><a href="#tests">테스트</a><a href="#risk">위험</a><a href="#evidence">Evidence</a></div></nav>
+  <main class="wrap">
+    <section id="summary">
+      <div class="label">Decision summary</div><h2>한 줄 설계: 중립 원본 → 결정적 emitter → 두 호스트 어댑터</h2>
+      <div class="grid">
+        <article class="card"><span class="label">Source of truth</span><span class="big">1개</span><p><code>internal/template/canonical</code>만 사람이 편집한다.</p></article>
+        <article class="card"><span class="label">Harness targets</span><span class="big">2개</span><p>Claude Code와 Codex는 각자의 네이티브 경로를 소비한다.</p></article>
+        <article class="card"><span class="label">Safety rule</span><span class="big">0개</span><p>Skill에만 존재하는 hard safety clause의 허용 수.</p></article>
+      </div>
+      <div class="callout good"><strong>첫 구현 단위는 세션 통신이 아니라 policy coverage inventory다.</strong> 83개 rule을 먼저 옮기면 중요한 의무가 조용히 사라질 수 있다. 조항 ID와 carrier/test 대응을 고정한 뒤 디렉터리를 이동한다.</div>
+      <h3>완료 정의</h3>
+      <ol>
+        <li><code>moai init --harness claude|codex|both</code>가 선택한 산출물만 배포한다.</li>
+        <li>공통 안전 정책, Skill, Agent 의미는 각각 하나의 중립 원본을 가진다.</li>
+        <li>모든 hard clause가 persistent instruction 또는 guard/test를 가진다.</li>
+        <li>Claude↔Codex 알림 왕복과 readback을 검증하며 메시지는 승인이나 완료를 만들지 않는다.</li>
+        <li>persistent card worktree는 MoAI만 관리하고 host-native worktree는 ephemeral로 분리한다.</li>
+        <li>기존 <code>--llm gpt</code> 프로젝트를 손상하지 않고 마이그레이션한다.</li>
+      </ol>
+      <p class="small">비목표: 두 제품의 도구 이름 통일, 미지원 기능 가장, 83개 rule의 일괄 Skill 변환, 이번 단계의 코드 구현.</p>
+    </section>
+
+    <section id="baseline">
+      <div class="label">Reuse map</div><h2>현재 기반은 버리지 않고 어댑터로 승격한다</h2>
+      <div class="table-wrap"><table><thead><tr><th>현재 자산</th><th>관찰 상태</th><th>계획</th></tr></thead><tbody>
+        <tr><td><code>init --llm claude|gpt|both</code></td><td>현재 CLI에서 확인</td><td><code>--harness</code> 표준화, alias 유지</td></tr>
+        <tr><td><code>templates/AGENTS.md</code></td><td>공통 계약 존재</td><td>중립 policy source에서 생성</td></tr>
+        <tr><td><code>templates/CLAUDE.md</code></td><td>Claude overlay</td><td><code>@AGENTS.md</code> + Claude 전용만 유지</td></tr>
+        <tr><td><code>skill_mirror.go</code></td><td>Claude → Codex symlink/copy</td><td>과도기 재사용 후 neutral emitter로 전환</td></tr>
+        <tr><td><code>agentemit</code></td><td>Codex TOML·documented drop</td><td>neutral agent manifest로 확장</td></tr>
+        <tr><td><code>codexwiring</code></td><td>MCP·Hook 설정</td><td>capability manifest와 doctor 연결</td></tr>
+        <tr><td><code>internal/sessionmsg</code></td><td>4개 broker 도구</td><td>공통 fallback transport</td></tr>
+        <tr><td>worktree launcher/registry</td><td>MoAI 관리 기능 존재</td><td>lifecycle owner 계약 추가</td></tr>
+        <tr><td>83개 Claude rule</td><td>약 1.2MB</td><td>조항 단위 분류 후 carrier 재배치</td></tr>
+      </tbody></table></div>
+      <p>현재 <code>templates/</code>가 <code>//go:embed all:templates</code>의 입력이라는 계약은 유지한다. 새 canonical layer는 그 앞에서 배포 트리를 결정적으로 생성한다. 배포기까지 한꺼번에 갈아엎지 않는 이유는 단순해—움직이는 바닥 위에서 계단까지 뜯으면 발목이 먼저 퇴근한다.</p>
+    </section>
+
+    <section id="structure">
+      <div class="label">Target structure</div><h2>기존 `catalog.yaml`과 구분해 `canonical/`을 사용한다</h2>
+      <div class="diagram" role="img" aria-label="중립 원본에서 Claude와 Codex 산출물 및 공통 런타임으로 이어지는 구조">
+        <svg viewBox="0 0 1060 500" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#d97757"/></marker></defs>
+          <rect x="30" y="35" width="270" height="190" rx="12" fill="#fff4ec" stroke="#d97757"/><text x="53" y="69" fill="#b85c3e" font-size="14" font-weight="700">CANONICAL SOURCE</text><text x="53" y="105" font-size="14">policy / standing · scoped · host</text><text x="53" y="137" font-size="14">skills / scripts · references</text><text x="53" y="169" font-size="14">agents / semantic manifests</text><text x="53" y="201" font-size="14">capabilities · coverage</text>
+          <rect x="390" y="70" width="270" height="120" rx="12" fill="#f0eee6" stroke="#87867f"/><text x="415" y="104" fill="#3d3d3a" font-size="14" font-weight="700">DETERMINISTIC EMITTERS</text><text x="415" y="138" font-size="13">policy · skill · agent · hook</text><text x="415" y="166" fill="#76756f" font-size="12">unsupported → explicit disposition</text><path d="M300 130L390 130" stroke="#d97757" stroke-width="2" marker-end="url(#a)"/>
+          <rect x="760" y="25" width="270" height="145" rx="12" fill="#f2f6ed" stroke="#788c5d"/><text x="785" y="59" fill="#4e6643" font-size="14" font-weight="700">CLAUDE OUTPUT</text><text x="785" y="92" font-size="13">CLAUDE.md · rules · skills</text><text x="785" y="121" font-size="13">agents · settings · hooks</text><text x="785" y="148" fill="#76756f" font-size="12">native session + EnterWorktree</text>
+          <rect x="760" y="195" width="270" height="145" rx="12" fill="#eef3f7" stroke="#315b78"/><text x="785" y="229" fill="#315b78" font-size="14" font-weight="700">CODEX OUTPUT</text><text x="785" y="262" font-size="13">AGENTS.md · .agents/skills</text><text x="785" y="291" font-size="13">agents TOML · config · hooks</text><text x="785" y="318" fill="#76756f" font-size="12">App Server + managed worktree</text><path d="M660 115L760 92" stroke="#d97757" stroke-width="2" marker-end="url(#a)"/><path d="M660 150L760 260" stroke="#d97757" stroke-width="2" marker-end="url(#a)"/>
+          <rect x="30" y="330" width="480" height="135" rx="12" fill="#fff" stroke="#d1cfc5"/><text x="55" y="365" fill="#b85c3e" font-size="14" font-weight="700">SESSION TRANSPORT</text><text x="55" y="400" font-size="13">Claude native · Codex App Server · MoAI broker</text><text x="55" y="430" fill="#a7443a" font-size="12">message ≠ authority ≠ completion</text>
+          <rect x="550" y="330" width="480" height="135" rx="12" fill="#fff" stroke="#d1cfc5"/><text x="575" y="365" fill="#b85c3e" font-size="14" font-weight="700">WORKTREE PROVIDER</text><text x="575" y="400" font-size="13">MoAI persistent · Claude/Codex ephemeral</text><text x="575" y="430" fill="#4e6643" font-size="12">one physical path → one lifecycle owner</text>
+        </svg>
+      </div>
+      <div class="tree">internal/template/
+├── canonical/                         # 유일한 의미 원본
+│   ├── policy/{standing,scoped,host}/
+│   ├── policy/coverage.yaml
+│   ├── skills/&lt;skill&gt;/
+│   ├── agents/&lt;role&gt;.yaml
+│   └── capabilities.yaml
+├── policyemit/ · skillemit/ · agentemit/
+├── templates/                         # 생성된 go:embed 배포 트리
+│   ├── AGENTS.md · CLAUDE.md
+│   ├── .claude/{rules,skills,agents}/
+│   ├── .agents/skills/
+│   └── .codex/{agents,config.toml,hooks.json}
+└── embed.go                           # 기존 embed 계약 유지</div>
+    </section>
+
+    <section id="policy">
+      <div class="label">Policy routing</div><h2>Rules를 없애지 않고 적용 시점별 carrier로 나눈다</h2>
+      <div class="table-wrap"><table><thead><tr><th>클래스</th><th>Claude</th><th>Codex</th><th>기계적 강제</th></tr></thead><tbody>
+        <tr><td><strong>standing</strong><br>매 턴 안전·권한</td><td><code>CLAUDE.md</code> → 공통 계약</td><td>root <code>AGENTS.md</code></td><td>Hook/test 병행</td></tr>
+        <tr><td><strong>scoped</strong><br>특정 경로</td><td><code>.claude/rules</code> path/glob</td><td>CWD 계약이 있는 nested AGENTS 또는 승격</td><td>path-aware Hook</td></tr>
+        <tr><td><strong>workflow</strong><br>요청 시 절차</td><td><code>.claude/skills</code></td><td><code>.agents/skills</code></td><td>Skill contract</td></tr>
+        <tr><td><strong>host</strong><br>제품 고유</td><td>Claude overlay</td><td>Codex overlay</td><td>capability probe</td></tr>
+        <tr><td><strong>enforced</strong><br>금지/게이트</td><td colspan="2">project Hook · CLI guard</td><td>negative test 필수</td></tr>
+        <tr><td><strong>reference</strong><br>긴 참고</td><td colspan="2">Skill <code>references/</code></td><td>필요 없음</td></tr>
+      </tbody></table></div>
+      <div class="callout warn"><strong>가짜 동등성 금지:</strong> Claude의 path-scoped rule과 Codex nested AGENTS는 같지 않다. Codex instruction chain은 실행 CWD를 따르므로 root 세션이 다른 하위 경로를 수정할 때 nested 지침이 자동 적용된다고 보장할 수 없다.</div>
+      <h3>Codex scoped rule 변환 순서</h3>
+      <ol><li>데이터 손실·권한 침해 위험은 root AGENTS와 Hook으로 승격한다.</li><li>그 디렉터리에서 실행하는 작업이면 nested <code>AGENTS.override.md</code>와 <code>codex -C &lt;dir&gt;</code>를 묶는다.</li><li>작업 유형의 절차라면 dual Skill로 옮긴다.</li><li>파일 경로로 검사 가능하면 path-aware Hook으로 강제한다.</li><li>보존할 방법이 없으면 <code>unsupported</code>로 남기고 원본을 삭제하지 않는다.</li></ol>
+      <h3>Coverage manifest와 빌드 실패 조건</h3>
+      <pre>clauses:
+  - id: POL-GIT-001
+    source: shared-checkout.md#never-change-branch
+    severity: hard
+    class: enforced
+    carriers:
+      common: AGENTS.md
+      claude: hook.pre_tool
+      codex: hook.pre_tool
+    tests: [internal/hook/branch_guard_test.go]
+    skill_only: false</pre>
+      <ul class="check"><li>hard clause인데 persistent carrier가 없으면 실패</li><li>hard clause가 Skill에만 있으면 실패</li><li>원본 clause가 coverage에서 빠지면 실패</li><li>한쪽 의미가 빠졌는데 disposition이 없으면 실패</li><li>nested AGENTS가 요구 CWD를 선언하지 않으면 실패</li></ul>
+    </section>
+
+    <section id="skills">
+      <div class="label">Dual publication</div><h2>Skill과 Agent는 공통 의미, 호스트별 표현</h2>
+      <div class="grid">
+        <article class="card half"><h3>Skill 계약</h3><ul><li>공통 <code>SKILL.md</code>, scripts, references는 한 원본</li><li>호스트 차이는 <code>host/claude.md</code>, <code>host/codex.md</code></li><li>공통 파일 digest 100% 일치</li><li>사용자 소유 경로 non-overwrite</li></ul></article>
+        <article class="card half"><h3>Agent 계약</h3><ul><li>neutral YAML에서 Claude MD와 Codex TOML 생성</li><li>모델·effort·sandbox·MCP 차이를 disposition으로 기록</li><li>조용한 필드 삭제 금지</li><li>11개 역할 등록 golden 유지</li></ul></article>
+      </div>
+      <h3>Skill 단계적 전환</h3>
+      <ol><li><code>canonical/skills</code>에 기존 내용을 byte-preserving import.</li><li><code>skillemit</code>이 Claude 경로를 생성하고 현재 mirror가 Codex 경로를 계속 담당.</li><li>golden/hash로 기존 배포와 동등성 검증.</li><li>build-time dual copy와 neutral payload+dual symlink를 플랫폼 probe로 비교.</li><li>Windows copy fallback과 drift 경고 유지.</li><li>양쪽 E2E 뒤에만 runtime mirror 제거.</li></ol>
+      <pre>id: manager-develop
+role: implementation
+effort: medium
+capabilities: [file_read, file_write, shell, subagent]
+restrictions: [no_git_push, no_spec_body_edit]
+host:
+  claude: {}
+  codex: { sandbox_mode: workspace-write }</pre>
+      <h3>주요 변경 파일</h3>
+      <ul class="file-list"><li><code>canonical/skills/**</code></li><li><code>skillemit/{load,emit,hash,validate}.go</code></li><li><code>skill_mirror.go</code></li><li><code>skill_mirror_*_test.go</code></li><li><code>canonical/agents/*.yaml</code></li><li><code>agentemit/{loader,manifest,emit,writer}.go</code></li><li><code>agentemit/golden_test.go</code></li><li><code>catalog.yaml</code></li></ul>
+    </section>
+
+    <section id="session">
+      <div class="label">Runtime adapter 01</div><h2>세션 통신: native-first, broker-fallback, dispatch는 별도</h2>
+      <div class="table-wrap"><table><thead><tr><th>Transport</th><th>역할</th><th>사용 조건</th><th>Fallback</th></tr></thead><tbody>
+        <tr><td>Claude native</td><td><code>ListAgents</code>/<code>SendMessage</code></td><td>기능 probe 성공</td><td>MoAI broker</td></tr>
+        <tr><td>Codex App Server</td><td><code>agents</code>/<code>queue</code>/thread API</td><td>버전별 probe 성공</td><td>MoAI broker</td></tr>
+        <tr><td>MoAI broker</td><td><code>session_msg_register/list/send/poll</code></td><td>교차 하네스·native 미지원</td><td>명시적 전달 실패</td></tr>
+      </tbody></table></div>
+      <pre>type SessionTransport interface {
+    Probe(context.Context) CapabilityEvidence
+    List(context.Context, SessionFilter) ([]Session, error)
+    Notify(context.Context, SessionRef, Message) (Receipt, error)
+    Readback(context.Context, Receipt) (DeliveryState, error)
+}</pre>
+      <div class="callout"><strong>메시지는 알림일 뿐이다.</strong> 현재 broker의 “facts, not mutations” 계약은 유지한다. 실제 작업 지시는 <code>authority_ref</code>, scope, worktree, expected readback을 가진 영속 dispatch로 처리한다.</div>
+      <pre>dispatch:
+  id: dsp_...
+  task_id: T-...
+  scope: [internal/template/canonical]
+  authority_ref: user-turn-or-approved-card
+  source_session_id: ...
+  target_session_id: ...
+  worktree_ref: ...
+  expected_readback: [artifact, tests]</pre>
+      <p>수신 메시지는 dispatch ID만 알린다. 수신자는 claim 전에 권한·scope·worktree owner를 재검사한다. delivery receipt와 completion evidence는 독립 상태다.</p>
+      <p class="small">신규 패키지 후보: <code>internal/sessiontransport</code>, <code>internal/dispatch</code>. CLI 후보: <code>moai session list|send|readback</code>, <code>moai dispatch create|claim|complete</code>.</p>
+    </section>
+
+    <section id="worktree">
+      <div class="label">Runtime adapter 02</div><h2>Worktree: 기능보다 owner와 폐기 증거를 통일한다</h2>
+      <div class="table-wrap"><table><thead><tr><th>모드</th><th>Owner</th><th>용도</th><th>호스트 실행</th></tr></thead><tbody>
+        <tr><td><code>persistent-card</code></td><td><strong>MoAI</strong></td><td>SPEC/카드 구현, 통합 전까지 보존</td><td>Claude/Codex는 지정 path에서 실행</td></tr>
+        <tr><td><code>ephemeral-session</code></td><td>Claude 또는 Codex</td><td>탐색·일회성 작업</td><td>각 호스트의 <code>--worktree</code></td></tr>
+      </tbody></table></div>
+      <pre>type WorktreeProvider interface {
+    Create(context.Context, WorktreeSpec) (WorktreeRef, error)
+    Launch(context.Context, WorktreeRef, Harness) (SessionRef, error)
+    Inspect(context.Context, WorktreeRef) (WorktreeState, error)
+    Close(context.Context, WorktreeRef, IntegrationProof) error
+}</pre>
+      <div class="grid"><article class="card half"><h3>Claude persistent</h3><p>MoAI path에서 시작하거나 <code>EnterWorktree</code>로 진입.</p></article><article class="card half"><h3>Codex persistent</h3><p><code>codex -C &lt;path&gt;</code> 또는 동일 path에 묶인 thread resume.</p></article></div>
+      <h3>반드시 거부할 상태</h3>
+      <ul class="check"><li>한 path에 lifecycle owner가 둘</li><li>persistent tree 안에서 host-native tree를 중첩 생성</li><li>통합 증거 없이 persistent tree 삭제</li><li>Codex detached HEAD를 카드 branch로 등록</li><li>worktree path와 dispatch scope 불일치</li></ul>
+      <p class="small">변경 후보: <code>internal/worktree/provider.go</code>, <code>ownership.go</code>, <code>internal/cli/worktree/**</code>, <code>internal/cli/harness_launch.go</code>, registry/guard 테스트.</p>
+    </section>
+
+    <section id="config">
+      <div class="label">CLI and configuration</div><h2>`llm`과 `harness`를 분리한다</h2>
+      <pre>moai init --harness claude|codex|both
+moai update --harness auto|claude|codex|both
+moai doctor --harness both
+moai session list|send|readback
+moai worktree enter &lt;name|path&gt; --harness claude|codex</pre>
+      <p>호환 mapping: <code>--llm claude</code> → Claude, <code>--llm gpt</code> → Codex + deprecated 경고, <code>--llm both</code> → both. 모델 선택은 별도 <code>model.policy</code>로 관리한다.</p>
+      <pre>harness:
+  targets: [claude, codex]
+  preferred: auto
+  capability_probe: on-version-change
+session:
+  transport_order:
+    claude: [native, moai_broker]
+    codex: [app_server, moai_broker]
+  delivery_readback: required
+  message_is_authority: false
+worktree:
+  default_owner: moai
+  persistent_cards: true
+  native_ephemeral: true
+  forbid_nested: true</pre>
+    </section>
+
+    <section id="milestones">
+      <div class="label">Execution order</div><h2>6개 milestone과 각 종료 게이트</h2>
+      <div class="milestone"><span class="badge">HIGH · M0</span><div><strong>기준 동결과 coverage inventory</strong><p>83개 rule의 의무 조항 ID, 현재 carrier map, 버전별 capability evidence를 만든다.</p><p class="small">Gate: MUST 100% 등록 · unknown/unsupported 구분 · 누락 mutant 검출.</p></div></div>
+      <div class="milestone"><span class="badge">HIGH · M1</span><div><strong>Policy canonicalization</strong><p>schema와 emitter, root AGENTS, CLAUDE overlay, scoped 변환 판정을 구현한다.</p><p class="small">Gate: semantic snapshot 동등 · hard skill-only 0 · size/truncation test.</p></div></div>
+      <div class="milestone"><span class="badge">HIGH · M2</span><div><strong>Skill·Agent dual emitter</strong><p>중립 source, 양쪽 출력, documented-drop manifest, 기존 mirror 호환을 구현한다.</p><p class="small">Gate: Skill digest 100% · 11 agents 등록 · user-owned non-overwrite.</p></div></div>
+      <div class="milestone"><span class="badge">HIGH · M3</span><div><strong>Session transport와 Dispatch</strong><p>세 adapter, capability router, authority-aware dispatch, receipt/readback을 구현한다.</p><p class="small">Gate: 양방향 E2E · offline/duplicate/expiry · message-not-approval negative test.</p></div></div>
+      <div class="milestone"><span class="badge">HIGH · M4</span><div><strong>Worktree provider</strong><p>owner metadata, host launch, persistent/ephemeral 분리와 폐기 proof를 구현한다.</p><p class="small">Gate: double-owner/nested 거부 · detached 구분 · 삭제 proof · re-entry readback.</p></div></div>
+      <div class="milestone"><span class="badge med">MEDIUM · M5</span><div><strong>CLI, update, doctor</strong><p><code>--harness</code>, 조합별 golden, 기존 fixture update, drift 진단을 구현한다.</p><p class="small">Gate: claude/codex/both golden · 구 프로젝트 update · version drift 경고.</p></div></div>
+      <div class="milestone"><span class="badge med">MEDIUM · M6</span><div><strong>전환과 중복 제거</strong><p>구·신 emitter를 한 호환 주기 비교하고 검증된 중복만 제거한다.</p><p class="small">Gate: clean regeneration diff 0 · rollback 성공 · Claude rules에는 scoped/host만 잔존.</p></div></div>
+    </section>
+
+    <section id="tests">
+      <div class="label">Verification</div><h2>문서 존재가 아니라 의미 위반 mutant를 검사한다</h2>
+      <div class="table-wrap"><table><thead><tr><th>계층</th><th>테스트</th><th>핵심 실패 mutant</th></tr></thead><tbody>
+        <tr><td>Policy</td><td>schema · coverage · semantic snapshot</td><td>hard clause를 Skill-only로 이동</td></tr>
+        <tr><td>Skill</td><td>dual digest · symlink/copy · ownership</td><td>Codex SKILL 누락</td></tr>
+        <tr><td>Agent</td><td>양쪽 golden · registration</td><td>unsupported field 조용히 삭제</td></tr>
+        <tr><td>Hook</td><td>event parity · path enforcement</td><td>Codex 이벤트 하나 누락</td></tr>
+        <tr><td>Session</td><td>왕복 · ack · duplicate · offline · expiry</td><td>메시지를 승인으로 처리</td></tr>
+        <tr><td>Dispatch</td><td>authority · scope · worktree · readback</td><td>다른 worktree가 claim</td></tr>
+        <tr><td>Worktree</td><td>owner · detached · nested · cleanup</td><td>이중 owner 허용</td></tr>
+        <tr><td>CLI/E2E</td><td>init/update/doctor 조합</td><td>기존 <code>--llm gpt</code> 파손</td></tr>
+      </tbody></table></div>
+      <pre>go test ./internal/template/... ./internal/codexwiring/... -count=1
+go test ./internal/sessionmsg/... ./internal/sessiontransport/... ./internal/dispatch/... -count=1
+go test ./internal/worktree/... ./internal/cli/... -count=1
+go test ./internal/hook/... -count=1
+moai doctor --harness both --json</pre>
+      <p class="small">로컬은 변경 영향 범위로 제한하고 전체 suite는 push 후 CI가 수행한다.</p>
+    </section>
+
+    <section id="risk">
+      <div class="label">Risk and rollout</div><h2>가장 큰 위험은 기능 부족이 아니라 의미가 조용히 빠지는 것</h2>
+      <div class="table-wrap"><table><thead><tr><th>위험</th><th>영향</th><th>완화</th></tr></thead><tbody>
+        <tr><td>rule 분류 중 의무 손실</td><td>안전 계약 누락</td><td>clause ID · coverage 100% · mutant</td></tr>
+        <tr><td>Codex scoped rule 오판</td><td>특정 경로에서 미적용</td><td>CWD 계약 · root 승격 · Hook · disposition</td></tr>
+        <tr><td>dual Skill drift</td><td>하네스별 동작 차이</td><td>digest manifest · clean regeneration</td></tr>
+        <tr><td>App Server/CLI 변화</td><td>transport 파손</td><td>versioned probe · broker fallback</td></tr>
+        <tr><td>worktree 이중 소유</td><td>branch 유실·오정리</td><td>owner 필수 · nested 거부 · integration proof</td></tr>
+        <tr><td>symlink 제한</td><td>Windows Skill 누락</td><td>copy fallback · drift warning · 플랫폼 E2E</td></tr>
+        <tr><td>AGENTS 크기 초과</td><td>tail 지침 유실</td><td>size budget · 중요도 정렬 · truncation mutant</td></tr>
+        <tr><td>기존 프로젝트 update</td><td>사용자 파일 덮어쓰기</td><td>managed ownership · backup · explicit diff · rollback</td></tr>
+      </tbody></table></div>
+      <h3>Rollout</h3><ol><li><code>both</code>를 opt-in으로 시작하고 기존 기본값을 유지.</li><li>doctor는 먼저 경고-only 관찰 모드.</li><li>golden/E2E 안정 후 신규 프로젝트 표준을 <code>--harness</code>로 전환.</li><li><code>--llm</code> 호환 경로 유지.</li><li>중복 원본은 가장 마지막에 제거.</li></ol>
+      <h3>Rollback</h3><ul><li>이전 template manifest와 canonical digest 보존.</li><li>update 전 managed artifact manifest 백업.</li><li>사용자 소유 파일은 rollback 대상에서 제외.</li><li>기존 broker와 <code>--llm</code> 경로를 한 호환 주기 유지.</li></ul>
+    </section>
+
+    <section id="evidence" class="evidence">
+      <div class="label">Audit-ready signal</div><h2>Claim · Evidence · Baseline · Gaps · Residual risk</h2>
+      <h3>Claim</h3><p>현재 저장소는 dual init, Codex wiring, Skill mirror, Agent emitter, broker, worktree 기반을 이미 갖췄다. 핵심 작업은 새 기능의 대량 추가보다 중립 source와 의미 동등성 검증이다.</p>
+      <h3>Evidence</h3><pre>$ git fetch origin main 2&gt;&amp;1
+From https://github.com/modu-ai/moai-adk
+ * branch                main       -&gt; FETCH_HEAD
+$ git rev-list --count --left-right origin/main...HEAD
+0	0
+$ git rev-parse --short HEAD
+2213871af
+$ git branch --show-current
+main</pre>
+      <p>확인 파일: <code>skill_mirror.go</code>, <code>agentemit/**</code>, <code>embed.go</code>, template <code>AGENTS.md</code>/<code>CLAUDE.md</code>, <code>sessionmsg/**</code>, <code>codexwiring/**</code>, <code>cli/worktree/**</code>.</p>
+      <h3>Baseline-attribution</h3><ul><li>저장소: <code>/Users/goos/MoAI/moai-adk-go</code></li><li>branch/HEAD: <code>main</code> / <code>2213871af</code></li><li>원격 대비: <code>origin/main...HEAD = 0 0</code></li><li>계획·공식문서 기준일: 2026-09-21</li></ul>
+      <h3>Gaps</h3><ul><li>코드 변경은 하지 않았다.</li><li>83개 clause inventory는 M0 구현 범위다.</li><li>Claude↔Codex live E2E, remote App Server, Windows fallback은 미실행이다.</li><li>Codex scoped instruction 범위는 구현 전에 버전별 probe로 재고정해야 한다.</li></ul>
+      <h3>Residual-risk</h3><ul><li>하네스 버전에 따라 capability 의미가 변할 수 있다.</li><li>사용자 범위 AGENTS와 결합되므로 프로젝트 크기만으로 truncation 안전을 증명할 수 없다.</li><li>dirty 프로젝트 update에는 ownership manifest와 non-overwrite가 필수다.</li></ul>
+      <h3>공식 출처</h3>
+      <ul class="file-list"><li><a href="https://learn.chatgpt.com/docs/environments/git-worktrees">OpenAI · Git worktrees</a></li><li><a href="https://learn.chatgpt.com/docs/agent-configuration/subagents">OpenAI · Subagents</a></li><li><a href="https://learn.chatgpt.com/docs/app-server">OpenAI · App Server</a></li><li><a href="https://learn.chatgpt.com/docs/customization/overview">OpenAI · Customization</a></li><li><a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">OpenAI · AGENTS.md</a></li><li><a href="https://learn.chatgpt.com/docs/build-skills">OpenAI · Build skills</a></li><li><a href="https://code.claude.com/docs/en/cross-session-messaging">Anthropic · Cross-session messaging</a></li><li><a href="https://code.claude.com/docs/en/worktrees">Anthropic · Worktrees</a></li><li><a href="https://code.claude.com/docs/en/features-overview">Anthropic · Features overview</a></li><li><a href="https://code.claude.com/docs/en/memory">Anthropic · Memory</a></li></ul>
+      <div class="callout good"><strong>최종 권고:</strong> M0 coverage inventory → M1 canonical policy → M2 dual emitter → M3 session dispatch → M4 worktree provider → M5 CLI/doctor → M6 중복 제거 순서를 지킨다. 디렉터리 이동보다 의미 보존이 먼저다.</div>
+    </section>
+  </main>
+  <footer><div class="wrap">MoAI-ADK dual-harness detailed implementation plan · mode: plan · audience: expert, derived from outputStyle MoAI · 2026-09-21</div></footer>
+</body>
+</html>

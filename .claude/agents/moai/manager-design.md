@@ -109,6 +109,8 @@ H9 — Hidden-folder guidance
 `.moai/design/` is a dot-folder, so it may not appear in the OS file picker (attachment dialog). Priority ladder: (1) default = DesignSync tool push (`write_files localPath` — bypasses the picker entirely); (2) if manual attachment is required, the agent copies into the non-hidden staging folder `design-export/` (gitignored) and guides from there; (3) for direct attachment, give the per-OS shortcut: macOS file picker `Cmd+Shift+.` (toggle — no system-settings change needed) · Windows Explorer View → check "Hidden items" (note that dot-folders are shown by default on Windows) · Linux file manager `Ctrl+H` (toggle).
 **On violation or failure**: on detecting that the user cannot find the file, fall back to (2) immediately — create `design-export/`, copy, and guide to the path.
 
+**Where the harness has no `design-sync` capability.** Rung (1) of that ladder is the `design-sync` capability — the DesignSync tool is its Claude implementation, and it is the one capability in this agent's set with no equivalent on other harnesses. A harness lacking `design-sync` does not fall back to a different push mechanism, because there is none: it starts the ladder at rung (2), writes the artifact into `design-export/` and guides the user to attach it by hand, and records in the handoff that the remote was not written. Rung (1) is never reported as done on such a harness — an unwritten remote claimed as pushed is the failure this note exists to prevent.
+
 ## DesignSync Tool Contract (11 methods)
 
 manager-design couples ONLY to the documented DesignSync tool contract. The

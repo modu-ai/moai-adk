@@ -6,7 +6,7 @@
 > user-audience-neutral prose — if your team adopts the pattern, customize the
 > specifics to your environment.
 >
-> Created: 2026-05-25 — per SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001 M5
+> Created per the local-namespace consolidation policy.
 > Audience: any MoAI-ADK user project (template-distributed)
 
 ---
@@ -160,28 +160,14 @@ whether to override the template defaults.
   shared multi-developer environments where one developer's auto-accept
   affects review discipline of others.
 
-### `enableAllProjectMcpServers`
-
-- **Template default**: unset (false — only explicitly-enabled MCP servers
-  load)
-- **Common customization**: `true` (auto-enables all MCP servers registered
-  in `.mcp.json`)
-- **When to customize**: project relies on multiple MCP servers (e.g.,
-  context7, browser automation, custom dev tools) and the developer wants
-  them all available without per-session config.
-- **When NOT to customize**: project has many registered-but-unused MCP
-  servers (causes startup latency on each session).
-
 ### `teammateMode` (runtime-managed)
 
-- **Template default**: unset (no teammate mode active)
-- **Common customization**: `"tmux"` for Agent Teams + tmux split-pane;
-  `"claude"` for Claude-only teammates; `"glm"` for GLM cost-optimization
-- **When to customize**: project actively uses Agent Teams or CG Mode for
-  parallel/cost-optimized work.
+- **Template default**: unset; the runtime determines its display behavior.
+- **Display and provider are separate**: `"tmux"` requests split-pane display; it does not select Claude or GLM. The explicit launcher and validated teammate-role policy determine provider routing.
+- **When to customize**: the project explicitly uses native Agent Teams under its experimental constraints. Legacy CG role migration is separate; a display setting does not establish mixed-provider routing.
 - **Important**: This key is typically set in `.claude/settings.local.json`
   (per-machine, not committed to git) and modified by runtime commands
-  (`moai cg`, `moai glm`, SessionStart hook). Do not add it to the project
+  (`moai glm`, SessionStart hook). Do not add it to the project
   `.claude/settings.json` template.
 
 ### `env.PATH`
@@ -197,7 +183,7 @@ whether to override the template defaults.
 
 ### Operating principle
 
-These 4 settings are documented here because user projects commonly need to
+These 3 settings are documented here because user projects commonly need to
 decide whether to customize them. The template ships with safe defaults
 (unset / Claude Code defaults). Your team adopts customizations as needed
 without inheriting maintainer-specific local doctrine.

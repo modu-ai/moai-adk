@@ -475,5 +475,4 @@ Token Management:
 ---
 
 Status: Reference Documentation Complete
-Last Updated: 2025-12-06
 Skill Version: 2.3.0

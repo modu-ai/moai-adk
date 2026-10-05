@@ -726,5 +726,25 @@ func NumeralExemptions() []NumeralExempt {
 		{ID: "rosterguard-numeral-test-self", Path: "internal/harness/rosterguard/numeral_test.go", Reason: "SELF-DESCRIPTION: the layer's fixtures ARE roster count claims, synthetic and live-quoted."},
 		{ID: "rosterguard-registry-self", Path: "internal/harness/rosterguard/registry.go", Reason: "SELF-DESCRIPTION: the registry's own comments quote the claims its rows assert."},
 		{ID: "rosterguard-test-self", Path: "internal/harness/rosterguard/rosterguard_test.go", Reason: "SELF-DESCRIPTION: the control probe's deliberately-wrong input includes roster count claims."},
+		//
+		// ── Cutover preservation snapshots (PR #1748 transition M2) ────────
+		// The github-flow cutover preserved deployed assets and audit reports
+		// into the tracked tree (commits 82677fd27, 24cd42160). They quote the
+		// roster counts as the deployed copies stood at capture — historical
+		// citations of the live surfaces, which remain exempted on their own
+		// rows. If the preservation copies are later removed, these rows must
+		// go with them: an exemption for a path the layer no longer reaches
+		// fails the breadth-set test by design.
+		{ID: "cutover-preserved-codex-agent-manager-design", Path: ".codex/agents/moai/manager-design.toml", Reason: "HISTORICAL CITATION: cutover-preserved emitted codex agent definition, quoting roster counts as deployed."},
+		{ID: "cutover-preserved-codex-agent-manager-docs", Path: ".codex/agents/moai/manager-docs.toml", Reason: "HISTORICAL CITATION: cutover-preserved emitted codex agent definition, quoting roster counts as deployed."},
+		{ID: "cutover-preserved-codex-agent-manager-spec", Path: ".codex/agents/moai/manager-spec.toml", Reason: "HISTORICAL CITATION: cutover-preserved emitted codex agent definition, quoting roster counts as deployed."},
+		{ID: "cutover-preserved-policy-agent-authoring", Path: ".moai/policies/development/agent-authoring.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting agent counts as deployed."},
+		{ID: "cutover-preserved-policy-agent-patterns", Path: ".moai/policies/development/agent-patterns.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting agent counts as deployed."},
+		{ID: "cutover-preserved-policy-spec-frontmatter", Path: ".moai/policies/development/spec-frontmatter-schema.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting counts as deployed."},
+		{ID: "cutover-preserved-policy-notice", Path: ".moai/policies/NOTICE.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting counts as deployed."},
+		{ID: "cutover-preserved-policy-spec-workflow", Path: ".moai/policies/workflow/spec-workflow.md", Reason: "HISTORICAL CITATION: cutover-preserved policy copy, quoting counts as deployed."},
+		{ID: "cutover-preserved-audit-agent-inventory", Path: "reports/workflow-performance-audit-20260911/agent-inventory.json", Reason: "HISTORICAL CITATION: a 2026-09-11 audit capture — an inventory of agent files as they stood at capture."},
+		{ID: "cutover-preserved-audit-report", Path: "reports/workflow-performance-audit-20260911/report.md", Reason: "HISTORICAL CITATION: a 2026-09-11 audit report, quoting the counts it measured."},
+		{ID: "cutover-preserved-audit-rules-inventory", Path: "reports/workflow-performance-audit-20260911/rules-inventory.json", Reason: "HISTORICAL CITATION: a 2026-09-11 audit capture — an inventory of rule files as they stood at capture."},
 	}
 }

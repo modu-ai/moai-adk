@@ -122,12 +122,21 @@ func runSpecCeiling(cmd *cobra.Command, specID string, listedDirs []string, reco
 // defaults project, not an error).
 //
 // A harness.yaml the strict loader rejects wholesale is distinguished by WHAT
-// cannot be read (CR2-P2-1): when the policy block's own values are the
-// unreadable part — on_final_hit as a sequence, auto_delta_rounds as a map —
-// that is REQ-ACR-003's unreadable-policy arm, not a fatal configuration
-// error: the ceilings ride along a partial read (or the shipped defaults) and
-// the empty policy string drops the evaluation to disposition hold, record
-// included. Every other load error stays fatal.
+// cannot be read (CR2-P2-1), three ways:
+//
+//   - Policy-only unreadable (REQ-ACR-003's unreadable-policy arm): the
+//     policy block's own values cannot be read — on_final_hit as a sequence,
+//     auto_delta_rounds as a map — but the ceilings field can. Not a fatal
+//     configuration error: the loose partial ceilings merge over the shipped
+//     defaults (R3-P2-2, the same seeded-merge rule internal/config/loader.go
+//     applies) and the empty policy string drops the evaluation to
+//     disposition hold, record included.
+//   - Ceilings malformed: the plan_audit_tier_ceilings field itself cannot
+//     be decoded. Recovery covers ONLY the policy field, so the strict error
+//     propagates even when the policy is the unreadable part, and the error
+//     names the ceiling parse so the record abstention is auditable
+//     (R3-P2-1).
+//   - Every other load error stays fatal.
 func loadCeilingConfig(root string) (map[string]int, string, error) {
 	path := filepath.Join(root, ".moai", "config", "sections", "harness.yaml")
 	cfg, err := config.LoadHarnessConfig(path)
@@ -138,30 +147,53 @@ func loadCeilingConfig(root string) (map[string]int, string, error) {
 		def := config.DefaultPlanAuditCeilingPolicy()
 		return config.DefaultPlanAuditTierCeilings(), def.OnFinalHit, nil
 	}
-	ceilings, policyUnreadable := looseReadCeilingPolicy(path)
+	ceilings, ceilingsMalformed, policyUnreadable := looseReadCeilingPolicy(path)
+	if ceilingsMalformed {
+		// R3-P2-1: the ceilings field itself cannot be decoded — recovery
+		// covers only the policy field, so the strict error propagates even
+		// when the policy is the unreadable part. The message names the
+		// ceiling field so the record abstention stays auditable.
+		return nil, "", fmt.Errorf("harness.yaml plan_audit_tier_ceilings cannot be decoded (ceiling parse failed): %w", err)
+	}
 	if !policyUnreadable {
 		return nil, "", err // the failure lives elsewhere in the configuration — stay strict
 	}
 	if len(ceilings) == 0 {
-		ceilings = config.DefaultPlanAuditTierCeilings()
+		ceilings = config.DefaultPlanAuditTierCeilings() // the key is absent entirely — the full defaults
+	} else {
+		merged := config.DefaultPlanAuditTierCeilings() // R3-P2-2: partial override over the shipped
+		for tier, n := range ceilings {                 // defaults, the loader's seeded-merge rule
+			merged[tier] = n
+		}
+		ceilings = merged
 	}
 	return ceilings, "", nil // unreadable policy value → the evaluation's hold arm
 }
 
 // looseReadCeilingPolicy re-reads the harness.yaml the strict loader rejected
-// and reports whether the POLICY block's own values are what cannot be read.
-// The policy fields decode into any so every value shape survives the tolerant
-// pass; a present-but-non-string on_final_hit, or a present-but-non-int
-// auto_delta_rounds, is the unreadable policy. A readable policy block means
-// the strict failure lives elsewhere and stays fatal.
-func looseReadCeilingPolicy(path string) (ceilings map[string]int, policyUnreadable bool) {
+// and reports how the two ceiling-relevant fields read:
+//
+//   - ceilingsMalformed: the plan_audit_tier_ceilings field is present but
+//     cannot be decoded into map[string]int (the raw any survives, the typed
+//     map does not — or survives only as a partial fragment whose decode
+//     errored; CR-P2-1) — R3-P2-1's propagate signal.
+//   - policyUnreadable: the POLICY block's own values are what cannot be
+//     read. The policy fields decode into any so every value shape survives
+//     the tolerant pass; a present-but-non-string on_final_hit, or a
+//     present-but-non-int auto_delta_rounds, is the unreadable policy.
+//
+// A readable policy block and a decodable ceilings field mean the strict
+// failure lives elsewhere and stays fatal. The ceilings map decodes in a
+// second pass into the typed map the strict loader uses, so a malformed
+// ceilings field reports independently of the policy verdict.
+func looseReadCeilingPolicy(path string) (ceilings map[string]int, ceilingsMalformed bool, policyUnreadable bool) {
 	data, readErr := os.ReadFile(path)
 	if readErr != nil {
-		return nil, false
+		return nil, false, false
 	}
 	var raw struct {
 		Harness struct {
-			PlanAuditTierCeilings map[string]int `yaml:"plan_audit_tier_ceilings"`
+			PlanAuditTierCeilings  any `yaml:"plan_audit_tier_ceilings"`
 			PlanAuditCeilingPolicy struct {
 				AutoDeltaRounds any `yaml:"auto_delta_rounds"`
 				OnFinalHit      any `yaml:"on_final_hit"`
@@ -169,9 +201,23 @@ func looseReadCeilingPolicy(path string) (ceilings map[string]int, policyUnreada
 		} `yaml:"harness"`
 	}
 	_ = yaml.Unmarshal(data, &raw) // tolerant by construction: any-typed fields cannot mismatch
+	var typed struct {
+		Harness struct {
+			PlanAuditTierCeilings map[string]int `yaml:"plan_audit_tier_ceilings"`
+		} `yaml:"harness"`
+	}
+	// CR-P2-1 (card-review r1): a PARTIALLY decodable ceilings field leaves a
+	// non-nil typed map behind — yaml.v3 fills the keys that decoded and
+	// returns a TypeError for the rest. Map nil-ness alone would adopt the
+	// surviving fragment as a valid override, silently substituting defaults
+	// for the failed keys; the decode's own error is the malformed signal.
+	typedErr := yaml.Unmarshal(data, &typed) // the same typed decode the strict loader runs on this field
+	if raw.Harness.PlanAuditTierCeilings != nil && (typedErr != nil || typed.Harness.PlanAuditTierCeilings == nil) {
+		return nil, true, false // the ceilings field itself cannot be decoded — R3-P2-1 / CR-P2-1
+	}
 	policy := raw.Harness.PlanAuditCeilingPolicy
 	if policy.OnFinalHit == nil && policy.AutoDeltaRounds == nil {
-		return nil, false // the policy block is absent — the strict failure lives elsewhere
+		return nil, false, false // the policy block is absent — the strict failure lives elsewhere
 	}
 	unreadable := false
 	if _, isString := policy.OnFinalHit.(string); policy.OnFinalHit != nil && !isString {
@@ -181,7 +227,7 @@ func looseReadCeilingPolicy(path string) (ceilings map[string]int, policyUnreada
 		unreadable = true
 	}
 	if !unreadable {
-		return nil, false // the policy values read fine — the strict failure lives elsewhere
+		return nil, false, false // the policy values read fine — the strict failure lives elsewhere
 	}
-	return raw.Harness.PlanAuditTierCeilings, true
+	return typed.Harness.PlanAuditTierCeilings, false, true
 }

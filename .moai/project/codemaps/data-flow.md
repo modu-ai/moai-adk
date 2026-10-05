@@ -1,5 +1,7 @@
 # 데이터 흐름
 
+> **t1524 판(card t1518)** — § N이 새로 붙었다: `.moai` 위생 엔진의 두 흐름(감사 로그 회전 한 판, 끝난 세션 상태 GC의 생존 판정→연대→재판정→삭제). 신규 패키지 `internal/hygiene`(card t1518, SPEC-MOAI-HYGIENE-001) — SessionStart 자동 경로는 `internal/hook/session_start_hygiene.go`가 best-effort로 운반하고(기동을 막지 않는다), 수동 표면은 `moai clean --audit-logs|--session-state`다. 두 경로 다 기본은 report — 파일을 하나도 바꾸지 않는다. 같은 창의 세션 비상 재개 경로(`lane_resume.go` · card t1465)는 § F 계열 런처의 예비 경로고, 감사 상한(card t1500)은 § I의 판정 위에 반복 상한을 얹는다.
+
 > **t1443 판(card t1347·t1375)** — Factory 흐름에 두 관문이 더했다: ① **할당량 게이트** — `factory next` 임대 전 `internal/cli/factory_quota.go`가 상태 디렉터리의 사용량 창 원장으로 보유 창·압력을 평가한다(원장은 `internal/statusline/context_usage.go`가 스키마 v3로 쓰고 `internal/statusline/quota.go`의 `AggregateQuota`가 읽는 것과 같은 것). 판정은 배차 스티어링 행(`factory_quota_lanes.go`)과 `--auto` 사이클 안내 줄로 흘러 임대 보유를 설명한다. 게이트 설정은 `workflow.quota_gate.*`(`loader_quota_gate.go` — 모든 실패에서 꺼짐 기본). ② **관리 세션 divert** — `MOAI_FACTORY_MANAGED`가 명시적으로 켜진 런치는 `launcher.go`·`codex_launcher.go`의 게이트에서 관리 소유자로 갈라진다(`managed_factory_session.go`의 stream-json Claude 자식 · `managed_codex_factory.go`의 websocket Codex App-Server 자식 — 런처가 대화를 소유한다). 기본은 꺼짐이다. ③ **llm.yaml 셋째 쓰기 경로**(card t1411) — § G의 두 갈래 밖에 `internal/settings/llmoverrides.go`가 더했다: 웹 에이전트 설정 탭의 저장이 llm.yaml 프로파일·에이전트별 model/effort를 원자 쓰기+스냅샷/복원으로 쓴다. ④ **할당량 판독 확장**(card t1442 — t1347 부채 F1) — 게이트 판독이 primary 하나가 아니라 primary+링크된 워크트리 상태 디렉터리 전부로 넓었다(`internal/statusline/quota_dirs.go`의 `QuotaStateDirs` — git 메타데이터 파일 읽기만으로 열거, `workflow.quota_gate.max_scan_dirs` 바운드; 다른 형태의 상태 디렉터리는 단독 판독 — fail-open). ⑤ **스테일 런 리바인딩**(card t1345) — 프롬프트마다 env 네임 런의 활성을 재측정해 비활성이면 레인을 살아 있는 런으로 재결합하거나(`internal/hook/factory_rebind.go`) `moai factory relaunch` 실행 명령줄을 운영자에게 안내한다.
 
 **현재 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
@@ -614,3 +616,50 @@ primary 체크아웃을 가리키므로, 그 값을 썼다면 영수증은 카�
 잠금·활성 세션·사용 중인 프로세스·대상 충돌을 확인해 이동 가능 항목에만
 `git worktree move`를 실행한다. 이동 뒤 HEAD·브랜치·상태를 재확인한다.
 건너뛴 항목은 원래 위치에 남아 다음 update에서 재시도할 수 있다.
+
+---
+
+## N. `.moai` 위생 — 회전 한 판과 GC 판정
+
+두 단위 모두 `internal/hygiene`이 소유하고(자동 경로 배선은
+`internal/hook/session_start_hygiene.go`, 수동 표면은 `moai clean`),
+**report가 출하 기본**이다 — report 모드는 후보 파일을 하나도 바꾸지 않고,
+회전도 락파일도 만들지 않으며, 단위마다 요약 행 하나를
+`.moai/logs/hygiene-audit.jsonl`에 덧붙이는 것이 전부다. 변이는 apply 모드에서만
+일어나고, apply 여부를 정하는 것은 경로마다 하나씩이다 — 자동 경로는
+`workflow.hygiene.mode` 설정, 수동 경로는 그 호출의 `--apply` 한 길(REQ-HYG-013 —
+CLI는 설정을 자기 변이 결정에 쓰지 않는다).
+
+### 감사 로그 회전 한 판
+
+```
+SessionStart(자동) · moai clean --audit-logs(수동)
+  → Settings 판독(workflow.hygiene 6키 — audit_log_max_bytes 기본 10 MiB,
+    kept_rotations 1)
+  → ScanSourceSinks — 닫힌 20항목 싱크 레지스트리(sinks.go)와 대조
+      미등록 append-only 쓰기 발견 → 적색, 회전 생략
+      (새 로거의 수용 경로는 회전이 아니라 레지스트리 갱신이다)
+  → lockfile 획득 — 단일 통과 직렬화
+      (Windows는 LockFileEx 사이드카 — rotate_lock_unix.go·rotate_lock_windows.go)
+  → 싱크별 크기 판정 → 초과 싱크만 회전(keep-1)
+      스테일 판정 — 이미 회전된 뒤의 오래된 결정은 건너뛴다
+  → report: hygiene-audit.jsonl 요약 행만 (자기 싱크도 apply에서만 회전한다)
+```
+
+### 끝난 세션 상태 GC — 생존 판정 → 연대 → 재판정 → 삭제
+
+```
+SessionStart(자동, 기본 report) · moai clean --session-state
+  → 후보 열거(targets.go) — 클래스별, 최소 연령 7일 바닥
+  → 생존 판정(liveness.go) — 세 신호, fail-closed:
+      pid 프로브(probe_pid_unix.go·probe_pid_windows.go —
+        시작시각 지문을 못 읽는 플랫폼은 미측정)
+      48시간 전사본 활동 · 24시간 심박
+      긍정 하나 = LIVE · 전부 음성 = DEAD · 미측정 하나 = INDETERMINATE(보존·사유 동행)
+  → DEAD만 다음으로. 연대는 내용 연대표(targets.go)에서 얻는다 —
+      mtime은 삭제 데이터가 아니고, 연대 불능 클래스(codex-stop-cap)는 보존된다
+  → 삭제 직전 재판정 — 판정 시각과 실행 시각 사이에 세션이 살아나면 그른다(D28)
+  → 해석된 .moai 루트 아래 심볼릭 링크 성분은 거부하고,
+      삭제는 디렉터리 fd에 고정한 루트 핸들로 실행한다
+      SPEC 종결 락 클래스는 대상 열거에서 처음부터 뺀다
+```
