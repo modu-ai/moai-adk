@@ -170,9 +170,10 @@ func TestPreCommitVersionBumpIsSilent(t *testing.T) {
 	}
 	assertNoBackup(t, root)
 
-	const wantLine = "  Pre-commit hook installed (.git/hooks/pre-commit)\n"
-	if out.String() != wantLine {
-		t.Errorf("output = %q, want exactly %q (a version bump produces no backup notice)", out.String(), wantLine)
+	// Card t1527 D4: the success line leads with the ✓ severity glyph.
+	const wantLine = "✓ Pre-commit hook installed (.git/hooks/pre-commit)\n"
+	if got := stripSGR(out.String()); got != wantLine {
+		t.Errorf("output = %q, want exactly %q (a version bump produces no backup notice)", got, wantLine)
 	}
 	if warn.Len() != 0 {
 		t.Errorf("a version bump produces no notice on the warning writer either, got: %q", warn.String())

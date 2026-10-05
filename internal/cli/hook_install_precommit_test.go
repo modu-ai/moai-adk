@@ -316,7 +316,8 @@ func TestPreCommitInstall_NonFatalFailure(t *testing.T) {
 	var out, warn strings.Builder
 	installPreCommitHookOptional(dir, false, &out, &warn) // MUST NOT panic / abort
 
-	if !strings.Contains(out.String(), "Warning: pre-commit hook install failed") {
+	// Card t1527 D4: the ✗ severity glyph replaces the "Warning:" prefix.
+	if !strings.Contains(stripSGR(out.String()), "✗ pre-commit hook install failed") {
 		t.Errorf("expected non-fatal warning, got: %q", out.String())
 	}
 	// Direct installer call returns a non-nil, non-ErrUserHookExists error.

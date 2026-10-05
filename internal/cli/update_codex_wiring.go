@@ -39,7 +39,7 @@ func refreshCodexWiringBestEffortAt(projectRoot string, out, errOut io.Writer) {
 	if orphaned := orphanedCodexWiring(projectRoot); len(orphaned) > 0 {
 		harness := config.ReadHarness(projectRoot)
 		for _, rel := range orphaned {
-			_, _ = fmt.Fprintf(errOut, "warning: %s is Codex wiring the %q harness profile does not use; left in place — run `%s` to remove it\n", rel, harness, codexwiring.DisableCommand)
+			emitSeverityLine(errOut, sevWarn, resolveTheme(), "%s is Codex wiring the %q harness profile does not use; left in place — run `%s` to remove it", rel, harness, codexwiring.DisableCommand)
 		}
 		return
 	}
@@ -48,10 +48,10 @@ func refreshCodexWiringBestEffortAt(projectRoot string, out, errOut io.Writer) {
 			return
 		}
 		if errors.Is(err, codexwiring.ErrWiringLockHeld) {
-			_, _ = fmt.Fprintf(errOut, "warning: Codex wiring not refreshed: %v (%s); rerun `moai update` or `%s` once it is released\n", err, codexwiring.WiringLockRelPath, codexwiring.RecoverCommand)
+			emitSeverityLine(errOut, sevWarn, resolveTheme(), "Codex wiring not refreshed: %v (%s); rerun `moai update` or `%s` once it is released", err, codexwiring.WiringLockRelPath, codexwiring.RecoverCommand)
 			return
 		}
-		_, _ = fmt.Fprintf(errOut, "warning: Codex wiring refresh failed: %v\n", err)
+		emitSeverityLine(errOut, sevWarn, resolveTheme(), "Codex wiring refresh failed: %v", err)
 	}
 }
 
@@ -78,7 +78,7 @@ func addCodexWiringAt(projectRoot string, out, errOut io.Writer) error {
 			return err
 		}
 		if errOut != nil {
-			_, _ = fmt.Fprintf(errOut, "warning: Codex wiring failed: %v\n", err)
+			emitSeverityLine(errOut, sevWarn, resolveTheme(), "Codex wiring failed: %v", err)
 		}
 	}
 	return nil
