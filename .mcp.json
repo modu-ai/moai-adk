@@ -1,26 +1,40 @@
 {
   "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/.mcp.schema.json",
   "mcpServers": {
-    "context7": {
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
-    },
     "chrome-devtools": {
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y chrome-devtools-mcp@latest --headless"]
+      "args": [
+        "-l",
+        "-c",
+        "exec npx -y chrome-devtools-mcp@latest --headless"
+      ],
+      "command": "/bin/bash"
     },
-    "playwright": {
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @playwright/mcp@latest"]
+    "context7": {
+      "args": [
+        "-l",
+        "-c",
+        "exec npx -y @upstash/context7-mcp@latest"
+      ],
+      "command": "/bin/bash"
     },
     "moai": {
-      "command": "moai",
-      "args": ["mcp-server"]
+      "args": [
+        "mcp-server"
+      ],
+      "command": "moai"
+    },
+    "playwright": {
+      "args": [
+        "-l",
+        "-c",
+        "exec npx -y @playwright/mcp@latest"
+      ],
+      "command": "/bin/bash"
     }
   },
   "staggeredStartup": {
-    "enabled": true,
+    "connectionTimeout": 15000,
     "delayMs": 500,
-    "connectionTimeout": 15000
+    "enabled": true
   }
 }

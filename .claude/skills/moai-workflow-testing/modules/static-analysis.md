@@ -234,5 +234,4 @@ class StaticAnalysisTools(fallback_to_defaults = true):
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: `modules/static-analysis.md`

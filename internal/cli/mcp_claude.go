@@ -72,7 +72,12 @@ func performClaudeAudit(ctx context.Context, req claudeAuditRequest) ReviewOutpu
 	if root == "" {
 		root = resolveProjectDir()
 	}
-	me := resolveClaudeAuditModelEffort(root, req.Model, req.Effort)
+	me, pinErr := resolveClaudeAuditModelEffort(root, req.Model, req.Effort)
+	if pinErr != nil {
+		// The pin read failed: surface it rather than auditing with an
+		// assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+		return claudeInconclusive(claudeErrProtocol, "workflow.audit pins unreadable: "+pinErr.Error(), "", "")
+	}
 	req.ProjectRoot = root
 	req.Model = me.Model
 	req.Effort = me.Effort
@@ -98,7 +103,12 @@ func performClaudeAuditWith(ctx context.Context, req claudeAuditRequest, binary 
 		return claudeInconclusive(claudeErrDiffUnavailable, "Claude audit has no reviewable change", req.Model, req.Effort)
 	}
 
-	me := resolveClaudeAuditModelEffort(root, req.Model, req.Effort)
+	me, pinErr := resolveClaudeAuditModelEffort(root, req.Model, req.Effort)
+	if pinErr != nil {
+		// The pin read failed: surface it rather than auditing with an
+		// assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+		return claudeInconclusive(claudeErrProtocol, "workflow.audit pins unreadable: "+pinErr.Error(), "", "")
+	}
 	if !validClaudeAuditEffort(me.Effort) {
 		return claudeInconclusive(claudeErrModelUnavailable, "Claude audit effort is outside the supported set", me.Model, me.Effort)
 	}
@@ -182,9 +192,18 @@ func claudeAuditCancelled(ctx context.Context, err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled)
 }
 
-func resolveClaudeAuditModelEffort(root, explicitModel, explicitEffort string) config.ModelEffort {
+// resolveClaudeAuditModelEffort resolves the {model, effort} pair for one
+// claude audit: the workflow.audit.claude pin over the backend default, the
+// explicit request values over the pin. A workflow.yaml that cannot be read
+// or parsed returns the error — the caller surfaces it instead of auditing
+// with an assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+func resolveClaudeAuditModelEffort(root, explicitModel, explicitEffort string) (config.ModelEffort, error) {
 	resolved := config.ModelEffort{Model: claudeAuditDefaultModel, Effort: claudeAuditDefaultEffort}
-	pin := workflowAuditPins(root).Claude
+	pins, err := workflowAuditPins(root)
+	if err != nil {
+		return resolved, err
+	}
+	pin := pins.Claude
 	if strings.TrimSpace(pin.Model) != "" {
 		resolved.Model = strings.TrimSpace(pin.Model)
 	}
@@ -197,7 +216,7 @@ func resolveClaudeAuditModelEffort(root, explicitModel, explicitEffort string) c
 	if strings.TrimSpace(explicitEffort) != "" {
 		resolved.Effort = strings.TrimSpace(explicitEffort)
 	}
-	return resolved
+	return resolved, nil
 }
 
 func validClaudeAuditEffort(effort string) bool {

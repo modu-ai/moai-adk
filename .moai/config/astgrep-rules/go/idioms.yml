@@ -1,0 +1,28 @@
+---
+id: go-interface-empty-not-any
+language: go
+severity: warning
+message: Uses interface{}. Prefer any (Go 1.18+).
+note: any is a type alias of interface{} and reads better. It is the recommended
+  spelling on Go 1.18 and later.
+rule:
+  pattern: interface{}
+fix: any
+---
+id: go-time-since-manual
+language: go
+severity: warning
+message: Use time.Since(t) instead of time.Now().Sub(t).
+note: time.Since(t) is identical to time.Now().Sub(t) but more readable.
+rule:
+  pattern: time.Now().Sub($T)
+fix: time.Since($T)
+---
+id: go-bytes-buffer-string-conversion
+language: go
+severity: warning
+message: 'Possible unnecessary allocation in []byte/string conversion. Consider strings.Builder.'
+note: string([]byte{...}) always performs a fresh allocation. For repeated
+  concatenation, strings.Builder is more efficient.
+rule:
+  pattern: string([]byte{$$$ITEMS})

@@ -80,7 +80,11 @@ func TestCodexAudit_NonRequiredGateGoldenByteIdentical(t *testing.T) {
 		// A `required` padded with whitespace is no longer a non-required state:
 		// the audit plan resolver trims gate values (SPEC-AUDIT-MODEL-CONVERGE-001
 		// EC-1), so it reads as required on every surface —
-		// TestCodexAudit_PaddedRequiredGateFailsClosed pins that reading.
+		// TestCodexAudit_PaddedRequiredGateFailsClosed pins that reading. The
+		// UPPERCASE spelling is a different arm: it is not a valid gate value,
+		// and the R4 fail-closed change (card t1500) surfaces it as a distinct
+		// gate error (verdict fail + gate_unmet), not as a non-required state —
+		// this case now pins that unknown-value refusal.
 		{"required-uppercase", func(t *testing.T, root string) { writeCodexAuditGate(t, root, "REQUIRED") }},
 	}
 	for _, tc := range cases {

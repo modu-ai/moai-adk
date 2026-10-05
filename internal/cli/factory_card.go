@@ -424,18 +424,54 @@ func factoryClaimFailure(claimCtx context.Context, err error) error {
 	return err
 }
 
+// factoryCardWorktreeDir is the card's landing directory under the shared
+// materializer root — the leaf the REQ-SD-011 refusal and the carry-over both
+// read.
+func factoryCardWorktreeDir(root, cardID string) string {
+	return filepath.Join(root, sessionWorktreeSubdir, cardID)
+}
+
 // factoryRefuseForeignWorktree is the REQ-SD-011 refusal: the card's landing
 // directory already exists and no card record names it (the card itself
 // records no worktree), so `next` refuses before any claim edge and the card
 // row stays unchanged. The leaf name belongs to the card id, so an existing
 // directory there can only be a foreign tree — never one the materializer
-// created for this card.
+// created for this card. The carry-over (factoryCarryPreviousWorktree) runs
+// before this refusal at the lease boundary: a directory a previous run of
+// the SAME card recorded is that card's own tree, re-recorded rather than
+// refused (card t1521); every other shape lands here.
 func factoryRefuseForeignWorktree(root, cardID string) error {
-	dir := filepath.Join(root, sessionWorktreeSubdir, cardID)
+	dir := factoryCardWorktreeDir(root, cardID)
 	if info, err := os.Lstat(dir); err != nil || !info.IsDir() {
 		return nil
 	}
 	return fmt.Errorf("factory next: refused — the worktree directory %s already exists and no card record names it; a card never adopts another card's tree (remove or rename the directory first)", dir)
+}
+
+// factoryCarryPreviousWorktree resolves the binding a run replacement may
+// carry into runID for cardID (card t1521): the card's landing directory
+// exists, a previous run's record of the SAME card names that same directory,
+// and the tree it names still exists on disk. Only that exact shape carries —
+// the new run re-records what its predecessor already bound instead of
+// refusing the card's own surviving tree as foreign. It returns "" when the
+// carry does not apply, leaving the REQ-SD-011 refusal (and the fresh-tree
+// materialization when no directory stands in the way) to the caller.
+func factoryCarryPreviousWorktree(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID string) (string, error) {
+	dir := factoryCardWorktreeDir(root, cardID)
+	if info, err := os.Lstat(dir); err != nil || !info.IsDir() {
+		return "", nil
+	}
+	prev, ok, err := db.PreviousCardWorktree(ctx, cardID, runID)
+	if err != nil || !ok {
+		return "", err
+	}
+	if info, err := os.Stat(prev); err != nil || !info.IsDir() {
+		return "", nil
+	}
+	if !sameDirPath(prev, dir) {
+		return "", nil
+	}
+	return prev, nil
 }
 
 // factoryWorktreeSlug derives the card worktree's WT- branch slug from the
@@ -765,13 +801,26 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 // lane through the version-checked F1 edges (T2 then T3), with the lane's
 // label as the lease holder. The REQ-SD-011 worktree refusal fires before
 // the edges: a card with no recorded worktree whose landing directory is
-// already taken by a foreign tree is refused, and no row changes.
+// already taken by a foreign tree is refused, and no row changes. Before the
+// refusal, the run-replacement carry-over re-records a landing directory a
+// previous run of the SAME card bound (card t1521) — the card's own tree, so
+// the lease proceeds onto it instead of refusing it.
 func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID string, cur homestate.Card, lane string) (homestate.Card, bool, bool, error) {
 	ctx, cancel := factoryClaimContext(ctx)
 	defer cancel()
 	c := cur
 	if strings.TrimSpace(c.WorktreePath) == "" {
-		if err := factoryRefuseForeignWorktree(root, c.CardID); err != nil {
+		carried, err := factoryCarryPreviousWorktree(ctx, db, root, runID, c.CardID)
+		if err != nil {
+			return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
+		}
+		if carried != "" {
+			next, rerr := db.RecordCardWorktree(ctx, runID, c.CardID, carried, "factory-next", factoryCardNow())
+			if rerr != nil {
+				return factoryNextClaimRefused(factoryClaimFailure(ctx, rerr))
+			}
+			c = next
+		} else if err := factoryRefuseForeignWorktree(root, c.CardID); err != nil {
 			return homestate.Card{}, false, false, err
 		}
 	}
@@ -987,10 +1036,20 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 		return nom, r, nil
 	}
 	// The claim would refuse a foreign tree only after the promotion; deciding
-	// it here keeps the refusal write-free.
+	// it here keeps the refusal write-free. The carry-over read runs first: a
+	// landing directory the card's own previous run recorded is that card's
+	// tree, and the claim at step 3 re-records the binding instead of
+	// refusing (card t1521) — so this precheck refuses only the shapes the
+	// carry-over does not explain.
 	if nom.row == nil || strings.TrimSpace(nom.row.WorktreePath) == "" {
-		if err := factoryRefuseForeignWorktree(root, cardID); err != nil {
-			return nom, factoryRefusal(factoryTokenForeignWorktree, "%s", strings.TrimPrefix(err.Error(), "factory next: refused — ")), nil
+		carried, err := factoryCarryPreviousWorktree(ctx, db, root, runID, cardID)
+		if err != nil {
+			return nom, nil, err
+		}
+		if carried == "" {
+			if err := factoryRefuseForeignWorktree(root, cardID); err != nil {
+				return nom, factoryRefusal(factoryTokenForeignWorktree, "%s", strings.TrimPrefix(err.Error(), "factory next: refused — ")), nil
+			}
 		}
 	}
 	// The quota hold leaves only a card already assigned to this lane leasable

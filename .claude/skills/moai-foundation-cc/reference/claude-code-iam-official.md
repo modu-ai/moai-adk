@@ -27,17 +27,31 @@ those were illustrative-only and have been removed.
 
 ## Permission Modes
 
-The `permissions.defaultMode` field accepts exactly four values:
+The `permissions.defaultMode` field accepts six values (official docs):
 
 | Mode | Behavior |
 |------|----------|
-| `default` | Prompts on every tool call that is not on the allow list |
+| `default` | Prompts per tool on first use; CLI label "Manual"; alias `manual` (v2.1.200+) |
+| `acceptEdits` | Auto-accepts file edits + common filesystem commands in the working directory |
 | `plan` | Read-only; Claude cannot modify files or run non-read tools |
-| `acceptEdits` | Auto-accepts Write/Edit; still prompts for Bash and other tools |
-| `bypassPermissions` | Skips all prompts (gated by `disableBypassPermissionsMode`) |
+| `auto` | Auto-approves tool calls; a second model (the classifier) reviews actions instead of you |
+| `dontAsk` | Auto-denies what would otherwise prompt; only allow-listed tools run |
+| `bypassPermissions` | Skips prompts (except actions no mode auto-approves); gated by `disableBypassPermissionsMode` |
 
-These are the only valid values. Earlier revisions listed `dontAsk` and
-`ignore` — those are not real Claude Code permission modes.
+Kill switches (settable to `"disable"` in any settings file):
+`permissions.disableBypassPermissionsMode` and
+`permissions.disableAutoMode`.
+
+Scope caveat (load-bearing for automation that writes settings): `"auto"`
+and `"bypassPermissions"` set in `.claude/settings.json` or
+`.claude/settings.local.json` (PROJECT scope) are silently ignored —
+`auto` falls back to the built-in default and `bypassPermissions` starts
+the session in Manual mode. All other values (`default`, `acceptEdits`,
+`plan`, `dontAsk`) apply from any settings file; `auto` and
+`bypassPermissions` take effect from `~/.claude/settings.json` (USER
+scope), `--settings`, or managed settings. Version notes: the `manual`
+alias requires CC v2.1.200+; the built-in auto-mode default requires
+v2.1.228+ (macOS/Linux/WSL) or v2.1.233+ (Windows).
 
 ```json
 {

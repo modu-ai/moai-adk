@@ -1,0 +1,636 @@
+{
+  "root": "/Users/goos/MoAI/moai-adk-go",
+  "head": "2213871afb7d655f411c46a34fd38bb8153278fc",
+  "branch": "main",
+  "captured_at": "2026-09-11T03:20:30.465Z",
+  "files": [
+    {
+      "path": ".claude/rules/moai/NOTICE.md",
+      "sha256": "db4f80de4b2613fb5d1ad19b6cd548f80baabe1b199fb97333b776c90b6ec430"
+    },
+    {
+      "path": ".claude/rules/moai/core/agent-common-protocol-reference.md",
+      "sha256": "9356a262b7e5258ced70ff2814aab99bfa6184ad198f01619a0994eea088a0b8"
+    },
+    {
+      "path": ".claude/rules/moai/core/agent-common-protocol.md",
+      "sha256": "b619cccd4ce7d7651bd050e544d2c09091498157d185600cbdb3689003e0ad47"
+    },
+    {
+      "path": ".claude/rules/moai/core/agent-hooks.md",
+      "sha256": "76685ab984d62066d74639780ceb2335cc6a806eb710e78c382109021e85154e"
+    },
+    {
+      "path": ".claude/rules/moai/core/askuser-protocol-reference.md",
+      "sha256": "f2f821fa4c7dbec6145e8bd443b3f0e5cd6779ed46c3eb156e8210359ba9c7be"
+    },
+    {
+      "path": ".claude/rules/moai/core/askuser-protocol.md",
+      "sha256": "13e10618054799d17a348b3c36335781e276eef70cdc0699218fecb96d427cbb"
+    },
+    {
+      "path": ".claude/rules/moai/core/glm-web-tooling.md",
+      "sha256": "4898aa4eb959642510b501e232759a0ed2141ec0eb27d3bca073085314b24ccc"
+    },
+    {
+      "path": ".claude/rules/moai/core/hooks-system.md",
+      "sha256": "cd6f1a4cc78957862aab94a3e694c0fde2677434954f8c0ea052ee32187e7408"
+    },
+    {
+      "path": ".claude/rules/moai/core/moai-constitution-detail.md",
+      "sha256": "fb64256eee8a7906edf9bae5903c36990eefa4e234bd40bac9c6566c0639d61e"
+    },
+    {
+      "path": ".claude/rules/moai/core/moai-constitution.md",
+      "sha256": "2d88e85b4996721b1b55f9daa13101774a5e4ac4ed75c791af10d2f093a91577"
+    },
+    {
+      "path": ".claude/rules/moai/core/moai-mcp-tools-catalogue.md",
+      "sha256": "aa9663c0303e143b9913369dacc2d583fd2138d82273c3264edb63b23b3f5316"
+    },
+    {
+      "path": ".claude/rules/moai/core/moai-mcp-tools.md",
+      "sha256": "a7fa407e9902d3944532706982b636a0c64d7925e460411df973e6e61057f848"
+    },
+    {
+      "path": ".claude/rules/moai/core/native-idiom-and-register-detail.md",
+      "sha256": "7a04a6291c4383187e7da98c96fa8ea461e88868ed10f37f229b2acd8db1fb37"
+    },
+    {
+      "path": ".claude/rules/moai/core/native-idiom-and-register.md",
+      "sha256": "f0979ed218592f3f29e5711a23ad98c706f50214234e006a69f9cb6680426cfd"
+    },
+    {
+      "path": ".claude/rules/moai/core/output-style-localization-catalogue.md",
+      "sha256": "b03383e9373155e8250da545774875a78f933b82484e38d3eb813ab5dedb9b8b"
+    },
+    {
+      "path": ".claude/rules/moai/core/settings-management.md",
+      "sha256": "a55bd0495f7a5834d1d1ef297401277f0a9bdda34ced6a06a2df860e76c4de1c"
+    },
+    {
+      "path": ".claude/rules/moai/core/verification-claim-integrity-detail.md",
+      "sha256": "1e5b08dd002d7cd25a667de84ab4f9ad2cd75459b95de9b5060b77cf6090b82c"
+    },
+    {
+      "path": ".claude/rules/moai/core/verification-claim-integrity.md",
+      "sha256": "f40ec8b4622357c096b705bc60a03b71fb1fdf093dd36e5ee5a671b6da16cb18"
+    },
+    {
+      "path": ".claude/rules/moai/core/zone-registry.md",
+      "sha256": "d4bc43f7dfd3b222db63cc4e0adab3d00df26dfcc27b163b89e85659ac548b4a"
+    },
+    {
+      "path": ".claude/rules/moai/design/constitution.md",
+      "sha256": "e9eed00903845786eb906f9bc601e1ca0b1d5f80d3dbdb5f5a42a5b3af9434f2"
+    },
+    {
+      "path": ".claude/rules/moai/development/agent-authoring.md",
+      "sha256": "f03ae5c8f0eef5e6f6a68a252f6da87f4b0709ecb46eeaedb3cf12f6ba0e5af7"
+    },
+    {
+      "path": ".claude/rules/moai/development/agent-patterns.md",
+      "sha256": "b2a1dd31d88776926845697fd5802332b3c253bbfa92c97b4d54bbfec8902919"
+    },
+    {
+      "path": ".claude/rules/moai/development/branch-origin-protocol.md",
+      "sha256": "4d54ed76beed7e14b6af9d96458ecb1987eaf231ac3c1fb581623d6d40ca6f8f"
+    },
+    {
+      "path": ".claude/rules/moai/development/coding-standards.md",
+      "sha256": "ed0bd8f6beb8ce8ea944289112cc2648933632998ad2bde3c7456f38210bb1a0"
+    },
+    {
+      "path": ".claude/rules/moai/development/hook-independence.md",
+      "sha256": "f1f3fc13590ac50ffd298f02ec731efc60d6e222042cf8575294abd1f67d7e3b"
+    },
+    {
+      "path": ".claude/rules/moai/development/karpathy-quickref.md",
+      "sha256": "f201b96de8889a21ac6f267897c42a6a1d234cc88168dc189f2d261a1105310c"
+    },
+    {
+      "path": ".claude/rules/moai/development/manager-develop-prompt-template.md",
+      "sha256": "e0056f83e059efaa8ea4e618923679f5c919683896190a7026863fe818416fc0"
+    },
+    {
+      "path": ".claude/rules/moai/development/model-policy.md",
+      "sha256": "9eb822ef7213fc7c74252404099343d39193b15b0192431b360a905837cc4804"
+    },
+    {
+      "path": ".claude/rules/moai/development/orchestrator-templates.md",
+      "sha256": "2044c3a28e8887602df2e1f3383679b5fa2eb9783618f23cf0c5aa494617df1c"
+    },
+    {
+      "path": ".claude/rules/moai/development/prompting-best-practices.md",
+      "sha256": "bebc77f53781427104ecae5d0690040210ff37685753f7e0e4be2243e704d159"
+    },
+    {
+      "path": ".claude/rules/moai/development/rule-authoring.md",
+      "sha256": "835526d852d7fb18139355900f4111701044c01265e0301e1a99f66c2f0be554"
+    },
+    {
+      "path": ".claude/rules/moai/development/skill-ab-testing.md",
+      "sha256": "51ef408e2579f77897ba0cbf932cd23cd3396ca13464966c7288d21efb94a3f1"
+    },
+    {
+      "path": ".claude/rules/moai/development/skill-authoring.md",
+      "sha256": "eae68b7432578461bc47da5ae7277a9ccf12007dfa997065d2595a853a7352fb"
+    },
+    {
+      "path": ".claude/rules/moai/development/skill-writing-craft.md",
+      "sha256": "b89a4c0a0fe254a5735328bea186bda91f7d2e9f21e9ac6dec74c39adb21da3b"
+    },
+    {
+      "path": ".claude/rules/moai/development/spec-frontmatter-schema.md",
+      "sha256": "edb3b86648b4e39c2617dd17ff6c95f0011b4b11f588692968d9f86b99615500"
+    },
+    {
+      "path": ".claude/rules/moai/development/sprint-round-naming.md",
+      "sha256": "095aa9b63419e758c48f22090f5202c4de66409c88b7475762ae8a78eb78b431"
+    },
+    {
+      "path": ".claude/rules/moai/development/verification-completeness.md",
+      "sha256": "f9d419da845f8f5bed226665f8ca3455cb07d6395bdf211d189a856bfeea2d0a"
+    },
+    {
+      "path": ".claude/rules/moai/languages/cpp.md",
+      "sha256": "ad22cb0a4ee3706b282d9fbefb31396925c30a8e282e76486386757e79bbaa3f"
+    },
+    {
+      "path": ".claude/rules/moai/languages/csharp.md",
+      "sha256": "7f6e84718ad9cbd91177a4367de3e7fc34d179365669a5d06894a8905eb0bfcc"
+    },
+    {
+      "path": ".claude/rules/moai/languages/elixir.md",
+      "sha256": "1589ce99bd9ae5b762036ae545f1bd0c6537357377f31762bb351f7866802a62"
+    },
+    {
+      "path": ".claude/rules/moai/languages/flutter.md",
+      "sha256": "1dc9d5cd01dfa789f53f8051b7a1f3a8feb703005d8fd438d3520d458e5c3523"
+    },
+    {
+      "path": ".claude/rules/moai/languages/go.md",
+      "sha256": "0e01d180f3a9827dc1aec847f862b192576aeb02d9f348d5d3c62dbdcd0e0a1a"
+    },
+    {
+      "path": ".claude/rules/moai/languages/java.md",
+      "sha256": "2444a0e702f5fff4f744cdc5ca4dd75ab2807167fa3211357f6c29c6f6cb3a95"
+    },
+    {
+      "path": ".claude/rules/moai/languages/javascript.md",
+      "sha256": "0672754a9b73d3714871a5e75e38c15cb265e7beb61c7eae3643b9ccd18de6b6"
+    },
+    {
+      "path": ".claude/rules/moai/languages/kotlin.md",
+      "sha256": "b216658397f67010c8060e39ea142a9509ef47c0b759bdf57ceeab6f3bf26c65"
+    },
+    {
+      "path": ".claude/rules/moai/languages/php.md",
+      "sha256": "9a77509bb13827e5a0ef89065d6f4a13884751ae120fc6697882398e320122ff"
+    },
+    {
+      "path": ".claude/rules/moai/languages/python.md",
+      "sha256": "b94957d57e99b9fa33357aa2ceebd05c2859078f35b21b6cf9c05fec618b1713"
+    },
+    {
+      "path": ".claude/rules/moai/languages/r.md",
+      "sha256": "9af0e878f3e5010f3f7e618c35e45777f3d55a21951b4d899f747bfab7f50c5a"
+    },
+    {
+      "path": ".claude/rules/moai/languages/ruby.md",
+      "sha256": "b089a2328cc8c5e8a81ac182722aa96a2c921d1e220fba5c3268c182ca659e01"
+    },
+    {
+      "path": ".claude/rules/moai/languages/rust.md",
+      "sha256": "3b11352f73dc5fb19f5b9b28409722c1a19d0079f593658ebbdc54e2e39c326c"
+    },
+    {
+      "path": ".claude/rules/moai/languages/scala.md",
+      "sha256": "7bd6116f2032965d19f93c3e6eeffa0cc7ad5f3b82918f84803d30f9f1d173ac"
+    },
+    {
+      "path": ".claude/rules/moai/languages/swift.md",
+      "sha256": "def2f54bc8250e1c41e8170b54dfdd1a4f8f8c1e7598a65e08df5827cca8756c"
+    },
+    {
+      "path": ".claude/rules/moai/languages/typescript.md",
+      "sha256": "c8a24dff5885f7e3be9e60b56af2f5ecc3220b9424a9cbb35c31a8f18e1c8970"
+    },
+    {
+      "path": ".claude/rules/moai/quality/boundary-verification.md",
+      "sha256": "a56ad464f832b1ed1e40d0390edf73284207f1b6da8a8a48e2d0c95e18d1f3c3"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/archived-agent-rejection.md",
+      "sha256": "6360111133857452222eef58567ef98de4a53d4d9b9177ebfaccc48e7a66ac89"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/cache-aware-execution-reference.md",
+      "sha256": "e7263e41e1b30c860ada333d9350c6b35fddef7c95322b7d2dcbe04664d6d4ac"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/cache-aware-execution.md",
+      "sha256": "ced31605288676b2ecaa2726bef3f8f69fa31937dd00e9e2761d75531e85d661"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/cadence-bridge.md",
+      "sha256": "1fc6a99fe5ffebea3a156f41adc85d1d739d11cd35e4f5f6abe04514cfd472d5"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+      "sha256": "5c0f640a52fe48b103f4cf8cfa678a44418046798104bda6f1df0dd6e903f151"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/context-window-management-detail.md",
+      "sha256": "79d27a4fbd80146e58400fc28dd856841063308c2ffc8ea10547486055c6faf3"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/context-window-management.md",
+      "sha256": "d51ee9f1c66bb6f7885d9d5855342d5d07d717c924cb34bf1d3f9862eb5949f8"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/cross-session-messaging-detail.md",
+      "sha256": "4953d3723cc8e1fe5f1b8a9c63d7128fe9abb97bb4a7a2714094a3d3dae0e927"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/cross-session-messaging.md",
+      "sha256": "46708b2a0162cfd034db6d8addc31deee3f0ea0052379f77cfb361fe3bd5ed31"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/dynamic-workflows.md",
+      "sha256": "198e74cf3236ba08cf88057512c7322d1f02ee068e984d1b418b88c4d75e36ad"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/goal-directive-detail.md",
+      "sha256": "11f9b76405a1d737d40350b3650fb3ed036a68e3789b1cf0a6ac94827a42e8b1"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/goal-directive.md",
+      "sha256": "02e2feae82c85a97c01f74eb862fd963ff402fd6b9562a0a47961168f61730f4"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/kanban-dispatch-detail.md",
+      "sha256": "9ea2a436fd9541f4fb3a1bd789095fa3cba3a66a6441b330d818972b08f2ea5d"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/kanban-dispatch.md",
+      "sha256": "fa23ae44fd465e5c822da6d3713ea6379aed712ccb7bf4b0e4bfb802488cace3"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/main-checkout-branch-guard-detail.md",
+      "sha256": "7568ea4b1e41887f9e64091d419ddb7c0bdec0ab367d69b57ef4c6088b8127df"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/main-checkout-branch-guard.md",
+      "sha256": "6b7a03603e4105521755fb36e796618318e39bc3a9c0370390abe488b92f4039"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/moai-memory.md",
+      "sha256": "4536193fe9b8a3eaf386a16ccbc687f9575ae4de4c374510d22bd9d3c0b519f0"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/mx-tag-protocol.md",
+      "sha256": "e900736c677a5a69a004cefc798f59509e335a0f7712c4f2dc1d9bae5cb8e13f"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/native-invocation-model.md",
+      "sha256": "c4321425399220999432bc10829f8f795ec308d53daf39d74364e5aa804e341f"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/nav-tokens.md",
+      "sha256": "50756b1b0408c7b7bff04bc2e6be3c1bf259274e50c8129fbdf8fc72879a1ba6"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/orchestration-mode-selection.md",
+      "sha256": "e2121b8dbeb2014cd7773ea1673b8811f900f7e93922350d33705cda176baf4b"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/runtime-recovery-doctrine.md",
+      "sha256": "16a6f35375e4a5700b7e8f5d72df300bbeec06905803d19c15fd15c2d6ffb03d"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/session-handoff-examples.md",
+      "sha256": "c2b21eee0b32602cab9a06cea287c8461de9e6aaed9668a061e7e04a58c57dc8"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/session-handoff.md",
+      "sha256": "426731f3b1a66a7c8e5aa9cdee341af7055da6565cce2e649b2b01d2a247b8b7"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/skill-routing-detail.md",
+      "sha256": "e3153cabdedd519e211fa909cdecbace2d9422772d3e889cb82ff2436974c0f5"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/skill-routing.md",
+      "sha256": "85685e4da3d9c1644e43479728122861ee33baee7f56094b409b8aef9d64aa73"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/spec-workflow.md",
+      "sha256": "53ab9ace3512b9e7740e02c45fdb9e033173348e96baa08e220fed09bcd0aa8e"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/verification-batch-pattern.md",
+      "sha256": "4a46cdaa164b1dbff5de77446d8f69e069149313cc5a8887488278edb1163496"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/worktree-integration.md",
+      "sha256": "b778455623f59b6a674d4eeea205e853efc68c44ed302ae3382ea1a5b45aa67c"
+    },
+    {
+      "path": ".claude/rules/moai/workflow/worktree-state-guard.md",
+      "sha256": "13a1820a60576b29a0b6b3561c0d53001d79c0b64af0f4b882527a32d18399bb"
+    },
+    {
+      "path": ".claude/agents/moai/builder-harness.md",
+      "sha256": "967a68e92fd7a05475be309ee233a82ddafb2ff7e5b0a27379c63260e20190ec"
+    },
+    {
+      "path": ".claude/agents/moai/e2e-tester.md",
+      "sha256": "61bbd26d61b3d0fda4c9776fd64edae3247c7c9ee08380110aaba039b1928809"
+    },
+    {
+      "path": ".claude/agents/moai/manager-design.md",
+      "sha256": "fb7af236dc3ed0e95bd439f888c30e29318493dcd25e3dd5d12ac58db12a2a6a"
+    },
+    {
+      "path": ".claude/agents/moai/manager-develop.md",
+      "sha256": "11691af5cb3cce7a94b25b7ab7066910ee9ea07fa26775f10dfdc68d0f111c1c"
+    },
+    {
+      "path": ".claude/agents/moai/manager-docs.md",
+      "sha256": "27d6252a33131be637294ddced274213bb817012747731d08844becd7a3b7954"
+    },
+    {
+      "path": ".claude/agents/moai/manager-git.md",
+      "sha256": "56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132"
+    },
+    {
+      "path": ".claude/agents/moai/manager-lead.md",
+      "sha256": "c3e79338127c35d0a8d92888b25b7658b1e81d2776de172ceab8684c6c5f6009"
+    },
+    {
+      "path": ".claude/agents/moai/manager-spec.md",
+      "sha256": "ab260f27afc8481c2802836e032594e3eddfe1bce54d66f8a83b201b3fcfede9"
+    },
+    {
+      "path": ".claude/agents/moai/plan-auditor.md",
+      "sha256": "abe27edee7566452720fdd2d1c3a71f86320d7906dbbb5e7e4e8f35a0f77c2cb"
+    },
+    {
+      "path": ".claude/agents/moai/super-advisor.md",
+      "sha256": "4d194ca2bab711e1587019f2d6b4be82577f0a62598a48d7f567c10a94323d94"
+    },
+    {
+      "path": ".claude/agents/moai/sync-auditor.md",
+      "sha256": "f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0"
+    },
+    {
+      "path": ".claude/skills/moai/SKILL.md",
+      "sha256": "89c81faedacdac280ca70c65a79b895d43381c57bbe11353b5a0c57458eb15f5"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/plan/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/plan/clarity-interview.md",
+      "sha256": "885d23fab3b5d74ed951ad424e821efd8d82a701fc99c8c15cc9bc0844fbaffe"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/plan/context-discovery.md",
+      "sha256": "eb7e8deb8f20d755f541488807620e0d231816b0a8d56a9cf972b068a558f2b8"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/plan/spec-assembly.md",
+      "sha256": "bcdeec9d92c9f0b9835e69e327e7aef3c8779bf0f3a287150185c039b8ede4b7"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/plan.md",
+      "sha256": "dccb01073da3a76b10d37ba968b90368644dac82f032233cb4b4b6f886de835a"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/project/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/project/codebase-analysis.md",
+      "sha256": "e4aaf9dbb49b79eb31171265742e837e7e9a6b6332e2bb5f3e0a3746b648320b"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/project/doc-generation.md",
+      "sha256": "46aed9100d7edb0657c6941104d55e5c642c232825e9ce1ec17b147722e65a81"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/project/meta-harness.md",
+      "sha256": "065617558fa491d203dfc892f21c10886d67a4fc8c383d64e381d766d8f6846e"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/project/mode-detection.md",
+      "sha256": "35b4a00d715744f91d08390cfffc2b73be7898692499f22331dacbe4ad971871"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/project.md",
+      "sha256": "21262947d7e1d5e15fb56803c64c4677293c9f4c8db7d476916f1b1dec3baef0"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/run/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/run/context-loading.md",
+      "sha256": "c98e3aafbf8c7364777246b0241b816bd713f7ddcee540e9c8af1bce406aee33"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/run/mode-orchestration.md",
+      "sha256": "4a8b97748501efb45d00e22d1287f40cdbd3f14c14765a46b10d2726ea84ed5c"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/run/phase-execution.md",
+      "sha256": "30c269281e633a79f1d9998073a45ff27127abfd1db4e1b549aed018e7c57994"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/run/task-decomposition.md",
+      "sha256": "92100c38e30b190bac3b35efbdf895d2bc50fc3a14f47fd683c7b14d6b87f913"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/run.md",
+      "sha256": "95291e95efa45f21a247c99461163b8e791361210b135f57797689f68b2cd36d"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/sync/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/sync/delivery.md",
+      "sha256": "e0e56eda95686f503f49d9fd581646615eda308df8632d6e4417618f8368fe99"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+      "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/sync/quality-gates-context.md",
+      "sha256": "714436022609c3449e9a3166673d843757b536f6917ed66af0beb3fb0227c93f"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+      "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041"
+    },
+    {
+      "path": ".claude/skills/moai/workflows/sync.md",
+      "sha256": "272bfdadb9fdc93669297837aae1880a41688b39d0ab97ce938505bd3454ebb8"
+    },
+    {
+      "path": ".moai/config/sections/archive.yaml",
+      "sha256": "03331310a7d97a0bdbb5c3cca26f516982739c8d2799649ed6c5af34db22cff3"
+    },
+    {
+      "path": ".moai/config/sections/cache.yaml",
+      "sha256": "60884b6ccdd8b4535d4033aba9104ffde7158375597c686b614af44cde62ce9a"
+    },
+    {
+      "path": ".moai/config/sections/constitution.yaml",
+      "sha256": "ec3624da9fd878f8ccc21700b46a19617f23cf0eeb691c94cfa3321138643e6c"
+    },
+    {
+      "path": ".moai/config/sections/context.yaml",
+      "sha256": "ca6ec1e6e61832cf54ef05244f9f1fea7908a7393e98447662012d6c0e94fe75"
+    },
+    {
+      "path": ".moai/config/sections/crosssession.yaml",
+      "sha256": "4083020fb12704fd08d2c20640403466832942dcb392ae0120324ee1f187cee1"
+    },
+    {
+      "path": ".moai/config/sections/delegation.yaml",
+      "sha256": "585467872a732e7ad75446934dcf74b6fb8ab8c280840f77c917c4eaf6159f28"
+    },
+    {
+      "path": ".moai/config/sections/design.yaml",
+      "sha256": "28731d635ea2c6e7589c6c2034ee373fab960a81de1c66f37ebf19da18fb6eb8"
+    },
+    {
+      "path": ".moai/config/sections/feedback.yaml",
+      "sha256": "823d17f2485cc347e9983de54b32b09467540d36eb3d67198aa6cc822c128f19"
+    },
+    {
+      "path": ".moai/config/sections/gate.yaml",
+      "sha256": "bfb329457ed7bff52bd1e4233693d81f5cc65f116808fff8eeb28fc65528b02a"
+    },
+    {
+      "path": ".moai/config/sections/git-convention.yaml",
+      "sha256": "80a26284c5743446bf6a81013503a444017cf351c9aaaa3ec4f67adad3d39e3f"
+    },
+    {
+      "path": ".moai/config/sections/git-strategy.yaml",
+      "sha256": "876321afb593a53b10f3b82ef3bee28a14a356c0dc0a8e47ff556ee26ed49414"
+    },
+    {
+      "path": ".moai/config/sections/handoff.yaml",
+      "sha256": "5134428ad3db8b75100c3c4b656627071f759b575fb25a2976cdeb01b0b1636e"
+    },
+    {
+      "path": ".moai/config/sections/harness.yaml",
+      "sha256": "7164f6c4a1bd1ec6e358f2e37b3e05eba03a6fcaab5063c461e8972bad05e847"
+    },
+    {
+      "path": ".moai/config/sections/interview.yaml",
+      "sha256": "6e518c920088cdb7b2c50f33cba5fb98dd410a9a7cb97dbbd9a312a6525d293f"
+    },
+    {
+      "path": ".moai/config/sections/language.yaml",
+      "sha256": "ef1ac0e3ac7d49a4e4f9637d2da4037fb9bfc73ab8c816d76707da2edb737bd4"
+    },
+    {
+      "path": ".moai/config/sections/llm.yaml",
+      "sha256": "d87dd8feb0177db10b46ef749d110bfd07298ef0f358096be870fcdb0ef6639a"
+    },
+    {
+      "path": ".moai/config/sections/lsp.yaml",
+      "sha256": "e45f7e6d555dab06aef6f93ae7fbc481ba0ad831a8ea1880e3a109f8012c28f9"
+    },
+    {
+      "path": ".moai/config/sections/mcp-matrix.yaml",
+      "sha256": "a1e22b966d18263b1d7f35e189630126f7a1ed2dfd5143affaab4268b5c75f68"
+    },
+    {
+      "path": ".moai/config/sections/mx.yaml",
+      "sha256": "ad261346c621c7c236d543321ce605a8e9b2aef2c85321a15cf349b9a47033eb"
+    },
+    {
+      "path": ".moai/config/sections/observability.yaml",
+      "sha256": "4e8ce8c66fb8bd750e2bcb6182120ccb6222fb328adcfd00bf23e403d7b6806e"
+    },
+    {
+      "path": ".moai/config/sections/project.yaml",
+      "sha256": "af3e0fe26cedbcefeacb09630e1539ad7c62135f0d65e93322bc0f9e6e69ab71"
+    },
+    {
+      "path": ".moai/config/sections/quality.yaml",
+      "sha256": "4902f23fa8a5f1c4a5a6cd8cb3fe844e88a95384a51f104a0e7509b303b1675b"
+    },
+    {
+      "path": ".moai/config/sections/ralph.yaml",
+      "sha256": "6f8632c473f5f6d521deb1a23df1ab070e86b603560facbc07495a12ffb4d3aa"
+    },
+    {
+      "path": ".moai/config/sections/report.yaml",
+      "sha256": "c7dedc5631fcd6d4e849d6e4309ce05f8170f27212b88289cc9d0f27f3347300"
+    },
+    {
+      "path": ".moai/config/sections/security.yaml",
+      "sha256": "bc315946c498e0a9769be9cc9270ea2d934ce218da382d42607ccc20909a85fc"
+    },
+    {
+      "path": ".moai/config/sections/state.yaml",
+      "sha256": "47114a04e18436eb81645260650df03769f6410bd8a411c53e23dcdd246310ae"
+    },
+    {
+      "path": ".moai/config/sections/statusline.yaml",
+      "sha256": "6bf856d32a2048882c8c68fadc54eebbf88fa4506cef05f50269e07d9845fc4b"
+    },
+    {
+      "path": ".moai/config/sections/sunset.yaml",
+      "sha256": "7c7d68059f2e5d7073d2a4d8a04fb205380cf55732a6ef04828d198e088321cb"
+    },
+    {
+      "path": ".moai/config/sections/system.yaml",
+      "sha256": "d4e70b022c969de2480837e2e13612a91c212793428bbcc339787c3d673aad26"
+    },
+    {
+      "path": ".moai/config/sections/tool-policy.yaml",
+      "sha256": "08db6ecf92b2731cdb627ac8f779e41a75cb9591ea73a26a54b08657e397c63e"
+    },
+    {
+      "path": ".moai/config/sections/user.yaml",
+      "sha256": "20e0234ea61d9accce5db6644d6cd1576787b11ee3a1d5f09fc62ec146195dde"
+    },
+    {
+      "path": ".moai/config/sections/workflow.yaml",
+      "sha256": "fc9accbb5ac383d04af9c9f14b21e3e4248771c372cbc829bce30ead2c21efdf"
+    },
+    {
+      "path": "CLAUDE.md",
+      "sha256": "94bdb46e750f478f6e0fe4de422b516257da08d182f994d98f040df604a041cf"
+    },
+    {
+      "path": "CLAUDE.local.md",
+      "sha256": "5ed5f724765eaa8fee11c0c876921ae7edf8293ec7e2f002b626146528cd6dcc"
+    },
+    {
+      "path": ".claude/settings.json",
+      "sha256": "bddb867650c7b96adab29e0d53d6e3e6d02e66137c402fc1e96df4707bfaf420"
+    },
+    {
+      "path": ".claude/settings.local.json",
+      "sha256": "97ffedb61ad29d2712871c28c870ec43d0f0602c5b1fc551eb5d0ab094cfe9cf"
+    },
+    {
+      "path": ".claude/hooks/moai/sync-phase-quality-gate.sh",
+      "sha256": "38ccf70ebe6968782356d490e5462c84bd13b897a27aa5b4d12bc41ebe0f7d15"
+    },
+    {
+      "path": ".claude/workflows/sync-audit-4dim.js",
+      "sha256": "476f3cd86d663c6c41196fcd7a82672b7f820adc74c1e3aa761268759f3b6cbd"
+    }
+  ]
+}

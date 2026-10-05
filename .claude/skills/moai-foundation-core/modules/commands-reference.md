@@ -2,7 +2,6 @@
 
 Purpose: Complete reference for MoAI-ADK's 6 core commands used in SPEC-First DDD workflow.
 
-Last Updated: 2025-11-25
 Version: 2.0.0
 
 ---

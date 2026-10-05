@@ -1,34 +1,27 @@
 #!/bin/bash
 
 # MoAI Hook Wrapper - handle-multi-review-gate.sh
-# Forwards stdin JSON to `moai hook multi-review-gate` (the multi-review-gate
-# Stop-hook handler). Stop hooks COMPOSE — this wrapper is a SEPARATE entry
-# alongside handle-stop.sh, handle-stop-goal.sh, sync-phase-quality-gate.sh,
-# and handle-codex-review-gate.sh; it does NOT replace them. Each wrapper reads
-# the same stdin JSON independently.
+# Forwards stdin JSON to `moai hook multi-review-gate` (the multi-model
+# review-gate Stop-hook handler). Stop hooks COMPOSE — this wrapper is a
+# SEPARATE entry alongside handle-stop.sh, handle-stop-goal.sh,
+# sync-phase-quality-gate.sh, and handle-codex-review-gate.sh; it does NOT
+# replace them. Each wrapper reads the same stdin JSON independently.
 #
-# Opt-in (workflow.multi.review_gate.enabled, default OFF, BranchGuard pattern).
-# Self-gates to ALLOW on a no-edit / loop-prevention / disabled turn. Reads the
-# most-recent ConvergenceResult from .moai/state/audit-multi/<session>.json and
-# BLOCKs only if a required backend FAIL is unresolved. Advisory disagreement
-# NEVER blocks (the user-policy fixed term). Fail-open ALLOW on a missing or
-# malformed state file (a missing optional backend is evidence-of-absence, not
-# evidence-of-failure).
-#
-# settings.json TEMPLATE registration (with the 900s timeout override) lands
-# alongside the workflow.multi_review_gate.enabled opt-in (local config, NOT
-# template-default). This wrapper exists so direct invocation + the opt-in
-# registration both have a target.
+# The handler is opt-in (workflow.multi.review_gate.enabled, default OFF) and
+# self-gates to ALLOW on a no-edit / loop-prevention / disabled turn. Otherwise
+# it reads the most recent multi-model convergence result and BLOCKs only on an
+# unresolved required-backend FAIL. Disagreement among advisory-only backends
+# NEVER blocks. Fail-open ALLOW on a missing or malformed convergence result: a
+# missing optional backend is evidence-of-absence, not evidence-of-failure.
 #
 # Capture stdin once (Stop hooks may have multiple composited readers).
 INPUT=$(cat)
 
 # --- shell-layer self-gate (the handle-stop-goal.sh precondition pattern) ---
 # The gate ships OFF, so being registered in the Stop array must NOT add a moai
-# cold start to every turn-end for every user — that would undo the per-turn
-# cold-start reduction the Stop-chain trim achieved. Read the opt-in here, in
-# pure shell, and exit 0 before any binary resolution unless it is explicitly
-# true.
+# cold start to every turn-end for every user: a hook that ships OFF should
+# cost nothing per turn. Read the opt-in here, in pure shell, and exit 0 before
+# any binary resolution unless it is explicitly true.
 #
 # The parse is deliberately conservative: awk walks the nested
 # workflow: -> multi: -> review_gate: -> enabled: indentation and accepts only a

@@ -136,7 +136,7 @@ Process:
 Guidelines:
 - Devil's advocate should prepare thoroughly
 - Arguments should be substantive, not token
-- Response should adddess arguments, not dismiss
+- Response should address arguments, not dismiss
 
 ### Outside View
 
@@ -190,7 +190,7 @@ Timing of bias checks:
 
 Documentation:
 - Record which biases were checked
-- Note any biases identified and how adddessed
+- Note any biases identified and how addressed
 - Document remaining uncertainty
 
 ---

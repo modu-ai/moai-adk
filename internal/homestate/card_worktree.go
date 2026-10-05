@@ -3,6 +3,7 @@ package homestate
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -58,4 +59,32 @@ func (f *FactoryDB) RecordCardWorktree(ctx context.Context, runID, cardID, path,
 		return Card{}, err
 	}
 	return result, nil
+}
+
+// PreviousCardWorktree reads the newest worktree binding recorded for cardID
+// in a run other than excludeRunID — the binding a run replacement may carry
+// into the new run's row (card t1521). Card rows are keyed per run, so a
+// replacement run's row is born without the binding its predecessor held;
+// this read is what names that binding again. ok is false when no other run
+// recorded a binding for the card. It never writes.
+//
+// @MX:NOTE: [AUTO] the cross-run binding read the lease-boundary carry-over is built on (card t1521)
+// @MX:REASON: an ordering or exclusion change here changes which tree a replaced run re-enters — the one fact the REQ-SD-011 refusal is calibrated against
+func (f *FactoryDB) PreviousCardWorktree(ctx context.Context, cardID, excludeRunID string) (string, bool, error) {
+	// SQL: one constant statement; cardID and excludeRunID ride ? placeholders,
+	// never the statement text.
+	const query = `SELECT c.worktree_path
+FROM cards c LEFT JOIN runs r ON r.run_id = c.run_id
+WHERE c.card_id = ? AND c.run_id != ? AND c.worktree_path != ''
+ORDER BY r.created_at DESC, c.updated_at DESC
+LIMIT 1`
+	var path string
+	err := f.DB.QueryRowContext(ctx, query, cardID, excludeRunID).Scan(&path)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return path, true, nil
 }
