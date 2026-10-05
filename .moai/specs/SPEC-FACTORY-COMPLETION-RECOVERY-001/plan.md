@@ -81,6 +81,7 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 | `internal/homestate/card_transition.go` | 운영자 경로 reassign edge — 기존 lease 없음 + 기존 owner 종료 증거 확인, version-checked(`:364` 패턴)(REQ-FCR-008). `:353`·`:451` 가드는 불변 — 새 edge가 그 옆에 추가된다 |
 | `internal/homestate/card_record.go` (+스키마 마이그레이션) | 구동 중 행의 대기 기록 — waiting signal + review deadline 필드(REQ-FCR-009). `LeaseExpired`(:137-138) 의미론 불변. 기존 행은 "미판정" 기본값. **기존 정체 행 도달**: watchdog이 행을 처음 관측하는 시점(리더 유지관리 경로)에 `waiting_since`를 소급 기록해 이미 정체 중인 행도 검토 기한이 성숙한다 — 진입 백필 없이는 기존 행이 영원히 대상이 되지 못한다 |
 | `internal/homestate/card_evidence_readers.go` (또는 인접 신규 파일) | CI 완료 reader — `audited_sha` 바인딩 선례(:93-207)를 따라 정확한 push SHA의 CI 증거만 인정, **T19만 연다**(REQ-FCR-010/011). T20은 reader 대상 밖 — receipt 게이트(M1)가 연다 |
+| `internal/homestate/card_transition.go` (T17) + 스키마 | **pushed tip SHA 영속화** — T17(`merged-local→pushed`)은 현행 MergeSHA·remote ref만 기록해 일괄 push에서 카드 MergeSHA≠push tip이 되면 reader가 요구하는 "push 시점의 정확한 SHA"를 복원할 수 없다(overlay 실측: T17 성공 뒤 tip이 카드 행·이벤트 어디에도 없음). T17에 pushed tip SHA 기록을 추가하고, reader는 **저장된 tip SHA만** 인정 — push 뒤 remote ref가 이동해도 저장값이 변하지 않는다(REQ-FCR-011) |
 | 리더 유지관리 경로 | reaper 호출 지점 — 리더/운영자 표면에만(REQ-FCR-014) |
 | 테스트 | `fr_fixture_test.go` 패밀리(`frPlace` :136, `frLeaseUntil` :197) + `fr_transition_test.go`의 `frFixtureCard`(:58) + `factory_lease_reconcile_test.go`·`factory_run_retire_test.go` 확장 — `TestExpiredLeaseReaperAllRuns`, `TestOperatorReassignEdge`, `TestStalledWaitWatchdog`, `TestCICompletionReader` |
 
