@@ -58,12 +58,18 @@ author: manager-spec
 - Source verification: 19 rows (V1-V13, V17, V18, V19 CONFIRMED; V14
   UNRESOLVED-routed; V15 AMBIGUOUS-routed; V16 partially-confirmed with 2
   corrections) — research.md.
-- Decision gates: D-Q1/D-Q2/D-Q4/D-Q5 open (decision-index.md); D-Q1/D-Q2
-  BLOCK milestones M0/M1 at run entry, D-Q4/D-Q5 feed M0. D-Q3/D-Q6 closed at
-  plan phase by constraint (POLICY-COVERED; premises P5/P6).
+- Decision gates: D-Q1/D-Q2/D-Q4/D-Q5 RESOLVED 2026-10-05 (operator/leader
+  adjudication relayed with the iter4 authorization; verdicts in
+  decision-index.md — D-Q2/D-Q4/D-Q5 leader defaults, operator-contestable;
+  D-Q1 a full operator reading). D-Q3/D-Q6 closed at plan phase by
+  constraint (POLICY-COVERED; premises P5/P6). No gate blocks M0/M1 at run
+  entry.
 - REQ/AC: 24 / 25 (ceilings 25/25 respected).
 - RED-now baseline: all 22 release-blocking ACs carry executed RED cells
-  (acceptance.md §D.2b, tree b965a3912c0e97ef81aeeea773019e633591e1cd).
+  (acceptance.md §D.2b; first measured on tree
+  `b965a3912c0e97ef81aeeea773019e633591e1cd`, re-executed in full and
+  re-pinned on `cfb9033582eff27f9031e1a6438d8558aaa48115` — the document
+  pin; iter4 D31a correcting this bullet's stale first-measurement pin).
 - Plan-audit trajectory (card t1509): iter1 FAIL 0.64
   (`.moai/reports/t1509/plan-audit-iter1.md`, 13 findings) → repair
   cfb90335 (v0.2.0) → iter2 FAIL 0.75 (`plan-audit-iter2.md`, 12/13
@@ -83,6 +89,31 @@ author: manager-spec
   the verdict). Cross-model: claude FAIL (11) + codex FAIL (4), glm
   inconclusive; two claude claims rejected with evidence. Run-phase entry
   AWAITS the leader's disposition.
+- v0.4.0 iter4 delta round (2026-10-05; the ONE authorized round per the
+  operator disposition on the iter3 ceiling hold; fix surface exactly the
+  iter3 verdict's enumeration): D24 removal gate re-keyed per-asset
+  (REQ-020/024 rewrite, design §2.4 three machine states, AC-020 GWT +
+  matrix arms); D25/D28 one removal rule — REQ-009 extended to manifest-hash
+  OR shipped-bytes, design §2.4 re-keyed to the selection-based criterion,
+  design §2.1 manifest-stale removal arm aligned, AC-006 + AC-018 arms; D26
+  TOCTOU "closed" → "narrowed" + declared parent-swap limitation + AC-025
+  posture arm; D27 REQ-021 unknown-field preservation extended to ALL
+  manifest writes + AC-021 foreign-schema round-trip arm; D29 published
+  command skills dispositioned (D-Q4/D-Q5 propagation: design §2.3/§2.5,
+  spec §6, AC-011 note); D30 EV-009 → M4+M5, EV-018 → M0+M2+M3, per-cell
+  flip expectations added (EV-005/006/008/009/010/016/017/018); D31 stale
+  §E.1 pin re-bound + M0 heading de-overstated; D32 repoint-clean/advisory
+  rows folded into REQ-014/REQ-019 + §D.2 note; D33 backup home pinned
+  (root-slug layout, resolved-path judgment, sanitization, AC-025 arm);
+  D34 C2 sole-write clause scoped to asset writes + manifest named as the
+  SPEC's own state file; carried nit taken — EV-011 command pinned to
+  `/bin/ls` and re-executed on this tree (plain listing; the unpinned form's
+  long format was the environment alias, observed three times). Gates
+  D-Q1/D-Q2/D-Q4/D-Q5 adjudicated and recorded. Baseline re-pinned
+  post-absorption: 6643c7bba → 51976e651 (develop a158b4b5f absorbed; the
+  load-bearing pins re-verified holding; the one anchor drift —
+  `inspectSkillMirror` comment `:425` — touches no live citation, the func
+  line `:429` unchanged, re-measured this run).
 
 ## §E.2 Run-phase Evidence
 

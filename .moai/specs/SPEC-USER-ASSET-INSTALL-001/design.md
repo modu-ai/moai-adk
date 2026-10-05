@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "design.md — user-folder asset install architecture"
-version: "0.3.0"
+version: "0.4.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -48,15 +48,27 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   - **manifest-stale** (current ≠ manifest hash, == shipped bytes — e.g. a
     prior refresh crashed before the manifest write): refresh → repair the
     manifest entry to the shipped state WITHOUT a file rewrite, counted under
-    "refreshed" (REQ-011); removal → remove (the bytes are moai's own).
+    "refreshed" (REQ-011); removal → remove — the bytes are moai's own, which
+    is exactly REQ-009's shipped-bytes alternative (iter4 D25: the one
+    removal rule is REQ-009 as extended — current == manifest hash OR current
+    == shipped bytes where a shipped source exists; this table arm and the
+    REQ now state the same rule).
   - **divergence** (current equals NEITHER manifest hash NOR shipped bytes):
     preserve (REQ-023) — at refresh, back up the shipped replacement to the
-    backup home under `~/.moai/` (`~/.moai/backups/<path>`; C2's sole
-    out-of-root write carve-out — NOT "alongside the user folder", which
-    would sit outside the four roots or pollute them as an untracked file);
-    at removal of a file dropped from every bundle, NO shipped-bytes backup
-    exists, so the file is preserved in place + reported; the tracked path is
-    unmodified by refresh AND by removal; always reported.
+    backup home `~/.moai/backups/<root-slug>/<relpath>` (iter4 D33: the
+    layout is ROOT-SLUG-PREFIXED — each root gets a fixed slug, e.g.
+    `claude-skills`, `claude-agents`, `agents-skills`, `codex-agents`, so
+    `~/.claude/skills/x` and `$HOME/.agents/skills/x` cannot collide on
+    `skills/x`; the `<relpath>` is Cleaned and `..`-rejected before joining,
+    and the backup home is judged on RESOLVED paths exactly like the four
+    roots — resolved once per run, destination resolved immediately before
+    the write, an escape from the resolved backup root refused; C2's sole
+    out-of-root write carve-out for user-folder asset writes — NOT
+    "alongside the user folder", which would sit outside the four roots or
+    pollute them as an untracked file); at removal of a file dropped from
+    every bundle, NO shipped-bytes backup exists, so the file is preserved
+    in place + reported; the tracked path is unmodified by refresh AND by
+    removal; always reported.
   - **missing** (tracked in manifest, absent on disk): refresh → reinstall +
     record; removal → drop the manifest entry, count as removed.
   - target exists AND manifest does NOT track it → SKIP + report (collision;
@@ -76,22 +88,37 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
      is resolved; if it resolves outside its own root's resolved tree it is
      NEVER written through: refused at install, classified as divergence
      (REQ-023 preserve + report) at refresh/removal.
-  3. **TOCTOU (check-then-open)** — the resolve-then-write window is closed by
-     posture, not by a second race-prone check: the payload is written to a
-     temp file created inside the validated RESOLVED directory and moved onto
-     the final path with an atomic rename — `rename(2)` does not follow a
-     symlink on its destination, so a leaf swapped in after validation is
-     replaced, not followed — with the resolved parent re-validated
-     immediately before the rename (the O_NOFOLLOW-equivalent semantics for
-     the update path). Manifest writes keep the existing `atomicWriteFile`
-     pattern.
+  3. **TOCTOU (check-then-open)** — the resolve-then-write window is NARROWED
+     by posture, not closed by it (iter4 D26 downgrading the earlier
+     "closed" claim, which was false as stated): the payload is written to a
+     temp file created inside the validated RESOLVED directory and moved
+     onto the final path with an atomic rename — `rename(2)` does not follow
+     a symlink on its destination's final component, so a leaf swapped in
+     after validation is replaced, not followed — with the resolved parent
+     re-validated immediately before the rename (the
+     O_NOFOLLOW-equivalent semantics for the update path). DECLARED
+     LIMITATION: `rename(2)` still traverses INTERMEDIATE directory
+     components, so a parent directory swapped to an outside-pointing
+     symlink after that re-validation but before the rename can redirect the
+     rename outside the root (codex reproduced the sequence on a /tmp model,
+     iter3 D26). The remaining window is the instant between the
+     re-validation and the rename; full closure needs descriptor-relative
+     operations (held dirfd + the openat/renameat family, or
+     O_NOFOLLOW|O_DIRECTORY on the parent), which are POSIX-only and are
+     declared out of scope for v1 (the SPEC pins no OS-specific
+     system-call dependency — D8; C1's cross-platform determinism). The
+     limitation is
+     doc-visible (acceptance §D.7) and AC-025 asserts the posture itself.
+     Manifest writes keep the existing `atomicWriteFile` pattern.
 
 ### 2.2 Per-user manifest (new)
 
-- One JSON document, location per decision gate D-Q2 (candidates:
-  `~/.moai/user-assets.json` — the leading candidate because `~/.moai/` is
-  already moai's user-level state home per `internal/paths/paths.go`;
-  `~/.claude/moai-manifest.json`; per-root split files).
+- One JSON document at `~/.moai/user-assets.json` (D-Q2, adjudicated
+  2026-10-05 — leader default, operator-contestable; `~/.moai/` is already
+  moai's user-level state home per `internal/paths/paths.go`). The manifest
+  is the SPEC's own state file — a separately named out-of-root write
+  destination alongside the REQ-023 backup home, distinct from the C2
+  user-folder asset-write surface (iter4 D34).
 - Schema: `schema_version`, `installed_at`, `bundles: [opted-in bundle
   names]`, `files: {path → {sha256, bundle,
   installed_at, moai_version}}`, `collisions: [{path, first_seen_at}]`. The
@@ -102,12 +129,15 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   `moai_version` — a single top-level value cannot record that state. The
   `bundles:` list is the recorded opt-in selection (REQ-004, iter2 D18) —
   the state `moai bundle add|remove` mutates and `moai update` reads.
-- Unknown-field preservation (iter2 D23): a write performed against a KNOWN
-  schema_version carries through fields the writing binary does not
-  understand (top-level and per-file) — the consumers-ignore-unknown-fields
-  premise of acceptance §D.7. An implementation whose decode would drop
-  unknown fields refuses the write instead of silently shrinking the
-  document (protects against an older binary rewriting a newer manifest).
+- Unknown-field preservation (iter2 D23; iter4 D27 extending its scope):
+  EVERY manifest write carries through fields the writing binary does not
+  understand (top-level and per-file), whatever schema_version it reads —
+  including the append-only install/refresh writes REQ-021 permits against
+  an UNKNOWN schema_version, which are exactly the older-binary-rewrites-
+  newer-manifest case this rule exists to make safe — the
+  consumers-ignore-unknown-fields premise of acceptance §D.7. An
+  implementation whose decode would drop unknown fields refuses the write
+  instead of silently shrinking the document.
 - Reuses the sha256 hex convention of `catalog.yaml` entries and the triple-hash
   spirit of the project manifest (`internal/manifest/types.go`) minus the parts
   the user scope does not need (no 3-way merge at user scope: collision = skip).
@@ -116,12 +146,20 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
 
 ### 2.3 Bundle taxonomy (catalog extension)
 
-- `catalog.yaml` gains a user-install view: L0 core (REQ-003's content, exact
-  agent list per D-Q1) + opt-in bundles (REQ-004). The existing
-  `optional_packs` structure is the natural carrier for bundles; the remaining
-  current-`core` entries that are NOT L0 reclassify into bundles. The catalog
-  is the single membership SSOT (no second name list in code — the
-  `publishedSkillNames` hardening pattern shows why drift guards exist).
+- `catalog.yaml` gains a user-install view: L0 core (REQ-003's content — the
+  five agents per the resolved D-Q1: manager-spec, manager-develop,
+  manager-docs, plan-auditor, sync-auditor; the moai-plan/moai-run/moai-sync
+  published command skills per D-Q4; the hook payload deploys project-side;
+  factory) + opt-in bundles (REQ-004). The existing `optional_packs`
+  structure is the natural carrier for bundles: the six existing optional
+  packs stand as-is, and the current-`core` entries that are NOT L0
+  re-bundle by theme (resolved D-Q5, 2026-10-05 — leader default,
+  operator-contestable). The published Codex command-skill set folds into
+  the same catalog view (iter4 D29): the plan/run/sync three ride L0 (D-Q4)
+  and the remaining fourteen take their bundles from the reclassification —
+  `publishedSkillNames` does not survive as a second name list (the catalog
+  is the single membership SSOT — the `publishedSkillNames` hardening
+  pattern shows why drift guards exist).
 - Factory (multi-lane operation) is L0 per the operator decision D3:
   `moai-factory-foreman` + `moai-lane-watchdog` ride the core bundle; the
   factory doctor check (`checkFactoryRun`) keeps reading project state as
@@ -141,36 +179,63 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
 
 - New user-asset phase in the update flow: refresh (only when the file's
   current hash equals its manifest hash and differs from the shipped bytes) →
-  removal (manifest-tracked files no longer in ANY shipped bundle, same
-  current-hash precondition) → tracked-file divergence preserve + backup +
-  report (REQ-023) → summary counts (installed/refreshed/removed/
-  collision-skipped/divergence-preserved — REQ-011).
+  removal (manifest-tracked files no longer in L0 nor any bundle recorded as
+  opted-in in the manifest — the SELECTION-based criterion, verbatim
+  REQ-009; the sole general removal rule — iter4 D28 re-keying the former
+  catalog-based wording; precondition: current hash == manifest hash, or ==
+  shipped bytes where a shipped source still exists, iter4 D25) →
+  tracked-file divergence preserve + backup + report (REQ-023) → summary
+  counts (installed/refreshed/removed/collision-skipped/divergence-preserved
+  — REQ-011).
 - Removal is manifest-driven ONLY: a file in a user folder that the manifest
   does not track is never a removal candidate (REQ-010 collision rule covers
   it; deletion of untracked files is out of scope).
-- No-manifest branch (iter2 D14 — the former label "init never ran on the
-  machine" was wrong for the upgrade population, whose init ran under the
-  pre-SPEC model): the phase branches on project provenance.
-  - Project carries prior-model common skills/agents (the REQ-020 upgrade
-    population) → the phase performs the FIRST user install (REQ-024 upgrade
-    arm) in the same run, and the project phase's migration removal runs only
-    AFTER that install completes — no update run leaves the user with
-    neither placement.
+- Upgrade branch (iter2 D14; iter4 D24 re-keying the removal gate per-asset
+  — the former labels "init never ran on the machine" and "the same run has
+  completed the first install" were both wrong keys: the gate is per-asset
+  presence, not a run-level flag): the phase branches on project provenance
+  AND on per-asset user-side presence. A project file is removed only when
+  its user counterpart is CONFIRMED PRESENT — manifest-tracked with a
+  current hash matching the installed bytes (REQ-020). The machine states:
+  - (a) manifest ALREADY EXISTS (written by another project's update, or by
+    a partial install) on a machine whose project still carries prior-model
+    assets: the arm does not stall — missing counterparts are installed
+    append-only (REQ-021-safe), present-and-matching counterparts are reused
+    as-is, and removal proceeds per-asset.
+  - (b) optional-pack assets in the upgrading project: the upgrade first
+    install covers L0 ONLY (no manifest, no `--bundles` → the selection is
+    L0 per §2.3's default). A non-L0 project asset has no confirmed user
+    counterpart, so it STAYS project-side (reported) until the user opts
+    into its bundle — never silently installed into a bundle the user did
+    not pick, never removed while unconfirmed.
+  - (c) partial first-install failure (REQ-013 continues past per-file
+    failures): a failed user-side write leaves that file's project
+    counterpart UN-REMOVED (its presence is unconfirmed), and the summary
+    reports the skipped removal; on a retry the unconfirmed counterparts are
+    re-attempted and the removal completes only for files whose counterparts
+    then confirm.
   - No manifest AND no prior-model project assets → the advisory; there is
     nothing to install from and nothing to strand (the first install belongs
     to init, REQ-024).
-- Ordering: user-asset phase runs BEFORE the project phase so a mid-update
-  failure leaves the project phase untouched (project behavior unchanged by a
-  user-side failure); within the upgrade case this ordering IS the
-  stranding guard — the install that replaces the project placement has
-  landed before the removal runs.
+- Ordering: the user-asset phase runs BEFORE the project phase so a
+  user-side failure changes no project behavior beyond the per-asset gate
+  itself; within the upgrade case the ordering PLUS the per-asset gate is
+  the stranding guard — a project file's removal runs only after its own
+  counterpart's install has landed and confirmed, so "a mid-update failure
+  leaves the project phase untouched" reads per-asset: the affected file's
+  counterpart stays project-side, the rest of the phase proceeds.
 
 ### 2.5 Project slimming
 
 - Project deploy stops emitting common skills/agents entirely (both former
   modes): the project keeps settings, AGENTS.md/CLAUDE.md, the lock file
   (`.moai/manifest.json` unchanged in role), hooks, `.mcp.json`, output-styles,
-  rules, command wrappers.
+  rules, command wrappers. "Command wrappers" names NON-SKILL command files
+  only (iter4 D29): the 17 published Codex command skills (research V4) are
+  common skills and move to user folders — the moai-plan/moai-run/moai-sync
+  three via L0 (D-Q4), the remaining fourteen via the D-Q5 re-bundling (§2.3)
+  — so AC-011's `no .agents/skills/moai*` placement ban holds unchanged over
+  the post-M4 project tree.
 - Migration of EXISTING projects (REQ-020): update classifies current
   project-local `moai-*` skills/agents via the provenance classes —
   `template_managed` → removable (offer + apply), `user_modified` → preserved
@@ -241,5 +306,5 @@ cross-harness evidence.
 | Wide retire blast radius (8 test files / 13 .go files, build chain, roster guard, release chain) | M6/M7 isolated; each deletion cites the owning REQ; golden tests deleted WITH the generator in the same commit; release-chain gates dispositioned in M6 (iter1 D4) |
 | Users left with plugin installs from the old model | Migration report names the manual `claude plugin uninstall` step (doctor informational row); no silent divergence |
 | Profile sessions not seeing user assets (D-Q3 closed: P6) | Declared limitation documented in M8; doc-visible so a later SPEC can lift it |
-| User edits to tracked files silently overwritten or deleted (iter1 D3) | Refresh/removal gated on current-hash == manifest-hash; divergence → preserve (backup) + report + a REQ-011 count category; doctor's "modified" row lists it persistently |
+| User edits to tracked files silently overwritten or deleted (iter1 D3) | Refresh gated on current-hash == manifest-hash; removal on the one REQ-009 rule (manifest-hash OR shipped-bytes where a shipped source exists — iter4 D25); divergence → preserve (backup) + report + a REQ-011 count category; doctor's "modified" row lists it persistently |
 | Manifest corruption / partial write | Atomic write (same pattern as `atomicWriteFile`); schema-version refusal for removal; corrupt-JSON recovery path (AC-021) |

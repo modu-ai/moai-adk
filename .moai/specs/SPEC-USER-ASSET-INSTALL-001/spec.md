@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -52,6 +52,31 @@ related_specs: [SPEC-PLUGIN-MARKETPLACE-001, SPEC-INIT-SHRINK-001, SPEC-CODEX-CO
   surface (REQ-004 + design §2.3 + AC-018); D20 claims corrections; D21-D23
   optional nits taken. Evidence ledger re-executed in full (22 cells + 2
   positive controls, verbatim, tree cfb903358) and re-pinned.
+- 2026-10-05: v0.4.0 iter4 delta round (card t1509; the ONE authorized round
+  per the operator disposition on the iter3 ceiling hold). Closed D24-D34 +
+  the EV-011 /bin/ls nit: D24 removal gate re-keyed per-asset (REQ-020/024,
+  design §2.4, AC-020 arms); D25/D28 one removal rule (REQ-009 extended to
+  manifest-hash OR shipped-bytes; the selection-based criterion restated as
+  the sole general rule — design §2.4 re-keyed to it; AC-006/018 arms); D26
+  TOCTOU claim downgraded "closed" → "narrowed" + declared limitation +
+  AC-025 posture arm; D27 unknown-field preservation extended to ALL
+  manifest writes (REQ-021, AC-021 arm); D29 the 17 published Codex command
+  skills dispositioned (D-Q4: moai-plan/moai-run/moai-sync ride L0; the
+  other fourteen re-bundle per D-Q5; the project-scope "command wrappers"
+  lists scoped to non-skill command files); D30 ledger green paths matched
+  to the matrix + per-cell flip expectations; D31 stale progress pin re-bound
+  + M0 heading de-overstated; D32 repoint-clean/advisory-row folded into
+  REQ-014/REQ-019; D33 backup home pinned
+  (`~/.moai/backups/<root-slug>/<relpath>` + resolved-path judgment +
+  sanitization); D34 C2 sole-write clause scoped to user-folder asset
+  writes, the per-user manifest named as the SPEC's own state file. Founder
+  gates adjudicated (operator/leader decision 2026-10-05): D-Q1 reading A
+  (the plan→run→sync chain plus its two auditors); D-Q2 `~/.moai/
+  user-assets.json` (leader default, operator-contestable); D-Q4 published
+  command skills (leader default, operator-contestable); D-Q5 six packs
+  stand + theme re-bundle (leader default, operator-contestable). Baseline
+  re-pinned post-absorption: 6643c7bba → 51976e651 (develop a158b4b5f
+  absorbed; load-bearing pins re-verified holding on this tree).
 
 ## 1. Background and Premise
 
@@ -69,24 +94,34 @@ the hook payload, and the factory skill set (multi-lane operation); everything
 else ships as opt-in bundles. L0's hook payload constituent deploys with the
 project payload (REQ-005), never as a user-folder write (REQ-003).
 
-A per-USER manifest file (with hashes) makes the user-folder install
-accountable: `moai update` refreshes changed files and removes files no longer
-in L0 or any opted-in bundle — but only when the file on disk still matches
-what moai last wrote (REQ-023 protects user edits to tracked files) —
-user-created files with colliding names are never overwritten (they are
-reported), and `moai doctor` compares the installed user tree against the
-manifest and the project tree against the project lock file. The upgrade
-population — projects initialized under the older per-project model — has no
-per-user install yet; their first post-adoption `moai update` performs the
-user install (REQ-024's upgrade arm) BEFORE the project slimming removes the
-old placement, so no run leaves the user with neither.
+A per-USER manifest file (with hashes) at `~/.moai/user-assets.json` (D-Q2)
+makes the user-folder install accountable: `moai update` refreshes changed
+files and removes files no longer in L0 or any opted-in bundle — but only
+when the file on disk still matches what moai knows it wrote (its manifest
+hash, or the shipped bytes where a shipped source still exists — REQ-009;
+REQ-023 protects user edits to tracked files) — user-created files with
+colliding names are never overwritten (they are reported), and `moai doctor`
+compares the installed user tree against the manifest and the project tree
+against the project lock file. The upgrade population — projects initialized
+under the older per-project model — has no per-user install yet; their first
+post-adoption `moai update` installs the missing user counterparts (REQ-024's
+upgrade arm) and removes each project-side file only after its own
+counterpart is confirmed present user-side (REQ-020's per-asset gate), so no
+run leaves the user with neither — and a file whose counterpart could not be
+confirmed (a failed write, or a non-L0 asset whose bundle is not opted in)
+stays project-side and is reported.
 
 Premises (settled by the operator, or forced by this SPEC's own constraints —
 not re-opened during run phase):
 - P1 (D4): no plugin, no marketplace — plain file copies from the binary's
   embedded assets.
 - P2 (D3): L0 = plan/run/sync + 5 core agents + hook payload (project-deployed)
-  + factory; the rest is opt-in bundles.
+  + factory; the rest is opt-in bundles. Resolved readings (operator/leader
+  decision 2026-10-05): "plan·run·sync" = the published command skills
+  `moai-plan`/`moai-run`/`moai-sync` (D-Q4); the five core agents =
+  manager-spec, manager-develop, manager-docs, plan-auditor, sync-auditor
+  (D-Q1) — factory is already in L0 separately (this premise) and is not
+  counted in the five.
 - P3: user-created files are inviolable — skip and report.
 - P4: per-profile settings folders stay per-profile.
 - P5: the retired plugin carrier is hard-deleted atomically (no deprecation
@@ -109,10 +144,12 @@ not re-opened during run phase):
   `CLAUDE_CONFIG_DIR` profile directory holds its own settings and is never a
   target of the shared user-asset install.
 - REQ-003: The L0 core bundle shall contain the plan/run/sync workflow
-  surface, the five core agents as resolved by decision gate D-Q1, the hook
-  payload, and the factory skill set; the hook payload deploys with the
-  project payload (REQ-005) and is never a user-folder write target — the
-  four roots of C2 carry no hook destination.
+  surface — the published command skills `moai-plan`, `moai-run`,
+  `moai-sync` (D-Q4) — the five core agents (manager-spec, manager-develop,
+  manager-docs, plan-auditor, sync-auditor — D-Q1), the hook payload, and
+  the factory skill set; the hook payload deploys with the project payload
+  (REQ-005) and is never a user-folder write target — the four roots of C2
+  carry no hook destination.
 - REQ-004: The system shall ship every common asset outside L0 as an opt-in
   bundle; a bundle is installed or removed as a unit, bundle membership is
   declared in the shipped catalog, the opt-in selection is recorded in the
@@ -139,9 +176,13 @@ not re-opened during run phase):
   bytes, the system shall refresh the file to the shipped bytes and record the
   new hash and installing version in the manifest.
 - REQ-009: When a file recorded in the per-user manifest is no longer part of
-  L0 or of any bundle recorded as opted-in in the manifest, and its current
-  hash equals its manifest hash, `moai update` shall remove it from the user
-  folder and from the manifest.
+  L0 or of any bundle recorded as opted-in in the manifest (the
+  selection-based criterion — REQ-004), and its current hash equals its
+  manifest hash, or equals the shipped bytes where a shipped source for the
+  file still exists (for a file dropped from every bundle no shipped source
+  exists, so only the manifest-hash alternative applies — iter4 D25), `moai
+  update` shall remove it from the user folder and from the manifest; a file
+  matching neither hash is preserved and reported (REQ-023 divergence).
 - REQ-010: When the target path of an install, refresh, or removal holds a
   file the per-user manifest does not track, the system shall leave that file
   untouched and report the collision.
@@ -158,7 +199,10 @@ not re-opened during run phase):
 
 - REQ-014: `moai doctor` shall compare every file recorded in the per-user
   manifest against the installed user-folder tree and report missing,
-  modified, and untracked entries.
+  modified, and untracked entries; the project-scope Codex asset diagnostics
+  repointed in M4 (`inspectSkillMirror`, the `probeCodexReadiness`/
+  `countCodexAgentTOMLs` pair) shall report a correct user install as clean
+  — no false drift once project assets stop emitting (iter4 D32 fold).
 - REQ-015: `moai doctor` shall compare the project tree against the project
   lock file and report drift in both directions.
 
@@ -174,20 +218,30 @@ not re-opened during run phase):
 - REQ-019: `moai doctor` shall no longer report plugin deployment or plugin
   version as checks of the retired carrier; each is repointed to the
   user-manifest comparison or removed with its owning requirement cited.
+  Doctor shall carry the migration advisory row — the manual `claude plugin
+  uninstall` step for prior plugin installs (design §4) — as an
+  informational row (iter4 D32 fold).
 
 ### Migration and compatibility
 
 - REQ-020: When a project carries template-managed common skills or agents
   from an earlier deployment, `moai update` shall offer and apply the
-  migration that removes them from the project only after the same run has
-  completed the user-side first install (REQ-024 upgrade arm), preserving
-  user-modified and user-created files and reporting each disposition.
+  migration that removes each project-side file only after its user
+  counterpart is confirmed present — manifest-tracked with a hash matching
+  the installed bytes (the per-asset removal gate; iter4 D24 re-keying
+  REQ-024's upgrade arm) — preserving user-modified and user-created files
+  and reporting each disposition; a file whose counterpart failed to
+  install (REQ-013 per-file failure) or lies outside L0 while its bundle is
+  not opted in stays project-side and is reported.
 - REQ-021: The per-user manifest shall carry a schema version; the system
-  shall refuse manifest-driven removal against an unknown schema version while
-  still permitting append-only install and refresh; a manifest write performed
-  against a known schema version shall preserve fields it does not understand
-  (the consumers-ignore-unknown-fields premise of acceptance §D.7) — an
-  implementation that would drop unknown fields refuses the write instead.
+  shall refuse manifest-driven removal against an unknown schema version
+  while still permitting append-only install and refresh; EVERY manifest
+  write — under a known or an unknown schema version — shall preserve
+  fields it does not understand (the consumers-ignore-unknown-fields
+  premise of acceptance §D.7; this is what makes the append-only permission
+  safe against an older binary rewriting a newer manifest — iter4 D27), and
+  an implementation that would drop unknown fields refuses the write
+  instead.
 
 ### Codex agent parity
 
@@ -200,7 +254,9 @@ not re-opened during run phase):
 - REQ-023: When a file tracked in the per-user manifest has a current hash
   equal to neither its manifest hash nor the shipped bytes, the system shall
   preserve the installed file — backing up the shipped replacement to the
-  backup home under `~/.moai/` (C2's sole out-of-root write carve-out) when
+  backup home `~/.moai/backups/<root-slug>/<relpath>` (root-slug-prefixed
+  layout per design §2.1 — iter4 D33; C2's sole out-of-root write carve-out
+  for user-folder asset writes) when
   shipped bytes exist, and omitting the backup when the file is dropped from
   every bundle, where no shipped bytes exist — leave the tracked path
   unmodified by refresh and by removal, and report the divergence; the
@@ -214,13 +270,21 @@ not re-opened during run phase):
 
 - REQ-024: When `moai init` runs on a machine that has no per-user install,
   the system shall install the L0 core bundle and every opted-in bundle into
-  the user folders before the run reports success; when `moai update` runs on
-  a machine with no per-user install whose project carries prior-model common
-  skills or agents (the REQ-020 upgrade population — init ran under the
-  pre-SPEC model), it shall perform that same first install in the same run
-  and before REQ-020's project-side removal, so no run leaves the user with
-  neither placement; subsequent `moai update` runs refresh and prune that
-  install (REQ-008/009) rather than performing the first install.
+  the user folders before the run reports success. When `moai update` runs
+  against a project carrying prior-model common skills or agents (the
+  REQ-020 upgrade population — init ran under the pre-SPEC model), the run
+  shall confirm every user counterpart REQ-020 will remove is present
+  user-side — manifest-tracked with a hash matching the installed bytes —
+  installing the missing L0 counterparts in the same run and before
+  REQ-020's project-side removal (the upgrade first install), so no run
+  leaves the user with neither placement; a manifest that already exists
+  (written by another project's update or by a partial install) does not
+  suppress the arm — missing counterparts are installed append-only (iter4
+  D24); the upgrade first install covers L0 only — project assets outside
+  L0 are not installed until the user opts into their bundle, and they are
+  not removed while unconfirmed; subsequent `moai update` runs refresh and
+  prune that install (REQ-008/009) rather than performing the first
+  install.
 
 ## 3. Acceptance Criteria (summary)
 
@@ -248,10 +312,18 @@ REQ-022 → AC-002; REQ-023 → AC-006/008; REQ-024 → AC-001/002/020.
   resolved path must remain inside its own root's resolved tree; a leaf that
   resolves outside its root is refused at install and classified as
   divergence (REQ-023 preserve + report) at refresh/removal, never written
-  through; the sole permitted write destination outside the four roots is the
-  REQ-023 backup home under `~/.moai/`; the resolve-then-write window is
-  closed by the design §2.1 write posture (temp file + atomic rename inside
-  the validated resolved directory).
+  through; the sole permitted write destination outside the four roots for
+  USER-FOLDER ASSET writes is the REQ-023 backup home
+  `~/.moai/backups/<root-slug>/<relpath>`, judged on resolved paths and
+  sanitized like the four roots (iter4 D33); the per-user manifest
+  (`~/.moai/user-assets.json`, D-Q2) is the SPEC's own state file — a
+  second, separately named out-of-root write destination that is not a
+  user-folder asset write (iter4 D34); the resolve-then-write window is
+  NARROWED by the design §2.1 write posture (temp file + atomic rename
+  inside the validated resolved directory, the resolved parent re-validated
+  immediately before the rename) — a parent directory swapped to an
+  outside-pointing symlink after that re-validation remains a declared race
+  limitation, not a closed window (iter4 D26).
 - C3: The project lock file (`.moai/manifest.json`) keeps its existing role
   and schema; this SPEC extends doctor's READING of it, not its format.
 - C4: User-facing collision, divergence, and failure reports are actionable:
@@ -267,15 +339,21 @@ REQ-022 → AC-002; REQ-023 → AC-006/008; REQ-024 → AC-001/002/020.
 
 ## 5. Open Decisions
 
-Recorded in `decision-index.md`; the open gates may not be silently decided
-during run phase:
-- D-Q1 (gate for REQ-003; BLOCKS M0/M1): the exact five L0 core agents.
-- D-Q2 (gate for REQ-006; BLOCKS M0/M1): the per-user manifest location and
-  file name.
-- D-Q4 (input to REQ-003): whether "plan·run·sync" names the published command
-  skills, the workflow skills, or both.
-- D-Q5: bundle granularity — whether the six existing optional packs stand as
-  the bundles or current-core remainders re-bundle differently.
+Recorded in `decision-index.md`. The four founder gates were adjudicated
+2026-10-05 (operator/leader decision relayed with the iter4 authorization)
+and carry their verdicts in the register:
+- D-Q1 (gate for REQ-003; was BLOCKING M0/M1): RESOLVED — the five core
+  agents are manager-spec, manager-develop, manager-docs, plan-auditor,
+  sync-auditor (reading A: the plan→run→sync chain plus its two auditors;
+  factory is separately in L0 per P2 and is not counted in the five).
+- D-Q2 (gate for REQ-006; was BLOCKING M0/M1): RESOLVED —
+  `~/.moai/user-assets.json` (leader default, operator-contestable).
+- D-Q4 (input to REQ-003): RESOLVED — "plan·run·sync" names the published
+  command skills `moai-plan`/`moai-run`/`moai-sync`, NOT the
+  `moai-workflow-*` skills (leader default, operator-contestable).
+- D-Q5: RESOLVED — the six existing optional packs stand as-is;
+  current-core remainders re-bundle by theme (leader default,
+  operator-contestable).
 
 Resolved at plan phase by constraint (iter1 repair D7; recorded as premises
 P5/P6 and closed in the decision register):
@@ -297,10 +375,13 @@ P5/P6 and closed in the decision register):
 ### Out of Scope — non-asset harness surfaces
 
 - Output styles, rules, workflows, and command wrappers stay project-scoped in
-  this SPEC; only skills and agents move to user folders. The hook payload is
-  part of L0 (P2) but deploys project-side (REQ-003/REQ-005). [NEEDS
-  CLARIFICATION is NOT raised: the card names skills/agents/hooks/factory
-  only.]
+  this SPEC; only skills and agents move to user folders. "Command wrappers"
+  names non-skill command files only — the 17 published Codex command skills
+  (research V4) are common skills and move to user folders: the plan/run/sync
+  three via L0 (D-Q4), the remaining fourteen re-bundled per D-Q5 (design
+  §2.5). The hook payload is part of L0 (P2) but deploys project-side
+  (REQ-003/REQ-005). [NEEDS CLARIFICATION is NOT raised: the card names
+  skills/agents/hooks/factory only.]
 - Shell-hook scripts stay project-deployed; their packaging follows the L0
   hook payload definition but no new hook execution model is introduced.
 

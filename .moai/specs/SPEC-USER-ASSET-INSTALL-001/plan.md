@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "plan.md — implementation plan"
-version: "0.3.0"
+version: "0.4.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -40,8 +40,13 @@ table).
 
 ## C. Pre-flight (run-phase entry checks)
 
-1. Decision gates D-Q1, D-Q2, D-Q4, D-Q5 resolved by the operator
-   (decision-index.md) — D-Q1 and D-Q2 BLOCK M0/M1; D-Q4/D-Q5 feed M0.
+1. Decision gates D-Q1, D-Q2, D-Q4, D-Q5 carry operator verdicts in
+   decision-index.md (adjudicated 2026-10-05): D-Q1 (the five core agents —
+   manager-spec, manager-develop, manager-docs, plan-auditor, sync-auditor)
+   and D-Q2 (`~/.moai/user-assets.json`) were the BLOCKING M0/M1 gates and
+   are resolved; D-Q4 (published command skills) and D-Q5 (six packs + theme
+   re-bundle) fed M0 and are resolved — D-Q2/D-Q4/D-Q5 are leader defaults,
+   operator-contestable.
    D-Q3 and D-Q6 are closed at plan phase by constraint (decision-index:
    POLICY-COVERED; premises P5/P6 in spec.md §1) — M2 ships without profile
    provisioning (P6) and M6 hard-deletes the carrier (P5).
@@ -85,21 +90,27 @@ Each milestone's exit evidence:
 
 ## F. Milestones
 
-### M0 — Bundle taxonomy and L0 resolution (BLOCKING gates: D-Q1, D-Q2, D-Q4, D-Q5)
+### M0 — Bundle taxonomy and L0 resolution (BLOCKING gates: D-Q1, D-Q2 — both resolved per decision-index.md, 2026-10-05; D-Q4/D-Q5 fed M0, resolved)
 Extend `internal/template/catalog.yaml` + loader with the user-install view:
-L0 core (plan/run/sync surface, five core agents per D-Q1, hook payload,
-factory) and opt-in bundles. Add a catalog drift guard pinning the L0 list to
-the resolved gate answer. Reclassify current-`core` entries that are not L0
-into bundles. Priority: High. Evidence: catalog loader tests + drift guard.
+L0 core (plan/run/sync surface — the moai-plan/moai-run/moai-sync published
+command skills per D-Q4; the five core agents per D-Q1; hook payload,
+factory) and opt-in bundles (the six optional packs stand; current-`core`
+remainders re-bundle by theme per D-Q5; the published command-skill set
+folds into the catalog view — iter4 D29). Add a catalog drift guard pinning
+the L0 list to the resolved gate answer. Reclassify current-`core` entries
+that are not L0 into bundles. Priority: High. Evidence: catalog loader tests
++ drift guard.
 
-### M1 — Per-user manifest subsystem (BLOCKING gate: D-Q2)
-Implement the per-user manifest: schema (schema_version,
-files{path → sha256, bundle, installed_at, moai_version}, collisions — the
-installing version is PER FILE per REQ-006; there is no top-level moai_version
-field, because REQ-013's partial-failure continuation makes mixed-version
-states real), atomic read/write, schema-version refusal for removal (REQ-021)
-plus the corrupt-JSON recovery path (AC-021 second clause), four-root path
-validation (C2). Location per D-Q2. Priority: High. Evidence: unit tests for
+### M1 — Per-user manifest subsystem (BLOCKING gate: D-Q2 — resolved: ~/.moai/user-assets.json)
+Implement the per-user manifest at `~/.moai/user-assets.json` (D-Q2): schema
+(schema_version, files{path → sha256, bundle, installed_at, moai_version},
+collisions — the installing version is PER FILE per REQ-006; there is no
+top-level moai_version field, because REQ-013's partial-failure continuation
+makes mixed-version states real), atomic read/write, schema-version refusal
+for removal (REQ-021) plus the corrupt-JSON recovery path (AC-021 second
+clause), unknown-field preservation on EVERY write incl. foreign-schema
+append-only writes (REQ-021, iter4 D27), four-root path validation (C2).
+Priority: High. Evidence: unit tests for
 load/save/refuse/corrupt-recovery paths.
 
 ### M2 — User-folder installer and init trigger
@@ -120,31 +131,40 @@ leaf-symlink sentinels).
 
 ### M3 — `moai update` user-asset phase
 Wire the update flow: refresh (REQ-008 — only when the file's current hash
-equals its manifest hash), manifest-driven removal (REQ-009 — same
-precondition; candidates are files no longer in L0 nor any opted-in bundle),
-tracked-file divergence preserve + backup + report (REQ-023, full truth
-table incl. the manifest-stale and missing-file arms), collision report
-(REQ-010), summary counts incl. divergence-preserved (REQ-011), the
-no-manifest BRANCH (REQ-024 upgrade arm — a prior-model project gets the
-first user install in the same run, BEFORE the project phase's migration
-removal; a machine with no manifest and no prior-model assets gets the
-advisory), the `moai bundle add|remove` command adjusting the manifest's
-bundle list and applying exactly that bundle's catalog entries (REQ-004,
-iter2 D18), ordering before the project phase, no
-regression of the existing global-settings cleanup. Priority: High.
+equals its manifest hash), manifest-driven removal (REQ-009 — the
+selection-based criterion: files no longer in L0 nor any opted-in bundle;
+precondition current hash == manifest hash OR == shipped bytes where a
+shipped source exists — the one removal rule, iter4 D25/D28), tracked-file
+divergence preserve + backup + report (REQ-023, full truth table incl. the
+manifest-stale and missing-file arms), collision report (REQ-010), summary
+counts incl. divergence-preserved (REQ-011), the upgrade BRANCH (REQ-024
+upgrade arm per the per-asset gate — a prior-model project gets its missing
+L0 counterparts installed in the same run, BEFORE the project phase's
+migration removal; a manifest that already exists does not suppress the
+arm; non-L0 project assets stay project-side until opted in; a failed
+counterpart write leaves its project file un-removed; a machine with no
+manifest and no prior-model assets gets the advisory — iter4 D24), the
+`moai bundle add|remove` command adjusting the manifest's bundle list and
+applying exactly that bundle's catalog entries (REQ-004, iter2 D18),
+ordering before the project phase, no regression of the existing
+global-settings cleanup. Priority: High.
 Evidence: update-flow tests with temp HOME + project fixture, incl. the
-upgrade case (prior-model project + no manifest → first install precedes the
-migration removal in the same run; no neither-state) and the bundle
+upgrade cases (prior-model project + no manifest → install precedes the
+migration removal in the same run; existing-manifest second project;
+optional-pack-stays; partial-failure-keeps-project-file) and the bundle
 add/remove tests; existing update tests stay green.
 
 ### M4 — Project slimming and migration
 Project deploy stops emitting common skills/agents (REQ-005); the payload
 keeps settings, AGENTS.md/CLAUDE.md, lock file, hooks, `.mcp.json` (always
-with the moai entry again), output-styles, rules, command wrappers. Migration
+with the moai entry again), output-styles, rules, command wrappers (non-skill
+command files only — the 17 published Codex command skills move user-side
+per D-Q4/D-Q5 and design §2.5, iter4 D29). Migration
 for existing projects per REQ-020 (provenance-classified removal/preservation
-with reports; the removal step is gated on the same-run completed user
-install per REQ-024's upgrade arm, wired by M3's phase ordering — removal
-never precedes the install it replaces). Repoint the EXISTING project-scope
+with reports; each removal is gated per-asset on its user counterpart being
+manifest-tracked with a matching hash, per REQ-024's upgrade arm — iter4
+D24 — wired by M3's phase ordering — removal never precedes the install it
+replaces). Repoint the EXISTING project-scope
 Codex asset diagnostics that read project skill/agent paths to the
 user-install path in the same change — `inspectSkillMirror`
 (`internal/cli/doctor_codex.go:429`) and the Codex readiness probe pair

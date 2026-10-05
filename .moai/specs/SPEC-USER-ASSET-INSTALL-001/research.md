@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "research.md — codebase research and source-verification table"
-version: "0.3.0"
+version: "0.4.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -12,6 +12,22 @@ author: manager-spec
 Tree baseline: this card worktree `WT-user-asset-copy` @ `6643c7bba` (develop tip).
 All `file:line` citations below were read in THIS run against THIS tree
 (`git rev-parse --short HEAD` → `6643c7bba`, verified at session start).
+
+Baseline re-pin (iter4, 2026-10-05): the card tree absorbed develop
+`a158b4b5f` (merge `51976e651`), so the working baseline moves
+`6643c7bba` → `51976e651`. The load-bearing pins were re-derived on the
+merged tree and ALL HOLD: `templates/.claude/skills/` = 38 dirs (37
+`moai-*` + plain `moai`), `templates/.agents/skills/` = 17 (no plain), the
+single `moai` dirs under `.claude/agents/` and `.codex/agents/`, the
+`codex_readiness.go` anchors (`:131` consumer, `:215-217` definition), and
+`codexStaleSkillFinding` (`:857-870`). ONE anchor drift observed: the
+`inspectSkillMirror` comment block now starts at `:425` (was `:427-428`);
+the `func inspectSkillMirror` line is `:429` UNCHANGED (re-measured on
+`51976e651` this run), and every live citation in these artifacts names the
+function line `:429` — so no citation changes. The table rows below keep
+their original `6643c7bba` attributions (they were true where and when
+measured); run-phase milestones re-measure against the landing tip per plan
+§C.2.
 
 Reference inputs (read-only scratchpad, treated as hypotheses, never cited as
 ground truth): the t1509 research note set at

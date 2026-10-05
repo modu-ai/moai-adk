@@ -73,7 +73,7 @@ release-chain gates included per iter1-D4 — the iter1 audit defect list's
 release-gate finding, NOT operator decision D4; identifier prefixed iter2
 D21).
 
-## Open founder questions (operator verdict pending)
+## Founder questions (all four adjudicated 2026-10-05 — operator/leader decision relayed with the iter4 authorization)
 
 ### D-Q1: Which five agents are the "핵심 에이전트 5종" of L0?
 Label: FOUNDER
@@ -86,7 +86,10 @@ manager-spec, manager-develop, manager-docs, plan-auditor, sync-auditor (the
 plan→run→sync chain with its two auditors). Candidate readings B/C include
 manager-git or manager-lead. The card says "핵심 에이전트 5종" without naming
 them. BLOCKS M0/M1.
-Operator verdict:
+Operator verdict: RESOLVED 2026-10-05 — reading A: the five core agents are
+manager-spec, manager-develop, manager-docs, plan-auditor, sync-auditor
+(the plan→run→sync chain plus its two auditors). Factory is ALREADY in L0
+separately (operator premise P2) and is NOT counted in the five.
 
 ### D-Q2: Where does the per-user manifest live, and what is it called?
 Label: FOUNDER
@@ -96,7 +99,10 @@ Why unresolved: candidates with different trade-offs: `~/.moai/user-assets.json`
 `internal/paths/paths.go:91`), `~/.claude/moai-manifest.json` (next to the
 assets it tracks, but Claude-only), per-root split files (no single source).
 BLOCKS M0/M1.
-Operator verdict:
+Operator verdict: RESOLVED 2026-10-05 — `~/.moai/user-assets.json`. LEADER
+DEFAULT, operator-contestable: the operator may override this location at
+any point before M1 lands. Anchor: `internal/paths/paths.go` — the
+`~/.moai` user-level state home.
 
 ### D-Q4: Does "plan·run·sync" in the L0 definition name the published command skills, the workflow skills, or both?
 Label: FOUNDER
@@ -106,7 +112,9 @@ Why unresolved: reading (a) `moai-plan`/`moai-run`/`moai-sync` published
 command skills (literal adjacency to agents/hooks/factory in the card);
 reading (b) `moai-workflow-spec`/`-tdd`/`-ddd` workflow skills; reading (c)
 both. Research V15. Feeds M0.
-Operator verdict:
+Operator verdict: RESOLVED 2026-10-05 — the published command skills
+`moai-plan` / `moai-run` / `moai-sync`, NOT the `moai-workflow-*` skills.
+LEADER DEFAULT, operator-contestable.
 
 ### D-Q5: What is the bundle granularity for non-L0 assets?
 Label: FOUNDER
@@ -115,4 +123,6 @@ Why unresolved: (a) the six existing optional packs stand as-is and
 current-`core` remainders re-bundle by theme, (b) remainders join existing
 packs where topical, (c) one single "extended" bundle. Affects catalog shape
 and the update removal path. Feeds M0.
-Operator verdict:
+Operator verdict: RESOLVED 2026-10-05 — keep the six existing optional packs
+as-is; re-bundle the current-core remainders by theme. LEADER DEFAULT,
+operator-contestable.
