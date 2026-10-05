@@ -48,16 +48,30 @@ type IndexMeasurements struct {
 	// Lines is the line count, counted the way the doctor counts index_lines
 	// so the two figures never diverge (AC-MFB-009: index_lines unchanged).
 	Lines int
+	// OverflowLines counts every line the way AuditIndex counts (trailing
+	// empty lines included) — the same count MEMORY_INDEX_OVERFLOW judges.
+	// The lines axis of the budget audit uses this count, so on the line
+	// axis the overflow finding replaces the budget warning instead of both
+	// firing (REQ-MFB-009).
+	OverflowLines int
 }
 
 // MeasureIndex measures one MEMORY.md content.
 func MeasureIndex(data []byte) IndexMeasurements {
 	content := string(data)
+	// overflowLines counts like AuditIndex (bufio.Scanner): every
+	// newline-terminated line plus a final unterminated one, trailing empty
+	// lines included.
+	overflowLines := strings.Count(content, "\n")
+	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+		overflowLines++
+	}
 	return IndexMeasurements{
-		Bytes:       len(data),
-		Chars:       utf8.RuneCountInString(content),
-		LoadedChars: utf8.RuneCountInString(loadedContent(content)),
-		Lines:       len(strings.Split(strings.TrimRight(content, "\n"), "\n")),
+		Bytes:         len(data),
+		Chars:         utf8.RuneCountInString(content),
+		LoadedChars:   utf8.RuneCountInString(loadedContent(content)),
+		Lines:         len(strings.Split(strings.TrimRight(content, "\n"), "\n")),
+		OverflowLines: overflowLines,
 	}
 }
 
@@ -110,8 +124,8 @@ func AuditIndexBudget(indexPath string, m IndexMeasurements, byteCap, warnPercen
 	case m.Bytes*100 >= warnPercent*byteCap:
 		findings = append(findings, budgetFinding(indexPath, WarnIndexBudgetWarn, "bytes", m.Bytes, byteCap))
 	}
-	if m.Lines <= lineCap && m.Lines*100 >= warnPercent*lineCap {
-		findings = append(findings, budgetFinding(indexPath, WarnIndexBudgetWarn, "lines", m.Lines, lineCap))
+	if m.OverflowLines <= lineCap && m.OverflowLines*100 >= warnPercent*lineCap {
+		findings = append(findings, budgetFinding(indexPath, WarnIndexBudgetWarn, "lines", m.OverflowLines, lineCap))
 	}
 	return findings
 }

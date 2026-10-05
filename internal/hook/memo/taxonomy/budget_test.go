@@ -116,7 +116,7 @@ func TestAuditIndexBudget_ByteOverCap(t *testing.T) {
 
 func TestAuditIndexBudget_LineBoundaries(t *testing.T) {
 	t.Parallel()
-	m := IndexMeasurements{Bytes: 1, Lines: 17}
+	m := IndexMeasurements{Bytes: 1, Lines: 17, OverflowLines: 17}
 
 	if f := AuditIndexBudget("MEMORY.md", m, 25000, 80, 22); len(f) != 0 {
 		t.Errorf("17 lines of a 22-line cap (77.3%%) emitted %v, want none", f)
@@ -168,6 +168,35 @@ func TestAuditIndexBudget_DefaultsFollowConfig(t *testing.T) {
 	}
 }
 
+// TestMeasureIndex_OverflowLines pins the divergence the two line counts
+// exist for: Lines keeps the doctor's display counting (trailing blank lines
+// dropped), OverflowLines counts like AuditIndex — the budget lines axis and
+// MEMORY_INDEX_OVERFLOW must judge the same number (REQ-MFB-009).
+func TestMeasureIndex_OverflowLines(t *testing.T) {
+	t.Parallel()
+	m := MeasureIndex([]byte("a\n\n\n"))
+	if m.Lines != 1 {
+		t.Errorf("Lines = %d, want 1 (display counting drops trailing blanks)", m.Lines)
+	}
+	if m.OverflowLines != 3 {
+		t.Errorf("OverflowLines = %d, want 3 (audit counting includes trailing empty lines)", m.OverflowLines)
+	}
+
+	// Overflow owns the above-cap case: the budget audit emits no lines
+	// finding even at a tiny cap.
+	f := AuditIndexBudget("MEMORY.md", IndexMeasurements{Bytes: 1, Lines: 1, OverflowLines: 3}, 25000, 80, 1)
+	if len(f) != 0 {
+		t.Errorf("above-cap lines emitted %v from the budget audit; MEMORY_INDEX_OVERFLOW owns this case", f)
+	}
+
+	// At the cap (not above it) the lines-axis warning fires on the same
+	// count.
+	f = AuditIndexBudget("MEMORY.md", IndexMeasurements{Bytes: 1, Lines: 3, OverflowLines: 3}, 25000, 80, 3)
+	if len(f) != 1 || f[0].Code != WarnIndexBudgetWarn {
+		t.Errorf("3 lines of a 3-line cap = %v, want the lines-axis warning", f)
+	}
+}
+
 func TestAuditIndexBudget_InvalidWarnPercentFallsBack(t *testing.T) {
 	t.Parallel()
 	// warnPercent 150 can never fire on its own axis (90% of cap < 150%);
@@ -183,7 +212,7 @@ func TestAuditIndexBudget_InvalidWarnPercentFallsBack(t *testing.T) {
 // value, the cap, the percentage and the basis sentence.
 func TestAuditIndexBudget_FindingText(t *testing.T) {
 	t.Parallel()
-	f := AuditIndexBudget("MEMORY.md", IndexMeasurements{Bytes: 1155, Lines: 17}, 1443, 80, 21)
+	f := AuditIndexBudget("MEMORY.md", IndexMeasurements{Bytes: 1155, Lines: 17, OverflowLines: 17}, 1443, 80, 21)
 	if len(f) != 2 {
 		t.Fatalf("findings = %v, want the byte warn and the lines warn", f)
 	}

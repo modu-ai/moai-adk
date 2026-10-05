@@ -25,6 +25,13 @@ const (
 	WarnDanglingIndexLink   AuditCode = "MEMORY_DANGLING_INDEX_LINK"
 	WarnIndexDuplicateEntry AuditCode = "MEMORY_INDEX_DUPLICATE_ENTRY"
 	WarnTopicCountOverCap   AuditCode = "MEMORY_TOPIC_COUNT_OVER_CAP"
+
+	// WarnRepoRelativeLink reports a repo-relative link target carried by
+	// an index (SPEC-MEMORY-FOLD-BUDGET-001 REQ-MFB-011). The target names
+	// a path outside the store, so it can never resolve here: it is not
+	// dangling, and the link-repair follow-up card owns any rewrite — the
+	// doctor only classifies and reports (spec.md §4).
+	WarnRepoRelativeLink AuditCode = "MEMORY_REPO_RELATIVE_LINK"
 )
 
 // indexFileName is the index a session actually loads.
@@ -92,14 +99,17 @@ func topicFiles(dir string) ([]string, error) {
 	return names, nil
 }
 
-// indexTargets returns the set of .md files the index links to.
-func indexTargets(indexPath string) (map[string]bool, error) {
+// indexTargets returns the set of .md files the index links to, keyed by
+// base name — the doctor's resolution rule for orphans and duplicates — plus
+// the index's raw link targets in order of appearance, which the class-aware
+// dangling pass classifies by full text (REQ-MFB-011).
+func indexTargets(indexPath string) (map[string]bool, []string, error) {
 	data, err := os.ReadFile(indexPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return map[string]bool{}, nil
+			return map[string]bool{}, nil, nil
 		}
-		return nil, fmt.Errorf("taxonomy: read index %s: %w", indexPath, err)
+		return nil, nil, fmt.Errorf("taxonomy: read index %s: %w", indexPath, err)
 	}
 
 	targets := map[string]bool{}
@@ -108,7 +118,7 @@ func indexTargets(indexPath string) (map[string]bool, error) {
 		// prefix so a hand-edited `./name.md` still resolves.
 		targets[filepath.Base(m[1])] = true
 	}
-	return targets, nil
+	return targets, ExtractLinkTargets(string(data)), nil
 }
 
 // secondaryIndex is one promoted index: the sibling files it actually reaches,
@@ -116,6 +126,11 @@ func indexTargets(indexPath string) (map[string]bool, error) {
 type secondaryIndex struct {
 	reaches map[string]bool
 	missing []string
+	// repoRelative holds the distinct repo-relative targets the index
+	// carries, full target text, sorted (REQ-MFB-011). They are reported
+	// under their own code and never as dangling; the qualification above
+	// is unchanged and keeps resolving by base name.
+	repoRelative []string
 }
 
 // secondaryIndexTargets returns, for each topic file that qualifies as a
@@ -131,6 +146,12 @@ type secondaryIndex struct {
 // reached nothing. Applying the existing threshold to resolved links closes
 // that without a second number to justify — a promotion is a claim to carry
 // reachability, and a link to a file that does not exist carries none.
+//
+// Classification is by FULL target text (REQ-MFB-011): only a store-local
+// target resolves against the store, so only store-local targets feed
+// reaches/missing — a repo-relative target that happens to share a base name
+// with a store file neither buys promotion nor silences the store-local
+// dangling warning for that name.
 func secondaryIndexTargets(dir string, names []string, present map[string]bool) map[string]secondaryIndex {
 	out := map[string]secondaryIndex{}
 	for _, name := range names {
@@ -138,27 +159,50 @@ func secondaryIndexTargets(dir string, names []string, present map[string]bool) 
 		if err != nil {
 			continue
 		}
-		seen := map[string]bool{}
+		seenLocal := map[string]bool{}
 		idx := secondaryIndex{reaches: map[string]bool{}}
 		for _, m := range markdownLinkTarget.FindAllStringSubmatch(string(data), -1) {
+			if ClassifyLinkTarget(m[1]) != LinkStoreLocal {
+				continue
+			}
 			base := filepath.Base(m[1])
 			// A file linking itself reaches nothing, and the index a session
 			// already loads is not a secondary one.
-			if base == name || base == indexFileName || seen[base] {
+			if base == name || base == indexFileName || seenLocal[base] {
 				continue
 			}
-			seen[base] = true
+			seenLocal[base] = true
 			if present[base] {
 				idx.reaches[base] = true
 			} else {
 				idx.missing = append(idx.missing, base)
 			}
 		}
+		idx.repoRelative = indexRepoRelativeTargets(data)
+
 		if len(idx.reaches) >= secondaryIndexLinkThreshold {
 			sort.Strings(idx.missing)
 			out[name] = idx
 		}
 	}
+	return out
+}
+
+// indexRepoRelativeTargets returns the distinct repo-relative link targets
+// one index file carries, full target text, sorted. Collection is separate
+// from the base-name loop above so the qualification rule (reaches counts
+// resolved store-local links by base name) stays byte-for-byte what it was.
+func indexRepoRelativeTargets(data []byte) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, m := range markdownLinkTarget.FindAllStringSubmatch(string(data), -1) {
+		if ClassifyLinkTarget(m[1]) != LinkRepoRelative || seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
+		out = append(out, m[1])
+	}
+	sort.Strings(out)
 	return out
 }
 
@@ -174,14 +218,14 @@ func AuditLinkage(dir string) ([]AuditFinding, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(names) == 0 {
-		// No topic files: a dangling link cannot be distinguished from a
-		// directory that was never populated, so stay silent.
-		return nil, nil
-	}
 
+	// The index is read regardless of topic files (REQ-MFB-011): an index
+	// with links but an empty directory around it is exactly a store of
+	// dangling promises, and repo-relative targets are classified whether or
+	// not any topic file exists. A missing directory yields empty names and
+	// an unreadable index — silence falls out of the empty sets below.
 	indexPath := filepath.Join(dir, indexFileName)
-	targets, err := indexTargets(indexPath)
+	targets, ordered, err := indexTargets(indexPath)
 	if err != nil {
 		return nil, err
 	}
@@ -220,15 +264,11 @@ func AuditLinkage(dir string) ([]AuditFinding, error) {
 			})
 		}
 	}
-	for target := range targets {
-		if !present[target] {
-			findings = append(findings, AuditFinding{
-				Code:   WarnDanglingIndexLink,
-				Path:   indexPath,
-				Detail: fmt.Sprintf("index links %s but no such file exists", target),
-			})
-		}
-	}
+	// The class-aware dangling pass over the index a session loads
+	// (REQ-MFB-011): a store-local target with no file behind it dangles as
+	// before; a repo-relative target is reported once per distinct target,
+	// full text, under its own code and never as dangling.
+	findings = append(findings, linkFindings(indexPath, ordered, present)...)
 
 	// The same direction, one carrier over: a secondary index promises files
 	// too, and reading only MEMORY.md left those promises unchecked. Reported
@@ -240,15 +280,63 @@ func AuditLinkage(dir string) ([]AuditFinding, error) {
 	}
 	sort.Strings(carriers)
 	for _, idx := range carriers {
-		for _, target := range secondary[idx].missing {
+		sec := secondary[idx]
+		// missing holds store-local targets only (full-path classification
+		// in secondaryIndexTargets), so every entry here is a true dangling
+		// link — no basename suppression needed.
+		for _, target := range sec.missing {
 			findings = append(findings, AuditFinding{
 				Code:   WarnDanglingIndexLink,
 				Path:   filepath.Join(dir, idx),
 				Detail: fmt.Sprintf("index links %s but no such file exists", target),
 			})
 		}
+		for _, target := range sec.repoRelative {
+			findings = append(findings, AuditFinding{
+				Code:   WarnRepoRelativeLink,
+				Path:   filepath.Join(dir, idx),
+				Detail: fmt.Sprintf("link target %s is repo-relative — it names no file inside the store; reported as classified, never rewritten", target),
+			})
+		}
 	}
 	return findings, nil
+}
+
+// linkFindings walks one index's link targets in order of appearance and
+// returns the class-aware per-target findings (REQ-MFB-011): a store-local
+// target with no file behind it dangles under the existing code and text; a
+// repo-relative target is reported once per distinct target, full text, under
+// MEMORY_REPO_RELATIVE_LINK and never as dangling; an absolute target is
+// classified, and REQ-MFB-011 prescribes no finding for it.
+func linkFindings(carrierPath string, targets []string, present map[string]bool) []AuditFinding {
+	var findings []AuditFinding
+	seen := map[string]bool{}
+	for _, t := range targets {
+		if seen[t] {
+			continue
+		}
+		seen[t] = true
+		switch ClassifyLinkTarget(t) {
+		case LinkStoreLocal:
+			n := storeLocalName(t)
+			if !present[n] {
+				findings = append(findings, AuditFinding{
+					Code:   WarnDanglingIndexLink,
+					Path:   carrierPath,
+					Detail: fmt.Sprintf("index links %s but no such file exists", n),
+				})
+			}
+		case LinkRepoRelative:
+			findings = append(findings, AuditFinding{
+				Code:   WarnRepoRelativeLink,
+				Path:   carrierPath,
+				Detail: fmt.Sprintf("link target %s is repo-relative — it names no file inside the store; reported as classified, never rewritten", t),
+			})
+		case LinkAbsolute:
+			// Classified; no finding is prescribed.
+		}
+	}
+	return findings
 }
 
 // AuditTopicCount reports when the directory holds more topic files than cap.
