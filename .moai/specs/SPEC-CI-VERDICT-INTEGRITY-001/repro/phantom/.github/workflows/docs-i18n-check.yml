@@ -1,0 +1,13 @@
+# Minimal stand-in so the validator's Dimension A file-existence fallback
+# resolves `docs-i18n-check` inside this isolated fixture cwd (the probe varies
+# ONLY the required-checks.yml content; everything else must mirror a healthy
+# repository shape).
+name: docs-i18n-check
+on:
+  push:
+    branches: [main]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"

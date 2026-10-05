@@ -1,6 +1,6 @@
 # acceptance.md — SPEC-CI-VERDICT-INTEGRITY-001
 
-Tier M verification layer. Tree pin for every RED cell: **`a158b4b5f`** (document-level pin; binds all criteria). The evidence ledger (command / verbatim stdout / exit / tree per entry, E1-E20) lives in `plan.md` §B and is cited here by id — the ledger is the carrier per verification-completeness §2.1.
+Tier M verification layer. Tree pin for every RED cell: **`a158b4b5f`** (document-level pin; binds all criteria; measured files verified unchanged through `861a3ba56`). The evidence ledger (command / verbatim stdout / exit / tree per entry, E1-E24, with fenced verbatim-stdout blocks L-E2..L-E24) lives in `plan.md` §B and is cited here by id — the ledger is the carrier per verification-completeness §2.1. The workflow probes (E2/E4/E7) are committed `repro/` scripts that EXTRACT the step body from the live workflow at run time and substitute the declared dependency values — the substitution values are simulated (no runner execution), the script logic under test is the live file's.
 
 Classification: **release-blocking (RB)** — RED re-executable on this tree, flips with this SPEC's work; **keep-set (KS)** — operator-executed, process criterion; probes that are template-substitution simulations of a gate script (E2, E4, E7) are marked as such inside the ledger and are treated as faithful RED evidence of the script logic, not of runner execution.
 
@@ -38,13 +38,13 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 - RED: E4 (stub lookup failure with a real-shaped message → `should_merge=true`, exit 0).
 - Green path: M1 — re-run E4's stub against the repaired loop → withholds.
 
-### AC-CI-005 — One overall deadline, strictly inside the job budget (RB; maps REQ-CI-005)
+### AC-CI-005 — One overall deadline, re-judged at merge time, immune to the merge-after-deadline mutant (RB; maps REQ-CI-005)
 
 - **Given** the auto-merge job's timeout and its internal waits,
 - **When** the workflow is authored,
-- **Then** the checks wait and the review wait are both bounded by a single overall deadline that is strictly smaller than `timeout-minutes`, and the merge step is unreachable past it.
-- RED: E5 (job 20 min at :25 vs 10-min checks wait at :96 + 15-min review wait at :159 = 25 min).
-- Green path: M1 — E5's three-line read on the repaired file shows deadline ≤ 19 min total.
+- **Then** the checks wait and the review wait are both bounded by a single overall deadline strictly smaller than `timeout-minutes`, AND the merge step re-evaluates the current deadline and the current head commit at merge time; an implementation that compares only state captured before the waits does not satisfy this criterion.
+- RED: E5 (job 20 min at :25 vs 10-min checks wait at :96 + 15-min review wait at :159 = 25 min) plus the auditor's iteration-1 mutant probe, recorded as the shape this criterion must catch: with the current tree's absent deadline logic, a simulated `declared_deadline=1140, merge_at=1141` merge SUCCEEDS (exit 0) — merge-after-deadline is never withheld today.
+- Green path: M1 — the flip evidence is a mutant-style probe against the repaired workflow: a simulated merge arriving at `deadline + 1` must be WITHHELD (non-merge outcome with a notice), and a merge inside the deadline must proceed; both observations recorded in run-phase §E.2. A repair whose green shows only the in-deadline case has not flipped this criterion.
 
 ### AC-CI-006 — Install summary requires success from every needed job, parity included (RB; maps REQ-CI-006)
 
@@ -62,37 +62,37 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 - RED: E9 (lines 309/317 — `grep -q … && echo ✓ || echo ✗` shape can only ever exit 0) + E19 (the :309 install.sh probe targets `MOAI_INSTALL_DIR`, which install.sh does not implement — 0 hits, exit 1; a hard-check repair without the probe realignment would fail every install, the impossible direction the two-cell rule forbids). E20 confirms the :317 install.ps1 probe is live (3 hits, exit 0).
 - Green path: M1 — required probes become hard checks AND the stale :309 probe is realigned to install.sh's real surface (`--install-dir`); E9's shape no longer terminates in `\|\| echo` for required probes and no probe targets an unimplemented feature.
 
-### AC-CI-008 — SSoT lists only published check names (RB; maps REQ-CI-008)
+### AC-CI-008 — SSoT lists only published check names, per branch key (RB; maps REQ-CI-008)
 
-- **Given** the live check-run names the workflows publish on main-bound PRs (E13: `Analyze (Go) (go)`, `Release PR Multi-OS Gate`, `Test (ubuntu-latest)`, Build × 5, `Lint`),
+- **Given** the live check-run names the workflows deterministically publish on main-targeting PRs (E13 refined: `Analyze (Go) (go)`, `Release PR Multi-OS Gate`, `Test (ubuntu-latest)`, Build × 5, `Lint` — the `CodeQL` and bare `Analyze (Go)` names in E13 come from non-PR-trigger and skipped-matrix runs) and the trigger facts (E21: all three PR triggers are `branches: [main]`, so release-targeting PRs publish none of them),
 - **When** the corrected SSoT is read,
-- **Then** `main` (and `release/*`, per decision-index Q1) contains exactly names from that published set, with `Test (macos-latest)`, `Test (windows-latest)`, and `CodeQL` absent, and `Release PR Multi-OS Gate` + `Analyze (Go) (go)` present.
-- RED: E13 live JSON vs the current file values (three phantom contexts, one missing context — read evidence in plan §B corroboration).
-- Green path: M2 — corrected file; re-read E13 after the next PR bearing the change and confirm no new phantom contexts (the check names in E13 come from the workflows' own `name:` fields + matrix values).
+- **Then** the `main` key contains exactly names from that deterministically-published set — with `Test (macos-latest)`, `Test (windows-latest)`, and `CodeQL` absent, and `Release PR Multi-OS Gate` + `Analyze (Go) (go)` present — and the `release/*` key carries only what release-targeting PRs actually publish: an empty `contexts:` list under the current triggers (decision-index Q1, amendment-2 resolution; trigger expansion is out via the t1536 boundary).
+- RED: E13 (live unique names vs the current file's three phantom contexts and one missing context — read evidence in plan §B corroboration) + E21 (trigger restriction facts).
+- Green path: M2 — corrected file per the revised Q1; the operator GET re-verification re-confirms both keys against live check runs and live protection.
 
 ### AC-CI-009 — Protection apply is operator keep-set with GET re-verification (KS; maps REQ-CI-009)
 
-- **Given** the corrected SSoT and the run-phase keep-set package (payload + apply command + pre-apply live-diff command + post-apply GET command),
+- **Given** the corrected SSoT and the run-phase keep-set package (corrected file + rendered payload + apply command + pre-apply live-diff command + post-apply GET command, delivered at `.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md`),
 - **When** the correction reaches live branch protection,
-- **Then** the apply is executed by the operator/leader only, the pre-apply diff of live vs SSoT is recorded, and the post-apply GET read-back of `repos/modu-ai/moai-adk/branches/main/protection` — matching the corrected contexts — is the only accepted evidence of live state. No run-phase agent performs a protection write.
-- RED: n/a — process gate; the prohibition is verified in run close by E6-scope evidence (no protection API calls in the agent transcript) and at card level by the recorded GET output.
-- Green path: M2 keep-set subsection (plan §F).
+- **Then** the apply is executed by the operator/leader only, and the post-apply GET read-back of `repos/modu-ai/moai-adk/branches/main/protection` — matching the corrected contexts — is the only accepted evidence of live state. No run-phase agent performs a protection write.
+- RED: E23 — the apply package does not exist on this tree (`test -e .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` → exit 1, file absent); corroborated by the packaging surfaces it builds on being absent (E24's phantom silent-pass, E10's absent parser rejection). Flips when the run-phase package is delivered.
+- Green path: M2 keep-set subsection (plan §F). Evidence list: (1) the delivered `apply-package.md`; (2) the operator-pasted TRANSCRIPT of the executed apply commands AND the GET read-back output into the card evidence path `.moai/reports/t1534/` — the transcript is the non-execution + live-state proof, because `git status` cannot observe an API call; (3) run-phase E6 scope evidence as a supporting check only.
 
 ### AC-CI-010 — Validator rejects parser absence and malformed YAML (RB; maps REQ-CI-010)
 
 - **Given** the SSoT validator,
-- **When** yq is unavailable, or the SSoT fails to parse,
-- **Then** the validator exits non-zero with a message naming the parser failure; an empty parse result never produces a passing verdict.
-- RED: E10 (yq absent → `✅ All validations passed`, exit 0) + E11 (malformed YAML → identical vacuous pass, exit 0).
-- Green path: M2 — E10 and E11 re-run on the repaired validator → both non-zero.
+- **When** yq is unavailable, the SSoT fails to parse, or the validator runs against the repo's real, healthy SSoT,
+- **Then** BOTH directions hold: on each failure shape the validator exits non-zero with a message naming the parser failure and an empty parse result never produces a passing verdict; on the healthy input the validator exits 0 with every dimension executing on real content. An always-fail mutant (prints "parser failure", exits 1 unconditionally) fails the healthy direction; an always-pass mutant fails the failure direction — the criterion is two-directional.
+- RED: E10 (yq absent → vacuous `✅ All validations passed`, exit 0) + E11 (malformed YAML → identical vacuous pass, exit 0) for the failure direction; E22 (healthy SSoT + yq → every dimension runs, `✅ All validations passed`, exit 0) for the healthy direction, measured pre-repair so its post-repair green is interpretable.
+- Green path: M2 — E10 and E11 re-run on the repaired validator → both non-zero; E22 re-run → still exit 0 with the dimensions executing (a repaired validator that broke the healthy path is a regression, not a fix).
 
 ### AC-CI-011 — Validator checks required-context publishability (RB; maps REQ-CI-010, REQ-CI-011)
 
 - **Given** the corrected SSoT's required contexts,
 - **When** the validator runs,
-- **Then** it verifies each required context against the check names the workflows publish (derived from workflow `name:` fields and matrix values), and fails naming any context that no workflow can publish.
-- RED: E10/E11 (no dimension inspects `branches.*.contexts` for publishability — only auxiliary mapping and ∩auxiliary overlap; an empty required list passes silently).
-- Green path: M2 — a mutant SSoT carrying one phantom context (e.g. `Test (windows-latest)`) makes the validator exit non-zero.
+- **Then** it verifies each required context against the check names the pull_request-triggered workflows deterministically publish (derived from workflow `name:` fields and matrix values), and fails naming any context that no workflow can publish on that branch's PRs.
+- RED: E24 — a VALID-YAML SSoT carrying a phantom required context (`Test (windows-latest)`) passes silently, exit 0 (committed fixture `repro/phantom/`): no dimension inspects `branches.*.contexts` for publishability, so this observation is red because the publishability dimension itself is missing — a parser-handling-only repair (fixing E10/E11) leaves E24 red, which is exactly why the phantom is the right RED for this criterion and E10/E11 are not. (E10/E11 remain AC-CI-010's parser-direction RED.)
+- Green path: M2 — E24 re-run on the repaired validator → non-zero naming the phantom context; E22 (healthy SSoT) → still exit 0.
 
 ### AC-CI-012 — Detect filter covers the parity test's input + correspondence guard (RB; maps REQ-CI-011)
 
@@ -106,9 +106,9 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 
 - **Given** the installed gh CLI's published `pr checks` field set (E12: `name, state, bucket, link, …`),
 - **When** the ci-watch loop polls,
-- **Then** it requests only supported fields, processes the response as one JSON array, classifies each check by `bucket`, and exits non-zero on any gh failure — a fetch failure is never read as all-pass.
-- RED: E12 (`Unknown JSON field: "status"`, exit 1) — every poll aborts before any classification.
-- Green path: M3 — E12's exact field list validates against the CLI (no field error) and the loop classifies a real PR read-only.
+- **Then** it requests only supported fields — the repaired poll command is `gh pr checks <PR> --json name,state,bucket,link`, which validates against the CLI (no field error, unlike E12's rejected `name,status,conclusion,detailsUrl` list) — processes the response as one JSON array, classifies each check by `bucket`, and exits non-zero on any gh failure — a fetch failure is never read as all-pass.
+- RED: E12 (`Unknown JSON field: "status"` on stderr, stdout empty, exit 1) — every poll aborts before any classification.
+- Green path: M3 — the repaired field list `name,state,bucket,link` validates against the CLI (E12's rerun with THAT list is the flip probe: no field error, exit per the PR's real state) and the loop classifies a real PR read-only. The unrepaired list still exits 1 — the criterion flips only when the repair lands.
 
 ### AC-CI-014 — ci-watch counts absent required checks as pending and splits no names (RB; maps REQ-CI-013)
 
