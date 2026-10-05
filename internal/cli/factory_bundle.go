@@ -165,6 +165,7 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 	for _, c := range cards {
 		recorded[c.CardID] = true
 	}
+	var tail *string
 	for i := range queueRec.Items {
 		it := &queueRec.Items[i]
 		if it.ID == cardID || it.Issuance == nil {
@@ -193,8 +194,15 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 		if !recorded[it.ID] {
 			continue
 		}
+		// The chain's tail is the predecessor: the candidate waits behind
+		// the LAST open card sharing the hub path, not the first — naming
+		// the first let a new candidate lease straight past the card still
+		// in flight (card t1454 card-review r2b finding B1).
 		after := it.ID
-		return homestate.CardFields{HintAfter: &after}
+		tail = &after
 	}
-	return homestate.CardFields{}
+	if tail == nil {
+		return homestate.CardFields{}
+	}
+	return homestate.CardFields{HintAfter: tail}
 }

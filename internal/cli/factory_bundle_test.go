@@ -397,6 +397,35 @@ func TestFactoryHubChainRequiresSharedHubPath(t *testing.T) {
 	}
 }
 
+// TestFactoryHubChainChainsToTheLastPredecessor — card t1454 card-review
+// r2b: the hub chain orders the candidate behind the chain's TAIL — the
+// last open card sharing the hub path — not the first. With t1 merged, t2
+// still in flight, and t3 a new candidate, chaining t3 to the first
+// predecessor (t1) leased it straight past t2.
+func TestFactoryHubChainChainsToTheLastPredecessor(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStateQueued)
+	for _, id := range []string{"t1", "t2", "t3"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		fbSeedFiles(t, store, id, "internal/template/catalog.yaml")
+	}
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardMergedLocal},
+		homestate.Card{CardID: "t2", State: homestate.CardLeased, LeaseHolder: "lane-9"},
+	)
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	if got := fbLeasedCard(t, root, "lane-1"); got != "" {
+		t.Fatalf("lane-1 leased %q — the hub chain named the merged head, not the in-flight tail", got)
+	}
+	if fcHasCard(t, root, "t3") {
+		if c := fcCard(t, root, "t3"); c.HintAfter != "t2" {
+			t.Fatalf("t3's after = %q, want t2 (the chain's tail)", c.HintAfter)
+		}
+	}
+}
+
 // TestFactoryKeepSetReadsNoFileOverlap — AC-TCI-019 (b): the keep-set
 // verdict reads no file overlap — two cards whose recorded files share every
 // path lease independently, and no refusal names a file.

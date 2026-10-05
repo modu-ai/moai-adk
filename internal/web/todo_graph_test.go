@@ -105,11 +105,31 @@ func TestTodoGraphViewRendersRelations(t *testing.T) {
 			t.Fatalf("graph view misses %q:\n%s", want, body)
 		}
 	}
-	// Deterministic layout: the same queue renders byte-identically.
+	// Deterministic layout: the same queue renders the same GRAPH. The
+	// comparison covers the graph region alone — the page shell carries the
+	// wall-clock render stamp (data-live-rendered-at), and a full-page
+	// compare failed whenever the two renders crossed a second boundary
+	// (card t1454 card-review r2b finding B2: "23:53:59" vs "23:54:00")
+	// while the graph itself was identical.
 	again := todoGraphBodyFor(t, root)
-	if body != again {
-		t.Fatal("two renders of the same queue disagree — the layout is not deterministic")
+	if todoGraphRegion(t, body) != todoGraphRegion(t, again) {
+		t.Fatal("two renders of the same queue disagree on the graph region — the layout is not deterministic")
 	}
+}
+
+// todoGraphRegion extracts the `<svg class="todo-graph" …>…</svg>` element
+// from a rendered page — the part the determinism claim is about.
+func todoGraphRegion(t *testing.T, body string) string {
+	t.Helper()
+	start := strings.Index(body, `<svg class="todo-graph"`)
+	if start < 0 {
+		t.Fatalf("the graph region is missing from the render:\n%s", body)
+	}
+	end := strings.Index(body[start:], "</svg>")
+	if end < 0 {
+		t.Fatalf("the graph region is not terminated:\n%s", body[start:])
+	}
+	return body[start : start+end+len("</svg>")]
 }
 
 // TestTodoGraphViewReadOnly — AC-TCI-022 (b): POST is refused with the queue
