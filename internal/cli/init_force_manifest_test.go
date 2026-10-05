@@ -25,8 +25,12 @@ func TestInitForceCarriesManifestProvenance(t *testing.T) {
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
 	const (
-		olderRule  = ".claude/rules/moai/core/moai-constitution.md"
-		olderSkill = ".agents/skills/moai-gate/SKILL.md"
+		olderRule = ".claude/rules/moai/core/moai-constitution.md"
+		// SPEC-USER-ASSET-INSTALL-001: the fixture skill must stay inside
+		// the deployed (mirror) payload; the pre-SPEC choice moai-gate is
+		// now an opt-in bundle entry (D-Q5) and no longer deploys — the L0
+		// published command skill moai-plan (D-Q4) replaces it.
+		olderSkill = ".agents/skills/moai-plan/SKILL.md"
 		editedRule = ".claude/rules/moai/workflow/mx-tag-protocol.md"
 		ownedRule  = ".claude/rules/moai/languages/go.md"
 		olderBody  = "older deploy\n"

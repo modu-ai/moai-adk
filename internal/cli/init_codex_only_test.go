@@ -10,9 +10,9 @@ package cli
 // touches the real HOME.
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -66,34 +66,43 @@ func TestInitCodexOnlyRequiredSurfaces(t *testing.T) {
 		t.Errorf(".codex/agents/moai/*.toml count = %d, want 12", len(tomls))
 	}
 
-	// 16 published skills — real template files.
-	for _, cmd := range []string{"plan", "run", "sync", "fix", "gate", "goal", "loop",
-		"mx", "clean", "codemaps", "e2e", "feedback", "harness", "project", "review", "todo"} {
+	// Published command skills — SPEC-USER-ASSET-INSTALL-001 (card t1509):
+	// only the L0 plan/run/sync trio still deploys project-side; the other
+	// fourteen are opt-in bundle entries (D-Q4/D-Q5) that move to user
+	// folders when the user-side installer lands (plan M2). The
+	// pre-SPEC full-17 project placement this test once pinned is retired
+	// with the catalog's L0 view.
+	for _, cmd := range []string{"plan", "run", "sync"} {
 		p := filepath.Join(projectDir, ".agents", "skills", "moai-"+cmd, "SKILL.md")
 		if _, err := os.Stat(p); err != nil {
-			t.Errorf("published skill missing after codex-only init: %s: %v", p, err)
+			t.Errorf("published L0 command skill missing after codex-only init: %s: %v", p, err)
+		}
+	}
+	for _, cmd := range []string{"fix", "gate", "goal", "loop", "mx", "clean",
+		"codemaps", "e2e", "feedback", "harness", "project", "review", "todo"} {
+		p := filepath.Join(projectDir, ".agents", "skills", "moai-"+cmd, "SKILL.md")
+		if _, err := os.Stat(p); err == nil {
+			t.Errorf("bundle command skill %s deployed project-side after codex-only init — non-L0 entries are opt-in bundles, not project payload", p)
 		}
 	}
 
-	// Catalog skills remapped to .agents/skills/<name> — every catalog skill
-	// directory present under the new root. The catalog source of truth is the
-	// embedded FS's .claude/skills listing (34 directories).
-	embeddedFS, fsErr := template.EmbeddedTemplates()
-	if fsErr != nil {
-		t.Fatalf("embedded templates: %v", fsErr)
+	// Catalog skills remapped to .agents/skills/<name> — every CORE (L0)
+	// catalog skill directory present under the new root. The catalog source
+	// of truth is catalog.yaml's core section: since SPEC-USER-ASSET-INSTALL-001
+	// the L0 view is what a default deploy emits, and the pre-SPEC whole-tree
+	// listing over-deployed the bundle entries.
+	cat, catErr := template.LoadEmbeddedCatalog()
+	if catErr != nil {
+		t.Fatalf("load catalog: %v", catErr)
 	}
-	entries, rdErr := fs.ReadDir(embeddedFS, filepath.ToSlash(filepath.Join(".claude", "skills")))
-	if rdErr != nil {
-		t.Fatalf("read embedded catalog skills: %v", rdErr)
-	}
-	catalogNames := make([]string, 0, len(entries))
-	for _, e := range entries {
-		if e.IsDir() {
-			catalogNames = append(catalogNames, e.Name())
+	catalogNames := make([]string, 0, len(cat.Catalog.Core.Skills))
+	for _, e := range cat.Catalog.Core.Skills {
+		if strings.HasPrefix(e.Path, "templates/.claude/skills/") {
+			catalogNames = append(catalogNames, e.Name)
 		}
 	}
 	if len(catalogNames) == 0 {
-		t.Fatal("embedded catalog skill listing is empty — precondition broken")
+		t.Fatal("catalog core skill listing is empty — precondition broken")
 	}
 	for _, name := range catalogNames {
 		p := filepath.Join(projectDir, ".agents", "skills", name, "SKILL.md")

@@ -182,8 +182,15 @@ func TestEmbeddedSkillAndCommandSourcesRetained(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load catalog: %v", err)
 	}
-	// The P-02 pin counts `tier: <x>` markers: 36 core (skills AND agents),
-	// 13 optional-pack, 1 harness-generated.
+	// The P-02 pin counts `tier: <x>` markers. Re-derived by
+	// SPEC-USER-ASSET-INSTALL-001 M0 (card t1509): the core section is the
+	// L0 user-install view — 19 skills (the fourteen-skill runtime closure
+	// + the factory pair + the published plan/run/sync trio) + 6 agents
+	// (the D-Q1 five + manager-lead under the factory entry) = 25. The
+	// optional-pack tier carries the six standing packs (13 entries) plus
+	// the D-Q5 theme re-bundling of the former core remainders (commands 14
+	// + consult 4 + creative 3 + delivery 2 + ops-tools 8 = 31), totaling
+	// 44. harness-generated stays 1.
 	tiers := map[string]int{}
 	packTier := 0
 	for _, entry := range cat.AllEntries() {
@@ -194,11 +201,11 @@ func TestEmbeddedSkillAndCommandSourcesRetained(t *testing.T) {
 			packTier++ // FormatOptionalPackTier(<pack>) values
 		}
 	}
-	if tiers["core"] != 36 {
-		t.Errorf("core tier entry count = %d, want 36", tiers["core"])
+	if tiers["core"] != 25 {
+		t.Errorf("core tier entry count = %d, want 25", tiers["core"])
 	}
-	if packTier != 13 {
-		t.Errorf("optional-pack tier entry count = %d, want 13", packTier)
+	if packTier != 44 {
+		t.Errorf("optional-pack tier entry count = %d, want 44", packTier)
 	}
 	if tiers["harness-generated"] != 1 {
 		t.Errorf("harness-generated tier entry count = %d, want 1", tiers["harness-generated"])

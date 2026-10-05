@@ -18,6 +18,30 @@ import (
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
+// TestCodexOnlyRelocationRespectsCatalogFilter pins the P2 fix
+// (SPEC-USER-ASSET-INSTALL-001 leader mid-run finding): the relocation path
+// reads the catalog-FILTERED skill root, never the raw embed — a
+// newly-optional bundle skill (moai-workflow-loop rides the ops-tools bundle
+// under the D-Q5 re-bundling) must NOT deploy into .agents/skills without a
+// bundle selection, while the L0 catalog skills still re-home.
+func TestCodexOnlyRelocationRespectsCatalogFilter(t *testing.T) {
+	d := newCodexOnlyTestDeployer(t)
+
+	seen := make(map[string]bool)
+	for _, p := range d.ListTemplates() {
+		seen[p] = true
+	}
+	if seen[".agents/skills/moai-workflow-loop/SKILL.md"] {
+		t.Error("CATALOG_FILTER_LEAK: .agents/skills/moai-workflow-loop/SKILL.md visible in codex-only deployment — the relocation path bypassed the catalog filter (unselected-bundle skill deployed)")
+	}
+	if !seen[".agents/skills/moai-workflow-tdd/SKILL.md"] {
+		t.Error(".agents/skills/moai-workflow-tdd/SKILL.md missing — the L0 relocation broke while fixing the filter")
+	}
+	if !seen[".agents/skills/moai/SKILL.md"] {
+		t.Error(".agents/skills/moai/SKILL.md missing — the L0 dispatcher relocation broke")
+	}
+}
+
 // newCodexOnlyTestDeployer builds the codex-only deployer against the real
 // embedded tree (the production path under test).
 func newCodexOnlyTestDeployer(t *testing.T) Deployer {

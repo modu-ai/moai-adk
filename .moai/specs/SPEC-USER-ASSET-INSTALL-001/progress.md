@@ -296,7 +296,112 @@ author: manager-spec
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Run start (2026-10-06)
+
+- Run-phase entry @ worktree `.moai/worktrees/t1509` (branch
+  `WT-user-asset-copy`), HEAD `ac0c72ece` — the lane-measured tree at
+  dispatch time; plan artifacts v0.6.4, hash
+  `4368c9f199121733fc305f63651e1e2715213df3f0c73097dbec765812559dca`
+  (dispatch-pinned; hash change ⇒ blocker, not a silent edit).
+- Pre-flight baseline (this run, this tree): `go build ./...` exit 0;
+  `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (B1 hold);
+  `git branch --show-current` → `WT-user-asset-copy`,
+  `git rev-parse HEAD` → `ac0c72ece73c4eca5ac0e01dcf623dead71fa3f0`.
+- JD-5 re-pin (measured THIS run, THIS tree ac0c72ece, per dispatch):
+  `grep -n "only reinstalls" internal/cli/doctor.go` →
+  `986:		// 'moai update' (which only reinstalls the manifest's own skills) would be`
+  exit 0 — matches the lane's earlier measurement on `03306622e`. AC-020's
+  RED arm re-measures this at flip time (current-tree value at the M4 flip).
+
+### M0 — bundle taxonomy and L0 resolution (2026-10-06)
+
+- RED (captured before the catalog restructure, tree ac0c72ece):
+  `go test ./internal/template/ -run TestUserInstallView` → 4/5 FAIL with
+  the named requirement drift: "catalog core.agents carries non-L0 agents
+  [e2e-tester manager-design manager-git manager-todo super-advisor] —
+  reclassify them into bundles (D-Q5)"; "factory entry moai-factory-foreman
+  does not declare its manager-lead agent dependency"; 17× "published
+  command skill X is not a catalog entry — the catalog is the membership
+  SSOT"; "L0 command skill \"moai-plan\" missing from catalog";
+  "MATRIX_GAP_UNRESOLVED ... moai-ref (wildcard)"; "matrix row missing for
+  manager-git"; "moai-domain-html-report ... sits in the L0 view". (E8
+  verbatim output held in the lane transcript; the guard file is
+  internal/template/catalog_user_install_view_test.go.)
+- GREEN: same command → `ok github.com/modu-ai/moai-adk/internal/template`.
+  The catalog user-install view: `catalog.core` = L0 (19 skills = the
+  FOURTEEN-skill closure + factory pair + published plan/run/sync trio;
+  6 agents = D-Q1 five + manager-lead under the factory entry's
+  depends_agents), per-entry `depends_skills`/`depends_agents` edges
+  (REQ-004; the dispatcher's dep list carries the matrix's cross-reference
+  set for R-f-② maintenance), six standing packs unchanged (devops keeps
+  the L0 trio — the E3 shared case), five D-Q5 theme bundles (commands 14,
+  consult 4, creative 3, delivery 2, ops-tools 8), hashes regenerated via
+  `gen-catalog-hashes --all` (script mirrors extended for the new fields).
+- DERIVATION MATRIX (mechanically derived this tree; the guard pins it):
+  8 rows — moai-ref-api-patterns→backend, moai-ref-react-patterns→frontend,
+  moai-domain-database→backend, moai-ref-seo→frontend,
+  moai-ref-supply-chain→devops, moai-workflow-loop→ops-tools,
+  moai-domain-frontend→frontend (all conditional per-mission injections on
+  the default chain) + manager-git→delivery (the R-b precheck row). The
+  plan's four known rows are present; the remaining four are the same class
+  derived by the same sweep. html-report classified OUT (explicit list,
+  JD-4); the derived L0 closure equals exactly the fourteen-skill union.
+- Fallout updates (in-scope reclassification consequences, each named in
+  the diff): slim_fs computeDenySet never denies a path that is also a core
+  entry (E3 shared wins); catalog audit tests re-derived (tier counts 25/44,
+  per-root population comparison, E3-shared duplicate rule); two cli
+  placement fixtures re-pointed (init_codex_only, init_force_manifest —
+  the pre-SPEC full-17 project placement the SPEC retires).
+- Verification (this run, this tree): `go test ./internal/template/
+  -count=1` ok; `go test ./internal/userassets/` ok (see M1);
+  `go test ./internal/cli/ -run 'TestInit|TestUpdate|TestSkillMirror|
+  TestMirror|TestPublished|TestSlim|TestDeployer'` ok;
+  `GOOS=windows GOARCH=amd64 go build ./...` exit 0; full internal/cli
+  suite under slot lease — output in the M0 commit's evidence block.
+
+### M1 — per-user manifest subsystem (2026-10-06)
+
+- New package `internal/userassets` (design §2.2): manifest at
+  `~/.moai/user-assets.json` (schema_version=1, bundles, files with
+  per-file sha256/bundle/installed_at/moai_version — no top-level version,
+  REQ-006; collisions), the pending-install journal with the FULL
+  completeness record (selection delta + full provenance + write-completion
+  flag, R-e/E4/E5), the three-case recovery lattice documented at the
+  journal's head (incl. R-f-① honest re-stamp), the user-level lock
+  (O_EXCL + stale takeover, no flock — B1 portability), C2 root slugs +
+  relpath hygiene, REQ-021 unknown-field preservation on every write
+  (top-level + per-file; value-receiver MarshalJSON because map values are
+  not addressable), schema-refusal gate (CanRemove), corrupt-JSON typed
+  error (never auto-delete).
+- RED: `go test ./internal/userassets/` → build failure "undefined: Load /
+  ManifestPath / SchemaVersion ..." — the M1 surface did not exist (E8).
+- GREEN: 11/11 tests ok; two in-round defects caught by the tests and fixed
+  (lock-home mkdir; map-value marshal receiver). `go vet` clean; gofmt
+  clean; GOOS=windows build exit 0.
+
+### Leader mid-run guidance (2026-10-06, codex gate on the in-flight M0 tree)
+
+- P1 SEQUENCING DECISION (option a — stated per the dispatch): the M3
+  `moai bundle add|remove` command is PULLED FORWARD into the M2 commit
+  series, landing with the installer that consumes it. The catalog
+  exclusion of manager-git takes deployment effect at M0 as restructured;
+  from M2 on, the recovery command `moai bundle add delivery` exists, so
+  the no-remediation window closes at the next milestone rather than
+  staying open until M3. The plan's milestone ORDER is unchanged (M0→M1→
+  M2→...); one M3 item moves earlier into M2's commit, and the remaining
+  M3 scope (update phase, REQ-009 removal, upgrade branch, R-b precheck
+  wiring) stays in M3.
+- P2 FIX (harness_fs relocation filter): `newCodexOnlyDeployer` and
+  `newProfileDeployer` derived the relocation catalog root from the RAW
+  embed — every skill directory re-homed into `.agents/skills` regardless
+  of tier (the leader reproduced moai-workflow-loop deploying with no
+  bundle selection). Fixed: both constructors now derive the relocation
+  root from the SlimFS-filtered skills root. RED observed first:
+  `TestCodexOnlyRelocationRespectsCatalogFilter` → "CATALOG_FILTER_LEAK:
+  .agents/skills/moai-workflow-loop/SKILL.md visible in codex-only
+  deployment" (reproducing the finding) → GREEN after the fix, with the
+  absence assertions pinning the unselected-bundle skill OUT and the L0
+  skills IN.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
