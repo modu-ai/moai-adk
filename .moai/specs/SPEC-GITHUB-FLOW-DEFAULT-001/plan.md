@@ -224,4 +224,47 @@ t1448 은 `kanban-dispatch*.md`·`gtd.md`·`auto-semantics.md`·`manager-todo.md
 
 ---
 
+## §J 부록 — 2026-10-05 전환 전략 제안서 흡수 (재개 판)
+
+**출처**: `.moai/reports/github-flow-cutover-strategy-20261005.md`(+html twin, 운영자 준비 — plan 모드 expert 판정) 및 그 실행 로그(리더 세션 417ca3f9 · run tmf011). 이 절은 제안서의 결정 D1-D8 과 10-05 실행 진행을 본 계획에 흡수한 재개 판 기록이다. AC 계층(acceptance.md)은 건드리지 않는다 — 전략 수준 흡수이며, §C 마일스톤의 순서와 §E 범위는 이 절의 판정으로 아래와 같이 정밀화된다.
+
+### J.1 제안서 결정 D1-D8 ↔ 본 계획 대응과 10-05 기준 상태
+
+| 제안 결정 | 내용 | 본 계획 대응 | 10-05 기준 상태 |
+|---|---|---|---|
+| D1 | main 독자 커밋 2개(c8f245c2c·4755c5e50) develop 흡수 → `git merge --ff-only develop` 으로 main 전진 → 경계 태그 `cutover/github-flow`. B안(--no-ff 접기)·C안(강제 push) 기각 | §C M2-M3 사이 절체 절차의 확정형 — 런북(cutover-runbook.md)과 §C 순서에 주입 | main 독자 3커밋(4755c5e50·c8f245c2c·e4773c16b) 흡수 대기(M2 게이트 잔여 처리 뒤) |
+| D2 | origin 기본 브랜치 develop→main + main 브랜치 보호(직접 push 금지·PR+필수 CI) | §C M4-M5 CUTOVER-TIME 묶음 | 운영자 몫 — M2 착지 뒤 전환 |
+| D3 | 카드 단위 즉시 push·PR(로컬 병합 후 일괄 대기 폐기) | §C M2 간선의 운영 규칙으로 채택 | **운영 중** — t1518(d0378d37c)·t1524(8f0cfccdb) 착지 즉시 push 가 D3 으로 실행됐다 |
+| D4 | develop 읽기 전용 동결 → release 확인 후 아카이브 | §C M5-M6 | 전환 창 실행 예정 |
+| D5 | 기존 하네스 사용: release/v3.2.0 컷 → bump·영문 CHANGELOG·릴리즈 노트·PR(머지 커밋) → release.sh + GoReleaser | §C M3 릴리스 기구와 동일 — 변경 없음 | 대기 |
+| D6 | 본 제안서의 plan 흡수 + 보존 트리에서 카드 재개 | 이 절 자체(재개 판) | **완료** — 트리 원격 push(WT-github-flow-default 보호)선행 완료 |
+| D7 | 런처 진입 통일: `-f`=팩토리 리더, `-l`=레인(라벨 불요·다음 빈 레인 자동), 구 표기 의미 반전 — t1399 잔여 마일스톤 | §C M2 간선의 런처 절반 | **착지** — 커밋 e4773c16b(main 런처 통일, t1399-pre)·로컬 설치 rc.24. develop 쪽 codex `-l`=리더 파싱 반전은 main 흡수 병합의 충돌 해결 방향(§J.3) |
+| D8 | PR 코드 리뷰·CI 실패 대응은 codex 경로(레인 카드 단계 리뷰+Actions 위임), 착지 판정 증거 판독은 리더 규율 유지 | §C M4 이후 PR 흐름의 리뷰 규칙으로 채택 | **운영 중** — t1479 card-review(리더 대행 codex 2회차)·t1524 완료 보고가 이 경로. D8 감사 체계 커밋 78f89e22a develop 착지 |
+
+### J.2 10-05 실행 진행 (재개 기준선 — 이 문서 작성 시점의 실측)
+
+- M1 push 배치 착지: origin/develop 4964d0796 → 985bd43da(18커밋, ff) — §C M1의 push 단계 완료
+- 병합 착지 순서: t1518(d0378d37c — .moai 위생 서브시스템, lane-24) → t1520(ca29eaf16 — ceiling 폴백, lane-26) — 양쪽 모두 --no-ff·병합 트리 재측정 초록
+- t1521 착지: 카드↔워크트리 바인딩 run 이월(c5442552e·7bc708b66 — 제안서 리스크 2의 경질 수리, lane-24) — §C M2 간선의 구멍이었던 "run 교체 시 worktree_path 공백 재생성"을 3조건 입증 이월로 봉합(REQ-SD-011 거부 자체는 설계대로 유지)
+- t1524 착지: internal/hygiene 신규 패키지(12 소스)의 codemaps 미기술로 켜진 Graph Freshness failure 를 재생성으로 수리(67576751b — described-source-diff 50→1, 잔여 1은 t1520 착지분으로 그 sync 소관) → push 뒤 Graph Freshness **success 관측**(run 37272389399) — §C M2 간선의 CI 신호 복구
+- D8 감사 체계 착지: 78f89e22a(workflow.yaml codex 단일 게이트 — 운영자 결정 실행)
+- 런처 통일 착지: e4773c16b(-f 리드·-l 다음 빈 레인·충돌 거부 · 테스트+race 초록) — D7의 main 쪽 절반
+- 환경 특이(기록): 설치 빌드가 rc.24(main 계열 @ c8f245c2c)로 교체 — acquire의 창 대상 기록이 config 고정 develop 에서 호출 cwd 브랜치로 바뀌는 변칙이 관측됐고(lane-24·lane-26 양쪽 발화), lane-24는 「develop 워크트리 진입 후 acquire」로 해소. M2에서 develop 계열 바이너리가 이기면 소멸
+
+### J.3 남은 순서 (제안서 M2 실행 순서 1-5 와 §C 마일스톤의 합성)
+
+1. 게이트 잔여: internal/hook TestStaleRunNotice ×3(선존재 — 클린 클론 재현 확인)·t1500 부채 3결함 수리·그 팁 CI 전면 초록 관측
+2. main 흡수 병합: 임시 체크아웃 트리에서 `git merge main --no-ff`(독자 3커밋) — 충돌 예상 지점 internal/cli/factory.go·cc.go·glm.go(양쪽이 -l 을 다르게 발전). 해결 방향은 main의 통일 설계(-l=레인)이며 develop 전용 codex `-l`=리더 파싱도 같은 방향으로 뒤집는다. 병합 뒤 internal/cli 테스트 계열 전체 + -race 재측정
+3. main ff 전진 + `git push origin main` + 태그 `cutover/github-flow` push(D1)
+4. 임시 트리 제거 + develop 동결 선언(읽기 전용) + origin 기본 브랜치 전환 안내(D2 — 운영자 몫)
+5. 이후 §C M3(릴리스 기구) → M4-M5(CUTOVER-TIME) → M6(런북 리허설) 순
+
+### J.4 흡수로 생기지 않는 것
+
+- acceptance.md 의 AC-GFD-* 는 이 흡수로 바뀌지 않는다 — 제안서는 실행 전략과 진행 기록이지 인수 기준의 개정이 아니다
+- §G 인접 카드(t810 흡수·t1452 좁힘·t1448 순서)와 §H 후속 인벤토리는 그대로 유효
+- done 마킹(t1520·t1521·t1524)은 M2 후 큐 동사 복구 때 일괄(리더 기록)
+
+---
+
 🗿 MoAI
