@@ -2,7 +2,7 @@
 
 ## §A Discipline and Tree Pin
 
-Every criterion below adopts the two-cell discipline (`.claude/rules/moai/development/verification-completeness.md` §2): a RED-now cell observed on the pre-implementation tree and a GREEN path naming the milestone that flips it. All RED cells were measured in this plan session on **`d05d1d5f0`** — branch `WT-harness-prune-detached`, worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1497`, status clean, from the worktree root. Each RED cell states why it is red: the matched identifiers name code this SPEC will create, or — for the defect-presence cells (A, G) — the defect exists; no wrong-reason red. New-test cells use the package-wide `go test -list` corroboration so a bare selector matching nothing cannot read as a pass (LEDGER-DP-B and LEDGER-DP-D are that guard). Every check names WHEN it runs (its milestone exit), the input that turns it red, and who sees the red (the exit code of the milestone's exit gate, then the plan-auditor and the run-phase orchestrator via progress.md §E.1). AC-DP-007 is classified regression-guard (its green is the pre-existing state; no input on this tree turns it red today), never release-blocking, per §2.1's undecidable disposition.
+Every criterion below adopts the two-cell discipline (`.claude/rules/moai/development/verification-completeness.md` §2): a RED-now cell observed on the pre-implementation tree and a GREEN path naming the milestone that flips it. All RED cells were measured in this plan session on **`d05d1d5f0`** — branch `WT-harness-prune-detached`, worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1497`, status clean, from the worktree root. Each RED cell states why it is red: the matched identifiers name code this SPEC will create, or — for the defect-presence cells (A, G, I's second command) — the defect exists; no wrong-reason red. New-test cells use the package-wide `go test -list` corroboration so a bare selector matching nothing cannot read as a pass (LEDGER-DP-B, LEDGER-DP-D, and LEDGER-DP-I's first command are that guard). Every check names WHEN it runs (its milestone exit), the input that turns it red, and who sees the red (the exit code of the milestone's exit gate, then the plan-auditor and the run-phase orchestrator via progress.md §E.1). AC-DP-007 is classified regression-guard (its green is the pre-existing state; no input on this tree turns it red today), never release-blocking, per §2.1's undecidable disposition.
 
 GREEN-side executable commands live in the fenced ledger too wherever they carry alternation: a markdown table cell cannot hold a bare pipe, and the escaped form is a literal pipe in Go regexp — the iter1 audit's D1 defect — so AC-DP-001's GREEN commands were moved to LEDGER-DP-GREEN-A. LEDGER-DP-FORM records the grammar form-controls (Go-regexp selector pair; grep BRE alternation) so a zero-hit grep or a zero-match selector can never read as a dead-pattern pass. The `\|` sequences that remain inside fenced ledger commands are the quoted input bytes of those controls, not cell escaping.
 
@@ -167,6 +167,29 @@ LEDGER-DP-GREEN-B
            observable effects: the kept-line count shrinks and an archive
            member (<YYYY-MM>.jsonl.gz) is written; the run function enters
            through Retention.PruneStaleEntries (spec D5)
+
+LEDGER-DP-I
+  (AC-DP-008's RED — the consolidated gate round, finding 1. The causal
+  finding is the gate's overlay measurement, cited as the finding source:
+  5 events aged 60 days fed to the Stop classify path after the synchronous
+  prune's removal produce 1 spurious promotion + 1 proposal, versus 0 on
+  the current path. The two commands below corroborate the mechanism on
+  this tree, measured this session at 8a430d101.)
+
+  cmd:  go test -list 'TestClassificationAppliesRetentionWindow|TestStopClassificationFiltersExpiredEvents|TestClassifyExcludesExpiredEvents' ./internal/cli
+  out:  ok  	github.com/modu-ai/moai-adk/internal/cli	1.639s
+  exit: 0
+  why:  package-wide corroboration — none of the candidate regression-test
+        names exists yet; the AC's test is genuinely new.
+  cmd:  grep -c "Timestamp\|retentionDays\|cutoff" internal/harness/learner.go
+  out:  0
+  exit: 1
+  why:  defect-presence corroboration — the aggregator (AggregatePatterns,
+        learner.go:46) reads the whole log and carries no retention token:
+        the window is applied nowhere on the classification path today. The
+        zero is meaningful here because the file aggregates timestamped
+        events, so any window would necessarily carry one of these tokens.
+  tree: 8a430d101
 ```
 
 ## §C Acceptance Criteria
@@ -180,6 +203,7 @@ LEDGER-DP-GREEN-B
 | AC-DP-005 | REQ-DP-006 | LEDGER-DP-E (files absent), LEDGER-DP-F (no SysProcAttr anywhere in the package) | M2 files exist; M4: `GOOS=windows GOARCH=amd64 go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go vet ./internal/harness ./internal/cli` exit 0. Windows runtime behavior of the detached child stays documented-unobserved (spec §F F3) | release-blocking (build+vet half); runtime half unobserved-by-declaration |
 | AC-DP-006 | REQ-DP-007 (seam), REQ-DP-002 (wrapper) | LEDGER-DP-C, LEDGER-DP-D, LEDGER-DP-H | M3: the seam is a function field replaced by a recording fake (asserted inside `TestMaybeSpawnRetentionPruner`/`TestSpawnGateSuppressesOnFreshStamp`); no test spawns a real detached child (plan M3 boundary grep: no `exec.Command` invocation from test files on the spawn path); the four handlers reach the gate through ONE wrapper (`TestHarnessObserveGateWiring`) | release-blocking |
 | AC-DP-007 | REQ-DP-008 (semantics preserved) | none — the 1-hour interval, stamp-before-work, and atomic archive are correct on this tree today (`pruneSkipDuration = time.Hour`, retention.go:22; `TestPruneSkipsIfRecentlyPruned` green); no input turns it red before the work | M1/M2 re-verification: `go test ./internal/harness` exit 0 including the existing `TestPruneStaleEntries*` family and the t1467 M1 `retention_archive_atomic_test.go` suite — the semantics must still pass on the changed tree | regression-guard (never release-blocking — §A disposition) |
+| AC-DP-008 | REQ-DP-009 | LEDGER-DP-I (regression-test names absent; no retention token in the aggregator — both corroborated this session), plus the gate's overlay measurement (5×60-day fixture → 1 spurious promotion + 1 proposal on the removed path vs 0 current) as the causal finding source | M3: `TestStopClassificationFiltersExpiredEvents` exit 0 count-first — the 5×60-day fixture yields 0 promotions and 0 proposals from expired events; the window is applied at classification time, never waiting on the detached child; the sweep's whole-package re-verification `go test -timeout 30m ./internal/cli` exit 0 | release-blocking |
 
 ## §D Quality Gates and Definition of Done
 
