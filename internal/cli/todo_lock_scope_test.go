@@ -47,7 +47,8 @@ func addAtRoot(root string, text string) error {
 	var out, errBuf bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&errBuf)
-	return runTodoAddAppendRoot(root, cmd, text, false, nil)
+	_, err := runTodoAddAppendRoot(root, cmd, text, false, nil)
+	return err
 }
 
 // TestTodoAdd_LLMJudgmentsOverlapOutsideLock — AC-TLD-005: two concurrent

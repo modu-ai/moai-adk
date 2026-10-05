@@ -83,10 +83,17 @@ func IssuanceStripDropPrefix(text string) (stripped, reason string, dropped bool
 
 // IssuanceNeighbors returns up to IssuanceNeighborLimit vocabulary neighbors
 // of candidate across live, dropped (prefix stripped, reason kept) and
-// archived cards, sorted most-similar first with exact matches outranking
-// scored ones. Below-floor cards are not notice targets; a normalized-equal
-// card always is.
+// archived cards at the baseline display floor, sorted most-similar first
+// with exact matches outranking scored ones.
 func IssuanceNeighbors(candidate string, items []BacklogItem, archived []BacklogArchiveEntry) []IssuanceNeighbor {
+	return IssuanceNeighborsFloor(candidate, items, archived, IssuanceDisplayFloor)
+}
+
+// IssuanceNeighborsFloor is IssuanceNeighbors with an explicit floor; a
+// floor below 0 lifts it (the --dry-run view shows the top-3 neighbors
+// regardless of score, design §3.2). Below-floor cards are not notice
+// targets; a normalized-equal card always is.
+func IssuanceNeighborsFloor(candidate string, items []BacklogItem, archived []BacklogArchiveEntry, floor float64) []IssuanceNeighbor {
 	cnorm := NormalizeCardText(candidate)
 	type scored struct {
 		n     IssuanceNeighbor
@@ -98,7 +105,7 @@ func IssuanceNeighbors(candidate string, items []BacklogItem, archived []Backlog
 		other := NormalizeCardText(stripped)
 		exact := cnorm != "" && cnorm == other
 		score := TokenSetJaccard(cnorm, other)
-		if !exact && score < IssuanceDisplayFloor {
+		if !exact && score < floor {
 			return
 		}
 		found = append(found, scored{
@@ -295,6 +302,13 @@ type IssuanceOverlap struct {
 // normalized path — file basenames and string prefixes are not overlaps
 // (AC-TCI-003 (h)).
 func IssuanceInFlightOverlap(candidateFiles []string, inFlight []IssuanceInFlightCard) IssuanceOverlap {
+	// No in-flight cards at all — nothing the presentation could advise
+	// about: silent (design §2 — the MCP parity fixture's empty queue keeps
+	// an empty presentation). The unmeasured verdict below is for lanes that
+	// EXIST but carry no comparable input.
+	if len(inFlight) == 0 {
+		return IssuanceOverlap{}
+	}
 	if len(candidateFiles) == 0 {
 		return IssuanceOverlap{Unmeasured: "new card carries no expected files"}
 	}
@@ -361,14 +375,21 @@ func (p IssuancePresentation) Empty() bool {
 		len(p.Specs) == 0
 }
 
-// BuildIssuancePresentation assembles the presentation from a queue snapshot
-// the caller already read outside the lock. The probe runs per in-flight
-// card under IssuanceProbeTimeBound; a probe that outlives the bound turns
-// the overlap verdict into `unmeasured (time bound)` and admission is
-// unaffected (REQ-TCI-003 (d)).
+// BuildIssuancePresentation assembles the presentation at the baseline
+// display floor, from a queue snapshot the caller already read outside the
+// lock.
 func BuildIssuancePresentation(candidate string, rec *BacklogRecord, specs []IssuanceCompletedSpec, probe LaneFilesProbe) IssuancePresentation {
+	return BuildIssuancePresentationFloor(candidate, rec, specs, probe, IssuanceDisplayFloor)
+}
+
+// BuildIssuancePresentationFloor assembles the presentation with an explicit
+// display floor (floor < 0 lifts it for the dry-run view). The probe runs
+// per in-flight card under IssuanceProbeTimeBound; a probe that outlives the
+// bound turns the overlap verdict into `unmeasured (time bound)` and
+// admission is unaffected (REQ-TCI-003 (d)).
+func BuildIssuancePresentationFloor(candidate string, rec *BacklogRecord, specs []IssuanceCompletedSpec, probe LaneFilesProbe, floor float64) IssuancePresentation {
 	p := IssuancePresentation{
-		Neighbors:  IssuanceNeighbors(candidate, rec.Items, rec.Archived),
+		Neighbors:  IssuanceNeighborsFloor(candidate, rec.Items, rec.Archived, floor),
 		Components: IssuanceSameComponent(candidate, rec.Items),
 	}
 	// In-flight lane cards: picked with a lane-labelled runtime assignment.

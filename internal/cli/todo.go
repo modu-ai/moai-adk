@@ -637,6 +637,7 @@ func todoVerbNames(cmd *cobra.Command) []string {
 type todoAddScan struct {
 	pick          bool
 	force         bool
+	dryRun        bool
 	classFile     string
 	haveClassFile bool
 	help          bool
@@ -674,6 +675,8 @@ func scanTodoAddArgs(raw []string) (*todoAddScan, error) {
 			switch name {
 			case "--pick":
 				scan.pick = true
+			case "--dry-run":
+				scan.dryRun = true
 			case "--force":
 				scan.force = true
 			case "--classification-file":
@@ -746,6 +749,13 @@ func newTodoAddCmd() *cobra.Command {
 			if strings.TrimSpace(text) == "" {
 				return fmt.Errorf("todo add: text must be non-empty")
 			}
+			// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-004: --dry-run prints the
+			// same presentation and writes nothing — the queue file stays
+			// byte-identical, no id is consumed, and an exact duplicate is
+			// reported as a would-be refusal instead of refusing.
+			if scan.dryRun {
+				return runTodoAddDryRun(cmd, text)
+			}
 			// REQ-TCD-004: the supplied classification is validated BEFORE
 			// the locked write — an out-of-set value or the jev identity is
 			// a usage refusal with nothing written.
@@ -774,6 +784,8 @@ func newTodoAddCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(new(bool), "pick", false,
 		"Append AND mark picked as one locked write, printing the issued id")
+	cmd.Flags().BoolVar(new(bool), "dry-run", false,
+		"Print the issuance presentation and write nothing")
 	cmd.Flags().BoolVar(new(bool), "force", false,
 		"Admit a card the analyser reads as an exact duplicate, recording that it was forced")
 	cmd.Flags().StringVar(new(string), "classification-file", "",
@@ -784,16 +796,24 @@ func newTodoAddCmd() *cobra.Command {
 // runTodoAddAppend is the plain-add body shared by `todo add <text>` and the
 // parent's natural-language fallthrough (t69): non-empty guard, locked
 // append, "<id> <position>" stdout line. `--pick` stays add-only — the
-// fallthrough path has no flags.
+// fallthrough path has no flags. The presentation renders to stderr here;
+// the MCP surface takes the returned text instead.
 func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec factory.CardDecider) error {
-	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force, dec)
+	presentation, err := runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force, dec)
+	if err == nil && presentation != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), presentation)
+	}
+	return err
 }
 
 // runTodoAddAppendRoot is runTodoAddAppend anchored at an explicit root —
 // the shape the MCP todo_add tool calls (REQ-SD-024), so both surfaces run
 // one implementation. The decider argument is the classification seam this
-// invocation resolves; the MCP surface passes the package default.
-func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec factory.CardDecider) error {
+// invocation resolves; the MCP surface passes the package default. It
+// returns the rendered issuance presentation (SPEC-TODO-CARD-ISSUANCE-001
+// REQ-TCI-002/005): the CLI prints it to stderr, the MCP tool appends it
+// after the result's first line; "" means nothing fired.
+func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec factory.CardDecider) (string, error) {
 	if dec == nil {
 		// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002: the MCP todo_add surface
 		// resolves the same standing decider the CLI path resolves, so the
@@ -801,17 +821,22 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 		// one nil branch.
 		selected, err := todoDeciderFromEnv()
 		if err != nil {
-			return err
+			return "", err
 		}
 		dec = selected
 	}
+	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-003: the presentation is computed
+	// BEFORE the queue lock is acquired (queue snapshot, completed-SPEC
+	// directory read, lane probes — all outside the lock) and rendered after
+	// the admission is decided; a refusal still carries it.
+	presentation := todoIssuancePresentation(root, text)
 	// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-005: the LLM judgment is computed
 	// BEFORE the queue lock is acquired and attached inside the same locked
 	// write as a static carrier — only the computation moved out of the
 	// lock, never the attachment.
 	dec = todoPreClassifyLLM(dec, text, cmd.ErrOrStderr())
 	if strings.TrimSpace(text) == "" {
-		return fmt.Errorf("todo add: text must be non-empty")
+		return "", fmt.Errorf("todo add: text must be non-empty")
 	}
 	// Card t1313 (GitHub #1732): the WRITE verb discloses the store
 	// DIVERGENCE the read verbs disclose (SPEC-TODO-STALE-STORE-001
@@ -824,7 +849,7 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 	// stderr; stdout stays the bare "id position" machine line.
 	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add",
 		factory.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
-		return err
+		return "", err
 	}
 	var item factory.BacklogItem
 	var pos int
@@ -845,10 +870,35 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 		return nil
 	})
 	if err != nil {
+		if presText := renderIssuanceText(presentation); presText != "" {
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), presText)
+		}
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+		return "", err
+	}
+	presText := renderIssuanceText(presentation)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %d\n", item.ID, pos)
+	return presText, nil
+}
+
+// runTodoAddDryRun is the `--dry-run` body (REQ-TCI-004): the same
+// presentation with the floor lifted (design §3.2 — top-3 regardless of
+// score), nothing written, and an exact duplicate reported as a would-be
+// refusal instead of refusing.
+func runTodoAddDryRun(cmd *cobra.Command, text string) error {
+	root := resolveTodoQueueRoot()
+	rec, err := todoStoreAt(root).LoadPure()
+	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %d\n", item.ID, pos)
+	presentation := todoIssuancePresentationFloor(root, text, 0)
+	if presText := renderIssuanceText(presentation); presText != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), presText)
+	}
+	if match := factory.ClassifyCardText(text, rec.Items); match.Kind == factory.BacklogMatchExact {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "a real add would refuse: %s already holds this card\n", match.ID)
+	}
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "dry-run: nothing was written")
 	return nil
 }
 

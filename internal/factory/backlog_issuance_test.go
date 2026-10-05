@@ -212,4 +212,11 @@ func TestIssuanceInFlightOverlapNoneIsMeasured(t *testing.T) {
 	if !got.None || len(got.Items) != 0 {
 		t.Errorf("full-path equality: want none with no items, got %+v", got)
 	}
+	// Zero in-flight cards: the silent verdict — nothing to advise about
+	// (design §2; the MCP parity fixture's empty queue keeps an empty
+	// presentation).
+	got = IssuanceInFlightOverlap([]string{"internal/cli/todo.go"}, nil)
+	if got.None || got.Unmeasured != "" || len(got.Items) != 0 {
+		t.Errorf("zero in-flight: want the silent verdict, got %+v", got)
+	}
 }

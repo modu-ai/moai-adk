@@ -104,10 +104,19 @@ func handleTodoAdd(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 		return toolErr("todo_add", errors.New("todo add: text must be non-empty")), nil
 	}
 	out, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
-	if err := runTodoAddAppendRoot(root, newBufferedCommand(out, errBuf), text, false, todoCardDecider); err != nil {
+	presentation, err := runTodoAddAppendRoot(root, newBufferedCommand(out, errBuf), text, false, todoCardDecider)
+	if err != nil {
 		return toolErr("todo_add", err), nil
 	}
-	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
+	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-005: the result text's first line
+	// stays "<id> <pos>"; a non-empty presentation follows after one blank
+	// line. An empty presentation adds nothing — the text stays the CLI
+	// stdout, byte for byte (MU-21).
+	result := strings.TrimRight(out.String(), "\n")
+	if presentation != "" {
+		result += "\n\n" + presentation
+	}
+	return mcp.NewToolResultText(result), nil
 }
 
 // handleTodoList wraps runTodoListRoot (todo.go) — the same default render
