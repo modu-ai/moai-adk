@@ -38,7 +38,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-004 — auto-done이 receipt 없이 닫지 않음 (REQ-FCR-003)
 
 - RED-now: P2 — `AutoDoneFacts`(autodone_scan.go:108)에 receipt 필드 없음.
-- green(M1): `go test ./internal/cli -run '^TestAutoDoneReceiptSkip$'` — receipt 미검증 후보는 close 대상에서 skip/downgrade, 스캔 전체는 계속. INPUT: 조건은 모두 충족하되 receipt 없는 카드. **경합 변이 포함**: 스캔 승인 뒤 factory 전이로 카드 version이 증가한 행 — archive 직전 네 바인딩 재검증(factory version·run id 포함)이 stale receipt를 거부하고 close를 skip한다(REQ-FCR-004의 직전 재검증).
+- green(M1): `go test ./internal/cli -run '^TestAutoDoneReceiptSkip$'` — receipt 미검증 **factory-linked** 후보는 close 대상에서 skip/downgrade, 스캔 전체는 계속. INPUT: 조건은 모두 충족하되 receipt 없는 카드. **경합 변이 포함**: 스캔 승인 뒤 factory 전이로 카드 version이 증가한 행 — archive 직전 네 바인딩 재검증(factory version·run id 포함)이 stale receipt를 거부하고 close를 skip한다(REQ-FCR-004의 직전 재검증). **비팩토리 보존 변이**: factory run 기록이 없는 일반 카드는 receipt 없이도 기존대로 완료된다(적용 대상 아님 — `TestTodoAutoDone_LiveFilter` 계열 동작 불변, REQ-FCR-002의 스코프 문장).
 
 ### AC-FCR-005 — 잠금 재검증 전면 비교 (REQ-FCR-004)
 
