@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -121,6 +122,7 @@ type wireEnv struct {
 	stderr       *bytes.Buffer         // captured fold-on-done stderr
 	rec          *foldOnDoneRecorder   // active path recorder
 	seededDigest string                // the store digest right after seeding
+	workerExit   chan struct{}         // closed when the fold step goroutine returns
 	restore      func()                // restores every package seam
 }
 
@@ -165,9 +167,13 @@ func wireFixture(t *testing.T) *wireEnv {
 	env := &wireEnv{root: root, store: store, memDir: memDir, stderr: &bytes.Buffer{}, seededDigest: storeSHA256(t, memDir)}
 
 	// Save and replace the package seams; restore runs before the
-	// environment's temp dirs vanish.
+	// environment's temp dirs vanish. workerExit is closed by the step's
+	// goroutine on return, so cells whose worker can outlive the close
+	// command synchronize on it BEFORE this restore writes memoryFoldSeam
+	// the worker reads.
 	savedBound, savedStderr, savedRec := memoryFoldOnDoneBound, foldOnDoneStderr, memoryFoldOnDoneRec
 	savedFn, savedStep, savedSeam := foldClosedCardMemoryFn, foldOnDoneStepFn, memoryFoldSeam
+	savedExit := foldOnDoneExit
 	env.rec = &foldOnDoneRecorder{}
 	memoryFoldOnDoneRec = env.rec
 	foldOnDoneStderr = env.stderr
@@ -175,9 +181,12 @@ func wireFixture(t *testing.T) *wireEnv {
 	foldClosedCardMemoryFn = foldClosedCardMemory
 	foldOnDoneStepFn = foldOnDoneStep
 	memoryFoldSeam = foldTestSeam{}
+	foldOnDoneExit = make(chan struct{})
+	env.workerExit = foldOnDoneExit
 	env.restore = func() {
 		memoryFoldOnDoneBound, foldOnDoneStderr, memoryFoldOnDoneRec = savedBound, savedStderr, savedRec
 		foldClosedCardMemoryFn, foldOnDoneStepFn, memoryFoldSeam = savedFn, savedStep, savedSeam
+		foldOnDoneExit = savedExit
 	}
 	t.Cleanup(env.restore)
 
@@ -400,7 +409,11 @@ func storeSHA256(t *testing.T, dir string) string {
 // helper replaced by a no-op) produce equal stdout, stderr, exit code and
 // queue record, and the store's digest is unchanged. The accepted-values
 // table closes the gate vocabulary: 0/false/yes/"" behave as unset, 1/TRUE/
-// " true " enable.
+// " true " enable. It doubles as the regression cell of the gate round-2
+// P2 exit-channel capture: adjacent fixtures replace foldOnDoneExit while
+// the PREVIOUS fixture's worker may still run — the worker closes the
+// channel it captured at call time, never the new fixture's (visible as a
+// DATA RACE under `go test -race` before the capture).
 func TestMemoryFoldOnDone_DisabledDifferential(t *testing.T) {
 	// Two identical fixtures: one closes with the gate unset, one with the
 	// helper replaced by a no-op. Outputs and end states must be equal.
@@ -551,7 +564,7 @@ func TestMemoryFoldOnDone_SeededPanic(t *testing.T) {
 		env := wireFixture(t)
 		seedWireCard(t, env)
 		foldWait := instrumentFoldWait(t, env)
-		foldOnDoneStepFn = func(string, *atomic.Bool) (string, error) { panic("seeded by the wiring test") }
+		foldOnDoneStepFn = func(string, *foldOnDoneRun) (string, error) { panic("seeded by the wiring test") }
 		memoryFoldOnDoneBound = 200 * time.Millisecond
 		t.Setenv(config.EnvMemoryFoldOnDone, "1")
 		prepareWireClose(t, env, path)
@@ -596,7 +609,6 @@ func TestMemoryFoldOnDone_BlockedRead(t *testing.T) {
 		env := wireFixture(t)
 		seedWireCard(t, env)
 		foldWait := instrumentFoldWait(t, env)
-		baselineGoroutines := runtime.NumGoroutine()
 		fifo := blockOnRead(t, filepath.Join(env.memDir, "MEMORY.md"))
 		memoryFoldOnDoneBound = 200 * time.Millisecond
 		t.Setenv(config.EnvMemoryFoldOnDone, "1")
@@ -622,9 +634,10 @@ func TestMemoryFoldOnDone_BlockedRead(t *testing.T) {
 			t.Errorf("%s: the store was written although the index read never completed", path)
 		}
 		requireNoTempFiles(t, env.memDir)
-		// Release the reader and confirm the abandoned step drains (leak check).
+		// Release the reader and confirm the abandoned step drains (leak
+		// check, and the exit sync the seam restore requires).
 		fifo.release()
-		waitGoroutines(t, baselineGoroutines)
+		waitWorkerExit(t, env)
 	}
 }
 
@@ -634,7 +647,7 @@ func TestMemoryFoldOnDone_BlockedRead(t *testing.T) {
 func TestMemoryFoldOnDone_RunsAfterQueueWrite(t *testing.T) {
 	env := wireFixture(t)
 	seedWireCard(t, env)
-	foldOnDoneStepFn = func(cardID string, _ *atomic.Bool) (string, error) {
+	foldOnDoneStepFn = func(cardID string, _ *foldOnDoneRun) (string, error) {
 		rec, err := env.store.LoadPure()
 		if err != nil {
 			return "", err
@@ -653,7 +666,7 @@ func TestMemoryFoldOnDone_RunsAfterQueueWrite(t *testing.T) {
 		if !found {
 			return "", fmt.Errorf("fold started before card %s was archived", cardID)
 		}
-		return foldOnDoneStep(cardID, &atomic.Bool{})
+		return foldOnDoneStep(cardID, &foldOnDoneRun{})
 	}
 	t.Setenv(config.EnvMemoryFoldOnDone, "1")
 	if _, _, err := runWireClose(t, env, "done"); err != nil {
@@ -775,7 +788,10 @@ func TestMemoryFoldOnDone_ProductionBoundEffective(t *testing.T) {
 	}
 	requireQueueArchived(t, env)
 	requireOneFoldLine(t, env, false)
+	// Release the parked reader; the resumed worker must exit (and read no
+	// test global afterward) before the cleanup restores the seams.
 	fifo.release()
+	waitWorkerExit(t, env)
 }
 
 // TestMemoryFoldOnDone_AbandonedStepWritesNothing is the gate-overlay P1-4
@@ -799,7 +815,6 @@ func TestMemoryFoldOnDone_AbandonedStepWritesNothing(t *testing.T) {
 		},
 	}
 	foldWait := instrumentFoldWait(t, env)
-	baselineGoroutines := runtime.NumGoroutine()
 	if _, _, err := runWireClose(t, env, "done"); err != nil {
 		t.Fatalf("done: %v", err)
 	}
@@ -812,9 +827,10 @@ func TestMemoryFoldOnDone_AbandonedStepWritesNothing(t *testing.T) {
 	if wait := foldWait(); wait > 400*time.Millisecond {
 		t.Errorf("the fold wait took %s with a 200ms bound, want under 400ms", wait)
 	}
-	// Wait for the resumed worker to drain before judging the store — its
-	// post-deadline fate is exactly what this cell decides.
-	waitGoroutines(t, baselineGoroutines)
+	// Wait for the resumed worker to EXIT before judging the store and
+	// before the cleanup restores memoryFoldSeam it reads (gate P2 race) —
+	// its post-deadline fate is exactly what this cell decides.
+	waitWorkerExit(t, env)
 
 	// The worker resumed after the deadline: it must have written nothing —
 	// the t9001 line stays in MEMORY.md and never reached the archive.
@@ -825,6 +841,124 @@ func TestMemoryFoldOnDone_AbandonedStepWritesNothing(t *testing.T) {
 		t.Errorf("the abandoned step filed the line into the archive after the deadline")
 	}
 	requireNoTempFiles(t, env.memDir)
+}
+
+// TestMemoryFoldOnDone_TimeoutRecoversTempFile is the codex-review round-2
+// P2 regression (card t1502): with the gate on, the worker creates the
+// MEMORY.md temp file and THEN parks on a blocking read inside the
+// pre-rename effective check (a store file held open by a silent FIFO
+// writer) — the caller's timeout branch must recover the recorded temp
+// file, because a one-shot CLI process exits before the worker's deferred
+// removal runs and a full index would otherwise be left behind as
+// .moai-fold-*.tmp.
+func TestMemoryFoldOnDone_TimeoutRecoversTempFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("FIFO-based temp-recovery cell is Unix-only (plan B1)")
+	}
+	env := wireFixture(t)
+	seedWireCard(t, env)
+	// The probe creates the blocking FIFO at the top of the MEMORY.md
+	// write's effective check — AFTER the temp file exists and is recorded.
+	// The held fixture is published to the test body, which releases it and
+	// waits for the worker's exit BEFORE returning (the cleanup below is a
+	// no-op safety net; releasing from a cleanup would race the worker's
+	// post-wake reads of memoryFoldSeam with the seam restore).
+	var heldMu sync.Mutex
+	var held *wireFIFO
+	memoryFoldSeam = foldTestSeam{
+		orderProbe: func(stage string) {
+			if stage != "effective-start" {
+				return
+			}
+			fx, err := blockOnReadRaw(filepath.Join(env.memDir, "zzz_block.md"))
+			if err != nil {
+				panic(err)
+			}
+			heldMu.Lock()
+			held = fx
+			heldMu.Unlock()
+		},
+	}
+	defer func() {
+		heldMu.Lock()
+		fx := held
+		heldMu.Unlock()
+		if fx != nil {
+			fx.release()
+		}
+	}()
+	memoryFoldOnDoneBound = 200 * time.Millisecond
+	t.Setenv(config.EnvMemoryFoldOnDone, "1")
+	if _, _, err := runWireClose(t, env, "done"); err != nil {
+		t.Fatalf("done: %v", err)
+	}
+	requireOneFoldLine(t, env, false)
+	// The caller's timeout branch already recovered the temp file — before
+	// the worker (still parked) ever reaches its own deferred removal.
+	leftovers, err := filepath.Glob(filepath.Join(env.memDir, ".moai-fold-*.tmp"))
+	if err != nil {
+		t.Fatalf("glob temp files: %v", err)
+	}
+	if len(leftovers) != 0 {
+		t.Errorf("the abandoned step left temp file(s) behind: %v", leftovers)
+	}
+	requireNoTempFiles(t, env.memDir)
+	// Release the parked worker and wait for its exit BEFORE returning —
+	// its post-wake reads of memoryFoldSeam must complete before the
+	// cleanup restores that seam.
+	heldMu.Lock()
+	fx := held
+	heldMu.Unlock()
+	if fx != nil {
+		fx.release()
+	}
+	waitWorkerExit(t, env)
+}
+
+// TestReviewSequentialAbandonedTempOwnership is the codex-review round-2
+// P2 regression (card t1502): the temp-path recovery state is PER-WORKER.
+// In a todo auto-done closing several cards, card 1 times out, card 2's
+// worker registers its temp file, and then card 1's LATE worker finishes —
+// with a shared global, that late cleanup clobbers the recorded path and
+// card 2's timeout cannot recover its temp file, leaving a full index copy
+// behind. With occupancy semantics (clearIf), the late cleanup only clears
+// the path it still holds and card 2's recovery reads its own path.
+func TestReviewSequentialAbandonedTempOwnership(t *testing.T) {
+	run1 := &foldOnDoneRun{}
+	run2 := &foldOnDoneRun{}
+
+	tmp1 := filepath.Join(t.TempDir(), ".moai-fold-card1.tmp")
+	tmp2 := filepath.Join(t.TempDir(), ".moai-fold-card2.tmp")
+	for _, p := range []string{tmp1, tmp2} {
+		if err := os.WriteFile(p, []byte("in-flight temp index"), 0o600); err != nil {
+			t.Fatalf("seed temp %s: %v", p, err)
+		}
+	}
+	run1.temp.set(tmp1)
+	run2.temp.set(tmp2)
+
+	// Card 1 times out: the caller recovers and removes card 1's temp.
+	if p := run1.temp.take(); p != tmp1 {
+		t.Fatalf("card 1 take = %q, want %q", p, tmp1)
+	}
+	if err := os.Remove(tmp1); err != nil {
+		t.Fatalf("remove card 1 temp: %v", err)
+	}
+
+	// Card 1's late worker finishes and clears its own path — it must NOT
+	// touch card 2's registration.
+	run1.temp.clearIf(tmp1)
+	if p := run2.temp.get(); p != tmp2 {
+		t.Fatalf("card 2's temp ownership was clobbered by card 1's late cleanup: %q", p)
+	}
+
+	// Card 2 times out: its own temp is still recoverable.
+	if p := run2.temp.take(); p != tmp2 {
+		t.Fatalf("card 2 take = %q, want %q", p, tmp2)
+	}
+	if err := os.Remove(tmp2); err != nil {
+		t.Fatalf("remove card 2 temp: %v", err)
+	}
 }
 
 // TestMemoryFoldOnDone_BoundConstantCeiling is AC-MFB-008 (x):
@@ -841,19 +975,19 @@ func TestMemoryFoldOnDone_BoundConstantCeiling(t *testing.T) {
 	}
 }
 
-// waitGoroutines waits for the goroutine count to return to the baseline
-// after a FIFO cell released its blocked reader (the leak check of
-// AC-MFB-008 (vii)).
-func waitGoroutines(t *testing.T, baseline int) {
+// waitWorkerExit waits for the fold step's goroutine to return — the
+// explicit exit synchronization the race detector requires BEFORE the test
+// restores memoryFoldSeam (gate P2): a goroutine-count poll establishes no
+// happens-before edge, so the restore could race the worker's buildFoldPlan
+// read of the seam. Doubles as the leak check of AC-MFB-008 (vii): the
+// worker must exit once the FIFO is released.
+func waitWorkerExit(t *testing.T, env *wireEnv) {
 	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if runtime.NumGoroutine() <= baseline {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	if n := runtime.NumGoroutine(); n > baseline+2 {
-		t.Errorf("goroutine count %d did not return near baseline %d within 2s — the abandoned step leaked", n, baseline)
+	select {
+	case <-env.workerExit:
+	case <-time.After(5 * time.Second):
+		buf := make([]byte, 1<<20)
+		n := runtime.Stack(buf, true)
+		t.Fatalf("the fold step goroutine did not exit within 5s — the abandoned step leaked\nstacks:\n%s", buf[:n])
 	}
 }

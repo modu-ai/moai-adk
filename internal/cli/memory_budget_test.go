@@ -544,3 +544,18 @@ func TestMemoryDoctor_LinkClasses(t *testing.T) {
 		}
 	}
 }
+
+// TestMemoryDoctor_IndexSelfLinkNotDangling is the codex-review round-2 P2
+// regression (card t1502): a store whose only file is MEMORY.md, indexing
+// itself with a `[Index](MEMORY.md)` link — the index IS present, so the
+// class-aware dangling audit must not report `index links MEMORY.md but no
+// such file exists`.
+func TestMemoryDoctor_IndexSelfLinkNotDangling(t *testing.T) {
+	dir := seedFoldStore(t, "# Memory Index\n\n- [Index](MEMORY.md) — the index names itself\n", map[string]string{})
+	rep := singleReport(t, runMemoryDoctor(t, "--json", "--dir", dir))
+	for _, f := range rep.Findings {
+		if f.Code == "MEMORY_DANGLING_INDEX_LINK" {
+			t.Errorf("MEMORY.md self-link reported as dangling: %+v", f)
+		}
+	}
+}

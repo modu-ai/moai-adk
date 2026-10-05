@@ -45,6 +45,12 @@ const (
 // line whose link-target set the archive already carries on another wording.
 const foldKeptReasonDifferent = "archive carries a different line for the same targets"
 
+// foldKeptReasonArchiveLink is the entry-link keep reason (card-review
+// round-1 P2): the STRONG line carries the archive's own entry link and is
+// MEMORY.md's only link to it — removing the line would unlink the fold's
+// own destination, so the line stays.
+const foldKeptReasonArchiveLink = "removing the line would unlink the archive index"
+
 var (
 	foldCardTokenPattern = regexp.MustCompile(`t[0-9]+`)
 	foldFirstLinkPattern = regexp.MustCompile(`\[([^]]*)\]\(`)
@@ -68,6 +74,10 @@ type foldTestSeam struct {
 	// file is prepared and before the pre-rename re-check — the window a
 	// concurrent writer races (gate overlay cell iii-b).
 	mutateDuringWrite func(dir, name string)
+	// orderProbe records the pre-rename check order of atomicWriteFoldFile
+	// ("effective-start" then "bytes-done") — the codex-review round-2
+	// ordering regression asserts on this sequence.
+	orderProbe func(stage string)
 }
 
 var memoryFoldSeam foldTestSeam
@@ -157,7 +167,7 @@ func newMemoryFoldCmd() *cobra.Command {
 				// below must catch it.
 				memoryFoldSeam.mutateDisk(store.Dir)
 			}
-			if err := applyFold(store.Dir, before, comp, nil); err != nil {
+			if err := applyFold(store.Dir, before, comp, nil, nil); err != nil {
 				return err
 			}
 			plan.Applied = true
@@ -284,10 +294,82 @@ func buildFoldPlan(before taxonomy.StoreSnapshot, cardID string) (foldComputed, 
 		default:
 			comp.plan.Removed = append(comp.plan.Removed, line)
 			comp.plan.Appended = append(comp.plan.Appended, line)
+			// The lines THIS fold appends join the dedupe sets: a second
+			// identical copy is removed without a second append, and a
+			// same-targets different wording is kept with its reason
+			// (codex-review round 2 — the same line twice in MEMORY.md
+			// must not file twice).
+			exact[line] = true
+			keys[taxonomy.LineTargetSetKey(line)] = true
 		}
 	}
 	if len(comp.plan.Removed) == 0 {
 		return comp, nil // every STRONG line kept under REQ-MFB-005
+	}
+
+	// The entry-link guard (card-review round-1 P2): a STRONG line that
+	// also links the archive cannot be removed when the removal would take
+	// MEMORY.md's LAST link to the fold's own destination — the archive
+	// would lose its entry, ArchiveIndexName() would return empty, and
+	// every later fold would refuse. Those lines are kept with the reason
+	// (their appended twins are dropped with them).
+	remainingArchiveLinks := 0
+	removedSet := make(map[string]bool, len(comp.plan.Removed))
+	for _, line := range comp.plan.Removed {
+		removedSet[line] = true
+	}
+	linksArchive := func(line string) bool {
+		for _, tgt := range taxonomy.ExtractLinkTargets(line) {
+			if taxonomy.ClassifyLinkTarget(tgt) == taxonomy.LinkStoreLocal && strings.TrimPrefix(tgt, "./") == comp.archive {
+				return true
+			}
+		}
+		return false
+	}
+	for _, seg := range memSegs {
+		if removedSet[seg.text] {
+			continue
+		}
+		if linksArchive(seg.text) {
+			remainingArchiveLinks++
+		}
+	}
+	if remainingArchiveLinks == 0 {
+		var removed, appended []string
+		for _, line := range comp.plan.Removed {
+			if linksArchive(line) {
+				comp.kept = append(comp.kept, foldKeptLine{Line: line, Class: string(foldStrong), Reason: foldKeptReasonArchiveLink})
+				continue
+			}
+			removed = append(removed, line)
+		}
+		for _, line := range comp.plan.Appended {
+			if !linksArchive(line) {
+				appended = append(appended, line)
+			}
+		}
+		comp.plan.Removed, comp.plan.Appended = removed, appended
+		if len(comp.plan.Removed) == 0 {
+			return comp, nil // every STRONG line kept under the entry-link guard
+		}
+	}
+
+	// Plan-phase target existence (card-review round-2 P2): a removed line
+	// whose store-local target was NEVER in the store is a clean refusal
+	// BEFORE the archive gains anything — filing the line and only then
+	// refusing (the apply-time reachability check) would leave no archive
+	// write undone and block every retry on the same broken link. A
+	// pre-existing broken link is the store's own state; the fold names it
+	// and touches nothing.
+	for _, line := range comp.plan.Removed {
+		for _, tgt := range taxonomy.ExtractLinkTargets(line) {
+			if taxonomy.ClassifyLinkTarget(tgt) != taxonomy.LinkStoreLocal {
+				continue
+			}
+			if _, ok := before[strings.TrimPrefix(tgt, "./")]; !ok {
+				return comp, fmt.Errorf("memory fold: the line's target %s is not in the store — refusing before any write (fix or remove the link first)", tgt)
+			}
+		}
 	}
 
 	// The in-memory result the plan produces — what the apply is allowed to
@@ -327,7 +409,7 @@ func buildFoldPlan(before taxonomy.StoreSnapshot, cardID string) (foldComputed, 
 // removed lines. Each file is replaced atomically, and every rename is
 // preceded by a comparison of the on-disk bytes against the content the plan
 // was computed from.
-func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, writesForbidden func() bool) error {
+func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, writesForbidden func() bool, run *foldOnDoneRun) error {
 	archive := comp.archive
 
 	// An abandoned close-path step (the card-close bound expired) must not
@@ -358,7 +440,7 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 		if memoryFoldSeam.failAt == "append" {
 			return fmt.Errorf("memory fold: writing %s failed", archive)
 		}
-		if err := atomicWriteFoldFile(dir, archive, comp.planned[archive], before[archive], nil, writesForbidden); err != nil {
+		if err := atomicWriteFoldFile(dir, archive, comp.planned[archive], before[archive], nil, writesForbidden, run); err != nil {
 			return err
 		}
 	}
@@ -380,6 +462,18 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 		}
 	}
 
+	// (2.5) Re-run qualification and reachability against the CURRENT store
+	// before preparing the deletion write (card-review round-1 P2): a
+	// concurrent mover may have renamed a referenced topic file — the
+	// indexes' bytes still match the plan while the archive's effective
+	// resolved-link count dropped below the threshold, or a moved line's
+	// target no longer resolves. The SAME verification re-runs at the
+	// pre-rename position (guard.check below), so the window between this
+	// check and the rename is covered too (codex-review round 2).
+	if err := verifyArchiveEffectiveState(dir, before, comp); err != nil {
+		return err
+	}
+
 	// (3) rewrite MEMORY.md.
 	if memoryFoldSeam.failAt == "rewrite" {
 		return fmt.Errorf("memory fold: writing %s failed", memoryIndexName)
@@ -387,9 +481,50 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 	// The archive is re-verified against its EXPECTED POST-APPLY bytes in
 	// the MEMORY.md write's pre-rename position (guard below): planned equals
 	// before on a retry that appends nothing, so the guard reads the same on
-	// every path (REQ-MFB-004; gate-overlay P1).
+	// every path (REQ-MFB-004; gate-overlay P1). The guard's check closure
+	// re-runs the effective-state verification at that same position — a
+	// move landing during the temp-file preparation invalidates the link
+	// count the earlier check measured (codex-review round 2).
 	return atomicWriteFoldFile(dir, memoryIndexName, comp.planned[memoryIndexName], before[memoryIndexName],
-		&foldRenameGuard{name: archive, want: comp.planned[archive]}, writesForbidden)
+		&foldRenameGuard{
+			name:  archive,
+			want:  comp.planned[archive],
+			check: func(dir string) error { return verifyArchiveEffectiveState(dir, before, comp) },
+		}, writesForbidden, run)
+}
+
+// verifyArchiveEffectiveState re-runs the archive's qualification and the
+// moved lines' reachability against the CURRENT disk state (card-review
+// round-1 P2, codex-review round 2): a concurrent mover can rename a
+// referenced topic file at any point up to the last rename — the indexes'
+// bytes still match the plan while the archive's effective resolved-link
+// count dropped below the threshold, or a moved line's target vanished.
+// Deleting the original line in that state strands the card; the caller
+// refuses and keeps it. Only a target that EXISTED when the plan was
+// computed and is gone NOW is a mid-run move: a never-existed target is
+// the plan phase's clean refusal, not a concurrency signal.
+func verifyArchiveEffectiveState(dir string, before taxonomy.StoreSnapshot, comp foldComputed) error {
+	current, err := taxonomy.SnapshotStore(dir)
+	if err != nil {
+		return err
+	}
+	if n := current.ResolvedLinkCount(comp.archive); n < taxonomy.SecondaryIndexLinkThreshold() {
+		return fmt.Errorf("memory fold: %s now carries %d resolved links, under the secondary-index threshold of %d — keeping the line in %s", comp.archive, n, taxonomy.SecondaryIndexLinkThreshold(), memoryIndexName)
+	}
+	for _, line := range comp.plan.Removed {
+		for _, tgt := range taxonomy.ExtractLinkTargets(line) {
+			if taxonomy.ClassifyLinkTarget(tgt) != taxonomy.LinkStoreLocal {
+				continue
+			}
+			name := strings.TrimPrefix(tgt, "./")
+			_, inBefore := before[name]
+			_, inCurrent := current[name]
+			if inBefore && !inCurrent {
+				return fmt.Errorf("memory fold: the moved line's target %s vanished while the fold ran — keeping the line in %s", tgt, memoryIndexName)
+			}
+		}
+	}
+	return nil
 }
 
 // checkFoldUnchanged aborts when the on-disk file no longer holds the bytes
@@ -416,6 +551,11 @@ func checkFoldUnchanged(dir, name string, planTime []byte) error {
 type foldRenameGuard struct {
 	name string
 	want []byte
+	// check, when set, re-verifies the store's EFFECTIVE state at the same
+	// pre-rename position — a byte comparison cannot see a referenced file
+	// that moved, which invalidates the link count an earlier check
+	// measured (codex-review round 2).
+	check func(dir string) error
 }
 
 // atomicWriteFoldFile replaces dir/name with want: a temp file in the same
@@ -426,7 +566,7 @@ type foldRenameGuard struct {
 // check refuses this write when the close-path step was abandoned while it
 // ran — an expired step begins no new write. No temporary file remains on
 // any path.
-func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRenameGuard, writesForbidden func() bool) error {
+func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRenameGuard, writesForbidden func() bool, run *foldOnDoneRun) error {
 	if writesForbidden != nil && writesForbidden() {
 		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
 	}
@@ -435,9 +575,21 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 		return fmt.Errorf("memory fold: temp file for %s: %w", name, err)
 	}
 	tmpName := tmp.Name()
+	// Recorded into THIS worker's own state so the card-close caller's
+	// timeout branch can recover the temp file when the one-shot CLI
+	// process would exit before the worker's deferred removal runs
+	// (codex-review round 2). Per-worker with occupancy semantics: a late
+	// worker's cleanup can never clear a newer card's recorded path. The
+	// fold verb passes no run and records nothing.
+	if run != nil {
+		run.temp.set(tmpName)
+	}
 	defer func() {
 		if tmpName != "" {
 			_ = os.Remove(tmpName)
+			if run != nil {
+				run.temp.clearIf(tmpName) // the worker removed it itself
+			}
 		}
 	}()
 	if _, err := tmp.Write(want); err != nil {
@@ -460,10 +612,24 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 	if memoryFoldSeam.mutateDuringWrite != nil {
 		memoryFoldSeam.mutateDuringWrite(dir, name)
 	}
-	// The content re-check is the LAST step before the rename (REQ-MFB-004;
-	// plan.md §G "immediately before each rename"): a concurrent update that
-	// lands during the temp-file preparation aborts here, so the rename
-	// never overwrites it.
+	// Order (codex-review round 2, TestReviewArchiveUpdateDuringEffectiveScan):
+	// the FULL-STORE effective check runs FIRST — it re-reads every topic
+	// file, which takes time, and a MEMORY.md or archive update landing
+	// DURING it would sail past an already-passed byte comparison. The
+	// two-file byte comparison is therefore the LAST step, immediately
+	// before the rename (REQ-MFB-004; plan.md §G "immediately before each
+	// rename"): whatever the effective check's own window let through, the
+	// bytes are judged at the last observable moment.
+	if guard != nil {
+		if guard.check != nil {
+			if memoryFoldSeam.orderProbe != nil {
+				memoryFoldSeam.orderProbe("effective-start")
+			}
+			if err := guard.check(dir); err != nil {
+				return err
+			}
+		}
+	}
 	if err := checkFoldUnchanged(dir, name, planTime); err != nil {
 		return err
 	}
@@ -472,11 +638,17 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 			return err
 		}
 	}
+	if memoryFoldSeam.orderProbe != nil {
+		memoryFoldSeam.orderProbe("bytes-done")
+	}
 	if writesForbidden != nil && writesForbidden() {
 		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
 	}
 	if err := os.Rename(tmpName, filepath.Join(dir, name)); err != nil {
 		return fmt.Errorf("memory fold: rename %s: %w", name, err)
+	}
+	if run != nil {
+		run.temp.clearIf(tmpName) // published — there is nothing to recover
 	}
 	tmpName = ""
 	return nil
@@ -753,8 +925,9 @@ var foldClosedCardMemoryFn = foldClosedCardMemory
 
 // foldOnDoneStepFn is the bounded step body, replaceable so tests can seed a
 // panic inside the recover wrapper (AC-MFB-008 (vi)) without touching a
-// store. The second argument is the abandonment flag of the run that owns
-// the step: once the bound has expired, the step begins no new write.
+// store. The second argument is the run that owns the step: its abandoned
+// flag expires the step's writes, its temp reference lets the caller's
+// timeout branch recover the in-flight temp file.
 var foldOnDoneStepFn = foldOnDoneStep
 
 // foldOnDoneRecorder records the candidate store directories the step
@@ -789,6 +962,12 @@ func (r *foldOnDoneRecorder) snapshot() (stores, opens []string) {
 // memoryFoldOnDoneRec is the active recorder, nil outside the wiring tests.
 var memoryFoldOnDoneRec *foldOnDoneRecorder
 
+// foldOnDoneExit, when non-nil, is closed by the bounded step's goroutine
+// when it returns — including after a deadline-expired abandonment — so a
+// test can synchronize on the worker's exit before restoring test globals
+// the step reads (memoryFoldSeam). Production leaves it nil.
+var foldOnDoneExit chan struct{}
+
 // foldOnDoneGateOpen reads config.EnvMemoryFoldOnDone with OD-2's accepted
 // values — "1" and "true", case-insensitively, trimmed; everything else
 // (unset, empty, "0", "false", "yes") is off. The same vocabulary as the
@@ -811,20 +990,29 @@ func foldClosedCardMemory(cardID string) {
 	if !foldOnDoneGateOpen() {
 		return
 	}
-	// abandoned flips when the bound expires; the running step checks it
-	// before every phase and the write path checks it before every write,
-	// so a step resumed after its deadline cannot begin a write the
-	// abandonment report already promised never to start.
-	var abandoned atomic.Bool
+	// run is THIS card's own state: abandoned flips when the bound expires
+	// (the running step checks it before every phase and the write path
+	// before every write), and temp carries the in-flight temp file's path
+	// for the timeout branch to recover.
+	run := &foldOnDoneRun{}
 	done := make(chan foldOnDoneOutcome, 1)
+	exit := foldOnDoneExit // captured at call time: the NEXT fixture may replace the global while this worker still runs
 	go func() {
+		// Registered first, so it runs LAST: the outcome lands on done
+		// before the exit signal closes — a waiter on the captured exit
+		// channel sees every step read complete.
+		defer func() {
+			if exit != nil {
+				close(exit)
+			}
+		}()
 		summary, err := func() (summary string, err error) {
 			defer func() {
 				if r := recover(); r != nil {
 					err = fmt.Errorf("the fold step panicked: %v", r)
 				}
 			}()
-			return foldOnDoneStepFn(cardID, &abandoned)
+			return foldOnDoneStepFn(cardID, run)
 		}()
 		done <- foldOnDoneOutcome{summary: summary, err: err}
 	}()
@@ -832,11 +1020,79 @@ func foldClosedCardMemory(cardID string) {
 	case out := <-done:
 		foldOnDoneReport(cardID, out)
 	case <-time.After(memoryFoldOnDoneBound):
-		abandoned.Store(true)
+		run.abandoned.Store(true)
+		// Recover the in-flight temp file (codex-review round 2): the
+		// abandoned worker may be parked on a read while holding a
+		// fully-written .moai-fold-*.tmp, and a one-shot CLI process exits
+		// before the worker's deferred removal runs. The path is taken
+		// from THIS run's own state — a later card's worker registering
+		// its own temp file can never clobber an earlier run's recovery
+		// (the sequential-ownership regression). A remove that races a
+		// rename is a harmless ENOENT, and removing a temp file can never
+		// corrupt the store — no reader path touches it.
+		if p := run.temp.take(); p != "" {
+			_ = os.Remove(p)
+		}
 		foldOnDoneReport(cardID, foldOnDoneOutcome{
 			err: fmt.Errorf("abandoned after %s — the store did not answer in time; the step will begin no write", memoryFoldOnDoneBound),
 		})
 	}
+}
+
+// foldOnDoneRun is one bounded fold step's own state: the abandonment flag
+// the caller's timeout sets and the step checks before every write, and the
+// per-worker temp-file reference the timeout branch recovers. Per-worker —
+// never a shared global — because an auto-done close of N cards runs N
+// workers whose lifetimes overlap: a late finisher clearing a shared path
+// would clobber the next card's recoverable temp (codex-review round 2,
+// sequential-ownership regression).
+type foldOnDoneRun struct {
+	abandoned atomic.Bool
+	temp      foldTempRef
+}
+
+// forbidden reports whether the run's bound has expired.
+func (r *foldOnDoneRun) forbidden() bool { return r.abandoned.Load() }
+
+// foldTempRef holds at most one in-flight temp file path with occupancy
+// semantics: take() atomically empties it, clearIf only clears a path it
+// still holds.
+type foldTempRef struct {
+	mu   sync.Mutex
+	path string
+}
+
+func (r *foldTempRef) set(p string) {
+	r.mu.Lock()
+	r.path = p
+	r.mu.Unlock()
+}
+
+// take atomically returns and empties the reference.
+func (r *foldTempRef) take() string {
+	r.mu.Lock()
+	p := r.path
+	r.path = ""
+	r.mu.Unlock()
+	return p
+}
+
+// get returns the currently held path, if any.
+func (r *foldTempRef) get() string {
+	r.mu.Lock()
+	p := r.path
+	r.mu.Unlock()
+	return p
+}
+
+// clearIf empties the reference only when it still holds p — a late
+// worker's cleanup must never clear a newer worker's path.
+func (r *foldTempRef) clearIf(p string) {
+	r.mu.Lock()
+	if r.path == p {
+		r.path = ""
+	}
+	r.mu.Unlock()
 }
 
 // foldOnDoneOutcome is one completed (or recovered) step's report.
@@ -862,10 +1118,12 @@ func foldOnDoneReport(cardID string, out foldOnDoneOutcome) {
 // M3 apply path (never a re-implementation), and returns the success summary
 // line. An empty summary means there was nothing to fold. The recorder, when
 // present, sees every candidate directory and every store-file open. The
-// abandoned flag is checked at every phase boundary and handed to the apply
-// path, which refuses each individual write once the bound has expired.
-func foldOnDoneStep(cardID string, abandoned *atomic.Bool) (string, error) {
-	forbidden := func() bool { return abandoned.Load() }
+// run's abandoned flag is checked at every phase boundary and handed to the
+// apply path, which refuses each individual write once the bound has
+// expired; the run's temp reference records this worker's in-flight temp
+// file for the caller's timeout recovery.
+func foldOnDoneStep(cardID string, run *foldOnDoneRun) (string, error) {
+	forbidden := run.forbidden
 	if forbidden() {
 		return "", fmt.Errorf("the step was abandoned before it started")
 	}
@@ -911,7 +1169,7 @@ func foldOnDoneStep(cardID string, abandoned *atomic.Bool) (string, error) {
 	if forbidden() {
 		return "", fmt.Errorf("the step was abandoned before its write")
 	}
-	if err := applyFold(chosen.Dir, before, comp, forbidden); err != nil {
+	if err := applyFold(chosen.Dir, before, comp, forbidden, run); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("filed %d line(s) of %s into %s (store: %s)",

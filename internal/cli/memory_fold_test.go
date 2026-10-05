@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
@@ -1136,4 +1137,264 @@ func TestMemoryFold_ApplyOrderAndAbort(t *testing.T) {
 	}
 	requireSameStore(t, before5, storeHashes(t, dir5))
 	requireNoTempFiles(t, dir5)
+}
+
+// TestMemoryFold_ArchiveEntryLinkKept is the card-review round-1 P2 (card
+// t1502): a STRONG line carrying BOTH the card link and the archive link —
+// when it is MEMORY.md's only archive link, removing the line unlinks the
+// fold's own destination: after the first apply ArchiveIndexName() returns
+// empty and every subsequent fold refuses. The fold must KEEP the line with
+// that reason instead, so the archive stays linked and later folds keep
+// working.
+func TestMemoryFold_ArchiveEntryLinkKept(t *testing.T) {
+	memory := "# Memory Index\n\n" +
+		"- [t9001 alpha card — done, merged](project_card_t9001_alpha.md) — files into the [archive](project_card_archive_2026_10.md)\n"
+	files := minimalFiles()
+	// The archive index must exist for the selection (§1.5: linked AND
+	// present); minimalFiles carries the three threshold links and the
+	// card's topic file already.
+	files["project_card_archive_2026_10.md"] = minimalArchive()
+	dir := seedFoldStore(t, memory, files)
+
+	// First fold: the STRONG line is kept — removing it would unlink the
+	// archive index.
+	out := runFoldOK(t, "--card", "t9001", "--yes", "--dir", dir)
+	if !strings.Contains(out, "kept 1 line") {
+		t.Errorf("fold output does not report the kept line: %q", out)
+	}
+	if !strings.Contains(out, "unlink the archive index") {
+		t.Errorf("kept reason does not name the archive-unlink hazard: %q", out)
+	}
+	if got := foldRead(t, dir, "MEMORY.md"); !strings.Contains(got, "t9001 alpha card") {
+		t.Errorf("the entry-link line was removed from MEMORY.md — the archive lost its link")
+	}
+
+	// A subsequent fold must still resolve the archive (the reviewer's
+	// refusal repro) and keep reporting the same kept line.
+	out2 := runFoldOK(t, "--card", "t9001", "--yes", "--dir", dir)
+	if strings.Contains(out2, "no archive index") {
+		t.Errorf("the follow-up fold refused although the archive entry link was kept: %q", out2)
+	}
+	requireNoTempFiles(t, dir)
+}
+
+// TestMemoryFold_MoveBeforeDeletionKeepsLine is the card-review round-1 P2
+// (card t1502): a referenced topic file MOVED before the pre-deletion check
+// — the two indexes' bytes still match, but the archive's effective
+// resolved-link count dropped and the moved line's target no longer
+// resolves. The fold must re-run qualification and reachability against the
+// CURRENT store right before the deletion and keep the original line on
+// failure.
+func TestMemoryFold_MoveBeforeDeletionKeepsLine(t *testing.T) {
+	dir := specFixtureCopy(t)
+	memoryFoldSeam = foldTestSeam{mutateDisk: func(storeDir string) {
+		// A concurrent mover renames the card's topic file between the
+		// plan and the apply; the indexes' bytes are untouched.
+		if err := os.Rename(
+			filepath.Join(storeDir, "project_card_t9001_alpha.md"),
+			filepath.Join(storeDir, "project_card_t9001_alpha_moved.md")); err != nil {
+			panic(err)
+		}
+	}}
+	runFoldRefused(t, "--card", "t9001", "--yes", "--dir", dir)
+	memoryFoldSeam = foldTestSeam{}
+	// The original line stays in MEMORY.md — deleting it would strand the
+	// moved card (its new name is linked from no index).
+	if got := foldRead(t, dir, "MEMORY.md"); !strings.Contains(got, line9001) {
+		t.Errorf("the fold removed the planned line although the line's target had moved away")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "project_card_t9001_alpha_moved.md")); err != nil {
+		t.Errorf("the concurrent move did not survive: %v", err)
+	}
+	requireNoTempFiles(t, dir)
+}
+
+// TestMemoryFold_NeverExistedTargetRefusedCleanly is the card-review
+// round-2 P2 (card t1502): a STRONG line whose target NEVER existed is a
+// pre-existing broken link, not a mid-run move — the fold must refuse in
+// the PLAN phase, before the archive gains anything, so the store stays
+// byte-identical and no retry is blocked by a write the refusal already
+// made. The apply-time reachability check alone would append first and
+// refuse after, dirtying the store on every attempt.
+func TestMemoryFold_NeverExistedTargetRefusedCleanly(t *testing.T) {
+	memory := "# Memory Index\n\n" +
+		"- [Archive](project_card_archive_2026_10.md) — closed cards\n" +
+		"- [t9003 gone card — merged?](project_card_t9003_gone.md) — the topic file never existed\n"
+	files := minimalFiles()
+	files[fixtureArchive] = minimalArchive()
+	dir := seedFoldStore(t, memory, files)
+
+	runFoldRefused(t, "--card", "t9003", "--yes", "--dir", dir)
+	// The refusal is clean: the store is byte-identical — no archive line,
+	// no temp file, nothing to unwind.
+	if got := foldRead(t, dir, fixtureArchive); got != minimalArchive() {
+		t.Errorf("the archive was written although the fold refused in the plan phase:\n%q", got)
+	}
+	if got := foldRead(t, dir, "MEMORY.md"); !strings.Contains(got, "t9003 gone card") {
+		t.Errorf("the broken-link line was removed although the fold refused")
+	}
+	// The retry reads the same clean refusal — nothing is stuck halfway.
+	runFoldRefused(t, "--card", "t9003", "--yes", "--dir", dir)
+	if got := foldRead(t, dir, fixtureArchive); got != minimalArchive() {
+		t.Errorf("the retry dirtied the archive:\n%q", got)
+	}
+	requireNoTempFiles(t, dir)
+}
+
+// TestMemoryFold_MoveDuringMemoryPrepKeepsLine is the codex-review round-2
+// P2 (card t1502): the effective-state check ran BEFORE the MEMORY.md temp
+// file was prepared, but the window up to the LAST rename is still open —
+// a mover renaming referenced topic files during the temp preparation
+// invalidates the link count the earlier check measured, while the byte
+// guards still pass. The pre-rename position re-runs the effective
+// verification; on failure the original line stays in MEMORY.md.
+func TestMemoryFold_MoveDuringMemoryPrepKeepsLine(t *testing.T) {
+	dir := specFixtureCopy(t)
+	// Which topic files the fixture archive references: both movers below
+	// must rename files the archive (or the moved line) points at.
+	memoryFoldSeam = foldTestSeam{mutateDuringWrite: func(storeDir, name string) {
+		if name != "MEMORY.md" {
+			return
+		}
+		for _, move := range [][2]string{
+			{"project_card_t9001_alpha.md", "project_card_t9001_alpha_moved.md"},
+			{"feedback_alpha.md", "feedback_alpha_moved.md"},
+		} {
+			from := filepath.Join(storeDir, move[0])
+			if _, err := os.Stat(from); err == nil {
+				if err := os.Rename(from, filepath.Join(storeDir, move[1])); err != nil {
+					panic(err)
+				}
+			}
+		}
+	}}
+	runFoldRefused(t, "--card", "t9001", "--yes", "--dir", dir)
+	memoryFoldSeam = foldTestSeam{}
+	if got := foldRead(t, dir, "MEMORY.md"); !strings.Contains(got, line9001) {
+		t.Errorf("the fold removed the planned line although referenced files moved during the MEMORY.md write")
+	}
+	for _, moved := range []string{"project_card_t9001_alpha_moved.md", "feedback_alpha_moved.md"} {
+		if _, err := os.Stat(filepath.Join(dir, moved)); err != nil {
+			t.Errorf("the concurrent move of %s did not survive: %v", moved, err)
+		}
+	}
+	requireNoTempFiles(t, dir)
+}
+
+// TestReviewArchiveUpdateDuringEffectiveScan is the codex-review round-2 P1
+// ordering regression (card t1502): the effective (full-store) check
+// re-reads every topic file and takes TIME — an archive update landing
+// DURING it must not sail past an already-passed byte comparison. The
+// pre-rename order must therefore be effective-FIRST, bytes-LAST: the
+// reviewer's FIFO-synchronized reproduction (an archive update timed inside
+// the effective scan; the fold succeeded and the update was overwritten)
+// is covered twice here — by the recorded check order itself, and by a
+// functional rerun whose archive edit inside the effective window must
+// abort the rename and survive.
+func TestReviewArchiveUpdateDuringEffectiveScan(t *testing.T) {
+	// Part 1 — the order probe: within one MEMORY.md write the effective
+	// check completes BEFORE the byte comparison.
+	dir := specFixtureCopy(t)
+	var order []string
+	var orderMu sync.Mutex
+	memoryFoldSeam = foldTestSeam{
+		orderProbe: func(stage string) {
+			orderMu.Lock()
+			defer orderMu.Unlock()
+			order = append(order, stage)
+		},
+	}
+	runFoldOK(t, "--card", "t9001", "--yes", "--dir", dir)
+	memoryFoldSeam = foldTestSeam{}
+	orderMu.Lock()
+	got := append([]string(nil), order...)
+	orderMu.Unlock()
+	if len(got) < 2 {
+		t.Fatalf("no pre-rename probe events recorded: %v", got)
+	}
+	// Each write's effective check must complete before its byte check; the
+	// LAST bytes-done therefore trails the LAST effective-start.
+	lastEffective, lastBytes := -1, -1
+	for i, stage := range got {
+		switch stage {
+		case "effective-start":
+			lastEffective = i
+		case "bytes-done":
+			lastBytes = i
+		}
+	}
+	if lastEffective < 0 || lastBytes < 0 || lastEffective > lastBytes {
+		t.Errorf("pre-rename check order = %v, want the effective check BEFORE the byte comparison", got)
+	}
+
+	// Part 2 — the functional window, injected deterministically: the
+	// orderProbe's "effective-start" fires at the top of the pre-rename
+	// effective check, so mutating the archive there IS an update landing
+	// inside the effective window. The effective check is blind to index
+	// bytes, so only the LAST (byte) check can catch this — the fold must
+	// abort and the concurrent update must survive.
+	dir2 := specFixtureCopy(t)
+	archivePath := filepath.Join(dir2, fixtureArchive)
+	memoryFoldSeam = foldTestSeam{
+		orderProbe: func(stage string) {
+			if stage != "effective-start" {
+				return
+			}
+			data, err := os.ReadFile(archivePath)
+			if err != nil {
+				panic(err)
+			}
+			concurrent := append([]byte(nil), data...)
+			concurrent = append(concurrent, "- [concurrent archive writer](feedback_alpha.md) — landed mid-scan\n"...)
+			if err := os.WriteFile(archivePath, concurrent, 0o600); err != nil {
+				panic(err)
+			}
+		},
+	}
+	runFoldRefused(t, "--card", "t9001", "--yes", "--dir", dir2)
+	memoryFoldSeam = foldTestSeam{}
+	// The concurrent update survives — the rename never overwrote it.
+	if got := foldRead(t, dir2, fixtureArchive); !strings.Contains(got, "landed mid-scan") {
+		t.Errorf("the concurrent archive update did not survive the fold's rename")
+	}
+	if _, statErr := os.Stat(archivePath); statErr != nil {
+		t.Errorf("the archive index vanished: %v", statErr)
+	}
+	requireNoTempFiles(t, dir2)
+}
+
+// TestMemoryFold_DuplicateStrongLineFiledOnce is the codex-review round-2
+// P2 (card t1502): the same STRONG line appearing TWICE in MEMORY.md with
+// neither copy in the archive — the dedupe set must include the lines THIS
+// fold has already planned to append, so the second copy is removed
+// without a second append (the archive carries exactly ONE copy; a
+// different wording on the same targets is still kept with its reason).
+func TestMemoryFold_DuplicateStrongLineFiledOnce(t *testing.T) {
+	dir := specFixtureCopy(t)
+	// Duplicate the t9001 STRONG line: a second identical copy goes to the
+	// end of MEMORY.md, and a same-targets different-wording copy between
+	// the archive link and it exercises the kept arm.
+	extra := line9001 + "\n" +
+		"- [t9001 alpha card — done, merged](project_card_t9001_alpha.md) — different wording, same targets\n"
+	memPath := filepath.Join(dir, "MEMORY.md")
+	data, err := os.ReadFile(memPath)
+	if err != nil {
+		t.Fatalf("read MEMORY.md: %v", err)
+	}
+	if err := os.WriteFile(memPath, append(data, []byte(extra)...), 0o600); err != nil {
+		t.Fatalf("duplicate the strong line: %v", err)
+	}
+
+	out := runFoldOK(t, "--card", "t9001", "--yes", "--dir", dir)
+	if n := countArchiveLines(t, dir, line9001); n != 1 {
+		t.Errorf("the archive carries %d copies of the identical line, want exactly 1\noutput: %s", n, out)
+	}
+	if got := foldRead(t, dir, "MEMORY.md"); strings.Contains(got, line9001) {
+		t.Errorf("the identical line stayed in MEMORY.md — both copies should have been folded")
+	}
+	// The different-wording copy is kept in MEMORY.md with its reason.
+	if got := foldRead(t, dir, "MEMORY.md"); !strings.Contains(got, "different wording, same targets") {
+		t.Errorf("the different-wording copy was folded although its wording differs")
+	}
+	requireNoTempFiles(t, dir)
 }

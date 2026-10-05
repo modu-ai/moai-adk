@@ -234,6 +234,10 @@ func AuditLinkage(dir string) ([]AuditFinding, error) {
 	for _, n := range names {
 		present[n] = true
 	}
+	// The index itself is present — a MEMORY.md link naming MEMORY.md (a
+	// store whose only file is the index) resolves; reporting it as
+	// dangling reported a file that exists (codex-review round 2).
+	present[indexFileName] = true
 
 	secondary := secondaryIndexTargets(dir, names, present)
 

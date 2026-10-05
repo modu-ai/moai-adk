@@ -673,7 +673,11 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// review-diff base measurement, same count — only the coordinate moved.
 		"mcp_review_material.go:175": true,
 		"todo_landed.go:231":         true,
-		"todo_autodone.go:349":       true,
+		// Re-measured at card t1502: M4's card-close wiring added three lines
+		// above this comparison, moving it from :349. Same single ancestry
+		// comparison (the auto-done scan's merge-base --is-ancestor), same
+		// count — only the coordinate moved.
+		"todo_autodone.go:352": true,
 		// SPEC-CODEX-GATE-SCOPE-001 (card t1383): the card-diff BASE
 		// measurement — gitflow-lane-protocol §8 requires the gate to recompute
 		// `git merge-base develop HEAD` per evaluation. It selects which
