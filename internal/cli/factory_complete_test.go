@@ -178,10 +178,12 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 		if c.RemeasurePath != remeasure {
 			t.Errorf("remeasure path = %q, want %q", c.RemeasurePath, remeasure)
 		}
-		// Release is the lane's NEXT step: complete itself does not release.
+		// P2-6 (card-review r1): the adoption releases the window after its
+		// transitions — step 4's deferred release and step 2 now behave the
+		// same, and the queued successor (if any) is what gets promoted.
 		lock := sdWindow(t, root)
-		if !lock.Held() || lock.SessionID != "sess-lane-1" {
-			t.Errorf("window after complete = held=%v by %q, want still held by sess-lane-1", lock.Held(), lock.SessionID)
+		if lock.Held() {
+			t.Errorf("window after complete = still held by %q; the adoption releases after its transitions", lock.SessionID)
 		}
 	})
 
@@ -362,26 +364,38 @@ func TestSD_AC025_IntegrationWindowSerializes(t *testing.T) {
 	sdHoldWindow(t, root, "sess-lane-1", "lane-1", "develop", factory.BranchSourceConfig, integWT, "t1")
 	sdLaneEnv(t, "lane-2", "")
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-2")
+	// REQ-MWQ-019 step 3: each lane's complete requires the re-measure
+	// record keyed to its candidate tree — both lanes measure before the
+	// window (the re-measure is OUTSIDE the window, card t1479).
+	if _, err := factory.RunRemeasure(root, cards[0].wt, "develop", "true"); err != nil {
+		t.Fatalf("lane-1 remeasure: %v", err)
+	}
+	if _, err := factory.RunRemeasure(root, cards[1].wt, "develop", "true"); err != nil {
+		t.Fatalf("lane-2 remeasure: %v", err)
+	}
 	_, _, err := runFactory(t, "complete", "t2", "--run", fcRun)
 	if err == nil || !strings.Contains(err.Error(), "lane-1") {
 		t.Fatalf("lane-2 complete against lane-1's window: err = %v, want a refusal naming lane-1", err)
 	}
 	sdCardUnchanged(t, "serialized lane-2", root, "t2", before2)
 
-	// lane-1 completes on its own window, then releases.
+	// lane-1 completes on its own window; complete itself releases the
+	// window after its transitions (card-review r1 P2-6).
 	sdLaneEnv(t, "lane-1", "")
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
 	if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {
 		t.Fatalf("lane-1 complete: %v", err)
 	}
 	merge1 := fcCard(t, root, "t1").MergeSHA
-	if _, err := factory.ReleaseIntegrationLock(root, "sess-lane-1", 0, false); err != nil {
-		t.Fatalf("release: %v", err)
-	}
 
-	// lane-2 absorbs develop into its card branch (the lane duty), completes,
-	// and both merges are on develop in the integration worktree.
+	// lane-2 absorbs develop into its card branch (the lane duty) — which
+	// invalidates lane-2's candidate tree, so lane-2 re-measures on the
+	// absorbed tree (the re-measure-and-re-acquire cycle) — completes, and
+	// both merges are on develop in the integration worktree.
 	fcGit(t, cards[1].wt, "merge", "-q", "--no-ff", "-m", "absorb develop", "develop")
+	if _, err := factory.RunRemeasure(root, cards[1].wt, "develop", "true"); err != nil {
+		t.Fatalf("lane-2 remeasure after absorb: %v", err)
+	}
 	sdLaneEnv(t, "lane-2", "")
 	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-2")
 	if _, _, err := runFactory(t, "complete", "t2", "--run", fcRun); err != nil {
@@ -397,8 +411,10 @@ func TestSD_AC025_IntegrationWindowSerializes(t *testing.T) {
 			t.Errorf("merge %s not an ancestor of develop: %s", sha, out)
 		}
 	}
-	// The window is now held by lane-2's session (release stays its next step).
-	if lock := sdWindow(t, root); !lock.Held() || lock.SessionID != "sess-lane-2" {
-		t.Errorf("window after lane-2 complete = held=%v by %q, want held by sess-lane-2", lock.Held(), lock.SessionID)
+	// P2-6 (card-review r1): complete releases the window after its
+	// transitions on BOTH paths — the queued successor (if any) is what is
+	// promoted, and the window reads free.
+	if lock := sdWindow(t, root); lock.Held() {
+		t.Errorf("window after lane-2 complete = still held by %q; complete releases after its transitions", lock.SessionID)
 	}
 }

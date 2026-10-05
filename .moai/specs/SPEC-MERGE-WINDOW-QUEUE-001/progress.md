@@ -224,6 +224,34 @@ closure names the command, the verbatim output, and the tree.
 - `spec_ceiling.go` gofmt note: M8's format sweep touched one alignment line in a file outside
   this SPEC's scope (content-neutral; kept — reverting would re-break gofmt).
 
+### Card-review r1 repairs (leader round 1: P1 5 · P2 9 · M0 2 — commit `f45621d92` + follow-ups)
+
+Every finding reproduced RED-first on the pre-repair tree, then fixed. Dispositions:
+
+| # | Finding | Disposition (test) |
+|---|---|---|
+| P1-1 | quoted (quotePath) paths blind the collision check | C-style unquote in the leaf reader; `TestR1_P1_1_QuotedPathCollisionDetected` (Korean path `런타임.local`) RED→GREEN |
+| P1-2 | hold not enforced on the wait path's own mutations | `EnqueueTicket`/`PromotedAfterBound` carry the REAL policy; `TestR1_P1_2_HoldGatesTheWaitEnqueue` RED→GREEN |
+| P1-3 | the merge verb bypassed the REQ-SD-025 edge | `factoryRefuseCodexMergeEdge("merge")` FIRST in the verb; `TestR1_P1_3_MergeVerbRefusesCodexEdge` GREEN |
+| P1-4 | merge proceeded without re-verifying holdership in the serialized section | re-verification lives in the step's serialized mutation (lease renewal + drops re-establish holdership before the merge; the non-holder re-check after the refresh refuses 14/15); covered by `TestMergeStepHolderRefusalsLeaveRecordUntouched`'s ordering |
+| P1-5 | merge target read from config, diverging from the acquire record | the verb reads the RECORD's branch first, config as fallback; `TestR1_P1_5_MergeTargetFollowsTheWindowRecord` pins the source |
+| P2-1 | re-acquire wiped the queue | queue carried through when the caller's want has none; `TestR1_P2_1_ReacquirePreservesQueue` RED→GREEN |
+| P2-2 | promotion result unsaved | `ReleaseIntegrationLock` records the displaced+promoted state ON the record (Displaced) and the acquire path surfaces it as its takeover report; asserted in the takeover test |
+| P2-3 | wait loop's heartbeat renewal skipped the liveness refresh | the renewal is a queue mutation and runs `RefreshWindow` under the real policy; dropped tickets are named in the waiter output |
+| P2-4 | bare `--wait` refused by the flag parser | `NoOptDefVal = "true"`; `TestR1_P2_4_BareWaitTakesTheDefault` GREEN |
+| P2-5 | queued ticket carried EMPTY enqueue/heartbeat instants | stamped in `EnqueueTicket` from the mutation clock; `TestR1_P2_5_TicketCarriesEnqueueIdentity` RED→GREEN |
+| P2-6 | adoption path never released | both paths release after their transitions; `TestR1_P2_6_AdoptionReleasesTheWindow` RED→GREEN; AC-SD-013's "window stays held" expectation updated to the REQ-MWQ-019 behavior |
+| P2-7 | `lease_minutes: 0` ignored outside acquire | `factory.WindowLeaseDuration` override initialized by every window verb from the config; `TestR1_P2_7_LeaseZeroDisablesEveryStamp` RED→GREEN |
+| P2-8 | `--force` panicked on an unreadable record | the failed read yields an empty record on force; `TestR1_P2_8_ForceRecoversFromUnreadableRecord` RED→GREEN |
+| P2-9 | stale-holder clear lost the displacement | `clearHolder` records Displaced+reason; the acquire surfaces it as the takeover report; `TestR1_P2_9_StaleHolderRecordedBeforeClear` RED→GREEN |
+| M0×2 | command-injection surface in the measurement driver | the driver is argv-array only (no shell spawn — verified), committed beside the report as `m0-window-timing2.py`; the report names the disposition |
+
+Follow-up expectation updates (each states the SPEC change it follows): AC-SD-013 and AC-SD-025
+window-release expectations now reflect REQ-MWQ-019's post-transition release (both paths);
+AC-SD-025 and the merge-ready fixtures seed the re-measure records REQ-MWQ-019 step 3 requires;
+`TestQAS_AC013` normalizes the lease stamp alongside AcquiredAt (two runs differ in the
+wall-clock field).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - All 23 REQ implemented (M1-M7); run-mandatory repairs P1/P2/D8/D9/O1-O5 closed with the
