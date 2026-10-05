@@ -342,6 +342,11 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 				continue
 			}
 			_, _ = fmt.Fprintf(out, "done %s\n", card.ID)
+			// The archive Mutate returned nil — the queue write is
+			// committed and the lock released: the gated, bounded,
+			// fail-open memory fold runs outside the mutation window
+			// (AC-MFB-008 (iv)).
+			foldClosedCardMemoryFn(card.ID)
 			writeAutoClearGuidance(out, card.ID, opts.sessionID)
 			continue
 		}
