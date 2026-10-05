@@ -108,5 +108,40 @@ worktree_note: >
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-05T13:02:00+09:00
+sync_commit_sha: pending-backfill-sync   # D3 backfill window — a commit cannot cite its own hash; the real SHA is backfilled in the following commit
+sync_status: complete
+spec_version_at_close: "0.4.1"
+frontmatter_status_transitions:
+  draft_to_in_progress: e7c564b38        # manager-develop, run STEP 0
+  in_progress_to_implemented_to_completed: pending-backfill-sync   # this sync commit, manager-docs (allowed scope: spec.md status + updated only — no body change; updated already 2026-10-05, unchanged)
+sync_phase_changes:
+  - spec.md frontmatter status in-progress -> completed (status only; no spec/plan/acceptance body modification)
+  - progress.md §E.4 authored (this section)
+  - CHANGELOG.md [Unreleased] Added entry (one, English, house SPEC-link style)
+  - template-mirror disposition recorded (no additional mirror required — see below)
+b12_self_tests:
+  pre_emission_grep: "grep -c 'SPEC-MOAI-HYGIENE-001' CHANGELOG.md -> 0 (no prior entry; emission allowed)"
+  ac_count_match: "MOAI-AC-COUNTER over acceptance.md (tier M source) -> live=16 excluded=0 ambiguous=0; CHANGELOG entry references 16 ACs (AC-HYG-001..016)"
+  file_path_verification: "ls-verified before commit: .moai/specs/SPEC-MOAI-HYGIENE-001/spec.md, internal/hygiene/ (14 files), internal/cli/clean.go, internal/hook/session_start_hygiene.go, internal/hook/session_start.go, internal/config/defaults.go, internal/template/templates/.moai/config/sections/workflow.yaml"
+changelog_entry_position: "[Unreleased] -> ### Added -> first entry (newest-first house order)"
+template_mirror_decision: >
+  No additional mirror required. The run (M4) already shipped the neutral
+  workflow.hygiene block to the distributed template
+  (internal/template/templates/.moai/config/sections/workflow.yaml, hygiene:
+  block — six keys, mode: report default). No .tmpl variant of workflow.yaml
+  exists anywhere in the tree (only git-strategy/language/lsp/quality/project
+  carry .tmpl forms), so the convention's carrier is the plain template file
+  and it is already in place. The dev tree's own
+  .moai/config/sections/workflow.yaml intentionally omits the keys: runtime
+  defaults (internal/config/defaults.go) apply, and the sync phase does not
+  extend the dev-tree runtime config.
+mx_sync_substep: "M6 landed the seam annotations (@MX:ANCHOR x5, @MX:WARN+REASON x3, @MX:NOTE x1 in internal/hygiene); stale @MX:TODO scan over internal/hygiene + internal/cli/clean.go -> 0 hits"
+sync_verification:
+  spec_lint: "go run ./cmd/moai spec lint SPEC-MOAI-HYGIENE-001 -> exit 0, No findings (re-run post-transition)"
+  gofmt: "gofmt -l internal/hygiene internal/cli -> empty"
+  cross_references: "related_specs SPEC-OBSERVE-HYGIENE-001 and SPEC-WORKTREE-SWEEP-001 both present under .moai/specs/; §E.2-cited in-tree evidence paths resolve"
+  real_moai_untouched: "sync phase executed no GC/rotation against the real repository (report/dry-run only; writes confined to SPEC artifacts + CHANGELOG)"
+```
 

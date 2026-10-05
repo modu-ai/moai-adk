@@ -2,7 +2,7 @@
 id: SPEC-MOAI-HYGIENE-001
 title: ".moai Hygiene — Size-Based Audit-Log Rotation and Finished-Session State GC"
 version: "0.4.1"
-status: in-progress
+status: completed
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
