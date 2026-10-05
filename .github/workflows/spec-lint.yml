@@ -93,9 +93,24 @@ jobs:
             # The develop-tip snapshot match died with the develop ref (GitHub
             # Flow cutover): a release/* PR now targets main directly, and the
             # release discipline's own re-design belongs to the cutover card,
-            # not to this lint gate. Inherited-warning reporting stays.
-            strict=false
-            reason="release PR targets main; report inherited warnings while blocking errors"
+            # not to this lint gate. The relaxation is NOT a branch-name
+            # bypass: a release PR that changes SPEC inputs or the linter gets
+            # the full baseline gate; one that does not keeps the
+            # inherited-warning reporting (same case list as the push branch).
+            base_sha=$(git rev-parse origin/main)
+            spec_changed=false
+            while IFS= read -r path; do
+              case "$path" in
+                .moai/specs/*|internal/spec/*|.moai/spec-lint-baseline.json) spec_changed=true ;;
+              esac
+            done <<< "$(git diff --name-only --no-renames "$base_sha" "$PR_HEAD_SHA")"
+            if [[ "$spec_changed" == "true" ]]; then
+              strict=true
+              reason="release PR changes SPEC inputs or the spec linter; baseline gate applies"
+            else
+              strict=false
+              reason="release PR leaves SPEC inputs and the spec linter unchanged; report inherited warnings while blocking errors"
+            fi
           elif [[ "$EVENT_NAME" == "push" && "$REF_NAME" == "develop" ]]; then
             if [[ -z "$EVENT_BEFORE" || "$EVENT_BEFORE" =~ ^0+$ ]]; then
               reason="develop comparison base is unavailable; fail closed with strict lint"
