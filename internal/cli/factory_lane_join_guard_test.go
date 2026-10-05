@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"context"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -110,5 +111,93 @@ func TestLaneJoinRefusesWorktreeRoot(t *testing.T) {
 	}
 	if err := refuseLaneJoinFromWorktreeAt(t.TempDir()); err != nil {
 		t.Fatalf("a non-repository cwd must fail open: %v", err)
+	}
+}
+
+// TestLaneJoinRefusesForeignRepoWorktree — the gate's scope is the session's
+// linked-worktree state, not the repository (card t1513 review P3-2): cwd
+// inside a linked worktree of a DIFFERENT repository is refused the same way,
+// while that repository's own main checkout joins.
+func TestLaneJoinRefusesForeignRepoWorktree(t *testing.T) {
+	root := t.TempDir()
+	run := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+		return string(out)
+	}
+	run("init", "-q")
+	run("config", "user.email", "t@example.com")
+	run("config", "user.name", "t")
+	run("commit", "--allow-empty", "-qm", "seed")
+	link := filepath.Join(t.TempDir(), "foreign-linked")
+	if out, err := exec.Command("git", "-C", root, "worktree", "add", "-b", "wt", link).CombinedOutput(); err != nil {
+		t.Fatalf("worktree add: %v: %s", err, out)
+	}
+	if err := refuseLaneJoinFromWorktreeAt(root); err != nil {
+		t.Fatalf("the foreign repository's own main checkout must join: %v", err)
+	}
+	err := refuseLaneJoinFromWorktreeAt(link)
+	if err == nil {
+		t.Fatal("a foreign-repo linked-worktree cwd must be refused")
+	}
+	if !strings.HasPrefix(err.Error(), laneJoinWorktreeSentinel) {
+		t.Fatalf("refusal %q lacks the %s sentinel", err, laneJoinWorktreeSentinel)
+	}
+}
+
+// TestFactoryNextRefusesAgainAfterLaterAssign — the reversal path the
+// predicate comment promises (card t1513 review P3-3): an ownerless picked
+// row releases the slot and a lease goes through; a later T2 assign sets the
+// owner and the row holds the slot again.
+func TestFactoryNextRefusesAgainAfterLaterAssign(t *testing.T) {
+	root, _ := flSerialPair(t)
+	nmIsolatedWorktrees(t, "t1", "t2")
+	ctx := context.Background()
+	now := time.Now()
+
+	// The ownerless picked row: recorded the way `factory assign` without
+	// --to leaves it.
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	card, err := db.RecordPicked(ctx, fcRun, "t1453", homestate.CardFields{}, "assign", now)
+	if err != nil {
+		t.Fatalf("record picked: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close factory: %v", err)
+	}
+
+	nmLaneEnv(t, "lane-1", "")
+	if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1"); err != nil {
+		t.Fatalf("an ownerless picked row must not refuse the lease: %v stderr=%q", err, stderr)
+	}
+
+	// T2 assign sets the owner — the row holds again.
+	picked := fcCard(t, root, "t1453")
+	db, err = homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("reopen factory: %v", err)
+	}
+	card, err = db.Transition(ctx, homestate.TransitionRequest{RunID: fcRun, CardID: "t1453", To: homestate.CardAssigned, ExpectedVersion: picked.Version, Actor: "assign", Owner: "lane-2", Now: now})
+	if err != nil {
+		t.Fatalf("assign transition: %v", err)
+	}
+	if card.State != homestate.CardAssigned || card.OwnerLabel != "lane-2" {
+		t.Fatalf("row after assign: state=%s owner=%q", card.State, card.OwnerLabel)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close factory: %v", err)
+	}
+
+	if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t2"); err == nil {
+		t.Fatalf("the assigned row must hold the slot again: stderr=%q", stderr)
+	} else if !strings.Contains(stderr, "refused serial-slot") {
+		t.Fatalf("refusal is not serial-slot: %v stderr=%q", err, stderr)
 	}
 }
