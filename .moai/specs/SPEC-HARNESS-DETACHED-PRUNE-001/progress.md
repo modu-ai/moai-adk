@@ -44,7 +44,7 @@ card: t1497
 phase: sync
 sync_status: complete
 sync_complete_at: 2026-10-06
-sync_commit_sha: pending-backfill  # D3 placeholder — a commit cannot cite its own SHA; backfilled in the immediately following commit
+sync_commit_sha: 6ced096f0ed72f75b54371eb430c85d1314686b2  # D3 backfilled — written as pending-backfill inside the sync commit itself (a commit cannot cite its own SHA), resolved here
 sync_branch: WT-harness-prune-detached
 frontmatter_status_transitions:
   implemented_to_completed: carried-by-sync-commit  # status + updated only, spec.md frontmatter
