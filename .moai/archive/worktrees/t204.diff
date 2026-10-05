@@ -1,0 +1,76 @@
+diff --git a/docs-site/content/en/advanced/codex-dual-harness.md b/docs-site/content/en/advanced/codex-dual-harness.md
+index ee6e1f062..114a74632 100644
+--- a/docs-site/content/en/advanced/codex-dual-harness.md
++++ b/docs-site/content/en/advanced/codex-dual-harness.md
+@@ -61,6 +61,14 @@ Unadapted events are not silently ignored — they are **refused**. An unknown e
+ 
+ `RenderHooks` writes all eight adapted event commands into the user's `.codex/hooks.json`; `moai init --llm codex|both` creates that wiring, and `moai tool enable codex` adds or refreshes it in an existing project.
+ 
++## Desktop apps and the v3.1.3 release gate
++
++For a local Codex app session, open the project that contains the generated `.codex/hooks.json` and `.codex/config.toml`. Codex loads project hooks and configuration only after the project is trusted; review the hooks with `/hooks`, and approve them again if their definitions change. Run `moai doctor` in the same project to inspect the MoAI wiring. The `moai` executable must be available to the app's execution environment. See the [Codex hooks documentation](https://developers.openai.com/codex/hooks) for the project trust rules.
++
++Claude Code for Desktop's **Local** Code session reads the same project `CLAUDE.md`, `.mcp.json`, hooks, skills, and settings as the CLI. Open the initialized project in its Code tab and make sure `moai` is available in that session's environment. An SSH session runs on the remote machine, so that machine needs the project and `moai` installation. See [Claude Code Desktop configuration](https://code.claude.com/docs/en/desktop#shared-configuration).
++
++These are setup paths, not a claim that the v3.1.3 desktop release gate has passed. Release remains on hold until the operator completes their own MoAI, Codex, and both desktop-app tests and declares the result.
++
+ ## Next steps
+ 
+ - [Multi-model Audit Convergence](/en/advanced/multi-model-audit/) — the path where the codex backend already participates in audits today
+diff --git a/docs-site/content/ja/advanced/codex-dual-harness.md b/docs-site/content/ja/advanced/codex-dual-harness.md
+index 262cf7187..cad29d643 100644
+--- a/docs-site/content/ja/advanced/codex-dual-harness.md
++++ b/docs-site/content/ja/advanced/codex-dual-harness.md
+@@ -61,6 +61,14 @@ codex-cli は Claude Code の `.claude/skills/` を読まないため、スキ
+ 
+ `RenderHooks` は、適応済みの 8 イベントのコマンドをユーザーの `.codex/hooks.json` に書き込みます。`moai init --llm codex|both` がこの配線を作成し、既存プロジェクトでは `moai tool enable codex` で追加または更新します。
+ 
++## デスクトップアプリと v3.1.3 のリリース条件
++
++Codex アプリのローカルセッションでは、生成された `.codex/hooks.json` と `.codex/config.toml` を含むプロジェクトを開きます。Codex がプロジェクトのフックと設定を読み込むには、プロジェクトの信頼が必要です。`/hooks` でフックを確認し、定義が変わった場合は再承認してください。同じプロジェクトで `moai doctor` を実行すると MoAI の配線状態を確認できます。アプリの実行環境から `moai` コマンドを実行できることも必要です。信頼の条件は [Codex のフック資料](https://developers.openai.com/codex/hooks)を参照してください。
++
++Claude Code デスクトップアプリの **Local** Code セッションは、CLI と同じプロジェクトの `CLAUDE.md`、`.mcp.json`、フック、スキル、設定を読み込みます。初期化済みのプロジェクトを Code タブで開き、そのセッションから `moai` を実行できることを確認してください。SSH セッションは接続先で動くため、接続先にもプロジェクトと `moai` が必要です。詳しくは [Claude Code Desktop の設定](https://code.claude.com/docs/en/desktop#shared-configuration)を参照してください。
++
++ここで示したのは設定手順であり、v3.1.3 のデスクトップ版リリース判定が完了したという意味ではありません。運用者自身が MoAI、Codex、両デスクトップアプリを検証し、結果を宣言するまでリリースは保留です。
++
+ ## 次のステップ
+ 
+ - [マルチモデル監査収束](/ja/advanced/multi-model-audit/) — codex バックエンドが今日すでに監査に参加している経路
+diff --git a/docs-site/content/ko/advanced/codex-dual-harness.md b/docs-site/content/ko/advanced/codex-dual-harness.md
+index caf4ed5c1..86b39bfeb 100644
+--- a/docs-site/content/ko/advanced/codex-dual-harness.md
++++ b/docs-site/content/ko/advanced/codex-dual-harness.md
+@@ -61,6 +61,14 @@ codex-cli는 Claude Code의 `.claude/skills/`를 읽지 않으므로, 스킬을
+ 
+ `RenderHooks`가 적응된 이벤트 명령 여덟 개를 사용자 `.codex/hooks.json`에 기록합니다. `moai init --llm codex|both`가 이 배선을 만들고, 기존 프로젝트에서는 `moai tool enable codex`로 추가하거나 갱신합니다.
+ 
++## 데스크톱 앱과 v3.1.3 배포 조건
++
++Codex 앱의 로컬 세션에서는 생성된 `.codex/hooks.json`과 `.codex/config.toml`이 있는 프로젝트를 엽니다. Codex는 프로젝트를 신뢰한 뒤에야 프로젝트 훅과 설정을 읽습니다. `/hooks`에서 훅을 확인하고, 훅 정의가 바뀌면 다시 승인하세요. 같은 프로젝트에서 `moai doctor`를 실행하면 MoAI 배선 상태를 점검할 수 있습니다. 앱의 실행 환경에서도 `moai` 명령을 찾을 수 있어야 합니다. 프로젝트 신뢰 규칙은 [Codex 훅 문서](https://developers.openai.com/codex/hooks)를 참고하세요.
++
++Claude Code 데스크톱 앱의 **Local** Code 세션은 CLI와 프로젝트의 `CLAUDE.md`, `.mcp.json`, 훅, 스킬, 설정을 함께 사용합니다. 초기화한 프로젝트를 Code 탭에서 열고 해당 세션에서 `moai`를 실행할 수 있는지 확인하세요. SSH 세션은 원격 머신에서 실행되므로 그 머신에도 프로젝트와 `moai`가 필요합니다. 자세한 내용은 [Claude Code 데스크톱 설정](https://code.claude.com/docs/en/desktop#shared-configuration)을 참고하세요.
++
++위 내용은 설정 방법이며 v3.1.3 데스크톱 배포 검증을 마쳤다는 뜻은 아닙니다. 운영자가 직접 MoAI·Codex·두 데스크톱 앱을 시험하고 결과를 선언할 때까지 배포는 보류됩니다.
++
+ ## 다음 단계
+ 
+ - [다중 모델 감사 수렴](/ko/advanced/multi-model-audit/) — codex 백엔드가 감사에 참여하는 지금의 경로
+diff --git a/docs-site/content/zh/advanced/codex-dual-harness.md b/docs-site/content/zh/advanced/codex-dual-harness.md
+index ebcbb71ba..62fd5c5e4 100644
+--- a/docs-site/content/zh/advanced/codex-dual-harness.md
++++ b/docs-site/content/zh/advanced/codex-dual-harness.md
+@@ -61,6 +61,14 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
+ 
+ `RenderHooks` 会把 8 个已适配事件的命令写入用户的 `.codex/hooks.json`。`moai init --llm codex|both` 创建这套配线;已有项目可用 `moai tool enable codex` 添加或刷新。
+ 
++## 桌面应用与 v3.1.3 发布条件
++
++在 Codex 应用的本地会话中，打开包含已生成的 `.codex/hooks.json` 和 `.codex/config.toml` 的项目。Codex 只有在项目信任后才会加载项目钩子和配置。使用 `/hooks` 检查钩子；定义发生变化后，需要重新批准。在同一项目中运行 `moai doctor` 可以检查 MoAI 配线状态。应用的运行环境还必须能找到 `moai` 命令。项目信任规则见 [Codex 钩子文档](https://developers.openai.com/codex/hooks)。
++
++Claude Code 桌面应用的 **Local** Code 会话与 CLI 共用项目中的 `CLAUDE.md`、`.mcp.json`、钩子、技能和设置。在 Code 标签页打开已初始化的项目，并确认该会话能运行 `moai`。SSH 会话在远程机器上运行，因此远程机器也需要项目和 `moai`。详见 [Claude Code Desktop 配置说明](https://code.claude.com/docs/en/desktop#shared-configuration)。
++
++以上只是配置步骤，不代表 v3.1.3 的桌面应用发布验证已经完成。在运营者亲自完成 MoAI、Codex 和两款桌面应用的测试并宣布结果之前，发布仍然暂停。
++
+ ## 下一步
+ 
+ - [多模型审计收敛](/zh/advanced/multi-model-audit/) —— codex 后端如今已经参与审计的路径

@@ -3,7 +3,6 @@
 Purpose: Specification-driven domain-driven development workflow ensuring clear requirements before implementation through GEARS format (current; EARS retained as legacy reference for 6-month backward-compat) and ANALYZE-PRESERVE-IMPROVE cycles.
 
 Version: 3.0.0 (DDD Migration)
-Last Updated: 2026-01-17
 
 ---
 
@@ -186,5 +185,4 @@ Commands:
 ---
 
 Version: 3.0.0
-Last Updated: 2026-01-17
 Status: Production Ready

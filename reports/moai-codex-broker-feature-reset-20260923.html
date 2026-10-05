@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>MoAI for Codex 브로커 기능 재정의</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <style>
+  :root{color-scheme:light;--bg:#faf9f5;--ink:#17202a;--muted:#52606d;--line:#d9ddd9;--accent:#b95334;--panel:#fff;--soft:#f1ece3}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}body{max-width:1020px;margin:0 auto;padding:38px 34px 90px;background:var(--bg);color:var(--ink);font:16px/1.72 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;word-break:keep-all}
+  h1,h2,h3{line-height:1.3;letter-spacing:-.035em}h1{font-size:2.35rem;margin:0 0 18px}h2{font-size:1.55rem;margin:58px 0 18px;padding:0 0 11px;border-bottom:2px solid var(--accent)}h3{font-size:1.15rem;margin:34px 0 12px;color:#8f3d2a}
+  p{margin:12px 0}strong{font-weight:700}a{color:#9a442d;text-decoration-thickness:1px;text-underline-offset:3px}a:hover{color:#652315}
+  #TOC{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 24px;margin:28px 0 42px;box-shadow:0 8px 28px #17202a0b}#TOC ul{margin:5px 0;padding-left:22px}#TOC a{text-decoration:none}
+  table{border-collapse:collapse;width:100%;margin:20px 0 30px;font-size:.9rem;background:var(--panel)}th,td{border:1px solid var(--line);padding:11px 12px;text-align:left;vertical-align:top}th{background:var(--soft);font-weight:700}tr:nth-child(even) td{background:#fdfcf9}
+  code{background:#ece9e2;border-radius:4px;padding:2px 4px;font:0.87em/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}pre{background:#202933;color:#f6f5f0;padding:18px 20px;border-radius:10px;overflow:auto;white-space:pre-wrap}pre code{padding:0;background:none;color:inherit;word-break:normal}
+  blockquote{border-left:4px solid var(--accent);padding:4px 18px;margin:20px 0;background:#f3eee7;color:var(--muted)}li{margin:5px 0}hr{border:0;border-top:1px solid var(--line);margin:38px 0}
+  @media(max-width:700px){body{padding:25px 17px 65px;font-size:15px}h1{font-size:1.8rem}table{display:block;overflow-x:auto;white-space:normal}th,td{min-width:120px}}@media print{body{max-width:none;padding:0;background:white;color:black;font-size:11pt}#TOC{box-shadow:none}h2{break-after:avoid}h3{break-after:avoid}pre,table{break-inside:avoid}a{color:inherit;text-decoration:none}}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">MoAI for Codex 브로커 기능 재정의</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#moai-for-codex-기능-재정의-파일-브로커와-실제-push의-경계"
+id="toc-moai-for-codex-기능-재정의-파일-브로커와-실제-push의-경계">MoAI
+for Codex 기능 재정의: 파일 브로커와 실제 push의 경계</a>
+<ul>
+<li><a href="#결론" id="toc-결론">1. 결론</a></li>
+<li><a href="#이번-조사에서-직접-관측한-근거"
+id="toc-이번-조사에서-직접-관측한-근거">2. 이번 조사에서 직접 관측한
+근거</a></li>
+<li><a href="#왜-브로커가-push가-아닌가"
+id="toc-왜-브로커가-push가-아닌가">3. 왜 브로커가 push가 아닌가</a></li>
+<li><a href="#공식-codex-표면과-설계-선택"
+id="toc-공식-codex-표면과-설계-선택">4. 공식 Codex 표면과 설계
+선택</a></li>
+<li><a href="#moai-for-codex-기능-계약-재정의"
+id="toc-moai-for-codex-기능-계약-재정의">5. MoAI for Codex 기능 계약
+재정의</a></li>
+<li><a href="#검증-공백과-잔여-위험" id="toc-검증-공백과-잔여-위험">6.
+검증 공백과 잔여 위험</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="moai-for-codex-기능-재정의-파일-브로커와-실제-push의-경계">MoAI
+for Codex 기능 재정의: 파일 브로커와 실제 push의 경계</h1>
+<p><strong>기준선:</strong> 2026-09-23 · 저장소 <code>main</code> /
+<code>2213871af</code> · 설치 Codex CLI <code>0.156.1</code><br />
+<strong>판정 대상:</strong>
+<code>session_msg_register/list/send/poll</code>, Claude Code→Codex CLI
+전달, Codex판 MoAI의 필수·선택 기능.<br />
+<strong>이전 보고서 정정:</strong> <a
+href="moai-codex-platform-redesign-20260923.html">Codex 플랫폼 재설계
+보고서</a>의 “이번 조사에서 실제 양쪽 호스트 세션 간 전달은 시험하지
+않았다”는 이번 조사 자체에는 맞지만, 저장소에는 2026-08-23의 관련
+실프로세스 시험 기록이 이미 있었다. 그 시험은 <strong>Claude Code
+호스트가 아니라 <code>kind=claude</code>로 등록한 MCP 테스트
+드라이버</strong>와 <code>codex exec</code>의 왕복이다. 따라서 “실제
+Claude Code→살아 있는 Codex CLI로 자동 push 성공”의 근거는 아니다.</p>
+<blockquote>
+<p><strong>2026-09-24 후속 검증:</strong> <a
+href="moai-codex-appserver-live-verification-20260924.html">실세션 검증
+보고서</a>에서 저장소 밖 임시 브리지와 Codex App Server를 연결해
+<strong>Claude Code(GLM 백엔드) → MoAI MCP 사서함 → Codex 원격 TUI 자동
+표시</strong>를 관측했다. 아래의 “현재 브로커만으로는 push 불가” 판정과
+양립한다. 자동 연결은 아직 MoAI 제품 코드에 없다.</p>
+</blockquote>
+<h2 id="결론">1. 결론</h2>
+<p><strong>구스님의 의심은 제품 의미에서 맞다.</strong> 현재 MCP
+브로커는 메시지 파일을 상대 사서함에 <strong>적재</strong>할 수 있다.
+Codex 세션이 <code>session_msg_poll</code>을 <strong>스스로
+호출하면</strong> 읽을 수도 있다. 그러나
+<code>session_msg_send</code>만으로 이미 실행 중인 Codex CLI의 턴이
+깨어나거나, 화면에 메시지가 자동 표시되거나, 모델 입력에 삽입되는 경로는
+현재 코드에서 확인되지 않았다. 이를 “Claude Code→Codex CLI push”라고
+부르면 오해를 만든다.</p>
+<pre class="text"><code>Claude측 MCP 호출 → session_msg_send → 공유 디스크 pending/*.json
+                                                │
+                                     Codex가 명시적으로 poll 호출
+                                                ↓
+                                      Codex 도구 응답으로 수신
+
+send 성공 ≠ Codex에 자동 알림 ≠ Codex 턴 재개 ≠ 업무 완료</code></pre>
+<p><strong>MoAI for Codex의 기본 기능은 이 브로커 없이 완주해야
+한다.</strong> 기본 실행은 Codex의 지침·스킬·서브에이전트·훅·MCP를 통한
+단일 소유 세션의 plan→run→sync와 증거 판정으로 정의한다. 브로커는 같은
+프로젝트 디스크를 공유하는 두 실행자가 직접 등록·폴링하기로 합의한
+경우의 <strong>선택적 사서함</strong>으로만 남긴다. 자동 도착이 필요한
+제품 기능은 별도 호스트 제어 어댑터와 종단 검증이 생기기 전까지 지원하지
+않는다.</p>
+<h2 id="이번-조사에서-직접-관측한-근거">2. 이번 조사에서 직접 관측한
+근거</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>주장</th>
+<th>현재 트리의 기계적 근거</th>
+<th>판정 범위</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>send</code>는 파일 적재</td>
+<td><code>internal/sessionmsg/store.go:205-286</code>의
+<code>Send</code>가 수신자 <code>pending/&lt;messageId&gt;.json</code>에
+<code>writeJSONAtomic</code> 수행 후 ID를 반환</td>
+<td>파일 쓰기 성공. 수신 호스트의 실행·표시는 확인하지 않음</td>
+</tr>
+<tr>
+<td>수신은 <code>poll</code> 요청 필요</td>
+<td><code>internal/sessionmsg/store.go:288-390</code>,
+<code>internal/cli/mcp_session_msg.go:126-144</code>가 명시 호출에서
+pending→claimed 및 반환 수행</td>
+<td>폴링하지 않는 세션의 자동 수신 경로가 아님</td>
+</tr>
+<tr>
+<td>MCP 등록은 호출 가능성</td>
+<td><code>internal/cli/mcp_server.go:439-481</code>,
+<code>.codex/config.toml:1-4</code></td>
+<td>도구 노출은 지속 수신 루프나 알림 구독을 만들지 않음</td>
+</tr>
+<tr>
+<td>자동 폴링 연결 없음</td>
+<td><code>rg</code>로 <code>.claude/skills</code>,
+<code>.agents/skills</code>, <code>.codex</code>,
+<code>.claude/hooks</code>, <code>.codex/hooks</code>,
+<code>internal/codexwiring</code>의 <code>session_msg_*</code> 호출
+검색: <strong>0건</strong>. <code>internal/cli</code>에서도
+핸들러·등록·테스트 외 호출 <strong>0건</strong></td>
+<td>현재 조사 범위의 호출자가 없다. 외부 사용자 스크립트까지 부재하다는
+뜻은 아님</td>
+</tr>
+<tr>
+<td>교차 실프로세스 기록의 정체</td>
+<td><code>.moai/specs/SPEC-CODEX-SESSION-MSG-001/progress.md:126-168</code>:
+Claude측은 stdio JSON-RPC <code>drive_mcp.py</code> 테스트 드라이버,
+Codex측은 <code>codex exec</code></td>
+<td>공유 사서함의 명시적 poll 왕복을 과거에 보였음. 실제 Claude Code
+호스트나 비동기 push 시험은 아님</td>
+</tr>
+<tr>
+<td>프로젝트 루트 일치 필요</td>
+<td><code>internal/cli/mcp_session_msg.go:29-56</code>는
+<code>CLAUDE_PROJECT_DIR</code> 또는 CWD로 루트 선택. 위 progress의 첫
+시도는 루트 불일치로 <code>LISTCOUNT: 1</code>, 환경을 고정한 뒤
+<code>2</code></td>
+<td>같은 저장소처럼 보여도 MCP 자식 프로세스의 루트가 다르면 전달되지
+않음</td>
+</tr>
+</tbody>
+</table>
+<h3 id="현재-트리에서-실행한-좁은-테스트">현재 트리에서 실행한 좁은
+테스트</h3>
+<pre class="text"><code>git rev-parse --short HEAD
+2213871af
+
+go test ./internal/sessionmsg -count=1 -timeout 90s
+ok  github.com/modu-ai/moai-adk/internal/sessionmsg  0.356s
+
+go test ./internal/cli -run &#39;Test(SessionMsg|MoaiMCPServer_RegistrationMatchesCatalog)&#39; -count=1 -timeout 90s
+ok  github.com/modu-ai/moai-adk/internal/cli  0.548s</code></pre>
+<p>이 테스트는 저장·클레임·ack와 MCP 핸들러를 확인한다. <strong>현재
+설치된 Claude Code와 Codex CLI의 두 실세션에서 push를 재현한 시험이
+아니다.</strong> 과거 progress의 승인 우회 조건도 현 제품의 정상 승인
+경로 성공으로 옮겨 적을 수 없다.</p>
+<h2 id="왜-브로커가-push가-아닌가">3. 왜 브로커가 push가 아닌가</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>필요한 단계</th>
+<th>현재 브로커</th>
+<th>제품상 필요한 보장</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>송신</td>
+<td>등록된 ID를 검사하고 파일을 적재</td>
+<td>전달 시도와 저장 성공 구분</td>
+</tr>
+<tr>
+<td>수신자 실행 상태</td>
+<td><code>lastHeartbeat</code>의 최근성으로 <code>online</code>
+표시</td>
+<td>실제 Codex 프로세스·스레드 연결 및 수신 가능 상태</td>
+</tr>
+<tr>
+<td>자동 알림</td>
+<td>구현 확인 안 됨</td>
+<td>새 메시지 발생 시 호스트에 이벤트 전달</td>
+</tr>
+<tr>
+<td>턴 입력</td>
+<td><code>poll</code>의 도구 응답으로만 들어옴</td>
+<td>수신자 턴에 입력을 안전하게 추가하거나 새 턴 시작</td>
+</tr>
+<tr>
+<td>확인</td>
+<td><code>poll(ack_ids)</code>로 파일 삭제</td>
+<td>수신·처리·사용자에게 표시·업무 반영을 각각 구분</td>
+</tr>
+<tr>
+<td>권한</td>
+<td>공유 디스크에 접근 가능한 등록 ID 기반</td>
+<td>발신자 인증, 수신자 소유권, 사용자 승인과 작업 권한 경계</td>
+</tr>
+</tbody>
+</table>
+<p><code>kind=claude</code>는 등록자가 제공한
+문자열이다(<code>internal/sessionmsg/agent.go:76-115</code>). 이것만으로
+호출 주체가 Claude Code인지 증명하지 않는다.
+<code>session_msg_list</code>의 <code>online</code>도 하트비트 나이
+기준(<code>internal/config/defaults.go:403-420</code>)이므로 사용자
+앞에서 Codex 세션이 읽고 있다는 보장이 아니다. 현재 브로커를 작업
+지시·사용자 승인·완료 판정에 쓰지 않는 기존 규칙은 유지해야 한다.</p>
+<h2 id="공식-codex-표면과-설계-선택">4. 공식 Codex 표면과 설계 선택</h2>
+<p>OpenAI는 Codex <a
+href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli">MCP
+클라이언트 설정</a>을 문서화한다. 이는 <strong>Codex가 도구를 호출하는
+통로</strong>이지, 임의 MCP 서버가 실행 중인 Codex에게 자발적으로 새
+모델 턴을 밀어 넣는 계약이 아니다. <a
+href="https://learn.chatgpt.com/docs/app-server">App Server</a>는 관리
+중인 스레드에 <code>turn/start</code>, 활성 턴에
+<code>turn/steer</code>를 제공하며, <code>turn/steer</code>는 활성 턴
+ID가 맞아야 한다. 이는 MoAI가 <strong>스레드 수명과 권한을 소유한
+클라이언트</strong>를 별도로 구현할 경우의 후보이지, 기존 사용자 소유
+CLI 세션에 브로커가 곧장 쓸 수 있다는 뜻이 아니다. <a
+href="https://learn.chatgpt.com/docs/hooks">Codex 훅</a>은 정의된 이벤트
+시점에 실행되고, <code>UserPromptSubmit</code>은 이미 제출되는 사용자
+프롬프트에 추가 컨텍스트를 줄 수 있다. 대기 중인 빈 세션을 즉시 깨우는
+구독 API로 취급하지 않는다.</p>
+<p>설치 <code>codex queue --help</code>는 기존 스레드에 메시지를
+대기시키는 명령을 표시한다. <strong>이번 조사에서는 실제 전달·수신과
+대상 세션 소유권을 실행 검증하지 않았다.</strong> 공식 문서 계약과 실증
+없이 이 명령을 MoAI의 핵심 push 구현으로 채택하지 않는다.</p>
+<h2 id="moai-for-codex-기능-계약-재정의">5. MoAI for Codex 기능 계약
+재정의</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>기능</th>
+<th>결정</th>
+<th>사용자에게 약속할 동작</th>
+<th>구현·검증 조건</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>초기화·진단</td>
+<td><strong>필수</strong></td>
+<td>현재 Codex CLI용 <code>AGENTS.md</code>, 스킬, agent, 훅, MCP를
+설치·검사</td>
+<td>같은 빌드의 생성물과 실제 Codex 로드·호출 확인</td>
+</tr>
+<tr>
+<td>plan→run→sync·goal</td>
+<td><strong>필수</strong></td>
+<td>Codex 단일 소유 세션에서 SPEC 작성, 구현, 독립 감사, 기록을
+완주</td>
+<td>실제 Codex 종단 fixture; 실패·중단·재개와 오판 0건</td>
+</tr>
+<tr>
+<td>병렬 하위 작업</td>
+<td><strong>필수 범위 내 선택</strong></td>
+<td>같은 운영 세션의 Codex 네이티브 서브에이전트로 독립 작업을 나눔</td>
+<td>명시적 파일 소유권·worktree·감사 결과 확인</td>
+</tr>
+<tr>
+<td>Claude→Codex 작업 위임</td>
+<td><strong>명시 호출 시 선택</strong></td>
+<td>기존 <code>codex_task</code>처럼 별도 Codex 작업을 시작하고 결과를
+회수</td>
+<td>사용자 승인·쓰기 opt-in·잡 상태·실패 복구를 판정. 살아 있는 타인
+세션의 push로 설명하지 않음</td>
+</tr>
+<tr>
+<td><code>session_msg_*</code> 사서함</td>
+<td><strong>기본 흐름에서 제외, 선택 기능으로 유지</strong></td>
+<td>같은 루트의 두 실행자가 등록·송신·수동 poll·ack할 수 있음</td>
+<td><code>mailbox</code>로 명명, opt-in 노출, 루트/권한/TTL 진단, 실제
+두 호스트 시험</td>
+</tr>
+<tr>
+<td>살아 있는 Codex CLI 자동 push</td>
+<td><strong>미지원</strong></td>
+<td>약속하지 않음</td>
+<td>호스트 제어 통로·세션 소유권·동의·종단 지연/실패 시험 전에는 미지원
+유지</td>
+</tr>
+<tr>
+<td>Codex 여러 카드 Factory</td>
+<td><strong>미지원</strong></td>
+<td><code>-f</code>와 Claude 네이티브 세션 통신을 사용하지 않음</td>
+<td>별도 기능으로 설계·검증하기 전 지원표에서 제외</td>
+</tr>
+</tbody>
+</table>
+<h3 id="기능에서-빼야-할-것">기능에서 빼야 할 것</h3>
+<ol type="1">
+<li>기본 Codex 설명과 도움말에서 “Claude·Codex가 직접 메시지한다”,
+“push”, “online peer” 표현을 제거한다. 현재 확인된 동작은 <strong>공유
+디스크 사서함의 수동 조회</strong>다. <code>CHANGELOG.md:103</code>의
+“directly” 주장과 웹 UI의 “deliver” 문구도 지원 범위에 맞게 고친다.</li>
+<li>기본 plan/run/sync, goal, Factory, 완료 판정에서
+<code>session_msg_*</code> 의존을 없앤다. 현재 검색 범위에서 호출 연결이
+없어 동작 변경보다 <strong>계약 정정</strong>이 먼저다.</li>
+<li>네 도구를 즉시 삭제하지는 않는다. 단위 테스트와 과거 명시적 poll
+왕복은 실제 효용을 보인다. 기본 MCP 도구 카탈로그에서 숨기는 것은 사용처
+조사·호환성 이행·별도 opt-in 프로필을 마련한 다음 결정한다.</li>
+<li>A2A 모양의 엔벨로프를 상호 운용 보증처럼 광고하지 않는다.
+인증·구독·턴 주입은 엔벨로프 형식만으로 생기지 않는다.</li>
+</ol>
+<h3 id="빠진-기능을-채울-순서">빠진 기능을 채울 순서</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>단계</th>
+<th>우선순위</th>
+<th>작업</th>
+<th>완료 게이트</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R0</td>
+<td>높음</td>
+<td><code>send</code>/<code>poll</code>/실제 push 용어를 분리하고 Codex
+지원표·문서·진단을 고침</td>
+<td>도움말·CHANGELOG·보고서에 자동 수신 주장 0건</td>
+</tr>
+<tr>
+<td>R1</td>
+<td>높음</td>
+<td>Codex 자체 plan→run→sync·goal 경로를 브로커 없이 완주</td>
+<td>실제 Codex CLI의 SPEC fixture와 검증 로그·독립 감사 일치</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>중간</td>
+<td>사서함을 opt-in으로 정리하고 루트 고정·수신자 확인·권한·중복/TTL
+처리 진단 추가</td>
+<td>같은 루트/다른 루트, 오프라인, 중복, 만료, 승인 거부 사례 PASS</td>
+</tr>
+<tr>
+<td>R3</td>
+<td>중간</td>
+<td>실제 Claude Code 호스트와 실제 Codex CLI에서 양방향 <strong>수동
+poll</strong> 재시험</td>
+<td>양쪽 도구 호출·응답·messageId·ack를 같은 실행 로그로 기록</td>
+</tr>
+<tr>
+<td>R4</td>
+<td>조건부</td>
+<td>push가 제품 요구가 되면 MoAI 소유 Codex App Server 세션 또는 검증된
+CLI 메시지 표면을 별도 어댑터로 구현</td>
+<td>구독/턴 입력/사용자 표시/승인/중단/재시도/지연을 실세션에서 각각
+입증</td>
+</tr>
+<tr>
+<td>R5</td>
+<td>조건부</td>
+<td>R4가 성립한 경우에만 자동 알림을 지원표에 추가</td>
+<td>세 OS와 대상 Codex 버전의 종단 회귀 검증</td>
+</tr>
+</tbody>
+</table>
+<h2 id="검증-공백과-잔여-위험">6. 검증 공백과 잔여 위험</h2>
+<p><strong>명시적 공백:</strong> 현재 설치 버전에서 실제 Claude
+Code→기존 Codex CLI 세션의 자동 도착, <code>codex queue</code> 실전
+전달, App Server를 통한 기존 사용자 소유 CLI 스레드 제어, 세 운영체제의
+사서함 동작은 이번 조사에서 실행하지 않았다. 과거 e2e 기록은 별도
+checkout·Codex 0.147.0·테스트 드라이버 조건이다.</p>
+<p><strong>잔여 위험:</strong> 공유 루트 오인, 이름 재등록에 따른 대상
+착오, 하트비트의 온라인 오판, 수신자가 poll하지 않아 TTL이 지난 메시지,
+ack 전 재전달, 동일 프로젝트에 접근하는 다른 프로세스의 등록 ID 사용,
+MCP 쓰기 승인 거부가 남는다. <code>send</code> 성공을 “상대가 봤다”로
+승격하면 이 위험이 제품 결함이 된다.</p>
+<p><strong>최종 판정:</strong> 브로커의 <strong>파일 전송과 요청형
+수신은 구현·단위 검증됐고</strong>, 과거에는 MCP
+드라이버↔︎<code>codex exec</code> 명시적 poll 왕복이 기록됐다.
+<strong>실제 Claude Code→실행 중인 Codex CLI 자동 push는 현재 기능으로
+입증되지 않았으며, 코드상 수신 트리거도 없다.</strong> MoAI for Codex의
+필수 기능에서 브로커를 빼고 선택적 사서함으로 정확히 이름 붙이는 것이
+지금의 설계 결정이다.</p>
+</body>
+</html>

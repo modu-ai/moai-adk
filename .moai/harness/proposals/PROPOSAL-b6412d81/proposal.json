@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-b6412d81",
+  "generated_at": "2026-09-28T19:25:20Z",
+  "generator_version": "0.1.0",
+  "observation_count": 5,
+  "pattern_key": "tool_failure:Monitor:WorktreeGuardRefusal",
+  "source_ts": "2026-09-28T19:25:20Z",
+  "tier": "rule"
+}

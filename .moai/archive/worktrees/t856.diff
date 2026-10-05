@@ -1,0 +1,3342 @@
+diff --git a/.moai/reports/t856/verdict.md b/.moai/reports/t856/verdict.md
+index a995664a5..ad994e969 100644
+--- a/.moai/reports/t856/verdict.md
++++ b/.moai/reports/t856/verdict.md
+@@ -1,5 +1,954 @@
+ # t856 검증 판정
+ 
++## 서로 다른 병렬 fork 결과 검사에서 실제 400 재현
++
++Claim: left/right의 서로 다른 결과를 호출별 기대값과 비교하도록 시험을 강화했다. 결과 교환·미등록 자식·호출 중복을 거절하는 단위 검사는 통과했다. 실제 시험은 시간 초과로 한 번 실패했고, 제한을 유지한 진단 재실행에서 `appserver_scope_mismatch` 400을 재현했다. private rejection 로그는 세 건 모두 `unexpected_tool_result`를 가리킨다. 아직 제품 원인을 수정하지 않았다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGPTForkCompletion' -race -count=3 -timeout 60s
++ok  	github.com/modu-ai/moai-adk/internal/cli	2.065s
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/fork-parallel$' -race -count=1 -v -timeout 100s
++    gpt_claude_host_tool_live_test.go:422: real Claude/GPT host tool execution: signal: killed
++    gpt_claude_host_tool_live_test.go:357: gateway error response: status=400 cause=appserver_request_canceled
++FAIL	github.com/modu-ai/moai-adk/internal/cli	51.024s
++$ (same live command, failure-stage counters added; same 50-second child limit)
++    gpt_claude_host_tool_live_test.go:424: fork execution failed: context=<nil> calls=2 children=2 completions=2 active_child_requests=0 peak_child_requests=2
++    gpt_claude_host_tool_live_test.go:427: real Claude/GPT host tool execution: exit status 1
++    gpt_claude_host_tool_live_test.go:150: gateway returned HTTP errors during live roundtrip: 3 routes=map[POST /v1/messages 400:3]
++FAIL	github.com/modu-ai/moai-adk/internal/cli	36.845s
++$ jq -c '{at,cause,reason,summary_classified,has_tools,last_message_role,last_content_type}' /Users/goos/.moai/gpt-appserver/moai-rejections-e0e2a60d74783a1e849f091c5fdffee53507aa1b87036ecd479bc98388779b48.jsonl
++{"at":"2026-09-16T07:38:39.552521Z","cause":"appserver_scope_mismatch","reason":"unexpected_tool_result","summary_classified":"false","has_tools":null,"last_message_role":"system","last_content_type":"text"}
++{"at":"2026-09-16T07:38:39.601574Z","cause":"appserver_scope_mismatch","reason":"unexpected_tool_result","summary_classified":"false","has_tools":null,"last_message_role":"system","last_content_type":"text"}
++{"at":"2026-09-16T07:38:39.651276Z","cause":"appserver_scope_mismatch","reason":"unexpected_tool_result","summary_classified":"false","has_tools":null,"last_message_role":"system","last_content_type":"text"}
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경 + distinct fork result observer. 실패 family는 순서대로 `a1254a87-8320-45e3-97a2-334332701383`, `5948b68b-0c62-47e9-9cad-084b65b2a04a`. 두 번째 family SHA256로 정확한 logger 파일을 선택했고 허용된 진단 필드만 읽었다. 제품 코드·통과 조건·시간 제한은 두 실행 사이 바꾸지 않았다. 진단 추가 후 단위 재실행도 exit 0 (`1.968s`).
++
++Gaps: 첫 timeout 원인과 두 번째의 400 발생 요청 원문은 아직 미확보다. 두 실패가 같은 원인이라는 주장은 하지 않는다. `unexpected_tool_result`는 Engine의 비대기 상태에서 결과를 받은 거절 지점까지 좁혀주지만 그 결과가 어떤 후속 요청에서 재전달됐는지 아직 확인하지 못했다. 기존 사용자 401과 동일 원인도 미확정이다. 병렬 fork 안정화·전체 수용·배포는 미완료다.
++
++Residual-risk: 같은 표식 두 개의 이전 성공만으로 서로 다른 병렬 결과 처리까지 보장할 수 없었다. 이 실패를 제거하기 위해 소유권/중복 결과 거절을 느슨하게 바꾸면 안 된다. 후속 요청의 정확한 형태를 격리 fixture로 재현해 분류·증분 입력 처리를 검증해야 한다.
++
++## native fork 두 개의 실제 동시 실행·완료 대응 — 혼합 결과
++
++Claim: 두 native fork의 HTTP 요청이 실제 겹쳤고 peak=2, 서로 다른 자식·호출에 완료 알림 두 개가 일대일 대응하는 것을 두 실행에서 관측했다. 첫 실행은 부모 최종 문구가 엄격한 기대값과 달라 실패했고, 진단 추가 후 재실행은 통과했다. 제품 수정으로 실패를 해결한 것이 아니므로 안정화 완료로 판정하지 않는다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGPTForkCompletion' -race -count=3 -timeout 60s
++ok  	github.com/modu-ai/moai-adk/internal/cli	1.978s
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/fork-parallel$' -race -count=1 -v -timeout 100s
++    gpt_claude_host_tool_live_test.go:430: fork completion correlation: parsed=2 matched=2
++    gpt_claude_host_tool_live_test.go:434: native fork evidence: calls=2 inherited_marker=true children=2 marker_results=0 completed_notification=true
++    gpt_claude_host_tool_live_test.go:446: fork child request concurrency: peak=2
++    gpt_claude_host_tool_live_test.go:466: host tool roundtrip incomplete: marker=false is_error=false results=0
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/cli	22.199s
++$ (same live command, bounded synthetic-final diagnostic enabled)
++    gpt_claude_host_tool_live_test.go:430: fork completion correlation: parsed=2 matched=2
++    gpt_claude_host_tool_live_test.go:434: native fork evidence: calls=2 inherited_marker=true children=2 marker_results=0 completed_notification=true
++    gpt_claude_host_tool_live_test.go:446: fork child request concurrency: peak=2
++    gpt_claude_host_tool_live_test.go:480: real Claude native fork -> inherited parent context -> completed task notification -> parent final: child_ids=2 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:152: unexpected gateway HTTP error responses=0; unauthenticated hello probes refused=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	23.039s
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경 + fork-parallel 시험. 첫 family `20e31025-6766-4e84-95d5-3aabc4d1e0fe`, 재실행 `76f100e1-8fb4-47ee-adf0-b8f81f6f9f83`. 두 실행 사이에는 실패 시 512자 이내 합성 최종 응답을 기록하는 조건만 확장했다. 제품 코드와 통과 조건은 같았다. 두 실행 모두 예상 밖 HTTP 오류 0. 단위 검사는 한 text block의 두 알림 분리를 포함한다. `git diff --check` exit 0, 출력 없음.
++
++Gaps: 첫 실행 최종 문구 원문은 관측하지 못해 문장 덧붙임인지 결과 취합 문제인지 미확정이다. 성공 재실행만으로 간헐성을 해소했다고 하지 않는다. 서로 다른 결과 값을 주입한 교차 혼합 음성, 부모·자식 중첩/재개/취소 격리, 이전 완료 턴의 fork 등은 미완료다. AS-013 전체·Windows·통합·배포도 미완료다.
++
++Residual-risk: 두 자식이 같은 표식을 반환하는 합성 과제이므로 ID 대응은 확인하되 다른 내용의 결과가 교환되는 오류를 완전히 배제하지 못한다. 요청 겹침은 강제 대기나 인위적 부하 없이 실제 서버 handler의 동시 진입 수로 측정했다.
++
++## native fork 완료 알림의 작업·호출 ID 대응 검증
++
++Claim: 단순 표식 포함 여부에 더해 완료 알림을 구조적으로 읽고 task-id·tool-use-id·completed 상태·result를 요구하도록 실측 검사를 강화했다. 실제 알림의 task-id는 관측된 자식 Agent ID, tool-use-id는 fork로 요청한 Agent 호출 ID와 일치했고 result는 부모 표식과 정확히 같았다. 제품 코드는 변경하지 않았다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGPTForkCompletion' -race -count=3 -timeout 60s
++ok  	github.com/modu-ai/moai-adk/internal/cli	2.710s
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/fork$' -race -count=1 -v -timeout 100s
++    gpt_claude_host_tool_live_test.go:255: fork completion envelope: parsed=true result_marker=true
++    gpt_claude_host_tool_live_test.go:411: fork completion correlation: parsed=1 matched=1
++    gpt_claude_host_tool_live_test.go:415: native fork evidence: calls=1 inherited_marker=true children=1 marker_results=0 completed_notification=true
++    gpt_claude_host_tool_live_test.go:457: real Claude native fork -> inherited parent context -> completed task notification -> parent final: child_ids=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:145: unexpected gateway HTTP error responses=0; unauthenticated hello probes refused=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	20.925s
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경 + `gpt_fork_notification_test.go` 및 live observer 수정. 실제 family `eef7c423-ec73-49cc-8701-1c1e15691c01`. 단위 검사는 실패 상태·task/call ID 누락·call ID 중복·summary-only 표식·잘린 알림·단순 문자열을 거절한다. `git diff --check` exit 0, 출력 없음.
++
++Gaps: 현재는 단일 자식의 실제 ID 대응까지만 검증했다. 병렬 자식의 교차 결과 방지, 호출 중첩·재개, 완료된 이전 부모 턴을 포함한 분기, 전체 SPEC 수용·Windows·배포는 미완료다. 이 파서는 실측 시험 관측기이며 제품 인증 경계를 대신하지 않는다.
++
++Residual-risk: 알림 구조가 바뀌면 시험은 실패하도록 설계했다. 첫 알림 추출 방식을 병렬 batch의 모든 알림 검증으로 확장하려면 여러 알림이 한 text block에 들어오는 경우도 다뤄야 한다.
++
++## 실제 native Agent(fork) 단일 왕복
++
++Claim: `CLAUDE_CODE_FORK_SUBAGENT=1`을 시험 자식 환경에만 적용하여 실제 Claude Agent의 `subagent_type=fork` 호출을 관측했다. 호출 1개·자식 1개였고, 자식 prompt에 부모 표식 값을 복사하지 않은 상태에서 자식 요청에 부모 문맥이 들어갔다. 완료 task notification의 표식과 부모 최종 응답을 확인했다. 일반 Agent나 --fork-session을 대체 증거로 사용하지 않았다.
++
++Evidence:
++
++```text
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/fork$' -race -count=1 -v -timeout 100s
++    gpt_claude_host_tool_live_test.go:255: fork task notification: completed=true marker=true
++    gpt_claude_host_tool_live_test.go:399: native fork evidence: calls=1 inherited_marker=true children=1 marker_results=0 completed_notification=true
++    gpt_claude_host_tool_live_test.go:441: real Claude native fork -> inherited parent context -> completed task notification -> parent final: child_ids=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:144: unexpected gateway HTTP error responses=0; unauthenticated hello probes refused=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	20.387s
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경 + fork opt-in 시나리오. 실제 설치 Claude 2.1.273 / Codex 0.154.0, 최종 family `4c859bb2-ac36-4d6f-9e74-bbebbbe310c6`. 이 단계에서는 제품 코드를 바꾸지 않았다. `git diff --check` exit 0, 출력 없음.
++
++시험 보정 이력: 첫 실행 `17.641s`와 완료 알림 관측 추가 후 실행 `13.448s`는 모두 exit 1이었다. 두 실행에서 예상 밖 HTTP 오류는 0이고 일반 tool_result 표식 계수만 0이었다. 두 번째 실행은 `completed_notification=true`를 실제 관측했다. 이후 fork에만 완료 task notification을 요구하도록 판정을 분리하고 위 성공을 확인했다. 일반 도구·일반 Agent의 tool_result 요구는 유지했다. 실패를 제품 Gateway 오류로 단정하거나 감추지 않았다.
++
++Gaps: 단일 fork 1회 성공이며 AS-013 전체 완료가 아니다. 완료된 이전 turn 원장 기반의 fork, 병렬 fork 둘의 격리, 중첩 일반 자식, 자식 resume·부모/자식 교차 결과 거절·취소 격리는 추가 검증이 필요하다. notification 판정은 고립된 단일 자식 합성 과제의 상태/표식 검사이며 다중 자식 correlation 검사는 아니다. 전체 수용·Windows·설치·병합·push도 미완료다.
++
++Residual-risk: 백그라운드 fork는 결과 전달 형식이 일반 도구와 다르다. 일반 tool_result만 관측하는 진단은 정상 완료를 실패로 오판할 수 있어 이 시험은 두 경로를 분리했다. 다중 작업에서는 각 task ID와 완료 알림의 대응을 별도로 검증해야 한다.
++
++## 실제 Agent·PTY·수동 압축 재검증 및 native fork 진입점 확인
++
++Claim: 실제 GPT를 통한 일반 Claude 자식 Agent, 대화형 Bash 왕복, 수동 압축 후 회상이 이번 실행에서 통과했다. native fork는 아직 실행하지 않았다. 현재 비대화형 Agent 시험의 공개 schema 키를 관측했고, 공식 문서에서 fork 활성화와 호출 방법을 확인했다.
++
++Evidence:
++
++```text
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/(agent|pty|compact)$' -race -count=1 -v -timeout 240s
++    gpt_claude_host_tool_live_test.go:347: real Claude Agent -> real GPT child -> parent result: child_ids=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:296: PTY post-compact recall="⏺ HOST_EXECUTED_856"
++    gpt_claude_host_tool_live_test.go:308: real compaction requests=1; post-compact recall displayed
++    gpt_claude_host_tool_live_test.go:310: interactive Claude PTY -> real GPT -> Claude Bash -> displayed final: tool_results=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	56.691s
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/agent$' -race -count=1 -v -timeout 100s
++    gpt_claude_host_tool_live_test.go:207: observed Claude Agent input property names: [description isolation model prompt run_in_background subagent_type]
++    gpt_claude_host_tool_live_test.go:365: real Claude Agent -> real GPT child -> parent result: child_ids=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:140: unexpected gateway HTTP error responses=0; unauthenticated hello probes refused=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	15.300s
++$ claude --version
++2.1.273 (Claude Code)
++$ codex --version
++WARNING: proceeding, even though we could not create PATH aliases: Operation not permitted (os error 1)
++codex-cli 0.154.0
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경. 첫 실행은 schema 관측 코드 추가 전 컴파일된 시험, 두 번째는 관측 추가 후 소스다. 제품 코드는 두 실행 사이 바꾸지 않았다. 각 모드의 예상 밖 HTTP 오류 계수는 0이었다. schema 관측은 필드 이름만 기록하며 프롬프트·description·입력 값은 저장하지 않는다. 첫 실행 family: agent `76b260a6-e388-45a0-b691-3d61aaeb8753`, pty `bc140545-6351-4797-ae42-54df5ad7d2c1`, compact `3f3ee511-e731-406e-8df5-5c461e3d396c`.
++
++공식 근거: [Claude Code subagents — fork mode](https://code.claude.com/docs/en/sub-agents#turn-fork-mode-on-or-off)는 비대화형 실행에서 `CLAUDE_CODE_FORK_SUBAGENT=1`로 활성화하며 Agent의 `fork` subagent type을 요청한다고 설명한다. `/subtask`도 별도 진입점이다. 따라서 schema에 `fork`라는 키가 없다는 이유만으로 설치본에서 fork 미지원이라고 판단하지 않는다.
++
++Gaps: native fork/병렬·중첩·resume, 자동·자식 압축, PostCompact 원문 digest 소비는 미검증이다. 이번 일반 Agent 및 수동 압축 성공으로 AS-013·AS-012 전체를 완료 처리하지 않는다. API-key 실제 모드·Windows·통합·배포도 미완료다.
++
++Residual-risk: 실제 성공은 각각 제한된 합성 과제의 실행 결과다. fork의 비대화형 기본 비활성 및 background 실행 차이를 시험 설계에 반영해야 한다.
++
++## pending 복구 취소 및 연결·브리지 패키지 회귀
++
++Claim: 복구 RPC에서 대기하는 경우와 RPC 반환 뒤 재전달 도구 호출을 기다리는 경우에 취소를 주입했다. 취소 오류로 반환하고 failed barrier를 저장하며 동일 결과 재시도를 거절했다. 두 경우 결과 전송·새 thread/turn 시작은 0, interrupt는 소유 thread-1에 1회였다. 이 단계에서는 제품 코드 변경 없이 검사를 추가했다.
++
++Evidence:
++
++```text
++$ go test ./internal/codexbridge -run '^TestPendingResumeCancellation' -race -count=3 -timeout 45s
++ok  	github.com/modu-ai/moai-adk/internal/codexbridge	1.767s
++$ go test ./internal/codexapp ./internal/codexbridge -race -count=1 -timeout 120s
++ok  	github.com/modu-ai/moai-adk/internal/codexapp	8.632s
++ok  	github.com/modu-ai/moai-adk/internal/codexbridge	23.242s
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경 + `pending_resume_cancel_test.go`. 첫 초안은 미사용 import 때문에 빌드 실패했고 이를 제거한 뒤 위 결과를 얻었다. 모든 실행에 race 검사를 적용했다. `git diff --check` exit 0, 출력 없음.
++
++Gaps: 이 취소 검사는 모의 RPC이며 실제 모델/Claude UI의 취소 검사가 아니다. 복수 대화가 동시에 진행될 때의 실제 격리, 결과 전송 직후 단절, 서버 프로세스 재시작 복구 등은 이번 검사에 포함되지 않는다. 패키지의 opt-in live 검사를 활성화하지 않았으므로 패키지 전체 exit 0을 live 전수 통과로 세지 않는다. 기존 SPEC 수용·통합·배포 미완료.
++
++Residual-risk: 취소된 작업은 실패 상태로 남겨 불확실한 결과 재전송을 막는다. 이것이 사용자 관점의 자동 복구 완료를 뜻하지는 않으며, 안전한 새 작업 진행 절차는 별도 검증이 필요하다.
++
++## 현재 소스 실행 파일·실제 GPT 연결 복구 재검증
++
++Claim: 현재 미커밋 소스를 임시 바이너리로 빌드해 실제 `moai gpt` 도구 왕복을 확인했다. 이어 현재 소스의 production factory로 실제 GPT 일반 도구 및 ToolSearch 후 발견된 도구의 pending 연결 복구를 각각 다시 실행했다. 모두 통과했고 설치본 교체나 운영 서버 종료는 하지 않았다.
++
++Evidence:
++
++```text
++$ go build -o /private/tmp/moai-verified-launcher.V3iAlk/moai ./cmd/moai && shasum -a 256 /private/tmp/moai-verified-launcher.V3iAlk/moai
++651f74483e699c0652d368dc98c72a24ce780db607aa771a7c7d1b8dd9c2df0c  /private/tmp/moai-verified-launcher.V3iAlk/moai
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_LAUNCHER_LIVE=1 MOAI_GPT_LAUNCHER_BINARY=/private/tmp/moai-verified-launcher.V3iAlk/moai go test ./internal/cli -run '^TestGPTLauncherLiveNormalStartup$' -race -count=1 -v -timeout 100s
++    gpt_launcher_live_test.go:88: real moai gpt launcher completed: session=0ac58d18-7882-4652-95bf-d6f083530b85 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	10.478s
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/(reconnect|deferred-reconnect)$' -race -count=1 -v -timeout 150s
++    gpt_claude_host_tool_live_test.go:350: real Claude -> production gateway -> real GPT -> Claude Bash -> result: observed=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:370: new Claude process resumed prior Bash result; unique tool result IDs=1
++    gpt_claude_host_tool_live_test.go:139: unexpected gateway HTTP error responses=0; unauthenticated hello probes refused=2
++    gpt_claude_host_tool_live_test.go:340: real Claude ToolSearch -> tool_reference -> real GPT dispatcher -> Claude MCP: calls=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:139: unexpected gateway HTTP error responses=0; unauthenticated hello probes refused=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	24.108s
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경. build는 module stat cache 쓰기 권한 경고가 있었지만 exit 0 및 실행 파일 hash를 확인했다. launcher 시험은 위 바이너리를 사용했고, reconnect 두 시험은 현재 소스의 시험 바이너리가 production factory를 조립했다. 복구 family는 각각 `635b8238-6071-4fad-85da-c83a10c802e3`, `16124987-9790-4e99-9ed1-dcddf0925900`. 중간 401은 조건을 직접 확인한 unauthenticated `HEAD /api/hello` 거절이며 사용자 POST 401과 혼동하지 않는다.
++
++Gaps: 각각 실제 실행 1회이며 모든 환경 신뢰도나 전체 수용을 증명하지 않는다. t654 증거는 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t654/.moai/reports/t654/as5-verdict.md`에서 찾았지만, 문서 자체가 live 인증 모드·Windows·PTY 등의 미완료를 명시한다. 그 과거 결과를 현재 PASS로 인용하지 않았다. 현재 트리와 develop에서 t844 보고서 경로는 없었고 전체 저장소의 부재를 주장하지 않는다. native fork/자동·자식 압축/Windows/배포 등 기존 완료 조건은 여전히 남아 있다.
++
++Residual-risk: 최신 설치본이 아니라 임시 파일 검증이다. 끊은 연결은 시험 소유 연결이며 실제 공유 서버 프로세스 종료 및 결과 전송 직후의 불확실 상태는 이번 실행 대상이 아니다.
++
++## 정상 요청·모델 변경 이력 검사 이관 및 넓힌 CLI 검사 통과
++
++Claim: 남은 두 legacy factory 검사를 production App Server 경로로 이관했다. 실제 전달된 turn/start 매개변수를 peer에서 기록해 모델 sol→astra, effort high, 동일 thread 유지, 두 번째 입력의 새 메시지만 전달, Claude 출력 토큰 상한 미전달을 검사했다. 기존 8개 실패가 있었던 Gateway/GPT CLI 선택자는 이제 exit 0이다. 전체 Gateway 수용 완료 판정은 아니다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGatewayFactory(NativeReceiptAuthorizationReachesSubscription|SubscriptionSwitchKeepsAuthorizedHistory)$' -race -count=3 -timeout 90s
++ok  	github.com/modu-ai/moai-adk/internal/cli	4.195s
++$ go test ./internal/cli -run '^Test.*(GPT|Gpt|Gateway|AppServer)' -race -count=1 -timeout 180s
++ok  	github.com/modu-ai/moai-adk/internal/cli	13.726s
++$ rg --files .moai/reports/t654 .moai/reports/t844
++rg: .moai/reports/t654: No such file or directory (os error 2)
++rg: .moai/reports/t844: No such file or directory (os error 2)
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 제품/시험 변경. 이번 단계는 테스트 이관과 peer의 turn 매개변수 관측만 추가했다. 넓힌 검사에는 opt-in live 테스트가 포함되지만 live 활성화 환경변수를 설정하지 않았으므로 실제 실행했다고 세지 않는다. 파일 탐색은 위 명령 출력을 이름 필터 및 head로 제한한 결과이며, 현재 작업 트리에서의 부재만 확인했다. `git diff --check` exit 0, 출력 없음.
++
++Gaps: 다른 작업 트리나 원격 브랜치에 t654/t844 증거가 존재하는지는 확인하지 않았다. AS-010·011·012 증거 소비, native Agent fork/병렬·중첩, 실제 Factory Tasks/Dispatch, 실제 구독/API-key PTY, Windows named runtime, 설치·병합·push는 여전히 별도 완료 증거가 필요하다. 현재 검사 통과를 실제 사용자 401 전수 해결로 확대하지 않는다.
++
++Residual-risk: 모의 peer는 프로토콜 경계를 검증하지만 실제 모델의 선택·출력·중단·복구 다양성을 재현하지 않는다. 설치된 바이너리는 이 미커밋 소스와 동일하다고 확인하지 않았다.
++
++## 현행 production 경로의 대화 소유권 거절·양성 대조
++
++Claim: foreign-session 검사를 legacy 직접 구독 연결에서 현행 production App Server 경로로 이관했다. 소유권 없는 세션 ID는 HTTP 400이며 thread/turn 생성 0, 같은 handler에서 정상 세션 ID는 HTTP 200 및 완료 응답, thread/turn 각각 1임을 검사했다. 제품 소유권 정책은 수정하지 않았다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGatewayFactoryNativeReceiptAuthorizationRejectsForeignSession$' -race -count=3 -timeout 90s
++ok  	github.com/modu-ai/moai-adk/internal/cli	3.153s
++$ go test ./internal/cli -run '^Test(ProductionGatewayClearStartsDistinctAttestedThread|ProductionGatewayModelChangeCompletesPendingTool|ManagedGPTModelSwitchDefersUntilPendingToolsComplete)$' -race -count=3 -timeout 90s
++ok  	github.com/modu-ai/moai-adk/internal/cli	4.298s
++$ go test ./internal/cli -run '^TestGatewayFactory' -race -count=1 -timeout 90s
++--- FAIL: TestGatewayFactoryNativeReceiptAuthorizationReachesSubscription (0.03s)
++    gateway_factory_test.go:209: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactorySubscriptionSwitchKeepsAuthorizedHistory (0.02s)
++    gateway_factory_test.go:521: gateway private configuration or verified dependencies unavailable
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/cli	1.830s
++FAIL
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경 + foreign-session 검사 이관. 임시 프로필·receipt 및 모의 App Server peer를 사용했다. 실제 사용자 계정/서버는 변경하지 않았다. `git diff --check` exit 0, 출력 없음.
++
++Gaps: factory 검사 두 개가 여전히 실패한다. 이번 실행은 실제 Claude UI나 실제 GPT 모델 검사가 아니다. 정당한 clear 전환의 기존 합성 증거는 재검사했으나 native fork/다중 에이전트의 전체 live 격리를 증명하지 않는다. Windows 별도 실행·전체 수용·설치·병합·push도 미완료다.
++
++Residual-risk: 정상 세션 양성 대조는 고정 응답을 주는 peer로 거절 경계의 비자명성만 확인한다. 실제 사용자 401의 모든 원인이 해소됐다는 증거로 사용할 수 없다.
++
++## 로그인 부재·후기 초기화 실패의 연결 정리 검사 이관
++
++Claim: 기존 두 factory 검사를 production GPT 조립 경로로 이관했다. 로그인 부재 및 인증 후 receipt 디렉터리 오류에서 handler 반환을 거절하고, 서버 측에서 클라이언트 연결 종료를 확인했다. 두 경우 모두 initialize/account-read 경계를 실제 통과하고 생성 RPC와 legacy 인증 저장소 생성이 없음을 검사했다. 정상 handler의 반복 Close 검사도 유지했다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGatewayFactory(StoreOwnershipAndUnavailableLogin|FailedInitializationClosesStore)$' -race -count=3 -timeout 90s
++ok  	github.com/modu-ai/moai-adk/internal/cli	3.775s
++$ go test ./internal/cli -run '^Test(GPTGatewayFactoryConnectsSharedOwnerWithManagedConfiguration|GPTProductionAppServerWiring|GPTProductionReconnectAfterSocketDisconnect)$' -race -count=3 -timeout 90s
++ok  	github.com/modu-ai/moai-adk/internal/cli	5.498s
++$ go test ./internal/cli -run '^TestGatewayFactory' -race -count=1 -timeout 90s
++--- FAIL: TestGatewayFactoryNativeReceiptAuthorizationReachesSubscription (0.02s)
++    gateway_factory_test.go:208: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryNativeReceiptAuthorizationRejectsForeignSession (0.02s)
++    gateway_factory_test.go:258: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactorySubscriptionSwitchKeepsAuthorizedHistory (0.02s)
++    gateway_factory_test.go:501: gateway private configuration or verified dependencies unavailable
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/cli	1.669s
++FAIL
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경 + startup cleanup 시험/공유 peer fixture 확장. 제품 코드는 이번 단계에서 변경하지 않았다. 두 번째 명령은 처음 Go 캐시 접근 제한으로 실행 전 실패해 승인된 권한으로 재실행한 결과다. `git diff --check` exit 0, 출력 없음.
++
++Gaps: 여전히 factory 검사 3개가 실패한다. 이번 mock peer 검사는 실제 사용자 계정의 인증 갱신·401 원인을 증명하지 않는다. Windows는 AS-022의 별도 stdio 실행 증거가 필요하며 이 Unix fixture 결과로 수용하지 않는다. 연결 정리 외 모든 OS 자원이나 잠금 해제까지 검사했다고 주장하지 않는다. 전체 수용·설치·병합·push 미완료.
++
++Residual-risk: 후기 실패는 receipt 경로 충돌 한 가지를 주입했다. 실제 디스크 오류·권한 변경·동시 종료 조합을 모두 포괄하지 않는다. 실제 운영 서버 및 인증 파일은 변경하지 않았다.
++
++## 시작 설정 키 검사를 현행 GPT 경로로 이관하며 발견한 누락 수정
++
++Claim: `TestGatewayFactoryExactPayloadKeysBeforeStore`를 현행 production GPT factory로 옮기자 대소문자가 다른 JSON 키를 수용하고 프로필 디렉터리를 생성하는 누락이 재현됐다. `decodeGPTAppServerPayload`에 최상위 키의 정확한 이름 검사를 추가했다. 제품 권한을 완화하거나 legacy PKCE 경로를 되살리지 않았다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGatewayFactoryExactPayloadKeysBeforeStore$' -count=1 -timeout 60s
++    gateway_factory_test.go:487: field 0 alias or duplicate admitted: decode=<nil> factory=gateway private configuration or verified dependencies unavailable resources=1 read=<nil>
++FAIL	github.com/modu-ai/moai-adk/internal/cli	0.846s
++$ go test ./internal/cli -run '^Test(GatewayFactoryExactPayloadKeysBeforeStore|GPTProductionAppServerWiring|GPTProductionReconnectPreservesToolHistory|GatewayContext.*)$' -race -count=3 -timeout 120s
++ok  	github.com/modu-ai/moai-adk/internal/cli	6.735s
++$ go test ./internal/cli -run '^TestGPTContext(SnapshotSurvivesCacheChange|SnapshotRejectsInvalidExplicitWindow|MetadataFailsClosedBeforeBinding)$' -race -count=3 -timeout 60s
++ok  	github.com/modu-ai/moai-adk/internal/cli	1.906s
++$ go test ./internal/cli -run '^TestGatewayFactory' -race -count=1 -timeout 90s
++--- FAIL: TestGatewayFactoryStoreOwnershipAndUnavailableLogin (0.00s)
++    gateway_factory_test.go:161: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryNativeReceiptAuthorizationReachesSubscription (0.02s)
++    gateway_factory_test.go:249: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryNativeReceiptAuthorizationRejectsForeignSession (0.02s)
++    gateway_factory_test.go:299: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryFailedInitializationClosesStore (0.00s)
++    gateway_factory_test.go:361: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactorySubscriptionSwitchKeepsAuthorizedHistory (0.02s)
++    gateway_factory_test.go:569: gateway private configuration or verified dependencies unavailable
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/cli	0.917s
++FAIL
++```
++
++Baseline-attribution: HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 누적 미커밋 변경. 첫 실행은 테스트만 이관한 시점의 RED이며 반복 오류 중 한 행을 발췌했다. 두 번째부터 정확한 키 검사를 추가한 소스다. 이관 검사는 빈 PATH와 매 변형마다 격리된 MOAI_HOME을 사용한다. 정상 입력 양성 대조는 profile 생성까지 도달하며 실제 Codex를 실행하지 않는다. `version/session_token/model_ids/context_tokens` 각각에 대해 대소문자 별칭·혼합 순서·동일 키 중복을 검사한다.
++
++Gaps: 기존 factory 검사 5개가 여전히 실패한다. 이번 누락이 사용자 401의 원인이라는 증거는 없다. conversation 내부 필드의 별도 정확한 키 검사, 전체 CLI 재실행, 모든 live 수용 조건 및 설치·병합·push는 이 실행으로 증명하지 않았다.
++
++Residual-risk: 키 검사는 launcher와 자식 서버 사이의 private 설정 경계에 대한 보강이며, 임의 사용자 메시지의 API 호환성 문제를 해결했다고 확대 해석하면 안 된다.
++
++## 현재 인증·별칭 규약에 맞춘 검사 두 건 보정
++
++Claim: `gateway_auth_modes_test.go`의 MoAI PKCE 기대값을 App Server 인증 소유권 검사로 바꾸고, `gateway_provider_contract_test.go`의 네 별칭 단일 모델 기대값을 SPEC의 고정 매핑으로 보정했다. 제품 인증 코드는 변경하지 않았다. 넓힌 CLI 검사는 아직 실패하며 남은 실패는 6개다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^Test(GatewayAuthModesDualPath|GatewayProviderContractPickerAndSlots|GPTAliasEffortMatrix)$' -race -count=3 -timeout 90s
++ok  	github.com/modu-ai/moai-adk/internal/cli	2.099s
++$ go test ./internal/gateway -run '^TestManagedAuthority(BypassesCredentialStoreAndRejectsLogout|RejectsModeFallbackAndGenerationRace)$' -race -count=3 -timeout 60s
++ok  	github.com/modu-ai/moai-adk/internal/gateway	1.473s
++$ go test ./internal/cli -run '^Test.*(GPT|Gpt|Gateway|AppServer)' -race -count=1 -timeout 180s
++--- FAIL: TestGatewayFactoryStoreOwnershipAndUnavailableLogin (0.00s)
++    gateway_factory_test.go:161: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryNativeReceiptAuthorizationReachesSubscription (0.02s)
++    gateway_factory_test.go:249: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryNativeReceiptAuthorizationRejectsForeignSession (0.02s)
++    gateway_factory_test.go:299: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryFailedInitializationClosesStore (0.00s)
++    gateway_factory_test.go:361: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryExactPayloadKeysBeforeStore (0.00s)
++    gateway_factory_test.go:472: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactorySubscriptionSwitchKeepsAuthorizedHistory (0.02s)
++    gateway_factory_test.go:565: gateway private configuration or verified dependencies unavailable
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/cli	11.420s
++FAIL
++```
++
++Baseline-attribution: t856 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 기존 미커밋 변경 + 위 두 테스트 수정. 기준은 `spec.md` REQ-MG-017의 인증 소유권과 `acceptance.md`의 `FABLE=astra/OPUS=sol/SONNET=terra/HAIKU=luna` 매핑이다. 앞의 두 명령 exit 0, 마지막 exit 1. 마지막 출력에서 임시 fixture 설정 경고는 생략했다. `git diff --check` exit 0, 출력 없음.
++
++Gaps: 여섯 legacy factory 검사의 현행 경로 이관은 미완료다. 이 검사들을 삭제하거나 skip하지 않았다. 실제 구독/API 키 두 모드 PTY 수용, 전체 Gateway 수용 조건, 설치·병합·push도 완료되지 않았다.
++
++Residual-risk: 구조적 인증 소유권 검사만으로 런타임 자동 전환 금지를 증명할 수 없어 기존 로그아웃·방식 변경·인증 세대 경합 검사를 함께 실행했다. 이 결과도 모든 실제 계정 환경을 포괄하지는 않는다.
++
++## 넓힌 CLI 검사 실패와 수정 전 HEAD 대조
++
++Claim: Gateway/GPT CLI 검사에서 실패한 8개 테스트는 수정 전 HEAD 사본에서도 동일하게 실패했다. 따라서 이 8개의 실패 자체는 이번 미커밋 복구 변경으로 새로 발생한 회귀가 아니다. 전체 CLI 통과나 배포 가능 판정을 뜻하지 않는다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^Test.*(GPT|Gpt|Gateway|AppServer)' -race -count=1 -timeout 180s
++FAIL github.com/modu-ai/moai-adk/internal/cli 11.132s
++$ go test ./internal/cli -run '^Test(GatewayAuthModesDualPath|GatewayFactoryStoreOwnershipAndUnavailableLogin|GatewayFactoryNativeReceiptAuthorizationReachesSubscription|GatewayFactoryNativeReceiptAuthorizationRejectsForeignSession|GatewayFactoryFailedInitializationClosesStore|GatewayFactoryExactPayloadKeysBeforeStore|GatewayFactorySubscriptionSwitchKeepsAuthorizedHistory|GatewayProviderContractPickerAndSlots)$' -race -count=1 -timeout 120s
++--- FAIL: TestGatewayAuthModesDualPath (0.00s)
++    gateway_auth_modes_test.go:35: GPT entry gpt-6-astra declares auth method "app-server-managed"; only the managed subscription method is registered
++--- FAIL: TestGatewayFactoryStoreOwnershipAndUnavailableLogin (0.00s)
++    gateway_factory_test.go:161: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryNativeReceiptAuthorizationReachesSubscription (0.02s)
++    gateway_factory_test.go:249: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryNativeReceiptAuthorizationRejectsForeignSession (0.02s)
++    gateway_factory_test.go:299: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryFailedInitializationClosesStore (0.00s)
++    gateway_factory_test.go:361: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactoryExactPayloadKeysBeforeStore (0.00s)
++    gateway_factory_test.go:472: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayFactorySubscriptionSwitchKeepsAuthorizedHistory (0.02s)
++    gateway_factory_test.go:565: gateway private configuration or verified dependencies unavailable
++--- FAIL: TestGatewayProviderContractPickerAndSlots (0.00s)
++    gateway_provider_contract_test.go:64: OPUS slot not bound
++    gateway_provider_contract_test.go:64: SONNET slot not bound
++    gateway_provider_contract_test.go:64: HAIKU slot not bound
++FAIL
++FAIL github.com/modu-ai/moai-adk/internal/cli 1.091s
++FAIL
++```
++
++Baseline-attribution: 첫 명령은 t856의 HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c`와 현재 미커밋 변경에서 실행했다. 두 번째 명령은 같은 HEAD를 `git archive HEAD`로 `/private/tmp/moai-head-baseline.OZ9Kqm`에 추출한 수정 전 소스에서 실행했다. 두 명령 모두 exit 1. 첫 명령의 마지막 패키지 결과와 두 번째 명령의 실패 출력은 공백을 정규화해 수록했다. 실제 운영 Gateway와 인증 정보는 변경하지 않았다.
++
++Gaps: 실패한 검사의 현행 요구사항 대조와 수정은 아직 하지 않았다. 기존 실패임을 확인한 것은 이를 무시하거나 테스트를 제거할 근거가 아니다. 사용자 401 로그의 모든 원인, 전체 수용 조건, 설치본 교체·병합·push·SPEC 종결은 여전히 미완료다.
++
++Residual-risk: 기존 인증 경로를 전제로 한 테스트를 단순히 통과시키려고 제품의 인증 검증을 완화하면 권한 경계가 손상될 수 있다. 현행 App Server 경로에서 원래 검사의 보안 목적을 보존하는지 확인해야 한다.
++
++## 복수 도구 복구·실제 deferred 복구·영향 패키지 회귀
++
++Claim: 두 도구가 동시에 대기하는 상태를 저장한 뒤 새 연결에서 재전달 순서와 결과 배열 순서를 뒤집어도 올바른 RPC/결과 대응이 유지되는 것을 검사했다. 중복 call, 두 번째 인자 변경, 두 번째 호출 누락이면 어느 결과도 반환하지 않는다. 실제 Claude ToolSearch로 발견한 MCP 도구 결과 제출 직전에 시험 연결을 끊은 경우도 복구됐으며 MCP 실행 횟수는 1이었다.
++
++Evidence:
++
++```text
++$ go test ./internal/codexbridge -run '^TestPendingResumeBatch' -race -count=3 -timeout 30s
++ok  	github.com/modu-ai/moai-adk/internal/codexbridge	4.909s
++$ go test ./internal/codexbridge ./internal/codextools ./internal/gateway/... -race -count=1 -timeout 120s
++ok  	github.com/modu-ai/moai-adk/internal/codexbridge	23.320s
++ok  	github.com/modu-ai/moai-adk/internal/codextools	1.317s
++ok  	github.com/modu-ai/moai-adk/internal/gateway	12.714s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/auth	6.822s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/conversation	4.610s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/opaque	1.285s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/receipt	3.869s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/translate	5.083s
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/deferred-reconnect$' -race -count=1 -v -timeout 100s
++    gpt_claude_host_tool_live_test.go:181: test-owned pending gateway connection closed before matching tool result submission
++    gpt_claude_host_tool_live_test.go:340: real Claude ToolSearch -> tool_reference -> real GPT dispatcher -> Claude MCP: calls=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:139: unexpected gateway HTTP error responses=0; unauthenticated hello probes refused=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	12.249s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 현재 미커밋 변경. 이번 추가는 batch 회귀와 deferred-reconnect 실제 시험이며 제품 코드 변경은 없다. 복수 도구 검사는 모의 RPC, deferred 복구는 실제 Claude/GPT와 로컬 MCP 시험 서버다. 실제 복구 성공은 1회이며 일반화하지 않는다. 운영 서버는 종료하지 않았고 인증 파일도 복사하지 않았다.
++
++Gaps: CLI 전체 검사·다양한 동시 취소/이벤트 초과·전송 직후 단절·서버 재시작·Windows·native fork/Factory/모든 모델 및 인증 모드의 최종 검증은 남아 있다. 복수 도구의 실제 모델 복구는 이번 시험에 포함하지 않았다. 병합·push·rc 설치본 반영·SPEC 종결도 미실행이다.
++
++Residual-risk: 모의 복수 도구 시험은 네트워크 전송 도중 부분 성공을 재현하지 않는다. 이미 ReplyStarted가 기록된 경우의 자동 재전송 거절을 유지하며, 이번 성공을 그 상황까지 확대하지 않는다.
++
++## 실제 Claude/GPT에서 제품 pending 복구 검증
++
++Claim: 실제 Claude가 Bash 결과를 돌려주기 직전 시험 소유 gateway 연결·Engine·receipt lease만 닫았다. 제품 reconnect와 ResumePending 경로를 통해 동일 대화가 완료됐고, 새 Claude 프로세스에서 이전 결과를 다시 읽었다. 관측한 고유 도구 결과 ID는 1개이며 예상 밖 HTTP 오류는 0이었다. 서버 강제 종료나 도구 결과 RPC의 중복 전송 시험은 아니다.
++
++Evidence:
++
++```text
++$ go test ./internal/codexbridge -run '^Test(Pending|Resume|MeasuredUsage|ResumedUsage)' -race -count=3 -timeout 90s
++ok  	github.com/modu-ai/moai-adk/internal/codexbridge	7.846s
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/reconnect$' -race -count=1 -v -timeout 100s
++    gpt_claude_host_tool_live_test.go:171: test-owned pending gateway connection closed before first tool result submission
++    gpt_claude_host_tool_live_test.go:340: real Claude -> production gateway -> real GPT -> Claude Bash -> result: observed=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:360: new Claude process resumed prior Bash result; unique tool result IDs=1
++    gpt_claude_host_tool_live_test.go:137: unexpected gateway HTTP error responses=0; unauthenticated hello probes refused=2
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	15.711s
++$ go test ./internal/codexbridge -run '^TestPendingResume' -race -count=3 -timeout 90s && git diff --check
++ok  	github.com/modu-ai/moai-adk/internal/codexbridge	2.912s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 현재 미커밋 제품/시험 변경. 실제 모델 검사는 임시 launcher 바이너리가 아니라 이 트리의 production factory를 시험 바이너리에서 조립해 사용했다. 마지막 거절 검사는 공개 텍스트·턴 종료·오류 이벤트를 추가했으며 그 뒤 제품 코드는 바꾸지 않았다. diff 검사 출력 없음.
++
++실패와 수정: 실제 시험은 먼저 `appserver_recovery_required`, 다음 `pending_resume_token_usage`, 이어 `pending_resume_event`로 각각 실패했다. 고정된 진단 코드를 추가해 사용량 알림이 복구를 막는 것을 확인했다. 이를 기존 사용량 처리 함수로 전달하고, 나머지 비출력 알림은 기존 일반 턴 처리기와 동일하게 처리한 뒤 위 실행이 성공했다. 후자의 실제 알림 이름은 기록하지 않았으므로 특정 이름이 원인이었다고 단정하지 않는다. 고정된 오류 코드는 allowlist만 외부에 노출하며 인자나 provider 원문을 담지 않는다.
++
++Gaps: 실제 제품 복구 성공은 이번 1회다. 복수/deferred 도구, 비정상 프로세스 종료, 동시 취소, 서버 재시작, 결과 전송 직후 단절과 모든 환경의 정확히 한 번 처리는 미검증이다. 전체 영향 패키지 검사는 아직 남아 있다. 기존 사용자 401/간헐적 400의 모든 원인이 해소됐다는 주장은 하지 않는다. 설치본 교체·병합·push·SPEC 종결도 미실행이다.
++
++Residual-risk: 알 수 없는 알림을 무시하는 정책은 기존 일반 턴 소비자와 같지만 향후 프로토콜에서 새로운 공개 출력 알림이 추가되면 검토가 필요하다. 현재 알고 있는 텍스트·오류·종료 이벤트와 서버 요청은 복구 중 묵살하지 않는 거절 검사로 보호한다.
++
++## 제품 pending 재연결 경로 연결과 거절 조건 검증
++
++Claim: `ResumePending` 경로를 Prepare → Engine에 연결했다. 새 Engine이 waiting barrier의 공개 ID 해시와 결과 개수를 확인한 뒤 기존 thread를 재개하고, 재전달된 call·도구·인자·스키마를 모두 대조한 다음 새 RPC ID로 결과를 반환한다. 완료 대화의 `Resume`과 구분해 기존 도구 대기 중 모델 변경 동작을 유지했다. 제품 HTTP 조립을 사용하는 모의 서버 검사에서 pending 연결 단절 후 추가 thread/turn 없이 결과 한 건을 반환했다.
++
++Evidence:
++
++```text
++$ go test ./internal/codexbridge -run '^Test(Pending|Resume|ToolSegment)' -race -count=3 -timeout 90s
++ok  	github.com/modu-ai/moai-adk/internal/codexbridge	5.844s
++$ go test ./internal/cli -run '^Test(GPTProductionReconnectPreservesToolHistory|ProductionGatewayModelChangeCompletesPendingTool)$' -race -count=3 -v -timeout 90s
++    gpt_appserver_model_switch_test.go:156: production gateway → prepare → adapter → Engine: selected terra while sol tool pending; same thread completed once with HTTP 200
++    gpt_appserver_reconnect_history_test.go:172: status=200 threads=1 turns=1 resumes=1 accepted_tool_results=1
++    gpt_appserver_reconnect_history_test.go:172: status=200 threads=1 turns=2 resumes=1 accepted_tool_results=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	5.861s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 미커밋 pending_resume.go 및 관련 Engine/Prepare/fixture 변경. CLI 출력은 3회 반복 중 대표 행과 전체 종료 결과다. 새 bridge 검사는 인자 변경·스키마 변경·다른 공개 ID·이미 전송을 시작한 기록·누락된 대응 정보에서 결과 전송과 새 generation이 0임을 확인한다. `git diff --check` 출력 없음.
++
++실패와 수정: 처음에는 waiting에도 기존 `Resume`을 켜서 모델 변경 검사에서 401 `appserver_authority_changed`가 3회 재현됐다. 기존 모델 선택 검사를 완화하지 않고 별도 `ResumePending`으로 구분한 뒤 위 검사를 통과했다. 그때도 같은 모델의 pending 복구 검사는 이미 200이었다. 이는 이번 수정 중의 회귀이며 사용자 과거 로그 원인과 동일하다고 주장하지 않는다.
++
++Gaps: 제품의 새 경로는 아직 실제 GPT 연결 단절 시험에 적용하지 않았다. 직전 공식 프로토콜 시험과 이번 제품 모의 서버 검증은 서로 다른 증거다. 복수 도구·deferred discovery 복구·동시 취소/queue 초과·전송 직후 단절에 대한 추가 검증과 패키지 전체 재검사가 남았다. 필드가 없는 구버전 기록과 전송 불확실 상태는 계속 거절한다. 설치본/임시 launcher 바이너리에는 이번 수정이 반영되지 않았다.
++
++Residual-risk: 같은 서버가 요청을 재전달할 때만 복구 가능하다. 서버 재시작이나 이미 완료된 요청을 임의로 새 턴으로 재구성하지 않는다. 재전달을 기다리는 제한 시간은 현재 5초이며 지연 환경에서 실패할 수 있다. 전체 완료 판정은 보류한다.
++
++## pending 요청 대조 정보와 결과 전송 시작 기록
++
++Claim: 제품 Engine이 대기 도구의 call ID, 공개 ID의 SHA-256, 도구 이름, 인자·스키마 해시, discovery epoch를 barrier에 기록하도록 변경했다. 실제 RPC 결과 전송 전 `ReplyStarted`를 저장하고, 전송 실패 뒤에도 남긴다. 정상 완료 시 pending 정보는 제거된다. 이 정보는 복구 판단을 위한 준비이며 incomplete barrier의 자동 재개는 아직 허용하지 않는다.
++
++Evidence:
++
++```text
++$ go test ./internal/codexbridge -race -count=3 -timeout 120s
++--- FAIL: TestPendingBarrierIsDurableBeforeExposure (0.04s)
++    engine_test.go:316: state retained tool payload or public result credential
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/codexbridge	62.541s
++
++$ go test ./internal/codexbridge -run '^Test(Pending|Resume|ToolSegment|EOFAfterTool)' -race -count=3 -timeout 90s && git diff --check
++ok  	github.com/modu-ai/moai-adk/internal/codexbridge	4.411s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 이번 engine/store/pending_binding_test 변경. 첫 명령은 공개 ID 원문을 저장한 초안을 기존 안전성 검사가 거절한 결과이며, 반복 오류 중 한 행만 발췌했다. 기존 검사는 수정하지 않았다. 공개 ID를 SHA-256으로 대체한 뒤 두 번째 범위 검사를 3회 통과했다. diff 검사 출력 없음.
++
++Gaps: 수정 후 패키지 전체 검사를 다시 실행한 것은 아니다. 새 메타데이터를 이용한 재전달 요청 대조, 결과 ID 복원, 복수 도구 처리, 제품 HTTP 경로의 자동 재개는 다음 구현 대상이다. 실제 모델 시험에서 사용한 직전 임시 바이너리에는 이번 제품 변경이 들어 있지 않다. 설치본·병합·push는 미실행이다.
++
++Residual-risk: 인자 해시는 원문 바이트 기준이므로 의미가 같아도 직렬화가 달라지면 일치하지 않는다. 향후 대조에서 이를 무시하지 않으며, `ReplyStarted`는 전송 성공이 아니라 전송 여부가 불확실할 수 있다는 표시다. 구버전 writer가 확장 필드를 보존한다는 보장은 없으므로 필드가 없을 때 복구를 허용해서는 안 된다.
++
++## 실제 pending 도구의 새 연결 재전달·결과 반환 확인
++
++Claim: 실제 GPT가 시험용 `probe_pending`을 호출한 뒤 결과를 보내지 않고 시험 연결만 닫았다. 새 연결에서 `thread/resume`을 호출하자 같은 thread/turn/call/tool의 요청이 재전달됐다. 새 RPC에 합성 결과를 정확히 한 번 반환한 뒤 동일 턴의 `completed` 이벤트를 확인했다. 최종 시험 3회가 통과했다. 이는 제품 pending 복구 구현의 근거이며 제품 기능 완료는 아니다.
++
++Evidence:
++
++```text
++$ MOAI_GPT_PENDING_DISCONNECT_LIVE=1 go test ./internal/cli -run '^TestGPTLivePendingConnectionLoss$' -race -count=3 -v -timeout 210s
++    gpt_pending_disconnect_live_test.go:134: snapshot thread status=active turns=1
++    gpt_pending_disconnect_live_test.go:136: snapshot turn matches=true status=inProgress items=1
++    gpt_pending_disconnect_live_test.go:141: snapshot item type=userMessage status= call_matches=false tool_matches=false
++    gpt_pending_disconnect_live_test.go:201: same pending call reissued on replacement; synthetic result replies=1; owned turn completed; tool executed=0
++--- PASS: TestGPTLivePendingConnectionLoss (7.91s)
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	28.292s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 미커밋 변경, 공식 Codex 0.154.0과 실제 `gpt-5.6-sol`, 기존 managed 서버에 독립 시험 연결로 접속했다. 위 출력은 마지막 반복과 전체 종료 결과 발췌다. 외부 명령 도구는 실행하지 않았고 합성 결과만 전송했다. 시험 소유 thread/turn만 정리하며 공유 서버는 종료하지 않았다.
++
++실패와 수정: 처음 두 실행은 `thread/read`에서 pending 도구를 찾는 조건으로 실패했다. 실제 조회는 active/inProgress와 userMessage·reasoning 등만 반환했고 해당 도구는 없었다. 이후 resume 재전달은 성공했다. 결과 반환까지 확장한 첫 3회는 모두 턴 완료를 관측했지만, 시험 정리 코드가 완료된 턴에 interrupt를 보내 RPC -32600으로 실패했다. 완료 이벤트를 검증한 경우 interrupt를 생략하도록 수정한 후 위 3회 통과를 얻었다. 제품 검증 조건을 완화한 것이 아니라 시험의 정리 조건을 고쳤다.
++
++다음 구현 조건: pending 목록과 공개 도구 ID의 대응을 안전하게 보존하고, 재전달된 요청의 thread/turn/call/tool 및 인자가 기존 요청과 일치할 때만 새 RPC ID에 기존 결과를 반환해야 한다. 예전 연결의 RPC ID는 재사용하지 않는다. 서버가 종료됐거나 결과 전송 여부가 불확실한 경우는 이번 시험과 다른 복구 분기로 남긴다. 단순 상태 조회만으로 결과 수신 여부를 추정하지 않는다.
++
++Gaps: 지금은 시험 코드만 동작하며 제품 Engine은 기존 미완료 barrier 거절을 유지한다. 복수 도구, 결과 전송 직후 단절, 프로세스 재시작, native Agent 도구 연결, 기존 공개 receipt와의 대응 검증은 남아 있다. 스키마 조회에서 명시적 복구 명령을 못 찾았다는 앞선 결과가 기능 부재를 뜻하지 않았으며, 이번 실행이 thread/resume의 실제 재전달 동작을 새로 입증했다.
++
++Residual-risk: 시험은 공유 서버가 살아 있는 연결 단절에 한정된다. 이를 서버 재시작이나 결과 전달 불확실 상황의 정확히 한 번 처리 보장으로 확대하지 않는다.
++
++## 현재 소스 실행 파일과 실제 GPT 주요 경로 검증
++
++Claim: 기존 소켓이 없는 상황에서 현재 소스로 빌드한 `moai gpt`의 정상 기동을 실행해 실제 GPT의 Claude Bash 호출·결과 반환을 확인했다. 이후 서버를 종료하지 않고 별도 시험 세션으로 Bash와 이력 재개, PTY, ToolSearch/MCP, Agent, 수동 compaction 후 정보 회상을 검사했다. 아래 실행들은 모두 통과했으며, 이 결과가 앞서 소켓 부재로 실행하지 못한 실제 모델 검증을 보완한다.
++
++Evidence:
++
++```text
++$ go build -o /private/tmp/moai-current-launcher.nlZp1f/moai ./cmd/moai && shasum -a 256 /private/tmp/moai-current-launcher.nlZp1f/moai
++b123d0a2e367bef755af7e20bb7a046266ced79f671a5e2e260895f3a27baf13  /private/tmp/moai-current-launcher.nlZp1f/moai
++
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_LAUNCHER_LIVE=1 MOAI_GPT_LAUNCHER_BINARY=/private/tmp/moai-current-launcher.nlZp1f/moai go test ./internal/cli -run '^TestGPTLauncherLiveNormalStartup$' -count=1 -v -timeout 100s
++    gpt_launcher_live_test.go:88: real moai gpt launcher completed: session=94e016d9-a537-4c66-9812-0e09f8c10528 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	13.530s
++
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession$' -race -count=1 -v -timeout 150s
++    gpt_claude_host_tool_live_test.go:318: real Claude -> production gateway -> real GPT -> Claude Bash -> result: observed=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:338: new Claude process resumed prior Bash result; unique tool result IDs=1
++    gpt_claude_host_tool_live_test.go:278: interactive Claude PTY -> real GPT -> Claude Bash -> displayed final: tool_results=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	20.791s
++
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession/(deferred|agent|compact)$' -race -count=1 -v -timeout 180s
++    gpt_claude_host_tool_live_test.go:311: real Claude ToolSearch -> tool_reference -> real GPT dispatcher -> Claude MCP: calls=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:318: real Claude Agent -> real GPT child -> parent result: child_ids=1 final=HOST_ROUNDTRIP_OK
++    gpt_claude_host_tool_live_test.go:267: PTY post-compact recall="⏺ HOST_EXECUTED_856"
++    gpt_claude_host_tool_live_test.go:279: real compaction requests=1; post-compact recall displayed
++    gpt_claude_host_tool_live_test.go:132: unexpected gateway HTTP error responses=0; unauthenticated hello probes refused=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	94.796s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 현재 미커밋 제품 변경. 임시 실행 파일 해시는 위와 같다. 뒤의 subtest 확장은 테스트 코드만 추가했으며 제품 소스는 바꾸지 않았다. 위 출력은 성공 로그 발췌이고 각 명령의 종료 코드는 0이다. 첫 빌드는 Go 캐시 권한 제한으로 실패한 뒤 승인된 확장 실행에서 성공했다. 테스트 스킬에 따라 실제 실행과 모의 서버 증거를 구분했다.
++
++운영 영향: 정상 런처의 managed 서버 기동을 허용했으며, owner 강제 종료 시험은 하지 않았다. 인증 파일 복사·설치본 덮어쓰기·운영 세션 종료는 하지 않았다. 공유 서버와 임시 실행 파일은 유지한다. 초기 탐색용 무인증 HEAD `/api/hello`의 401은 예상된 거절로 별도 집계했고, 각 세션의 예상 밖 HTTP 오류 집계는 0이었다.
++
++Gaps: 각 실제 모델 경로는 이번에 1회 검사했다. 이 성공이 이전 간헐적 400의 원인 규명을 대신하지는 않는다. 실제 pending 도구 단절 복구, native fork/병렬·중첩 격리, Factory 배차, 자동·자식 compaction과 hook 증거, 모든 모델/인증 모드 및 Windows 실행은 아직 이 결과로 입증하지 못한다. 커밋·병합·원격 push·설치 rc 교체·SPEC 종결은 하지 않았다.
++
++Residual-risk: 실모델의 비결정적 경로와 장기 사용 중 오류는 짧은 성공 시험으로 배제할 수 없다. 전체 목표는 미완료다.
++
++## 공식 서버의 새 연결 조회와 비파괴 실제 세션 시험 진입점
++
++Claim: 격리한 공식 shared 서버에서 첫 연결을 닫은 뒤 새 연결을 초기화하고 동일 idle thread를 조회했다. 기존 두 번째 연결의 account/read도 성공했다. 운영 서버 수명을 소유하지 않는 실제 Claude/GPT 세션 시험 진입점을 추가했지만, 현재 운영 소켓이 없어 실제 모델 검사는 시작하지 못했다.
++
++Evidence:
++
++```text
++$ MOAI_CODEX_TRANSPORT_LIVE=1 go test ./internal/codexapp -run '^TestSharedOfficialTransport$' -race -count=3 -v -timeout 90s
++    shared_test.go:192: official replacement connection observed same idle thread; surviving peer account/read succeeded; no turn/start
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/codexapp	1.956s
++
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_SHARED_SESSION_LIVE=1 go test ./internal/cli -run '^TestSharedGPTLiveClaudeSession$' -count=1 -v -timeout 150s
++=== RUN   TestSharedGPTLiveClaudeSession
++    gpt_claude_host_tool_live_test.go:48: existing shared owner required: shared App Server socket unavailable or not private
++--- FAIL: TestSharedGPTLiveClaudeSession (0.00s)
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/cli	0.848s
++
++$ stat -f '%N %Sp' /Users/goos/.moai/gpt-appserver/moai-appserver.sock
++stat: /Users/goos/.moai/gpt-appserver/moai-appserver.sock: stat: No such file or directory
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 현재 미커밋 변경. 첫 성공 로그는 동일한 세 번의 결과 중 한 행을 발췌했다. 첫 live 시도는 Go 캐시 권한 제한, 그 다음은 테스트 preflight가 설정 해시 바인딩을 누락해 실패했다. 기존 `managedGPTLiveConfig`를 사용하도록 수정한 뒤 최종 소켓 부재를 확인했다. 인증 정보는 출력하거나 복사하지 않았다. `git diff --check` 출력 없음.
++
++Gaps: 실제 Claude/GPT hosttool·PTY subtest는 preflight 이전 실패로 실행하지 못했다. 인증 정상 여부와 실제 모델 왕복은 이 결과로 판단할 수 없다. 새 연결 조회 성공은 빈 idle thread에 한정되며 pending 도구 복구의 증거가 아니다. 설치본 반영과 통합도 남아 있다.
++
++Residual-risk: 비파괴 시험은 시작 시 기존 서버 연결만 검사한다. 검사 중 서버가 별도 운영 행위로 종료되면 후속 제품 조립 경로도 실패할 수 있다. owner 강제 종료 검사는 여전히 별도 인증 테스트 프로필을 요구하며, 이 조건을 완화하지 않았다.
++
++## 미완료 도구 복구를 위한 공식 상태 조회 검증
++
++Claim: 설치된 공식 App Server에서 격리된 무인증 프로필로 thread를 만들고, 모델 턴을 시작하지 않은 상태에서 `thread/read`가 동일 thread의 `idle` 상태를 반환하는 것을 3회 확인했다. 이는 향후 복구 판단에 필요한 관측 수단의 검증이며, 미완료 도구 복구 구현 또는 성공 증거는 아니다.
++
++Evidence:
++
++```text
++$ codex --version
++codex-cli 0.154.0
++$ codex app-server generate-json-schema --experimental --out /private/tmp/moai-pending-protocol.TCo3iw
++$ jq -r '.. | objects | select(has("method")) | .method.enum[]?' /private/tmp/moai-pending-protocol.TCo3iw/ClientRequest.json | rg 'thread/(read|resume)|request|tool|turn/'
++thread/resume
++thread/read
++turn/start
++turn/settings/update
++turn/steer
++turn/interrupt
++mcpServer/tool/call
++$ MOAI_CODEX_TRANSPORT_LIVE=1 go test ./internal/codexapp -run '^TestOfficialThreadReadWithoutModelTurn$' -race -count=3 -v -timeout 90s
++    instructions_live_test.go:129: official thread/read: owned thread matched; status=idle; no turn/start, credentials or model generation
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/codexapp	1.493s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 현재 미커밋 변경, 공식 실행 파일 `/Users/goos/.local/bin/codex`. 로그는 반복된 동일 성공 행을 한 번만 발췌했다. 버전·스키마 명령에는 PATH 별칭 생성 권한 경고가 있었지만 종료 코드는 0이었다. 테스트는 각자의 임시 프로필을 사용하고 종료 시 소유 프로세스를 정리했다. `git diff --check` 출력 없음.
++
++조사 결과: 현재 `codexbridge`의 durable barrier는 완료된 `idle`만 재개하며, pending RPC 식별자와 전체 대기 도구 목록을 복구용으로 저장하지 않는다. [공식 App Server 문서](https://learn.chatgpt.com/docs/app-server)는 `thread/read` 상태 조회, `thread/resume`, 동적 도구 요청·응답을 설명한다. 이번에 확인한 문서와 생성 스키마에서는 연결이 끊긴 pending 도구 요청을 새 연결로 이전하는 명시적 규약을 확인하지 못했다. 지원하지 않는다고 단정하지 않으며, 일반 Responses API의 재개 기능을 App Server에 그대로 적용하지 않는다.
++
++다음 검증 조건: 실제 도구 대기 상태에서 연결을 끊었을 때 공식 서버가 내보내는 종료·재요청·완료 상태를 격리 환경에서 관측해야 한다. 동일 thread/turn/call과 저장된 결과를 대조하고, 결과 수신 여부가 불확실하면 재실행하지 않아야 한다. 서버 상태 조회만으로 도구 결과 전송 성공이나 정확히 한 번의 실행이 입증되지는 않는다.
++
++Gaps: 이번 시험은 같은 연결의 빈 idle thread만 검사했다. 새 연결의 조회·실제 pending 상태·결과 저장과 대사·자동 복구는 미검증이다. 별도 인증 시험 프로필 없이 운영 프로필을 종료하는 시험은 실행하지 않았다. 설치본 반영·병합·push도 하지 않았다.
++
++Residual-risk: 구현 전 공식 서버의 pending 상태 전이와 연결별 RPC 수명에 대한 추가 증거가 필요하다. 상태 조회가 가능하다는 이유만으로 기존 안전 거절을 제거하지 않았다.
++
++## 재연결 종료·일시 실패 회귀와 Claude 통합 반복 검사
++
++Claim: 재연결 생성이 대기 중이어도 gateway 종료가 요청 문맥을 취소해 종료되는 것을 검사했다. 최초 재연결 실패 뒤 재시도 제한 구간을 지나면 새로운 요청으로 복구되며, 실패한 요청을 내부에서 재실행하지 않는다. 기존 Agent 왕복·잘못된 Agent 인자 수정·도구 대기 중 모델 전환·완료 이력 재연결 검사는 3회 반복 통과했다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGPTReconnect' -race -count=3 -timeout 60s
++ok  	github.com/modu-ai/moai-adk/internal/cli	2.091s
++
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_CLAUDE_INTEGRATION=1 go test ./internal/cli -run '^Test(ClaudeCodeProductionGatewayAgentRoundTrip|ProductionGatewayCorrectsInvalidAgentAfterStreamingText|ProductionGatewayModelChangeCompletesPendingTool|GPTProductionReconnectPreservesToolHistory)$' -race -count=3 -v -timeout 120s
++    gpt_appserver_claude_integration_test.go:119: actual Claude Code -> production gateway -> App Server fixture: main=4 agent=1 threads=2 toolResults=1 children=1 result=MAIN_GATEWAY_OK
++    gpt_appserver_reconnect_history_test.go:172: status=400 threads=1 turns=1 resumes=0 accepted_tool_results=0
++    gpt_appserver_reconnect_history_test.go:172: status=200 threads=1 turns=2 resumes=1 accepted_tool_results=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	9.143s
++
++$ go test ./internal/cli -run '^TestGPT(Reconnect|ProductionReconnect|ProductionUnsupportedField)' -coverprofile=/private/tmp/moai-gpt-reconnect-coverage.out -count=1
++ok  	github.com/modu-ai/moai-adk/internal/cli	2.333s	coverage: 7.3% of statements
++```
++
++`go tool cover -func`의 해당 파일 함수별 결과: `newGPTAppServerGatewayHandler 85.0%`, `ServeHTTP 91.3%`, `reconnect 94.7%`, `Close 100.0%`. CLI 전체의 coverage 기준을 달성했다는 뜻은 아니다. 위 통합 로그는 반복 출력의 발췌이며 최종 종료 코드는 0이다.
++
++Baseline-attribution: HEAD `29bbd7b3e` + 현재 미커밋 변경. 이번 추가는 reconnect 회귀 테스트 두 개다. 테스트 스킬에 따라 실패·종료 경로를 추가하고 반복 실행, race 검사, 함수별 coverage를 측정했다. 통합 검사 첫 실행은 Go 캐시 접근 제한으로 실패했고, 승인된 확장 실행에서 위 결과를 얻었다. `git diff --check` 출력 없음.
++
++Gaps: 실제 Claude Code 실행은 포함하지만 GPT 응답은 로컬 모의 서버다. 실제 계정의 재연결·native fork·Factory 배차·Windows 실행 검증과 설치본 반영은 여전히 남아 있다. 도구 대기 중 단절의 400은 중복 실행 방지 확인이지 자동 복구 성공이 아니다. CLI 전체 coverage 85% 조건도 이 범위 검사로 입증하지 않았다.
++
++Residual-risk: 실제 App Server의 종료·세션 보존 동작을 모의 서버가 모두 재현하지 못한다. 기존 운영 세션을 종료하는 테스트는 실행하지 않았다. 전체 목표는 미완료다.
++
++## 허용되지 않는 입력 필드의 오류 분류
++
++Claim: 요청 변환 중 허용되지 않는 필드를 발견하면 502 통신 장애 대신 400 `request_unsupported_field`를 반환한다. 같은 필드 검사 함수를 쓰는 서버 응답 오류는 클라이언트 입력 오류로 바꾸지 않는다. 제품 HTTP 조립 경로에서 잘못된 요청을 두 번 보내도 thread/turn 생성과 정상 연결 재생성이 발생하지 않는 것을 검사했다.
++
++Evidence:
++
++```text
++$ go test ./internal/gateway/... -race -count=1 && go test ./internal/cli -run '^Test(GPTProductionUnsupportedFieldDoesNotStartTurn|GPTProductionReconnect|GPTReconnect|GPTProductionAppServerWiring|ManagedGPTRejection)' -race -count=3 && git diff --check
++ok  	github.com/modu-ai/moai-adk/internal/gateway	12.559s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/auth	6.591s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/conversation	3.446s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/opaque	1.258s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/receipt	3.763s
++ok  	github.com/modu-ai/moai-adk/internal/gateway/translate	4.936s
++ok  	github.com/modu-ai/moai-adk/internal/cli	8.749s
++```
++
++Baseline-attribution: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t856`, HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c`와 현재 미커밋 변경. 실행 종료 코드 0, diff 검사 출력 없음. 첫 실행은 Go 캐시 접근 권한으로 실패했고 승인된 권한 확장 후 다시 실행했다. 초기 테스트 작성에서 응답 fixture의 status 누락 및 정수에 len을 사용한 오류를 수정한 뒤 위 결과를 얻었다.
++
++Gaps: 이는 이전 합성 테스트에서 발견한 오류 분류 문제를 고친 것이다. 사용자 a8929426 세션의 최초 502가 이 입력 문제 때문이라는 증거는 없다. 이번 로그 재조회에서도 05:27:50.323Z의 502와 이후 여섯 번의 401을 확인했다. 실제 GPT 계정 검증·설치본 교체·커밋·병합·push는 이번 검사에 포함하지 않았다.
++
++Residual-risk: 모든 입력 검증 오류를 일괄 분류한 것은 아니다. 이번 변경은 허용되지 않는 필드에 한정하며, 저장소·인증·이력 오류를 임의로 입력 오류로 바꾸지 않는다. 미완료 도구가 남은 연결 단절의 자동 복구와 이전 간헐적 400 원인 규명은 계속 남아 있다.
++
++## 재연결 이후 완료 기록과 미완료 도구 기록 검증
++
++Claim: 제품 HTTP 조립·입력 준비·Engine·로컬 App Server 프로토콜 모의 서버를 연결해, 소켓 단절 뒤 완료된 대화가 기존 스레드로 재개되는 것을 확인했다. 도구 대기 중 끊어진 경우에는 기존 RPC의 결과를 새 연결에 전달하거나 도구를 재실행하지 않는다. 이는 안전한 거절을 확인한 것이며, 미완료 도구가 자동 복구됐다는 뜻은 아니다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGPTProductionReconnectPreservesToolHistory$' -race -count=3 -v
++    gpt_appserver_reconnect_history_test.go:127: status=400 threads=1 turns=1 resumes=0 accepted_tool_results=0
++    gpt_appserver_reconnect_history_test.go:127: status=200 threads=1 turns=2 resumes=1 accepted_tool_results=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	4.693s
++
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_CLAUDE_INTEGRATION=1 go test ./internal/cli -run '^Test(ClaudeCodeProductionGatewayAgentRoundTrip|ProductionGatewayCorrectsInvalidAgentAfterStreamingText|ProductionGatewayModelChangeCompletesPendingTool|GPTProductionReconnectPreservesToolHistory)$' -race -count=1 -v -timeout 120s
++    gpt_appserver_argument_repair_integration_test.go:87: production streaming progress -> negative schema feedback=1 -> corrected public Agent=1 -> HTTP200 done; thread=1
++    gpt_appserver_claude_integration_test.go:119: actual Claude Code -> production gateway -> App Server fixture: main=4 agent=1 threads=2 toolResults=1 children=1 result=MAIN_GATEWAY_OK
++    gpt_appserver_model_switch_test.go:156: production gateway → prepare → adapter → Engine: selected terra while sol tool pending; same thread completed once with HTTP 200
++    gpt_appserver_reconnect_history_test.go:127: status=400 threads=1 turns=1 resumes=0 accepted_tool_results=0
++    gpt_appserver_reconnect_history_test.go:127: status=200 threads=1 turns=2 resumes=1 accepted_tool_results=1
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	4.240s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 새 reconnect history 테스트와 모의 서버의 연결 간 thread 상태 유지 변경. 실제 Claude 실행은 포함하지만 모델 응답은 모의 서버이며, 운영 인증 프로필은 사용하지 않았다. 음성 시험의 400은 `appserver_scope_mismatch`이며, 기존 live 검사에서 발생한 간헐적 400과 같은 원인이라고 주장하지 않는다.
++
++실패 기록: 첫 완료 턴 검사는 502로 실패했다. 테스트가 `json.Unmarshal` 대상인 `[]map`을 재사용하면서 이전 tool-use의 `id/input`을 새 text 블록에 남겼다. 동일한 준비 함수에서 `unsupported field "id"`를 확인하고 새 Content로 디코딩하도록 수정했다. 제품의 입력 검사를 완화하지 않았다. pending-tool은 첫 검사부터 추가 실행 0이었지만 예상 오류 코드가 달라 실패했으므로, 테스트를 실제 `appserver_scope_mismatch` 계약에 맞췄다.
++
++Gaps: 이력 재개는 합성 프로토콜 검사다. 실제 GPT 계정의 대화 복구·native fork·Factory 배차·Windows runtime·간헐적 400의 원인 규명은 남아 있다. 별도 인증 테스트 프로필은 아직 확인되지 않았다. 미완료 도구 단절에 대한 자동 대사·복구는 구현하지 않았으며, 기존 실행 불확실성 거절을 유지한다.
++
++Residual-risk: 모의 서버는 실제 App Server의 연결 단절 시 pending RPC 처리나 thread 로딩 정책 전체를 재현하지 않는다. 전체 목표는 미완료이며 설치본 교체·병합·push는 하지 않았다.
++
++## 요청 사이의 연결 재수립 경로 추가
++
++Claim: terminal transport 실패가 확인된 경우 다음 HTTP 요청 전에 managed 연결·어댑터·Engine을 새로 조립한다. 기존 요청을 내부에서 재전송하지 않는다. 기존 연결에서 진행 중인 요청이 모두 빠진 뒤 receipt/connection을 닫고 다시 인증한다. 정상 연결의 정책 400은 복구로 우회하지 않으며, 인증되지 않은 요청은 재연결을 시작하지 못한다. 정리 실패는 재조립을 차단한다.
++
++Evidence:
++
++```text
++$ go test ./internal/cli -run '^TestGPT(ProductionReconnect|Reconnect|ProductionAppServerWiring)' -race -count=3 -v
++    gpt_appserver_reconnect_test.go:91: socket disconnect recovered; initialize=2 account/read=2 thread/start=0 turn/start=0
++--- PASS: TestGPTProductionReconnectAfterSocketDisconnect (0.38s)
++--- PASS: TestGPTReconnectNeverReplaysFailedRequest (0.00s)
++--- PASS: TestGPTReconnectConcurrentRequestsBuildOnce (0.00s)
++--- PASS: TestGPTReconnectKeepsPolicyRejectionsAndAuthBoundary (0.00s)
++--- PASS: TestGPTReconnectStopsAfterCloseFailure (0.00s)
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	4.864s
++
++$ go test ./internal/cli -run '^TestGPT(ProductionReconnect|Reconnect|ProductionAppServerWiring)' -race -count=3 && go test ./internal/codexbridge -run '^TestResume' -race -count=3 && git diff --check
++ok  	github.com/modu-ai/moai-adk/internal/cli	4.786s
++ok  	github.com/modu-ai/moai-adk/internal/codexbridge	3.587s
++```
++
++최종 실행에는 `TestGPTReconnectCloseCancelsActiveRequest`도 포함했다. 제품 조립 테스트는 임시 프로필의 모의 App Server Unix 소켓을 실제로 닫은 뒤 `/v1/models` 요청을 보냈다. 재초기화·계정 재확인이 각각 2회(최초 연결 포함)이며 모델 생성 RPC는 0회임을 확인했다. 별도 동시성 테스트에서 요청 20건이 연결을 한 번만 교체하는지 검사했다. 오류가 포함된 첫 HTTP 요청이 내부 재시도로 바뀌지 않는지도 확인했다.
++
++Baseline-attribution: `WT-gpt-agent-summary`, HEAD `29bbd7b3e` + `gpt_appserver_reconnect.go` 및 관련 테스트·조립 변경. 마지막 검사는 활성 요청 종료 사례 추가 후 실행했다. 운영 계정·실제 모델 요청은 사용하지 않았다.
++
++Gaps: 실제 GPT의 완료된 대화 회복, 도구 대기 중 연결 단절, 병렬 child의 복구를 이 새 경로로 end-to-end 검증하지 않았다. `TestResume`는 기존 기록의 재개·외부 소유권·불완전 기록 거절을 검증하지만 새 HTTP 복구와 합쳐진 live 증거는 아니다. 별도 인증 프로필과 Windows 런타임 검증도 남아 있다. 기존 간헐적 400의 원인은 미확정이다.
++
++Residual-risk: 연결 재조립이 성공해도 실행 여부가 불명확한 도구를 자동 재실행하지 않는다. 그런 기록은 기존 복구 검사에서 계속 거절될 수 있으며, 이를 포함한 사용자 복구 절차는 아직 전체 완료가 아니다. 설치본 교체·병합·push는 하지 않았다.
++
++## 운영 프로필 보호와 transport 진단 보강
++
++Claim: 기존 owner-recovery live 테스트는 서버를 시작할 때만 독점 잠금을 확인했다. 같은 운영 프로필을 사용하므로 테스트 시작 뒤 사용자 세션이 연결하는 것을 막지 못했다. 이 가능성을 발견한 뒤 운영 프로필의 종료형 live 테스트를 중단하고, 별도로 인증된 비공개 `MOAI_GPT_OWNER_RECOVERY_HOME`을 필수로 만들었다. 운영 홈·상대 경로·공개 디렉터리는 거절한다. 인증 파일을 복사하지 않는다.
++
++사용자 502와 테스트 종료 사이의 인과관계는 미확정이다. 사용자 세션에 대응하는 gateway 거절 로그를 SHA-256 기반 파일명으로 조회한 결과도 transport 원인의 세부 종류를 담고 있지 않았다:
++
++```text
++$ ruby -rdigest -e 'id="a8929426-fe62-45ef-8a86-e44664f725a4"; p="/Users/goos/.moai/gpt-appserver/moai-rejections-#{Digest::SHA256.hexdigest(id)}.jsonl"; puts p; if File.file?(p); puts File.readlines(p).last(15); else; puts "NOT_FOUND"; end'
++{"at":"2026-09-16T05:27:50.323148Z","cause":"appserver_transport_error","digest":"63aacfe88a4586b8bd235774dd6b15fd85eb246d35e923320fc9c7f2cec09eda","route":"gpt-5.6-luna"}
++```
++
++변경: private rejection 로그에 `transport_kind`를 추가했다. 값은 `rpc/eof/read/closed/protocol/limit/unknown`만 허용한다. 계정 조회 실패도 request digest와 함께 같은 제한된 진단을 남긴다. provider 오류 본문·인증·도구 인자는 기록하지 않는다. 실제 Claude 테스트에는 생성한 family UUID를 출력해 다음 오류 로그를 정확한 세션에 연결할 수 있게 했다.
++
++Evidence (중간 검사):
++
++```text
++$ go test ./internal/cli -run '^TestGPTRecoveryHomeIsolation$' -race -count=1 -v
++--- PASS: TestGPTRecoveryHomeIsolation (0.00s)
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	2.009s
++
++$ go test ./internal/gateway -run 'TestManaged|TestAppServerTransportKind|TestRPCCodeDiagnostic' -race -count=1
++ok  	github.com/modu-ai/moai-adk/internal/gateway	1.558s
++
++$ go test ./internal/cli -run '^Test(ManagedGPTRejection|GPTRecoveryHomeIsolation|VerifyGPTLauncherStream)' -race -count=1
++ok  	github.com/modu-ai/moai-adk/internal/cli	2.077s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 이 절의 격리 guard·transport 진단·검증 변경. 운영 프로필로 추가 live 테스트를 실행하지 않았다.
++
++Gaps: 별도 인증 테스트 프로필은 아직 확인하지 않았으므로 종료형 live 검증은 보류한다. 이 제한은 mock/단위 검증으로 실제 사용자 회복을 대신한다는 뜻이 아니다. 기존 Engine은 완료된 `idle` 기록만 resume하고 불완전한 턴은 거절한다. 연결 재수립 설계에서도 이 중복 실행 방지 경계를 유지해야 하며, 아직 구현하지 않았다. 전체 목표는 미완료다.
++
++Residual-risk: 기존 사용자 로그의 세부 원인은 새 진단으로 소급해 복원할 수 없다. 테스트 프로필 분리는 운영 세션 간섭 위험을 줄이지만 모든 transport 오류의 제품 수정은 아니다.
++
++## 사용자 세션 401과 최종 통합 검사 미통과
++
++Claim: 사용자 제공 세션 `a8929426-fe62-45ef-8a86-e44664f725a4`의 401은 무인증 HEAD 탐색이 아니라 실제 `/v1/messages` 재시도에서 발생했다. 로그에는 502 transport 오류 뒤 401이 6회 기록되어 있다. 별도로 계정 조회 통신 실패를 인증 실패로 바꾸는 현재 코드 경로를 회귀 테스트로 재현하고 수정했다. 수정은 오류 분류이며, 끊긴 연결을 복구하는 구현을 대신하지 않는다.
++
++Evidence (사용자 debug 파일의 인증·토큰 관련 줄을 제외한 발췌):
++
++```text
++748: 2026-09-16T05:27:49.751Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread:outputStyle:custom
++749: 2026-09-16T05:27:50.323Z [ERROR] API error (attempt 1/11): 502 502 {"error":{"message":"appserver_transport_error","type":"api_error"},"type":"error"}
++753: 2026-09-16T05:27:50.863Z [ERROR] API error (attempt 2/11): 401 401 {"error":{"message":"Unauthorized","type":"authentication_error"},"type":"error"}
++773: 2026-09-16T05:28:24.540Z [ERROR] API error (attempt 7/11): 401 401 {"error":{"message":"Unauthorized","type":"authentication_error"},"type":"error"}
++```
++
++조회 명령: `ruby -e 'p=ARGV[0]; File.foreach(p).with_index(1) { |s,n| next unless (735..780).cover?(n); next if s.match?(/authorization|bearer|api.key|token|cookie/i); puts "#{n}: #{s[0,320]}" if s.match?(/\[(DEBUG|ERROR|WARN)\]|Error|status|request|retry/i) }' /Users/goos/.moai/state/gateway-conversations/families/a8929426-fe62-45ef-8a86-e44664f725a4/native/debug/a8929426-fe62-45ef-8a86-e44664f725a4.txt`
++
++이번 회귀 테스트에서 확인한 수정 전후 결과:
++
++```text
++$ go test ./internal/gateway -run '^TestManagedAccountTransportFailureIsNotAuthenticationFailure$' -count=1 -v
++    appserver_auth_transport_test.go:49: status=401 body={"error":{"message":"Unauthorized","type":"authentication_error"},"type":"error"}
++    appserver_auth_transport_test.go:49: status=401 body={"error":{"message":"appserver_authority_changed","type":"authentication_error"},"type":"error"}
++--- FAIL: TestManagedAccountTransportFailureIsNotAuthenticationFailure (0.00s)
++
++$ go test ./internal/gateway -run 'TestManaged(Account|Authority|Generation)|TestAppServerAdapterRejects' -count=1 -race -v
++--- PASS: TestManagedAccountTransportFailureIsNotAuthenticationFailure (0.00s)
++--- PASS: TestManagedAuthorityBypassesCredentialStoreAndRejectsLogout (0.00s)
++--- PASS: TestManagedGenerationCannotBeRebound (0.00s)
++--- PASS: TestAppServerAdapterRejectsUntrustedBindingsBeforeTurn (0.00s)
++--- PASS: TestManagedAuthorityRejectsModeFallbackAndGenerationRace (0.00s)
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/gateway	1.448s
++```
++
++변경: `account/read` 오류를 `ErrManagedAccountUnavailable`로 보존하며 세 검사 지점에서 `503 api_error / appserver_account_unavailable`로 표시한다. 실제 계정 부재·유형 변경·세대 변경·다른 grant는 계속 거절한다. 원격 오류 본문을 그대로 내보내지 않는다.
++
++최종 통합 검사에는 별도 실패가 남아 있다:
++
++```text
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_OWNER_RECOVERY_LIVE=1 MOAI_GPT_LAUNCHER_BINARY=/private/tmp/moai-launcher-t856.qTuknm/moai-group-drain-v2 go test ./internal/cli -run '^TestSharedGPTLiveManagedOwnerRecovery$' -count=1 -v -timeout 240s
++    gpt_claude_host_tool_live_test.go:88: gateway returned HTTP errors during live roundtrip: 1 routes=map[POST /v1/messages 400:1]
++--- FAIL: TestSharedGPTLiveManagedOwnerRecovery (94.84s)
++    --- PASS: TestSharedGPTLiveManagedOwnerRecovery/hook-terminal (3.35s)
++    --- PASS: TestSharedGPTLiveManagedOwnerRecovery/claude-host-tool (10.94s)
++    --- PASS: TestSharedGPTLiveManagedOwnerRecovery/claude-deferred-tool (12.85s)
++    --- PASS: TestSharedGPTLiveManagedOwnerRecovery/claude-agent (10.62s)
++    --- FAIL: TestSharedGPTLiveManagedOwnerRecovery/claude-pty (6.16s)
++    --- PASS: TestSharedGPTLiveManagedOwnerRecovery/claude-compact (38.80s)
++    --- PASS: TestSharedGPTLiveManagedOwnerRecovery/launcher (9.04s)
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/cli	95.717s
++
++$ go test ./internal/codexapp -race -count=3
++ok  	github.com/modu-ai/moai-adk/internal/codexapp	23.262s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e` + 위 변경. 실제 통합 검사 바이너리 SHA-256 `b86f86eb3860932254fa7330f116f6e83a0fa0d422aed8dba0e73caa49e5c155`. 이 빌드는 뒤에 작성한 401 분류 변경 전이다. HTTP 오류 원인 코드 수집기를 보강한 뒤 PTY 단독 3회는 `ok .../internal/cli 23.260s`로 통과했으나, 그 재실행은 통합 검사에서 발생한 400의 원인 규명이나 해결 증거가 아니다.
++
++Gaps: 사용자 502의 최초 원인과 연속 401의 실제 내부 검사 지점은 debug 파일만으로 확정하지 않았다. 계정 조회 단절의 401 오분류는 별도 결정적 시험으로 확인한 결함이다. 통합 PTY 400 원인도 아직 미확인이다. 전체 판정은 미완료이며, 연결 재수립·진행 중 도구의 중복 실행 방지·나머지 SPEC 수용 조건을 계속 검증해야 한다.
++
++Residual-risk: 오류 코드 분류만 고쳐도 transport 장애가 복구되는 것은 아니다. 설치본은 아직 교체하지 않았다.
++
++## 상속 잠금과 자식 프로세스 종료 회귀
++
++Claim: 실제 managed 서버의 잠금이 `codex-code-mode-host`에도 상속됨을 관측했다. 부모만 기다리는 기존 종료 방식은 자식이 잠금을 보유한 경우를 처리하지 못하며, 격리된 회귀 테스트에서 이를 재현했다. 변경은 서버마다 전용 프로세스 그룹을 만들고 종료 시 그 그룹을 정리한 뒤 잠금과 소켓을 반환한다. 호스트 기능은 유지한다.
++
++Evidence:
++
++```text
++$ MOAI_GPT_LEASE_DIAGNOSTICS=1 MOAI_GPT_OWNER_RECOVERY_LIVE=1 MOAI_GPT_LAUNCHER_BINARY=/private/tmp/moai-launcher-t856.qTuknm/moai go test ./internal/cli -run '^TestSharedGPTLiveManagedOwnerRecovery$/^launcher$' -count=5 -v -timeout 180s
++    gpt_appserver_owner_recovery_live_test.go:46: before owned server shutdown: lease holders=p85757
++        ccli.test
++        f4
++        p85791
++        ccodex
++        f3
++        p86231
++        ccodex-code-mode-host
++        f3
++         observation_error=<nil>
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	52.704s
++
++$ go test ./internal/codexapp -run '^TestSharedShutdownReleasesDescendantLease$' -count=1 -v
++    shared_shutdown_unix_test.go:104: descendant retained owner lease after shutdown: resource temporarily unavailable
++--- FAIL: TestSharedShutdownReleasesDescendantLease (0.01s)
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/codexapp	0.356s
++
++$ go test ./internal/codexapp -run '^TestSharedShutdown' -count=1 -v
++--- PASS: TestSharedShutdownReleasesDescendantLease (0.02s)
++--- PASS: TestSharedShutdownGraceAndForcedFallback (3.02s)
++    --- PASS: TestSharedShutdownGraceAndForcedFallback/cooperative (0.01s)
++    --- PASS: TestSharedShutdownGraceAndForcedFallback/unresponsive (3.01s)
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/codexapp	3.425s
++
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_OWNER_RECOVERY_LIVE=1 MOAI_GPT_LAUNCHER_BINARY=/private/tmp/moai-launcher-t856.qTuknm/moai-group-drain go test ./internal/cli -run '^TestSharedGPTLiveManagedOwnerRecovery$/^launcher$' -count=5 -v -timeout 180s
++    gpt_launcher_live_test.go:34: launcher binary sha256=0b90a7f7c2bf0ebf1e9686a620dce3bc4cee22036406a47e7dfd30dd6e67e56e
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=b9de5968-598b-4a56-a633-991819d0cdd7 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=1eada41c-9e8c-4771-81fe-c02a3b575ca1 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=42d269db-6dba-4d71-af5c-5f76691ab47a Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=825d633a-6b51-4219-862d-ab6c1a563aa1 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=94bed852-372c-430b-a402-81607701eae5 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	46.378s
++
++$ go test ./internal/codexapp -run '^TestSharedShutdown' -race -count=3 -v
++--- PASS: TestSharedShutdownReleasesDescendantLease (1.04s)
++--- PASS: TestSharedShutdownReleasesDescendantLease (1.05s)
++--- PASS: TestSharedShutdownReleasesDescendantLease (1.05s)
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/codexapp	16.596s
++```
++
++Baseline-attribution: HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + 이 절의 종료 처리 및 테스트 변경. 첫 live 5회는 그룹 정리 초안, 마지막 race 3회는 `EPERM`을 즉시 실패시키지 않고 그룹 소멸(`ESRCH`)을 제한 시간 내 확인하는 보강판이다. 권한 오류 자체를 성공으로 처리하지 않는다. 최초 race 패키지 검사에서는 `operation not permitted` 2건이 발생했으며 그 결과는 PASS가 아니다.
++
++폐기한 대안: `features.code_mode_host=false`를 추가하면 소유자 목록에서 호스트는 사라졌지만 실제 launcher 도구 증거가 실패했다. 새 빌드 SHA-256 `8faee57bd751e7dc6d52155363a18bcf5d7232f74b7eea99c0d531c40d0e80ad` 실행 출력은 `launcher final result incomplete: calls=0 results=0 session_present=true final="LAUNCHER_GATEWAY_OK"`였다. 최종 문구만 검사했다면 놓쳤을 실패다. 해당 플래그와 그 계약 테스트는 되돌렸다.
++
++Gaps: 원래 경합 순간에 남아 있던 PID는 직접 포착하지 못했다. 상속 관측과 결정적 회귀 재현을 근거로 종료 수명을 보강했으나 모든 재시작 장애의 원인이라고 단정하지 않는다. Linux·Windows 런타임 및 전체 SPEC 완료 증거는 별도다. 설치본 교체·병합·push는 하지 않았다.
++
++Residual-risk: 전용 그룹을 벗어나는 자식과 다른 운영체제의 프로세스 정리 의미는 추가 검증 대상이다. 그룹 소멸 확인 실패 시 성공으로 숨기지 않고 오류를 반환한다.
++
++## 실제 moai gpt 실행 파일의 도구 왕복 검증
++
++수정 전 판정: **반복 시작 안정성 FAIL**. 아래 초기 3회 성공 뒤 최종 검증기로 재실행했을 때 2회 성공 후 세 번째 App Server 시작에서 잠금 경합이 재현됐다. 초기 통과로 종료·재시작 문제가 해결됐다고 판단하지 않는다.
++
++```text
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_OWNER_RECOVERY_LIVE=1 MOAI_GPT_LAUNCHER_BINARY=/private/tmp/moai-launcher-t856.qTuknm/moai go test ./internal/cli -run '^TestSharedGPTLiveManagedOwnerRecovery$/^launcher$' -count=3 -v -timeout 120s
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=d6a8370e-c610-4a2e-b3f5-555870ad25f5 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=9321dd9e-f37d-419a-a941-ca117a841cd7 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++    gpt_appserver_owner_recovery_live_test.go:58: profile lease holders:
++    gpt_appserver_owner_recovery_live_test.go:60: managed owner startup: app server profile is busy or cannot be locked: lease contention
++--- FAIL: TestSharedGPTLiveManagedOwnerRecovery (0.39s)
++FAIL
++FAIL	github.com/modu-ai/moai-adk/internal/cli	19.405s
++FAIL
++```
++
++아래는 이 실패에 앞서 확보한 성공 증거이며, 최신 반복 안정성 판정을 대체하지 않는다.
++
++Claim: 설치 바이너리를 교체하지 않고 소스 빌드한 `moai gpt`를 실행했다. Claude의 stream-json에서 Bash 호출 1건, 같은 tool ID의 성공 결과 1건, 최종 응답을 확인했다. 이 검사는 handler 직접 호출이 아니라 실행 파일의 launcher·supervisor·Claude 자식 경로를 통과한다.
++
++Evidence (이 실행에서 관측한 출력 발췌):
++
++```text
++$ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_GPT_OWNER_RECOVERY_LIVE=1 MOAI_GPT_LAUNCHER_BINARY=/private/tmp/moai-launcher-t856.qTuknm/moai go test ./internal/cli -run '^TestSharedGPTLiveManagedOwnerRecovery$/^launcher$' -count=3 -v -timeout 120s
++    gpt_launcher_live_test.go:34: launcher binary sha256=7997cc72383b2b080b0de9c5dd1435362d19175ea7f0253d1afbfc765d50ecf3
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=a78ddb5c-0b8d-41b7-8e21-26eb100678c3 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=3574dd26-2250-405e-9766-ebdee00b8408 Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++    gpt_launcher_live_test.go:78: real moai gpt launcher completed: session=b73d8d80-14f5-4c98-8699-8c9f001dad9c Bash calls=1 successful results=1 final=LAUNCHER_GATEWAY_OK
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	30.704s
++
++$ go test ./internal/cli -run '^TestVerifyGPTLauncherStream$' -count=1 -race -v
++--- PASS: TestVerifyGPTLauncherStream (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/complete (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/final-only (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/missing-result (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/duplicate-call (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/duplicate-result (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/duplicate-final (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/early-final (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/error-event (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/foreign-result (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/failed-result (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/wrong-command (0.00s)
++    --- PASS: TestVerifyGPTLauncherStream/malformed (0.00s)
++PASS
++ok  	github.com/modu-ai/moai-adk/internal/cli	1.983s
++```
++
++Baseline-attribution: `WT-gpt-agent-summary`, HEAD `29bbd7b3e714cce494cae8b20e35e95b99edea6c` + launcher live test 및 호출 등록 변경. 첫 반복 검증 뒤 오류 이벤트·이른 종료 거절 조건을 추가하고 위 12개 검증기 사례를 실행했다. 실제 실행 파일은 위 SHA-256으로 식별하며 설치된 rc와 동일하다고 주장하지 않는다.
++
++실패 기록: 첫 재실행은 `Find project root: not in a MoAI project (reached home directory).`로 종료됐다. 테스트가 임시 HOME을 cwd로도 사용한 것이므로 HOME 아래 별도 프로젝트와 `.moai`를 만든 뒤 다시 실행했다. 제품의 프로젝트 경계 검사는 변경하지 않았다. 이전 세션 실행 핸들 14795는 `Unknown process id`여서 그 실행 결과는 미확인이다.
++
++격리: 임시 HOME·프로젝트·Claude 설정, 기존 managed App Server 인증 경로를 사용한다. `MOAI_HOME`은 기존 경로이므로 합성 세션의 family/receipt 기록은 그 아래 생성된다. 완전한 무상태 테스트라고 주장하지 않는다. 테스트 소유 App Server만 종료하며 운영자 프로세스는 교체하지 않는다.
++
++Gaps: 이 테스트는 print 모드이다. 실제 launcher PTY·Factory Tasks/Dispatch·native fork·PostCompact/t844 증거·Windows CI·전체 모델/인증 조합을 대신하지 않는다. 실제 gateway 내부 HTTP/RPC 전수 계수도 이 실행에서는 하지 않았다. 전체 SPEC은 계속 `in-progress`이며 병합·push·rc 설치는 이번 작업에서 하지 않았다.
++
++Residual-risk: 하나의 설치 환경과 고정된 Bash 명령의 성공이다. 모든 사용자의 환경이나 모든 도구가 오류 없이 동작한다는 증거는 아니다.
++
+ ## 실제 대화형 PTY 및 수동 압축·회상
+ 
+ 최종 통합 검사 (네 모델 payload·HTTP 오류 검사·PTY 정리 검사 포함):
+diff --git a/internal/cli/gateway_auth_modes_test.go b/internal/cli/gateway_auth_modes_test.go
+index 200a1dfc5..f4122776f 100644
+--- a/internal/cli/gateway_auth_modes_test.go
++++ b/internal/cli/gateway_auth_modes_test.go
+@@ -13,9 +13,9 @@ import (
+ // TestGatewayAuthModesDualPath pins the launcher-side automation half of
+ // AS-021/AS-014:
+ //
+-//  1. The GPT production catalog declares only the managed subscription
+-//     (PKCE) auth method — structurally, there is no API-billing route to
+-//     switch to, so a subscription failure can never fall through to one.
++//  1. The GPT production catalog delegates authentication to App Server,
++//     not MoAI-owned PKCE or a direct API-key adapter. Subscription and
++//     explicit API-key mode selection remain App Server responsibilities.
+ //  2. The launch binding path never touches the owned subscription token
+ //     store: credentials stay in the child-owned store and are resolved by
+ //     the request adapter at send time. The state-directory positive control
+@@ -24,15 +24,16 @@ import (
+ // The real-account selection and display of both modes stays a live-window
+ // Gap (AS-021 real PTY).
+ func TestGatewayAuthModesDualPath(t *testing.T) {
+-	// 1. Structural no-auto-switch, with a premise assertion so an empty or
+-	// changed catalog cannot pass vacuously.
++	// 1. Structural ownership boundary, with a premise assertion so an empty
++	// catalog cannot pass vacuously. Runtime no-fallback behavior is covered
++	// by TestManagedAuthorityRejectsModeFallbackAndGenerationRace.
+ 	models := gatewayGPTModels()
+ 	if len(models) != 4 {
+ 		t.Fatalf("GPT catalog carries %d entries, want the four registered IDs", len(models))
+ 	}
+ 	for _, m := range models {
+-		if m.AuthMethod != gateway.AuthPKCE {
+-			t.Fatalf("GPT entry %s declares auth method %q; only the managed subscription method is registered", m.RouteID, m.AuthMethod)
++		if m.AuthMethod != gateway.AuthAppServer {
++			t.Fatalf("GPT entry %s declares auth method %q; authentication must be owned by App Server", m.RouteID, m.AuthMethod)
+ 		}
+ 	}
+ 
+diff --git a/internal/cli/gateway_factory.go b/internal/cli/gateway_factory.go
+index 0cf865bf5..03b38d74f 100644
+--- a/internal/cli/gateway_factory.go
++++ b/internal/cli/gateway_factory.go
+@@ -262,16 +262,17 @@ func newGatewayHandlerFactory(d gatewayFactoryDependencies) (gatewayHandlerFacto
+ 
+ type gatewayOwnedHandler struct {
+ 	http.Handler
+-	store    *auth.Store
+-	receipts *receipt.Store
+-	ctx      context.Context
+-	cancel   context.CancelFunc
+-	mu       sync.Mutex
+-	closed   bool
+-	requests sync.WaitGroup
+-	once     sync.Once
+-	closeErr error
+-	managed  func() error
++	store         *auth.Store
++	receipts      *receipt.Store
++	ctx           context.Context
++	cancel        context.CancelFunc
++	mu            sync.Mutex
++	closed        bool
++	requests      sync.WaitGroup
++	once          sync.Once
++	closeErr      error
++	managed       func() error
++	connectionErr func() error // GPT only: terminal transport failure, not a model rejection.
+ }
+ 
+ func (h *gatewayOwnedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+diff --git a/internal/cli/gateway_factory_test.go b/internal/cli/gateway_factory_test.go
+index 3b5ebb759..1d30b969b 100644
+--- a/internal/cli/gateway_factory_test.go
++++ b/internal/cli/gateway_factory_test.go
+@@ -12,6 +12,7 @@ import (
+ 	"net/http/httptest"
+ 	"os"
+ 	"path/filepath"
++	"runtime"
+ 	"strings"
+ 	"sync/atomic"
+ 	"testing"
+@@ -138,142 +139,19 @@ func TestGatewayFactoryNativeRoutingAndCancellation(t *testing.T) {
+ }
+ 
+ func TestGatewayFactoryStoreOwnershipAndUnavailableLogin(t *testing.T) {
+-	d := factoryDependencies(t)
+-	d.Models = []gateway.ModelEntry{{RouteID: "gpt-5.6-sol", UpstreamID: "gpt-5.6-sol", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthPKCE, Capabilities: gateway.Capabilities{ContextTokens: 100}}}
+-	var brokerCalls atomic.Int32
+-	d.Broker = factoryBroker{calls: &brokerCalls}
+-	d.RefreshVerifier = func(context.Context, auth.CredentialRef) error {
+-		t.Error("missing login verified")
+-		return errors.New("must not verify missing login")
+-	}
+-	var store *auth.Store
+-	d.OpenStore = func() (*auth.Store, error) {
+-		var err error
+-		dir, pathErr := filepath.EvalSymlinks(t.TempDir())
+-		if pathErr != nil {
+-			return nil, pathErr
+-		}
+-		store, err = auth.OpenStore(filepath.Join(dir, "auth"))
+-		return store, err
+-	}
+-	factory, err := newGatewayHandlerFactory(d)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	h, err := factory(json.RawMessage(strings.ReplaceAll(factoryPayload, "claude-opus-5", "gpt-5.6-sol")))
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	r := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(`{"model":"gpt-5.6-sol","max_tokens":2,"messages":[{"role":"user","content":"hi"}]}`))
+-	r.Header.Set("Authorization", "Bearer private-session")
+-	w := httptest.NewRecorder()
+-	h.ServeHTTP(w, r)
+-	if w.Code != 401 || brokerCalls.Load() != 0 {
+-		t.Fatal("missing login not closed")
+-	}
+-	if err := h.(io.Closer).Close(); err != nil {
+-		t.Fatal(err)
+-	}
+-	if _, err := store.Status(context.Background()); err == nil {
+-		t.Fatal("store remained open")
+-	}
+-	if err := h.(io.Closer).Close(); err != nil {
+-		t.Fatal("close not idempotent")
+-	}
++	checkGPTStartupFailureCleanup(t, true)
+ }
+ 
+ func TestGatewayFactoryNativeReceiptAuthorizationReachesSubscription(t *testing.T) {
+-	sessionID := "11111111-1111-4111-8111-111111111111"
+-	home, err := filepath.EvalSymlinks(t.TempDir())
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	receiptDir := filepath.Join(home, "receipt")
+-	if err := os.MkdirAll(receiptDir, 0700); err != nil {
+-		t.Fatal(err)
+-	}
+-	receipts, err := receipt.OpenStore(context.Background(), receiptDir, sessionID, true)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	if err := receipts.Close(); err != nil {
+-		t.Fatal(err)
+-	}
+-	upstream := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+-		if r.Host != "chatgpt.com" || r.URL.Path != "/backend-api/codex/responses" {
+-			t.Error("subscription route crossed")
+-		}
+-		var body map[string]any
+-		if json.NewDecoder(r.Body).Decode(&body) != nil {
+-			t.Error("invalid translated request")
+-		}
+-		if _, ok := body["max_output_tokens"]; ok {
+-			t.Error("subscription max_output_tokens escaped")
+-		}
+-		w.Header().Set("Content-Type", "text/event-stream")
+-		_, _ = io.WriteString(w, strings.Join([]string{
+-			`data: {"type":"response.created","response":{"id":"resp","model":"gpt-5.6-sol","status":"in_progress"}}`,
+-			`data: {"type":"response.output_item.added","output_index":0,"item":{"id":"msg","type":"message","role":"assistant","status":"in_progress","phase":"final_answer","content":[]}}`,
+-			`data: {"type":"response.content_part.added","output_index":0,"item_id":"msg","content_index":0,"part":{"type":"output_text","text":"","annotations":[]}}`,
+-			`data: {"type":"response.output_text.delta","output_index":0,"item_id":"msg","content_index":0,"delta":"ok"}`,
+-			`data: {"type":"response.output_text.done","output_index":0,"item_id":"msg","content_index":0,"text":"ok"}`,
+-			`data: {"type":"response.content_part.done","output_index":0,"item_id":"msg","content_index":0,"part":{"type":"output_text","text":"ok","annotations":[]}}`,
+-			`data: {"type":"response.output_item.done","output_index":0,"item":{"id":"msg","type":"message","role":"assistant","status":"completed","phase":"final_answer","content":[{"type":"output_text","text":"ok","annotations":[],"logprobs":[]}]}}`,
+-			`data: {"type":"response.completed","response":{"id":"resp","model":"gpt-5.6-sol","status":"completed","output":[{"id":"msg","type":"message","role":"assistant","status":"completed","phase":"final_answer","content":[{"type":"output_text","text":"ok","annotations":[],"logprobs":[]}]}],"usage":{"input_tokens":1,"output_tokens":1}}}`,
+-		}, "\n\n")+"\n\n")
+-	}))
+-	defer upstream.Close()
+-	tr := upstream.Client().Transport.(*http.Transport).Clone()
+-	tlsConfig := tr.TLSClientConfig.Clone()
+-	tr.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+-		if address != "chatgpt.com:443" {
+-			return nil, errors.New("wrong destination")
+-		}
+-		return (&tls.Dialer{Config: tlsConfig}).DialContext(ctx, "tcp", upstream.Listener.Addr().String())
+-	}
+-	d := factoryDependencies(t)
+-	d.Models = []gateway.ModelEntry{{RouteID: "gpt-5.6-sol", UpstreamID: "gpt-5.6-sol", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthPKCE, Capabilities: gateway.Capabilities{ContextTokens: 100, Streaming: true}}}
+-	d.Transport = tr
+-	d.Limits.PolicyProfile = translate.PolicyGPTNative
+-	d.SendOptions = auth.SendOptions{WriteTimeout: time.Second, PollInterval: 5 * time.Millisecond, MaxBodyBytes: 1 << 20}
+-	d.Broker = gatewayAuthBroker(func(_ context.Context, brokerHome string, _ bool) error {
+-		authBody, _ := json.Marshal(map[string]any{"auth_mode": "chatgpt", "tokens": map[string]string{"access_token": gatewayAuthToken(time.Now().Add(time.Hour)), "refresh_token": "refresh", "id_token": "identity", "account_id": "account-1"}})
+-		return os.WriteFile(filepath.Join(brokerHome, "auth.json"), authBody, 0600)
+-	})
+-	d.RefreshVerifier = func(context.Context, auth.CredentialRef) error { return nil }
+-	authDir := filepath.Join(home, "auth")
+-	seedGatewayAuthStore(t, authDir)
+-	d.OpenStore = func() (*auth.Store, error) { return auth.OpenStore(authDir) }
+-	factory, err := newGatewayHandlerFactory(d)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	payload, err := json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: "private", ModelIDs: []string{"gpt-5.6-sol"}, Conversation: &gatewayPrivateConversation{FamilyID: sessionID, SessionID: sessionID, ReceiptDir: receiptDir}})
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	h, err := factory(payload)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	defer func() {
+-		if err := h.(io.Closer).Close(); err != nil {
+-			t.Errorf("close gateway handler: %v", err)
+-		}
+-	}()
+-	body := `{"model":"gpt-5.6-sol","max_tokens":2,"thinking":{"type":"adaptive"},"output_config":{"effort":"high"},"context_management":{"edits":[{"type":"clear_thinking_20251015","keep":"all"}]},"metadata":{"user_id":"{\"account_uuid\":\"\",\"device_id\":\"device\",\"session_id\":\"` + sessionID + `\"}"},"messages":[{"role":"user","content":"hello"}]}`
+-	req := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(body))
+-	req.Header.Set("Authorization", "Bearer private")
+-	res := httptest.NewRecorder()
+-	h.ServeHTTP(res, req)
+-	if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), `"text":"ok"`) {
+-		t.Fatalf("authorized native request status=%d body=%s", res.Code, res.Body.String())
+-	}
++	checkGPTAuthorizedHistory(t, false)
+ }
+ 
+ func TestGatewayFactoryNativeReceiptAuthorizationRejectsForeignSession(t *testing.T) {
++	if runtime.GOOS == "windows" {
++		t.Skip("SPEC-MOAI-GATEWAY-001 AS-022: Unix shared peer; Windows stdio runtime evidence remains separate")
++	}
+ 	sessionID := "22222222-2222-4222-8222-222222222222"
+-	home, err := filepath.EvalSymlinks(t.TempDir())
++	home, err := filepath.EvalSymlinks(sharedGPTFixtureHome(t))
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+@@ -286,20 +164,12 @@ func TestGatewayFactoryNativeReceiptAuthorizationRejectsForeignSession(t *testin
+ 		t.Fatal(err)
+ 	}
+ 	_ = receipts.Close()
+-	d := factoryDependencies(t)
+-	d.Models = []gateway.ModelEntry{{RouteID: "gpt-5.6-sol", UpstreamID: "gpt-5.6-sol", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthPKCE, Capabilities: gateway.Capabilities{ContextTokens: 100}}}
+-	d.Limits.PolicyProfile = translate.PolicyGPTNative
+-	d.Broker = factoryBroker{}
+-	d.RefreshVerifier = func(context.Context, auth.CredentialRef) error { return nil }
+-	authDir := filepath.Join(home, "auth")
+-	seedGatewayAuthStore(t, authDir)
+-	d.OpenStore = func() (*auth.Store, error) { return auth.OpenStore(authDir) }
+-	factory, err := newGatewayHandlerFactory(d)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	payload, _ := json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: "private", ModelIDs: []string{"gpt-5.6-sol"}, Conversation: &gatewayPrivateConversation{FamilyID: sessionID, SessionID: sessionID, ReceiptDir: receiptDir}})
+-	h, err := factory(payload)
++	t.Setenv("MOAI_HOME", home)
++	binDir, _ := installProductionWiringFakeCodex(t)
++	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
++	peer := startClaudeGatewayPeer(t, home)
++	payload, _ := json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: "private", ModelIDs: []string{"gpt-5.6-sol"}, Conversation: &gatewayPrivateConversation{FamilyID: sessionID, SessionID: sessionID, ReceiptDir: receiptDir, CWD: home}})
++	h, err := productionGatewayHandlerFactory(payload)
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+@@ -316,6 +186,30 @@ func TestGatewayFactoryNativeReceiptAuthorizationRejectsForeignSession(t *testin
+ 	if res.Code != http.StatusBadRequest {
+ 		t.Fatalf("foreign native session status=%d body=%s", res.Code, res.Body.String())
+ 	}
++	peer.mu.Lock()
++	threads, turns := peer.threads, peer.turnStarts
++	peer.mu.Unlock()
++	if threads != 0 || turns != 0 {
++		t.Fatalf("foreign session reached generation: threads=%d turns=%d", threads, turns)
++	}
++	// Positive control through the same authenticated handler: the owning
++	// session reaches a completed turn, not merely successful preparation.
++	body = strings.ReplaceAll(body, "33333333-3333-4333-8333-333333333333", sessionID)
++	body = strings.Replace(body, `"messages":`, `"system":"MOAI_CHILD_PROBE","messages":`, 1)
++	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
++	defer cancel()
++	req = httptest.NewRequest("POST", "/v1/messages", strings.NewReader(body)).WithContext(ctx)
++	req.Header.Set("Authorization", "Bearer private")
++	res = httptest.NewRecorder()
++	h.ServeHTTP(res, req)
++	if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), "CHILD_GATEWAY_OK") {
++		t.Fatalf("owning session status=%d body=%s", res.Code, res.Body.String())
++	}
++	peer.mu.Lock()
++	defer peer.mu.Unlock()
++	if peer.threads != 1 || peer.turnStarts != 1 {
++		t.Fatalf("positive control counts: threads=%d turns=%d", peer.threads, peer.turnStarts)
++	}
+ }
+ 
+ type factoryClosingHandler struct{ closed bool }
+@@ -342,34 +236,7 @@ type factoryBroker struct{ calls *atomic.Int32 }
+ func (factoryBroker) Run(context.Context, string, bool) error { return errors.New("unexpected broker") }
+ 
+ func TestGatewayFactoryFailedInitializationClosesStore(t *testing.T) {
+-	d := factoryDependencies(t)
+-	d.Models = append(d.Models, gateway.ModelEntry{RouteID: "gpt-5.6-sol", UpstreamID: "gpt-5.6-sol", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthPKCE, Capabilities: gateway.Capabilities{ContextTokens: 100}})
+-	d.Broker = factoryBroker{}
+-	d.RefreshVerifier = func(context.Context, auth.CredentialRef) error { return nil }
+-	d.AllowedBetas = []string{"invalid beta"}
+-	var store *auth.Store
+-	d.OpenStore = func() (*auth.Store, error) {
+-		dir, err := filepath.EvalSymlinks(t.TempDir())
+-		if err != nil {
+-			return nil, err
+-		}
+-		store, err = auth.OpenStore(filepath.Join(dir, "auth"))
+-		return store, err
+-	}
+-	factory, err := newGatewayHandlerFactory(d)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	payload := `{"version":1,"session_token":"private","model_ids":["claude-opus-5","gpt-5.6-sol"]}`
+-	if h, err := factory(json.RawMessage(payload)); err == nil || h != nil {
+-		t.Fatal("bad adapter started")
+-	}
+-	if store == nil {
+-		t.Fatal("cleanup path not reached")
+-	}
+-	if _, err := store.Status(context.Background()); err == nil {
+-		t.Fatal("initialization leaked store")
+-	}
++	checkGPTStartupFailureCleanup(t, false)
+ }
+ 
+ func TestGatewayFactoryCloseCancelsAndJoinsRequest(t *testing.T) {
+@@ -461,147 +328,46 @@ func TestGatewayFactoryGLMExactRouteAndBetaRemoval(t *testing.T) {
+ }
+ 
+ func TestGatewayFactoryExactPayloadKeysBeforeStore(t *testing.T) {
+-	d := factoryDependencies(t)
+-	d.Models = []gateway.ModelEntry{{RouteID: "gpt-5.6-sol", UpstreamID: "gpt-5.6-sol", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthPKCE, Capabilities: gateway.Capabilities{ContextTokens: 100}}}
+-	d.Broker = factoryBroker{}
+-	d.RefreshVerifier = func(context.Context, auth.CredentialRef) error { return nil }
+-	opens := 0
+-	d.OpenStore = func() (*auth.Store, error) { opens++; return nil, errors.New("synthetic unavailable store") }
+-	f, err := newGatewayHandlerFactory(d)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	fields := []string{`"version":1`, `"session_token":"synthetic"`, `"model_ids":["gpt-5.6-sol"]`}
++	// Exercise the current production GPT entry, not the retired token-store
++	// assembly. No executable can start; creating the private profile is the
++	// observable first resource access after payload validation.
++	t.Setenv("PATH", t.TempDir())
++	fields := []string{`"version":1`, `"session_token":"synthetic"`, `"model_ids":["gpt-5.6-sol"]`, `"context_tokens":272000`}
+ 	for i, field := range fields {
+ 		key, value, _ := strings.Cut(field, ":")
+ 		for _, alias := range []string{strings.ToUpper(key), strings.Replace(key, string(key[1]), strings.ToUpper(string(key[1])), 1)} {
+ 			for _, replacement := range []string{alias + ":" + value, field + "," + alias + ":" + value, alias + ":" + value + "," + field, field + "," + field} {
+ 				parts := append([]string(nil), fields...)
+ 				parts[i] = replacement
+-				h, e := f(json.RawMessage("{" + strings.Join(parts, ",") + "}"))
++				home := t.TempDir()
++				t.Setenv("MOAI_HOME", home)
++				raw := json.RawMessage("{" + strings.Join(parts, ",") + "}")
++				_, _, decodeErr := decodeGPTAppServerPayload(raw)
++				h, e := productionGatewayHandlerFactory(raw)
+ 				if h != nil {
+ 					if closeErr := h.(io.Closer).Close(); closeErr != nil {
+ 						t.Errorf("close gateway handler: %v", closeErr)
+ 					}
+ 				}
+-				if e == nil || h != nil || opens != 0 {
+-					t.Errorf("field %d alias or duplicate reached resource", i)
+-					opens = 0
++				entries, readErr := os.ReadDir(home)
++				if decodeErr == nil || e == nil || h != nil || readErr != nil || len(entries) != 0 {
++					t.Errorf("field %d alias or duplicate admitted: decode=%v factory=%v resources=%d read=%v", i, decodeErr, e, len(entries), readErr)
+ 				}
+ 			}
+ 		}
+ 	}
+-	_, _ = f(json.RawMessage("{" + strings.Join(fields, ",") + "}"))
+-	if opens != 1 {
++	home := t.TempDir()
++	t.Setenv("MOAI_HOME", home)
++	raw := json.RawMessage("{" + strings.Join(fields, ",") + "}")
++	if _, _, err := decodeGPTAppServerPayload(raw); err != nil {
++		t.Fatalf("canonical payload rejected: %v", err)
++	}
++	_, _ = productionGatewayHandlerFactory(raw)
++	if info, err := os.Stat(filepath.Join(home, "gpt-appserver")); err != nil || !info.IsDir() {
+ 		t.Fatal("canonical positive control did not reach resource")
+ 	}
+ }
+ 
+ func TestGatewayFactorySubscriptionSwitchKeepsAuthorizedHistory(t *testing.T) {
+-	sessionID := "11111111-1111-4111-8111-111111111111"
+-	home, err := filepath.EvalSymlinks(t.TempDir())
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	receiptDir := filepath.Join(home, "receipt")
+-	if err := os.MkdirAll(receiptDir, 0700); err != nil {
+-		t.Fatal(err)
+-	}
+-	receipts, err := receipt.OpenStore(context.Background(), receiptDir, sessionID, true)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	if err := receipts.Close(); err != nil {
+-		t.Fatal(err)
+-	}
+-	upstream := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+-		if r.Host != "chatgpt.com" || r.URL.Path != "/backend-api/codex/responses" {
+-			t.Error("subscription route crossed")
+-		}
+-		var body map[string]any
+-		if json.NewDecoder(r.Body).Decode(&body) != nil {
+-			t.Error("invalid translated request")
+-		}
+-		if _, ok := body["max_output_tokens"]; ok {
+-			t.Error("subscription max_output_tokens escaped")
+-		}
+-		w.Header().Set("Content-Type", "text/event-stream")
+-		_, _ = io.WriteString(w, strings.ReplaceAll(strings.Join([]string{
+-			`data: {"type":"response.created","response":{"id":"resp","model":"gpt-5.6-sol","status":"in_progress"}}`,
+-			`data: {"type":"response.output_item.added","output_index":0,"item":{"id":"msg","type":"message","role":"assistant","status":"in_progress","phase":"final_answer","content":[]}}`,
+-			`data: {"type":"response.content_part.added","output_index":0,"item_id":"msg","content_index":0,"part":{"type":"output_text","text":"","annotations":[]}}`,
+-			`data: {"type":"response.output_text.delta","output_index":0,"item_id":"msg","content_index":0,"delta":"ok"}`,
+-			`data: {"type":"response.output_text.done","output_index":0,"item_id":"msg","content_index":0,"text":"ok"}`,
+-			`data: {"type":"response.content_part.done","output_index":0,"item_id":"msg","content_index":0,"part":{"type":"output_text","text":"ok","annotations":[]}}`,
+-			`data: {"type":"response.output_item.done","output_index":0,"item":{"id":"msg","type":"message","role":"assistant","status":"completed","phase":"final_answer","content":[{"type":"output_text","text":"ok","annotations":[],"logprobs":[]}]}}`,
+-			`data: {"type":"response.completed","response":{"id":"resp","model":"gpt-5.6-sol","status":"completed","output":[{"id":"msg","type":"message","role":"assistant","status":"completed","phase":"final_answer","content":[{"type":"output_text","text":"ok","annotations":[],"logprobs":[]}]}],"usage":{"input_tokens":1,"output_tokens":1}}}`,
+-		}, "\n\n")+"\n\n", "gpt-5.6-sol", body["model"].(string)))
+-	}))
+-	defer upstream.Close()
+-	tr := upstream.Client().Transport.(*http.Transport).Clone()
+-	tlsConfig := tr.TLSClientConfig.Clone()
+-	tr.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+-		if address != "chatgpt.com:443" {
+-			return nil, errors.New("wrong destination")
+-		}
+-		return (&tls.Dialer{Config: tlsConfig}).DialContext(ctx, "tcp", upstream.Listener.Addr().String())
+-	}
+-	d := factoryDependencies(t)
+-	d.Models = []gateway.ModelEntry{{RouteID: "gpt-5.6-sol", UpstreamID: "gpt-5.6-sol", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthPKCE, Capabilities: gateway.Capabilities{ContextTokens: 100, Streaming: true}}}
+-	d.Models = append(d.Models, gateway.ModelEntry{RouteID: "gpt-6-astra", UpstreamID: "gpt-6-astra", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthPKCE, Capabilities: gateway.Capabilities{ContextTokens: 100, Streaming: true}})
+-	d.Transport = tr
+-	d.Limits.PolicyProfile = translate.PolicyGPTNative
+-	d.SendOptions = auth.SendOptions{WriteTimeout: time.Second, PollInterval: 5 * time.Millisecond, MaxBodyBytes: 1 << 20}
+-	d.Broker = gatewayAuthBroker(func(_ context.Context, brokerHome string, _ bool) error {
+-		authBody, _ := json.Marshal(map[string]any{"auth_mode": "chatgpt", "tokens": map[string]string{"access_token": gatewayAuthToken(time.Now().Add(time.Hour)), "refresh_token": "refresh", "id_token": "identity", "account_id": "account-1"}})
+-		return os.WriteFile(filepath.Join(brokerHome, "auth.json"), authBody, 0600)
+-	})
+-	d.RefreshVerifier = func(context.Context, auth.CredentialRef) error { return nil }
+-	authDir := filepath.Join(home, "auth")
+-	seedGatewayAuthStore(t, authDir)
+-	d.OpenStore = func() (*auth.Store, error) { return auth.OpenStore(authDir) }
+-	factory, err := newGatewayHandlerFactory(d)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	payload, err := json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: "private", ModelIDs: []string{"gpt-5.6-sol", "gpt-6-astra"}, Conversation: &gatewayPrivateConversation{FamilyID: sessionID, SessionID: sessionID, ReceiptDir: receiptDir}})
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	h, err := factory(payload)
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	defer func() {
+-		if err := h.(io.Closer).Close(); err != nil {
+-			t.Errorf("close gateway handler: %v", err)
+-		}
+-	}()
+-	body := `{"model":"gpt-5.6-sol","max_tokens":2,"thinking":{"type":"adaptive"},"output_config":{"effort":"high"},"context_management":{"edits":[{"type":"clear_thinking_20251015","keep":"all"}]},"metadata":{"user_id":"{\"account_uuid\":\"\",\"device_id\":\"device\",\"session_id\":\"` + sessionID + `\"}"},"messages":[{"role":"user","content":"hello"}]}`
+-	req := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(body))
+-	req.Header.Set("Authorization", "Bearer private")
+-	res := httptest.NewRecorder()
+-	h.ServeHTTP(res, req)
+-	if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), `"text":"ok"`) {
+-		t.Fatalf("authorized native request status=%d body=%s", res.Code, res.Body.String())
+-	}
+-	var first map[string]any
+-	if err = json.Unmarshal(res.Body.Bytes(), &first); err != nil {
+-		t.Fatal(err)
+-	}
+-	var next map[string]any
+-	if err = json.Unmarshal([]byte(body), &next); err != nil {
+-		t.Fatal(err)
+-	}
+-	next["model"] = "gpt-6-astra"
+-	next["messages"] = []any{map[string]any{"role": "user", "content": "hello"}, map[string]any{"role": "assistant", "content": first["content"]}, map[string]any{"role": "user", "content": "continue"}}
+-	raw, _ := json.Marshal(next)
+-	req = httptest.NewRequest("POST", "/v1/messages", strings.NewReader(string(raw)))
+-	req.Header.Set("Authorization", "Bearer private")
+-	res = httptest.NewRecorder()
+-	h.ServeHTTP(res, req)
+-	if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), `"text":"ok"`) {
+-		t.Fatalf("model switch status=%d body=%s", res.Code, res.Body.String())
+-	}
+-
++	checkGPTAuthorizedHistory(t, true)
+ }
+diff --git a/internal/cli/gateway_provider_contract_test.go b/internal/cli/gateway_provider_contract_test.go
+index 0de767daa..7440de16a 100644
+--- a/internal/cli/gateway_provider_contract_test.go
++++ b/internal/cli/gateway_provider_contract_test.go
+@@ -59,9 +59,13 @@ func TestGatewayProviderContractPickerAndSlots(t *testing.T) {
+ 		k, v, _ := strings.Cut(s, "=")
+ 		values[k] = v
+ 	}
+-	for _, tier := range []string{"OPUS", "SONNET", "HAIKU", "FABLE"} {
+-		if values["ANTHROPIC_DEFAULT_"+tier+"_MODEL"] != "gpt-6-astra" {
+-			t.Errorf("%s slot not bound", tier)
++	// An explicit starting model must not overwrite the fixed subagent aliases.
++	for tier, want := range map[string]string{
++		"OPUS": "gpt-5.6-sol", "SONNET": "gpt-5.6-terra",
++		"HAIKU": "gpt-5.6-luna", "FABLE": "gpt-6-astra",
++	} {
++		if got := values["ANTHROPIC_DEFAULT_"+tier+"_MODEL"]; got != want {
++			t.Errorf("%s slot=%q, want %q", tier, got, want)
+ 		}
+ 	}
+ 	for _, e := range plan.Catalog.Entries() {
+diff --git a/internal/cli/gpt_appserver_cancel_delta_test.go b/internal/cli/gpt_appserver_cancel_delta_test.go
+index 521461bc8..74446f471 100644
+--- a/internal/cli/gpt_appserver_cancel_delta_test.go
++++ b/internal/cli/gpt_appserver_cancel_delta_test.go
+@@ -61,73 +61,87 @@ func (r *acceptedDeltaRPC) Events() <-chan codexapp.Message      { return r.even
+ func (r *acceptedDeltaRPC) Err() error                           { return nil }
+ 
+ func TestManagedGPTCancelAfterToolReplyAcceptsFreshInputExactlyOnce(t *testing.T) {
+-	ctx, stop := context.WithTimeout(context.Background(), 5*time.Second)
+-	defer stop()
+-	store := managedGPTTestStore(t)
+-	rpc := &acceptedDeltaRPC{events: make(chan codexapp.Message, 8)}
+-	engine, err := codexbridge.New(ctx, rpc, codexbridge.Config{Store: store})
+-	if err != nil {
+-		t.Fatal(err)
+-	}
+-	defer engine.Close()
+-	authority, _ := gateway.NewAppServerAuthority(managedGPTTestAccount{}, "chatgpt", func(context.Context) (string, error) { return "scope", nil })
+-	entry := gateway.ModelEntry{RouteID: "gpt-5.6-sol", UpstreamID: "gpt-5.6-sol", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthAppServer}
+-	grant, _ := authority.Authorize(ctx, entry)
+-	prepare := newManagedGPTPrepare("cancel-family", t.TempDir(), translate.Limits{PolicyProfile: translate.PolicyGPTNative}, store)
+-	root := map[string]any{"max_tokens": 1024, "tools": []any{map[string]any{"name": "Skill", "input_schema": map[string]any{"type": "object"}}}}
+-	messages := []any{map[string]any{"role": "user", "content": "work"}}
+-	request := func() codexbridge.Request {
+-		t.Helper()
+-		root["messages"] = messages
+-		body, _ := json.Marshal(root)
+-		q, err := prepare(ctx, gateway.RoutedRequest{Entry: entry, Managed: grant, Body: body, Headers: http.Header{"X-Claude-Code-Session-Id": {"cancel-family"}}})
+-		if err != nil {
+-			t.Fatal(err)
+-		}
+-		return q
+-	}
+-	first, err := engine.Step(ctx, request())
+-	if err != nil || first.Tool == nil {
+-		t.Fatalf("first tool: %+v %v", first, err)
+-	}
+-	messages = append(messages, map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "tool_use", "id": first.Tool.ID, "name": "Skill", "input": map[string]any{}}}}, map[string]any{"role": "user", "content": []any{map[string]any{"type": "tool_result", "tool_use_id": first.Tool.ID, "content": "accepted tool output"}, map[string]string{"type": "text", "text": "skill context"}}})
+-	accepted := request()
+-	turnCtx, cancel := context.WithCancel(ctx)
+-	defer cancel()
+-	_, err = engine.StepStream(turnCtx, accepted, func(string) error { cancel(); return nil })
+-	if !errors.Is(err, context.Canceled) {
+-		t.Fatalf("cancel: %v", err)
+-	}
+-	tick := time.NewTicker(time.Millisecond)
+-	defer tick.Stop()
+-	for {
+-		barrier, found, err := store.Barrier(accepted.Owner)
+-		if err != nil {
+-			t.Fatal(err)
+-		}
+-		if found && barrier.Phase == "idle" {
+-			break
+-		}
+-		select {
+-		case <-ctx.Done():
+-			t.Fatal("cancel acknowledgement not idle")
+-		case <-tick.C:
+-		}
+-	}
+-	messages = append(messages, map[string]any{"role": "user", "content": []any{map[string]string{"type": "text", "text": "new question"}, map[string]any{"type": "image", "source": map[string]string{"type": "base64", "media_type": "image/png", "data": "aW1hZ2U="}}}})
+-	next := request()
+-	// The old last-assistant projection resubmitted this consumed result.
+-	// Show the real engine rejects that replay without mutating the idle owner.
+-	legacy := next
+-	legacy.Input, legacy.Results = nil, accepted.Results
+-	if _, err := engine.Step(ctx, legacy); !errors.Is(err, codexbridge.ErrScope) {
+-		t.Fatalf("unproven replay accepted: %v", err)
+-	}
+-	if len(next.Input) != 2 || len(next.Results) != 0 {
+-		t.Fatalf("bad fresh delta: %+v", next)
+-	}
+-	seg, err := engine.Step(ctx, next)
+-	if err != nil || !seg.Done || rpc.responses.Load() != 1 || rpc.turns.Load() != 2 {
+-		t.Fatalf("followup: done=%v err=%v responses=%d turns=%d", seg.Done, err, rpc.responses.Load(), rpc.turns.Load())
++	for _, mode := range []string{"new-message", "same-block-with-system"} {
++		t.Run(mode, func(t *testing.T) {
++			ctx, stop := context.WithTimeout(context.Background(), 5*time.Second)
++			defer stop()
++			store := managedGPTTestStore(t)
++			rpc := &acceptedDeltaRPC{events: make(chan codexapp.Message, 8)}
++			engine, err := codexbridge.New(ctx, rpc, codexbridge.Config{Store: store})
++			if err != nil {
++				t.Fatal(err)
++			}
++			defer engine.Close()
++			authority, _ := gateway.NewAppServerAuthority(managedGPTTestAccount{}, "chatgpt", func(context.Context) (string, error) { return "scope", nil })
++			entry := gateway.ModelEntry{RouteID: "gpt-5.6-sol", UpstreamID: "gpt-5.6-sol", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthAppServer}
++			grant, _ := authority.Authorize(ctx, entry)
++			prepare := newManagedGPTPrepare("cancel-family", t.TempDir(), translate.Limits{PolicyProfile: translate.PolicyGPTNative}, store)
++			root := map[string]any{"max_tokens": 1024, "tools": []any{map[string]any{"name": "Skill", "input_schema": map[string]any{"type": "object"}}}}
++			messages := []any{map[string]any{"role": "user", "content": "work"}}
++			request := func() codexbridge.Request {
++				t.Helper()
++				root["messages"] = messages
++				body, _ := json.Marshal(root)
++				q, err := prepare(ctx, gateway.RoutedRequest{Entry: entry, Managed: grant, Body: body, Headers: http.Header{"X-Claude-Code-Session-Id": {"cancel-family"}}})
++				if err != nil {
++					t.Fatal(err)
++				}
++				return q
++			}
++			first, err := engine.Step(ctx, request())
++			if err != nil || first.Tool == nil {
++				t.Fatalf("first tool: %+v %v", first, err)
++			}
++			messages = append(messages, map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "tool_use", "id": first.Tool.ID, "name": "Skill", "input": map[string]any{}}}}, map[string]any{"role": "user", "content": []any{map[string]any{"type": "tool_result", "tool_use_id": first.Tool.ID, "content": "accepted tool output"}, map[string]string{"type": "text", "text": "skill context"}}})
++			if mode == "same-block-with-system" {
++				messages = append(messages, map[string]any{"role": "system", "content": []any{map[string]string{"type": "text", "text": "fixed runtime context"}}})
++			}
++			accepted := request()
++			turnCtx, cancel := context.WithCancel(ctx)
++			defer cancel()
++			_, err = engine.StepStream(turnCtx, accepted, func(string) error { cancel(); return nil })
++			if !errors.Is(err, context.Canceled) {
++				t.Fatalf("cancel: %v", err)
++			}
++			tick := time.NewTicker(time.Millisecond)
++			defer tick.Stop()
++			for {
++				barrier, found, err := store.Barrier(accepted.Owner)
++				if err != nil {
++					t.Fatal(err)
++				}
++				if found && barrier.Phase == "idle" {
++					break
++				}
++				select {
++				case <-ctx.Done():
++					t.Fatal("cancel acknowledgement not idle")
++				case <-tick.C:
++				}
++			}
++			freshContent := []any{map[string]string{"type": "text", "text": "new question"}, map[string]any{"type": "image", "source": map[string]string{"type": "base64", "media_type": "image/png", "data": "aW1hZ2U="}}}
++			if mode == "same-block-with-system" {
++				lastUser := messages[len(messages)-2].(map[string]any)
++				lastUser["content"] = append(lastUser["content"].([]any), freshContent...)
++			} else {
++				messages = append(messages, map[string]any{"role": "user", "content": freshContent})
++			}
++			next := request()
++			// The old last-assistant projection resubmitted this consumed result.
++			// Show the real engine rejects that replay without mutating the idle owner.
++			legacy := next
++			legacy.Input, legacy.Results = nil, accepted.Results
++			if _, err := engine.Step(ctx, legacy); !errors.Is(err, codexbridge.ErrScope) {
++				t.Fatalf("unproven replay accepted: %v", err)
++			}
++			if len(next.Input) != 2 || len(next.Results) != 0 {
++				t.Fatalf("bad fresh delta: %+v", next)
++			}
++			seg, err := engine.Step(ctx, next)
++			if err != nil || !seg.Done || rpc.responses.Load() != 1 || rpc.turns.Load() != 2 {
++				t.Fatalf("followup: done=%v err=%v responses=%d turns=%d", seg.Done, err, rpc.responses.Load(), rpc.turns.Load())
++			}
++
++		})
+ 	}
+ }
+diff --git a/internal/cli/gpt_appserver_claude_integration_test.go b/internal/cli/gpt_appserver_claude_integration_test.go
+index 0acae4abe..a07175c9c 100644
+--- a/internal/cli/gpt_appserver_claude_integration_test.go
++++ b/internal/cli/gpt_appserver_claude_integration_test.go
+@@ -123,6 +123,11 @@ type claudeGatewayPeer struct {
+ 	mu                             sync.Mutex
+ 	threads, toolResults, children int
+ 	rejectedArguments              int
++	resumes, turnStarts            int
++	turns                          map[string]int
++	pendingTurns                   map[string]string
++	turnRequests                   []map[string]json.RawMessage
++	disconnect                     func()
+ }
+ 
+ func startClaudeGatewayPeer(t *testing.T, home string, invalidAgentFirst ...bool) *claudeGatewayPeer {
+@@ -140,16 +145,22 @@ func startClaudeGatewayPeer(t *testing.T, home string, invalidAgentFirst ...bool
+ 		_ = listener.Close()
+ 		t.Fatal(err)
+ 	}
+-	peer := &claudeGatewayPeer{}
++	peer := &claudeGatewayPeer{turns: map[string]int{}, pendingTurns: map[string]string{}}
+ 	var connectionsMu sync.Mutex
+ 	connections := map[*websocket.Conn]bool{}
++	peer.disconnect = func() {
++		connectionsMu.Lock()
++		defer connectionsMu.Unlock()
++		for ws := range connections {
++			_ = ws.Close()
++		}
++	}
+ 	server := &http.Server{ReadHeaderTimeout: time.Second, Handler: websocket.Handler(func(ws *websocket.Conn) {
+ 		connectionsMu.Lock()
+ 		connections[ws] = true
+ 		connectionsMu.Unlock()
+ 		defer func() { _ = ws.Close(); connectionsMu.Lock(); delete(connections, ws); connectionsMu.Unlock() }()
+ 		childThreads := map[string]bool{}
+-		turns := map[string]int{}
+ 		pendingThread, pendingTurn := "", ""
+ 		send := func(v any) bool { return websocket.JSON.Send(ws, v) == nil }
+ 		usageTurns := map[string]int{}
+@@ -191,6 +202,7 @@ func startClaudeGatewayPeer(t *testing.T, home string, invalidAgentFirst ...bool
+ 				}
+ 				peer.mu.Lock()
+ 				peer.toolResults++
++				delete(peer.pendingTurns, pendingThread)
+ 				peer.mu.Unlock()
+ 				if pendingThread == "" || !complete(pendingThread, pendingTurn, "MAIN_GATEWAY_OK") {
+ 					return
+@@ -211,6 +223,7 @@ func startClaudeGatewayPeer(t *testing.T, home string, invalidAgentFirst ...bool
+ 				peer.mu.Lock()
+ 				peer.threads++
+ 				thread := fmt.Sprintf("thread-%d", peer.threads)
++				peer.turns[thread] = 0
+ 				peer.mu.Unlock()
+ 				result = map[string]any{"thread": map[string]string{"id": thread}}
+ 			case "turn/start":
+@@ -225,8 +238,13 @@ func startClaudeGatewayPeer(t *testing.T, home string, invalidAgentFirst ...bool
+ 					return
+ 				}
+ 				childThreads[thread] = strings.Contains(mode.Settings.DeveloperInstructions, "MOAI_CHILD_PROBE")
+-				turns[thread]++
+-				turn := fmt.Sprintf("turn-%s-%d", thread, turns[thread])
++				peer.mu.Lock()
++				peer.turnStarts++
++				peer.turnRequests = append(peer.turnRequests, message.Params)
++				peer.turns[thread]++
++				turnNumber := peer.turns[thread]
++				peer.mu.Unlock()
++				turn := fmt.Sprintf("turn-%s-%d", thread, turnNumber)
+ 				if !send(map[string]any{"id": message.ID, "result": map[string]any{"turn": map[string]string{"id": turn}}}) {
+ 					return
+ 				}
+@@ -237,7 +255,7 @@ func startClaudeGatewayPeer(t *testing.T, home string, invalidAgentFirst ...bool
+ 					if !complete(thread, turn, "CHILD_GATEWAY_OK") {
+ 						return
+ 					}
+-				} else if turns[thread] == 1 {
++				} else if turnNumber == 1 {
+ 					pendingThread, pendingTurn = thread, turn
+ 					if len(invalidAgentFirst) > 0 && invalidAgentFirst[0] {
+ 						if !send(map[string]any{"method": "item/agentMessage/delta", "params": map[string]any{"threadId": thread, "turnId": turn, "delta": "PRE_TOOL_PROGRESS"}}) {
+@@ -248,6 +266,9 @@ func startClaudeGatewayPeer(t *testing.T, home string, invalidAgentFirst ...bool
+ 						}
+ 						continue
+ 					}
++					peer.mu.Lock()
++					peer.pendingTurns[thread] = turn
++					peer.mu.Unlock()
+ 					if !send(map[string]any{"id": "native-agent-rpc", "method": "item/tool/call", "params": map[string]any{"threadId": thread, "turnId": turn, "callId": "agent-call", "tool": "Agent", "arguments": map[string]string{"description": "local child", "prompt": "Reply CHILD_GATEWAY_OK", "subagent_type": "probe"}}}) {
+ 						return
+ 					}
+@@ -256,10 +277,27 @@ func startClaudeGatewayPeer(t *testing.T, home string, invalidAgentFirst ...bool
+ 				}
+ 				continue
+ 			case "thread/resume":
++				peer.mu.Lock()
++				_, known := peer.turns[value("threadId")]
++				peer.resumes++
++				reissuedTurn := peer.pendingTurns[value("threadId")]
++				peer.mu.Unlock()
++				if !known {
++					t.Error("resumed an unknown fixture thread")
++					return
++				}
+ 				result = map[string]any{"thread": map[string]string{"id": value("threadId")}}
++				if reissuedTurn != "" {
++					pendingThread, pendingTurn = value("threadId"), reissuedTurn
++					if !send(map[string]any{"id": message.ID, "result": result}) || !send(map[string]any{"id": "reissued-agent-rpc", "method": "item/tool/call", "params": map[string]any{"threadId": pendingThread, "turnId": pendingTurn, "callId": "agent-call", "tool": "Agent", "arguments": map[string]string{"description": "local child", "prompt": "Reply CHILD_GATEWAY_OK", "subagent_type": "probe"}}}) {
++						return
++					}
++					continue
++				}
+ 			case "turn/interrupt":
+ 				result = map[string]any{}
+ 			default:
++				t.Logf("offline peer unsupported method: %.80s", message.Method)
+ 				return
+ 			}
+ 			if !send(map[string]any{"id": message.ID, "result": result}) {
+diff --git a/internal/cli/gpt_appserver_factory_contract_test.go b/internal/cli/gpt_appserver_factory_contract_test.go
+index 3376bc264..d768dbe56 100644
+--- a/internal/cli/gpt_appserver_factory_contract_test.go
++++ b/internal/cli/gpt_appserver_factory_contract_test.go
+@@ -64,7 +64,11 @@ func TestGPTProductionAppServerWiring(t *testing.T) {
+ 		if !ok {
+ 			t.Fatalf("production handler concrete type=%T, want *gatewayOwnedHandler", h)
+ 		}
+-		serverValue := reflect.ValueOf(owned.Handler).Elem()
++		recovering, ok := owned.Handler.(*managedGPTRecoveringHandler)
++		if !ok || recovering.current == nil {
++			t.Fatalf("production recovery boundary missing: %T", owned.Handler)
++		}
++		serverValue := reflect.ValueOf(recovering.current.Handler).Elem()
+ 		adapters := serverValue.FieldByName("adapters")
+ 		var concrete string
+ 		iter := adapters.MapRange()
+diff --git a/internal/cli/gpt_appserver_owner_recovery_live_test.go b/internal/cli/gpt_appserver_owner_recovery_live_test.go
+index aaea3276e..7707c1fcd 100644
+--- a/internal/cli/gpt_appserver_owner_recovery_live_test.go
++++ b/internal/cli/gpt_appserver_owner_recovery_live_test.go
+@@ -2,6 +2,7 @@ package cli
+ 
+ import (
+ 	"context"
++	"errors"
+ 	"os"
+ 	"os/exec"
+ 	"path/filepath"
+@@ -9,14 +10,25 @@ import (
+ 	"time"
+ 
+ 	"github.com/modu-ai/moai-adk/internal/codexapp"
++	"github.com/modu-ai/moai-adk/internal/paths"
+ )
+ 
+-// Own only the process created by this test. ServeShared's lifetime lease
+-// rejects an existing owner; no operator process is interrupted or replaced.
++// A separate, independently authenticated test home is mandatory. An exclusive
++// startup lease alone cannot prevent an operator joining a test-owned server
++// later and losing their connection when the test cleans up.
+ func TestSharedGPTLiveManagedOwnerRecovery(t *testing.T) {
+ 	if os.Getenv("MOAI_GPT_OWNER_RECOVERY_LIVE") != "1" {
+ 		t.Skip("requires explicit managed owner recovery probe")
+ 	}
++	operatorHome, err := paths.MoaiHome()
++	if err != nil {
++		t.Fatal(err)
++	}
++	testHome, err := validateGPTRecoveryTestHome(operatorHome, os.Getenv("MOAI_GPT_OWNER_RECOVERY_HOME"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	t.Setenv("MOAI_HOME", testHome)
+ 	profile, err := managedGPTProfile()
+ 	if err != nil {
+ 		t.Fatal(err)
+@@ -38,6 +50,14 @@ func TestSharedGPTLiveManagedOwnerRecovery(t *testing.T) {
+ 	done := make(chan error, 1)
+ 	go func() { done <- codexapp.ServeShared(ctx, cfg) }()
+ 	t.Cleanup(func() {
++		if os.Getenv("MOAI_GPT_LEASE_DIAGNOSTICS") == "1" {
++			probeCtx, probeCancel := context.WithTimeout(context.Background(), 3*time.Second)
++			owners, probeErr := exec.CommandContext(probeCtx, "lsof", "-F", "pcf", filepath.Join(profile, ".moai-appserver.lock")).Output()
++			probeCancel()
++			if len(owners) <= 4096 {
++				t.Logf("before owned server shutdown: lease holders=%s observation_error=%v", owners, probeErr)
++			}
++		}
+ 		cancel()
+ 		select {
+ 		case <-done:
+@@ -51,11 +71,13 @@ func TestSharedGPTLiveManagedOwnerRecovery(t *testing.T) {
+ 		select {
+ 		case err := <-done:
+ 			done <- err
+-			probeCtx, probeCancel := context.WithTimeout(context.Background(), time.Second)
+-			owners, _ := exec.CommandContext(probeCtx, "lsof", "-F", "pc", filepath.Join(profile, ".moai-appserver.lock")).Output()
++			probeCtx, probeCancel := context.WithTimeout(context.Background(), 3*time.Second)
++			probeStart := time.Now()
++			owners, probeErr := exec.CommandContext(probeCtx, "lsof", "-F", "pc", filepath.Join(profile, ".moai-appserver.lock")).Output()
++			probeContextErr := probeCtx.Err()
+ 			probeCancel()
+ 			if len(owners) <= 4096 {
+-				t.Logf("profile lease holders: %s", owners)
++				t.Logf("profile lease holder observation: elapsed=%s exit=%v context=%v owners=%s", time.Since(probeStart), probeErr, probeContextErr, owners)
+ 			}
+ 			t.Fatalf("managed owner startup: %v", err)
+ 		case <-ctx.Done():
+@@ -78,7 +100,60 @@ func TestSharedGPTLiveManagedOwnerRecovery(t *testing.T) {
+ 			t.Run("claude-agent", managedGPTClaudeAgentLive)
+ 			t.Run("claude-pty", managedGPTClaudePTYLive)
+ 			t.Run("claude-compact", managedGPTClaudeCompactLive)
++			t.Run("launcher", managedGPTLauncherLive)
+ 			return
+ 		}
+ 	}
+ }
++
++func validateGPTRecoveryTestHome(operatorHome, requested string) (string, error) {
++	if !filepath.IsAbs(requested) || codexapp.ValidatePrivatePath(requested, true) != nil {
++		return "", errors.New("set MOAI_GPT_OWNER_RECOVERY_HOME to a private, independently authenticated test MoAI home; never copy operator credentials")
++	}
++	operator, err := filepath.EvalSymlinks(operatorHome)
++	if err != nil || operator == filepath.Clean(requested) {
++		return "", errors.New("owner recovery tests must not use the operator MoAI home")
++	}
++	testProfile := filepath.Join(requested, "gpt-appserver")
++	if codexapp.ValidatePrivatePath(testProfile, true) != nil {
++		return "", errors.New("isolated managed test profile is unavailable")
++	}
++	return filepath.Clean(requested), nil
++}
++
++func TestGPTRecoveryHomeIsolation(t *testing.T) {
++	operator, err := filepath.EvalSymlinks(t.TempDir())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Chmod(operator, 0700); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Mkdir(filepath.Join(operator, "gpt-appserver"), 0700); err != nil {
++		t.Fatal(err)
++	}
++	isolated, err := filepath.EvalSymlinks(t.TempDir())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Chmod(isolated, 0700); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Mkdir(filepath.Join(isolated, "gpt-appserver"), 0700); err != nil {
++		t.Fatal(err)
++	}
++	for _, candidate := range []string{"", "relative", operator} {
++		if _, err := validateGPTRecoveryTestHome(operator, candidate); err == nil {
++			t.Fatalf("unsafe test home accepted: %q", candidate)
++		}
++	}
++	if got, err := validateGPTRecoveryTestHome(operator, isolated); err != nil || got != isolated {
++		t.Fatalf("isolated home rejected: %q %v", got, err)
++	}
++	if err := os.Chmod(isolated, 0755); err != nil {
++		t.Fatal(err)
++	}
++	if _, err := validateGPTRecoveryTestHome(operator, isolated); err == nil {
++		t.Fatal("public test home accepted")
++	}
++}
+diff --git a/internal/cli/gpt_appserver_rejections.go b/internal/cli/gpt_appserver_rejections.go
+index 63bb3cefb..67fee0657 100644
+--- a/internal/cli/gpt_appserver_rejections.go
++++ b/internal/cli/gpt_appserver_rejections.go
+@@ -30,6 +30,8 @@ func newManagedGPTRejectionLogger(profile, conversationID string) (*managedGPTRe
+ // A full log retains its existing evidence instead of growing past one MiB.
+ func (l *managedGPTRejectionLogger) RecordGatewayRejection(fields map[string]string) {
+ 	switch fields["cause"] {
++	case "pending_resume_shape", "pending_resume_binding", "pending_resume_discovery", "pending_resume_token_usage", "pending_resume_event", "pending_resume_schema":
++	case "appserver_account_unavailable", "request_unsupported_field":
+ 	case "history_changed", "agent_summary_untrusted", "history_scope_mismatch", "receipt_manifest_mismatch", "resume_duplicate_input", "history_receipt_missing", "history_prefix_mismatch", "appserver_scope_mismatch", "appserver_recovery_required", "appserver_protocol_error", "appserver_limit_exceeded", "appserver_event_queue_bytes_exceeded", "appserver_authority_changed", "appserver_request_canceled", "appserver_request_timeout", "appserver_transport_error", "native_receipt_authorization_required":
+ 	default:
+ 		return
+@@ -43,6 +45,12 @@ func (l *managedGPTRejectionLogger) RecordGatewayRejection(fields map[string]str
+ 		return
+ 	}
+ 	row := map[string]string{"at": time.Now().UTC().Format(time.RFC3339Nano), "cause": fields["cause"], "route": fields["route"], "digest": fields["digest"]}
++	if fields["cause"] == "appserver_transport_error" || fields["cause"] == "appserver_account_unavailable" {
++		switch fields["transport_kind"] {
++		case "rpc", "eof", "read", "closed", "protocol", "limit", "unknown":
++			row["transport_kind"] = fields["transport_kind"]
++		}
++	}
+ 	if fields["cause"] == "appserver_transport_error" {
+ 		if code, err := strconv.ParseInt(fields["rpc_code"], 10, 32); err == nil && strconv.FormatInt(code, 10) == fields["rpc_code"] {
+ 			row["rpc_code"] = fields["rpc_code"]
+diff --git a/internal/cli/gpt_appserver_rejections_test.go b/internal/cli/gpt_appserver_rejections_test.go
+index 334d90d63..a9a6b8333 100644
+--- a/internal/cli/gpt_appserver_rejections_test.go
++++ b/internal/cli/gpt_appserver_rejections_test.go
+@@ -88,6 +88,42 @@ func TestManagedGPTRejectionLoggerBoundsRPCCode(t *testing.T) {
+ 	}
+ }
+ 
++func TestManagedGPTRejectionLoggerBoundsTransportKind(t *testing.T) {
++	for _, cause := range []string{"appserver_transport_error", "appserver_account_unavailable"} {
++		for _, kind := range []string{"rpc", "eof", "read", "closed", "protocol", "limit", "unknown", "PRIVATE"} {
++			t.Run(cause+"/"+kind, func(t *testing.T) {
++				dir, err := filepath.EvalSymlinks(t.TempDir())
++				if err != nil {
++					t.Fatal(err)
++				}
++				if err := os.Chmod(dir, 0700); err != nil {
++					t.Fatal(err)
++				}
++				logger, err := newManagedGPTRejectionLogger(dir, "transport-owner")
++				if err != nil {
++					t.Fatal(err)
++				}
++				logger.RecordGatewayRejection(map[string]string{"cause": cause, "route": "gpt-5.6-sol", "digest": strings.Repeat("b", 64), "transport_kind": kind, "message": "PRIVATE"})
++				raw, err := os.ReadFile(filepath.Join(dir, logger.name))
++				if err != nil {
++					t.Fatal(err)
++				}
++				var row map[string]string
++				if err := json.Unmarshal(raw, &row); err != nil {
++					t.Fatal(err)
++				}
++				want := kind
++				if kind == "PRIVATE" {
++					want = ""
++				}
++				if row["transport_kind"] != want || strings.Contains(string(raw), "PRIVATE") {
++					t.Fatalf("unsafe diagnostic: %s", raw)
++				}
++			})
++		}
++	}
++}
++
+ func TestManagedGPTRejectionLoggerRejectsSymlink(t *testing.T) {
+ 	dir, resolveErr := filepath.EvalSymlinks(t.TempDir())
+ 	if resolveErr != nil {
+diff --git a/internal/cli/gpt_appserver_runtime.go b/internal/cli/gpt_appserver_runtime.go
+index 80b59108e..143e69f22 100644
+--- a/internal/cli/gpt_appserver_runtime.go
++++ b/internal/cli/gpt_appserver_runtime.go
+@@ -27,7 +27,7 @@ import (
+ // newGPTAppServerGatewayHandler is the only production GPT assembly. It owns
+ // the official Codex App Server process and never opens the legacy token store,
+ // exports a bearer token, or calls an OpenAI model endpoint directly.
+-func newGPTAppServerGatewayHandler(raw json.RawMessage) (http.Handler, error) {
++func newGPTAppServerGatewayInstance(startup context.Context, raw json.RawMessage) (*gatewayOwnedHandler, error) {
+ 	p, rows, err := decodeGPTAppServerPayload(raw)
+ 	if err != nil {
+ 		return nil, errGatewayFactory
+@@ -58,7 +58,7 @@ func newGPTAppServerGatewayHandler(raw json.RawMessage) (http.Handler, error) {
+ 			_ = client.Close()
+ 		}
+ 	}()
+-	if err = initializeManagedGPT(lifetime, client, binary, "moai-gateway"); err != nil {
++	if err = initializeManagedGPT(startup, client, binary, "moai-gateway"); err != nil {
+ 		return nil, errGatewayFactory
+ 	}
+ 	authority, err := gateway.NewAppServerAuthority(client, "chatgpt", func(context.Context) (string, error) {
+@@ -69,7 +69,7 @@ func newGPTAppServerGatewayHandler(raw json.RawMessage) (http.Handler, error) {
+ 	}
+ 	// Fail before Claude starts when the private App Server profile is not a
+ 	// managed ChatGPT subscription session.
+-	if _, err = authority.Authorize(lifetime, rows[0]); err != nil {
++	if _, err = authority.Authorize(startup, rows[0]); err != nil {
+ 		return nil, errGatewayFactory
+ 	}
+ 
+@@ -158,7 +158,7 @@ func newGPTAppServerGatewayHandler(raw json.RawMessage) (http.Handler, error) {
+ 	}
+ 	requestCtx, requestCancel := context.WithCancel(context.Background())
+ 	cleanupClient = false
+-	return &gatewayOwnedHandler{Handler: server, receipts: receipts, ctx: requestCtx, cancel: requestCancel, managed: func() error {
++	return &gatewayOwnedHandler{Handler: server, receipts: receipts, ctx: requestCtx, cancel: requestCancel, connectionErr: client.Err, managed: func() error {
+ 		engine.Close()
+ 		cancel()
+ 		return client.Close()
+@@ -170,6 +170,19 @@ func decodeGPTAppServerPayload(raw json.RawMessage) (gatewayPrivatePayload, []ga
+ 	if len(raw) > 65536 || gateway.ValidateJSONObject(raw) != nil {
+ 		return p, nil, errGatewayFactory
+ 	}
++	// DisallowUnknownFields still accepts case-insensitive struct field names.
++	// Pin the private protocol spelling before opening profiles or connections.
++	var fields map[string]json.RawMessage
++	if json.Unmarshal(raw, &fields) != nil {
++		return p, nil, errGatewayFactory
++	}
++	for key := range fields {
++		switch key {
++		case "version", "session_token", "model_ids", "context_tokens", "conversation":
++		default:
++			return p, nil, errGatewayFactory
++		}
++	}
+ 	dec := json.NewDecoder(bytes.NewReader(raw))
+ 	dec.DisallowUnknownFields()
+ 	if dec.Decode(&p) != nil || p.Version != 1 || p.SessionToken == "" || len(p.SessionToken) > 4096 || len(p.ModelIDs) == 0 || len(p.ModelIDs) > 4 {
+@@ -188,8 +201,7 @@ func decodeGPTAppServerPayload(raw json.RawMessage) (gatewayPrivatePayload, []ga
+ 	// carry the parent's validated snapshot; never re-read mutable cache here.
+ 	window := p.ContextTokens
+ 	if window == 0 {
+-		var fields map[string]json.RawMessage
+-		if json.Unmarshal(raw, &fields) != nil || fields["context_tokens"] != nil {
++		if fields["context_tokens"] != nil {
+ 			return p, nil, errGatewayFactory
+ 		}
+ 		window = gatewayContextWindow
+@@ -425,6 +437,7 @@ func newManagedGPTPrepare(conversationID, cwd string, base translate.Limits, sto
+ 			}
+ 			q.ExpectedPrefix = barrier.Prefix
+ 			q.Resume = barrier.Phase == "idle"
++			q.ResumePending = barrier.Phase == "waiting"
+ 		} else if r.Headers.Get("X-Claude-Code-Agent-Id") != "" || contextDigest != "" || ephemeral {
+ 			// An agent may inherit a public conversation without inheriting an
+ 			// App Server thread. The delta alone would discard its context, or
+@@ -530,7 +543,30 @@ func managedGPTAfterAcceptedPrefix(ctx context.Context, r gateway.RoutedRequest,
+ 			prefix := append([]json.RawMessage(nil), messages[:i]...)
+ 			last, _ := json.Marshal(message)
+ 			prefix = append(prefix, last)
+-			if matches(prefix) {
++			matched := matches(prefix)
++			if !matched && attempts < 64 && i+1 < len(messages) {
++				// Background task notifications can be appended inside the last
++				// user message while Claude retains its trailing system context.
++				// Reconstruct that full accepted request, not a shortened prefix.
++				// The exact stored digest still has to match; changed context or
++				// tool output is never silently discarded.
++				systemSuffix := true
++				for _, raw := range messages[i+1:] {
++					var suffix struct {
++						Role string `json:"role"`
++					}
++					if json.Unmarshal(raw, &suffix) != nil || suffix.Role != "system" {
++						systemSuffix = false
++						break
++					}
++				}
++				if systemSuffix && matches(append(append([]json.RawMessage(nil), prefix...), messages[i+1:]...)) {
++					message.Content, _ = json.Marshal(blocks[j:])
++					last, _ = json.Marshal(message)
++					return encode([]json.RawMessage{last})
++				}
++			}
++			if matched {
+ 				message.Content, _ = json.Marshal(blocks[j:])
+ 				last, _ = json.Marshal(message)
+ 				return encode(append([]json.RawMessage{last}, messages[i+1:]...))
+diff --git a/internal/cli/gpt_appserver_shared_test.go b/internal/cli/gpt_appserver_shared_test.go
+index eff43321a..e1ec725a8 100644
+--- a/internal/cli/gpt_appserver_shared_test.go
++++ b/internal/cli/gpt_appserver_shared_test.go
+@@ -106,6 +106,9 @@ func TestGPTGatewayFactoryConnectsSharedOwnerWithManagedConfiguration(t *testing
+ 	if err := closer.Close(); err != nil {
+ 		t.Fatal("stage=factory_close")
+ 	}
++	if err := closer.Close(); err != nil {
++		t.Fatal("stage=factory_close_idempotent")
++	}
+ }
+ 
+ func sharedGPTFixtureHome(t *testing.T) string {
+@@ -121,10 +124,14 @@ func sharedGPTFixtureHome(t *testing.T) string {
+ 	return home
+ }
+ 
+-func startSharedGPTWiringFixture(t *testing.T, home, protocolLog string) {
++func startSharedGPTWiringFixture(t *testing.T, home, protocolLog string) func() {
++	return startSharedGPTWiringAccountFixture(t, home, protocolLog, map[string]any{"account": map[string]string{"type": "chatgpt", "planType": "test"}}, nil)
++}
++
++func startSharedGPTWiringAccountFixture(t *testing.T, home, protocolLog string, account any, closed chan<- struct{}) func() {
+ 	t.Helper()
+ 	if runtime.GOOS == "windows" {
+-		return
++		return func() {}
+ 	} // Product retains exclusive stdio on Windows.
+ 	profile := filepath.Join(home, "gpt-appserver")
+ 	if err := os.MkdirAll(profile, 0700); err != nil {
+@@ -145,7 +152,18 @@ func startSharedGPTWiringFixture(t *testing.T, home, protocolLog string) {
+ 		mu.Lock()
+ 		connections[ws] = true
+ 		mu.Unlock()
+-		defer func() { _ = ws.Close(); mu.Lock(); delete(connections, ws); mu.Unlock() }()
++		defer func() {
++			_ = ws.Close()
++			mu.Lock()
++			delete(connections, ws)
++			mu.Unlock()
++			if closed != nil {
++				select {
++				case closed <- struct{}{}:
++				default:
++				}
++			}
++		}()
+ 		for {
+ 			var raw []byte
+ 			if err := websocket.Message.Receive(ws, &raw); err != nil {
+@@ -171,7 +189,7 @@ func startSharedGPTWiringFixture(t *testing.T, home, protocolLog string) {
+ 			case "initialized":
+ 				continue
+ 			case "account/read":
+-				result = map[string]any{"account": map[string]string{"type": "chatgpt", "planType": "test"}}
++				result = account
+ 			case "model/list":
+ 				result = map[string]any{"data": []any{}, "nextCursor": nil}
+ 			default:
+@@ -197,6 +215,13 @@ func startSharedGPTWiringFixture(t *testing.T, home, protocolLog string) {
+ 			t.Error("shared fixture did not stop")
+ 		}
+ 	})
++	return func() {
++		mu.Lock()
++		defer mu.Unlock()
++		for ws := range connections {
++			_ = ws.Close()
++		}
++	}
+ }
+ 
+ // TestSharedGPTStartupStageProbe is an opt-in, read-only startup diagnostic.
+diff --git a/internal/cli/gpt_claude_host_tool_live_test.go b/internal/cli/gpt_claude_host_tool_live_test.go
+index 7df6adb9b..044322575 100644
+--- a/internal/cli/gpt_claude_host_tool_live_test.go
++++ b/internal/cli/gpt_claude_host_tool_live_test.go
+@@ -9,6 +9,7 @@ import (
+ 	"os"
+ 	"os/exec"
+ 	"path/filepath"
++	"sort"
+ 	"strconv"
+ 	"strings"
+ 	"sync"
+@@ -17,12 +18,56 @@ import (
+ 	"time"
+ 
+ 	"github.com/google/uuid"
++	"github.com/modu-ai/moai-adk/internal/codexapp"
+ 	"github.com/modu-ai/moai-adk/internal/gateway"
+ 	"github.com/modu-ai/moai-adk/internal/gateway/conversation"
+ 	"github.com/modu-ai/moai-adk/internal/gateway/receipt"
+ )
+ 
+-// Called only by the opt-in test owning the live managed server lifetime.
++// This smoke test joins an already running owner and never owns or terminates
++// its lifetime. Destructive owner-recovery tests require a separate profile.
++func TestSharedGPTLiveClaudeSession(t *testing.T) {
++	if os.Getenv("MOAI_GPT_SHARED_SESSION_LIVE") != "1" {
++		t.Skip("SPEC-MOAI-GATEWAY-001: opt in to a real model session on an existing managed server")
++	}
++	profile, err := managedGPTProfile()
++	if err != nil {
++		t.Fatal(err)
++	}
++	binary, err := exec.LookPath("codex")
++	if err != nil {
++		t.Fatal(err)
++	}
++	binary, err = filepath.Abs(binary)
++	if err != nil {
++		t.Fatal(err)
++	}
++	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
++	defer cancel()
++	probe, err := codexapp.ConnectShared(ctx, managedGPTLiveConfig(t, binary, profile))
++	if err != nil {
++		t.Fatalf("existing shared owner required: %v", err)
++	}
++	if _, err := probe.Initialize(ctx, "moai-session-smoke", "1"); err != nil {
++		_ = probe.Close()
++		t.Fatal(err)
++	}
++	if err := probe.Close(); err != nil {
++		t.Fatal(err)
++	}
++	t.Run("hosttool", managedGPTClaudeHostToolLive)
++	t.Run("reconnect", func(t *testing.T) { managedGPTClaudeToolLive(t, "reconnect") })
++	t.Run("deferred-reconnect", func(t *testing.T) { managedGPTClaudeToolLive(t, "deferred-reconnect") })
++	t.Run("deferred", managedGPTClaudeDeferredToolLive)
++	t.Run("agent", managedGPTClaudeAgentLive)
++	t.Run("fork", func(t *testing.T) { managedGPTClaudeToolLive(t, "fork") })
++	t.Run("fork-parallel", func(t *testing.T) { managedGPTClaudeToolLive(t, "fork-parallel") })
++	t.Run("pty", managedGPTClaudePTYLive)
++	t.Run("compact", managedGPTClaudeCompactLive)
++}
++
++// Called by explicit live probes; only the outer owner-recovery test may stop
++// a server, and that test requires its own independently authenticated home.
+ func managedGPTClaudeHostToolLive(t *testing.T) {
+ 	managedGPTClaudeToolLive(t, "bash")
+ }
+@@ -40,7 +85,13 @@ func managedGPTClaudePTYLive(t *testing.T) { managedGPTClaudeToolLive(t, "pty")
+ func managedGPTClaudeCompactLive(t *testing.T) { managedGPTClaudeToolLive(t, "pty-compact") }
+ 
+ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+-	deferred := mode == "deferred"
++	forkMode := mode == "fork" || mode == "fork-parallel"
++	wantChildren := 1
++	if mode == "fork-parallel" {
++		wantChildren = 2
++	}
++	deferred := mode == "deferred" || mode == "deferred-reconnect"
++	reconnect := mode == "reconnect" || mode == "deferred-reconnect"
+ 	ptyMode := mode == "pty" || mode == "pty-compact"
+ 	claude, err := exec.LookPath("claude")
+ 	if err != nil {
+@@ -51,6 +102,7 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 		t.Fatal(err)
+ 	}
+ 	family := uuid.NewString()
++	t.Logf("live Claude probe: mode=%s family=%s", mode, family)
+ 	const token = "synthetic-host-tool-live-token"
+ 	ledgerDir := filepath.Join(root, "receipts")
+ 	if err := os.Mkdir(ledgerDir, 0700); err != nil {
+@@ -78,11 +130,22 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 	discovered := false
+ 	firstCatalog, initialSearch, initialTarget := false, false, false
+ 	children := make(map[string]bool)
++	forkCalls := make(map[string]bool)
++	forkExpected := make(map[string]string)
++	forkInherited := false
++	forkCompletedNotification := false
++	forkCompletions := make(map[string]gptForkCompletion)
++	var lastParentShape gptProbeRequestShape
+ 	compactRequests := 0
+ 	var httpErrors atomic.Int32
+ 	var refusedProbes atomic.Int32
++	var disconnected atomic.Bool
++	var activeChildren, peakChildren atomic.Int32
+ 	errorRoutes := make(map[string]int)
+ 	t.Cleanup(func() {
++		if reconnect && !disconnected.Load() {
++			t.Error("pending connection loss was not exercised")
++		}
+ 		if count := httpErrors.Load(); count != 0 {
+ 			mu.Lock()
+ 			t.Errorf("gateway returned HTTP errors during live roundtrip: %d routes=%v", count, errorRoutes)
+@@ -92,6 +155,7 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 		}
+ 	})
+ 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		var parentShape *gptProbeRequestShape
+ 		if r.URL.Path == "/v1/messages" {
+ 			if r.Header.Get("X-Claude-Code-Request-Class") == "compaction" {
+ 				mu.Lock()
+@@ -99,6 +163,13 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 				mu.Unlock()
+ 			}
+ 			if child := r.Header.Get("X-Claude-Code-Agent-Id"); child != "" && r.Header.Get("X-Claude-Code-Request-Class") == "subagent" {
++				active := activeChildren.Add(1)
++				defer activeChildren.Add(-1)
++				for peak := peakChildren.Load(); active > peak; peak = peakChildren.Load() {
++					if peakChildren.CompareAndSwap(peak, active) {
++						break
++					}
++				}
+ 				mu.Lock()
+ 				children[child] = true
+ 				mu.Unlock()
+@@ -109,7 +180,38 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 				return
+ 			}
+ 			r.Body = io.NopCloser(strings.NewReader(string(raw)))
+-			defs, _, _, refs, deltaErr := managedGPTPublicDelta(raw)
++			if forkMode && r.Header.Get("X-Claude-Code-Agent-Id") == "" {
++				shape := gptProbeShape(raw)
++				parentShape = &shape
++			}
++			if forkMode && r.Header.Get("X-Claude-Code-Agent-Id") != "" && strings.Contains(string(raw), "HOST_EXECUTED_856") {
++				mu.Lock()
++				forkInherited = true
++				mu.Unlock()
++			}
++			defs, _, returned, refs, deltaErr := managedGPTPublicDelta(raw)
++			markerResult := false
++			for _, result := range returned {
++				for _, content := range result.Content {
++					if strings.Contains(content.Text, "HOST_EXECUTED_856") {
++						markerResult = true
++					}
++				}
++			}
++			if reconnect && deltaErr == nil && len(returned) > 0 && (!deferred || markerResult) && disconnected.CompareAndSwap(false, true) {
++				// Only this test-owned gateway connection/Engine/receipt lease is
++				// closed. The shared authentication owner remains alive.
++				recovering := handler.(*gatewayOwnedHandler).Handler.(*managedGPTRecoveringHandler)
++				recovering.mu.Lock()
++				err := recovering.current.Close()
++				recovering.mu.Unlock()
++				if err != nil {
++					t.Errorf("close test-owned pending connection: %v", err)
++					http.Error(w, "test disconnect failed", 503)
++					return
++				}
++				t.Log("test-owned pending gateway connection closed before matching tool result submission")
++			}
+ 			if deltaErr == nil {
+ 				mu.Lock()
+ 				if len(refs) > 0 {
+@@ -118,6 +220,23 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 				if !firstCatalog && len(defs) > 0 {
+ 					firstCatalog = true
+ 					for _, def := range defs {
++						if mode == "agent" && def.Name == "Agent" {
++							// Record only public schema property names, never prompts,
++							// descriptions or argument values. This distinguishes the
++							// observed tool contract from assumed native-fork support.
++							var schema struct {
++								Properties map[string]json.RawMessage `json:"properties"`
++							}
++							if err := json.Unmarshal(def.InputSchema, &schema); err != nil {
++								t.Errorf("Agent schema could not be inspected: %v", err)
++							}
++							keys := make([]string, 0, len(schema.Properties))
++							for key := range schema.Properties {
++								keys = append(keys, key)
++							}
++							sort.Strings(keys)
++							t.Logf("observed Claude Agent input property names: %v", keys)
++						}
+ 						if def.Name == "ToolSearch" {
+ 							initialSearch = true
+ 						}
+@@ -136,6 +255,63 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 			}
+ 			if json.Unmarshal(raw, &body) == nil {
+ 				for _, message := range body.Messages {
++					if forkMode && message.Role == "user" {
++						var texts []string
++						var scalar string
++						if json.Unmarshal(message.Content, &scalar) == nil {
++							texts = append(texts, scalar)
++						} else {
++							var blocks []struct{ Type, Text string }
++							if json.Unmarshal(message.Content, &blocks) == nil {
++								for _, block := range blocks {
++									if block.Type == "text" {
++										texts = append(texts, block.Text)
++									}
++								}
++							}
++						}
++						for _, text := range texts {
++							for _, text := range splitGPTForkNotifications(text) {
++								completion, parsed := parseGPTForkCompletion(text)
++								t.Logf("fork completion envelope: parsed=%t result_marker=%t", parsed, completion.Result == "HOST_EXECUTED_856")
++								completed := strings.Contains(text, "<status>completed</status>")
++								marker := strings.Contains(text, "HOST_EXECUTED_856")
++								t.Logf("fork task notification: completed=%t marker=%t", completed, marker)
++								mu.Lock()
++								if parsed {
++									forkCompletions[completion.TaskID] = completion
++								}
++								forkCompletedNotification = forkCompletedNotification || (completed && marker)
++								mu.Unlock()
++							}
++						}
++					}
++					if forkMode && message.Role == "assistant" {
++						var calls []struct {
++							Type, Name, ID string
++							Input          struct {
++								SubagentType string `json:"subagent_type"`
++								Prompt       string `json:"prompt"`
++								Description  string `json:"description"`
++							}
++						}
++						if json.Unmarshal(message.Content, &calls) == nil {
++							for _, call := range calls {
++								if call.Type == "tool_use" && call.Name == "Agent" {
++									mu.Lock()
++									forkCalls[call.ID] = call.Input.SubagentType == "fork" && !strings.Contains(call.Input.Prompt, "HOST_EXECUTED_856")
++									if forkCalls[call.ID] {
++										if mode != "fork-parallel" {
++											forkExpected[call.ID] = "HOST_EXECUTED_856"
++										} else if call.Input.Description == "left" || call.Input.Description == "right" {
++											forkExpected[call.ID] = "HOST_EXECUTED_856:" + call.Input.Description
++										}
++									}
++									mu.Unlock()
++								}
++							}
++						}
++					}
+ 					if message.Role != "user" {
+ 						continue
+ 					}
+@@ -160,7 +336,7 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 				}
+ 			}
+ 		}
+-		handler.ServeHTTP(&managedGPTProbeWriter{ResponseWriter: w, onError: func(code int) {
++		probe := &managedGPTProbeWriter{ResponseWriter: w, onError: func(code int) {
+ 			// An unauthenticated reachability probe must not gain API access.
+ 			if r.Method == http.MethodHead && r.URL.Path == "/api/hello" && r.Header.Get("Authorization") == "" && code == http.StatusUnauthorized {
+ 				refusedProbes.Add(1)
+@@ -170,7 +346,33 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 			mu.Lock()
+ 			errorRoutes[r.Method+" "+r.URL.Path+" "+strconv.Itoa(code)]++
+ 			mu.Unlock()
+-		}}, r)
++		}}
++		handler.ServeHTTP(probe, r)
++		if parentShape != nil {
++			mu.Lock()
++			if probe.status >= 400 {
++				fields, prefix, before, after := gptProbeShapeDifference(lastParentShape, *parentShape)
++				t.Logf("failed parent request shape: changed_fields=%s common_message_prefix=%d previous_roles=%s current_roles=%s", fields, prefix, before, after)
++			} else {
++				lastParentShape = *parentShape
++			}
++			mu.Unlock()
++		}
++		if probe.errorBody.Len() != 0 {
++			var envelope struct {
++				Error struct {
++					Message string `json:"message"`
++				} `json:"error"`
++			}
++			if json.Unmarshal([]byte(probe.errorBody.String()), &envelope) == nil {
++				message := envelope.Error.Message
++				// Only machine error labels; never log request bodies or headers.
++				if len(message) > 80 || strings.IndexFunc(message, func(r rune) bool { return r != '_' && (r < 'a' || r > 'z') }) >= 0 {
++					message = "non_machine_error"
++				}
++				t.Logf("gateway error response: status=%d cause=%s", probe.status, message)
++			}
++		}
+ 	}))
+ 	t.Cleanup(server.Close)
+ 	budget := 50 * time.Second
+@@ -186,6 +388,13 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 	if mode == "agent" {
+ 		cmd.Args = []string{claude, "--print", "--output-format", "json", "--session-id", family, "--model", "gpt-5.6-sol", "--tools", "Agent", "--allowedTools", "Agent", "--agents", `{"probe":{"description":"synthetic read-only child","prompt":"Reply with only HOST_EXECUTED_856. Do not call any tools.","tools":[]}}`, "--settings", `{"disableAllHooks":true}`, "--max-turns", "5", "Call the probe Agent exactly once in the foreground. After observing its HOST_EXECUTED_856 result, reply only HOST_ROUNDTRIP_OK."}
+ 	}
++	if forkMode {
++		cmd.Env = append(cmd.Env, "CLAUDE_CODE_FORK_SUBAGENT=1")
++		cmd.Args = []string{claude, "--print", "--output-format", "json", "--session-id", family, "--model", "gpt-5.6-sol", "--tools", "Agent", "--allowedTools", "Agent(fork)", "--settings", `{"disableAllHooks":true}`, "--max-turns", "8", "Parent context marker: HOST_EXECUTED_856. Call Agent exactly once with subagent_type fork. The fork prompt must be: Return only the parent context marker inherited from the conversation; do not use tools or spawn agents. Do not put the marker value in that prompt. Wait for the fork to complete. Only after receiving its marker result reply HOST_ROUNDTRIP_OK."}
++	}
++	if mode == "fork-parallel" {
++		cmd.Args[len(cmd.Args)-1] = "Parent context marker: HOST_EXECUTED_856. Call Agent exactly twice in the SAME response with subagent_type fork, descriptions exactly left and right. The left fork prompt must request: Return only the inherited parent context marker followed by :left; do not use tools or spawn agents. The right fork prompt must request the same but with :right. Do not put the marker value in either prompt. Wait for BOTH forks to complete and check each suffix matches its task. Only after receiving both results reply exactly HOST_ROUNDTRIP_OK with no other text."
++	}
+ 	if deferred {
+ 		url, calls := managedGPTProbeMCP(t)
+ 		mcpCalls = calls
+@@ -195,7 +404,7 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 		}
+ 		cmd.Args = []string{claude, "--print", "--output-format", "json", "--session-id", family, "--model", "gpt-5.6-sol", "--tools", "ToolSearch", "--allowedTools", "ToolSearch,mcp__probe__host_marker", "--strict-mcp-config", "--mcp-config", string(mcpConfig), "--settings", `{"disableAllHooks":true}`, "--max-turns", "6", "Use ToolSearch to discover the probe host_marker tool, then call it exactly once. After observing HOST_EXECUTED_856, reply only HOST_ROUNDTRIP_OK. Do not use another tool."}
+ 	}
+-	if deferred || mode == "agent" || ptyMode {
++	if deferred || mode == "agent" || forkMode || ptyMode {
+ 		catalog, err := gateway.NewSessionCatalog(nil)
+ 		if err != nil {
+ 			t.Fatal(err)
+@@ -226,6 +435,11 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 	}
+ 	output, err := cmd.Output()
+ 	if err != nil {
++		if forkMode {
++			mu.Lock()
++			t.Logf("fork execution failed: context=%v calls=%d children=%d completions=%d active_child_requests=%d peak_child_requests=%d", ctx.Err(), len(forkCalls), len(children), len(forkCompletions), activeChildren.Load(), peakChildren.Load())
++			mu.Unlock()
++		}
+ 		t.Fatalf("real Claude/GPT host tool execution: %v", err)
+ 	}
+ 	mu.Lock()
+@@ -233,6 +447,34 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 	sawReference := discovered
+ 	sawSearch, sawUpfrontTarget := initialSearch, initialTarget
+ 	childCount := len(children)
++	completedFork := forkCompletedNotification
++	if forkMode {
++		correlated := countGPTForkMatches(children, forkExpected, forkCompletions)
++		expectedValues := make(map[string]bool)
++		for _, value := range forkExpected {
++			expectedValues[value] = true
++		}
++		if len(expectedValues) != wantChildren {
++			t.Error("fork tasks did not request distinct expected results")
++		}
++		t.Logf("fork completion correlation: parsed=%d matched=%d", len(forkCompletions), correlated)
++		if correlated != wantChildren {
++			t.Error("fork completion did not match its observed child and Agent call")
++		}
++		t.Logf("native fork evidence: calls=%d inherited_marker=%t children=%d marker_results=%d completed_notification=%t", len(forkCalls), forkInherited, childCount, observed, forkCompletedNotification)
++		if len(forkCalls) != wantChildren || !forkInherited {
++			t.Error("native fork invocation or inherited parent context not observed")
++		}
++		for _, valid := range forkCalls {
++			if !valid {
++				t.Error("Agent call did not select fork or copied marker into prompt")
++			}
++		}
++		if mode == "fork-parallel" && peakChildren.Load() < 2 {
++			t.Error("two fork requests never overlapped")
++		}
++		t.Logf("fork child request concurrency: peak=%d", peakChildren.Load())
++	}
+ 	mu.Unlock()
+ 	var final struct {
+ 		Result  string `json:"result"`
+@@ -241,8 +483,14 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 	if err := json.Unmarshal(output, &final); err != nil {
+ 		t.Fatal("Claude final output was not JSON")
+ 	}
+-	if strings.TrimSpace(final.Result) != "HOST_ROUNDTRIP_OK" || final.IsError || observed != 1 {
+-		if mode == "agent" && len(final.Result) <= 512 {
++	resultDelivered := observed == 1
++	if forkMode {
++		// Native forks are background tasks: their final result arrives as a
++		// completed task notification, not the launch call's tool_result.
++		resultDelivered = completedFork
++	}
++	if strings.TrimSpace(final.Result) != "HOST_ROUNDTRIP_OK" || final.IsError || !resultDelivered {
++		if (mode == "agent" || forkMode) && len(final.Result) <= 512 {
+ 			t.Logf("synthetic agent final result=%q child_ids=%d", final.Result, childCount)
+ 		}
+ 		t.Fatalf("host tool roundtrip incomplete: marker=%t is_error=%t results=%d", strings.TrimSpace(final.Result) == "HOST_ROUNDTRIP_OK", final.IsError, observed)
+@@ -254,11 +502,15 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 		t.Log("real Claude ToolSearch -> tool_reference -> real GPT dispatcher -> Claude MCP: calls=1 final=HOST_ROUNDTRIP_OK")
+ 		return
+ 	}
+-	if mode == "agent" {
+-		if childCount != 1 {
+-			t.Fatalf("expected one real Claude subagent, observed=%d", childCount)
++	if mode == "agent" || forkMode {
++		if childCount != wantChildren {
++			t.Fatalf("expected %d real Claude subagents, observed=%d", wantChildren, childCount)
++		}
++		if forkMode {
++			t.Logf("real Claude native fork -> inherited parent context -> completed task notification -> parent final: child_ids=%d final=HOST_ROUNDTRIP_OK", childCount)
++		} else {
++			t.Log("real Claude Agent -> real GPT child -> parent result: child_ids=1 final=HOST_ROUNDTRIP_OK")
+ 		}
+-		t.Log("real Claude Agent -> real GPT child -> parent result: child_ids=1 final=HOST_ROUNDTRIP_OK")
+ 		return
+ 	}
+ 	t.Logf("real Claude -> production gateway -> real GPT -> Claude Bash -> result: observed=%d final=HOST_ROUNDTRIP_OK", observed)
+@@ -286,14 +538,25 @@ func managedGPTClaudeToolLive(t *testing.T, mode string) {
+ 
+ type managedGPTProbeWriter struct {
+ 	http.ResponseWriter
+-	onError func(int)
++	onError   func(int)
++	status    int
++	errorBody strings.Builder
+ }
+ 
+ func (w *managedGPTProbeWriter) WriteHeader(code int) {
++	w.status = code
+ 	if code >= 400 {
+ 		w.onError(code)
+ 	}
+ 	w.ResponseWriter.WriteHeader(code)
+ }
+ 
++func (w *managedGPTProbeWriter) Write(p []byte) (int, error) {
++	if w.status >= 400 && w.errorBody.Len() < 2048 {
++		limit := min(len(p), 2048-w.errorBody.Len())
++		w.errorBody.Write(p[:limit])
++	}
++	return w.ResponseWriter.Write(p)
++}
++
+ func (w *managedGPTProbeWriter) Flush() { _ = http.NewResponseController(w.ResponseWriter).Flush() }
+diff --git a/internal/codexapp/instructions_live_test.go b/internal/codexapp/instructions_live_test.go
+index 54709d96a..e7301568d 100644
+--- a/internal/codexapp/instructions_live_test.go
++++ b/internal/codexapp/instructions_live_test.go
+@@ -68,3 +68,63 @@ func TestOfficialIdleDeveloperInstructionOverride(t *testing.T) {
+ 	}
+ 	t.Log("official App Server accepted thread/start then same-thread developerInstructions override; no model turn requested")
+ }
++
++// Establish the read-only observation available to a future reconnect
++// reconciler. This is deliberately not evidence of pending-tool recovery.
++func TestOfficialThreadReadWithoutModelTurn(t *testing.T) {
++	if os.Getenv("MOAI_CODEX_TRANSPORT_LIVE") != "1" {
++		t.Skip("SPEC-MOAI-GATEWAY-001: set MOAI_CODEX_TRANSPORT_LIVE=1 for installed local App Server")
++	}
++	binary, err := exec.LookPath("codex")
++	if err != nil {
++		t.Fatal(err)
++	}
++	binary, err = filepath.Abs(binary)
++	if err != nil {
++		t.Fatal(err)
++	}
++	home, err := filepath.EvalSymlinks(t.TempDir())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Chmod(home, 0700); err != nil {
++		t.Fatal(err)
++	}
++	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
++	defer cancel()
++	client, err := Start(ctx, Config{Binary: binary, Home: home})
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer func() {
++		if err := client.Close(); err != nil {
++			t.Error(err)
++		}
++	}()
++	if _, err := client.Initialize(ctx, "moai-read-probe", "1"); err != nil {
++		t.Fatal(err)
++	}
++	var started struct {
++		Thread struct {
++			ID string `json:"id"`
++		} `json:"thread"`
++	}
++	if err := client.Call(ctx, "thread/start", map[string]any{"model": "gpt-5.6-sol", "cwd": home, "approvalPolicy": "never", "sandbox": "read-only", "environments": []any{}}, &started); err != nil {
++		t.Fatal(err)
++	}
++	var snapshot struct {
++		Thread struct {
++			ID     string `json:"id"`
++			Status struct {
++				Type string `json:"type"`
++			} `json:"status"`
++		} `json:"thread"`
++	}
++	if err := client.Call(ctx, "thread/read", map[string]any{"threadId": started.Thread.ID, "includeTurns": false}, &snapshot); err != nil {
++		t.Fatal(err)
++	}
++	if snapshot.Thread.ID == "" || snapshot.Thread.ID != started.Thread.ID || snapshot.Thread.Status.Type != "idle" {
++		t.Fatalf("unexpected snapshot identity/status: matched=%v status=%q", snapshot.Thread.ID == started.Thread.ID, snapshot.Thread.Status.Type)
++	}
++	t.Log("official thread/read: owned thread matched; status=idle; no turn/start, credentials or model generation")
++}
+diff --git a/internal/codexapp/shared.go b/internal/codexapp/shared.go
+index 1338d48c3..94cc2c65e 100644
+--- a/internal/codexapp/shared.go
++++ b/internal/codexapp/shared.go
+@@ -62,6 +62,9 @@ func ServeShared(ctx context.Context, cfg Config) error {
+ 	configureSharedShutdown(cmd)
+ 	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
+ 	err = cmd.Run()
++	if cleanupErr := finishSharedShutdown(cmd); cleanupErr != nil {
++		return errors.New("shared App Server worker cleanup failed")
++	}
+ 	// Cleanup is restricted to this supervisor's private socket while its
+ 	// lifetime lease is still held. Never remove another process's profile state.
+ 	if info, statErr := os.Lstat(socket); statErr == nil && info.Mode()&os.ModeSocket != 0 && privateOwner(socket, info) {
+diff --git a/internal/codexapp/shared_shutdown_unix_test.go b/internal/codexapp/shared_shutdown_unix_test.go
+index 898752102..cc3f989a4 100644
+--- a/internal/codexapp/shared_shutdown_unix_test.go
++++ b/internal/codexapp/shared_shutdown_unix_test.go
+@@ -9,6 +9,10 @@ import (
+ 	"os"
+ 	"os/exec"
+ 	"os/signal"
++	"path/filepath"
++	"strconv"
++	"strings"
++	"syscall"
+ 	"testing"
+ 	"time"
+ )
+@@ -20,6 +24,30 @@ func TestSharedShutdownProcess(t *testing.T) {
+ 	}
+ 	signals := make(chan os.Signal, 1)
+ 	signal.Notify(signals, os.Interrupt)
++	if mode == "lease-worker" {
++		time.AfterFunc(10*time.Second, func() { os.Exit(0) })
++		fmt.Println("ready")
++		for range signals {
++			// Model a worker that does not handle the owner's graceful shutdown.
++		}
++	}
++	if mode == "owner-with-worker" {
++		exe, _ := os.Executable()
++		worker := exec.Command(exe, "-test.run=^TestSharedShutdownProcess$")
++		worker.Env = append(os.Environ(), "MOAI_SHARED_SHUTDOWN_HELPER=lease-worker")
++		worker.ExtraFiles = []*os.File{os.NewFile(3, "inherited-lease")}
++		out, err := worker.StdoutPipe()
++		if err != nil || worker.Start() != nil {
++			os.Exit(2)
++		}
++		ready := bufio.NewScanner(out)
++		if !ready.Scan() || ready.Text() != "ready" {
++			os.Exit(3)
++		}
++		fmt.Printf("ready:%d\n", worker.Process.Pid)
++		<-signals
++		os.Exit(0)
++	}
+ 	fmt.Println("ready")
+ 	for range signals {
+ 		if mode == "cooperative" {
+@@ -28,6 +56,70 @@ func TestSharedShutdownProcess(t *testing.T) {
+ 	}
+ }
+ 
++func TestSharedShutdownReleasesDescendantLease(t *testing.T) {
++	leasePath := filepath.Join(t.TempDir(), "lease")
++	lease, err := profileLease(leasePath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	t.Cleanup(func() { _ = lease.Close() })
++	exe, err := os.Executable()
++	if err != nil {
++		t.Fatal(err)
++	}
++	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
++	defer cancel()
++	cmd := exec.CommandContext(ctx, exe, "-test.run=^TestSharedShutdownProcess$")
++	cmd.Env = append(os.Environ(), "MOAI_SHARED_SHUTDOWN_HELPER=owner-with-worker")
++	inheritSharedLease(cmd, lease)
++	configureSharedShutdown(cmd)
++	out, err := cmd.StdoutPipe()
++	if err != nil || cmd.Start() != nil {
++		t.Fatal("helper start failed")
++	}
++	waited := false
++	t.Cleanup(func() {
++		cancel()
++		if !waited {
++			_ = cmd.Wait()
++			_ = finishSharedShutdown(cmd)
++		}
++	})
++	ready := bufio.NewScanner(out)
++	if !ready.Scan() || !strings.HasPrefix(ready.Text(), "ready:") {
++		t.Fatal("worker readiness missing")
++	}
++	workerPID, err := strconv.Atoi(strings.TrimPrefix(ready.Text(), "ready:"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	workerDrained := false
++	t.Cleanup(func() {
++		if workerDrained {
++			return
++		}
++		worker, _ := os.FindProcess(workerPID)
++		_ = worker.Kill() // Only the PID returned by this test's own helper.
++	})
++	group, err := syscall.Getpgid(workerPID)
++	if err != nil || group != cmd.Process.Pid || group == syscall.Getpgrp() {
++		t.Fatalf("worker is not isolated from the caller: group=%d owner=%d err=%v", group, cmd.Process.Pid, err)
++	}
++	cancel()
++	_ = cmd.Wait()
++	waited = true
++	if err := finishSharedShutdown(cmd); err != nil {
++		t.Fatal(err)
++	}
++	workerDrained = true
++	_ = lease.Close()
++	other, err := profileLease(leasePath)
++	if err != nil {
++		t.Fatalf("descendant retained owner lease after shutdown: %v", err)
++	}
++	_ = other.Close()
++}
++
+ func TestSharedShutdownGraceAndForcedFallback(t *testing.T) {
+ 	for _, mode := range []string{"cooperative", "unresponsive"} {
+ 		t.Run(mode, func(t *testing.T) {
+diff --git a/internal/codexapp/shared_test.go b/internal/codexapp/shared_test.go
+index e2aae70e0..da69326a8 100644
+--- a/internal/codexapp/shared_test.go
++++ b/internal/codexapp/shared_test.go
+@@ -147,12 +147,49 @@ func TestSharedOfficialTransport(t *testing.T) {
+ 			t.Fatalf("fresh account: %+v %v", account, err)
+ 		}
+ 	}
++	var started struct {
++		Thread struct {
++			ID string `json:"id"`
++		} `json:"thread"`
++	}
++	if err := first.Call(ctx, "thread/start", map[string]any{"model": "gpt-5.6-sol", "cwd": home, "approvalPolicy": "never", "sandbox": "read-only", "environments": []any{}}, &started); err != nil {
++		t.Fatal(err)
++	}
+ 	if err := first.Close(); err != nil {
+ 		t.Fatal(err)
+ 	}
+ 	if _, err := second.Account(ctx); err != nil {
+ 		t.Fatalf("closing peer disrupted owner: %v", err)
+ 	}
++	// A replacement connection must initialize independently and may observe
++	// the existing thread without regenerating model output or replaying tools.
++	replacement, err := ConnectShared(ctx, cfg)
++	if err != nil {
++		t.Fatal(err)
++	}
++	t.Cleanup(func() {
++		if err := replacement.Close(); err != nil {
++			t.Error(err)
++		}
++	})
++	if _, err := replacement.Initialize(ctx, "replacement-test", "1"); err != nil {
++		t.Fatal(err)
++	}
++	var observed struct {
++		Thread struct {
++			ID     string `json:"id"`
++			Status struct {
++				Type string `json:"type"`
++			} `json:"status"`
++		} `json:"thread"`
++	}
++	if err := replacement.Call(ctx, "thread/read", map[string]any{"threadId": started.Thread.ID, "includeTurns": false}, &observed); err != nil {
++		t.Fatal(err)
++	}
++	if started.Thread.ID == "" || observed.Thread.ID != started.Thread.ID || observed.Thread.Status.Type != "idle" {
++		t.Fatalf("replacement did not observe owned idle thread: matched=%v status=%q", observed.Thread.ID == started.Thread.ID, observed.Thread.Status.Type)
++	}
++	t.Log("official replacement connection observed same idle thread; surviving peer account/read succeeded; no turn/start")
+ 	cancel()
+ 	select {
+ 	case err := <-done:
+diff --git a/internal/codexapp/shared_unix.go b/internal/codexapp/shared_unix.go
+index edf6ef7f7..c94d8cdef 100644
+--- a/internal/codexapp/shared_unix.go
++++ b/internal/codexapp/shared_unix.go
+@@ -3,8 +3,10 @@
+ package codexapp
+ 
+ import (
++	"errors"
+ 	"os"
+ 	"os/exec"
++	"syscall"
+ 	"time"
+ )
+ 
+@@ -15,6 +17,46 @@ func inheritSharedLease(cmd *exec.Cmd, lease *os.File) { cmd.ExtraFiles = []*os.
+ // Let the official server drain its workers before releasing the owner lease.
+ // CommandContext still kills an unresponsive child after the bounded grace.
+ func configureSharedShutdown(cmd *exec.Cmd) {
+-	cmd.Cancel = func() error { return cmd.Process.Signal(os.Interrupt) }
++	// Own a dedicated process group, never the terminal/operator's group.
++	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
++	cmd.Cancel = func() error {
++		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGINT)
++		if errors.Is(err, syscall.ESRCH) {
++			return os.ErrProcessDone
++		}
++		return err
++	}
+ 	cmd.WaitDelay = 3 * time.Second
+ }
++
++// Run/Wait reaps only the direct child. Native workers can still hold the
++// inherited lease, so drain this owner's group before releasing that lease.
++func finishSharedShutdown(cmd *exec.Cmd) error {
++	if cmd.Process == nil {
++		return nil
++	}
++	group := -cmd.Process.Pid
++	if err := syscall.Kill(group, syscall.SIGKILL); errors.Is(err, syscall.ESRCH) {
++		return nil
++	} else if err != nil && !errors.Is(err, syscall.EPERM) {
++		return err
++	}
++	deadline := time.NewTimer(3 * time.Second)
++	defer deadline.Stop()
++	ticker := time.NewTicker(10 * time.Millisecond)
++	defer ticker.Stop()
++	for {
++		// EPERM is not proof of termination. Only ESRCH completes this wait;
++		// an unobservable or surviving group fails at the bounded deadline.
++		if err := syscall.Kill(group, 0); errors.Is(err, syscall.ESRCH) {
++			return nil
++		} else if err != nil && !errors.Is(err, syscall.EPERM) {
++			return err
++		}
++		select {
++		case <-deadline.C:
++			return errors.New("shared App Server workers did not terminate")
++		case <-ticker.C:
++		}
++	}
++}
+diff --git a/internal/codexapp/shared_windows.go b/internal/codexapp/shared_windows.go
+index 366e1451f..f2ded0672 100644
+--- a/internal/codexapp/shared_windows.go
++++ b/internal/codexapp/shared_windows.go
+@@ -10,3 +10,5 @@ import (
+ func inheritSharedLease(cmd *exec.Cmd, lease *os.File) {}
+ 
+ func configureSharedShutdown(cmd *exec.Cmd) {}
++
++func finishSharedShutdown(cmd *exec.Cmd) error { return nil }
+diff --git a/internal/codexbridge/engine.go b/internal/codexbridge/engine.go
+index 3c2d44e4b..d7c76bd66 100644
+--- a/internal/codexbridge/engine.go
++++ b/internal/codexbridge/engine.go
+@@ -69,6 +69,7 @@ type Request struct {
+ 	Input                            []any
+ 	Results                          []ToolResult
+ 	Resume                           bool
++	ResumePending                    bool // Rebind only an unacknowledged waiting tool turn.
+ 	OutputSchema                     json.RawMessage
+ 	// Ephemeral utility owners release in-memory capacity after durable completion.
+ 	Ephemeral bool
+@@ -97,7 +98,16 @@ type Segment struct {
+ type pending struct {
+ 	rpcID            json.RawMessage
+ 	callID, publicID string
++	binding          pendingBinding
+ }
++
++func pendingWithBinding(rpcID json.RawMessage, callID, publicID, nativeTool string, invocation codextools.Invocation) *pending {
++	digest := sha256.Sum256(invocation.Arguments)
++	publicDigest := sha256.Sum256([]byte(publicID))
++	return &pending{rpcID: append(json.RawMessage(nil), rpcID...), callID: callID, publicID: publicID,
++		binding: pendingBinding{CallID: callID, PublicIDDigest: hex.EncodeToString(publicDigest[:]), NativeTool: nativeTool, PublicTool: invocation.Name, ArgumentsDigest: hex.EncodeToString(digest[:]), SchemaDigest: invocation.SchemaDigest, Epoch: invocation.Epoch}}
++}
++
+ type conversation struct {
+ 	lateCleanupScheduled            bool
+ 	recoverableCancel               bool
+@@ -316,7 +326,10 @@ func (e *Engine) get(q Request) (*conversation, error) {
+ 	if c := e.conversations[key]; c != nil {
+ 		return c, nil
+ 	}
+-	if q.Resume {
++	if q.Resume || q.ResumePending {
++		if q.Resume && q.ResumePending {
++			return nil, ErrScope
++		}
+ 		if q.Fork {
+ 			return nil, ErrScope
+ 		}
+@@ -363,7 +376,11 @@ func (e *Engine) save(c *conversation, phase string) error {
+ 	if len(c.pending) != 0 {
+ 		call = c.pending[0].callID
+ 	}
+-	return e.cfg.Store.save(record{Owner: c.owner, Phase: phase, TurnID: c.turn, CallID: call, Prefix: c.prefix, Model: c.model, CWD: c.cwd, InstructionDigest: c.instructionDigest})
++	var bindings []pendingBinding
++	for _, p := range c.pending {
++		bindings = append(bindings, p.binding)
++	}
++	return e.cfg.Store.save(record{Owner: c.owner, Phase: phase, TurnID: c.turn, CallID: call, Prefix: c.prefix, Model: c.model, CWD: c.cwd, InstructionDigest: c.instructionDigest, Pending: bindings})
+ }
+ 
+ func instructionDigest(instructions string) string {
+@@ -379,7 +396,7 @@ func instructionDigest(instructions string) string {
+ // migrated: they deliberately omit the pinned binding fields a resume needs.
+ // e.mu must be held.
+ func (e *Engine) resume(q Request, key string) (*conversation, error) {
+-	if len(q.Results) != 0 || q.ExpectedPrefix == "" {
++	if q.ExpectedPrefix == "" {
+ 		return nil, ErrScope
+ 	}
+ 	rec, found, err := e.cfg.Store.load(q.Owner)
+@@ -392,7 +409,7 @@ func (e *Engine) resume(q Request, key string) (*conversation, error) {
+ 	if rec.Schema != storeSchema {
+ 		return nil, fmt.Errorf("%w: barrier predates the resumable schema", ErrRecovery)
+ 	}
+-	if rec.Phase != "idle" {
++	if rec.Phase != "idle" && rec.Phase != "waiting" {
+ 		return nil, fmt.Errorf("%w: incomplete %q barrier cannot be resumed", ErrRecovery, rec.Phase)
+ 	}
+ 	thread := rec.Owner.ThreadID
+@@ -405,6 +422,18 @@ func (e *Engine) resume(q Request, key string) (*conversation, error) {
+ 	if rec.Model != q.Model || rec.CWD != q.CWD || rec.Prefix != q.ExpectedPrefix {
+ 		return nil, ErrScope
+ 	}
++	var restored []*pending
++	if rec.Phase == "waiting" {
++		if !q.ResumePending {
++			return nil, ErrRecovery
++		}
++		restored, err = pendingResumeBindings(rec, q)
++		if err != nil {
++			return nil, err
++		}
++	} else if q.ResumePending || len(q.Results) != 0 {
++		return nil, ErrScope
++	}
+ 	if len(e.conversations) >= e.cfg.MaxConversations {
+ 		return nil, ErrLimit
+ 	}
+@@ -420,6 +449,9 @@ func (e *Engine) resume(q Request, key string) (*conversation, error) {
+ 		return nil, err
+ 	}
+ 	c := &conversation{op: make(chan struct{}, 1), owner: owner, registry: registry, model: q.Model, cwd: q.CWD, prefix: rec.Prefix, instructionDigest: rec.InstructionDigest, phase: "idle", attach: true, queue: newEventQueue(e.cfg.MaxOutputBytes), stopped: make(chan struct{})}
++	if rec.Phase == "waiting" {
++		c.phase, c.turn, c.pending = "waiting", rec.TurnID, restored
++	}
+ 	e.conversations[key] = c
+ 	e.threads[thread] = c
+ 	return c, nil
+@@ -488,6 +520,22 @@ func (e *Engine) StepStream(ctx context.Context, q Request, onText func(string)
+ 		return seg, err
+ 	}
+ 	c.mu.Lock()
++	reattach := c.attach && c.phase == "waiting"
++	c.mu.Unlock()
++	if reattach {
++		if err := e.reattachPending(ctx, c, q, &seg); err != nil {
++			c.mu.Lock()
++			c.failure, c.phase = err, "failed"
++			_ = e.save(c, "failed")
++			e.stop(c)
++			c.mu.Unlock()
++			cleanup, cancel := context.WithTimeout(context.Background(), time.Second)
++			_ = e.interrupt(cleanup, c)
++			cancel()
++			return seg, err
++		}
++	}
++	c.mu.Lock()
+ 	if c.failure != nil {
+ 		err := c.failure
+ 		c.mu.Unlock()
+@@ -668,6 +716,9 @@ func (e *Engine) StepStream(ctx context.Context, q Request, onText func(string)
+ 		}
+ 		if err == nil {
+ 			c.prefix = q.PrefixDigest
++			for _, p := range c.pending {
++				p.binding.ReplyStarted = true
++			}
+ 			err = e.save(c, "responding")
+ 		}
+ 		if err != nil {
+@@ -868,7 +919,7 @@ func (e *Engine) StepStream(ctx context.Context, q Request, onText func(string)
+ 				terminalInterruptErr = e.interrupt(ctx, c)
+ 				continue
+ 			}
+-			c.pending = append(c.pending, &pending{rpcID: append(json.RawMessage(nil), event.ID...), callID: p.CallID, publicID: publicID})
++			c.pending = append(c.pending, pendingWithBinding(event.ID, p.CallID, publicID, p.Tool, invocation))
+ 			tool := Tool{ID: publicID, Name: invocation.Name, Arguments: invocation.Arguments}
+ 			seg.Tools = append(seg.Tools, tool)
+ 			if seg.Tool == nil {
+@@ -967,7 +1018,7 @@ func (e *Engine) StepStream(ctx context.Context, q Request, onText func(string)
+ 						return seg, err
+ 					}
+ 					publicID = "toolu_moai_" + hex.EncodeToString(nonce)
+-					c.pending = append(c.pending, &pending{rpcID: append(json.RawMessage(nil), extra.ID...), callID: next.CallID, publicID: publicID})
++					c.pending = append(c.pending, pendingWithBinding(extra.ID, next.CallID, publicID, next.Tool, invocation))
+ 					seg.Tools = append(seg.Tools, Tool{ID: publicID, Name: invocation.Name, Arguments: invocation.Arguments})
+ 					c.mu.Unlock()
+ 				case <-quiet.C:
+diff --git a/internal/codexbridge/store.go b/internal/codexbridge/store.go
+index 13f320863..c4903dcf5 100644
+--- a/internal/codexbridge/store.go
++++ b/internal/codexbridge/store.go
+@@ -45,7 +45,18 @@ type record struct {
+ 	Model, CWD                    string
+ 	// Optional for schema-2 compatibility. Older idle barriers update the
+ 	// thread's developer instructions once when next attached.
+-	InstructionDigest string `json:",omitempty"`
++	InstructionDigest string           `json:",omitempty"`
++	Pending           []pendingBinding `json:",omitempty"`
++}
++
++// Recovery evidence only: no connection-local RPC IDs, arguments or results.
++// Existing resume policy still rejects incomplete barriers. ReplyStarted means
++// delivery can be uncertain and must never be interpreted as safe to replay.
++type pendingBinding struct {
++	CallID, PublicIDDigest, NativeTool, PublicTool string
++	ArgumentsDigest, SchemaDigest                  string
++	Epoch                                          uint64
++	ReplyStarted                                   bool
+ }
+ 
+ func OpenStore(dir string) (*FileStore, error) {
+diff --git a/internal/gateway/appserver_authority.go b/internal/gateway/appserver_authority.go
+index 5283eba7e..dbd6aff75 100644
+--- a/internal/gateway/appserver_authority.go
++++ b/internal/gateway/appserver_authority.go
+@@ -3,11 +3,15 @@ package gateway
+ import (
+ 	"context"
+ 	"errors"
++	"fmt"
+ 	"github.com/modu-ai/moai-adk/internal/codexapp"
+ )
+ 
+ var ErrManagedAuthority = errors.New("managed App Server authority unavailable or changed")
+ 
++// A failed account/read cannot establish that the user's credentials are bad.
++var ErrManagedAccountUnavailable = errors.New("managed App Server account service unavailable")
++
+ type AccountReader interface {
+ 	Account(context.Context) (codexapp.AccountResult, error)
+ }
+@@ -46,7 +50,10 @@ func (a *AppServerAuthority) Authorize(ctx context.Context, entry ModelEntry) (*
+ 		return nil, ErrManagedAuthority
+ 	}
+ 	result, err := a.account.Account(ctx)
+-	if err != nil || result.Account == nil || result.Account.Type != a.kind {
++	if err != nil {
++		return nil, fmt.Errorf("%w: %w", ErrManagedAccountUnavailable, err)
++	}
++	if result.Account == nil || result.Account.Type != a.kind {
+ 		return nil, ErrManagedAuthority
+ 	}
+ 	current, err := a.generation(ctx)
+@@ -60,7 +67,10 @@ func (a *AppServerAuthority) Check(ctx context.Context, grant *ManagedGrant) err
+ 		return ErrManagedAuthority
+ 	}
+ 	current, err := a.Authorize(ctx, ModelEntry{Provider: ProviderOpenAI, AuthMethod: AuthAppServer})
+-	if err != nil || current.scope != grant.scope {
++	if err != nil {
++		return err
++	}
++	if current.scope != grant.scope {
+ 		return ErrManagedAuthority
+ 	}
+ 	return nil
+diff --git a/internal/gateway/appserver_rpc_diagnostic_test.go b/internal/gateway/appserver_rpc_diagnostic_test.go
+index 4f7314b4a..34b578eda 100644
+--- a/internal/gateway/appserver_rpc_diagnostic_test.go
++++ b/internal/gateway/appserver_rpc_diagnostic_test.go
+@@ -2,7 +2,9 @@ package gateway
+ 
+ import (
+ 	"context"
++	"errors"
+ 	"fmt"
++	"io"
+ 	"net/http/httptest"
+ 	"strings"
+ 	"testing"
+@@ -35,7 +37,26 @@ func TestRPCCodeDiagnosticNeverChangesPublicResponse(t *testing.T) {
+ 	if len(logger.rows) != 1 || logger.rows[0]["rpc_code"] != "-32603" {
+ 		t.Fatalf("missing private RPC code: %+v", logger.rows)
+ 	}
++	if logger.rows[0]["transport_kind"] != "rpc" {
++		t.Fatal("missing transport classification")
++	}
+ 	if strings.Contains(fmt.Sprint(logger.rows), "PRIVATE") {
+ 		t.Fatal("private metadata leaked body/provider details")
+ 	}
+ }
++
++func TestAppServerTransportKindIsBounded(t *testing.T) {
++	for _, tc := range []struct {
++		err  error
++		want string
++	}{
++		{codexapp.ErrEOF, "eof"}, {io.EOF, "eof"},
++		{codexapp.ErrRead, "read"}, {codexapp.ErrClosed, "closed"},
++		{codexapp.ErrProtocol, "protocol"}, {codexapp.ErrLimit, "limit"},
++		{&codexapp.RPCError{Code: -32600}, "rpc"}, {errors.New("PRIVATE"), "unknown"},
++	} {
++		if got := appServerTransportKind(fmt.Errorf("PRIVATE: %w", tc.err)); got != tc.want {
++			t.Fatalf("classification=%q want=%q", got, tc.want)
++		}
++	}
++}
+diff --git a/internal/gateway/server.go b/internal/gateway/server.go
+index a8f10d31d..c7e85c55c 100644
+--- a/internal/gateway/server.go
++++ b/internal/gateway/server.go
+@@ -137,7 +137,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+ 		ref, generation, err = s.credential(r.Context(), entry, r.Header)
+ 	}
+ 	if err != nil {
+-		writeError(w, 401, "authentication_error")
++		s.writeAuthorityError(w, err, entry, body)
+ 		return
+ 	}
+ 	if validation {
+@@ -163,7 +163,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+ 		}
+ 	}
+ 	if err != nil {
+-		writeError(w, 401, "authentication_error")
++		s.writeAuthorityError(w, err, entry, body)
+ 		return
+ 	}
+ 	headers := make(http.Header)
+@@ -199,6 +199,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+ 		w.Header().Set("Request-Id", requestID)
+ 		if s.rejectionLogger != nil {
+ 			fields := map[string]string{"cause": cause, "route": entry.RouteID, "digest": requestID}
++			if cause == "appserver_transport_error" || cause == "appserver_account_unavailable" {
++				fields["transport_kind"] = appServerTransportKind(err)
++			}
+ 			var rpcError *codexapp.RPCError
+ 			if errors.As(err, &rpcError) && rpcError.Code >= -2147483648 && rpcError.Code <= 2147483647 {
+ 				fields["rpc_code"] = fmt.Sprint(rpcError.Code)
+@@ -242,6 +245,10 @@ func appServerError(err error) (int, string, string) {
+ 	var classified interface{ CauseCode() string }
+ 	if errors.As(err, &classified) {
+ 		switch cause := classified.CauseCode(); cause {
++		case "pending_resume_shape", "pending_resume_binding", "pending_resume_discovery", "pending_resume_token_usage", "pending_resume_event", "pending_resume_schema":
++			return http.StatusBadRequest, "invalid_request_error", cause
++		case "request_unsupported_field":
++			return http.StatusBadRequest, "invalid_request_error", cause
+ 		case "history_changed", "agent_summary_untrusted", "history_scope_mismatch", "receipt_manifest_mismatch", "resume_duplicate_input", "history_receipt_missing", "history_prefix_mismatch", "appserver_event_queue_bytes_exceeded", "native_receipt_authorization_required", "request_metadata_mismatch":
+ 			return http.StatusBadRequest, "invalid_request_error", cause
+ 		}
+@@ -261,6 +268,8 @@ func appServerError(err error) (int, string, string) {
+ 		return http.StatusBadRequest, "invalid_request_error", "appserver_request_canceled"
+ 	case errors.Is(err, context.DeadlineExceeded):
+ 		return http.StatusRequestTimeout, "timeout_error", "appserver_request_timeout"
++	case errors.Is(err, ErrManagedAccountUnavailable):
++		return http.StatusServiceUnavailable, "api_error", "appserver_account_unavailable"
+ 	default:
+ 		return http.StatusBadGateway, "api_error", "appserver_transport_error"
+ 	}
+@@ -268,6 +277,27 @@ func appServerError(err error) (int, string, string) {
+ 
+ type flushingWriter struct{ http.ResponseWriter }
+ 
++// Stable labels distinguish failed connections without recording private error text.
++func appServerTransportKind(err error) string {
++	var rpc *codexapp.RPCError
++	switch {
++	case errors.As(err, &rpc):
++		return "rpc"
++	case errors.Is(err, codexapp.ErrEOF), errors.Is(err, io.EOF):
++		return "eof"
++	case errors.Is(err, codexapp.ErrRead):
++		return "read"
++	case errors.Is(err, codexapp.ErrClosed):
++		return "closed"
++	case errors.Is(err, codexapp.ErrProtocol):
++		return "protocol"
++	case errors.Is(err, codexapp.ErrLimit):
++		return "limit"
++	default:
++		return "unknown"
++	}
++}
++
+ // requestCarriesImageInput reports whether the Messages request body carries
+ // an image input block anywhere in its message history. String content and
+ // unparseable shapes carry no image blocks.
+@@ -324,6 +354,21 @@ func writeCount(w http.ResponseWriter, entry ModelEntry, payload map[string]json
+ func writeError(w http.ResponseWriter, status int, kind string) {
+ 	writeJSON(w, status, map[string]any{"type": "error", "error": map[string]string{"type": kind, "message": http.StatusText(status)}})
+ }
++
++func (s *Server) writeAuthorityError(w http.ResponseWriter, err error, entry ModelEntry, body []byte) {
++	if errors.Is(err, ErrManagedAccountUnavailable) {
++		status, kind, cause := appServerError(err)
++		digest := sha256.Sum256(body)
++		requestID := hex.EncodeToString(digest[:])
++		w.Header().Set("Request-Id", requestID)
++		if s.rejectionLogger != nil {
++			s.rejectionLogger.RecordGatewayRejection(map[string]string{"cause": cause, "route": entry.RouteID, "digest": requestID, "transport_kind": appServerTransportKind(err)})
++		}
++		writeJSON(w, status, map[string]any{"type": "error", "error": map[string]string{"type": kind, "message": cause}})
++		return
++	}
++	writeError(w, http.StatusUnauthorized, "authentication_error")
++}
+ func writeJSON(w http.ResponseWriter, status int, value any) {
+ 	w.Header().Set("Content-Type", "application/json")
+ 	w.WriteHeader(status)
+diff --git a/internal/gateway/translate/request.go b/internal/gateway/translate/request.go
+index 3b563a3b4..83601fb1f 100644
+--- a/internal/gateway/translate/request.go
++++ b/internal/gateway/translate/request.go
+@@ -59,7 +59,15 @@ func Request(model string, body []byte, limits Limits) ([]byte, *ResponseContext
+ 
+ // RequestContext is Request with a caller-owned cancellation context for the
+ // private native receipt check.
+-func RequestContext(ctx context.Context, model string, body []byte, limits Limits) ([]byte, *ResponseContext, error) {
++func RequestContext(ctx context.Context, model string, body []byte, limits Limits) (result []byte, response *ResponseContext, requestErr error) {
++	// keys also validates upstream responses. Only failures crossing the request
++	// boundary are client errors; never relabel upstream or storage failures.
++	defer func() {
++		var unsupported unsupportedFieldError
++		if errors.As(requestErr, &unsupported) {
++			requestErr = requestUnsupportedFieldError{}
++		}
++	}()
+ 	if ctx == nil {
+ 		ctx = context.Background()
+ 	}
+@@ -588,6 +596,16 @@ func cacheHint(m map[string]any) error {
+ 	}
+ 	return nil
+ }
++
++type unsupportedFieldError struct{ field string }
++
++func (e unsupportedFieldError) Error() string { return fmt.Sprintf("unsupported field %q", e.field) }
++
++type requestUnsupportedFieldError struct{}
++
++func (requestUnsupportedFieldError) Error() string     { return "request_unsupported_field" }
++func (requestUnsupportedFieldError) CauseCode() string { return "request_unsupported_field" }
++
+ func keys(m map[string]any, allowed ...string) error {
+ 	for k := range m {
+ 		ok := false
+@@ -598,7 +616,7 @@ func keys(m map[string]any, allowed ...string) error {
+ 			}
+ 		}
+ 		if !ok {
+-			return fmt.Errorf("unsupported field %q", k)
++			return unsupportedFieldError{field: k}
+ 		}
+ 	}
+ 	return nil

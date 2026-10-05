@@ -5,4 +5,4 @@ env_vars = ["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACK
 default_tools_approval_mode = "writes"
 
 [tui]
-status_line = ["model-with-reasoning", "context-remaining", "git-branch", "current-dir", "branch-changes", "five-hour-limit", "weekly-limit", "thread-title"]
+status_line = ["model-with-reasoning", "codex-version", "context-remaining", "five-hour-limit", "weekly-limit", "current-dir", "git-branch", "branch-changes", "pull-request-number", "run-state", "task-progress", "approval-mode", "fast-mode", "thread-title"]

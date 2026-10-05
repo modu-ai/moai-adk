@@ -11,12 +11,12 @@ runs:
     - id: detect
       shell: bash
       run: |
-        # @MX:NOTE: [AUTO] SIGPIPE-safe single-step solution — find -print -quit
-        # @MX:REASON: SPEC-V3R4-CI-INFRA-FIX-001 hotfix. awk 'NR==1{print;exit}'
-        # (initial D-1 A2 choice) also closes stdin early like head -1, producing
-        # identical broken-pipe failure under set -o pipefail. find -print -quit
-        # eliminates the pipe entirely — single command, no early-terminating
-        # downstream consumer.
+        # Detect the first source file in the repo and map its extension to a
+        # canonical language name. `find -print -quit` returns after the first
+        # match (single process, no pipe), so there is no downstream consumer
+        # to close stdin early on — this avoids the broken-pipe failure that
+        # `head -1` or `awk 'NR==1{print;exit}'` would produce under
+        # `set -o pipefail`.
         LANG_FILE=$(find . \( \
             -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" \
             -o -name "*.rs" -o -name "*.java" -o -name "*.kt" -o -name "*.cs" \

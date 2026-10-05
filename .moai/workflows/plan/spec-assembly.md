@@ -1,0 +1,597 @@
+---
+description: "Plan Phase 9/9.1/10/11/12/13/14/15/DP2/DP3/DP3.5 — Pre-creation validation, SPEC document creation, independent review, GitHub Issue creation, Git environment setup, MX tag planning, quality gate, and execution mode selection"
+user-invocable: false
+metadata:
+  parent: moai-workflow-plan
+  phase: "Phase 9 through Decision Point 3.5: SPEC Assembly, Review, and Environment Setup"
+---
+
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
+
+### Phase 9: Pre-Creation Validation Gate
+
+Purpose: Prevent common SPEC creation errors before file generation.
+
+Step 1 - Document Type Classification:
+- Detect keywords to classify as SPEC, Report, or Documentation
+- Reports route to .moai/reports/, Documentation to .moai/docs/
+- Only SPEC-type content proceeds to Phase 10
+
+Step 2 - SPEC ID Validation (all checks must pass):
+- ID Format: Must match SPEC-{DOMAIN}-{NUMBER} pattern (e.g., SPEC-AUTH-001)
+- Domain Name: Must be from the approved domain list (AUTH, API, UI, DB, REFACTOR, FIX, UPDATE, PERF, TEST, DOCS, INFRA, DEVOPS, SECURITY, and others)
+- ID Uniqueness: Search .moai/specs/ to confirm no duplicates exist
+- Directory Structure: Must create directory, never flat files
+
+Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
+
+### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)
+
+[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST
+resolve the final Tier (S, M, or L). It first consumes the interview's
+`provisional_tier`; it asks this question only when the tier was absent,
+ambiguous, or changed by research. This drives the artifact set, the
+manager-develop delegation prompt template applicability, and the plan-auditor
+PASS threshold.
+
+Skip condition: when the user explicitly provided the tier in the original request (e.g., "Tier S", "small SPEC, Tier S"), the orchestrator MAY skip the question and record the user-provided tier directly.
+
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
+Tier judgment AskUserQuestion (Socratic, in conversation_language):
+
+```
+Question: "Estimated SPEC complexity tier?"
+Header: "Complexity tier"
+Options (4 max, recommended first):
+  Option 1: "Tier S (Simple, <300 LOC, <5 files) — 2 artifacts: spec.md + plan.md (AC inline) (권장 for text-only/refactor)"
+  Option 2: "Tier M (Medium, 300-1000 LOC, 5-15 files) — 3 artifacts: spec.md + plan.md + acceptance.md"
+  Option 3: "Tier L (Large, >1000 LOC or constitutional, >15 files) — 5 artifacts (default, current behavior)"
+  Option 4 (auto-appended by Claude Code): "Other"
+```
+
+LOC thresholds are guidance, not enforcement. The implementer's domain knowledge supplements the question (e.g., a 200-LOC SPEC touching a frozen constitutional zone may warrant Tier L).
+
+Persistence: the chosen tier is written to `spec.md` frontmatter as `tier: S | M | L` (optional field per `.claude/rules/moai/development/spec-frontmatter-schema.md`). When the user provides "Other" or skips, the orchestrator defaults to Tier L (backward compat).
+
+Tier-conditional artifact set (driven by user response):
+
+- **Tier S** → Phase 10 creates only `spec.md` + `plan.md`; AC is inline in `spec.md §3`. No `acceptance.md`, no `design.md`, no `research.md`. Phase 11 plan-auditor uses 0.75 PASS threshold.
+- **Tier M** → Phase 10 creates `spec.md` + `plan.md` + `acceptance.md`. Phase 11 plan-auditor uses 0.80 PASS threshold.
+- **Tier L** → Phase 10 creates full 5-artifact set (spec.md + plan.md + acceptance.md + design.md + research.md). Phase 11 plan-auditor uses 0.85 PASS threshold (preserves pre-LEAN strict behavior).
+
+Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigation: plan-auditor first-pass score regression triggers tier-up suggestion to the user.
+
+Reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L).
+
+### Phase 10: SPEC Document Creation
+
+Agent: manager-spec subagent
+
+Input: Approved plan from Phase 8, validated SPEC ID from Phase 9.
+
+<!-- moai:contract-mode-start id="contract-draft" -->
+Where `workflow.autonomy.mode: contract` — the manager-spec delegation also asks for a draft `contract.yaml` (no `signature` block) beside the SPEC artifacts, carrying the card, acceptance binding, invariants, ownership, approach, actions, reobserve list, review, and escalation triggers. See `.claude/rules/moai/workflow/contract-autonomy.md` § Scope and activation.
+
+<!-- moai:contract-mode-end -->
+File generation — **single writer, single-turn parallel Write**: `manager-spec` is the sole writer of every plan-phase artifact, and no second agent writes into `.moai/specs/SPEC-{ID}/` while it works. Within that single writer, issue one `Write` call per artifact in the SAME assistant turn (per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution) rather than one artifact per turn — the artifacts are independent files, so batching costs one turn instead of N. The artifact set is Tier-determined (Tier S = 2, Tier M = 3, Tier L = 5):
+
+- .moai/specs/SPEC-{ID}/spec.md
+  - YAML frontmatter with **12 required fields** (canonical schema — see checklist below and `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields)
+  - HISTORY section immediately after frontmatter
+  - Complete GEARS structure with the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted — see `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22 per the GEARS migration policy.
+  - Content written in conversation_language
+  - **Epic reference**: when the SPEC belongs to a multi-SPEC grouping, `plan.md §A Context` references the **Epic** (not the retired `Sprint`/`cohort`/`Wave` aliases) per `.claude/rules/moai/development/sprint-round-naming.md`. A standalone SPEC with no grouping is also valid.
+
+#### [HARD] Pre-Write Frontmatter Checklist
+
+[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and the SPEC frontmatter lint rule. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
+
+Required 12 fields (canonical order):
+- [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
+- [ ] `title: "Human-readable title"` — quoted string
+- [ ] `version: "X.Y.Z"` — quoted semver string (NOT `0.1` unquoted)
+- [ ] `status: draft` — enum: draft | planned | in-progress | implemented | completed | superseded | archived | rejected
+- [ ] `created: YYYY-MM-DD` — ISO date (NEVER `created_at`, NEVER `date`)
+- [ ] `updated: YYYY-MM-DD` — ISO date (NEVER `updated_at`)
+- [ ] `author: <name>` — string, not empty
+- [ ] `priority: P1` — uppercase Pn style (P0|P1|P2|P3) or High|Medium|Low|Critical
+- [ ] `phase: "vX.Y.Z target"` — release or milestone target label. NEVER a lifecycle stage name (`plan`, `run`, `sync`, `mx`): the value names the release this SPEC is aimed at, not the stage you are standing in while writing it
+- [ ] `module: "path/to/module"` — affected module path
+- [ ] `lifecycle: spec-anchored` — enum: spec-anchored | spec-lite | exploratory
+- [ ] `tags: "tag1, tag2, ..."` — comma-separated string (NOT `labels:`, NOT YAML array)
+
+Optional fields (do NOT include unless needed):
+- `issue_number: null` — integer or null (omit entirely when not tracking GitHub issue)
+
+Rejected legacy aliases (fail closed — do NOT accept):
+- `created_at:` (use `created:`)
+- `updated_at:` (use `updated:`)
+- `labels:` (use `tags:`)
+- `spec_id:` (use `id:`)
+
+Pre-write gate behavior:
+1. manager-spec generates frontmatter draft in memory.
+2. manager-spec self-audits against the 12-field checklist above.
+3. If any required field is missing OR any rejected alias appears OR a field carries a prohibited value — `phase:` holding a lifecycle token (`plan`, `run`, `sync`, `mx`) is the case that occurs in practice: manager-spec HALTS, reports the schema violation, and re-generates. It does NOT call Write.
+4. Phase 11 plan-auditor independently re-verifies the schema on the written file as a second line of defense.
+
+- .moai/specs/SPEC-{ID}/plan.md
+  - Implementation plan with task decomposition
+  - Technology stack specifications and dependencies
+  - Risk analysis and mitigation strategies
+
+- .moai/specs/SPEC-{ID}/acceptance.md
+  - Minimum 2 Given/When/Then test scenarios
+  - Edge case testing scenarios
+  - Performance and quality gate criteria
+
+### Delta Markers for Brownfield Projects
+
+When the SPEC modifies existing code (detected via research.md analysis), apply delta markers:
+
+```
+### [DELTA] {Module Name}
+- [EXISTING] {description} - unchanged context, characterization tests only
+- [MODIFY] {description} - existing code to change, requires characterization tests before modification
+- [NEW] {description} - new code to create, full implementation + new tests
+- [REMOVE] {description} - code to delete, requires dependency analysis and migration verification
+```
+
+Delta markers are OPTIONAL and only suggested for brownfield projects. Greenfield projects skip this.
+
+### spec-compact.md Auto-Generation — Read `workflows/plan/context-discovery.md` § spec-compact.md Auto-Generation.
+
+### Phase 11: Independent SPEC Review (Conditional)
+
+Purpose: Prevent confirmation bias by running an adversarial audit of the just-created SPEC before user approval and GitHub Issue creation. The reviewer sees only the final spec.md — not the author's reasoning — and is prompted to find defects, not rationalize acceptance.
+
+Execution conditions:
+- `harness.yaml` `levels.{current_level}.plan_audit.enabled` is `true` — this holds at ALL three harness levels (`minimal`, `standard`, `thorough`); `plan_audit_global.always_enabled: true` additionally forces this phase on regardless of level
+- SPEC files were successfully created in Phase 10
+
+Skip conditions:
+- `--no-review` flag is present in $ARGUMENTS
+- spec.md was not created (Phase 10 failed)
+
+Harness-level intensity (plan-audit ALWAYS runs — the level changes rigor, not whether it runs):
+- `minimal`: lightweight, non-blocking 1-iteration audit (`max_iterations: 1`, `require_must_pass: false`) — a FAIL verdict is logged but does not block Phase 12
+- `standard`/`thorough`: blocking retry loop using the tier-resolved ceiling
+  from `.moai/config/sections/harness.yaml` (`S=1`, `M=2`, `L=3`); the
+  `remaining_attempts` counter is owned by the orchestrator and is consumed by
+  every reviewer invocation, including cross-validation.
+
+#### Parallel Review Lenses (read-only, conditional)
+
+**`FO-PLAN-2`.** **Where** the harness level is `standard` or `thorough`, the orchestrator shall gather review evidence by launching several read-only review lenses in a single turn — one `Agent()` per lens (frontmatter-schema conformance, requirement testability, scope coherence, acceptance-command validity), 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2) — instead of one serial reading pass. Every lens is read-only: it reads `.moai/specs/SPEC-{ID}/` and returns findings as text, writes no file, and never prompts the user (a lens missing a required input returns a structured blocker report per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format, and the orchestrator re-delegates that lens alone). The orchestrator launches the lenses itself — this is scaling, not subagent nesting, so the flat agent hierarchy holds.
+
+**The lenses gather evidence; they do not produce the verdict.** The single binding PASS/FAIL stays with `plan-auditor` (Step 2.3.1 below), which may cite lens findings but is never replaced by them. **Where** the lens pass is skipped or unavailable, Phase 11 runs its existing single `plan-auditor` path unchanged — no error, no warning.
+
+#### Step 2.3.1: Invoke plan-auditor
+
+Agent: plan-auditor subagent
+
+Delegation pattern: "Use the plan-auditor subagent to audit the SPEC at .moai/specs/{SPEC-ID}/ — this is iteration 1."
+
+Do NOT pass the author's reasoning or conversation history to plan-auditor. The agent enforces context isolation (M1) and will ignore injected reasoning. Pass only the SPEC directory path.
+
+#### Step 2.3.2: Read Verdict
+
+After plan-auditor completes, read the report at `.moai/reports/plan-audit/{SPEC-ID}-review-1.md`.
+
+Extract the verdict line: `Verdict: PASS | FAIL`
+
+#### Step 2.3.3: PASS Path
+
+If verdict is PASS: proceed directly to Phase 12 (GitHub Issue Creation).
+
+Log: "SPEC review passed (iteration 1). Proceeding to Phase 12."
+
+#### Step 2.3.3a: Plan HTML Report Emission
+
+**After** the plan-auditor PASS verdict lands and **before** any further plan→run
+boundary work, the orchestrator emits a single self-contained plan HTML report
+that enriches the review surface for the Implementation Kickoff Approval gate.
+
+1. Execute the CLI verb: `moai plan render-html {SPEC-ID}` — the `moai` binary resolves `<root>/.moai/specs/{SPEC-ID}/` and the most recent `<root>/.moai/reports/plan-audit/{SPEC-ID}-review-{N}.md`, parses the review markdown (verdict / score / must-pass / defects) with fail-open, derives the 8-field autonomy contract deterministically from SPEC artifacts, and writes a self-contained report to `<root>/.moai/reports/plan-html/{SPEC-ID}-plan.html` (exit 0 on success; non-zero + stderr when the SPEC directory is absent). The renderer is fail-open on a missing or unparseable review file — the report is still written with the "audit verdict unavailable" placeholder and exit 0.
+2. Write the output to `.moai/reports/plan-html/{SPEC-ID}-plan.html` (gitignored directory; create it if absent).
+3. Surface the resulting HTML path to the orchestrator as additive prose context in the SAME turn the Implementation Kickoff Approval `AskUserQuestion` fires (see `orchestration-mode-selection.md` §E). The path is a pointer, NOT the report content — do NOT inline the HTML into the gate option text.
+
+[HARD] The Implementation Kickoff Approval `AskUserQuestion` gate stays MANDATORY
+and score-independent. The plan HTML report
+ENRICHES the review surface (inline prose → rich HTML); it does NOT replace the
+gate, does NOT auto-bypass it, and does NOT relax its three canonical options
+(run-phase entry / further review / abort) or the `(권장)` first-option label (withheld under `recommendation_mode: pull`; the gate itself is unchanged). A
+plan-auditor PASS or a high skip-eligible score does NOT substitute for the gate.
+This emission step is additive only (AP-4).
+
+Fail-open: if the renderer is unavailable or the review file is absent, the
+emission step is skipped silently — the plan-phase pipeline is NOT blocked. The
+plan HTML report is enrichment, not a gate.
+
+#### Step 2.3.3b: Decision-Index Presentation (decision gate)
+
+**Where** the `interview.decision_gate` setting resolves `on` and the SPEC's
+`.moai/specs/{SPEC-ID}/decision-index.md` exists, the orchestrator surfaces the
+index rows as additive prose context in the SAME turn the Implementation
+Kickoff Approval `AskUserQuestion` fires — beside the plan HTML report path,
+never instead of it. The rows state what is unresolved and why; the index
+itself never carries a preferred answer, in either recommendation mode, and the
+gate question follows the landed `recommendation_mode` convention unchanged.
+
+Fail-open, like the plan HTML report: **where** the decision gate is `off` or
+the index is absent or unreadable, this presentation step is skipped silently —
+the gate is unchanged and the plan-phase pipeline is NOT blocked. No second
+human gate is introduced.
+
+<!-- moai:contract-mode-start id="contract-signing-review" -->
+Where `workflow.autonomy.mode: contract` — the decision index is presented with the signing summary instead of the Kickoff question: report `moai contract sign <SPEC-ID>` for the operator to run at an interactive terminal, close the turn, and run `moai contract kickoff-check` on the next turn. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
+After the gate, operator verdicts per row are written back into the row's
+`Operator verdict:` line using exactly the verdict-action vocabulary `DECIDE`,
+`NEED_ANALYSIS`, `NEED_EVIDENCE`, `DEFER`. When a recorded verdict is
+product-level (MVP or phase scope, tier behavior, UX flow, pricing, privacy or
+security promise), the kickoff flow surfaces the reconciliation of
+`.moai/project/product.md` as a named design decision: `.moai/project/**`
+scaffolding is owned by manager-docs, so the reconcile act is delegated to
+manager-docs or taken explicitly by the operator — never performed silently by
+manager-spec. A SPEC-level verdict (retry count, internal algorithm, query
+shape) touches the decision index and the SPEC only.
+
+Zero rows is not approval: a decision index with zero judgment points means
+only that this pass found no unresolved decisions — the Implementation
+Kickoff Approval gate remains a separate affirmative act that fires regardless
+of the row count.
+
+#### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
+
+If verdict is FAIL:
+
+1. Delegate back to manager-spec: "Use the manager-spec subagent to revise .moai/specs/{SPEC-ID}/spec.md based on the review report at .moai/reports/plan-audit/{SPEC-ID}-review-{N}.md. Address all defects listed in the report. DO NOT implement any code."
+
+2. After manager-spec revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit .moai/specs/{SPEC-ID}/ — this is iteration {N+1}. Previous review report: .moai/reports/plan-audit/{SPEC-ID}-review-{N}.md"
+
+3. Read new verdict from `.moai/reports/plan-audit/{SPEC-ID}-review-{N+1}.md`.
+
+4. Repeat until PASS or 3 iterations exhausted.
+
+Iteration tracking: Display "SPEC review iteration {N}/3" after each verdict.
+
+#### Step 2.3.5: Escalation after 3 FAIL Iterations
+
+If all three iterations result in FAIL, do NOT proceed to Phase 12 automatically.
+
+Present the full defect history to the user:
+- Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-3.md`
+- Summarize blocking defects that persisted across all iterations
+- Preload: `ToolSearch(query: "select:AskUserQuestion")`
+- Use AskUserQuestion with options:
+  - Force-accept SPEC with known defects (proceed to Phase 12): "Accept SPEC with known defects — I will fix them manually before /moai run"
+  - Request manual SPEC revision: "I will manually edit the SPEC — re-run review after my edits"
+  - Abort plan workflow: "Abort — start over with a clearer feature description"
+
+<!-- moai:contract-mode-start id="contract-audit-retry" -->
+Where `workflow.autonomy.mode: contract` — do not present the three options; repair and re-audit automatically up to the contract's `budget.audit_retries` (or `workflow.autonomy.escalation.budget_default.audit_retries` when the draft has no budget), then stop with an escalation report. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
+Harness configuration reference (harness.yaml):
+- `minimal`: plan_audit.enabled: true, max_iterations: 1, require_must_pass: false (lightweight, non-blocking 1-iteration audit — NOT skipped; `plan_audit_global.always_enabled: true` guarantees this phase always runs)
+- `standard`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true
+- `thorough`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true, cross_validate_with_evaluator_active: true
+
+For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, invoke plan-auditor again as an independent re-review — a fresh spawn that receives the SPEC artifacts but not the first pass's verdict, score, or findings — to cross-validate must-pass criteria. If the re-review does not also PASS, treat the iteration as FAIL and trigger one additional iteration. sync-auditor is not used here: it audits implemented code against acceptance criteria and never reviews plan-phase documents (role boundary: `.claude/agents/moai/sync-auditor.md`).
+
+### Phase 12: GitHub Issue Creation (Conditional, opt-in)
+
+Purpose: Create a GitHub Issue linked to the SPEC document for bidirectional traceability between planning artifacts and issue tracker.
+
+[HARD] Per the late-branch opt-in policy, this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. SPEC frontmatter MUST NOT carry an `issue_number` field for new SPECs. The removal is prospective only — existing SPECs retain the field.
+
+Execution conditions (ALL must hold):
+- `--issue` flag IS set (explicit opt-in)
+- GitHub CLI (`gh`) is available
+- Repository has a remote origin
+
+Skip conditions (any triggers a silent skip with no warning):
+- `--issue` flag is NOT set (default — silent skip)
+- `gh` CLI not available (log warning and continue)
+- No remote origin configured
+
+#### Step 2.5.1: Create GitHub Issue
+
+Agent: manager-git subagent
+
+[HARD] Gate: only proceed when the `--issue` flag is set. The `gh issue create` invocation below is the ONLY occurrence in this workflow and MUST be guarded by the explicit `--issue` opt-in. Default invocation of `/moai plan` (no `--issue`) silently skips Step 2.5.1/2.5.2/2.5.3.
+
+Create a GitHub Issue from SPEC metadata (only executed when `--issue` flag is set):
+
+```bash
+# Pre-check: this block runs only when --issue flag is present.
+# If --issue is absent, Phase 12 is silently skipped — no gh issue create occurs.
+gh issue create \
+  --title "[SPEC-{ID}] {SPEC title}" \
+  --body "$(cat <<'EOF'
+## SPEC Reference
+
+- **SPEC ID**: SPEC-{ID}
+- **Status**: draft
+- **Priority**: {priority}
+- **Created**: {created_date}
+
+## Requirements Summary
+
+{Brief summary from spec.md GEARS-notation requirements (EARS legacy form for pre-v3 SPECs)}
+
+## Acceptance Criteria
+
+{Summary from acceptance.md}
+
+---
+
+*This issue was automatically created by MoAI from SPEC-{ID}.*
+*SPEC location: `.moai/specs/SPEC-{ID}/spec.md`*
+EOF
+)" \
+  --label "spec"
+```
+
+#### Step 2.5.2: Update SPEC Metadata
+
+After Issue creation, update the SPEC frontmatter with the issue number:
+
+- Read the issue number from `gh issue create` output
+- Update `issue_number` field in `.moai/specs/SPEC-{ID}/spec.md` YAML frontmatter
+- Add cross-reference comment in the Issue: `gh issue comment {number} --body "SPEC document: .moai/specs/SPEC-{ID}/spec.md"`
+
+#### Step 2.5.3: Bidirectional Reference
+
+The SPEC ↔ Issue link enables:
+- SPEC spec.md frontmatter contains `issue_number: {N}` for downstream workflows
+- GitHub Issue body contains SPEC-ID and file path for human navigation
+- run.md Phase 3 uses `issue_number` to include `Fixes #{N}` in commits/PRs
+- sync.md leverages `Fixes #{N}` in PR for automatic Issue closure on merge
+
+### Phase 13: Git Environment Setup (Conditional)
+
+Execution conditions: Phase 10 completed successfully AND one of the following:
+- --branch flag provided or user chose branch creation
+- Configuration permits branch creation (git_strategy settings)
+
+Skipped when: develop_direct workflow, no flags and user chooses "Use current branch".
+
+#### Late-branch Pre-check [HARD] (the late-branch opt-in policy)
+
+Before evaluating any of the paths below (Worktree / Branch / Current Branch), the orchestrator MUST read `team.branch_creation.auto_enabled` from `.moai/config/sections/git-strategy.yaml`.
+
+- When `auto_enabled == false`: SKIP branch creation entirely. Cwd remains on the current branch (typically `main` — the default for Step 1 per SPEC Phase Discipline). SPEC files are committed to the current branch via the standard commit pipeline. Decision Point 3.5 mode-selection display MUST surface "Late-branch (main commit + late switch)" as the active mode to communicate the deferred-branch state to the user. Phase 13 BODP Gate STILL runs (with EntryPoint = `EntryPlanLateBranch`) — Late-branch does NOT bypass BODP, it only defers branch creation to Phase C (manual `git switch -c feat/SPEC-*` at PR time). Per the late-branch opt-in policy, no automated `git push origin main` is performed during this phase even if `team.automation.auto_push == true`.
+
+- When `auto_enabled == true`: continue to the Worktree/Branch/Current Branch path evaluation below (existing behavior, unchanged).
+
+Reference: see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern for the 4-phase procedure (A→D) the user follows after this skill defers branch creation.
+
+#### Phase 13: BODP Gate (공통)
+
+The Branch Path executes this gate immediately before delegating branch creation.
+
+Steps:
+
+1. **Relatedness Check** — the orchestrator runs the 3 signal checks itself (see `.claude/rules/moai/development/branch-origin-protocol.md` § Algorithm) and applies the 8-row decision matrix to get a recommended choice, a rationale, and a base branch.
+
+2. **AskUserQuestion Gate** — Orchestrator-only HARD (see `.claude/rules/moai/core/askuser-protocol.md`):
+   - Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+   - Options (max 4, conversation_language=ko):
+     - First option: the recommended Choice with `(권장)` suffix; description = the rationale from the matrix. Under `recommendation_mode: pull` the `(권장)` suffix is withheld and no option carries a preference claim, while the rationale still travels in the description (`.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles).
+     - Remaining options: the other Choice values (e.g. when Recommended is `ChoiceMain`, present `ChoiceStacked` and `ChoiceContinue`).
+   - The "Other" option is auto-appended by Claude Code.
+   - User response yields the chosen Choice + base branch.
+
+3. **Delegation** — pass `base=<chosenBase>` to `manager-git`.
+
+(The former audit-trail write is retired with the `internal/bodp` library — see branch-origin-protocol.md § Retired.)
+
+Out of Scope (BODP Gate):
+- "Other" free-form base interpretation: orchestrator parses input as a base branch name; invalid input falls back to `origin/main` with a warning.
+- Concurrent invocation safety: a single-session orchestrator is assumed.
+
+#### Worktree Path — retired
+
+`/moai plan --worktree` is retired along with `moai worktree new`. Plan no longer
+creates a workspace: entering one is the launcher's job, and doing it first is
+strictly simpler than having plan do it afterwards.
+
+To plan inside an isolated workspace, enter it before invoking plan:
+
+```bash
+moai cc -w <name>          # or: moai cc -w <name> --spawn  (teammate window)
+/moai plan "<description>"
+```
+
+Plan then runs entirely inside that workspace, so no cwd-anchoring block is
+needed in the handoff — the next session re-enters with the same command.
+
+
+#### Branch Path (--branch flag or user choice)
+
+Agent: manager-git subagent
+- Run **Phase 13: BODP Gate** above (EntryPoint = `EntryPlanBranch`).
+- Delegate to manager-git with `base=<chosenBase>` derived from the gate answer.
+- Create branch: feature/SPEC-{ID}-{description} from `<chosenBase>`.
+- Set tracking upstream if remote exists.
+- Switch to new branch.
+- GitStrategy team profile (draft-PR enabled): Create draft PR via manager-git subagent.
+
+#### Current Branch Path (no flag or user choice)
+
+- No branch creation, no manager-git invocation
+- SPEC files remain on current branch
+
+### Phase 14: MX Tag Planning [MANDATORY]
+
+Purpose: Identify code locations that will need @MX annotations during implementation. This information is passed to run workflow agents as context constraints.
+
+Execution conditions: Always executed. Depth varies by scope:
+- **Full scan**: SPEC involves modifying existing code OR creating new public APIs
+- **Lightweight scan**: New feature with no existing code interaction (scan public API surface only)
+
+Tasks:
+- Scan target files for high fan_in functions (potential @MX:ANCHOR)
+- Identify dangerous patterns (goroutines, complexity) for @MX:WARN
+- List magic constants and business rules for @MX:NOTE
+- Document MX tag strategy in `plan.md`
+- Output: `mx_plan` section in SPEC document with annotation targets and priorities
+
+### Phase 15: SPEC Quality Gate
+
+<!-- moai:evolvable-start id="gate-plan-2" -->
+### HUMAN GATE: SPEC Quality Validation
+
+**Previous phase output:** Validated SPEC with quality score
+**Approval question:** Is the SPEC ready for execution mode selection and implementation?
+**Cannot proceed until:**
+- [ ] SPEC quality gate shows PASS
+- [ ] No HARD rule violations detected
+- [ ] User has selected execution mode (sub-agent vs team)
+<!-- moai:evolvable-end -->
+
+Purpose: Verify SPEC document quality before proceeding to implementation. Catches incomplete or inconsistent specs early.
+
+Tasks:
+- Verify all GEARS-notation requirements (EARS legacy form for pre-v3 SPECs) have corresponding acceptance criteria
+- Check that affected files list is complete (cross-reference with codebase)
+- Validate that MX tag plan covers all high-risk areas (fan_in >= 3, goroutines)
+- Run lightweight security check on SPEC scope (flag if auth/crypto/input-validation areas are touched)
+
+Gate decision:
+- **PASS**: All checks satisfied. Proceed to Decision Point 2.
+- **WARNING**: Minor gaps found (e.g., missing acceptance criteria for edge cases). Present findings and offer fix or continue.
+- **FAIL**: Critical gaps (e.g., no acceptance criteria, security-sensitive scope without security considerations). Must fix before proceeding.
+
+<!-- moai:contract-mode-start id="contract-quality-gate" -->
+Where `workflow.autonomy.mode: contract` — a WARNING or FAIL is repaired automatically up to the same retry cap (`budget.audit_retries`, or `workflow.autonomy.escalation.budget_default.audit_retries`), then reported as an escalation instead of a question. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
+Tool: AskUserQuestion (when WARNING or FAIL)
+Options:
+- Fix SPEC issues (Recommended): Return to SPEC editing with specific gaps highlighted
+- Continue with warnings: Proceed knowing gaps exist (WARNING only, not available for FAIL)
+- Abort: Exit plan workflow
+
+### Decision Point 2: Development Environment Selection
+
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
+Tool: AskUserQuestion (when prompt_always config is true and auto_branch is true)
+
+Options:
+- Create Worktree (Recommended): recommended for parallel SPEC development
+- Create Branch: traditional workflow
+- Use current branch
+
+### Decision Point 3: Next Action Selection
+
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
+Tool: AskUserQuestion (after SPEC creation completes)
+
+Options:
+- Start Implementation (Recommended): execute /moai run SPEC-{ID}
+- Modify Plan
+- Add New Feature: create additional SPEC
+
+### Decision Point 3.5: Execution Mode Selection Gate
+
+Triggered when: User selects "Start Implementation" in Decision Point 3.
+
+Purpose: After SPEC creation, detect execution environment and present optimal implementation mode.
+
+**Step 1: Detect active LLM mode**
+Read `.moai/config/sections/llm.yaml` → `llm.team_mode` field:
+- `""` (empty) or `"cc"`: CC mode (Claude-only)
+- `"glm"`: GLM mode (GLM-only)
+- `"cg"`: legacy configuration; stop execution-mode selection and show `moai migrate cg`. Do not activate or silently replace mixed roles.
+
+**Step 2: Detect tmux availability**
+Check `$TMUX` environment variable via Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
+
+**Step 3: Present options based on detection**
+
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
+When tmux IS available: AskUserQuestion with 3 options (descriptions adapt to active_mode):
+- Option 1 (Recommended): Worktree + {active_mode}
+  - CC: "Create MoAI worktree with tmux session. All agents use Claude. Highest quality."
+  - GLM: "Create MoAI worktree with tmux session. All agents use GLM. Cost optimized."
+- Option 2: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks. (Agent Teams in-process mode retired.)
+
+When tmux is NOT available: AskUserQuestion with 1 option:
+- Option 1 (Recommended): Sub-agent Mode: Use sequential sub-agents for implementation. Tmux is not available for session isolation. (Agent Teams in-process mode retired.)
+
+**Step 4: Execute selected mode**
+- **Sub-agent mode**: Proceed to `/moai run SPEC-{ID} --solo`
+- **Isolated-workspace mode**: tell the user to enter a workspace and run there —
+  `moai cc -w <name>` in place, or `moai cc -w <name> --spawn` for a separate
+  Claude session window that leaves this session running. Neither command preserves legacy CG mixed roles. Plan does not create the workspace.
+
+**Step 5: Gate result passing**
+- Pass the selected execution mode to the run workflow
+- If isolated-workspace mode: the run workflow executes in the session the user opened there
+- If sub-agent mode: continue to the run workflow in the current session
+
+---
+
+## Completion Criteria
+
+All of the following must be verified:
+
+- Phase 8: manager-spec analyzed project and proposed SPEC candidates
+- User approval obtained via AskUserQuestion before SPEC creation
+- Phase 10: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)
+- Directory naming follows .moai/specs/SPEC-{ID}/ format
+- YAML frontmatter contains all 12 required fields (issue_number excluded — optional)
+- GEARS structure is complete (EARS legacy form accepted for pre-v3 SPECs until 2026-11-22)
+- Exclusions section present with at least 1 entry
+- Delta markers applied for brownfield requirements (if applicable)
+- spec-compact.md auto-generated with requirements + acceptance criteria only
+- Phase 12: GitHub Issue created and linked (only when `--issue` opt-in flag is set; default skips Issue creation)
+- Phase 13: Appropriate git action taken based on flags and user choice
+- Next steps presented to user
+- **Audit-ready signal**: Before transitioning to `/moai run`, append to `.moai/specs/SPEC-{ID}/progress.md`:
+  ```
+  - plan_complete_at: {ISO-8601 timestamp}
+  - plan_status: audit-ready
+  ```
+  This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
+  and ready for Plan Audit Gate validation at `/moai run` Phase 1.
+
+---
+
+## Test Scenarios
+
+### Normal Flow
+**Prompt**: "/moai plan JWT authentication with refresh token rotation"
+**Expected Result**:
+- Phase 2: Explore discovers existing auth files if any
+- Phase 8: manager-spec designs GEARS-notation requirements for JWT auth (canonical notation; EARS legacy form for pre-v3 SPECs only)
+- Annotation cycle: 1-3 iterations refining requirements
+- Phase 10: SPEC-AUTH-001 created with spec.md, plan.md, acceptance.md
+- Phase 12: GitHub Issue created and linked to SPEC
+- Phase 13: Feature branch feat/SPEC-AUTH-001-jwt-auth created (if --branch)
+
+### Existing Assets Flow
+**Prompt**: "/moai plan add payment gateway" (existing e-commerce codebase)
+**Expected Result**:
+- Explore discovers existing order, product, user models
+- SPEC references existing models as dependencies
+- plan.md identifies extension points in existing architecture
+- No duplicate functionality proposed
+### Error Flow
+**Prompt**: "/moai plan" (no description provided)
+**Expected Result**:
+- AskUserQuestion prompts user for feature description
+- After user provides description, normal flow continues
+- If user cancels, graceful exit with no files created

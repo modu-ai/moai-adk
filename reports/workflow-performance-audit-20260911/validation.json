@@ -1,0 +1,216 @@
+{
+  "artifact": "/Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/report.html",
+  "staticResult": {
+    "html_bytes": 118192,
+    "under_120000": true,
+    "missingLocalLinks": [],
+    "nonemptyNoscript": true,
+    "sha256": "bc6bb25d646f802d31583c5bcd30081a47420acbb8008bf6950f3f680d0852ff"
+  },
+  "logs": [
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"set\" \"offline\" \"off\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"network\" \"unroute\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"open\" \"file:///Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/report.html\"",
+      "exit": 0,
+      "stdout": "✓ MoAI 워크플로우 심층 감사 · 2026-09-11\n  file:///Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/report.html\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"wait\" \"--fn\" \"!!document.querySelector(\\\".mermaid svg\\\")\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"eval\" \"document.fonts.ready.then(()=>document.fonts.status)\"",
+      "exit": 0,
+      "stdout": "\"loaded\"\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"set\" \"viewport\" \"1440\" \"1000\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"eval\" \"window.scrollTo(0,0)\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"eval\" \"JSON.stringify({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,findings:document.querySelectorAll(\\\".finding\\\").length,ruleRows:document.querySelectorAll(\\\"#rules tbody tr\\\").length,agents:document.querySelectorAll(\\\"#agents tbody tr\\\").length,duplicateIDs:[...document.querySelectorAll(\\\"[id]\\\")].map(e=>e.id).filter((x,i,a)=>a.indexOf(x)!==i),brokenAnchors:[...document.querySelectorAll(\\\"a[href^=\\\\\\\"#\\\\\\\"]\\\")].filter(a=>!document.getElementById(a.hash.slice(1))).map(a=>a.hash),mermaidSVG:!!document.querySelector(\\\".mermaid svg\\\")})\"",
+      "exit": 0,
+      "stdout": "\"{\\\"width\\\":1440,\\\"scrollWidth\\\":1440,\\\"findings\\\":40,\\\"ruleRows\\\":84,\\\"agents\\\":11,\\\"duplicateIDs\\\":[],\\\"brokenAnchors\\\":[],\\\"mermaidSVG\\\":true}\"\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"screenshot\" \"/Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/desktop-1440.png\"",
+      "exit": 0,
+      "stdout": "✓ Screenshot saved to /Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/desktop-1440.png\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"set\" \"viewport\" \"768\" \"1000\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"eval\" \"window.scrollTo(0,0)\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"eval\" \"JSON.stringify({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,findings:document.querySelectorAll(\\\".finding\\\").length,ruleRows:document.querySelectorAll(\\\"#rules tbody tr\\\").length,agents:document.querySelectorAll(\\\"#agents tbody tr\\\").length,duplicateIDs:[...document.querySelectorAll(\\\"[id]\\\")].map(e=>e.id).filter((x,i,a)=>a.indexOf(x)!==i),brokenAnchors:[...document.querySelectorAll(\\\"a[href^=\\\\\\\"#\\\\\\\"]\\\")].filter(a=>!document.getElementById(a.hash.slice(1))).map(a=>a.hash),mermaidSVG:!!document.querySelector(\\\".mermaid svg\\\")})\"",
+      "exit": 0,
+      "stdout": "\"{\\\"width\\\":768,\\\"scrollWidth\\\":768,\\\"findings\\\":40,\\\"ruleRows\\\":84,\\\"agents\\\":11,\\\"duplicateIDs\\\":[],\\\"brokenAnchors\\\":[],\\\"mermaidSVG\\\":true}\"\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"screenshot\" \"/Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/tablet-768.png\"",
+      "exit": 0,
+      "stdout": "✓ Screenshot saved to /Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/tablet-768.png\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"set\" \"viewport\" \"390\" \"844\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"eval\" \"window.scrollTo(0,0)\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"eval\" \"JSON.stringify({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,findings:document.querySelectorAll(\\\".finding\\\").length,ruleRows:document.querySelectorAll(\\\"#rules tbody tr\\\").length,agents:document.querySelectorAll(\\\"#agents tbody tr\\\").length,duplicateIDs:[...document.querySelectorAll(\\\"[id]\\\")].map(e=>e.id).filter((x,i,a)=>a.indexOf(x)!==i),brokenAnchors:[...document.querySelectorAll(\\\"a[href^=\\\\\\\"#\\\\\\\"]\\\")].filter(a=>!document.getElementById(a.hash.slice(1))).map(a=>a.hash),mermaidSVG:!!document.querySelector(\\\".mermaid svg\\\")})\"",
+      "exit": 0,
+      "stdout": "\"{\\\"width\\\":390,\\\"scrollWidth\\\":390,\\\"findings\\\":40,\\\"ruleRows\\\":84,\\\"agents\\\":11,\\\"duplicateIDs\\\":[],\\\"brokenAnchors\\\":[],\\\"mermaidSVG\\\":true}\"\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"screenshot\" \"/Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/mobile-390.png\"",
+      "exit": 0,
+      "stdout": "✓ Screenshot saved to /Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/mobile-390.png\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"click\" \"nav a[href=\\\"#findings\\\"]\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"get\" \"url\"",
+      "exit": 0,
+      "stdout": "file:///Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/report.html#findings\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"click\" \"#F02 summary\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"eval\" \"JSON.stringify({opened:document.querySelector(\\\"#F02 details\\\").open,sourceEvidenceVisible:document.querySelector(\\\"#F02 pre\\\").getBoundingClientRect().height>0,width:innerWidth,scrollWidth:document.documentElement.scrollWidth})\"",
+      "exit": 0,
+      "stdout": "\"{\\\"opened\\\":true,\\\"sourceEvidenceVisible\\\":true,\\\"width\\\":390,\\\"scrollWidth\\\":390}\"\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"screenshot\" \"/Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/mobile-evidence.png\"",
+      "exit": 0,
+      "stdout": "✓ Screenshot saved to /Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/mobile-evidence.png\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"errors\"",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"set\" \"offline\" \"on\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"network\" \"route\" \"**cdn.jsdelivr.net/**\" \"--abort\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"reload\"",
+      "exit": 0,
+      "stdout": "file:///Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/report.html#findings\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"wait\" \"--fn\" \"document.querySelector(\\\".mermaid\\\").getAttribute(\\\"data-fallback\\\")===\\\"true\\\"\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"eval\" \"JSON.stringify({offline:!navigator.onLine,mermaidSVG:!!document.querySelector(\\\".mermaid svg\\\"),fallback:document.querySelector(\\\".mermaid\\\").getAttribute(\\\"data-fallback\\\"),fallbackSteps:document.querySelectorAll(\\\".flow-fallback div\\\").length,findings:document.querySelectorAll(\\\".finding\\\").length,width:innerWidth,scrollWidth:document.documentElement.scrollWidth})\"",
+      "exit": 0,
+      "stdout": "\"{\\\"offline\\\":true,\\\"mermaidSVG\\\":false,\\\"fallback\\\":\\\"true\\\",\\\"fallbackSteps\\\":4,\\\"findings\\\":40,\\\"width\\\":390,\\\"scrollWidth\\\":390}\"\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"click\" \"nav a[href=\\\"#flow\\\"]\"",
+      "exit": 0,
+      "stdout": "✓ Done\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"screenshot\" \"/Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/offline-flow.png\"",
+      "exit": 0,
+      "stdout": "✓ Screenshot saved to /Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/offline-flow.png\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"agent-browser\" \"--session\" \"workflow-audit-20260911\" \"pdf\" \"/Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/print-check.pdf\"",
+      "exit": 0,
+      "stdout": "✓ PDF saved to /Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/print-check.pdf\n",
+      "stderr": ""
+    },
+    {
+      "command": "\"pdfinfo\" \"/Users/goos/MoAI/moai-adk-go/reports/workflow-performance-audit-20260911/print-check.pdf\"",
+      "exit": 0,
+      "stdout": "Title:           MoAI 워크플로우 심층 감사 · 2026-09-11\nCreator:         Chromium\nProducer:        Skia/PDF m145\nCreationDate:    Fri Sep 11 12:45:09 2026 KST\nModDate:         Fri Sep 11 12:45:09 2026 KST\nCustom Metadata: no\nMetadata Stream: no\nTagged:          no\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           54\nEncrypted:       no\nPage size:       612 x 792 pts (letter)\nPage rot:        0\nFile size:       1417180 bytes\nOptimized:       no\nPDF version:     1.4\n",
+      "stderr": ""
+    },
+    {
+      "command": "pdftotext print-check.pdf -; programmatic content assertions",
+      "exit": 0,
+      "stdout": "{\"sourceQuote\":true,\"lastFinding\":true,\"residualRisk\":true,\"A4\":false}",
+      "stderr": ""
+    },
+    {
+      "command": "Node: report bytes, local href existence, noscript content, SHA-256",
+      "exit": 0,
+      "stdout": "{\"html_bytes\":118192,\"under_120000\":true,\"missingLocalLinks\":[],\"nonemptyNoscript\":true,\"sha256\":\"bc6bb25d646f802d31583c5bcd30081a47420acbb8008bf6950f3f680d0852ff\"}",
+      "stderr": ""
+    }
+  ]
+}

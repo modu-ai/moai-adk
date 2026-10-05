@@ -325,5 +325,5 @@ Resume commands:
 ---
 
 Version: 3.0.0
-Updated: removed the Related Skills CI watch/auto-fix routing entry (3.0.0 — the CI watch loop is a dev-repo-local asset, not part of the delegated skill routing).
-Previous: 2.4.0 — Phase 5 rewritten into an evidence-bearing claim/evidence contract with a full-rescan-vs-baseline regression guard (revert-or-report-failed, never silent acceptance); added Phase 8 (residue persistence to the loop-verdict schema + non-auto-invoking `/moai loop` recommendation); added the Loop Taxonomy Position section placing this workflow in the turn-based quadrant. 2.2.0 (2026-03-02) — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.
+Updated: removed the Related Skills CI watch/auto-fix routing entry (3.0.0 — the CI watch loop is not part of the distributed toolchain).
+Previous: 2.4.0 — Phase 5 rewritten into an evidence-bearing claim/evidence contract with a full-rescan-vs-baseline regression guard (revert-or-report-failed, never silent acceptance); added Phase 8 (residue persistence to the loop-verdict schema + non-auto-invoking `/moai loop` recommendation); added the Loop Taxonomy Position section placing this workflow in the turn-based quadrant. 2.2.0 — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.
