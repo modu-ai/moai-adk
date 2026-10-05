@@ -10,11 +10,31 @@ attribution: delta-2 PASS (verdict .moai/reports/t1497/plan-audit-delta-2.md, co
 
 ## §E.2 Run-phase Evidence
 
-_(pending run-phase — owned by manager-develop)_
+**Delivery path note**: manager-develop landed M1 (`d6da6c1c5`) and M2 (`b50caa83b`, 7 files +280/−2) then was terminated mid-probe after two stalls on the delegation wave (GLM 429 static-stop at 00:42 + silent no-activity); the lane adopted its uncommitted M3/M4 work after a full diff read (t1495 stall-adoption protocol) and completed the remaining verification itself. Adoption commit: `055373cf4` (M3 wrapper wiring + REQ-DP-009 filter + six gate-review fixes + fixture refreshes; 20 files).
+
+Verification matrix (all measured by lane-6 on this tree at `055373cf4`, env-scrubbed compound form):
+- `go build ./...` → BUILD_OK; `GOOS=windows GOARCH=amd64 go build ./...` → WIN_BUILD_OK
+- `gofmt -l internal/cli/ internal/harness/` → empty; `go vet ./internal/harness/... ./internal/cli/...` → clean
+- `golangci-lint run --timeout=2m ./internal/harness/... ./internal/cli/...` → `0 issues.`
+- `go test -count=1 -race -timeout 30m ./internal/harness/...` → `ok internal/harness 9.300s` (all sub-packages ok)
+- Targeted cli `-race` (the new tests + every previously-failing family: PrePushSubcommandCount, DetachedChild×2, StopClassificationFiltersExpiredEvents, GateWiring, RetentionPruneVerb, RecordsBaseline, RecordsWhenEnabled, StopChainGateCutOff) → `ok internal/cli 10.923s`
+- Gate-repro command (classify + high-water fixtures post-refresh) → `ok internal/cli 1.559s`
+- AC-DP-001..008: flipped by the M1..M4 commits per acceptance.md's green paths (LEDGER-DP-GREEN-A/B ran as written: `-list` named the exact tests, `-run` executed them)
+
+Ambient failures — attributed to the loaded host / pre-existing base, NOT this diff (change-scoped rule, AGENTS.md §4):
+- `rosterguard` TestRegistryIsWellFormed/TestRegisteredSitesMatchTheirDeclaredAxis: cutover-* registry sites declare ClaimMembership on subset-by-design — registry.go untouched by this card (pre-existing at base; t1453/t1525 cutover provenance)
+- `TestFactoryLeaseQueueLockStallBounded` timing bound (4.31s vs 3.8s) under `-race` on the loaded host; PASSES without `-race` on a calmer host (`ok 12.265s`) — machine measurement
+- 30m package timeout truncated the full cli `-race` run (TestFR_AC024 in flight) — full-suite green is CI's verdict per the lane-local rule
+
+Gaps: Windows RUNTIME unobserved (build+vet parity only, documented residual); the full-package cli suite green on an idle host is deferred to CI.
+
+Residual risk: the spawn gate on a loaded host still costs one lock-free stamp read per observe event (sub-millisecond; REQ-HL-001 budget intact); an orphaned prune child completes outside the hook budget by design.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_(pending run-phase — owned by manager-develop)_
+run_status: implemented
+run_complete_at: 2026-10-06
+attribution: M1 `d6da6c1c5` + M2 `b50caa83b` (manager-develop, Authored-By-Agent trailer on the draft→in-progress transition commit); M3/M4 adopted and verified by lane-6 (`055373cf4`) after the delegate's two-stall termination — full diff read before adoption per the stall-adoption protocol.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
