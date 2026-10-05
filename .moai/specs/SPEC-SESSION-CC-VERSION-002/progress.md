@@ -149,7 +149,7 @@ instance is pinned by `TestRemoteControlPrefixValue`; the §A.4 residual is meas
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_status: complete
-sync_commit_sha: "pending-backfill"   # D3 placeholder — a commit cannot cite its own SHA; the lane backfills the real SHA in the follow-up commit
+sync_commit_sha: 6f646a29d   # D3 backfill — sync 커밋 6f646a29d의 실측 SHA
 sync_complete_at: 2026-10-06
 b12_self_test_a: pass   # grep -c 'SPEC-SESSION-CC-VERSION-002' CHANGELOG.md → 0 before emission (duplicate-free), 1 after (exactly the entry added)
 b12_self_test_c: pass   # every file path named in the CHANGELOG entry verified present: internal/cli/lane_resume.go, internal/cli/lane_resume_model.go, internal/cli/cc.go, internal/cli/factory_lane_relaunch.go, internal/session/ccversion.go
