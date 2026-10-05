@@ -117,10 +117,39 @@ The gate's second re-verdict failed with 8×P1 — the shell rule's long tail, e
 
 GREEN on the whole family: `TestProtectedZone` hook 10/10 subtests (ShellMutation swept 39) + config 3/3, `go build ./...` exit 0, `golangci-lint` 0 issues, live judge `JUDGE swept=67 expected=67 fail=0` on a binary built from the repaired tree. The quote mask is now the single mechanism deciding shell syntax (operators and async boundaries live outside quotes); a fourth round of NEW P1 findings would indicate the hand-rolled analyzer needs replacing with a real shell parser — an operator-level decision, flagged in the completion report.
 
+### Repair round 4 — ESCALATION, no repairs executed (2026-10-06)
+
+The gate's third re-verdict failed with 8×P1 + 1×P2. Per the escalation protocol the leader approved before this round ("4라운드에서 신규 P1이 또 나오면 수리 정지하고 '손수 만든 셸 분석기 → 실제 셸 파서 교체'를 운영자 판정 사안으로 올려라"), **no repairs were executed**; the findings are recorded verbatim as the operator-decision package's evidence. Three rounds and 20 findings on one module are the structural signal.
+
+Findings as delivered by the gate (classified for the decision):
+
+- **Shell-analyzer class (7×P1 — the operator decision):** partially quoted words hide real redirections (`>"target"`); multi-target redirections in one word (`>a>b`) keep only the last; quoted redirections escape the cd-argument strip; the last element of a pipeline is not recognized as subshell (`true | cd docs`); a failed `cd` (`||` arm) is assumed successful; an assignment-prefixed `cd` (`X=1 cd .moai`) is missed; the async restore point is taken after the group's own cd (`cd docs && true & rm`); consecutive/quoted `-C` options are mishandled.
+- **Outside the analyzer (1×P1 + 1×P2 — trivial fixes, ready on a nod):** the dogfood overlay does not list the checker source (`internal/config/protected_zone.go`) or the manifest template source — editing them weakens every later build (the overlay is exactly where such entries belong); and a broken symlink at a manifest path reads as `os.ErrNotExist` → `absent` instead of `invalid`, silently weakening fail-closed.
+
+The reviewer's own discipline note: every finding came with a real temporary-project execution where the protected file was actually modified — these are observed compromises of the zone, not hypotheses.
+
+### Repair round 5 — second post-escalation verdict, still no repairs (2026-10-06)
+
+The gate's verdict on the round-3 push failed again with 5×P1, all new — delivered AFTER the operator decision was requested, so it is addendum evidence, not a repair trigger: adjacent redirections in one word (`>a>b`) keep only the last target under the round-2 fragment logic; the LAST element of a pipeline (`true | cd docs`) is not recognized as a subshell (the check keyed on the FOLLOWING connector, but the pipe connector PRECEDES the segment); a partially quoted redirect escapes the cd-argument strip (the strip keyed on `QuotedAny()` instead of the `>` mask); a quoted `'-C'` is a real git option; consecutive relative `-C` paths accumulate (`-C a -C ..` resolves against a). Every one is the same class as rounds 1–4: hand-rolled analyzer vs POSIX semantics. Still no repairs — the operator decision owns the surface.
+
+
+
+
+
+
+
+### Repair round 5b — operator decision A: re-platform on mvdan/sh (2026-10-06)
+
+The operator chose option A: the lexical analysis moves to mvdan/sh (v3.14.0 — already a direct dependency in go.mod, so no new supply-chain surface enters; BSD-3-Clause). This commit also lands the two non-analyzer findings:
+
+- **overlay content (round 4 P1)** — the dogfood overlay now lists the checker source (`internal/config/protected_zone.go`, safety_guards) and the manifest template source (`internal/template/templates/.moai/config/sections/protected-zone.yaml`, gate_policy): editing either weakens every later build, and the template→build→deploy chain makes the shipped copy alone insufficient. Both paths exist in the swept tree (liveness resolved=37, up from 35).
+- **broken symlink fail-closed (round 5 P2)** — a dangling symlink at a manifest path surfaces the same ENOENT as true absence through `os.ReadFile`; `LoadProtectedZone` now Lstats the path and classifies present-but-unreadable as `invalid` (fail closed). Regression row in config Load; the finding's RED was the reviewer's observed real write.
+
+The shell module's hand-rolled tokenizer, async-group splitter, and redirect scanner are replaced by an AST walker over mvdan's parse: async boundaries from `Stmt.Background`, pipelines and subshells never leak a cd to the main shell, `&&` carries the updated directory, `||` restores the pre-left directory (the right side runs only on failure), redirection targets come from `Stmt.Redirs` (write redirects only; input and here-docs skip), the git `-C` chain accumulates across consecutive and quoted options, and sed's in-place scan reads the literal option clusters. The policy layer — mutating verb set, zone coverage (direct + ancestor + glob-parent walk), deny reason, audit rows, cost seam — is unchanged. Dynamic words still under-match by construction; a parse failure under-matches like the old splitter's unclassifiable text.
+
+All 13 round-4/5 findings are regression rows in `TestProtectedZone/ShellMutation` (swept 50; FileTools 26; config Load/Overlay/Validation 47). GREEN on the whole family: hook+config TestProtectedZone 0 FAIL, config/template/harness packages 0 FAIL, `golangci-lint` 0 issues, `go build ./...` exit 0, live judge `JUDGE swept=67 expected=67 fail=0` on a binary built from the repaired tree.
+
 ## §E.3 Run-phase Audit-Ready Signal
-
-
-
 
 run_status: audit-ready
 run_complete_at: 2026-10-05

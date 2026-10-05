@@ -863,8 +863,47 @@ func testZoneShellMutation(t *testing.T) {
 		t.Errorf("piped body after piped cd: decision=%q reason=%q, want allow", d, r)
 	}
 
-	if swept < 39 {
-		t.Fatalf("swept %d rows, want at least 39", swept)
+	// review-repair round 4+5 rows (merge-gate re-verdicts 4 and 5, observed
+	// red first — these are the findings that triggered the operator decision
+	// to replace the hand-rolled analyzer with a real shell parser)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n  probe_logs:\n    paths: [\".moai/logs/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	for _, cmd := range []string{
+		`echo changed >"zone_dir/secret"`,                  // partially quoted redirect (r4)
+		"true >zone_dir/secret>docs/out",                   // both targets of one word (r5)
+		`cd zone_dir >"docs/out"; rm zone_dir/a.log`,       // quoted redirect escapes the cd-arg strip (r4)
+		"true | cd docs; rm .moai/logs/secret",             // the last pipeline element is a subshell (r4)
+		"cd missing || rm .moai/logs/secret",               // a failed cd leaves the original cwd (r4)
+		"X=1 cd .moai; rm logs/secret",                     // assignment-prefixed cd (r4)
+		"cd docs && true & rm .moai/logs/secret",           // the async list includes the &&-chain (r4)
+		"git '-C' zone_dir restore -- a.log",               // a quoted -C is still an option (r5)
+		"git -C zone_dir -C .. restore -- zone_dir/secret", // consecutive -C accumulate (r5)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		// the cwd-tracking rows land inside .moai — their covered category is
+		// the logs entry, not the zone_dir one
+		category := "probe_zone"
+		if strings.Contains(cmd, ".moai/logs") || strings.Contains(cmd, "rm logs/secret") {
+			category = "probe_logs"
+		}
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", category)
+	}
+	// the .moai/logs variants of the cwd-tracking rows
+	for _, cmd := range []string{
+		`cd .moai >"docs/out"; rm logs/secret`,   // r5
+		"true | cd docs; rm .moai/logs/secret",   // r5
+		"cd missing || rm .moai/logs/secret",     // r4
+		"X=1 cd .moai; rm logs/secret",           // r4
+		"cd docs && true & rm .moai/logs/secret", // r4
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_logs")
+	}
+
+	if swept < 50 {
+		t.Fatalf("swept %d rows, want at least 50", swept)
 	}
 	t.Logf("swept=%d", swept)
 }
