@@ -1,0 +1,374 @@
+// integration_remeasure.go — the re-measure record and its one verifier
+// (card t1479, SPEC-MERGE-WINDOW-QUEUE-001, REQ-MWQ-014/015).
+//
+// The re-measure is the expensive verification the SPEC moves OUTSIDE the
+// window: it runs against the candidate tree before the lane joins the
+// queue, and its record is keyed by that tree's SHA. The merge verb
+// (REQ-MWQ-017) later requires the record keyed by the tree the merge will
+// produce, which is what makes the in-window step seconds-long rather than
+// a second re-measure.
+//
+// Two record forms exist and ONE verifier decides both (REQ-MWQ-014): the
+// local form written by `moai integration remeasure`, and the candidate-CI
+// form (SPEC-CANDIDATE-CI-001's candidate run id whose verdict is green).
+// Until that SPEC lands, workflow.candidate_ci.enabled is absent and reads
+// false — the local form governs and the candidate form is a no-op seam.
+//
+// The trust model is the one spec.md §D states: the record carries its
+// build identity, but a hand-written record file is not distinguishable by
+// the verifier. Actors are cooperative; forgery is a residual risk, not a
+// defended boundary.
+package factory
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/modu-ai/moai-adk/pkg/version"
+)
+
+// RemeasureRecord is the local-form re-measure record (REQ-MWQ-014/015).
+// Tree is the key: the candidate tree SHA the commands ran against. Base is
+// the absorbed integration-branch commit. StructuredCount is true only when
+// the command's tool emitted a recognized structured test report — it is
+// what separates "no tests ran" from "the tool reports no structure", the
+// distinction REQ-MWQ-015 exists to enforce.
+type RemeasureRecord struct {
+	Tree        string `json:"tree"`
+	Base        string `json:"base"`
+	Command     string `json:"command"`
+	ExitCode    int    `json:"exit_code"`
+	HasStructured  bool   `json:"structured_count"`
+	TestCount      int    `json:"test_count,omitempty"`
+	BuildIdentity  string `json:"build_identity"`
+	RecordedAt string `json:"recorded_at"`
+}
+
+// remeasureDir resolves the re-measure store under the project's state
+// directory, keyed by tree SHA — one file per candidate tree, overwritten by
+// the next re-measure of the same tree.
+func remeasureDir(projectRoot string) string {
+	return filepath.Join(projectRoot, ".moai", "state", "remeasure")
+}
+
+// WriteRemeasureRecord stores the record keyed by its tree.
+func WriteRemeasureRecord(projectRoot, treeSHA string, rec RemeasureRecord) error {
+	rec.Tree = treeSHA
+	if err := os.MkdirAll(remeasureDir(projectRoot), 0o755); err != nil {
+		return fmt.Errorf("re-measure store: %w", err)
+	}
+	return atomicWriteFile(filepath.Join(remeasureDir(projectRoot), treeSHA+".json"), rec)
+}
+
+// ReadRemeasureRecord returns the record keyed by treeSHA, or an error
+// naming the absence. A missing record is a DIFFERENT state from an invalid
+// one, and callers need to tell them apart: complete's step 3 refuses on a
+// missing record with its own message, while the merge verb's cause 1
+// refuses on an invalid one.
+func ReadRemeasureRecord(projectRoot, treeSHA string) (*RemeasureRecord, error) {
+	data, err := readFileNoRename(filepath.Join(remeasureDir(projectRoot), treeSHA+".json"))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("no re-measure record for tree %s", treeSHA)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read re-measure record: %w", err)
+	}
+	var rec RemeasureRecord
+	if err := json.Unmarshal(data, &rec); err != nil {
+		return nil, fmt.Errorf("re-measure record for %s is unreadable: %w", treeSHA, err)
+	}
+	rec.Tree = treeSHA
+	return &rec, nil
+}
+
+// readFileNoRename is a small error-transparency wrapper around os.ReadFile:
+// os.ErrNotExist must survive to the caller's errors.Is check.
+func readFileNoRename(path string) ([]byte, error) {
+	return os.ReadFile(path)
+}
+
+// ValidateRemeasureRecord decides whether a local-form record satisfies the
+// re-measure gate (REQ-MWQ-014/015). It is the ONE verifier both verbs
+// (remeasure's self-check and merge/complete's gate read) call.
+//
+// Invalid when:
+//   - the command's exit code is non-zero — the observed exit is recorded
+//     as observed, never rewound to green;
+//   - the command's tool supports structured output and the record carries
+//     no structured count (go test without -json — REQ-MWQ-015);
+//   - the structured count is zero or the tool reported an empty sweep
+//     (go test -json with zero tests — REQ-MWQ-015);
+//   - any identity field the gate needs is missing (tree key, base, build
+//     identity, command).
+//
+// A merge stand-in (factoryWriteMergeRecord's text) never satisfies this
+// verifier (REQ-MWQ-020): it is a different file on a different path, and
+// its command carries no recognized structure.
+func ValidateRemeasureRecord(rec *RemeasureRecord) error {
+	switch {
+	case rec == nil:
+		return errors.New("re-measure record is missing")
+	case rec.Tree == "":
+		return errors.New("re-measure record carries no tree key")
+	case rec.Base == "":
+		return errors.New("re-measure record carries no absorbed base commit")
+	case rec.Command == "":
+		return errors.New("re-measure record carries no command")
+	case rec.BuildIdentity == "":
+		return errors.New("re-measure record carries no build identity")
+	case rec.ExitCode != 0:
+		return fmt.Errorf("re-measure command exited %d (recorded as observed)", rec.ExitCode)
+	case !rec.HasStructured:
+		return fmt.Errorf("command %q supports structured test output but none was requested or recognized", rec.Command)
+	case rec.TestCount <= 0:
+		return fmt.Errorf("structured report carries %d tests — an empty sweep cannot stand for a re-measure", rec.TestCount)
+	}
+	return nil
+}
+
+// ClassifyStructuredOutput judges one command's output for REQ-MWQ-015: it
+// returns the recognized per-test count, whether a structured report was
+// recognized, and an error when the command's tool supports structured
+// output but the caller did not request it.
+//
+// The recognized runner, for this repository, is `go test -json`: the count
+// is the number of per-test pass events (a Test field present; the
+// package-level pass event has none). An unstructured `go test` run is
+// refused outright — the tool supports the structure, so a bare run cannot
+// stand for a re-measure. A tool with no recognized report (true, cat, a
+// lint) is valid on exit code zero and records command + exit only — that
+// residual is the non-test-command risk spec.md §D names, removed only
+// where the candidate-CI form is enabled.
+func ClassifyStructuredOutput(command string, output io.Reader) (count int, structured bool, err error) {
+	data, readErr := io.ReadAll(output)
+	if readErr != nil {
+		return 0, false, fmt.Errorf("read command output: %w", readErr)
+	}
+	text := string(data)
+	if isGoTestCommand(command) {
+		if !requestsGoTestJSON(command) {
+			return 0, false, fmt.Errorf("go test supports structured output (-json) but the command did not request it")
+		}
+		return countGoTestJSONTests(text)
+	}
+	return 0, false, nil
+}
+
+// isGoTestCommand reports whether the command runs go test — the only tool
+// with a recognized structured report in this repository.
+func isGoTestCommand(command string) bool {
+	fields := strings.Fields(strings.TrimSpace(command))
+	return len(fields) >= 2 && fields[0] == "go" && fields[1] == "test"
+}
+
+// requestsGoTestJSON reports whether the go test command carries the -json
+// flag.
+func requestsGoTestJSON(command string) bool {
+	for _, f := range strings.Fields(command) {
+		if f == "-json" || strings.HasPrefix(f, "-json=") {
+			return true
+		}
+	}
+	return false
+}
+
+// emptySweepMarkers are the runner-reported empty-sweep tokens REQ-MWQ-015
+// refuses: go test -json surfaces them inside output events when a package
+// has no tests at all.
+const emptySweepMarker = "[no test files]"
+
+// countGoTestJSONTests counts the per-test pass events in a go test -json
+// stream and refuses an empty sweep. A stream that parses but carries zero
+// per-test events is a count of zero — the caller records it and the
+// verifier refuses it as an empty sweep (the distinction between "no tests
+// to run" and "no structure" is carried by structured=true).
+func countGoTestJSONTests(text string) (count int, structured bool, err error) {
+	if strings.Contains(text, emptySweepMarker) {
+		return 0, false, fmt.Errorf("runner reported %s — an empty sweep cannot stand for a re-measure", emptySweepMarker)
+	}
+	structured = true
+	decoder := json.NewDecoder(strings.NewReader(text))
+	for {
+		var event struct {
+			Action string `json:"Action"`
+			Test   string `json:"Test"`
+		}
+		if decErr := decoder.Decode(&event); decErr != nil {
+			if errors.Is(decErr, io.EOF) {
+				break
+			}
+			// A malformed stream (tool output interleaved with the JSON) is
+			// not a recognized report: refuse rather than count the prefix.
+			return 0, true, fmt.Errorf("go test -json stream is not a recognized report: %v", decErr)
+		}
+		if event.Action == "pass" && event.Test != "" {
+			count++
+		}
+	}
+	return count, structured, nil
+}
+
+// integrationWorktreeCleanError is the refusal RunRemeasure returns when the
+// clean-tree or unchanged-HEAD check fails (REQ-MWQ-016). The verb renders
+// it to stderr and exits non-zero; no record is ever written on it.
+type integrationWorktreeCleanError struct{ msg string }
+
+func (e *integrationWorktreeCleanError) Error() string { return e.msg }
+
+// IsIntegrationWorktreeCleanError reports whether err is a REQ-MWQ-016
+// refusal.
+func IsIntegrationWorktreeCleanError(err error) bool {
+	var clean *integrationWorktreeCleanError
+	return errors.As(err, &clean)
+}
+
+// gitIntegrationWorktreeClean runs `git status --porcelain
+// --untracked-files=all` in dir and reports whether it is empty. The
+// --untracked-files=all flag overrides any status.showUntrackedFiles config
+// (O2): the check's promise is "no untracked byte", so the config cannot be
+// allowed to hide one.
+func gitIntegrationWorktreeClean(dir string) (bool, string, error) {
+	cmd := exec.Command("git", "status", "--porcelain", "--untracked-files=all")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return false, "", fmt.Errorf("git status in %s: %v: %s", dir, err, out)
+	}
+	text := strings.TrimSpace(string(out))
+	return text == "", text, nil
+}
+
+// gitHeadSHA reads the HEAD commit of dir.
+func gitHeadSHA(dir string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("read HEAD of %s: %v", dir, err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// gitMergeBase reads the merge-base of baseRef and HEAD in dir — the
+// absorbed integration-branch commit the record names.
+func gitMergeBase(dir, baseRef string) (string, error) {
+	cmd := exec.Command("git", "merge-base", baseRef, "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("merge-base %s..HEAD in %s: %v", baseRef, dir, err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// RunRemeasure is the re-measure body (REQ-MWQ-014/015/016): it verifies the
+// worktree is clean and HEAD is recorded, runs the command with its output
+// classified, re-verifies the tree stayed clean and HEAD unchanged, and
+// writes the record keyed by HEAD's tree — or refuses without writing one.
+//
+// projectRoot is where the record is stored; worktree is the tree the
+// command runs in; baseBranch is the integration branch whose absorbed tip
+// the record names; command is the verbatim command line the verb was
+// given. An invalid measurement (non-zero exit, empty sweep) still writes
+// its record — the observed exit is recorded as observed, and the VERIFIER
+// refuses it — so a later reader can see what ran rather than only that it
+// failed.
+func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*RemeasureRecord, error) {
+	clean, status, err := gitIntegrationWorktreeClean(worktree)
+	if err != nil {
+		return nil, err
+	}
+	if !clean {
+		return nil, &integrationWorktreeCleanError{msg: fmt.Sprintf("integration remeasure: the worktree is not clean at start (%d status lines); commit, stash or clean it, then re-measure", strings.Count(status, "\n")+1)}
+	}
+	headBefore, err := gitHeadSHA(worktree)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Dir = worktree
+	outBytes, runErr := cmd.Output()
+	exitCode := 0
+	if runErr != nil {
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) {
+			exitCode = exitErr.ExitCode()
+		} else {
+			return nil, fmt.Errorf("integration remeasure: run %q: %v", command, runErr)
+		}
+	}
+	count, structured, classifyErr := ClassifyStructuredOutput(command, bytes.NewReader(outBytes))
+
+	// The finish checks (REQ-MWQ-016): the tree must be clean and HEAD
+	// unchanged across the run, or no record is written.
+	clean, status, err = gitIntegrationWorktreeClean(worktree)
+	if err != nil {
+		return nil, err
+	}
+	if !clean {
+		return nil, &integrationWorktreeCleanError{msg: fmt.Sprintf("integration remeasure: the command left the worktree dirty (%d status lines); no record written", strings.Count(status, "\n")+1)}
+	}
+	headAfter, err := gitHeadSHA(worktree)
+	if err != nil {
+		return nil, err
+	}
+	if headAfter != headBefore {
+		return nil, &integrationWorktreeCleanError{msg: "integration remeasure: the command moved HEAD; no record written"}
+	}
+
+	tree := headTreeSHA(worktree, headAfter)
+	base, err := gitMergeBase(worktree, baseBranch)
+	if err != nil {
+		return nil, err
+	}
+	rec := &RemeasureRecord{
+		Tree: tree,
+		Base: base,
+		Command: command,
+		ExitCode: exitCode,
+		HasStructured: structured,
+		TestCount: count,
+		BuildIdentity: moaiBuildIdentity(),
+		RecordedAt: WindowClock().Format(time.RFC3339),
+	}
+	if err := WriteRemeasureRecord(projectRoot, tree, *rec); err != nil {
+		return nil, err
+	}
+	if exitCode != 0 {
+		return rec, fmt.Errorf("integration remeasure: %q exited %d (recorded as observed; the record is invalid until a green re-measure)", command, exitCode)
+	}
+	if classifyErr != nil {
+		return rec, fmt.Errorf("integration remeasure: %q is not a valid re-measure (%v); the record is written and the verifier refuses it", command, classifyErr)
+	}
+	return rec, nil
+}
+
+// headTreeSHA resolves treeSHA for commit in dir.
+func headTreeSHA(dir, commit string) string {
+	cmd := exec.Command("git", "rev-parse", commit+"^{tree}")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// moaiBuildIdentity renders the producing binary's identity the record
+// carries (REQ-MWQ-014): the ldflags-stamped version, commit, and build id.
+func moaiBuildIdentity() string {
+	id := fmt.Sprintf("moai %s (%s)", version.Version, version.Commit)
+	if version.BuildID != "" {
+		id += " build " + version.BuildID
+	}
+	return id
+}
