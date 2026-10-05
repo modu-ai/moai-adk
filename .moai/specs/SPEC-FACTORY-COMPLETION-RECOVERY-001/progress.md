@@ -12,7 +12,7 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-10-06
-비고: plan-audit 최종 판정 **PASS-WITH-DEBT 0.94 @ 6f01022e3**(Tier M 문턱 0.80 충족, 차단 0·필수 0, Clarity 0.95/Completeness 0.90/Testability 0.90/Traceability 1.00) — 판정서 `.moai/reports/t1538/plan-audit-iter3.md` 닫는 기록(§Final delta rounds 3-5). **run 진입 해시 바인딩**: 아티팩트 동결 후 감사자가 실제 `ComputeHash`(`internal/runtime/audit_cache.go:119` 공식)로 확인한 값으로 기록한다 — 동결 전 값은 수리 커밋마다 이동하므로 기재하지 않는다(판정서 본문의 `29794e62…`는 감사자 자체 공산 계산치로 실제 구현과 어긋난 사실은 게이트가 admitVerdictFile refused로 실측). 동결 해시: 아래 Binding run conditions 이후 감사자 확인 행에 기록. 감사 사슬: iter1 0.75 → iter2 0.86 → iter3 0.89 → 개정 0.94(리더 (a) 승인 하 최종 라운드, t1546 조건). run 진입: 리더 결정 (a)에 따라 자율 진입(방침상 자율 — 결정 기록은 §F).
+비고: plan-audit 최종 판정 **PASS-WITH-DEBT 0.94 @ 6f01022e3**(Tier M 문턱 0.80 충족, 차단 0·필수 0, Clarity 0.95/Completeness 0.90/Testability 0.90/Traceability 1.00) — 판정서 `.moai/reports/t1538/plan-audit-iter3.md` 닫는 기록(§Final delta rounds 3-5). **run 진입 해시 바인딩 — 확정**: 동결 아티팩트(HEAD `2939ba304`)의 실제 `ComputeHash` = **`46aa4358663a3db8f47866fcd0022e0558b3be99174434761cd679772611fd1c`** — 감사자 스크립트·본 레인 셸 재현·codex 독립 계산 3-way 일치, codex의 admission 검증도 이 해시로 통과(이전 `29794e62…`는 감사자 자체 공식, `8708bcfe…`는 동결 전 값 — 둘 다 대체됨). 동결 이후 아티팩트 편집은 이 판정을 무효화한다. run 진입: 리더 결정 (a)에 따라 자율 진입(방침상 자율 — 결정 기록은 §F). 감사 사슬: iter1 0.75 → iter2 0.86 → iter3 0.89 → 개정 0.94(리더 (a) 승인 하 최종 라운드, t1546 조건). run 진입: 리더 결정 (a)에 따라 자율 진입(방침상 자율 — 결정 기록은 §F).
 
 ## Binding run conditions (이월 부채 장부 — 판정서 열거 8건, sync-auditor 재검증 대상)
 
