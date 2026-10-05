@@ -21,12 +21,18 @@ func ListGTDCardRelations(ctx context.Context, store *BacklogStore) []GTDCardRel
 	if _, err := os.Lstat(store.EnginePath()); err != nil {
 		return nil
 	}
-	db, err := openGTDDB(store)
+	// The read path opens through the pure reader, never openGTDDB: the
+	// migration openGTDDB runs on open is a write, and a queue read must
+	// leave the database byte- and mtime-identical (AC-TSS-003 read-path
+	// purity, card t1454 repair). A database without the GTD tables fails
+	// the query below and degrades to the findings-only view — the same
+	// best-effort contract as before.
+	eng, err := openBacklogReader(store.EnginePath())
 	if err != nil {
 		return nil
 	}
-	defer func() { _ = db.Close() }()
-	rows, err := db.QueryContext(ctx, `SELECT COALESCE(s.card_id,''),COALESCE(o.card_id,''),r.kind,r.source `+
+	defer func() { _ = eng.close() }()
+	rows, err := eng.db.QueryContext(ctx, `SELECT COALESCE(s.card_id,''),COALESCE(o.card_id,''),r.kind,r.source `+
 		`FROM gtd_relations r `+
 		`JOIN gtd_items s ON s.item_id=r.subject_id `+
 		`JOIN gtd_items o ON o.item_id=r.object_id `+
