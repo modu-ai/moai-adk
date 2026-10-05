@@ -254,13 +254,24 @@ func factorySerialSlotFree(state string) bool {
 }
 
 // factorySerialSlotHeld reports whether a recorded card holds the serial slot
-// at now: its state is not one of the releasing states, and — for a card in a
-// lease-holding state — its lease has not expired. An expired lease is only
-// collected lazily, by the next transition on that same card, so the row keeps
-// its lease-holding state after the lane that held it is gone; reading the
-// state alone would hold the slot for that lane indefinitely (card t1407).
+// at now. Three conditions hold together: the state is not one of the
+// releasing states; — for a card in a lease-holding state — its lease has not
+// expired; and a driver is recorded. An expired lease is only collected
+// lazily, by the next transition on that same card, so the row keeps its
+// lease-holding state after the lane that held it is gone; reading the state
+// alone would hold the slot for that lane indefinitely (card t1407).
+//
+// The driver condition (card t1513): a row whose OwnerLabel is empty holds
+// nothing. A picked row recorded without a lane (`factory assign` with no
+// --lane) names a nomination nobody is driving, and the lease-expiry net
+// above never applies to it because it carries no lease — the slot would
+// hold for as long as the row exists. Measured 2026-10-05: run tmf011's
+// t1453 sat picked, ownerless, and lease-less for a day while every lane
+// lease in the run was refused `serial-slot`. A later `factory assign
+// --lane` or the nominate arm sets the owner and the row holds again, so
+// only genuinely driverless rows release.
 func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
-	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now)
+	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now) && c.OwnerLabel != ""
 }
 
 // factorySerialInFlightExcluding reports whether a serial card OTHER than
