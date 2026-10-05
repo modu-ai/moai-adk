@@ -66,9 +66,10 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 | `internal/factory/autodone_scan.go` | `AutoDoneFacts`(:108)에 receipt 상태 필드 추가 — 기존 필드 의미론 불변 |
 | `internal/cli/todo.go` | done 경로 :1104 `rec.ArchiveCard(id)` 앞에 receipt 검증 삽입(REQ-FCR-002). 거부는 stderr |
 | `internal/cli/todo_autodone.go` | :311 facts 조립에 receipt 반영(REQ-FCR-003); :385 재검증을 스냅샷 UUID·본문·state·SPEC·landing 전면 비교로 확장(REQ-FCR-004) |
+| `internal/homestate/card_transition.go` | 완료 전이 receipt 게이트 — T20(`ci-green→done`)의 예약 edge admission을 receipt 검증으로 구현(REQ-FCR-010), T18(`merged-local→done`, `guardNoRemote` 포함)에 동일 게이트 적용(REQ-FCR-002b). 현행 거부 동작의 증거: `TestFR_AC019_ReservedCIEdgesRefused`·`TestFR_AC018_DecidePushGate` — 수리 뒤에도 receipt 없는 T18·T20은 계속 거부돼야 한다(RED 유지 형태) |
 | 테스트 | `internal/cli/factory_card_test.go`의 `fcFixture`(:31)·`fcPlace`(:89) 스타일 + `todo_autodone_test.go` 표준 — `TestLeaderReceiptGate*`, `TestAutoDoneRecheckStaleRow` |
 
-순서: factory 타입 → cli 게이트 → recheck. M1 단독 커밋.
+순서: factory 타입 → cli 게이트 → homestate 전이 게이트(T20·T18) → recheck. M1 단독 커밋.
 
 ### M2 — 회수: reaper + reassign + watchdog + CI reader (항목 3·4·5·6, REQ-FCR-006..011)
 

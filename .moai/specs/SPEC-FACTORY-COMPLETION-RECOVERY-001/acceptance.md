@@ -30,10 +30,10 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 - RED-now: P1 동일.
 - green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateBinding$'` — UUID 불일치·factory version stale·증거 해시 불일치 각각 거부, 세 값 모두 일치 시 통과. INPUT: 세 바인딩 값을 하나씩 틀어놓은 fixture receipt 3종.
 
-### AC-FCR-003 — 자기 발급 receipt 거부 (REQ-FCR-005)
+### AC-FCR-003 — 수행자 발급 receipt 거부, 리더 발급+리더 실행 허용 (REQ-FCR-005)
 
 - RED-now: P1 동일.
-- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateSelfIssued$'` — 닫기를 수행하는 actor가 발급자로 표식된 receipt는 거부. INPUT: 발급자==수행자 fixture.
+- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateSelfIssued$'` — 카드의 수행 owner(lane)가 발급자로 표식된 receipt는 거부; **리더가 발급하고 같은 리더가 done을 실행하는 경로는 통과**(단일 리더 정상 흐름 — REQ-FCR-005의 독립 축은 수행자≠승인자). INPUT: 발급자==수행자 fixture + 발급자==리더 fixture 2종.
 
 ### AC-FCR-004 — auto-done이 receipt 없이 닫지 않음 (REQ-FCR-003)
 
@@ -75,7 +75,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-011 — CI reader가 정확한 SHA만 인정 (REQ-FCR-010/011)
 
 - RED-now: P7 — T19/T20이 :267에서 예약 거부 중("CI verdict reader ... owned by F3").
-- green(M2): `go test ./internal/homestate -run '^TestCICompletionReader$'` — push 시 기록된 SHA의 CI 증거는 **T19(pushed→ci-green)을 통과**, 다른 SHA 증거·증거 부재는 T19도 계속 거부; **T20(ci-green→done)은 reader 없이 receipt 게이트만 연다** — receipt 부재 T20은 거부, 올바른 receipt와 함께 성공(REQ-FCR-016과 모순 없음). INPUT: frWriteVerdict 선례(fr_fixture_test.go:108)의 sha 바인딩 변이 + receipt 변이.
+- green(M2): `go test ./internal/homestate -run '^TestCICompletionReader$'` — push 시 기록된 SHA의 CI 증거는 **T19(pushed→ci-green)을 통과**, 다른 SHA 증거·증거 부재는 T19도 계속 거부; **T20과 T18은 receipt 게이트만 연다**(`FactoryDB.Transition` 안에서) — receipt 없는 T20·T18(원격 없는 저장소 포함)은 계속 거부, 올바른 receipt와 함께 성공(REQ-FCR-002b·016과 모순 없음). INPUT: frWriteVerdict 선례(fr_fixture_test.go:108)의 sha 바인딩 변이 + receipt 변이.
 
 ## §C — M3: 표시·처분
 
