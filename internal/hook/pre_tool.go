@@ -28,6 +28,7 @@ import (
 //
 // Vision §3.4: 8 frozen sentinel types cover the full FROZEN zone taxonomy.
 // W3 is the first runtime implementer of these sentinels (zone-registry SSOT from W1).
+// SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 appends the ninth, protected-zone.
 //
 // [HARD] No AskUserQuestion calls. Deny reason is emitted as sentinel string.
 // Orchestrator handles user notification via blocker report pattern (CLAUDE.md §8).
@@ -347,6 +348,10 @@ type preToolHandler struct {
 	// projectDir is the resolved project root. Tests may set it directly; the
 	// production constructors leave it empty and let projectRoot resolve it.
 	projectDir string
+	// zoneLoader reads the protected-zone manifests (SPEC-SELF-IMPROVE-
+	// PROTECTED-ZONE-001). Tests may set it to count reads; production leaves
+	// it nil and loadZone calls config.LoadProtectedZone.
+	zoneLoader func(string) config.ProtectedZoneLoad
 	projectRootResolver
 }
 
@@ -716,10 +721,11 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 
 	// Handle Write and Edit tools
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && len(input.ToolInput) > 0 {
-		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer).
-		// Must run before general file-access check to emit typed sentinel strings.
-		// Uses AgentType (custom agent name from --agent flag) to identify harness-learner.
-		if sentinel, reason := h.checkHarnessFrozenZoneFromInput(input.AgentType, input.ToolInput); sentinel != "" {
+		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer;
+		// SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 adds the manifest half). Must run
+		// before general file-access check to emit typed sentinel strings. Uses
+		// AgentType (custom agent name from --agent flag) to identify harness-learner.
+		if sentinel, reason := h.checkHarnessFrozenZoneFromInput(input.AgentType, input.ToolName, input.ToolInput); sentinel != "" {
 			slog.Warn("harness frozen zone violation",
 				"sentinel", sentinel,
 				"agent_id", input.AgentID,
@@ -1494,9 +1500,12 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 	return "", ""
 }
 
-// checkHarnessFrozenZoneFromInput extracts file_path from JSON tool input and delegates to checkHarnessFrozenZone.
-func (h *preToolHandler) checkHarnessFrozenZoneFromInput(agentID string, toolInput json.RawMessage) (string, string) {
-	if agentID == "" {
+// checkHarnessFrozenZoneFromInput extracts file_path from JSON tool input and
+// routes a self-improvement identity through checkProtectedZone, which
+// normalizes the path and consults the compiled baseline first and the
+// protected-zone manifests second (SPEC-SELF-IMPROVE-PROTECTED-ZONE-001).
+func (h *preToolHandler) checkHarnessFrozenZoneFromInput(agentID, toolName string, toolInput json.RawMessage) (string, string) {
+	if !isZoneIdentity(agentID) {
 		return "", ""
 	}
 	var parsed map[string]any
@@ -1507,9 +1516,7 @@ func (h *preToolHandler) checkHarnessFrozenZoneFromInput(agentID string, toolInp
 	if filePath == "" {
 		return "", ""
 	}
-	// Normalize to forward slashes for prefix matching.
-	normalized := strings.ReplaceAll(filepath.ToSlash(filePath), "\\", "/")
-	return h.checkHarnessFrozenZone(agentID, normalized)
+	return h.checkProtectedZone(agentID, toolName, filePath)
 }
 
 // frozenZonePrefixes maps file path prefixes (relative, forward-slash) to their sentinel constant.
