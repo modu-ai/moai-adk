@@ -242,6 +242,19 @@ The gate's verdict on the round-11 head failed with 1×P1 + 6×P2. The card's ow
 
 GREEN: `TestProtectedZone` hook+config (ShellMutation swept 90 — 2 new deny rows), `go build ./...` exit 0, GOOS=windows OK, `golangci-lint` 0 issues, gofmt clean, live judge `JUDGE swept=67 expected=67 fail=0` exit 0. Separately observed: CodeRabbit completed a full review of the round-11 head (`state=success`, description `Review completed`) after an explicit re-review request — the merge-discipline's first condition held there and is re-checked per head.
 
+### Repair round 13 — invocation spellings and a case-preserving glob walk (2026-10-06)
+
+The gate's verdict on the round-12 head failed with 4×P1 + 2×P2. The card's own surface carried all four P1s — invocation-spelling class, each observed RED first (allow on the round-12 tree, matching the verdict):
+
+- **P1 absolute executable path** — `/bin/rm zone_dir/sentinel.txt` allowed: the verb check was exact-match on the raw word. A literal executable path now folds to its base name before the verb lookup (`/bin/rm` → `rm`); a path to some OTHER binary folds to a base matching no verb, exactly as before (sound either way).
+- **P1 case-preserving glob walk** — `rm -r Tests` allowed on Linux while `Tests/example_test.go` sits under a `**/*_test.go` entry: the ancestor pass walked the FOLDED form (`tests`), which finds nothing on a case-sensitive filesystem. The walk now joins `form.Display` (original case); the fold stays on the comparison side only. **RED를 로컬에서 관측할 수 없는 유일한 행** — darwin의 대소문자 무시 파일시스템은 접힌 경로로도 실제 디렉터리를 찾아주므로 이 행은 darwin에서 공허하게 초록이다. 판정서의 재현은 Linux에서 측정됐고, 이 행은 CI linux 레그의 회귀 가드로 기록된다(미관측 간격은 완료 보고의 Gaps 절에 이름을 올린다).
+- **P1 GNU sed `--in-place=.bak`** — the suffixed long form is in-place too; the scan now accepts the `--in-place=` prefix alongside the exact form and the `-i` cluster.
+- **P1 option-attached target paths** — `cp --target-directory=zone_dir source.txt` dropped the attached value with the flag: `zonePathCandidates` now extracts a long option's `=value` as a candidate (a non-path value matches nothing and costs one lookup). The separate-value form already worked (the bare value was never dropped); a GNU short option with an attached value (`-tDIR`) stays an accepted under-match, documented.
+
+**P2 2건 — 외부 소관, 라우팅 누적(누적 12건)**: `internal/cli/factory_card.go:1314` 자동 허브 힌트가 기존 `HintAfter`를 재계산해 덮음(라운드 11의 factory_card 발견이 P1으로 격상된 것과 동일 결함군) · `factory_card.go:821` 레코드 없는 picked 후보가 선행조건 검사 전에 힌트를 기록하고 claim 실패로 종료. 둘 다 이 카드 diff에 없는 main 착지 코드.
+
+GREEN: `TestProtectedZone` hook+config (ShellMutation swept 94 — 3 new deny rows plus the original-case glob row), `go build ./...` exit 0, GOOS=linux+windows OK, `golangci-lint` 0 issues, gofmt clean, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready

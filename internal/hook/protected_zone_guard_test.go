@@ -1065,6 +1065,34 @@ func testZoneShellMutation(t *testing.T) {
 		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
 	}
 
+	// review-repair round 13 rows (gate verdict on the round-12 head: absolute
+	// executable paths, case-preserving glob walks, GNU sed's --in-place=
+	// suffix form, and option-attached target paths)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	for _, cmd := range []string{
+		"/bin/rm zone_dir/sentinel.txt",                             // a literal executable path names the verb (r13)
+		"sed --in-place=.bak s/safe/changed/ zone_dir/sentinel.txt", // GNU sed's suffixed in-place (r13)
+		"cp --target-directory=zone_dir source.txt",                 // the option's attached value is a target (r13)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+	// the glob walk must reach the directory under its ORIGINAL case — the
+	// folded form only folds comparisons, never filesystem access (r13)
+	root = newZoneRoot(t, zoneShippedDoc(""), "version: 1\ncategories:\n  probe_glob:\n    runtime_paths: [\"**/*_test.go\"]\n")
+	h = zoneTestHandler(t, root)
+	if err := os.MkdirAll(filepath.Join(root, "Tests"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "Tests", "example_test.go"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "rm -r Tests"})
+	wantZoneDeny(t, "glob parent dir original case", d, r, harnessLearnerIdentity, "category", "probe_glob")
+
 	if swept < 71 {
 		t.Fatalf("swept %d rows, want at least 71", swept)
 	}

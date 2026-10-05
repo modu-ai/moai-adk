@@ -391,8 +391,11 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root stri
 				entry := load.Zone.Entries[i]
 				if entry.Kind == config.ZoneBaseGlob {
 					// no path prefix to contain, but removing the directory
-					// removes every file the glob matches there
-					if zoneDirContainsGlobMatch(filepath.Join(root, filepath.FromSlash(form.Folded)), entry) {
+					// removes every file the glob matches there. The walk
+					// reaches the directory under its ORIGINAL case — the
+					// fold is for comparisons only, and a folded path finds
+					// nothing on a case-sensitive filesystem (round 13 P1)
+					if zoneDirContainsGlobMatch(filepath.Join(root, filepath.FromSlash(form.Display)), entry) {
 						return entry.Category, true
 					}
 					continue
@@ -414,6 +417,12 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	name, literal := zoneFirstArgWord(cmd.Args)
 	if !literal {
 		return // a dynamic command word under-matches
+	}
+	if strings.Contains(name, "/") {
+		// a literal executable path (/bin/rm, ./rm) names the verb through
+		// its base (round 13 P1); a path to some OTHER binary folds to a
+		// base that matches no verb, exactly as before
+		name = path.Base(name)
 	}
 	if body, declared := w.funcs[name]; declared {
 		// a call to a function declared in this command runs its body in the
@@ -455,7 +464,9 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		inPlace := false
 		for _, a := range cmd.Args[1:] {
 			if t, lit := zoneWordText(a); lit {
-				if t == "--in-place" || (strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "--") && strings.Contains(strings.TrimPrefix(t, "-"), "i")) {
+				// GNU sed's suffixed form (--in-place=.bak) is in-place too
+				// (round 13 P1)
+				if t == "--in-place" || strings.HasPrefix(t, "--in-place=") || (strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "--") && strings.Contains(strings.TrimPrefix(t, "-"), "i")) {
 					inPlace = true
 				}
 			}
@@ -559,14 +570,26 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	w.zoneCands(zonePathCandidates(cmd.Args[1:]))
 }
 
-// zonePathCandidates drops flags and empty words (an empty quoted word is
-// not a path) from an argument list; the rest are the candidates the coverage
-// check judges.
+// zonePathCandidates collects the candidates an argument list names: plain
+// words, plus a long option's ATTACHED value — `cp --target-directory=zone_dir
+// source.txt` writes into the option's value (round 13 P1). A value that is
+// not a path matches nothing and costs one lookup. Short flags carry no
+// extractable path here (a GNU short option with an attached value, `-tDIR`,
+// stays an accepted under-match).
 func zonePathCandidates(args []*syntax.Word) []string {
 	out := make([]string, 0, len(args))
 	for _, a := range args {
 		t, literal := zoneWordText(a)
-		if !literal || t == "" || strings.HasPrefix(t, "-") {
+		if !literal || t == "" {
+			continue
+		}
+		if strings.HasPrefix(t, "--") {
+			if idx := strings.Index(t, "="); idx >= 0 && idx+1 < len(t) {
+				out = append(out, t[idx+1:])
+			}
+			continue
+		}
+		if strings.HasPrefix(t, "-") {
 			continue
 		}
 		out = append(out, t)
