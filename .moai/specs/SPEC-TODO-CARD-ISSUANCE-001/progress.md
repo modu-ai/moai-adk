@@ -17,6 +17,7 @@ _<pending: the orchestrator appends the audit-ready signal after the independent
 - **t1480 겹침 감시(계획 §D 의존 메모)**: t1480 은 2026-10-05 기준 **picked(미착지)** — M1 시작 전 흡수 불요. M1~M4 진행 중 착지하면 흡수·인용 재판독 또는 병합 충돌 해소는 이 카드 레인의 몫이고, 판정서에 t1480 상태를 기록한다.
 - **흡수**: develop 4964d0796 흡수 병합 6aa475c0b(무충돌 — 내 SPEC 디렉터리와 develop 델타 87파일의 겹침 0 실측).
 - **커밋 구조**: 계획 F.12 따름 — M0 기준선 단독 커밋(순서 증인 1~5 는 병합 전 1회 판독), 마일스톤마다 RED/GREEN, 모든 커밋에 카드 id.
+- **M0 착지(9350dfad5, 2026-10-05)**: baseline/ 15파일 — baseline.md 39 figure 행(GB16@4964d0796·QB10/SB9@큐 스냅숏 11:17·CT4 live)·hub-files.txt 5경로(catalog 133·defaults 70·todo 44·i18n 49·kanban-dispatch 45)·README 재현 절차·스크립트 12개(카드 7종 sha256 전부 일치 + 부록 A 5종 추출). AC-TCI-001 (c)(d)(e) 실측: figure/command/tree 줄 수 39/39/39(≥35 동일), `git ls-files --error-unmatch` RED(exit 1, 커밋 전)→GREEN(exit 0, 커밋 후) 전환 관측. 임계값 재도출: 표시 하한 0.30·크기 상한 P90 1799/22파일·파생 깊이 2·동시 16·허브 컷 win72h≥10. **다음: M1(발행 시점 제시) RED — P2-1(acceptance.md:494 빈 큐 MCP/CLI 일관)도 M1에서 수리.**
 
 ## §E.3 Run-phase Audit-Ready Signal
 
