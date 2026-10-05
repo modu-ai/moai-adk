@@ -200,3 +200,24 @@ func TestOptionModelResidualCompound(t *testing.T) {
 func containsResumeRefusal(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "--resume <session-id>")
 }
+
+// TestRemoteControlPrefixValue (AC-SCV-015's r5 instance, REQ-SCV-015) —
+// `--remote-control-session-name-prefix` is required-value in the measured
+// model (live re-measure, M4), so a legit call whose prefix value literally
+// reads `--resume` passes the validator: the model-known value is consumed
+// even when flag-shaped (the r2 measurement), and the option is never
+// special-cased in the walk — the class lives where enumeration belongs.
+func TestRemoteControlPrefixValue(t *testing.T) {
+	saveActiveClaudeOptionModel(t)
+	activeClaudeOptionModel = claudeOptionModelSnapshot
+
+	if cls := activeClaudeOptionModel["--remote-control-session-name-prefix"]; cls != claudeOptionRequiredValue {
+		t.Fatalf("--remote-control-session-name-prefix classified %d in the snapshot, want required-value", cls)
+	}
+	if err := validateResumeArgs([]string{"--", "--remote-control-session-name-prefix", "--resume"}); err != nil {
+		t.Fatalf("a prefix value that literally reads --resume was falsely refused: %v", err)
+	}
+	if carriesResumeToken([]string{"--name", "lane-3", "--", "--remote-control-session-name-prefix", "--resume"}) {
+		t.Fatal("the guard fired on a model-known prefix value")
+	}
+}

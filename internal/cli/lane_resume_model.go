@@ -79,8 +79,17 @@ var activeClaudeOptionModel = claudeOptionModelSnapshot
 //
 // The snapshot's source-version provenance: every entry below was measured
 // from `claude --help` (Claude Code 2.1.289, 2026-10-04; the same
-// measurement the predecessor's tables carried). REQ-SCV-014 requires the
+// measurement the predecessor's tables carried) and re-measured live in the
+// run phase against the same installed version (2.1.289, 2026-10-05 —
+// /Users/<u>/.local/share/claude/versions/2.1.289, `claude --help` exit 0 in
+// 0.098s): all 43 entries reproduce from the re-measure, and
+// --remote-control-session-name-prefix joins the required-value class from
+// it (card-review round 5, P2① — REQ-SCV-015). REQ-SCV-014 requires the
 // snapshot to keep carrying its source version in these comments.
+//
+// @MX:DEBT: the snapshot fallback may lag claude's option surface — under the compound condition (derivation down + option snapshot-absent + resume-shaped value → validator false refusal; never a silently leaked resume under relaunch)
+// @MX:CEILING: correct while the installed claude's option surface stays within the classes this snapshot measured (2.1.289, re-measured live 2026-10-05); the guard side is unaffected (unknown tokens are judged — fail-closed), and a snapshot gap manifests only as a false guard fire (a restatable launch), a validator pass (claude's own error surfaces at launch), or this compound-condition false refusal
+// @MX:UPGRADE: another r-class round finds a snapshot gap, or claude ships a machine-readable option surface the derivation can consume without parsing help prose
 var claudeOptionModelSnapshot = claudeOptionModel{
 	// Required <value> synopses (2.1.289, measured):
 	"--add-dir": claudeOptionRequiredValue, "--agent": claudeOptionRequiredValue,
@@ -96,8 +105,13 @@ var claudeOptionModelSnapshot = claudeOptionModel{
 	"--name": claudeOptionRequiredValue, "-n": claudeOptionRequiredValue,
 	"--output-format": claudeOptionRequiredValue, "--permission-mode": claudeOptionRequiredValue,
 	"--permission-prompts": claudeOptionRequiredValue, "--plugin-dir": claudeOptionRequiredValue,
-	"--plugin-url": claudeOptionRequiredValue, "--session-id": claudeOptionRequiredValue,
-	"--setting-sources": claudeOptionRequiredValue, "--settings": claudeOptionRequiredValue,
+	"--plugin-url": claudeOptionRequiredValue,
+	// r5 P2①: the measured synopsis is `--remote-control-session-name-prefix
+	// <prefix>` — required-value. Its absence was the r5 false refusal: a
+	// legit call whose prefix value literally reads `--resume` was refused.
+	"--remote-control-session-name-prefix": claudeOptionRequiredValue,
+	"--session-id":                         claudeOptionRequiredValue,
+	"--setting-sources":                    claudeOptionRequiredValue, "--settings": claudeOptionRequiredValue,
 	"--system-prompt": claudeOptionRequiredValue, "--system-prompt-snapshot": claudeOptionRequiredValue,
 	"--tools": claudeOptionRequiredValue,
 
