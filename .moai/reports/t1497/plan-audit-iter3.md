@@ -51,6 +51,8 @@ The finding: registering the hidden `retention-prune` verb breaks `TestHookValid
 
 **CITATION (final)**: `rcpt-1545d502869fd29c3a4accda` — tool `codex_audit`, tree_root this worktree, `created_at: 2026-10-05T15:45:05Z` (post-marker, post-TREE-FINAL), `codex_verdict: pass`, minted through the installed binary's own `recordAuditReceipt` path (native baseBranch surface — the configuration the leader's completing runs used; merge base `d051d5f0`, HEAD `03a9c8a48` reviewed: "no defects requiring repair; 10 SPEC/audit doc changes only; strict lint passes; the final audit hash matches"). Store record read and corroborated by this auditor. This is the delta-3 corroboration receipt; it reviews the final tree and carries no coverage residual.
 
+AUDIT-VERDICT: PASS spec=SPEC-HARNESS-DETACHED-PRUNE-001 receipts=rcpt-1545d502869fd29c3a4accda
+
 ## Defects Found (delta)
 
 None blocking. Carried advisories unchanged: DA-1 (stale "function field" wording in REQ-DP-007 / AC-DP-006), DA-2 (registration-half parent-help mutant), DA-3 (`LEDGER-ACR-J` label unlocatable). One new observation, optional: the M2 one-liner's overlay evidence (the exit-1 message) is gate-measured, not re-executable pre-registration from this lane — the structural verification above (the exclusion map's existing same-class entries) is the corroboration, and the M2 exit gate executes the registration at run-phase.
