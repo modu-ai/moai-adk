@@ -275,6 +275,83 @@ $ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_
 
 No new failures — the family is green at the final HEAD.
 
+### Card-review r2 repairs (leader round 2: classes A–G — commits `a02c94891` + `845273466`)
+
+Leader verdict: FAIL — class-based sweep (t1480 lesson: repairs fix named instances; sweep the
+CLASS). Per-class call-site inventories and dispositions:
+
+**[A] Git path↔pattern interpretation family — call-site inventory (all ls-* / pathspec sites in
+internal/factory):**
+1. `integration_merge_collision.go:46` `ls-tree -r <sha>` — whole-tree listing, NO pathspec →
+   glob interpretation cannot arise. No change.
+2. `integration_merge_collision.go:169` `ls-files -- <path>` — pathspec GLOB; a tracked `a`
+   answered for an ignored `[a]` → FIXED: `:(literal)` pathspec.
+3. `integration_merge_collision.go:181` `clean -nd -x -- <dir>` — same glob exposure on the
+   beneath probe → FIXED: `:(literal)` pathspec.
+- RED tests: `TestR2_A_LiteralPathspecBracketCollisionDetected` (tracked `a` masks ignored
+  `[a]`; RED = missed collision, GREEN = detected + bytes untouched),
+  `TestR2_A_LiteralPathspecBeneathProbe` (literal beneath probe sees the bracket directory's
+  bytes; literal pathspec answers NOTHING for the bracket name).
+- Fresh-text same-class sweep over the r2 diff: the only pathspec consumers in the package are
+  the three sites above (grep `"ls-files"|"ls-tree"|"clean"|pathspec`); no new pathspec text
+  entered without :(literal).
+
+**[B] Policy read timing** — inventory: the wait loop read the policy ONCE at entry and captured
+it into every mutation. FIXED: the enqueue mutation, the bound-decision mutation, and the
+heartbeat-renewal mutation each read `ReadIntegrationWindowPolicy` INSIDE `UpdateIntegrationWindow`
+(a hold written between loop entry and any mutation now governs it). Factory-layer pin:
+`TestR2_B_MutationsRereadPolicyInside` (hold written before the mutation governs it).
+
+**[C] Serialized-section ownership re-verification** — FIXED: a serialized mutation IMMEDIATELY
+before the merge re-verifies holdership (session) and the lease, renews the lease, and refuses
+with the holder codes (14/15) when a `--force` takeover changed ownership mid-step; no merge
+commit exists after the refusal. RED: `TestR2_C_MergeRefusesWhenWindowTakenMidStep` (the
+AfterPrecheck seam force-takes the window; RED = merge proceeded; GREEN = holder-code refusal,
+no merge commit).
+
+**[D] Primary-checkout merge-target refusal** — audited: the verb's integration-worktree
+resolution already refuses when no dedicated tree holds the integration branch (the
+not-provisioned standard factory complete applies, and the parent checkout never holds a branch
+in the fixture shape). Pinned: `TestR2_D_MergeRefusesPrimaryCheckoutTarget` (refusal names the
+provisioning standard).
+
+**[E] Lease config propagation — verb entry inventory:** acquire (had it), merge (had it —
+added in r1 round), status (FIXED: `initWindowLeaseOverride(root)`), release (FIXED: same).
+`TestR2_E_StatusAndReleasePropagateLeaseConfig` drives the REAL config surface
+(`workflow.integration_lock.lease_minutes: 0` in the fixture's workflow.yaml) and asserts both
+the status refresh and the release-path promotion stamp NOTHING with the lease disabled.
+
+**[F] Refusal paths' window return + record saving** — audited every refusal in RunMergeStep:
+causes 1–6 and 9–13 (record invalid, 0-test validate failure, base moved, ancestry, tree,
+landing, collision, card gate, dirty) all route through `releaseWindow`/`postMergeHold`, which
+run `ReleaseIntegrationLock` — its own serialized mutation applies the refresh and WRITES the
+result (queue carried through on re-acquire, r2 P2-1); causes 7/8 hold FIRST then release; the
+r2 class-C recheck releases only the caller's own nothing (foreign/absent release errors are
+swallowed and surfaced, the takeover's window untouched). No window-return gap found in the
+audited paths; the audit itself is the disposition.
+
+**[G] status --json stdout purity + ticket fingerprint** — RED: dropped-ticket lines polluted
+`--json` stdout. FIXED: dropped lines ride STDERR on the JSON path (release-verb precedent);
+the `dropped` array stays in the JSON document. RED: the wait verb's ticket carried an EMPTY
+waiter start. FIXED twice over: the acquire verb fills the fingerprint, and `EnqueueTicket`
+BACKFILLS it from the mutation clock's process identity when a caller leaves it empty (no
+caller-forgotten instance can survive). Tests:
+`TestR2_G_StatusJSONStdoutPurity` (stdout = one parseable document, drop named on stderr),
+`TestR2_G_TicketCarriesWaiterFingerprint` (empty start RED→GREEN via the backfill).
+
+**Final-HEAD family -race (verbatim, env-scrubbed, new runs at HEAD `845273466`):**
+
+```
+$ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_FACTORY_CLEAR_POLICY && go test -race -count=1 ./internal/factory/... -run 'Integration|Merge|Window|Ticket|Acquire|Policy|Collision|Remeasure|Lease|Promoted|Refresh|Enqueue|Hold|Release|Legacy|P1|LiteralPathspec|MutationsReread|MergeRefusesWhenWindow' -timeout 600s
+ok  	github.com/modu-ai/moai-adk/internal/factory	116.332s
+
+$ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_FACTORY_CLEAR_POLICY && go test -race -count=1 ./internal/cli -run 'Integration|Merge|Window|Ticket|Acquire|Policy' -timeout 600s
+ok  	github.com/modu-ai/moai-adk/internal/cli	182.753s
+```
+
+Lint at the same HEAD: 0 issues (factory/cli/homestate/factorylane/config). Builds: native +
+GOOS=windows exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - All 23 REQ implemented (M1-M7); run-mandatory repairs P1/P2/D8/D9/O1-O5 closed with the
