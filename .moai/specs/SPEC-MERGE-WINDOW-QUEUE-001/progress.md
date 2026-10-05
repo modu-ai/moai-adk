@@ -258,3 +258,10 @@ closure names the command, the verbatim output, and the tree.
   required-backend wiring exists in it — that item belongs to
   SPEC-AUDIT-CEILING-002 (card t1500), whose CHANGELOG entry already covers it. The
   t1479 entry omits it rather than asserting an unverified feature.
+- Independent accuracy sweep (post-close): the entry's liveness figures were
+  re-verified against the shipped code — heartbeat 15 s / staleness window 60 s are
+  the constants `WaiterHeartbeatInterval`/`WaiterHeartbeatWindow`; the plan-era
+  "re-entry grace 120 s" figure (Q14, v0.4.0) has NO constant in the shipped code
+  (the v0.5.0 scope reduction removed the re-entry machinery) and was dropped from
+  the entry. Also re-verified: thirteen merge causes (codes 1-13),
+  `IntegrationLeaseDefault` 30 min, `merge --no-ff` of the pinned SHA.
