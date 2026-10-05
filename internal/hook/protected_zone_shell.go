@@ -775,9 +775,12 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		case syntax.AndStmt, syntax.OrStmt: // && and ||
 			w.zoneWalkStmt(cmd.X)
 			afterX := append([]string(nil), w.cwds...)
+			xFuncs := cloneZoneFuncs(w.funcs)
 			w.zoneWalkStmt(cmd.Y)
 			// the right side may be skipped (the left failed under && or
-			// succeeded under ||): the post-left set survives (round 8 P1)
+			// succeeded under ||): the post-left world survives — directories
+			// and function definitions alike (round 15 P1)
+			w.funcs = mergeZoneFuncs(xFuncs, w.funcs)
 			w.cwds = append(w.cwds, afterX...)
 			w.setCwds(w.cwds)
 		default:

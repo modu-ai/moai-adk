@@ -266,6 +266,14 @@ The gate's verdict on the round-13 head failed with 1×P1 (this card) + 6×P2 (f
 
 GREEN: `TestProtectedZone` hook+config (ShellMutation swept 96 — 2 new deny rows), `go build ./...` exit 0, GOOS=linux+windows OK, `golangci-lint` 0 issues, gofmt clean, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
 
+### Repair round 15 — short-circuit function definitions union (2026-10-06)
+
+The gate's verdict on the round-14 head failed with 1×P1 (this card) + 5×P2 (foreign scope, 4 re-flags + 1 new). The P1: `f(){ echo changed > zone_dir/a.md; }; false && f(){ :; }; f` was ALLOWED — the `&&` right side's redefinition REPLACED the registry even though the right side may be skipped. The `&&`/`||` branch now snapshots the post-left registry and merges it back after the right side (the same possible-worlds union the branch joins got in round 14). RED row observed first (allow, matching the verdict).
+
+**P2 5건 — 외부 소관, 라우팅 누적(누적 23건; 4건 재지적)**: `factory_card.go` 자동 힌트 덮음(4번째 재지적)·picked 건너뛰기(재지적)·`factory_bundle.go` 중복 ID(재지적)·`todo.go` --files(재지적)·`todo_issuance.go:244` 탐침 시간 초과 후 git 프로세스 미종료(신규 — 취소 가능한 context 필요). 전부 이 카드 diff에 없는 main 착지 코드.
+
+GREEN: `TestProtectedZone` hook+config (ShellMutation swept 97 — 1 new deny row), `go build ./...` exit 0, GOOS=linux+windows OK, `golangci-lint` 0 issues, gofmt clean, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready

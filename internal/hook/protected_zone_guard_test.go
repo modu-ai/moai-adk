@@ -1101,6 +1101,7 @@ func testZoneShellMutation(t *testing.T) {
 	for _, cmd := range []string{
 		"f(){ rm zone_dir/guard.go; }; if false; then f(){ true; }; fi; f",        // the skipped branch's redefinition must not win (r14)
 		"case x in x) f(){ rm zone_dir/guard.go; } ;; y) f(){ true; } ;; esac; f", // arm worlds union too (r14)
+		"f(){ echo changed > zone_dir/a.md; }; false && f(){ :; }; f",             // the short-circuited right side must not win (r15)
 	} {
 		swept++
 		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
