@@ -70,7 +70,6 @@ func issuanceIDNum(id string) (int, bool) {
 	return n, true
 }
 
-
 // NormalizeRelationPair orders a symmetric pair (smaller numeric id first)
 // and reports whether the input was swapped into canonical order.
 func NormalizeRelationPair(a, b string) (first, second string, swapped bool) {
