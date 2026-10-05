@@ -231,6 +231,7 @@ func TestProtectedZone(t *testing.T) {
 			{"overlay comment-only", false, "# nothing\n", true},
 			{"overlay one category", false, "version: 1\ncategories:\n  probe:\n    paths: [\"docs/\"]\n", true},
 			{"overlay unknown key", false, "version: 1\nexclude: [x]\ncategories: {}\n", false},
+			{"shipped second YAML document", true, "version: 1\ncategories:\n" + zoneSevenCats() + "---\nx: [", false},
 		}
 		for _, c := range cases {
 			swept++
@@ -281,6 +282,26 @@ func TestProtectedZone(t *testing.T) {
 		if exact.Match("a/b.txt/x") || !exact.Match("a/b.txt") || dirE.Match("a") || !dirE.Match("a/x") ||
 			!pre.Match("a/retention_x.go") || pre.Match("a/other") || glob.Match("x_test.go/y") || !glob.Match("x/y_test.go") {
 			t.Errorf("entry kind semantics diverge from the grammar")
+		}
+		// normalization: a dot-prefixed entry is stored cleaned, so a target written
+		// the ordinary way still matches it (merge-gate round 1 P2-1, observed red first)
+		entries, err = ParseProtectedZone([]byte(zoneShipped("  extra_cat:\n    paths: [\"./Docs/\", \"./x/./y/\"]\n")), true, "x.yaml")
+		swept++
+		if err != nil {
+			t.Fatal(err)
+		}
+		if entries[0].Pattern != "docs/" || !entries[0].Match(FoldZoneText("docs/a.txt")) {
+			t.Errorf("dot-prefixed dir entry: pattern=%q, want docs/ matching docs/a.txt", entries[0].Pattern)
+		}
+		if entries[1].Pattern != "x/y/" || !entries[1].Match(FoldZoneText("x/y/a.txt")) {
+			t.Errorf("interior-dot dir entry: pattern=%q, want x/y/ matching x/y/a.txt", entries[1].Pattern)
+		}
+		// a manifest holds exactly one YAML document; anything after the first is rejected
+		// (merge-gate round 1 P2-2, observed red first)
+		_, err = ParseProtectedZone([]byte("version: 1\ncategories:\n  probe:\n    paths: [\"docs/\"]\n---\ngarbage: [\n"), false, "x.yaml")
+		swept++
+		if err == nil {
+			t.Errorf("overlay with a second YAML document: valid, want invalid (err=%v)", err)
 		}
 		zoneSweptFloor(t, swept, 40)
 	})

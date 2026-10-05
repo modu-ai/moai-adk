@@ -189,10 +189,26 @@ func testZoneFileTools(t *testing.T) {
 		swept++
 		d, r = zoneCall(t, hr, "Write", harnessLearnerIdentity, zoneWrite(filepath.Join(linkRoot, "zone_dir", "a.md")))
 		wantZoneDeny(t, "root physical, path via symlink", d, r, harnessLearnerIdentity, "category", "probe_zone")
+		// a dot-dot that crosses the link resolves physically (merge-gate round 1
+		// P1-4, observed red first): lexically the file lands at the root, the
+		// filesystem puts it inside the zone
+		if err := os.MkdirAll(filepath.Join(real, "zone_dir", "sub"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(filepath.Join(real, "zone_dir", "sub"), filepath.Join(real, "deep")); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		hr = zoneTestHandler(t, real)
+		swept++
+		d, r = zoneCall(t, hr, "Write", harnessLearnerIdentity, zoneWrite("deep/../secret.md"))
+		wantZoneDeny(t, "dot-dot through link", d, r, harnessLearnerIdentity, "category", "probe_zone")
+		swept++
+		d, r = zoneCall(t, hr, "Bash", harnessLearnerIdentity, map[string]any{"command": "echo x > deep/../secret.md"})
+		wantZoneDeny(t, "dot-dot through link, shell", d, r, harnessLearnerIdentity, "category", "probe_zone")
 	})
 
-	if swept < 24 {
-		t.Fatalf("swept %d rows, want at least 24", swept)
+	if swept < 26 {
+		t.Fatalf("swept %d rows, want at least 26", swept)
 	}
 	t.Logf("swept=%d", swept)
 }
@@ -739,8 +755,28 @@ func testZoneShellMutation(t *testing.T) {
 	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "MOAI_PROTECTED_ZONE=off rm zone_dir/a.log # override"})
 	wantZoneDeny(t, "assignment prefix and comment", d, r, harnessLearnerIdentity, "category", "probe_zone")
 
-	if swept < 17 {
-		t.Fatalf("swept %d rows, want at least 17", swept)
+	// review-repair rows (merge-gate round 1, observed red first): the directory
+	// itself, inline and repeated redirections, and the segment's cwd
+	for _, cmd := range []string{
+		"rm -rf zone_dir",                  // the directory itself, not only its children
+		"mv zone_dir /tmp/elsewhere",       // moving the directory wholesale
+		"echo x>zone_dir/a.log",            // inline redirection, no space
+		"echo x > docs/a > zone_dir/a.log", // every target, not only the first
+		"rm docs/missing >zone_dir/a.log",  // a redirect target after a mutating verb
+		"cd zone_dir && rm a.log",          // the segment's working directory moved
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+	// control: an absolute candidate after a cd is judged where it lands
+	swept++
+	if d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "cd zone_dir && rm /tmp/elsewhere"}); d == DecisionDeny {
+		t.Errorf("absolute rm after cd: decision=%q reason=%q, want allow", d, r)
+	}
+
+	if swept < 24 {
+		t.Fatalf("swept %d rows, want at least 24", swept)
 	}
 	t.Logf("swept=%d", swept)
 }

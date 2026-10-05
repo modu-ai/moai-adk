@@ -117,10 +117,13 @@ func zonePathCandidates(args []string) []string {
 }
 
 // zoneMutatingWords classifies one tokenized segment: whether it pairs one of
-// the thirteen mutating forms, and the path-like candidates paired with it.
-// Redirections: a bare ">" or ">>" pairs with the next word, a word beginning
-// with one pairs with its remainder; "2>" is not one of the thirteen forms and
-// under-matches.
+// the thirteen mutating forms or a redirection, and the path-like candidates
+// paired with them. Redirections are collected wherever they sit and however
+// they are spaced: every substring between ">" characters of a word is a
+// target ("x>file", "2>file", "a>b>c" all contribute), and a word ending in
+// ">" hands its target to the next word (merge-gate round 1 P1-2). The
+// thirteen forms keep their verb pairing; a verb's segment still contributes
+// its redirection targets alongside the verb's arguments.
 func zoneMutatingWords(words []string) (bool, []string) {
 	i := 0
 	for i < len(words) && isZoneAssignment(words[i]) {
@@ -130,29 +133,65 @@ func zoneMutatingWords(words []string) (bool, []string) {
 		return false, nil
 	}
 	rest := words[i:]
+	mutating := false
+	var cands []string
 	switch {
 	case zoneMutationVerbs[rest[0]]:
-		return true, zonePathCandidates(rest[1:])
+		mutating = true
+		cands = append(cands, zonePathCandidates(rest[1:])...)
 	case rest[0] == "sed" && len(rest) > 1 && strings.HasPrefix(rest[1], "-i"):
-		return true, zonePathCandidates(rest[2:])
+		mutating = true
+		cands = append(cands, zonePathCandidates(rest[2:])...)
 	case rest[0] == "git" && len(rest) > 1 && zoneGitMutating[rest[1]]:
-		return true, zonePathCandidates(rest[2:])
+		mutating = true
+		cands = append(cands, zonePathCandidates(rest[2:])...)
 	}
-	for j := 0; j < len(rest); j++ {
-		w := rest[j]
-		switch {
-		case w == ">" || w == ">>":
-			if j+1 < len(rest) {
-				return true, []string{rest[j+1]}
+	nextIsTarget := false
+	for _, w := range rest {
+		parts := strings.Split(w, ">")
+		if len(parts) > 1 {
+			mutating = true
+			for _, t := range parts[1:] {
+				if t != "" {
+					cands = append(cands, t)
+				}
 			}
-			return true, nil
-		case strings.HasPrefix(w, ">>"):
-			return true, []string{w[2:]}
-		case strings.HasPrefix(w, ">"):
-			return true, []string{w[1:]}
+			nextIsTarget = strings.HasSuffix(w, ">")
+			continue
+		}
+		if nextIsTarget {
+			mutating = true
+			cands = append(cands, w)
+			nextIsTarget = false
 		}
 	}
-	return false, nil
+	return mutating, cands
+}
+
+// zoneNextCwd returns the segment working directory after a cd. Only a plain
+// literal relative argument is tracked — a bare cd, several arguments,
+// substitution, a glob, an option, or an absolute path leaves it untracked
+// (reset to the root), which is the documented under-match (merge-gate round 1
+// P1-3). The dots are cleaned here because the shell's cd already resolved the
+// directory: this is the logical cwd the next segment's relative names
+// concatenate onto, never a pre-clean of a target path.
+func zoneNextCwd(cur string, args []string) string {
+	if len(args) != 1 {
+		return "."
+	}
+	arg := args[0]
+	if arg == "-" || strings.HasPrefix(arg, "-") || strings.ContainsAny(arg, "$*?") || zoneIsAbs(arg) {
+		return "."
+	}
+	next := arg
+	if cur != "." {
+		next = cur + "/" + arg
+	}
+	next = path.Clean(next)
+	if next == ".." || strings.HasPrefix(next, "../") {
+		return "."
+	}
+	return next
 }
 
 // zoneBaselineCovers reports whether a project-relative path is covered by the
@@ -174,21 +213,28 @@ func zoneBaselineCovers(rel string) bool {
 }
 
 // zoneShellCovered judges the normalized forms of one candidate against the
-// zone: the compiled baseline floor first, then the manifest entries. The
-// returned category names the source that covered the candidate.
+// zone: the compiled baseline floor first, then the manifest entries. A bare
+// directory operand names the directory itself, so every form is also tried
+// with a trailing slash — without it, "rm -rf .claude/hooks" would walk past
+// the ".claude/hooks/" entry (merge-gate round 1 P1-1). The returned category
+// names the source that covered the candidate.
 func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad) (string, bool) {
 	for _, form := range forms {
-		if zoneBaselineCovers(form.Display) || zoneBaselineCovers(form.Folded) {
-			return zoneBaselineCategory, true
+		for _, spelling := range []string{form.Display, form.Display + "/", form.Folded, form.Folded + "/"} {
+			if zoneBaselineCovers(spelling) {
+				return zoneBaselineCategory, true
+			}
 		}
 	}
 	if load.State != config.ZoneStateOK {
 		return "", false
 	}
 	for _, form := range forms {
-		for i := range load.Zone.Entries {
-			if load.Zone.Entries[i].Match(form.Folded) {
-				return load.Zone.Entries[i].Category, true
+		for _, folded := range []string{form.Folded, form.Folded + "/"} {
+			for i := range load.Zone.Entries {
+				if load.Zone.Entries[i].Match(folded) {
+					return load.Zone.Entries[i].Category, true
+				}
 			}
 		}
 	}
@@ -214,18 +260,31 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		return ""
 	}
 
-	// First pass: find a mutating form and collect its candidates. No disk
-	// access yet — the cost seam closes before the first manifest read.
+	// Segment pass: a plain literal `cd` moves the working directory the later
+	// segments' relative names resolve against (merge-gate round 1 P1-3); a
+	// mutating form collects its verb arguments and every redirection target.
+	// No disk access yet — the cost seam closes before the first manifest read.
 	var cands []string
 	mutating := false
+	cur := "."
 	for _, seg := range splitShellSegments(command) {
 		words := zoneShellWords(seg.text)
+		if len(words) > 0 && words[0] == "cd" {
+			cur = zoneNextCwd(cur, words[1:])
+			continue
+		}
 		hit, args := zoneMutatingWords(words)
 		if !hit {
 			continue
 		}
 		mutating = true
-		cands = append(cands, args...)
+		for _, a := range args {
+			if cur != "." && !zoneIsAbs(a) {
+				cands = append(cands, cur+"/"+a)
+			} else {
+				cands = append(cands, a)
+			}
+		}
 	}
 	if !mutating {
 		return ""

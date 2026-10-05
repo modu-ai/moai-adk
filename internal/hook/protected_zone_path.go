@@ -89,16 +89,55 @@ func zoneLexicalRel(root, p string) (rel string, inside bool) {
 	return cp[len(prefix):], true
 }
 
-// zoneResolve resolves p through symlinks at its deepest existing ancestor and
-// rejoins the not-yet-existing remainder, so a target that does not exist yet is
-// judged by where it would land. The project root and the target both go through
-// this one function: resolving only one of them is the asymmetry that makes an
-// in-project path look outside it when the root is reached through a symlink.
+// zoneResolve resolves p through symlinks with physical ".." semantics.
+// filepath.EvalSymlinks alone is not enough twice over: it fails when the leaf
+// does not exist yet, and — measured on go1.26 — it collapses a ".." that
+// follows a symlink against the LEXICAL parent, so "deep/../secret.md" with
+// deep -> zone_dir/sub resolves to the project root instead of zone_dir. The
+// shell walks the same path physically: each existing component is resolved as
+// encountered and a ".." pops the resolved prefix. The not-yet-existing tail
+// rejoins onto the deepest resolved prefix and is cleaned there (nothing below
+// a missing component exists for the shell to walk either).
+// (merge-gate round 1 P1-4, observed red first.) p must be absolute — the
+// symlink arm of resolveZoneTarget guarantees it.
 func zoneResolve(p string) (string, bool) {
 	if real, err := filepath.EvalSymlinks(p); err == nil {
 		return real, true
 	}
-	return resolveThroughExistingParent(p)
+	parts := strings.Split(p, "/")
+	resolved := ""
+	if len(parts) > 0 && parts[0] == "" {
+		resolved = "/"
+	}
+	skipped := 0
+	for i := 1; i < len(parts); i++ {
+		part := parts[i]
+		switch part {
+		case "", ".":
+			// repeated or trailing separators, and the dot itself
+		case "..":
+			if skipped == 0 {
+				// ".." over a prefix that never resolved: the path walks
+				// outside anything this function can vouch for
+				return "", false
+			}
+			trimmed := strings.TrimSuffix(resolved, "/")
+			if idx := strings.LastIndex(trimmed, "/"); idx >= 0 {
+				resolved = trimmed[:idx+1]
+			}
+			skipped--
+		default:
+			probe := resolved + part
+			real, err := filepath.EvalSymlinks(probe)
+			if err != nil {
+				// the first missing component starts the unresolved tail
+				return filepath.Join(resolved, strings.Join(parts[i:], "/")), true
+			}
+			resolved = strings.TrimSuffix(real, "/") + "/"
+			skipped++
+		}
+	}
+	return filepath.Clean(resolved), true
 }
 
 // resolveZoneTarget returns the relative forms of raw under root: the lexical form
@@ -108,7 +147,11 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 	abs := zoneSlash(raw)
 	if !zoneIsAbs(abs) {
 		if cwd, err := zoneGetwd(); err == nil && cwd != "" {
-			abs = path.Join(zoneSlash(cwd), abs)
+			// concatenated, never path.Join: the symlink arm must see the raw
+			// segments — Join would collapse "deep/../secret.md" before the
+			// filesystem resolves "deep" (merge-gate round 1 P1-4). The lexical
+			// arm cleans inside zoneLexicalRel, which is its own semantics.
+			abs = zoneSlash(cwd) + "/" + abs
 		}
 	}
 	var forms []zoneForm

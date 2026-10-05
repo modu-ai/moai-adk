@@ -72,7 +72,25 @@ Each mutant applied, its killing check run, the red observed, then reverted; tre
 | v | baseline entry missing from manifest | BaselineCovered | `baseline entry harness ".claude/skills/moai/" … is not covered` (by name, R21) |
 | w | baseline denial gains routing fields | NonRegression | `Write .claude/hooks/moai/x.sh: … want deny with exactly "HARNESS_FROZEN_HOOK_VIOLATION: …"` |
 
+### Repair round 1 — merge-gate review findings (2026-10-05, post-sync)
+
+The turn-end codex review gate — the independent review the card-review stage could not obtain — failed the card diff with 4×P1 and 2×P2, all real and all in the guard this SPEC added. Each finding was adopted as a test row first (RED observed verbatim: `rm -rf zone_dir: allow`, `echo x>zone_dir/a.log: allow`, `cd zone_dir && rm a.log: allow`, `dot-dot through link: allow`, `dot-prefixed dir entry: pattern="./docs/"`, `shipped/overlay second YAML document: valid`), then repaired:
+
+- **P1 dir operand** — `rm -rf .claude/hooks` walked past every entry because the match never tried the directory spelling. `zoneShellCovered` now tries each form with and without a trailing slash against the baseline and the entries.
+- **P1 redirections** — the first redirect target was the only one, an inline `x>file` was invisible, and a verb's segment dropped its own redirections. `zoneMutatingWords` now splits every word on `>` (all substrings are targets, a trailing `>` hands to the next word) and unions the targets with the verb's arguments.
+- **P1 segment cwd** — `cd zone_dir && rm a.log` resolved `a.log` against the hook process cwd. `checkProtectedZoneShell` tracks a plain literal `cd` across segments (`zoneNextCwd`; substitution, glob, option and absolute arguments reset the tracking — the documented under-match) and prefixes the candidates of later segments.
+- **P1 dots after a symlink** — measured, not assumed: `filepath.EvalSymlinks("deep/../secret.md")` with `deep -> zone_dir/sub` collapses the dots against the LEXICAL parent (go1.26), landing at the project root while the shell lands in `zone_dir`. `zoneResolve` now walks the components itself — each existing component symlink-resolved as encountered, a `..` pops the resolved prefix, the missing tail rejoins there. `resolveThroughExistingParent` (shared with `checkFileAccess`) is deliberately untouched: its lexical-`Dir` walk has the same shape of hole for `..`-after-symlink targets, recorded below as residual.
+- **P2 manifest normalization** — an overlay entry `./docs/` loaded valid and protected nothing. `parseZoneEntry` now cleans the body lexically (a cleaned body naming the repository root is rejected like a bare `*`; the raw `..`-segment rejection is unchanged and runs first).
+- **P2 second YAML document** — a valid manifest followed by `---` and malformed text loaded as if the tail did not exist. `ParseProtectedZone` now requires the first document to be the only one.
+
+The shipped and template manifests gain `.moai/config/` under `gate_policy` (both copies, byte-identical): without the parent entry `mv .moai/config docs/config` removed the whole zone directory while every individual entry still matched. The liveness sweep counts move with it (resolved=35 of 35 declared paths entries). `.claude/` is deliberately NOT added wholesale — the identity's legitimate surface (`.claude/agents/harness/`, `.claude/skills/hns-*`) lives there and the controls N4/N5 must stay allowed.
+
+GREEN on the whole family after the repairs: `TestProtectedZone` 10/10 subtests (hook, FileTools swept 26, ShellMutation 24) + config Load/Overlay/Validation (Validation swept 46), `go vet` exit 0, `gofmt` clean. Test rows added: 6 ShellMutation rows + 1 control, 2 symlink rows (file and shell form of the same finding), 2 shipped/overlay multi-document rows, 2 normalization assertions, and the multi-document table row.
+
+Residual from the round, recorded: `resolveThroughExistingParent` (shared with `checkFileAccess`) still resolves a `..`-after-symlink target lexically — the same shape of hole this round fixed for the zone guard, living in code this SPEC's plan deliberately did not touch (the existing outside-project deny). Left for a follow-up card with the leader's routing.
+
 ## §E.3 Run-phase Audit-Ready Signal
+
 
 run_status: audit-ready
 run_complete_at: 2026-10-05

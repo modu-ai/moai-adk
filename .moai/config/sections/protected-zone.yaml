@@ -27,6 +27,7 @@ categories:
       - .claude/settings.local.json
   gate_policy:
     paths:
+      - .moai/config/
       - .moai/config/sections/
       - .moai/config/sections/protected-zone.yaml
       - .moai/config/evaluator-profiles/

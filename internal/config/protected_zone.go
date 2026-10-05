@@ -149,6 +149,10 @@ func ParseProtectedZone(data []byte, shipped bool, source string) ([]ZoneEntry, 
 			return nil, fmt.Errorf("parse %s: %w", source, err)
 		}
 		empty = true
+	} else if err := dec.Decode(&yaml.Node{}); !errors.Is(err, io.EOF) {
+		// a manifest holds exactly one YAML document; a second one, or trailing
+		// malformed text, must not be silently ignored (merge-gate round 1 P2-2)
+		return nil, fmt.Errorf("%s: a manifest holds exactly one YAML document", source)
 	}
 	if empty {
 		if shipped {
@@ -283,6 +287,20 @@ func parseZoneEntry(raw string) (ZoneEntry, error) {
 	if strings.ContainsAny(body, "*?[") {
 		return bad("a wildcard is legal only as the trailing * or inside a **/ basename pattern")
 	}
+	// Normalize the body lexically (merge-gate round 1 P2-1): the target side is
+	// cleaned before comparison, so a declaration written "./docs/" must mean
+	// "docs/" and not silently protect nothing. A cleaned body that names the
+	// repository root covers everything and is rejected like a bare *.
+	dirSlash := strings.HasSuffix(body, "/")
+	dot := strings.TrimPrefix(body, "./")
+	cleaned := path.Clean(dot)
+	if cleaned == "." || cleaned == "/" {
+		return bad("covers the whole repository")
+	}
+	if dirSlash {
+		cleaned += "/"
+	}
+	body = cleaned
 	e.Kind, e.Pattern = kind, FoldZoneText(body)
 	return e, nil
 }
