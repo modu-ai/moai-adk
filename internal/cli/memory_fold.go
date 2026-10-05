@@ -21,7 +21,11 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/spf13/cobra"
 )
@@ -104,11 +108,8 @@ func newMemoryFoldCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			indexPath := filepath.Join(store.Dir, memoryIndexName)
-			if info, statErr := os.Lstat(indexPath); statErr != nil {
-				return fmt.Errorf("memory fold: %s: %w", memoryIndexName, statErr)
-			} else if info.Mode()&os.ModeSymlink != 0 {
-				return fmt.Errorf("memory fold: %s is a symbolic link — refusing", memoryIndexName)
+			if err := foldIndexGuard(store.Dir); err != nil {
+				return err
 			}
 
 			out := cmd.OutOrStdout()
@@ -156,7 +157,7 @@ func newMemoryFoldCmd() *cobra.Command {
 				// below must catch it.
 				memoryFoldSeam.mutateDisk(store.Dir)
 			}
-			if err := applyFold(store.Dir, before, comp); err != nil {
+			if err := applyFold(store.Dir, before, comp, nil); err != nil {
 				return err
 			}
 			plan.Applied = true
@@ -326,8 +327,14 @@ func buildFoldPlan(before taxonomy.StoreSnapshot, cardID string) (foldComputed, 
 // removed lines. Each file is replaced atomically, and every rename is
 // preceded by a comparison of the on-disk bytes against the content the plan
 // was computed from.
-func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed) error {
+func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, writesForbidden func() bool) error {
 	archive := comp.archive
+
+	// An abandoned close-path step (the card-close bound expired) must not
+	// begin a write it already reported as never started.
+	if writesForbidden != nil && writesForbidden() {
+		return fmt.Errorf("memory fold: the step was abandoned — not writing")
+	}
 
 	// A change that landed between the plan and the apply is caught here,
 	// before the archive gains a line (AC-MFB-007 iii).
@@ -351,7 +358,7 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed) err
 		if memoryFoldSeam.failAt == "append" {
 			return fmt.Errorf("memory fold: writing %s failed", archive)
 		}
-		if err := atomicWriteFoldFile(dir, archive, comp.planned[archive], before[archive]); err != nil {
+		if err := atomicWriteFoldFile(dir, archive, comp.planned[archive], before[archive], nil, writesForbidden); err != nil {
 			return err
 		}
 	}
@@ -377,7 +384,12 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed) err
 	if memoryFoldSeam.failAt == "rewrite" {
 		return fmt.Errorf("memory fold: writing %s failed", memoryIndexName)
 	}
-	return atomicWriteFoldFile(dir, memoryIndexName, comp.planned[memoryIndexName], before[memoryIndexName])
+	// The archive is re-verified against its EXPECTED POST-APPLY bytes in
+	// the MEMORY.md write's pre-rename position (guard below): planned equals
+	// before on a retry that appends nothing, so the guard reads the same on
+	// every path (REQ-MFB-004; gate-overlay P1).
+	return atomicWriteFoldFile(dir, memoryIndexName, comp.planned[memoryIndexName], before[memoryIndexName],
+		&foldRenameGuard{name: archive, want: comp.planned[archive]}, writesForbidden)
 }
 
 // checkFoldUnchanged aborts when the on-disk file no longer holds the bytes
@@ -394,11 +406,30 @@ func checkFoldUnchanged(dir, name string, planTime []byte) error {
 	return nil
 }
 
-// atomicWriteFoldFile replaces dir/name with want: the on-disk bytes must
-// still equal planTime (the content re-check), then a temp file in the same
+// foldRenameGuard is an additional pre-rename re-check: guard.name must
+// still hold guard.want on disk when dir/name is about to be replaced. The
+// MEMORY.md rename guards the archive against its EXPECTED POST-APPLY bytes,
+// so a concurrent author who edits the archive while the MEMORY.md temp file
+// is being prepared aborts the rename instead of being published over
+// (REQ-MFB-004; gate-overlay P1 — the line must survive in at least one of
+// the two files).
+type foldRenameGuard struct {
+	name string
+	want []byte
+}
+
+// atomicWriteFoldFile replaces dir/name with want: a temp file in the same
 // directory carries the new content and one rename publishes it, so no
-// reader observes a partial file. No temporary file remains on any path.
-func atomicWriteFoldFile(dir, name string, want, planTime []byte) error {
+// reader observes a partial file. Immediately before the rename the content
+// re-check runs (it is the last step before the rename), and a non-nil
+// guard re-verifies the other file the same way. A non-nil writesForbidden
+// check refuses this write when the close-path step was abandoned while it
+// ran — an expired step begins no new write. No temporary file remains on
+// any path.
+func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRenameGuard, writesForbidden func() bool) error {
+	if writesForbidden != nil && writesForbidden() {
+		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
+	}
 	tmp, err := os.CreateTemp(dir, ".moai-fold-*.tmp")
 	if err != nil {
 		return fmt.Errorf("memory fold: temp file for %s: %w", name, err)
@@ -435,6 +466,14 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte) error {
 	// never overwrites it.
 	if err := checkFoldUnchanged(dir, name, planTime); err != nil {
 		return err
+	}
+	if guard != nil {
+		if err := checkFoldUnchanged(dir, guard.name, guard.want); err != nil {
+			return err
+		}
+	}
+	if writesForbidden != nil && writesForbidden() {
+		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
 	}
 	if err := os.Rename(tmpName, filepath.Join(dir, name)); err != nil {
 		return fmt.Errorf("memory fold: rename %s: %w", name, err)
@@ -675,4 +714,206 @@ func renderFoldPlanJSON(out io.Writer, plan memoryFoldPlan) error {
 	}
 	_, _ = fmt.Fprintln(out, string(data))
 	return nil
+}
+
+// ── Card-close wiring (plan M4, REQ-MFB-007, AC-MFB-008) ──────────────────
+//
+// Every queue close path (todo done, todo auto-done, the todo --auto cycle)
+// offers one bounded, fail-open fold of the closed card's index lines. The
+// step is gated (OD-1/OD-2: compiled default OFF), bounded per card
+// (OD-11), recover-wrapped, and reports at most ONE stderr line — it never
+// blocks, never fails, and never prompts.
+
+// foldIndexGuard refuses a MEMORY.md that is missing or a symbolic link
+// (REQ-MFB-001/§6). Shared by the fold verb and the card-close step.
+func foldIndexGuard(dir string) error {
+	indexPath := filepath.Join(dir, memoryIndexName)
+	if info, err := os.Lstat(indexPath); err != nil {
+		return fmt.Errorf("memory fold: %s: %w", memoryIndexName, err)
+	} else if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("memory fold: %s is a symbolic link — refusing", memoryIndexName)
+	}
+	return nil
+}
+
+// foldOnDoneStderr carries the wiring's single stderr line; a variable so
+// tests can capture it without swapping os.Stderr process-wide.
+var foldOnDoneStderr io.Writer = os.Stderr
+
+// memoryFoldOnDoneBound bounds ONE card's fold-on-done step; a variable so
+// the tests can shorten it. The production value is
+// config.DefaultMemoryFoldOnDoneBound, whose value and ceiling
+// AC-MFB-008 (x) asserts by name.
+var memoryFoldOnDoneBound = config.DefaultMemoryFoldOnDoneBound
+
+// foldClosedCardMemoryFn is the seam the close paths call. Production points
+// it at foldClosedCardMemory; the tests replace it for the
+// disabled-by-construction arm of AC-MFB-008 (i).
+var foldClosedCardMemoryFn = foldClosedCardMemory
+
+// foldOnDoneStepFn is the bounded step body, replaceable so tests can seed a
+// panic inside the recover wrapper (AC-MFB-008 (vi)) without touching a
+// store. The second argument is the abandonment flag of the run that owns
+// the step: once the bound has expired, the step begins no new write.
+var foldOnDoneStepFn = foldOnDoneStep
+
+// foldOnDoneRecorder records the candidate store directories the step
+// resolved and the store files it opened (AC-MFB-008 (v), (viii), (xi)).
+// Production leaves the pointer nil; only the wiring tests set it. The
+// granularity is the wiring's own file operations at this layer — the gate
+// is checked before ANY of them, so a gate-off close records nothing at all.
+type foldOnDoneRecorder struct {
+	mu     sync.Mutex
+	stores []string
+	opens  []string
+}
+
+func (r *foldOnDoneRecorder) storeDir(dir string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.stores = append(r.stores, dir)
+}
+
+func (r *foldOnDoneRecorder) fileOpen(path string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.opens = append(r.opens, path)
+}
+
+func (r *foldOnDoneRecorder) snapshot() (stores, opens []string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.stores...), append([]string(nil), r.opens...)
+}
+
+// memoryFoldOnDoneRec is the active recorder, nil outside the wiring tests.
+var memoryFoldOnDoneRec *foldOnDoneRecorder
+
+// foldOnDoneGateOpen reads config.EnvMemoryFoldOnDone with OD-2's accepted
+// values — "1" and "true", case-insensitively, trimmed; everything else
+// (unset, empty, "0", "false", "yes") is off. The same vocabulary as the
+// repository's existing environment-flag parse (internal/session envTruthy).
+func foldOnDoneGateOpen() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(config.EnvMemoryFoldOnDone))) {
+	case "1", "true":
+		return true
+	}
+	return false
+}
+
+// foldClosedCardMemory folds one closed card's STRONG index lines (REQ-MFB-007).
+// The gate is read FIRST — a closed gate touches no store and opens no file
+// (AC-MFB-008 (viii), plan §J). With the gate open the fold runs on the
+// bounded wait of memoryFoldOnDoneBound: a step that does not finish in time
+// is abandoned with no further write (B14/P11), a panicking step is
+// recovered, and every outcome is reported as at most ONE stderr line.
+func foldClosedCardMemory(cardID string) {
+	if !foldOnDoneGateOpen() {
+		return
+	}
+	// abandoned flips when the bound expires; the running step checks it
+	// before every phase and the write path checks it before every write,
+	// so a step resumed after its deadline cannot begin a write the
+	// abandonment report already promised never to start.
+	var abandoned atomic.Bool
+	done := make(chan foldOnDoneOutcome, 1)
+	go func() {
+		summary, err := func() (summary string, err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("the fold step panicked: %v", r)
+				}
+			}()
+			return foldOnDoneStepFn(cardID, &abandoned)
+		}()
+		done <- foldOnDoneOutcome{summary: summary, err: err}
+	}()
+	select {
+	case out := <-done:
+		foldOnDoneReport(cardID, out)
+	case <-time.After(memoryFoldOnDoneBound):
+		abandoned.Store(true)
+		foldOnDoneReport(cardID, foldOnDoneOutcome{
+			err: fmt.Errorf("abandoned after %s — the store did not answer in time; the step will begin no write", memoryFoldOnDoneBound),
+		})
+	}
+}
+
+// foldOnDoneOutcome is one completed (or recovered) step's report.
+type foldOnDoneOutcome struct {
+	summary string
+	err     error
+}
+
+// foldOnDoneReport emits the wiring's ONE stderr line for the step's
+// outcome: the failure reason, or the success summary naming the store, the
+// archive file and the line count (AC-MFB-008 (ii)). A step with nothing to
+// fold stays silent.
+func foldOnDoneReport(cardID string, out foldOnDoneOutcome) {
+	switch {
+	case out.err != nil:
+		_, _ = fmt.Fprintf(foldOnDoneStderr, "memory fold-on-done: %s: %v\n", cardID, out.err)
+	case out.summary != "":
+		_, _ = fmt.Fprintf(foldOnDoneStderr, "memory fold-on-done: %s\n", out.summary)
+	}
+}
+
+// foldOnDoneStep resolves the one store, folds cardID's lines through the
+// M3 apply path (never a re-implementation), and returns the success summary
+// line. An empty summary means there was nothing to fold. The recorder, when
+// present, sees every candidate directory and every store-file open. The
+// abandoned flag is checked at every phase boundary and handed to the apply
+// path, which refuses each individual write once the bound has expired.
+func foldOnDoneStep(cardID string, abandoned *atomic.Bool) (string, error) {
+	forbidden := func() bool { return abandoned.Load() }
+	if forbidden() {
+		return "", fmt.Errorf("the step was abandoned before it started")
+	}
+	rec := memoryFoldOnDoneRec
+	candidates, err := memoryCandidateStores(resolveProjectDir())
+	if err != nil {
+		return "", err
+	}
+	var chosen *memoryStore
+	for i := range candidates {
+		if rec != nil {
+			rec.storeDir(candidates[i].Dir)
+		}
+		idx := filepath.Join(candidates[i].Dir, memoryIndexName)
+		if info, statErr := os.Stat(idx); statErr == nil && !info.IsDir() {
+			if rec != nil {
+				rec.fileOpen(idx)
+			}
+			chosen = &candidates[i]
+			break
+		}
+	}
+	if chosen == nil {
+		return "", fmt.Errorf("no memory store with %s resolved", memoryIndexName)
+	}
+	if err := foldIndexGuard(chosen.Dir); err != nil {
+		return "", err
+	}
+	if rec != nil {
+		rec.fileOpen(filepath.Join(chosen.Dir, memoryIndexName))
+	}
+	before, err := taxonomy.SnapshotStore(chosen.Dir)
+	if err != nil {
+		return "", err
+	}
+	comp, err := buildFoldPlan(before, cardID)
+	if err != nil {
+		return "", err
+	}
+	if len(comp.plan.Removed) == 0 {
+		return "", nil
+	}
+	if forbidden() {
+		return "", fmt.Errorf("the step was abandoned before its write")
+	}
+	if err := applyFold(chosen.Dir, before, comp, forbidden); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("filed %d line(s) of %s into %s (store: %s)",
+		len(comp.plan.Removed), cardID, comp.archive, chosen.Dir), nil
 }

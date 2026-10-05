@@ -1153,6 +1153,11 @@ func newTodoDoneCmd() *cobra.Command {
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
 			recordFactoryCardState(id, specID, "completed", "card.completed")
+			// The queue write is committed and the lock released: the
+			// card-close memory fold runs outside the store's mutation
+			// window (AC-MFB-008 (iv)), gated, bounded and fail-open
+			// (REQ-MFB-007).
+			foldClosedCardMemoryFn(id)
 			return nil
 		},
 	}
