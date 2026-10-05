@@ -337,7 +337,10 @@ func TestSpecCeilingConfigMatrixM10Witness(t *testing.T) {
 		if _, strictErr := config.LoadHarnessConfig(path); strictErr == nil {
 			t.Error("the strict loader accepted a policy fixture the loose pass calls unreadable — the M10 elimination no longer holds")
 		}
-		_, policyUnreadable := looseReadCeilingPolicy(path)
+		_, ceilingsMalformed, policyUnreadable := looseReadCeilingPolicy(path)
+		if ceilingsMalformed {
+			t.Error("the loose pass reported the ceilings field malformed — the M10 witness fixture must leave the ceilings decodable so the elimination isolates the policy arm")
+		}
 		if !policyUnreadable {
 			t.Error("the loose pass did not report the unreadable policy (auto_delta_rounds as a map) — the M10 witness fixture no longer exercises the unreadable arm")
 		}
