@@ -2,9 +2,11 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
+audit_ready: true
 plan_status: audit-ready
 plan_complete_at: 2026-10-05
 attribution: plan-audit iter2 PASS 0.94 (verdict .moai/reports/t1497/plan-audit-iter2.md, commit fd08d4da8; repair 2d29b0509; codex adversarial enforced-required gate pass, zero findings; audit_receipt absent — measured stale-server gap documented in the verdict appendix, disposition routed to the leader).
+attribution: delta-2 PASS (verdict .moai/reports/t1497/plan-audit-delta-2.md, commit 7d37b0c85; receipt rcpt-e10d81162cc1ac86b41e811c codex_audit pass; final plan-artifact hash as pinned in the delta-2 file).
 
 ## §E.2 Run-phase Evidence
 
