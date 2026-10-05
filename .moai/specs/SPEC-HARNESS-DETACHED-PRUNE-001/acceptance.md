@@ -130,6 +130,43 @@ LEDGER-DP-FORM
         live: LEDGER-DP-C's zero and plan M3's expected zero are absence
         findings, not dead-pattern artifacts.
   tree: d05d1d5f0
+
+LEDGER-DP-GREEN-B
+  (AC-DP-003's GREEN commands, carried in the ledger per the §A rule. The
+  codex-review P2 against the original exit-0-only cell: an exit code alone
+  cannot detect the verb failing to register — the hook dispatcher exits 0
+  on unknown event names — so the registration half keys on the verb's own
+  help LISTING CONTENT and the effect half on the test's prune assertions,
+  never on an exit code alone. Registration keys on the verb-OWN help, not
+  the parent listing, because the verb registers cobra-Hidden (spec D1) and
+  a hidden verb never appears in the parent help.)
+
+  GREEN registration half (M2):
+  cmd:  go run ./cmd/moai hook retention-prune --help
+  expect:  the output is the verb's OWN help — its usage line and Long text
+           carry `retention-prune`; the parent hook help (today's output on
+           an unregistered tree) does not
+  decisive stage, measured red value this tree d05d1d5f0 (unregistered):
+  cmd:  go run ./cmd/moai hook retention-prune --help | grep -c "retention-prune"
+  out:  0
+  exit: 1
+        flips to >= 1 / exit 0 only when M2 registers the verb — the parent
+        help cannot carry the string, so no unrelated change can flip it
+  form note: the decisive stage is a pipe, outside §2.1's single-invocation
+  letter — the LEDGER-ACR-J judgment-held disposition applies (four elements
+  present, re-executing every round); the single-invocation form is the raw
+  command above, readable directly for the missing usage line.
+  tree: d05d1d5f0
+
+  GREEN effect half (M2/M3, count-first):
+  cmd:  go test -list '^(TestDetachedChildPrunes)$' ./internal/harness
+  expect:  lists exactly 1 (LEDGER-DP-D corroborates the name is new)
+  cmd:  go test -run '^(TestDetachedChildPrunes)$' ./internal/harness
+  expect:  exit 0 — the test drives the verb's run function against a temp
+           log seeded with an over-retention entry and asserts the prune's
+           observable effects: the kept-line count shrinks and an archive
+           member (<YYYY-MM>.jsonl.gz) is written; the run function enters
+           through Retention.PruneStaleEntries (spec D5)
 ```
 
 ## §C Acceptance Criteria
@@ -138,7 +175,7 @@ LEDGER-DP-FORM
 |----|-----------|------------------|----------------------------------|----------------|
 | AC-DP-001 | REQ-DP-001 | LEDGER-DP-A (count `2`, exit 0 — the calls exist), LEDGER-DP-B (new tests corroborated absent) | M1: LEDGER-DP-GREEN-A (count-first — `-list` lists exactly the two tests, THEN `-run` exit 0 with tests executed; raw-pipe alternation, syntax control recorded in-ledger); `grep -c "PruneStaleEntries" internal/harness/observer.go` → `0` exit 1; `go test ./internal/harness` exit 0 | release-blocking |
 | AC-DP-002 | REQ-DP-002, REQ-DP-004 | LEDGER-DP-C (gate absent), LEDGER-DP-D, LEDGER-DP-H (test names absent) | M2+M3: `TestMaybeSpawnRetentionPruner`, `TestSpawnGateSuppressesOnFreshStamp`, `TestSpawnFailureFailOpen` exit 0 — gate reads the stamp lock-free once, spawns only on stale-or-absent, suppresses on fresh, and a seam failure returns the error the wrapper logs at exit 0 | release-blocking |
-| AC-DP-003 | REQ-DP-003 | LEDGER-DP-G (verb dies at flag parsing, exit 1), LEDGER-DP-H | M2+M3: `go run ./cmd/moai hook retention-prune --help` exit 0; `TestDetachedChildPrunes` exit 0 — the verb's run function performs a real prune against a temp log and enters through `Retention.PruneStaleEntries` (D5), hidden from `moai hook --help` | release-blocking |
+| AC-DP-003 | REQ-DP-003 | LEDGER-DP-G (verb dies at flag parsing, exit 1), LEDGER-DP-H | M2+M3: LEDGER-DP-GREEN-B — registration half keys on the verb's OWN help LISTING CONTENT (usage line carrying `retention-prune`; an exit code alone is not the gate, and the parent help cannot flip it because the verb registers Hidden — codex P2), effect half is `TestDetachedChildPrunes` exit 0 count-first asserting the prune's observable effects (kept-line shrink + archive member) | release-blocking |
 | AC-DP-004 | REQ-DP-003 (double-check), REQ-DP-005 (orphan harmlessness) | LEDGER-DP-D (`TestDetachedChildDoubleSpawnCollapses` absent) | M3: `TestDetachedChildDoubleSpawnCollapses` exit 0 — two children against one stamp file: the second reads the fresh stamp under the lock (`pruneLocked`, retention.go:187) and exits without a second rewrite; the attempt stamp written before the work (retention.go:195) keeps a killed/orphaned pruner from repeating within the interval | release-blocking |
 | AC-DP-005 | REQ-DP-006 | LEDGER-DP-E (files absent), LEDGER-DP-F (no SysProcAttr anywhere in the package) | M2 files exist; M4: `GOOS=windows GOARCH=amd64 go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go vet ./internal/harness ./internal/cli` exit 0. Windows runtime behavior of the detached child stays documented-unobserved (spec §F F3) | release-blocking (build+vet half); runtime half unobserved-by-declaration |
 | AC-DP-006 | REQ-DP-007 (seam), REQ-DP-002 (wrapper) | LEDGER-DP-C, LEDGER-DP-D, LEDGER-DP-H | M3: the seam is a function field replaced by a recording fake (asserted inside `TestMaybeSpawnRetentionPruner`/`TestSpawnGateSuppressesOnFreshStamp`); no test spawns a real detached child (plan M3 boundary grep: no `exec.Command` invocation from test files on the spawn path); the four handlers reach the gate through ONE wrapper (`TestHarnessObserveGateWiring`) | release-blocking |
