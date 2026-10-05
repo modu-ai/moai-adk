@@ -157,10 +157,12 @@ func undeployedCodexTemplates(projectRoot string, files map[string]manifest.File
 }
 
 // reportUndeployedCodexTemplates reports each .codex/ template path the
-// deployment no longer ships. It never deletes one (REQ-DHR-007).
+// deployment no longer ships. It never deletes one (REQ-DHR-007). Card t1527
+// D4 (repair round): · note lines replace the raw "warning:" prefix — a
+// retained file is an advisory, not a failure.
 func reportUndeployedCodexTemplates(w io.Writer, projectRoot string, files map[string]manifest.FileEntry, deployed map[string]bool) {
 	harness := config.ReadHarness(projectRoot)
 	for _, rel := range undeployedCodexTemplates(projectRoot, files, deployed) {
-		_, _ = fmt.Fprintf(w, "warning: %s is no longer deployed by this update (harness profile %q); left in place — delete it by hand if you no longer need it\n", rel, harness)
+		emitSeverityLine(w, sevNote, resolveTheme(), "%s is no longer deployed by this update (harness profile %q); left in place — delete it by hand if you no longer need it", rel, harness)
 	}
 }

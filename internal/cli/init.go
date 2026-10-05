@@ -194,7 +194,9 @@ func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot s
 		return
 	}
 	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: Codex wiring failed: %v\n", err)
+		// Card t1527 D4 (repair round): ! severity line replaces the raw
+		// "warning:" prefix.
+		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Codex wiring failed: %v", err)
 	}
 }
 
@@ -248,18 +250,18 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 // The write goes through the shared atomic-config seam
 // (provisionMoaiMCPServerEntryAt -> mutateClaudeJSONAtomic), so it inherits the
 // same lock + backup + idempotent-skip behaviour the other entry writers use.
-// Provisioning is best-effort: a failure is returned for the caller's
-// warning collector (card t1527 D5 — it reaches the terminal summary panel
-// instead of dying mid-noise on stderr), so a broken or unwritable config can
-// never fail an init. The user's explicit decline is honored absolutely
-// (C-A-5): default-on is a default, not a mandate.
-func provisionMCPEntryUnlessDeclined(out, errOut io.Writer, projectRoot string, declined bool) error {
+// Provisioning is best-effort: a failure is RETURNED, not printed — the caller
+// records it into the warning collector and the exit summary panel renders it
+// exactly once (card t1527 D5 + repair round: one surface per failure), so a
+// broken or unwritable config can never fail an init. The user's explicit
+// decline is honored absolutely (C-A-5): default-on is a default, not a
+// mandate.
+func provisionMCPEntryUnlessDeclined(out io.Writer, projectRoot string, declined bool) error {
 	if declined {
 		return nil
 	}
 	configPath := filepath.Join(projectRoot, ".mcp.json")
 	if err := provisionMoaiMCPServerEntryAt(configPath); err != nil {
-		emitSeverityLine(errOut, sevErr, resolveTheme(), "MCP server entry provisioning failed: %v", err)
 		return err
 	}
 	_, _ = fmt.Fprintln(out, "Provisioned the moai MCP server entry in .mcp.json (default-on).")
@@ -1005,11 +1007,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	case agentWiringBoth:
 		mcpDeclined = false
 	}
-	// Card t1527 D5: a provisioning failure reaches the warning collector, so
-	// the terminal summary panel carries it instead of a stray mid-noise
-	// stderr line.
-	if mcpErr := provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined); mcpErr != nil {
-		p.Warn("MCP server entry provisioning failed: %v", mcpErr)
+	// Card t1527 D5 (repair round): the failure is recorded ONCE — Collect
+	// skips the immediate printer line so the exit summary panel is the
+	// failure's single surface.
+	if mcpErr := provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), opts.ProjectRoot, mcpDeclined); mcpErr != nil {
+		p.Collect("MCP server entry provisioning failed: " + mcpErr.Error())
 	}
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
@@ -1021,9 +1023,17 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects
-	// the init result. Card t1527 D5: the completion card prints FIRST here —
-	// after every tail step above, so its "initialized" verdict is the last
-	// thing the operator reads before the collected warning summary panel.
+	// the init result. Card t1527 repair round: this runs BEFORE the
+	// completion card, so the card is followed only by the deferred warning
+	// summary panel — the terminal surface by design (REQ-TUX2-013: the
+	// collector re-emits every warning exactly once when the run terminates;
+	// the card's own pointer text reads "see the warning summary on stderr
+	// below", which is only true with the panel last).
+	flushUpdateNotice(p)
+
+	// Card t1527 D5: the completion card prints after every tail step above —
+	// its "initialized" verdict is the last thing the operator reads before
+	// the collected warning summary panel (see the comment above).
 	cardName := opts.ProjectName
 	if cardName == "" {
 		cardName = filepath.Base(opts.ProjectRoot)
@@ -1031,8 +1041,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
 		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count()))
-
-	flushUpdateNotice(p)
 
 	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
 	// lsp/quality/design, ApplyHarness
