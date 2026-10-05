@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "acceptance.md — acceptance criteria matrix"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -34,8 +34,8 @@ green paths only.
 
 | AC | Verifies (primary first) | Binary test | RED now | Green path |
 |---|---|---|---|---|
-| AC-001 | REQ-001, REQ-024 | After `moai init` on a fresh temp HOME: L0 skill dirs exist under `$HOME/.claude/skills/` with bytes matching the per-user manifest hashes | EV-001 | M2 |
-| AC-002 | REQ-001, REQ-022, REQ-024 | After the same init: `$HOME/.agents/skills/<skill>/SKILL.md` + `~/.codex/agents/<name>.toml` exist for the L0 set | EV-002 | M2 |
+| AC-001 | REQ-001, REQ-024 | After `moai init` on a fresh temp HOME: L0 skill dirs exist under `$HOME/.claude/skills/` with bytes matching the per-user manifest hashes; partial-failure-retry arm (round-5 F3): after a first init interrupted mid-install (manifest written, assets missing), a retry init completes exactly the missing assets — present manifest-matching targets untouched (zero rewrite), no duplicate or skipped entry | EV-001 | M2 |
+| AC-002 | REQ-001, REQ-022, REQ-024 | After the same init: `$HOME/.agents/skills/<skill>/SKILL.md` + `~/.codex/agents/<name>.toml` exist for the L0 set; dispatcher-mirror arm (round-5 F2): `$HOME/.agents/skills/moai/SKILL.md` exists (the user-side dispatcher mirror), and loading verification — a project carrying NO project-side skills resolves the dispatcher at that user-folder path (the rebound command-source reference), with no `.agents/skills` under the project | EV-002 | M2+M4 |
 | AC-003 | REQ-006 | Per-user manifest written; every installed path carries sha256 + bundle + per-file moai version | EV-003 | M1+M2 |
 | AC-004 | REQ-012 | Second install run: zero file writes (mtime/hash proof), zero-delta report | EV-004 | M2 |
 | AC-005 | REQ-008 | Shipped-byte change where current hash == manifest hash → update rewrites the tracked file; hash + version refreshed | EV-005 | M3 |
@@ -50,8 +50,8 @@ green paths only.
 | AC-014 | REQ-017 | Boundary grep: init/update paths hold zero plugin marketplace/install invocations | EV-014 | M6 |
 | AC-015 | REQ-018 | Boundary grep + build: zero `DeployModePlugin`/`PluginMirrorPolicy` references; single deploy payload shape | EV-015 | M7 |
 | AC-016 | REQ-019 | Doctor output carries no "Plugin Deployment"/"Plugin Version" carrier rows; each removed or repointed per REQ-019 with the owning requirement cited in the commit (hard delete, P5); the migration advisory row (manual `claude plugin uninstall` step for prior plugin installs, design §4) is present as a doctor informational row | EV-016 | M5+M6 |
-| AC-017 | REQ-003 | Installed L0 user-folder set equals the resolved gate answer (5 agents by name, plan/run/sync surface, factory); the hook payload is project-deployed (AC-012), not user-folder content | EV-017 | M0+M2 |
-| AC-018 | REQ-004 | Via `moai init --bundles` and the `moai bundle` add/remove commands: bundle install adds exactly the bundle's catalog entries, bundle removal takes exactly them, the manifest's bundle list reflects each change, and `moai update` honors the recorded selection — a file of a shipped-but-DESELECTED bundle (the artifact of `moai bundle remove`) is pruned under the selection-based criterion (REQ-009/design §2.3), not kept (iter4 D28 flip-criterion arm) | EV-018 | M0+M2+M3 |
+| AC-017 | REQ-003 | Installed L0 user-folder set equals the resolved gate answer (5 agents by name, plan/run/sync surface, factory) PLUS the enumerated transitive runtime skill closure (design §2.3's eight-skill two-tier table — round-5 F1); executable-flow arm ("default-install-runs", round-5 F1): after a default init (no `--bundles`), the default plan/run/sync flow resolves every skill it invokes — the three command skills, the dispatcher, the agent preload skills, the delegation-injected workflow skills — from the user folders alone, with no project-side dependency; the hook payload is project-deployed (AC-012), not user-folder content | EV-017 | M0+M2 |
+| AC-018 | REQ-004 | Via `moai init --bundles` and the `moai bundle` add/remove commands: bundle install adds exactly the bundle's catalog entries, bundle removal takes exactly them, the manifest's bundle list reflects each change, and `moai update` honors the recorded selection — a file of a shipped-but-DESELECTED bundle (the artifact of `moai bundle remove`) is pruned under the selection-based criterion (REQ-009/design §2.3), not kept (iter4 D28 flip-criterion arm); serialization arm (round-5 F4): two concurrent manifest mutations from different projects (an update and a `moai bundle add`) both survive — the earlier run's selection is not erased by the later writer | EV-018 | M0+M2+M3 |
 | AC-019 | REQ-002 | Profile dirs (`~/.moai/claude-profiles/<name>`) byte-unchanged by install/update (settings isolation) | n/a (Minor) | M2/M3 |
 | AC-020 | REQ-020, REQ-024 | Migration: template-managed project common skills AND agents removed (incl. the plain `moai` dirs); user-modified preserved + reported; user-created untouched; each removal is gated per-asset on its user counterpart being manifest-tracked with a matching hash (REQ-024 upgrade arm) — after the run the user holds the user-folder placement (no neither-state). Three machine-state arms (iter4 D24): (a) manifest ALREADY exists (another project's update / partial install) → missing counterparts installed append-only before their project-side removal, no stall, no neither-state; (b) optional-pack (non-L0) template-managed project asset with no manifest and no `--bundles` → stays project-side, reported, not installed into an unopted bundle, not removed; (c) a user-side write FAILS mid-upgrade (read-only dir fixture) → the failed file's project counterpart is NOT removed (stays + reported), remaining files complete, summary lists the failure | EV-020 | M4 |
 | AC-021 | REQ-021 | Manifest with foreign schema_version → install/refresh proceed, removal refuses with named error; corrupt manifest JSON → removal refuses, corruption reported, rebuild-from-scan offered (doctor informational), never auto-delete; a manifest write carrying unknown fields preserves them (or refuses the write) — under a KNOWN schema AND under a FOREIGN schema_version on an append-only install/refresh write (the older-binary-rewrites-newer-manifest round-trip; iter4 D27 arm) | EV-021 | M3 |
@@ -74,9 +74,19 @@ Explicit Given-When-Then renderings for every Blocker criterion:
   completed `moai init` (REQ-024); When the L0 skill set is compared against
   `$HOME/.claude/skills/`; Then every L0 skill directory exists and its file
   bytes hash (sha256) to the per-user manifest's recorded value.
+  Partial-failure-retry arm (round-5 F3): Given a temp HOME where a first
+  init was interrupted mid-install (manifest written, some L0 assets
+  missing); When `moai init` runs again; Then exactly the missing assets are
+  installed, present manifest-matching targets are not rewritten, and the
+  manifest holds no duplicate or skipped entry.
 - **AC-002** — Given the same fresh-HOME init; When the Codex roots are
   inspected; Then `$HOME/.agents/skills/<skill>/SKILL.md` exists for each L0
   skill and `~/.codex/agents/<name>.toml` exists for each L0 agent.
+  Dispatcher-mirror arm (round-5 F2): `$HOME/.agents/skills/moai/SKILL.md`
+  exists, and Given a project with NO project-side skills (post-M4 shape);
+  When the rebound command-source instruction is resolved; Then it names and
+  finds the dispatcher at the user-folder path, with no `.agents/skills`
+  anywhere under the project.
 - **AC-003** — Given the install of AC-001; When the per-user manifest is
   read; Then every installed path carries sha256, owning bundle, and the moai
   version that installed that file.
@@ -145,6 +155,23 @@ No orphan AC, no uncovered REQ. AC-009's repoint-clean clause and AC-016's
 advisory-row clause verify REQ-014/REQ-019 text directly (iter4 D32 fold —
 the design-mandated behavior they assert now rides its requirement).
 
+Round-5 gate-fix ABSORPTION MAP (no new AC; the 25/25 ceiling holds — the
+auditor verifies this judgment at the gate re-run):
+- F1 "default-install-runs" coverage (L0 transitive closure + executable
+  default flow) → absorbed into **AC-017** (its REQ-003 gained the closure
+  obligation; the matrix row carries the closure set + executable-flow
+  arm).
+- F2 loading-verification coverage (no project-side skills still resolves
+  the user-folder dispatcher) → absorbed into **AC-002** (dispatcher-mirror
+  arm; green path M2 → M2+M4; REQ-001 gained the user-side mirror
+  obligation).
+- F3 partial-failure-retry coverage (init recovers a partial install) →
+  absorbed into **AC-001** (partial-manifest retry arm; REQ-024's init arm
+  re-keyed per-asset-state).
+- F4 cross-run serialization coverage (concurrent mutations lose nothing) →
+  absorbed into **AC-018** (serialization arm; REQ-006 gained the
+  read-modify-write serialization obligation).
+
 ## D.2b Evidence Ledger — RED-now baseline (iter1 repair, D2)
 
 Carrier for the matrix's RED-now cells (verification-completeness.md §2.1):
@@ -177,7 +204,8 @@ measured on the iter1 baseline `b965a3912c0e97ef81aeeea773019e633591e1cd`).
   L0 skills into the user root; the installer (M2) and the init trigger
   (REQ-024) do not exist yet.
 - Green path: M2 — the temp-HOME installer test asserts L0 dirs + byte match
-  and passes, flipping the cell. Proxy note (iter2 D20e): the AC's flip
+  and passes, flipping the cell (the round-5 F3 partial-retry arm is part of
+  that M2 test set). Proxy note (iter2 D20e): the AC's flip
   evidence is that installer test itself — the installer code lands in the
   new user-asset package and the init trigger in `init.go`, not in
   `update.go`, so this grep is a baseline absence probe of the wrong file for
@@ -191,7 +219,10 @@ measured on the iter1 baseline `b965a3912c0e97ef81aeeea773019e633591e1cd`).
 - Why red: the deploy path never resolves the user home (research V1) — the
   four-root installer writing `$HOME/.agents/skills` and `~/.codex/agents`
   does not exist.
-- Green path: M2 — the Codex-roots installer test on a temp HOME flips it.
+- Green path: M2+M4 — the M2 Codex-roots installer test flips the presence
+  half (incl. the round-5 F2 dispatcher-mirror arm); the loading-verification
+  arm (no project-side skills, user-folder dispatcher resolution) lands in
+  M4 with the project slimming.
   Proxy note (iter2 D20e): the flip evidence is that installer test — the
   user-home resolution lands in the new user-asset package, not in
   `deployer.go` (whose project deploy walk is intentionally untouched), so
@@ -383,8 +414,10 @@ measured on the iter1 baseline `b965a3912c0e97ef81aeeea773019e633591e1cd`).
 - Why red: the catalog has no L0 view (sections are `core`,
   `optional_packs`, `harness_generated` under `catalog:`) — the L0 set the
   AC compares against is undefined until M0 resolves D-Q1/D-Q4.
-- Green path: M0+M2 — the catalog drift guard pins the resolved L0 list and
-  the installer test asserts the installed set equals it.
+- Green path: M0+M2 — the catalog drift guards pin the resolved L0 list AND
+  its dependency closure (round-5 F1) and the installer test asserts the
+  installed set equals them, with the executable-flow arm over the default
+  init.
 - Flip expectation: `grep -ci l0 internal/template/catalog.yaml` ≥ 1, exit 0
   (iter4 D30c).
 
@@ -397,7 +430,8 @@ measured on the iter1 baseline `b965a3912c0e97ef81aeeea773019e633591e1cd`).
 - Green path: M0+M2+M3 — the M0 catalog view, M2's `--bundles` installer
   test, and M3's `moai bundle` add/remove + update-honors-selection tests
   flip it (iter4 D30b: matrix row is M0+M2+M3, matching design §2.3's M3
-  assignment of the command and the update honoring).
+  assignment of the command and the update honoring; the round-5 F4
+  serialization arm is part of the M3 test set).
 - Flip expectation: `grep -ci bundle internal/cli/update.go` ≥ 1, exit 0
   (iter4 D30c).
 

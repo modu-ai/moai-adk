@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "research.md — codebase research and source-verification table"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -81,6 +81,23 @@ moai init (default, plugin mode)                 moai init --no-plugin / --all (
 Plugin artifacts (V6) are committed generator outputs at the repo root — retired
 by this SPEC. The card's user-folder model replaces BOTH modes' skill/agent
 placement: user folders for common assets, project for the slim harness only.
+
+### 2b. Round-5 verification (2026-10-05, tree `064ff9960` — the codex gate's four findings verified at source before pinning)
+
+| # | Claim under test (round-5 gate) | Verdict | Measured evidence (this tree @ 064ff9960) |
+|---|---|---|---|
+| W1 | The L0 agents' static preload skills are {moai-foundation-core, moai-workflow-spec, moai-foundation-quality} | CONFIRMED (with one precision) | Agent-body frontmatter: manager-spec `skills: moai-foundation-core, moai-workflow-spec` (templates/.claude/agents/moai/manager-spec.md:13-15); manager-develop `moai-foundation-core` (:14-15); manager-docs `moai-foundation-core` (:13-14); sync-auditor `moai-foundation-quality` (:13-14). PRECISION: plan-auditor carries NO static `skills:` preload — its body states "This agent carries no static `skills:` preload" verbatim (plan-auditor.md:431), with on-demand read-only Skill() invocations only (moai-foundation-quality for TRUST 5 scoring; moai-ref-cross-model-audit for cross-model) — it contributes nothing to the static union; moai-foundation-quality enters via sync-auditor, not plan-auditor. |
+| W2 | The three published command skills invoke the `moai` dispatcher | CONFIRMED | templates/.agents/skills/moai-plan/SKILL.md:9, moai-run:9, moai-sync:9 — each: "Harness without a skill loader (Codex CLI): read `.agents/skills/moai/SKILL.md` (the mirrored dispatcher body)". The reference is PROJECT-relative — gone after M4 (finding 2's premise). |
+| W3 | The default flows' dispatcher routing injects further skills | CONFIRMED | templates/.claude/skills/moai/SKILL.md routing table: plan row :124 "Skills: moai-workflow-spec, moai-foundation-thinking (per delegation.yaml)"; run row :132 "moai-workflow-tdd, moai-workflow-ddd"; sync row :140 "moai-workflow-project"; run-ddd row :188 "moai-workflow-ddd". Tier-2 closure = {moai-foundation-thinking, moai-workflow-tdd, moai-workflow-ddd, moai-workflow-project}. |
+| W4 | The published command skills are GENERATED artifacts with a source-level regeneration pipeline | CONFIRMED | Sources: `.claude/commands/moai/` consumed READ-ONLY by `internal/template/commandemit` (`CommandsRoot: ".claude/commands/moai"`, commandemit.go:51; body verbatim from source, commandemit.go:8). Regeneration: `make commands-emit` = `COMMAND_EMIT_UPDATE=1 go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission` (Makefile:51-52). Drift guard: `commands-emit-check` read-only, rides the `build:` prerequisite chain (Makefile:34, :55-60) — a hand-edited copy fails the next build. |
+| W5 | The AGENTS.md skill-path sentences needing rebind | CONFIRMED (with a numbering correction) | AGENTS.md.tmpl:40-41: "the deployed skill is in `.agents/skills/<name>/SKILL.md` for Codex and `.claude/skills/<name>/SKILL.md` for Claude. The `both` profile installs both paths." — project-relative, needs the user-folder rebind post-M4. CORRECTION: the gate called these "§3" sentences; in AGENTS.md.tmpl §3 is "Worktrees" and the skill-path sentences sit in the unnumbered preamble paragraph — the rebind scope is unchanged, the label was off. |
+
+The eight-skill closure union (W1-W3): `moai`, `moai-foundation-core`,
+`moai-workflow-spec`, `moai-foundation-quality` (tier 1) +
+`moai-foundation-thinking`, `moai-workflow-tdd`, `moai-workflow-ddd`,
+`moai-workflow-project` (tier 2) — all eight measured present under
+`templates/.claude/skills/`. The catalog L0 view enumerates this union
+explicitly (design §2.3); the M0 drift guard pins it to the W1-W2 sources.
 
 ## 3. Gaps (explicitly NOT verified)
 

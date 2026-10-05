@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "design.md — user-folder asset install architecture"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -75,6 +75,16 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
     the file may be the user's — mirrors `rehomeOneSkill`'s skip-and-report and
     `UserCreated` provenance semantics)
   - target absent AND untracked → install
+- Init trigger semantics (round-5 F3): init's install is PER-ASSET-STATE
+  based, not manifest-absence based — for each L0 and opted-in-bundle asset,
+  an absent target, or one whose bytes differ from its manifest record, is
+  (re)installed; a present, manifest-matching target is a no-op. A manifest
+  left by a PARTIAL install therefore does not suppress the run: init
+  completes the shortfall idempotently, sharing the shortfall-append
+  semantics with update's upgrade branch (§2.4 state (a)). The former
+  "no per-user install" wording (v0.4.0 and earlier) left the
+  partial-install retry skipping the missing assets with no project
+  fallback after M4.
 - Per-file failure (permissions, EISDIR, …) → continue + surface in summary
   (fail-open per file, loud at the end; never a silent partial install).
 - Four-root confinement is judged on RESOLVED paths, covering all three
@@ -141,6 +151,15 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
 - Reuses the sha256 hex convention of `catalog.yaml` entries and the triple-hash
   spirit of the project manifest (`internal/manifest/types.go`) minus the parts
   the user scope does not need (no 3-way merge at user scope: collision = skip).
+- Read-modify-write serialization (round-5 F4): manifest mutation is
+  serialized per user — a user-level lock (or equivalent single-writer
+  discipline) spans manifest READ → asset changes → manifest SAVE. Without
+  it, concurrent init/update/`moai bundle` operations from different
+  projects of the same user interleave read-modify-write cycles and the
+  last writer silently erases the earlier run's selections (bundle list
+  entries, file records). The lock is a user-level concern (one lock file
+  beside the manifest under `~/.moai/`), not a project-level one — the
+  concurrent writers are different projects sharing one manifest.
 - Schema-version gate: unknown `schema_version` → refuse manifest-driven
   removal (REQ-021); install/refresh may still proceed in append-only fashion.
 
@@ -174,6 +193,32 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   installs/refreshes L0 + opted-in bundles, prunes per REQ-009 (no longer in
   L0 nor any opted-in bundle). Milestones: the `--bundles` init flag in M2;
   the `moai bundle` command and update honoring in M3.
+- L0 transitive runtime skill closure (round-5 F1): catalog L0 entries
+  carry PER-ENTRY skill dependencies, and the L0 view explicitly enumerates
+  the resolved transitive closure — the installer copies the enumerated
+  set; it never discovers dependencies by walking skill bodies at runtime.
+  The closure, verified against the template sources on tree `064ff9960`
+  (research §2b), is EIGHT skills in two tiers:
+  - Tier 1 — invocation/preload (required for the flow to start): `moai`
+    (the dispatcher — invoked by all three published command skills),
+    `moai-foundation-core` (static preload of manager-spec, manager-develop,
+    manager-docs), `moai-workflow-spec` (static preload of manager-spec),
+    `moai-foundation-quality` (static preload of sync-auditor).
+    plan-auditor declares NO static `skills:` preload (its body says so
+    verbatim) — it contributes nothing to the static union.
+  - Tier 2 — delegation-injected by the default flows' dispatcher routing
+    rows: `moai-foundation-thinking` (plan row), `moai-workflow-tdd` and
+    `moai-workflow-ddd` (run rows), `moai-workflow-project` (sync row).
+  A catalog drift guard pins this enumeration to its sources — the agent
+  frontmatter `skills:` unions, the dispatcher's routing-table Skills
+  lines, and the command skills' dispatcher references — so the closure
+  cannot rot silently (the same drift-guard pattern as the L0 list guard).
+- User-side dispatcher mirror (round-5 F2): the Codex skill root
+  `$HOME/.agents/skills/` carries `moai/SKILL.md` — the dispatcher mirror
+  the published command skills reference — the user-folder successor of the
+  retired project-side mirror; without it a post-M4 Codex CLI harness
+  cannot resolve the `read .agents/skills/moai/SKILL.md` instruction, which
+  is why the reference itself is also rebound at source (§2.5).
 
 ### 2.4 `moai update` integration
 
@@ -236,6 +281,23 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   three via L0 (D-Q4), the remaining fourteen via the D-Q5 re-bundling (§2.3)
   — so AC-011's `no .agents/skills/moai*` placement ban holds unchanged over
   the post-M4 project tree.
+- Dispatcher reference rebind at SOURCE level (round-5 F2): the published
+  command skills are GENERATED artifacts — the command sources under
+  `.claude/commands/moai/` are consumed READ-ONLY by the
+  `internal/template/commandemit` emitter (`CommandsRoot:
+  ".claude/commands/moai"`, commandemit.go:51), whose golden-pinned output
+  is the committed `templates/.agents/skills/moai-<command>/SKILL.md` set;
+  the project-relative `read .agents/skills/moai/SKILL.md` instruction
+  (moai-plan/moai-run/moai-sync SKILL.md:9) is therefore fixed in the
+  COMMAND SOURCES (to the user-folder path `~/.agents/skills/moai/
+  SKILL.md`) and the copies are regenerated with `make commands-emit` —
+  never hand-edited; the read-only drift check `commands-emit-check` rides
+  the `build:` prerequisite chain (Makefile:34, :51-60) and would reject a
+  hand-edited copy at the next build. The AGENTS.md skill-path sentences
+  (AGENTS.md.tmpl:40-41 — "the deployed skill is in `.agents/skills/<name>/
+  SKILL.md` for Codex and `.claude/skills/<name>/SKILL.md` for Claude")
+  rebind the same way at source: post-M4 the Codex sentence names the
+  user-folder dispatcher path.
 - Migration of EXISTING projects (REQ-020): update classifies current
   project-local `moai-*` skills/agents via the provenance classes —
   `template_managed` → removable (offer + apply), `user_modified` → preserved

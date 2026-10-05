@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "plan.md — implementation plan"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -96,10 +96,15 @@ L0 core (plan/run/sync surface — the moai-plan/moai-run/moai-sync published
 command skills per D-Q4; the five core agents per D-Q1; hook payload,
 factory) and opt-in bundles (the six optional packs stand; current-`core`
 remainders re-bundle by theme per D-Q5; the published command-skill set
-folds into the catalog view — iter4 D29). Add a catalog drift guard pinning
-the L0 list to the resolved gate answer. Reclassify current-`core` entries
-that are not L0 into bundles. Priority: High. Evidence: catalog loader tests
-+ drift guard.
+folds into the catalog view — iter4 D29). Catalog entries carry per-entry
+skill dependencies, and the L0 view explicitly enumerates the transitive
+runtime skill closure (design §2.3's eight-skill two-tier table — round-5
+F1). Add a catalog drift guard pinning the L0 list AND its dependency
+closure to the sources (agent frontmatter `skills:` unions, the dispatcher
+routing-table Skills lines, the command skills' dispatcher references).
+Reclassify current-`core` entries that are not L0 into bundles. Priority:
+High. Evidence: catalog loader tests + drift guards (L0 list + dependency
+closure).
 
 ### M1 — Per-user manifest subsystem (BLOCKING gate: D-Q2 — resolved: ~/.moai/user-assets.json)
 Implement the per-user manifest at `~/.moai/user-assets.json` (D-Q2): schema
@@ -119,15 +124,21 @@ skip-and-report (REQ-010), per-file failure isolation (REQ-013), idempotency
 (REQ-012), summary counts (REQ-011 groundwork), symlink-resolved four-root
 confinement (C2 — resolved-path judgment, not the project-side lexical check;
 AC-025, incl. the symlinked-root and leaf-symlink arms). Wire `moai init` as
-the first-install trigger (REQ-024: install L0 + opted-in bundles when no
-per-user manifest exists), with `--bundles <name,...>` setting the initial
-opt-in selection recorded in the manifest (REQ-004 selection surface, iter2
-D18). Claude roots and Codex
+the first-install trigger with PER-ASSET-STATE judgment (REQ-024, round-5
+F3: absent/changed targets install, present manifest-matching targets
+no-op; a manifest left by a partial install does not suppress the run —
+init completes the shortfall idempotently), with `--bundles <name,...>`
+setting the initial opt-in selection recorded in the manifest (REQ-004
+selection surface, iter2 D18). The installer resolves L0's transitive
+dependency closure from the catalog's explicit enumeration (design §2.3)
+and writes the user-side dispatcher mirror `$HOME/.agents/skills/moai/`
+(round-5 F2). Claude roots and Codex
 roots, agents included (REQ-022). No profile provisioning ships (D-Q3 closed:
 P6 declared limitation). Priority: High. Evidence: table-driven installer
 tests on temp HOMEs (collision, failure, idempotency, both harnesses,
 confinement refusal incl. the parent-symlink, symlinked-root, and
-leaf-symlink sentinels).
+leaf-symlink sentinels; the partial-manifest retry case; the dependency-
+closure set landing; the dispatcher mirror).
 
 ### M3 — `moai update` user-asset phase
 Wire the update flow: refresh (REQ-008 — only when the file's current hash
@@ -146,8 +157,11 @@ counterpart write leaves its project file un-removed; a machine with no
 manifest and no prior-model assets gets the advisory — iter4 D24), the
 `moai bundle add|remove` command adjusting the manifest's bundle list and
 applying exactly that bundle's catalog entries (REQ-004, iter2 D18),
-ordering before the project phase, no regression of the existing
-global-settings cleanup. Priority: High.
+user-level serialization of manifest read-modify-write (REQ-006, round-5
+F4 — a lock or equivalent spanning read → asset changes → save, so
+concurrent init/update/bundle runs from different projects cannot lose one
+another's writes), ordering before the project phase, no regression of the
+existing global-settings cleanup. Priority: High.
 Evidence: update-flow tests with temp HOME + project fixture, incl. the
 upgrade cases (prior-model project + no manifest → install precedes the
 migration removal in the same run; existing-manifest second project;
@@ -159,7 +173,14 @@ Project deploy stops emitting common skills/agents (REQ-005); the payload
 keeps settings, AGENTS.md/CLAUDE.md, lock file, hooks, `.mcp.json` (always
 with the moai entry again), output-styles, rules, command wrappers (non-skill
 command files only — the 17 published Codex command skills move user-side
-per D-Q4/D-Q5 and design §2.5, iter4 D29). Migration
+per D-Q4/D-Q5 and design §2.5, iter4 D29). Dispatcher reference rebind at
+SOURCE level (round-5 F2): edit the command sources `.claude/commands/
+moai/{plan,run,sync}*.md` to the user-folder dispatcher path and regenerate
+the published copies with `make commands-emit` (the committed
+templates/.agents/skills copies are commandemit outputs — never
+hand-edited; `commands-emit-check` rides the build chain and rejects a
+hand-edited copy); rebind the AGENTS.md.tmpl:40-41 skill-path sentences to
+the user folders in the same change. Migration
 for existing projects per REQ-020 (provenance-classified removal/preservation
 with reports; each removal is gated per-asset on its user counterpart being
 manifest-tracked with a matching hash, per REQ-024's upgrade arm — iter4
@@ -240,6 +261,9 @@ Priority: Medium. Evidence: the M8 verification matrix in progress.md §E.2.
 - Deleting the plugin golden tests in a later commit than the generator
   (C5: same change).
 - Silently absorbing `user_modified` project files during migration.
+- Hand-editing a generated published command skill (templates/.agents/
+  skills/moai-*/SKILL.md are `commandemit` outputs — round-5 F2: edit the
+  command source under `.claude/commands/moai/` and run `make commands-emit`).
 
 ## H. Cross-References
 

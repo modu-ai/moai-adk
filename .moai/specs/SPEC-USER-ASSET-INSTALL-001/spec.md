@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -77,6 +77,28 @@ related_specs: [SPEC-PLUGIN-MARKETPLACE-001, SPEC-INIT-SHRINK-001, SPEC-CODEX-CO
   stand + theme re-bundle (leader default, operator-contestable). Baseline
   re-pinned post-absorption: 6643c7bba → 51976e651 (develop a158b4b5f
   absorbed; load-bearing pins re-verified holding on this tree).
+- 2026-10-05: v0.5.0 round-5 gate-fix round (card t1509; the codex review
+  gate's four findings, operator-authorized disposition (i) before the gate
+  re-run). F1 — L0's transitive runtime skill dependencies enumerated in the
+  catalog L0 view (REQ-003/REQ-004, design §2.3 closure table + drift guard,
+  AC-017 executable-flow arm "default-install-runs"); the closure verified
+  against the agent bodies and dispatcher routing, not transcribed (manager-
+  spec/develop/docs preload moai-foundation-core, manager-spec also
+  moai-workflow-spec, sync-auditor moai-foundation-quality, plan-auditor
+  declares NO static preload; the dispatcher `moai` is invoked by all three
+  command skills; plan/run/sync delegation rows inject moai-foundation-
+  thinking, moai-workflow-tdd/dd, moai-workflow-project). F2 — Codex
+  dispatcher references rebind user-side at SOURCE level (REQ-001: the
+  user-side dispatcher mirror `$HOME/.agents/skills/moai/`; design §2.5:
+  the published command skills are GENERATED — sources
+  `.claude/commands/moai/`, emitter `internal/template/commandemit`,
+  regeneration `make commands-emit`, drift guard `commands-emit-check` in
+  the build chain; AGENTS.md.tmpl skill-path sentences rebind; AC-002
+  loading arm). F3 — init's trigger re-keyed per-asset-state (REQ-024,
+  design §2.1, AC-001 partial-manifest retry arm). F4 — manifest
+  read-modify-write serialized per user (REQ-006, design §2.2, AC-018
+  concurrent arm). No new REQ (zero-new-REQ holds); all new verification
+  absorbed into AC-001/002/017/018 (25/25 ceiling holds).
 
 ## 1. Background and Premise
 
@@ -90,7 +112,9 @@ Projects keep only what is project-scoped: default settings, AGENTS.md, the
 project lock file, and the project-only harness payload. The operator has
 further decided (D3) that the L0 core bundle — installed for every user by
 `moai init` — contains the plan/run/sync workflow surface, five core agents,
-the hook payload, and the factory skill set (multi-lane operation); everything
+the hook payload, and the factory skill set (multi-lane operation), together
+with L0's transitive runtime skill dependencies (the dispatcher and the
+preload/delegation skills, enumerated in the catalog view); everything
 else ships as opt-in bundles. L0's hook payload constituent deploys with the
 project payload (REQ-005), never as a user-folder write (REQ-003).
 
@@ -139,7 +163,12 @@ not re-opened during run phase):
 - REQ-001: The system shall install common skills and agents as plain file
   copies into per-user folders — Claude: `~/.claude/skills` and
   `~/.claude/agents`; Codex: `$HOME/.agents/skills` and `~/.codex/agents` —
-  with no plugin or marketplace carrier of any kind.
+  with no plugin or marketplace carrier of any kind. The Codex skill root
+  carries the user-side dispatcher mirror (`$HOME/.agents/skills/moai/`)
+  that the published command skills reference — the user-folder successor
+  of the retired project-side mirror (round-5 F2); the published command
+  sources reference user-folder paths, regenerated at source level per
+  design §2.5 and never hand-edited.
 - REQ-002: The system shall keep per-profile settings folders per-profile: a
   `CLAUDE_CONFIG_DIR` profile directory holds its own settings and is never a
   target of the shared user-asset install.
@@ -149,12 +178,21 @@ not re-opened during run phase):
   manager-docs, plan-auditor, sync-auditor — D-Q1), the hook payload, and
   the factory skill set; the hook payload deploys with the project payload
   (REQ-005) and is never a user-folder write target — the four roots of C2
-  carry no hook destination.
+  carry no hook destination. L0's content includes its TRANSITIVE runtime
+  skill dependencies, explicitly enumerated in the catalog's L0 view — the
+  `moai` dispatcher skill the three command skills invoke, the agents'
+  preload skills, and the default flows' delegation-injected workflow
+  skills (design §2.3 closure table) — so the default plan/run/sync flow
+  loads everything it calls from the installed set alone (round-5 F1,
+  "default-install-runs").
 - REQ-004: The system shall ship every common asset outside L0 as an opt-in
   bundle; a bundle is installed or removed as a unit, bundle membership is
-  declared in the shipped catalog, the opt-in selection is recorded in the
-  per-user manifest — set by `moai init --bundles` and adjusted by `moai
-  bundle add|remove` — and `moai update` honors the recorded selection.
+  declared in the shipped catalog — entries carrying their skill
+  dependencies, so the installer resolves L0's transitive closure from the
+  catalog's explicit enumeration, never by discovering dependencies at
+  runtime (round-5 F1) — the opt-in selection is recorded in the per-user
+  manifest — set by `moai init --bundles` and adjusted by `moai bundle
+  add|remove` — and `moai update` honors the recorded selection.
 - REQ-005: `moai init` shall deploy to the project only the default settings,
   AGENTS.md, the project lock file, and the project-only harness payload
   (hooks and `.mcp.json` included); it shall not copy any common skill or
@@ -165,6 +203,10 @@ not re-opened during run phase):
 - REQ-006: The system shall maintain a per-user manifest recording every
   user-folder file it installed, carrying the sha256 hash of the installed
   bytes, the owning bundle, and the moai version that installed it.
+  Manifest read-modify-write is serialized per user — a user-level lock (or
+  equivalent) spans manifest read → asset changes → manifest save — so
+  concurrent init/update/bundle operations from different projects cannot
+  lose one another's writes (round-5 F4).
 - REQ-007: The user-asset install shall operate offline: the binary carries
   every asset it installs, and no network access is part of the install,
   refresh, or removal path.
@@ -268,9 +310,13 @@ not re-opened during run phase):
 
 ### First-install trigger
 
-- REQ-024: When `moai init` runs on a machine that has no per-user install,
-  the system shall install the L0 core bundle and every opted-in bundle into
-  the user folders before the run reports success. When `moai update` runs
+- REQ-024: When `moai init` runs, the system shall ensure every L0 and
+  opted-in-bundle asset is present user-side before the run reports
+  success — the judgment is PER-ASSET-STATE (an absent or changed target is
+  installed; a present, manifest-matching target is a no-op), so a manifest
+  left by a PARTIAL install does not suppress the run: init completes the
+  shortfall idempotently, sharing the shortfall-append semantics with the
+  update upgrade arm below (round-5 F3). When `moai update` runs
   against a project carrying prior-model common skills or agents (the
   REQ-020 upgrade population — init ran under the pre-SPEC model), the run
   shall confirm every user counterpart REQ-020 will remove is present

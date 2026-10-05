@@ -114,6 +114,25 @@ author: manager-spec
   load-bearing pins re-verified holding; the one anchor drift —
   `inspectSkillMirror` comment `:425` — touches no live citation, the func
   line `:429` unchanged, re-measured this run).
+- v0.5.0 round-5 gate-fix round (2026-10-05; the codex review gate's four
+  findings, operator-authorized disposition (i), artifacts frozen at HEAD
+  064ff9960): F1 — L0's transitive runtime skill closure enumerated in the
+  catalog L0 view (REQ-003/REQ-004, design §2.3 eight-skill two-tier table
+  + M0 drift guard over the sources; verified at source, not transcribed —
+  plan-auditor contributes NOTHING to the static preload union, its body
+  says so; research §2b W1-W3); "default-install-runs" absorbed into
+  AC-017. F2 — dispatcher references rebind at SOURCE level (REQ-001
+  user-side mirror `$HOME/.agents/skills/moai/`; design §2.5: sources
+  `.claude/commands/moai/` → emitter `internal/template/commandemit`
+  (CommandsRoot, commandemit.go:51) → `make commands-emit`, drift guard
+  `commands-emit-check` in the build chain, Makefile:34/:51-60;
+  AGENTS.md.tmpl:40-41 rebind — the gate's "§3" label corrected, the
+  sentences sit in the unnumbered preamble); loading verification absorbed
+  into AC-002 (green path M2+M4). F3 — init re-keyed per-asset-state
+  (REQ-024, design §2.1); partial-failure-retry absorbed into AC-001. F4 —
+  manifest read-modify-write serialized per user (REQ-006, design §2.2);
+  cross-run coverage absorbed into AC-018. Absorption map written into
+  acceptance §D.2; no new REQ, 25/25 AC ceiling holds.
 
 ## §E.2 Run-phase Evidence
 
