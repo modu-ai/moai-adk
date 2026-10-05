@@ -304,30 +304,113 @@ func ReadIntegrationLock(projectRoot string) (*IntegrationLock, error) {
 // caller could not resolve one, and the conservative reading of that — live
 // until released — is Stale()'s.
 func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool) (replaced *IntegrationLock, err error) {
+	return AcquireIntegrationWindow(projectRoot, want, force, nil)
+}
+
+// AcquireWindowOptions carries the merge-window queue's extensions to the
+// acquire decision (card t1479). A nil options is the pre-queue behavior —
+// AcquireIntegrationLock passes nil, which is why no pre-queue caller
+// changes.
+type AcquireWindowOptions struct {
+	// ViaWait marks a --wait acquire: REQ-MWQ-011 refuses a no-wait acquire
+	// while a live ticket is queued, and REQ-MWQ-012 refuses it under hold.
+	ViaWait bool
+	// LeaseDuration stamps the holder's lease (REQ-MWQ-008). Zero means the
+	// shipped default; a NEGATIVE value disables the lease entirely (the
+	// configured-zero reading — StampLease clears the stamp).
+	LeaseDuration time.Duration
+	// Probe overrides the liveness seam; nil is the production probe.
+	Probe WindowProcProbe
+}
+
+func (o *AcquireWindowOptions) lease() time.Duration {
+	if o == nil || o.LeaseDuration == 0 {
+		return IntegrationLeaseDefault
+	}
+	return o.LeaseDuration
+}
+
+func (o *AcquireWindowOptions) probe() WindowProcProbe {
+	if o == nil || o.Probe.OwnerAlive == nil {
+		return DefaultWindowProcProbe()
+	}
+	return o.Probe
+}
+
+// ErrIntegrationWindowHold is returned by AcquireIntegrationWindow when the
+// window policy is hold (REQ-MWQ-012): a no-wait acquire refuses naming the
+// reason, and a --wait acquire is told to enqueue. The reason text travels
+// in the error's message.
+var ErrIntegrationWindowHold = errors.New("release integration window policy is hold")
+
+// IsIntegrationWindowHold reports whether err is the hold sentinel.
+func IsIntegrationWindowHold(err error) bool { return errors.Is(err, ErrIntegrationWindowHold) }
+
+// AcquireIntegrationWindow is the queue-aware acquire (card t1479): inside
+// the one mutation it applies the liveness refresh (drops + promotion), then
+// decides against the refreshed record. The holder refusals keep their
+// pre-queue byte shape (REQ-MWQ-010): the refresh runs FIRST, so a record it
+// changes is already written back before the refusal formats, and a record
+// it does not change formats the refusal exactly as before.
+func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bool, opts *AcquireWindowOptions) (replaced *IntegrationLock, err error) {
 	if want.SessionID == "" {
 		return nil, errors.New("integration lock: session id is required")
+	}
+	viaWait, lease, probe := false, opts.lease(), opts.probe()
+	if opts != nil {
+		viaWait = opts.ViaWait
 	}
 	path := integrationLockPath(projectRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("integration lock: %w", err)
 	}
 
-	// The read → decide → write sequence runs inside the mutation lock, so at
-	// most one process at a time is inside it for a given project root
-	// (integration_lock_mutation.go). The READ is INSIDE the section, not
-	// duplicated outside it: a caller serialized behind another must decide
-	// against the state the previous mutation published, never against a read
-	// taken before the wait.
 	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
 		current, readErr := ReadIntegrationLock(projectRoot)
 		if readErr != nil && !force {
 			return readErr
 		}
+		policy, policyErr := ReadIntegrationWindowPolicy(projectRoot)
+		if policyErr != nil {
+			return policyErr
+		}
+		// The queue refresh every mutation applies (REQ-MWQ-003 drops,
+		// REQ-MWQ-006/007 promotion) — the same serialized mutation the
+		// decision below runs in, which is the ordering REQ-MWQ-002 asks
+		// the enqueue to decide inside.
+		RefreshWindow(current, policy, probe, WindowClock(), lease)
+
+		// REQ-MWQ-012: under hold, a no-wait acquire refuses naming the
+		// reason; a --wait acquire is the enqueuing path and comes back to
+		// the verb for its queue entry.
+		if policy.Policy == PolicyHold && !viaWait && (!current.Held() || current.SessionID != want.SessionID) {
+			return fmt.Errorf("%w: held by policy (%s)", ErrIntegrationWindowHold, policy.Reason)
+		}
+		// REQ-MWQ-011: the window is not granted to a no-wait acquire while
+		// a live ticket is queued — the queue decides first, always. --force
+		// is the recorded exception: the forcer takes the window and the
+		// queue order survives it.
+		if !viaWait && !force && len(current.Queue) > 0 && (!current.Held() || current.SessionID != want.SessionID) {
+			return fmt.Errorf("%w: %s (pid %d) since %s on %s — %d live ticket(s) queued; acquire --wait enqueues behind them",
+				ErrIntegrationLockHeld, current.holderLabel(), current.PID, current.AcquiredAt, current.Branch, len(current.Queue))
+		}
+
 		if current.Held() && current.SessionID != want.SessionID {
 			switch {
 			case force:
+				// The recorded --force seizure (pre-queue shape kept): the
+				// queue order survives untouched (REQ-MWQ-011) and the
+				// displaced holder is recorded.
+				want.Queue = current.Queue
+				displaced := *current
+				want.Displaced = &displaced
+				want.DisplacedReason = fmt.Sprintf("taken by force from %s at %s", displaced.SessionID, WindowClock().Format(time.RFC3339))
 				replaced = current
 			case current.Stale():
+				// The stale takeover. After the refresh above, a stale
+				// holder with queued tickets was already replaced by the
+				// first ticket's promotion, so what remains here is the
+				// queue-less shape — the pre-queue takeover, unchanged.
 				replaced = current
 			default:
 				return fmt.Errorf("%w: %s (pid %d) since %s on %s",
@@ -338,9 +421,10 @@ func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool
 		if want.AcquiredAt == "" {
 			want.AcquiredAt = time.Now().UTC().Format(time.RFC3339)
 		}
-		// Between the decision and the write — the exact window this file's
-		// serialization discipline is about. Nil in production; see the hook's
-		// declaration for why the guard is load-bearing rather than defensive.
+		if want.LeaseExpiresAt == "" {
+			// REQ-MWQ-008: every acquire stamps the holder's lease.
+			StampLease(&want, WindowClock(), lease)
+		}
 		if integrationLockMutationTestHook != nil {
 			integrationLockMutationTestHook()
 		}
@@ -393,11 +477,6 @@ func (l *IntegrationLock) releasableBy(sessionID string, callerOwnerPID int) boo
 // force releases a foreign window, for the same wedged-holder reason acquire
 // carries it.
 func ReleaseIntegrationLock(projectRoot, sessionID string, callerOwnerPID int, force bool) (released *IntegrationLock, err error) {
-	// Same critical section as acquire, for the same reason: read → holder
-	// check → remove is a read-modify-write too. Every sentinel and every
-	// message below is byte-identical to what it was before the section
-	// existed — this changes WHEN mutations interleave, never WHAT a given
-	// single-threaded call decides or says.
 	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
 		current, readErr := ReadIntegrationLock(projectRoot)
 		if readErr != nil && !force {
@@ -408,6 +487,29 @@ func ReleaseIntegrationLock(projectRoot, sessionID string, callerOwnerPID int, f
 		}
 		if !current.releasableBy(sessionID, callerOwnerPID) && !force {
 			return fmt.Errorf("%w: %s (pid %d) holds it", ErrIntegrationLockForeign, current.holderLabel(), current.PID)
+		}
+		// The queue-aware release (card t1479, REQ-MWQ-006/007): with live
+		// tickets queued the record SURVIVES the release — the holder is
+		// cleared first (this IS the release), and then the same mutation
+		// promotes the first live ticket while the policy is open; under
+		// hold the window is left without a holder with the queue intact.
+		// Without a queue the pre-queue shape stands: the record file is
+		// removed, byte-for-byte as before.
+		if len(current.Queue) > 0 {
+			// The caller's answer names the holder it released, not the one
+			// the promotion put in its place.
+			releasedSnapshot := *current
+			policy, policyErr := ReadIntegrationWindowPolicy(projectRoot)
+			if policyErr != nil {
+				return policyErr
+			}
+			clearHolder(current)
+			RefreshWindow(current, policy, DefaultWindowProcProbe(), WindowClock(), IntegrationLeaseDefault)
+			if err := writeIntegrationLock(integrationLockPath(projectRoot), current); err != nil {
+				return err
+			}
+			released = &releasedSnapshot
+			return nil
 		}
 		if remErr := os.Remove(integrationLockPath(projectRoot)); remErr != nil && !errors.Is(remErr, os.ErrNotExist) {
 			return fmt.Errorf("integration lock: %w", remErr)
