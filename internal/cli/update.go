@@ -68,6 +68,12 @@ func validateUpdateFlags(cmd *cobra.Command, _ []string) error {
 func init() {
 	rootCmd.AddCommand(updateCmd)
 
+	// Card t1527 D1: the hidden re-exec marker rides the child's argv (see
+	// reexecChildArgv). Persistent + hidden: it parses wherever the original
+	// invocation placed its flags and never shows in help or completion.
+	rootCmd.PersistentFlags().Bool(reexecMarkerFlag, false, "")
+	rootCmd.PersistentFlags().Lookup(reexecMarkerFlag).Hidden = true
+
 	updateCmd.Flags().Bool("check", false, "Check if a newer binary version is available (informational)")
 	updateCmd.Flags().Bool("shell-env", false, "Configure shell environment variables for Claude Code")
 	updateCmd.Flags().BoolP("config", "c", false, "Re-run the init wizard to edit project configuration (no template sync; bare 'moai update' syncs templates)")
@@ -186,8 +192,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Card t1527 D1: on the re-executed pass the version identity is carried by
 	// the template-sync band (renderIdentityBand) alone — repeating the KV here
 	// printed the same version twice per install (three times counting the
-	// pre-exec pass). Env constant: internal/config/envkeys.go EnvUpdateReexec.
-	if !reexecPassActive() {
+	// pre-exec pass). The marker rides ARGV (hidden flag inserted by
+	// reexecNewBinary), not the environment — an inherited env var cannot
+	// fake the pass (card review round 2).
+	if !reexecPassActive(cmd) {
 		_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
 	}
 
@@ -608,8 +616,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		// after the template sync already tracked its render — re-record the
 		// section hashes so the manifest matches the disk this update leaves
 		// behind (a stale hash here is what froze four files user_modified on
-		// the next `init --force`).
-		retrackSectionFiles(".", cmd.ErrOrStderr())
+		// the next `init --force`). Card t1527 repair round 3: the failure
+		// joins the terminal block (one surface, per the round-2 rule).
+		if retrackErr := retrackSectionFiles(".", cmd.ErrOrStderr()); retrackErr != nil {
+			updateLedger.requiref(sevWarn, "manifest retrack (config sections) failed: %v", retrackErr)
+		}
 	}
 
 	// Card t1527 D5 + repair round: the terminal block renders via the defer
@@ -704,34 +715,30 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 	return version.IsDevBuild(version.GetVersion())
 }
 
-// markReexecPass sets the env markers the re-executed `moai update` pass reads
-// (card t1527 D1): MOAI_SKIP_BINARY_UPDATE prevents the binary-update loop, and
-// MOAI_UPDATE_REEXEC tells runUpdate to suppress its top "Current version" KV —
-// the template-sync identity band is that pass's single version surface.
-// Extracted from reexecNewBinary so a test can observe the markers without
-// replacing the process.
-func markReexecPass() error {
-	if err := os.Setenv("MOAI_SKIP_BINARY_UPDATE", "1"); err != nil {
-		return fmt.Errorf("set MOAI_SKIP_BINARY_UPDATE: %w", err)
+// reexecMarkerFlag is the hidden persistent flag the re-exec parent inserts
+// into the child's argv (card t1527 D1, argv marker per card review round 2).
+// A hidden ARGV marker cannot be inherited the way an environment variable
+// can — a plain first run with a polluted environment still shows the banner;
+// only a process the parent actually exec'd with the flag reads as a
+// re-executed pass. Hidden, so it never appears in help or completion.
+const reexecMarkerFlag = "moai-reexeced"
+
+// reexecPassActive reports whether THIS process was exec'd by reexecNewBinary
+// with the hidden marker flag in its argv. Process-local by construction: one
+// exec is one pass, so no unset bookkeeping is needed.
+func reexecPassActive(cmd *cobra.Command) bool {
+	if f := cmd.Flags().Lookup(reexecMarkerFlag); f != nil {
+		return f.Value.String() == "true"
 	}
-	if err := os.Setenv(config.EnvUpdateReexec, "1"); err != nil {
-		return fmt.Errorf("set %s: %w", config.EnvUpdateReexec, err)
-	}
-	return nil
+	return false
 }
 
-// reexecPassActive reports AND CONSUMES the re-exec marker (card t1527 D1,
-// consume-and-clear per card review): MOAI_UPDATE_REEXEC=1 is set by
-// markReexecPass immediately before the new binary replaces the process, so a
-// genuine re-exec pass reads it exactly once and unsets it — an environment
-// that merely carries the variable cannot suppress the banner on ordinary
-// passes, and a third-generation re-exec starts clean.
-func reexecPassActive() bool {
-	if os.Getenv(config.EnvUpdateReexec) != "1" {
-		return false
-	}
-	_ = os.Unsetenv(config.EnvUpdateReexec)
-	return true
+// reexecChildArgv builds the child argv reexecNewBinary execs: the hidden
+// re-exec marker ahead of the original arguments. The marker parses at root
+// level (hidden persistent flag) regardless of where the original invocation
+// placed its own flags.
+func reexecChildArgv() []string {
+	return append([]string{"--" + reexecMarkerFlag}, os.Args[1:]...)
 }
 
 // @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD migration. New-version notice uses
@@ -805,16 +812,18 @@ func reexecNewBinary() error {
 		return fmt.Errorf("resolve executable path: %w", err)
 	}
 
-	// Card t1527 D1: mark the next pass — both markers live in
-	// markReexecPass (MOAI_SKIP_BINARY_UPDATE prevents the re-exec loop;
-	// MOAI_UPDATE_REEXEC suppresses the replayed top banner).
-	if err := markReexecPass(); err != nil {
-		return err
+	// Prevent the re-exec loop: the child skips the binary-update step. (The
+	// banner marker travels in the child's ARGV instead — see
+	// reexecChildArgv; an env var here could be inherited by unrelated runs.)
+	if err := os.Setenv("MOAI_SKIP_BINARY_UPDATE", "1"); err != nil {
+		return fmt.Errorf("set MOAI_SKIP_BINARY_UPDATE: %w", err)
 	}
+
+	childArgv := reexecChildArgv()
 
 	if runtime.GOOS == "windows" {
 		// Windows: spawn child and exit parent
-		child := exec.Command(exe, os.Args[1:]...)
+		child := exec.Command(exe, childArgv...)
 		child.Stdin = os.Stdin
 		child.Stdout = os.Stdout
 		child.Stderr = os.Stderr
@@ -826,8 +835,8 @@ func reexecNewBinary() error {
 		os.Exit(0)
 	}
 
-	// Unix: replace process via execve(2)
-	return syscall.Exec(exe, os.Args, os.Environ())
+	// Unix: replace process via execve(2) — argv[0] is the program name.
+	return syscall.Exec(exe, append([]string{exe}, childArgv...), os.Environ())
 }
 
 // @MX:NOTE: [AUTO] runShellEnvConfig — M4-S4d-2 DDD migration. tui.Section header,

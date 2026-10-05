@@ -66,14 +66,6 @@ const (
 	// EnvSkipBinaryUpdate skips binary self-update when set to "1".
 	EnvSkipBinaryUpdate = "MOAI_SKIP_BINARY_UPDATE"
 
-	// EnvUpdateReexec marks the re-executed `moai update` pass (set to "1" by
-	// reexecNewBinary right before the new binary replaces the process, card
-	// t1527 D1). On that pass the freshly installed version is introduced by
-	// the template-sync identity band alone, so the top-of-run
-	// "Current version" KV line is suppressed — the operator sees exactly one
-	// version surface per install instead of one per replayed banner.
-	EnvUpdateReexec = "MOAI_UPDATE_REEXEC"
-
 	// EnvGLMNoAutoTools skips automatic Z.AI MCP server enable on moai glm launch.
 	EnvGLMNoAutoTools = "MOAI_GLM_NO_AUTO_TOOLS"
 

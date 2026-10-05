@@ -6,51 +6,72 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/tui"
+	"github.com/spf13/cobra"
 )
 
 // Card t1527 D1 — one version identity surface per update run.
 //
-// The re-executed pass (MOAI_UPDATE_REEXEC=1, set by markReexecPass before the
-// freshly installed binary replaces the process) suppresses runUpdate's top
-// "Current version" KV line; the template-sync identity band is that pass's
-// single version surface. These tests pin the suppression helper and the
-// renderIdentityBand contract the suppression leans on.
+// The re-executed pass carries a hidden ARGV marker (inserted by
+// reexecNewBinary via reexecChildArgv): runUpdate suppresses its top
+// "Current version" KV line there, and the template-sync identity band is
+// that pass's single version surface. The marker rides ARGV, NOT the
+// environment — an inherited env var cannot fake the pass (card review
+// round 2).
 
-func TestReexecPassActive_ConsumeAndClear(t *testing.T) {
-	t.Setenv(config.EnvUpdateReexec, "")
-	if reexecPassActive() {
-		t.Error("an unset MOAI_UPDATE_REEXEC must not read as a re-exec pass")
+func TestReexecPassActive_FlagGated(t *testing.T) {
+	// A command WITHOUT the marker set reads as an ordinary pass.
+	plain := &cobra.Command{Use: "plain"}
+	if reexecPassActive(plain) {
+		t.Error("a command without the marker flag must not read as a re-exec pass")
 	}
 
-	t.Setenv(config.EnvUpdateReexec, "1")
-	if !reexecPassActive() {
-		t.Error("MOAI_UPDATE_REEXEC=1 must read as a re-exec pass")
-	}
-	// Consume-and-clear: the marker is spent by the read, so a pre-existing
-	// environment variable cannot suppress the banner on ordinary passes and
-	// a second read in the same process sees a clean state.
-	if os.Getenv(config.EnvUpdateReexec) != "" {
-		t.Errorf("reading the marker must unset it, got %q", os.Getenv(config.EnvUpdateReexec))
-	}
-	if reexecPassActive() {
-		t.Error("a consumed marker must not read as a re-exec pass again")
+	// A command whose flag chain carries the marker (the re-exec child's
+	// shape: the hidden persistent flag parsed from argv) reads as one.
+	marked := &cobra.Command{Use: "marked"}
+	marked.Flags().Bool(reexecMarkerFlag, true, "")
+	if !reexecPassActive(marked) {
+		t.Error("the marker flag set must read as a re-exec pass")
 	}
 }
 
-func TestMarkReexecPass_SetsBothMarkers(t *testing.T) {
-	t.Setenv("MOAI_SKIP_BINARY_UPDATE", "")
-	t.Setenv(config.EnvUpdateReexec, "")
+func TestReexecChildArgv_InsertsMarker(t *testing.T) {
+	orig := os.Args
+	defer func() { os.Args = orig }()
+	fake := []string{"moai", "update", "--yes", "--force"}
+	os.Args = fake
 
-	if err := markReexecPass(); err != nil {
-		t.Fatalf("markReexecPass: %v", err)
+	got := reexecChildArgv()
+
+	if len(got) == 0 || got[0] != "--"+reexecMarkerFlag {
+		t.Errorf("child argv must lead with the hidden marker, got %v", got)
 	}
-	if got := os.Getenv("MOAI_SKIP_BINARY_UPDATE"); got != "1" {
-		t.Errorf("MOAI_SKIP_BINARY_UPDATE = %q, want 1", got)
+	// The tail must be the CURRENT os.Args[1:] (what the child would have
+	// received anyway), element for element after the inserted marker.
+	wantTail := os.Args[1:]
+	if len(got) != 1+len(wantTail) {
+		t.Fatalf("child argv length = %d, want 1 + %d", len(got), len(wantTail))
 	}
-	if got := os.Getenv(config.EnvUpdateReexec); got != "1" {
-		t.Errorf("%s = %q, want 1", config.EnvUpdateReexec, got)
+	for i, want := range wantTail {
+		if got[i+1] != want {
+			t.Errorf("child argv[%d] = %q, want the original argument %q", i+1, got[i+1], want)
+		}
+	}
+}
+
+// TestReexecMarkerFlag_IsHiddenAndPersistent pins the registration shape: the
+// marker parses wherever the original invocation placed its flags, and never
+// appears in help or completion.
+func TestReexecMarkerFlag_IsHiddenAndPersistent(t *testing.T) {
+	f := rootCmd.PersistentFlags().Lookup(reexecMarkerFlag)
+	if f == nil {
+		t.Fatal("the hidden re-exec marker must be registered as a root persistent flag")
+	}
+	if !f.Hidden {
+		t.Error("the re-exec marker flag must be Hidden")
+	}
+	if f.Value.String() != "false" {
+		t.Errorf("the marker flag default = %q, want false", f.Value.String())
 	}
 }
 
