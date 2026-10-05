@@ -121,6 +121,10 @@ func readFileNoRename(path string) ([]byte, error) {
 // A merge stand-in (factoryWriteMergeRecord's text) never satisfies this
 // verifier (REQ-MWQ-020): it is a different file on a different path, and
 // its command carries no recognized structure.
+//
+// @MX:ANCHOR: [AUTO] the single re-measure verifier every merge path consults
+// @MX:REASON: complete's gate, the merge verb, the merge step, and the merge-readiness check all judge a record through it — weakening it here would let an invalid or empty-sweep record stand for a re-measure on every path at once. Measured fan-in: 5 production call sites across 4 files.
+// @MX:SPEC: SPEC-MERGE-WINDOW-QUEUE-001
 func ValidateRemeasureRecord(rec *RemeasureRecord) error {
 	switch {
 	case rec == nil:

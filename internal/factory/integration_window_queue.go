@@ -171,6 +171,10 @@ func atomicWriteFile(path string, v any) error {
 // A nil mutate is allowed and means "rewrite the record unchanged": the M1
 // legacy-compatibility path uses it to prove the round-trip keeps the
 // holder and adds no queue key.
+//
+// @MX:ANCHOR: [AUTO] the one serialized window-mutation helper — every queue mutation (acquire, release, wait, refresh, the merge step) routes through it
+// @MX:REASON: the read INSIDE the mutation section is the property that makes the FIFO's ordering real (REQ-MWQ-002); a queue mutation added outside this helper would split that ordering. Measured fan-in: 6 production call sites across integration_wait.go, integration_window_ops.go, integration_merge_step.go.
+// @MX:SPEC: SPEC-MERGE-WINDOW-QUEUE-001
 func UpdateIntegrationWindow(projectRoot string, mutate func(w *IntegrationLock) error) error {
 	path := integrationLockPath(projectRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

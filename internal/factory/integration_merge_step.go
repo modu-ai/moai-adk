@@ -161,6 +161,10 @@ type MergeStepInput struct {
 // Every pre-merge failure releases the window (so the next live ticket is
 // promoted) and escapes with its own exit code; the holder refusals leave
 // the record untouched and release nothing.
+//
+// @MX:WARN: [AUTO] an ordered 13-cause gate table read in one body — measured 39 decision points (if/case/for/&&/||), well over the complexity-15 warn bar
+// @MX:REASON: the complexity is inherent to REQ-MWQ-017/018's prescribed gate ORDER (holder → card gate → clean check → collision → pinned SHA → merge → post-merge); reordering or rewriting it is the data-loss and double-merge hazard, so changes go gate-by-gate with the cause table in view.
+// @MX:SPEC: SPEC-MERGE-WINDOW-QUEUE-001
 func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	if in.CallerSessionID == "" {
 		return "", mergeStepErr(MergeExitNotHolder, "integration merge: no session id — the holder decision needs an address")
