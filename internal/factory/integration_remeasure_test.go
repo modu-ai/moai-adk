@@ -7,6 +7,8 @@ package factory
 // inability to be satisfied by a merge stand-in (REQ-MWQ-020).
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -84,7 +86,7 @@ func TestRemeasureRecordValidity(t *testing.T) {
 	valid := RemeasureRecord{
 		Tree: remeasureFixtureTree, Base: "b" + strings.Repeat("0", 39),
 		Command: "go test -json ./internal/p/...", ExitCode: 0,
-		HasStructured: true, TestCount: 4,
+		StructuredRequired: true, HasStructured: true, TestCount: 4,
 		BuildIdentity: "moai v3.2.0 (0732cc699)",
 	}
 	if err := WriteRemeasureRecord(root, remeasureFixtureTree, valid); err != nil {
@@ -114,20 +116,26 @@ func TestRemeasureRecordValidity(t *testing.T) {
 	}
 
 	// A stand-in merge record never satisfies the verifier (REQ-MWQ-020):
-	// factoryWriteMergeRecord's text carries the merge SHA but no structured
-	// test count.
-	if err := WriteRemeasureRecord(root, "f"+strings.Repeat("f", 39), RemeasureRecord{
-		Tree: "f" + strings.Repeat("f", 39), Base: "b" + strings.Repeat("0", 39),
-		Command: "merge abc123def", ExitCode: 0, BuildIdentity: "moai v3.2.0",
-	}); err != nil {
+	// complete's merge-record.txt lives under .moai/reports/<card>/ — a
+	// DIFFERENT store from this one — and the gate reads the re-measure
+	// store only. Even a card whose merge identity is recorded everywhere
+	// complete records it reads as having NO re-measure record.
+	standInDir := filepath.Join(root, ".moai", "reports", "t0002")
+	if err := os.MkdirAll(standInDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	standIn, err := ReadRemeasureRecord(root, "f"+strings.Repeat("f", 39))
-	if err != nil {
+	standInBody := fmt.Sprintf("merge %s\nbranch develop\nintegration worktree /repo/develop\nrecorded by moai factory complete (card %s)\n",
+		"abc123def4567890", "t0002")
+	if err := os.WriteFile(filepath.Join(standInDir, "merge-record.txt"), []byte(standInBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := ValidateRemeasureRecord(standIn); err == nil {
-		t.Fatalf("a merge stand-in must not satisfy the re-measure gate")
+	if _, err := ReadRemeasureRecord(root, remeasureFixtureTree); err != nil {
+		// (unrelated: the valid record from earlier in this test is still
+		// here — the stand-in did not displace it)
+		t.Fatalf("the stand-in must not displace the real record: %v", err)
+	}
+	if _, err := ReadRemeasureRecord(root, "f"+strings.Repeat("f", 39)); err == nil {
+		t.Fatalf("a merge-record.txt must never read as a re-measure record: the stores are separate (REQ-MWQ-020)")
 	}
 
 	// An unknown tree reads as no record at all — the complete gate's

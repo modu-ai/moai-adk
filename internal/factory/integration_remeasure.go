@@ -46,6 +46,11 @@ type RemeasureRecord struct {
 	Base        string `json:"base"`
 	Command     string `json:"command"`
 	ExitCode    int    `json:"exit_code"`
+	// StructuredRequired records that the command's tool SUPPORTS a
+	// recognized structured report (go test): the verifier then demands
+	// one. A tool with no recognized report leaves it false and is valid
+	// on exit code zero (REQ-MWQ-015's last clause).
+	StructuredRequired bool   `json:"structured_required"`
 	HasStructured  bool   `json:"structured_count"`
 	TestCount      int    `json:"test_count,omitempty"`
 	BuildIdentity  string `json:"build_identity"`
@@ -85,7 +90,11 @@ func ReadRemeasureRecord(projectRoot, treeSHA string) (*RemeasureRecord, error) 
 	if err := json.Unmarshal(data, &rec); err != nil {
 		return nil, fmt.Errorf("re-measure record for %s is unreadable: %w", treeSHA, err)
 	}
-	rec.Tree = treeSHA
+	// rec.Tree reads AS WRITTEN, never forced to the key: the merge step's
+	// tree-identity check (REQ-MWQ-018 cause 4) compares the pinned tree
+	// against the record's tree, and forcing the field here would turn that
+	// check into dead code — a forged or corrupted record is exactly what
+	// the check exists to refuse.
 	return &rec, nil
 }
 
@@ -126,9 +135,9 @@ func ValidateRemeasureRecord(rec *RemeasureRecord) error {
 		return errors.New("re-measure record carries no build identity")
 	case rec.ExitCode != 0:
 		return fmt.Errorf("re-measure command exited %d (recorded as observed)", rec.ExitCode)
-	case !rec.HasStructured:
+	case rec.StructuredRequired && !rec.HasStructured:
 		return fmt.Errorf("command %q supports structured test output but none was requested or recognized", rec.Command)
-	case rec.TestCount <= 0:
+	case rec.StructuredRequired && rec.TestCount <= 0:
 		return fmt.Errorf("structured report carries %d tests — an empty sweep cannot stand for a re-measure", rec.TestCount)
 	}
 	return nil
@@ -335,6 +344,7 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 		Base: base,
 		Command: command,
 		ExitCode: exitCode,
+		StructuredRequired: isGoTestCommand(command),
 		HasStructured: structured,
 		TestCount: count,
 		BuildIdentity: moaiBuildIdentity(),

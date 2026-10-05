@@ -265,7 +265,7 @@ The deny layer is opt-in (workflow.integration_lock.enabled, default false);
 these verbs work regardless, so a project may keep the record as a
 coordination signal without enabling refusal.`,
 	}
-	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd(), newIntegrationPolicyCmd(), newIntegrationRemeasureCmd(), newIntegrationPreflightCmd())
+	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd(), newIntegrationPolicyCmd(), newIntegrationRemeasureCmd(), newIntegrationMergeCmd(), newIntegrationPreflightCmd())
 	return cmd
 }
 
