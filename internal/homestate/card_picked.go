@@ -138,58 +138,121 @@ func (f *FactoryDB) RecordPicked(ctx context.Context, runID, cardID string, fiel
 		now = time.Now()
 	}
 	now = now.UTC()
-	nowText := now.Format(time.RFC3339Nano)
 	var result Card
 	err := f.withCardTx(ctx, runID, func(tx *sql.Tx) (func(), error) {
-		cur, err := loadCard(ctx, tx, runID, cardID)
-		if errors.Is(err, ErrCardNotFound) {
-			c := Card{RunID: runID, CardID: cardID, State: CardPicked, Version: 1, UpdatedAt: nowText}
-			fields.apply(&c)
-			// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
-			if _, err := tx.ExecContext(ctx, `INSERT INTO cards(`+cardSelectColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-				c.RunID, c.CardID, c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt,
-				c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume,
-				c.Decider, c.DecidedAt, c.FailureReason, c.HintPrefer, c.HintAfter, c.SpecID, c.WorktreePath, c.EvidenceSHA,
-				c.MergeSHA, c.MergeTree, c.RemeasurePath, c.BundleID, c.BundleOrder, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent); err != nil {
-				return nil, err
-			}
-			if err := appendEvent(ctx, tx, runID, "card.transition", map[string]any{"card_id": cardID, "from": "", "to": CardPicked, "version": 1, "actor": actor}, now); err != nil {
-				return nil, err
-			}
-			result = c
-			return nil, nil
-		}
+		c, err := recordPickedTx(ctx, tx, runID, cardID, fields, actor, now)
 		if err != nil {
 			return nil, err
 		}
-		if fields.empty() {
-			result = cur
-			return nil, nil
-		}
-		if cur.State != CardPicked {
-			return nil, fmt.Errorf("%w: card %s is %s; its hints and pointers change only while picked", ErrIllegalTransition, cur.CardID, cur.State)
-		}
-		next := cur
-		fields.apply(&next)
-		if next == cur {
-			result = cur
-			return nil, nil
-		}
-		next.Version = cur.Version + 1
-		next.UpdatedAt = nowText
-		if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
-			return nil, err
-		}
-		if err := appendEvent(ctx, tx, runID, "card.fields", map[string]any{"card_id": cardID, "version": next.Version, "actor": actor}, now); err != nil {
-			return nil, err
-		}
-		result = next
+		result = c
 		return nil, nil
 	})
 	if err != nil {
 		return Card{}, err
 	}
 	return result, nil
+}
+
+// recordPickedTx is RecordPicked's body inside the caller's transaction, so
+// compound record acts (the bundle loader) can run it beside transitions
+// without a second transaction boundary.
+func recordPickedTx(ctx context.Context, tx *sql.Tx, runID, cardID string, fields CardFields, actor string, now time.Time) (Card, error) {
+	nowText := now.Format(time.RFC3339Nano)
+	cur, err := loadCard(ctx, tx, runID, cardID)
+	if errors.Is(err, ErrCardNotFound) {
+		c := Card{RunID: runID, CardID: cardID, State: CardPicked, Version: 1, UpdatedAt: nowText}
+		fields.apply(&c)
+		// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
+		if _, err := tx.ExecContext(ctx, `INSERT INTO cards(`+cardSelectColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			c.RunID, c.CardID, c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt,
+			c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume,
+			c.Decider, c.DecidedAt, c.FailureReason, c.HintPrefer, c.HintAfter, c.SpecID, c.WorktreePath, c.EvidenceSHA,
+			c.MergeSHA, c.MergeTree, c.RemeasurePath, c.BundleID, c.BundleOrder, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent); err != nil {
+			return Card{}, err
+		}
+		if err := appendEvent(ctx, tx, runID, "card.transition", map[string]any{"card_id": cardID, "from": "", "to": CardPicked, "version": 1, "actor": actor}, now); err != nil {
+			return Card{}, err
+		}
+		return c, nil
+	}
+	if err != nil {
+		return Card{}, err
+	}
+	if fields.empty() {
+		return cur, nil
+	}
+	if cur.State != CardPicked {
+		return Card{}, fmt.Errorf("%w: card %s is %s; its hints and pointers change only while picked", ErrIllegalTransition, cur.CardID, cur.State)
+	}
+	next := cur
+	fields.apply(&next)
+	if next == cur {
+		return cur, nil
+	}
+	next.Version = cur.Version + 1
+	next.UpdatedAt = nowText
+	if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
+		return Card{}, err
+	}
+	if err := appendEvent(ctx, tx, runID, "card.fields", map[string]any{"card_id": cardID, "version": next.Version, "actor": actor}, now); err != nil {
+		return Card{}, err
+	}
+	return next, nil
+}
+
+// BundleMemberSpec is one member of a bundle chain the loader records: the
+// member's queue id, the chain identity, its position, and the after hint
+// naming the member recorded just before it ("" for the head).
+type BundleMemberSpec struct {
+	CardID    string
+	BundleID  string
+	Order     int
+	HintAfter string
+}
+
+// RecordBundleChain records every member's chain fields at `picked` and
+// assigns the head to lane, inside ONE transaction: either the whole chain
+// lands or nothing does (card t1454 card-review r2 finding 3). A member
+// whose record has already moved past `picked` aborts the load with no
+// residue, where the per-member calls left the earlier members committed
+// and stranded.
+func (f *FactoryDB) RecordBundleChain(ctx context.Context, runID string, members []BundleMemberSpec, lane, actor string, now time.Time) (Card, error) {
+	if len(members) == 0 {
+		return Card{}, fmt.Errorf("%w: a bundle chain needs at least one member", ErrInvalidCardInput)
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	now = now.UTC()
+	var head Card
+	err := f.withCardTx(ctx, runID, func(tx *sql.Tx) (func(), error) {
+		for i, m := range members {
+			fields := CardFields{BundleID: &m.BundleID, BundleOrder: &m.Order}
+			if m.HintAfter != "" {
+				after := m.HintAfter
+				fields.HintAfter = &after
+			}
+			c, err := recordPickedTx(ctx, tx, runID, m.CardID, fields, actor, now)
+			if err != nil {
+				return nil, err
+			}
+			if i == 0 {
+				head = c
+			}
+		}
+		// Only the FIRST member is assigned; the selection host serves the
+		// rest to this lane as their predecessors reach the local merge.
+		var err error
+		head, err = transitionTx(ctx, f, tx, TransitionRequest{
+			RunID: runID, CardID: members[0].CardID, To: CardAssigned,
+			ExpectedVersion: head.Version, Actor: actor, Owner: lane, Now: now,
+		}, now)
+		return nil, err
+	})
+	if err != nil {
+		return Card{}, err
+	}
+	return head, nil
 }
 
 // predecessorMerged is the T2 `after` guard (REQ-FR-016): the predecessor

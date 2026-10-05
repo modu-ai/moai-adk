@@ -292,6 +292,111 @@ func TestFactorySerialBundleHeadLeasesDespitePickedMembers(t *testing.T) {
 	}
 }
 
+// TestFactoryBundleLoadAtomicWhenAMemberIsLeased — card t1454 card-review
+// r2 finding 3: the bundle load is ONE act. A member whose record has
+// already moved past `picked` aborts the whole load, and the members
+// recorded before it leave no residue — the per-member calls committed the
+// earlier records and stranded them.
+func TestFactoryBundleLoadAtomicWhenAMemberIsLeased(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardLeased})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	sdClearLaneEnv(t)
+	if _, _, err := runFactory(t, "bundle", "lane-1", "t1", "t2", "--run", fcRun); err == nil {
+		t.Fatal("the bundle load accepted a member whose record is already leased")
+	}
+	if fcHasCard(t, root, "t1") {
+		t.Fatal("t1's record survived the failed load — the bundle load is not atomic")
+	}
+	if c := fcCard(t, root, "t2"); c.State != homestate.CardLeased {
+		t.Fatalf("t2 = %s, want still leased (the refused load changed nothing)", c.State)
+	}
+}
+
+// TestFactoryNextSkipsHubCandidateWhosePredecessorIsUnmerged — card t1454
+// card-review r2 finding 4: a rowless queued candidate's hub hint is
+// computed at promotion, so its predecessor condition is checked BEFORE the
+// promotion. A candidate whose hint names an unmerged recorded predecessor
+// was promoted and then failed the claim, erroring the whole `next` verb.
+func TestFactoryNextSkipsHubCandidateWhosePredecessorIsUnmerged(t *testing.T) {
+	root, store := fcFixture(t)
+	// t1 is the chainable predecessor: recorded, open, queue-held (so no arm
+	// can take it), and merged nowhere. t2 is the rowless queued candidate.
+	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStateQueued)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fbSeedFiles(t, store, "t1", "internal/template/catalog.yaml")
+	fbSeedFiles(t, store, "t2", "internal/template/catalog.yaml")
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	if got := fbLeasedCard(t, root, "lane-1"); got != "" {
+		t.Fatalf("lane-1 leased %q — the hub-chained candidate was promoted past its unmerged predecessor", got)
+	}
+	rec, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Items[1].State != factory.BacklogStateQueued {
+		t.Fatalf("t2 queue state = %s, want still queued (the skip, not a failed claim)", rec.Items[1].State)
+	}
+	if fcHasCard(t, root, "t2") {
+		t.Fatal("t2's record was created by the failed promotion — the candidate should have been skipped")
+	}
+}
+
+// TestFactoryNextAfterGuardCountsOtherRunsMerges — card t1454 card-review
+// r2 finding 5: the after guard's merged set reads every run, like
+// predecessorMerged does. A predecessor merged under a previous run id
+// gated its successor forever when only the current run's rows were read.
+func TestFactoryNextAfterGuardCountsOtherRunsMerges(t *testing.T) {
+	root, store := fcFixture(t)
+	// t1 is queue-held with no row in the current run: its merge lives only
+	// in run-prev, and no arm may take or re-record t1 itself.
+	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	fcPlace(t, root,
+		homestate.Card{RunID: "run-prev", CardID: "t1", State: homestate.CardMergedLocal},
+		homestate.Card{CardID: "t2", State: homestate.CardPicked, HintAfter: "t1"},
+	)
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	if got := fbLeasedCard(t, root, "lane-1"); got != "t2" {
+		t.Fatalf("lane-1's lease = %q, want t2 — a predecessor merged under run-prev still gated the after guard", got)
+	}
+}
+
+// TestFactoryHubChainRequiresSharedHubPath — card t1454 card-review r2
+// finding 6: the hub chain orders cards that share A HUB PATH with the
+// candidate. Two cards crossing DIFFERENT hub paths chain not at all.
+func TestFactoryHubChainRequiresSharedHubPath(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	fbSeedFiles(t, store, "t1", "internal/config/defaults.go")
+	fbSeedFiles(t, store, "t2", "internal/template/catalog.yaml")
+	sdRegisterLane(t, root, "lane-1")
+	sdRegisterLane(t, root, "lane-2")
+	t.Chdir(root)
+
+	sdClearLaneEnv(t)
+	if _, _, err := runFactory(t, "assign", "t1", "--to", "lane-1", "--run", fcRun); err != nil {
+		t.Fatalf("assign t1: %v", err)
+	}
+	sdLaneEnv(t, "lane-2", "")
+	_, _, _ = runFactory(t, "assign", "t2", "--to", "lane-2", "--run", fcRun)
+	if c := fcCard(t, root, "t2"); c.HintAfter != "" {
+		t.Fatalf("t2's after = %q, want empty — the cards cross different hub paths, so no chain", c.HintAfter)
+	}
+}
+
 // TestFactoryKeepSetReadsNoFileOverlap — AC-TCI-019 (b): the keep-set
 // verdict reads no file overlap — two cards whose recorded files share every
 // path lease independently, and no refusal names a file.

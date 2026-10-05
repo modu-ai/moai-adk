@@ -430,29 +430,39 @@ func (p IssuancePresentation) Empty() bool {
 
 // BuildIssuancePresentation assembles the presentation at the baseline
 // display floor, from a queue snapshot the caller already read outside the
-// lock.
-func BuildIssuancePresentation(candidate string, rec *BacklogRecord, specs []IssuanceCompletedSpec, probe LaneFilesProbe) IssuancePresentation {
-	return BuildIssuancePresentationFloor(candidate, rec, specs, probe, IssuanceDisplayFloor)
+// lock. leased carries the lane labels the factory record leases cards to
+// (card id → lane) — the assignments the queue's runtime table carries do
+// not include a factory lease (card t1454 card-review r2 finding 9).
+func BuildIssuancePresentation(candidate string, rec *BacklogRecord, specs []IssuanceCompletedSpec, probe LaneFilesProbe, leased map[string]string) IssuancePresentation {
+	return BuildIssuancePresentationFloor(candidate, rec, specs, probe, leased, IssuanceDisplayFloor)
 }
 
 // BuildIssuancePresentationFloor assembles the presentation with an explicit
 // display floor (floor < 0 lifts it for the dry-run view). The probe runs
 // per in-flight card under IssuanceProbeTimeBound; a probe that outlives the
-// bound turns the overlap verdict into `unmeasured (time bound)` and
+// bound degrades the overlap verdict to `unmeasured (time bound)` — even a
+// computed `none` was decided on partial input once a probe was lost — and
 // admission is unaffected (REQ-TCI-003 (d)).
-func BuildIssuancePresentationFloor(candidate string, rec *BacklogRecord, specs []IssuanceCompletedSpec, probe LaneFilesProbe, floor float64) IssuancePresentation {
+func BuildIssuancePresentationFloor(candidate string, rec *BacklogRecord, specs []IssuanceCompletedSpec, probe LaneFilesProbe, leased map[string]string, floor float64) IssuancePresentation {
 	p := IssuancePresentation{
 		Neighbors:  IssuanceNeighborsFloor(candidate, rec.Items, rec.Archived, floor),
 		Components: IssuanceSameComponent(candidate, rec.Items),
 	}
-	// In-flight lane cards: picked with a lane-labelled runtime assignment.
-	// The leader label is not a lane.
+	// In-flight lane cards: picked with a lane-labelled runtime assignment
+	// or a factory lease. The leader label is not a lane.
 	laneOf := map[string]string{}
 	for _, a := range rec.Runtime.Assignments {
 		if a.CardID == "" || a.OwnerLabel == "" || a.OwnerLabel == "leader" {
 			continue
 		}
 		laneOf[a.CardID] = a.OwnerLabel
+	}
+	for cardID, lane := range leased {
+		if cardID == "" || lane == "" || lane == "leader" {
+			continue
+		}
+		// The live lease is the current holder.
+		laneOf[cardID] = lane
 	}
 	var inFlight []IssuanceInFlightCard
 	probeTimedOut := false
@@ -465,6 +475,12 @@ func BuildIssuancePresentationFloor(candidate string, rec *BacklogRecord, specs 
 			continue
 		}
 		files := IssuanceExtractPaths(it.Text)
+		if it.Issuance != nil {
+			// The explicitly recorded expected files are comparison input
+			// too (card t1454 card-review r2 finding 8) — the operator's
+			// statement, ahead of any body-derived inference.
+			files = append(files, it.Issuance.Files...)
+		}
 		if probe != nil && !probeTimedOut {
 			done := make(chan struct{})
 			var got []string
@@ -485,7 +501,7 @@ func BuildIssuancePresentationFloor(candidate string, rec *BacklogRecord, specs 
 		inFlight = append(inFlight, IssuanceInFlightCard{ID: it.ID, Lane: lane, Files: files})
 	}
 	p.Overlap = IssuanceInFlightOverlap(IssuanceExtractPaths(candidate), inFlight)
-	if probeTimedOut && len(p.Overlap.Items) == 0 && !p.Overlap.None {
+	if probeTimedOut && len(p.Overlap.Items) == 0 {
 		p.Overlap = IssuanceOverlap{Unmeasured: "time bound"}
 	}
 	p.Specs = IssuanceCompletedSpecCoverage(candidate, specs)

@@ -845,12 +845,12 @@ func newTodoAddCmd() *cobra.Command {
 				}
 				dec = selected
 			}
-			if scan.pick {
-				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec)
-			}
 			// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013: the issuance flags
 			// resolve to the attribute record the locked write validates and
-			// attaches; a flag-less surface passes nil.
+			// attaches; a flag-less surface passes nil. The resolution sits
+			// BEFORE the pick branch (card t1454 card-review r2 finding 7):
+			// `--pick` carries the issuance flags too — an early return here
+			// left them unvalidated and unsaved.
 			var iss *factory.BacklogIssuance
 			if scan.haveOrigin || scan.haveParent || scan.haveSizeLines || scan.haveFiles {
 				iss = &factory.BacklogIssuance{Origin: scan.origin, SpawnedBy: scan.parent}
@@ -868,6 +868,9 @@ func newTodoAddCmd() *cobra.Command {
 						}
 					}
 				}
+			}
+			if scan.pick {
+				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec, iss)
 			}
 			return runTodoAddAppendIss(cmd, text, scan.force, dec, iss)
 		},
@@ -964,43 +967,15 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 		// on a refusal. Parent existence reads the record the same locked
 		// write will append into: live, dropped AND archived all count
 		// (a follow-up of a closed card is the normal flow).
-		if iss != nil {
-			if iss.Origin != "" && !factory.IssuanceOriginValid(iss.Origin) {
-				return fmt.Errorf("todo add: --origin must be one of %s (got %q)",
-					strings.Join(factory.IssuanceOrigins, ", "), iss.Origin)
-			}
-			if iss.SpawnedBy != "" {
-				parentExists := false
-				for i := range rec.Items {
-					if rec.Items[i].ID == iss.SpawnedBy {
-						parentExists = true
-						break
-					}
-				}
-				for i := range rec.Archived {
-					if rec.Archived[i].Item.ID == iss.SpawnedBy {
-						parentExists = true
-						break
-					}
-				}
-				if !parentExists {
-					return fmt.Errorf("todo add: --parent names no card: %s", iss.SpawnedBy)
-				}
-			}
+		if err := validateIssuanceInLock(rec, iss); err != nil {
+			return err
 		}
 		var mutErr error
 		item, pos, mutErr = appendAnalyzedCard(rec, text, factory.BacklogStateQueued, force)
 		if mutErr != nil {
 			return mutErr
 		}
-		if iss != nil {
-			for i := range rec.Items {
-				if rec.Items[i].ID == item.ID {
-					rec.Items[i].Issuance = iss
-					break
-				}
-			}
-		}
+		attachIssuance(rec, item.ID, iss)
 		// REQ-TCD-001: the classification is resolved INSIDE the same locked
 		// write — no card becomes visible to a machine selector unclassified,
 		// and no two-step window exists (plan G1).
@@ -1021,6 +996,55 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 	presText := renderIssuanceText(presentation)
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %d\n", item.ID, pos)
 	return presText, nil
+}
+
+// validateIssuanceInLock runs the issuance attribute validations inside the
+// caller's locked write (SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013): an
+// out-of-set origin, or a parent that names no card, refuses with nothing
+// written. Parent existence reads the record the same locked write appends
+// into: live, dropped AND archived all count — a follow-up of a closed card
+// is the normal flow. Both add surfaces (append and --pick) share it.
+func validateIssuanceInLock(rec *factory.BacklogRecord, iss *factory.BacklogIssuance) error {
+	if iss == nil {
+		return nil
+	}
+	if iss.Origin != "" && !factory.IssuanceOriginValid(iss.Origin) {
+		return fmt.Errorf("todo add: --origin must be one of %s (got %q)",
+			strings.Join(factory.IssuanceOrigins, ", "), iss.Origin)
+	}
+	if iss.SpawnedBy != "" {
+		parentExists := false
+		for i := range rec.Items {
+			if rec.Items[i].ID == iss.SpawnedBy {
+				parentExists = true
+				break
+			}
+		}
+		for i := range rec.Archived {
+			if rec.Archived[i].Item.ID == iss.SpawnedBy {
+				parentExists = true
+				break
+			}
+		}
+		if !parentExists {
+			return fmt.Errorf("todo add: --parent names no card: %s", iss.SpawnedBy)
+		}
+	}
+	return nil
+}
+
+// attachIssuance records the issuance attributes on the freshly appended
+// item; a nil record attaches nothing.
+func attachIssuance(rec *factory.BacklogRecord, cardID string, iss *factory.BacklogIssuance) {
+	if iss == nil {
+		return
+	}
+	for i := range rec.Items {
+		if rec.Items[i].ID == cardID {
+			rec.Items[i].Issuance = iss
+			return
+		}
+	}
 }
 
 // runTodoAddDryRun is the `--dry-run` body (REQ-TCI-004): the same
@@ -1052,8 +1076,10 @@ func runTodoAddDryRun(cmd *cobra.Command, text string) error {
 // where a guessed id could address a concurrent session's card — the exact
 // race that mis-picked t67 on 2026-08-16. The confirmation prints the
 // issued id and the card text prefix; the caller never has to guess what
-// `--pick` just picked.
-func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string, force bool, dec factory.CardDecider) error {
+// `--pick` just picked. The issuance attributes ride the same locked write
+// and the same validations as the append path (card t1454 card-review r2
+// finding 7).
+func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance) error {
 	if dec == nil {
 		dec = todoCardDecider
 	}
@@ -1070,11 +1096,17 @@ func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string
 	}
 	var item factory.BacklogItem
 	err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		// REQ-TCI-013: the issuance validations run BEFORE the append —
+		// nothing is written and no id is consumed on a refusal.
+		if err := validateIssuanceInLock(rec, iss); err != nil {
+			return err
+		}
 		var mutErr error
 		item, _, mutErr = appendAnalyzedCard(rec, text, factory.BacklogStatePicked, force)
 		if mutErr != nil {
 			return mutErr
 		}
+		attachIssuance(rec, item.ID, iss)
 		// REQ-TCD-001: same locked write, same seam, same sort duty.
 		todoApplyClassification(rec, item.ID, todoClassifyInLock(dec, text, cmd.ErrOrStderr()))
 		rec.SortByClassification()

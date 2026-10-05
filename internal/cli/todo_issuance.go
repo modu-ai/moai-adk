@@ -7,6 +7,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -18,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // todoLaneFilesProbe is the production lane-branch probe seam. Tests swap
@@ -84,10 +86,47 @@ func todoIssuancePresentationFloor(root, text string, floor float64) factory.Iss
 		rec = &factory.BacklogRecord{}
 	}
 	specs := todoCompletedSpecsReader(root, time.Now().Add(factory.IssuanceProbeTimeBound))
+	leased := factoryLeasedLanes(root)
 	if floor < 0 {
-		return factory.BuildIssuancePresentation(text, rec, specs, todoLaneFilesProbe)
+		return factory.BuildIssuancePresentation(text, rec, specs, todoLaneFilesProbe, leased)
 	}
-	return factory.BuildIssuancePresentationFloor(text, rec, specs, todoLaneFilesProbe, floor)
+	return factory.BuildIssuancePresentationFloor(text, rec, specs, todoLaneFilesProbe, leased, floor)
+}
+
+// factoryLeasedLanes reads the lane labels the factory record leases cards
+// to (card id → lane), best-effort: a project with no factory record, or an
+// unreadable one, contributes nothing. A factory lease lives only here — the
+// queue's runtime assignments carry no row for a card the `factory next`
+// claim leased (card t1454 card-review r2 finding 9).
+func factoryLeasedLanes(root string) map[string]string {
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return nil
+	}
+	if _, err := os.Lstat(path); err != nil {
+		return nil
+	}
+	db, err := homestate.OpenFactoryPath(path)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = db.Close() }()
+	cards, err := db.ListCards(context.Background(), "")
+	if err != nil {
+		return nil
+	}
+	leased := make(map[string]string)
+	for _, c := range cards {
+		if c.State != homestate.CardLeased {
+			continue
+		}
+		lane := strings.TrimSpace(c.LeaseHolder)
+		if lane == "" || lane == "leader" {
+			continue
+		}
+		leased[c.CardID] = lane
+	}
+	return leased
 }
 
 var issuanceFrontmatterField = regexp.MustCompile(`^([a-z_]+):\s*(.*)$`)

@@ -108,32 +108,18 @@ func runFactoryBundle(cmd *cobra.Command, lane string, cards []string, run strin
 	defer func() { _ = db.Close() }()
 	now := factoryCardNow()
 	bundleID := fmt.Sprintf("bundle-%s-%s", cards[0], now.UTC().Format("20060102T150405"))
-	// Each later member's after hint names the member recorded just before
-	// it — the chain the selection host serves in order.
-	var head homestate.Card
+	// The chain records and the head's assignment land inside ONE record
+	// transaction (card t1454 card-review r2 finding 3): a member whose
+	// record has already moved past `picked` aborts the whole load, leaving
+	// no half-loaded chain behind.
+	members := make([]homestate.BundleMemberSpec, len(cards))
 	for i, id := range cards {
-		fields := homestate.CardFields{
-			BundleID:    &bundleID,
-			BundleOrder: &i,
-		}
+		members[i] = homestate.BundleMemberSpec{CardID: id, BundleID: bundleID, Order: i}
 		if i > 0 {
-			after := cards[i-1]
-			fields.HintAfter = &after
-		}
-		picked, err := db.RecordPicked(ctx, runID, id, fields, "bundle", now)
-		if err != nil {
-			return err
-		}
-		if i == 0 {
-			head = picked
+			members[i].HintAfter = cards[i-1]
 		}
 	}
-	// Only the FIRST member is assigned; the selection host serves the rest
-	// to this lane as their predecessors reach the local merge.
-	head, err = db.Transition(ctx, homestate.TransitionRequest{
-		RunID: runID, CardID: cards[0], To: homestate.CardAssigned,
-		ExpectedVersion: head.Version, Actor: "bundle", Owner: lane, Now: now,
-	})
+	head, err := db.RecordBundleChain(ctx, runID, members, lane, "bundle", now)
 	if err != nil {
 		return err
 	}
@@ -143,24 +129,18 @@ func runFactoryBundle(cmd *cobra.Command, lane string, cards []string, run strin
 
 // factoryHubChainFields computes the hub-chain hint for a card about to be
 // recorded (REQ-TCI-020): when the card's recorded files cross the embedded
-// hub list and another open, RECORDED card's files share a hub path, the new
-// record's after hint names the first such card in queue order. The queue
-// read supplies the files attributes and homestate the embedded list — this
-// is the one place that sees both (design §7.2). A card with no files, no
-// crossing, or no chainable predecessor carries no hint. Keep-set and
+// hub list and another open, RECORDED card's files share A HUB PATH WITH THE
+// CANDIDATE — the intersection of the two hub crossings, not each card
+// crossing some hub path of its own (card t1454 card-review r2 finding 6) —
+// the new record's after hint names the first such card in queue order. The
+// queue read supplies the files attributes and homestate the embedded list —
+// this is the one place that sees both (design §7.2). A card with no files,
+// no crossing, or no chainable predecessor carries no hint. Keep-set and
 // selection read no file overlap: the hint is a RECORD-CREATION input only.
 func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Card, cardID string) homestate.CardFields {
 	hub := make(map[string]bool)
 	for _, p := range homestate.HubFiles() {
 		hub[p] = true
-	}
-	sharesHub := func(files []string) bool {
-		for _, f := range files {
-			if hub[f] {
-				return true
-			}
-		}
-		return false
 	}
 	var candidate *factory.BacklogItem
 	for i := range queueRec.Items {
@@ -169,7 +149,16 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 			break
 		}
 	}
-	if candidate == nil || candidate.Issuance == nil || !sharesHub(candidate.Issuance.Files) {
+	if candidate == nil || candidate.Issuance == nil {
+		return homestate.CardFields{}
+	}
+	candHub := make(map[string]bool)
+	for _, f := range candidate.Issuance.Files {
+		if hub[f] {
+			candHub[f] = true
+		}
+	}
+	if len(candHub) == 0 {
 		return homestate.CardFields{}
 	}
 	recorded := make(map[string]bool, len(cards))
@@ -178,7 +167,17 @@ func factoryHubChainFields(queueRec *factory.BacklogRecord, cards []homestate.Ca
 	}
 	for i := range queueRec.Items {
 		it := &queueRec.Items[i]
-		if it.ID == cardID || it.Issuance == nil || !sharesHub(it.Issuance.Files) {
+		if it.ID == cardID || it.Issuance == nil {
+			continue
+		}
+		shares := false
+		for _, f := range it.Issuance.Files {
+			if candHub[f] {
+				shares = true
+				break
+			}
+		}
+		if !shares {
 			continue
 		}
 		// POSITIVE enumeration (REQ-THS-012): the open states a chain can

@@ -680,8 +680,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	// fail — the skip-not-error hook of design §7.2. The same skip covers a
 	// hub-chained card (REQ-TCI-020): its hint waits the same way, so no
 	// lane wedges on a lease its predecessor has not earned yet.
+	//
+	// mergedLocal reads every run (card t1454 card-review r2 finding 5):
+	// predecessorMerged — the T2 guard the hint claims against — reads every
+	// run, so the selection's skip must read the same set; a predecessor
+	// merged under a previous run id would otherwise wedge its successor
+	// forever.
 	bundleLane := make(map[string]string, len(cards))
-	mergedLocal := make(map[string]bool, len(cards))
 	rowByID := make(map[string]homestate.Card, len(cards))
 	for _, c := range cards {
 		rowByID[c.CardID] = c
@@ -690,6 +695,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 				bundleLane[c.BundleID] = strings.TrimSpace(c.OwnerLabel)
 			}
 		}
+	}
+	allRuns, err := db.ListCards(ctx, "")
+	if err != nil {
+		return homestate.Card{}, false, false, err
+	}
+	mergedLocal := make(map[string]bool, len(allRuns))
+	for _, c := range allRuns {
 		switch c.State {
 		case homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
 			mergedLocal[c.CardID] = true
@@ -828,8 +840,17 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 				// Another lane's bundle member, or a candidate whose after
 				// predecessor is unmerged, is never auto-promoted
 				// (REQ-TCI-018/-020): the record row, when one exists, says
-				// which. A rowless candidate carries neither attribute.
-				if row, ok := rowByID[it.ID]; ok && selectionSkips(row) {
+				// which. A rowless candidate's hub hint is computed at
+				// promotion, so its predecessor condition is checked HERE —
+				// the same predicate selectionSkips applies to rows
+				// (card t1454 card-review r2 finding 4). Promoting a
+				// candidate whose hint names an unmerged predecessor failed
+				// the claim and errored the whole verb.
+				if row, ok := rowByID[it.ID]; ok {
+					if selectionSkips(row) {
+						continue
+					}
+				} else if hf := hubFields(it.ID); hf.HintAfter != nil && !mergedLocal[*hf.HintAfter] {
 					continue
 				}
 				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
