@@ -1,6 +1,9 @@
 # 의존성 그래프
 
-**현재 부분 재측정 — t1485, 브랜치 `WT-codemaps-regen3`, base `83086bec5` (2026-10-04).**
+**현재 부분 재측정 — t1524, worktree `.claude/worktrees/develop`, 브랜치 `develop`, base `d0378d37c` (2026-10-05).**
+문서의 산출 명령으로 내부 import를 다시 쟀다 — 패키지 단위 470→**476**, 최상위 접기 + self-edge 제거 고유 쌍 295→**301**. 신규 패키지 `internal/hygiene`(card t1518)은 내부 import `internal/config` 하나, 소비자 `internal/cli`·`internal/hook` 둘. 움직인 엣지는 전부 이번 창 몫이다 — `cli→hygiene`·`hook→hygiene`·`hygiene→config`(card t1518), `runtime→auditverdict`·`runtime→config`·`cli→auditverdict`(card t1500 — `audit_ceiling.go`와 `spec_ceiling.go`). fan-in 상위에서 움직인 행: `internal/config` 28→30(`hygiene`·`runtime` 합류). fan-out 상위: `internal/cli` 73→75, `internal/hook` 39→40. 작은 fan-in 표에 `internal/auditverdict` 4(`contract`·`homestate`에 `cli`·`runtime` 합류)와 `internal/hygiene` 2가 들어왔다. § 순환은 재확인 결과 변동 없음(신규 엣지는 전부 일방향 — leaf 방향). go.mod는 앵커 이후에도 한 줄도 바뀌지 않았다.
+
+**이전 부분 재측정 — t1485, 브랜치 `WT-codemaps-regen3`, base `83086bec5` (2026-10-04).**
 문서의 산출 명령으로 내부 import를 다시 쟀다 — 패키지 단위 461→**470**, 최상위 접기 + self-edge 제거 고유 쌍 289→**295**. 큐 도메인 패키지가 `internal/factory`로 개명되며(card t1399) 그 행들이 새 이름으로 옮겨졌다. 신규 패키지 셋: `internal/decision`(내부 import `internal/homestate` 하나, 소비자 `internal/cli`), `internal/auditverdict`(내부 import 0인 leaf, 소비자 `internal/contract`·`internal/homestate`), `internal/template/pluginemit`(`internal/template`·`pkg/version` import, 비테스트 소비자 0 — 빌드타임 방출기). fan-in 상위에서 움직인 행: `internal/config` 27→28, `internal/homestate` 8→9, `pkg/version` 5→6, `internal/lockfile` 5로 상위 진입. fan-out 상위: `internal/cli` 72→73, `internal/web` 15→16, `internal/contract` 9→10, `internal/homestate` 4→6. go.mod는 t1456 앵커 이후에도 한 줄도 바뀌지 않았다.
 
 **이전 부분 재측정 — t1456, worktree `.moai/worktrees/t1456`, 브랜치 `WT-codemaps-regen2`, base `5501c06af` (2026-10-03).**
@@ -48,16 +51,14 @@ settings의 fan-out이 줄었다). `internal/gitenv` 소비자가 둘에서 여�
 **정기 재측정**: worktree `.claude/worktrees/t1274`, 브랜치 `WT-codemaps-refresh4`, base `cf4b82755`, 2026-09-26 — 카드 t1274. 엣지 수(386→409 · 241→256; 최상위 집계는 계보 방식대로 고유 쌍 집합 기준). 증가분의 대부분은 신규 패키지 `internal/escalation`(비테스트 소비자 `internal/hook` 1개, 스스로는 `internal/config`·`internal/contract`·`internal/spec`·`internal/constitution`·`internal/homestate`·`internal/navigator/astx` 등을 import)와 t1235 계열 cli·hook·config 변경이 가져왔습니다. § 순환·§ 외부 의존성은 이번 변경과 무관해 손대지 않았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t1278`, 브랜치 `WT-codemaps-refresh5`, base `6d514f9b7`, 2026-09-27 — 카드 t1278. 엣지 수(409→413 · 256→260). 신규 엣지는 정확히 넷: 신규 패키지 `internal/civerdict`로 향하는 둘(`internal/cli`·`internal/escalation`)과 `internal/escalation`→`internal/verify`(ciLimb 의 HasLocalPass 소비), `internal/contract`→`internal/mission`(projection_mission 투영). t1242 가 지운 `internal/cli`→`internal/homestate` 접힌 엣지는 타 cli 파일이 유지해 상위 집계에 변동이 없습니다. fan-out 상위 표는 `internal/cli` 66→67(civerdict 합류) 한 행, 작은 fan-in 표는 `internal/mission` 1→2(소비자에 `internal/contract` 합류)와 신규 `internal/civerdict` 2 한 행. § 순환·§ 외부 의존성·상호 참조 쌍은 이번 변경과 무관해 손대지 않았습니다.
 
-두 가지 해상도로 봅니다 — 패키지 단위 **457 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
-최상위로 접고 self-edge를 제거한 **286 엣지**. 아래 표는 후자 기준입니다.
+두 가지 해상도로 봅니다 — 패키지 단위 **476 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
+최상위로 접고 self-edge를 제거한 **301 엣지**. 아래 표는 후자 기준입니다.
 
 산출:
 
 ```
-$ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
-  | awk '{src=$1; for(i=2;i<=NF;i++) if ($i ~ /^github\.com\/modu-ai\/moai-adk\//) print src, $i}' \
-  | wc -l
-457
+$ go list -deps -json ./... 의 프로젝트 패키지 Imports 중 모듈 내부 경로
+476
 ```
 
 > 앵커 `25a3212a9` 판은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 그 판의
@@ -70,7 +71,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 
 | # | 패키지 | 피import | 레이어 |
 |---|---|---|---|
-| 1 | `internal/config` | 28 | data |
+| 1 | `internal/config` | 30 | data |
 | 2 | `internal/atomicfile` | 14 | cross-cutting |
 | 2 | `internal/paths` | 14 | cross-cutting |
 | 4 | `internal/defs` | 13 | cross-cutting |
@@ -117,6 +118,8 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 
 | 패키지 | fan-in | 비고 |
 |---|---|---|
+| `internal/hygiene` | 2 | **t1524 판에서 새로 들어왔다.**(card t1518, SPEC-MOAI-HYGIENE-001) 소비자는 `internal/cli`(`clean.go` — 수동 표면)와 `internal/hook`(`session_start_hygiene.go` — SessionStart 자동 경로)둘이며, 패키지 스스로는 `internal/config` 하나만 import 한다(workflow.hygiene 6키 — 두 경로가 같은 임계값을 읽는다) |
+| `internal/auditverdict` | 4 | **t1485 판에서 새로 들어오고 t1524 판에서 넷이 됐다.** 소비자는 `internal/contract`·`internal/contract/kickoff`·`internal/homestate`(`card_audit_kickoff.go`)에 이번 판의 `internal/cli`(`spec_ceiling.go`)·`internal/runtime`(`audit_ceiling.go`) 합류(card t1500) — 감사 판정의 단일 admission 술어라 소비자가 늘어나는 것이 설계다 |
 | `internal/stateanchor` | 3 | 상태 앵커 seam. 소비자는 `internal/statusline`, `internal/cli`, 그리고 이 판에 합류한 `internal/session` — 레지스트리 경로 해석이 같은 seam을 쓰기 시작했다(워크트리마다 갈라지던 레지스트리 하나로 모으기) |
 | `internal/chain` | 2 | 워크트리 세션 origin-trail 원장. 소비자는 `internal/cli`와 `internal/hook` |
 | `internal/auditreceipt` | 3 | **t999 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/hook` — 생산 쪽(MCP 도구 호출)과 소비 쪽(훅 가드)이 각각 하나씩이며, 그 비대칭이 아니라 대칭이 이 패키지의 설계다 **t1333 판 정정: 소비자는 cli·hook·closure 셋이다 — closure 엇키는 앵컰 이전부터 존재했고 이 판이 스테일 값을 바로잛었다** |
@@ -145,8 +148,8 @@ admission 계약을 공유합니다.
 
 | # | 패키지 | import |
 |---|---|---|
-| 1 | `internal/cli` | **73** |
-| 2 | `internal/hook` | 39 |
+| 1 | `internal/cli` | **75** |
+| 2 | `internal/hook` | 40 |
 | 3 | `internal/web` | 16 |
 | 4 | `internal/core` | 13 |
 | 5 | `internal/escalation` | 12 |
@@ -159,7 +162,7 @@ admission 계약을 공유합니다.
 | 15 | `internal/update` · `spec` · `template` · `discovery` | 4 각 |
 | 19 | `internal/session` · `ralph` · `profile` · `lsp` · `loop` · `graph` · `factorylane` · `config` | 3 각 |
 
-`internal/cli`가 다른 최상위 패키지 **73개**를 import 합니다(t1485 판 재측정 72→73 — 신규 `internal/decision`; t1297 판 재측정 — t1305 판 70에서
+`internal/cli`가 다른 최상위 패키지 **75개**를 import 합니다(t1524 판 재측정 73→75 — `internal/hygiene`(card t1518)·`internal/auditverdict`(`spec_ceiling.go` · card t1500) 합류; t1485 판 재측정 72→73 — 신규 `internal/decision`; t1297 판 재측정 — t1305 판 70에서
 커밋 신원 가드 배선·codex factory 복원 등의 누적 +3) — 사실상 전 트리에 닿습니다.
 합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 상당수는
 `deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이것이 "명령 하나 = 파일 하나 = 그 명령이
