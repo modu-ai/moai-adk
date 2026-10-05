@@ -1093,6 +1093,20 @@ func testZoneShellMutation(t *testing.T) {
 	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "rm -r Tests"})
 	wantZoneDeny(t, "glob parent dir original case", d, r, harnessLearnerIdentity, "category", "probe_glob")
 
+	// review-repair round 14 row (gate verdict on the round-13 head: a
+	// branch's function redefinition overwrote the registry even though the
+	// branch may not run)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	for _, cmd := range []string{
+		"f(){ rm zone_dir/guard.go; }; if false; then f(){ true; }; fi; f",        // the skipped branch's redefinition must not win (r14)
+		"case x in x) f(){ rm zone_dir/guard.go; } ;; y) f(){ true; } ;; esac; f", // arm worlds union too (r14)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+
 	if swept < 71 {
 		t.Fatalf("swept %d rows, want at least 71", swept)
 	}

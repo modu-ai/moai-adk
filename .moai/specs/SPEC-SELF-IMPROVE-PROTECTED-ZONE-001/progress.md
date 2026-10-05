@@ -255,6 +255,17 @@ The gate's verdict on the round-12 head failed with 4×P1 + 2×P2. The card's ow
 
 GREEN: `TestProtectedZone` hook+config (ShellMutation swept 94 — 3 new deny rows plus the original-case glob row), `go build ./...` exit 0, GOOS=linux+windows OK, `golangci-lint` 0 issues, gofmt clean, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
 
+### Repair round 14 — branch-local function definitions join the possible-worlds model (2026-10-06)
+
+The gate's verdict on the round-13 head failed with 1×P1 (this card) + 6×P2 (foreign scope). The P1: `f(){ rm zone_dir/guard.go; }; if false; then f(){ true; }; fi; f` was ALLOWED — a branch's redefinition overwrote the shared function registry even though the branch may never run, so the caller-side call walked the EMPTY body. The registry now joins the same possible-worlds model the directory set uses:
+
+- `funcs` maps a name to its POSSIBLE BODIES (`[]*syntax.Stmt`). A straight-line redefinition REPLACES (`f(){a}; f(){b}; f` walks only `b`); a BRANCH JOIN unions (`mergeZoneFuncs`, bodies deduped by node identity): if/elif/else clone the post-condition registry per branch and merge the worlds; case arms merge entry ∪ accumulated arm worlds per arm and union at the end; loops keep the zero-iteration world's pre-loop registry; subshells, pipeline elements, and background statements keep their snapshot/restore (round 11 P1, unchanged). A call walks EVERY body the name may hold, under the same recursion guard.
+- RED rows observed first (both allow): the verdict's if-form repro and a case-form twin.
+
+**P2 6건 — 외부 소관, 라우팅 누적(누적 18건; 4건은 기존 발견의 재지적)**: `internal/cli/factory_bundle.go:211` 다중 허브 선행 검사 누락(마지막 항목만 HintAfter에 반영) · `factory_card.go:821` 레코드 없는 picked 후보 선행조건 생략(재지적) · `todo_issuance.go:152` SPEC 읽기 자체의 시간 제한 부재(FIFO로 막힘 — 신규) · `todo.go:940` --files 겹침(재지적) · `todo.go:873` add --pick 제시(재지적) · `todo_issuance.go:274` engage가 자기 자신을 exact 이웃으로 표시(신규). 전부 이 카드 diff에 없는 main 착지 코드.
+
+GREEN: `TestProtectedZone` hook+config (ShellMutation swept 96 — 2 new deny rows), `go build ./...` exit 0, GOOS=linux+windows OK, `golangci-lint` 0 issues, gofmt clean, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready

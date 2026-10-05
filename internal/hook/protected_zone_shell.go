@@ -149,10 +149,12 @@ type zoneWalker struct {
 	mutating  bool
 	unbounded bool
 	cands     []string
-	// funcs maps a function name declared in THIS command to its body — a
-	// call runs the body in the caller's state (round 10 P2). calling holds
-	// the names currently being walked, breaking recursive declarations.
-	funcs   map[string]*syntax.Stmt
+	// funcs maps a function name declared in THIS command to the bodies it
+	// may have: a straight-line redefinition replaces, a branch join unions
+	// — the skipped branch's definition must not win (round 14 P1). calling
+	// holds the names currently being walked, breaking recursive
+	// declarations.
+	funcs   map[string][]*syntax.Stmt
 	calling map[string]bool
 }
 
@@ -424,15 +426,18 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		// base that matches no verb, exactly as before
 		name = path.Base(name)
 	}
-	if body, declared := w.funcs[name]; declared {
-		// a call to a function declared in this command runs its body in the
-		// caller's directory state (round 10 P2); a recursive declaration
+	if bodies, declared := w.funcs[name]; declared {
+		// a call to a function declared in this command runs every body the
+		// name may have, in the caller's directory state (round 10 P2; the
+		// possible-bodies union is round 14 P1); a recursive declaration
 		// breaks the walk here, the documented under-match
 		if w.calling[name] {
 			return
 		}
 		w.calling[name] = true
-		w.zoneWalkStmt(body)
+		for _, body := range bodies {
+			w.zoneWalkStmt(body)
+		}
 		delete(w.calling, name)
 		return
 	}
@@ -677,10 +682,34 @@ func (w *zoneWalker) walkBodyFixedPoint(cond []*syntax.Stmt, stmts []*syntax.Stm
 // cloneZoneFuncs copies the function registry — a subshell's redefinitions
 // die with the subshell, so every subshell-shaped walk runs on its own copy
 // (round 11 P1).
-func cloneZoneFuncs(m map[string]*syntax.Stmt) map[string]*syntax.Stmt {
-	out := make(map[string]*syntax.Stmt, len(m))
+func cloneZoneFuncs(m map[string][]*syntax.Stmt) map[string][]*syntax.Stmt {
+	out := make(map[string][]*syntax.Stmt, len(m))
 	for k, v := range m {
 		out[k] = v
+	}
+	return out
+}
+
+// mergeZoneFuncs unions the possible bodies of every registry — a branch
+// join leaves the name holding every definition any world gave it (round 14
+// P1). Bodies are deduplicated by node identity.
+func mergeZoneFuncs(maps ...map[string][]*syntax.Stmt) map[string][]*syntax.Stmt {
+	out := make(map[string][]*syntax.Stmt)
+	for _, m := range maps {
+		for name, bodies := range m {
+			for _, body := range bodies {
+				dup := false
+				for _, have := range out[name] {
+					if have == body {
+						dup = true
+						break
+					}
+				}
+				if !dup {
+					out[name] = append(out[name], body)
+				}
+			}
+		}
 	}
 	return out
 }
@@ -708,7 +737,7 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		return
 	}
 	pre := append([]string(nil), w.cwds...)
-	var preFuncs map[string]*syntax.Stmt
+	var preFuncs map[string][]*syntax.Stmt
 	if stmt.Background {
 		preFuncs = cloneZoneFuncs(w.funcs)
 	}
@@ -770,6 +799,9 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 	case *syntax.IfClause:
 		w.walkIfChain(cmd)
 	case *syntax.ForClause:
+		// the zero-iteration world keeps the pre-loop function registry
+		// (round 14 P1)
+		preFuncs := cloneZoneFuncs(w.funcs)
 		if n := zoneLoopCount(cmd.Loop); n >= 0 {
 			// the item list is fully literal: exactly n iterations run, each
 			// from the accumulated set (the next iteration starts where the
@@ -783,36 +815,48 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		} else {
 			w.walkBodyFixedPoint(nil, cmd.Do)
 		}
+		w.funcs = mergeZoneFuncs(preFuncs, w.funcs)
 	case *syntax.WhileClause:
 		// the iteration count is unknown: condition and body walk together
 		// to the fixed point — the condition runs every iteration (round 11
 		// P1), and the zero-iteration world (the first condition evaluation
 		// failing) is the first pass's post-condition set, which the walk
 		// already unions (round 8 P1; WhileClause.Until folds `until` into
-		// the same shape)
+		// the same shape). The zero-iteration world keeps the pre-loop
+		// function registry too (round 14 P1).
+		preFuncs := cloneZoneFuncs(w.funcs)
 		w.walkBodyFixedPoint(cmd.Cond, cmd.Do)
+		w.funcs = mergeZoneFuncs(preFuncs, w.funcs)
 	case *syntax.CaseClause:
 		entry := append([]string(nil), w.cwds...)
+		entryFuncs := cloneZoneFuncs(w.funcs)
 		worlds := append([]string(nil), entry...) // no arm may match: entry survives
+		worldsFuncs := cloneZoneFuncs(entryFuncs)
 		for _, item := range cmd.Items {
 			// every arm starts from the case's entry set — and, sound over
 			// `;&` and `;;&` fall-through, from every earlier arm's exit
-			// state too (round 9 P1)
+			// state too (round 9 P1); the registries union the same way
+			// (round 14 P1)
 			w.setCwds(append(append([]string(nil), entry...), worlds...))
+			w.funcs = mergeZoneFuncs(entryFuncs, worldsFuncs)
 			for _, s := range item.Stmts {
 				w.zoneWalkStmt(s)
 			}
 			worlds = append(worlds, w.cwds...)
+			worldsFuncs = mergeZoneFuncs(worldsFuncs, w.funcs)
 		}
 		w.setCwds(worlds)
+		w.funcs = mergeZoneFuncs(entryFuncs, worldsFuncs)
 	case *syntax.TimeClause:
 		// `time cmd` runs cmd, timed (round 10 P2)
 		w.zoneWalkStmt(cmd.Stmt)
 	case *syntax.FuncDecl:
 		// a declaration alone runs nothing; the name registers so a later
-		// call in the same command walks the body (round 10 P2)
+		// call in the same command walks the body (round 10 P2). A
+		// straight-line redefinition REPLACES — only a branch join unions
+		// (round 14 P1).
 		if cmd.Name != nil {
-			w.funcs[cmd.Name.Value] = cmd.Body
+			w.funcs[cmd.Name.Value] = []*syntax.Stmt{cmd.Body}
 		}
 	case *syntax.CallExpr:
 		w.zoneCall(cmd)
@@ -837,15 +881,21 @@ func (w *zoneWalker) walkIfChain(clause *syntax.IfClause) {
 		w.zoneWalkStmt(s) // a condition executes (round 6 P1)
 	}
 	afterCond := append([]string(nil), w.cwds...)
+	branchFuncs := cloneZoneFuncs(w.funcs) // the post-condition registry every branch starts from
 	w.setCwds(afterCond)
 	for _, s := range clause.Then {
 		w.zoneWalkStmt(s)
 	}
 	afterThen := append([]string(nil), w.cwds...)
+	thenFuncs := w.funcs
 	w.setCwds(afterCond)
+	w.funcs = cloneZoneFuncs(branchFuncs)
 	w.walkIfChain(clause.Else)
 	afterElse := append([]string(nil), w.cwds...)
-	// union: the then world, the else world, the condition-false world
+	elseFuncs := w.funcs
+	// union: the then world, the else world, the condition-false world —
+	// directories and function definitions alike (round 14 P1)
+	w.funcs = mergeZoneFuncs(branchFuncs, thenFuncs, elseFuncs)
 	w.cwds = append(pre, afterThen...)
 	w.cwds = append(w.cwds, afterElse...)
 	w.setCwds(w.cwds)
@@ -875,7 +925,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	if !ok {
 		return ""
 	}
-	w := &zoneWalker{h: h, cwds: []string{"."}, funcs: map[string]*syntax.Stmt{}, calling: map[string]bool{}}
+	w := &zoneWalker{h: h, cwds: []string{"."}, funcs: map[string][]*syntax.Stmt{}, calling: map[string]bool{}}
 	for _, stmt := range file.Stmts {
 		w.zoneWalkStmt(stmt)
 	}
