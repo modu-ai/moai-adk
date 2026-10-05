@@ -14,10 +14,14 @@
 package graph
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os/exec"
 	"sort"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // CardFileAttributor attributes one merge subject to exactly one card id,
@@ -30,6 +34,34 @@ type CardFileEdge struct {
 	Card string
 	File string
 	SHA  string // the merge commit's abbreviated SHA (the evidence pointer)
+}
+
+// mergeInfo is one merge commit of the reachable walk: full SHA and subject.
+type mergeInfo struct {
+	sha, subject string
+}
+
+// walkCardMerges lists every merge commit reachable from HEAD by ANY parent
+// path, in git log order (newest first). `git log` (not `rev-list --format`)
+// keeps one line per commit — NUL-separated so a subject carrying spaces or
+// format metacharacters still parses.
+func walkCardMerges(repoRoot string) ([]mergeInfo, error) {
+	out, err := gitIn(repoRoot, "log", "--merges", "--format=%H%x00%s", "HEAD")
+	if err != nil {
+		return nil, fmt.Errorf("card_file: log merges: %w", err)
+	}
+	var merges []mergeInfo
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if line == "" {
+			continue
+		}
+		sha, subject, ok := strings.Cut(line, "\x00")
+		if !ok || sha == "" {
+			continue
+		}
+		merges = append(merges, mergeInfo{sha: sha, subject: subject})
+	}
+	return merges, nil
 }
 
 // CardFileEdges walks every merge commit reachable from HEAD by ANY parent
@@ -45,23 +77,9 @@ func CardFileEdges(repoRoot, landedBranch string, attribute CardFileAttributor) 
 	if attribute == nil {
 		return nil, fmt.Errorf("card_file: attribution function is required")
 	}
-	// Every merge commit reachable from HEAD by any parent path.
-	out, err := gitIn(repoRoot, "rev-list", "--merges", "--format=%H %s", "HEAD")
+	merges, err := walkCardMerges(repoRoot)
 	if err != nil {
-		return nil, fmt.Errorf("card_file: rev-list merges: %w", err)
-	}
-	type mergeInfo struct {
-		sha, subject string
-	}
-	var merges []mergeInfo
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		if line == "" {
-			continue
-		}
-		parts := strings.SplitN(line, " ", 2)
-		if len(parts) == 2 {
-			merges = append(merges, mergeInfo{sha: parts[0], subject: parts[1]})
-		}
+		return nil, err
 	}
 	var edges []CardFileEdge
 	for _, m := range merges {
@@ -92,6 +110,54 @@ func CardFileEdges(repoRoot, landedBranch string, attribute CardFileAttributor) 
 		return edges[i].SHA < edges[j].SHA
 	})
 	return edges, nil
+}
+
+// CardAttributedMergeSHAs returns the sorted, deduplicated full SHAs of the
+// merge commits the attributor maps to a card — the freshness input of the
+// card-file layer. A new card-attributed merge landing changes the list; an
+// absorb-direction merge landing does not (it attributes nothing), so the
+// fingerprint tracks edges content, not all of history.
+func CardAttributedMergeSHAs(repoRoot, landedBranch string, attribute CardFileAttributor) ([]string, error) {
+	if attribute == nil {
+		return nil, fmt.Errorf("card_file: attribution function is required")
+	}
+	merges, err := walkCardMerges(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool, len(merges))
+	var shas []string
+	for _, m := range merges {
+		if attribute(m.subject, landedBranch) == "" {
+			continue
+		}
+		if !seen[m.sha] {
+			seen[m.sha] = true
+			shas = append(shas, m.sha)
+		}
+	}
+	sort.Strings(shas)
+	return shas, nil
+}
+
+// CardMergeFingerprint hashes the card-attributed merge SHA list into the
+// stable fingerprint SourceFingerprintsForEdges stamps and re-checks. An
+// empty list hashes to the empty-input digest — a stable, comparable state
+// like the other source sets' absent-dir form.
+func CardMergeFingerprint(repoRoot, landedBranch string, attribute CardFileAttributor) (string, error) {
+	shas, err := CardAttributedMergeSHAs(repoRoot, landedBranch, attribute)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256([]byte(strings.Join(shas, "\n")))
+	return hex.EncodeToString(sum[:]), nil
+}
+
+// cardFileLandedBranch resolves the integration branch the attribution rule
+// compares against, through the same three-level ref chain the landed
+// question asks. One resolution, shared by the layer and the fingerprint.
+func cardFileLandedBranch(projectRoot string) string {
+	return factory.LandedBranchFromRef(factory.LandedRefFor(projectRoot))
 }
 
 func gitIn(root string, args ...string) (string, error) {
