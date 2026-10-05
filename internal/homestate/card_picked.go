@@ -58,15 +58,21 @@ func (r ContractRef) Validate() error {
 	return nil
 }
 
-// CardFields are the values `assign` may set on a picked card. A nil field is
-// left as it is; a pointer to "" clears it.
+// CardFields are the values `assign` and the bundle loader may set on a
+// picked card. A nil field is left as it is; a pointer to "" clears it.
 type CardFields struct {
 	HintPrefer, HintAfter, SpecID, WorktreePath *string
-	Contract                                    *ContractRef
+	// BundleID/BundleOrder are the bundle chain's identity and the member's
+	// position (REQ-TCI-018), set once when the bundle is loaded; a nil
+	// BundleID leaves the card out of any bundle.
+	BundleID    *string
+	BundleOrder *int
+	Contract    *ContractRef
 }
 
 func (f CardFields) empty() bool {
-	return f.HintPrefer == nil && f.HintAfter == nil && f.SpecID == nil && f.WorktreePath == nil && f.Contract == nil
+	return f.HintPrefer == nil && f.HintAfter == nil && f.SpecID == nil && f.WorktreePath == nil &&
+		f.BundleID == nil && f.BundleOrder == nil && f.Contract == nil
 }
 
 func (f CardFields) validate() error {
@@ -85,6 +91,12 @@ func (f CardFields) validate() error {
 	if f.WorktreePath != nil && *f.WorktreePath != "" && !filepath.IsAbs(*f.WorktreePath) {
 		return fmt.Errorf("%w: worktree path %q is not absolute", ErrInvalidCardInput, *f.WorktreePath)
 	}
+	if f.BundleID != nil && *f.BundleID != "" && strings.TrimSpace(*f.BundleID) == "" {
+		return fmt.Errorf("%w: bundle id is whitespace only", ErrInvalidCardInput)
+	}
+	if f.BundleOrder != nil && *f.BundleOrder < 0 {
+		return fmt.Errorf("%w: bundle order %d is negative", ErrInvalidCardInput, *f.BundleOrder)
+	}
 	if f.Contract != nil {
 		return f.Contract.Validate()
 	}
@@ -101,6 +113,10 @@ func (f CardFields) apply(c *Card) {
 	set(&c.HintAfter, f.HintAfter)
 	set(&c.SpecID, f.SpecID)
 	set(&c.WorktreePath, f.WorktreePath)
+	set(&c.BundleID, f.BundleID)
+	if f.BundleOrder != nil {
+		c.BundleOrder = *f.BundleOrder
+	}
 	if f.Contract != nil {
 		c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent = f.Contract.SpecID, f.Contract.SHA256, f.Contract.SignedAt, f.Contract.Event
 	}
@@ -130,11 +146,11 @@ func (f *FactoryDB) RecordPicked(ctx context.Context, runID, cardID string, fiel
 			c := Card{RunID: runID, CardID: cardID, State: CardPicked, Version: 1, UpdatedAt: nowText}
 			fields.apply(&c)
 			// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
-			if _, err := tx.ExecContext(ctx, `INSERT INTO cards(`+cardSelectColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			if _, err := tx.ExecContext(ctx, `INSERT INTO cards(`+cardSelectColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 				c.RunID, c.CardID, c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt,
 				c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume,
 				c.Decider, c.DecidedAt, c.FailureReason, c.HintPrefer, c.HintAfter, c.SpecID, c.WorktreePath, c.EvidenceSHA,
-				c.MergeSHA, c.MergeTree, c.RemeasurePath, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent); err != nil {
+				c.MergeSHA, c.MergeTree, c.RemeasurePath, c.BundleID, c.BundleOrder, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent); err != nil {
 				return nil, err
 			}
 			if err := appendEvent(ctx, tx, runID, "card.transition", map[string]any{"card_id": cardID, "from": "", "to": CardPicked, "version": 1, "actor": actor}, now); err != nil {
