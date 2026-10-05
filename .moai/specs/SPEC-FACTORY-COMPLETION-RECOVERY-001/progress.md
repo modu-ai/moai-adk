@@ -12,7 +12,7 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-10-06
-비고: plan-audit 최종 판정 **PASS-WITH-DEBT 0.94 @ 6f01022e3**(Tier M 문턱 0.80 충족, 차단 0·필수 0, Clarity 0.95/Completeness 0.90/Testability 0.90/Traceability 1.00) — 판정서 `.moai/reports/t1538/plan-audit-iter3.md` 닫는 기록(§Final delta rounds 3-5), plan_artifact_hash `29794e62…` 핀. 감사 사슬: iter1 0.75 → iter2 0.86 → iter3 0.89 → 개정 0.94(리더 (a) 승인 하 최종 라운드, t1546 조건). 부채 6건(D15-D20·D22-D24)은 run/sync 단계로 이월 기록. run 진입: 리더 결정 (a)에 따라 자율 진입(방침상 자율 — 결정 기록은 §F).
+비고: plan-audit 최종 판정 **PASS-WITH-DEBT 0.94 @ 6f01022e3**(Tier M 문턱 0.80 충족, 차단 0·필수 0, Clarity 0.95/Completeness 0.90/Testability 0.90/Traceability 1.00) — 판정서 `.moai/reports/t1538/plan-audit-iter3.md` 닫는 기록(§Final delta rounds 3-5). **run 진입 해시 바인딩(실제 구현)**: `ComputeHash`(`internal/runtime/audit_cache.go:119`의 순서 고정 공식)로 현재 아티팩트를 재계산 — **`8708bcfe5ff9b78a2536a86f2e6f8491637651da07bf36987120f870e9721f31`**(동일 구현 셸 재현, 게이트 측정과 일치). 판정서 본문의 `29794e62…`는 감사자 자체 공식 계산치로 실제 구현과 어긋나며, 진입 조건의 바인딩은 본 실현값이다(게이트 지적 P2 — admitVerdictFile이 29794e62로는 admitted=false를 반환한 실측 반영). 감사 사슬: iter1 0.75 → iter2 0.86 → iter3 0.89 → 개정 0.94(리더 (a) 승인 하 최종 라운드, t1546 조건). 부채 6건(D15-D20·D22-D24)은 run/sync 단계로 이월 기록. run 진입: 리더 결정 (a)에 따라 자율 진입(방침상 자율 — 결정 기록은 §F).
 
 ## §E.2 Run-phase Evidence
 
