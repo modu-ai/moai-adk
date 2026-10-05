@@ -38,7 +38,29 @@ attribution: M1 `d6da6c1c5` + M2 `b50caa83b` (manager-develop, Authored-By-Agent
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase — owned by manager-docs)_
+```yaml
+spec_id: SPEC-HARNESS-DETACHED-PRUNE-001
+card: t1497
+phase: sync
+sync_status: complete
+sync_complete_at: 2026-10-06
+sync_commit_sha: pending-backfill  # D3 placeholder — a commit cannot cite its own SHA; backfilled in the immediately following commit
+sync_branch: WT-harness-prune-detached
+frontmatter_status_transitions:
+  implemented_to_completed: carried-by-sync-commit  # status + updated only, spec.md frontmatter
+changelog_entry: added  # [Unreleased] §Fixed — user-visible harness behavior change (prune off the synchronous hook path); entry-worthiness judged against the repo's existing internal-behavior entries
+b12_self_test_a: changelog_grep_count_0  # pre-emission `grep -c SPEC-HARNESS-DETACHED-PRUNE-001 CHANGELOG.md` = 0 — no duplicate emission
+b12_self_test_b: ac_count_match_8_vs_8  # acceptance.md §C distinct live AC identifiers = 8 (awk counter: live=8 excluded=0 ambiguous=0); CHANGELOG entry references the same 8
+b12_self_test_c: all_claimed_paths_exist  # internal/harness/{retention_spawn,retention_spawn_unix,retention_spawn_windows,learner,observer}.go + internal/cli/{hook,hook_retention_prune_test}.go verified via ls/wc before entry authoring
+canary_compliance_check:
+  single_sync_commit: true  # transition + §E.4 + CHANGELOG in ONE commit, no separate Mx chore
+  no_push: true  # dispatch boundary — commits stay local on WT-harness-prune-detached; integration is the lane/leader's
+  docs_scope: none  # README / docs-site / .moai/docs/ untouched — internal behavior change, no user-facing doc surface
+  codemaps: skipped-not-required  # .moai/project/codemaps covers the touched packages but is generated from the develop integration tree (provenance d0378d37c, 2026-10-05T06:17Z); the sync skill mandates no per-card regeneration — one-line note carried in the sync commit body
+mx_tag_delta: 0  # run-phase landed the @MX:ANCHOR/@MX:WARN tags on the new gate/child symbols; sync adds/removes no tags (documentation-only diff)
+ac_summary: 8 PASS / 0 FAIL (acceptance.md §C; §E.2 run-phase matrix + sync-tree re-verification)
+sync_verification: go build ./... + GOOS=windows build + AC green-path test families + observer.go PruneStaleEntries count 0 — all measured on this tree at the sync commit
+```
 
 ## §F Phase 4 Mode Selection
 
