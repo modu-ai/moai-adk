@@ -3156,3 +3156,37 @@ Base: the card branch WT-launcher-entry-flags is based at a6d3e6fd4 (the tree ev
 Resume point (2026-10-03, operator reboot; leader order: do not merge, release the window). Branch HEAD `32c5839cf`, tree clean, unmerged, unpushed. Done on the absorbed tree (develop `2b9e4a4d0` absorbed at `472019d92`; m8 output `16211b7bc`; two hand qualifiers `32c5839cf`): m7/m8/m9 second runs all zero; old import grep empty; `go build ./...` host and windows rc 0; `go vet` of cli/hook/web/factory/config/template/statusline host and windows rc 0; `go test` whole packages ok: hook 812s, factory 463s, web, factorymsg, config, statusline, homestate, spec, discovery, codexwiring. Not done: `internal/template` tests (develop touched catalog.yaml); the targeted `internal/cli` run was stopped for the reboot after 279 PASS and 1 FAIL: `TestParseLauncherEntryMarksAutoAssignedNumbers` (`factory_legacy_collision_test.go:71`) feeds `-k 2 --name lane-2` and is now refused as retired Kanban entry — a test that needs updating (not yet attributed: check whether the file came from develop or this card). Window released, slots released. Resume: fix/attribute that test, run `internal/template` and the targeted cli run, then ask the leader for a new window.
 
 Re-measure Gaps (leader-accepted 2026-10-03): the whole `internal/cli` package was not completed locally (stopped at the 30-minute limit, running test `TestRunInit_SemiAutoAndEmptyAreBoundedDelta`, 0 failures printed); the CI verdict is pending. Passing in this run on the tree at `bbb437d55`: 279 targeted cli tests (the one failure, `TestParseLauncherEntryMarksAutoAssignedNumbers`, fixed in `bbb437d55`), whole packages hook, factory, web, factorymsg, config, statusline, homestate, spec, discovery, codexwiring, template and the cli sub-packages; `go build ./...` and `go vet` on host and windows rc 0.
+
+### M10/M11 close (2026-10-05, lane-3 resume after the cutover merge)
+
+State on resume: the branch absorbed origin/main (1c2336de0, PR #1748 — the merge carries the
+develop lineage through a158b4b5f) per the leader's dispatch. The substantive M10/M11 work arrived
+on that absorbed lineage instead of as this card's own commits:
+
+- live rule rename `kanban-dispatch*.md` → `factory-dispatch{,-detail,-cards,-gates}.md` — present
+  on the merged tree; no `kanban-dispatch` reference remains outside SPEC records
+- mirror skill dir `moai-kanban-foreman` → `moai-factory-foreman` — renamed, body clean of the word;
+  `update_archive.go` keeps the old id as the legacy archive entry (deliberate, commented in place);
+  the three template tests carry the rename genealogy comments
+- docs-site: 4-locale `factory-mode.md` (en/ko/ja/zh) replaces the kanban pages; `vercel.json`
+  carries the §5-reversed redirects — old kanban URLs as permanent sources into factory-mode
+  destinations (the kanban strings there are redirect sources, the intended form); theme bundle
+  assets are upstream artifacts, out of scope
+- env marker values `MOAI_KANBAN_*` stay frozen by design (plan M2: freeze the values, rename the
+  Go constants — `EnvFactoryRunID = "MOAI_KANBAN_ID"` et al.); rule text naming them documents the
+  frozen external contract and stays
+
+This card's residual fix on the merged tree: removed
+`.claude/rules/moai/workflow/kanban-dispatch-mechanics.md` — the stale pre-rename twin main still
+carried; this branch's `factory-dispatch-mechanics.md` is the successor and
+`update_retired_rules_backup_test.go` already pins the old name as `absentName`.
+
+Verification on the merged tree (this run): `go build ./...` rc 0; `go test ./internal/cli/ -run
+'TestUpdateRemovesRetiredRuleFiles|TestLauncherHelpLaneVocabulary|TestFactoryGenealogyInHelp'
+-count=1` ok; `go test ./internal/template/... -count=1` ok (whole package + agentemit +
+commandemit + pluginemit); AC-018 `find internal cmd -iname '*kanban*'` = 0 names.
+
+Known unowned residue unchanged (the M9-recorded plan gap, not in M10/M11 scope): non-test
+diagnostic strings carrying the word (launcher `kanban:` prefixes, the doctor line, discovery and
+leader-reader mentions, `legacy_routes.go`'s one M9-recheck line) — for the sync audit, not silently
+dropped.
