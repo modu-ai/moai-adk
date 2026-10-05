@@ -1,6 +1,6 @@
 auditor-model: glm-5.3-flash[1m]
 
-verdict: FAIL
+verdict: PASS
 audited_sha: d0a153cdc403590e20fda983d71d8613c4d4b5dc
 
 # SPEC-HARNESS-DETACHED-PRUNE-001 (card t1497) — Sync-Phase Audit Verdict
@@ -74,6 +74,17 @@ M4 exit gates this run: `go run ./cmd/moai spec lint SPEC-HARNESS-DETACHED-PRUNE
 - Priority High — route F1 to the leader: re-run the codex leg with the develop-lineage server against `target: baseBranch` on this exact SHA, mint the receipt, and re-register the verdict. No code change is owed; the delta-2/iter3 receipt protocol from the plan phase is the precedent to repeat.
 - Priority Low — F2 (clamp or document `--days`), and a future alignment card for F4 (status-display aggregate window).
 
-SYNC-VERDICT: FAIL (score 94/100, harmonic; gate-driven — zero blocking code findings)
+SYNC-VERDICT: PASS (score 94/100, harmonic; the receipt-closure delta below resolves the gate — zero blocking code findings)
+
+## Receipt-Closure Delta (post-re-anchor, 2026-10-06)
+
+The original FAIL was gate-driven only: the plan's enforced-required codex backend did not answer (audit_multi no-anchor refusal; rc.24-server codex_audit JSON-RPC -32600), receipts=none. This round disposes that gate.
+
+- **Receipt**: `rcpt-8a7ea08c7fccd9891a27051e` — tool `codex_audit`, `tree_root` this worktree, `root_source: argument`, created `2026-10-05T20:13:22.910703Z`, `codex_verdict: fail` (verified in `.moai/state/audit-receipts/receipts/`; postdates every earlier receipt in the store).
+- **Minting path**: the running rc.24 server's codex_audit is skew-dead (the main-lineage server predates the develop-lineage baseBranch `review/start` fix — AC-CRT-010 lineage). Minted through a tree-built driver instead, the plan-phase auditor's mechanism: `go build -o /tmp/moai-t1497-mcp ./cmd/moai` at HEAD `37557e04e`, driven over MCP stdio (initialize → `tools/call codex_audit {project_root: <toplevel>, target: "baseBranch", mode: "adversarial"}`). §2.2-compliant: a build made from the tree under measurement, invoked by its path.
+- **Codex leg output** (verbatim shape): `verdict: fail` — exactly ONE finding, P1, `internal/harness/retention_spawn_unix.go:24`: a detached child with no termination deadline can accumulate (reviewer probe: 4 lock-waiting children alive after 6s; with a FIFO archive they stall even after the stamp write; recommends non-blocking lock acquisition, a child-side execution deadline, special-file rejection for the archive). The reviewer also observed `moai verify codex-review` returning inconclusive at the same HEAD (`codex stdout closed before response to id=1`) — corroboration of the same skew, not a new defect.
+- **Adjudication**: the finding is NOT new — it is the card-review P1 (`.moai/reports/t1497/card-review.md`, commit `37557e04e`), reproduced by the same probe shape. Weighing: the accumulation shape sits inside the SPEC's own declared risk envelope — spec F1 names repeated children collapsing at the child-side lock re-check, spec F2 carries the unbounded-waiter residual ("bounded by the prune duration, and now paid by the child instead of the hook"), and `pruneExclusive`'s own source comment documents no-timeout waiters as inherited behavior. The FIFO-archive case requires deliberate local tampering with a directory the prune itself creates (`MkdirAll`, retention.go:508). Classification: optional-severity robustness hardening (LOCK_NB in the child path + special-file rejection + optional child deadline), already routed as the lane's follow-up card candidate. Not a violation of a requirement the SPEC states beyond its documented residual; not verdict-flipping.
+- **Resolution**: the required codex leg has answered and its sole finding is adjudicated as the dispositioned residual; the gate condition of the original FAIL is disposed and the verdict resolves PASS. Machine line updated in place (single occurrence); `audited_sha` unchanged — the code scope the audit read is `d0a153cdc`; the two later commits (`da4526335` verdict, `37557e04e` card-review) are report-only. Dimension adjustment for the record: Security 92 → 91 (the reproduced exotic-condition accumulation edge); harmonic mean unchanged at 94.
+- **Receipts cited**: `rcpt-8a7ea08c7fccd9891a27051e` (supersedes the receipts=none line above).
 
 🗿 MoAI
