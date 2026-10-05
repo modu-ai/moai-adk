@@ -252,6 +252,29 @@ AC-SD-025 and the merge-ready fixtures seed the re-measure records REQ-MWQ-019 s
 `TestQAS_AC013` normalizes the lease stamp alongside AcquiredAt (two runs differ in the
 wall-clock field).
 
+**Final-HEAD re-verification (lane re-verification gap closure, 2026-10-05)** — the two
+family-wide -race runs above were executed BEFORE commit `50d3d4077`, whose diff changes test
+files inside the race selector's scope (factory_complete/merge/quota_test.go), so their green
+pointed at a tree that no longer exists. Re-run AT the final HEAD `50d3d4077`, env-scrubbed
+compound invocations (lane env cleared — the env-reading guards), new runs, `-count=1`:
+
+```
+$ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_FACTORY_CLEAR_POLICY && go test -race -count=1 ./internal/factory/... -run 'Integration|Merge|Window|Ticket|Acquire|Policy|Collision|Remeasure|Lease|Promoted|Refresh|Enqueue|Hold|Release|Legacy|P1' -timeout 600s
+ok  	github.com/modu-ai/moai-adk/internal/factory	106.579s
+
+$ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_FACTORY_CLEAR_POLICY && go test -race -count=1 ./internal/cli -run 'Integration|Merge|Window|Ticket|Acquire|Policy' -timeout 600s
+ok  	github.com/modu-ai/moai-adk/internal/cli	187.434s
+```
+
+Lint at the same HEAD, same scrub:
+
+```
+$ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_FACTORY_CLEAR_POLICY && golangci-lint run --timeout=4m ./internal/factory/... ./internal/cli/... ./internal/homestate/... ./internal/factorylane/... ./internal/config/...
+0 issues.
+```
+
+No new failures — the family is green at the final HEAD.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - All 23 REQ implemented (M1-M7); run-mandatory repairs P1/P2/D8/D9/O1-O5 closed with the
