@@ -270,40 +270,37 @@ func (l *Liveness) scanTranscripts(key string) Signal {
 	return SignalUnmeasured
 }
 
-// findTranscript walks a profile root for a transcript file named for the
+// findTranscript checks a profile root for a transcript file named for the
 // session key, reporting whether one was found and whether its mtime is
-// inside the window. The walk is stat-based and bounded (REQ-HYG-014).
+// inside the window. The scan is bounded two levels deep
+// (<root>/<key>.jsonl and <root>/<project-dir>/<key>.jsonl — the shape the
+// transcript writers stamp) so a per-key probe stays cheap under the hook
+// budget (REQ-HYG-014).
 func findTranscript(root, key string, freshAfter time.Time) (found, fresh bool) {
 	sessionJSON := key + ".jsonl"
-	var walk func(dir string) (string, error)
-	walk = func(dir string) (string, error) {
-		entries, err := os.ReadDir(dir)
+	check := func(p string) (bool, bool) {
+		info, err := os.Stat(p)
 		if err != nil {
-			return "", err
+			return false, false
 		}
-		for _, e := range entries {
-			p := filepath.Join(dir, e.Name())
-			if e.IsDir() {
-				if hit, _ := walk(p); hit != "" {
-					return hit, nil
-				}
-				continue
-			}
-			if e.Name() == sessionJSON {
-				return p, nil
-			}
-		}
-		return "", nil
+		return true, info.ModTime().After(freshAfter)
 	}
-	hit, _ := walk(root)
-	if hit == "" {
+	if ok, isFresh := check(filepath.Join(root, sessionJSON)); ok {
+		return ok, isFresh
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
 		return false, false
 	}
-	info, err := os.Stat(hit)
-	if err != nil {
-		return true, false
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if ok, isFresh := check(filepath.Join(root, e.Name(), sessionJSON)); ok {
+			return ok, isFresh
+		}
 	}
-	return true, info.ModTime().After(freshAfter)
+	return false, false
 }
 
 // readRegistryEntries decodes the active-sessions registry file.

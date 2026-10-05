@@ -75,8 +75,8 @@ func relMoai(moaiRoot string, rel string) string {
 // seedDeadTree plants one candidate per target class with old, datable
 // content (the deletable set) plus the kept classes.
 func seedDeadTree(t *testing.T, moaiRoot string) {
-	old := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC().Format(time.RFC3339)
-	oldJSON := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC()
+	old := fixtureNow.Add(-testMinAge).Add(-day).UTC().Format(time.RFC3339)
+	oldJSON := fixtureNow.Add(-testMinAge).Add(-day).UTC()
 	young := fixtureNow.Add(-time.Hour).UTC().Format(time.RFC3339)
 
 	seedJSON(t, moaiRoot, "state/context-usage/"+keyDead+".json", map[string]any{"captured_at": old})
@@ -185,7 +185,7 @@ func TestApplyModeDeletionSet(t *testing.T) {
 
 	t.Run("verify dir removed only when empty", func(t *testing.T) {
 		moaiRoot := filepath.Join(t.TempDir(), ".moai")
-		oldJSON := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC()
+		oldJSON := fixtureNow.Add(-testMinAge).Add(-day).UTC()
 		seedJSON(t, moaiRoot, "state/verify/"+keyVerify+"/old-check.json", map[string]any{"recorded_at": oldJSON})
 		g := fixtureGC(t, moaiRoot)
 		if _, err := g.Run(ModeApply); err != nil {
@@ -198,7 +198,7 @@ func TestApplyModeDeletionSet(t *testing.T) {
 
 	t.Run("crash-mid-group: next pass completes the goal triple (D29)", func(t *testing.T) {
 		moaiRoot := filepath.Join(t.TempDir(), ".moai")
-		old := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC()
+		old := fixtureNow.Add(-testMinAge).Add(-day).UTC()
 		// A crashed pass removed the siblings; the dating member remains.
 		seedJSON(t, moaiRoot, "state/goal/"+keyGoal+".json", map[string]any{"created_at": old.UTC().Format(time.RFC3339)})
 		g := fixtureGC(t, moaiRoot)
@@ -216,7 +216,7 @@ func TestApplyModeDeletionSet(t *testing.T) {
 
 	t.Run("goal triple enumeration orders the dating member last (D29)", func(t *testing.T) {
 		moaiRoot := filepath.Join(t.TempDir(), ".moai")
-		old := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC()
+		old := fixtureNow.Add(-testMinAge).Add(-day).UTC()
 		seedJSON(t, moaiRoot, "state/goal/"+keyGoal+".json", map[string]any{"created_at": old.Format(time.RFC3339)})
 		seedFile(t, relMoai(moaiRoot, "state/goal/"+keyGoal+".html"), []byte("x"))
 		seedJSON(t, moaiRoot, "state/goal/"+keyGoal+".verdict.json", map[string]any{})
@@ -238,7 +238,7 @@ func TestApplyModeDeletionSet(t *testing.T) {
 
 	t.Run("writer race: refreshed state survives via the re-judge (D28)", func(t *testing.T) {
 		moaiRoot := filepath.Join(t.TempDir(), ".moai")
-		old := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC().Format(time.RFC3339)
+		old := fixtureNow.Add(-testMinAge).Add(-day).UTC().Format(time.RFC3339)
 		seedJSON(t, moaiRoot, "state/context-usage/"+keyDead+".json", map[string]any{"captured_at": old})
 		g := fixtureGC(t, moaiRoot)
 		g.preRejudge = func() {
@@ -261,7 +261,7 @@ func TestApplyModeDeletionSet(t *testing.T) {
 
 	t.Run("already-vanished path reported without error", func(t *testing.T) {
 		moaiRoot := filepath.Join(t.TempDir(), ".moai")
-		old := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC()
+		old := fixtureNow.Add(-testMinAge).Add(-day).UTC()
 		// A crash left only the dating member: the missing sibling exercises
 		// the already-gone arm inside a still-eligible group.
 		seedJSON(t, moaiRoot, "state/goal/"+keyGoal+".json", map[string]any{"created_at": old.Format(time.RFC3339)})
@@ -513,7 +513,7 @@ func TestSymlinkRefusalParentSwap(t *testing.T) {
 		moaiRoot := filepath.Join(root, ".moai")
 		// The verify class dir is a symlink to a sibling real dir carrying
 		// a datable, aged entry.
-		old := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC()
+		old := fixtureNow.Add(-testMinAge).Add(-day).UTC()
 		seedJSON(t, root, "verify-real/"+keyVerify+"/old-check.json",
 			map[string]any{"recorded_at": old})
 		if err := os.MkdirAll(filepath.Join(moaiRoot, "state"), 0o755); err != nil {
@@ -545,7 +545,7 @@ func TestSymlinkRefusalParentSwap(t *testing.T) {
 			t.Fatalf("symlink: %v", err)
 		}
 		moaiRoot := filepath.Join(link, ".moai")
-		old := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC()
+		old := fixtureNow.Add(-testMinAge).Add(-day).UTC()
 		seedJSON(t, moaiRoot, "state/context-usage/"+keyDead+".json", map[string]any{"captured_at": old.Format(time.RFC3339)})
 		g := fixtureGC(t, moaiRoot)
 		rep, err := g.Run(ModeApply)
@@ -560,7 +560,7 @@ func TestSymlinkRefusalParentSwap(t *testing.T) {
 	t.Run("parent swapped to a symlink after the check cannot escape (D27)", func(t *testing.T) {
 		root := t.TempDir()
 		moaiRoot := filepath.Join(root, ".moai")
-		old := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC().Format(time.RFC3339)
+		old := fixtureNow.Add(-testMinAge).Add(-day).UTC().Format(time.RFC3339)
 		seedJSON(t, moaiRoot, "state/context-usage/"+keyDead+".json", map[string]any{"captured_at": old})
 
 		external := filepath.Join(t.TempDir(), "outside")
@@ -611,7 +611,7 @@ func TestLockClassExcluded(t *testing.T) {
 		lockRel := "state/spec-close-SPEC-FOO-123.lock"
 		lockBody := []byte("lock byte body — never touched\n")
 		seedFile(t, relMoai(moaiRoot, lockRel), lockBody)
-		old := fixtureNow.Add(-testMinAge).Add(-24 * time.Hour).UTC().Format(time.RFC3339)
+		old := fixtureNow.Add(-testMinAge).Add(-day).UTC().Format(time.RFC3339)
 		seedJSON(t, moaiRoot, "state/context-usage/"+keyDead+".json", map[string]any{"captured_at": old})
 
 		g := fixtureGC(t, moaiRoot)

@@ -474,6 +474,14 @@ type WorkflowConfig struct {
 	// Config.ProjectContinuation, never directly: the resolver supplies the
 	// absent-key default and reports an unmatched value rather than applying it.
 	Project WorkflowProjectConfig `yaml:"project"`
+	// Hygiene carries the .moai hygiene engine's thresholds and mode
+	// (SPEC-MOAI-HYGIENE-001 REQ-HYG-013/016). The CLI mutates only with
+	// --apply on its own invocation — this config block governs the
+	// SessionStart auto path's mode alone. Defaults live in defaults.go's
+	// Hygiene* constants; hygiene.Settings validation enforces the D30
+	// floors (kept-rotations pinned to 1, positive windows, unknown mode ⇒
+	// report).
+	Hygiene WorkflowHygieneConfig `yaml:"hygiene"`
 	// SessionWorktree gates the automatic worktree isolation for
 	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
 	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
@@ -1857,6 +1865,28 @@ type archiveFileWrapper struct {
 // gateFileWrapper handles the gate.yaml section file.
 type gateFileWrapper struct {
 	Gate GateConfig `yaml:"gate"`
+}
+
+// WorkflowHygieneConfig mirrors workflow.hygiene.* — the .moai hygiene
+// engine's thresholds and mode (SPEC-MOAI-HYGIENE-001 REQ-HYG-016). The
+// D30 validation floors live in hygiene.Settings.Validate; this type is
+// the yaml surface only.
+type WorkflowHygieneConfig struct {
+	// Mode governs the SessionStart auto path: "report" (default) or
+	// "apply". An unrecognizable string falls back to report (D30). The
+	// CLI ignores this for its own mutation decision — --apply only.
+	Mode string `yaml:"mode"`
+	// AuditLogMaxBytes is the sink rotation threshold.
+	AuditLogMaxBytes int64 `yaml:"audit_log_max_bytes"`
+	// AuditLogKeptRotations is PINNED to 1 (D30): any other value is a
+	// config-invalid refusal.
+	AuditLogKeptRotations int `yaml:"audit_log_kept_rotations"`
+	// TranscriptActivityWindow bounds transcript recency.
+	TranscriptActivityWindow time.Duration `yaml:"transcript_activity_window"`
+	// HeartbeatStaleWindow bounds registry heartbeat recency.
+	HeartbeatStaleWindow time.Duration `yaml:"heartbeat_stale_window"`
+	// MinAgeDays is the deletion age floor.
+	MinAgeDays int `yaml:"min_age_days"`
 }
 
 // systemFileWrapper handles the system.yaml section file.

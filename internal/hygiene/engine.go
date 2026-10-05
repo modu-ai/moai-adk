@@ -109,6 +109,12 @@ func (e *Engine) Run(mode Mode) (rotatorRows []AuditRow, gcReport *GCReport, err
 	return rotatorRows, gcReport, errRotator, errGC
 }
 
+// String renders the outcome for reports and CLI lines (the closed set is
+// the constant names themselves).
+func (o Outcome) String() string {
+	return string(o)
+}
+
 // testRoots registers the temporary directory roots a test-driven run may
 // operate on (REQ-HYG-015, D22). Production entry points consult it only
 // when testing.Testing() is true.
@@ -116,6 +122,16 @@ var testRoots = struct {
 	sync.Mutex
 	byBase map[string]string // resolved root -> resolved base
 }{byBase: map[string]string{}}
+
+// RegisterTestRoot allows the units' entry points to operate under root
+// during tests. TEST-ONLY: production callers must never invoke it — it
+// exists so a test binary driving the units through a wiring surface (the
+// CLI, the hook) can vouch for its fixture roots, which is exactly the
+// REQ-HYG-015 runtime guard's contract. Outside a test binary the guard
+// ignores the registry entirely.
+func RegisterTestRoot(root string) {
+	registerTestRoot(root)
+}
 
 // registerTestRoot allows the units' entry points to operate under root
 // during tests. Called by every test that constructs an engine.
