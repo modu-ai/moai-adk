@@ -45,15 +45,25 @@ MINV="$WORK/m_invalid"; MVAL="$WORK/m_valid"; MABS="$WORK/m_absent"; MOVL="$WORK
 MBOTH="$WORK/m_both"; MNAR="$WORK/m_narrow"
 mkdir -p "$MINV/.moai/config/sections" "$MVAL/.moai/config/sections" "$MABS" "$MOVL/.moai/project" \
          "$MBOTH/.moai/config/sections" "$MBOTH/.moai/project" "$MNAR/.moai/config/sections" "$MNAR/.moai/project"
+# A manifest at the SHIPPED path must declare the seven required categories (REQ-SIPZ-001),
+# empty lists allowed, or it is invalid. Every valid shipped-path fixture below therefore carries
+# all seven plus its own probe category (an extra category is valid: "at minimum" seven). An
+# OVERLAY need not: it only adds, so the overlay fixtures carry their probe category alone.
+seven_cats() {
+  local c
+  for c in safety_guards gate_policy auditor regression_tests apply_rollback budgets logs; do
+    printf '%s\n' "  $c:" "    paths: []"
+  done
+}
 printf '%s\n' '::: not [valid yaml' > "$MINV/.moai/config/sections/protected-zone.yaml"
-printf '%s\n' 'version: 1' 'categories:' '  probe_docs:' '    paths:' '      - docs/' > "$MVAL/.moai/config/sections/protected-zone.yaml"
+{ printf '%s\n' 'version: 1' 'categories:'; seven_cats; printf '%s\n' '  probe_docs:' '    paths:' '      - docs/'; } > "$MVAL/.moai/config/sections/protected-zone.yaml"
 printf '%s\n' 'version: 1' 'categories:' '  probe_docs:' '    paths:' '      - docs/' > "$MOVL/.moai/project/protected-zone.yaml"
 # MBOTH: valid base manifest listing base_dir/, overlay listing docs/ — a replace-semantics
 # overlay would drop base_dir/.
-printf '%s\n' 'version: 1' 'categories:' '  probe_base:' '    paths:' '      - base_dir/' > "$MBOTH/.moai/config/sections/protected-zone.yaml"
+{ printf '%s\n' 'version: 1' 'categories:'; seven_cats; printf '%s\n' '  probe_base:' '    paths:' '      - base_dir/'; } > "$MBOTH/.moai/config/sections/protected-zone.yaml"
 printf '%s\n' 'version: 1' 'categories:' '  probe_docs:' '    paths:' '      - docs/' > "$MBOTH/.moai/project/protected-zone.yaml"
 # MNAR: overlay tries to narrow the base with a key the schema does not know.
-printf '%s\n' 'version: 1' 'categories:' '  probe_base:' '    paths:' '      - base_dir/' > "$MNAR/.moai/config/sections/protected-zone.yaml"
+{ printf '%s\n' 'version: 1' 'categories:'; seven_cats; printf '%s\n' '  probe_base:' '    paths:' '      - base_dir/'; } > "$MNAR/.moai/config/sections/protected-zone.yaml"
 printf '%s\n' 'version: 1' 'exclude:' '  - base_dir/' 'categories:' '  probe_docs:' '    paths:' '      - docs/' > "$MNAR/.moai/project/protected-zone.yaml"
 
 swept=0; deny=0; allow=0; ask=0; other=0

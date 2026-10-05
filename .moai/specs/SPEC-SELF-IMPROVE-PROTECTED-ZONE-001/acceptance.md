@@ -1,6 +1,6 @@
 # SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 — Acceptance
 
-> Verification layer. Each `AC-SIPZ-NNN` is a binary-testable Given-When-Then entry; the GEARS obligation lives in `spec.md` §B. Document-level pin: every criterion and every ledger entry below was measured on tree SHA `e497f693608ac7ea45a08b06304dc585e927ff49`. The later plan-document commits change no code: `git diff --stat e497f693608ac7ea45a08b06304dc585e927ff49 HEAD -- internal cmd .claude/settings.json` printed nothing at HEAD `609f9af39a225a91f3a553d9a3db9eb9747f880a`, and the binaries used were built from that tree with `go build ./cmd/moai`. A criterion-level pin, where present, wins; the pin binds every criterion that carries none of its own.
+> Verification layer. Each `AC-SIPZ-NNN` is a binary-testable Given-When-Then entry; the GEARS obligation lives in `spec.md` §B. Document-level pin: every criterion and every ledger entry below was measured on tree SHA `e497f693608ac7ea45a08b06304dc585e927ff49`. The later commits change no code this SPEC reads or edits: `git diff --stat e497f693608ac7ea45a08b06304dc585e927ff49 HEAD -- internal/hook internal/config internal/harness internal/spec cmd .claude/settings.json internal/template/templates internal/template/template_neutrality_audit_test.go` printed nothing at HEAD `41127e8caded5c54507414fc6dd88fbf28d9517b` (the unscoped `-- internal cmd` form lists eleven unrelated files under `internal/cli`, `internal/web` and `internal/template/model_policy.go`, which is the positive control that the scoped command can print). After the 0.3.0 probe-fixture change (D21) the probe and judge were re-run with a binary built from HEAD `41127e8ca` with `go build ./cmd/moai`; the recorded TSV and both judge outputs came out byte-identical to the base recording, so they were not rewritten. A criterion-level pin, where present, wins; the pin binds every criterion that carries none of its own.
 
 ## §A Classification
 
@@ -32,7 +32,7 @@ A regression-guard is **not recorded as a pass on the strength of a base-tree gr
 
 **Covers**: maps REQ-SIPZ-001, REQ-SIPZ-002, REQ-SIPZ-004, REQ-SIPZ-005, REQ-SIPZ-012
 
-**Given** the dogfood tree carrying the shipped manifest and the project overlay, **when** the real PreToolUse handler receives a Write or Edit carrying agent type `harness-learner` for each of the 21 zone-member paths R1–R21 (safety-guard wiring in the settings file, gate-policy and threshold YAML, evaluator profiles, the sync-audit workflow, Go guard code, Go tests, the CI workflow, apply/rollback code, the LSEL applier and allowlist, learning-history logs, budget state, the two manifest files themselves, and the `/moai` skill directory), **then** every call is denied, R1–R20 with the sentinel `HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION` and a reason containing `category=`, `route=human` and `next=return-blocker-report`, and the live judge prints `JUDGE swept=21 expected=21 fail=0` and exits 0.
+**Given** the dogfood tree carrying the shipped manifest and the project overlay, **when** the real PreToolUse handler receives a Write or Edit carrying agent type `harness-learner` for each of the 21 zone-member paths R1–R21 (safety-guard wiring in the settings file, gate-policy and threshold YAML, evaluator profiles, the sync-audit workflow, Go guard code, Go tests, the CI workflow, apply/rollback code, the LSEL applier and allowlist, learning-history logs, budget state, the two manifest files themselves, and the `/moai` skill directory), **then** every call is denied, R1–R20 with the sentinel `HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION` and a reason containing `category=`, `route=human` and `next=return-blocker-report`, and the live judge prints `JUDGE swept=21 expected=21 fail=0` and exits 0. This is the routed class of denial: R1–R20 are matched by the manifest only. The baseline-matched controls C1–C4 are the other side of the scope boundary (spec §C.7) and are asserted in AC-SIPZ-005.
 
 | Cell | Content |
 |---|---|
@@ -71,25 +71,25 @@ A regression-guard is **not recorded as a pass on the strength of a base-tree gr
 
 **Covers**: maps REQ-SIPZ-002, REQ-SIPZ-009, REQ-SIPZ-010, REQ-SIPZ-013
 
-**Given** throwaway project roots — garbage manifest (MS1, MS5), valid manifest listing `docs/` (MS4), no manifest (MS2, MS3), overlay only (MS6), a valid base listing `base_dir/` plus an overlay listing `docs/` (MS7), a valid base plus an overlay carrying an unknown `exclude:` key (MS8) — and three bypass attempts against `internal/hook/pre_tool.go` or a log: `MOAI_BRANCH_GUARD_EXEMPT=1` in the hook's environment (E1), extra tool-input fields `override` and `protected_zone` (E2), and a command-text prefix plus a trailing comment token (E3), **when** the handler receives each call, **then** MS1 and MS8 are denied with `manifest=invalid` and `route=human`; MS4 and MS6 are denied with `category=probe_docs`; MS7 is denied with `category=probe_base` (the overlay did not replace the base); MS2 is denied by the legacy `.claude/hooks/` floor; MS3 is allowed; MS5 (invalid manifest, caller `manager-develop`) is allowed; E1–E3 are denied with `route=human`; and the live judge prints `JUDGE swept=11 expected=11 fail=0` for `-o '^(MS|E)'`.
+**Given** throwaway project roots — garbage manifest (MS1, MS5), valid manifest listing `docs/` (MS4), no manifest (MS2, MS3), overlay only (MS6), a valid base listing `base_dir/` plus an overlay listing `docs/` (MS7), a valid base plus an overlay carrying an unknown `exclude:` key (MS8); every valid manifest at the shipped path (MS4, MS7, MS8) declares all seven required categories with empty lists plus its probe category, because a shipped-path file lacking any of the seven is invalid (REQ-SIPZ-001) — and three bypass attempts against `internal/hook/pre_tool.go` or a log: `MOAI_BRANCH_GUARD_EXEMPT=1` in the hook's environment (E1), extra tool-input fields `override` and `protected_zone` (E2), and a command-text prefix plus a trailing comment token (E3), **when** the handler receives each call, **then** MS1 and MS8 are denied with `manifest=invalid`, `route=human`, `next=return-blocker-report` and the failing file's project-relative path in the reason (`.moai/config/sections/protected-zone.yaml` for MS1, `.moai/project/protected-zone.yaml` for MS8 — a reason naming the other file or none fails); MS4 and MS6 are denied with `category=probe_docs`; MS7 is denied with `category=probe_base` (the overlay did not replace the base); MS2 is denied by the legacy `.claude/hooks/` floor; MS3 is allowed; MS5 (invalid manifest, caller `manager-develop`) is allowed; E1–E3 are denied with `route=human`; and the live judge prints `JUDGE swept=11 expected=11 fail=0` for `-o '^(MS|E)'`.
 
 | Cell | Content |
 |---|---|
 | RED-now (live) | L-4: `bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh -o '^(MS\|E)'` at base exits **1**, 8 `FAIL` rows (MS1, MS4, MS6, MS7, MS8, E1, E2, E3), `JUDGE swept=11 expected=11 fail=8`; MS2, MS3, MS5 pass at base by design. |
 | Why red | Right reason: at base a manifest file of any content is ignored, so a garbage file, a `docs/` entry, an overlay and an overlay with an unknown key all leave the path allowed, and the bypass rows are red only because nothing is denied to bypass. MS2/MS3/MS5 are the pair that stops an all-matching or everyone-affected mutant. |
-| Green path | M1 (loader and validation) and M2 (guard behaviour); the live command prints `fail=0`, exit 0. |
+| Green path | M1 (loader and validation) and M2 (guard behaviour) flip the MS rows and E1, E2; **E3 is a Bash call that only the M3 shell rule can deny**, so the live `-o '^(MS\|E)'` prints `JUDGE swept=11 expected=11 fail=0` and exits 0 at the end of M3, not M2 (at the end of M2 it still prints one `FAIL E3`). |
 | Mutant probe | §C rows a, e, f, h, i, s. |
 
 ### AC-SIPZ-005 — nothing outside the identity set or the zone changes
 
 **Covers**: maps REQ-SIPZ-008, REQ-SIPZ-016
 
-**Given** the baseline-protected controls C1–C4 and the identity's legitimate surface plus non-identity callers N1–N9 (`.claude/agents/harness/`, `.claude/skills/hns-*`, `.moai/harness/main.md`, `.moai/specs/`, `docs/a.md`, a read-only `cat`, a non-identity Write and Bash to zone paths), **when** the handler receives them, **then** C1–C4 keep their four legacy sentinels and N1–N9 are allowed, and the live judge prints `JUDGE swept=13 expected=13 fail=0` for `-o '^(C|N)'`.
+**Given** the baseline-protected controls C1–C4 and the identity's legitimate surface plus non-identity callers N1–N9 (`.claude/agents/harness/`, `.claude/skills/hns-*`, `.moai/harness/main.md`, `.moai/specs/`, `docs/a.md`, a read-only `cat`, a non-identity Write and Bash to zone paths), **when** the handler receives them, **then** C1–C4 keep their four legacy sentinels with their legacy reason text and carry no `route=` or `category=` field (the judge asserts both substrings absent), and N1–N9 are allowed, and the live judge prints `JUDGE swept=13 expected=13 fail=0` for `-o '^(C|N)'`.
 
 | Cell | Content |
 |---|---|
 | Base observation | L-5: exit **0**, `JUDGE swept=13 expected=13 fail=0` — green at base, so this is a guard, not a gate for new work. |
-| Pairing | Fails the all-matching mutant (§C c, k) that AC-001..004 alone would pass. |
+| Pairing | Fails the all-matching mutant (§C c, k) that AC-SIPZ-001..004 alone would pass, and the mutant that appends routing fields to a baseline denial (§C w). Negative control observed: a copy of the recorded TSV with `route=human` appended to C1's reason makes `-o '^C'` print `FAIL C1 reason-has-forbidden 'route=human'` and exit 1. |
 | Continued firing | The same command runs in the CI probe leg (AC-SIPZ-011). |
 
 ### AC-SIPZ-006 — the routing fields survive a long path
@@ -129,14 +129,14 @@ A regression-guard is **not recorded as a pass on the strength of a base-tree gr
 | Cell | Content |
 |---|---|
 | Verification | `TestProtectedZone/AuditRow` over a temporary directory, including the unwritable-directory case. |
-| Swept floor | As AC-006; the three states are three nested subtests, each must print its `--- PASS: TestProtectedZone/AuditRow/<State> ` line. |
+| Swept floor | As AC-SIPZ-006; the three states are three nested subtests, each must print its `--- PASS: TestProtectedZone/AuditRow/<State> ` line. |
 | Mutant probe | §C row n. |
 
 ### AC-SIPZ-009 — the manifest ships neutral and arrives with a build
 
 **Covers**: maps REQ-SIPZ-001, REQ-SIPZ-003
 
-**Given** the template tree, **when** `internal/template/templates/.moai/config/sections/protected-zone.yaml` is read and the template and config tests run, **then** the file exists and parses; lists all seven required categories (empty lists allowed); ships `regression_tests` empty; lists both manifest files; every `paths` entry matches an existing path in the template tree and every `runtime_paths` entry is one of the entries spec §D marks as created at runtime; trips none of the template-neutrality audits (no SPEC identifier, requirement token, audit citation, internal date or commit hash); the config completeness audit classifies the section as a dedicated-loader section; and the local dogfood manifest is byte-identical to the shipped one.
+**Given** the template tree, **when** `internal/template/templates/.moai/config/sections/protected-zone.yaml` is read and the template and config tests run, **then** the file exists and parses; lists all seven required categories (empty lists allowed); ships `regression_tests` empty; lists both manifest files; every `paths` entry matches an existing path in the template tree and every `runtime_paths` entry is one of the entries spec §D marks as created at runtime; trips none of the template-neutrality audits (no SPEC identifier, requirement token, audit citation, internal date, commit hash, or `CLAUDE.local.md` literal — that entry is carried by the dogfood overlay, and the `Neutrality` subtest asserts the shipped file contains no such literal); the config completeness audit classifies the section as a dedicated-loader section; and the local dogfood manifest is byte-identical to the shipped one.
 
 | Cell | Content |
 |---|---|
@@ -201,28 +201,29 @@ Each row is a mutant that satisfies a one-sided reading of the criteria and viol
 
 | # | Mutant | Killed by |
 |---|---|---|
-| a | Zone list hard-coded in Go; the manifest file is ignored | AC-004 MS4, MS6, MS7 (project-only entries are denied only if the manifests are read) |
-| b | Raw-prefix match with no normalization (today's behaviour) | AC-002 P1–P4, S1 |
-| c | Deny every identity Write | AC-005 N4, N5, N7, N8, N9 |
-| d | Guard never emits the new sentinel for manifest-only entries | AC-001 R1–R20 |
-| e | Invalid manifest treated as absent (fail open) | AC-004 MS1, MS8 |
-| f | Invalid manifest denies every caller | AC-004 MS5 |
-| g | Manifest read before the identity gate | AC-007 read-counter test |
-| h | A bypass is honoured — environment variable, tool-input field, or command-text token | AC-004 E1, E2, E3 (one row each; a mutant that honours only the environment variable survives none of E2/E3) |
-| i | Overlay replaces instead of adds | AC-004 MS7 (the base's `base_dir/` is denied only if the union is taken), with `ManifestStates` overlay-cannot-narrow as the unit mirror |
-| j | Sentinel present, a routing field missing or cut | AC-001 judge reason column; AC-006 LP1, LP2 and `DenyReason` |
-| k | Shell rule matches read-only verbs | AC-003 / AC-005 N6 |
-| l | A sweep or test passes with zero entries or zero tests swept | AC-009, AC-010 and AC-011 swept-count floors; the empty-selection and swept-count failures of the judge |
-| m | Case folding only where the host is case-insensitive | AC-002 P4 on the linux CI leg; AC-012 |
-| n | A failed audit append changes the decision | AC-008 unwritable-directory subtest |
-| o | PreToolUse matcher drops `Bash` or `Edit` | AC-011 (i) |
-| p | Manifest `paths` entries only; `runtime_paths` entries are not protected | AC-001 R1, R13–R16 (settings and learning-history entries are `runtime_paths`) |
-| q | Root resolved only when the target resolved (the existing check's asymmetry) | AC-002 P5, P6 |
-| r | Shell verb list truncated to three forms | AC-003 B1–B13 (a three-verb mutant fails ten rows) and the 13-row `ShellMutation` floor |
-| s | Overlay with an unknown key is ignored instead of invalidating | AC-004 MS8 |
-| t | Truncation cuts the whole reason instead of only the path | AC-006 LP1, LP2 and `DenyReason` |
-| u | Dead-entry sweep exempts whole categories that hold any `runtime_paths` entry | AC-011 mutation (iii) |
-| v | A baseline entry silently missing from the manifest | AC-010 by-name enumeration; R21 |
+| a | Zone list hard-coded in Go; the manifest file is ignored | AC-SIPZ-004 MS4, MS6, MS7 (project-only entries are denied only if the manifests are read) |
+| b | Raw-prefix match with no normalization (today's behaviour) | AC-SIPZ-002 P1–P4, S1 |
+| c | Deny every identity Write | AC-SIPZ-005 N4, N5, N7, N8, N9 |
+| d | Guard never emits the new sentinel for manifest-only entries | AC-SIPZ-001 R1–R20 |
+| e | Invalid manifest treated as absent (fail open) | AC-SIPZ-004 MS1, MS8 |
+| f | Invalid manifest denies every caller | AC-SIPZ-004 MS5 |
+| g | Manifest read before the identity gate | AC-SIPZ-007 read-counter test |
+| h | A bypass is honoured — environment variable, tool-input field, or command-text token | AC-SIPZ-004 E1, E2, E3 (one row each; a mutant that honours only the environment variable survives none of E2/E3) |
+| i | Overlay replaces instead of adds | AC-SIPZ-004 MS7 (the base's `base_dir/` is denied only if the union is taken), with `ManifestStates` overlay-cannot-narrow as the unit mirror |
+| j | Sentinel present, a routing field missing or cut | AC-SIPZ-001 judge reason column; AC-SIPZ-006 LP1, LP2 and `DenyReason` |
+| k | Shell rule matches read-only verbs | AC-SIPZ-003 / AC-SIPZ-005 N6 |
+| l | A sweep or test passes with zero entries or zero tests swept | AC-SIPZ-009, AC-SIPZ-010 and AC-SIPZ-011 swept-count floors; the empty-selection and swept-count failures of the judge |
+| m | Case folding only where the host is case-insensitive | AC-SIPZ-002 P4 on the linux CI leg; AC-SIPZ-012 |
+| n | A failed audit append changes the decision | AC-SIPZ-008 unwritable-directory subtest |
+| o | PreToolUse matcher drops `Bash` or `Edit` | AC-SIPZ-011 (i) |
+| p | Manifest `paths` entries only; `runtime_paths` entries are not protected | AC-SIPZ-001 R1, R13–R16 (settings and learning-history entries are `runtime_paths`) |
+| q | Root resolved only when the target resolved (the existing check's asymmetry) | AC-SIPZ-002 P5, P6 |
+| r | Shell verb list truncated to three forms | AC-SIPZ-003 B1–B13 (a three-verb mutant fails ten rows) and the 13-row `ShellMutation` floor |
+| s | Overlay with an unknown key is ignored instead of invalidating | AC-SIPZ-004 MS8 |
+| t | Truncation cuts the whole reason instead of only the path | AC-SIPZ-006 LP1, LP2 and `DenyReason` |
+| u | Dead-entry sweep exempts whole categories that hold any `runtime_paths` entry | AC-SIPZ-011 mutation (iii) |
+| v | A baseline entry silently missing from the manifest | AC-SIPZ-010 by-name enumeration; R21 |
+| w | A baseline-matched Write/Edit denial gains routing fields (violates the byte-for-byte legacy reason) | AC-SIPZ-005 C1–C4 forbidden-substring assertion |
 
 ## §D Counts, baseline-first note, cross-platform, definition of done
 
@@ -232,15 +233,15 @@ Each row is a mutant that satisfies a one-sided reading of the criteria and viol
 
 **Cross-platform.** The lexical function is pure string work and the same table runs on every CI leg; the symlink steps use real temporary directories where the host supports symlinks. The shell rule uses the existing shell-segment splitter and applies to Bash only; PowerShell is not covered (spec §E). Relative paths are judged against the process working directory exactly as the existing file-access check does.
 
-**Edge cases the unit tests cover:** a Korean path in NFD against an NFC entry; an empty or directory `file_path`; a manifest with a duplicate entry (valid), a middle wildcard, an entry containing `..`, an absolute entry, an unknown top-level key, an unknown `version`, or a category name longer than 32 bytes (all `manifest=invalid`); an empty category list (valid); a zero-byte or `categories: {}` **shipped** manifest (invalid: the seven required categories are missing — a shrunken zone must not load silently); a zero-byte overlay (valid, no entries); an overlay that is invalid while the shipped manifest is valid (fail closed); a deny reason for a path longer than the 240-byte cap (path truncated, four routing fields and sentinel intact).
+**Edge cases the unit tests cover:** a Korean path in NFD against an NFC entry; an empty or directory `file_path`; a manifest with a duplicate entry (valid), a middle wildcard, an entry containing `..`, an absolute entry, an unknown top-level key, an unknown `version`, or a category name longer than 32 bytes (all `manifest=invalid`); an empty category list (valid); a zero-byte, `categories: {}` or one-category file at the **shipped** path (invalid: any of the seven required categories missing — a shrunken zone must not load silently — while the same file with all seven plus an extra category is valid, which is what the MS4, MS7 and MS8 fixtures use); a zero-byte overlay (valid, no entries); an overlay that is invalid while the shipped manifest is valid (fail closed); a deny reason for a path longer than the 240-byte cap (path truncated, four routing fields and sentinel intact).
 
 **Quality gates.** `go vet ./internal/hook/... ./internal/config/... ./internal/template/...`, `golangci-lint run` on the changed packages, `go test -race ./internal/hook/...`, `make build` so the embed regenerates, and TRUST 5 sync-audit as usual. Full-suite verdict is CI's.
 
-**Definition of done.** AC-SIPZ-001..004 and 009 green via their **live** commands with the RED→GREEN pair recorded; AC-005..013 green with swept counts shown; every §C mutant executed and its red recorded; `moai spec lint --strict SPEC-SELF-IMPROVE-PROTECTED-ZONE-001` clean; no edit outside the scope of AC-SIPZ-013.
+**Definition of done.** AC-SIPZ-001..004 and 009 green via their **live** commands with the RED→GREEN pair recorded; AC-SIPZ-005..013 green with swept counts shown; every §C mutant executed and its red recorded; `moai spec lint --strict SPEC-SELF-IMPROVE-PROTECTED-ZONE-001` clean; no edit outside the scope of AC-SIPZ-013.
 
 ## §E Evidence ledger
 
-All entries: tree SHA `e497f693608ac7ea45a08b06304dc585e927ff49` (code identical at HEAD `609f9af39a225a91f3a553d9a3db9eb9747f880a`, see the header); commands are repository-root relative; `J` abbreviates `bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh`. Raw files are under `.moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/`. The recorded runs passed a prebuilt binary (`go build ./cmd/moai` of this tree) as the last argument; omitting it makes the judge build one itself, same code path. The replay stdout of every entry below is identical to its live stdout (`judge-base-live.txt`).
+All entries: tree SHA `e497f693608ac7ea45a08b06304dc585e927ff49` (code this SPEC reads identical at HEAD `41127e8caded5c54507414fc6dd88fbf28d9517b`, see the header). L-1 to L-5 and L-6a were re-run live on 2026-10-05 with a binary built from `41127e8ca` after the probe fixtures MS4/MS7/MS8 gained their seven categories and the judge gained the C1–C4 forbidden-substring and MS1/MS8 failing-file assertions: the whole-table live run prints `JUDGE swept=67 expected=67 fail=51` (the replay on the recorded TSV prints the same), the six group outputs equal `judge-base-live.txt` and `judge-base-replay.txt` byte for byte, and the probe TSV equals `red-probe-base-e497f6936.tsv` byte for byte. L-9 and L-13 were re-run at `41127e8ca` with the same outputs. L-7 (latency) and L-8 (selector hazard) were not re-run and carry the base observation. Commands are repository-root relative; `J` abbreviates `bash .moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/judge-probe.sh`. Raw files are under `.moai/specs/SPEC-SELF-IMPROVE-PROTECTED-ZONE-001/evidence/`. The recorded runs passed a prebuilt binary (`go build ./cmd/moai` of this tree) as the last argument; omitting it makes the judge build one itself, same code path. The replay stdout of every entry below is identical to its live stdout (`judge-base-live.txt`).
 
 ```ledger
 L-1

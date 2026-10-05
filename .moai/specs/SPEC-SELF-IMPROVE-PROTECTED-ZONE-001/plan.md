@@ -6,7 +6,7 @@
 
 - Card t1510, operator decision D5, Class C. Scope bound by the leader: declaration, blocking, human routing. No new subsystem, no auditor-definition edit (card t1500 lands later).
 - Plan-phase deliverables already on disk: the base-tree RED evidence under `evidence/` (probe, judge, recorded outputs, latency baseline). These are committed by the orchestrator ahead of any run-phase commit so the commit graph witnesses red-before-change.
-- Reused rather than invented: the `HARNESS_FROZEN_*` sentinel family and its orchestrator pattern-match convention; the existing hook-block round in `agent-common-protocol.md` § Hook Invocation Surface as the human route; the config package's dedicated-loader pattern (`LoadHarnessConfig`, `LoadCrossSessionConfig`); the existing shell-segment splitter in `internal/hook`; the audit-row convention of the subagent write guard.
+- Reused rather than invented: the `HARNESS_FROZEN_*` sentinel family and its orchestrator pattern-match convention; the subagent blocker-report rule (`agent-common-protocol.md` § Subagent Prohibitions, § Blocker Report Format) as the only path by which a denial can reach a person — the hook-block round in § Hook Invocation Surface does not cover a PreToolUse deny (spec §C.7); the config package's dedicated-loader pattern (`LoadHarnessConfig`, `LoadCrossSessionConfig`); the existing shell-segment splitter in `internal/hook`; the audit-row convention of the subagent write guard.
 
 ## §B Known issues to carry into run-phase
 
@@ -26,22 +26,22 @@
 
 Decisions most likely to change; nothing here touches runtime behaviour yet.
 
-- Define manifest schema v1: `version`, `categories.<name>.paths` and `categories.<name>.runtime_paths` (lists; category names `[a-z0-9_]`, at most 32 bytes). Strict decode; unknown keys, a wrong `version`, an entry using a form outside the four, an entry containing `..`, or an absolute entry make the file invalid. Duplicate entries and empty category lists are valid. The shipped file must declare all seven required categories, so a zero-byte or `categories: {}` shipped file is invalid; a zero-byte overlay is valid. Basename globs use `path.Match` on the final segment, case-folded, `[` always a class (REQ-SIPZ-001).
+- Define manifest schema v1: `version`, `categories.<name>.paths` and `categories.<name>.runtime_paths` (lists; category names `[a-z0-9_]`, at most 32 bytes). Strict decode; unknown keys, a wrong `version`, an entry using a form outside the four, an entry containing `..`, or an absolute entry make the file invalid. Duplicate entries and empty category lists are valid. The seven-category rule binds **any** manifest file at the shipped path, whatever it also declares (REQ-SIPZ-001), so a zero-byte, `categories: {}` or one-category shipped-path file is invalid — the probe fixtures MS4, MS7 and MS8 therefore carry all seven plus their probe category; the add-only overlay is not bound by the seven and a zero-byte overlay is valid. Basename globs use `path.Match` on the final segment, case-folded, `[` always a class (REQ-SIPZ-001).
 - Author the shipped manifest (spec §D shipped column) and the dogfood overlay (overlay column); the local `.moai/config/sections/protected-zone.yaml` is the shipped file plus nothing — the overlay carries the dogfood paths.
 - Add the loader (two files, union, overlay add-only, category order = shipped first then overlay) in `internal/config` beside the other dedicated loaders; register the section in the completeness audit.
 - Add the matcher in two layers (REQ-SIPZ-006): a pure lexical function (backslashes, its own absolute-path rule for `/`, `X:/` and `//`, root stripping, clean, NFC, case-fold, the four-form comparison) taking the root and the path as strings so the same table runs on every OS, and a filesystem layer that resolves the root and the target's deepest existing ancestor with one function and matches both forms. Do not copy the existing check's resolve-the-root-only-when-the-path-resolved asymmetry (P5/P6 watch it).
-- Author the shipped manifest with `runtime_paths` per spec §D (settings files, `CLAUDE.local.md`/`AGENTS*.md`, `.moai/harness/*`, `.moai/logs/`, the overlay self-entry), `.claude/skills/moai/` in `moai_managed`, and the shipped file's own path in `gate_policy`.
+- Author the shipped manifest with `runtime_paths` per spec §D (settings files, `AGENTS*.md`, `.moai/harness/*`, the overlay self-entry; `.moai/logs/` is a `paths` entry because the template ships it as a directory), `.claude/skills/moai/` in `moai_managed`, and the shipped file's own path in `gate_policy`. The shipped file carries no `CLAUDE.local.md` literal (the template-neutrality audit rejects it in a shipped YAML); that entry is a `runtime_paths` entry of the dogfood overlay.
 - Tests (subtests of `TestProtectedZone` in their package): loader valid/invalid table including the edge cases in `acceptance.md` §D, overlay-cannot-narrow, template-neutrality, shipped⊆dogfood, Windows-shaped normalization table.
 - Flips: AC-SIPZ-009, AC-SIPZ-012; AC-SIPZ-004 loader half.
 
 ### M2 — Guard behaviour for file tools (Priority High)
 
 - In `internal/hook`, add the guard module and one call site in the Write/Edit branch of the PreToolUse handler. The order inside the branch: identity gate (compiled set) → normalize → compiled baseline first (so P1–P4 and S1 keep their legacy sentinels) → manifest. Normalization is also applied to the existing baseline check by routing it through the new normalizer (the one change to existing code; AC-SIPZ-002 and AC-SIPZ-005 are the pair that watches it).
-- Failure modes: present-but-invalid → deny every identity Write/Edit/Bash-mutation with `manifest=invalid`; absent → baseline floor plus audit row.
-- Deny reason format `SENTINEL: <identity> category=<c> route=human next=return-blocker-report path=<rel>` with only the path truncated to keep the whole reason within 240 bytes (REQ-SIPZ-011); the new sentinel constant; audit row append to `.moai/logs/protected-zone-audit.jsonl` (single append, fail-open on write error with a stderr notice).
+- Failure modes: present-but-invalid → deny every identity Write/Edit with `manifest=invalid` and the failing file named (the Bash half arrives with the shell rule in M3); absent → baseline floor plus audit row.
+- Deny reason format `SENTINEL: <identity> category=<c> route=human next=return-blocker-report path=<rel>` with only the path truncated to keep the whole reason within 240 bytes (REQ-SIPZ-011); an invalid-manifest denial uses `manifest=invalid` in place of `category=` and ends with the failing file's project-relative path (REQ-SIPZ-009); a Write/Edit target the compiled baseline already matches keeps its legacy sentinel and reason with no routing field (spec §C.7); the new sentinel constant; audit row append to `.moai/logs/protected-zone-audit.jsonl` (single append, fail-open on write error with a stderr notice).
 - Cost seam: the manifest is opened only after the identity and tool gates; a test injects a read counter.
 - Update the sentinel catalog test (ninth sentinel) and the baseline-coverage drift test (count 21).
-- Flips: AC-SIPZ-001, 002, 004, 005, 006, 007 (read-counter half), 008, 010.
+- Flips: AC-SIPZ-001, 002, 004 (the MS rows and E1, E2 — E3 is a Bash call and flips in M3), 005, 006, 007 (read-counter half), 008, 010.
 
 ### M3 — Shell rule, liveness, evidence (Priority Medium)
 
@@ -50,7 +50,7 @@ Decisions most likely to change; nothing here touches runtime behaviour yet.
 - Execute every mutant in `acceptance.md` §C and record the observed red in `progress.md` §E.2 — the checks are unfinished until each red has been seen.
 - Re-run the probe and the judge against a binary built from the final tree: expect `JUDGE swept=67 expected=67 fail=0` from the live form (the replay form on the recorded base TSV stays red by construction). Run the interleaved paired latency A/B with its A/A control (base build vs final build, same session; rule in AC-SIPZ-007).
 - `make build`, `go vet`, `golangci-lint run`, `go test -race ./internal/hook/...`, and the template and config packages.
-- Flips: AC-SIPZ-003, 007 (latency half), 011, 013.
+- Flips: AC-SIPZ-003, 004 (E3 — the live `-o '^(MS|E)'` prints `fail=0` only once the shell rule is in), 007 (latency half), 011, 013.
 
 ## §D Technical approach, in decision order
 
@@ -58,7 +58,7 @@ Decisions most likely to change; nothing here touches runtime behaviour yet.
 2. **Layering** — shipped ∪ overlay ∪ compiled floor; overlay add-only; invalid anywhere → closed for the identity set (spec §C.4).
 3. **Identity gate** — compiled constant, checked before any file I/O.
 4. **Order inside the guard** — baseline first (legacy sentinels survive), manifest second (new sentinel), shell rule third.
-5. **Human route** — the denial reason; no new channel (spec §C.7). No rule or skill file edit is planned: the route rides the existing hook-block doctrine. If the audit finds the doctrine silent about `HARNESS_FROZEN_*` denials, record it as a finding rather than widening scope.
+5. **Human route** — the denial reason (a label, `next=return-blocker-report`, and the audit row); no new channel (spec §C.7). The subagent blocker-report rule is the only path to a person and whether a denied subagent follows it is unobserved (spec §F G8). It covers manifest-only, shell-mutation and invalid-manifest denials; baseline-matched Write/Edit denials keep their legacy reason. No rule or skill file edit is planned.
 6. **Liveness** — CI test, not a runtime heartbeat (spec §C.8).
 
 ## §E Risks
@@ -79,6 +79,6 @@ Revert the run-phase commits. Operationally, deleting the manifest files returns
 
 ## §G Cross-references
 
-- `spec.md` §B requirements, §C decisions, §D initial content; `acceptance.md` §E ledger; `decision-index.md` open questions Q1–Q6.
+- `spec.md` §B requirements, §C decisions, §D initial content; `acceptance.md` §E ledger; `decision-index.md` questions Q1–Q7.
 - `.claude/rules/moai/development/verification-completeness.md` — the two-cell and mutant-probe obligations this plan follows.
 - `.claude/rules/moai/workflow/main-checkout-branch-guard.md` § Mechanical Enforcement — identity reach and the no-bypass lesson.

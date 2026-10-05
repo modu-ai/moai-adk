@@ -36,10 +36,14 @@ fi
 # Expectation rows: id  want-decision  want-sentinel  want-reason-substrings (comma list; "-" = none)
 PZ=HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION
 RT="route=human,category=,next=return-blocker-report"
-EXPECT="C1 deny HARNESS_FROZEN_HOOK_VIOLATION -
-C2 deny HARNESS_FROZEN_RULE_VIOLATION -
-C3 deny HARNESS_FROZEN_INSTRUCTION_VIOLATION -
-C4 deny HARNESS_FROZEN_AGENT_VIOLATION -"
+# A reason substring prefixed with "!" must be ABSENT. The baseline-matched controls C1-C4 keep their
+# legacy sentinel and reason, so they must carry no routing field (REQ-SIPZ-011/012/016): a mutant
+# that appends route=/category= to a baseline denial fails here.
+NR="!route=human,!category="
+EXPECT="C1 deny HARNESS_FROZEN_HOOK_VIOLATION $NR
+C2 deny HARNESS_FROZEN_RULE_VIOLATION $NR
+C3 deny HARNESS_FROZEN_INSTRUCTION_VIOLATION $NR
+C4 deny HARNESS_FROZEN_AGENT_VIOLATION $NR"
 for i in $(seq 1 21); do EXPECT="$EXPECT
 R$i deny $PZ $RT"; done
 # R21 (.claude/skills/moai/) is a baseline-list member; it keeps a legacy sentinel when the
@@ -57,14 +61,14 @@ LP2 deny $PZ $RT"
 for i in $(seq 1 13); do EXPECT="$EXPECT
 B$i deny $PZ $RT"; done
 EXPECT="$EXPECT
-MS1 deny $PZ manifest=invalid,route=human
+MS1 deny $PZ manifest=invalid,route=human,next=return-blocker-report,config/sections/protected-zone.yaml
 MS2 deny HARNESS_FROZEN_HOOK_VIOLATION -
 MS3 allow - -
 MS4 deny $PZ category=probe_docs,route=human
 MS5 allow - -
 MS6 deny $PZ category=probe_docs,route=human
 MS7 deny $PZ category=probe_base,route=human
-MS8 deny $PZ manifest=invalid,route=human
+MS8 deny $PZ manifest=invalid,route=human,next=return-blocker-report,project/protected-zone.yaml
 E1 deny $PZ $RT
 E2 deny $PZ $RT
 E3 deny $PZ $RT"
@@ -96,9 +100,15 @@ while IFS=$'\t' read -r id tool agent dec sent path reason; do
   if [ "$want_reason" != "-" ]; then
     oldifs="$IFS"; IFS=','
     for sub in $want_reason; do
-      case "$reason" in
-        *"$sub"*) ;;
-        *) echo "FAIL $id reason-missing '$sub' (reason: $reason)"; fail=$((fail+1));;
+      case "$sub" in
+        !*) neg="${sub#!}"
+            case "$reason" in
+              *"$neg"*) echo "FAIL $id reason-has-forbidden '$neg' (reason: $reason)"; fail=$((fail+1));;
+            esac ;;
+        *)  case "$reason" in
+              *"$sub"*) ;;
+              *) echo "FAIL $id reason-missing '$sub' (reason: $reason)"; fail=$((fail+1));;
+            esac ;;
       esac
     done
     IFS="$oldifs"
