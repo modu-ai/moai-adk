@@ -300,6 +300,67 @@ templ Todo(vm ShellVM, q TodoVM) {
 	}
 }
 
+// TodoGraph 는 /todo?view=graph 의 관계 보기다(SPEC-TODO-CARD-ISSUANCE-001
+// REQ-TCI-023). 같은 경로의 두 번째 보기일 뿐이라 쓰기도 락도 없다 — 노드는
+// 읽기 이음매가 정한 순서대로 격자에 앉고(같은 입력 같은 출력), 간선은 기록된
+// 소견을 그대로 읽는다. 상한을 넘으면 그린 만큼만 그리고 생략 수를 이름 대고,
+// 새 JS 는 없다 — 서버가 렌더한 SVG 전부다.
+templ TodoGraph(vm ShellVM, g TodoGraphVM) {
+	@Shell(vm) {
+		<section data-live="factory">
+			<div class="panel__head" style="border-bottom-color:var(--line)">
+				<h2 class="panel__title" data-i18n="todo.graph.title">Relation graph</h2>
+				<a class="panel__act panel__meta" href="/todo" data-i18n="todo.graph.back">Back to table</a>
+				<span class="panel__meta mono todo-root" title={ g.Root }>{ g.Root }</span>
+			</div>
+			if g.Unavailable {
+				<p class="panel__meta" role="status" data-todo-unavailable data-i18n="todo.unavailable">The queue could not be read. Retry or check it with moai todo list.</p>
+			} else if len(g.Nodes) == 0 {
+				<p class="panel__meta" data-todo-empty data-i18n="todo.empty">The backlog queue is empty.</p>
+			} else {
+				if g.Omitted > 0 {
+					<p class="panel__meta">
+						<span class="mono">{ itoa(g.Omitted) }</span>
+						<span data-i18n="todo.graph.omitted">cards omitted</span>
+					</p>
+				}
+				<div class="todo-graph-wrap">
+					<svg class="todo-graph" role="img" aria-label="Card relation graph" width={ itoa(todoGraphWidth(len(g.Nodes))) } height={ itoa(todoGraphHeight(len(g.Nodes))) }>
+						for _, e := range g.Edges {
+							@todoGraphEdge(e, g)
+						}
+						for _, n := range g.Nodes {
+							@todoGraphNode(n)
+						}
+					</svg>
+				</div>
+			}
+		</section>
+	}
+}
+
+// todoGraphNode 은 한 카드의 노드다. 결정적 격자 자리(todoGraphX/Y)에 원과
+// 카드 id 를 찍는다 — 본문은 title 속성으로만, 노드 수의 상한이 읽는 양을
+// 정한다.
+templ todoGraphNode(n TodoGraphNode) {
+	<g class="todo-graph__node">
+		<circle cx={ itoa(todoGraphX(n.Index)) } cy={ itoa(todoGraphY(n.Index)) } r="14"></circle>
+		<text x={ itoa(todoGraphX(n.Index)) } y={ itoa(todoGraphY(n.Index) + 4) } text-anchor="middle" class="todo-graph__id">{ n.ID }</text>
+		<title>{ n.ID + " — " + n.State + " — " + n.Text }</title>
+	</g>
+}
+
+// todoGraphEdge 은 기록된 소견 한 건을 두 노드 사이의 선으로 찍는다. 선의
+// 중점에 관계 종류를 새긴다.
+templ todoGraphEdge(e TodoGraphEdge, g TodoGraphVM) {
+	if from, ok := todoGraphNodeIndex(g, e.From); ok {
+		if to, ok2 := todoGraphNodeIndex(g, e.To); ok2 {
+			<line class="todo-graph__edge" x1={ itoa(todoGraphX(from)) } y1={ itoa(todoGraphY(from)) } x2={ itoa(todoGraphX(to)) } y2={ itoa(todoGraphY(to)) }></line>
+			<text class="todo-graph__rel" x={ itoa((todoGraphX(from)+todoGraphX(to))/2) } y={ itoa((todoGraphY(from)+todoGraphY(to))/2) } text-anchor="middle">{ e.Relation }</text>
+		}
+	}
+}
+
 // todoStateBadge 는 항목의 상태를 뱃지로 명시한다. 결정 G-5 의 나머지 절반이다 —
 // 감사 화면이라면 카드가 어느 상태인지 말해야 하고, 그러지 않으면 완전한 목록도
 // 그냥 구분 없는 목록일 뿐이다.
