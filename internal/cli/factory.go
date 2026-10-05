@@ -33,10 +33,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/discovery"
@@ -547,76 +545,6 @@ func ambiguousJoinGuidance(root string, err error) error {
 	return fmt.Errorf("%w — resolve: join one with '-l --factory-run <run-id>', or its leader with '-l --leader <leader-name>'%s, or retire one with 'moai factory runs --retire <run-id>'", err, leaders)
 }
 
-// laneJoinWorktreeSentinel prefixes the refusal the lane-join gate emits when
-// the launcher's working directory sits inside a linked worktree (card t1513).
-const laneJoinWorktreeSentinel = "LANE_JOIN_FROM_WORKTREE"
-
-// refuseLaneJoinFromWorktree is the lane-join gate's worktree-root refusal
-// (card t1513). A session rooted inside a linked worktree can never move to
-// the next card's tree: the Claude runtime refuses EnterWorktree with
-// 'Already in a worktree session', ExitWorktree is a no-op for a tree the
-// session did not create, and `moai worktree new` writes under
-// .moai/worktrees which the same runtime guard refuses — so the lane wedges
-// on its first card transition and the operator must open a new session per
-// card. The gate refuses at join time instead and names the remedy. Measured
-// 2026-10-04 (cards t1501/t1513): lanes launched through `moai cc -w` sat in
-// the previous card's tree and could not take a dispatch for a new card.
-func refuseLaneJoinFromWorktree() error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil
-	}
-	return refuseLaneJoinFromWorktreeAt(cwd)
-}
-
-// refuseLaneJoinFromWorktreeAt is the injectable core. Detection is git's own
-// answer: inside a linked worktree the per-tree git dir (.git/worktrees/<name>)
-// differs from the repository's common git dir; in the main checkout they are
-// the same directory. (--show-superproject-working-tree is the submodule
-// answer and prints nothing for a linked worktree — measured, card t1513.)
-// Fail-open — a git that cannot answer leaves the join to the downstream
-// gates, the same direction the branch guard takes on uncertainty.
-func refuseLaneJoinFromWorktreeAt(cwd string) error {
-	gitDir, err := factoryLaneJoinRevParse(cwd, "--absolute-git-dir")
-	if err != nil || gitDir == "" {
-		return nil
-	}
-	common, err := factoryLaneJoinRevParse(cwd, "--git-common-dir")
-	if err != nil || common == "" {
-		return nil
-	}
-	if !filepath.IsAbs(common) {
-		common = filepath.Join(cwd, common)
-	}
-	gitDir, common = filepath.Clean(gitDir), filepath.Clean(common)
-	// macOS t.TempDir() hands out /var/folders/... while git answers the
-	// resolved /private/var/folders/... — compare the real paths (the same
-	// resolveSymlinks reason the launcher's worktree cleanup carries).
-	if resolved, err := filepath.EvalSymlinks(gitDir); err == nil {
-		gitDir = resolved
-	}
-	if resolved, err := filepath.EvalSymlinks(common); err == nil {
-		common = resolved
-	}
-	if gitDir == common {
-		return nil
-	}
-	return fmt.Errorf("%s: a lane rooted inside the linked worktree %s can never EnterWorktree the next card's tree ('Already in a worktree session') and wedges on its first card transition — re-run the lane join (`moai cc -l` / `moai glm -l` / `moai codex -l`) from the primary checkout %s",
-		laneJoinWorktreeSentinel, cwd, filepath.Dir(common))
-}
-
-// factoryLaneJoinRevParse runs one rev-parse spec under cwd and returns its
-// trimmed single-line output.
-func factoryLaneJoinRevParse(cwd, spec string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "git", "-C", cwd, "rev-parse", spec).Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
-}
-
 // leaderNamesByPID maps a live leader-name claim's pid to the session name
 // (card t1444 ③). Read-only and best-effort; the registry is the same one
 // the leader launch claims through.
@@ -667,9 +595,6 @@ func leaderNamesByPID(root string) map[int]string {
 // guided refusal (③) is the answer, and fail-closed selection among live
 // runs stays the contract.
 func enterFactoryLaneRun(root, explicit, leadTarget string, timing *factoryLaunchTiming) (func(), error) {
-	if err := refuseLaneJoinFromWorktree(); err != nil {
-		return func() {}, err
-	}
 	restore, err := enterSelectedFactoryRun(root, explicit, true, timing)
 	if err == nil {
 		return restore, nil

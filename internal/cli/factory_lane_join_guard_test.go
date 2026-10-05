@@ -1,12 +1,13 @@
 // factory_lane_join_guard_test.go — card t1513: the serial slot is held by a
-// recorded driver, not by a state alone, and the lane-join gate refuses a
-// session whose working directory roots inside a linked worktree.
+// recorded driver, not by a state alone. A join-time worktree-root refusal
+// was designed here and WITHDRAWN (see the verdict §부록 C): the lease layer
+// already refuses a tree-rooted lane through factoryAssertParentCheckout on
+// every path, and a join-time refusal fires inside this repository's own
+// worktree-rooted test runs, breaking the whole join family.
 package cli
 
 import (
 	"context"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -73,79 +74,6 @@ func TestFactoryNextStillRefusedBehindADrivenRow(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "refused serial-slot") {
 		t.Fatalf("refusal is not serial-slot: %v stderr=%q", err, stderr)
-	}
-}
-
-// TestLaneJoinRefusesWorktreeRoot — the join gate: a primary-checkout cwd
-// joins, a linked-worktree cwd is refused with the sentinel, and a cwd with
-// no repository fails open.
-func TestLaneJoinRefusesWorktreeRoot(t *testing.T) {
-	root := t.TempDir()
-	run := func(args ...string) string {
-		t.Helper()
-		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("git %v: %v: %s", args, err, out)
-		}
-		return string(out)
-	}
-	run("init", "-q")
-	run("config", "user.email", "t@example.com")
-	run("config", "user.name", "t")
-	run("commit", "--allow-empty", "-qm", "seed")
-	link := filepath.Join(t.TempDir(), "linked")
-	if out, err := exec.Command("git", "-C", root, "worktree", "add", "-b", "wt", link).CombinedOutput(); err != nil {
-		t.Fatalf("worktree add: %v: %s", err, out)
-	}
-
-	if err := refuseLaneJoinFromWorktreeAt(root); err != nil {
-		t.Fatalf("a primary-checkout cwd must join: %v", err)
-	}
-	err := refuseLaneJoinFromWorktreeAt(link)
-	if err == nil {
-		t.Fatal("a linked-worktree cwd must be refused")
-	}
-	if !strings.HasPrefix(err.Error(), laneJoinWorktreeSentinel) {
-		t.Fatalf("refusal %q lacks the %s sentinel", err, laneJoinWorktreeSentinel)
-	}
-	if err := refuseLaneJoinFromWorktreeAt(t.TempDir()); err != nil {
-		t.Fatalf("a non-repository cwd must fail open: %v", err)
-	}
-}
-
-// TestLaneJoinRefusesForeignRepoWorktree — the gate's scope is the session's
-// linked-worktree state, not the repository (card t1513 review P3-2): cwd
-// inside a linked worktree of a DIFFERENT repository is refused the same way,
-// while that repository's own main checkout joins.
-func TestLaneJoinRefusesForeignRepoWorktree(t *testing.T) {
-	root := t.TempDir()
-	run := func(args ...string) string {
-		t.Helper()
-		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("git %v: %v: %s", args, err, out)
-		}
-		return string(out)
-	}
-	run("init", "-q")
-	run("config", "user.email", "t@example.com")
-	run("config", "user.name", "t")
-	run("commit", "--allow-empty", "-qm", "seed")
-	link := filepath.Join(t.TempDir(), "foreign-linked")
-	if out, err := exec.Command("git", "-C", root, "worktree", "add", "-b", "wt", link).CombinedOutput(); err != nil {
-		t.Fatalf("worktree add: %v: %s", err, out)
-	}
-	if err := refuseLaneJoinFromWorktreeAt(root); err != nil {
-		t.Fatalf("the foreign repository's own main checkout must join: %v", err)
-	}
-	err := refuseLaneJoinFromWorktreeAt(link)
-	if err == nil {
-		t.Fatal("a foreign-repo linked-worktree cwd must be refused")
-	}
-	if !strings.HasPrefix(err.Error(), laneJoinWorktreeSentinel) {
-		t.Fatalf("refusal %q lacks the %s sentinel", err, laneJoinWorktreeSentinel)
 	}
 }
 
