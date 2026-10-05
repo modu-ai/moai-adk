@@ -62,10 +62,10 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 
 | 파일 | 변경 |
 |---|---|
-| `internal/homestate/leader_approval.go` (신규) | 리더 승인 receipt 타입 + 바인딩 검증 함수(카드 UUID·factory version·증거 해시 삼중 결합, REQ-FCR-001/005). 발급자 표식으로 리더 경로 구별. **homestate 배치 이유**: `factory → homestate` 의존이 기존 방향(`go list -deps ./internal/factory` 실측, `TestHomestateDoesNotImportFactory` 통과)이라 factory 배치 시 `homestate → factory → homestate` 순환 — cli와 homestate 양쪽이 이미 import하는 homestate에 둔다 |
+| `internal/homestate/leader_approval.go` (신규) | 리더 승인 receipt 타입 + 바인딩 검증 함수(카드 UUID·**run id**·factory version·증거 해시 네 결합, REQ-FCR-001/005). 발급자 표식으로 리더 경로 구별. **homestate 배치 이유**: `factory → homestate` 의존이 기존 방향(`go list -deps ./internal/factory` 실측, `TestHomestateDoesNotImportFactory` 통과)이라 factory 배치 시 `homestate → factory → homestate` 순환 — cli와 homestate 양쪽이 이미 import하는 homestate에 둔다 |
 | `internal/factory/autodone_scan.go` | `AutoDoneFacts`(:108)에 receipt 상태 필드 추가 — 기존 필드 의미론 불변 |
 | `internal/cli/todo.go` | done 경로 :1104 `rec.ArchiveCard(id)` 앞에 receipt 검증 삽입(REQ-FCR-002). 거부는 stderr |
-| `internal/cli/todo_autodone.go` | :311 facts 조립에 receipt 반영(REQ-FCR-003); :385 재검증을 스냅샷 UUID·본문·state·SPEC·landing 전면 비교로 확장(REQ-FCR-004) — 그리고 **archive 직전(같은 lock 안)에 receipt 삼중 바인딩을 최종 재검증하고 factory 전이와 직렬화**한다: 스캔 승인 뒤 factory 전이로 version만 증가하면 5항목 비교는 통과하면서 stale receipt로 닫히는 경합을 차단한다 |
+| `internal/cli/todo_autodone.go` | :311 facts 조립에 receipt 반영(REQ-FCR-003); :385 재검증을 스냅샷 UUID·본문·state·SPEC·landing 전면 비교로 확장(REQ-FCR-004) — 그리고 **archive 직전(같은 lock 안)에 receipt 네 바인딩을 최종 재검증하고 factory 전이와 직렬화**한다: 스캔 승인 뒤 factory 전이로 version만 증가하면 5항목 비교는 통과하면서 stale receipt로 닫히는 경합을 차단한다 |
 | `internal/homestate/card_transition.go` | 완료 전이 receipt 게이트 — T20(`ci-green→done`)의 예약 edge admission을 receipt 검증으로 구현(REQ-FCR-010), T18(`merged-local→done`, `guardNoRemote` 포함)에 동일 게이트 적용(REQ-FCR-002b). 현행 거부 동작의 증거: `TestFR_AC019_ReservedCIEdgesRefused`·`TestFR_AC018_DecidePushGate` — 수리 뒤에도 receipt 없는 T18·T20은 계속 거부돼야 한다(RED 유지 형태) |
 | 테스트 | `internal/cli/factory_card_test.go`의 `fcFixture`(:31)·`fcPlace`(:89) 스타일 + `todo_autodone_test.go` 표준 — `TestLeaderReceiptGate*`, `TestAutoDoneRecheckStaleRow` |
 

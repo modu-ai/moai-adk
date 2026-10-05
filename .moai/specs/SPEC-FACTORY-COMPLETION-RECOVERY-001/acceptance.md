@@ -25,10 +25,10 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 - green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateRejectsMissingReceipt$'` — receipt 없는 done이 거부되고 stderr에 이유, 행은 archive되지 않음. INPUT: fcFixture 루트 + factory-linked 카드. WHEN: M1 이후 cli 스위트.
 - 기준: 명령 exit 0이고 `[no tests to run]` 아님.
 
-### AC-FCR-002 — receipt 삼중 바인딩 불일치 거부 (REQ-FCR-002/005)
+### AC-FCR-002 — receipt 네 바인딩 불일치 거부 (REQ-FCR-002/005)
 
 - RED-now: P1 동일.
-- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateBinding$'` — UUID 불일치·factory version stale·증거 해시 불일치 각각 거부, 세 값 모두 일치 시 통과. INPUT: 세 바인딩 값을 하나씩 틀어놓은 fixture receipt 3종.
+- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateBinding$'` — UUID 불일치·**run id 불일치(다른 run의 receipt)**·factory version stale·증거 해시 불일치 각각 거부, 네 값 모두 일치 시 통과. INPUT: 네 바인딩 값을 하나씩 틀어놓은 fixture receipt 4종 — run 변이는 동일 카드·version·증거 SHA를 가진 두 번째 run(측정: cards 스키마에서 생성 가능).
 
 ### AC-FCR-003 — 수행자 발급 receipt 거부, 리더 발급+리더 실행 허용 (REQ-FCR-005)
 
@@ -38,7 +38,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-004 — auto-done이 receipt 없이 닫지 않음 (REQ-FCR-003)
 
 - RED-now: P2 — `AutoDoneFacts`(autodone_scan.go:108)에 receipt 필드 없음.
-- green(M1): `go test ./internal/cli -run '^TestAutoDoneReceiptSkip$'` — receipt 미검증 후보는 close 대상에서 skip/downgrade, 스캔 전체는 계속. INPUT: 조건은 모두 충족하되 receipt 없는 카드. **경합 변이 포함**: 스캔 승인 뒤 factory 전이로 카드 version이 증가한 행 — archive 직전 삼중 바인딩 재검증(factory version 포함)이 stale receipt를 거부하고 close를 skip한다(REQ-FCR-004의 직전 재검증).
+- green(M1): `go test ./internal/cli -run '^TestAutoDoneReceiptSkip$'` — receipt 미검증 후보는 close 대상에서 skip/downgrade, 스캔 전체는 계속. INPUT: 조건은 모두 충족하되 receipt 없는 카드. **경합 변이 포함**: 스캔 승인 뒤 factory 전이로 카드 version이 증가한 행 — archive 직전 네 바인딩 재검증(factory version·run id 포함)이 stale receipt를 거부하고 close를 skip한다(REQ-FCR-004의 직전 재검증).
 
 ### AC-FCR-005 — 잠금 재검증 전면 비교 (REQ-FCR-004)
 
