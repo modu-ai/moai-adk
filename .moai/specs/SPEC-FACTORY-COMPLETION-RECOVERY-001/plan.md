@@ -79,7 +79,7 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 | `internal/homestate/factory_run_retire.go` | 전체 run 만료 임대 reaper — `ClassifyRuns`(:161-163) 재사용, 하나의 transaction 안에서 만료 재검증 후 `applyLeaseExpiry` 의미론으로 회수(REQ-FCR-006/007). 행 삭제·생존자 선택 없음 |
 | `internal/homestate/card_transition.go` | 운영자 경로 reassign edge — 기존 lease 없음 + 기존 owner 종료 증거 확인, version-checked(`:364` 패턴)(REQ-FCR-008). `:353`·`:451` 가드는 불변 — 새 edge가 그 옆에 추가된다 |
 | `internal/homestate/card_record.go` (+스키마 마이그레이션) | 구동 중 행의 대기 기록 — waiting signal + review deadline 필드(REQ-FCR-009). `LeaseExpired`(:137-138) 의미론 불변. 기존 행은 "미판정" 기본값 |
-| `internal/homestate/card_evidence_readers.go` (또는 인접 신규 파일) | CI 완료 reader — `audited_sha` 바인딩 선례(:93-207)를 따라 정확한 push SHA의 CI 증거만 인정, T19/T20을 연다(REQ-FCR-010/011) |
+| `internal/homestate/card_evidence_readers.go` (또는 인접 신규 파일) | CI 완료 reader — `audited_sha` 바인딩 선례(:93-207)를 따라 정확한 push SHA의 CI 증거만 인정, **T19만 연다**(REQ-FCR-010/011). T20은 reader 대상 밖 — receipt 게이트(M1)가 연다 |
 | 리더 유지관리 경로 | reaper 호출 지점 — 리더/운영자 표면에만(REQ-FCR-014) |
 | 테스트 | `fr_fixture_test.go` 패밀리(`frPlace` :136, `frLeaseUntil` :197) + `fr_transition_test.go`의 `frFixtureCard`(:58) + `factory_lease_reconcile_test.go`·`factory_run_retire_test.go` 확장 — `TestExpiredLeaseReaperAllRuns`, `TestOperatorReassignEdge`, `TestStalledWaitWatchdog`, `TestCICompletionReader` |
 
@@ -120,4 +120,4 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 - `.moai/reports/t1538/plan-scope.md` — 스코프 노트(항목 (5) 재범위·t1513 경계·SPEC-ID).
 - `.moai/reports/dispatch-audit-2026-10-06-codex.md` — 근거 감사(main@ec13872f3).
 - 카드 t1533 — 제외된 후속 결함(hub 대기 4건). 카드 t1513(`de388878e`) — 슬롯 술어 수리, 무소유자 행 소멸. 카드 t1522 — 영수증 경로 선례.
-- `internal/homestate/factory_run_retire.go:150-158` — `retirable` 긍정형 게이트(REQ-FCR-007이 준수하는 원칙).
+- `internal/homestate/factory_run_retire.go:150-158` — `retirable` 긍정형 게이트(행 보존 원칙의 출처로만 인용; **OwnerDead 생존 조건은 run retirement 전용 — reaper는 상속하지 않는다**, REQ-FCR-007).

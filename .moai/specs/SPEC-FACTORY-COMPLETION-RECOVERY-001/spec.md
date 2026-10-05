@@ -86,11 +86,11 @@ assigned 28·picked 5 중 정상 진행이 끊긴 행이 수동 복구(abandon·
 ### D.2 — M2: 회수 (카드 항목 3·4·5·6)
 
 - **REQ-FCR-006** (Event-driven) — When the 리더 유지관리 경로가 만료 임대 reaper를 호출할 때, the reconcile shall cover **모든** run의 만료 행(현 `internal/homestate/factory_run_retire.go:333`의 active-only 분류와 달리, 전체 분류 원시 `ClassifyRuns` :161-163 재사용), re-verify each expiry inside one transaction, and reclaim each expired row with the 기존 `applyLeaseExpiry` 의미론(card_transition.go:351-353 — assigned 복귀, mid-merge는 blocked, worktree 미접촉).
-- **REQ-FCR-007** (Unwanted) — The reaper shall never delete rows(retireRun의 보존 의미론, factory_run_retire.go:393의 UPDATE-only 준수) and never select among survivors(fail-closed, `retirable` :158의 긍정형 게이트 준수).
+- **REQ-FCR-007** (Unwanted) — The reaper shall never delete rows(retireRun의 보존 의미론, factory_run_retire.go:393의 UPDATE-only 준수) and never select among survivors(positive-gate fail-closed 원칙 준수). `retirable`(:158)의 **owner 생존 조건(OwnerDead)은 run retirement 전용이다** — reaper는 이를 상속하지 않는다: 살아 있는 리더의 run에서 만료된 lane 임대도 `applyLeaseExpiry` 의미론(card_transition.go:351-353)으로 회수한다. `applyLeaseExpiry`에는 생존 조건이 없으며, 사망 확인이 필요한 것은 소유자 교체(REQ-FCR-008)와 run retirement뿐이다.
 - **REQ-FCR-008** (State-driven) — While a card holds no valid lease and the prior owner's 종료 증거(dead process identity 또는 리더 확인) is verified, an operator-path reassign edge shall move `OwnerLabel` to a new registered owner in a version-checked transition(`updateCardRow` 기대버전 패턴, card_transition.go:364) — 현 구조의 두 가드(:353 owner 유지, :451 동일 owner 임대)를 우회하지 않고 **새 edge**로만.
 - **REQ-FCR-009** (Event-driven, 재범위 항목 5) — When a driven row(owner 설정, 임대 부재 또는 유효)가 다음 신호를 기다리며 검토 기한을 넘길 때, the system shall record the waiting signal + review deadline and request 리더 재판정 — 자동 완료 금지, 무소유자 행 자동 해제 금지(t1513 소관). 상태 기록은 card_record.go:138의 빈 임대 의미론을 변경하지 않는다.
-- **REQ-FCR-010** (Event-driven) — When a card is in `pushed`(T19) 또는 `ci-green→done`(T20) 전이를 요청할 때, the reserved-edge refusal(card_transition.go:267, 술어 :173) shall be admitted only by a CI verdict reader following the 기존 판정문 admission 패턴(card_evidence_readers.go:93-207, `audited_sha` 바인딩) — reader 없는 전이는 계속 거부된다.
-- **REQ-FCR-011** (State-driven) — While the CI reader가 증거를 심사할 때, it shall admit only evidence bound to the **정확히 push 시 기록된 commit SHA** — 같은 브랜치의 다른 SHA 증거는 거부한다.
+- **REQ-FCR-010** (Event-driven) — When a card in `pushed` requests `pushed→ci-green`(T19), the reserved-edge refusal(card_transition.go:267, 술어 :173) shall be admitted only by a CI verdict reader following the 기존 판정문 admission 패턴(card_evidence_readers.go:93-207, `audited_sha` 바인딩) — reader 없는 T19은 계속 거부된다. **T20(`ci-green→done`)은 reader가 열지 않는다** — reader는 `ci-green`까지만 진행하며, done 전이는 M1 리더 receipt 게이트(REQ-FCR-001/002)의 검증을 통해서만 열린다.
+- **REQ-FCR-011** (State-driven) — While the CI reader가 T19 증거를 심사할 때, it shall admit only evidence bound to the **정확히 push 시 기록된 commit SHA** — 같은 브랜치의 다른 SHA 증거는 거부한다.
 
 ### D.3 — M3: 표시·처분 (카드 항목 7·8)
 
@@ -101,7 +101,7 @@ assigned 28·picked 5 중 정상 진행이 끊긴 행이 수동 복구(abandon·
 
 - **REQ-FCR-014** (Unwanted) — No lane surface shall mint a receipt, invoke the reaper, or reassign a card — receipt 발급, reaper 호출, reassign edge, 리더 재판정 기록은 전부 리더/운영자 경로다(레인의 큐 변경 금지와 동일 경계).
 - **REQ-FCR-015** (Ubiquitous) — Every new multi-row reconcile shall run inside one transaction with in-transaction 재검증, and every new transition edge shall be version-checked.
-- **REQ-FCR-016** (Unwanted) — No recovery path(reaper, watchdog, reassign, CI reader) shall complete a card — 완료는 M1 receipt 게이트를 통해서만.
+- **REQ-FCR-016** (Unwanted) — No recovery path(reaper, watchdog, reassign) shall complete a card, and the CI reader는 `ci-green`까지만 진행한다 — done 전이를 여는 것은 M1 receipt 게이트뿐이다.
 
 ## §E — Constraints
 

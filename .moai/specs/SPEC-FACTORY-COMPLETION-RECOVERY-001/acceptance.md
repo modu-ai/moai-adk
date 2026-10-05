@@ -55,7 +55,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-007 — reaper 무삭제·fail-closed (REQ-FCR-007)
 
 - RED-now: P3 + retireRun 보존 의미론 판독(:393 UPDATE-only — 이 의미론의 reaper 계승).
-- green(M2): `go test ./internal/homestate -run '^TestExpiredLeaseReaperPreservesRows$'` — 회수 후 행 수 불변, 미확실 분류 행은 회수하지 않음. INPUT: indeterminate 분류 행 포함 fixture.
+- green(M2): `go test ./internal/homestate -run '^TestExpiredLeaseReaperPreservesRows$'` — 회수 후 행 수 불변, 미확실 분류 행은 회수하지 않음, **살아 있는 리더의 run에서 만료 임대도 회수**(owner 생존 조건은 run retirement 전용 — reaper 비상속). INPUT: indeterminate 분류 행 + live-leader run의 만료 행 포함 fixture.
 
 ### AC-FCR-008 — 운영자 reassign edge (REQ-FCR-008)
 
@@ -75,7 +75,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-011 — CI reader가 정확한 SHA만 인정 (REQ-FCR-010/011)
 
 - RED-now: P7 — T19/T20이 :267에서 예약 거부 중("CI verdict reader ... owned by F3").
-- green(M2): `go test ./internal/homestate -run '^TestCICompletionReader$'` — push 시 기록된 SHA의 CI 증거는 T19·T20을 통과, 다른 SHA 증거·증거 부재는 계속 거부. INPUT: frWriteVerdict 선례(fr_fixture_test.go:108)의 sha 바인딩 변이.
+- green(M2): `go test ./internal/homestate -run '^TestCICompletionReader$'` — push 시 기록된 SHA의 CI 증거는 **T19(pushed→ci-green)을 통과**, 다른 SHA 증거·증거 부재는 T19도 계속 거부; **T20(ci-green→done)은 reader 없이 receipt 게이트만 연다** — receipt 부재 T20은 거부, 올바른 receipt와 함께 성공(REQ-FCR-016과 모순 없음). INPUT: frWriteVerdict 선례(fr_fixture_test.go:108)의 sha 바인딩 변이 + receipt 변이.
 
 ## §C — M3: 표시·처분
 
