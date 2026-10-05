@@ -181,7 +181,7 @@ func TestResolvePlanAuditCeiling(t *testing.T) {
 		{"S", 1},
 		{"M", 2},
 		{"L", 3},
-		{"", 3},     // absent tier → L
+		{"", 3},      // absent tier → L
 		{"bogus", 3}, // unknown tier → L
 	}
 	for _, c := range cases {
