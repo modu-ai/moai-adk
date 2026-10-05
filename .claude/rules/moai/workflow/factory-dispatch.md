@@ -4,7 +4,7 @@ How the **leader** session of Factory Mode moves a card through the queue: what 
 
 > **Loading scope**: Intentionally always-loaded. A session learns it is the factory leader from the SessionStart context, not from a file path, so a `paths:`-restricted rule would never reach it. Cost to a session that never dispatches: the stub below, restated once per turn; every procedure body lives in the lazy companions.
 
-> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, incident narratives, and rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. The stub keeps every [HARD] rule and pointer; load the companion when classifying a card or choosing review lenses.
+> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
 
 > **Mechanics companion**: `factory-dispatch-mechanics.md` owns the lane-and-lens bodies relocated from this file — § Review lens selection · § Serializing a heavy run across lanes (`moai slot` lease) · § Factory Mode mechanics · § Isolation (launcher table, worktree tiers, `WT-` branch naming, the traceability carriers) · § Verification-load detail · § Integration into the release branch (the self-serve window procedure) · § Boundaries · § Cross-references. Load it when classifying a card, provisioning or disposing a card worktree, running lane-local verification, or entering the integration window.
 
@@ -40,15 +40,15 @@ A card the operator chose to start when it was issued is not a silent promotion:
 
 [HARD] **The cross-check also asks whether a completed SPEC already covers the work.** A card id cannot answer "has someone else already done this" — where the card names an issue or a subsystem, the leader also reads whether a covering SPEC is already `completed` and reports that alongside the PR and landed state. Neither read is conclusive: the final discriminator stays reproduction.
 
-[HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the leader surfaces that and the operator **confirms or withdraws** it. The leader never withholds a picked card on its own authority. Why the wording is the only available control: `factory-dispatch-detail.md` § The pre-dispatch cross-check.
+[HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the leader surfaces that and the operator **confirms or withdraws** it. The leader never withholds a picked card on its own authority. Why the wording is the only available control: `factory-dispatch-cards.md` § The pre-dispatch cross-check.
 
 ## Report milestones ↔ queue cards
 
-[HARD] **A milestone-bearing report under `.moai/reports/` carries a `## Card Cross-Check` section** — one table row per milestone, a `card` column holding the delivering card id or an explicit new-card marker. A mapping claim is verified against the queue (`moai gtd`), never remembered. Before the leader turns a report into card requests, the request message states the full comparison — `N milestones → N cards` — naming every milestone with no card in the live queue. Detail: `factory-dispatch-detail.md` § Report milestones ↔ queue cards.
+[HARD] **A milestone-bearing report under `.moai/reports/` carries a `## Card Cross-Check` section** — one table row per milestone, a `card` column holding the delivering card id or an explicit new-card marker. A mapping claim is verified against the queue (`moai gtd`), never remembered. Before the leader turns a report into card requests, the request message states the full comparison — `N milestones → N cards` — naming every milestone with no card in the live queue. Detail: `factory-dispatch-cards.md` § Report milestones ↔ queue cards.
 
 ## Card classes — not every card needs every stage
 
-The leader classifies each card as it leaves `backlog` and names the entry stage in the dispatch: **A — direct close** (one file, one line, no design judgement, CI catches the regression; `plan` skipped), **B — defect, cause unknown** (`run → sync`; no SPEC exists), **C — design change** (a decision, or spans subsystems; all three stages). Full table and rationale: `factory-dispatch-detail.md` § Card classes.
+The leader classifies each card as it leaves `backlog` and names the entry stage in the dispatch: **A — direct close** (one file, one line, no design judgement, CI catches the regression; `plan` skipped), **B — defect, cause unknown** (`run → sync`; no SPEC exists), **C — design change** (a decision, or spans subsystems; all three stages). Full table and rationale: `factory-dispatch-cards.md` § Card classes.
 
 [HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checked and cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is green **on the head that will merge**. The third — no design judgement in it — is a judgement, stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A. The justification is never "it is faster".
 
@@ -130,7 +130,7 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 2. A `Merge Risk:` line exists whose commit prefix matches the current `headRefOid`.
 
-Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-detail.md` § CodeRabbit endpoint measurement.)
+Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
 
 ## The `/clear` handoff between cards
 
@@ -156,13 +156,13 @@ The leader's own session is cleared the same way, between cards: once a card rea
 
 [HARD] **A new card starts in a new worktree** — a lane anchored in the previous card's tree MUST `ExitWorktree` before entering the next one; the fresh tree is created from the configured base, never reused. Where the new card depends on a prior card's unmerged code, merge that branch inside the new worktree.
 
-[HARD] **Card worktree branches carry the `WT-` prefix and a descriptive slug — never the card id** (rename in place with `git branch -m WT-<slug>`); the worktree directory keeps the card id, and traceability rests on the dispatch `card:` field, the commit message, the evidence path, and the PR title — all mandatory. Slug shape and carrier detail: `factory-dispatch-mechanics.md` § Isolation · `factory-dispatch-detail.md` § The PR-title carrier.
+[HARD] **Card worktree branches carry the `WT-` prefix and a descriptive slug — never the card id** (rename in place with `git branch -m WT-<slug>`); the worktree directory keeps the card id, and traceability rests on the dispatch `card:` field, the commit message, the evidence path, and the PR title — all mandatory. Slug shape and carrier detail: `factory-dispatch-mechanics.md` § Isolation · `factory-dispatch-cards.md` § The PR-title carrier.
 
 [HARD] **Inside a worktree session that `<path>` is the worktree's own absolute path** — the guard refuses `-C .`, relative paths, runtime-computed paths, and paths outside this worktree; plain `git`, `git -C <own absolute path>`, and `--git-dir=<own .git>` pass.
 
 ## Verification load is lane-local
 
-[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite. (Incident record: `factory-dispatch-detail.md` § Verification load incident record.)
+[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite. (Incident record: `factory-dispatch-gates.md` § Verification load incident record.)
 
 [HARD] **Never spawn background load.** Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test framework's cleanup hook, or a `timeout` wrapper bounding the process from outside.
 
@@ -178,7 +178,7 @@ Subshell and `env -u` variants, their measured refusal shapes, and the script-fi
 
 ## Integration into the release branch is self-served
 
-[HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-detail.md` § The pre-merge settings-drift assertion. Once the card's work is confirmed landed on the remote integration branch, disposing the card's worktree is the sweep's step: `moai worktree sweep` disposes remote-landing-confirmed trees across both tiers, hoisting evidence before every removal (`worktree-integration.md` § Hoist a tree's evidence before disposing it).
+[HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion. Once the card's work is confirmed landed on the remote integration branch, disposing the card's worktree is the sweep's step: `moai worktree sweep` disposes remote-landing-confirmed trees across both tiers, hoisting evidence before every removal (`worktree-integration.md` § Hoist a tree's evidence before disposing it).
 
 ## Factory Mode — the card travels whole
 
@@ -201,4 +201,4 @@ The two remaining boundaries — no session spawning, and a lane with no live se
 
 ---
 
-Classification: Evolvable operational rule — applies to the leader session of Factory Mode. Detail companion: `factory-dispatch-detail.md` (stub + lazy-companion split).
+Classification: Evolvable operational rule — applies to the leader session of Factory Mode. Detail companions: `factory-dispatch-detail.md`, `factory-dispatch-cards.md`, `factory-dispatch-gates.md` (stub + lazy-companion split).

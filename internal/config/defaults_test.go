@@ -294,10 +294,12 @@ func TestNewDefaultGitStrategyConfig(t *testing.T) {
 		t.Error("Personal.PushToRemote: expected true")
 	}
 
-	// AC-MMC-001 — merge_method defaults to "squash" in all 3 mode profiles
-	// (REQ-MMC-001/002), preserving current behavior when the field is absent.
-	if cfg.Manual.MergeMethod != "squash" {
-		t.Errorf("Manual.MergeMethod: got %q, want %q", cfg.Manual.MergeMethod, "squash")
+	// AC-MMC-001 — merge_method defaults: manual lands as "merge" since PR
+	// #1738 (re-landed by card t1504; manual-mode practice is plain merges
+	// into the local integration branch); personal/team keep "squash"
+	// (REQ-MMC-001/002) for PR-flow repos.
+	if cfg.Manual.MergeMethod != "merge" {
+		t.Errorf("Manual.MergeMethod: got %q, want %q", cfg.Manual.MergeMethod, "merge")
 	}
 	if cfg.Personal.MergeMethod != "squash" {
 		t.Errorf("Personal.MergeMethod: got %q, want %q", cfg.Personal.MergeMethod, "squash")

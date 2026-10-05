@@ -68,7 +68,7 @@ shift+tab 戻る • enter 次へ
 ┃ デフォルトモデルオーバーライド                                                
 ┃ このプロファイルで起動する際のモデルをオーバーライドします。                  
 ┃   (project default)                                                           
-┃   fable[1m] (Fable 5 + 1Mコンテキスト)                                        
+┃   fable[1m] (Fable 5.1 + 1Mコンテキスト)                                      
 ┃ ▸ opus[1m] (Opus 5.5 + 1Mコンテキスト、推奨)                                  
 ┃   sonnet[1m] (Sonnet 5.5 + 1Mコンテキスト)                                    
 ┃   haiku (Haiku 4.5、最速)                                                     
