@@ -11,7 +11,11 @@
 // Field states:
 //
 //	ceilings: absent | valid-full | valid-partial (present values valid) |
-//	          malformed (decode into map[string]int fails, e.g. [bad])
+//	          partial-invalid (SOME keys decode, one fails — yaml.v3 fills the
+//	          survivors and returns a TypeError, e.g. {S: 1, M: bad}; the
+//	          typed map is left NON-nil, so nil-ness alone misses it —
+//	          CR-P2-1) |
+//	          malformed (decode into map[string]int fails outright, e.g. [bad])
 //	policy:   absent | readable (on_final_hit string — unknown names are
 //	          REQ-ACR-003 evaluation hold-arm concerns, not config errors) |
 //	          unreadable (non-string on_final_hit, non-int auto_delta_rounds)
@@ -51,10 +55,20 @@
 //	M12 ok            —             readable-other (unknown policy name) → the string
 //	                                           passes through; its hold-arm disposition is
 //	                                           evaluation-level, not config-level
+//	M13 strict-reject partial-invalid unreadable → strict error propagates and names
+//	                                           the ceiling field (CR-P2-1 fix; the
+//	                                           partial decode's survivors must not be
+//	                                           adopted as a valid override — that
+//	                                           absorbed the bad key into a default-
+//	                                           substituted, zero-error --record)
+//	M14 strict-reject partial-invalid readable   → strict error propagates (the loose
+//	                                           pass reports policyUnreadable=false)
 //
 // Regression seals: a joint ceiling+policy decode failure (M6) re-reddens if
 // the fallback again swallows the ceiling error; a partial-ceilings
-// unreadable-policy load (M4) re-reddens if the defaults merge is dropped.
+// unreadable-policy load (M4) re-reddens if the defaults merge is dropped; a
+// partially-decodable ceilings field (M13) re-reddens if the loose pass
+// judges malformed-ness by map nil-ness alone.
 package cli
 
 import (
@@ -270,6 +284,41 @@ func ceilingMatrixRows() []ceilingMatrixRow {
 			wantPolicy: "split-only",
 			focus:      "an unknown policy NAME is not a config error — the string passes through; the hold-arm reading is evaluation-level (existing behavior pinned)",
 		},
+		{
+			row: "M13 strict-reject / partial-invalid / unreadable",
+			yaml: `harness:
+  evaluator:
+    memory_scope: per_iteration
+  plan_audit_tier_ceilings:
+    S: 1
+    M: bad
+  plan_audit_ceiling_policy:
+    auto_delta_rounds: 1
+    on_final_hit: []
+`,
+			wantMap:    nil,
+			wantPolicy: "",
+			wantErr:    true,
+			errNames:   "plan_audit_tier_ceilings",
+			focus:      "CR-P2-1: a partially decodable ceilings field is still a defective ceilings field — yaml.v3 fills the survivors and returns a TypeError, so the typed map is non-nil; adopting the fragment absorbed the bad key into default-substituted ceilings and a zero-error --record",
+		},
+		{
+			row: "M14 strict-reject / partial-invalid / readable",
+			yaml: `harness:
+  evaluator:
+    memory_scope: per_iteration
+  plan_audit_tier_ceilings:
+    S: 1
+    M: bad
+  plan_audit_ceiling_policy:
+    auto_delta_rounds: 1
+    on_final_hit: hold-and-split
+`,
+			wantMap:    nil,
+			wantPolicy: "",
+			wantErr:    true,
+			focus:      "same partial decode with a readable policy — the strict failure stays fatal (existing behavior pinned; guards the readable arm against adopting the fragment too)",
+		},
 	}
 }
 
@@ -349,8 +398,8 @@ func TestSpecCeilingConfigMatrixM10Witness(t *testing.T) {
 
 // TestSpecCeilingConfigMatrixVerb — CLI level for the rows the matrix marks
 // observable at the verb: M4 and M7 reach --record (hold arm, record
-// written), M6 records nothing and the error output names the ceiling field
-// (the record abstention must be auditable).
+// written), M6 and M13 record nothing and the error output names the ceiling
+// field (the record abstention must be auditable).
 func TestSpecCeilingConfigMatrixVerb(t *testing.T) {
 	rows := ceilingMatrixRows()
 	byRow := func(prefix string) ceilingMatrixRow {
@@ -410,6 +459,29 @@ func TestSpecCeilingConfigMatrixVerb(t *testing.T) {
 		err := cmd.Execute()
 		if err == nil {
 			t.Fatalf("M6 must fail the verb instead of recording under default ceilings (the swallowed-error defect)\noutput: %s", out.String())
+		}
+		if !strings.Contains(err.Error(), "plan_audit_tier_ceilings") {
+			t.Errorf("error %q does not name the ceiling field — the record abstention must be auditable", err)
+		}
+		if _, statErr := os.Stat(filepath.Join(project, ".moai", "state", "audit-ceiling", "SPEC-CEILFIX-001.json")); !os.IsNotExist(statErr) {
+			t.Errorf("a record was written despite the propagated ceiling error (stat err = %v)", statErr)
+		}
+	})
+
+	t.Run("M13 no record under a partially decodable ceilings field", func(t *testing.T) {
+		project := ceilingVerbProject(t)
+		matrixOverlay(t, project, byRow("M13").yaml)
+		t.Setenv("CLAUDE_PROJECT_DIR", "")
+		t.Chdir(project)
+
+		cmd := newSpecCmd()
+		var out bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetErr(&out)
+		cmd.SetArgs([]string{"ceiling", "SPEC-CEILFIX-001", "--record"})
+		err := cmd.Execute()
+		if err == nil {
+			t.Fatalf("M13 must fail the verb — the surviving fragment must not be adopted as a valid override (CR-P2-1: the defect recorded an outcome under default-substituted ceilings)\noutput: %s", out.String())
 		}
 		if !strings.Contains(err.Error(), "plan_audit_tier_ceilings") {
 			t.Errorf("error %q does not name the ceiling field — the record abstention must be auditable", err)

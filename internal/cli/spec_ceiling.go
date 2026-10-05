@@ -175,7 +175,8 @@ func loadCeilingConfig(root string) (map[string]int, string, error) {
 //
 //   - ceilingsMalformed: the plan_audit_tier_ceilings field is present but
 //     cannot be decoded into map[string]int (the raw any survives, the typed
-//     map does not) — R3-P2-1's propagate signal.
+//     map does not — or survives only as a partial fragment whose decode
+//     errored; CR-P2-1) — R3-P2-1's propagate signal.
 //   - policyUnreadable: the POLICY block's own values are what cannot be
 //     read. The policy fields decode into any so every value shape survives
 //     the tolerant pass; a present-but-non-string on_final_hit, or a
@@ -205,9 +206,14 @@ func looseReadCeilingPolicy(path string) (ceilings map[string]int, ceilingsMalfo
 			PlanAuditTierCeilings map[string]int `yaml:"plan_audit_tier_ceilings"`
 		} `yaml:"harness"`
 	}
-	_ = yaml.Unmarshal(data, &typed) // the same typed decode the strict loader runs on this field
-	if raw.Harness.PlanAuditTierCeilings != nil && typed.Harness.PlanAuditTierCeilings == nil {
-		return nil, true, false // the ceilings field itself cannot be decoded — R3-P2-1
+	// CR-P2-1 (card-review r1): a PARTIALLY decodable ceilings field leaves a
+	// non-nil typed map behind — yaml.v3 fills the keys that decoded and
+	// returns a TypeError for the rest. Map nil-ness alone would adopt the
+	// surviving fragment as a valid override, silently substituting defaults
+	// for the failed keys; the decode's own error is the malformed signal.
+	typedErr := yaml.Unmarshal(data, &typed) // the same typed decode the strict loader runs on this field
+	if raw.Harness.PlanAuditTierCeilings != nil && (typedErr != nil || typed.Harness.PlanAuditTierCeilings == nil) {
+		return nil, true, false // the ceilings field itself cannot be decoded — R3-P2-1 / CR-P2-1
 	}
 	policy := raw.Harness.PlanAuditCeilingPolicy
 	if policy.OnFinalHit == nil && policy.AutoDeltaRounds == nil {
