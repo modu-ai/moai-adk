@@ -1,0 +1,13 @@
+# Minimal stand-in so the validator's Dimension A file-existence fallback
+# resolves `docs-i18n-check` inside this isolated fixture cwd (identical to the
+# phantom fixture's copy; the control differs from phantom ONLY in the SSoT
+# context value).
+name: docs-i18n-check
+on:
+  push:
+    branches: [main]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"

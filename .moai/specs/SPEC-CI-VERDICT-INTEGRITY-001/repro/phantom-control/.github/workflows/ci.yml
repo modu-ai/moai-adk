@@ -1,0 +1,13 @@
+# Minimal stand-in CI workflow for the phantom-control fixture — identical to
+# the phantom fixture's tree except the SSoT context value; publishes the LEGIT
+# required name `Lint` (P2-G / audit iter-2 P1-3 positive control).
+name: CI
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"

@@ -1,0 +1,14 @@
+# Minimal stand-in CI workflow for the phantom fixture — publishes the LEGIT
+# required name `Lint` (job display name) so that, once M2's publishability
+# dimension exists, the fixture rejects ONLY the phantom context and every
+# legit context resolves (P2-G / audit iter-2 P1-3).
+name: CI
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"

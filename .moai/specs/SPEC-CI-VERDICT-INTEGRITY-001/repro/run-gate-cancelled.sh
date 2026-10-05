@@ -11,13 +11,23 @@
 # Run from the repository root.
 set -eu
 WF=".github/workflows/release-pr-multi-os.yml"
+ANCHOR="name: Verify all OS legs passed"
 
-BODY="$(awk '
-  index($0, "name: Verify all OS legs passed") { grab = 1; next }
+MATCHES="$(grep -c "$ANCHOR" "$WF" 2>/dev/null || true)"
+[ -n "$MATCHES" ] || MATCHES=0
+BODY="$(awk -v ANCHOR="$ANCHOR" '
+  index($0, ANCHOR) { grab = 1; next }
   grab && index($0, "run: |") { runblock = 1; next }
   grab && runblock && match($0, /^ */) && RLENGTH < 10 && $0 !~ /^ *$/ { exit }
   grab && runblock { print }
 ' "$WF")"
+
+# Extraction guard (amendment 4): a renamed step or changed YAML structure must
+# fail LOUDLY — never silently run an empty body and report exit 0.
+if [ "$MATCHES" -ne 1 ] || [ -z "$(printf '%s' "$BODY" | tr -d '[:space:]')" ]; then
+  echo "repro extraction failed: anchor '$ANCHOR' matched $MATCHES line(s) in $WF; body empty=$([ -z "$(printf '%s' "$BODY" | tr -d '[:space:]')" ] && echo yes || echo no). The workflow step name or structure changed — update this wrapper's anchor." >&2
+  exit 9
+fi
 
 # GitHub renders each ${{ needs.X.result }} as a bare double-quoted value.
 BODY="$(printf '%s\n' "$BODY" \
@@ -26,4 +36,6 @@ BODY="$(printf '%s\n' "$BODY" \
 SCRIPT="$(mktemp /tmp/t1534-e2-XXXXXX)"
 trap 'rm -f "$SCRIPT"' EXIT
 printf '%s\n' "$BODY" > "$SCRIPT"
-sh "$SCRIPT"
+# Actions executes a shell:-less step's run block as `bash --noprofile --norc
+# -e -o pipefail` on Linux runners — replicate that, not bare sh (P2-E).
+bash -e -o pipefail "$SCRIPT"

@@ -33,9 +33,9 @@ Document-level tree pin: **`a158b4b5f`** (verified via `git rev-parse --short HE
 | E2 | Gate with a cancelled matrix exits 0 + PASSED (release-pr-multi-os.yml:281-291 rejects only `failure`) — body extracted from the LIVE workflow at run time by the committed script | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-gate-cancelled.sh` | verbatim block L-E2 | 0 | a158b4b5f |
 | E3 | Merge carries no head-commit pin | `grep -c 'match-head-commit' .github/workflows/auto-merge.yml` | `0` | 1 | a158b4b5f |
 | E4 | Checks-lookup failure/empty output yields `should_merge=true` (auto-merge.yml:91-129 loop: `2>&1` capture + `\|\| true`, merge decision only from FAILED>0 / PENDING==0) — body extracted from the LIVE workflow at run time; stub at `repro/stubbin/gh` | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-checks-loop.sh` | verbatim block L-E4 | 0 | a158b4b5f |
-| E5 | Job budget 20 min vs internal waits 10+15=25 min | `grep -n 'timeout-minutes\|MAX_WAIT' .github/workflows/auto-merge.yml` | verbatim block L-E5 | 0 | a158b4b5f |
+| E5 | Job budget 20 min vs internal waits 10+15=25 min | `grep -n 'timeout-minutes\|MAX_WAIT' .github/workflows/auto-merge.yml` | verbatim block L-E5 (7 lines, full) | 0 | a158b4b5f |
 | E6 | Install summary never tests `cancelled` | `grep -c 'cancelled' .github/workflows/test-install.yml` | `0` | 1 | a158b4b5f |
-| E7 | Summary with every result `cancelled` prints All tests passed, exit 0 (test-install.yml:352-356 reject only `failure`) — body extracted from the LIVE workflow at run time | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-install-summary-cancelled.sh` | verbatim block L-E7 | 0 | a158b4b5f |
+| E7 | Summary rejects only `failure` — three-variant input matrix (P2-I): A full-success control exit 0 (legitimate); B `test-sh=cancelled` + parity success → exit 0 (a cancelled dependency is invisible); C `install-script-parity=cancelled` + test-sh success → exit 0 (parity is not even a dependency pre-M1). The all-cancelled single input cannot catch partial-dependency mutants; the matrix does — body extracted from the LIVE workflow at run time | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-install-summary-cancelled.sh` | verbatim block L-E7 (matrix, 3 variant exits) | 0 | a158b4b5f |
 | E8 | Summary `needs` list (line 338) omits the `install-script-parity` job (defined at line 48) | `grep -n 'install-script-parity\|needs: \[' .github/workflows/test-install.yml` | verbatim block L-E8 | 0 | a158b4b5f |
 | E9 | Required-feature probes print a missing marker but cannot fail (grep -q && echo ✓ \|\| echo ✗) — and the :309 install.sh probe's target is stale (E19) | `grep -n 'MOAI_INSTALL_DIR' .github/workflows/test-install.yml` | verbatim block L-E9 | 0 | a158b4b5f |
 | E10 | Validator with yq absent from PATH: vacuous pass, exit 0 (get_yaml_list `2>/dev/null \|\| true` at :28 swallows the missing parser; empty lists skip every dimension) | `env PATH=/usr/bin:/bin sh scripts/ci-mirror/validate-required-checks.sh` | verbatim block L-E10 | 0 | a158b4b5f |
@@ -49,10 +49,12 @@ Document-level tree pin: **`a158b4b5f`** (verified via `git rev-parse --short HE
 | E18 | actionlint baseline on the five in-scope workflows | `actionlint -color=false -shellcheck= .github/workflows/release-pr-multi-os.yml .github/workflows/auto-merge.yml .github/workflows/test-install.yml .github/workflows/ci.yml .github/workflows/codeql.yml` | (no output) | 0 | a158b4b5f |
 | E19 | install.sh implements NO `MOAI_INSTALL_DIR` — the test-install.yml:309 probe targets a feature the script cannot express (stale probe; hard-checking it as-is would fail every install, the impossible direction). Real surface: `--install-dir` (:354), `-h\|--help` (:358-364), darwin/linux detection (:37-41) | `grep -c 'MOAI_INSTALL_DIR' install.sh` | `0` | 1 | a158b4b5f |
 | E20 | install.ps1 DOES implement `MOAI_INSTALL_DIR` (env read at :307-308, set at :460) plus `IsWindows` (:287/:306) and `GetTempPath` (:221) — the :317 probe is live and stays | `grep -c 'MOAI_INSTALL_DIR' install.ps1` | `3` | 0 | a158b4b5f |
-| E21 | All three producing workflows restrict their pull_request triggers to `branches: [main]` — no corrected context (nor any Lint/Test/Build/Gate context) publishes on a release-targeting PR; grounds the decision-index Q1 resolution (release/* list = published-only → empty; trigger expansion out via t1536) | `grep -n -A3 'pull_request:' .github/workflows/ci.yml .github/workflows/codeql.yml .github/workflows/release-pr-multi-os.yml` | verbatim block L-E21 | 0 | a158b4b5f |
+| E21 | All three producing workflows restrict their pull_request triggers to `branches: [main]` — no corrected context (nor any Lint/Test/Build/Gate context) publishes on a release-targeting PR; grounds the decision-index Q1 resolution (release/* list = published-only → empty; trigger expansion out via t1536). Raw stdout recorded byte-faithfully from this shell (BSD grep): file order as captured, no `--` separator lines — GNU-grep environments may order args and emit separators differently; the anchor facts are identical | `grep -n -A3 'pull_request:' .github/workflows/ci.yml .github/workflows/codeql.yml .github/workflows/release-pr-multi-os.yml` | verbatim block L-E21 (12 lines, raw) | 0 | a158b4b5f |
 | E22 | Healthy-input positive control: validator with yq present against the repo's real SSoT — every dimension executes on real content and passes (baseline for AC-CI-010's two-directional form; an always-fail mutant fails this) | `sh scripts/ci-mirror/validate-required-checks.sh` | verbatim block L-E22 | 0 | a158b4b5f |
 | E23 | AC-CI-009 RED-now: the keep-set apply package does not exist yet on this tree (flips when run-phase delivers `.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md`) | `test -e .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` | (no output — file absent) | 1 | a158b4b5f |
-| E24 | Validator against a VALID-YAML SSoT carrying a phantom required context (`Test (windows-latest)`, committed fixture `repro/phantom/`): silent pass, exit 0 — no dimension inspects required-context publishability (grounds AC-CI-011; a parser-handling-only repair does not flip this) | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom.sh` | verbatim block L-E24 | 0 | a158b4b5f |
+| E24 | Validator against a VALID-YAML SSoT carrying a phantom required context (`Test (windows-latest)`, committed fixture `repro/phantom/`): silent pass, exit 0 — no dimension inspects required-context publishability (grounds AC-CI-011; a parser-handling-only repair does not flip this). Fixture now mirrors a real producing tree: its workflow set publishes every LEGIT required name (`Lint` via `repro/phantom/.github/workflows/ci.yml`), so post-M2 the phantom alone is the discriminator | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom.sh` | verbatim block L-E24 | 0 | a158b4b5f |
+| E26 | Deadline-absence probe (AC-CI-005 mutant record; auditor iteration-2 shape): the LIVE merge-step `if:` condition (folded scalar, extracted at run time) references NO deadline term, and with all three guard outputs true the merge proceeds at `merge_at = declared_deadline + 1` — exit 0 | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-deadline-mutant.sh` | verbatim block L-E26 | 0 | a158b4b5f |
+| E27 | Positive control for E24: the SAME fixture tree with the phantom context replaced by the genuinely published `Test (ubuntu-latest)` (ledger E13) — vacuous pass, exit 0 pre-repair; post-M2 it must REMAIN exit 0 while E24 flips, which only a context-reading publishability dimension achieves | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom-control.sh` | verbatim block L-E27 | 0 | a158b4b5f |
 | E25 | `gh pr checks` documents exit code 8 = "Checks pending" (line 10 of the help stdout; verbatim block L-E25) — the ground for REQ-CI-013's pending classification: a watch that treats every non-zero gh exit as fatal terminates during normal CI runs, when checks are legitimately pending | `gh pr checks --help` | verbatim block L-E25 (39 lines, quoted in full) | 0 | a158b4b5f |
 
 Codex-provenance items cited but NOT re-measured here (recorded as supports, not observations): the live branch-protection context values on `main` (codex used the leader-measured values and did not re-query the API; the protection GET needs admin scope and is packaged below as an operator-executable pre-apply diff step); real Actions-runner-level cancellation behavior (E2/E4/E7 now extract the step body from the LIVE workflow at run time, but the `cancelled`/failure values are still template substitutions, not runner executions). Corroborating read: `internal/cli/branch_protection.go:100-105` renders any SSoT branch key into the protection payload, and `.github/required-checks.yml` lines 10-40 currently list `Test (macos-latest)`, `Test (windows-latest)`, `CodeQL` on both keys and omit `Release PR Multi-OS Gate` — E13 shows each of those four facts is wrong against live names.
@@ -67,22 +69,47 @@ L-E4  | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-checks-loop.sh
 Checking required CI checks for PR #1...
 Check status: passed=0, pending=0, failed=0
 All checks completed!
+--- GITHUB_OUTPUT ---
 should_merge=true
 
 L-E5  | grep -n 'timeout-minutes\|MAX_WAIT' .github/workflows/auto-merge.yml
 25:    timeout-minutes: 20
 96:          MAX_WAIT=60
+99:          while [ $WAIT -lt $MAX_WAIT ]; do
+122:            echo "Waiting for checks to complete... ($WAIT/$MAX_WAIT)"
 159:          MAX_WAIT=60   # 60 x 15s = 15 minutes
+163:          while [ "$WAIT" -lt "$MAX_WAIT" ]; do
+171:              *)                echo "CodeRabbit status: '${STATE:-<absent>}' - waiting ($WAIT/$MAX_WAIT)" ;;
 
 L-E7  | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-install-summary-cancelled.sh
+E7 input matrix (Actions default shell: bash -e -o pipefail):
 === Test Results Summary ===
-test-sh: cancelled
-test-ps1-pwsh: cancelled
-test-ps1-powershell: cancelled
-test-bat: cancelled
-compatibility-check: cancelled
+test-sh: success
+test-ps1-pwsh: success
+test-ps1-powershell: success
+test-bat: success
+compatibility-check: success
 
 ✅ All tests passed!
+variant A-full-success: exit 0
+=== Test Results Summary ===
+test-sh: cancelled
+test-ps1-pwsh: success
+test-ps1-powershell: success
+test-bat: success
+compatibility-check: success
+
+✅ All tests passed!
+variant B-test-sh-cancelled-parity-success: exit 0
+=== Test Results Summary ===
+test-sh: success
+test-ps1-pwsh: success
+test-ps1-powershell: success
+test-bat: success
+compatibility-check: success
+
+✅ All tests passed!
+variant C-parity-cancelled-test-sh-success: exit 0
 
 L-E8  | grep -n 'install-script-parity\|needs: \[' .github/workflows/test-install.yml
 48:  install-script-parity:
@@ -247,6 +274,26 @@ LEARN MORE
   Read the manual at https://cli.github.com/manual
   Learn about exit codes using `gh help exit-codes`
   Learn about accessibility experiences using `gh help accessibility`
+
+L-E26 | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-deadline-mutant.sh
+merge-step condition (extracted):
+steps.checks.outputs.should_merge == 'true' &&
+steps.head.outputs.ok == 'true' &&
+steps.coderabbit.outputs.ok == 'true'
+condition references a deadline: NO
+merge proceeds at merge_at=1141 (declared_deadline=1140) — deadline never evaluated
+
+L-E27 | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom-control.sh
+=== Dimension A: Validating auxiliary → workflow name mapping ===
+✓ docs-i18n-check (file found)
+
+=== Dimension B: Validating branches.main.contexts ∩ auxiliary = ∅ ===
+✓ docs-i18n-check not in branches.main.contexts
+
+=== Dimension C: Validating branches.release/*.contexts ∩ auxiliary = ∅ ===
+✓ docs-i18n-check not in branches.release/*.contexts
+
+✅ All validations passed
 ```
 
 ### Audit-record notes (iteration-1, P3 disclosures)
@@ -254,6 +301,7 @@ LEARN MORE
 1. **E13 audit-environment note**: the iteration-1 audit sandbox could not re-observe E13 (network-restricted); the recording stands on this session's own GET measurement (L-E13). A future re-observation rides the operator GET re-verification.
 2. **OwnershipTransitionUnmeasured**: the plan-phase commit `2f06f34c9` carries no `Authored-By-Agent` trailer, so the `(none) → draft` transition is recorded as unmeasured (lint INFO, non-gating). History is not amended; from amendment 2 forward, every commit on this SPEC carries the trailer (`Authored-By-Agent: manager-spec`), so later transitions measure.
 3. **Amendment-2 probe-script correction record**: the committed extraction wrappers' first run exposed two defects in my own first draft (indent threshold `<= 8` matched the 8-space `run: |` line and produced empty bodies; the E24 fixture initially lacked the Dimension A stand-in workflow file and failed for the wrong reason). Both were fixed and re-measured before this ledger was written — the committed repro/ copies are the fixed versions, which is itself a demonstration of why extraction-from-live-tree beats frozen copies (audit P2-1st).
+4. **Iteration-2 audit sandbox limits** (pre-empting iteration 3): the audit sandbox could not generate heredoc files (so E22/E24 could not be re-run there), had no network (E13), and re-ran the E2/E4/E7 step bodies directly instead of through the committed wrappers. The lane's committed repro/ scripts and this §B ledger are the primary measurements. As of amendment 4 the wrappers fail loudly on extraction drift (anchor-match-count + non-empty-body guard, exit 9) and execute the extracted body under `bash -e -o pipefail` matching the runners' default for shell:-less steps, so a post-M1 re-run through the wrappers is the flip evidence and cannot silently measure an empty script.
 
 ## §C Pre-flight (run-phase entry checks)
 
@@ -296,7 +344,7 @@ Files: `release-pr-multi-os.yml`, `auto-merge.yml`, `test-install.yml`.
 | Intentional exclusion gets a distinct reason-bearing output (AC-CI-002) | E2 (unconditional PASSED line reused for every case) | Docs-only / non-release skip emits a dedicated output naming the reason; the unconditional PASSED line only fires on a real success |
 | Merge pinned to verified head (AC-CI-003) | E3 + E17 | Merge call passes `--match-head-commit <verified-sha>` and re-reads the head immediately before; mismatch/empty withholds; same read-before-merge verified by reading the repaired step |
 | Lookup failure/empty/never-completes withholds merge (AC-CI-004) | E4 | Lookup requires success + JSON/complete response + required-set coverage; failure → `should_merge=false`; re-run E4's stub against the repaired loop → withholds |
-| Deadline green verification resists the merge-after-deadline mutant (AC-CI-005) | E5 (+ E-deadline-absence: no `deadline` logic exists at all today) | One deadline smaller than `timeout-minutes`; the merge step re-evaluates the deadline and the head at merge time; the flip evidence is a mutant-style probe — a simulated `merge_at = deadline + 1` observation must be WITHHELD (the iteration-1 auditor reproduced merge-after-deadline succeeding on the current tree: declared_deadline=1140, merge_at=1141, exit 0) |
+| Deadline green verification resists the merge-after-deadline mutant (AC-CI-005) | E5 + E26 (the LIVE merge-step condition references no deadline term; with all guards true the merge proceeds at `merge_at = declared_deadline + 1`, exit 0) | One deadline smaller than `timeout-minutes`; the merge step re-evaluates the deadline and the head at merge time; the flip evidence is `repro/run-deadline-mutant.sh` re-run on the repaired workflow — the extracted condition carries a deadline term and the deadline+1 evaluation WITHHOLDS the merge (the auditor's iteration-2 mutant: declared_deadline=1140, merge_at=1141 → exit 0 today, must become non-merge) |
 | Install summary success-only incl. parity (AC-CI-006) | E6 + E7 + E8 | `needs` gains `install-script-parity`; summary requires `success` from every need (cancelled/timed_out/skipped are non-success); E7's substitution on the repaired summary → non-zero |
 | Feature-probe miss fails the step AND the probe list matches the scripts' real surface (AC-CI-007) | E9 + E19 + E20 | Required probes become hard checks (absent target → exit 1); the stale :309 install.sh probe (`MOAI_INSTALL_DIR`, unimplemented per E19) is realigned to the real surface (`--install-dir`); the :317 install.ps1 probe stays (E20); E9's shape no longer ends in `\|\| echo` for required probes |
 
@@ -307,12 +355,12 @@ Files: `.github/required-checks.yml`, `ci.yml` (detect filter), `validate-requir
 | Criterion | RED cell | Green path |
 |---|---|---|
 | SSoT lists only published names (AC-CI-008) | E13 + E21 | `main` list: remove `Test (macos-latest)` / `Test (windows-latest)` / `CodeQL`; add `Analyze (Go) (go)`; add `Release PR Multi-OS Gate`. `release/*` per decision-index Q1 (amendment-2 resolution): only what release-targeting PRs publish — an EMPTY contexts list under the current main-only triggers (E21); trigger expansion explicitly out via the t1536 boundary. The `CodeQL`/`Analyze (Go)` names appearing in E13 come from non-PR-trigger and skipped-matrix runs — the operator GET re-verification re-confirms the deterministic PR-published set |
-| Protection apply is operator keep-set + GET re-verified (AC-CI-009) | n/a — process gate, not a tree-observable RED | Run phase packages payload+commands; operator applies and records the GET read-back in card evidence; run closes with the package delivered, not the apply done |
+| Protection apply is operator keep-set + GET re-verified (AC-CI-009) | E23 — the apply package does not exist on this tree (`test -e .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` → exit 1) | Run phase packages payload+commands at `apply-package.md` (flips E23); operator applies and records the GET read-back in card evidence; run closes with the package delivered, not the apply done |
 | Validator rejects parser failure / missing yq AND still passes the healthy input (AC-CI-010, two-directional) | E10 + E11 (failure shapes) + E22 (healthy baseline, exit 0) | Parser absence/malformed YAML → non-zero with a named message (E10/E11 re-run flip); the healthy pass E22 must REMAIN exit 0 with every dimension executing — an always-fail mutant fails E22, an always-pass mutant fails E10/E11 |
-| Validator checks required-context publishability (AC-CI-011) | E24 (valid-YAML SSoT with a phantom required context passes silently, exit 0) | New dimension: every required context must appear among names the pull_request-triggered workflows publish (static name extraction from workflow `name:` fields + matrix); E24 re-run → non-zero naming the phantom, E22 stays exit 0 |
+| Validator checks required-context publishability (AC-CI-011) | E24 + E27 (two-directional pair: identical fixture trees whose workflow sets publish every legit required name — `Lint` — and differ ONLY in the SSoT context value; the phantom passes silently, the control passes) | New dimension: every required context must appear among names the pull_request-triggered workflows publish (static name extraction from workflow `name:` fields + matrix); E24 re-run → non-zero naming the phantom, E27 (control) stays exit 0. A context-blind mutant (one that reads no contexts — e.g. keying only on a fixture file's absence) cannot separate E24 from E27, because the two trees are identical except for the context value; and an always-fail/always-pass mutant fails one side of the E22/E24/E27 triple |
 | Detect filter covers parity-test input + correspondence guard (AC-CI-012) | E14 | Filter gains `.github/branch-protection.json.gtmpl`; a guard test fails CI when a repo-side test's read input is absent from the filter |
 
-**M2 keep-set subsection (explicit, binding):** the apply step itself is NOT in any run-phase milestone. Deliverable = corrected SSoT + rendered payload + apply command + pre-apply live-diff command + post-apply GET command, packaged at `.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` and handed to the operator/leader. Non-execution evidence (AC-CI-009): the package's existence flips E23; the operator pastes the executed apply commands AND the GET read-back output into the card evidence path (`.moai/reports/t1534/`) — that transcript, not `git status`, is what proves no run-phase agent applied protection and that live state matches. Leader condition carried into the PR window: the develop-tip base `a158b4b5f` is sanctioned under current config; **merge-base must be re-verified at the PR window** (`CARD_BASE=$(git merge-base develop HEAD)` discipline, gitflow-lane-protocol §8) because the main-transition (t1453 #1751) is not yet landed.
+**M2 keep-set subsection (explicit, binding):** the apply step itself is NOT in any run-phase milestone. Deliverable = corrected SSoT + rendered payload + apply command + pre-apply live-diff command + post-apply GET command, packaged at `.moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/apply-package.md` and handed to the operator/leader. Evidence for AC-CI-009 is two separated parts (audit iter-2 P2): **(a) live-state check** — the package's pre-apply GET (live-diff) command is executed BEFORE the operator applies and reads back the CURRENT (uncorrected) protection values; because a run-phase agent application would have changed them, this read-back is the non-execution proof, not `git status` and not the transcript alone (an agent-first apply followed by an operator re-apply leaves an identical transcript); **(b) actor attribution** — the package names the actor per command (run phase: packaging only; operator/leader: apply + post-apply GET), and the operator's evidence paste into `.moai/reports/t1534/` carries the executed commands with their actor and the GET read-back output. The package's existence flips E23. Leader condition carried into the PR window: the develop-tip base `a158b4b5f` is sanctioned under current config; **merge-base must be re-verified at the PR window** (`CARD_BASE=$(git merge-base develop HEAD)` discipline, gitflow-lane-protocol §8) because the main-transition (t1453 #1751) is not yet landed.
 
 ### M3 — ci-watch verdict integrity (Priority Medium)
 
@@ -320,7 +368,7 @@ Files: `scripts/ci-watch/run.sh` (+ `lib/classify.sh`, `test/run_test.sh` as nee
 
 | Criterion | RED cell | Green path |
 |---|---|---|
-| Supported fields + JSON-array processing + bucket classification (AC-CI-013) | E12 (Unknown JSON field: "status") + E12's available-fields list | Request `name,state,bucket,link`; classify by `bucket`; gh failure → exit 1 (never all-pass); E12's field set now validates |
+| Supported fields + JSON-array processing + bucket classification + exit-8 pending semantics (AC-CI-013) | E12 (Unknown JSON field: "status") + E12's available-fields list + E25 (exit 8 = "Checks pending") | Request `name,state,bucket,link`; classify by `bucket`; exit 8 with a valid JSON body = pending → continue waiting (E25); any NON-8 non-zero gh exit is fatal — never read as all-pass; E12's rejected field list now validates |
 | Required completeness + `is_required` wired + no whitespace split + exit-8 pending classification (AC-CI-014) | E15 + E16 (+ structural: absent required checks never counted — the loop only iterates observed names; run.sh:122-124 aborts on ANY gh failure, exit 8 included — E25 documents that 8 means "Checks pending") | Required set from SSoT via `is_required` for the PR's base branch; expected-but-absent = pending; name iteration without IFS splitting; exit 8 + valid JSON classified as pending-and-continue, non-8 failures fatal — run_test.sh gains the exit-8 fixture pair (exit-8 mock continues; non-8 mock exits); run_test.sh extended and green |
 
 Sequencing: M1 → M2 → M3 per the card's priority. M3 can proceed in parallel with M2's file edits (disjoint trees) but the keep-set package lands only after M2's SSoT edit is final.

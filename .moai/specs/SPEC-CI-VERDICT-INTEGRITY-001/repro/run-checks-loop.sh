@@ -11,19 +11,39 @@
 # Run from the repository root.
 set -eu
 WF=".github/workflows/auto-merge.yml"
+ANCHOR="name: Check all required CI checks passed"
 
-BODY="$(awk '
-  index($0, "name: Check all required CI checks passed") { grab = 1; next }
+MATCHES="$(grep -c "$ANCHOR" "$WF" 2>/dev/null || true)"
+[ -n "$MATCHES" ] || MATCHES=0
+BODY="$(awk -v ANCHOR="$ANCHOR" '
+  index($0, ANCHOR) { grab = 1; next }
   grab && index($0, "run: |") { runblock = 1; next }
   grab && runblock && match($0, /^ */) && RLENGTH < 10 && $0 !~ /^ *$/ { exit }
   grab && runblock { print }
 ' "$WF")"
 
+# Extraction guard (amendment 4): a renamed step or changed YAML structure must
+# fail LOUDLY — never silently run an empty body and report exit 0.
+if [ "$MATCHES" -ne 1 ] || [ -z "$(printf '%s' "$BODY" | tr -d '[:space:]')" ]; then
+  echo "repro extraction failed: anchor '$ANCHOR' matched $MATCHES line(s) in $WF; body empty=$([ -z "$(printf '%s' "$BODY" | tr -d '[:space:]')" ] && echo yes || echo no). The workflow step name or structure changed — update this wrapper's anchor." >&2
+  exit 9
+fi
+
 BODY="$(printf '%s\n' "$BODY" | sed 's/\${{ steps.pr.outputs.number }}/1/g')"
 
 SCRIPT="$(mktemp /tmp/t1534-e4-XXXXXX)"
-trap 'rm -f "$SCRIPT"' EXIT
+OUT="$(mktemp /tmp/t1534-e4-out-XXXXXX)"
+trap 'rm -f "$SCRIPT" "$OUT"' EXIT
 printf '%s\n' "$BODY" > "$SCRIPT"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PATH="$HERE/stubbin:$PATH" GITHUB_OUTPUT=/dev/stdout MAX_WAIT=1 sh "$SCRIPT"
+# GITHUB_OUTPUT is a regular temp file (P2-F): /dev/stdout is refused in
+# restricted environments, which silently drops the should_merge observation.
+# Actions executes a shell:-less step as `bash -e -o pipefail` (P2-E); the
+# body's exit code is captured so the wrapper can print the emitted outputs
+# before propagating it.
+rc=0
+PATH="$HERE/stubbin:$PATH" GITHUB_OUTPUT="$OUT" MAX_WAIT=1 bash -e -o pipefail "$SCRIPT" || rc=$?
+echo "--- GITHUB_OUTPUT ---"
+cat "$OUT"
+exit "$rc"

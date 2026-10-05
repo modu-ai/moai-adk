@@ -1,6 +1,6 @@
 # acceptance.md — SPEC-CI-VERDICT-INTEGRITY-001
 
-Tier M verification layer. Tree pin for every RED cell: **`a158b4b5f`** (document-level pin; binds all criteria; measured files verified unchanged through `861a3ba56`). The evidence ledger (command / verbatim stdout / exit / tree per entry, E1-E25, with fenced verbatim-stdout blocks L-E2..L-E25) lives in `plan.md` §B and is cited here by id — the ledger is the carrier per verification-completeness §2.1. The workflow probes (E2/E4/E7) are committed `repro/` scripts that EXTRACT the step body from the live workflow at run time and substitute the declared dependency values — the substitution values are simulated (no runner execution), the script logic under test is the live file's.
+Tier M verification layer. Tree pin for every RED cell: **`a158b4b5f`** (document-level pin; binds all criteria; measured files verified unchanged through `861a3ba56`). The evidence ledger (command / verbatim stdout / exit / tree per entry, E1-E27, with fenced verbatim-stdout blocks L-E2..L-E27) lives in `plan.md` §B and is cited here by id — the ledger is the carrier per verification-completeness §2.1. The workflow probes (E2/E4/E7) are committed `repro/` scripts that EXTRACT the step body from the live workflow at run time (anchor-match and non-empty-body guarded — extraction drift exits non-zero, never a silent empty run) and substitute the declared dependency values; the body executes under `bash -e -o pipefail`, matching Actions' default for shell:-less steps. The substitution values are simulated (no runner execution); the script logic under test is the live file's.
 
 Classification: **release-blocking (RB)** — RED re-executable on this tree, flips with this SPEC's work; **keep-set (KS)** — operator-executed, process criterion; probes that are template-substitution simulations of a gate script (E2, E4, E7) are marked as such inside the ledger and are treated as faithful RED evidence of the script logic, not of runner execution.
 
@@ -43,16 +43,16 @@ Classification: **release-blocking (RB)** — RED re-executable on this tree, fl
 - **Given** the auto-merge job's timeout and its internal waits,
 - **When** the workflow is authored,
 - **Then** the checks wait and the review wait are both bounded by a single overall deadline strictly smaller than `timeout-minutes`, AND the merge step re-evaluates the current deadline and the current head commit at merge time; an implementation that compares only state captured before the waits does not satisfy this criterion.
-- RED: E5 (job 20 min at :25 vs 10-min checks wait at :96 + 15-min review wait at :159 = 25 min) plus the auditor's iteration-1 mutant probe, recorded as the shape this criterion must catch: with the current tree's absent deadline logic, a simulated `declared_deadline=1140, merge_at=1141` merge SUCCEEDS (exit 0) — merge-after-deadline is never withheld today.
-- Green path: M1 — the flip evidence is a mutant-style probe against the repaired workflow: a simulated merge arriving at `deadline + 1` must be WITHHELD (non-merge outcome with a notice), and a merge inside the deadline must proceed; both observations recorded in run-phase §E.2. A repair whose green shows only the in-deadline case has not flipped this criterion.
+- RED: E5 (job 20 min at :25 vs 10-min checks wait at :96 + 15-min review wait at :159 = 25 min; full 7-line raw output in L-E5) + E26 (ledger-recorded mutant probe, four elements: `repro/run-deadline-mutant.sh` extracts the LIVE merge-step `if:` condition — a folded scalar carrying no deadline term — and evaluates it with all guard outputs true at `merge_at = declared_deadline + 1` → "merge proceeds … deadline never evaluated", exit 0).
+- Green path: M1 — the flip evidence is `repro/run-deadline-mutant.sh` re-run on the repaired workflow: the extracted condition carries a deadline term and the deadline+1 evaluation WITHHOLDS the merge; a simulated merge inside the deadline must proceed. Both observations recorded in run-phase §E.2. A repair whose green shows only the in-deadline case has not flipped this criterion.
 
 ### AC-CI-006 — Install summary requires success from every needed job, parity included (RB; maps REQ-CI-006)
 
 - **Given** the test-install summary job and its dependency set,
 - **When** any needed job — `install-script-parity` included — concludes `cancelled`, `timed_out`, or `skipped`,
 - **Then** the summary exits non-zero; it prints "All tests passed" only when every need concluded `success`.
-- RED: E6 (no `cancelled` handling, exit 1) + E7 (all-`cancelled` substitution → `✅ All tests passed!`, exit 0) + E8 (needs list at :338 omits the job defined at :48).
-- Green path: M1 — E7's substitution on the repaired summary exits non-zero; E8's grep shows parity in the needs list.
+- RED: E6 (no `cancelled` handling, exit 1) + E7 (three-variant matrix, all exit 0 pre-repair: A full-success control legitimately; B `test-sh=cancelled` — a cancelled dependency is invisible; C `install-script-parity=cancelled` — parity is not even a dependency; the single all-cancelled input cannot catch partial-dependency mutants, the per-dependency matrix does) + E8 (needs list at :338 omits the job defined at :48).
+- Green path: M1 — E7 re-run: variant A stays exit 0; variants B and C exit non-zero (every non-success dependency result fails the summary, parity included); E8's grep shows parity in the needs list.
 
 ### AC-CI-007 — A missing required install feature fails the compatibility step (RB; maps REQ-CI-007)
 
