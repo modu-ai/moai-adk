@@ -2,24 +2,25 @@ package hook
 
 // protected_zone_shell.go — the shell half of the protected-zone guard
 // (SPEC-SELF-IMPROVE-PROTECTED-ZONE-001, plan.md M3; hardened in merge-gate
-// repair rounds 1 and 2).
+// repair rounds 1–3).
 //
 // An identity Bash command pairing one of the thirteen mutating forms (REQ-
 // SIPZ-007: rm, unlink, mv, cp, tee, truncate, sed -i, > , >>, git rm,
 // git checkout, git restore, git apply) with a zone-covered argument or
 // redirection target is denied. Segments come from the existing shell splitter
 // (the one the commit-identity guard uses); within a segment the words are
-// tokenized with quote awareness, and a single "&" — which the splitter does
-// not treat as a separator — splits the segment into async groups, each
-// judged in the working directory it inherits.
+// tokenized with a per-character quote mask, a single "&" splits async groups,
+// and a cd in a piped segment never moves the main shell.
 //
 // Under-match and pass on anything unclassifiable — variables, command
 // substitution, interpreters, and PowerShell stay outside (spec §C.6) — and
 // no environment variable, tool-input field, or command-text token suppresses
-// the rule (REQ-SIPZ-013): leading VAR=value assignments are skipped, and the
-// splitter already excludes comment text. Quoted text is data: a ">" inside
-// quotes is never a redirection operator, while a quoted word after a bare
-// ">" is still the target.
+// the rule (REQ-SIPZ-013): leading VAR=value assignments are skipped whether
+// or not their value was quoted, and the splitter already excludes comment
+// text. The quote mask decides exactly two things, because shell syntax lives
+// outside quotes: which ">" characters are redirection operators (round 2 P2,
+// round 3 P1) and where async boundaries sit. Everything else — the command
+// word, options, targets, assignments — reads the stripped text.
 //
 // Unlike a baseline Write/Edit denial, every shell-mutation denial carries the
 // protected-zone sentinel and the routing fields — there is no legacy shell
@@ -27,7 +28,9 @@ package hook
 
 import (
 	"encoding/json"
+	"io/fs"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -43,30 +46,30 @@ var zoneGitMutating = map[string]bool{
 	"rm": true, "checkout": true, "restore": true, "apply": true,
 }
 
-// zoneWord is one shell word: its text with quotes stripped, and whether any
-// part of it came from inside quotes. Quoting decides what the word can be —
-// a quoted word is data for the operator scan (a quoted ">" is string text,
-// round 2 P2) while still being usable as a redirection target.
+// zoneWord is one shell word: its text with quotes stripped, plus a mask that
+// records, per character of Text, whether it came from inside quotes. The
+// mask is read only where shell syntax is decided — redirection operators and
+// async boundaries live outside quotes; everything else (the command word,
+// options, targets, assignments) is the stripped text.
 type zoneWord struct {
-	Text   string
-	Quoted bool
+	Text string
+	Mask []bool
 }
 
-// zoneShellWords tokenizes one shell segment into words, honoring single and
-// double quotes and recording per word whether quoting contributed to it.
-// Substitutions and globs stay as literal words; a word they produce
+// zoneShellWords tokenizes one shell segment into words with their quote
+// masks. Substitutions and globs stay as literal words; a word they produce
 // normalizes to a path that matches no entry, which is the under-match the
 // shell rule accepts.
 func zoneShellWords(seg string) []zoneWord {
 	var words []zoneWord
 	var cur strings.Builder
-	curQuoted := false
+	var mask []bool
 	inSingle, inDouble := false, false
 	flush := func() {
 		if cur.Len() > 0 {
-			words = append(words, zoneWord{Text: cur.String(), Quoted: curQuoted})
+			words = append(words, zoneWord{Text: cur.String(), Mask: mask})
 			cur.Reset()
-			curQuoted = false
+			mask = nil
 		}
 	}
 	for i := 0; i < len(seg); i++ {
@@ -77,34 +80,47 @@ func zoneShellWords(seg string) []zoneWord {
 				inSingle = false
 			} else {
 				cur.WriteByte(c)
+				mask = append(mask, true)
 			}
 		case inDouble:
 			if c == '\\' && i+1 < len(seg) {
 				i++
 				cur.WriteByte(seg[i])
+				mask = append(mask, true)
 			} else if c == '"' {
 				inDouble = false
 			} else {
 				cur.WriteByte(c)
+				mask = append(mask, true)
 			}
 		case c == '\'':
 			inSingle = true
-			curQuoted = true
 		case c == '"':
 			inDouble = true
-			curQuoted = true
 		case c == ' ' || c == '\t':
 			flush()
 		default:
 			cur.WriteByte(c)
+			mask = append(mask, false)
 		}
 	}
 	flush()
 	return words
 }
 
+// hasUnquoted reports whether the word carries an unquoted occurrence of c.
+func hasUnquoted(w zoneWord, c byte) bool {
+	for i := range w.Text {
+		if w.Text[i] == c && !w.Mask[i] {
+			return true
+		}
+	}
+	return false
+}
+
 // isZoneAssignment reports whether a word is a leading VAR=value assignment —
 // skipped so a command-text prefix cannot suppress the rule (REQ-SIPZ-013).
+// The value may have been quoted; that changes nothing (round 3 P1).
 func isZoneAssignment(w string) bool {
 	eq := strings.Index(w, "=")
 	if eq <= 0 {
@@ -136,67 +152,78 @@ func zonePathCandidates(args []zoneWord) []string {
 	return out
 }
 
-// zoneAsyncGroups splits a segment's words at single "&" — an async boundary
-// the shared splitter does not segment on (round 2 P1: "true & rm x" is two
-// commands). A "&" inside a word splits it the same way; the shell runs "a&b"
-// as "a & b". Each group runs in the working directory the main shell has at
-// that point — a cd inside an async group does not move the later groups.
+// zoneAsyncGroups splits a segment's words at an unquoted "&" — an async
+// boundary the shared splitter does not segment on (round 2 P1: "true & rm x"
+// is two commands). A "&" inside a word splits it the same way; the shell
+// runs "a&b" as "a & b". Quoted "&" characters are data. Each group runs in
+// the working directory the MAIN shell has when the group starts.
 func zoneAsyncGroups(words []zoneWord) [][]zoneWord {
 	var groups [][]zoneWord
 	cur := make([]zoneWord, 0, len(words))
 	for _, w := range words {
-		if !w.Quoted && strings.Contains(w.Text, "&") {
-			fragments := strings.Split(w.Text, "&")
-			if fragments[0] != "" {
-				cur = append(cur, zoneWord{Text: fragments[0]})
-			}
-			if len(cur) > 0 {
-				groups = append(groups, cur)
-				cur = make([]zoneWord, 0, len(words))
-			}
-			for _, f := range fragments[1 : len(fragments)-1] {
-				if f != "" {
-					groups = append(groups, []zoneWord{{Text: f}})
-				}
-			}
-			if last := fragments[len(fragments)-1]; last != "" {
-				cur = append(cur, zoneWord{Text: last})
-			}
+		if !hasUnquoted(w, '&') {
+			cur = append(cur, w)
 			continue
 		}
-		cur = append(cur, w)
+		// split the word at its unquoted "&" characters
+		frag := zoneWord{Text: "", Mask: nil}
+		for i := range w.Text {
+			if w.Text[i] == '&' && !w.Mask[i] {
+				if frag.Text != "" {
+					cur = append(cur, frag)
+					groups = append(groups, cur)
+					cur = make([]zoneWord, 0, len(words))
+				} else if len(cur) > 0 {
+					groups = append(groups, cur)
+					cur = make([]zoneWord, 0, len(words))
+				}
+				frag = zoneWord{Text: "", Mask: nil}
+				continue
+			}
+			frag.Text += w.Text[i : i+1]
+			frag.Mask = append(frag.Mask, w.Mask[i])
+		}
+		if frag.Text != "" {
+			cur = append(cur, frag)
+		}
 	}
 	groups = append(groups, cur)
 	return groups
 }
 
 // zoneRedirectTargets walks a segment's words and returns every redirection
-// target: the word after a bare ">" or ">>", the remainder of a word that
-// starts with one, and every substring between ">" characters of a word that
-// carries one inline ("x>file", "2>file", "a>b>c" all contribute). Only
-// unquoted words carry operators — a quoted ">" is string data (round 2 P2) —
-// while a quoted word after a bare ">" is still the target.
+// target. Only an UNQUOTED ">" is an operator (round 2 P2: a quoted ">" is
+// string data; round 3 P1: a partially quoted word like `>".moai/logs/x"`
+// still carries the operator) — every fragment after the first unquoted ">"
+// of a word is a target, and a word ending at an unquoted ">" hands its
+// target to the next word, quoted or not.
 func zoneRedirectTargets(words []zoneWord) (bool, []string) {
 	mutating := false
 	var targets []string
 	nextIsTarget := false
 	for _, w := range words {
-		if w.Quoted {
-			if nextIsTarget {
-				mutating = true
-				targets = append(targets, w.Text)
-				nextIsTarget = false
-			}
-			continue
-		}
-		if strings.Contains(w.Text, ">") {
-			mutating = true
-			for _, t := range strings.Split(w.Text, ">")[1:] {
-				if t != "" {
-					targets = append(targets, t)
+		frag := ""
+		sawOp := false
+		for i := range w.Text {
+			if w.Text[i] == '>' && !w.Mask[i] {
+				if !sawOp {
+					// characters before the first operator are the command's
+					// own text, not a target
+					sawOp = true
 				}
+				frag = ""
+				continue
 			}
-			nextIsTarget = strings.HasSuffix(w.Text, ">")
+			frag += w.Text[i : i+1]
+		}
+		if sawOp {
+			mutating = true
+			if frag != "" {
+				targets = append(targets, frag)
+				nextIsTarget = false
+			} else {
+				nextIsTarget = true
+			}
 			continue
 		}
 		if nextIsTarget {
@@ -208,16 +235,54 @@ func zoneRedirectTargets(words []zoneWord) (bool, []string) {
 	return mutating, targets
 }
 
+// zoneStripRedirects returns the words left after every unquoted redirection
+// operator and its target are removed — the arguments a cd actually takes
+// (round 3 P1: "cd .moai > docs/out" is a cd to .moai whose redirect writes
+// docs/out, not a multi-argument cd).
+func zoneStripRedirects(words []zoneWord) []zoneWord {
+	var out []zoneWord
+	skipTarget := false
+	for _, w := range words {
+		if skipTarget {
+			skipTarget = false
+			continue
+		}
+		if !w.QuotedAny() && strings.Contains(w.Text, ">") {
+			head := w.Text[:strings.Index(w.Text, ">")]
+			if head != "" {
+				out = append(out, zoneWord{Text: head})
+			}
+			skipTarget = strings.HasSuffix(w.Text, ">")
+			continue
+		}
+		out = append(out, w)
+	}
+	return out
+}
+
+// QuotedAny reports whether any character of the word came from inside
+// quotes — the word cannot carry shell operators.
+func (w zoneWord) QuotedAny() bool {
+	for _, q := range w.Mask {
+		if q {
+			return true
+		}
+	}
+	return false
+}
+
 // zoneMutatingWords classifies one tokenized command: whether it pairs one of
 // the thirteen mutating forms or a redirection, and the path-like candidates
 // paired with them.
 //
-// sed is in-place when any of its arguments carries "-i", wherever the options
-// sit (round 2 P1: "sed -e s/a/b/ -i ” f"). The git subcommand is looked up
-// past git's global options (round 2 P1: "git -c k=v checkout -- f").
+// sed is in-place when any of its arguments carries an option cluster with
+// "i" or the long form — combined "-Ei", quoted "'-i'", and plain "-i" all
+// count (round 3 P1). The git subcommand is looked up past git's global
+// options, and a "-C <dir>" option moves the directory the file arguments
+// resolve against (round 3 P1).
 func zoneMutatingWords(words []zoneWord) (bool, []string) {
 	i := 0
-	for i < len(words) && !words[i].Quoted && isZoneAssignment(words[i].Text) {
+	for i < len(words) && isZoneAssignment(words[i].Text) {
 		i++
 	}
 	if i >= len(words) {
@@ -232,7 +297,8 @@ func zoneMutatingWords(words []zoneWord) (bool, []string) {
 		cands = append(cands, zonePathCandidates(rest[1:])...)
 	case first == "sed":
 		for _, w := range rest[1:] {
-			if !w.Quoted && strings.HasPrefix(w.Text, "-i") {
+			t := w.Text
+			if t == "--in-place" || (strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "--") && strings.Contains(strings.TrimPrefix(t, "-"), "i")) {
 				mutating = true
 			}
 		}
@@ -240,10 +306,16 @@ func zoneMutatingWords(words []zoneWord) (bool, []string) {
 			cands = append(cands, zonePathCandidates(rest[1:])...)
 		}
 	case first == "git":
+		gitDir := ""
 		for j := 1; j < len(rest); j++ {
-			if !rest[j].Quoted && zoneGitMutating[rest[j].Text] {
+			w := rest[j]
+			if !w.QuotedAny() && w.Text == "-C" && j+1 < len(rest) {
+				gitDir = rest[j+1].Text
+				continue
+			}
+			if zoneGitMutating[w.Text] {
 				mutating = true
-				cands = append(cands, zonePathCandidates(rest[j+1:])...)
+				cands = append(cands, zoneRelativeTo(gitDir, zonePathCandidates(rest[j+1:]))...)
 				break
 			}
 		}
@@ -299,15 +371,43 @@ func zoneBaselineCovers(rel string) bool {
 	return false
 }
 
+// zoneDirContainsGlobMatch walks dir and reports whether any file under it
+// matches the basename-glob entry — removing such a directory removes every
+// file the glob protects there (round 3 P1: an overlay "**/*_test.go" must
+// make "rm -rf tests" a denial). The walk is bounded; beyond the bound it
+// under-matches, the shell rule's accepted direction.
+func zoneDirContainsGlobMatch(dir string, entry config.ZoneEntry) bool {
+	seen := 0
+	found := false
+	_ = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || found {
+			return fs.SkipAll
+		}
+		seen++
+		if seen > 5000 {
+			return fs.SkipAll
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if entry.Match(config.FoldZoneText(filepath.ToSlash(p))) {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
 // zoneShellCovered judges the normalized forms of one candidate against the
 // zone, in two passes. Direct: the candidate — tried with and without a
 // trailing slash, so a bare directory operand names the directory itself
 // (round 1 P1-1) — is a zone member. Ancestor: the candidate is a parent
 // directory of protected entries, so moving or removing it would remove them
-// (round 2 P1: "mv .moai moved" removed both manifests while every individual
-// entry still matched); the project root itself is the parent of everything.
-// The returned category names the source that covered the candidate.
-func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad) (string, bool) {
+// (round 2 P1: "mv .moai moved"; round 3 P1: the same holds for a basename-
+// glob entry, judged by walking the candidate); the project root itself is
+// the parent of everything. The returned category names the source that
+// covered the candidate.
+func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root string) (string, bool) {
 	for _, form := range forms {
 		for _, spelling := range []string{form.Display, form.Display + "/", form.Folded, form.Folded + "/"} {
 			if zoneBaselineCovers(spelling) {
@@ -352,7 +452,12 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad) (string, 
 			for i := range load.Zone.Entries {
 				entry := load.Zone.Entries[i]
 				if entry.Kind == config.ZoneBaseGlob {
-					continue // a basename glob carries no path prefix to contain
+					// no path prefix to contain, but removing the directory
+					// removes every file the glob matches there
+					if zoneDirContainsGlobMatch(filepath.Join(root, filepath.FromSlash(form.Folded)), entry) {
+						return entry.Category, true
+					}
+					continue
 				}
 				if strings.HasPrefix(entry.Pattern, prefix) {
 					return entry.Category, true
@@ -383,35 +488,44 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	}
 
 	// Segment pass. A plain literal `cd` moves the working directory the later
-	// segments' relative names resolve against (round 1 P1-3) — but the cd
-	// segment's own redirection targets are judged against the directory the
-	// shell evaluates them in, the one before the cd takes effect (round 2
-	// P1). Async groups split on "&" (round 2 P1) and each inherits the main
-	// shell's directory, so the tracking resets at every boundary. No disk
-	// access yet — the cost seam closes before the first manifest read.
+	// segments' relative names resolve against (round 1 P1-3) — except inside
+	// a pipeline, where every element (the cd included) runs in a subshell and
+	// the main shell's directory never moves (round 3 P1). The cd segment's
+	// own redirection targets are judged against the directory the shell
+	// evaluates them in, before the cd takes effect, and its arguments are the
+	// words left once the redirection is stripped (round 3 P1). Async groups
+	// split on "&" (round 2 P1); a boundary restores the directory the main
+	// shell had before the async group — the group's own cd ran in a subshell,
+	// and the main shell never moved (round 3 P1). No disk access yet beyond
+	// the glob-parent walks — the cost seam closes before the first manifest
+	// read.
 	var cands []string
 	mutating := false
 	cur := "."
-	for _, seg := range splitShellSegments(command) {
+	segs := splitShellSegments(command)
+	for i, seg := range segs {
+		inPipeline := i+1 < len(segs) && segs[i+1].conn == "|"
 		groups := zoneAsyncGroups(zoneShellWords(seg.text))
 		for gi, group := range groups {
 			if len(group) == 0 {
 				continue
 			}
-			if group[0].Text == "cd" {
+			pre := cur
+			if !inPipeline && group[0].Text == "cd" {
 				if hits, targets := zoneRedirectTargets(group); hits {
 					mutating = true
 					cands = append(cands, zoneRelativeTo(cur, targets)...)
 				}
-				cur = zoneNextCwd(cur, group[1:])
+				cur = zoneNextCwd(cur, zoneStripRedirects(group[1:]))
 			} else if hit, args := zoneMutatingWords(group); hit {
 				mutating = true
 				cands = append(cands, zoneRelativeTo(cur, args)...)
 			}
 			if gi < len(groups)-1 {
-				// async boundary: the group before it ran in a subshell, so
-				// the main shell's working directory is unchanged from here
-				cur = "."
+				// async boundary: the group's own directory changes ran in a
+				// subshell — the main shell keeps the directory it had before
+				// the group (round 3 P1)
+				cur = pre
 			}
 		}
 	}
@@ -433,7 +547,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 
 	for _, cand := range cands {
 		forms := resolveZoneTarget(root, cand)
-		category, covered := zoneShellCovered(forms, load)
+		category, covered := zoneShellCovered(forms, load, root)
 		if !covered {
 			continue
 		}
@@ -463,16 +577,20 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	return ""
 }
 
-// zoneRelativeTo prefixes a tracked working directory onto relative
-// candidates, keeping the raw segments for the normalization and symlink
-// layers; absolute candidates are judged as they land.
-func zoneRelativeTo(cur string, cands []string) []string {
+// zoneRelativeTo prefixes a tracked working directory (or git's -C directory)
+// onto relative candidates, keeping the raw segments for the normalization and
+// symlink layers; absolute candidates are judged as they land. An empty dir
+// leaves the candidates unchanged.
+func zoneRelativeTo(dir string, cands []string) []string {
 	out := make([]string, 0, len(cands))
 	for _, cand := range cands {
-		if cur != "." && !zoneIsAbs(cand) {
-			out = append(out, cur+"/"+cand)
-		} else {
+		switch {
+		case dir == "" || dir == "." || zoneIsAbs(cand):
 			out = append(out, cand)
+		case zoneIsAbs(dir):
+			out = append(out, dir+"/"+cand)
+		default:
+			out = append(out, dir+"/"+cand)
 		}
 	}
 	return out

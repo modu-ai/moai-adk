@@ -799,8 +799,72 @@ func testZoneShellMutation(t *testing.T) {
 		t.Errorf("quoted > data: decision=%q reason=%q, want allow", d, r)
 	}
 
-	if swept < 30 {
-		t.Fatalf("swept %d rows, want at least 30", swept)
+	// review-repair round 3 rows (merge-gate re-verdict, observed red first)
+	// 1. a redirect operator may sit inside a partially quoted word
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": `echo changed >"zone_dir/secret"`})
+	wantZoneDeny(t, "partial-quote redirect", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	// 2. an assignment whose value was quoted is still an assignment
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": `X='value' rm zone_dir/a.log`})
+	wantZoneDeny(t, "quoted-value assignment", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	// 3. removing a directory removes every file a basename glob matches there
+	root = newZoneRoot(t, zoneShippedDoc(""), "version: 1\ncategories:\n  probe_glob:\n    runtime_paths: [\"**/*_test.go\"]\n")
+	h = zoneTestHandler(t, root)
+	if err := os.MkdirAll(filepath.Join(root, "tests"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tests", "guard_test.go"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "rm -rf tests"})
+	wantZoneDeny(t, "glob parent dir", d, r, harnessLearnerIdentity, "category", "probe_glob")
+	// 4. git -C moves the directory its file arguments resolve against — the
+	// hook process here sits in docs/, the -C target is the project root
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n  probe_logs:\n    paths: [\".moai/logs/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	docs := filepath.Join(root, "docs")
+	prevZoneGetwd := zoneGetwd
+	zoneGetwd = func() (string, error) { return docs, nil }
+	t.Cleanup(func() { zoneGetwd = prevZoneGetwd })
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "git -C " + root + " restore -- .moai/logs/secret"})
+	wantZoneDeny(t, "git -C", d, r, harnessLearnerIdentity, "category", "probe_logs")
+	// 5-7: async boundaries restore the pre-group directory, a piped cd never
+	// moves the main shell, and cd's arguments exclude its redirection
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n  probe_logs:\n    paths: [\".moai/logs/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "cd .moai; true & rm logs/secret"})
+	wantZoneDeny(t, "async boundary keeps cwd", d, r, harnessLearnerIdentity, "category", "probe_logs")
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "cd zone_dir | cat; rm .moai/logs/secret"})
+	wantZoneDeny(t, "pipeline cd does not move the shell", d, r, harnessLearnerIdentity, "category", "probe_logs")
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "cd .moai > docs/out; rm logs/secret"})
+	wantZoneDeny(t, "cd args vs redirection", d, r, harnessLearnerIdentity, "category", "probe_logs")
+	// 8. the common mac sed in-place forms
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "sed -Ei '' s/old/new/ zone_dir/a.log"})
+	wantZoneDeny(t, "sed combined -Ei", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "sed '-i' '' s/old/new/ zone_dir/a.log"})
+	wantZoneDeny(t, "sed quoted -i", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	// control: the piped body of a pipeline is judged against the main shell's
+	// directory — the piped cd never moved it
+	swept++
+	if d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "cd zone_dir | cat; rm a.log"}); d == DecisionDeny {
+		t.Errorf("piped body after piped cd: decision=%q reason=%q, want allow", d, r)
+	}
+
+	if swept < 39 {
+		t.Fatalf("swept %d rows, want at least 39", swept)
 	}
 	t.Logf("swept=%d", swept)
 }

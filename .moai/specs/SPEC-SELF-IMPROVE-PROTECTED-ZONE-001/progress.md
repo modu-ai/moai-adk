@@ -102,7 +102,23 @@ The gate's re-verdict on the round-1 push failed again: 5×P1 + 1×P2, all in th
 
 GREEN on the whole family after the repairs: `TestProtectedZone` hook+config 0 FAIL (ShellMutation swept 30), `golangci-lint` 0 issues, live judge `JUDGE swept=67 expected=67 fail=0` on a binary built from the repaired tree. The shell module's tokenizer, grouping, verb scan, and coverage are now round-2 shaped throughout; the token-cost seam (no manifest read before the identity and mutating gates) is preserved by construction — the async-group and redirect walks touch no files.
 
+### Repair round 3 — merge-gate re-verdict findings (2026-10-06, post-push)
+
+The gate's second re-verdict failed with 8×P1 — the shell rule's long tail, every finding reproduced and repaired with the same RED-first discipline:
+
+- **P1 partially quoted redirection** (`echo changed >".moai/logs/secret"`) — the quote mask is now per character: an unquoted `>` inside a partially quoted word is an operator whose target is the quoted tail.
+- **P1 quoted-value assignment** (`X='value' rm …`) — the assignment skip no longer requires the word to be unquoted; a quoted value is still a normal leading assignment.
+- **P1 basename-glob parent** (`rm -rf tests` under an overlay `**/*_test.go`) — the ancestor pass now walks a BaseGlob-covered candidate directory (bounded at 5,000 entries, beyond which it under-matches) instead of skipping globs wholesale.
+- **P1 `git -C <dir>`** — the git scan captures `-C <dir>` and resolves the subcommand's file arguments against that directory (absolute as given, relative through the tracked cwd).
+- **P1 async boundary** (`cd .moai; true & rm logs/secret`) — the boundary now RESTORES the pre-group directory instead of resetting to the root: the group's own cd ran in a subshell, and the main shell never moved.
+- **P1 piped cd** (`cd docs | cat; rm …`) — a segment followed by a `|` connector runs in a subshell; its cd no longer moves the main shell's tracked directory (its redirections and mutating commands are still judged).
+- **P1 cd arguments vs redirection** (`cd .moai > docs/out; rm …`) — redirection tokens are stripped from the cd segment before the cwd update, so a normal cd to one directory is not misread as a multi-argument cd.
+- **P1 sed in-place forms** (`sed -Ei '' …`, `sed '-i' '' …`) — the in-place scan accepts any option cluster containing "i" (plus `--in-place`) and reads quoted option words, which the shell passes through as options.
+
+GREEN on the whole family: `TestProtectedZone` hook 10/10 subtests (ShellMutation swept 39) + config 3/3, `go build ./...` exit 0, `golangci-lint` 0 issues, live judge `JUDGE swept=67 expected=67 fail=0` on a binary built from the repaired tree. The quote mask is now the single mechanism deciding shell syntax (operators and async boundaries live outside quotes); a fourth round of NEW P1 findings would indicate the hand-rolled analyzer needs replacing with a real shell parser — an operator-level decision, flagged in the completion report.
+
 ## §E.3 Run-phase Audit-Ready Signal
+
 
 
 
