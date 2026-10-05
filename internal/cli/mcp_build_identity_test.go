@@ -709,8 +709,12 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// lane), the same family as the todo_landed/todo_autodone
 		// coordinates — not a binary-vs-source freshness comparison, so
 		// binlag.Evaluate is not its owner.
-		"todo_issuance.go:165": true,
-		"todo_issuance.go:173": true,
+		// Re-measured at the card-review r2 closure: the issuance probe's
+		// repairs moved the same two hits from 165/173 to 204/212. Same
+		// probe, same count — only the coordinates moved (the t948
+		// precedent).
+		"todo_issuance.go:204": true,
+		"todo_issuance.go:212": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")
