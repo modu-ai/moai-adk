@@ -1,0 +1,19 @@
+Current version   moai-adk archive/t1401
+!  Worktree migration  failed · git worktree list --porcelain: fatal: not a git repository (or any of the parent directories): .git: exit status 128
+·  v2 detected  running clean reinstall · signals: version=false agency=false deprecated=true
+[clean-reinstall] v2 fingerprint detected (signals: version=false agency=false deprecated=true)
+[clean-reinstall] PRESERVE inventory: 4 files
+[clean-reinstall] Backup created at /tmp/t1527-sandbox-after/.moai/backups/v2-to-v3-2026-10-05T09-22-10Z
+[clean-reinstall] Deprecated paths backed up at /tmp/t1527-sandbox-after/.moai/backup/agency-2026-10-05T09-22-10Z (1 files)
+[clean-reinstall] Removed 4 deprecated paths
+[clean-reinstall]   - .moai/db
+[clean-reinstall]   - .claude/agents/core
+[clean-reinstall]   - .claude/agents/expert
+[clean-reinstall]   - .claude/agents/meta
+[clean-reinstall] Embedded templates reinstalled
+[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)
+[clean-reinstall] settings.json / status_line.sh merge-preserved
+[clean-reinstall] .gitignore user patterns preserved
+[clean-reinstall] PRESERVE inventory restored
+[clean-reinstall] Integrity check PASSED (4 PRESERVE-inventory files verified)
+ Clean reinstall complete (4 files preserved, 4 deprecated removed) 
