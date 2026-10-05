@@ -29,8 +29,9 @@ git branch --show-current && git rev-parse --short HEAD   # WT-t1538-factory-rec
 go build ./... && GOOS=windows GOARCH=amd64 go build ./...
 
 # 3. 소관 패키지 기준선 (신규 결함과 기존 baseline 구분)
-go test ./internal/cli -run 'TestAutoDone|TestTodo' 2>&1 | tail -5
-go test ./internal/homestate -run 'TestLease|TestTransition|TestReconcile' 2>&1 | tail -5
+# pipefail 필수: `| tail -5` 단독은 테스트 FAIL을 tail의 exit 0으로 가린다(게이트 실측 — FAIL 출력+pipeline_exit=0).
+set -o pipefail; go test ./internal/cli -run 'TestAutoDone|TestTodo' 2>&1 | tail -5
+set -o pipefail; go test ./internal/homestate -run 'TestFR_|TestLease|TestTransition|TestReconcile' 2>&1 | tail -5
 
 # 4. t1513 충돌 사전 확인 — 슬롯 술어 관련 기존 테스트 목록
 grep -rln 'factorySerialSlotHeld\|SerialSlot' internal/cli internal/homestate --include='*_test.go'

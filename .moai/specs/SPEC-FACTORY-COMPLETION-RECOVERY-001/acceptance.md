@@ -110,7 +110,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 
 - §E의 `-run` 패턴은 접두사군 선택이 **의도**다(예: `TestTodo|TestAutoDone|TestFactory` = 각 계열 전체) — §0의 앵커 규율은 AC별 단일 신규 테스트에 적용되고, 회귀 하한의 가족 패턴에 일부러 적용하지 않는다(빈 선택 함정 — wrapped-anchor 제안을 블라인드 적용 금지). 단 스윕 카운트 확인은 동일: `[no tests to run]`은 미측정.
 - `go test -cover ./internal/cli/... ./internal/homestate/... ./internal/factory/...` — 소관 패키지 85% 유지(신규 파일 포함).
-- 기존 회귀 하한(변경 전 green이어야 하고 M1-M3 후에도 green): `go test ./internal/cli -run 'TestTodo|TestAutoDone|TestFactory'`, `go test ./internal/homestate -run 'TestLease|TestTransition|TestReconcile|TestVerdict'`, `go test ./internal/factory -run 'TestBacklog|TestGTD'`.
+- 기존 회귀 하한(변경 전 green이어야 하고 M1-M3 후에도 green): `go test ./internal/cli -run 'TestTodo|TestAutoDone|TestFactory'`, `go test ./internal/homestate -run 'TestFR_|TestLease|TestTransition|TestReconcile|TestVerdict'`(TestFR_ 계열 = 전이 원자성·만료 회수·예약 edge 등 변경 대상의 핵심 가드 — `TestFR_AC003_TransitionIsAtomic`·`TestFR_AC011_ExpiredLeaseReturnsToAssigned`·`TestFR_AC019_ReservedCIEdgesRefused` 포함), `go test ./internal/factory -run 'TestBacklog|TestGTD'`. 기준선 측정 시 `| tail` 파이프에는 `set -o pipefail`을 앞세킨다 — tail의 exit 0이 테스트 FAIL을 가리지 않게.
 
 ## 매핑 요약
 
