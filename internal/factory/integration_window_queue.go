@@ -47,6 +47,15 @@ import (
 // measurement legitimately tightens it.
 const IntegrationLeaseDefault = 30 * time.Minute
 
+// WindowLeaseDuration is the lease duration the window's internal callers
+// (the release-path promotion, the status refresh) stamp with. The CLI
+// initializes it once from workflow.integration_lock.lease_minutes — where
+// an explicit ZERO resolves to 0 (the DISABLED lease, REQ-MWQ-008) — so the
+// configured zero governs every stamp, not only acquire's. Callers that
+// carry their own duration (AcquireWindowOptions.LeaseDuration) are
+// unaffected.
+var WindowLeaseDuration = IntegrationLeaseDefault
+
 // Liveness values for tickets (leader decision Q14, REQ-MWQ-003): a waiting
 // process refreshes its heartbeat every WaiterHeartbeatInterval, and any
 // mutation drops a ticket whose heartbeat is older than WaiterHeartbeatWindow.

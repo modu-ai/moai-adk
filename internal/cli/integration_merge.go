@@ -24,6 +24,14 @@ func newIntegrationMergeCmd() *cobra.Command {
 		Use:   "merge --card <id>",
 		Short: "Run the in-window merge step for a card (holder only; thirteen causes, one path)",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// REQ-SD-025: the Codex merge edge is refused on EVERY path that
+			// reaches a merge — the verb is one more path, not an exception,
+			// and the refusal precedes every other check (card-review r1
+			// P1-3): a Codex lane stops at merge-ready whatever else is
+			// wrong with the invocation.
+			if err := factoryRefuseCodexMergeEdge("merge"); err != nil {
+				return err
+			}
 			if strings.TrimSpace(cardFlag) == "" {
 				return fmt.Errorf("integration merge: --card <id> is required (the step gates on the card, so an unnamed merge merges nothing)")
 			}
@@ -32,7 +40,19 @@ func newIntegrationMergeCmd() *cobra.Command {
 				return fmt.Errorf("integration merge: cannot resolve this session's id; pass --session <id> (the holder decision needs an address)")
 			}
 			root := integrationLockRoot()
-			integBranch := configuredIntegrationBranch()
+			initWindowLeaseOverride(root)
+			// P1-5 (card-review r1): the merge target is the branch the
+			// WINDOW RECORD names — the record is what the lane acquired —
+			// and the config value is only the fallback for a record that
+			// predates targets. Reading config first let a window taken with
+			// --branch <other> merge into the wrong branch.
+			integBranch := ""
+			if lock, lockErr := factory.ReadIntegrationLock(root); lockErr == nil && lock.Held() && lock.Branch != "" {
+				integBranch = lock.Branch
+			}
+			if integBranch == "" {
+				integBranch = configuredIntegrationBranch()
+			}
 			if integBranch == "" {
 				integBranch = "develop"
 			}

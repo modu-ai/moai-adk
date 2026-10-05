@@ -267,14 +267,14 @@ func TestEnqueueAppendsAtTailWithoutOvertaking(t *testing.T) {
 		map[string]bool{waiterKey(5002, "12345.678"): true},
 	)
 	ticketB := baseTicket(at)
-	if err := EnqueueTicket(lock, ticketB, probeLiveB, now()); err != nil {
+	if err := EnqueueTicket(lock, ticketB, probeLiveB, now(), openPolicy()); err != nil {
 		t.Fatalf("B's first enqueue must succeed: %v", err)
 	}
 	if len(lock.Queue) != 1 || lock.Queue[0].SessionID != "sess-b" {
 		t.Fatalf("B must sit at position 1: %+v", lock.Queue)
 	}
 	// B re-invokes: exactly one ticket, still at its position.
-	if err := EnqueueTicket(lock, ticketB, probeLiveB, now()); err != nil {
+	if err := EnqueueTicket(lock, ticketB, probeLiveB, now(), openPolicy()); err != nil {
 		t.Fatalf("B's re-invoke must be idempotent: %v", err)
 	}
 	if len(lock.Queue) != 1 || lock.Queue[0].SessionID != "sess-b" {
@@ -288,7 +288,7 @@ func TestEnqueueAppendsAtTailWithoutOvertaking(t *testing.T) {
 		map[int]bool{4001: true, 5001: true, 6001: true},
 		map[string]bool{waiterKey(5002, "12345.678"): true, waiterKey(6002, "88888.0"): true},
 	)
-	if err := EnqueueTicket(lock, ticketC, probeC, now()); err != nil {
+	if err := EnqueueTicket(lock, ticketC, probeC, now(), openPolicy()); err != nil {
 		t.Fatalf("C's enqueue must succeed: %v", err)
 	}
 	if len(lock.Queue) != 2 || lock.Queue[1].SessionID != "sess-c" {
@@ -307,22 +307,29 @@ func TestPromotedOnwardReleaseWhenBoundElapsed(t *testing.T) {
 	// releases immediately (promoting onward) and reports that it released.
 	setNow, now := opsClock()
 	at := now()
+	// B IS the holder — the promotion already happened (the fixture of the
+	// REQ-MWQ-005 scenario) — and C waits behind.
 	lock := baseHolder(4001, at)
-	ticketB := baseTicket(at)
-	lock.Queue = []IntegrationTicket{ticketB}
-	ticketC := ticketB
+	lock.SessionID = "sess-b"
+	lock.SessionName = "lane-b"
+	ticketC := baseTicket(at)
 	ticketC.SessionID, ticketC.SessionName, ticketC.OwnerPID, ticketC.WaiterPID = "sess-c", "lane-c", 6001, 6002
 	ticketC.WaiterStart = "88888.0"
-	lock.Queue = append(lock.Queue, ticketC)
 
-	// B's bound elapsed before the promotion is observed.
+	// B's bound elapsed before the promotion is observed. C's heartbeat is
+	// fresh AT the observation instant — set BEFORE the queue assignment,
+	// since ticketC is a value copy and a post-assignment edit would leave
+	// the queued copy three minutes stale (dropped before the promotion).
 	bound := at.Add(2 * time.Minute)
 	setNow(bound.Add(time.Minute))
+	ticketC.Heartbeat = now().Format(time.RFC3339)
+	ticketC.EnqueuedAt = ticketC.Heartbeat
+	lock.Queue = []IntegrationTicket{ticketC}
 	probe := liveProbe(
 		map[int]bool{4001: true, 5001: true, 6001: true},
 		map[string]bool{waiterKey(5002, "12345.678"): true, waiterKey(6002, "88888.0"): true},
 	)
-	observed, err := PromotedAfterBound(lock, "sess-b", bound, probe, now(), IntegrationLeaseDefault)
+	observed, err := PromotedAfterBound(lock, "sess-b", bound, probe, now(), IntegrationLeaseDefault, openPolicy())
 	if err != nil {
 		t.Fatalf("the late-promotion release must not error: %v", err)
 	}

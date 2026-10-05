@@ -41,7 +41,7 @@ const GitlinkMode = "160000"
 // "leaf" for everything else — because the type-change detection (P1)
 // needs to see a gitlink flipping to a regular entry even when the PATH
 // stays a leaf on both sides and the added-path set therefore comes back
-// EMPTY.
+// EMPTY. Paths are unquoted (see unquoteCPath).
 func readLeafSet(git factorylane.GitRunner, sha string) (map[string]string, error) {
 	out, err := git.Git([]string{"ls-tree", "-r", sha}...)
 	if err != nil {
@@ -64,12 +64,71 @@ func readLeafSet(git factorylane.GitRunner, sha string) (map[string]string, erro
 			continue
 		}
 		if mode[0] == GitlinkMode {
-			leaves[path] = "gitlink"
+			leaves[unquoteCPath(path)] = "gitlink"
 		} else {
-			leaves[path] = "leaf"
+			leaves[unquoteCPath(path)] = "leaf"
 		}
 	}
 	return leaves, nil
+}
+
+// unquoteCPath undoes git's C-style path quoting (card-review r1 P1-1):
+// with core.quotePath at its default, paths carrying non-ASCII or control
+// bytes print as `"\355\225\234..."` — an opening double quote, C escapes
+// (`\\`, `\"`, `\t`, `\n`, and three-digit octal), and a closing double
+// quote. An unquoted path is returned verbatim. The comparison against
+// on-disk names is the collision check's whole job, so a printed form that
+// never matches a filesystem entry would silently blind the check to every
+// non-ASCII path.
+func unquoteCPath(path string) string {
+	if len(path) < 2 || path[0] != '"' || path[len(path)-1] != '"' {
+		return path
+	}
+	inner := path[1 : len(path)-1]
+	var b strings.Builder
+	for i := 0; i < len(inner); i++ {
+		c := inner[i]
+		if c != '\\' {
+			b.WriteByte(c)
+			continue
+		}
+		i++
+		if i >= len(inner) {
+			break // a trailing lone backslash: keep what we have
+		}
+		switch e := inner[i]; e {
+		case '\\', '"':
+			b.WriteByte(e)
+		case 'a':
+			b.WriteByte(7)
+		case 'b':
+			b.WriteByte(8)
+		case 'f':
+			b.WriteByte(12)
+		case 'n':
+			b.WriteByte('\n')
+		case 'r':
+			b.WriteByte('\r')
+		case 't':
+			b.WriteByte('\t')
+		case 'v':
+			b.WriteByte(11)
+		default:
+			// Three-digit octal — git's form for every byte outside the
+			// printable ASCII range. Malformed octal is returned as-is
+			// (the check then misses, but a malformed quote is not a git
+			// output shape).
+			if i+2 < len(inner) && inner[i] >= '0' && inner[i] <= '7' && inner[i+1] >= '0' && inner[i+1] <= '7' && inner[i+2] >= '0' && inner[i+2] <= '7' {
+				v := (inner[i]-'0')*64 + (inner[i+1]-'0')*8 + (inner[i+2] - '0')
+				b.WriteByte(v)
+				i += 2
+			} else {
+				b.WriteByte('\\')
+				b.WriteByte(e)
+			}
+		}
+	}
+	return b.String()
 }
 
 // worktreeBytesExist reports whether the worktree holds any ignored or

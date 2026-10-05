@@ -367,8 +367,15 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 
 	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
 		current, readErr := ReadIntegrationLock(projectRoot)
-		if readErr != nil && !force {
-			return readErr
+		if readErr != nil {
+			if !force {
+				return readErr
+			}
+			// P2-8 (card-review r1): --force IS the wedged-window recovery —
+			// an unreadable record is exactly when a leader reaches for it —
+			// so the failed read yields an EMPTY record here instead of a
+			// nil dereference at the decision below.
+			current = &IntegrationLock{}
 		}
 		policy, policyErr := ReadIntegrationWindowPolicy(projectRoot)
 		if policyErr != nil {
@@ -379,6 +386,12 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 		// decision below runs in, which is the ordering REQ-MWQ-002 asks
 		// the enqueue to decide inside.
 		RefreshWindow(current, policy, probe, WindowClock(), lease)
+		// P2-9: a stale holder the refresh cleared is recorded ON the
+		// record now — surface it as this acquire's takeover so the
+		// "never silent" promise of the pre-queue takeover holds.
+		if replaced == nil && !current.Held() && current.Displaced != nil {
+			replaced = current.Displaced
+		}
 
 		// REQ-MWQ-012: under hold, a no-wait acquire refuses naming the
 		// reason; a --wait acquire is the enqueuing path and comes back to
@@ -420,6 +433,12 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 
 		if want.AcquiredAt == "" {
 			want.AcquiredAt = time.Now().UTC().Format(time.RFC3339)
+		}
+		// P2-1 (card-review r1): a RE-ACQUIRE (the holder refreshing) must
+		// carry the queue through — want carries none, so the rewrite below
+		// would wipe every queued ticket.
+		if want.Queue == nil && len(current.Queue) > 0 {
+			want.Queue = current.Queue
 		}
 		if want.LeaseExpiresAt == "" {
 			// REQ-MWQ-008: every acquire stamps the holder's lease.
@@ -503,8 +522,8 @@ func ReleaseIntegrationLock(projectRoot, sessionID string, callerOwnerPID int, f
 			if policyErr != nil {
 				return policyErr
 			}
-			clearHolder(current)
-			RefreshWindow(current, policy, DefaultWindowProcProbe(), WindowClock(), IntegrationLeaseDefault)
+			clearHolder(current, WindowClock(), "released by holder")
+			RefreshWindow(current, policy, DefaultWindowProcProbe(), WindowClock(), WindowLeaseDuration)
 			if err := writeIntegrationLock(integrationLockPath(projectRoot), current); err != nil {
 				return err
 			}

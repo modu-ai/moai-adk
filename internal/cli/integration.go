@@ -437,6 +437,7 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				return fmt.Errorf("cannot resolve this session's id; pass --session <id> (a lock with an invented holder can be neither released by its holder nor recognized by the guard)")
 			}
 			root := integrationLockRoot()
+			initWindowLeaseOverride(root)
 
 			// --wait (card t1479, REQ-MWQ-002): parse the optional bound — a
 			// bare --wait is the 60-minute default, --wait=2m is two minutes.
@@ -565,6 +566,12 @@ func newIntegrationAcquireCmd() *cobra.Command {
 	cmd.Flags().StringVar(&branchFlag, "branch", "", "The integration target branch the merge lands on, not the card branch being merged (default: the configured git-flow develop branch, else the current branch)")
 	cmd.Flags().StringVar(&cardFlag, "card", "", "Card id this integration belongs to")
 	cmd.Flags().StringVar(&waitFlag, "wait", "", "Queue behind a live holder instead of refusing, with this bound (bare --wait is 60m from the enqueue instant; --wait=2m is two minutes)")
+	// P2-4 (card-review r1): a BARE --wait carries the 60-minute default —
+	// without NoOptDefVal the flag parser refuses a value-less --wait with
+	// "flag needs an argument" before the verb ever sees it.
+	if wf := cmd.Flags().Lookup("wait"); wf != nil {
+		wf.NoOptDefVal = "true"
+	}
 	cmd.Flags().BoolVar(&force, "force", false, "Take the window over from a live holder (recorded, never silent)")
 	cmd.Flags().BoolVar(&allowSettingsDrift, "allow-settings-drift", false, "Record the window despite a refused settings-drift verdict (recorded in the lock, never silent). Deliberately separate from --force, which is a different decision")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit machine-readable JSON")

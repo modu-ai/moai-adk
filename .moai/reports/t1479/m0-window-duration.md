@@ -21,6 +21,12 @@ it too). Raw driver: `/tmp/t1479-m0/m0-window-timing2.py`.
 python3 /tmp/t1479-m0/m0-window-timing2.py
 ```
 
+The driver is committed beside this report as `m0-window-timing2.py` (card-review r1 M0
+disposition): every git invocation goes through `subprocess.run(["git", *args])` — the argv
+ARRAY form, no shell spawn — so the measurement surface carries no command-injection seam,
+and the numbers above stay re-executable from the committed driver. Measured output below
+was produced by exactly this script on the fixture it builds itself.
+
 Verbatim output (this run, fixture repository, 20 runs):
 
 ```

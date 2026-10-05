@@ -14,6 +14,7 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -69,6 +70,22 @@ func integrationLeaseMinutes(projectRoot string) *int {
 	return cfg.Workflow.IntegrationLock.LeaseMinutes
 }
 
+// initWindowLeaseOverride initializes the factory's package-level lease
+// override from the configured value, so the INTERNAL callers (the
+// release-path promotion, the status refresh) stamp the configured duration
+// too — an explicit lease_minutes: 0 disables the lease everywhere, not
+// only on acquire (card-review r1 P2-7). Absent config leaves the factory
+// default. Assigned on every verb call (the config read is cheap and the
+// value is a single assignment) so parallel tests with distinct fixtures
+// cannot inherit a stale override.
+func initWindowLeaseOverride(projectRoot string) {
+	if minutes := integrationLeaseMinutes(projectRoot); minutes != nil {
+		factory.WindowLeaseDuration = time.Duration(*minutes) * time.Minute
+	} else {
+		factory.WindowLeaseDuration = factory.IntegrationLeaseDefault
+	}
+}
+
 // integrationWaitPollInterval is the loop's sleep between record reads. It
 // is a package variable so a test can shorten it — a poll loop that waited
 // its own production interval in a unit test would measure the sleep, not
@@ -80,11 +97,19 @@ var integrationWaitPollInterval = time.Second
 // the order is decided in), then poll the record until promoted, dropped, or
 // timed out.
 func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTicket, bound time.Duration, out io.Writer) error {
+	// The REAL window policy governs the whole wait — the enqueue's
+	// refresh, the bound decision, and every heartbeat renewal
+	// (card-review r1 P1-2/P2-3: a hardcoded open here let the wait path's
+	// own mutations promote through a hold and skip the liveness drops).
+	policy, policyErr := factory.ReadIntegrationWindowPolicy(root)
+	if policyErr != nil {
+		return policyErr
+	}
 	// REQ-MWQ-002: one ticket at the tail, the order decided inside the same
 	// serialized record mutation that guards acquire and release; the
 	// enqueue instant starts the bound's clock.
 	err := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
-		return factory.EnqueueTicket(w, ticket, factory.DefaultWindowProcProbe(), factory.WindowClock())
+		return factory.EnqueueTicket(w, ticket, factory.DefaultWindowProcProbe(), factory.WindowClock(), policy)
 	})
 	if err != nil {
 		return err
@@ -104,11 +129,11 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 		// The promotion and the bound are decided in the same mutation
 		// (REQ-MWQ-005): PromotedAfterBound releases onward at once when the
 		// promotion is observed past the bound, and returns the promotion
-		// otherwise.
+		// otherwise — under the real policy.
 		var released bool
 		var holderNow bool
 		mutErr := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
-			outcome, pErr := factory.PromotedAfterBound(w, sessionID, deadline, factory.DefaultWindowProcProbe(), now, factory.IntegrationLeaseDefault)
+			outcome, pErr := factory.PromotedAfterBound(w, sessionID, deadline, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration, policy)
 			if pErr != nil {
 				return pErr
 			}
@@ -141,13 +166,21 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 		}
 
 		// REQ-MWQ-002: refresh the ticket's heartbeat every 15 seconds while
-		// blocking.
+		// blocking. The renewal is a queue MUTATION, so it runs the liveness
+		// refresh under the real policy (card-review r1 P2-3) — a dead
+		// ticket cannot stay queued just because its lane is still polling.
 		if now.Sub(lastBeat) >= factory.WaiterHeartbeatInterval {
 			lastBeat = now
 			if err := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
+				report := factory.RefreshWindow(w, policy, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration)
 				for i := range w.Queue {
 					if w.Queue[i].SessionID == sessionID {
 						w.Queue[i].Heartbeat = now.Format(time.RFC3339)
+					}
+				}
+				if len(report.Dropped) > 0 && out != nil {
+					for _, d := range report.Dropped {
+						_, _ = fmt.Fprintf(out, "dropped ticket: %s\n", d)
 					}
 				}
 				return nil

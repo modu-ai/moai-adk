@@ -1615,6 +1615,13 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 			return completePostMergeConflict(out, lockRoot, sessionID, cardID, adopted, err)
 		}
 		_ = done
+		// P2-6 (card-review r1): the adoption releases the window after its
+		// transitions too — step 4's deferred release is not a reason for
+		// step 2 to hold the window forever; the next live ticket is what
+		// proves the release.
+		if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
+			_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — moai integration release by hand\n", err)
+		}
 		factoryPrintClearPolicyLine(out, root)
 		return nil
 	}

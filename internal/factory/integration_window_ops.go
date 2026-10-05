@@ -149,8 +149,8 @@ func RefreshWindow(lock *IntegrationLock, policy IntegrationWindowPolicy, probe 
 	}
 	if policy.Policy == PolicyHold {
 		// REQ-MWQ-007: clear the stale holder with no successor, queue
-		// intact.
-		clearHolder(lock)
+		// intact — the displacement recorded, never silent (P2-9).
+		clearHolder(lock, now, "stale holder cleared under hold")
 		return report
 	}
 	if len(lock.Queue) > 0 {
@@ -159,17 +159,23 @@ func RefreshWindow(lock *IntegrationLock, policy IntegrationWindowPolicy, probe 
 	}
 	// No ticket to promote: the stale holder is cleared exactly as a
 	// takeover would clear it (the caller's own acquire then takes the
-	// free window).
-	clearHolder(lock)
+	// free window) — with the displacement recorded.
+	clearHolder(lock, now, "stale holder cleared")
 	return report
 }
 
-// clearHolder empties the holder fields without touching the queue. The
-// duplicated field list above is the honest form: a field-by-field reset the
-// reader can check against IntegrationLock's field order in one glance, and
-// a mistake there (a missed field) leaves half a holder behind.
-func clearHolder(lock *IntegrationLock) {
-	lock.Displaced = nil
+// clearHolder empties the holder fields without touching the queue,
+// RECORDING the displaced holder first (card-review r1 P2-9): the pre-queue
+// stale takeover returned the replaced record to its caller, so the
+// information existed; a clear that erased it silently lost who was
+// displaced and why. A caller that wants the pre-queue shape (no displaced
+// key on a takeover it reports itself) passes record=false.
+func clearHolder(lock *IntegrationLock, now time.Time, why string) {
+	if lock.Held() {
+		displaced := *lock
+		lock.Displaced = &displaced
+		lock.DisplacedReason = fmt.Sprintf("%s at %s", why, now.Format(time.RFC3339))
+	}
 	lock.SessionID = ""
 	lock.SessionName = ""
 	lock.Card = ""
@@ -183,13 +189,19 @@ func clearHolder(lock *IntegrationLock) {
 }
 
 // EnqueueTicket appends one ticket at the tail of the queue inside the
-// caller's mutation (REQ-MWQ-002), after applying the liveness refresh —
-// the order is decided inside the same serialized record mutation as every
-// other queue decision. A live ticket for the same session id is idempotent:
-// a re-invoking waiter keeps exactly one ticket at its position (REQ-MWQ-011,
-// "shall not hold two tickets for one session").
-func EnqueueTicket(lock *IntegrationLock, ticket IntegrationTicket, probe WindowProcProbe, now time.Time) error {
-	RefreshWindow(lock, IntegrationWindowPolicy{Policy: PolicyOpen}, probe, now, 0)
+// caller's mutation (REQ-MWQ-002), after applying the liveness refresh UNDER
+// THE REAL POLICY — a hardcoded open here let the wait path's own mutations
+// promote tickets through a hold (card-review r1 P1-2). The order is
+// decided inside the same serialized record mutation as every other queue
+// decision. A live ticket for the same session id is idempotent: a
+// re-invoking waiter keeps exactly one ticket at its position (REQ-MWQ-011,
+// "shall not hold two tickets for one session"). The enqueue identity —
+// EnqueuedAt and the first Heartbeat — is stamped HERE from the mutation's
+// clock, never left to the caller to remember (card-review r1 P2-5).
+func EnqueueTicket(lock *IntegrationLock, ticket IntegrationTicket, probe WindowProcProbe, now time.Time, policy IntegrationWindowPolicy) error {
+	RefreshWindow(lock, policy, probe, now, WindowLeaseDuration)
+	ticket.EnqueuedAt = now.Format(time.RFC3339)
+	ticket.Heartbeat = ticket.EnqueuedAt
 	for i, existing := range lock.Queue {
 		if existing.SessionID == ticket.SessionID {
 			if probe.WaiterAlive(existing.WaiterPID, existing.WaiterStart) {
@@ -241,7 +253,7 @@ func RefreshIntegrationWindowAt(projectRoot string) (WindowReport, error) {
 		if policyErr != nil {
 			return policyErr
 		}
-		report = RefreshWindow(w, policy, DefaultWindowProcProbe(), WindowClock(), IntegrationLeaseDefault)
+		report = RefreshWindow(w, policy, DefaultWindowProcProbe(), WindowClock(), WindowLeaseDuration)
 		return nil
 	}); err != nil {
 		return WindowReport{}, err
@@ -266,12 +278,12 @@ type LatePromotion struct {
 // promoting the next live ticket) — and the caller reports that it released.
 // The same-mutation decision is the point: neither the promotion nor the
 // bound outcome may depend on a later read.
-func PromotedAfterBound(lock *IntegrationLock, sessionID string, boundAt time.Time, probe WindowProcProbe, now time.Time, lease time.Duration) (LatePromotion, error) {
+func PromotedAfterBound(lock *IntegrationLock, sessionID string, boundAt time.Time, probe WindowProcProbe, now time.Time, lease time.Duration, policy IntegrationWindowPolicy) (LatePromotion, error) {
 	if lock.Held() && lock.SessionID == sessionID {
 		if now.After(boundAt) {
-			// Promoted past the bound: release onward at once.
-			clearHolder(lock)
-			policy := IntegrationWindowPolicy{Policy: PolicyOpen}
+			// Promoted past the bound: release onward at once — under the
+			// real policy, so a hold suspends the onward promotion too.
+			clearHolder(lock, now, "bound elapsed, released onward")
 			report := RefreshWindow(lock, policy, probe, now, lease)
 			_ = report
 			return LatePromotion{Released: true, BoundElapsed: true}, nil
