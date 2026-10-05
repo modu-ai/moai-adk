@@ -159,10 +159,14 @@ func worktreeBytesExist(worktree, path string) (bool, error) {
 	return strings.TrimSpace(out) == "", nil
 }
 
-// gitLsFiles answers whether git tracks path, exactly.
+// gitLsFiles answers whether git tracks path, exactly. The pathspec is
+// :(literal) — without it git interprets the path as a GLOB (card-review
+// r2 class A: a tracked `a` answered for an ignored `[a]`, because `[a]`
+// resolves onto `a` as a character class), so a tracked lookalike masked
+// the real ignored bytes at the bracket-named path.
 func gitLsFiles(worktree, path string) (string, error) {
 	runner := factorylane.ExecGitRunner{Dir: worktree}
-	return runner.Git("ls-files", "--", path)
+	return runner.Git("ls-files", "--", ":(literal)"+path)
 }
 
 // untrackedBytesBeneath reports whether the worktree holds ignored or
@@ -170,10 +174,11 @@ func gitLsFiles(worktree, path string) (string, error) {
 // -nd -x` dry-runs the deletion git itself would perform and lists every
 // byte it would remove — tracked files are never listed, so a non-empty
 // listing is exactly "bytes the merge's directory replacement would
-// destroy".
+// destroy". The pathspec is :(literal) for the same glob reason as
+// gitLsFiles (class A).
 func untrackedBytesBeneath(worktree, dir string) (bool, error) {
 	runner := factorylane.ExecGitRunner{Dir: worktree}
-	out, err := runner.Git("clean", "-nd", "-x", "--", dir)
+	out, err := runner.Git("clean", "-nd", "-x", "--", ":(literal)"+dir)
 	if err != nil {
 		return false, fmt.Errorf("git clean -nd -x %s: %w", dir, err)
 	}

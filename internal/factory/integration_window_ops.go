@@ -13,6 +13,8 @@ package factory
 import (
 	"fmt"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // WindowReport names what one refresh did, so the mutating command can print
@@ -202,6 +204,15 @@ func EnqueueTicket(lock *IntegrationLock, ticket IntegrationTicket, probe Window
 	RefreshWindow(lock, policy, probe, now, WindowLeaseDuration)
 	ticket.EnqueuedAt = now.Format(time.RFC3339)
 	ticket.Heartbeat = ticket.EnqueuedAt
+	// Class G (card-review r2): the ticket records the waiter's process
+	// start fingerprint — id AND start — and the enqueue BACKFILLS it when
+	// the caller left it empty, so a later live process with the same pid
+	// cannot count as this waiter no matter which caller forgot it.
+	if ticket.WaiterPID > 0 && ticket.WaiterStart == "" {
+		if fp, state := homestate.ProbeProcessIdentity(ticket.WaiterPID); state == homestate.ProcessIdentityLive {
+			ticket.WaiterStart = fp
+		}
+	}
 	for i, existing := range lock.Queue {
 		if existing.SessionID == ticket.SessionID {
 			if probe.WaiterAlive(existing.WaiterPID, existing.WaiterStart) {

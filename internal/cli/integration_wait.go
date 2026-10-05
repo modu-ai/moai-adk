@@ -97,18 +97,16 @@ var integrationWaitPollInterval = time.Second
 // the order is decided in), then poll the record until promoted, dropped, or
 // timed out.
 func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTicket, bound time.Duration, out io.Writer) error {
-	// The REAL window policy governs the whole wait — the enqueue's
-	// refresh, the bound decision, and every heartbeat renewal
-	// (card-review r1 P1-2/P2-3: a hardcoded open here let the wait path's
-	// own mutations promote through a hold and skip the liveness drops).
-	policy, policyErr := factory.ReadIntegrationWindowPolicy(root)
-	if policyErr != nil {
-		return policyErr
-	}
 	// REQ-MWQ-002: one ticket at the tail, the order decided inside the same
 	// serialized record mutation that guards acquire and release; the
-	// enqueue instant starts the bound's clock.
+	// enqueue instant starts the bound's clock. The policy is read INSIDE
+	// the mutation (card-review r2 class B: a policy captured at loop entry
+	// let a hold written later go ungoverned).
 	err := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
+		policy, policyErr := factory.ReadIntegrationWindowPolicy(root)
+		if policyErr != nil {
+			return policyErr
+		}
 		return factory.EnqueueTicket(w, ticket, factory.DefaultWindowProcProbe(), factory.WindowClock(), policy)
 	})
 	if err != nil {
@@ -129,10 +127,14 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 		// The promotion and the bound are decided in the same mutation
 		// (REQ-MWQ-005): PromotedAfterBound releases onward at once when the
 		// promotion is observed past the bound, and returns the promotion
-		// otherwise — under the real policy.
+		// otherwise — under the policy read INSIDE this mutation (class B).
 		var released bool
 		var holderNow bool
 		mutErr := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
+			policy, policyErr := factory.ReadIntegrationWindowPolicy(root)
+			if policyErr != nil {
+				return policyErr
+			}
 			outcome, pErr := factory.PromotedAfterBound(w, sessionID, deadline, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration, policy)
 			if pErr != nil {
 				return pErr
@@ -167,11 +169,16 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 
 		// REQ-MWQ-002: refresh the ticket's heartbeat every 15 seconds while
 		// blocking. The renewal is a queue MUTATION, so it runs the liveness
-		// refresh under the real policy (card-review r1 P2-3) — a dead
-		// ticket cannot stay queued just because its lane is still polling.
+		// refresh under the policy read INSIDE the mutation (card-review r1
+		// P2-3 + r2 class B) — a dead ticket cannot stay queued just because
+		// its lane is still polling.
 		if now.Sub(lastBeat) >= factory.WaiterHeartbeatInterval {
 			lastBeat = now
 			if err := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
+				policy, policyErr := factory.ReadIntegrationWindowPolicy(root)
+				if policyErr != nil {
+					return policyErr
+				}
 				report := factory.RefreshWindow(w, policy, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration)
 				for i := range w.Queue {
 					if w.Queue[i].SessionID == sessionID {

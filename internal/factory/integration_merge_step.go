@@ -312,6 +312,37 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		seams.AfterPrecheck()
 	}
 
+	// Class C (card-review r2): OWNERSHIP RE-VERIFICATION in a serialized
+	// mutation immediately before the merge. Ownership can change after the
+	// initial holder check (a --force takeover is a legitimate, recorded
+	// path), and a merge that proceeds on stolen ownership merges OUTSIDE
+	// the window's whole purpose. The re-verification refuses with the
+	// holder codes (14/15) — and leaves the takeover's window untouched.
+	var recheckErr error
+	if err := UpdateIntegrationWindow(in.Root, func(w *IntegrationLock) error {
+		if !w.Held() || w.SessionID != in.CallerSessionID {
+			recheckErr = mergeStepErr(MergeExitNotHolder, "integration merge: refused — the window was taken mid-step; the merge will not proceed on ownership it does not hold")
+			return nil
+		}
+		if w.LeaseExpired(now) {
+			recheckErr = mergeStepErr(MergeExitExpiredLease, "integration merge: refused — your lease expired mid-step; re-acquire with --wait")
+			return nil
+		}
+		StampLease(w, now, lease)
+		return nil
+	}); err != nil {
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: the pre-merge holdership re-verification failed: %v", err))
+	}
+	if recheckErr != nil {
+		// Our hold is gone — release OUR nothing and refuse. The takeover's
+		// window record is untouched (the release refuses on a foreign
+		// holder and the refusal path surfaces it).
+		if err := releaseHeldWindow(in, seams); err != nil && !IsIntegrationLockNotHeld(err) && !IsIntegrationLockForeign(err) {
+			return "", fmt.Errorf("%w (the post-takeover release also failed: %v)", recheckErr, err)
+		}
+		return "", recheckErr
+	}
+
 	// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017).
 	mergeMsg := fmt.Sprintf("Merge %s into %s (card %s, integration merge)", cardBranch, in.IntegrationBranch, in.CardID)
 	if _, err := git("merge", "--no-ff", "-q", "-m", mergeMsg, pinned); err != nil {

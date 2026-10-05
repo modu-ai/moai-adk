@@ -25,6 +25,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -315,6 +316,7 @@ func newIntegrationStatusCmd() *cobra.Command {
 		Short: "Report who holds the release-integration window",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root := integrationLockRoot()
+			initWindowLeaseOverride(root) // class E: the refresh stamps the configured lease too
 			// REQ-MWQ-009 (card t1479): status is a queue mutation — the
 			// liveness drops and the promotion apply BEFORE it prints, and
 			// each dropped ticket is named in the output (REQ-MWQ-003).
@@ -331,7 +333,10 @@ func newIntegrationStatusCmd() *cobra.Command {
 				return err
 			}
 			for _, dropped := range report.Dropped {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "dropped ticket: %s\n", dropped)
+				// Class G (card-review r2): on --json the dropped-ticket
+				// lines ride STDERR — the stdout stays one parseable
+				// document (the release-verb precedent).
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "dropped ticket: %s\n", dropped)
 			}
 			if jsonOut {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{
@@ -493,6 +498,14 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				// the waiting loop. A no-wait refusal keeps its pre-queue
 				// exit and byte shape (REQ-MWQ-010).
 				if waitRequested && (factory.IsIntegrationWindowHold(err) || factory.IsIntegrationLockHeld(err)) {
+					// Class G (card-review r2): the ticket records the
+					// waiter's process fingerprint — id AND start — so a
+					// later live process with the same pid cannot count as
+					// this waiter (REQ-MWQ-003's id-AND-start matching).
+					waiterStart := ""
+					if fp, state := homestate.ProbeProcessIdentity(os.Getpid()); state == homestate.ProcessIdentityLive {
+						waiterStart = fp
+					}
 					ticket := factory.IntegrationTicket{
 						SessionID:    sessionID,
 						SessionName:  nameFlag,
@@ -503,6 +516,7 @@ func newIntegrationAcquireCmd() *cobra.Command {
 						BranchSource: source,
 						Worktree:     wt,
 						WaiterPID:    os.Getpid(),
+						WaiterStart:  waiterStart,
 					}
 					return integrationWaitInQueue(root, sessionID, ticket, waitBound, cmd.OutOrStdout())
 				}
@@ -607,7 +621,9 @@ func newIntegrationReleaseCmd() *cobra.Command {
 			// the refusal named the refused process's own pid. An unresolvable
 			// owner yields 0, which matches nothing and leaves the id key alone.
 			callerOwnerPID, _ := session.ResolveOwnerPID()
-			released, err := factory.ReleaseIntegrationLock(integrationLockRoot(), sessionID, callerOwnerPID, force)
+			releaseRoot := integrationLockRoot()
+			initWindowLeaseOverride(releaseRoot) // class E: the promotion stamps the configured lease too
+			released, err := factory.ReleaseIntegrationLock(releaseRoot, sessionID, callerOwnerPID, force)
 			if err != nil {
 				return err
 			}
