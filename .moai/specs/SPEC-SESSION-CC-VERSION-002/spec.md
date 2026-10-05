@@ -2,9 +2,9 @@
 id: SPEC-SESSION-CC-VERSION-002
 title: "Structural resume-argv interpretation and install-root-anchored version extraction (t1515)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-05
-updated: 2026-10-05
+updated: 2026-10-06
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"

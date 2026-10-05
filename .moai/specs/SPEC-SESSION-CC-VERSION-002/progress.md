@@ -14,6 +14,16 @@ Auditor's named lint gap closed by the lane's own run: `go run ./cmd/moai spec l
 auditor's background lint file `/tmp/t1515-lint-iter2.txt` landed empty (incomplete run) —
 superseded by the observation above.
 
+Post-audit addendum (lane, 2026-10-06): the verdict was revised twice after iteration 2 —
+the auditor's hook-forced codex verification found P2-C (AC-SCV-014's literal version pin,
+a two-way mutant); at the Tier M ceiling the leader approved a hunk-limited exception
+(recorded in the verdict file and `.moai/reports/t1515/lane-note-kickoff-revision.md`); the
+single-hunk repair (observation-based provenance) reread to the FINAL verdict:
+`plan-audit: PASS 0.96`, blocking 0, plan_artifact_hash
+`8e3ac1a906b4a6e477d85b42fe09620e073789ea219b510a06a35e81aea58ac8`. The iteration-2 hash
+citation above (`ec087536…`) is the superseded intermediate; the Kickoff that ran on it was
+validated post-hoc — the final verdict passes on the same evidence set.
+
 ## §E.2 Run-phase Evidence
 
 Run-phase tree: `WT-session-cc-version`, base `099250516` → HEAD `dac6ceef2` (6 commits, no
@@ -138,7 +148,17 @@ instance is pinned by `TestRemoteControlPrefixValue`; the §A.4 residual is meas
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_commit_sha: "pending-backfill"   # D3 placeholder — a commit cannot cite its own SHA; the lane backfills the real SHA in the follow-up commit
+sync_complete_at: 2026-10-06
+b12_self_test_a: pass   # grep -c 'SPEC-SESSION-CC-VERSION-002' CHANGELOG.md → 0 before emission (duplicate-free), 1 after (exactly the entry added)
+b12_self_test_c: pass   # every file path named in the CHANGELOG entry verified present: internal/cli/lane_resume.go, internal/cli/lane_resume_model.go, internal/cli/cc.go, internal/cli/factory_lane_relaunch.go, internal/session/ccversion.go
+changelog_entry_position: "[Unreleased] → Fixed, 첫 번째 불릿"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (sync 커밋에서 적용)"
+  plan_md: unchanged
+  acceptance_md: unchanged
+  progress_md: §E.4 블록 + 레인 §E.1 post-audit addendum 동승
 
 ## §F Phase 4 Mode Selection
 
