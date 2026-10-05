@@ -99,7 +99,7 @@ func zoneDenyReason(identity, field, value, relPath string) string {
 // zoneAppendAudit appends one audit row under the project root, creating the
 // logs directory when needed. A failed append is returned, never swallowed
 // here: the decision it accompanies never changes (REQ-SIPZ-014).
-func zoneAppendAudit(root string, row zoneAuditRow) error {
+func zoneAppendAudit(root string, row zoneAuditRow) (err error) {
 	if row.TS == "" {
 		row.TS = time.Now().UTC().Format(time.RFC3339)
 	}
@@ -111,7 +111,11 @@ func zoneAppendAudit(root string, row zoneAuditRow) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); err == nil {
+			err = cerr
+		}
+	}()
 	line, err := json.Marshal(row)
 	if err != nil {
 		return err

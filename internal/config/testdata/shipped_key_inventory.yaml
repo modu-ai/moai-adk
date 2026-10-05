@@ -1,6 +1,6 @@
 # Shipped key inventory for SPEC-CONFIG-KEY-HONESTY-001 M1
 # Code baseline: ed70e4354
-# Total entries: 804
+# Total entries: 817
 # Classification: W=wire, P=prose-consumed, R=reserved, D=delete
 # Evidence: 'reader' = Go production reader; prose file path = P consumer; 'none' = R/D
 
@@ -19,6 +19,42 @@
 - path: "cacheStrategy.spec_ttl"
   class: R
   evidence: none
+- path: "categories.apply_rollback.paths"
+  class: W
+  evidence: reader
+- path: "categories.auditor.paths"
+  class: W
+  evidence: reader
+- path: "categories.budgets.runtime_paths"
+  class: W
+  evidence: reader
+- path: "categories.gate_policy.paths"
+  class: W
+  evidence: reader
+- path: "categories.gate_policy.runtime_paths"
+  class: W
+  evidence: reader
+- path: "categories.logs.paths"
+  class: W
+  evidence: reader
+- path: "categories.logs.runtime_paths"
+  class: W
+  evidence: reader
+- path: "categories.moai_managed.paths"
+  class: W
+  evidence: reader
+- path: "categories.moai_managed.runtime_paths"
+  class: W
+  evidence: reader
+- path: "categories.regression_tests.paths"
+  class: W
+  evidence: reader
+- path: "categories.safety_guards.paths"
+  class: W
+  evidence: reader
+- path: "categories.safety_guards.runtime_paths"
+  class: W
+  evidence: reader
 - path: "constitution.approved_frameworks"
   class: W
   evidence: reader
@@ -2301,6 +2337,9 @@
 - path: "user.name"
   class: R
   evidence: none
+- path: "version"
+  class: W
+  evidence: reader
 - path: "workflow.agentic_loop.max_iterations"
   class: W
   evidence: reader

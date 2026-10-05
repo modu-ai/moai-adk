@@ -9,16 +9,17 @@ import (
 // TestProtectedZone groups the protected-zone guard tests as named subtests of one
 // top-level test so a selector that matches nothing cannot pass for a sweep: every
 // subtest prints its own --- PASS line and reports how many rows it swept.
-// ShellMutation and Liveness are the plan.md M3 subtests and join when they land.
 func TestProtectedZone(t *testing.T) {
 	t.Run("Normalization", testZoneNormalization)
 	t.Run("FileTools", testZoneFileTools)
+	t.Run("ShellMutation", testZoneShellMutation)
 	t.Run("ManifestStates", testZoneManifestStates)
 	t.Run("NonRegression", testZoneNonRegression)
 	t.Run("DenyReason", testZoneDenyReason)
 	t.Run("NoManifestReadForOthers", testZoneNoManifestReadForOthers)
 	t.Run("AuditRow", testZoneAuditRow)
 	t.Run("BaselineCovered", testZoneBaselineCovered)
+	t.Run("Liveness", testZoneLiveness)
 }
 
 // testZoneNormalization is the platform-independent table: the pure lexical

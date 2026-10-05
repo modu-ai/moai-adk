@@ -3,7 +3,6 @@ package hook
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -691,4 +690,144 @@ func testZoneBaselineCovered(t *testing.T) {
 	t.Logf("swept=%d", swept)
 }
 
-var errZoneTestSentinel = errors.New("zone test sentinel")
+// testZoneShellMutation drives the thirteen mutating shell forms of REQ-SIPZ-007
+// against a zone member, with the read-only and non-identity controls that keep
+// the rule scoped, and the command-text prefix that must not suppress it.
+func testZoneShellMutation(t *testing.T) {
+	root := newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+	h := zoneTestHandler(t, root)
+	swept := 0
+
+	forms := []string{
+		"rm zone_dir/a.log",                    // B1
+		"unlink zone_dir/a.log",                // B2
+		"mv zone_dir/a.log /tmp/elsewhere.log", // B3
+		"cp docs/keep.md zone_dir/a.log",       // B4
+		"echo x | tee zone_dir/a.log",          // B5
+		"truncate -s 0 zone_dir/a.log",         // B6
+		"sed -i s/a/b/ zone_dir/a.log",         // B7
+		"echo x > zone_dir/a.log",              // B8
+		"echo x >> zone_dir/a.log",             // B9
+		"git rm zone_dir/a.log",                // B10
+		"git checkout zone_dir/a.log",          // B11
+		"git restore zone_dir/a.log",           // B12
+		"git apply zone_dir/patch.diff",        // B13
+	}
+	if len(forms) != 13 {
+		t.Fatalf("shell form table carries %d rows, want the thirteen of REQ-SIPZ-007", len(forms))
+	}
+	for _, cmd := range forms {
+		swept++
+		d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+
+	// read-only verbs on the same path stay open (AC-SIPZ-005 N6 mirror)
+	for _, cmd := range []string{"cat zone_dir/a.log", "ls zone_dir/"} {
+		swept++
+		if d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd}); d == DecisionDeny {
+			t.Errorf("%q: decision=%q reason=%q, want allow", cmd, d, r)
+		}
+	}
+	// the same rm from a non-identity caller stays open (AC-SIPZ-005 N3 mirror)
+	swept++
+	if d, r := zoneCall(t, h, "Bash", "manager-develop", map[string]any{"command": "rm zone_dir/a.log"}); d == DecisionDeny {
+		t.Errorf("non-identity rm: decision=%q reason=%q, want allow", d, r)
+	}
+	// a command-text prefix and a trailing comment do not suppress (REQ-SIPZ-013 mirror)
+	swept++
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "MOAI_PROTECTED_ZONE=off rm zone_dir/a.log # override"})
+	wantZoneDeny(t, "assignment prefix and comment", d, r, harnessLearnerIdentity, "category", "probe_zone")
+
+	if swept < 17 {
+		t.Fatalf("swept %d rows, want at least 17", swept)
+	}
+	t.Logf("swept=%d", swept)
+}
+
+// testZoneLiveness is the continued-firing check (REQ-SIPZ-015): each way the
+// guard can go quietly is a named condition that fails a CI run — the matcher
+// group of both settings files, both manifests parsing, a dead paths entry in
+// either sweep tree, and the real handler denying a known zone-member input.
+func testZoneLiveness(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	repo := filepath.Join(filepath.Dir(thisFile), "..", "..")
+
+	t.Run("MatcherGroup", func(t *testing.T) {
+		for _, name := range []string{
+			filepath.Join(".claude", "settings.json"),
+			filepath.Join("internal", "template", "templates", ".claude", "settings.json.tmpl"),
+		} {
+			data, err := os.ReadFile(filepath.Join(repo, name))
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			if !strings.Contains(string(data), `"matcher": "Write|Edit|Bash"`) {
+				t.Errorf("%s: the PreToolUse matcher group no longer carries Write, Edit and Bash (REQ-SIPZ-015 i)", name)
+			}
+		}
+	})
+
+	t.Run("ManifestParse", func(t *testing.T) {
+		load := config.LoadProtectedZone(repo)
+		if load.State != config.ZoneStateOK {
+			t.Errorf("dogfood manifests: state=%q file=%q err=%v, want ok", load.State, load.InvalidFile, load.Err)
+		}
+		data, err := os.ReadFile(filepath.Join(repo, "internal", "template", "templates", filepath.FromSlash(config.ProtectedZoneShippedRel)))
+		if err != nil {
+			t.Fatalf("template shipped manifest: %v", err)
+		}
+		if _, err := config.ParseProtectedZone(data, true, config.ProtectedZoneShippedRel); err != nil {
+			t.Errorf("template shipped manifest does not parse (REQ-SIPZ-015 ii): %v", err)
+		}
+	})
+
+	t.Run("DeadEntries", func(t *testing.T) {
+		load := config.LoadProtectedZone(repo)
+		if load.State != config.ZoneStateOK {
+			t.Fatalf("dogfood manifests: state=%q", load.State)
+		}
+		wantPaths, wantRuntime := 0, 0
+		for i := range load.Zone.Entries {
+			if load.Zone.Entries[i].Runtime {
+				wantRuntime++
+			} else {
+				wantPaths++
+			}
+		}
+		templateTree := os.DirFS(filepath.Join(repo, "internal", "template", "templates"))
+		shippedSweep, err := config.SweepZoneEntries(load.Zone, config.ProtectedZoneShippedRel, templateTree)
+		if err != nil {
+			t.Fatalf("shipped sweep: %v", err)
+		}
+		overlaySweep, err := config.SweepZoneEntries(load.Zone, config.ProtectedZoneOverlayRel, os.DirFS(repo))
+		if err != nil {
+			t.Fatalf("overlay sweep: %v", err)
+		}
+		for _, e := range shippedSweep.Dead {
+			t.Errorf("dead shipped entry %q (category %s) matches nothing in the template tree (REQ-SIPZ-015 iii)", e.Raw, e.Category)
+		}
+		for _, e := range overlaySweep.Dead {
+			t.Errorf("dead overlay entry %q (category %s) matches nothing in the local tree (REQ-SIPZ-015 iii)", e.Raw, e.Category)
+		}
+		resolved := shippedSweep.Resolved + overlaySweep.Resolved
+		skipped := shippedSweep.Skipped + overlaySweep.Skipped
+		if resolved != wantPaths {
+			t.Errorf("sweep resolved %d paths entries, want %d (the number the files declare)", resolved, wantPaths)
+		}
+		if skipped != wantRuntime {
+			t.Errorf("sweep skipped %d runtime_paths entries, want %d", skipped, wantRuntime)
+		}
+		t.Logf("resolved=%d skipped=%d", resolved, skipped)
+	})
+
+	t.Run("HandlerDenies", func(t *testing.T) {
+		root := newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+		h := zoneTestHandler(t, root)
+		d, r := zoneCall(t, h, "Write", harnessLearnerIdentity, zoneWrite("zone_dir/a.md"))
+		wantZoneDeny(t, "end to end", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	})
+}

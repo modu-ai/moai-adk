@@ -779,6 +779,21 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// Protected-zone shell rule (SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 M3).
+	// An identity Bash command pairing one of the thirteen mutating forms with
+	// a zone-covered argument or redirection target is denied; anything
+	// unclassifiable under-matches and passes. Sits after every existing shell
+	// guard so an earlier deny is preserved.
+	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+		if reason := h.checkProtectedZoneShell(input.AgentType, input.ToolInput); reason != "" {
+			slog.Warn("protected zone shell violation",
+				"agent_id", input.AgentID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
+		}
+	}
+
 	// Agent/Task spawn model observation. Placed LAST — after every existing
 	// deny path — so inserting it cannot displace an established decision
 	// (the Bash dangerous-pattern deny, the branch guard, the file-access
