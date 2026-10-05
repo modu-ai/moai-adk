@@ -1,6 +1,6 @@
 # decision-index.md — SPEC-MEMORY-FOLD-BUDGET-001
 
-Questions the interview did not settle, one row each. Detect → Explain → Ask: each row says what is unresolved and why. Labels use the fixed vocabulary `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER`. Revision 0.3.0 (plan delta for audit iteration 2): the two product-level rows (Q1, Q7) now carry the operator's own confirmation; the two evidence rows (Q3, Q6) state that no requirement depends on them and why that leaves them non-blocking for the Kickoff; every `Default:` names the step of the published default rule that selects it; Q7 is kept because the SessionStart follow-up card inherits it; Q4's default text follows the single archive-index definition of `spec.md` §1.5. Revision 0.2.0 had added `Class:` to every row, dated `DEFAULT-APPLIED` verdicts to the implementation-level rows, and the ninth row (Q9).
+Questions the interview did not settle, one row each. Detect → Explain → Ask: each row says what is unresolved and why. Labels use the fixed vocabulary `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER`. Revision 0.3.0 (plan delta for audit iteration 2): the two product-level rows (Q1, Q7) now carry the operator's own confirmation; the two evidence rows (Q3, Q6) state that no requirement depends on them and why that leaves them non-blocking for the Kickoff; every `Default:` names the step of the published default rule that selects it; Q7 is kept because the SessionStart follow-up card inherits it; Q4's default text follows the single archive-index definition of `spec.md` §1.5. Revision 0.4.0 (run-entry delta for audit iteration 3): adds the tenth row (Q10, plan OD-11, the card-close execution bound), which the plan had named as recorded here without a row, and refreshes the `DEFAULT-APPLIED` stamps of Q2, Q4, Q5, Q8 and Q9 after re-reading their text against the current SPEC; no other row changed. Revision 0.2.0 had added `Class:` to every row, dated `DEFAULT-APPLIED` verdicts to the implementation-level rows, and the ninth row (Q9).
 
 Source note for the two operator verdicts below (Q1, Q7). Both were confirmed by the operator directly on 2026-10-04 and relayed through the leader's question channel. That relay is the only source recorded: no row cites a file as an `Authority anchor`, and no verdict rests on a gitignored report. The rows keep the label `FOUNDER` because no committed setting or completed SPEC decides them.
 
@@ -20,7 +20,7 @@ Authority anchor: none.
 Why unresolved: both mechanisms exist in this subsystem (an environment kill switch for the audit; typed configuration sections elsewhere), and the cost and discoverability differ; no setting names the intended one.
 Default: environment variable read at the call site, with a compiled default constant (rule: step 3 of the published default rule — the option with the smaller user-visible surface, since a configuration key adds a typed struct, a loader and a template mirror; consistent with the `MOAI_MEMORY_AUDIT` kill-switch precedent in `internal/hook/post_tool.go` and `session_start.go` and with the operator's environment-variable gate for Q1).
 Alternate: a key in a configuration section (needs a typed struct, a loader, a template mirror and the loader-completeness test).
-Operator verdict: DEFAULT-APPLIED 2026-10-04T10:59:44Z claude lane-18 via manager-spec
+Operator verdict: DEFAULT-APPLIED 2026-10-05T02:03:11Z claude via manager-spec
 
 ### Q3: Which measure and which byte cap should the 80 % warning be tied to? (OD-3, OD-4)
 
@@ -41,7 +41,7 @@ Authority anchor: none.
 Why unresolved: creating a new month index automatically conflicts with the orphan audit's three-link threshold (measured at the pinned tree), while never creating one leaves month rollover as a manual step; which cost the operator prefers is not recorded anywhere.
 Default: file into the archive index defined once in `spec.md` §1.5 — among the `project_card_archive_<YYYY>_<MM>.md` files that `MEMORY.md` links and that exist, the greatest name; never create one; refuse, naming the file, when none qualifies (naming any unlinked archive-pattern file as the one to link) or when it would carry fewer resolved links than the doctor's threshold after the fold (rule: step 3 of the published default rule — the option with the smaller user-visible surface, since creating an index adds a file and a pointer line to `MEMORY.md`; grounded in measured premise P7 and consistent with `.claude/rules/moai/workflow/moai-memory.md` § Compressing the index means making entries shorter — never fewer and § Admission — acceptance is reachability).
 Alternate: create the month's archive index when missing (adds a pointer line to `MEMORY.md` and still needs the threshold's links).
-Operator verdict: DEFAULT-APPLIED 2026-10-04T10:59:44Z claude lane-18 via manager-spec
+Operator verdict: DEFAULT-APPLIED 2026-10-05T02:03:11Z claude via manager-spec
 
 ### Q5: Does a card line need both a title-leading card id and a card-identifying link target? (OD-7)
 
@@ -51,7 +51,7 @@ Authority anchor: none.
 Why unresolved: the card names both signals ("link target AND text naming the card id") without saying whether either alone is enough; a looser rule would move general-discipline lines that merely cite a card, a stricter one leaves unusual lines behind as reported-but-kept.
 Default: conjunctive — both signals; one signal is AMBIGUOUS, reported and never moved (rule: step 3 of the published default rule — the option with the smaller user-visible surface, since the conjunctive rule moves fewer lines; `moai-memory.md` § Admission keeps general discipline in the always-loaded index, and the fail-safe direction of `.claude/rules/moai/core/askuser-protocol.md` § The three adopted conditions applies — "when uncertain, escalate, never downgrade").
 Alternate: disjunctive — either signal moves the line.
-Operator verdict: DEFAULT-APPLIED 2026-10-04T10:59:44Z claude lane-18 via manager-spec
+Operator verdict: DEFAULT-APPLIED 2026-10-05T02:03:11Z claude via manager-spec
 
 ### Q6: Is link repair part of this card, and what similarity counts as unambiguous? (OD-8)
 
@@ -79,7 +79,7 @@ Authority anchor: none.
 Why unresolved: the card says "rewrite or move, never delete" without choosing; an absolute path can itself be dead on another machine, and moving the line is the fold's job rather than a link repair's. This question belongs to the split-out half: the repo-relative-link rewrite moves to the follow-up card (leader ruling, option A, 2026-10-04).
 Default: within this card a repo-relative link is left exactly as written and only reported as `MEMORY_REPO_RELATIVE_LINK` (rule: step 1 of the published default rule — the option that preserves current behavior, since the doctor today rewrites nothing; and `moai-memory.md` § Compressing the index — never fewer, which forbids removing or rewriting an entry's reach).
 Alternate: rewrite to the absolute path when the file exists under the project root (the follow-up card's candidate), or move the line (the fold's job).
-Operator verdict: DEFAULT-APPLIED 2026-10-04T10:59:44Z claude lane-18 via manager-spec
+Operator verdict: DEFAULT-APPLIED 2026-10-05T02:03:11Z claude via manager-spec
 
 ### Q9: Does the fold preview by default or apply by default? (OD-6)
 
@@ -89,4 +89,14 @@ Authority anchor: none.
 Why unresolved: the card asks for consistency with the existing memory verbs, but they differ: measured at the pinned tree, `moai memory drain` previews by default and takes `--yes`, while `moai memory archive` applies immediately.
 Default: preview by default, `--yes` applies (rule: step 3 of the published default rule — the option with the smaller user-visible surface, since a preview writes nothing; the `moai memory drain` precedent, `.claude/rules/moai/workflow/moai-memory.md` § Worktree Mirror and Drain — "Preview by default (writes nothing)").
 Alternate: apply by default, as `moai memory archive` does.
-Operator verdict: DEFAULT-APPLIED 2026-10-04T10:59:44Z claude lane-18 via manager-spec
+Operator verdict: DEFAULT-APPLIED 2026-10-05T02:03:11Z claude via manager-spec
+
+### Q10: What value and ceiling does the card-close execution bound carry? (plan.md OD-11)
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none.
+Why unresolved: REQ-MFB-007 requires the fold step on a close path to be bounded by a configuration constant with a stated value and a ceiling, and no committed setting or completed SPEC fixes the number; the choice trades how long an interactive `todo done` may wait on a blocked store against how much honest fold work the bound lets finish. It is a run-time default, not a Kickoff blocker: it is an implementation-level row that carries a `Default:`, so the published rule in `manager-spec.md` fills its verdict at plan close and no operator answer is required to enter the run.
+Default: value `DefaultMemoryFoldOnDoneBound = 2 * time.Second`, ceiling 5 seconds asserted by name in the test, applied per card (rule: step 3 of the published default rule — the option with the smaller user-visible surface, since a short bound delays a close path least and reuses the repository's own 2-second calibration for advisory side work in a one-shot process, `internal/config/defaults.go` `DefaultHookAsyncJoinTimeout`, `DefaultTraceFlushTimeout`, `DefaultSessionStartDriftTimeout`; the work bounded is one file read, one append and one rename).
+Alternate: a value in minutes, or no bound (a blocked store read would then stall the close command; premise P11).
+Operator verdict: DEFAULT-APPLIED 2026-10-05T02:03:11Z claude via manager-spec
