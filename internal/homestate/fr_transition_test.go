@@ -331,33 +331,9 @@ func TestFR_AC006_RacingWritersExactlyOneWins(t *testing.T) {
 	}
 }
 
-// AC-019 — the CI edges are reserved for F3 and refused, even with a
-// caller-supplied file claiming a green CI run.
-func TestFR_AC019_ReservedCIEdgesRefused(t *testing.T) {
-	db := frOpen(t)
-	repo := frNewRepo(t, true)
-	ctx := context.Background()
-	claim := filepath.Join(t.TempDir(), "ci-green.json")
-	frWrite(t, claim, `{"merge_sha":"`+repo.Merge+`","conclusion":"success"}`)
-	for _, pair := range [][2]string{{CardPushed, CardCIGreen}, {CardCIGreen, CardDone}} {
-		cardID := "reserved-" + pair[0]
-		c := frFixtureCard(repo, cardID, pair[0], pair[1])
-		c.Version = 1
-		frPlace(t, db, c)
-		before := frRowDump(t, db, frRun, cardID)
-		for _, withClaim := range []bool{false, true} {
-			req := frFullRequest(repo, c, pair[1])
-			if withClaim {
-				req.ArtifactPath = claim
-				req.RemeasurePath = claim
-			}
-			_, err := db.Transition(ctx, req)
-			if !errors.Is(err, ErrReservedEdge) || !strings.Contains(err.Error(), "F3") {
-				t.Fatalf("%s → %s (claim=%v) err = %v, want ErrReservedEdge naming F3", pair[0], pair[1], withClaim, err)
-			}
-			if after := frRowDump(t, db, frRun, cardID); after != before {
-				t.Fatalf("%s → %s changed the record", pair[0], pair[1])
-			}
-		}
-	}
-}
+// AC-019 — the still-reserved CI edge (pushed → ci-green) is refused, even
+// with a caller-supplied file claiming a green CI run. ci-green → done left
+// the reserved set in M1: the receipt gate admits it
+// (TestFR_FCR_T20DoneRequiresReceipt, SPEC-FACTORY-COMPLETION-RECOVERY-001
+// REQ-FCR-002b).
+

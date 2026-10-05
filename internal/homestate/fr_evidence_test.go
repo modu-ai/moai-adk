@@ -223,21 +223,33 @@ func TestFR_AC018_PushGateStore(t *testing.T) {
 	}
 
 	bare := frNewRepo(t, false)
-	n := Card{RunID: frRun, CardID: "noremote", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: bare.Dir, MergeSHA: bare.Merge}
+	n := Card{RunID: frRun, CardID: "noremote", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: bare.Dir, MergeSHA: bare.Merge, EvidenceSHA: bare.Commit}
 	frPlace(t, db, n)
 	if target, err := PushGateTarget(ctx, n); err != nil || target != CardDone {
 		t.Fatalf("PushGateTarget(no remote) = %q err=%v, want done", target, err)
 	}
+	// REQ-FCR-002b (SPEC-FACTORY-COMPLETION-RECOVERY-001): the no-remote edge
+	// no longer completes without the leader's receipt — the expectation the
+	// pre-M1 gate asserted ("no remote — no CI verdict" admits receipt-less
+	// done) is inverted here.
 	done, err := decide(n, CardDone)
+	if !errors.Is(err, ErrApprovalMissing) {
+		t.Fatalf("no-remote done without receipt err = %v, want ErrApprovalMissing", err)
+	}
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-noremote", RunID: frRun, CardID: n.CardID, FactoryVersion: 1,
+		EvidenceHash: bare.Commit, Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
+	})
+	done, err = decide(n, CardDone)
 	if err != nil || done.State != CardDone {
-		t.Fatalf("no-remote push gate: state=%s err=%v", done.State, err)
+		t.Fatalf("no-remote push gate with receipt: state=%s err=%v", done.State, err)
 	}
 	events := frEvents(t, db, "card.transition")
 	var payload map[string]any
 	if err := json.Unmarshal([]byte(events[len(events)-1]), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if payload["note"] != "no remote — no CI verdict" {
-		t.Fatalf("no-remote event note = %v, want %q", payload["note"], "no remote — no CI verdict")
+	if payload["note"] != "no remote — leader approval verified" {
+		t.Fatalf("no-remote event note = %v, want %q", payload["note"], "no remote — leader approval verified")
 	}
 }

@@ -139,6 +139,17 @@ CREATE TABLE IF NOT EXISTS handoff_events (
   detail TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS leader_approvals (
+  card_uuid TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  card_id TEXT NOT NULL,
+  factory_version INTEGER NOT NULL,
+  evidence_hash TEXT NOT NULL,
+  issuer TEXT NOT NULL,
+  issuer_role TEXT NOT NULL,
+  issued_at TEXT NOT NULL,
+  PRIMARY KEY(card_uuid, run_id)
+);
 `
 
 type FactoryDB struct {

@@ -89,6 +89,7 @@ const (
 	guardAbandon
 	guardFail
 	guardKickoffAudit
+	guardApprovalDone
 )
 
 type transitionEdge struct {
@@ -126,6 +127,7 @@ func buildTransitionTable() []transitionEdge {
 		{"T16", CardMerging, CardMergedLocal, guardMerge},
 		{"T17", CardMergedLocal, CardPushed, guardPush},
 		{"T18", CardMergedLocal, CardDone, guardNoRemote},
+		{"T20", CardCIGreen, CardDone, guardApprovalDone},
 	}
 	t21 := append(append([]string{CardPicked, CardAssigned}, leaseHoldingStates...), CardMergedLocal, CardPushed, CardCIGreen)
 	for _, from := range t21 {
@@ -150,7 +152,7 @@ func buildTransitionTable() []transitionEdge {
 }
 
 // TransitionEdges returns the requested edges of the transition table
-// (T2-T26 without the reserved T19/T20; T1 creates a row and T27/T28 are
+// (T2-T26 without the still-reserved T19; T1 creates a row and T27/T28 are
 // automatic, so none of them is a requested pair).
 func TransitionEdges() []TransitionEdge {
 	out := make([]TransitionEdge, 0, len(transitionTable))
@@ -169,8 +171,12 @@ func findEdge(from, to string) (transitionEdge, bool) {
 	return transitionEdge{}, false
 }
 
+// isReservedEdge — pushed → ci-green stays reserved: the CI verdict reader
+// that admits it is M2's (REQ-FCR-010). ci-green → done left the reserved
+// set in M1: the receipt gate inside the transition admits it
+// (guardApprovalDone; REQ-FCR-002b).
 func isReservedEdge(from, to string) bool {
-	return (from == CardPushed && to == CardCIGreen) || (from == CardCIGreen && to == CardDone)
+	return from == CardPushed && to == CardCIGreen
 }
 
 // resumeTarget maps a needs-decision card's recorded resume state onto the
@@ -574,7 +580,14 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			if remote {
 				return plan, fmt.Errorf("%w: merged-local → done is refused while a remote is configured", ErrIllegalTransition)
 			}
-			plan.note = "no remote — no CI verdict"
+			// REQ-FCR-002b: a repository with no remote still does not
+			// complete without the leader's receipt — the gate runs inside
+			// this transition's transaction, so it binds the row as the
+			// transition will commit it.
+			if err := verifyTransitionApproval(ctx, tx, cur); err != nil {
+				return plan, err
+			}
+			plan.note = "no remote — leader approval verified"
 		} else {
 			if !remote {
 				return plan, fmt.Errorf("%w: merged-local → pushed requires a configured remote", ErrIllegalTransition)
@@ -586,6 +599,17 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			plan.evidence["merge_sha"], plan.evidence["remote_ref"] = cur.MergeSHA, ref
 		}
 		plan.next.Decider, plan.next.DecidedAt = DeciderHuman, nowText
+	case guardApprovalDone:
+		// T20 (ci-green → done), the reserved edge M1 admits (REQ-FCR-002b,
+		// REQ-FCR-010): the receipt gate inside the transition — a CI reader
+		// never opens a done edge, and nothing else does either.
+		if req.Decider != DeciderHuman {
+			return plan, fmt.Errorf("%w: F1 accepts only decider %q, got %q", ErrDecider, DeciderHuman, req.Decider)
+		}
+		if err := verifyTransitionApproval(ctx, tx, cur); err != nil {
+			return plan, err
+		}
+		plan.note = "leader approval verified"
 	case guardQuestion:
 		q := strings.TrimSpace(req.Question)
 		if q == "" {
