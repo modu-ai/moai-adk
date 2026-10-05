@@ -191,6 +191,21 @@ author: manager-spec
   no second standard); closure THIRTEEN skills + the factory agent
   dependency; `moai-domain-html-report` alone stays out. Evidence:
   research §2b W12.
+- v0.6.1 DIRECTED REPAIR (leader order, post-convergence; the leader
+  audit's two P2s promoted into plan content — the last edit before the
+  auditor spawn + fresh receipt ceremony): R-a — the class-clause sweep
+  now classifies hits into TWO populations checked differently (design
+  §2.5 + plan M4): MOVED-asset references (skills/agents) rewritten with
+  zero-hit-after-rebind on that population ONLY; PROJECT-RETAINED
+  references (rules/hooks staying project-side — run/phase-execution.md:
+  208-210, run.md `.claude/rules` ×13 + trace-ledger.sh :28, sync.md:43
+  quality-gate hook, plan.md:47 spec-workflow) verified
+  present-and-correct, never rewritten, never swept to zero; sweep
+  evidence records both populations + the scoping decision. R-b — the
+  manager-git bundle precheck extended to ALL entry points: sync delivery
+  Route B + the run flow's Route B (task-decomposition.md:302-303,
+  Phase 19, W13); design §2.5 policy block + plan M3 + AC-018 arm
+  verifies BOTH paths.
 
 ## §E.2 Run-phase Evidence
 

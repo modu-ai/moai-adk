@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "design.md — user-folder asset install architecture"
-version: "0.6.0"
+version: "0.6.1"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -373,14 +373,21 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   grep over the user-scope deployed sources
   (`templates/.claude/skills/**`, `templates/.agents/skills/**`) for the
   project-relative path patterns (`.claude/`, `.agents/`, `.codex/`
-  path-shaped references), zero-hit after the rebind, counted per M4
-  evidence (measured shape on tree `06faee0b4`: dispatcher 18 Read-rows +
-  1 raw in-prose occurrence at SKILL.md:282 = 19; workflows subtree broad
-  pattern = 274 raw occurrences across the 26 top-level files and the
-  plan/project/references/run/sync subdirectories); (b) the RUN-PHASE
-  LOADING ACs (AC-002/AC-017 arms). Standing rule (operator, recorded in
-  the verdict file): any NEW gate finding after this round is run-phase
-  debt — no further plan folds.
+  path-shaped references) — CLASSIFIED INTO TWO POPULATIONS THAT ARE
+  CHECKED DIFFERENTLY (directed repair R-a, v0.6.1): (1) MOVED-ASSET
+  references — skills/agents paths M4 relocates user-side — are REWRITTEN,
+  and zero-hit-after-rebind is measured on THIS POPULATION ONLY; (2)
+  PROJECT-RETAINED references — rules/settings/hooks that STAY
+  project-side — are verified PRESENT-AND-CORRECT at their project paths
+  and are NEVER rewritten and NEVER swept to zero (measured instances:
+  `workflows/run/phase-execution.md:208-210` `.claude/rules/moai/
+  languages/*.md`, run.md's `.claude/rules` references (13 measured this
+  tree) + the `trace-ledger.sh` hook call (:28), `sync.md:43` the
+  quality-gate hook, `plan.md:47` the spec-workflow pointer); the sweep
+  evidence records BOTH populations and the scoping decision; (b) the
+  RUN-PHASE LOADING ACs (AC-002/AC-017 arms). Standing rule (operator,
+  recorded in the verdict file): any NEW gate finding after this round is
+  run-phase debt — no further plan folds.
 - Sub-workflow recursive rebind (final-class item 1): the class clause
   reaches the dispatcher's POINTED-TO documents — the workflows tree
   itself carries project-relative references (top-level `.md` files with
@@ -420,14 +427,19 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   (manager-docs) would blur the DRI the agent catalog owns (PR/branch
   delivery specialty), and D-Q1's five-agent answer is settled. manager-git's
   role body ships in an OPT-IN bundle (the D-Q5 re-bundling assigns it —
-  the git/delivery theme), and the Route B row gains an entry PRECONDITION:
+  the git/delivery theme), and the Route B rows gain an entry PRECONDITION:
   the flow verifies the manager-git role body is installed and, when it is
   not, refuses with the named remediation `moai bundle add <bundle>` per
   C4's actionable-report rule — never a missing-file error mid-flow. The
-  default Route A flow (manager-docs + lane self-delivery) needs nothing
-  beyond L0. Anchors: design §2.3 (bundle assignment), plan M3 (the
+  precheck covers ALL manager-git ENTRY POINTS (directed repair R-b,
+  v0.6.1): the sync delivery Route B row AND the run flow's Route B
+  (`workflows/run/task-decomposition.md:302-303` — "Route B — Tier L OR
+  explicit `--pr`: Agent: manager-git subagent", wired at Phase 19) — the
+  same verify-or-refuse + remediation on both. The default Route A flow
+  (manager-docs + lane self-delivery) needs nothing beyond L0. Anchors:
+  design §2.3 (bundle assignment), plan M3 (the
   precondition check rides the `moai bundle` command milestone), AC-018
-  (the requires-unopted-bundle arm).
+  (the requires-unopted-bundle arm over BOTH entry points).
 - Dispatcher reference rebind at SOURCE level (round-5 F2): the published
   command skills are GENERATED artifacts — the command sources under
   `.claude/commands/moai/` are consumed READ-ONLY by the

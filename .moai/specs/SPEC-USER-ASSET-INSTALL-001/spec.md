@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
-version: "0.6.0"
+version: "0.6.1"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -124,6 +124,22 @@ related_specs: [SPEC-PLUGIN-MARKETPLACE-001, SPEC-INIT-SHRINK-001, SPEC-CODEX-CO
   (default-flow reachability corrects fold B1's prefix classification) —
   closure ELEVEN; (8) stale "eight-skill" labels re-pointed (plan,
   research; progress keeps its history entry).
+- 2026-10-06: v0.6.1 DIRECTED REPAIR (leader order, post-convergence; the
+  leader audit's two P2s promoted from run-debts into plan content — the
+  last edit before the auditor spawn). R-a — the class-clause sweep now
+  CLASSIFIES its hits into two populations checked differently (design
+  §2.5 + plan M4): MOVED-asset references (skills/agents paths) are
+  rewritten with zero-hit-after-rebind measured on that population ONLY;
+  PROJECT-RETAINED references (rules/settings/hooks staying project-side
+  — measured instances: run/phase-execution.md:208-210, run.md's
+  `.claude/rules` references + the trace-ledger.sh hook call, sync.md:43
+  quality-gate hook, plan.md:47 spec-workflow pointer) are verified
+  present-and-correct at their project paths, never rewritten, never
+  swept to zero. R-b — the manager-git bundle precheck covers ALL entry
+  points: the sync delivery Route B AND the run flow's Route B
+  (task-decomposition.md:302-303, Phase 19) — design §2.5 policy block +
+  plan M3 + AC-018 arm verifies both. (The in-round E1/E2 extensions and
+  the final-class round items 1-8 remain as recorded above.)
 
 ## 1. Background and Premise
 

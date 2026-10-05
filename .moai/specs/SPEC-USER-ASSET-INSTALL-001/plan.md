@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "plan.md — implementation plan"
-version: "0.6.0"
+version: "0.6.1"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -186,7 +186,9 @@ concurrent init/update/bundle runs from different projects cannot lose one
 another's writes), the pending-install journal RECONCILIATION at run start
 (final-class item 5 — journal-expected-hash match completes the run's own
 interrupted installs before any collision judgment), the Route B entry
-precondition (final-class item 4 — the Tier L/`--pr` delivery verifies the
+precondition at ALL manager-git entry points (final-class item 4 +
+directed repair R-b — BOTH the sync delivery Route B AND the run flow's
+Route B at task-decomposition.md:302-303/Phase 19: each verifies the
 manager-git role body is installed and refuses with the named
 `moai bundle add <bundle>` remediation per C4 when the git-delivery bundle
 is unopted), ordering before the project phase, no regression of the
@@ -218,8 +220,16 @@ round, design §2.5): the recursive rebind covers the workflows tree
 itself (dispatcher 19 raw occurrences incl. the SKILL.md:282 in-prose
 one; the workflows subtree's project-relative references — broad-pattern
 sweep, measured 274 raw occurrences across the 26 top-level files and
-the plan/project/references/run/sync subdirectories) — zero-hit after
-the rebind, recorded as M4 evidence. MIRROR-REPAIR TERMINATION
+the plan/project/references/run/sync subdirectories) — the sweep
+CLASSIFIES its hits into the two populations of design §2.5 (directed
+repair R-a) and records both in the evidence: (1) MOVED-asset references
+(skills/agents paths) — rewritten, zero-hit-after-rebind measured on this
+population ONLY; (2) PROJECT-RETAINED references (rules/hooks staying
+project-side — measured instances: run/phase-execution.md:208-210
+language rules, run.md's `.claude/rules` references + the trace-ledger.sh
+hook call, sync.md:43 quality-gate hook, plan.md:47 spec-workflow
+pointer) — verified present-and-correct at their project paths, never
+rewritten, never swept to zero. MIRROR-REPAIR TERMINATION
 (final-class item 6): remove the update-time
 `repairSkillMirrorBestEffort()` call (`internal/cli/update.go:535`) —
 `RepairSkillMirror`'s Path B re-creates the seventeen published copies
