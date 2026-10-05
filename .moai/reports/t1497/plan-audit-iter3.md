@@ -47,7 +47,7 @@ The finding: registering the hidden `retention-prune` verb breaks `TestHookValid
 
 ## Fail Receipts — Adjudicated Inputs (standing record)
 
-`rcpt-b1711dc2551a0500a04de518` (round-1 P2s → adopted `eccd62531`), `rcpt-25a06b9e9ee7c784137d0615` (round-2 P2 → adopted `8a430d101`), `rcpt-b58c078c10b08c840293b603` + `rcpt-d59eddb51a4f46ecf1a5c71c` + `rcpt-2be4305e55c50ac69435b347` (gate-unmet stream-closes from this lane's stdio driver — three consecutive, diagnosed contention, not findings; the driver is retired at the retry ceiling). `rcpt-e10d81162cc1ac86b41e811c` (14:54:31Z, PASS) corroborated delta-2 at its snapshot. The delta-3 corroboration receipt is cited in the final verdict line below.
+`rcpt-b1711dc2551a0500a04de518` (round-1 P2s → adopted `eccd62531`), `rcpt-25a06b9e9ee7c784137d0615` (round-2 P2 → adopted `8a430d101`), `rcpt-b58c078c10b08c840293b603` + `rcpt-d59eddb51a4f46ecf1a5c71c` + `rcpt-2be4305e55c50ac69435b347` (gate-unmet stream-closes from this lane's stdio driver — three consecutive, diagnosed contention, not findings; the driver is retired at the retry ceiling). `rcpt-e10d81162cc1ac86b41e811c` (14:54:31Z, PASS) corroborated delta-2 at its snapshot. The delta-3 corroboration receipt is cited in the final verdict line below. Additional corroboration (2026-10-06 ~00:2x): this lane's session codex_audit (adversarial, final tree `c6140ad9a`) returned **pass, zero findings** — "iter3 hash matches, strict lint passes, the real kickoff consumer's verdict acceptance confirmed, the utilitySubcmds before/after behavior reproduced" — its result carries no minted receipt (session server predates the minting feature), so it stands as a recorded verdict, not a citable receipt.
 
 ## Defects Found (delta)
 
