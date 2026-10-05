@@ -16,10 +16,19 @@ ANCHOR="name: Check all required CI checks passed"
 MATCHES="$(grep -c "$ANCHOR" "$WF" 2>/dev/null || true)"
 [ -n "$MATCHES" ] || MATCHES=0
 BODY="$(awk -v ANCHOR="$ANCHOR" '
-  index($0, ANCHOR) { grab = 1; next }
-  grab && index($0, "run: |") { runblock = 1; next }
-  grab && runblock && match($0, /^ */) && RLENGTH < 10 && $0 !~ /^ *$/ { exit }
-  grab && runblock { print }
+  index($0, ANCHOR) {
+    if (!grab) { match($0, /^ */); si = RLENGTH; grab = 1; next }
+  }
+  grab && match($0, /^ */) && RLENGTH < si && $0 !~ /^ *$/ { exit }
+  grab && !runfound && /^ *run: */ {
+    line = $0; sub(/^ *run: */, "", line)
+    if (line ~ /^[>|][+-]?[0-9]*$/) { runblock = 1; next }
+    print line; exit
+  }
+  grab && runblock {
+    if (match($0, /^ */) && RLENGTH < 10 && $0 !~ /^ *$/) { exit }
+    sub(/^ {10}/, ""); print
+  }
 ' "$WF")"
 
 # Extraction guard (amendment 4): a renamed step or changed YAML structure must
@@ -39,11 +48,11 @@ printf '%s\n' "$BODY" > "$SCRIPT"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # GITHUB_OUTPUT is a regular temp file (P2-F): /dev/stdout is refused in
 # restricted environments, which silently drops the should_merge observation.
-# Actions executes a shell:-less step as `bash -e -o pipefail` (P2-E); the
-# body's exit code is captured so the wrapper can print the emitted outputs
-# before propagating it.
+# Actions executes a shell:-less step as `bash -e` (P2-T: -e parity, NO
+# pipefail — that flag is not in the runner default); the body's exit code is
+# captured so the wrapper can print the emitted outputs before propagating it.
 rc=0
-PATH="$HERE/stubbin:$PATH" GITHUB_OUTPUT="$OUT" MAX_WAIT=1 bash -e -o pipefail "$SCRIPT" || rc=$?
+PATH="$HERE/stubbin:$PATH" GITHUB_OUTPUT="$OUT" MAX_WAIT=1 bash -e "$SCRIPT" || rc=$?
 echo "--- GITHUB_OUTPUT ---"
 cat "$OUT"
 exit "$rc"

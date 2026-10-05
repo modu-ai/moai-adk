@@ -28,10 +28,19 @@ JOBS="test-sh test-ps1-pwsh test-ps1-powershell test-bat compatibility-check ins
 MATCHES="$(grep -c "$ANCHOR" "$WF" 2>/dev/null || true)"
 [ -n "$MATCHES" ] || MATCHES=0
 BODY="$(awk -v ANCHOR="$ANCHOR" '
-  index($0, ANCHOR) { grab = 1; next }
-  grab && index($0, "run: |") { runblock = 1; next }
-  grab && runblock && match($0, /^ */) && RLENGTH < 10 && $0 !~ /^ *$/ { exit }
-  grab && runblock { print }
+  index($0, ANCHOR) {
+    if (!grab) { match($0, /^ */); si = RLENGTH; grab = 1; next }
+  }
+  grab && match($0, /^ */) && RLENGTH < si && $0 !~ /^ *$/ { exit }
+  grab && !runfound && /^ *run: */ {
+    line = $0; sub(/^ *run: */, "", line)
+    if (line ~ /^[>|][+-]?[0-9]*$/) { runblock = 1; next }
+    print line; exit
+  }
+  grab && runblock {
+    if (match($0, /^ */) && RLENGTH < 10 && $0 !~ /^ *$/) { exit }
+    sub(/^ {10}/, ""); print
+  }
 ' "$WF")"
 
 # Extraction guard (amendment 4): a renamed step or changed YAML structure must
@@ -60,12 +69,12 @@ run_variant() {
   printf '%s\n' "$SUB" > "$VARIANT_SCRIPT"
   rc=0
   # Body stdout suppressed: the recorded observation is the per-variant exit.
-  bash -e -o pipefail "$VARIANT_SCRIPT" >/dev/null || rc=$?
+  bash -e "$VARIANT_SCRIPT" >/dev/null || rc=$?
   rm -f "$VARIANT_SCRIPT"
   echo "variant $label: exit $rc"
 }
 
-echo "E7 input matrix (Actions default shell: bash -e -o pipefail; 1 control + 24 single-failure cases):"
+echo "E7 input matrix (Actions default shell: bash -e (no pipefail); 1 control + 24 single-failure cases):"
 run_variant "A-full-success" "" ""
 
 for j in $JOBS; do

@@ -35,7 +35,7 @@ Document-level tree pin: **`a158b4b5f`** (verified via `git rev-parse --short HE
 | E4 | Checks-lookup failure/empty output yields `should_merge=true` (auto-merge.yml:91-129 loop: `2>&1` capture + `\|\| true`, merge decision only from FAILED>0 / PENDING==0) — body extracted from the LIVE workflow at run time; stub at `repro/stubbin/gh` | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-checks-loop.sh` | verbatim block L-E4 | 0 | a158b4b5f |
 | E5 | Job budget 20 min vs internal waits 10+15=25 min | `grep -n 'timeout-minutes\|MAX_WAIT' .github/workflows/auto-merge.yml` | verbatim block L-E5 (7 lines, full) | 0 | a158b4b5f |
 | E6 | Install summary never tests `cancelled` | `grep -c 'cancelled' .github/workflows/test-install.yml` | `0` | 1 | a158b4b5f |
-| E7 | Summary rejects only `failure` — FULL per-dependency matrix (P2-I + leader addendum + t1543 P2-N): the control plus EVERY dependency in the needs set flipped one at a time to EACH of `failure`/`cancelled`/`timed_out`/`skipped` (6 × 4 = 24 single-failure cases + control = 25). Pre-repair TWO-CLASS: 6 `failure` variants exit 1 (the working failure-blocking — control class), 18 non-success variants exit 0 (defect class — non-success invisible), and `install-script-parity-failure` exits 0 (parity not even a dependency — deeper defect). A partial-dependency mutant (checking only test-sh+parity) survives the all-non-success input but fails the failure cases; body extracted from the LIVE workflow at run time | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-install-summary-cancelled.sh` | verbatim block L-E7 (matrix, 25 case exits) | 0 | a158b4b5f |
+| E7 | Summary rejects only `failure` — FULL per-dependency matrix (P2-I + leader addendum + t1543 P2-N): the control plus EVERY dependency in the needs set flipped one at a time to EACH of `failure`/`cancelled`/`timed_out`/`skipped` (6 × 4 = 24 single-failure cases + control = 25). Pre-repair TWO-CLASS: 5 `failure` variants exit 1 (test-sh, test-ps1-pwsh, test-ps1-powershell, test-bat, compatibility-check — the working failure-blocking, control class), 18 non-success variants exit 0 (defect class — non-success invisible), and `install-script-parity-failure` exits 0 (the 6th failure variant — parity not even a dependency, deeper defect). A partial-dependency mutant (checking only test-sh+parity) survives the all-non-success input but fails the failure cases; body extracted from the LIVE workflow at run time | `sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-install-summary-cancelled.sh` | verbatim block L-E7 (matrix, 25 case exits) | 0 | a158b4b5f |
 | E8 | Summary `needs` list (line 338) omits the `install-script-parity` job (defined at line 48) | `grep -n 'install-script-parity\|needs: \[' .github/workflows/test-install.yml` | verbatim block L-E8 | 0 | a158b4b5f |
 | E9 | Required-feature probes print a missing marker but cannot fail (grep -q && echo ✓ \|\| echo ✗) — and the :309 install.sh probe's target is stale (E19) | `grep -n 'MOAI_INSTALL_DIR' .github/workflows/test-install.yml` | verbatim block L-E9 | 0 | a158b4b5f |
 | E10 | Validator with yq absent from PATH: vacuous pass, exit 0 (get_yaml_list `2>/dev/null \|\| true` at :28 swallows the missing parser; empty lists skip every dimension) | `env PATH=/usr/bin:/bin sh scripts/ci-mirror/validate-required-checks.sh` | verbatim block L-E10 | 0 | a158b4b5f |
@@ -82,7 +82,7 @@ L-E5  | grep -n 'timeout-minutes\|MAX_WAIT' .github/workflows/auto-merge.yml
 171:              *)                echo "CodeRabbit status: '${STATE:-<absent>}' - waiting ($WAIT/$MAX_WAIT)" ;;
 
 L-E7  | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-install-summary-cancelled.sh
-E7 input matrix (Actions default shell: bash -e -o pipefail; 1 control + 24 single-failure cases):
+E7 input matrix (Actions default shell: bash -e, no pipefail; 1 control + 24 single-failure cases):
 variant A-full-success: exit 0
 variant test-sh-failure: exit 1
 variant test-sh-cancelled: exit 0
@@ -274,9 +274,9 @@ LEARN MORE
   Learn about accessibility experiences using `gh help accessibility`
 
 L-E26 | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-deadline-mutant.sh
-body_exit=0 calls=1
-body_exit=0 calls=1
-DEFECT: gh pr merge called in BOTH clock runs (1 pre / 1 post, merge_at=1141 > declared_deadline=1140) — deadline never evaluated
+body_exit=0 gh_interactions=1 head_queries=0 merge_calls=1 late_calls=1 (served clock crossed 1100 -> 1200 at first gh contact; deadline 1140)
+gh pr merge 1 --merge --delete-branch | served=1200 late=yes
+DEFECT: merge call(s) served AFTER the deadline crossed (late=1 of 1 merge call(s)) — the clock was not re-evaluated before merging
 
 L-E27 | sh .moai/specs/SPEC-CI-VERDICT-INTEGRITY-001/repro/run-phantom-control.sh
 === Dimension A: Validating auxiliary → workflow name mapping ===
@@ -340,7 +340,7 @@ Files: `release-pr-multi-os.yml`, `auto-merge.yml`, `test-install.yml`.
 | Merge pinned to verified head (AC-CI-003) | E3 + E17 | Merge call passes `--match-head-commit <verified-sha>` and re-reads the head immediately before; mismatch/empty withholds; same read-before-merge verified by reading the repaired step |
 | Lookup failure/empty/never-completes withholds merge (AC-CI-004) | E4 | Lookup requires success + JSON/complete response + required-set coverage; failure → `should_merge=false`; re-run E4's stub against the repaired loop → withholds |
 | Deadline green verification resists the merge-after-deadline mutant (AC-CI-005) | E5 + E26 (REAL-BODY behavioral probe: the merge body runs under two clock inputs and `gh pr merge` is called in BOTH — merge_at=1141 > declared 1140, exit 0) | One deadline smaller than `timeout-minutes`; the merge step re-evaluates the deadline and the head at merge time; the flip evidence is `repro/run-deadline-mutant.sh` re-run on the repaired workflow: `gh pr merge` CALLED pre-deadline and NOT called post-deadline → exit 2 (the auditor's iteration-2 mutant: declared_deadline=1140, merge_at=1141 → exit 0 today, must become withheld); the declared clock interface is env `current_time` + `merge_deadline` (plan §F M2 keep-set note) |
-| Install summary success-only incl. parity (AC-CI-006) | E6 + E7 + E8 | `needs` gains `install-script-parity`; summary requires `success` from every need (failure/cancelled/timed_out/skipped all non-success); E7 re-run on the repaired summary: control exit 0, all 24 single-failure variants non-zero — the 6 `failure` variants keep failing (they already did) and the 18 non-success variants flip from exit 0 |
+| Install summary success-only incl. parity (AC-CI-006) | E6 + E7 + E8 | `needs` gains `install-script-parity`; summary requires `success` from every need (failure/cancelled/timed_out/skipped all non-success); E7 re-run on the repaired summary: control exit 0, all 24 single-failure variants non-zero — the 5 `failure` variants keep failing (they already did), the `install-script-parity-failure` variant and the 18 non-success variants flip from exit 0 |
 | Feature-probe miss fails the step AND the probe list matches the scripts' real surface (AC-CI-007) | E9 + E19 + E20 | Required probes become hard checks (absent target → exit 1); the stale :309 install.sh probe (`MOAI_INSTALL_DIR`, unimplemented per E19) is realigned to the real surface (`--install-dir`); the :317 install.ps1 probe stays (E20); E9's shape no longer ends in `\|\| echo` for required probes |
 
 ### M2 — SSoT correction, parity wiring, validator hardening (Priority High; contains the keep-set gate)
