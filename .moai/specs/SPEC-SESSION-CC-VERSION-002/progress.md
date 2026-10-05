@@ -130,6 +130,34 @@ t1253; CI's dedicated `-timeout 25m`, card t1519) fits, but under multi-lane loa
 not; CI remains the full-suite verdict surface per the gitflow lane protocol §8. **No gap
 remains: the scoped gate and E3 are both measured green at HEAD `dac6ceef2`.**
 
+**Post-close repairs addendum (card-review r1, 2026-10-06, commit `42ed25265`).** Three
+findings, each RED-first then fixed: (P1) `parseClaudeOptionModel` now classifies FIRST-WINS
+per flag — a later flag-prefixed prose line (even at the shallow indent) cannot reclassify an
+option whose synopsis already classified it; RED `TestClaudeHelpReferenceLinesNeverOverwrite`
+exit 1 ("--print classified 1, want boolean", the guard missed a resume behind --print), GREEN
+same test + the derivation fixture. (P2①) the derivation probe sets `cmd.WaitDelay` (1s) —
+exec's default of zero waits for stdout pipe EOF after Cancel, so a wrapper exiting while its
+own backgrounded child holds the pipe blocked launcher entry; RED
+`TestClaudeHelpSynopsisBoundedUnderLingeringChild` (new sibling `lane_resume_probe_test.go`,
+throwaway fixture script, never claude — the derivation test files named by the AC-SCV-012
+no-spawn grep stay free of process references) exit 1 "returned after 27.24s", GREEN 1.2s.
+(P2②) `versionSegmentFromPath` judges the product-directory shapes in PREFERENCE order
+(native …/claude/versions/<v> over npm …/claude-code/<v>, and within a shape the candidate
+closest to the path end), so `/opt/claude-code/9/tools/claude/versions/2.1.281` reads
+2.1.281; RED exit 1 `= "9"`, GREEN all six anchored shapes + four preservation tests.
+
+**Post-close scoped re-measurement (pending item).** The post-repair two-package run launched
+into a fresh load storm (load 38-60): `./internal/session` completed green (`ok 20.893s,
+coverage 86.1%`); `./internal/cli` hit the 60m wall (3601.4s) with exactly two `--- FAIL` —
+`TestFactoryLeaseRecordStallBounded` and `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits`,
+both wall-clock timing-bound tests of the F1 lease machinery. Attribution: `git log
+099250516..HEAD` over the factory_lease files is EMPTY — no commit on this branch touched
+them; both assert sub-second timing bounds that the load storm violates (one passed in
+isolation, one persists at load ~43). PENDING: one package-level re-run in a quiet window
+(load < 15) for the clean local gate; CI remains the verdict surface. All repair-scoped
+families are green at `42ed25265` (the six model/repair tests, r5 instance, polarity and
+residual matrix; lint 0 issues; both builds exit 0).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
@@ -149,7 +177,7 @@ instance is pinned by `TestRemoteControlPrefixValue`; the §A.4 residual is meas
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_status: complete
-sync_commit_sha: 6f646a29d   # D3 backfill — sync 커밋 6f646a29d의 실측 SHA
+sync_commit_sha: 42ed25265   # post-close convergence (t1465 패턴) — card-review r1 수리 트리의 최종 커밋; 원 close 커밋 6f646a29d (D3 backfill)
 sync_complete_at: 2026-10-06
 b12_self_test_a: pass   # grep -c 'SPEC-SESSION-CC-VERSION-002' CHANGELOG.md → 0 before emission (duplicate-free), 1 after (exactly the entry added)
 b12_self_test_c: pass   # every file path named in the CHANGELOG entry verified present: internal/cli/lane_resume.go, internal/cli/lane_resume_model.go, internal/cli/cc.go, internal/cli/factory_lane_relaunch.go, internal/session/ccversion.go
