@@ -18,6 +18,8 @@ import (
 // does not create usage-log.jsonl at all when learning.enabled=false.
 // REQ-HRN-FND-009: reuses the isHarnessLearningEnabled gate.
 func TestRunHarnessObserveStop_NoOpWhenLearningDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
@@ -40,6 +42,8 @@ func TestRunHarnessObserveStop_NoOpWhenLearningDisabled(t *testing.T) {
 // handler does not modify an existing log when learning.enabled=false and a log
 // is already present. REQ-HRN-FND-009: the disabled gate must not touch existing data.
 func TestRunHarnessObserveStop_PreservesExistingLogWhenDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
@@ -79,6 +83,8 @@ func TestRunHarnessObserveStop_PreservesExistingLogWhenDisabled(t *testing.T) {
 // - The raw last_assistant_message MUST NOT be recorded (PII minimization)
 // REQ-HRN-OBS-002, REQ-HRN-OBS-003, REQ-HRN-FND-010.
 func TestRunHarnessObserveStop_RecordsWhenEnabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -165,6 +171,8 @@ func TestRunHarnessObserveStop_RecordsWhenEnabled(t *testing.T) {
 // last_assistant_message is an empty string, the hash/len fields are omitted via omitempty.
 // REQ-HRN-OBS-002: empty message → fields omitted (correct omitempty behavior).
 func TestRunHarnessObserveStop_EmptyMessageNoHashFields(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -200,6 +208,8 @@ func TestRunHarnessObserveStop_EmptyMessageNoHashFields(t *testing.T) {
 // does not return an error on log-write failure (non-blocking) and instead
 // writes to stderr. The failure is induced by replacing the log path with a directory.
 func TestRunHarnessObserveStop_LogErrorPathDoesNotReturn(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)

@@ -37,6 +37,16 @@ func newStopFixture(t *testing.T) *stopFixture {
 // AC-HPR-003 golden deploys a gpt-profile project there first).
 func newStopFixtureAt(t *testing.T, root string) *stopFixture {
 	t.Helper()
+	// SPEC-HARNESS-DETACHED-PRUNE-001 REQ-DP-007: the Stop chain's member 8 is
+	// the harness observer, whose record-then-gate wrapper would spawn a real
+	// detached prune child on any fixture whose gates are on and whose stamp is
+	// absent — overlay-reproduced as `cli.test hook retention-prune …` recursion
+	// (a child process spawning child processes). The stub sits at this DEEPEST
+	// shared constructor so every stopFixture-family consumer — newStopFixture,
+	// newTimingFixture, and the direct newStopFixtureAt callers — is covered;
+	// no member of the family can reach the real spawn. Package-var override +
+	// t.Cleanup restore; the overriding tests never run parallel.
+	stubRetentionSpawnNoop(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("the Claude sync-gate script is bash; the golden needs a POSIX shell")
 	}

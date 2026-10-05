@@ -22,6 +22,8 @@ import (
 // neither creates nor modifies usage-log.jsonl when learning.enabled=false.
 // REQ-HRN-FND-009: reuses the isHarnessLearningEnabled gate.
 func TestRunHarnessObserveStop_NoOpWhenDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
@@ -44,6 +46,8 @@ func TestRunHarnessObserveStop_NoOpWhenDisabled(t *testing.T) {
 // records a session_stop event when learning.enabled=true.
 // REQ-HRN-OBS-003, REQ-HRN-FND-010.
 func TestRunHarnessObserveStop_RecordsBaseline(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -94,6 +98,8 @@ func TestRunHarnessObserveStop_RecordsBaseline(t *testing.T) {
 // TestRunHarnessObserveSubagentStop_NoOpWhenDisabled verifies that the SubagentStop
 // handler does not create usage-log.jsonl when learning.enabled=false.
 func TestRunHarnessObserveSubagentStop_NoOpWhenDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
@@ -116,6 +122,8 @@ func TestRunHarnessObserveSubagentStop_NoOpWhenDisabled(t *testing.T) {
 // handler records a subagent_stop event correctly.
 // REQ-HRN-OBS-005, REQ-HRN-FND-010.
 func TestRunHarnessObserveSubagentStop_RecordsSubagentStop(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	writeSystemYAMLHookOptIn(t, dir, true)
@@ -164,6 +172,8 @@ func TestRunHarnessObserveSubagentStop_RecordsSubagentStop(t *testing.T) {
 // TestRunHarnessObserveUserPromptSubmit_NoOpWhenDisabled verifies that the
 // UserPromptSubmit handler does not create usage-log.jsonl when learning.enabled=false.
 func TestRunHarnessObserveUserPromptSubmit_NoOpWhenDisabled(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
@@ -185,6 +195,8 @@ func TestRunHarnessObserveUserPromptSubmit_NoOpWhenDisabled(t *testing.T) {
 // Strategy A (default) records only the prompt's SHA-256 hash and length.
 // REQ-HRN-OBS-007, REQ-HRN-OBS-014: the default is Strategy A (minimal PII).
 func TestRunHarnessObserveUserPromptSubmit_StrategyA_DefaultHash(t *testing.T) {
+	stubRetentionSpawnNoop(t)
+
 	dir := t.TempDir()
 	// Strategy A applies when user_prompt_content is unset or set to "hash"
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")

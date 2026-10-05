@@ -14,10 +14,12 @@ package cli
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/taskledger"
 )
@@ -277,11 +279,14 @@ func TestTierPromotionHighWater_Repro(t *testing.T) {
 		t.Fatalf("mkdir hist: %v", err)
 	}
 
-	// usage-log.jsonl with one eligible pattern at a stable count.
+	// usage-log.jsonl with one eligible pattern at a stable count. The
+	// timestamp is now-relative (REQ-DP-009): a fixed past date ages out of the
+	// DefaultRetentionDays aggregation window and the pattern stops counting.
 	usageLog := filepath.Join(logDir, "usage-log.jsonl")
+	stamp := time.Now().UTC().Add(-2 * time.Hour).Format(time.RFC3339)
 	var lines []string
 	for i := 0; i < 5; i++ {
-		entry := `{"timestamp":"2026-07-10T00:00:00Z","event_type":"tool_use","subject":"/moai plan","context_hash":"ctx1"}`
+		entry := fmt.Sprintf(`{"timestamp":%q,"event_type":"tool_use","subject":"/moai plan","context_hash":"ctx1"}`, stamp)
 		lines = append(lines, entry)
 	}
 	mustWriteFile(t, usageLog, strings.Join(lines, "\n")+"\n")
