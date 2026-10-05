@@ -39,7 +39,7 @@ func TestMeasureIndex_LinesMatchDoctorCounting(t *testing.T) {
 		{"a\nb\n", 2},
 		{"a\nb", 2},
 		{"a\nb\n\n", 2}, // trailing blank line: the doctor's TrimRight drops it
-		{"", 1},        // Split("") yields one empty element, exactly as the doctor counts
+		{"", 1},         // Split("") yields one empty element, exactly as the doctor counts
 	}
 	for _, tc := range cases {
 		if got := MeasureIndex([]byte(tc.content)).Lines; got != tc.want {
