@@ -97,3 +97,7 @@ Resolution belongs to the leader/host (two paths, either suffices):
 2. Or the leader records the exception on the decision board per the ceiling policy, with this addendum as the evidence that the audit itself ran and passed.
 
 No receipt id is fabricated here: the verdict line below cites `receipts=none` truthfully, and the refusal the guard re-raises until the server reconnects is the documented stale-server gap, not a missing audit.
+
+### Receipt gap CLOSED (2026-10-05, leader resolution path 1)
+
+The leader reconnected the MCP server on a develop-lineage build (rc.27) and ran `codex_audit` against this tree. The receipt is in the store and corroborated by this auditor against the record (not against this report's text): `rcpt-662d3de90b404764e8918857` — tool `codex_audit`, `codex_verdict: pass`, `tree_root: /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1497`, `root_source: argument`, `created_at: 2026-10-05T13:11:25Z`, minted by the leader's rc.27 server. This is the closure of the receipt gap above: the iter2 PASS verdict (score 0.94, zero blocking findings) is now corroborated by a store-carried receipt minted after this audit's start marker. The final verdict line cites it.
