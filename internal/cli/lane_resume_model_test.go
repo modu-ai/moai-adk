@@ -18,26 +18,29 @@ func saveActiveClaudeOptionModel(t *testing.T) {
 
 // fixtureClaudeHelp is a commander-shaped `claude --help` excerpt carrying
 // one option per measured class, a two-alias line, and a synopsis so long
-// that commander wraps its description onto the next line — the real 2.1.289
-// layout this parser must read.
+// that commander wraps its description onto the next line. The indentation
+// is the real 2.1.289 layout's: option synopses at the option block's
+// two-space indent (the claudeHelpSynopsisMaxIndent gate rejects deeper
+// lines as wrapped description continuations), wrapped continuation prose
+// at the deep description column.
 const fixtureClaudeHelp = `Claude Code
 
   Usage: claude [options] [prompt]
 
   Options:
-    -v, --version                        display version number
-    -d, --debug [filters]                enable debug mode with optional filters
-    -p, --print                          print response and exit (non-interactive)
-    -w, --worktree [name]                run in a worktree
-        --settings <file...>             load settings from files
-        --append-system-prompt <prompt>  append a system prompt to the default
-        --teleport [target]              teleport to a session
-        --remote-control-session-name-prefix <prefix>
-                                         prefix for remote control session names
-    -r, --resume [sessionId]             resume a conversation
+  -v, --version                        display version number
+  -d, --debug [filters]                enable debug mode with optional filters
+  -p, --print                          print response and exit (non-interactive)
+  -w, --worktree [name]                run in a worktree
+  --settings <file...>                 load settings from files
+  --append-system-prompt <prompt>      append a system prompt to the default
+  --teleport [target]                  teleport to a session
+  --remote-control-session-name-prefix <prefix>
+                                       prefix for remote control session names
+  -r, --resume [sessionId]             resume a conversation
 
   Commands:
-    auth    manage authentication
+  auth    manage authentication
 `
 
 // TestClaudeOptionModelDerivation (AC-SCV-012, REQ-SCV-012) — the option
@@ -92,6 +95,7 @@ func TestClaudeOptionModelDerivation(t *testing.T) {
 
 	t.Run("failing derivation degrades to the snapshot silently", func(t *testing.T) {
 		saveActiveClaudeOptionModel(t)
+		activeClaudeOptionModel = claudeOptionModelSnapshot // pin: earlier tests may have derived
 		prevSynopsis := claudeHelpSynopsis
 		claudeHelpSynopsis = func(string) (string, error) { return "", errors.New("exec failed") }
 		t.Cleanup(func() { claudeHelpSynopsis = prevSynopsis })
@@ -104,6 +108,7 @@ func TestClaudeOptionModelDerivation(t *testing.T) {
 
 	t.Run("help with no option lines degrades to the snapshot", func(t *testing.T) {
 		saveActiveClaudeOptionModel(t)
+		activeClaudeOptionModel = claudeOptionModelSnapshot // pin: earlier tests may have derived
 		prevSynopsis := claudeHelpSynopsis
 		claudeHelpSynopsis = func(string) (string, error) { return "Claude Code\n\n  auth    manage authentication\n", nil }
 		t.Cleanup(func() { claudeHelpSynopsis = prevSynopsis })
