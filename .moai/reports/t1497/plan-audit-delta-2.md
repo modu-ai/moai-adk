@@ -2,7 +2,8 @@ auditor-model: glm-5.3-flash[1m]
 
 # SPEC Review Report: SPEC-HARNESS-DETACHED-PRUNE-001 (card t1497) — DELTA AUDIT ROUND 2 (TREE-FINAL)
 Verdict: PASS
-Overall Score: 0.94 (delta-1 base preserved; the consolidated round ADDS a directly-reproduced defect repair with an anti-vacuous regression design)
+Overall Score: 0.94
+Score Note: delta-1 base preserved; the consolidated round ADDS a directly-reproduced defect repair with an anti-vacuous regression design.
 Plan Artifact Hash: 655948dcb43f3f531d132096a2bbdd9a3d41e4e489df92cad8957975627b673e
 Auditor Version: plan-auditor/v1 (GLM lane)
 

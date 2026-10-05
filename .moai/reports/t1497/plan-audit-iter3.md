@@ -1,6 +1,9 @@
 auditor-model: glm-5.3-flash[1m]
 
-# SPEC Review Report: SPEC-HARNESS-DETACHED-PRUNE-001 (card t1497) — DELTA AUDIT ROUND 3 (FINAL, micro)
+# SPEC Review Report: SPEC-HARNESS-DETACHED-PRUNE-001 (card t1497) — DELTA AUDIT ROUND 3 (FINAL, micro) — REGISTERED AS ITER 3
+
+Registration note (gate round 6): this file is the final verdict of record, registered as `plan-audit-iter3.md` because the run gate's `newestVerdictFile` resolution treats non-`-iterN` filenames as iteration 1 (a `plan-audit-delta-3.md` name loses to `plan-audit-iter2.md` regardless of age). Content is identical to `plan-audit-delta-3.md` (which remains as history) with the score line reformatted for `auditverdict.Parse` compatibility — the same fix applied to delta-1 and delta-2.
+
 Verdict: PASS
 Overall Score: 0.94
 Score Note: delta-2 base preserved; micro-delta adds a completeness fix and the authorized §E.1 signal.
@@ -44,7 +47,7 @@ The finding: registering the hidden `retention-prune` verb breaks `TestHookValid
 
 ## Fail Receipts — Adjudicated Inputs (standing record)
 
-`rcpt-b1711dc2551a0500a04de518` (round-1 P2s → adopted `eccd62531`), `rcpt-25a06b9e9ee7c784137d0615` (round-2 P2 → adopted `8a430d101`), `rcpt-b58c078c10b08c840293b603` + `rcpt-d59eddb51a4f46ecf1a5c71c` (gate-unmet stream-closes from this lane's stdio driver — diagnosed contention, not findings). The citable PASS receipt is cited in the final verdict line below.
+`rcpt-b1711dc2551a0500a04de518` (round-1 P2s → adopted `eccd62531`), `rcpt-25a06b9e9ee7c784137d0615` (round-2 P2 → adopted `8a430d101`), `rcpt-b58c078c10b08c840293b603` + `rcpt-d59eddb51a4f46ecf1a5c71c` (gate-unmet stream-closes from this lane's stdio driver — diagnosed contention, not findings). `rcpt-e10d81162cc1ac86b41e811c` (14:54:31Z, PASS) corroborated delta-2 at its snapshot. The delta-3 corroboration receipt is cited in the final verdict line below.
 
 ## Defects Found (delta)
 

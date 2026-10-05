@@ -2,7 +2,8 @@ auditor-model: glm-5.3-flash[1m]
 
 # SPEC Review Report: SPEC-HARNESS-DETACHED-PRUNE-001 (card t1497) — DELTA AUDIT ROUND 1
 Verdict: PASS
-Overall Score: 0.94 (iter2 base preserved; the deltas strengthen Testability and Clarity, no deduction)
+Overall Score: 0.94
+Score Note: iter2 base preserved; the deltas strengthen Testability and Clarity, no deduction.
 Plan Artifact Hash: 6298a4c2fce41cb2ea45863b6f9400895e99fe85eae20e082a8dbeaef94b85ff
 Auditor Version: plan-auditor/v1 (GLM lane)
 
