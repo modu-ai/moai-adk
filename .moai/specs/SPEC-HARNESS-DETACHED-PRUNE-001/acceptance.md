@@ -1,0 +1,106 @@
+# SPEC-HARNESS-DETACHED-PRUNE-001 — Acceptance Criteria
+
+## §A Discipline and Tree Pin
+
+Every criterion below adopts the two-cell discipline (`.claude/rules/moai/development/verification-completeness.md` §2): a RED-now cell observed on the pre-implementation tree and a GREEN path naming the milestone that flips it. All RED cells were measured in this plan session on **`d05d1d5f0`** — branch `WT-harness-prune-detached`, worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1497`, status clean, from the worktree root. Each RED cell states why it is red: the matched identifiers name code this SPEC will create, or — for the defect-presence cells (A, G) — the defect exists; no wrong-reason red. New-test cells use the package-wide `go test -list` corroboration so a bare selector matching nothing cannot read as a pass (LEDGER-DP-B and LEDGER-DP-D are that guard). Every check names WHEN it runs (its milestone exit), the input that turns it red, and who sees the red (the exit code of the milestone's exit gate, then the plan-auditor and the run-phase orchestrator via progress.md §E.1). AC-DP-007 is classified regression-guard (its green is the pre-existing state; no input on this tree turns it red today), never release-blocking, per §2.1's undecidable disposition.
+
+## §B RED-Now Evidence Ledger
+
+```
+LEDGER-DP-A
+  cmd:  grep -c "PruneStaleEntries" internal/harness/observer.go
+  out:  2
+  exit: 0
+  why:  defect-presence cell for REQ-DP-001: the two synchronous prune calls
+        this SPEC removes are present in the observer record path. Red because
+        the defect exists; flips only when both call sites are gone (M1 GREEN
+        expects this count to reach 0).
+  tree: d05d1d5f0
+
+LEDGER-DP-B
+  cmd:  go test -list 'TestRecordExtendedEventDoesNotPrune|TestRecordEventDoesNotPrune|TestObserverRecordsWithoutPrune' ./internal/harness
+  out:  ok  	github.com/modu-ai/moai-adk/internal/harness	0.792s
+  exit: 0
+  why:  package-wide corroboration for AC-DP-001's test names — the selector
+        matches no test in the package, so the AC's test is genuinely new,
+        not a pre-existing green.
+  tree: d05d1d5f0
+
+LEDGER-DP-C
+  cmd:  grep -rn "MaybeSpawnRetentionPruner\|retention_spawn" internal/harness internal/cli
+  out:  (no output)
+  exit: 1
+  why:  the spawn gate and its file do not exist; the only code that can
+        satisfy this grep is what M2 creates.
+  tree: d05d1d5f0
+
+LEDGER-DP-D
+  cmd:  go test -list 'TestMaybeSpawnRetentionPruner|TestSpawnGateSuppressesOnFreshStamp|TestSpawnFailureFailOpen|TestDetachedChildPrunes|TestDetachedChildDoubleSpawnCollapses' ./internal/harness
+  out:  ok  	github.com/modu-ai/moai-adk/internal/harness	0.603s
+  exit: 0
+  why:  package-wide corroboration — none of the five gate/child AC test
+        names exists yet (AC-DP-002/004/005/006).
+  tree: d05d1d5f0
+
+LEDGER-DP-E
+  cmd:  ls internal/harness/retention_spawn_unix.go internal/harness/retention_spawn_windows.go
+  out:  ls: internal/harness/retention_spawn_unix.go: No such file or directory
+        ls: internal/harness/retention_spawn_windows.go: No such file or directory
+  exit: 1
+  why:  the platform-split detached-exec files of REQ-DP-006 do not exist;
+        M2 creates both.
+  tree: d05d1d5f0
+
+LEDGER-DP-F
+  cmd:  grep -rn "SysProcAttr" internal/harness
+  out:  (no output)
+  exit: 1
+  why:  no detached-process attribute precedent exists in the package — the
+        detached spawn is genuinely new code (the delegation's premise,
+        re-measured).
+  tree: d05d1d5f0
+
+LEDGER-DP-G
+  cmd:  go run ./cmd/moai hook retention-prune --log /tmp/x.jsonl --archive /tmp/arch
+  out:     ERROR
+
+          Unknown flag: --log.
+
+          Try --help for usage.
+
+        exit status 1
+  exit: 1
+  why:  the child verb of REQ-DP-003 is not registered — the invocation dies
+        at the parent command's flag parsing instead of performing a prune.
+        Red because the verb does not exist; flips only when M2 registers it
+        (then --help exits 0 and the verb runs the prune path).
+  tree: d05d1d5f0
+
+LEDGER-DP-H
+  cmd:  go test -list 'TestHookRetentionPruneVerb|TestHarnessObserveGateWiring' ./internal/cli
+  out:  ok  	github.com/modu-ai/moai-adk/internal/cli	1.531s
+  exit: 0
+  why:  package-wide corroboration for AC-DP-002/003's cli-side test names —
+        the selector matches no test in the package.
+  tree: d05d1d5f0
+```
+
+## §C Acceptance Criteria
+
+| AC | Covers REQ | RED-now (ledger) | GREEN path (milestone + command) | Classification |
+|----|-----------|------------------|----------------------------------|----------------|
+| AC-DP-001 | REQ-DP-001 | LEDGER-DP-A (count `2`, exit 0 — the calls exist), LEDGER-DP-B (new tests corroborated absent) | M1: `grep -c "PruneStaleEntries" internal/harness/observer.go` → `0` exit 1; `go test -run '^(TestRecordExtendedEventDoesNotPrune\|TestRecordEventDoesNotPrune)$' ./internal/harness` exit 0; `go test ./internal/harness` exit 0 | release-blocking |
+| AC-DP-002 | REQ-DP-002, REQ-DP-004 | LEDGER-DP-C (gate absent), LEDGER-DP-D, LEDGER-DP-H (test names absent) | M2+M3: `TestMaybeSpawnRetentionPruner`, `TestSpawnGateSuppressesOnFreshStamp`, `TestSpawnFailureFailOpen` exit 0 — gate reads the stamp lock-free once, spawns only on stale-or-absent, suppresses on fresh, and a seam failure returns the error the wrapper logs at exit 0 | release-blocking |
+| AC-DP-003 | REQ-DP-003 | LEDGER-DP-G (verb dies at flag parsing, exit 1), LEDGER-DP-H | M2+M3: `go run ./cmd/moai hook retention-prune --help` exit 0; `TestDetachedChildPrunes` exit 0 — the verb's run function performs a real prune against a temp log and enters through `Retention.PruneStaleEntries` (D5), hidden from `moai hook --help` | release-blocking |
+| AC-DP-004 | REQ-DP-003 (double-check), REQ-DP-005 (orphan harmlessness) | LEDGER-DP-D (`TestDetachedChildDoubleSpawnCollapses` absent) | M3: `TestDetachedChildDoubleSpawnCollapses` exit 0 — two children against one stamp file: the second reads the fresh stamp under the lock (`pruneLocked`, retention.go:187) and exits without a second rewrite; the attempt stamp written before the work (retention.go:195) keeps a killed/orphaned pruner from repeating within the interval | release-blocking |
+| AC-DP-005 | REQ-DP-006 | LEDGER-DP-E (files absent), LEDGER-DP-F (no SysProcAttr anywhere in the package) | M2 files exist; M4: `GOOS=windows GOARCH=amd64 go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go vet ./internal/harness ./internal/cli` exit 0. Windows runtime behavior of the detached child stays documented-unobserved (spec §F F3) | release-blocking (build+vet half); runtime half unobserved-by-declaration |
+| AC-DP-006 | REQ-DP-007 (seam), REQ-DP-002 (wrapper) | LEDGER-DP-C, LEDGER-DP-D, LEDGER-DP-H | M3: the seam is a function field replaced by a recording fake (asserted inside `TestMaybeSpawnRetentionPruner`/`TestSpawnGateSuppressesOnFreshStamp`); no test spawns a real detached child (plan M3 boundary grep: no `exec.Command` invocation from test files on the spawn path); the four handlers reach the gate through ONE wrapper (`TestHarnessObserveGateWiring`) | release-blocking |
+| AC-DP-007 | REQ-DP-008 (semantics preserved) | none — the 1-hour interval, stamp-before-work, and atomic archive are correct on this tree today (`pruneSkipDuration = time.Hour`, retention.go:22; `TestPruneSkipsIfRecentlyPruned` green); no input turns it red before the work | M1/M2 re-verification: `go test ./internal/harness` exit 0 including the existing `TestPruneStaleEntries*` family and the t1467 M1 `retention_archive_atomic_test.go` suite — the semantics must still pass on the changed tree | regression-guard (never release-blocking — §A disposition) |
+
+## §D Quality Gates and Definition of Done
+
+- Every release-blocking AC's GREEN cell observed with verbatim command + output + exit code, recorded in progress.md §E.1, before run-phase exit.
+- `go run ./cmd/moai spec lint SPEC-HARNESS-DETACHED-PRUNE-001 --strict` exit 0 (M4).
+- `golangci-lint run` (CI-pinned v2.1.6): no NEW issues attributable to this SPEC (pre-existing baseline reported separately, per the E5 discipline).
+- `go test -cover ./internal/harness` ≥ 85%.
+- REQ-HL-001's contract (under 100 ms, never blocks) holds on the gate path: the wrapper's added synchronous work is one stamp read plus one spawn call — asserted by `TestSpawnFailureFailOpen` and the wrapper's construction; the parent verdict's under-5s-budget observation is the motivation, not a re-measured gate here.
