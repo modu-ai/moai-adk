@@ -269,6 +269,29 @@ func TestFactoryAssignBundleHubChain(t *testing.T) {
 	}
 }
 
+// TestFactorySerialBundleHeadLeasesDespitePickedMembers — card t1454
+// card-review r2 P1-2: a SERIAL bundle's unowned pending members sit at
+// `picked`, and their rows held the serial slot against the head itself —
+// the very first `factory next` of the bundle lane answered no card. A
+// picked row carrying a bundle identity is chain-ordered work, not
+// independently picked work: the in-flight exclusion skips it, while a
+// standalone picked row keeps holding the slot exactly as the t1407
+// operator-ruling tests pin (factory_serial_slot_stale_test.go).
+func TestFactorySerialBundleHeadLeasesDespitePickedMembers(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	fbBundle(t, root, "lane-1", "t1", "t2")
+
+	if got := fbLeasedCard(t, root, "lane-1"); got != "t1" {
+		t.Fatalf("lane-1's first lease = %q, want t1 (the bundle head) — the picked pending member held the serial slot", got)
+	}
+}
+
 // TestFactoryKeepSetReadsNoFileOverlap — AC-TCI-019 (b): the keep-set
 // verdict reads no file overlap — two cards whose recorded files share every
 // path lease independently, and no refusal names a file.

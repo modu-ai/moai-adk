@@ -274,12 +274,21 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // are merely `assigned`, which would otherwise wedge every leader-assigned
 // serial card against the others with nothing in flight. Every path that takes
 // a NEW card, the nominated lease included, passes false.
+//
+// A `picked` row carrying a bundle identity is excluded the same way (card
+// t1454 card-review r2 P1-2): it is a chain member waiting on its head, not
+// an independently picked serial card — its bundle orders it, and selection
+// skips it until the predecessor merges. A standalone picked row keeps
+// holding the slot, exactly as the t1407 ruling's tests pin.
 func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
 	for _, c := range cards {
 		if c.CardID == cardID {
 			continue
 		}
 		if ignoreAssigned && c.State == homestate.CardAssigned {
+			continue
+		}
+		if c.State == homestate.CardPicked && c.BundleID != "" {
 			continue
 		}
 		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == factory.ClassModeSerial {

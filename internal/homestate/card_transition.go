@@ -663,12 +663,13 @@ func updateCardRow(ctx context.Context, tx *sql.Tx, c Card, expected int64) erro
 	res, err := tx.ExecContext(ctx, `UPDATE cards SET owner_label=?,state=?,version=?,evidence_path=?,updated_at=?,`+
 		`stage=?,lease_holder=?,lease_expires_at=?,heartbeat_at=?,decision_gate=?,decision_question=?,decision_resume=?,`+
 		`decider=?,decided_at=?,failure_reason=?,hint_prefer=?,hint_after=?,spec_id=?,worktree_path=?,evidence_sha=?,`+
-		`merge_sha=?,merge_tree=?,remeasure_path=?,contract_spec_id=?,contract_sha256=?,contract_signed_at=?,contract_event=? `+
+		`merge_sha=?,merge_tree=?,remeasure_path=?,bundle_id=?,bundle_order=?,`+
+		`contract_spec_id=?,contract_sha256=?,contract_signed_at=?,contract_event=? `+
 		`WHERE run_id=? AND card_id=? AND version=?`,
 		c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt,
 		c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume,
 		c.Decider, c.DecidedAt, c.FailureReason, c.HintPrefer, c.HintAfter, c.SpecID, c.WorktreePath, c.EvidenceSHA,
-		c.MergeSHA, c.MergeTree, c.RemeasurePath, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent,
+		c.MergeSHA, c.MergeTree, c.RemeasurePath, c.BundleID, c.BundleOrder, c.ContractSpecID, c.ContractSHA256, c.ContractSignedAt, c.ContractEvent,
 		c.RunID, c.CardID, expected)
 	if err != nil {
 		return err
