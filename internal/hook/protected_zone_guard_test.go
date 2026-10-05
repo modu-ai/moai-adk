@@ -962,6 +962,41 @@ func testZoneShellMutation(t *testing.T) {
 		t.Errorf("git grep read-only: decision=%q reason=%q, want allow", d, r)
 	}
 
+	// review-repair round 9 rows (merge-gate verdict 8, observed red first —
+	// loop iterations beyond the first, case fall-through carrying the prior
+	// arm's exit state, and the fail-closed bound for uncomputable loops)
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n  probe_deep:\n    paths: [\"a/a/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	if err := os.MkdirAll(filepath.Join(root, "a", "a"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, cmd := range []string{
+		"for i in 1 2; do cd a; printf changed > secret; done", // the 2nd iteration runs at a/a (r9)
+		"while true; do cd a; printf changed > secret; done",   // repeated worlds accumulate (r9)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_deep")
+	}
+	for _, cmd := range []string{
+		"case x in x) cd zone_dir ;& y) cd zone_dir ;; z) printf changed > secret ;; esac",  // ;& carries the prior arm (r9)
+		"case x in x) cd zone_dir ;;& y) cd zone_dir ;; z) printf changed > secret ;; esac", // ;;& carries too (r9)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+	// an accumulating loop whose directory states exceed the fixed-point
+	// bound denies fail-closed: a mutating command that cannot be verified
+	// against the zone is not allowed through (r9). The manifest here carries
+	// no entry the deep worlds would cover, so the deny must come from the
+	// bound itself.
+	root = newZoneRoot(t, zoneShippedDoc("  probe_zone:\n    paths: [\"zone_dir/\"]\n"), "")
+	h = zoneTestHandler(t, root)
+	swept++
+	d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": "while true; do cd a; done; rm b/x"})
+	wantZoneDeny(t, "while true; do cd a; done; rm b/x", d, r, harnessLearnerIdentity, "category", "loop-unbounded")
+
 	if swept < 71 {
 		t.Fatalf("swept %d rows, want at least 71", swept)
 	}

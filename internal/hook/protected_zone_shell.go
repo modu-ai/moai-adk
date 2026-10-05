@@ -138,12 +138,17 @@ func zoneFirstArgWord(args []*syntax.Word) (string, bool) {
 
 // zoneWalker carries one shell-policy walk. cwds is the set of POSSIBLE
 // working directories at this point — control flow multiplies them, and a
-// candidate is denied when any of them covers it (round 6 P1).
+// candidate is denied when any of them covers it (round 6 P1). unbounded
+// records that a loop's directory states outgrew the fixed-point bound: the
+// walk is then an over-approximation that cannot be completed, and the
+// command is denied fail-closed rather than allowed on an incomplete walk
+// (round 9 P1).
 type zoneWalker struct {
-	h        *preToolHandler
-	cwds     []string
-	mutating bool
-	cands    []string
+	h         *preToolHandler
+	cwds      []string
+	mutating  bool
+	unbounded bool
+	cands     []string
 }
 
 // setCwds replaces the possible-directory set, dropping duplicates.
@@ -501,6 +506,73 @@ func zonePathCandidates(args []*syntax.Word) []string {
 	return out
 }
 
+// zoneLoopCount returns the exact iteration count of a for loop whose item
+// list is fully literal — every item a plain unquoted word — and -1 when the
+// count is unknown (a C-style loop, or any quoted or expanding item). A
+// literal count above the cap is treated as unknown too: the fixed point
+// below is the sound path for lists that long.
+func zoneLoopCount(loop syntax.Loop) int {
+	it, ok := loop.(*syntax.WordIter)
+	if !ok {
+		return -1 // C-style `for ((;;))`: unknown
+	}
+	n := 0
+	for _, item := range it.Items {
+		for _, p := range item.Parts {
+			if _, isLit := p.(*syntax.Lit); !isLit {
+				return -1
+			}
+		}
+		n++
+	}
+	if n > zoneLoopLiteralCap {
+		return -1
+	}
+	return n
+}
+
+const (
+	// zoneLoopLiteralCap bounds the exact-iteration path; zoneLoopFixedPoint
+	// bounds the fixed-point walk. Neither bound is reached by realistic
+	// guard-relevant commands, and a walk that runs out of rounds sets the
+	// walker's unbounded flag — the fail-closed denial — instead of
+	// truncating silently (round 9 P1).
+	zoneLoopLiteralCap = 64
+	zoneLoopFixedPoint = 16
+)
+
+// zoneCwdsEqual compares two possible-directory sets member for member.
+func zoneCwdsEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// walkBodyFixedPoint walks a loop body whose iteration count is unknown.
+// Each pass starts from the accumulated possible-directory set — exactly how
+// the next iteration runs at the previous one's exit state (round 9 P1) —
+// and the walk stops when a pass adds no new directory. A pass cap bounds
+// the accumulation; exhausting it sets the unbounded flag (fail closed)
+// rather than truncating the loop's states silently.
+func (w *zoneWalker) walkBodyFixedPoint(stmts []*syntax.Stmt) {
+	for i := 0; i < zoneLoopFixedPoint; i++ {
+		before := append([]string(nil), w.cwds...)
+		for _, s := range stmts {
+			w.zoneWalkStmt(s)
+		}
+		if zoneCwdsEqual(before, w.cwds) {
+			return
+		}
+	}
+	w.unbounded = true
+}
+
 // zoneWalkStmt walks one statement. Every branch's mutations and redirections
 // are real; the working directory is a SET of possible values, and the walk
 // unions the worlds control flow can produce (round 8, the operator-approved
@@ -574,37 +646,39 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 	case *syntax.IfClause:
 		w.walkIfChain(cmd)
 	case *syntax.ForClause:
-		pre := append([]string(nil), w.cwds...)
-		for _, s := range cmd.Do {
-			w.zoneWalkStmt(s)
+		if n := zoneLoopCount(cmd.Loop); n >= 0 {
+			// the item list is fully literal: exactly n iterations run, each
+			// from the accumulated set (the next iteration starts where the
+			// previous one left off — round 9 P1). A zero-item list runs the
+			// zero-iteration world only (round 8 P1).
+			for i := 0; i < n; i++ {
+				for _, s := range cmd.Do {
+					w.zoneWalkStmt(s)
+				}
+			}
+		} else {
+			w.walkBodyFixedPoint(cmd.Do)
 		}
-		afterDo := append([]string(nil), w.cwds...)
-		// zero-iteration world: the entry set survives (round 8 P1)
-		w.cwds = append(pre, afterDo...)
-		w.setCwds(w.cwds)
 	case *syntax.WhileClause:
-		pre := append([]string(nil), w.cwds...)
 		for _, s := range cmd.Cond {
 			w.zoneWalkStmt(s) // the condition executes (round 6 P1)
 		}
 		afterCond := append([]string(nil), w.cwds...)
-		w.setCwds(afterCond)
-		for _, s := range cmd.Do {
-			w.zoneWalkStmt(s)
-		}
-		afterDo := append([]string(nil), w.cwds...)
-		// the zero-iteration world keeps the post-condition set, the repeated
-		// world carries the post-body set — one unroll covers every candidate
-		// the repeated body can name (round 8 P1; WhileClause.Until folds
-		// `until` into the same shape)
-		w.cwds = append(pre, afterCond...)
-		w.cwds = append(w.cwds, afterDo...)
+		// the iteration count is unknown: the body walks to its fixed point,
+		// and the zero-iteration world (the condition already failed) keeps
+		// the post-condition set (round 8 P1; WhileClause.Until folds `until`
+		// into the same shape)
+		w.walkBodyFixedPoint(cmd.Do)
+		w.cwds = append(w.cwds, afterCond...)
 		w.setCwds(w.cwds)
 	case *syntax.CaseClause:
-		pre := append([]string(nil), w.cwds...)
-		worlds := append([]string(nil), pre...) // no arm may match: entry survives
+		entry := append([]string(nil), w.cwds...)
+		worlds := append([]string(nil), entry...) // no arm may match: entry survives
 		for _, item := range cmd.Items {
-			w.setCwds(pre) // every arm starts from the same entry set (round 8 P1)
+			// every arm starts from the case's entry set — and, sound over
+			// `;&` and `;;&` fall-through, from every earlier arm's exit
+			// state too (round 9 P1)
+			w.setCwds(append(append([]string(nil), entry...), worlds...))
 			for _, s := range item.Stmts {
 				w.zoneWalkStmt(s)
 			}
@@ -706,6 +780,18 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		h.recordZoneAudit(root, zoneAuditRow{
 			Identity: agentID, Tool: "Bash", Path: display,
 			Category: category, Decision: "deny", ManifestState: load.State,
+		})
+		return reason
+	}
+
+	if w.unbounded && load.State != config.ZoneStateAbsent {
+		// a loop whose directory states outgrew the fixed-point bound cannot
+		// be verified against the zone: the mutating command is denied fail-
+		// closed rather than allowed on an incomplete walk (round 9 P1)
+		reason := zoneDenyReason(agentID, "category", "loop-unbounded", "loop")
+		h.recordZoneAudit(root, zoneAuditRow{
+			Identity: agentID, Tool: "Bash", Path: "loop",
+			Category: "loop-unbounded", Decision: "deny", ManifestState: load.State,
 		})
 		return reason
 	}
