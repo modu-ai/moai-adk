@@ -28,7 +28,7 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 ### AC-FCR-002 — receipt 네 바인딩 불일치 거부 (REQ-FCR-002/005)
 
 - RED-now: P1 동일.
-- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateBinding$'` — UUID 불일치·**run id 불일치(다른 run의 receipt)**·factory version stale·증거 해시 불일치 각각 거부, 네 값 모두 일치 시 통과. INPUT: 네 바인딩 값을 하나씩 틀어놓은 fixture receipt 4종 — run 변이는 동일 카드·version·증거 SHA를 가진 두 번째 run(측정: cards 스키마에서 생성 가능). **경합 변이(표면 a)**: 수동 done 실행 중 factory 전이로 version이 증가한 행 — archive 직전 재검증이 거부한다(REQ-FCR-002a).
+- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateBinding$'` — UUID 불일치·**run id 불일치(다른 run의 receipt)**·factory version stale·증거 해시 불일치 각각 거부, 네 값 모두 일치 시 통과. INPUT: 네 바인딩 값을 하나씩 틀어놓은 fixture receipt 4종 — run 변이는 동일 카드·version·증거 SHA를 가진 두 번째 run(측정: cards 스키마에서 생성 가능). **경합 변이(표면 a)**: 수동 done 실행 중 factory 전이로 version이 증가한 행 — archive 직전 재검증이 거부한다(REQ-FCR-002a). **세 표면 커버**: 게이트가 수동 done(todo.go:1104)·`todo --auto`(todo_auto.go:331)·homestate T18/T20 네 곳 모두에 적용됨을 테스트가 확인한다.
 
 ### AC-FCR-003 — 수행자 발급 receipt 거부, 리더 발급+리더 실행 허용 (REQ-FCR-005)
 
