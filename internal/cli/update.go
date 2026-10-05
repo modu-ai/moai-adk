@@ -174,7 +174,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	}
 
 	currentVersion := version.GetVersion()
-	_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
+	// Card t1527 D1: on the re-executed pass the version identity is carried by
+	// the template-sync band (renderIdentityBand) alone — repeating the KV here
+	// printed the same version twice per install (three times counting the
+	// pre-exec pass). Env constant: internal/config/envkeys.go EnvUpdateReexec.
+	if !reexecPassActive() {
+		_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
+	}
 
 	// Handle shell-env mode
 	if shellEnv {
@@ -680,6 +686,26 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 	return version.IsDevBuild(version.GetVersion())
 }
 
+// markReexecPass sets the env markers the re-executed `moai update` pass reads
+// (card t1527 D1): MOAI_SKIP_BINARY_UPDATE prevents the binary-update loop, and
+// MOAI_UPDATE_REEXEC tells runUpdate to suppress its top "Current version" KV —
+// the template-sync identity band is that pass's single version surface.
+// Extracted from reexecNewBinary so a test can observe the markers without
+// replacing the process.
+func markReexecPass() error {
+	if err := os.Setenv(config.EnvUpdateReexec, "1"); err != nil {
+		return fmt.Errorf("set %s: %w", config.EnvUpdateReexec, err)
+	}
+	return nil
+}
+
+// reexecPassActive reports whether the current process is a re-executed update
+// pass (MOAI_UPDATE_REEXEC=1, set by markReexecPass just before the new binary
+// replaces the process).
+func reexecPassActive() bool {
+	return os.Getenv(config.EnvUpdateReexec) == "1"
+}
+
 // @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD migration. New-version notice uses
 // two tui.KV lines (New / Current), progress is tui.CheckLine "run", and the result is a tui.Pill PillOk.
 //
@@ -715,8 +741,10 @@ func runBinaryUpdateStep(cmd *cobra.Command) (updated bool, err error) {
 		return false, nil
 	}
 
+	// Card t1527 D1: the "Current version" line is dropped here — the top of
+	// runUpdate already printed it seconds earlier, and the identity band after
+	// the install shows the new version. Only the NEW version is news.
 	_, _ = fmt.Fprintln(out, tui.KV("New version", info.Version, tui.KVOpts{Theme: &th, KeyWidth: 16}))
-	_, _ = fmt.Fprintln(out, tui.KV("Current version", currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
 	_, _ = fmt.Fprintln(out, tui.CheckLine("run", "Installing update", "", "", &th))
 
 	if deps.UpdateOrch == nil {
@@ -752,6 +780,13 @@ func reexecNewBinary() error {
 	// Prevent re-exec loop
 	if err := os.Setenv("MOAI_SKIP_BINARY_UPDATE", "1"); err != nil {
 		return fmt.Errorf("set MOAI_SKIP_BINARY_UPDATE: %w", err)
+	}
+
+	// Card t1527 D1: mark the next pass as the re-executed one so runUpdate
+	// suppresses its top "Current version" KV — the template-sync identity band
+	// introduces the freshly installed version exactly once.
+	if err := markReexecPass(); err != nil {
+		return err
 	}
 
 	if runtime.GOOS == "windows" {
