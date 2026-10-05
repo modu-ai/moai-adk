@@ -160,8 +160,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 
 	// Card t1527 D5: the terminal action block's registry is per-run — reset
 	// on entry so in-process invocations (CLI tests, helpers) never inherit
-	// another run's rows.
+	// another run's rows. Repair round (card review): the block renders via
+	// defer so EVERY exit path carries it — the clean-reinstall early return
+	// and the version-match skip used to exit before the render, dropping
+	// their recorded rows.
 	updateLedger.reset()
+	defer renderUpdateTerminalBlock(out, th)
 
 	// Validate mutually exclusive flags
 	if binaryOnly && templatesOnly {
@@ -294,10 +298,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	if !shouldSkipBinaryUpdate(cmd) {
 		updated, err := runBinaryUpdateStep(cmd)
 		if err != nil {
-			// Binary update failure is never fatal; warn and continue. Card
-			// t1527 D5: the advisory also lands in the terminal Reference
-			// section so a scrolled-off warn still comes back at the end.
-			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Binary update", "check failed", err.Error(), &th))
+			// Binary update failure is never fatal. Card t1527 D5 + repair
+			// round: ONE surface — the terminal Reference row (the block now
+			// renders on every exit), not a mid-run line plus a repeat.
 			updateLedger.referencef("binary update check failed: %v (retry later)", err)
 		}
 		if updated {
@@ -308,7 +311,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			}
 			// New binary installed; re-exec so the latest templates are used
 			if err := reexecNewBinary(); err != nil {
-				_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Re-exec", "failed", err.Error(), &th))
 				updateLedger.referencef("re-exec to the new binary failed: %v (the sync below used the old binary)", err)
 				// Fall through to template sync with the current binary
 			}
@@ -366,7 +368,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// when template sync is version-matched, so a later update can retry trees
 	// that were locked or active on an earlier pass.
 	if migrationErr := runUpdateWorktreeMigration(lockRoot, false, out); migrationErr != nil {
-		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Worktree migration", "failed", migrationErr.Error(), &th))
+		// Card t1527 D5 + repair round: ONE surface — the terminal Reference
+		// row replaces the former mid-run warn line + repeat.
 		updateLedger.referencef("worktree migration failed: %v", migrationErr)
 	}
 
@@ -559,12 +562,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		// A user-cancelled merge returns the same skipped=true; the helper
 		// re-evaluates the version predicate and leaves that case untouched.
 		if err := stripRetiredModelConfigOnVersionMatch(cmd, out, "."); err != nil {
-			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Retired model keys", "removal failed", err.Error(), &th))
 			updateLedger.requiref(sevWarn, "retired model-key removal failed: %v", err)
 		}
-		// Card t1527 D5: the version-match path still runs the wiring refresh
-		// and mirror repair above — their records render here too.
-		renderUpdateTerminalBlock(out, th)
+		// Card t1527 D5 + repair round: the deferred render carries the block
+		// on this early return too — no explicit call here.
 		return nil
 	}
 
@@ -591,7 +592,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Ensure .moai/evolution/ directory tree exists for existing projects
 	// that predate the evolution infrastructure (R2: Directory Scaffolding).
 	if err := deploy.ScaffoldEvolutionDir("."); err != nil {
-		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Evolution dir", "scaffold failed", err.Error(), &th))
 		updateLedger.requiref(sevWarn, "evolution directory scaffold failed: %v", err)
 	}
 
@@ -599,11 +599,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	profileName := profile.GetCurrentName()
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
-		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Profile preferences", "read failed", err.Error(), &th))
 		updateLedger.requiref(sevWarn, "profile preferences read failed: %v", err)
 	} else {
 		if err := profile.SyncToProjectConfig(".", prefs); err != nil {
-			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Profile sync", "failed", err.Error(), &th))
 			updateLedger.requiref(sevWarn, "profile sync failed: %v", err)
 		}
 		// card t1275: the profile sync rewrites .moai/config/sections/*.yaml
@@ -614,11 +612,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		retrackSectionFiles(".", cmd.ErrOrStderr())
 	}
 
-	// Card t1527 D5: the run ends with ONE action surface — ACTION REQUIRED
-	// rows (failures, conflicts, the hook-restart step) first, Reference
-	// one-liners after. Empty on a clean run.
-	renderUpdateTerminalBlock(out, th)
-
+	// Card t1527 D5 + repair round: the terminal block renders via the defer
+	// at the top of runUpdate — one surface, on every exit path.
 	return nil
 }
 
@@ -725,11 +720,18 @@ func markReexecPass() error {
 	return nil
 }
 
-// reexecPassActive reports whether the current process is a re-executed update
-// pass (MOAI_UPDATE_REEXEC=1, set by markReexecPass just before the new binary
-// replaces the process).
+// reexecPassActive reports AND CONSUMES the re-exec marker (card t1527 D1,
+// consume-and-clear per card review): MOAI_UPDATE_REEXEC=1 is set by
+// markReexecPass immediately before the new binary replaces the process, so a
+// genuine re-exec pass reads it exactly once and unsets it — an environment
+// that merely carries the variable cannot suppress the banner on ordinary
+// passes, and a third-generation re-exec starts clean.
 func reexecPassActive() bool {
-	return os.Getenv(config.EnvUpdateReexec) == "1"
+	if os.Getenv(config.EnvUpdateReexec) != "1" {
+		return false
+	}
+	_ = os.Unsetenv(config.EnvUpdateReexec)
+	return true
 }
 
 // @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD migration. New-version notice uses

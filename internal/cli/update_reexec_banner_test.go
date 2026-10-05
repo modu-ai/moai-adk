@@ -18,7 +18,7 @@ import (
 // single version surface. These tests pin the suppression helper and the
 // renderIdentityBand contract the suppression leans on.
 
-func TestReexecPassActive_EnvGated(t *testing.T) {
+func TestReexecPassActive_ConsumeAndClear(t *testing.T) {
 	t.Setenv(config.EnvUpdateReexec, "")
 	if reexecPassActive() {
 		t.Error("an unset MOAI_UPDATE_REEXEC must not read as a re-exec pass")
@@ -27,6 +27,15 @@ func TestReexecPassActive_EnvGated(t *testing.T) {
 	t.Setenv(config.EnvUpdateReexec, "1")
 	if !reexecPassActive() {
 		t.Error("MOAI_UPDATE_REEXEC=1 must read as a re-exec pass")
+	}
+	// Consume-and-clear: the marker is spent by the read, so a pre-existing
+	// environment variable cannot suppress the banner on ordinary passes and
+	// a second read in the same process sees a clean state.
+	if os.Getenv(config.EnvUpdateReexec) != "" {
+		t.Errorf("reading the marker must unset it, got %q", os.Getenv(config.EnvUpdateReexec))
+	}
+	if reexecPassActive() {
+		t.Error("a consumed marker must not read as a re-exec pass again")
 	}
 }
 

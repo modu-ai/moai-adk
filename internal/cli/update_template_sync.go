@@ -389,10 +389,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				driftBefore := presentArchiveDriftRoots(projectRoot)
 				archived, archiveErr := archiveLegacySkills(projectRoot, out, forceBackup)
 				if archiveErr != nil {
-					_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
-					// Card t1527 D5: escalate — unarchived skills are removed by
-					// this step's cleanup, so the shortfall must come back at
-					// the end of the run.
+					// Card t1527 D5 + repair round: ONE surface — unarchived
+					// skills are removed by this step's cleanup, so the
+					// terminal ACTION REQUIRED row is the failure's home.
 					updateLedger.requiref(sevWarn, "legacy skill archive failed: %v", archiveErr)
 				}
 				// A skill present now but not archived is deleted by the removal
@@ -640,7 +639,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// itself already succeeded.
 				removedModelKeys, stripErr := stripRetiredModelConfig(out, projectRoot, configBackupPath)
 				if stripErr != nil {
-					emitSeverityLine(out, sevWarn, th, "retired model key removal warning: %v", stripErr)
+					// Card t1527 repair round: one surface (terminal row).
 					updateLedger.requiref(sevWarn, "retired model key removal failed: %v", stripErr)
 				}
 				retainedKeys = withoutStrippedKeys(retainedKeys, removedModelKeys)
@@ -657,7 +656,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// absent key does.
 				if harness := config.ReadHarnessFrom(filepath.Join(configBackupPath, "sections")); harness != "" {
 					if err := template.ApplyHarness(projectRoot, harness); err != nil {
-						emitSeverityLine(out, sevWarn, th, "llm.harness re-assert warning: %v", err)
+						// Card t1527 repair round: one surface (terminal row).
 						updateLedger.requiref(sevWarn, "llm.harness re-assert failed: %v", err)
 					}
 				}
@@ -675,7 +674,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			if len(gitignoreBackup) > 0 {
 				gitignorePath := filepath.Join(projectRoot, ".gitignore")
 				if mergeErr := updatemerge.MergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
-					emitSeverityLine(out, sevWarn, th, ".gitignore merge warning: %v", mergeErr)
+					// Card t1527 repair round: one surface (terminal row).
 					updateLedger.requiref(sevWarn, ".gitignore merge failed: %v", mergeErr)
 				} else {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
@@ -701,7 +700,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// run even with no backups: the promotion decision belongs to every
 			// flow that deployed (plan.md D4 ③, M-07d).
 			if err := mergeUserFilesSettlingSnapshot(projectRoot, mergeableBackups, out, errOut); err != nil {
-				emitSeverityLine(out, sevWarn, th, "File merge warning: %v", err)
+				// Card t1527 repair round: one surface (terminal row).
 				updateLedger.requiref(sevWarn, "mergeable-file merge failed: %v (a pre-update copy is in the run backup)", err)
 			}
 			// card t1275: the 3-way merge rewrote the mergeable set
@@ -777,7 +776,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
-		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Global settings env", "update failed", err.Error(), &th))
+		// Card t1527 repair round: one surface (terminal row).
 		updateLedger.requiref(sevWarn, "global settings env update failed: %v", err)
 	}
 
