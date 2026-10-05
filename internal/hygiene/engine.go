@@ -29,6 +29,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // Mode is the hygiene execution mode. Report is the shipped default; apply
@@ -73,6 +74,41 @@ const (
 	OutcomeError              Outcome = "error"
 )
 
+// Engine is the combined hygiene pass: the rotator and the GC run in one
+// invocation and fail independently (REQ-HYG-012) — a rotator error never
+// prevents the GC run and vice versa; each outcome is returned to its
+// caller for logging.
+type Engine struct {
+	LogDir           string
+	MoaiRoot         string
+	RegistryPath     string
+	TranscriptRoots  []string
+	MaxBytes         int64
+	KeptRotations    int
+	MinAge           time.Duration
+	TranscriptWindow time.Duration
+	HeartbeatWindow  time.Duration
+}
+
+// Run executes both units in the given mode. The rotator's and the GC's
+// errors are independent: errRotator and errGC are non-nil only for their
+// own unit, and a failure of one never blocks the other (REQ-HYG-012).
+func (e *Engine) Run(mode Mode) (rotatorRows []AuditRow, gcReport *GCReport, errRotator error, errGC error) {
+	r := &Rotator{LogDir: e.LogDir, MaxBytes: e.MaxBytes, KeptRotations: e.KeptRotations}
+	rotatorRows, errRotator = r.Run(mode)
+
+	g := &GC{
+		MoaiRoot:         e.MoaiRoot,
+		RegistryPath:     e.RegistryPath,
+		TranscriptRoots:  e.TranscriptRoots,
+		MinAge:           e.MinAge,
+		TranscriptWindow: e.TranscriptWindow,
+		HeartbeatWindow:  e.HeartbeatWindow,
+	}
+	gcReport, errGC = g.Run(mode)
+	return rotatorRows, gcReport, errRotator, errGC
+}
+
 // testRoots registers the temporary directory roots a test-driven run may
 // operate on (REQ-HYG-015, D22). Production entry points consult it only
 // when testing.Testing() is true.
@@ -90,13 +126,30 @@ func registerTestRoot(root string) {
 	testRoots.byBase[resolved] = resolved
 }
 
-// resolvePath canonicalizes a path, falling back to the input when the
-// resolution fails (a missing path is validated on its cleaned form).
+// resolvePath canonicalizes a path through its nearest existing ancestor:
+// the ancestor is symlink-resolved (the macOS /var → /private/var shape)
+// and the non-existing remainder rejoined, so a root registered before its
+// fixture tree exists and the same root validated after creation resolve
+// identically.
 func resolvePath(path string) string {
-	if resolved, err := filepath.EvalSymlinks(path); err == nil {
-		return resolved
+	clean := filepath.Clean(path)
+	ancestor := clean
+	var remainder []string
+	for {
+		if _, err := os.Stat(ancestor); err == nil {
+			break
+		}
+		parent := filepath.Dir(ancestor)
+		if parent == ancestor {
+			break // reached the filesystem root
+		}
+		remainder = append([]string{filepath.Base(ancestor)}, remainder...)
+		ancestor = parent
 	}
-	return filepath.Clean(path)
+	if resolved, err := filepath.EvalSymlinks(ancestor); err == nil {
+		return filepath.Join(append([]string{resolved}, remainder...)...)
+	}
+	return clean
 }
 
 // validateRoot refuses, under a test binary, any root outside the
