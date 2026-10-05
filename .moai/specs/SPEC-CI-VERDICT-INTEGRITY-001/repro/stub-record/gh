@@ -2,8 +2,10 @@
 # t1546 recording gh stub (P2-L full + P2-P + P2-O rendezvous) — duties:
 #   1. ON FIRST CONTACT (any subcommand): advance the served clock file from
 #      MOCK_CLOCK_START to MOCK_CLOCK_ADVANCED — the "time passes between the
-#      check and the merge" event (P2-O). Idempotent: a CROSSED marker line
-#      means already advanced; served time is always the file's FIRST line.
+#      check and the merge" event (P2-O). The file stays NUMERIC-ONLY (LG-2):
+#      M1 implementations compare `cat` output with integer tests, so no
+#      marker line may ever enter the file; re-contacts rewriting the same
+#      advanced value are harmless idempotent no-ops.
 #   2. RECORD every invocation (query or merge) with its SERVED time (the
 #      clock file's first line at call time) and a late flag, to
 #      $MOCK_CALL_LOG — observational only; the PROBE judges.
@@ -19,9 +21,10 @@ MOCK_CLOCK_START="${MOCK_CLOCK_START:-1100}"
 MOCK_CLOCK_ADVANCED="${MOCK_CLOCK_ADVANCED:-1200}"
 FIXTURE_SHA="a158b4b5f0000000000000000000000000000000"
 
-if ! grep -q '^CROSSED$' "$MOAI_CLOCK_FILE" 2>/dev/null; then
-  printf '%s\nCROSSED\n' "$MOCK_CLOCK_ADVANCED" > "$MOAI_CLOCK_FILE" 2>/dev/null || true
-fi
+# LG-2 fix (t1543 hold-record): the clock file stays numeric-only — a marker
+# line would corrupt M1's cat-based integer comparison ("integer expression
+# expected"). Re-contacts rewriting the same advanced value are harmless.
+printf '%s\n' "$MOCK_CLOCK_ADVANCED" > "$MOAI_CLOCK_FILE" 2>/dev/null || true
 served="$(sed -n 1p "$MOAI_CLOCK_FILE" 2>/dev/null || true)"
 [ -n "$served" ] || served="$MOCK_CLOCK_ADVANCED"
 late="no"
@@ -37,7 +40,12 @@ fi
 
 case "$1 $2" in
   "pr view"*)
-    printf '{"headRefOid":"%s"}\n' "$FIXTURE_SHA"
+    # ADD-3: honor the legacy `--jq '.headRefOid'` form — real workflows pass
+    # it, and the M1 head re-check compares the BARE SHA, not the JSON object.
+    case "$*" in
+      *--jq*) printf '%s\n' "$FIXTURE_SHA" ;;
+      *) printf '{"headRefOid":"%s"}\n' "$FIXTURE_SHA" ;;
+    esac
     ;;
 esac
 exit 0

@@ -2,7 +2,7 @@
 id: SPEC-CI-VERDICT-INTEGRITY-001
 title: "CI verdict integrity — repair five success-misjudgment gates and align the required-checks SSoT with published check names"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-06
 updated: 2026-10-06
 author: manager-spec

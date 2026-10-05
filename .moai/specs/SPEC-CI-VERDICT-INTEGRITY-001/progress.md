@@ -30,7 +30,16 @@ Card: t1534 · Branch: WT-ci-verdict-integrity · Plan-phase tree: a158b4b5f
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase — owned by manager-develop_
+### M1 — five gate mis-judgment repairs (flip evidence; measured post-M1 on WT-ci-verdict-integrity)
+
+| AC | RED (pre-M1, pinned a158b4b5f) | M1 flip observation (verbatim) |
+|----|-----|--------------------------------|
+| AC-CI-001/002 | L-E2 (cancelled read as PASSED, exit 0) | E2 re-run: `::error::Release PR multi-OS verification concluded 'cancelled' …` exit 1; exclusion A (detect=skipped) → `exclusion=non-release-pr` exit 0; exclusion B (docs-only, go_code=false) → `exclusion=docs-only-release-pr` exit 0 — three shapes measured |
+| AC-CI-004 | L-E4 (lookup failure → should_merge=true) | E4 re-run: `::warning::required-checks lookup failed (gh exit 1) - withholding auto-merge` + `--- GITHUB_OUTPUT --- should_merge=false` — the repaired JSON step (name/state/bucket + explicit rc handling, exit 8 = wait) withholds |
+| AC-CI-006/007 | L-E7 (25-case matrix) + L-E8 | E7 re-run post-M1 (measured): control exit 0; 5 `failure` variants exit 1 (kept — regression guard); `install-script-parity-failure` + all 18 non-success variants exit non-zero (flipped); compatibility probes are hard checks (measured parity-failure visibility via the needs-list repair) |
+| AC-CI-005 | L-E26 (merge served post-crossing, exit 0) | E26 re-run on the repaired body: head re-query observed → served clock read 1200 (past deadline) → merge WITHHELD → exit 2 (the proceeds-then-held pair, one execution) — flip through the t1546 real-body probe |
+
+STEP-0 (pre-M1 gate verification): LG-1 CONFIRMED (correct implementation scored DEFECT exit 0 — late_calls counted the head re-query; fixed: late flag judged only on `gh pr merge` lines), LG-2 CONFIRMED (`CROSSED` marker line corrupted cat-based integer comparisons; fixed: clock file numeric-only), LG-3 CONFIRMED (same-indent next-step boundary missed; fixed: dedent test `<=` across all four extractors; verified LG-1 now exit 2 and LG-3 now exit 9 on regenerated probes). Incident recorded: the first LG-1/LG-3 fixture runs invoked the REAL `gh` binary (HERE-detached /tmp probe copy missed the recording stub) — `gh pr merge 1` attempted against modu-ai/moai-adk and REFUSED (PR 1 CLOSED, never merged, no state change; verified read-only).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

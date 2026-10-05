@@ -19,7 +19,7 @@ BODY="$(awk -v ANCHOR="$ANCHOR" '
   index($0, ANCHOR) {
     if (!grab) { match($0, /^ */); si = RLENGTH; grab = 1; next }
   }
-  grab && match($0, /^ */) && RLENGTH < si && $0 !~ /^ *$/ { exit }
+  grab && match($0, /^ */) && RLENGTH <= si && $0 !~ /^ *$/ { exit }
   grab && !runfound && /^ *run: */ {
     line = $0; sub(/^ *run: */, "", line)
     if (line ~ /^[>|][+-]?[0-9]*$/) { runblock = 1; next }

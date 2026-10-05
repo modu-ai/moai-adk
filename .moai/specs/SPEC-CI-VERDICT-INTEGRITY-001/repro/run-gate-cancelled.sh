@@ -19,7 +19,7 @@ BODY="$(awk -v ANCHOR="$ANCHOR" '
   index($0, ANCHOR) {
     if (!grab) { match($0, /^ */); si = RLENGTH; grab = 1; next }
   }
-  grab && match($0, /^ */) && RLENGTH < si && $0 !~ /^ *$/ { exit }
+  grab && match($0, /^ */) && RLENGTH <= si && $0 !~ /^ *$/ { exit }
   grab && !runfound && /^ *run: */ {
     line = $0; sub(/^ *run: */, "", line)
     if (line ~ /^[>|][+-]?[0-9]*$/) { runblock = 1; next }
@@ -52,9 +52,15 @@ if printf '%s' "$BODY" | grep -q '\${{'; then
 fi
 
 SCRIPT="$(mktemp /tmp/t1534-e2-XXXXXX)" || { echo "harness failure: mktemp" >&2; exit 4; }
-trap 'rm -f "$SCRIPT"' EXIT
+OUT="$(mktemp /tmp/t1534-e2-out-XXXXXX)" || { echo "harness failure: mktemp" >&2; exit 4; }
+trap 'rm -f "$SCRIPT" "$OUT"' EXIT
 printf '%s\n' "$BODY" > "$SCRIPT"
 # Actions executes a shell:-less step's run block as `bash --noprofile --norc
 # -e {0}` on Linux runners (P2-T: -e parity, NO pipefail — that flag is not in
 # the runner default).
-bash -e "$SCRIPT"
+GITHUB_OUTPUT="$OUT" bash -e "$SCRIPT"
+rc=$?
+# Emit the step's GITHUB_OUTPUT writes (exclusion reason) for the verdict.
+echo "--- GITHUB_OUTPUT ---"
+cat "$OUT"
+exit "$rc"

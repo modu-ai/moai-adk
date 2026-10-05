@@ -60,7 +60,7 @@ STEP="$(awk -v ANCHOR="$ANCHOR" '
   index($0, ANCHOR) {
     if (!grab) { match($0, /^ */); si = RLENGTH; grab = 1; next }
   }
-  grab && match($0, /^ */) && RLENGTH < si && $0 !~ /^ *$/ { exit }
+  grab && match($0, /^ */) && RLENGTH <= si && $0 !~ /^ *$/ { exit }
   grab { print }
 ' "$WF")"
 
@@ -147,7 +147,10 @@ if [ "$body_rc" -eq 2 ]; then
   harness_fail "composed body failed to parse (exit 2 from bash) — probe translation bug"
 fi
 
-# Classify every recorded gh interaction.
+# Classify every recorded gh interaction. LG-1 fix (t1543 hold-record): the
+# late flag is judged ONLY on merge calls — the head re-query (required by
+# AC-CI-003) is served post-crossing by design (the stub advances on first
+# contact) and must never count toward the defect.
 total_calls=0
 merge_calls=0
 head_queries=0
@@ -156,7 +159,7 @@ if [ -f "$LOG" ]; then
   total_calls="$(grep -c 'gh pr' "$LOG" 2>/dev/null)" || total_calls=0
   merge_calls="$(grep -c 'gh pr merge' "$LOG" 2>/dev/null)" || merge_calls=0
   head_queries="$(grep -c 'gh pr view' "$LOG" 2>/dev/null)" || head_queries=0
-  late_calls="$(grep -c 'late=yes' "$LOG" 2>/dev/null)" || late_calls=0
+  late_calls="$(grep 'gh pr merge' "$LOG" 2>/dev/null | grep -c 'late=yes')" || late_calls=0
 fi
 for v in total_calls merge_calls head_queries late_calls; do
   eval "[ -n \"\$$v\" ] || $v=0"
