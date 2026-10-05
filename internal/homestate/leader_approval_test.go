@@ -27,19 +27,20 @@ func TestLeaderApprovalBindingValidator(t *testing.T) {
 		EvidenceHash: "sha-a", Issuer: "lead", IssuerRole: ApprovalIssuerLeader,
 		IssuedAt: "2026-10-06T00:00:00Z",
 	}
-	if err := base.verifyBinding("uuid-1", "run-a", 3, "sha-a"); err != nil {
+	if err := base.verifyBinding("uuid-1", "run-a", 3, "sha-a", "worker-1"); err != nil {
 		t.Fatalf("matching binding refused: %v", err)
 	}
 	for name, mutate := range map[string]func(a *LeaderApproval){
-		"uuid":   func(a *LeaderApproval) { a.CardUUID = "uuid-other" },
-		"run":    func(a *LeaderApproval) { a.RunID = "run-other" },
-		"stale":  func(a *LeaderApproval) { a.FactoryVersion = 2 },
-		"hash":   func(a *LeaderApproval) { a.EvidenceHash = "sha-other" },
-		"issuer": func(a *LeaderApproval) { a.IssuerRole = ApprovalIssuerLane },
+		"uuid":     func(a *LeaderApproval) { a.CardUUID = "uuid-other" },
+		"run":      func(a *LeaderApproval) { a.RunID = "run-other" },
+		"stale":    func(a *LeaderApproval) { a.FactoryVersion = 2 },
+		"hash":     func(a *LeaderApproval) { a.EvidenceHash = "sha-other" },
+		"issuer":   func(a *LeaderApproval) { a.IssuerRole = ApprovalIssuerLane },
+		"performer": func(a *LeaderApproval) { a.Issuer = "worker-1" },
 	} {
 		a := base
 		mutate(&a)
-		err := a.verifyBinding("uuid-1", "run-a", 3, "sha-a")
+		err := a.verifyBinding("uuid-1", "run-a", 3, "sha-a", "worker-1")
 		if err == nil {
 			t.Fatalf("%s variant accepted", name)
 		}
@@ -53,7 +54,7 @@ func TestLeaderApprovalBindingValidator(t *testing.T) {
 			want = ErrApprovalStale
 		case "hash":
 			want = ErrApprovalHashMismatch
-		case "issuer":
+		case "issuer", "performer":
 			want = ErrApprovalIssuer
 		}
 		if !errors.Is(err, want) {
@@ -65,8 +66,14 @@ func TestLeaderApprovalBindingValidator(t *testing.T) {
 	// and skips it — it does not fail it.
 	row := base
 	row.CardUUID = "uuid-1"
-	if err := row.verifyBinding("", "run-a", 3, "sha-a"); err != nil {
+	if err := row.verifyBinding("", "run-a", 3, "sha-a", "worker-1"); err != nil {
 		t.Fatalf("uuid-agnostic verification refused: %v", err)
+	}
+	// A row that names no owner skips the performer axis too.
+	ownerless := base
+	ownerless.Issuer = "worker-1"
+	if err := ownerless.verifyBinding("uuid-1", "run-a", 3, "sha-a", ""); err != nil {
+		t.Fatalf("ownerless row verification refused: %v", err)
 	}
 }
 
@@ -238,6 +245,30 @@ func TestFR_FCR_T20DoneRequiresReceipt(t *testing.T) {
 	}
 	if got.State != CardDone {
 		t.Fatalf("T20 with receipt = %s, want done", got.State)
+	}
+}
+
+// REQ-FCR-005's performer axis on the done transitions: a receipt whose
+// Issuer equals the row's performing owner is refused even with the leader
+// role marker — the overlay repro (issuer=worker-1, owner=worker-1 → done)
+// must refuse on both T18 and the gate path.
+func TestFR_FCR_PerformerOwnerRefusedOnTransition(t *testing.T) {
+	db := frOpen(t)
+	bare := frNewRepo(t, false)
+	ctx := context.Background()
+	c := Card{RunID: frRun, CardID: "self-approved", State: CardMergedLocal, Version: 1, OwnerLabel: "worker-1", WorktreePath: bare.Dir, MergeSHA: bare.Merge, EvidenceSHA: bare.Commit}
+	frPlace(t, db, c)
+	frApprove(t, db, LeaderApproval{
+		CardUUID: "uuid-self", RunID: frRun, CardID: c.CardID, FactoryVersion: 1,
+		EvidenceHash: bare.Commit, Issuer: "worker-1", IssuerRole: ApprovalIssuerLeader,
+	})
+	req := TransitionRequest{RunID: frRun, CardID: c.CardID, To: CardDone, ExpectedVersion: c.Version, Actor: "lead", Decider: DeciderHuman, Now: frNow}
+	before := frRowDump(t, db, frRun, c.CardID)
+	if _, err := db.Transition(ctx, req); !errors.Is(err, ErrApprovalIssuer) {
+		t.Fatalf("self-issued T18 err = %v, want ErrApprovalIssuer", err)
+	}
+	if after := frRowDump(t, db, frRun, c.CardID); after != before {
+		t.Fatal("the self-issued receipt moved the card")
 	}
 }
 

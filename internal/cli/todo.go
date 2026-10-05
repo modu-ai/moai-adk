@@ -1101,7 +1101,23 @@ func newTodoDoneCmd() *cobra.Command {
 					}
 					verdict = answer
 				}
+				// The leader-approval gate (SPEC-FACTORY-COMPLETION-RECOVERY-001
+				// REQ-FCR-002a): a factory-linked card's manual done verifies
+				// the receipt at the close moment, inside a factory write
+				// transaction held across the archive, serialized with
+				// concurrent factory transitions. A non-factory card (no
+				// factory database, no factory row) keeps its receipt-less
+				// completion — the gate does not apply.
+				gate, gateErr := holdDoneApprovalGate(cmd.Context(), resolveProjectDir(), id)
+				if gateErr != nil {
+					return gateErr
+				}
+				if err := gate.verify(cmd.Context(), todoCardUUID(&rec.Items[at])); err != nil {
+					gate.refuse()
+					return err
+				}
 				if err := rec.ArchiveCard(id); err != nil {
+					gate.refuse()
 					return err
 				}
 				if requireLanded {
@@ -1121,6 +1137,12 @@ func newTodoDoneCmd() *cobra.Command {
 						Ref:     ref,
 						At:      time.Now().UTC().Format(time.RFC3339),
 					}
+				}
+				// Release the factory write transaction only after the archive
+				// it guarded has landed in the record; a commit failure rolls
+				// it back and the error aborts the whole backlog write.
+				if err := gate.commit(); err != nil {
+					return err
 				}
 				return nil
 			}); err != nil {

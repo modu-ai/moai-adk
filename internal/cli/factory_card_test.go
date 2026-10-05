@@ -473,9 +473,19 @@ func TestFR_AC018_DecidePushGate(t *testing.T) {
 	}
 
 	bare, bareMerge := fcRepo(t, false)
-	fcPlace(t, root, homestate.Card{CardID: "p2", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", MergeSHA: bareMerge, WorktreePath: bare})
+	// REQ-FCR-002b (SPEC-FACTORY-COMPLETION-RECOVERY-001): the no-remote edge
+	// requires a leader approval receipt — the pre-M1 expectation (receipt-less
+	// done accepted on the "no remote — no CI verdict" note) is inverted.
+	fcPlace(t, root, homestate.Card{CardID: "p2", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", MergeSHA: bareMerge, WorktreePath: bare, EvidenceSHA: bareMerge})
+	if _, _, err := runFactory(t, "decide", "p2", "--gate", "push", "--run", fcRun); err == nil {
+		t.Fatal("no-remote push gate accepted done without a leader approval receipt")
+	}
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: "uuid-p2", RunID: fcRun, CardID: "p2", FactoryVersion: 1,
+		EvidenceHash: bareMerge, Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
 	if _, _, err := runFactory(t, "decide", "p2", "--gate", "push", "--run", fcRun); err != nil {
-		t.Fatalf("push gate with no remote: %v", err)
+		t.Fatalf("push gate with no remote and a receipt: %v", err)
 	}
 	if c := fcCard(t, root, "p2"); c.State != homestate.CardDone {
 		t.Fatalf("p2 = %s, want done", c.State)
@@ -486,7 +496,7 @@ func TestFR_AC018_DecidePushGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = db.Close()
-	if !strings.Contains(payload, "no remote — no CI verdict") {
+	if !strings.Contains(payload, "no remote — leader approval verified") {
 		t.Fatalf("no-remote event payload = %s", payload)
 	}
 }

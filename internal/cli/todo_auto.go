@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"context"
 	"io"
 	"os"
 	"os/exec"
@@ -328,7 +329,26 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 						// admits exactly `picked`, refuses everything else
 						// by name.
 						if r.Items[i].State == factory.BacklogStatePicked {
-							return r.ArchiveCard(card.ID)
+							// The leader-approval gate (SPEC-FACTORY-COMPLETION-RECOVERY-001
+							// REQ-FCR-002a): the third completion surface
+							// verifies the receipt at the archive moment,
+							// serialized exactly like the manual done path.
+							gate, gateErr := holdDoneApprovalGate(context.Background(), root, card.ID)
+							if gateErr != nil {
+								return gateErr
+							}
+							if err := gate.verify(context.Background(), todoCardUUID(&r.Items[i])); err != nil {
+								gate.refuse()
+								return err
+							}
+							if err := r.ArchiveCard(card.ID); err != nil {
+								gate.refuse()
+								return err
+							}
+							if err := gate.commit(); err != nil {
+								return err
+							}
+							return nil
 						}
 						return fmt.Errorf("auto: card %s is %s, not picked — changed hands mid-flight", card.ID, r.Items[i].State)
 					}

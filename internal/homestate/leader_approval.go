@@ -79,10 +79,17 @@ type LeaderApproval struct {
 // verifier's own identity knowledge, not a caller-supplied verdict. cardUUID
 // is the backlog identity; a verifier that cannot know it (the factory row
 // carries no uuid) passes "" and the uuid axis is skipped rather than failed
-// — the CLI surfaces, which do know it, always pass it.
-func (a LeaderApproval) verifyBinding(cardUUID, runID string, version int64, evidenceHash string) error {
+// — the CLI surfaces, which do know it, always pass it. ownerLabel is the
+// factory row's performing owner: a receipt IssuerED by that owner is
+// refused wherever it is presented (REQ-FCR-005 — performer ≠ approver; the
+// role marker is data, and this comparison is the gate's own), skipped only
+// when the row names no owner.
+func (a LeaderApproval) verifyBinding(cardUUID, runID string, version int64, evidenceHash, ownerLabel string) error {
 	if a.IssuerRole != ApprovalIssuerLeader {
 		return fmt.Errorf("%w: issuer %q holds role %q, not %q", ErrApprovalIssuer, a.Issuer, a.IssuerRole, ApprovalIssuerLeader)
+	}
+	if ownerLabel != "" && a.Issuer == ownerLabel {
+		return fmt.Errorf("%w: issuer %q is the card's performing owner — a performer does not approve its own work", ErrApprovalIssuer, a.Issuer)
 	}
 	if cardUUID != "" && a.CardUUID != cardUUID {
 		return fmt.Errorf("%w: receipt names card %s, the closing card is %s", ErrApprovalCardMismatch, a.CardUUID, cardUUID)
@@ -247,15 +254,19 @@ func (g *ApprovalGate) Verify(ctx context.Context, cardUUID string) error {
 	if !g.linked {
 		return nil
 	}
+	// A card can carry receipts for several runs (it was re-dispatched after
+	// an earlier run). The receipt bound to the card's CURRENT run is the
+	// one that matters: it wins over a newer receipt minted against an old
+	// run, and among same-run receipts the latest issued_at wins.
 	a, err := scanLeaderApproval(g.tx.QueryRowContext(ctx,
-		`SELECT card_uuid,run_id,card_id,factory_version,evidence_hash,issuer,issuer_role,issued_at FROM leader_approvals WHERE card_uuid=? ORDER BY issued_at DESC LIMIT 1`, cardUUID))
+		`SELECT card_uuid,run_id,card_id,factory_version,evidence_hash,issuer,issuer_role,issued_at FROM leader_approvals WHERE card_uuid=? ORDER BY (run_id=?) DESC, issued_at DESC LIMIT 1`, cardUUID, g.card.RunID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("%w: card %s needs a leader approval receipt to complete", ErrApprovalMissing, g.card.CardID)
 	}
 	if err != nil {
 		return err
 	}
-	return a.verifyBinding(cardUUID, g.card.RunID, g.card.Version, g.card.EvidenceSHA)
+	return a.verifyBinding(cardUUID, g.card.RunID, g.card.Version, g.card.EvidenceSHA, g.card.OwnerLabel)
 }
 
 // Commit settles the gate after the close it guards has landed.
@@ -300,8 +311,5 @@ func verifyTransitionApproval(ctx context.Context, tx *sql.Tx, cur Card) error {
 	if err != nil {
 		return err
 	}
-	if err := a.verifyBinding("", cur.RunID, cur.Version, cur.EvidenceSHA); err != nil {
-		return err
-	}
-	return nil
+	return a.verifyBinding("", cur.RunID, cur.Version, cur.EvidenceSHA, cur.OwnerLabel)
 }
