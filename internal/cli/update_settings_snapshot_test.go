@@ -134,10 +134,15 @@ func snapAssertNoPending(t *testing.T, root string) {
 	}
 }
 
+// snapCountPrefixed counts the lines of out whose VISIBLE text contains
+// prefix. Card t1527 repair round 4: severity lines lead with a glyph (and
+// its ANSI escape when the theme colours it), so a raw HasPrefix under-counted
+// every migrated warning to zero — the helper strips SGR first and matches on
+// contains, so it is agnostic to both the glyph and its colouring.
 func snapCountPrefixed(out, prefix string) int {
 	n := 0
 	for _, line := range strings.Split(out, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), prefix) {
+		if strings.Contains(stripSGR(strings.TrimSpace(line)), prefix) {
 			n++
 		}
 	}

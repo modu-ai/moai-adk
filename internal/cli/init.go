@@ -1031,9 +1031,27 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// below", which is only true with the panel last).
 	flushUpdateNotice(p)
 
+	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
+	// lsp/quality/design, ApplyHarness rewriting llm.yaml) happens AFTER the
+	// deploy tracked the rendered sections, so the manifest saves the
+	// pre-answer hashes and the next init --force reads the drifted files as
+	// user edits. Re-record the section hashes here — the LAST writer wins, so
+	// one retrack at the tail covers the whole family. template_managed-only
+	// filtering keeps user-owned entries untouched (two-way invariant).
+	// Card t1527 repair round 3: a retrack FAILURE routes into the warning
+	// collector (per-file skip notes still stream to stderr — bookkeeping
+	// noise, not the failure verdict). Card t1527 repair round 4: the whole
+	// block runs BEFORE the completion card, so the card's warning count and
+	// its "see the warning summary" hint include the retrack failure, and
+	// nothing but the deferred summary panel ever follows the card.
+	if retrackErr := retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr()); retrackErr != nil {
+		p.Collect("manifest retrack (config sections) failed: " + retrackErr.Error())
+	}
+
 	// Card t1527 D5: the completion card prints after every tail step above —
 	// its "initialized" verdict is the last thing the operator reads before
-	// the collected warning summary panel (see the comment above).
+	// the collected warning summary panel (see the comment above). The card's
+	// warning count is taken HERE, after every collector source above.
 	cardName := opts.ProjectName
 	if cardName == "" {
 		cardName = filepath.Base(opts.ProjectRoot)
@@ -1041,22 +1059,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
 		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count()))
-
-	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
-	// lsp/quality/design, ApplyHarness
-	// rewriting llm.yaml) happens AFTER the deploy tracked the rendered
-	// sections, so the manifest saves the pre-answer hashes and the next
-	// init --force reads the drifted files as user edits. Re-record the
-	// section hashes here — the LAST writer wins, so one retrack at the tail
-	// covers the whole family. template_managed-only filtering keeps
-	// user-owned entries untouched (two-way invariant).
-	// Card t1527 repair round 3: a retrack FAILURE routes into the warning
-	// collector — the summary panel carries it, so no separate diagnostic
-	// prints after the completion card. (Per-file skip notes still stream to
-	// stderr: they are per-file bookkeeping noise, not the failure verdict.)
-	if retrackErr := retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr()); retrackErr != nil {
-		p.Collect("manifest retrack (config sections) failed: " + retrackErr.Error())
-	}
 
 	// The template snapshot is written by opts.AfterTemplateDeploy (set before
 	// executor.Execute), not here: by this point the section files carry the
