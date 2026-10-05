@@ -406,6 +406,176 @@ func TestTodoAddMCPCarriesPresentation(t *testing.T) {
 	_ = rootA
 }
 
+// AC-TCI-010: the drop stores the reason in the drop-reason attribute while
+// the text keeps its prefix.
+func TestTodoDropStoresReason(t *testing.T) {
+	_, store := todoFixture(t)
+	if _, _, err := runTodo(t, "add", "card that will be dropped"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runTodo(t, "drop", "t1", "premise dead"); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	it := rec.Items[0]
+	if it.State != factory.BacklogStateDropped {
+		t.Fatalf("state = %s", it.State)
+	}
+	if it.Issuance == nil || it.Issuance.DropReason != "premise dead" {
+		t.Errorf("drop reason attribute = %+v, want premise dead", it.Issuance)
+	}
+	if !strings.HasPrefix(it.Text, "[DROPPED — premise dead] ") {
+		t.Errorf("text prefix missing: %q", it.Text)
+	}
+}
+
+// AC-TCI-010: the prefix convention is unchanged — the stored text carries
+// the marker and the reason verbatim.
+func TestTodoDropKeepsTextPrefix(t *testing.T) {
+	_, store := todoFixture(t)
+	if _, _, err := runTodo(t, "add", "prefix keeper"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runTodo(t, "drop", "t1", "superseded by t2"); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "[DROPPED — superseded by t2] prefix keeper"
+	if rec.Items[0].Text != want {
+		t.Errorf("text = %q, want %q", rec.Items[0].Text, want)
+	}
+}
+
+// AC-TCI-011: the relate verb's --disposition form records the disposition
+// on the matching finding and records no new relation; an out-of-set value
+// is refused.
+func TestTodoRelateDispositionVerb(t *testing.T) {
+	_, store := todoFixture(t)
+	if _, _, err := runTodo(t, "add", "first card for the disposition pair"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runTodo(t, "add", "second card for the disposition pair"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Findings = append(rec.Findings, factory.BacklogFinding{
+			SubjectID: "t2", RelatedID: "t1", Relation: "near-duplicate",
+			Source: "jev", Score: 0.85, Note: "pair", At: "2026-10-05T12:00:00+09:00",
+		})
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	findingsBefore := len(rec.Findings)
+	out, _, err := runTodo(t, "relate", "t2", "t1", "--disposition", "merge")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "disposition merge recorded") {
+		t.Errorf("confirmation = %q", out)
+	}
+	rec, err = store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rec.Findings) != findingsBefore {
+		t.Errorf("findings = %d, want %d (no new relation)", len(rec.Findings), findingsBefore)
+	}
+	matched := 0
+	for i := range rec.Findings {
+		f := &rec.Findings[i]
+		if f.Names("t1") && f.Names("t2") {
+			matched++
+			if f.Disposition == nil || *f.Disposition != "merge" {
+				t.Errorf("disposition = %+v, want merge", f.Disposition)
+			}
+		}
+	}
+	if matched != 1 {
+		t.Errorf("matched = %d, want 1", matched)
+	}
+	// Out-of-set: refused, nothing written.
+	_, _, err = runTodo(t, "relate", "t2", "t1", "--disposition", "maybe")
+	if err == nil || !strings.Contains(err.Error(), "disposition must be one of") {
+		t.Errorf("out-of-set err = %v, want the closed-set refusal", err)
+	}
+	rec, _ = store.LoadPure()
+	for i := range rec.Findings {
+		if rec.Findings[i].Names("t1") && rec.Findings[i].Names("t2") &&
+			rec.Findings[i].Disposition != nil && *rec.Findings[i].Disposition == "maybe" {
+			t.Errorf("out-of-set value was written")
+		}
+	}
+}
+
+// AC-TCI-013 (add clause): the issuance flags validate before the write —
+// a repeated flag, an out-of-set origin, a nonexistent parent and a
+// non-integer size all refuse with nothing written and no id consumed;
+// the happy path attaches the attributes.
+func TestTodoAddIssuanceFlagRefusals(t *testing.T) {
+	root, store := todoFixture(t)
+	if _, _, err := runTodo(t, "add", "parent card"); err != nil {
+		t.Fatal(err)
+	}
+	seqBefore := lastSeqOf(t, store)
+
+	cases := []struct {
+		name, wantErr string
+		args          []string
+	}{
+		{"repeated origin", "flag repeated: --origin", []string{"add", "--origin", "operator", "--origin", "leader", "x"}},
+		{"repeated parent", "flag repeated: --parent", []string{"add", "--parent", "t1", "--parent", "t1", "x"}},
+		{"out-of-set origin", "--origin must be one of", []string{"add", "--origin", "nobody-knows", "x"}},
+		{"nonexistent parent", "--parent names no card", []string{"add", "--parent", "t999", "x"}},
+		{"non-integer size", "--size-lines must be an integer", []string{"add", "--size-lines", "big", "x"}},
+	}
+	for _, tc := range cases {
+		_, _, err := runTodo(t, tc.args...)
+		if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+			t.Errorf("%s: err = %v, want %q", tc.name, err, tc.wantErr)
+		}
+	}
+	if seqAfter := lastSeqOf(t, store); seqAfter != seqBefore {
+		t.Errorf("last_seq moved %d → %d on refusals (ids consumed)", seqBefore, seqAfter)
+	}
+	// Happy path: archived parent counts as existing; the attributes attach.
+	if _, _, err := runTodo(t, "done", "t1"); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := runTodo(t, "add", "--parent", "t1", "--origin", "follow-up", "--size-lines", "120", "--files", "internal/cli/todo.go, internal/cli/todo_issuance.go", "follow-up card")
+	if err != nil {
+		t.Fatalf("flagged add: %v", err)
+	}
+	if !strings.HasPrefix(out, "t2") {
+		t.Errorf("stdout = %q", out)
+	}
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	iss := rec.Items[0].Issuance
+	if iss == nil {
+		t.Fatal("issuance not attached")
+	}
+	if iss.SpawnedBy != "t1" || iss.Origin != "follow-up" || iss.SizeLines == nil || *iss.SizeLines != 120 {
+		t.Errorf("issuance = %+v", iss)
+	}
+	if len(iss.Files) != 2 || iss.Files[0] != "internal/cli/todo.go" {
+		t.Errorf("files = %v", iss.Files)
+	}
+	_ = root
+}
+
 // AC-TCI-006 (c): engage prints the presentation on stderr, records no
 // finding, and refuses nothing.
 func TestGTDEngagePresentationRecordsNothing(t *testing.T) {

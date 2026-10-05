@@ -35,14 +35,30 @@ import (
 
 // newTodoRelateCmd — `moai todo relate <a> <b> --relation <r> [--note <text>]`
 // (REQ-TA-008): record one agent-sourced finding between two existing cards.
+// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-011: `--disposition <value>` turns the
+// verb into the disposition recorder — it sets the disposition of the
+// matching finding pair (either order) and records no new relation.
 func newTodoRelateCmd() *cobra.Command {
-	var relation, note string
+	var relation, note, disposition string
 	cmd := &cobra.Command{
 		Use:   "relate <a> <b> --relation <contains|absorbs|replaces|conflicts|blocks|depends>",
 		Short: "Record a relation between two cards (records only — changes no card)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subject, related := normalizeTodoRef(args[0]), normalizeTodoRef(args[1])
+			if disposition != "" {
+				if relation != "" {
+					err := fmt.Errorf("todo relate: --disposition and --relation are mutually exclusive")
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+					return err
+				}
+				if err := factory.RecordFindingDisposition(newTodoStore(), subject, related, disposition); err != nil {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+					return err
+				}
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "disposition %s recorded on the %s/%s finding\n", disposition, subject, related)
+				return nil
+			}
 			if err := runTodoRelate(cmd, subject, related, relation, note); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
@@ -54,6 +70,8 @@ func newTodoRelateCmd() *cobra.Command {
 		"One of: "+strings.Join(factory.BacklogSemanticRelations, ", "))
 	cmd.Flags().StringVar(&note, "note", "",
 		"Free text recorded with the finding")
+	cmd.Flags().StringVar(&disposition, "disposition", "",
+		"One of: "+strings.Join(factory.IssuanceDispositionValues, ", ")+" — set the finding's disposition instead of recording a relation")
 	return cmd
 }
 

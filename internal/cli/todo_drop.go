@@ -123,6 +123,15 @@ leaving the file untouched.`,
 					rec.Items[i].State = factory.BacklogStateDropped
 					// REQ-TST-006: the drop is stamped at the transition.
 					rec.Items[i].DroppedAt = todoStampNow()
+					// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-010: the reason is
+					// ALSO stored in the drop-reason attribute while the text
+					// keeps its prefix — the attribute is machine-readable
+					// (issuance JSON), the prefix stays for humans. Merge into
+					// any issuance the card already carries; create otherwise.
+					if rec.Items[i].Issuance == nil {
+						rec.Items[i].Issuance = &factory.BacklogIssuance{}
+					}
+					rec.Items[i].Issuance.DropReason = reason
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)

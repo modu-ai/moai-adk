@@ -47,7 +47,7 @@ func addAtRoot(root string, text string) error {
 	var out, errBuf bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&errBuf)
-	_, err := runTodoAddAppendRoot(root, cmd, text, false, nil)
+	_, err := runTodoAddAppendRoot(root, cmd, text, false, nil, nil)
 	return err
 }
 
