@@ -225,11 +225,6 @@ func candidateDate(moaiRoot string, c Candidate) (time.Time, bool) {
 	if c.Class == ClassAgentStops {
 		return newestStoppedAt(filepath.Join(moaiRoot, filepath.FromSlash(c.DatingPath)))
 	}
-	if c.Class == ClassVerifyScratch {
-		// The verify class is dated per entry; the group-level date is the
-		// dating of its oldest dated entry.
-		return oldestEntryDate(moaiRoot, c)
-	}
 	blob, err := os.ReadFile(filepath.Join(moaiRoot, filepath.FromSlash(c.DatingPath)))
 	if err != nil {
 		return time.Time{}, false
@@ -290,36 +285,6 @@ func newestStoppedAt(path string) (time.Time, bool) {
 		}
 	}
 	return newest, ok
-}
-
-// oldestEntryDate returns the oldest datable per-entry date under the
-// verify candidate (entry-level deletion re-dates each entry at action
-// time; the group-level read is for the decision report).
-func oldestEntryDate(moaiRoot string, c Candidate) (time.Time, bool) {
-	var oldest time.Time
-	ok := false
-	for _, rel := range c.Paths {
-		blob, err := os.ReadFile(filepath.Join(moaiRoot, filepath.FromSlash(rel)))
-		if err != nil {
-			continue
-		}
-		var body map[string]json.RawMessage
-		if err := json.Unmarshal(blob, &body); err != nil {
-			continue
-		}
-		raw, present := body["recorded_at"]
-		if !present {
-			continue
-		}
-		var ts time.Time
-		if err := json.Unmarshal(raw, &ts); err != nil || ts.IsZero() {
-			continue
-		}
-		if !ok || ts.Before(oldest) {
-			oldest, ok = ts, true
-		}
-	}
-	return oldest, ok
 }
 
 // entryDate reads one verify-scratch entry's own recorded_at (the D31

@@ -37,9 +37,18 @@ type Rotator struct {
 	// statFn, when non-nil, replaces os.Stat — the stale-decision seam
 	// (AC-HYG-004 arm a). The first call models the stale pre-lock
 	// observation; the under-lock re-stat is a later call.
+	//
+	// @MX:WARN @MX:REASON: the stat seam is the documented stale-decision
+	// residual-loss window (SPEC §C residual class); a production caller
+	// installing it would let a pre-lock observation drive destruction.
 	statFn func(string) (fs.FileInfo, error)
 	// lockProbe, when non-nil, replaces the real pass lock — the sidecar
 	// seam modeling held / unverifiable exclusion (AC-HYG-004 arm b).
+	//
+	// @MX:WARN @MX:REASON: the exclusion seam models the Windows
+	// sidecar's held/unverifiable limits; a production caller installing
+	// an always-acquired probe would rotate on unverified exclusivity,
+	// the exact D17 destruction shape.
 	lockProbe func(string) lockResult
 }
 

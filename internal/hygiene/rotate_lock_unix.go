@@ -27,7 +27,7 @@ func (r *Rotator) acquirePassLock() (func(), lockResult) {
 		return func() {}, lockUnverifiable
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		f.Close()
+		_ = f.Close()
 		if errors.Is(err, syscall.EWOULDBLOCK) || errors.Is(err, syscall.EAGAIN) || errors.Is(err, syscall.EACCES) {
 			return func() {}, lockHeld
 		}

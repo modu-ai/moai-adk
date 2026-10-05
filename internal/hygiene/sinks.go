@@ -173,7 +173,7 @@ func appendText(path string, line string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if _, err := f.WriteString(line); err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func readLinesFile(path string) ([]string, error) {
 		}
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var lines []string
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)

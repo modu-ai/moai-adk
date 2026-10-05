@@ -50,12 +50,25 @@ type GC struct {
 	// preRejudge, when non-nil, runs between enumeration and the D28
 	// action-time re-judge — the writer-race seam (a writer replacing the
 	// file with fresh state between the two steps).
+	//
+	// @MX:WARN @MX:REASON: the seam exists to prove the rejudge catches a
+	// mid-flight writer; a production caller installing destructive work
+	// here would sit inside the deletion critical section.
 	preRejudge func()
 	// preAction, when non-nil, runs between the immediately-before-action
 	// component check and the anchored action — the D27 swap-after-check
 	// seam.
+	//
+	// @MX:WARN @MX:REASON: the seam sits inside the symlink-safety window;
+	// the anchored handle closes the escape for symlink swaps, and this
+	// seam is what lets a test demonstrate it — a production caller here
+	// shares the deletion critical section.
 	preAction func()
 	// rootHandle, when non-nil, replaces os.OpenRoot (anchored-action seam).
+	//
+	// @MX:WARN @MX:REASON: the anchored root handle is the D27 closure; a
+	// production caller returning a plain (non-Root-backed) handle would
+	// reopen the symlink escape window this SPEC closed.
 	rootHandle func(string) (*os.Root, error)
 }
 
@@ -131,7 +144,7 @@ func (g *GC) Run(mode Mode) (*GCReport, error) {
 		if err != nil {
 			return nil, fmt.Errorf("gc: anchored root handle: %w", err)
 		}
-		defer anchor.Close()
+		defer func() { _ = anchor.Close() }()
 	}
 
 	for i := range candidates {

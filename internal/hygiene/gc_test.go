@@ -294,7 +294,7 @@ func TestReportModeByteIdentical(t *testing.T) {
 
 	treeHash := func() string {
 		h := sha256.New()
-		filepath.WalkDir(moaiRoot, func(path string, d os.DirEntry, err error) error {
+		_ = filepath.WalkDir(moaiRoot, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -463,7 +463,7 @@ func TestUnitIndependence(t *testing.T) {
 			MinAge: testMinAge, TranscriptWindow: testActivityWindow, HeartbeatWindow: testStaleHb,
 		}
 		registerTestRoot(moaiRoot)
-		e.Run(ModeApply)
+		_, _, _, _ = e.Run(ModeApply)
 		// The engine call itself must not panic; assert through a direct
 		// composition that the GC still completes after the rotator errors.
 		r := &Rotator{LogDir: logDir, MaxBytes: testThreshold, KeptRotations: 2}

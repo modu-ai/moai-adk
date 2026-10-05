@@ -11,6 +11,11 @@ import (
 // REQ-HYG-014, AC-HYG-013): the deferred advisory pass invokes it
 // best-effort; tests stub it to fail and assert the hook still allows the
 // launch. Production installs runHygieneBestEffort.
+//
+// @MX:WARN @MX:REASON: the seam runs inside the SessionStart deferred
+// pass — a production caller installing a blocking or mutating function
+// here would put hygiene on the launch critical path this wiring exists
+// to keep clear.
 var hygieneRunFn = runSessionHygiene
 
 // runSessionHygiene executes one hygiene pass for the project in the
