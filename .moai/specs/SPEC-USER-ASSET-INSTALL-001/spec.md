@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "Install common skills and agents into per-user folders (no plugin carrier), slim the project payload to settings + AGENTS.md + lock file + project-only harness, and retire the pluginemit and deployer_mode surfaces"
-version: "0.6.3"
+version: "0.6.4"
 status: draft
 created: 2026-10-05
 updated: 2026-10-05
@@ -140,6 +140,25 @@ related_specs: [SPEC-PLUGIN-MARKETPLACE-001, SPEC-INIT-SHRINK-001, SPEC-CODEX-CO
   (task-decomposition.md:302-303, Phase 19) — design §2.5 policy block +
   plan M3 + AC-018 arm verifies both. (The in-round E1/E2 extensions and
   the final-class round items 1-8 remain as recorded above.)
+- 2026-10-06: v0.6.4 DIRECTED REPAIR R-f (leader 4th-audit order,
+  OPERATOR HARD SCOPE — the last edit before the 5th/final ceremony).
+  R-f-① — cross-binary payload recovery DECIDED (design §2.2): option
+  (b) reinstall-from-current-version + honest provenance re-stamp — the
+  retry writes its own bytes for the absent target and records its own
+  version per recovered file (REQ-006 stays truthful: the per-file
+  version names the build that produced the bytes on disk; option (a)
+  journal payload-preservation rejected on the simplicity ladder —
+  doubles `~/.moai/` storage + a shadow-tree retention lifecycle for
+  fidelity only to a superseded binary's payload; the gate observation
+  `replay with current embedded bytes matches staged sha256: False` is
+  recorded); AC-001 cross-binary case-1 arm. R-f-② — dependency
+  maintenance for preserved assets (design §2.3 + plan M3 + AC-020 arm):
+  the removal step re-runs the derivation matrix's dependency rows and
+  DEFERS the deletion of any entry that is a declared dependency of a
+  preserved asset (kept + reported, re-evaluated at the next
+  update/removal); the preserved assets' consumers are user-folder
+  references by the class clause, and their loading is verified
+  post-removal.
 - 2026-10-06: v0.6.2 CLASS REPAIR (leader 2nd-audit order — class sweeps
   ending the instance parade; the last edit before the 3rd receipt
   ceremony). R-c — the install-coverage DERIVATION MATRIX promoted to

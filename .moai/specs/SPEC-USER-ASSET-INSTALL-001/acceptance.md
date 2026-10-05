@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "acceptance.md — acceptance criteria matrix"
-version: "0.6.3"
+version: "0.6.4"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -53,7 +53,7 @@ green paths only.
 | AC-017 | REQ-003 | Installed L0 user-folder set equals the resolved gate answer (5 agents by name, plan/run/sync surface, factory) PLUS the enumerated transitive runtime skill closure (design §2.3's FOURTEEN-skill three-tier union under DEFAULT-FLOW REACHABILITY — static preload ∪ dispatcher routing ∪ on-demand invoke sites incl. `moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`, `moai-ref-testing-pyramid`, `moai-ref-secops`; `moai-domain-html-report` classified out — round-5 F1 + fold B1 + final-class item 7 + E2 + R-c) PLUS the factory entry's declared agent dependency (`manager-lead` — factory-dispatch.md:104 resident deputy; not a sixth core agent — E1); the DERIVATION MATRIX (design §2.3, R-c — the mechanical sweep of every loading instruction across the workflow tree + L0 agent bodies, gaps as remediation rows) is the M0 drift guard's source of truth for this set; executable-flow arm ("default-install-runs", round-5 F1 + fold A2 + final-class item 1): after a default init (no `--bundles`), the default plan/run/sync flow resolves AND LOADS every skill it invokes — the three command skills, the dispatcher, the agent preload skills, the delegation-injected and on-demand workflow skills — from the user folders alone, the user-folder dispatcher LOADS its own workflows (the rebound installed-skill-relative references), AND the flow's STEP DOCUMENTS (the run/sync sub-workflow files the dispatcher points to) load end-to-end from the user folders — no project-side dependency at any step; the hook payload is project-deployed (AC-012), not user-folder content | EV-017 | M0+M2 |
 | AC-018 | REQ-004 | Via `moai init --bundles` and the `moai bundle` add/remove commands: bundle install adds exactly the bundle's catalog entries, bundle removal takes exactly them, the manifest's bundle list reflects each change, and `moai update` honors the recorded selection — a file of a shipped-but-DESELECTED bundle (the artifact of `moai bundle remove`) is pruned under the selection-based criterion (REQ-009/design §2.3), not kept (iter4 D28 flip-criterion arm); serialization arm (round-5 F4): two concurrent manifest mutations from different projects (an update and a `moai bundle add`) both survive — the earlier run's selection is not erased by the later writer; Route B precondition arm (final-class item 4 + directed repair R-b): a flow requiring an UNOPTED bundle (the manager-git role body) is refused with the named `moai bundle add <bundle>` remediation — never a missing-file error mid-flow — verified at BOTH manager-git entry points: the sync delivery Route B AND the run flow's Route B (task-decomposition.md:302-303, Phase 19); shared-asset preservation arm (in-round extension E3 — the gate reproduced the deletion): removing a bundle whose entries overlap L0 (the historical `devops` pack carries the L0 trio owasp-checklist / cross-model-audit / secops, catalog.yaml:230/:240/:250) removes ONLY the complement — the shared L0 skills survive in the user folders with a report note | EV-018 | M0+M2+M3 |
 | AC-019 | REQ-002 | Profile dirs (`~/.moai/claude-profiles/<name>`) byte-unchanged by install/update (settings isolation) | n/a (Minor) | M2/M3 |
-| AC-020 | REQ-020, REQ-024 | Migration: template-managed project common skills AND agents removed (incl. the plain `moai` dirs); user-modified preserved + reported; user-created untouched; each removal is gated per-asset on its user counterpart being manifest-tracked with a matching hash (REQ-024 upgrade arm) — after the run the user holds the user-folder placement (no neither-state). Three machine-state arms (iter4 D24): (a) manifest ALREADY exists (another project's update / partial install) → missing counterparts installed append-only before their project-side removal, no stall, no neither-state; (b) optional-pack (non-L0) template-managed project asset with no manifest and no `--bundles` → stays project-side, reported, not installed into an unopted bundle, not removed; (c) a user-side write FAILS mid-upgrade (read-only dir fixture) → the failed file's project counterpart is NOT removed (stays + reported), remaining files complete, summary lists the failure | EV-020 | M4 |
+| AC-020 | REQ-020, REQ-024 | Migration: template-managed project common skills AND agents removed (incl. the plain `moai` dirs); user-modified preserved + reported; user-created untouched; each removal is gated per-asset on its user counterpart being manifest-tracked with a matching hash (REQ-024 upgrade arm) — after the run the user holds the user-folder placement (no neither-state). Three machine-state arms (iter4 D24): (a) manifest ALREADY exists (another project's update / partial install) → missing counterparts installed append-only before their project-side removal, no stall, no neither-state; (b) optional-pack (non-L0) template-managed project asset with no manifest and no `--bundles` → stays project-side, reported, not installed into an unopted bundle, not removed; (c) a user-side write FAILS mid-upgrade (read-only dir fixture) → the failed file's project counterpart is NOT removed (stays + reported), remaining files complete, summary lists the failure; preserved-asset consumer loading arm (directed repair R-f-②): after a removal that preserves shared assets (the E3 complement) or a migration that preserves files, the preserved assets' consumers STILL LOAD — the derivation matrix's dependency rows are honored (a to-be-deleted entry that is a declared dependency of a preserved asset has its deletion DEFERRED: kept + reported), so no preserved asset is left pointing at a deleted dependency | EV-020 | M4 |
 | AC-021 | REQ-021 | Manifest with foreign schema_version → install/refresh proceed, removal refuses with named error; corrupt manifest JSON → removal refuses, corruption reported, rebuild-from-scan offered (doctor informational), never auto-delete; a manifest write carrying unknown fields preserves them (or refuses the write) — under a KNOWN schema AND under a FOREIGN schema_version on an append-only install/refresh write (the older-binary-rewrites-newer-manifest round-trip; iter4 D27 arm) | EV-021 | M3 |
 | AC-022 | REQ-011 | Mixed update run summary: installed/refreshed/removed/collision-skipped/divergence-preserved counts each match a seeded fixture | EV-022 | M3 |
 | AC-023 | REQ-013 | Read-only target dir → remaining files still processed; summary lists the failure with path + reason | n/a (Minor) | M2 |
@@ -105,7 +105,16 @@ Explicit Given-When-Then renderings for every Blocker criterion:
   claimed as the run's own; target present MISMATCHING → NEVER
   reinstalled — the file's bytes preserved (REQ-023 divergence with
   backup + report when the write was flag-complete, REQ-010 collision
-  otherwise). Mismatch arm (in-round extension E5 — the gate reproduced
+  otherwise). Cross-binary case-1 arm (directed
+  repair R-f-①, design decision (b) reinstall-from-current-version):
+  Given the interrupted run by binary vOld (journal staged, target
+  ABSENT — the write never started) and a recovery retry by binary
+  vNew ≠ vOld; When the recovery completes; Then the absent target is
+  installed with vNew's current bytes and the journal/manifest
+  provenance for the recovered entries is re-stamped to vNew — the
+  manifest carries no version that did not produce the bytes on disk
+  (and the mismatch cases remain governed by the E5 never-reinstall
+  lattice). Mismatch arm (in-round extension E5 — the gate reproduced
   user_bytes_preserved=False): Given the interrupted install where the
   user EDITED the written file before the retry; When the retry runs;
   Then the user's bytes are preserved untouched — no recovery path
@@ -168,6 +177,14 @@ Explicit Given-When-Then renderings for every Blocker criterion:
   directory fixture); When the migration runs; Then the failed file's
   project counterpart is NOT removed (stays project-side + reported),
   remaining files complete, and the summary lists the failure.
+  Preserved-asset consumer loading arm (directed repair R-f-②): Given a
+  removal that preserves shared assets (the E3 complement — e.g. the
+  devops pack removal keeping its L0 trio) or a migration that preserves
+  files; When the preserved assets' consumers run; Then they still load
+  — the derivation matrix's dependency rows are honored: a to-be-deleted
+  entry that is a declared dependency of a preserved asset has its
+  deletion DEFERRED (kept + reported, re-evaluated next removal/update),
+  and no preserved asset is left pointing at a deleted dependency.
 - **AC-025** — Given a destination path outside the four roots, a
   sentinel target whose parent directory is a symlink pointing outside the
   roots, a root that is itself a symlink (dotfile-manager `~/.claude`), a

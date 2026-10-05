@@ -275,6 +275,24 @@ author: manager-spec
   proof); present mismatching → NEVER reinstall, preserve as REQ-023
   divergence (flag-complete) or REQ-010 collision (unflagged) — both
   preserve the user's bytes.
+- v0.6.4 DIRECTED REPAIR R-f (leader 4th-audit order, OPERATOR HARD
+  SCOPE — the last edit before the 5th/final ceremony): R-f-① —
+  cross-binary payload recovery DECIDED, option (b)
+  reinstall-from-current-version + honest provenance re-stamp (design
+  §2.2: the retry writes its own bytes for the absent target and records
+  its own version per recovered file — REQ-006 stays truthful; option
+  (a) journal payload-preservation rejected on the simplicity ladder —
+  doubles `~/.moai/` storage + shadow-tree lifecycle for fidelity to a
+  superseded binary's payload; gate observation `replay with current
+  embedded bytes matches staged sha256: False` recorded); AC-001
+  cross-binary case-1 arm. R-f-② — dependency maintenance for
+  preserved assets: the removal step re-runs the derivation matrix's
+  dependency rows and DEFERS the deletion of any entry that is a
+  declared dependency of a preserved asset (kept + reported,
+  re-evaluated next removal/update); preserved assets' consumers are
+  user-folder references by the class clause, loading verified
+  post-removal — design §2.3 dependency-maintenance block + plan M3 +
+  AC-020 preserved-asset consumer loading arm.
 
 ## §E.2 Run-phase Evidence
 

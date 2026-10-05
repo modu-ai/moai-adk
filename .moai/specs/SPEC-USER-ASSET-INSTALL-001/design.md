@@ -1,7 +1,7 @@
 ---
 id: SPEC-USER-ASSET-INSTALL-001
 title: "design.md — user-folder asset install architecture"
-version: "0.6.3"
+version: "0.6.4"
 created: 2026-10-05
 updated: 2026-10-05
 author: manager-spec
@@ -224,6 +224,27 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   unflagged entry (cannot distinguish user-edit-after-write from
   user-file-never-written) is REQ-010 collision — both preserve the
   user's bytes, and no recovery path ever overwrites on a mismatch.
+  Cross-binary payload recovery for case (1) (directed repair R-f-① —
+  DESIGN DECISION, option (b) REINSTALL-FROM-CURRENT-VERSION chosen,
+  documented per the dispatch): a retry from a DIFFERENT binary cannot
+  restore the interrupted run's original bytes from path+hash+provenance
+  alone (`replay with current embedded bytes matches staged sha256:
+  False` — the gate's observation). The chosen rule is HONEST RE-STAMP:
+  the retry writes the CURRENT binary's bytes for the absent target and
+  refreshes the journal/manifest provenance to record the binary that
+  actually wrote the recovered bytes. REQ-006 interaction: the per-file
+  installing version stays TRUTHFUL — it names the build that produced
+  the bytes on disk, which after a cross-binary recovery is the retrying
+  binary; REQ-013's mixed-version manifest already makes mixed
+  provenance states real, so the re-stamp adds no new state class.
+  Option (a) — persisting the payload bytes in the journal (a staging
+  file retained until reconciliation) — was REJECTED on the simplicity
+  ladder: it doubles the install-set storage under `~/.moai/` and adds a
+  shadow-tree retention/cleanup lifecycle, buying only byte-fidelity to
+  a SUPERSEDED binary's payload; no user bytes are ever at risk in case
+  (1) (the target is absent — nothing to preserve), and the mismatch
+  cases are governed by E5's never-reinstall lattice. C1 determinism
+  binds the same binary against the same tree and is unaffected.
 - Schema-version gate: unknown `schema_version` → refuse manifest-driven
   removal (REQ-021); install/refresh may still proceed in append-only fashion.
 
@@ -262,7 +283,16 @@ phase — profile sessions do not see the shared user assets in v1; premise P6).
   (catalog.yaml:230), `moai-ref-cross-model-audit` (:240), and
   `moai-ref-secops` (:250) — all three are L0 since E2/R-c; the gate
   reproduced their deletion). Both respect REQ-010 collision and
-  REQ-023 divergence semantics; `moai update` honors the recorded selection —
+  REQ-023 divergence semantics. DEPENDENCY MAINTENANCE for preserved
+  assets (directed repair R-f-②): before deleting, the removal step
+  re-runs the derivation matrix's dependency rows — an entry that is a
+  declared dependency of a PRESERVED asset (any member of L0 ∪ the
+  remaining opted-in selections) has its deletion DEFERRED (kept +
+  reported, re-evaluated at the next update/removal) rather than
+  orphaning the preserved asset; the preserved assets' own consumer
+  references are user-folder references by the class clause (§2.5), and
+  the loading of the preserved assets' consumers is verified
+  post-removal (AC-020 arm). `moai update` honors the recorded selection —
   installs/refreshes L0 + opted-in bundles, prunes per REQ-009 (no longer in
   L0 nor any opted-in bundle). Milestones: the `--bundles` init flag in M2;
   the `moai bundle` command and update honoring in M3.
