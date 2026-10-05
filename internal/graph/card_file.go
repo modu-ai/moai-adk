@@ -88,12 +88,15 @@ func CardFileEdges(repoRoot, landedBranch string, attribute CardFileAttributor) 
 			continue
 		}
 		// First-parent diff: the contribution THIS merge brought in,
-		// independent of which path it was reached by.
-		files, err := gitIn(repoRoot, "diff", "--name-only", m.sha+"^1", m.sha)
+		// independent of which path it was reached by. NUL-separated: git's
+		// core.quotepath default C-escapes a non-ASCII path in the line
+		// output, and splitting on newlines stored the escape as the file
+		// (card t1454 card-review r2 finding 16).
+		files, err := gitIn(repoRoot, "diff", "--name-only", "-z", m.sha+"^1", m.sha)
 		if err != nil {
 			continue // an unreachable or shallow-clone merge contributes no edges
 		}
-		for _, f := range strings.Split(strings.TrimSpace(files), "\n") {
+		for _, f := range strings.Split(files, "\x00") {
 			if f == "" {
 				continue
 			}

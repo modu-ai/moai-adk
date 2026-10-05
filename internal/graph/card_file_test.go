@@ -252,3 +252,55 @@ func TestGraphCardFileEdgesIgnoreAbsorbMerge(t *testing.T) {
 		t.Fatalf("absorb-direction merge entered the fingerprint input: %v", shas)
 	}
 }
+
+// TestGraphCardFileEdgesKeepNonASCIIPaths — card t1454 card-review r2
+// finding 16: the first-parent diff lists files NUL-separated, so a
+// non-ASCII path survives byte-for-byte. git's core.quotepath DEFAULT
+// C-escapes non-ASCII in its line output, and splitting that output on
+// newlines stored the octal escape sequence as the edge's file. The test
+// pins the default, so it isolates git from the developer's global config
+// — a host setting core.quotepath=false would mask the escape.
+func TestGraphCardFileEdgesKeepNonASCIIPaths(t *testing.T) {
+	cfg := filepath.Join(t.TempDir(), "gitconfig")
+	if err := os.WriteFile(cfg, []byte("[user]\n\tname = Fixture\n\temail = fixture@example.invalid\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", cfg)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	root := t.TempDir()
+	gitFix(t, root, "init", "-q", "-b", "main")
+	gitFix(t, root, "config", "user.email", "fixture@example.com")
+	gitFix(t, root, "config", "user.name", "Fixture")
+	gitFix(t, root, "config", "gc.auto", "0")
+	gitFix(t, root, "config", "gc.autoDetach", "false")
+	commit := func(msg string, files map[string]string) {
+		t.Helper()
+		for name, body := range files {
+			path := filepath.Join(root, name)
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			gitFix(t, root, "add", name)
+		}
+		gitFix(t, root, "commit", "-q", "-m", msg)
+	}
+	commit("root", map[string]string{"f.txt": "0\n"})
+	gitFix(t, root, "checkout", "-q", "-b", "t16br")
+	commit("t16 work", map[string]string{filepath.Join("문서", "설계노트.txt"): "설계\n"})
+	gitFix(t, root, "checkout", "-q", "main")
+	gitFix(t, root, "merge", "--no-ff", "-q", "-m", "merge(t16): WT-t16 into develop - real landing", "t16br")
+
+	edges := cardFileRun(t, root)
+	var got string
+	for _, e := range edges {
+		if e.Card == "t16" {
+			got = e.File
+		}
+	}
+	if got != filepath.Join("문서", "설계노트.txt") {
+		t.Fatalf("t16's edge file = %q, want the raw path %q", got, filepath.Join("문서", "설계노트.txt"))
+	}
+}
