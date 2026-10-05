@@ -1,0 +1,3387 @@
+[
+  {
+    "path": ".claude/skills/moai/workflows/plan/.gitkeep",
+    "bytes": 0,
+    "lines": 1,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "frontmatter": null,
+    "headings": [],
+    "norms": []
+  },
+  {
+    "path": ".claude/skills/moai/workflows/plan/clarity-interview.md",
+    "bytes": 12444,
+    "lines": 227,
+    "sha256": "885d23fab3b5d74ed951ad424e821efd8d82a701fc99c8c15cc9bc0844fbaffe",
+    "frontmatter": "\ndescription: \"Plan Phase 4/5/6/7/8/DP1 — Deep interview loop, UltraThink activation, deep research, design direction, SPEC planning, and plan review annotation cycle\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-plan\n  phase: \"Phase 4 through Decision Point 1: Clarity Interview, Research, and Plan Review\"\n",
+    "headings": [
+      {
+        "line": 12,
+        "text": "### Phase 4: Deep Interview Loop (Conditional)"
+      },
+      {
+        "line": 48,
+        "text": "# Interview: {SPEC Title}"
+      },
+      {
+        "line": 50,
+        "text": "## Interview Round 1: Scope"
+      },
+      {
+        "line": 54,
+        "text": "## Interview Round 2: Constraints"
+      },
+      {
+        "line": 57,
+        "text": "## Clarity Score"
+      },
+      {
+        "line": 65,
+        "text": "### Phase 5: UltraThink Auto-Activation (Conditional)"
+      },
+      {
+        "line": 87,
+        "text": "### Phase 6: Deep Research (Recommended)"
+      },
+      {
+        "line": 121,
+        "text": "### Phase 7: Design Direction (Conditional)"
+      },
+      {
+        "line": 157,
+        "text": "### Phase 8: SPEC Planning (Required)"
+      },
+      {
+        "line": 177,
+        "text": "### Decision Point 1: Plan Review and Annotation Cycle"
+      },
+      {
+        "line": 180,
+        "text": "### HUMAN GATE: Plan Review"
+      },
+      {
+        "line": 206,
+        "text": "#### Annotation Cycle (1-6 iterations)"
+      }
+    ],
+    "norms": [
+      {
+        "line": 16,
+        "text": "**Entry condition:** Clarity score 4-10 AND skip conditions not met (from Phase 3)."
+      },
+      {
+        "line": 18,
+        "text": "**Guard:** [HARD] During the interview loop, the agent MUST NOT write implementation code or start codebase exploration. The sole output is `.moai/specs/SPEC-{ID}/interview.md`."
+      },
+      {
+        "line": 27,
+        "text": "| 4 | Edge cases | What unusual or failure scenarios must be handled? |"
+      },
+      {
+        "line": 28,
+        "text": "| 5 | Priority | What is the minimum viable slice if scope must be cut? |"
+      },
+      {
+        "line": 63,
+        "text": "**Context passing:** Pass `interview.md` to Phase 6 (Deep Research) and Phase 8 (SPEC Planning) as additional context. Both agents MUST read interview.md before proceeding."
+      },
+      {
+        "line": 85,
+        "text": "**Skip condition**: Simple, well-scoped features (complexity < 5, single domain, clear requirements). Log: \"UltraThink skipped: low complexity task.\""
+      },
+      {
+        "line": 98,
+        "text": "When to skip:"
+      },
+      {
+        "line": 100,
+        "text": "- User provides explicit \"skip research\" instruction"
+      },
+      {
+        "line": 111,
+        "text": "- Avoid surface-level scanning — agent must trace through actual execution paths"
+      },
+      {
+        "line": 112,
+        "text": "- Every finding must include specific file paths and line references"
+      },
+      {
+        "line": 129,
+        "text": "When to skip:"
+      },
+      {
+        "line": 131,
+        "text": "- User explicitly requests \"skip design\" or uses --prototype flag"
+      },
+      {
+        "line": 138,
+        "text": "2. If system.md exists: Load as design context, skip Intent-First process"
+      },
+      {
+        "line": 140,
+        "text": "   - Answer: Who is this human? What must they accomplish? What should this feel like?"
+      },
+      {
+        "line": 153,
+        "text": "Design direction guard: [HARD] During Phase 7, the agent MUST NOT write implementation code. Focus exclusively on design exploration and direction definition."
+      },
+      {
+        "line": 167,
+        "text": "- Design GEARS structure for each candidate using the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22; new SPECs MUST use GEARS. Canonical authoring reference: `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format."
+      },
+      {
+        "line": 175,
+        "text": "Implementation guard: [HARD] During Phases 6, 2, and 8, all agent prompts MUST include the instruction: \"DO NOT write implementation code. Focus exclusively on research, analysis, and planning.\" This separation of thinking and typing is the foundation of effective AI-assisted development."
+      },
+      {
+        "line": 223,
+        "text": "Guard rule: [HARD] During annotation cycles, the explicit instruction \"DO NOT implement any code — only update the plan document\" MUST be included in every agent prompt. This prevents premature code generation."
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/plan/context-discovery.md",
+    "bytes": 3213,
+    "lines": 72,
+    "sha256": "eb7e8deb8f20d755f541488807620e0d231816b0a8d56a9cf972b068a558f2b8",
+    "frontmatter": "\ndescription: \"Plan Phase 2/3 — Project exploration and clarity evaluation before deep research begins\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-plan\n  phase: \"Phase 2 / Phase 3: Context Discovery and Clarity Evaluation\"\n",
+    "headings": [
+      {
+        "line": 12,
+        "text": "## Phase Sequence"
+      },
+      {
+        "line": 14,
+        "text": "### Phase 2: Project Exploration (Optional)"
+      },
+      {
+        "line": 38,
+        "text": "### Phase 3: Clarity Evaluation (Conditional)"
+      }
+    ],
+    "norms": [
+      {
+        "line": 23,
+        "text": "When to skip:"
+      },
+      {
+        "line": 42,
+        "text": "**Skip conditions (any one is sufficient):**"
+      },
+      {
+        "line": 43,
+        "text": "- `--skip-interview` flag is present in $ARGUMENTS"
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/plan/spec-assembly.md",
+    "bytes": 31953,
+    "lines": 561,
+    "sha256": "bcdeec9d92c9f0b9835e69e327e7aef3c8779bf0f3a287150185c039b8ede4b7",
+    "frontmatter": "\ndescription: \"Plan Phase 9/9.1/10/11/12/13/14/15/DP2/DP3/DP3.5 — Pre-creation validation, SPEC document creation, independent review, GitHub Issue creation, Git environment setup, MX tag planning, quality gate, and execution mode selection\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-plan\n  phase: \"Phase 9 through Decision Point 3.5: SPEC Assembly, Review, and Environment Setup\"\n",
+    "headings": [
+      {
+        "line": 12,
+        "text": "### Phase 9: Pre-Creation Validation Gate"
+      },
+      {
+        "line": 29,
+        "text": "### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)"
+      },
+      {
+        "line": 63,
+        "text": "### Phase 10: SPEC Document Creation"
+      },
+      {
+        "line": 78,
+        "text": "#### [HARD] Pre-Write Frontmatter Checklist"
+      },
+      {
+        "line": 121,
+        "text": "### Delta Markers for Brownfield Projects"
+      },
+      {
+        "line": 126,
+        "text": "### [DELTA] {Module Name}"
+      },
+      {
+        "line": 135,
+        "text": "### spec-compact.md Auto-Generation"
+      },
+      {
+        "line": 156,
+        "text": "### Phase 11: Independent SPEC Review (Conditional)"
+      },
+      {
+        "line": 172,
+        "text": "#### Parallel Review Lenses (read-only, conditional)"
+      },
+      {
+        "line": 178,
+        "text": "#### Step 2.3.1: Invoke plan-auditor"
+      },
+      {
+        "line": 186,
+        "text": "#### Step 2.3.2: Read Verdict"
+      },
+      {
+        "line": 192,
+        "text": "#### Step 2.3.3: PASS Path"
+      },
+      {
+        "line": 198,
+        "text": "#### Step 2.3.3a: Plan HTML Report Emission"
+      },
+      {
+        "line": 220,
+        "text": "#### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)"
+      },
+      {
+        "line": 234,
+        "text": "#### Step 2.3.5: Escalation after 3 FAIL Iterations"
+      },
+      {
+        "line": 254,
+        "text": "### Phase 12: GitHub Issue Creation (Conditional, opt-in)"
+      },
+      {
+        "line": 270,
+        "text": "#### Step 2.5.1: Create GitHub Issue"
+      },
+      {
+        "line": 279,
+        "text": "# Pre-check: this block runs only when --issue flag is present."
+      },
+      {
+        "line": 280,
+        "text": "# If --issue is absent, Phase 12 is silently skipped — no gh issue create occurs."
+      },
+      {
+        "line": 284,
+        "text": "## SPEC Reference"
+      },
+      {
+        "line": 291,
+        "text": "## Requirements Summary"
+      },
+      {
+        "line": 295,
+        "text": "## Acceptance Criteria"
+      },
+      {
+        "line": 308,
+        "text": "#### Step 2.5.2: Update SPEC Metadata"
+      },
+      {
+        "line": 316,
+        "text": "#### Step 2.5.3: Bidirectional Reference"
+      },
+      {
+        "line": 324,
+        "text": "### Phase 13: Git Environment Setup (Conditional)"
+      },
+      {
+        "line": 332,
+        "text": "#### Late-branch Pre-check [HARD] (the late-branch opt-in policy)"
+      },
+      {
+        "line": 342,
+        "text": "#### Phase 13: BODP Gate (공통)"
+      },
+      {
+        "line": 366,
+        "text": "#### Worktree Path — retired"
+      },
+      {
+        "line": 383,
+        "text": "#### Branch Path (--branch flag or user choice)"
+      },
+      {
+        "line": 393,
+        "text": "#### Current Branch Path (no flag or user choice)"
+      },
+      {
+        "line": 398,
+        "text": "### Phase 14: MX Tag Planning [MANDATORY]"
+      },
+      {
+        "line": 413,
+        "text": "### Phase 15: SPEC Quality Gate"
+      },
+      {
+        "line": 416,
+        "text": "### HUMAN GATE: SPEC Quality Validation"
+      },
+      {
+        "line": 447,
+        "text": "### Decision Point 2: Development Environment Selection"
+      },
+      {
+        "line": 458,
+        "text": "### Decision Point 3: Next Action Selection"
+      },
+      {
+        "line": 469,
+        "text": "### Decision Point 3.5: Execution Mode Selection Gate"
+      },
+      {
+        "line": 511,
+        "text": "## Completion Criteria"
+      },
+      {
+        "line": 537,
+        "text": "## Test Scenarios"
+      },
+      {
+        "line": 539,
+        "text": "### Normal Flow"
+      },
+      {
+        "line": 549,
+        "text": "### Existing Assets Flow"
+      },
+      {
+        "line": 556,
+        "text": "### Error Flow"
+      }
+    ],
+    "norms": [
+      {
+        "line": 21,
+        "text": "Step 2 - SPEC ID Validation (all checks must pass):"
+      },
+      {
+        "line": 22,
+        "text": "- ID Format: Must match SPEC-{DOMAIN}-{NUMBER} pattern (e.g., SPEC-AUTH-001)"
+      },
+      {
+        "line": 23,
+        "text": "- Domain Name: Must be from the approved domain list (AUTH, API, UI, DB, REFACTOR, FIX, UPDATE, PERF, TEST, DOCS, INFRA, DEVOPS, SECURITY, and others)"
+      },
+      {
+        "line": 25,
+        "text": "- Directory Structure: Must create directory, never flat files"
+      },
+      {
+        "line": 31,
+        "text": "[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: the LEAN-tier workflow policy."
+      },
+      {
+        "line": 33,
+        "text": "Skip condition: when the user explicitly provided the tier in the original request (e.g., \"Tier S\", \"small SPEC, Tier S\"), the orchestrator MAY skip the question and record the user-provided tier directly."
+      },
+      {
+        "line": 49,
+        "text": "LOC thresholds are guidance, not enforcement. The implementer's domain knowledge supplements the question (e.g., a 200-LOC SPEC touching a frozen constitutional zone may warrant Tier L)."
+      },
+      {
+        "line": 51,
+        "text": "Persistence: the chosen tier is written to `spec.md` frontmatter as `tier: S | M | L` (optional field per `.claude/rules/moai/development/spec-frontmatter-schema.md`). When the user provides \"Other\" or skips, the orchestrator defaults to Tier L (backward compat)."
+      },
+      {
+        "line": 55,
+        "text": "- **Tier S** → Phase 10 creates only `spec.md` + `plan.md`; AC is inline in `spec.md §3`. No `acceptance.md`, no `design.md`, no `research.md`. Phase 11 plan-auditor uses 0.75 PASS threshold."
+      },
+      {
+        "line": 56,
+        "text": "- **Tier M** → Phase 10 creates `spec.md` + `plan.md` + `acceptance.md`. Phase 11 plan-auditor uses 0.80 PASS threshold."
+      },
+      {
+        "line": 57,
+        "text": "- **Tier L** → Phase 10 creates full 5-artifact set (spec.md + plan.md + acceptance.md + design.md + research.md). Phase 11 plan-auditor uses 0.85 PASS threshold (preserves pre-LEAN strict behavior)."
+      },
+      {
+        "line": 59,
+        "text": "Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigation: plan-auditor first-pass score regression triggers tier-up suggestion to the user."
+      },
+      {
+        "line": 69,
+        "text": "File generation — **single writer, single-turn parallel Write**: `manager-spec` is the sole writer of every plan-phase artifact, and no second agent writes into `.moai/specs/SPEC-{ID}/` while it works. Within that single writer, issue one `Write` call per artifact in the SAME assistant turn (per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution) rather than one artifact per turn — the artifacts are independent files, so batching costs one turn instead of N. The artifact set is Tier-determined (Tier S = 2, Tier M = 3, Tier L = 5):"
+      },
+      {
+        "line": 78,
+        "text": "#### [HARD] Pre-Write Frontmatter Checklist"
+      },
+      {
+        "line": 80,
+        "text": "[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and the SPEC frontmatter lint rule. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`."
+      },
+      {
+        "line": 87,
+        "text": "- [ ] `created: YYYY-MM-DD` — ISO date (NEVER `created_at`, NEVER `date`)"
+      },
+      {
+        "line": 88,
+        "text": "- [ ] `updated: YYYY-MM-DD` — ISO date (NEVER `updated_at`)"
+      },
+      {
+        "line": 91,
+        "text": "- [ ] `phase: \"vX.Y.Z target\"` — release or milestone target label. NEVER a lifecycle stage name (`plan`, `run`, `sync`, `mx`): the value names the release this SPEC is aimed at, not the stage you are standing in while writing it"
+      },
+      {
+        "line": 133,
+        "text": "Delta markers are OPTIONAL and only suggested for brownfield projects. Greenfield projects skip this."
+      },
+      {
+        "line": 154,
+        "text": "- Exclusions section MUST contain at least 1 entry"
+      },
+      {
+        "line": 161,
+        "text": "- `harness.yaml` `levels.{current_level}.plan_audit.enabled` is `true` — this holds at ALL three harness levels (`minimal`, `standard`, `thorough`); `plan_audit_global.always_enabled: true` additionally forces this phase on regardless of level"
+      },
+      {
+        "line": 164,
+        "text": "Skip conditions:"
+      },
+      {
+        "line": 168,
+        "text": "Harness-level intensity (plan-audit ALWAYS runs — the level changes rigor, not whether it runs):"
+      },
+      {
+        "line": 169,
+        "text": "- `minimal`: lightweight, non-blocking 1-iteration audit (`max_iterations: 1`, `require_must_pass: false`) — a FAIL verdict is logged but does not block Phase 12"
+      },
+      {
+        "line": 170,
+        "text": "- `standard`/`thorough`: full retry loop up to 3 iterations, blocking (`max_iterations: 3`, `require_must_pass: true`)"
+      },
+      {
+        "line": 172,
+        "text": "#### Parallel Review Lenses (read-only, conditional)"
+      },
+      {
+        "line": 174,
+        "text": "**`FO-PLAN-2`.** **Where** the harness level is `standard` or `thorough`, the orchestrator shall gather review evidence by launching several read-only review lenses in a single turn — one `Agent()` per lens (frontmatter-schema conformance, requirement testability, scope coherence, acceptance-command validity), 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2) — instead of one serial reading pass. Every lens is read-only: it reads `.moai/specs/SPEC-{ID}/` and returns findings as text, writes no file, and never prompts the user (a lens missing a required input returns a structured blocker report per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format, and the orchestrator re-delegates that lens alone). The orchestrator launches the lenses itself — this is scaling, not subagent nesting, so the flat agent hierarchy holds."
+      },
+      {
+        "line": 176,
+        "text": "**The lenses gather evidence; they do not produce the verdict.** The single binding PASS/FAIL stays with `plan-auditor` (Step 2.3.1 below), which may cite lens findings but is never replaced by them. **Where** the lens pass is skipped or unavailable, Phase 11 runs its existing single `plan-auditor` path unchanged — no error, no warning."
+      },
+      {
+        "line": 204,
+        "text": "1. Execute the CLI verb: `moai plan render-html {SPEC-ID}` — the `moai` binary resolves `<root>/.moai/specs/{SPEC-ID}/` and the most recent `<root>/.moai/reports/plan-audit/{SPEC-ID}-review-{N}.md`, parses the review markdown (verdict / score / must-pass / defects) with fail-open, derives the 8-field autonomy contract deterministically from SPEC artifacts, and writes a self-contained report to `<root>/.moai/reports/plan-html/{SPEC-ID}-plan.html` (exit 0 on success; non-zero + stderr when the SPEC directory is absent). The renderer is fail-open on a missing or unparseable review file — the report is still written with the \"audit verdict unavailable\" placeholder and exit 0."
+      },
+      {
+        "line": 208,
+        "text": "[HARD] The Implementation Kickoff Approval `AskUserQuestion` gate stays MANDATORY"
+      },
+      {
+        "line": 213,
+        "text": "plan-auditor PASS or a high skip-eligible score does NOT substitute for the gate."
+      },
+      {
+        "line": 217,
+        "text": "emission step is skipped silently — the plan-phase pipeline is NOT blocked. The"
+      },
+      {
+        "line": 220,
+        "text": "#### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)"
+      },
+      {
+        "line": 248,
+        "text": "- `minimal`: plan_audit.enabled: true, max_iterations: 1, require_must_pass: false (lightweight, non-blocking 1-iteration audit — NOT skipped; `plan_audit_global.always_enabled: true` guarantees this phase always runs)"
+      },
+      {
+        "line": 249,
+        "text": "- `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true"
+      },
+      {
+        "line": 250,
+        "text": "- `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true"
+      },
+      {
+        "line": 252,
+        "text": "For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration."
+      },
+      {
+        "line": 258,
+        "text": "[HARD] Per the late-branch opt-in policy, this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. SPEC frontmatter MUST NOT carry an `issue_number` field for new SPECs. The removal is prospective only — existing SPECs retain the field."
+      },
+      {
+        "line": 260,
+        "text": "Execution conditions (ALL must hold):"
+      },
+      {
+        "line": 265,
+        "text": "Skip conditions (any triggers a silent skip with no warning):"
+      },
+      {
+        "line": 266,
+        "text": "- `--issue` flag is NOT set (default — silent skip)"
+      },
+      {
+        "line": 274,
+        "text": "[HARD] Gate: only proceed when the `--issue` flag is set. The `gh issue create` invocation below is the ONLY occurrence in this workflow and MUST be guarded by the explicit `--issue` opt-in. Default invocation of `/moai plan` (no `--issue`) silently skips Step 2.5.1/2.5.2/2.5.3."
+      },
+      {
+        "line": 280,
+        "text": "# If --issue is absent, Phase 12 is silently skipped — no gh issue create occurs."
+      },
+      {
+        "line": 330,
+        "text": "Skipped when: develop_direct workflow, no flags and user chooses \"Use current branch\"."
+      },
+      {
+        "line": 332,
+        "text": "#### Late-branch Pre-check [HARD] (the late-branch opt-in policy)"
+      },
+      {
+        "line": 334,
+        "text": "Before evaluating any of the paths below (Worktree / Branch / Current Branch), the orchestrator MUST read `team.branch_creation.auto_enabled` from `.moai/config/sections/git-strategy.yaml`."
+      },
+      {
+        "line": 336,
+        "text": "- When `auto_enabled == false`: SKIP branch creation entirely. Cwd remains on the current branch (typically `main` — the default for Step 1 per SPEC Phase Discipline). SPEC files are committed to the current branch via the standard commit pipeline. Decision Point 3.5 mode-selection display MUST surface \"Late-branch (main commit + late switch)\" as the active mode to communicate the deferred-branch state to the user. Phase 13 BODP Gate STILL runs (with EntryPoint = `EntryPlanLateBranch`) — Late-branch does NOT bypass BODP, it only defers branch creation to Phase C (manual `git switch -c feat/SPEC-*` at PR time). Per the late-branch opt-in policy, no automated `git push origin main` is performed during this phase even if `team.automation.auto_push == true`."
+      },
+      {
+        "line": 350,
+        "text": "2. **AskUserQuestion Gate** — Orchestrator-only HARD (see `.claude/rules/moai/core/askuser-protocol.md`):"
+      },
+      {
+        "line": 364,
+        "text": "- Concurrent invocation safety: a single-session orchestrator is assumed."
+      },
+      {
+        "line": 398,
+        "text": "### Phase 14: MX Tag Planning [MANDATORY]"
+      },
+      {
+        "line": 402,
+        "text": "Execution conditions: Always executed. Depth varies by scope:"
+      },
+      {
+        "line": 422,
+        "text": "- [ ] No HARD rule violations detected"
+      },
+      {
+        "line": 437,
+        "text": "- **FAIL**: Critical gaps (e.g., no acceptance criteria, security-sensitive scope without security considerations). Must fix before proceeding."
+      },
+      {
+        "line": 451,
+        "text": "Tool: AskUserQuestion (when prompt_always config is true and auto_branch is true)"
+      },
+      {
+        "line": 454,
+        "text": "- Create Worktree (Recommended): recommended for parallel SPEC development"
+      },
+      {
+        "line": 513,
+        "text": "All of the following must be verified:"
+      },
+      {
+        "line": 524,
+        "text": "- Phase 12: GitHub Issue created and linked (only when `--issue` opt-in flag is set; default skips Issue creation)"
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/plan.md",
+    "bytes": 11307,
+    "lines": 191,
+    "sha256": "dccb01073da3a76b10d37ba968b90368644dac82f032233cb4b4b6f886de835a",
+    "frontmatter": "\ndescription: >\n  Creates comprehensive SPEC documents using GEARS notation (EARS retained\n  as legacy reference, 6-month backward-compat window) as the first step\n  of the Plan-Run-Sync workflow. Handles project exploration, SPEC file\n  generation, validation, and optional Git environment setup with worktree\n  or branch creation. Use when planning features or creating specifications.\nuser-invocable: false\nmetadata:\n  version: \"2.8.0\"\n  category: \"workflow\"\n  status: \"active\"\n  updated: \"2026-05-25\"\n  tags: \"plan, spec, gears, ears, requirements, specification, design\"\n\n# MoAI Extension: Progressive Disclosure\nprogressive_disclosure:\n  enabled: true\n  level1_tokens: 100\n  level2_tokens: 5000\n\n# MoAI Extension: Triggers\ntriggers:\n  keywords: [\"plan\", \"spec\", \"design\", \"architect\", \"requirements\", \"feature request\"]\n  agents: [\"manager-spec\", \"Explore\", \"manager-git\"]\n  phases: [\"plan\"]\n",
+    "headings": [
+      {
+        "line": 16,
+        "text": "# MoAI Extension: Progressive Disclosure"
+      },
+      {
+        "line": 22,
+        "text": "# MoAI Extension: Triggers"
+      },
+      {
+        "line": 33,
+        "text": "# Plan Workflow Orchestration"
+      },
+      {
+        "line": 35,
+        "text": "## Phase Owners (per the canonical agent catalog policy)"
+      },
+      {
+        "line": 41,
+        "text": "## Purpose"
+      },
+      {
+        "line": 51,
+        "text": "## [NEEDS CLARIFICATION] Marker Usage"
+      },
+      {
+        "line": 62,
+        "text": "## Approach"
+      },
+      {
+        "line": 82,
+        "text": "## Phase Routing Table"
+      },
+      {
+        "line": 105,
+        "text": "## Fan-Out Index"
+      },
+      {
+        "line": 114,
+        "text": "## Parallel Research Fan-Out (capability-gated)"
+      },
+      {
+        "line": 122,
+        "text": "## Invocation Flow"
+      },
+      {
+        "line": 150,
+        "text": "## Cross-References"
+      },
+      {
+        "line": 159,
+        "text": "## Audit-Ready Signal"
+      },
+      {
+        "line": 179,
+        "text": "## Custom Harness Extension (Optional)"
+      },
+      {
+        "line": 185,
+        "text": "## Sentinel Error Keys"
+      },
+      {
+        "line": 189,
+        "text": "## Routing Ledger Recording"
+      }
+    ],
+    "norms": [
+      {
+        "line": 39,
+        "text": "Cross-reference: per-SPEC Phase 1 SKIP rationale recorded at `.moai/specs/SPEC-{ID}/progress.md` § Phase 1 SKIP Rationale; Phase 4 Mode Selection autopilot logging at `progress.md` § Phase 4 Mode Selection."
+      },
+      {
+        "line": 53,
+        "text": "**[NEEDS CLARIFICATION: <topic>]** markers identify unresolved questions that MUST be settled before Implementation Kickoff Approval (plan→run HUMAN GATE)."
+      },
+      {
+        "line": 58,
+        "text": "- **NEVER in spec.md or acceptance.md** — these are resolved artifacts"
+      },
+      {
+        "line": 65,
+        "text": "Constraints: 10k concurrent users, 100ms read latency target"
+      },
+      {
+        "line": 87,
+        "text": "| Phase 3: Clarity Evaluation | `plan/context-discovery.md` | Clarity scoring (1-10) and skip conditions |"
+      },
+      {
+        "line": 96,
+        "text": "| Phase 11: Independent SPEC Review | `plan/spec-assembly.md` | plan-auditor adversarial audit + retry loop |"
+      },
+      {
+        "line": 109,
+        "text": "| Fan-Out ID | Trigger condition | Target file | What is parallelised |"
+      },
+      {
+        "line": 114,
+        "text": "## Parallel Research Fan-Out (capability-gated)"
+      },
+      {
+        "line": 116,
+        "text": "**`FO-PLAN-1`.** **Where** `.claude/workflows/plan-research-fanout.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator shall launch it to run Phase 2 (Project Exploration) and Phase 6 (Deep Research) as a single parallel read-only sweep — three-to-four lens explorers plus one synthesizer that returns the `research.md` body as a string. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — research proceeds on the standard single-`Explore` path with no error, no warning, and no change to the produced SPEC artifact set."
+      },
+      {
+        "line": 118,
+        "text": "The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. Every lens agent is read-only and writes no file — `research.md` is persisted by `manager-spec` / the orchestrator outside the workflow. A lens with nothing to report records it under its `confidence_and_gaps` heading, and an agent missing required input returns a structured blocker report; workflow agents never prompt the user (`agent-common-protocol.md` § User Interaction Boundary). The script gathers evidence only — the binding plan-phase verdict remains owned by `plan-auditor` at Phase 11, and Decision Point 1 is neither bypassed nor auto-passed by a workflow run."
+      },
+      {
+        "line": 139,
+        "text": "                           │    └─ [HARD] Pre-write frontmatter checklist (12 fields)"
+      },
+      {
+        "line": 183,
+        "text": "*(이 파일은 `/moai project --harness`로 생성됩니다. 파일이 없으면 자동으로 skip됩니다.)*"
+      },
+      {
+        "line": 191,
+        "text": "At plan dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). At the plan-audit gate, it appends the plan-auditor verdict as machine evidence via `moai harness ledger evidence --kind audit_score --value <score> --ref <plan-audit report path>`. Outcome is derived from machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the plan phase."
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/project/.gitkeep",
+    "bytes": 0,
+    "lines": 1,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "frontmatter": null,
+    "headings": [],
+    "norms": []
+  },
+  {
+    "path": ".claude/skills/moai/workflows/project/codebase-analysis.md",
+    "bytes": 15660,
+    "lines": 235,
+    "sha256": "e4aaf9dbb49b79eb31171265742e837e7e9a6b6332e2bb5f3e0a3746b648320b",
+    "frontmatter": "\ndescription: \"Project Phase 3/1.5/2 — Codebase analysis via Explore subagent, two-stage deep interview for existing projects (clarity-scored Stage A + mandatory extended-axes Stage B), and user confirmation\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-project\n  phase: \"Phase 3/1.5/2: Codebase Analysis and User Confirmation\"\n",
+    "headings": [
+      {
+        "line": 12,
+        "text": "## Phase 3: Codebase Analysis (Existing Projects Only)"
+      },
+      {
+        "line": 41,
+        "text": "## Phase 4: Deep Interview (Existing Projects Only)"
+      },
+      {
+        "line": 48,
+        "text": "### Two-Stage Interview Structure"
+      },
+      {
+        "line": 62,
+        "text": "### Stage A: Adaptive Clarity-Scored Discovery (mirrors `plan/clarity-interview.md`)"
+      },
+      {
+        "line": 154,
+        "text": "### Stage B: Mandatory Extended-Axes Round"
+      },
+      {
+        "line": 185,
+        "text": "# Project Interview"
+      },
+      {
+        "line": 187,
+        "text": "## Stage A Round 1: Ownership, Purpose, and Goal"
+      },
+      {
+        "line": 193,
+        "text": "## Stage A Round 2: Constraints and Non-Goals"
+      },
+      {
+        "line": 198,
+        "text": "## Stage A Round 3: Scope, Boundaries, and Documentation Priority"
+      },
+      {
+        "line": 203,
+        "text": "## Stage B Round 4: Verification, Surfaces, and Sharing"
+      },
+      {
+        "line": 216,
+        "text": "## Phase 5: User Confirmation"
+      }
+    ],
+    "norms": [
+      {
+        "line": 2,
+        "text": "description: \"Project Phase 3/1.5/2 — Codebase analysis via Explore subagent, two-stage deep interview for existing projects (clarity-scored Stage A + mandatory extended-axes Stage B), and user confirmation\""
+      },
+      {
+        "line": 14,
+        "text": "[HARD] Delegate codebase analysis to the Explore subagent."
+      },
+      {
+        "line": 45,
+        "text": "[HARD] All questions MUST use AskUserQuestion in user's conversation_language."
+      },
+      {
+        "line": 46,
+        "text": "[HARD] During the interview, the agent MUST NOT generate documentation or write files. The sole output is `.moai/project/interview.md`."
+      },
+      {
+        "line": 51,
+        "text": "rules and must never be conflated — conflating them is what leaves the extended-axes"
+      },
+      {
+        "line": 56,
+        "text": "| **Stage A** — clarity-scored adaptive discovery | Round 1 … `project.max_rounds` (3) | `clarity_threshold` (4, entry floor), sufficiency exit (≥ 8), abandon floor (≤ 3), `project.max_rounds` cap | early exit, abandon, OR the cap is reached |"
+      },
+      {
+        "line": 57,
+        "text": "| **Stage B** — mandatory extended-axes round | Round 4 (exactly one) | nothing — Stage B is EXEMPT from clarity scoring, from the Stage A early-exit skip, from the abandon path, and from `project.max_rounds` | after its four axes are collected |"
+      },
+      {
+        "line": 59,
+        "text": "**Stage B always runs**, on every Stage A exit route, before documentation generation."
+      },
+      {
+        "line": 69,
+        "text": "- **Entry floor**: `clarity_threshold` (4, from `.moai/config/sections/interview.yaml`)"
+      },
+      {
+        "line": 80,
+        "text": "  terminate **Stage A** early (skip the remaining **Stage A** rounds) and proceed to"
+      },
+      {
+        "line": 81,
+        "text": "  the mandatory **Stage B** round. The early exit terminates Stage A ONLY — it NEVER"
+      },
+      {
+        "line": 82,
+        "text": "  skips Stage B."
+      },
+      {
+        "line": 86,
+        "text": "  score alone never satisfies the early exit."
+      },
+      {
+        "line": 88,
+        "text": "  base field VOLUNTEERED in an EARLIER Stage A round — e.g. the user names their hard"
+      },
+      {
+        "line": 90,
+        "text": "  question — COUNTS as answered and MUST NOT be re-asked in its designated round (the"
+      },
+      {
+        "line": 94,
+        "text": "  could never hold, and Stage A would silently degrade back into a fixed-length"
+      },
+      {
+        "line": 99,
+        "text": "- **Cap is a hard stop**: on reaching `project.max_rounds` with a required base field"
+      },
+      {
+        "line": 114,
+        "text": "| `goal` | Stage A Round 1 (Ownership, Purpose, and Goal) | no — always elicited |"
+      },
+      {
+        "line": 115,
+        "text": "| `constraints` | Stage A Round 2 (Constraints and Non-Goals) | no — always elicited |"
+      },
+      {
+        "line": 116,
+        "text": "| `scope` | Stage A Round 3 (Scope, Boundaries, and Documentation Priority) | no — always elicited |"
+      },
+      {
+        "line": 140,
+        "text": "Capture the hard constraints (performance, security, compatibility, technology limits, or \"none known\"), recorded as the `constraints` field."
+      },
+      {
+        "line": 144,
+        "text": "Topic: What is in scope versus explicitly out of scope for this project, and which aspect must the documentation capture most accurately?"
+      },
+      {
+        "line": 152,
+        "text": "[HARD] The 4 options above resolve the DOCUMENTATION-PRIORITY answer only — they do NOT by themselves yield the scope boundary (only the free-form Option 4 would, and it is not the recommended option). **Then elicit the in-scope / out-of-scope boundary as a SEPARATE AskUserQuestion** (`project.questions_per_round: 3` allows a second question in this round): ask what is explicitly IN scope and what is explicitly OUT of scope for this project. Record that boundary summary as the `scope` field — `scope` MUST be elicited, and MUST NOT be inferred from the documentation-priority option. Skipping this second question leaves `scope` ABSENT, which propagates an empty `scope` into `harness-spec.yaml` and forces `harness-build-entry.md` Phase 3 to re-ask it — reopening the exact information leak this workflow exists to close. The documentation-priority answer is retained as additional context for Phase 3."
+      },
+      {
+        "line": 154,
+        "text": "### Stage B: Mandatory Extended-Axes Round"
+      },
+      {
+        "line": 158,
+        "text": "[HARD] **Stage B always runs.** It executes unconditionally after Stage A terminates —"
+      },
+      {
+        "line": 163,
+        "text": "- **EXEMPT from the Stage A early-exit skip** — the early exit skips the remaining"
+      },
+      {
+        "line": 164,
+        "text": "  Stage A rounds only, never this round."
+      },
+      {
+        "line": 175,
+        "text": "- **Verification method** — the test / e2e command or verification method (e.g., `go test ./...`, `pytest`, an e2e suite, or \"manual verification\"). Recorded as the `verification` field."
+      },
+      {
+        "line": 180,
+        "text": "Stage B still RUNS even when every axis is auto-populated — it confirms the inferred values rather than skipping. An axis the user declines or cannot answer is recorded as an explicit empty value; the round having RUN is what makes that a legitimate empty rather than an uncollected one."
+      },
+      {
+        "line": 212,
+        "text": "Pass `interview.md` to Phase 5 (User Confirmation) and Phase 6 (Documentation Generation) as additional context. Documentation agents MUST read interview.md before generating files."
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/project/doc-generation.md",
+    "bytes": 22230,
+    "lines": 373,
+    "sha256": "46aed9100d7edb0657c6941104d55e5c642c232825e9ce1ec17b147722e65a81",
+    "frontmatter": "\ndescription: \"Project Phase 6/3.1/3.3/3.5/3.7/4 — Documentation generation, audit, codemaps, LSP check, dev mode config, and completion\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-project\n  phase: \"Phase 6/3.1/3.3/3.5/3.7/4: Documentation Generation and Completion\"\n",
+    "headings": [
+      {
+        "line": 12,
+        "text": "## Phase 6: Documentation Generation"
+      },
+      {
+        "line": 31,
+        "text": "## Phase 7: Independent Document Audit (Conditional)"
+      },
+      {
+        "line": 45,
+        "text": "#### Step 3.1.1: Invoke plan-auditor"
+      },
+      {
+        "line": 53,
+        "text": "#### Step 3.1.2: Read Verdict"
+      },
+      {
+        "line": 63,
+        "text": "#### Step 3.1.3: Retry Loop (max 1 retry)"
+      },
+      {
+        "line": 82,
+        "text": "## Phase 8: harness-spec.yaml Emission"
+      },
+      {
+        "line": 95,
+        "text": "# .moai/project/harness-spec.yaml — machine-readable harness generation input"
+      },
+      {
+        "line": 97,
+        "text": "# --- REQUIRED base fields (collected in interview Stage A: the clarity-scored"
+      },
+      {
+        "line": 98,
+        "text": "#     discovery rounds, capped by project.max_rounds). These four gate the Stage A"
+      },
+      {
+        "line": 99,
+        "text": "#     early exit — Stage A does not exit early until all four are answered."
+      },
+      {
+        "line": 105,
+        "text": "# --- EXTENDED fields (collected in the mandatory interview Stage B round — Round 4 —"
+      },
+      {
+        "line": 106,
+        "text": "#     which ALWAYS runs after Stage A terminates and is EXEMPT from project.max_rounds,"
+      },
+      {
+        "line": 107,
+        "text": "#     from the Stage A early-exit skip, and from clarity scoring)."
+      },
+      {
+        "line": 127,
+        "text": "## Phase 9: Codemaps Generation"
+      },
+      {
+        "line": 152,
+        "text": "## Phase 10: Development Environment Check"
+      },
+      {
+        "line": 190,
+        "text": "## Phase 11: MCP Server Provisioning"
+      },
+      {
+        "line": 197,
+        "text": "### Step 3.6.1: Detect the project stack"
+      },
+      {
+        "line": 206,
+        "text": "### Step 3.6.2: Select recommended servers from the matrix"
+      },
+      {
+        "line": 219,
+        "text": "### Step 3.6.3: Obtain orchestrator approval (subagent never prompts)"
+      },
+      {
+        "line": 232,
+        "text": "### Step 3.6.4: Write `.mcp.json` at project scope (on approval)"
+      },
+      {
+        "line": 248,
+        "text": "### Step 3.6.5: Declined recommendation is not an error"
+      },
+      {
+        "line": 255,
+        "text": "## Phase 12: Development Methodology Auto-Configuration"
+      },
+      {
+        "line": 292,
+        "text": "## Phase 14: Completion"
+      },
+      {
+        "line": 294,
+        "text": "### Step 4.1: Content Summary Report"
+      },
+      {
+        "line": 327,
+        "text": "### Step 4.1.5: Issue the First-Feature Card"
+      },
+      {
+        "line": 346,
+        "text": "### Step 4.2: Next Steps"
+      },
+      {
+        "line": 362,
+        "text": "## Agent Chain Summary"
+      }
+    ],
+    "norms": [
+      {
+        "line": 14,
+        "text": "[HARD] Delegate documentation generation to the manager-docs subagent. Inject `At start, invoke Skill(\"moai-workflow-project\") for project-documentation generation.` into the spawn prompt (per `.moai/config/sections/delegation.yaml` project designation; skill-routing.md §1)."
+      },
+      {
+        "line": 37,
+        "text": "- `minimal`: Skip this phase"
+      },
+      {
+        "line": 41,
+        "text": "Skip Conditions:"
+      },
+      {
+        "line": 61,
+        "text": "If FAIL: Enter retry loop."
+      },
+      {
+        "line": 63,
+        "text": "#### Step 3.1.3: Retry Loop (max 1 retry)"
+      },
+      {
+        "line": 65,
+        "text": "On FAIL, the retry ceiling is 1 — a single regeneration + re-audit cycle (iteration 2 is the final audit). The former up-to-3-iteration regeneration loop is retired; the escalation AskUserQuestion fires as soon as the single retry fails."
+      },
+      {
+        "line": 75,
+        "text": "5. If FAIL after the single retry (iteration = 2): Escalate to user via AskUserQuestion with the final review report. Options:"
+      },
+      {
+        "line": 76,
+        "text": "   - Fix manually and retry: User edits documents, then re-run audit"
+      },
+      {
+        "line": 86,
+        "text": "[HARD] This phase runs automatically after Phase 6 documentation generation, without user interaction. It READS the answers recorded in `.moai/project/interview.md` (written by the Phase 2 / Phase 4 interview) and maps them onto the 8-field schema below — it does NOT re-interview the user."
+      },
+      {
+        "line": 88,
+        "text": "[HARD] Write the artifact to the project directory `.moai/project/harness-spec.yaml`. Re-run semantics: OVERWRITE — a second `/moai project` invocation regenerates it from the latest interview answers, matching the existing `interview.md` regeneration behavior (no merge / skip-if-present)."
+      },
+      {
+        "line": 90,
+        "text": "[HARD] The artifact MUST NOT be written anywhere under `.moai/specs/` — the `/moai project` NO-SPEC scope guard applies to this artifact too."
+      },
+      {
+        "line": 102,
+        "text": "constraints: [<string>, ...]  # hard constraints (from the constraints / non-goals answer)"
+      },
+      {
+        "line": 105,
+        "text": "# --- EXTENDED fields (collected in the mandatory interview Stage B round — Round 4 —"
+      },
+      {
+        "line": 106,
+        "text": "#     which ALWAYS runs after Stage A terminates and is EXEMPT from project.max_rounds,"
+      },
+      {
+        "line": 107,
+        "text": "#     from the Stage A early-exit skip, and from clarity scoring)."
+      },
+      {
+        "line": 119,
+        "text": "| EXTENDED | `verification`, `ui_surface`, `external_systems`, `team_sharing` | **Stage B — the mandatory Round 4**, which always runs | N/A — Stage B is exempt from the cap, the early exit, and clarity scoring |"
+      },
+      {
+        "line": 131,
+        "text": "[HARD] This phase runs automatically after Phase 6 documentation generation."
+      },
+      {
+        "line": 144,
+        "text": "Skip Conditions:"
+      },
+      {
+        "line": 145,
+        "text": "- New projects with no existing code (Phase 2 path): Skip codemaps generation, create placeholder `.moai/project/codemaps/overview.md` with project goals only"
+      },
+      {
+        "line": 146,
+        "text": "- User explicitly requests skip via AskUserQuestion in Phase 2"
+      },
+      {
+        "line": 213,
+        "text": "skipping provisioning silently."
+      },
+      {
+        "line": 215,
+        "text": "[HARD] Cap the recommendation at 3-5 servers maximum, and prefer vendor-maintained servers"
+      },
+      {
+        "line": 219,
+        "text": "### Step 3.6.3: Obtain orchestrator approval (subagent never prompts)"
+      },
+      {
+        "line": 221,
+        "text": "[HARD] Surface the selected servers to the user through the ORCHESTRATOR's AskUserQuestion"
+      },
+      {
+        "line": 222,
+        "text": "channel. A subagent-executed step (e.g. a delegated `builder-harness` scaffold) MUST NOT"
+      },
+      {
+        "line": 227,
+        "text": "[HARD] Where a recommended MCP server requires credentials or tokens"
+      },
+      {
+        "line": 229,
+        "text": "before writing that server. Never auto-write a credentialed server without that explicit"
+      },
+      {
+        "line": 238,
+        "text": "[HARD] The write MUST be additive / idempotent — MERGE the selected servers into any existing"
+      },
+      {
+        "line": 242,
+        "text": "[HARD] Any secret in a written server entry MUST be expressed in `${VAR}` env-var expansion"
+      },
+      {
+        "line": 243,
+        "text": "form (e.g. `\"env\": { \"DATABASE_URL\": \"${DATABASE_URL}\" }`) — never inline a literal"
+      },
+      {
+        "line": 259,
+        "text": "[HARD] This phase runs automatically without user interaction. No AskUserQuestion is needed."
+      },
+      {
+        "line": 296,
+        "text": "[HARD] Read the generated documents and present a structured summary to the user in conversation_language."
+      },
+      {
+        "line": 329,
+        "text": "[HARD] Issue exactly ONE backlog card carrying the project's first feature, so the run ends with the next piece of work on the queue instead of only in prose."
+      },
+      {
+        "line": 334,
+        "text": "2. If `goal` is empty, absent, or null: **skip this step entirely** and say so in the Step 4.2 report. An unresolved interview answer is nothing to derive from, and a card invented to fill the gap is exactly what the doctrine forbids."
+      },
+      {
+        "line": 335,
+        "text": "3. Read the queue: `moai todo list --json`. If a `queued` item already carries the same `[PROJECT] ` text, **skip the add** and report that existing id — re-running `/moai project` must not stack duplicates."
+      },
+      {
+        "line": 344,
+        "text": "[HARD] One card per run — not one per document, per feature, or per finding. The card is **queued, never started**: whether work begins is Step 4.2's question, and only the operator's answer there starts it."
+      },
+      {
+        "line": 348,
+        "text": "[HARD] After displaying the summary — including the card id issued in Step 4.1.5, or the reason no card was issued — use AskUserQuestion to present these options:"
+      },
+      {
+        "line": 350,
+        "text": "- Create the SPEC and start now (Recommended): Pick the card issued in Step 4.1.5 and begin immediately. Selecting this branch IS the operator's pick (`todo.md` § Picking the next card) — record it with `moai todo next <n>` and continue in this same session with `/moai plan \"<card text>\"`. In Kanban Mode, report the pick to the lead instead and let it dispatch the card to the `plan` session. Run-phase entry still passes the Implementation Kickoff Approval gate, where the `ac_converge` goal is offered as the progression-mode axis and armed only after the gate passes — this branch never bypasses that gate."
+      },
+      {
+        "line": 351,
+        "text": "- Create SPEC later: Leave the card queued and stop here. `/moai plan` picks it up whenever the operator returns."
+      },
+      {
+        "line": 356,
+        "text": "[HARD] AskUserQuestion accepts at most 4 options per question. Present \"Create the SPEC and start now\", \"Create SPEC later\", \"Generate project-specific harness\", and \"Done\"; name \"Review and Edit Documentation\" in the response body as the fifth path, reachable by answering Other."
+      },
+      {
+        "line": 358,
+        "text": "[HARD] No branch is taken on the operator's behalf. If no answer comes back, nothing starts — the card stays queued and the workflow ends. Starting work without that answer is a preselect, whatever the step is called."
+      },
+      {
+        "line": 371,
+        "text": "- Phase 11: MoAI orchestrator (MCP server provisioning — matrix select + AskUserQuestion approval + additive `.mcp.json` write at project scope; subagent never prompts)"
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/project/meta-harness.md",
+    "bytes": 9233,
+    "lines": 132,
+    "sha256": "065617558fa491d203dfc892f21c10886d67a4fc8c383d64e381d766d8f6846e",
+    "frontmatter": "\ndescription: \"Project Phase 15/7 — project-specific harness generation entry point (redirects to the v4 harness Builder) and 5-Layer Activation wiring\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-project\n  phase: \"Phase 15: Harness Generation Entry (v4 Builder redirect); Phase 16: 5-Layer Activation\"\n",
+    "headings": [
+      {
+        "line": 12,
+        "text": "## Phase 15: Project-Specific Harness Generation (v4 Builder Redirect)"
+      },
+      {
+        "line": 18,
+        "text": "### 5.0 Promoted Offer — Post-Project-Type-Confirmation Harness Proposal"
+      },
+      {
+        "line": 33,
+        "text": "### 5.1 Entry — Hand off to the v4 Builder entry workflow"
+      },
+      {
+        "line": 37,
+        "text": "### 5.2 Generation — Orchestrator-direct Builder"
+      },
+      {
+        "line": 49,
+        "text": "### 5.3 Post-Build"
+      },
+      {
+        "line": 53,
+        "text": "## Phase 16: 5-Layer Activation"
+      },
+      {
+        "line": 65,
+        "text": "### 7.1 The Five Activation Layers"
+      },
+      {
+        "line": 79,
+        "text": "### 7.2 Install Invocation (orchestrator instruction)"
+      },
+      {
+        "line": 90,
+        "text": "# add --design-extension when the request calls for a full-custom design extension"
+      },
+      {
+        "line": 98,
+        "text": "### 7.3 Phase 15 Post-Generation Smoke Gate"
+      },
+      {
+        "line": 125,
+        "text": "### 7.4 Retrofit Note (existing incomplete harnesses)"
+      }
+    ],
+    "norms": [
+      {
+        "line": 16,
+        "text": "[HARD] Do NOT invoke the deprecated `moai-meta-harness` skill or reproduce its static question set here. Route to the v4 flow instead."
+      },
+      {
+        "line": 27,
+        "text": "`<type>` resolves from the `.moai/project/harness-spec.yaml` `domain` field (written by `project/doc-generation.md` Phase 8) when present; otherwise it falls back to the mode-detection confirmed project type. State both sources so the prompt always renders a concrete `<type>`."
+      },
+      {
+        "line": 29,
+        "text": "[HARD] The Phase 14 next-step \"Generate harness\" menu option — hosted in `project/doc-generation.md` (read-only for this promotion, retained by non-modification) — is RETAINED as a fallback. Both entry points remain reachable: a user who declines this post-project-type-confirmation proposal still reaches the Phase 14 menu later. Promoting the offer does NOT remove the fallback."
+      },
+      {
+        "line": 41,
+        "text": "[HARD] The GENERATE phase MUST run the FROZEN guard (`EnsureAllowed`) as the **first check**"
+      },
+      {
+        "line": 43,
+        "text": "`.claude/skills/moai/`, or `.claude/rules/moai/` are permanently FROZEN and must be"
+      },
+      {
+        "line": 46,
+        "text": "[HARD] If the Builder's generation fails mid-way, its own cleanup handling removes all"
+      },
+      {
+        "line": 61,
+        "text": "[HARD] Phase 16 runs ONLY after Phase 15 generation completes successfully (all"
+      },
+      {
+        "line": 63,
+        "text": "or ran its cleanup handling, Phase 16 MUST NOT run."
+      },
+      {
+        "line": 93,
+        "text": "The command takes positional flag inputs and never invokes `AskUserQuestion`"
+      },
+      {
+        "line": 123,
+        "text": "incomplete harness must be regenerated or repaired before it can auto-trigger."
+      },
+      {
+        "line": 129,
+        "text": "never auto-triggers. To retrofit such a project, re-run the harness generation"
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/project/mode-detection.md",
+    "bytes": 16641,
+    "lines": 255,
+    "sha256": "35b4a00d715744f91d08390cfffc2b73be7898692499f22331dacbe4ad971871",
+    "frontmatter": "\ndescription: \"Project Phase 1/0.3 — Mode flag compatibility, scope boundary, project type detection, and new project deep interview\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-project\n  phase: \"Phase 1/0.3: Mode Detection and New Project Interview\"\n",
+    "headings": [
+      {
+        "line": 12,
+        "text": "## Mode Flag Compatibility"
+      },
+      {
+        "line": 28,
+        "text": "## [HARD] Scope Boundary — NO SPEC Generation"
+      },
+      {
+        "line": 59,
+        "text": "## Phase 1: Project Type Detection"
+      },
+      {
+        "line": 89,
+        "text": "## Phase 2: Deep Interview (New Projects Only)"
+      },
+      {
+        "line": 96,
+        "text": "### Two-Stage Interview Structure"
+      },
+      {
+        "line": 110,
+        "text": "### Stage A: Adaptive Clarity-Scored Discovery (mirrors `plan/clarity-interview.md`)"
+      },
+      {
+        "line": 197,
+        "text": "### Stage B: Mandatory Extended-Axes Round"
+      },
+      {
+        "line": 228,
+        "text": "# Project Interview"
+      },
+      {
+        "line": 230,
+        "text": "## Stage A Round 1: Vision and Domain"
+      },
+      {
+        "line": 236,
+        "text": "## Stage A Round 2: Technology and Constraints"
+      },
+      {
+        "line": 241,
+        "text": "## Stage A Round 3: Scope and Boundaries"
+      },
+      {
+        "line": 246,
+        "text": "## Stage B Round 4: Verification, Surfaces, and Sharing"
+      }
+    ],
+    "norms": [
+      {
+        "line": 28,
+        "text": "## [HARD] Scope Boundary — NO SPEC Generation"
+      },
+      {
+        "line": 30,
+        "text": "[HARD] `/moai project` MUST NOT generate any SPEC document under `.moai/specs/`. Scope is strictly limited to:"
+      },
+      {
+        "line": 44,
+        "text": "Hard rules to prevent recurrence:"
+      },
+      {
+        "line": 46,
+        "text": "1. [HARD] **Never write to `.moai/specs/**`** from within this workflow. Not `Write`, not `Edit`, not via any subagent delegated from Phase 5-4."
+      },
+      {
+        "line": 47,
+        "text": "2. [HARD] **If the user request mentions SPEC-ID or feature specification**: STOP the workflow and redirect via the orchestrator with this message (user's conversation_language):"
+      },
+      {
+        "line": 49,
+        "text": "3. [HARD] **If the interview reveals multiple feature ideas**: list them as candidates in `product.md` §Roadmap, then in the completion AskUserQuestion offer `/moai plan` as the explicit next step for each. Do NOT auto-spawn SPEC generation."
+      },
+      {
+        "line": 50,
+        "text": "4. [HARD] **If a subagent delegated during Phase 3 (Codebase Analysis) or Phase 6 (Doc Generation) starts writing to `.moai/specs/`**: the hook layer will block via the existing agent hook framework, but the orchestrator MUST also refuse the delegation upfront. Subagent prompts MUST include: \"You are forbidden from writing any file under `.moai/specs/`. If you discover a SPEC-worthy gap, report it in a `findings` section of your return message — do not create the file.\""
+      },
+      {
+        "line": 61,
+        "text": "[HARD] Auto-detect project type by checking for existing source code files FIRST."
+      },
+      {
+        "line": 68,
+        "text": "[HARD] Present detection result via AskUserQuestion for user confirmation."
+      },
+      {
+        "line": 93,
+        "text": "[HARD] All questions MUST use AskUserQuestion in user's conversation_language."
+      },
+      {
+        "line": 94,
+        "text": "[HARD] During the interview, the agent MUST NOT write implementation code or generate documentation. The sole output is `.moai/project/interview.md`."
+      },
+      {
+        "line": 99,
+        "text": "rules and must never be conflated — conflating them is what leaves the extended-axes"
+      },
+      {
+        "line": 104,
+        "text": "| **Stage A** — clarity-scored adaptive discovery | Round 1 … `project.max_rounds` (3) | `clarity_threshold` (4, entry floor), sufficiency exit (≥ 8), abandon floor (≤ 3), `project.max_rounds` cap | early exit, abandon, OR the cap is reached |"
+      },
+      {
+        "line": 105,
+        "text": "| **Stage B** — mandatory extended-axes round | Round 4 (exactly one) | nothing — Stage B is EXEMPT from clarity scoring, from the Stage A early-exit skip, from the abandon path, and from `project.max_rounds` | after its four axes are collected |"
+      },
+      {
+        "line": 107,
+        "text": "**Stage B always runs**, on every Stage A exit route, before documentation generation."
+      },
+      {
+        "line": 117,
+        "text": "- **Entry floor**: `clarity_threshold` (4, from `.moai/config/sections/interview.yaml`)"
+      },
+      {
+        "line": 127,
+        "text": "  terminate **Stage A** early (skip the remaining **Stage A** rounds) and proceed to"
+      },
+      {
+        "line": 128,
+        "text": "  the mandatory **Stage B** round. The early exit terminates Stage A ONLY — it NEVER"
+      },
+      {
+        "line": 129,
+        "text": "  skips Stage B."
+      },
+      {
+        "line": 132,
+        "text": "  A high clarity score alone never satisfies the early exit."
+      },
+      {
+        "line": 134,
+        "text": "  base field VOLUNTEERED in an EARLIER Stage A round — e.g. the user names their hard"
+      },
+      {
+        "line": 136,
+        "text": "  COUNTS as answered and MUST NOT be re-asked in its designated round. Without this"
+      },
+      {
+        "line": 139,
+        "text": "  condition could never hold, and Stage A would silently degrade back into a"
+      },
+      {
+        "line": 145,
+        "text": "- **Cap is a hard stop**: on reaching `project.max_rounds` with a required base field"
+      },
+      {
+        "line": 158,
+        "text": "| `constraints` | Stage A Round 2 (Technology and Constraints) | hard constraints (performance, security, compatibility) |"
+      },
+      {
+        "line": 175,
+        "text": "Topic: What is the primary technology stack, and what hard constraints must the project respect?"
+      },
+      {
+        "line": 183,
+        "text": "Then elicit the hard constraints — performance targets, security or compliance rules, compatibility requirements, technology limits, or \"none known\" — recorded as the `constraints` field."
+      },
+      {
+        "line": 197,
+        "text": "### Stage B: Mandatory Extended-Axes Round"
+      },
+      {
+        "line": 201,
+        "text": "[HARD] **Stage B always runs.** It executes unconditionally after Stage A terminates —"
+      },
+      {
+        "line": 206,
+        "text": "- **EXEMPT from the Stage A early-exit skip** — the early exit skips the remaining"
+      },
+      {
+        "line": 207,
+        "text": "  Stage A rounds only, never this round."
+      },
+      {
+        "line": 218,
+        "text": "- **Verification method** — the test / e2e command or verification method (e.g., `go test ./...`, `pytest`, an e2e suite, or \"manual verification\"). Recorded as the `verification` field."
+      },
+      {
+        "line": 255,
+        "text": "After the interview, use the gathered information to generate documentation and proceed to Phase 6 (skip Phase 3 and Phase 5 since there is no existing code to analyze). Pass `interview.md` to Phase 6 as the primary input for documentation generation."
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/project.md",
+    "bytes": 6485,
+    "lines": 103,
+    "sha256": "21262947d7e1d5e15fb56803c64c4677293c9f4c8db7d476916f1b1dec3baef0",
+    "frontmatter": "\ndescription: >\n  Generates project documentation from codebase analysis or user input.\n  Creates product.md, structure.md, and tech.md in .moai/project/ directory,\n  plus architecture maps in .moai/project/codemaps/ directory.\n  Supports new and existing project types with LSP server detection.\n  Use when initializing projects or generating project documentation.\nuser-invocable: false\nmetadata:\n  version: \"2.6.0\"\n  category: \"workflow\"\n  status: \"active\"\n  updated: \"2026-02-21\"\n  tags: \"project, documentation, initialization, codebase-analysis, setup\"\n\n# MoAI Extension: Progressive Disclosure\nprogressive_disclosure:\n  enabled: true\n  level1_tokens: 100\n  level2_tokens: 5000\n\n# MoAI Extension: Triggers\ntriggers:\n  keywords: [\"project\", \"init\", \"documentation\", \"setup\", \"initialize\"]\n  agents: [\"manager-docs\", \"Explore\"]\n  phases: [\"project\"]\n",
+    "headings": [
+      {
+        "line": 16,
+        "text": "# MoAI Extension: Progressive Disclosure"
+      },
+      {
+        "line": 22,
+        "text": "# MoAI Extension: Triggers"
+      },
+      {
+        "line": 33,
+        "text": "# Workflow: project - Project Documentation Generation"
+      },
+      {
+        "line": 41,
+        "text": "## Phase Routing Table"
+      },
+      {
+        "line": 65,
+        "text": "## Invocation Flow"
+      },
+      {
+        "line": 93,
+        "text": "## Detection Keywords Reference"
+      }
+    ],
+    "norms": [
+      {
+        "line": 47,
+        "text": "| Phase 2: Deep Interview (New) | `project/mode-detection.md` | Two-stage interview: clarity-scored Stage A (Vision-Domain / Technology-Constraints / Scope, variable length up to `project.max_rounds`) + mandatory Stage B extended-axes round |"
+      },
+      {
+        "line": 49,
+        "text": "| Phase 4: Deep Interview (Existing) | `project/codebase-analysis.md` | Two-stage interview: clarity-scored Stage A (Ownership-Goal / Constraints / Scope-Priority, variable length up to `project.max_rounds`) + mandatory Stage B extended-axes round |"
+      },
+      {
+        "line": 52,
+        "text": "| Phase 7: Independent Audit | `project/doc-generation.md` | plan-auditor conditional audit + retry loop |"
+      },
+      {
+        "line": 59,
+        "text": "| Phase 14: Completion | `project/doc-generation.md` | Summary report + one derived `[PROJECT] ` backlog card (standing source, skipped when `harness-spec.yaml` `goal` is empty or the card already exists) + next-steps AskUserQuestion whose chosen branch is the operator's pick |"
+      },
+      {
+        "line": 70,
+        "text": "       ├─ New Project → Phase 2 interview → Phase 6 (skip Phase 3/2)"
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/run/.gitkeep",
+    "bytes": 0,
+    "lines": 1,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "frontmatter": null,
+    "headings": [],
+    "norms": []
+  },
+  {
+    "path": ".claude/skills/moai/workflows/run/context-loading.md",
+    "bytes": 11218,
+    "lines": 193,
+    "sha256": "c98e3aafbf8c7364777246b0241b816bd713f7ddcee540e9c8af1bce406aee33",
+    "frontmatter": "\ndescription: \"Run Phase 0 — Context loading, mode dispatch, harness level routing, and worktree path rules\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-run\n  phase: \"Phase 0: Context Loading and Mode Dispatch\"\n",
+    "headings": [
+      {
+        "line": 13,
+        "text": "# Run Workflow Orchestration"
+      },
+      {
+        "line": 15,
+        "text": "## Purpose"
+      },
+      {
+        "line": 21,
+        "text": "## Scope"
+      },
+      {
+        "line": 27,
+        "text": "## Input"
+      },
+      {
+        "line": 33,
+        "text": "## Mode Dispatch (Multi-Mode Router)"
+      },
+      {
+        "line": 41,
+        "text": "### Mode Values"
+      },
+      {
+        "line": 48,
+        "text": "### Mode Resolver"
+      },
+      {
+        "line": 70,
+        "text": "### Harness-Based Default Selection"
+      },
+      {
+        "line": 78,
+        "text": "### Sentinel Error Keys"
+      },
+      {
+        "line": 88,
+        "text": "## UltraThink Auto-Activation"
+      },
+      {
+        "line": 103,
+        "text": "## Harness Level Routing"
+      },
+      {
+        "line": 123,
+        "text": "## Context Loading"
+      },
+      {
+        "line": 141,
+        "text": "### Lessons Loading"
+      },
+      {
+        "line": 154,
+        "text": "### Resume Check"
+      },
+      {
+        "line": 168,
+        "text": "## Worktree Path Rules [HARD] (All Modes)"
+      },
+      {
+        "line": 180,
+        "text": "# WRONG: Absolute path bypasses worktree"
+      },
+      {
+        "line": 183,
+        "text": "# WRONG: cd to main project in Bash command"
+      },
+      {
+        "line": 186,
+        "text": "# CORRECT: Relative path — agent resolves from its own CWD (worktree root)"
+      },
+      {
+        "line": 189,
+        "text": "# CORRECT: No cd prefix — agent CWD is already worktree root"
+      }
+    ],
+    "norms": [
+      {
+        "line": 50,
+        "text": "Precedence order (hard-coded):"
+      },
+      {
+        "line": 82,
+        "text": "- **`MODE_UNKNOWN`**: Emitted when `--mode <value>` is supplied but `<value>` is not in the 4-value valid set `{autopilot, loop, team, pipeline}`. The error message MUST enumerate the 4 valid values to guide the user."
+      },
+      {
+        "line": 84,
+        "text": "- **`MODE_PIPELINE_ONLY_UTILITY`**: Preserved from the utility-subcommand baseline. Emitted when `--mode pipeline` is passed to this multi-agent subcommand. The error message MUST point the user to the utility subcommand set `{fix, coverage, mx, codemaps, clean}`."
+      },
+      {
+        "line": 109,
+        "text": "   - **minimal**: Skip phases [0, 0.6, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]. Direct implementation only."
+      },
+      {
+        "line": 110,
+        "text": "     Note: Phase 1 (Plan Audit Gate) is NEVER skipped, not even in minimal harness."
+      },
+      {
+        "line": 133,
+        "text": "- .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 5 start)"
+      },
+      {
+        "line": 152,
+        "text": "5. If lessons.md does not exist or no relevant lessons found, skip silently"
+      },
+      {
+        "line": 157,
+        "text": "- If it exists: Load content, identify last completed phase checkpoint, skip all completed phases, resume from the next pending phase. Log: \"Resuming SPEC-{ID} from Phase {N}\""
+      },
+      {
+        "line": 168,
+        "text": "## Worktree Path Rules [HARD] (All Modes)"
+      },
+      {
+        "line": 172,
+        "text": "- [HARD] Reference all write-target files by project-root-relative paths (e.g., `src/auth/handler.go`)"
+      },
+      {
+        "line": 173,
+        "text": "- [HARD] Do NOT include absolute paths (e.g., `$HOME/project/src/auth/handler.go`) in agent prompts"
+      },
+      {
+        "line": 174,
+        "text": "- [HARD] Do NOT include `cd /absolute/path &&` in any Bash commands within agent prompts"
+      },
+      {
+        "line": 175,
+        "text": "- [HARD] SPEC files: use `.moai/specs/SPEC-XXX/spec.md` (relative), not absolute paths"
+      },
+      {
+        "line": 176,
+        "text": "- [HARD] The agent's CWD is automatically set to the worktree root by Claude Code — all relative paths resolve correctly"
+      },
+      {
+        "line": 184,
+        "text": "\"Run: cd $HOME/project && go test ./...\""
+      },
+      {
+        "line": 190,
+        "text": "\"Run: go test ./...\""
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/run/mode-orchestration.md",
+    "bytes": 8504,
+    "lines": 157,
+    "sha256": "4a8b97748501efb45d00e22d1287f40cdbd3f14c14765a46b10d2726ea84ed5c",
+    "frontmatter": "\ndescription: \"Run Mode Routing — Execution mode gate integration, mode dispatch routing, context propagation, completion criteria, the verify exit gate of run-phase, test scenarios, and custom harness extension\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-run\n  phase: \"Mode Routing: Execution Mode Gate, Mode Dispatch, Completion, and Scenarios\"\n",
+    "headings": [
+      {
+        "line": 9,
+        "text": "# Execution Mode Gate Integration"
+      },
+      {
+        "line": 38,
+        "text": "# Mode Dispatch (team experimental)"
+      },
+      {
+        "line": 56,
+        "text": "# Context Propagation"
+      },
+      {
+        "line": 67,
+        "text": "# Completion Criteria"
+      },
+      {
+        "line": 83,
+        "text": "## Verify Exit Gate (factory contract)"
+      },
+      {
+        "line": 93,
+        "text": "### Severity partition — three cases, mutually exclusive and jointly exhaustive"
+      },
+      {
+        "line": 107,
+        "text": "### Rung attribute — orthogonal to the severity partition"
+      },
+      {
+        "line": 117,
+        "text": "# Test Scenarios"
+      },
+      {
+        "line": 119,
+        "text": "## Normal Flow"
+      },
+      {
+        "line": 130,
+        "text": "## Fix Mode Flow"
+      },
+      {
+        "line": 138,
+        "text": "## Error Flow"
+      },
+      {
+        "line": 153,
+        "text": "# Custom Harness Extension (Optional)"
+      }
+    ],
+    "norms": [
+      {
+        "line": 51,
+        "text": "All worktree path rules from context-loading.md \"Worktree Path Rules [HARD] (All"
+      },
+      {
+        "line": 69,
+        "text": "All of the following must be verified:"
+      },
+      {
+        "line": 74,
+        "text": "- Phase 9: MX context map built for target files (skipped for greenfield)"
+      },
+      {
+        "line": 79,
+        "text": "- Phase 20: Next step honors the pipeline contract — `full-pipeline` auto-chains into `/moai sync` (announced in the transcript); `single-phase` presents sync as the \"(Recommended)\" first next-step option (never a silent chain)"
+      },
+      {
+        "line": 95,
+        "text": "Every verify stage lands in exactly one of the three cases below, and in no more than one. Readability is what separates S3 from S2: a stage with no readable result must never be absorbed by the S2 \"no confirmed findings\" wording, because a gate whose failure mode is *proceed* is not a gate."
+      },
+      {
+        "line": 99,
+        "text": "| **S1** | a readable result carrying one or more CONFIRMED findings at `critical` or `high` | the chain **shall not proceed to sync**; the findings **re-enter run-phase scoped to the changed surface** |"
+      },
+      {
+        "line": 103,
+        "text": "S1 is the single human gate this contract adds — the operator decides whether to re-enter. S3 **HALT**s, emits the 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk per `verification-claim-integrity.md` §3), and escalates; an S3 attempt does **not** count against the re-entry ceiling, because a stage that produced nothing consumed none of the re-entry budget."
+      },
+      {
+        "line": 113,
+        "text": "**Precedence, stated in both directions.** The severity case **governs routing** and the rung never changes it; the rung **governs suppression** and the severity case never relaxes it. An S2 result at the `DEGRADED` rung therefore proceeds to sync with suppression forced off."
+      },
+      {
+        "line": 157,
+        "text": "*(이 파일은 `/moai project --harness`로 생성됩니다. 파일이 없으면 자동으로 skip됩니다.)*"
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/run/phase-execution.md",
+    "bytes": 29197,
+    "lines": 475,
+    "sha256": "30c269281e633a79f1d9998073a45ff27127abfd1db4e1b549aed018e7c57994",
+    "frontmatter": "\ndescription: \"Run Phase 1~1.8 — Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, and development mode routing\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-run\n  phase: \"Phase 1-1.8: Phase Sequence and Preparation\"\n",
+    "headings": [
+      {
+        "line": 9,
+        "text": "# Phase Sequence"
+      },
+      {
+        "line": 13,
+        "text": "## Phase 1: Plan Audit Gate"
+      },
+      {
+        "line": 21,
+        "text": "### Step 1: Compute Plan Artifact Hash (Cache Key)"
+      },
+      {
+        "line": 34,
+        "text": "### Step 2: Consult the Sticky (Hash-Keyed) Audit Cache"
+      },
+      {
+        "line": 58,
+        "text": "### Step 3: Invoke plan-auditor Subagent"
+      },
+      {
+        "line": 71,
+        "text": "### Step 4: Verdict Routing (4-Way Branch)"
+      },
+      {
+        "line": 104,
+        "text": "### Step 5: Persist Verdict and Daily Report"
+      },
+      {
+        "line": 120,
+        "text": "## Audit Run <N> of <total>"
+      },
+      {
+        "line": 132,
+        "text": "### When --skip-audit Flag Is Provided"
+      },
+      {
+        "line": 151,
+        "text": "### When Plan-Auditor Fails or Times Out"
+      },
+      {
+        "line": 167,
+        "text": "### Tier S Single-Audit-Pass Default"
+      },
+      {
+        "line": 171,
+        "text": "### FAIL Defect-List Delta Re-Check (plan-audit)"
+      },
+      {
+        "line": 175,
+        "text": "## Phase 2: Environment Assessment (Conditional)"
+      },
+      {
+        "line": 202,
+        "text": "## Phase 3: JIT Language Skill Detection"
+      },
+      {
+        "line": 231,
+        "text": "## Phase 4: Scale-Based Execution Mode Selection"
+      },
+      {
+        "line": 257,
+        "text": "### Operational Entries (fanout / sweep)"
+      },
+      {
+        "line": 263,
+        "text": "## Phase 5: Analysis and Planning"
+      },
+      {
+        "line": 282,
+        "text": "## Decision Point 1: Plan Approval"
+      },
+      {
+        "line": 285,
+        "text": "## HUMAN GATE: Plan Approval"
+      },
+      {
+        "line": 312,
+        "text": "## Phase 6: Task Decomposition"
+      },
+      {
+        "line": 338,
+        "text": "### tasks.md Generation (Persistent Artifact)"
+      },
+      {
+        "line": 343,
+        "text": "## Task Decomposition"
+      },
+      {
+        "line": 355,
+        "text": "## Phase 7: Acceptance Criteria Initialization (Failing Checklist)"
+      },
+      {
+        "line": 374,
+        "text": "## Phase 8: File Structure Scaffolding"
+      },
+      {
+        "line": 394,
+        "text": "## Phase 9: Pre-Implementation MX Context Scan"
+      },
+      {
+        "line": 416,
+        "text": "## Development Mode Routing"
+      },
+      {
+        "line": 428,
+        "text": "## Phase 10: Milestone Contract Negotiation"
+      },
+      {
+        "line": 452,
+        "text": "## Delta Marker Detection (Brownfield Pre-Check)"
+      }
+    ],
+    "norms": [
+      {
+        "line": 15,
+        "text": "**Purpose**: Mandatory independent audit of plan artifacts before any implementation begins."
+      },
+      {
+        "line": 19,
+        "text": "**Scope**: Every `/moai run <SPEC-ID>` invocation. Never skipped — not even in `minimal` harness."
+      },
+      {
+        "line": 21,
+        "text": "### Step 1: Compute Plan Artifact Hash (Cache Key)"
+      },
+      {
+        "line": 28,
+        "text": "is `internal/runtime/audit_cache.go` `ComputeHash`, which hashes the"
+      },
+      {
+        "line": 30,
+        "text": "are skipped, making inclusion tier-conditional by construction)."
+      },
+      {
+        "line": 32,
+        "text": "Store hash as `plan_artifact_hash` for Step 2 cache lookup."
+      },
+      {
+        "line": 34,
+        "text": "### Step 2: Consult the Sticky (Hash-Keyed) Audit Cache"
+      },
+      {
+        "line": 36,
+        "text": "The cache is **sticky (hash-keyed)**: a cached PASS verdict whose"
+      },
+      {
+        "line": 39,
+        "text": "single authoritative skip contract (the three conditions: verdict PASS, score"
+      },
+      {
+        "line": 40,
+        "text": "≥ per-tier threshold, artifact-hash unchanged) lives in"
+      },
+      {
+        "line": 42,
+        "text": "Gate skip policy. This step CITES that contract — it MUST NOT restate a"
+      },
+      {
+        "line": 46,
+        "text": "apply the canonical three-condition skip predicate. The Go helper"
+      },
+      {
+        "line": 47,
+        "text": "`internal/runtime.SkipEligibleByScore(tier, score)` codifies condition 2"
+      },
+      {
+        "line": 48,
+        "text": "(per-tier PASS threshold: S 0.75 / M 0.80 / L 0.85; the retired flat `≥ 0.90`"
+      },
+      {
+        "line": 51,
+        "text": "If cache HIT (all three canonical conditions hold):"
+      },
+      {
+        "line": 52,
+        "text": "- Log: `[plan-audit] cache hit (verdict=PASS, sticky)`"
+      },
+      {
+        "line": 53,
+        "text": "- Append to `.moai/specs/<SPEC-ID>/progress.md`: `- audit_cache_hit: true` and `- cached_audit_at: <T0>`"
+      },
+      {
+        "line": 54,
+        "text": "- Skip Step 3 and proceed to Phase 1."
+      },
+      {
+        "line": 56,
+        "text": "If cache MISS: proceed to Step 3."
+      },
+      {
+        "line": 69,
+        "text": "Timeout: 60 seconds. On timeout, treat as INCONCLUSIVE (Step 4d)."
+      },
+      {
+        "line": 89,
+        "text": "- Surface the audit report path and the list of must-pass failures to stdout."
+      },
+      {
+        "line": 91,
+        "text": "- [HARD] Present options to user via AskUserQuestion (orchestrator responsibility):"
+      },
+      {
+        "line": 93,
+        "text": "  - Option 2: Override and proceed — skip the gate (sets `--skip-audit` implicitly, records BYPASSED)"
+      },
+      {
+        "line": 96,
+        "text": "**4d. INCONCLUSIVE (timeout, malformed output, error, or filesystem failure)**"
+      },
+      {
+        "line": 99,
+        "text": "- [HARD] Do NOT auto-PASS. Present options to user via AskUserQuestion:"
+      },
+      {
+        "line": 100,
+        "text": "  - Option 1 (Recommended): Retry audit — re-invoke plan-auditor (max 3 retries total)"
+      },
+      {
+        "line": 115,
+        "text": "Path is always `.moai/reports/plan-audit/` + SPEC-ID + `-` + current date (YYYY-MM-DD) + `.md`."
+      },
+      {
+        "line": 116,
+        "text": "[HARD] Path must be validated with `filepath.Clean` and confirmed to reside inside the project's `.moai/reports/plan-audit/` directory (path traversal prevention)."
+      },
+      {
+        "line": 132,
+        "text": "### When --skip-audit Flag Is Provided"
+      },
+      {
+        "line": 134,
+        "text": "When the user passes `--skip-audit` flag OR sets `MOAI_SKIP_PLAN_AUDIT=1` env var:"
+      },
+      {
+        "line": 136,
+        "text": "1. Skip Steps 1–4 entirely."
+      },
+      {
+        "line": 157,
+        "text": "| Timeout (> 60s) | INCONCLUSIVE | Retry up to 3 times total |"
+      },
+      {
+        "line": 162,
+        "text": "[HARD] INCONCLUSIVE is never equivalent to PASS. Automatic pass-through on failure is prohibited."
+      },
+      {
+        "line": 164,
+        "text": "Retry limit (OPEN QUESTION Q3 resolution): Maximum 3 total plan-auditor invocations per `/moai run`"
+      },
+      {
+        "line": 169,
+        "text": "Where the SPEC frontmatter `tier:` is `S`, the Plan Audit Gate runs exactly ONE audit pass by default — the iterative verdict re-execution loop defaults OFF for Tier S: a PASS verdict is final without a score-threshold re-run. The audit always runs (once) for every tier — Tier S changes only the re-run loop, never whether the audit runs; this section introduces no skip of the audit itself. FAIL and INCONCLUSIVE verdicts still halt and escalate exactly per Steps 4b-4d above. Tier M/L iterative audit behavior (the retry ceilings and re-audit loop above) is unchanged."
+      },
+      {
+        "line": 173,
+        "text": "When plan-auditor returns FAIL, the verdict carries a structured defect-list — finding id, artifact/file + location, severity, and required fix per entry (see the plan-auditor Output Format defect-list contract). The orchestrator routes fixes directly — an orchestrator-direct edit or a single re-delegation to manager-spec — and the confirming re-audit is scoped to the enumerated defect delta rather than a from-scratch full re-audit, within the existing iteration ceilings above. Verdict authority is NOT transferred: binding PASS/FAIL judgment stays with the plan-auditor — the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict."
+      },
+      {
+        "line": 178,
+        "text": "If memory_guard is not enabled or not present, skip to Phase 1."
+      },
+      {
+        "line": 187,
+        "text": "3. Compare available memory against thresholds:"
+      },
+      {
+        "line": 188,
+        "text": "   - Below emergency_threshold_mb: BLOCK test execution, warn user, suggest closing other applications or increasing memory"
+      },
+      {
+        "line": 189,
+        "text": "   - Below adaptive_threshold_mb: Set test_execution_strategy to memory_guard.test_split_strategy (default: \"module\")"
+      },
+      {
+        "line": 190,
+        "text": "   - Above adaptive_threshold_mb: Set test_execution_strategy to \"full\" (normal execution)"
+      },
+      {
+        "line": 200,
+        "text": "<!-- @MX:WARN: [AUTO] Future PRs may be tempted to revert to moai-lang-* skill references here. The current rule-path mapping (post-the language-as-rules policy) MUST remain pointing to .claude/rules/moai/languages/<name>.md. Frontmatter `related-skills:` regressions fail TestRelatedSkillsNoLangReference (DEAD_LANG_FRONTMATTER_REFERENCE); body-prose regressions fail TestSkillBodyNoLangReference (DEAD_LANG_SKILL_REFERENCE). -->"
+      },
+      {
+        "line": 204,
+        "text": "Purpose: Detect the project's primary language and prepare the appropriate language skill reference for agent spawn prompts. Since language skills are not statically bound to agents, the orchestrator must inject them at spawn time."
+      },
+      {
+        "line": 229,
+        "text": "This phase always executes and does NOT require user approval."
+      },
+      {
+        "line": 243,
+        "text": "| Large cross-cutting change | complexity score at/above the auto-select threshold (`orchestration-mode-selection.md` §B.1) | **Parallel research → Sub-agent implement** (fanout + serial) | 3-5 concurrent read-only `Agent()` for research; sequential manager-develop for implementation. (`agent-team` retired.) |"
+      },
+      {
+        "line": 245,
+        "text": "Large-change note: agent-team is retired with the Agent Teams static layer. Multi-domain research fans out via fanout (3-5 concurrent read-only `Agent()` in one turn); coding-heavy implementation stays serial (sequential sub-agent) per the Anthropic coding-task parallelism caveat."
+      },
+      {
+        "line": 253,
+        "text": "5. Write the `progress.md` § Phase 4 Mode Selection log entry per `orchestration-mode-selection.md` §D HARD logging contract BEFORE spawning the first run-phase `Agent()` call — the Input parameters block (tier, scope, domain count, file language mix, concurrency benefit), the mode evaluation table across all 4 catalog modes, a single-line Decision (e.g. \"Scale-based mode: {mode} (files: {N}, domains: {N})\"), a short Justification paragraph, and — when the selection resolves to sweep — the Implementation Kickoff Approval-passed + preferences-collected confirmation"
+      },
+      {
+        "line": 259,
+        "text": "**fanout — research fan-out**: while pre-implementation work is research-heavy and multi-domain, the orchestrator spawns 3-5 concurrent read-only `Agent()` calls in a single turn for analysis fan-out (codebase exploration, external research, quality baseline). Implementation itself remains serial (sequential sub-agent) per the Anthropic coding-task parallelism caveat."
+      },
+      {
+        "line": 261,
+        "text": "**sweep — launch procedure**: candidate ONLY when the `orchestration-mode-selection.md` §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Launch procedure: (1) verify each §C.3 precondition; (2) record the sweep selection + gate confirmations in `progress.md` §F Phase 4 Mode Selection BEFORE launch; (3) launch the workflow fan-out from the orchestrator (scaling, not nesting); (4) workflow agents return blocker reports and never prompt the user — every needed decision is drained at Implementation Kickoff Approval first."
+      },
+      {
+        "line": 280,
+        "text": "Implementation guard: [HARD] During Phase 5 (Analysis and Planning), the manager-spec subagent MUST NOT write any implementation code. The explicit instruction \"DO NOT implement any code — focus exclusively on analysis and planning\" MUST be included in the agent prompt. This separation of thinking and execution prevents premature implementation and ensures the plan is reviewed before any code is written."
+      },
+      {
+        "line": 321,
+        "text": "- Each task must be completable in a single DDD/TDD cycle"
+      },
+      {
+        "line": 378,
+        "text": "Condition: Execute only for planned new files (files that do not yet exist in the codebase). Skip if all planned files already exist (modification-only SPEC)."
+      },
+      {
+        "line": 410,
+        "text": "**Skip Condition:** If target files do not exist (greenfield implementation), skip this phase."
+      },
+      {
+        "line": 412,
+        "text": "**Sharding (`FO-RUN-1`, read-only):** **Where** the scan target spans many files across several packages, the orchestrator shall shard the scan — one read-only `Agent()` per package shard in a single turn, 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2). Each shard returns its slice of the context map as text and writes no file; the orchestrator merges the slices into the single map above. A shard that cannot read a target records the gap and returns a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) rather than prompting the user. The orchestrator launches the shards itself — scaling, not subagent nesting. **Where** the target set is small or sharding is skipped, the scan runs as one pass with identical output."
+      },
+      {
+        "line": 431,
+        "text": "**Skip**: When harness level = minimal or standard."
+      },
+      {
+        "line": 440,
+        "text": "   - Done criteria (specific test cases that must pass)"
+      },
+      {
+        "line": 442,
+        "text": "   - Hard thresholds (coverage %, performance targets, security requirements)"
+      },
+      {
+        "line": 457,
+        "text": "2. If NO delta markers found: skip this section, proceed to Phase 11/2B normally (greenfield path)"
+      },
+      {
+        "line": 475,
+        "text": "If no delta markers are present in the SPEC, delta processing is silently skipped and the standard implementation flow proceeds unchanged (backward compatible with greenfield SPECs)."
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/run/task-decomposition.md",
+    "bytes": 21312,
+    "lines": 338,
+    "sha256": "92100c38e30b190bac3b35efbdf895d2bc50fc3a14f47fd683c7b14d6b87f913",
+    "frontmatter": "\ndescription: \"Run Phase 11~4 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-run\n  phase: \"Phase 11-4: Implementation, Quality Validation, and Completion\"\n",
+    "headings": [
+      {
+        "line": 9,
+        "text": "# Phase 11: Implementation (Mode-Dependent)"
+      },
+      {
+        "line": 13,
+        "text": "## Phase 11: DDD Implementation (for ddd mode)"
+      },
+      {
+        "line": 44,
+        "text": "### Drift Guard Check (DDD)"
+      },
+      {
+        "line": 59,
+        "text": "## Phase 12: TDD Implementation (for tdd mode)"
+      },
+      {
+        "line": 72,
+        "text": "### RED-stage Drafter Pool (read-only, conditional)"
+      },
+      {
+        "line": 91,
+        "text": "### Drift Guard Check (TDD)"
+      },
+      {
+        "line": 106,
+        "text": "## Parallel Quality-Evidence Fan-Out (capability-gated)"
+      },
+      {
+        "line": 114,
+        "text": "## Phase 13: Quality Validation"
+      },
+      {
+        "line": 132,
+        "text": "### Extended Quality Checks"
+      },
+      {
+        "line": 153,
+        "text": "## Quality Gate Decision"
+      },
+      {
+        "line": 166,
+        "text": "## Phase 14: Re-planning Gate Check"
+      },
+      {
+        "line": 172,
+        "text": "## Phase 15: Pre-Review Quality Gate"
+      },
+      {
+        "line": 186,
+        "text": "## Phase 16: Active Quality Evaluation (sync-auditor)"
+      },
+      {
+        "line": 214,
+        "text": "## HUMAN GATE: Implementation Complete"
+      },
+      {
+        "line": 225,
+        "text": "## Phase 17: TRUST 5 Static Verification (sync-auditor) [MANDATORY]"
+      },
+      {
+        "line": 249,
+        "text": "## Phase 18: MX Tag Update [HARD]"
+      },
+      {
+        "line": 275,
+        "text": "## LSP Quality Gates"
+      },
+      {
+        "line": 283,
+        "text": "## Phase 19: Git Operations (Conditional)"
+      },
+      {
+        "line": 327,
+        "text": "## Phase 20: Completion and Guidance"
+      }
+    ],
+    "norms": [
+      {
+        "line": 11,
+        "text": "**[HARD] Worktree Prompt Construction**: When spawning implementation agents (manager-develop) with `isolation: \"worktree\"`, the orchestrator MUST construct prompts using project-root-relative paths only. Do NOT embed the current working directory path in the agent prompt. See context-loading.md \"Worktree Path Rules [HARD]\" section."
+      },
+      {
+        "line": 17,
+        "text": "Skill injection: per skill-routing.md §1, the manager-develop spawn prompt MUST carry the cycle_type skill (`moai-workflow-ddd` here; `moai-workflow-tdd` in tdd mode) plus 0-3 domain `moai-ref-*` skills matched to the mission domain (backend → moai-ref-api-patterns, frontend → moai-ref-react-patterns, database → moai-domain-database, per `.moai/config/sections/delegation.yaml` domain_skills), each as an `At start, invoke Skill(\"<name>\") for <reason>` line."
+      },
+      {
+        "line": 33,
+        "text": "The manager-develop subagent must track deviations from the original SPEC plan during implementation:"
+      },
+      {
+        "line": 54,
+        "text": "5. Alert thresholds:"
+      },
+      {
+        "line": 74,
+        "text": "**`FO-RUN-2`.** **Where** a milestone's RED stage spans several independent test targets — distinct packages, or distinct acceptance criteria with no shared fixture — the orchestrator shall draft them in parallel: one read-only `Agent()` per target in a single turn, 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2). Each drafter reads the SPEC plus the existing test conventions and **returns test source as text — it writes no file and never prompts the user**, returning a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) when an input is missing. The single `manager-develop` subagent then applies the drafts sequentially and drives RED-GREEN-REFACTOR from there: it remains the only writer, so two write-capable agents never run at once. **Where** the targets share fixtures, or the RED stage is a single test, the existing serial path runs unchanged. The orchestrator launches the drafters itself — scaling, not subagent nesting."
+      },
+      {
+        "line": 80,
+        "text": "The manager-develop subagent must track deviations from the original SPEC plan during implementation:"
+      },
+      {
+        "line": 101,
+        "text": "5. Alert thresholds:"
+      },
+      {
+        "line": 106,
+        "text": "## Parallel Quality-Evidence Fan-Out (capability-gated)"
+      },
+      {
+        "line": 108,
+        "text": "**`FO-RUN-3`.** **Where** `.claude/workflows/sync-audit-4dim.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator shall launch it once across the Phase 13 / 16 / 17 quality band to collect four-dimension evidence (Functionality / Security / Craft / Consistency) in one parallel pass rather than three serial audit passes. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — those phases run their existing serial path with no error, no warning, and no interruption. The existing maximum-3-iteration ceilings on Phase 16 and Phase 17 are preserved on both paths."
+      },
+      {
+        "line": 110,
+        "text": "The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. All four judges are read-only: a judge that cannot run a check records an `evidence_gaps` entry, and one missing required input returns a structured blocker report — neither prompts the user. The script's harmonic-mean aggregate is **evidence, not a verdict**: the binding PASS/FAIL remains owned by `sync-auditor`, which may cite the aggregate but is never replaced by it. Implementation Kickoff Approval is likewise unaffected — it is decided before any workflow launches."
+      },
+      {
+        "line": 112,
+        "text": "**Collapsed structure (one evidence pass, one verdict).** Phases 13, 16, and 17 otherwise re-read the same changeset three times in series — Phase 13 for TRUST 5, Phase 16 for the four dimensions, Phase 17 for static review. On the fan-out path the three share **one** parallel evidence pass: the read-only judges run once, and each phase then consumes that recorded evidence instead of re-running its own scan. **One verdict follows** — `sync-auditor` issues the single binding PASS/FAIL for the band; the aggregate score is quoted as evidence beneath it, never in place of it. Collapsing the evidence collection does NOT collapse the iteration limits: each phase below keeps its own stated limit verbatim, and a FAIL re-enters that phase's fix cycle with freshly gathered evidence rather than reusing the stale pass."
+      },
+      {
+        "line": 118,
+        "text": "Evidence source: on the fan-out path above, consume the shared parallel evidence pass for the checks it already covers rather than re-running them here; on the serial path, run them as described below. Either way the binding verdict stays with `sync-auditor`."
+      },
+      {
+        "line": 176,
+        "text": "Execution: Always runs. Equivalent to `/moai gate --fix` on modified files."
+      },
+      {
+        "line": 178,
+        "text": "Snapshot consumption: before the batch, query the shared diagnostic snapshot with `moai verify check --key-current`. Where a fresh snapshot (key equality AND within the TTL) covers a check category this phase would run, consume the recorded result instead of re-executing it — the gate_report cites the snapshot path, key, original command, and recorded exit code as that category's evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence; the freshness rule keeps the attribution valid). A stale snapshot is never cited: on key mismatch or TTL expiry, execute the check as below."
+      },
+      {
+        "line": 180,
+        "text": "Steps: Run language-specific lint, formatter check, and type-checker as a single-turn multi-Bash parallel batch (per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution) — one Bash tool call per check within the same assistant turn, each redirecting verbatim output to `/tmp/moai-verify/` and surfacing only exit code + bounded-tail summary in context (the file-redirect contract). Auto-fix any fixable issues (`--fix` behavior) after the batch completes. If unfixable errors remain: Report and block (must fix before review)."
+      },
+      {
+        "line": 189,
+        "text": "**Skip**: When harness level = minimal."
+      },
+      {
+        "line": 198,
+        "text": "   - Security (25%): OWASP check (HARD: Security FAIL = overall FAIL)"
+      },
+      {
+        "line": 225,
+        "text": "## Phase 17: TRUST 5 Static Verification (sync-auditor) [MANDATORY]"
+      },
+      {
+        "line": 227,
+        "text": "Purpose: Multi-dimensional review iteration for high-quality output. This phase is ALWAYS executed to ensure consistent code quality."
+      },
+      {
+        "line": 229,
+        "text": "**Standard review** (always executed via the sync-auditor subagent — independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2):"
+      },
+      {
+        "line": 249,
+        "text": "## Phase 18: MX Tag Update [HARD]"
+      },
+      {
+        "line": 253,
+        "text": "[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 11 and verify @MX tag coverage before proceeding to Phase 3. If implementation agents did not add required tags during their work, MoAI adds them here."
+      },
+      {
+        "line": 256,
+        "text": "- P1: Every new exported function with fan_in >= 3 MUST have `@MX:ANCHOR`"
+      },
+      {
+        "line": 257,
+        "text": "- P2: Every new goroutine/async pattern MUST have `@MX:WARN`"
+      },
+      {
+        "line": 260,
+        "text": "**Sharding (`FO-RUN-4`).** **Where** the modified files span several packages, the orchestrator shall shard the *scan* — one read-only `Agent()` per package shard in a single turn, 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), each returning its proposed tag insertions as text and writing nothing; a shard that cannot read a target records the gap and returns a structured blocker report rather than prompting the user. Tag *application* is NOT sharded: one agent applies every insertion, so the write path stays single-writer. The blocking P1/P2 determination is made on the merged scan result, never per-shard, so no shard can clear the gate alone. The orchestrator launches the shards itself — scaling, not subagent nesting. **Where** the changeset is small, the scan runs as one pass."
+      },
+      {
+        "line": 290,
+        "text": "Route selection (per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline — Frozen HARD Route A/B): **Route A** (Hybrid Trunk main-direct) applies to Tier S/M SPECs with no explicit `--pr` flag; **Route B** (PR route) applies to Tier L SPECs OR any SPEC with an explicit `--pr` flag."
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/run.md",
+    "bytes": 19689,
+    "lines": 200,
+    "sha256": "95291e95efa45f21a247c99461163b8e791361210b135f57797689f68b2cd36d",
+    "frontmatter": "\ndescription: >\n  DDD/TDD implementation workflow for SPEC requirements. Second step\n  of the Plan-Run-Sync workflow. Routes to manager-develop based\n  on quality.yaml constitution.development_mode setting.\nuser-invocable: false\nmetadata:\n  version: \"2.6.0\"\n  category: \"workflow\"\n  status: \"active\"\n  updated: \"2026-02-23\"\n  tags: \"run, implementation, ddd, tdd, spec\"\n\n# MoAI Extension: Progressive Disclosure\nprogressive_disclosure:\n  enabled: true\n  level1_tokens: 100\n  level2_tokens: 5000\n\n# MoAI Extension: Triggers\ntriggers:\n  keywords: [\"run\", \"implement\", \"build\", \"create\", \"develop\", \"code\"]\n  agents: [\"manager-develop\", \"manager-git\", \"Explore\"]\n  phases: [\"run\"]\n",
+    "headings": [
+      {
+        "line": 14,
+        "text": "# MoAI Extension: Progressive Disclosure"
+      },
+      {
+        "line": 20,
+        "text": "# MoAI Extension: Triggers"
+      },
+      {
+        "line": 31,
+        "text": "# Run Workflow Entry Router"
+      },
+      {
+        "line": 35,
+        "text": "## Phase Owners (per the canonical agent catalog policy)"
+      },
+      {
+        "line": 45,
+        "text": "## Phase Routing Table"
+      },
+      {
+        "line": 54,
+        "text": "## Fan-Out Index"
+      },
+      {
+        "line": 63,
+        "text": "## Invocation Flow"
+      },
+      {
+        "line": 77,
+        "text": "## Quick Reference"
+      },
+      {
+        "line": 99,
+        "text": "## On-Demand Sub-skill Loading"
+      },
+      {
+        "line": 104,
+        "text": "# Phase 0: Context loading 및 mode dispatch 시작 시"
+      },
+      {
+        "line": 107,
+        "text": "# Phase 1 (Plan Audit Gate) 진입 시"
+      },
+      {
+        "line": 110,
+        "text": "# Phase 11 (Implementation) 진입 시"
+      },
+      {
+        "line": 113,
+        "text": "# Mode dispatch 또는 completion criteria 확인 시"
+      },
+      {
+        "line": 117,
+        "text": "## Custom Harness Extension"
+      },
+      {
+        "line": 123,
+        "text": "## Sentinel Error Keys"
+      },
+      {
+        "line": 129,
+        "text": "## Run-phase Autonomy (ac_converge)"
+      },
+      {
+        "line": 135,
+        "text": "### 1. Implementation Kickoff Approval ordering (the human gate comes first)"
+      },
+      {
+        "line": 143,
+        "text": "### 2. The `ac_converge` goal condition (armed only after Implementation Kickoff Approval approval)"
+      },
+      {
+        "line": 161,
+        "text": "### 3. Autonomy invariants (cite, do not restate — full doctrine in canonical rules)"
+      },
+      {
+        "line": 171,
+        "text": "### Cross-references (cite, do not restate)"
+      },
+      {
+        "line": 181,
+        "text": "## Recursive Self-Diagnosis Loop (bounded — DIAGNOSE-PATCH-VERIFY)"
+      },
+      {
+        "line": 197,
+        "text": "## Routing Ledger Recording"
+      }
+    ],
+    "norms": [
+      {
+        "line": 37,
+        "text": "Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic's coding-task parallelism caveat \"most coding tasks involve fewer truly parallelizable tasks than research\"; `cycle_type` ∈ `{tdd, ddd, autofix}` per the canonical cycle-type contract) + `manager-git` (Tier L PR creation OR `--pr` flag per the canonical Tier-based PR routing policy) + `Explore` (read-only investigation when scope discovery needed)."
+      },
+      {
+        "line": 41,
+        "text": "Phase 4 Mode Selection: orchestrator autonomous decision over the 4-mode catalog (trivial / background / agent-team / parallel / sub-agent / workflow) per `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A, logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 4 Mode Selection. Phase 4 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M. The `--mode` dispatch axis below is a SEPARATE axis — see that rule's §G.1 crosswalk (correspondence, not merge)."
+      },
+      {
+        "line": 56,
+        "text": "| Fan-Out ID | Trigger condition | Target file | What is parallelised |"
+      },
+      {
+        "line": 58,
+        "text": "| `FO-RUN-1` | the MX scan target spans many files across several packages | `workflows/run/phase-execution.md` | Phase 1.8 MX context-map scan — one read-only shard per package |"
+      },
+      {
+        "line": 60,
+        "text": "| `FO-RUN-3` | the quality-evidence fan-out script is on disk AND the runtime supports dynamic workflows | `workflows/run/task-decomposition.md` | the Phase 13 / 16 / 17 quality band — one parallel four-dimension evidence pass |"
+      },
+      {
+        "line": 61,
+        "text": "| `FO-RUN-4` | the modified files span several packages | `workflows/run/task-decomposition.md` | Phase 18 MX tag scan — one read-only shard per package; tag application stays single-writer |"
+      },
+      {
+        "line": 91,
+        "text": "**Harness levels**: `minimal` → skip optional phases | `standard` → all phases | `thorough` → GAN-loop Sprint Contract Protocol + sync-auditor"
+      },
+      {
+        "line": 93,
+        "text": "**Phase 1 (Plan Audit Gate)**: 모든 harness level에서 SKIP 불가. SPEC plan 아티팩트 독립 감사 필수. The audit always runs (once) for every tier — Tier S changes only the re-run loop, never whether the audit runs: for Tier S SPECs the gate applies a single audit pass by default (the iterative verdict re-execution loop defaults OFF; a PASS verdict is final without a score-threshold re-run, while FAIL/INCONCLUSIVE still halts and escalates as today). Tier M/L iterative audit behavior is unchanged. See `workflows/run/phase-execution.md` § Tier S Single-Audit-Pass Default."
+      },
+      {
+        "line": 95,
+        "text": "**Worktree path rules**: [HARD] 모든 에이전트 프롬프트에 절대 경로 금지. project-root-relative 경로 사용."
+      },
+      {
+        "line": 97,
+        "text": "**Chaining (single-phase contract)**: an explicit `/moai run` invocation carries a `single-phase` pipeline contract — on run-phase completion, the sync chain is surfaced as the \"(Recommended)\" first option of the next-step AskUserQuestion; it never fires silently. The `full-pipeline` auto-chain applies only to the default `/moai` route (see `workflows/moai.md` § run→sync chaining policy)."
+      },
+      {
+        "line": 121,
+        "text": "*(이 파일은 `/moai project --harness`로 생성됩니다. 파일이 없으면 자동으로 skip됩니다.)*"
+      },
+      {
+        "line": 127,
+        "text": "Ordering invariant (read before the autonomy section below): the Implementation Kickoff Approval `AskUserQuestion` human gate is always cleared FIRST; any run-phase autonomy set is downstream of it. The next section documents that ordering and the autonomy condition together."
+      },
+      {
+        "line": 131,
+        "text": "This section wires the run-phase autonomy mechanisms — the Implementation Kickoff Approval human-gate ordering reference and the `ac_converge` goal condition — into a single co-located place. The two parts are ORDERED: the Implementation Kickoff Approval `AskUserQuestion` human gate is described FIRST (it must be cleared before any autonomy begins), then the `ac_converge` arming (entered only after Implementation Kickoff Approval approval)."
+      },
+      {
+        "line": 133,
+        "text": "> **Progression-mode axis (autonomous vs. semi-autonomous)**: the Implementation Kickoff Approval gate also offers a progression-mode choice — autonomous (default; the loop continues without per-turn prompts) or semi-autonomous (the `stop-goal` hook emits a checkpoint-signal each turn for orchestrator-side `AskUserQuestion` confirmation). This axis selects ONLY post-approval progression; the gate stays mandatory in both modes. See `.claude/skills/moai/workflows/goal.md` § Progression Mode."
+      },
+      {
+        "line": 137,
+        "text": "[HARD] Before any run-phase autonomy (arming a goal, a sweep Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit Implementation Kickoff Approval approval. Implementation Kickoff Approval is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked \"(Recommended)\") presented after Phase 1 (Plan Audit Gate) and before Phase 4 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary)."
+      },
+      {
+        "line": 139,
+        "text": "[HARD] Implementation Kickoff Approval is **score-independent**: the orchestrator emits the Implementation Kickoff Approval `AskUserQuestion` gate **regardless of the plan-auditor score**, including the high skip-eligible case. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 1 plan-auditor verdict re-execution — NOT to Implementation Kickoff Approval. A high plan-auditor score never authorizes skipping the Implementation Kickoff Approval human gate. This is the Implementation Kickoff Approval mandatory-restoration invariant per the Implementation Kickoff Approval mandatory-restoration policy."
+      },
+      {
+        "line": 141,
+        "text": "Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — goal-loop turn agents and sweep Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here."
+      },
+      {
+        "line": 145,
+        "text": "ONLY after Implementation Kickoff Approval approval is obtained, the orchestrator MAY arm the `ac_converge` goal via `/moai goal \"<condition>\"` to grant phase-internal autonomy (it removes per-turn STOP prompts so the run-phase loop continues until convergence). Because arming is **arm-only** — it records the condition but starts no work — the orchestrator arms it ALONGSIDE the run-phase work it is driving, never in place of that work (`goal-directive.md` § Goal-Presentation Timing). The condition is hard-coded inline (no registry dependency) and is authored entirely as **model conditions** — every predicate references a line the orchestrator surfaces in the conversation, so the evaluator judges it against the transcript rather than by opening a file:"
+      },
+      {
+        "line": 151,
+        "text": "line); AND `go test ./...` exit 0 is surfaced; AND no test file outside"
+      },
+      {
+        "line": 159,
+        "text": "> **Actual turn ceiling:** the legacy \"Max 20 turns\" clause above is NOT parsed — `parseCondition` matches only a trailing `exits <N>`, so a \"Max 20 turns\" / \"stop after N turns\" suffix has no mechanical effect. The `ac_converge` goal therefore arms at the default 30-turn ceiling and actually runs up to 30 turns (subject to `min(30, block cap)` and the stagnation guard). The literal is retained only as the historical reference for the author's intent. To bound a goal at a specific turn count, use `--max-turns N`; for an effectively-unbounded goal, use `--max-turns 0 --max-duration <seconds>`."
+      },
+      {
+        "line": 163,
+        "text": "The following HARD invariants govern the `ac_converge` loop. Each is the canonical rule's render surface here; the rule is the SSOT."
+      },
+      {
+        "line": 165,
+        "text": "- **Transcript-measurability**: the `acceptance.md` reference NAMES where the AC list lives — it is NOT a path the evaluator opens. Because every predicate above is a model condition, the `stop-goal` evaluator judges only what the orchestrator SURFACES into the transcript (per-AC PASS line, `go test ./...` exit 0, `git status`)."
+      },
+      {
+        "line": 166,
+        "text": "- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the goal (`/moai goal clear`) and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling)."
+      },
+      {
+        "line": 167,
+        "text": "- **Non-substitution (HARD)**: the goal removes per-turn STOP prompts only. It does NOT authorize bypassing Implementation Kickoff Approval (already cleared), PR creation, or any destructive operation — those remain separately-surfaced explicit gates."
+      },
+      {
+        "line": 168,
+        "text": "- **Blocker reports, never user prompts**: a goal-loop turn or sweep Workflow agent lacking input returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates (asymmetric boundary per `agent-common-protocol.md` § User Interaction Boundary)."
+      },
+      {
+        "line": 173,
+        "text": "- `.claude/rules/moai/workflow/goal-directive.md` — `/moai goal` semantics (mechanical + model conditions judged by the `stop-goal` evaluator at each turn-end; the turn-ceiling bound; per-session goal state, so a goal armed in a previous session is not in effect after `/clear`)."
+      },
+      {
+        "line": 188,
+        "text": "| Iteration bound | [HARD] max 3 iterations; iteration 4 PROHIBITED; on iteration-3 fail the orchestrator runs an `AskUserQuestion` escalation (continue / revert+re-plan / abort) with no auto-resume | `ci-autofix-protocol.md` max-3 + `runtime-recovery-doctrine.md` §3 invariant 1 |"
+      },
+      {
+        "line": 189,
+        "text": "| Semantic safety | [HARD] semantic failures NEVER auto-patched (the constitutional rule) | `ci-autofix-protocol.md` |"
+      },
+      {
+        "line": 190,
+        "text": "| PATCH scope | [HARD] SPEC scope ONLY; MUST NOT touch `.env*` / credentials / CI watch infrastructure and workflow definitions / files outside plan.md §A EXTEND envelope (the constitutional rule/013) | `manager-develop-prompt-template.md` § cycle_type=autofix |"
+      },
+      {
+        "line": 192,
+        "text": "| Flat hierarchy | spawned BY THE ORCHESTRATOR (not manager-develop — subagents cannot spawn subagents); blocker reports never direct user prompts | `agent-common-protocol.md` § User Interaction Boundary |"
+      },
+      {
+        "line": 193,
+        "text": "| Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 \"Recursive Self-Diagnosis Log\" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |"
+      },
+      {
+        "line": 199,
+        "text": "At run dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). As run-phase gates complete, it appends machine evidence via `moai harness ledger evidence` — a terminal gate exit (`--kind gate_exit --value 0 --terminal --ref \"go test ./...\"`) or a verify-log path (`--kind verify_path --ref <.moai/state/verify/... log>`). Outcome is finalized from that machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the run phase."
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/sync/.gitkeep",
+    "bytes": 0,
+    "lines": 1,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "frontmatter": null,
+    "headings": [],
+    "norms": []
+  },
+  {
+    "path": ".claude/skills/moai/workflows/sync/delivery.md",
+    "bytes": 19479,
+    "lines": 463,
+    "sha256": "e0e56eda95686f503f49d9fd581646615eda308df8632d6e4417618f8368fe99",
+    "frontmatter": "\ndescription: \"Sync Phase 13~14 — Git Operations and Delivery (CI mirror, push/PR, auto-merge), Completion, Graceful Exit, Test Scenarios, and Custom Harness.\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-sync\n  phase: \"Phase 13~14: Git Delivery, Completion, and Auxiliary\"\n",
+    "headings": [
+      {
+        "line": 13,
+        "text": "### Phase 13: Git Operations and Delivery"
+      },
+      {
+        "line": 15,
+        "text": "#### Step 3.0: Detect Git Workflow Strategy"
+      },
+      {
+        "line": 31,
+        "text": "#### Step 3.1: Commit Changes"
+      },
+      {
+        "line": 44,
+        "text": "#### Step 3.1.1: Context Memory Generation in Git Commits"
+      },
+      {
+        "line": 81,
+        "text": "## SPEC Reference"
+      },
+      {
+        "line": 86,
+        "text": "## Context (AI-Developer Memory)"
+      },
+      {
+        "line": 94,
+        "text": "## Affected Areas"
+      },
+      {
+        "line": 100,
+        "text": "#### Step 3.1.5: Local CI Mirror Validation (Pre-PR Gate)"
+      },
+      {
+        "line": 129,
+        "text": "# Check 1: go vet (mirrors CI step)"
+      },
+      {
+        "line": 132,
+        "text": "# Check 2: Tests with race detector (mirrors CI test job)"
+      },
+      {
+        "line": 135,
+        "text": "# Check 3: golangci-lint (mirrors CI lint job)"
+      },
+      {
+        "line": 136,
+        "text": "# Auto-detect if golangci-lint is available"
+      },
+      {
+        "line": 140,
+        "text": "# Check 4: Cross-compile all CI targets (mirrors CI build job)"
+      },
+      {
+        "line": 141,
+        "text": "# Replace <your-module> with your main package path (e.g. ./cmd/<your-binary>/)."
+      },
+      {
+        "line": 142,
+        "text": "# Replicate whatever GOOS/GOARCH targets your CI build matrix declares; the"
+      },
+      {
+        "line": 143,
+        "text": "# example below shows the common 5-target matrix — run them in parallel, CGO_ENABLED=0 for all."
+      },
+      {
+        "line": 199,
+        "text": "## Local CI Mirror Results"
+      },
+      {
+        "line": 213,
+        "text": "#### Step 3.2: Push and Deliver (Strategy-Aware)"
+      },
+      {
+        "line": 285,
+        "text": "#### Step 3.3: PR Ready Transition (Team Mode)"
+      },
+      {
+        "line": 293,
+        "text": "#### Step 3.3.5: Return to Base Branch (Post-PR Cleanup)"
+      },
+      {
+        "line": 305,
+        "text": "#### Step 3.4: Auto-Merge Behavior"
+      },
+      {
+        "line": 357,
+        "text": "### Phase 14: Completion and Next Steps"
+      },
+      {
+        "line": 359,
+        "text": "#### Completion Report"
+      },
+      {
+        "line": 371,
+        "text": "#### Context-Aware Next Steps"
+      },
+      {
+        "line": 395,
+        "text": "## Graceful Exit"
+      },
+      {
+        "line": 406,
+        "text": "## Completion Criteria"
+      },
+      {
+        "line": 421,
+        "text": "## Test Scenarios"
+      },
+      {
+        "line": 423,
+        "text": "### Normal Flow"
+      },
+      {
+        "line": 434,
+        "text": "### Partial Implementation Flow"
+      },
+      {
+        "line": 443,
+        "text": "### Error Flow"
+      },
+      {
+        "line": 459,
+        "text": "## Custom Harness Extension (Optional)"
+      }
+    ],
+    "norms": [
+      {
+        "line": 76,
+        "text": "All sync commits MUST include structured context using this format:"
+      },
+      {
+        "line": 102,
+        "text": "Purpose: Replicate CI checks locally before pushing and creating a PR to catch failures fast, without waiting for slow remote CI. Windows-specific tests are skipped (cannot run locally)."
+      },
+      {
+        "line": 104,
+        "text": "**Trigger condition**: Only run when a PR is about to be created (github_flow feature branch, gitflow feature/release/hotfix). Skip for `main_direct` strategy and direct pushes to main/develop."
+      },
+      {
+        "line": 110,
+        "text": "- If no CI config found: skip this phase entirely, log \"No CI config detected\""
+      },
+      {
+        "line": 114,
+        "text": "| CI Job | CI Runner | Local Equivalent | Skippable |"
+      },
+      {
+        "line": 118,
+        "text": "| test (windows) | windows-latest | **SKIP** | Yes — cannot run locally |"
+      },
+      {
+        "line": 122,
+        "text": "##### Step 3.1.5.2: Run Local Equivalents in Parallel"
+      },
+      {
+        "line": 126,
+        "text": "Launch all checks in parallel:"
+      },
+      {
+        "line": 130,
+        "text": "go vet ./..."
+      },
+      {
+        "line": 133,
+        "text": "go test -race -coverprofile=coverage.out -covermode=atomic ./..."
+      },
+      {
+        "line": 137,
+        "text": "which golangci-lint && golangci-lint run --timeout=5m \\"
+      },
+      {
+        "line": 138,
+        "text": "  || echo \"SKIP: golangci-lint not installed (install via your project's pinned version)\""
+      },
+      {
+        "line": 143,
+        "text": "# example below shows the common 5-target matrix — run them in parallel, CGO_ENABLED=0 for all."
+      },
+      {
+        "line": 172,
+        "text": "##### Step 3.1.5.3: Skipped Checks Report"
+      },
+      {
+        "line": 174,
+        "text": "Always report what was skipped and why:"
+      },
+      {
+        "line": 177,
+        "text": "CI Mirror: Skipped checks"
+      },
+      {
+        "line": 192,
+        "text": "**golangci-lint not installed**: Treat as warning (not failure). Proceed to Step 3.2 with a note in the PR description: \"Local lint check skipped: golangci-lint not installed.\""
+      },
+      {
+        "line": 210,
+        "text": "| test (windows) | ⏭ Skipped | Cannot run locally |"
+      },
+      {
+        "line": 323,
+        "text": "- `--no-merge`: Skip auto-merge even in worktree context. PR is created but not merged."
+      },
+      {
+        "line": 401,
+        "text": "- Display retry command: /moai sync [mode]"
+      },
+      {
+        "line": 408,
+        "text": "All of the following must be verified:"
+      },
+      {
+        "line": 416,
+        "text": "- Phase 13: Changes committed, local CI mirror validated (Step 3.1.5: vet + test-race + lint + cross-compile — Windows skipped), delivered per spec_git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)"
+      },
+      {
+        "line": 463,
+        "text": "*(이 파일은 `/moai project --harness`로 생성됩니다. 파일이 없으면 자동으로 skip됩니다.)*"
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/sync/doc-execution.md",
+    "bytes": 13922,
+    "lines": 241,
+    "sha256": "689ef00de7ae03ba58f3aee4f001158490d46499c90cae81a63425de4efbc4d3",
+    "frontmatter": "\ndescription: \"Sync Phase 11~12 — Analysis and Planning (with HUMAN GATE 2: Documentation Scope) and Execute Document Synchronization.\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-sync\n  phase: \"Phase 11~12: Analysis, Planning, and Document Synchronization\"\n",
+    "headings": [
+      {
+        "line": 13,
+        "text": "### Phase 11: Analysis and Planning"
+      },
+      {
+        "line": 15,
+        "text": "#### Step 1.1: Verify Prerequisites"
+      },
+      {
+        "line": 22,
+        "text": "#### Step 1.2: Analyze Project Status"
+      },
+      {
+        "line": 38,
+        "text": "#### Step 1.3: Project Status Verification"
+      },
+      {
+        "line": 46,
+        "text": "#### Step 1.4: Synchronization Plan"
+      },
+      {
+        "line": 54,
+        "text": "#### Step 1.5: SPEC-Implementation Divergence Analysis"
+      },
+      {
+        "line": 85,
+        "text": "#### Step 1.6: User Approval"
+      },
+      {
+        "line": 88,
+        "text": "### HUMAN GATE: Documentation Scope"
+      },
+      {
+        "line": 107,
+        "text": "### Phase 12: Execute Document Synchronization"
+      },
+      {
+        "line": 109,
+        "text": "#### Step 2.1: Create Safety Backup"
+      },
+      {
+        "line": 118,
+        "text": "#### Step 2.2: Document Synchronization"
+      },
+      {
+        "line": 183,
+        "text": "#### Step 2.2.5: Project Document Update (Conditional)"
+      },
+      {
+        "line": 210,
+        "text": "#### Step 2.3: Post-Sync Quality Verification"
+      },
+      {
+        "line": 222,
+        "text": "#### Step 2.4: Update SPEC Status"
+      },
+      {
+        "line": 232,
+        "text": "#### Step 2.4.1: GitHub Issue Status Sync"
+      }
+    ],
+    "norms": [
+      {
+        "line": 17,
+        "text": "- .moai/ directory must exist"
+      },
+      {
+        "line": 18,
+        "text": "- .claude/ directory must exist"
+      },
+      {
+        "line": 19,
+        "text": "- Project must be inside a Git repository"
+      },
+      {
+        "line": 126,
+        "text": "**`FO-SYNC-4`.** **Where** the sync scope spans several independent document families, the orchestrator shall draft them in parallel before any final artifact is written. Five read-only drafters launch in a single turn — five is the top of the fanout concurrency ceiling of 3-5 concurrent `Agent()` calls (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), so a sixth output family is folded into one of the five rather than added as a sixth drafter:"
+      },
+      {
+        "line": 138,
+        "text": "**Concurrent scheduling with the Phase 7-10 audit (A5 — SPEC-SYNC-PARALLEL-DOCS-001).** The `FO-SYNC-4` drafter fan-out launches CONCURRENTLY with the Phase 7 audit fan-out, in the same turn Phase 7 is entered — NOT serially after the audit completes (the prior scheduling read the Phase Routing Table top-to-bottom and serialized the docs draft behind the full quality pipeline). The orchestrator spawns the drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7; the drafts are ready when the audit returns."
+      },
+      {
+        "line": 140,
+        "text": "**Drafter input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each D1-D5 drafter reads its input from SPEC artifacts + git diff + the Phase 11 Step 1.5 divergence report. A drafter does NOT read the concurrent audit's quality report, verdict, or per-dimension scores. The docs draft and the audit are input-independent; a drafter that consumed \"the audit's functionality score\" to decide CHANGELOG tone would create a hidden serial dependency that defeats the A5 concurrency."
+      },
+      {
+        "line": 142,
+        "text": "**Single-writer applier sequencing at gate-sync-2 (SPEC-SYNC-PARALLEL-DOCS-001 A5).** The A5 concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` is the sole write-capable agent and applies the five drafts sequentially AFTER both the docs-drafter fan-out AND the audit fan-out return — the single-writer applier pass runs at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout the concurrent fan-out; the audit verdict is surfaced to the user at the same gate-sync-2 round, with NO extra human round-trip introduced by A5."
+      },
+      {
+        "line": 144,
+        "text": "**Independent of the write-concurrency rule.** This structure holds under the current `[HARD]` prohibition on running two write-capable agents concurrently, exactly as that rule stands today: the drafters are read-only, so at no point does more than one write-capable agent run. Nothing here waits on, presumes, or requires any change to that rule — the parallelism is bought entirely by making the drafters read-only, not by loosening the writer constraint."
+      },
+      {
+        "line": 146,
+        "text": "Boundary: drafters never prompt the user. A drafter missing a required input returns a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format), and the orchestrator re-delegates that one item while the other four drafts stand. The orchestrator launches the drafters itself — scaling, not subagent nesting, so the flat agent hierarchy is preserved. **Where** the scope covers a single document family, or the fan-out is skipped, `manager-docs` performs the whole of Step 2.2 serially as before, with the same resulting artifacts."
+      },
+      {
+        "line": 193,
+        "text": "Skip condition: If .moai/project/ directory does not exist or contains no files, skip this step entirely."
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/sync/quality-gates-context.md",
+    "bytes": 9602,
+    "lines": 192,
+    "sha256": "714436022609c3449e9a3166673d843757b536f6917ed66af0beb3fb0227c93f",
+    "frontmatter": "\ndescription: \"Sync Phase 1 — Purpose/Scope/Input/Mode/Flags/Context Loading and Phase 1 Pre-Sync Quality Gate through Phase 3 Deployment Readiness Check. Contains HUMAN GATE 1 (Pre-Sync Quality).\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-sync\n  phase: \"Phase 1: Pre-Sync Context and Deployment Readiness\"\n",
+    "headings": [
+      {
+        "line": 13,
+        "text": "# Sync Workflow Orchestration"
+      },
+      {
+        "line": 15,
+        "text": "## Purpose"
+      },
+      {
+        "line": 19,
+        "text": "## Scope"
+      },
+      {
+        "line": 25,
+        "text": "## Input"
+      },
+      {
+        "line": 32,
+        "text": "## Mode Flag Compatibility"
+      },
+      {
+        "line": 46,
+        "text": "## Supported Modes"
+      },
+      {
+        "line": 53,
+        "text": "### Project Mode Details (ENHANCED)"
+      },
+      {
+        "line": 98,
+        "text": "## Supported Flags"
+      },
+      {
+        "line": 104,
+        "text": "## Context Loading"
+      },
+      {
+        "line": 120,
+        "text": "## Phase Sequence"
+      },
+      {
+        "line": 124,
+        "text": "### Phase 1: Pre-Sync Quality Gate"
+      },
+      {
+        "line": 127,
+        "text": "### HUMAN GATE: Pre-Sync Quality"
+      },
+      {
+        "line": 140,
+        "text": "#### Step 0.0.1: Gate Execution"
+      },
+      {
+        "line": 152,
+        "text": "### Phase 3: Deployment Readiness Check"
+      },
+      {
+        "line": 156,
+        "text": "#### Step 0.1.1: Test Passage Verification"
+      },
+      {
+        "line": 165,
+        "text": "#### Step 0.2: Migration Check"
+      },
+      {
+        "line": 172,
+        "text": "#### Step 0.3: Environment and Configuration Changes"
+      },
+      {
+        "line": 179,
+        "text": "#### Step 0.4: Backward Compatibility Assessment"
+      }
+    ],
+    "norms": [
+      {
+        "line": 102,
+        "text": "- --skip-mx: Skip MX tag validation and annotation during sync."
+      },
+      {
+        "line": 122,
+        "text": "> **Phase-number namespace note**: The Phase N / Phase N.M labels below (Phase 1, Phase 2, Phase 3, Phase 7, Phase 8, Phase 9, Phase 10, Phase 1, Phase 2, Phase 3, Phase 4) are local to the `/moai sync` workflow only. They are a distinct numbering namespace from `harness.yaml` `levels.<level>.skip_phases`, which governs which `/moai run` phases (task-decomposition.md / phase-execution.md numbering) are skipped at a given harness level. A sync-phase number and a run-phase `skip_phases` entry sharing the same numeral (e.g. both using `0.5`) do NOT refer to the same phase."
+      },
+      {
+        "line": 135,
+        "text": "- [ ] No HARD rule violations"
+      },
+      {
+        "line": 142,
+        "text": "- Snapshot consumption: query the shared diagnostic snapshot first (`moai verify check --key-current`). Where a fresh snapshot covers the full-test-suite check (recorded by the run-phase pre-review gate or a prior gate on the unchanged tree, within the TTL), consume it instead of re-running the full suite — the gate_report cites the snapshot path, key, original command, and recorded exit code as its full-suite evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). A stale snapshot is never cited as evidence: on key mismatch or TTL expiry, run the full suite as below and record the fresh result via `moai verify record`."
+      },
+      {
+        "line": 143,
+        "text": "- Execute gate workflow equivalent: lint + format + type-check + test in parallel"
+      },
+      {
+        "line": 147,
+        "text": "  - Skip gate: Proceed to Phase 3 (errors will be caught later but at higher cost)"
+      },
+      {
+        "line": 161,
+        "text": "  - Fix and retry (Recommended): Delegate to manager-develop subagent (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)"
+      },
+      {
+        "line": 185,
+        "text": "  - Breaking: Must be documented and versioned (semver major bump)"
+      },
+      {
+        "line": 186,
+        "text": "  - Deprecation: Must include migration guide"
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/sync/quality-gates-quality.md",
+    "bytes": 24017,
+    "lines": 326,
+    "sha256": "a6f673919c17388a9dedc59fb8fbba871c2743c28d20fb5bf9a0da81f8f44041",
+    "frontmatter": "\ndescription: \"Sync Phase 7~10 — Quality Verification, Security Scan, MX Tag Validation, and Coverage Analysis with Test Generation.\"\nuser-invocable: false\nmetadata:\n  parent: moai-workflow-sync\n  phase: \"Phase 7~10: Quality Verification and Coverage\"\n",
+    "headings": [
+      {
+        "line": 13,
+        "text": "### Phase 7: Quality Verification"
+      },
+      {
+        "line": 17,
+        "text": "#### Step 0.5.1: Language Detection"
+      },
+      {
+        "line": 39,
+        "text": "#### Step 0.5.2: Execute Diagnostics in Parallel"
+      },
+      {
+        "line": 53,
+        "text": "#### Step 0.5.3: Handle Test Failures"
+      },
+      {
+        "line": 60,
+        "text": "#### Step 0.5.4: Deep Code Review with Auto-Fix"
+      },
+      {
+        "line": 88,
+        "text": "#### LSP Quality Gates"
+      },
+      {
+        "line": 95,
+        "text": "#### Step 0.5.5: Generate Quality Report"
+      },
+      {
+        "line": 99,
+        "text": "### Phase 8: Security Scan (Conditional)"
+      },
+      {
+        "line": 112,
+        "text": "#### Step 0.55.0: Factory dedup gate (conditional suppression of Step 0.55.1)"
+      },
+      {
+        "line": 131,
+        "text": "#### Step 0.55.1: Security Analysis"
+      },
+      {
+        "line": 148,
+        "text": "#### Step 0.55.2: Security Gate Decision"
+      },
+      {
+        "line": 158,
+        "text": "### Phase 9: MX Tag Validation (Multi-Language)"
+      },
+      {
+        "line": 180,
+        "text": "#### Step 0.6.1: Language Detection for Modified Files"
+      },
+      {
+        "line": 203,
+        "text": "#### Step 0.6.2: Scan Modified Files"
+      },
+      {
+        "line": 211,
+        "text": "#### Step 0.6.3: Add Missing Tags (Language-Aware)"
+      },
+      {
+        "line": 253,
+        "text": "#### Step 0.6.4: Generate Tag Report"
+      },
+      {
+        "line": 260,
+        "text": "#### MX Tag Integration"
+      },
+      {
+        "line": 269,
+        "text": "### Phase 10: Coverage Analysis and Test Generation"
+      },
+      {
+        "line": 273,
+        "text": "#### Step 0.7.1: Coverage Measurement"
+      },
+      {
+        "line": 285,
+        "text": "#### Step 0.7.2: Gap Analysis"
+      },
+      {
+        "line": 297,
+        "text": "#### Step 0.7.3: Test Generation"
+      },
+      {
+        "line": 309,
+        "text": "#### Step 0.7.4: Verification"
+      },
+      {
+        "line": 320,
+        "text": "#### Step 0.7.5: Coverage Report"
+      }
+    ],
+    "norms": [
+      {
+        "line": 15,
+        "text": "Purpose: Detect project language and run language-specific diagnostics (tests, linter, type checker) in parallel, followed by code review."
+      },
+      {
+        "line": 37,
+        "text": "- Fallback: unknown (skip language-specific tools, proceed to code review)"
+      },
+      {
+        "line": 39,
+        "text": "#### Step 0.5.2: Execute Diagnostics in Parallel"
+      },
+      {
+        "line": 41,
+        "text": "Snapshot consumption: before launching, query the shared diagnostic snapshot with `moai verify check --key-current`. **Where** a fresh snapshot — key equality AND within the TTL — already covers one of the three categories below (recorded by the run-phase pre-review gate at run Phase 15, or by sync Phase 1 on the unchanged tree), consume the recorded result instead of re-executing that category; the quality report cites the snapshot path, key, original command, and recorded exit code as that category's evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence, and the freshness rule is what keeps the attribution valid). A stale snapshot is never cited: on key mismatch or TTL expiry, execute the check as below and record the fresh result via `moai verify record`."
+      },
+      {
+        "line": 43,
+        "text": "**Shared-snapshot wiring.** The snapshot is keyed by HEAD SHA (HEAD + porcelain-v2 + diff hash); a new commit invalidates the prior snapshot. Three sync-phase consumers — the `sync-auditor` Evidence cells, the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook, and the `.claude/workflows/sync-audit-4dim.js` 4-dimension judges — all consume this single snapshot keyed by HEAD SHA rather than each independently re-executing `go test` / `golangci-lint` / `go vet` / `go test -cover`. Concurrent recording requests for the SAME HEAD SHA are serialized via the per-key claim/lock mechanism (in-process mutex + cross-process `O_EXCL` claim-stamp with staleness reclaim), so exactly one consumer's recording per dimension lands and the rest read — last-writer-wins never silently drops a dimension."
+      },
+      {
+        "line": 51,
+        "text": "Collect all results with timeouts (180s for tests, 120s for others). Handle partial failures gracefully."
+      },
+      {
+        "line": 64,
+        "text": "- `minimal` harness level (`harness.yaml` `levels.minimal.evaluator: false`): skip the sync-auditor invocation; rely on the orchestrator verification batch (lint + test + coverage) instead"
+      },
+      {
+        "line": 71,
+        "text": "- Security (25%): OWASP Top 10 compliance, injection risks, secrets exposure, dependency vulnerabilities — HARD THRESHOLD: any Critical/High finding causes overall FAIL regardless of other scores"
+      },
+      {
+        "line": 72,
+        "text": "- Craft (20%): Test coverage >= 85%, error handling completeness, naming conventions, algorithmic complexity, concurrency safety"
+      },
+      {
+        "line": 110,
+        "text": "**Skip condition**: If no changed files match security-sensitive patterns, skip to Phase 9. Log: \"Security scan skipped: no security-sensitive files changed.\""
+      },
+      {
+        "line": 116,
+        "text": "**Scope of the suppression — Step 0.55.1 and nothing else.** A passing gate suppresses only the agent-invoked security analysis of Step 0.55.1. The dependency manifest audit below is a separate mechanism serving a separate purpose — detecting transitive-vulnerability drift unrelated to the current SPEC — and a source-code deep scan does not substitute for it, so it continues to run unconditionally whether or not this gate passes. Skipping the whole of Phase 8 would remove the only check for that drift."
+      },
+      {
+        "line": 121,
+        "text": "- tree-dirty flag — `git status --porcelain` reports at least one line after excluding `.moai/state/`, `.moai/reports/`, `.moai/cache/`, `.moai/logs/`, and the results directory itself."
+      },
+      {
+        "line": 125,
+        "text": "**Fail-safe default — the gate defaults to RUN.** Every conjunct that fails yields FALSE, and FALSE means Step 0.55.1 runs. An absent results directory, an absent or unreadable `revision.json`, malformed JSON, a commit mismatch, a narrower scope, an absent `findings.jsonl`, and a `findings.jsonl` line that does not parse are each FALSE. Absence is never a match. The one absence-shaped input that does match is a zero-line `findings.jsonl`: a clean scan writes that file empty, while an aborted scan characteristically never writes it at all — which is why the completeness check consults `findings.jsonl` rather than `revision.json`, whose schema carries no completion field and therefore cannot distinguish an aborted run from a finished one."
+      },
+      {
+        "line": 127,
+        "text": "**Rung allow-list.** A passing predicate is only half the condition. Suppression additionally requires the verify stage's rigor rung to have been **recorded** on the session state record and to equal `PRIMARY` or `FALLBACK`. Every other value yields no suppression: `DEGRADED` (a single-pass, rigor-reduced scan, which must never suppress the independent adversarial analysis of the same surface), an unrecognized value, an empty value, and a rung that was never recorded at all. State this as an allow-list, never as a \"not `DEGRADED`\" exclusion — the state record is best-effort and its fields land independently, so a record carrying a results directory but no rung is reachable, and a deny-list would read that absence as permission to suppress. The scan's effort tier is deliberately not part of this condition: an effort level is not a rigor rung, so a maximum-effort single-pass scan would clear an effort floor while still being rigor-reduced."
+      },
+      {
+        "line": 129,
+        "text": "**Disclosure.** When the gate suppresses Step 0.55.1, the sync report MUST record the inheritance explicitly — naming the results directory and the matched `scanned_commit`, and stating that the findings were inherited from the factory verify stage. A suppressed scan must never be indistinguishable from a clean one."
+      },
+      {
+        "line": 140,
+        "text": "**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:"
+      },
+      {
+        "line": 142,
+        "text": "Audit ALL of the following manifest files present at project root — dependency surface must be checked at every sync to detect drift from transitive vulnerability changes unrelated to this SPEC:"
+      },
+      {
+        "line": 162,
+        "text": "**Concurrent scheduling with the Phase 7-10 audit (A7 — SPEC-SYNC-PARALLEL-DOCS-001).** The Phase 9 MX Tag scan (existing `FO-SYNC-2` sharded structure, Step 0.6.2 below) launches CONCURRENTLY with the Phase 7 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after Phase 8 (Security) completes. The prior scheduling ran Phase 7 → Phase 8 → Phase 9 → Phase 10 strictly in sequence, which serialized the MX scan behind the full quality + security pipeline. A7 lifts that serialization for the MX scan: the orchestrator spawns the `FO-SYNC-2` MX shard fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the MX findings are ready by the time the audit returns. The MX scan is input-independent (SPEC-SYNC-PARALLEL-DOCS-001 A7): it reads git diff + source, NOT the concurrent audit's output; a shard that read \"the audit's functionality score\" to gate itself would create a hidden serial dependency that defeats the A7 concurrency."
+      },
+      {
+        "line": 164,
+        "text": "**[HARD] P1/P2 violations BLOCK sync, and halt BEFORE Phase 10 coverage (A7 — SPEC-SYNC-PARALLEL-DOCS-001).** If any P1 (missing @MX:ANCHOR on fan_in >= 3 function) or P2 (missing @MX:WARN on goroutine pattern) violations are found, sync is halted and the user must resolve them before proceeding. The P1/P2 gate fires BEFORE Phase 10 (Coverage Analysis) executes — eliminating the \"30-min coverage then 1 missing tag aborts all\" worst case, because the coverage command never runs when P1/P2 violations are present. The prior scheduling paid the full coverage cost before discovering the MX violation; A7 inverts the ordering so the cheap MX scan gates the expensive coverage run."
+      },
+      {
+        "line": 166,
+        "text": "**No-false-abort guard (SPEC-SYNC-PARALLEL-DOCS-001 A7).** When the concurrent MX scan detects ZERO P1/P2 violations (only P3/P4 advisory findings, or no findings), Phase 10 (Coverage Analysis) executes exactly as it does today — A7 introduces NO false aborts. The P3 (long exported function missing `@MX:NOTE`) and P4 (untested public function missing `@MX:TODO`) findings remain advisory and do NOT trigger the pre-coverage halt; Phase 10 coverage proceeds unchanged (EC-3 edge case)."
+      },
+      {
+        "line": 175,
+        "text": "2. Show message: \"Run /moai run to add missing tags, or use --skip-mx to bypass\""
+      },
+      {
+        "line": 178,
+        "text": "Skip if `--skip-mx` flag is provided. When skipped, log: \"MX validation skipped by user flag\" in sync report."
+      },
+      {
+        "line": 209,
+        "text": "Sharding (`FO-SYNC-2`, read-only): **Where** the modified files span several languages or packages, the orchestrator shall shard this scan — one read-only `Agent()` per shard in a single turn, 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), each returning its findings as text and writing nothing. A shard missing a required input returns a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) rather than prompting the user. Step 0.6.3 tag application stays single-writer, and the blocking P1/P2 determination above is made on the merged result so no shard can clear the gate alone. The orchestrator launches the shards itself — scaling, not subagent nesting. **Where** the changeset sits in a single language and package, or the concurrency ceiling leaves no room to shard, the scan runs as one pass with identical output — no error, no warning."
+      },
+      {
+        "line": 242,
+        "text": "   - R: `parallel::` (parallel processing)"
+      },
+      {
+        "line": 249,
+        "text": "2. **Swift-specific WARN**: `Task.`, `DispatchQueue` (async/concurrency)"
+      },
+      {
+        "line": 278,
+        "text": "- Go: `go test -coverprofile=coverage.out -covermode=atomic ./...` then `go tool cover -func=coverage.out`"
+      },
+      {
+        "line": 307,
+        "text": "Per-package fan-out (`FO-SYNC-3`, read-only drafting): **Where** the gaps span several independent packages, the orchestrator shall draft their tests in parallel — one read-only `Agent()` per package in a single turn, 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2). Each drafter reads its package plus that package's gap list and returns test source as text; it writes no file and never prompts the user, returning a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) when an input is missing. The single `manager-develop` subagent applies the drafts and runs Step 0.7.4 — it remains the only writer, so two write-capable agents never run at once. The orchestrator launches the drafters itself — scaling, not subagent nesting. **Where** the gaps sit in one package, the existing serial path runs unchanged."
+      }
+    ]
+  },
+  {
+    "path": ".claude/skills/moai/workflows/sync.md",
+    "bytes": 13655,
+    "lines": 152,
+    "sha256": "272bfdadb9fdc93669297837aae1880a41688b39d0ab97ce938505bd3454ebb8",
+    "frontmatter": "\ndescription: >\n  Synchronizes documentation with code changes, verifies project quality,\n  and finalizes pull requests. Third step of the Plan-Run-Sync workflow.\n  Includes deep code review with auto-fix, coverage analysis with test generation,\n  SPEC divergence analysis, project document updates, and Context Memory generation.\n  Use when documentation sync, PR creation, or quality verification is needed.\nuser-invocable: false\nmetadata:\n  version: \"3.8.0\"\n  category: \"workflow\"\n  status: \"active\"\n  updated: \"2026-05-17\"\n  tags: \"sync, documentation, pull-request, quality, verification, pr, context-memory\"\n\n# MoAI Extension: Progressive Disclosure\nprogressive_disclosure:\n  enabled: true\n  level1_tokens: 100\n  level2_tokens: 5000\n\n# MoAI Extension: Triggers\ntriggers:\n  keywords: [\"sync\", \"docs\", \"pr\", \"documentation\", \"pull request\", \"changelog\", \"readme\"]\n  agents: [\"manager-docs\", \"manager-git\"]\n  phases: [\"sync\"]\n",
+    "headings": [
+      {
+        "line": 16,
+        "text": "# MoAI Extension: Progressive Disclosure"
+      },
+      {
+        "line": 22,
+        "text": "# MoAI Extension: Triggers"
+      },
+      {
+        "line": 33,
+        "text": "# Sync Workflow Entry Router"
+      },
+      {
+        "line": 37,
+        "text": "## Phase Owners (per the canonical agent catalog policy)"
+      },
+      {
+        "line": 45,
+        "text": "## Phase Routing Table"
+      },
+      {
+        "line": 54,
+        "text": "## Fan-Out Index"
+      },
+      {
+        "line": 65,
+        "text": "## Docs ∥ Audit Concurrent Scheduling (A5 — SPEC-SYNC-PARALLEL-DOCS-001)"
+      },
+      {
+        "line": 75,
+        "text": "## Parallel Quality-Evidence Fan-Out (capability-gated)"
+      },
+      {
+        "line": 83,
+        "text": "## HUMAN GATE Map"
+      },
+      {
+        "line": 92,
+        "text": "## Invocation Flow"
+      },
+      {
+        "line": 106,
+        "text": "## Quick Reference"
+      },
+      {
+        "line": 122,
+        "text": "## On-Demand Sub-skill Loading"
+      },
+      {
+        "line": 127,
+        "text": "# Phase 1 (Pre-Sync Quality Gate) 진입 시"
+      },
+      {
+        "line": 130,
+        "text": "# Phase 7 (Quality Verification) 진입 시"
+      },
+      {
+        "line": 133,
+        "text": "# Phase 11 (Analysis and Planning) 진입 시"
+      },
+      {
+        "line": 136,
+        "text": "# Phase 13 (Git Operations) 진입 시"
+      },
+      {
+        "line": 140,
+        "text": "## Custom Harness Extension"
+      },
+      {
+        "line": 146,
+        "text": "## Sentinel Error Keys"
+      },
+      {
+        "line": 150,
+        "text": "## Routing Ledger Recording"
+      }
+    ],
+    "norms": [
+      {
+        "line": 41,
+        "text": "Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §F.3 + frontmatter `in-progress → implemented` transition for all SPEC artifacts; MUST NOT modify spec.md/plan.md/acceptance.md body content per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy)."
+      },
+      {
+        "line": 43,
+        "text": "Sync-phase quality gate (per the canonical sync-phase quality gate policy) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook — lint + test + coverage delta verification + dependency manifest audit. The hook exits 0 always; in blocking mode (MOAI_SYNC_GATE_BLOCKING=1) it emits stdout JSON {\"decision\":\"block\"} on lint/test failure or coverage regression > 5pp. Per Claude Code hook semantics, stdout JSON is honored only on exit 0. The hook replaces the prior pattern of spawning an inline quality agent for coverage and security analysis during sync (that agent is archived per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; the Stop hook is its canonical replacement)."
+      },
+      {
+        "line": 58,
+        "text": "| Fan-Out ID | Trigger condition | Target file | What is parallelised |"
+      },
+      {
+        "line": 60,
+        "text": "| `FO-SYNC-1` | the quality-evidence fan-out script is on disk AND the runtime supports dynamic workflows | `workflows/sync.md` (below) | Phase 7 quality check — four quality dimensions in one parallel read-only pass |"
+      },
+      {
+        "line": 61,
+        "text": "| `FO-SYNC-2` | the modified files span several languages or packages | `workflows/sync/quality-gates-quality.md` | Phase 9 MX tag scan — one read-only shard per language or package |"
+      },
+      {
+        "line": 65,
+        "text": "## Docs ∥ Audit Concurrent Scheduling (A5 — SPEC-SYNC-PARALLEL-DOCS-001)"
+      },
+      {
+        "line": 67,
+        "text": "The docs drafter fan-out (`FO-SYNC-4`, five read-only drafters D1-D5) launches CONCURRENTLY with the Phase 7-10 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after the audit completes. The former scheduling read the Phase Routing Table strictly top-to-bottom (Phase 7 → Phase 11 → Phase 12), which serialized the docs draft behind the full quality / security / MX / coverage pipeline. A5 lifts that serialization for the docs draft: the orchestrator spawns the `FO-SYNC-4` drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the docs draft is ready by the time the audit returns."
+      },
+      {
+        "line": 69,
+        "text": "**Input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each docs drafter (D1-D5) reads its input from SPEC artifacts + git diff + the Phase 11 Step 1.5 divergence report — NOT from the concurrent audit's quality report, verdict, or per-dimension scores. The docs draft and the audit are input-independent; a drafter that read \"the audit's functionality score\" to decide CHANGELOG tone would create a hidden serial dependency that defeats the concurrency."
+      },
+      {
+        "line": 71,
+        "text": "**Single-writer applier at gate-sync-2 (SPEC-SYNC-PARALLEL-DOCS-001 A5).** The concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` remains the sole write-capable agent: it applies the five drafts sequentially AFTER both fan-outs return, at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout; at no point during the concurrent fan-out do two write-capable agents run simultaneously. The audit verdict is surfaced to the user at the same gate-sync-2 round, with no extra human round-trip introduced."
+      },
+      {
+        "line": 73,
+        "text": "**Concurrency guard codification (SPEC-SYNC-PARALLEL-DOCS-001 A5/A7 concurrency guard).** The A5 docs-drafter fan-out, the A7 MX shard fan-out, the FO-SYNC-1 4-dim judges, and any sync-auditor fallback are ALL read-only. The single write-capable pass (`manager-docs` applying the docs drafts at gate-sync-2) runs AFTER both fan-outs return. This is the A5/A7 concurrency invariant: every concurrent agent is read-only (drafters return draft text; shards return findings; judges return structured verdicts; auditors read tree state), and the sole writer is sequential. The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution) holds throughout every A5/A7 fan-out path — verified by inspection of every concurrent agent's read-only contract."
+      },
+      {
+        "line": 75,
+        "text": "## Parallel Quality-Evidence Fan-Out (capability-gated)"
+      },
+      {
+        "line": 77,
+        "text": "**`FO-SYNC-1`.** **Where** `.claude/workflows/sync-audit-4dim.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator shall launch it at Phase 7 (Quality Check) to gather the four quality dimensions in one parallel read-only pass. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — Phase 7 proceeds on its existing path with no error, no warning, and no interruption."
+      },
+      {
+        "line": 81,
+        "text": "**Binding promotion (SPEC-AUDIT-SNAPSHOT-001 A3, REQ-AUDIT-SNAPSHOT-003).** On the **happy path** — the workflow verdict is `PASS`, no dimension scored 0, the verdict is not `INCOMPLETE`, and no contested finding is present — the orchestrator SHALL treat the workflow's harmonic-mean verdict as **BINDING** for the sync-phase quality decision and SHALL NOT spawn the cold `sync-auditor` subagent. The four parallel xhigh judges subsume the one serial judge on the clean path (attributable diff-check, not a deletion of the auditor role). The mechanical binding predicate is codified in `internal/runtime.FourDimVerdict.IsBinding()`; the orchestrator constructs a `FourDimVerdict` from the workflow run output and consults `IsBinding()`. On any of the fallback triggers — (a) verdict `INCOMPLETE`, (b) any must-pass dimension scoring 0 (`zero_scored` array non-empty), or (c) a **contested finding** (any one judge reports `critical` severity, OR two or more judges return conflicting severity classifications for the same dimension) — the orchestrator SHALL spawn the cold `sync-auditor` subagent as the fallback binding-verdict owner, and the auditor's PASS/FAIL is treated as binding for that cycle. Neither `gate-sync-1` nor `gate-sync-2` is bypassed or auto-passed by either path; the cold auditor remains the fallback verdict owner under trigger (a)/(b)/(c)."
+      },
+      {
+        "line": 95,
+        "text": "/moai sync [mode] [--pr] [--merge] [--skip-mx]"
+      },
+      {
+        "line": 114,
+        "text": "**Flags**: `--pr` (PR 생성) | `--merge` (deprecated, auto-merge) | `--skip-mx` (MX 검증 스킵)"
+      },
+      {
+        "line": 144,
+        "text": "*(이 파일은 `/moai project --harness`로 생성됩니다. 파일이 없으면 자동으로 skip됩니다.)*"
+      },
+      {
+        "line": 152,
+        "text": "At sync dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). At the sync-phase quality gate, it appends the gate result as machine evidence via `moai harness ledger evidence --kind gate_exit --value <exit> --terminal --ref \"sync-phase-quality-gate\"`. Outcome is derived from machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the sync phase."
+      }
+    ]
+  }
+]

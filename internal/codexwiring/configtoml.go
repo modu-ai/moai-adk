@@ -40,11 +40,13 @@ var StatusLineAllowlist = []string{
 }
 
 // defaultStatusLine is the fixed default configuration (operator directive
-// 2026-09-10): the 8 canonical tokens covering model, context, repository,
-// rate-limit, and thread-title status.
+// 2026-09-22): the 14 canonical tokens covering model, version, context,
+// rate limits, repository/PR, run progress, permissions, and thread title.
 var defaultStatusLine = []string{
-	"model-with-reasoning", "context-remaining", "git-branch", "current-dir",
-	"branch-changes", "five-hour-limit", "weekly-limit", "thread-title",
+	"model-with-reasoning", "codex-version", "context-remaining",
+	"five-hour-limit", "weekly-limit", "current-dir", "git-branch",
+	"branch-changes", "pull-request-number", "run-state", "task-progress",
+	"approval-mode", "fast-mode", "thread-title",
 }
 
 // DefaultStatusLine returns a copy of the default status_line configuration.

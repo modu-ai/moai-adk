@@ -1,0 +1,11 @@
+import fs from 'node:fs';import cp from 'node:child_process';
+const out='/tmp/moai-workflow-audit.ZD4KBb',root='/Users/goos/MoAI/moai-adk-go',f=out+'/fixture';
+const run=(cmd,args,opts={})=>{const r=cp.spawnSync(cmd,args,{encoding:'utf8',timeout:15000,...opts});return {exit:r.status,stdout:r.stdout.trim(),stderr:r.stderr.trim()};};
+const a=JSON.parse(fs.readFileSync(out+'/probes.json'));
+const src=fs.readFileSync(root+'/.claude/agents/moai/plan-auditor.md','utf8');
+const extract=(start)=>src.slice(src.indexOf(start)).match(/```bash\n([\s\S]*?)```/)[1];
+fs.mkdirSync(f+'/.moai/specs/SPEC-OLD-001',{recursive:true});fs.writeFileSync(f+'/.moai/specs/SPEC-OLD-001/spec.md','---\nstatus: superseded\n---\n');fs.writeFileSync(f+'/new-spec.md','Explicit reconciliation: supersede SPEC-OLD-001; replace its old requirements.\n');
+const d7=extract('### Group 7:').replaceAll('<new-spec.md>','new-spec.md');a.push({id:'P10',command:'D7 verification verb extracted verbatim; fixture explicitly reconciles superseded SPEC-OLD-001',...run('bash',['-c',d7],{cwd:f})});
+fs.writeFileSync(f+'/new-spec.md','## Unprotected syscall\nIntroduce syscall.Flock here.\n\n## Unrelated build\n//go:build linux applies only to another module.\n');const d8=extract('### Group 8:').replaceAll('<new-spec.md>','new-spec.md');a.push({id:'P11',command:'D8 verification verb; syscall and build-tag occur in different sections',...run('bash',['-c',d8],{cwd:f})});
+fs.writeFileSync(out+'/ac.txt','AC-V3R6-001a\nAC-V3R6-001b\n');a.push({id:'P12',command:'grep -oE AC-([A-Z0-9]+-)*[0-9]+ ac.txt | sort -u | wc -l; two suffix-distinct AC IDs',...run('bash',['-c',"grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' \"$1\" | sort -u | wc -l",'probe',out+'/ac.txt'])});
+fs.writeFileSync(out+'/probes.json',JSON.stringify(a,null,2));for(const r of a.slice(-3))console.log(JSON.stringify(r));

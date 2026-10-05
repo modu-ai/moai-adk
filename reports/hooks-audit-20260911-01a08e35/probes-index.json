@@ -1,0 +1,7 @@
+{
+  "staged_needs_formatting": true,
+  "hook_exit": 0,
+  "hook_stdout": "",
+  "hook_stderr": "",
+  "go_and_moai": "stub exit 0; isolate gofmt stage"
+}

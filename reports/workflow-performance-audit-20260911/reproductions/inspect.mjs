@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import cp from 'node:child_process';
+const root='/Users/goos/MoAI/moai-adk-go';
+const out='/tmp/moai-workflow-audit.ZD4KBb';
+const walk=d=>fs.readdirSync(path.join(root,d),{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(d+'/'+e.name):[d+'/'+e.name]);
+const files=[...walk('.claude/rules/moai'),...walk('.claude/agents/moai'),'.claude/skills/moai/SKILL.md',...walk('.claude/skills/moai/workflows').filter(p=>/\/(project|plan|run|sync)(\/|\.md$)/.test(p)),...walk('.moai/config/sections'), 'CLAUDE.md','CLAUDE.local.md','.claude/settings.json','.claude/settings.local.json','.claude/hooks/moai/sync-phase-quality-gate.sh','.claude/workflows/sync-audit-4dim.js'];
+const inventory=files.map(p=>{const text=fs.readFileSync(path.join(root,p),'utf8'), lines=text.split('\n');return {path:p,bytes:Buffer.byteLength(text),lines:lines.length-(text.endsWith('\n')?1:0),sha256:crypto.createHash('sha256').update(text).digest('hex'),frontmatter:text.startsWith('---\n')?text.split('---')[1]:null,headings:lines.flatMap((t,i)=>/^#{1,4} /.test(t)?[{line:i+1,text:t}]:[]),norms:lines.flatMap((t,i)=>/HARD|MUST|NEVER|SHALL|mandatory|always|timeout|concurr|parallel|cache|skip|retry|ceiling|threshold|\.\/\.\.\./i.test(t)?[{line:i+1,text:t}]:[])};});
+fs.writeFileSync(out+'/inventory.json',JSON.stringify(inventory,null,2));
+const baseline={root,head:cp.execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),branch:cp.execFileSync('git',['branch','--show-current'],{cwd:root,encoding:'utf8'}).trim(),captured_at:new Date().toISOString(),files:inventory.map(({path,sha256})=>({path,sha256}))};
+fs.writeFileSync(out+'/baseline.json',JSON.stringify(baseline,null,2));
+const rules=inventory.filter(f=>f.path.startsWith('.claude/rules/'));
+console.log(JSON.stringify({files:inventory.length,rules:rules.length,ruleLines:rules.reduce((n,f)=>n+f.lines,0),ruleBytes:rules.reduce((n,f)=>n+f.bytes,0),agents:inventory.filter(f=>f.path.startsWith('.claude/agents/')).length,workflowFiles:inventory.filter(f=>f.path.startsWith('.claude/skills/moai/workflows/')).length,ruleWithoutPaths:rules.filter(f=>!f.frontmatter||!/^paths:/m.test(f.frontmatter)).map(f=>({path:f.path,bytes:f.bytes})),baseline:baseline.head},null,2));
