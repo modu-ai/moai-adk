@@ -194,9 +194,6 @@ func TestTodoGraphViewBounded(t *testing.T) {
 	}
 }
 
-// graphQueueItemsOmitted is the fixture's beyond-the-bound node count.
-func graphQueueItemsOmitted() int { return 350 - todoGraphMaxNodes }
-
 // TestTodoGraphAssetsEmbedded — AC-TCI-022 (d): the graph view adds no new
 // .js asset (the embed list's .js entries equal the M6-start set), and the
 // response body carries no external reference of any spelling the static

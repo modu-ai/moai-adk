@@ -48,16 +48,6 @@ func issuanceArchivedFixture(t *testing.T) (string, *BacklogStore) {
 	return root, store
 }
 
-func fileDigest(t *testing.T, path string) []byte {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	h := sha256.Sum256(data)
-	return h[:]
-}
-
 // AC-TCI-008: a database opened after the change carries both new columns —
 // the ensure path added them at open, before any read or write.
 func TestBacklogIssuanceColumnRetrofit(t *testing.T) {

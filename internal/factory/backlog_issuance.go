@@ -424,7 +424,7 @@ type IssuancePresentation struct {
 // Empty reports whether the presentation carries no item at all.
 func (p IssuancePresentation) Empty() bool {
 	return len(p.Neighbors) == 0 && len(p.Components) == 0 &&
-		len(p.Overlap.Items) == 0 && p.Overlap.None == false && p.Overlap.Unmeasured == "" &&
+		len(p.Overlap.Items) == 0 && !p.Overlap.None && p.Overlap.Unmeasured == "" &&
 		len(p.Specs) == 0
 }
 

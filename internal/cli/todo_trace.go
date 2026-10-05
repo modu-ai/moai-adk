@@ -31,11 +31,11 @@ func newTodoTraceCmd() *cobra.Command {
 			}
 			lines := factory.TraceCardRelations(rec, id, kinds, depth)
 			if len(lines) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "no relations reachable from "+id)
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no relations reachable from "+id)
 				return nil
 			}
 			for _, line := range lines {
-				fmt.Fprintln(cmd.OutOrStdout(), line)
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
 			}
 			return nil
 		},

@@ -181,18 +181,6 @@ func newTodoUnrelateCmd() *cobra.Command {
 	}
 }
 
-// isSemanticRelation reports whether r is one of the four relations `relate`
-// accepts. The mechanical relations are deliberately excluded: a hand-written
-// `near-duplicate` would claim a measurement nobody measured.
-func isSemanticRelation(r string) bool {
-	for _, allowed := range factory.BacklogSemanticRelations {
-		if r == allowed {
-			return true
-		}
-	}
-	return false
-}
-
 // isWriteableRelation — SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013: relate's
 // writable set widens to the three new kinds; the projection kinds stay
 // refused (they are add-time attribute projections or todo merge's output).

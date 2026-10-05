@@ -189,21 +189,6 @@ func todoGraphNodeIndex(g TodoGraphVM, id string) (int, bool) {
 	return 0, false
 }
 
-// todoGraphStateRank orders the nodes the way the audit list does — queued
-// work first, the archive last — so the grid reads as the queue reads.
-func todoGraphStateRank(state string) int {
-	switch state {
-	case "queued":
-		return 0
-	case "picked", "hold":
-		return 1
-	case "dropped":
-		return 2
-	default:
-		return 3 // archived
-	}
-}
-
 // TodoSortVM is one option of the segmented sort control. Label is the
 // server-rendered English fallback; LabelKey is the i18n key the client swaps
 // in, mirroring every other data-i18n surface.
