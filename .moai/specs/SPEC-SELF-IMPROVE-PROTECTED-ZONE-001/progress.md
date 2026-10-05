@@ -233,6 +233,15 @@ The 4 P1s are this card's protected-zone surface, repaired RED-first (all four o
 
 GREEN on the re-absorbed tree: `TestProtectedZone` hook+config (ShellMutation swept 88 — 3 new deny rows plus the dangling-symlink Write row), `go build ./...` exit 0, GOOS=windows OK, `golangci-lint` 0 issues, gofmt clean, `TestHMPSourceGuard` ok, live judge `JUDGE swept=67 expected=67 fail=0` exit 0.
 
+### Repair round 12 — git --work-tree anchoring + six more foreign-scope P2s recorded (2026-10-06)
+
+The gate's verdict on the round-11 head failed with 1×P1 + 6×P2. The card's own surface produced exactly ONE finding — the review is reading the whole tree, and the foreign-scope findings keep accumulating for the routing report:
+
+- **P2 6건 — 이 카드 소관 아님, 라우팅 누적**(라운드 11 목록과 2건 중복): `internal/factory/backlog_store.go:144` MergeBacklogRecords가 자식의 `SpawnedBy` 부모 참조를 매핑 누락 · `internal/cli/factory_bundle.go:211` 큐 재정렬 시 작업 중 허브 카드와의 선행 순서 붕괴 · `internal/cli/todo.go:940` 신규 카드 `--files` 겹침 미전달(라운드 11 중복) · `internal/cli/todo_issuance.go:216` 변경 파일 목록 공백 분리(`two words.go` 분리 — `-z` NUL 분리 필요) · `todo_issuance.go:212` 탐침 기준 브랜치 `develop` 하드코딩 · `todo_issuance.go:207` 명시적 프로젝트 루트 미전파. 네 파일 모두 이 카드 diff에 없는 main 착지 코드다. 리더 라우팅 보고에 누적된다.
+- **P1 `git --work-tree`** — `git --work-tree=zone_dir restore -- secret` allowed: the option scan consumed `--work-tree` as a valued global option but DISCARDED its value, and only `-C` anchored the subcommand's paths. `--work-tree` is now captured in both spellings (inline `=` and separate value) and anchors the file arguments as its own base alongside `-C` — both anchorings are judged when both are present (sound union). RED rows observed allow first (both spellings).
+
+GREEN: `TestProtectedZone` hook+config (ShellMutation swept 90 — 2 new deny rows), `go build ./...` exit 0, GOOS=windows OK, `golangci-lint` 0 issues, gofmt clean, live judge `JUDGE swept=67 expected=67 fail=0` exit 0. Separately observed: CodeRabbit completed a full review of the round-11 head (`state=success`, description `Review completed`) after an explicit re-review request — the merge-discipline's first condition held there and is re-checked per head.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready

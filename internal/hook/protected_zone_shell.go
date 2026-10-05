@@ -474,12 +474,22 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		// arguments resolve against, relative values accumulating across
 		// consecutive -C options, quoted spellings included (rounds 4–5 P1).
 		dirOpt := ""
+		wtOpt := ""
 		sub := ""
 		subIdx := -1
 		for j := 1; j < len(cmd.Args); j++ {
 			t, lit := zoneWordText(cmd.Args[j])
 			if !lit {
 				break // dynamic global argument: under-match
+			}
+			if t == "--work-tree=" || strings.HasPrefix(t, "--work-tree=") && len(t) > len("--work-tree=") {
+				// git's --work-tree moves where the subcommand's paths
+				// resolve; capture it as its own anchor alongside -C
+				// (round 12 P1)
+				if len(t) > len("--work-tree=") {
+					wtOpt = strings.TrimPrefix(t, "--work-tree=")
+				}
+				continue
 			}
 			if strings.HasPrefix(t, "-") {
 				if t == "-C" || t == "-c" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" {
@@ -490,6 +500,11 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 							} else {
 								dirOpt = dirOpt + "/" + dir
 							}
+						}
+					}
+					if t == "--work-tree" && j+1 < len(cmd.Args) {
+						if wt, lit2 := zoneWordText(cmd.Args[j+1]); lit2 && wt != "" {
+							wtOpt = wt
 						}
 					}
 					j++ // the option's value is consumed
@@ -512,7 +527,9 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 		}
 		// every possible directory is a base the subcommand's file arguments
 		// can resolve against (round 6 P1); a -C moves that base — an absolute
-		// -C replaces it, a relative one accumulates (round 5 P1)
+		// -C replaces it, a relative one accumulates (round 5 P1); a
+		// --work-tree is its own anchor, so both anchorings are judged when
+		// both are present (round 12 P1)
 		for _, base := range w.cwds {
 			gitDir := base
 			if dirOpt != "" {
@@ -523,6 +540,15 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 				}
 			}
 			w.cands = append(w.cands, zoneRelativeTo(gitDir, fileArgs)...)
+			if wtOpt != "" {
+				wtDir := base
+				if zoneIsAbs(wtOpt) || wtDir == "" || wtDir == "." {
+					wtDir = wtOpt
+				} else {
+					wtDir = wtDir + "/" + wtOpt
+				}
+				w.cands = append(w.cands, zoneRelativeTo(wtDir, fileArgs)...)
+			}
 		}
 		return
 	}

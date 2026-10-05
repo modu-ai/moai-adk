@@ -1053,6 +1053,18 @@ func testZoneShellMutation(t *testing.T) {
 	d, r = zoneCall(t, h, "Write", harnessLearnerIdentity, map[string]any{"file_path": "innocent.md", "content": "x"})
 	wantZoneDeny(t, "Write innocent.md (dangling -> zone_dir/new.md)", d, r, harnessLearnerIdentity, "category", "probe_zone")
 
+	// review-repair round 12 row (gate verdict on the round-11 head: git's
+	// --work-tree option moves where the subcommand's paths resolve, and the
+	// scan only tracked -C)
+	for _, cmd := range []string{
+		"git --work-tree=zone_dir restore -- secret", // inline = form (r12)
+		"git --work-tree zone_dir restore -- secret", // separate-value form (r12)
+	} {
+		swept++
+		d, r = zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": cmd})
+		wantZoneDeny(t, cmd, d, r, harnessLearnerIdentity, "category", "probe_zone")
+	}
+
 	if swept < 71 {
 		t.Fatalf("swept %d rows, want at least 71", swept)
 	}
